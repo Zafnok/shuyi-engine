@@ -52,6 +52,9 @@ enum Open<D> {
         line: u32,
         options: Vec<ChoiceOption<D>>,
         parts: Vec<PartLines>,
+        /// The `@delivery` in force when it opened: each reply starts from
+        /// it and the block leaves it.
+        outer_delivery: Option<String>,
     },
     /// `@if`, until its `@endif`.
     If {
@@ -61,6 +64,9 @@ enum Open<D> {
         then: (Vec<Step<D>>, Lines),
         /// The line of its `@else` and the steps after it, once read.
         otherwise: Option<(u32, Vec<Step<D>>, Lines)>,
+        /// The `@delivery` in force when it opened: its `@else` starts from
+        /// it and the block leaves it.
+        outer_delivery: Option<String>,
     },
 }
 
@@ -91,6 +97,7 @@ pub fn parse_dlg<D: Directive>(
         open: None,
         blocks: Vec::new(),
         continuable: false,
+        delivery: None,
         errors: Vec::new(),
     };
     for (i, line) in source.split('\n').enumerate() {
@@ -150,6 +157,9 @@ struct Parser<'a, D> {
     /// Whether the last line was speech or narration, so an indented line
     /// continues it.
     continuable: bool,
+    /// The direction of the last `@delivery`, for the lines without their
+    /// own.
+    delivery: Option<String>,
     errors: Vec<ContentError>,
 }
 
@@ -212,15 +222,20 @@ impl<D: Directive> Parser<'_, D> {
         if let Some(rest) = body.strip_prefix('@') {
             self.directive(n, line, rest);
         } else if let Some(rest) = body.strip_prefix('>') {
-            let text = rest.trim();
+            let rest = rest.trim();
+            // `> (direction): text`; other narration may open with a bracket.
+            let directed = rest.strip_prefix('(').and_then(|r| r.split_once("):"));
+            let (own, text) = directed.map_or((None, rest), |(own, text)| (Some(own), text.trim()));
             if text.is_empty() {
                 self.err(n, "narration has no text");
             } else {
                 self.check_chars(n, line, text);
+                let direction = self.direction(n, own);
                 self.push(
                     n,
                     Step::Narrate {
                         text: text.into(),
+                        direction,
                         line: LineId::default(),
                     },
                 );
@@ -247,6 +262,9 @@ impl<D: Directive> Parser<'_, D> {
         }
         // The reaction above is over: an `@if` it opened must be closed.
         self.close_reaction_ifs();
+        if let Some(Open::Choice { outer_delivery, .. }) = self.blocks.last() {
+            self.delivery.clone_from(outer_delivery);
+        }
         match option {
             Some(rest) => self.option(n, line, rest),
             None => self.directive(n, line, &body[1..]),
@@ -315,6 +333,7 @@ impl<D: Directive> Parser<'_, D> {
             line: n,
             options: Vec::new(),
             parts: Vec::new(),
+            outer_delivery: self.delivery.clone(),
         });
     }
 
@@ -354,6 +373,7 @@ impl<D: Directive> Parser<'_, D> {
             character: CharacterId(character.into()),
             then: (Vec::new(), Lines::default()),
             otherwise: None,
+            outer_delivery: self.delivery.clone(),
         });
     }
 
@@ -370,8 +390,13 @@ impl<D: Directive> Parser<'_, D> {
                 let message = format!("@if already has an @else, on line {first}");
                 self.err(n, message);
             }
-            Some(Open::If { otherwise, .. }) => {
+            Some(Open::If {
+                otherwise,
+                outer_delivery,
+                ..
+            }) => {
                 *otherwise = Some((n, Vec::new(), Lines::default()));
+                self.delivery.clone_from(outer_delivery);
             }
             _ => self.err(n, "@else without an open @if"),
         }
@@ -396,13 +421,19 @@ impl<D: Directive> Parser<'_, D> {
                 line,
                 options,
                 parts,
-            } => (line, Step::Choice { options }, parts),
+                outer_delivery,
+            } => {
+                self.delivery = outer_delivery;
+                (line, Step::Choice { options }, parts)
+            }
             Open::If {
                 line,
                 character,
                 then,
                 otherwise,
+                outer_delivery,
             } => {
+                self.delivery = outer_delivery;
                 let (else_line, otherwise, else_lines) =
                     otherwise.unwrap_or((line, Vec::new(), Lines::default()));
                 let step = Step::If {
@@ -511,6 +542,7 @@ impl<D: Directive> Parser<'_, D> {
             "left" => self.place(n, Side::Left, args),
             "right" => self.place(n, Side::Right, args),
             "music" => self.music(n, args),
+            "delivery" => self.delivery_line(n, args),
             "choice" => self.open_choice(n, args),
             "endchoice" => self.end_choice(n, args),
             "if" => self.open_if(n, args),
@@ -555,6 +587,7 @@ impl<D: Directive> Parser<'_, D> {
             line: n,
             lines: Lines::default(),
         });
+        self.delivery = None;
     }
 
     fn end(&mut self, n: u32, args: &str) {
@@ -620,7 +653,16 @@ impl<D: Directive> Parser<'_, D> {
 
     /// `id: text` or `id[expression]: text` on line `n`.
     fn speech(&mut self, n: u32, line: &str, body: &str) {
-        let Some((head, text)) = body.split_once(':').filter(|(h, _)| !h.contains(' ')) else {
+        // `speaker (direction): text`: the head without its direction, and
+        // the direction.
+        let split = body.split_once(':').and_then(|(head, text)| {
+            let Some((id, own)) = head.split_once(' ') else {
+                return Some((head, None, text));
+            };
+            let own = own.trim().strip_prefix('(')?.strip_suffix(')')?;
+            Some((id, Some(own), text))
+        });
+        let Some((head, own, text)) = split else {
             self.err(
                 n,
                 "unrecognised line; expected \"@directive\", \"> narration\", \"speaker: text\" or \"# comment\"",
@@ -642,16 +684,54 @@ impl<D: Directive> Parser<'_, D> {
             return;
         }
         self.check_chars(n, line, text);
+        let direction = self.direction(n, own);
         self.push(
             n,
             Step::Say {
                 speaker: CharacterId(speaker.into()),
                 expression: expression.map(Into::into),
                 text: text.into(),
+                direction,
                 line: LineId::default(),
             },
         );
         self.continuable = self.open.is_some();
+    }
+
+    /// The direction of the line on line `n`: `own`, the one written on it,
+    /// else the `@delivery` in force.
+    fn direction(&mut self, n: u32, own: Option<&str>) -> Option<String> {
+        match own {
+            Some(own) => self.checked_direction(n, own, "a line's ( ) has no direction in it"),
+            None => self.delivery.clone(),
+        }
+    }
+
+    /// `direction`, trimmed, reporting `when_empty` if nothing is left and
+    /// every unsupported character.
+    fn checked_direction(&mut self, n: u32, direction: &str, when_empty: &str) -> Option<String> {
+        let direction = direction.trim();
+        if direction.is_empty() {
+            self.err(n, when_empty);
+            return None;
+        }
+        for message in direction.chars().filter_map(char_problem) {
+            self.err(n, message);
+        }
+        Some(direction.into())
+    }
+
+    /// `@delivery` with `args`: a direction, or `clear`.
+    fn delivery_line(&mut self, n: u32, args: &str) {
+        if self.target().is_none() {
+            self.no_target(n);
+            return;
+        }
+        self.delivery = if args == "clear" {
+            None
+        } else {
+            self.checked_direction(n, args, "@delivery needs a direction, or \"clear\"")
+        };
     }
 
     fn bad_id(&mut self, n: u32, id: &str) {

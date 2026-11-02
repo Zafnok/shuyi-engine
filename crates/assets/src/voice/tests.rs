@@ -133,6 +133,60 @@ fn full() -> Vec<String> {
     ]
 }
 
+#[test]
+fn a_changed_direction_means_a_remake_and_leaves_the_clip_playable() {
+    let table = |line: &str| {
+        let src = format!("@scene s\n@left guide neutral\n{line}\n@end\n");
+        let (parsed, errors) = parse_dlg::<NoDirective>("t.dlg", &src);
+        assert_eq!(errors, []);
+        DialogueTable::<NoDirective>::new(
+            parsed
+                .into_iter()
+                .map(|p| (p.scene.id.clone(), p.scene))
+                .collect(),
+        )
+    };
+    let plain = table("guide: Hello.");
+    let line = plain.scenes["s"].lines()[0].id.to_string();
+    let loud = table("guide (loud): Hello.");
+    assert_eq!(loud.scenes["s"].lines()[0].id.as_str(), line);
+    let made_by =
+        "voice: \"v\", made_by: Generated(tool: \"t\", model: \"m\", date: \"2026-11-02\")";
+    let entry = |direction: &str| {
+        format!("(clips: [(line: {line:?}, spoken: \"Hello.\", {direction}{made_by})])")
+    };
+    let spoken = |text: &str, _: Weather| Some(text.to_owned());
+
+    let undirected: VoiceManifest<Weather> = from_source("voice.ron", &entry(""), &plain).unwrap();
+    let directed: VoiceManifest<Weather> =
+        from_source("voice.ron", &entry("direction: Some(\"loud\"), "), &plain).unwrap();
+    let remake = |m: &VoiceManifest<Weather>, d: &DialogueTable<NoDirective>| {
+        VoiceManifest::needs_remake(&m.clips[0], d, spoken)
+    };
+    assert!(!remake(&undirected, &plain));
+    assert!(!remake(&directed, &loud));
+    assert!(remake(&undirected, &loud));
+    assert!(remake(&directed, &plain));
+    assert!(remake(&directed, &table("guide (quiet): Hello.")));
+
+    // The words still match, so the old take plays until a new one is made.
+    assert!(!VoiceManifest::is_stale(
+        &undirected.clips[0],
+        &loud,
+        spoken
+    ));
+    assert_eq!(undirected.playable(&loud, spoken).len(), 1);
+
+    // New words, or no such line, need a remake too.
+    assert!(remake(&undirected, &table("guide: Goodbye.")));
+    let reworded = |text: &str, _: Weather| Some(format!("{text}!"));
+    assert!(VoiceManifest::needs_remake(
+        &undirected.clips[0],
+        &plain,
+        reworded
+    ));
+}
+
 fn source(clips: &[String]) -> String {
     format!("(clips: [\n{}\n])", clips.join(",\n"))
 }
