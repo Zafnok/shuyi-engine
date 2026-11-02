@@ -131,7 +131,10 @@ for Nick (parked 3047 asks it for crash reports).
     Option<SessionPlayed>`: the file, the frames played and in the
     record, and the first differing frame with both hashes as hex text
     (`shuyi-core` has no `schemars`). 2575's `Played::limits` join the
-    answer's `limits`.
+    answer's `limits`. **From 2575 (done):** a script's frame adds lines
+    to them, so read them after the script has played, with `play_all`
+    again (it plays nothing more; there is no other getter). A script
+    run before the record's end takes over from it, and they say so.
   - A frame that differs gives `ok: false` with the result, as `replay`
     does when its runs disagree. The script and `frames` don't play
     then, so `frames`, `top_screen`, `frame` and `scene` are the

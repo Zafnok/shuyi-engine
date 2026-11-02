@@ -492,6 +492,11 @@ on that start, `HeadlessPlatform::from_session(&record)`, and
 `session::Playback::new(&record)`, whose `next` runs each frame at its recorded
 time and says the first frame whose hash differs.
 
+A game's tests do both on the test Harness (`Harness::start_recording`,
+`from_session`, `play_to`): the book's
+[*Recording a session*](../site/content/learn/book/testing.md#recording-a-session)
+and the [`shuyi-test` skill](../skills/shuyi-test/SKILL.md).
+
 ## The headless backend, as a reference
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete
