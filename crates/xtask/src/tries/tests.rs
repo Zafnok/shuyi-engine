@@ -128,3 +128,18 @@ fn a_copy_leaves_out_what_a_build_writes() {
     assert!(!to.join("target").exists());
     fs::remove_dir_all(&root).unwrap();
 }
+
+#[test]
+fn a_copy_of_the_books_game_is_its_own_workspace() {
+    let manifest = book_manifest(
+        "[package]\nname = \"book-snippets\"\nversion.workspace = true\n",
+        "[workspace]\nmembers = [\"crates/*\"]\nresolver = \"3\"\n\n[workspace.package]\nversion = \"0.1.0\"\n",
+    );
+    assert!(!manifest.contains("members"), "{manifest}");
+    assert!(manifest.starts_with("[package]\n"), "{manifest}");
+    assert!(
+        manifest.contains("[workspace]\nresolver = \"3\""),
+        "{manifest}"
+    );
+    assert!(manifest.contains("[workspace.package]"), "{manifest}");
+}

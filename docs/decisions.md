@@ -1419,7 +1419,7 @@ Source: Nick, in a session of this repository, reading the tutorial's pages:
 
 - **The tutorial's reader has never programmed or made a game.** It explains
   the engine's ideas and as much Rust as a game needs, on the lines that use
-  them (2818). The book gets the same treatment later (2819).
+  them (2818). The book gets the same treatment (2819).
 - **The tutorial is written for people.** Agents read the engine's source and
   its indices, so `llms-full.txt` leaves the tutorial out (2818).
 - **The tutorial shows before and after.** Its pictures come from real edits to

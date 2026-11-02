@@ -312,3 +312,101 @@ alt = "The finished game on level 3, Round the corner, with Moves: 0 at the top 
 step = "09-test"
 keys = "Enter Enter"
 alt = "The first level with no moves made, the frame the test keeps as text."
+
+# ---- The book: Moon Garden, `site/snippets/` (ticket 2819) ----
+
+[book-title]
+step = "book"
+alt = "Moon Garden's title: the name in yellow, made with Shuyi Engine under it, and the help line at the bottom."
+
+[book-title-name]
+step = "book"
+alt = "The title reads Moon Garden."
+after = "The title reads Star Garden. Nothing else on the screen has changed."
+[[book-title-name.edits]]
+file = "files/en.ron"
+find = '"title.name": "Moon Garden",'
+replace = '"title.name": "Star Garden",'
+
+[book-garden]
+step = "book"
+keys = "Enter"
+alt = "The garden: a row of six plots, each a small dot, with a box round the first, 9 seeds left under them, and the help line at the bottom."
+
+[book-overlay]
+step = "book"
+keys = "Enter Backspace"
+alt = "The question Leave the garden? in a box over the row of plots, with the garden's seeds line and help line showing below it."
+after = "The same question in the same box, on a blank screen: the garden no longer shows."
+[[book-overlay.edits]]
+file = "src/screens.rs"
+find = """
+fn is_overlay(&self) -> bool {
+        true"""
+replace = """
+fn is_overlay(&self) -> bool {
+        false"""
+
+[book-rebind]
+step = "book"
+alt = "The title's help line says Enter plant."
+after = "The help line says Space plant. No code changed, and the words follow the keymap."
+[[book-rebind.edits]]
+file = "files/keymap.ron"
+find = '"Confirm": ["Enter", "Space", "z"],'
+replace = '"Confirm": ["Space", "Enter", "z"],'
+
+[book-skin-glyph]
+step = "book"
+keys = "Enter Enter"
+alt = "The first plot has a green triangle in its box."
+after = "The first plot has a green club in its box. The seeds line and the plots are as they were."
+[[book-skin-glyph.edits]]
+file = "src/frame.rs"
+find = """Plot::Sprout => ('▲', own("sprout")),"""
+replace = """Plot::Sprout => ('♣', own("sprout")),"""
+
+[book-sprout-blue]
+step = "book"
+keys = "Enter Enter"
+alt = "The sprout in the first plot is green."
+after = "The sprout in the first plot is blue."
+[[book-sprout-blue.edits]]
+file = "files/palette.ron"
+find = '"sprout": "#7ad07a",'
+replace = '"sprout": "#5a9bff",'
+
+[book-plan-plots]
+step = "book"
+keys = "Enter"
+alt = "The garden has six plots in its row."
+after = "The garden has ten plots in its row, still centred. No code changed."
+[[book-plan-plots.edits]]
+file = "files/garden.ron"
+find = "plots: 6,"
+replace = "plots: 10,"
+
+[book-out-of-seeds]
+step = "book"
+keys = "Enter Enter Enter Enter Enter Enter Enter Enter Enter Enter"
+alt = "The player has pressed plant nine times on the first plot. A sprout grows there, and 8 seeds are left, as the later presses were refused."
+after = "No seed ever grows. 0 seeds left, the first plot is still bare, and the help line says Out of seeds."
+[[book-out-of-seeds.edits]]
+file = "files/garden.ron"
+find = "grow_percent: 75,"
+replace = "grow_percent: 0,"
+
+[book-free-seeds]
+step = "book"
+keys = "Enter Enter"
+alt = "After planting once, the screen says 8 seeds left."
+after = "After planting once, the screen says 9 seeds left: planting no longer costs a seed."
+[[book-free-seeds.edits]]
+file = "src/rules.rs"
+find = "self.seeds -= 1;"
+replace = "self.seeds -= 0;"
+
+[book-frame-png]
+step = "book"
+keys = "Enter Right Enter"
+alt = "The garden after moving right and planting: a box round the second plot, with a sprout in it, and 8 seeds left."

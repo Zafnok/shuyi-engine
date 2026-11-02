@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2818"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2819 — The book taught from nothing
@@ -68,14 +68,14 @@ None. The audience is decided.
 
 ## Acceptance criteria
 
-- [ ] Each chapter explains every Rust feature and engine word its code
+- [x] Each chapter explains every Rust feature and engine word its code
       uses, in the chapter or by a link to where the tutorial does.
-- [ ] Each chapter whose idea shows on screen has a picture, each made by
+- [x] Each chapter whose idea shows on screen has a picture, each made by
       the tools and checked in CI.
-- [ ] `cargo xtask llms` passes under its budget.
-- [ ] The book's chapter is updated (2802), or the completion notes have a
+- [x] `cargo xtask llms` passes under its budget.
+- [x] The book's chapter is updated (2802), or the completion notes have a
       `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass (those this PR can move here, the rest in CI, as the notes say).
 
 ## Tests required
 
@@ -84,5 +84,47 @@ None. The audience is decided.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Every chapter is rewritten for the tutorial's reader: it says what its idea is
+for before its name, explains the Rust in its code in notes marked **Rust**, or
+links the tutorial, and has a section on what goes wrong. The two appendices
+get the same treatment, less of it: their readers are narrower. The site's
+README now says the rule.
+
+**The pictures.** `tutorial-tries` now reads Moon Garden too, a try with
+`step = "book"`, rather than showing the tutorial's game. The book's reader
+reads about Moon Garden, and a picture of a box puzzle beside the garden's code
+would teach less. It costs little: `book_manifest` makes a copy of
+`site/snippets` a one-crate workspace of its own, and `site/snippets/examples/tools.rs`
+draws its frames. There are 11 tries, 8 of them before-and-afters, each looked at.
+
+Chapters 1 to 6 and 8 have pictures. **Chapters 7, 9 and 10 have none:** a save, a
+target's check and the tool contract don't show on screen, and a target's own
+display is 2813's.
+
+**The errors are real.** Each message in *When it goes wrong* came from running
+that mistake, on Moon Garden or a tutorial step. Some are cut to their first
+lines. They are written by hand, so they can drift as messages improve.
+
+**Found doing it:** `{Confirn}` in a language file passes `check` and shows on
+screen, so 2574. A missing text key passes `check` too and panics in a debug build:
+that's the design, and chapter 2 says so. A `blank` game's `lint` runs no text
+check and no rules fence: chapters 2 and 6 say so.
+
+**Verified here:** the xtask's and the book's tests, their clippy, `cargo fmt
+--check`, `cargo xtask tutorial-tries --check`, `zola check`, `check-build.sh`,
+`cargo xtask llms` (about 177 KB, under the budget of 400 KB, not raised), the
+ticket lint, typos, the docs and links checks, and the pages in a browser at
+desktop width and at 375 px. **Not run here:** the rest of the workspace's gates,
+as only `xtask` and `book-snippets` changed among the crates. CI runs them.
+
+**Deviations:**
+
+- **Size.** About 1,600 lines of prose, over the ticket size of 1,500: one voice,
+  read as one.
+- **The glossary** gains no row, as the tutorial's pages are out of scope. A word
+  only the book uses is explained where the book uses it.
+- **The job's cost:** `tutorial-tries` builds a copy per before-and-after, so 8 more.
+
+**Follow-ups:** 2574.
+
+Book: this is the book. No public item changed.
