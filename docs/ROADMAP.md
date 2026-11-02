@@ -114,6 +114,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2818 | The tutorial taught from nothing: for a reader new to programming, with before-and-after pictures of real edits |
 | 2817 | Finish the tutorial's browser-play acceptance: exercise all ten steps from their page links, with per-step evidence |
 | 2819 | The book taught from nothing: each chapter for the tutorial's reader, with its words explained and its pictures |
+| 2822 | `tutorial-tries` on Windows can draw a try with another step's program |
 | 2821 | Code on the site that stands out: inline code with its own color and background, and code blocks with syntax colors of our own |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |

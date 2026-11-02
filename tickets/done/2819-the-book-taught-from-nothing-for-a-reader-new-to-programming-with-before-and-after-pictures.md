@@ -111,11 +111,16 @@ that's the design, and chapter 2 says so. A `blank` game's `lint` runs no text
 check and no rules fence: chapters 2 and 6 say so.
 
 **Verified here:** the xtask's and the book's tests, their clippy, `cargo fmt
---check`, `cargo xtask tutorial-tries --check`, `zola check`, `check-build.sh`,
+--check`, every book try by `cargo xtask tutorial-tries --check`, `zola check`, `check-build.sh`,
 `cargo xtask llms` (about 177 KB, under the budget of 400 KB, not raised), the
 ticket lint, typos, the docs and links checks, and the pages in a browser at
 desktop width and at 375 px. **Not run here:** the rest of the workspace's gates,
 as only `xtask` and `book-snippets` changed among the crates. CI runs them.
+
+**The whole list of pictures passes in CI, not here.** On this Windows machine the
+full `--check` calls one tutorial picture, `wall-look/before.png`, stale, as it
+draws that try with step 3's program. The kept picture is right, CI's job passes,
+and the same fails with no book try in the list, so the bug was already there: 2822.
 
 **Deviations:**
 
@@ -125,6 +130,6 @@ as only `xtask` and `book-snippets` changed among the crates. CI runs them.
   only the book uses is explained where the book uses it.
 - **The job's cost:** `tutorial-tries` builds a copy per before-and-after, so 8 more.
 
-**Follow-ups:** 2575.
+**Follow-ups:** 2575, 2822.
 
 Book: this is the book. No public item changed.
