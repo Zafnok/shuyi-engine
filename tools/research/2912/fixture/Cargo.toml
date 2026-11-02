@@ -9,6 +9,10 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+layout-kernel = []
+vm-kernel = []
+
 [dependencies]
 shuyi-core = { path = "../../../../crates/core" }
 serde = { workspace = true, features = ["std"] }

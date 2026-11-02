@@ -338,6 +338,27 @@ jobs:
       - name: The checker's fixtures fail
         run: |
           "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py fixtures --out target/web-check/fixtures
+      - name: Cold rules browser replay matches native
+        run: |
+          export SHUYI_KERNEL_BUILD_SEED=0
+          cargo build --release -p cloning-fixture --locked
+          cargo build --release -p cold-rules-web-fixture --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
+          export SHUYI_KERNEL_BUILD_SEED=104729
+          cargo build --release -p cloning-fixture --features layout-kernel --locked
+          cargo build --release -p cold-rules-web-fixture --features layout-kernel \
+            --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
+          cargo build --release -p cloning-fixture --features vm-kernel --locked
+          cargo build --release -p cold-rules-web-fixture --features vm-kernel \
+            --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
       # As pages.yml builds them: every example whose shuyi.ron has a
       # `web` section.
       - name: Every example's web build boots

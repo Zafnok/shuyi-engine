@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Cold rules browser fixture</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; margin: 2rem auto; max-width: 55rem; padding: 0 1rem; }
+    label { display: block; margin: 1rem 0; }
+    input { display: block; box-sizing: border-box; width: 100%; padding: .5rem; }
+    button { padding: .5rem 1rem; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f3f5f6; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Cold rules browser fixture</h1>
+  <p>Serve the repository root over HTTP, then open this page. Add <code>?wasm=URL</code> to choose a built variant.</p>
+  <p id="status">Loading browser-target WebAssembly…</p>
+  <form id="replay">
+    <label>Seed <input id="seed" value="11" required></label>
+    <label>Comma-separated actions <input id="actions" value="gather,gather,refine,craft,deliver,gather,rest,gather,refine,craft,deliver"></label>
+    <button type="submit">Replay Workshop</button>
+  </form>
+  <pre id="output" aria-live="polite"></pre>
+  <script type="module">
+    import { createFixture } from "./bridge.mjs";
+
+    const status = document.querySelector("#status");
+    const output = document.querySelector("#output");
+    const params = new URLSearchParams(location.search);
+    const wasmPath = params.get("wasm")
+      ?? "../../../../target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm";
+    try {
+      const fixture = await createFixture(new URL(wasmPath, location.href));
+      status.textContent = `Loaded ${wasmPath}`;
+      if (params.has("seed")) document.querySelector("#seed").value = params.get("seed");
+      if (params.has("actions")) document.querySelector("#actions").value = params.get("actions");
+      document.querySelector("#replay").addEventListener("submit", (event) => {
+        event.preventDefault();
+        try {
+          const json = fixture.replay(
+            document.querySelector("#seed").value,
+            document.querySelector("#actions").value,
+          );
+          output.textContent = json;
+          if (params.has("smoke")) {
+            const bytes = new TextEncoder().encode(json);
+            output.dataset.replayBase64 = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
+          }
+        } catch (error) {
+          output.textContent = error.message;
+        }
+      });
+      document.querySelector("#replay").requestSubmit();
+    } catch (error) {
+      status.textContent = `Could not load ${wasmPath}: ${error.message}`;
+    }
+  </script>
+</body>
+</html>
