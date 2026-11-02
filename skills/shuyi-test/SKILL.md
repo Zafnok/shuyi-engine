@@ -3,7 +3,7 @@ name: shuyi-test
 description: Test a Shuyi Engine game at every layer, with unit and property tests of its rules, its screens played through the engine's headless Harness, the tool contract in tests, text snapshots of a look, and pictures of frames to review. Use when adding or changing rules, a screen or a stage, when a change needs a test that proves it, or when you want to see a frame without a window. Not for running the checks before a commit (shuyi-gates), for a bug only a record reproduces (shuyi-debug-replay), or for measuring how hard a stage is (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Test a game
@@ -77,6 +77,13 @@ colours or the frame's text.
    game's default keys (`files/keymap.ron`): input to a test, not game
    code. A game with stages seeds them: a `grid` game's stage tools give
    `Tools::harness(seed)`.
+
+   To record a session and play it to any frame, for a bug across screens,
+   the music or the saves: `Harness::start_recording(game::game().start())`,
+   then `Harness::from_session(start, record, Stamps::Check)` and
+   `play_to(frame)` or `play_all()`, whose answer names the first frame that
+   happened differently. The book's chapter on testing, *Recording a session*,
+   shows it.
 
 4. **The contract in tests.** The template's tests call the operations
    as library functions with the game's tools: `check(&tools,

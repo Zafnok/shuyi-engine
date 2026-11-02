@@ -1,6 +1,6 @@
 //! Chapter 8, testing: a bot that plays the garden to its end, a property
-//! that holds for any seed, and a record replayed step by step with the
-//! hash of each step.
+//! that holds for any seed, a record replayed step by step with the hash of
+//! each step, and a whole session recorded and played to any frame.
 
 use shuyi::core::bots::{Bot, Report, play};
 use shuyi::core::{RandomBot, TurnRules};
@@ -43,9 +43,12 @@ pub fn play_randomly(seed: u64) -> Report<Garden> {
 mod tests {
     use proptest::prelude::*;
     use shuyi::core::state_hash;
+    use shuyi::platform::harness::Harness;
+    use shuyi::platform::session::Stamps;
     use shuyi_cli::contract::replay::turns;
 
     use super::*;
+    use crate::game;
     use crate::rules::Outcome;
 
     // ANCHOR: test_bot
@@ -93,4 +96,29 @@ mod tests {
         assert_eq!(run.steps[2].hash, run.steps[1].hash);
     }
     // ANCHOR_END: replay
+
+    // ANCHOR: session
+    #[test]
+    fn a_session_plays_back_to_any_frame() {
+        // The game from its real start, recorded from the first frame.
+        let mut first = Harness::start_recording(game().start()).unwrap();
+        first.keys("Enter Right");
+        let record = first.session().unwrap();
+
+        // Played to its end, every frame happens as it did.
+        let mut again = Harness::from_session(game().start(), record, Stamps::Check).unwrap();
+        let played = again.play_all();
+        assert_eq!(played.first_difference, None);
+        assert_eq!(played.frames, played.of);
+        assert_eq!(again.screens(), first.screens());
+
+        // Or to one frame: the first is the card, the second the load, the
+        // third pressed Enter, and the title opened the garden in it.
+        let mut at = Harness::from_session(game().start(), record, Stamps::Check).unwrap();
+        at.play_to(2);
+        assert_eq!(at.screens(), ["title"]);
+        at.play_to(3);
+        assert_eq!(at.screens(), ["title", "garden"]);
+    }
+    // ANCHOR_END: session
 }

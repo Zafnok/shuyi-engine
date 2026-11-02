@@ -163,6 +163,56 @@ command is where to look. A record that says what made it
 ([chapter 7](@/learn/book/saves-and-settings.md#a-save)) is refused by another build of the
 game ([`SH3007`](@/learn/errors/sh3007.md)) rather than compared.
 
+## Recording a session
+
+A record of commands holds the rules and nothing else. It can't tell you why a menu got
+stuck, or why the music and a screen fell out of step. A **session record** holds everything
+the platform gave the whole game, frame by frame: the clock, the keys and buttons, what the
+system said, the music's position, and the saved files as they were when the game loaded. No
+code of your game takes part in making one.
+
+In a test, `Harness::start_recording` starts the game the way a device does, showing its
+loading card and then running its load, and records from the very first frame.
+`Harness::from_session` makes a new Harness ready to play that record, and `play_all` or
+`play_to(frame)` plays it, in the same game:
+
+{{ snippet(file="src/testing.rs", anchor="session") }}
+
+> **Rust:** `.unwrap()` opens a `Result` or an `Option`, and stops the test if there's an
+> error or nothing inside, which is fine in a test: a game that can't start should fail it.
+> `first.session()` gives the record so far as an `Option`, because a Harness that isn't
+> recording has none. `None` in `assert_eq!(played.first_difference, None)` is that same
+> nothing: no frame differed.
+
+Each frame of a record also holds a hash of what happened in it: the screens open, the sounds
+and music asked for, and whether the game quit. It never covers the picture, so a new color
+breaks no record. `played.first_difference` names the first frame that happened differently,
+with both hashes, and the game stops on that frame, so a test can read `screens()` right
+there. Frames count from 1, and the first two are the card and the load. Until the game has
+loaded, `screens()` is empty, and what needs the game itself, such as `ctx()`, stops the test.
+
+`played.limits` lists what the playing can't promise, such as a record made without a stamp
+of its build, one that stopped early, or one that doesn't hold all of the saved files. A
+record that another build of the game made is refused by `from_session`, unless you pass
+`Stamps::Ignore` in place of `Stamps::Check`.
+
+After the record's last frame, the same scripts as ever go on from where it ended: `keys`,
+`pad` and `wait`. The music then comes from the Harness's own stand-in for a sound card, and
+`limits` says so.
+
+Three things differ from `game().harness()`:
+
+- A key press reaches the screen even when the screen doesn't declare that action, as it does
+  on a device.
+- `start` and `start_recording` give the load's errors as their `Err`, rather than stopping
+  the test. `Harness::start` is the same start with no recording.
+- What a test changes behind the platform's back isn't in the record, so it won't play back:
+  `act`, `ctx_mut` and `screen_mut`. Press the keys instead.
+
+To keep a record, `record.to_ron()` is its text, one frame per line, so two records compare
+frame by frame in any diff tool. `SessionRecord::from_ron` reads it back. The name to give the
+file is `*.session.ron`.
+
 ## Golden values
 
 A record kept in the repository pins what the game does: its hash at every step, in a
@@ -224,8 +274,8 @@ bad chord in test script: unknown key chord "Entr"; expected a key such as "h", 
 screen isn't on the stack, so print `h.screens()`, or it has no `as_any` to be found by
 ([chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below)).
 
-**A key that does nothing.** The Harness hands a screen only the actions it declares, so look
-at its `actions` ([chapter 3](@/learn/book/actions.md#when-it-goes-wrong)).
+**A key that does nothing.** `game().harness()` hands a screen only the actions it declares, so
+look at its `actions` ([chapter 3](@/learn/book/actions.md#when-it-goes-wrong)).
 
 **A test that passes one run and fails the next.** In a game like this one, that isn't bad
 luck: something outside the state got in, such as a clock or a hash map's order
