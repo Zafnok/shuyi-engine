@@ -143,7 +143,7 @@ pub(super) enum Command {
 }
 
 fn pair(low: u16, high: u16) -> u32 {
-    u32::from(low) | (u32::from(high) << 16)
+    u32::from(low) + (u32::from(high) << 16)
 }
 
 fn low(word: u32) -> u16 {
@@ -162,16 +162,14 @@ fn split(value: u64) -> (u32, u32) {
 }
 
 fn join(low: u32, high: u32) -> u64 {
-    u64::from(low) | (u64::from(high) << 32)
+    u64::from(low) + (u64::from(high) << 32)
 }
 
 /// What a play's words say past the voice.
 fn play_words(words: &mut [u32; COMMAND_WORDS], index: Handle, params: Params) {
     words[3] = index.index;
     words[4] = index.generation;
-    words[5] = u32::from(params.volume)
-        | (u32::from(params.looped) << 16)
-        | (u32::from(params.region.is_some()) << 17);
+    words[5] = u32::from(params.volume) + (u32::from(params.looped) << 16);
     words[6] = params.rate;
     words[7] = pair(params.balance.0, params.balance.1);
     if let Some(region) = params.region {
@@ -181,9 +179,8 @@ fn play_words(words: &mut [u32; COMMAND_WORDS], index: Handle, params: Params) {
 }
 
 fn play_params(words: &[u32; COMMAND_WORDS]) -> Params {
-    let region = (words[5] & (1 << 17) != 0)
-        .then(|| Region::new(join(words[8], words[9]), join(words[10], words[11])))
-        .flatten();
+    // No region leaves its words at nothing, which is no region.
+    let region = Region::new(join(words[8], words[9]), join(words[10], words[11]));
     let mut params = Params::new()
         .with_volume(low(words[5]))
         .with_rate(words[6])

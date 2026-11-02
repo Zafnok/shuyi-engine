@@ -522,7 +522,7 @@ impl Mixer {
     /// a frame at its end is silence), then removes those that finished. No lock, no
     /// allocation, nothing freed.
     pub fn render(&mut self, out: &mut [i16]) {
-        for chunk in out.chunks_mut(BLOCK_FRAMES * self.channels) {
+        for chunk in out.chunks_mut(self.block.len()) {
             let whole = chunk.len() - chunk.len() % self.channels;
             let block = &mut self.block[..whole];
             block.fill(0);

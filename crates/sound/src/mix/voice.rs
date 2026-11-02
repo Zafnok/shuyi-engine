@@ -87,6 +87,7 @@ pub(super) struct Voice {
     next: Next,
     /// In 1/4096, with [`VOLUME_FRACTION`] bits more.
     volume: u32,
+    /// Where a fade ends: it means nothing without one.
     target: u32,
     fade_step: i64,
     fade_left: u64,
@@ -134,7 +135,6 @@ impl Voice {
             // Its first fetch is the first frame.
             pending: 1,
             volume: u32::from(params.volume) << VOLUME_FRACTION,
-            target: u32::from(params.volume) << VOLUME_FRACTION,
             balance: params.balance,
             ..Self::new()
         };

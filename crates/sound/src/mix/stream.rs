@@ -191,9 +191,9 @@ impl<S: Source, F: FnMut() -> Result<S, Error>> LoopedRegion<S, F> {
         let mut chunk = [0; CHUNK_SAMPLES];
         while self.at < self.region.start() {
             let left = self.region.start() - self.at;
-            let frames = usize::try_from(left).map_or(CHUNK_SAMPLES / channels, |left| {
-                left.min(CHUNK_SAMPLES / channels)
-            });
+            let most = (CHUNK_SAMPLES / channels) as u64;
+            // At most a chunk's, which fits.
+            let frames = usize::try_from(left.min(most)).unwrap_or(0);
             let read = self.source.read(&mut chunk[..frames * channels])?;
             if read == 0 {
                 return Ok(());

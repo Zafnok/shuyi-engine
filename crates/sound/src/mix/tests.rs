@@ -487,6 +487,18 @@ fn the_bank_is_fixed_and_a_removed_sound_is_gone() {
     assert!(!mixer.is_playing(late));
 }
 
+#[test]
+fn removing_a_sound_leaves_what_plays_another() {
+    let mut mixer = stereo_mixer(2);
+    let gone = mixer.add_sound(ramp(9)).unwrap_or_else(|e| panic!("{e}"));
+    let kept = mixer.add_sound(ramp(9)).unwrap_or_else(|e| panic!("{e}"));
+    let voice = mixer
+        .play(kept, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(mixer.remove_sound(gone).is_some());
+    assert!(mixer.is_playing(voice));
+}
+
 // -- streams --
 
 #[test]
@@ -692,6 +704,29 @@ fn fill_from_moves_a_whole_source_through_a_small_ring_and_closes_it() {
     assert_eq!(out[..10_000], stereo_numbers(0..5000));
     assert!(out[10_000..].iter().all(|s| *s == 0));
     assert_eq!(mixer.underrun_frames(), 0);
+}
+
+#[test]
+fn fill_from_says_how_many_it_moved_and_never_more_than_there_is_room_for() {
+    let sound = pcm(RATE, Channels::Mono, (1..=9).collect());
+    let mut source = SharedSource::new(sound);
+    let (mut feeder, mut feed) = feed(format(RATE, Channels::Mono), 1);
+    let mut out = [0; 1];
+    for expected in 1..=9 {
+        assert_eq!(feeder.fill_from(&mut source), Ok(1), "{expected}");
+        assert_eq!(feed.read(&mut out), Ok(1));
+        assert_eq!(out, [expected], "none lost for want of room");
+    }
+    assert_eq!(feeder.fill_from(&mut source), Ok(0));
+    assert_eq!(feed.read(&mut out), Ok(0), "it closed at the end");
+
+    let mut source = SharedSource::new(numbered(40));
+    let (mut feeder, _feed) = super::stream::feed(format(RATE, Channels::Stereo), 32);
+    assert_eq!(
+        feeder.fill_from(&mut source),
+        Ok(32),
+        "more than one read's"
+    );
 }
 
 #[test]
