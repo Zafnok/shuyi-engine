@@ -4,5 +4,7 @@
 //! The binary in this package exposes a line-oriented oracle and a batch
 //! replay, while the study keeps its validation seeds and cases separate.
 
+mod kernel;
+
 pub mod courier;
 pub mod workshop;

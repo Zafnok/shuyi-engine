@@ -63,6 +63,11 @@ None.
 - **From 2573 (done):** `future_region` in `tools/sound-parity/scenarios.ron`
   and `corpus/intro_loop.ogg` (`LOOPSTART` and `LOOPLENGTH` set) wait for this
   ticket: give the scenario steps and name the backend that passes it.
+- **From 3030 (done):** `shuyi_sound::mix::stream::LoopedRegion` is the worker's
+  way round a region: exact trim, a restart closure and pre-roll, sample-exact in
+  `mixer:region-from-a-worker`. It pre-rolls by reading, so a late start in a long
+  file is slow: `VorbisSource::seek_page`, above, is this ticket's to wire in through
+  the closure if that shows. `Region` is half-open, in frames.
 - Extend 2573's actual output and independent oracle tests: expected
   `intro + region + region`, exact sample indices, decoder-page boundaries,
   no added silence/duplicates, queue wrap and producer stalls. Correctness,

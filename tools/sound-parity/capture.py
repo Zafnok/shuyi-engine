@@ -433,6 +433,24 @@ def write_decoders(player: Native | Browser, base: Path) -> None:
     record.unlink()
 
 
+def write_mixer(player: Native | Browser, base: Path) -> None:
+    """The mixer's offline render, a process per pair: nothing old to compare with,
+    so the gate reads its share of the sound's length. The recording says nothing."""
+    record = base / "mixer.pcm"
+    for pair in range(WARMUP):
+        player.play(f"mixer {pair}\n", record)
+    with (base / "mixer.jsonl").open("w", encoding="utf-8", newline="\n") as out:
+        for pair in range(PAIRS):
+            for line in player.play(f"mixer {pair}\n", record):
+                event = json.loads(line)
+                if event["event"] == "failed":
+                    raise SystemExit(f"the mixer run failed: {line}")
+                if event["event"] == "mix":
+                    out.write(line + "\n")
+                    out.flush()
+    record.unlink()
+
+
 def native(args: argparse.Namespace) -> int:
     base = args.dir / "linux-native"
     if not args.perf_only:
@@ -447,6 +465,7 @@ def native(args: argparse.Namespace) -> int:
             write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
         write_perf(player, base)
         write_decoders(player, base)
+        write_mixer(player, base)
     return 0
 
 
@@ -471,6 +490,7 @@ def browser(args: argparse.Namespace) -> int:
                 write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
             write_perf(player, base)
             write_decoders(player, base)
+            write_mixer(player, base)
         finally:
             player.close()
     return 0

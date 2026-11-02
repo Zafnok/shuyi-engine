@@ -11,8 +11,9 @@
 //! whose one line says what to do: `scenario <name>`, `perf <burn>` for
 //! the timed workload, `<burn>` being the slowdown it injects in percent (0
 //! for none), or `decoders <pair>` for the old path's whole decodes against
-//! `shuyi-sound`'s, the side first going by `<pair>`. Every line it says starts `shuyi-sound-probe: ` and ends in a
-//! JSON object: on stderr natively, on the console on the web.
+//! `shuyi-sound`'s, the side first going by `<pair>`, or `mixer <pair>` for the
+//! mixer's offline render. Every line it says starts `shuyi-sound-probe: ` and ends
+//! in a JSON object: on stderr natively, on the console on the web.
 //!
 //! On the web it waits for a click, the gesture a browser asks for before it
 //! sounds anything. Natively it opens no window: the backend needs none.
@@ -27,9 +28,10 @@ use shuyi_app::SoundProbeBackend;
 use shuyi_assets::audio::{AudioManifest, CreditRef, Files, MusicCue, SoundCue};
 use shuyi_platform::audio::SoundRequest;
 use shuyi_platform::audio::player::Player;
+use shuyi_sound::mix::{Config, Mixer, Params, SharedPcm, UNITY};
 use shuyi_sound::vorbis::VorbisSource;
 use shuyi_sound::wav::WavSource;
-use shuyi_sound::{Limits, read_all};
+use shuyi_sound::{Channels, Limits, SharedSource, read_all};
 use shuyi_ui::audio::{AudioQueue, MusicCommand, SoundId};
 
 /// How long one pass of the main loop waits natively, in seconds. The web's
@@ -52,6 +54,15 @@ const PERF_SETTLE: f64 = 1.5;
 const DECODER_DECODES: u32 = 3;
 const DECODER_BURN: u32 = 100;
 const DECODER_AUDIO_MS: u32 = 10_000;
+/// The mixer's measure: the voices it mixes (as the most a backend makes when a
+/// manifest doesn't say), how long a sound it renders, in milliseconds, in blocks of
+/// how many frames, on an output of what rate, and the slowdown a third measure
+/// injects, in percent.
+const MIXER_VOICES: usize = 32;
+const MIXER_AUDIO_MS: u32 = 10_000;
+const MIXER_BLOCK: usize = 512;
+const MIXER_RATE: u32 = 48_000;
+const MIXER_BURN: u32 = 100;
 /// How long the sound plays on after the measure, in seconds, so that what is
 /// still on its way to the sink isn't cut off with the process.
 const PERF_DRAIN: f64 = 0.5;
@@ -139,6 +150,10 @@ async fn run() -> Result<(), String> {
         ["decoders", pair] => {
             let pair = pair.parse().map_err(|e| format!("pair {pair}: {e}"))?;
             decoders(pair).await
+        }
+        ["mixer", pair] => {
+            let pair: u32 = pair.parse().map_err(|e| format!("pair {pair}: {e}"))?;
+            mixer(pair).await
         }
         _ => Err(format!("probe.txt says {order:?}")),
     }
@@ -473,6 +488,65 @@ async fn decoders(pair: u32) -> Result<(), String> {
             per_decode(burn),
         ));
     }
+    Ok(())
+}
+
+/// A file of the corpus, decoded whole.
+async fn decoded(file: &str) -> Result<SharedPcm, String> {
+    let bytes = read(&format!("corpus/{file}")).await?;
+    let limits = Limits::default();
+    let pcm = WavSource::new(&bytes, &limits).and_then(|mut s| read_all(&mut s, &limits));
+    Ok(SharedPcm::new(pcm.map_err(|e| e.to_string())?))
+}
+
+/// The hardest mix a game would make: every voice busy, each at a rate of its own
+/// and looped, two of them streams. [`MIXER_AUDIO_MS`] of it, in milliseconds, with
+/// `burn` percent more.
+fn timed_mix(sounds: &[SharedPcm], burn: u32) -> Result<f64, String> {
+    let full = |e| format!("{e}");
+    let mut mixer = Mixer::new(Config::new(MIXER_RATE, Channels::Stereo, MIXER_VOICES));
+    let mut ids = Vec::new();
+    for sound in sounds {
+        ids.push(mixer.add_sound(sound.clone()).map_err(full)?);
+    }
+    let params = |voice: u32| {
+        Params::new()
+            .looped()
+            .with_volume(UNITY / 8)
+            .with_rate(50_000 + voice * 1000)
+    };
+    let mut numbers = 0u32..;
+    for stream in sounds.iter().take(2) {
+        let number = numbers.next().unwrap_or(0);
+        mixer
+            .stream(SharedSource::new(stream.clone()), params(number))
+            .map_err(full)?;
+    }
+    for (number, id) in numbers.zip(ids.iter().cycle()).take(MIXER_VOICES - 2) {
+        mixer.play(*id, params(number)).map_err(full)?;
+    }
+    let frames = u64::from(MIXER_RATE) * u64::from(MIXER_AUDIO_MS) / 1000;
+    let mut block = vec![0; MIXER_BLOCK * 2];
+    let timed = date::now();
+    for _ in 0..frames / MIXER_BLOCK as u64 {
+        mixer.render(&mut block);
+        core::hint::black_box(&block);
+    }
+    Ok(burned(timed, burn) * 1000.0)
+}
+
+/// The mixer rendering to memory, then slowed, so the gate can prove it sees that.
+async fn mixer(pair: u32) -> Result<(), String> {
+    let mut sounds = Vec::new();
+    for file in ["long.wav", "music_a.wav", "fmt_22k_m.wav", "noise_loop.wav"] {
+        sounds.push(decoded(file).await?);
+    }
+    wait_for_gesture().await;
+    let render = timed_mix(&sounds, 0)?;
+    let burn = timed_mix(&sounds, MIXER_BURN)?;
+    say(&format!(
+        r#"{{"event":"mix","pair":{pair},"render":{render:.3},"burn":{burn:.3},"audio_ms":{MIXER_AUDIO_MS}}}"#,
+    ));
     Ok(())
 }
 

@@ -80,7 +80,7 @@
 //! can't be written is one warning, and the game goes on.
 //!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
-//! game's data folder (the `sessions` module, ADR-0073): the record of a run,
+//! game's data folder (the `sessions` module, ADR-0074): the record of a run,
 //! written when the game quits and when the debug menu's "Save session" asks,
 //! the newest ten kept. On the web that entry offers a download. `shuyi run
 //! --session <file>` plays one.

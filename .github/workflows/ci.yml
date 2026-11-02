@@ -48,7 +48,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       # The capture mode and Hello, Grid's are behind features (ADR-0052).
@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/setup-linux.sh
@@ -91,7 +91,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo doc --workspace --no-deps --locked
@@ -108,7 +108,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # `check --target` checks the controls in the game's tool program,
       # which builds natively.
       - name: Set up Linux
@@ -196,7 +196,7 @@ jobs:
         if: matrix.target == 'macos'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: export-${{ matrix.target }}
       - name: Export Hello, Grid
@@ -251,7 +251,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install Xvfb and Mesa's software GL
@@ -327,7 +327,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the checker and Chromium
@@ -338,6 +338,27 @@ jobs:
       - name: The checker's fixtures fail
         run: |
           "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py fixtures --out target/web-check/fixtures
+      - name: Cold rules browser replay matches native
+        run: |
+          export SHUYI_KERNEL_BUILD_SEED=0
+          cargo build --release -p cloning-fixture --locked
+          cargo build --release -p cold-rules-web-fixture --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
+          export SHUYI_KERNEL_BUILD_SEED=104729
+          cargo build --release -p cloning-fixture --features layout-kernel --locked
+          cargo build --release -p cold-rules-web-fixture --features layout-kernel \
+            --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
+          cargo build --release -p cloning-fixture --features vm-kernel --locked
+          cargo build --release -p cold-rules-web-fixture --features vm-kernel \
+            --target wasm32-unknown-unknown --locked
+          "$RUNNER_TEMP/web-check/bin/python" tools/research/2914/web/browser_smoke.py \
+            target/wasm32-unknown-unknown/release/cold_rules_web_fixture.wasm \
+            target/release/cloning-fixture
       # As pages.yml builds them: every example whose shuyi.ron has a
       # `web` section.
       - name: Every example's web build boots
@@ -444,7 +465,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: site/tutorial/${{ matrix.step }}
       - name: Set up Linux
@@ -474,7 +495,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo xtask tutorial-tries --check
@@ -496,7 +517,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the capture's tools and Chromium
@@ -511,7 +532,8 @@ jobs:
       - name: The sound core, without std and for the web
         run: |
           rustup target add thumbv7em-none-eabihf
-          cargo test -p shuyi-sound --locked
+          cargo test -p shuyi-sound --all-features --locked
+          cargo test -p shuyi-sound --no-default-features --locked
           cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
           cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
       - name: The corpus and what a separate decoder makes of it
@@ -612,7 +634,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Give up, in this checkout
@@ -670,7 +692,7 @@ jobs:
       - name: Set up Linux from nothing
         run: bash scripts/setup-linux.sh
       - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: template-${{ matrix.template }}
       - name: The engine's doctor passes
@@ -839,7 +861,7 @@ jobs:
       - run: rustup show
       # `shuyi-ship`'s example builds its game for the web.
       - run: rustup target add wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: skills-${{ strategy.job-index }}
       - name: Set up Linux
@@ -870,7 +892,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/setup-linux.sh
@@ -892,7 +914,7 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: rustup target add thumbv7em-none-eabihf
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
@@ -913,7 +935,7 @@ jobs:
       - name: The tests without std
         env:
           RUSTFLAGS: -D warnings -A unused-imports
-        run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
+        run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 
   # The same state on every platform (ADR-0002 §2, ticket 2116). x64 and
   # ARM64 are the `test` job's legs (`macos-latest` is Apple silicon); this
@@ -940,13 +962,13 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: rustup target add wasm32-wasip1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # The run-gates skill names this version for a local run.
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
-        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 
@@ -981,7 +1003,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo xtask check-modules
@@ -1020,11 +1042,11 @@ jobs:
       # The nightly, and the tools' versions below, are the consts in
       # crates/xtask/src/api.rs; they move with rust-toolchain.toml.
       - run: rustup toolchain install nightly-2026-07-06 --profile minimal
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
@@ -1107,7 +1129,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
         with:
           inputs: .
           min-severity: medium
@@ -1123,7 +1145,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-machete
       - run: cargo machete
@@ -1145,10 +1167,10 @@ jobs:
           fetch-depth: 0
       - run: rustup show
       - run: rustup component add llvm-tools-preview
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage report
@@ -1181,7 +1203,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check shared agent skill loaders
         shell: pwsh
         run: ./scripts/sync-agent-skills.ps1 -Check
@@ -1204,7 +1226,7 @@ jobs:
         run: cargo xtask check-toolchain
       - name: Check the docs map
         run: cargo xtask check-docs
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: typos
       - name: Check spelling
@@ -1227,7 +1249,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - uses: ./.github/actions/setup-zola
       - name: Write the problem codes' pages
         run: bash site/errors.sh

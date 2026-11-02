@@ -1,4 +1,4 @@
-//! The sessions a build keeps (ADR-0073): with debug tools on, a record of
+//! The sessions a build keeps (ADR-0074): with debug tools on, a record of
 //! every run (`shuyi_platform::session`), which the debug menu's "Save
 //! session" hands over as `<unix ms of its start>.session.ron`, the record
 //! so far, and recording goes on. A desktop build also writes it when the

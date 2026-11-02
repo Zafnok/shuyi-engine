@@ -434,7 +434,7 @@ for Nick (parked 3047 asks it for crash reports).
 ## Completion notes
 
 Done, all of it: part A (playing records), part B (recording in real builds),
-the debug menu entry, Hello, Grid's debug menu and the web download. ADR-0073
+the debug menu entry, Hello, Grid's debug menu and the web download. ADR-0074
 holds the choices.
 
 **Size.** The **Size** clause's 600 lines were this ticket's own number, older
@@ -465,11 +465,11 @@ start and the ticket's tests.
   keeps the blank game's files as they were. Its `session_from` plays from
   `BasicGame::start`.
 - **The grid stage's state hash** comes from a new `Screen::state_hash` (defaulted),
-  which `BasicGame::start` reads through `Game::state_hash` (ADR-0073 §5): a hash set
+  which `BasicGame::start` reads through `Game::state_hash` (ADR-0074 §5): a hash set
   only in its tools would differ from every record its real build made.
 - **`BasicGame::made`'s word** is the game's id and version, not its name: that is
   what the base template's `made()` writes, so `run_game`'s records and
-  `GameTools::made` agree (ADR-0073 §6).
+  `GameTools::made` agree (ADR-0074 §6).
 - **`run::run` and `run::scene` keep their signatures.** `run_at` has come since the
   ticket was written, so `scene_at` joins it. That breaks less for the game.
 - **`Ctx::session_recording`** is a method with a setter, not a field: Clippy's limit
@@ -481,7 +481,7 @@ start and the ticket's tests.
 - **The file's name uses the system's time, not `SessionRecord::start`.** Since 3067,
   a desktop's frame clock starts near 0 each launch.
 - **MCP's `start` keeps the game on a differing frame**, with `ok: false`, and the
-  server keeps its host when an answer has a result (ADR-0073 §8).
+  server keeps its host when an answer has a result (ADR-0074 §8).
 - **`--perf` with `--session`** measures only what comes after the record.
 - **`Headless` is safe before the load**: a record of no frames, or a load that failed,
   answers with no game and a limit.
@@ -490,7 +490,7 @@ start and the ticket's tests.
 clock, so launches share few seeds, whatever `Setup::seed`'s docs say.
 
 **A frame's hash doesn't see all a player does.** Moving Hello, Grid's cursor changes
-no hash until a sound or a rule shows it (ADR-0073, *Consequences*). So the ticket's
+no hash until a sound or a rule shows it (ADR-0074, *Consequences*). So the ticket's
 "a copy with one input removed" test removes the last press, a Confirm.
 
 The game's PR that moves the pin follows this one. Its debug builds start writing

@@ -110,7 +110,7 @@ cargo build -p shuyi-platform --no-default-features --features capture --target 
 RUSTFLAGS="--cfg shuyi_playdate_sdk" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
 cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
-RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
+RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 ```
 
 The last runs their tests without `std` on the host, the headless
@@ -171,11 +171,12 @@ so it isn't one of these gates. Its own tests are `cargo test -p xtask
 sound_parity`. Running it by hand, and what its cells mean:
 [`tools/sound-parity/README.md`](../../../tools/sound-parity/README.md).
 
-`shuyi-sound` builds without `std`, with `cargo test -p shuyi-sound` for its
-core and its adapters on the targets they serve:
+`shuyi-sound` builds without `std`, for its core and mixer, and with its
+adapters on the targets they serve:
 
 ```bash
 cargo test -p shuyi-sound --all-features --locked
+cargo xtask sound-parity mixer
 cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
 ```
@@ -184,13 +185,14 @@ cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --lock
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build
 gives: a decoded asset's `state_hash` (`crates/assets/tests/golden/formats.ron`),
-a record's state hash at each step (`examples/hello-grid/tests/golden/hello-grid.ron`).
+a record's state hash at each step (`examples/hello-grid/tests/golden/hello-grid.ron`),
+a script's rendered samples (`crates/sound/tests/golden/mix.ron`).
 Their tests have `golden` in their names. They run:
 
 - natively in the `test` job, on x64 (Windows, Linux) and ARM64 (macOS);
 - on wasm32 under wasmtime in the `determinism` job, with every unit and
-  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui` and
-  `shuyi-platform`, and Hello, Grid's `golden` test.
+  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
+  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's `golden` test.
 
 A table's test that fails prints the rows that moved and the new table.
 Bless it, which runs the golden tests, writes each table they print and
@@ -219,7 +221,7 @@ repository root):
 
 ```bash
 export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
-cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 ```
 

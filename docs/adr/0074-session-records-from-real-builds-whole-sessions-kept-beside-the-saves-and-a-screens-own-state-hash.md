@@ -1,4 +1,4 @@
-# ADR-0073: Session records from real builds: whole sessions kept beside the saves, and a screen's own state hash
+# ADR-0074: Session records from real builds: whole sessions kept beside the saves, and a screen's own state hash
 
 - **Status:** Accepted
 - **Date:** 2026-11-02

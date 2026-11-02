@@ -33,7 +33,7 @@
             find: "
 [[crate]]
 name = \"shuyi_sound\"
-text = \"decoded sound and its WAV and Ogg Vorbis adapters, which no backend plays through yet\"
+text = \"decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which no backend plays through yet\"
 ",
             with: "",
         ),
@@ -51,6 +51,37 @@ text = \"decoded sound and its WAV and Ogg Vorbis adapters, which no backend pla
             file: "Cargo.lock",
             find: " \"sha2\",\n \"shuyi-sound\",\n",
             with: " \"sha2\",\n",
+        ),
+        // Ticket 3030: the mixer's tests in the jobs and the gates that run others.
+        Replace(
+            file: ".github/workflows/ci.yml",
+            find: "run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
+            with: "run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast",
+        ),
+        Replace(
+            file: ".github/workflows/ci.yml",
+            find: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture",
+            with: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture",
+        ),
+        Replace(
+            file: ".claude/skills/run-gates/SKILL.md",
+            find: "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
+            with: "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast",
+        ),
+        Replace(
+            file: ".claude/skills/run-gates/SKILL.md",
+            find: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui`,\n  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's `golden` test.\n",
+            with: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui` and\n  `shuyi-platform`, and Hello, Grid's `golden` test.\n",
+        ),
+        Replace(
+            file: ".claude/skills/run-gates/SKILL.md",
+            find: "a record's state hash at each step (`examples/hello-grid/tests/golden/hello-grid.ron`),\na script's rendered samples (`crates/sound/tests/golden/mix.ron`).\n",
+            with: "a record's state hash at each step (`examples/hello-grid/tests/golden/hello-grid.ron`).\n",
+        ),
+        Replace(
+            file: ".claude/skills/run-gates/SKILL.md",
+            find: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture",
+            with: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture",
         ),
         Replace(
             file: "crates/app/Cargo.toml",

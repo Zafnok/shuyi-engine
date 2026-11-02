@@ -187,7 +187,7 @@ impl TurnRules for Workshop {
                 self.fatigue += 1;
                 self.gathers += 1;
                 events.push(Event::Gathered);
-                if (self.gathers + self.bonus_phase).is_multiple_of(3) {
+                if crate::kernel::gather_bonus(self.gathers, self.bonus_phase) {
                     self.ore += 1;
                     events.push(Event::BonusOre);
                 }

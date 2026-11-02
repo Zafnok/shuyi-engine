@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-sound"
-description = "Shuyi Engine's sound core: decoded samples (`Pcm`), a bounded `Source` of them, and optional WAV and Ogg Vorbis adapters over permissive libraries. Independent of the engine's other crates, no I/O and no device"
+description = "Shuyi Engine's sound core: decoded samples (`Pcm`), a bounded `Source` of them, an integer mixer, and optional WAV and Ogg Vorbis adapters over permissive libraries. Independent of the engine's other crates, no I/O and no device"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -27,8 +27,15 @@ hound = { version = "3.5", optional = true }
 lewton = { version = "0.9", optional = true, default-features = false, features = ["ogg"] }
 
 [dev-dependencies]
-# Its adapters, for their tests, whichever features a run names (a
-# dev-dependency on itself, as `shuyi-alloc-count`'s). A build for a console
-# leaves these out.
-shuyi-sound = { path = ".", features = ["wav", "vorbis"] }
 proptest.workspace = true
+# The mixer's golden table, without `std` where a run has none.
+shuyi-assets = { path = "../assets", default-features = false, features = ["golden"] }
+# `render` allocates nothing: a test counts, on the one global counter a workspace
+# build has anyway.
+shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
+
+# Only with the adapters, so that a run without `std` is one: a dev-dependency on
+# this crate with them on would turn them on for every run.
+[[test]]
+name = "adapters"
+required-features = ["wav", "vorbis"]
