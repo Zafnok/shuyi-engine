@@ -342,10 +342,9 @@ MVP, not parked.
       pointer in `TickInput` are 1121's;
     - `docs/platform-backends.md`: the pointer in the `poll_input`
       section, and pointer tests in the checklist for a new backend.
-11. **Either order with 2518:** if 2518 is done, the new variants carry
-    its serde derives (they are on the enum) and a pointer session plays
-    back with the same hash per frame (a test). If not, 2518 records
-    them as it records any `RawInputEvent`.
+11. **From 2518 (done):** the new variants carry its serde derives (they
+    are on the enum) and a pointer session plays back with the same hash
+    per frame (a test).
 12. The new public types follow ADR-0039.
 13. No new dependency.
 
@@ -424,8 +423,8 @@ follows it. The rest is additive.
    `crates/app/src/backend.rs`, `keys.rs` and `render.rs`,
    `crates/platform/src/platform.rs`, `harness.rs` and `headless.rs`,
    and Hello, Grid's `screens.rs`, `screens/stage.rs`, `skin.rs` and
-   `tests/it/main.rs`. Check whether 2333, 2334, 2355, 3042 and 2518
-   are done.
+   `tests/it/main.rs`. Check whether 2333, 2334, 2355 and 3042 are
+   done.
 2. Write the hit areas and the stack's rule, with their tests.
 3. Add the events, `Pointer`, `PointerInput`, `FrameInput::pointer` and
    the wiring in `Game::step`, with their tests.

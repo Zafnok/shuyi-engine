@@ -21,6 +21,8 @@
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
+//! - [`session`]: a run recorded where the platform hands things to [`App`]
+//!   ([`App::record`]), its text, and its playback on the headless backend;
 //! - the live `link`'s wire and server (the `link` feature), which a
 //!   backend's listener runs so a tool reaches a running debug build;
 //! - `capture`'s plans (the `capture` feature): the input a backend's
@@ -60,10 +62,11 @@ pub mod link;
 pub mod platform;
 #[cfg(any(feature = "link", feature = "capture"))]
 mod press;
+pub mod session;
 pub mod text_input;
 pub mod tick;
 
-pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
+pub use app::{App, Card, FrameOutcome, GameHash, Load, LookOf, Setup, Start, SystemHook};
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;

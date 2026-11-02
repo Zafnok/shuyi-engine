@@ -263,7 +263,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | ------ | ---- |
 | 2116 | Determinism fixtures, the same on x64, ARM64 and wasm32 in CI |
 | 2020 | Fuzzing in CI over every registered format and the pack, and a threat model |
-| 2518 | Session records at the platform boundary, played back exactly in the Harness |
+| 2518 | Session records at the platform boundary, played back exactly on the headless backend |
+| 2575 | The Harness starts a game from its real `Start`, records it, and plays a session record to any frame |
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |

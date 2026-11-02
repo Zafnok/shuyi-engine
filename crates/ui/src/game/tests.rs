@@ -18,6 +18,22 @@ fn down(key: Key) -> RawInputEvent {
     RawInputEvent::Down(Chord::plain(key))
 }
 
+/// A typed character in a file is a string of one character, since RON writes
+/// a `char` as it is and a line break would break the line it is on.
+#[test]
+fn a_typed_character_reads_back_from_its_text() {
+    for c in ['a', '\n', '\r', '\'', '"', '\\', '\u{1F600}'] {
+        let text = ron::to_string(&RawInputEvent::Text(c)).unwrap();
+        assert!(!text.contains(['\n', '\r']), "{text}");
+        let read: RawInputEvent = ron::from_str(&text).unwrap();
+        assert_eq!(read, RawInputEvent::Text(c));
+    }
+    for not_one in [r#"Text("")"#, r#"Text("ab")"#] {
+        let read = ron::from_str::<RawInputEvent>(not_one);
+        assert!(read.is_err(), "{not_one}");
+    }
+}
+
 fn tap(game: &mut Game<Toy>, key: Key) -> bool {
     let quit = game.frame(&[down(key)], 0.0).quit;
     game.frame(&[RawInputEvent::Up(key)], 0.0);
