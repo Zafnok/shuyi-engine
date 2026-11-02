@@ -251,7 +251,7 @@ before: |
   fn first(source: &mut WavSource<'_>) {}
 after: |
   fn first(source: &mut WavSource<&[u8]>) {}
-find: ["WavSource<'", "VorbisSource<'"]
+find: ["WavSource<'"]
 ```
 
 Book: none, the book teaches no sound backend, and what a backend writes is `docs/platform-backends.md`'s, which says `hold_output`.
