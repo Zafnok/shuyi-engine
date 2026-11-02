@@ -604,6 +604,16 @@ impl InHouse {
         }
     }
 
+    /// What the output has been through: how often its stream was built again, and how
+    /// many callbacks were silence. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_stats(&self) -> (u32, u32) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, 0), Output::stats)
+    }
+
     /// How long a play takes to reach the mix going to the device's buffer, in
     /// milliseconds: the time to the callback that has it, at no volume so that
     /// nothing is heard. For the probe's `latency` order.

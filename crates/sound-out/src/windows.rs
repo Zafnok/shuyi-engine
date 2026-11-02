@@ -5,7 +5,7 @@
 //! and a default that changed under a stream still running.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -21,6 +21,10 @@ use crate::{Callback, OutputConfig, OutputError};
 const WATCH: Duration = Duration::from_millis(200);
 /// The most a stream may take to open.
 const OPEN: Duration = Duration::from_secs(5);
+/// How many looks in a row must see another default device before the stream moves:
+/// one look that finds none, as the system's list changes, is no reason to drop a
+/// stream that plays.
+const MOVED_LOOKS: u32 = 2;
 
 /// What the output's owner asks of its thread.
 enum Order {
@@ -32,6 +36,16 @@ enum Order {
 pub(crate) struct WindowsOutput {
     orders: Sender<Order>,
     thread: Option<JoinHandle<()>>,
+    stats: Arc<Stats>,
+}
+
+/// What a session of the output has been through, for a probe to read.
+#[derive(Debug, Default)]
+pub(crate) struct Stats {
+    /// How many times a stream was built after the first.
+    pub(crate) rebuilds: AtomicU32,
+    /// How many callbacks were silence, the mix's lock held elsewhere.
+    pub(crate) silent: AtomicU32,
 }
 
 fn device_error(error: &cpal::Error) -> OutputError {
@@ -56,6 +70,7 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
     config: OutputConfig,
     callback: Callback,
     lost: Arc<AtomicBool>,
+    stats: Arc<Stats>,
 ) -> Result<Stream, OutputError> {
     let from = usize::from(config.channels.count());
     let mut boundary = Boundary::new(
@@ -78,6 +93,7 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
                 if let Ok(mut callback) = callback.try_lock() {
                     boundary.fill(out, &mut *callback);
                 } else {
+                    stats.silent.fetch_add(1, Ordering::Relaxed);
                     out.fill(silence);
                 }
             },
@@ -93,6 +109,7 @@ fn open_stream(
     config: OutputConfig,
     callback: &Callback,
     lost: &Arc<AtomicBool>,
+    stats: &Arc<Stats>,
     held: bool,
 ) -> Result<(Stream, cpal::Device), OutputError> {
     let device = host.default_output_device().ok_or(OutputError::NoDevice)?;
@@ -102,14 +119,14 @@ fn open_stream(
     let format = supported.sample_format();
     let mut stream_config: StreamConfig = supported.config();
     stream_config.buffer_size = BufferSize::Default;
-    let (shared, flag) = (Arc::clone(callback), Arc::clone(lost));
+    let (shared, flag, counted) = (Arc::clone(callback), Arc::clone(lost), Arc::clone(stats));
     let stream = match format {
-        SampleFormat::F32 => build::<f32>(&device, stream_config, config, shared, flag),
-        SampleFormat::F64 => build::<f64>(&device, stream_config, config, shared, flag),
-        SampleFormat::I16 => build::<i16>(&device, stream_config, config, shared, flag),
-        SampleFormat::I32 => build::<i32>(&device, stream_config, config, shared, flag),
-        SampleFormat::U16 => build::<u16>(&device, stream_config, config, shared, flag),
-        SampleFormat::U8 => build::<u8>(&device, stream_config, config, shared, flag),
+        SampleFormat::F32 => build::<f32>(&device, stream_config, config, shared, flag, counted),
+        SampleFormat::F64 => build::<f64>(&device, stream_config, config, shared, flag, counted),
+        SampleFormat::I16 => build::<i16>(&device, stream_config, config, shared, flag, counted),
+        SampleFormat::I32 => build::<i32>(&device, stream_config, config, shared, flag, counted),
+        SampleFormat::U16 => build::<u16>(&device, stream_config, config, shared, flag, counted),
+        SampleFormat::U8 => build::<u8>(&device, stream_config, config, shared, flag, counted),
         other => Err(OutputError::Device(format!("a device format of {other:?}"))),
     }?;
     if !held {
@@ -122,14 +139,17 @@ impl WindowsOutput {
     pub(crate) fn open(config: OutputConfig, callback: Callback) -> Result<Self, OutputError> {
         let (orders, inbox) = mpsc::channel();
         let (opened, answer) = mpsc::channel();
+        let stats = Arc::new(Stats::default());
+        let counted = Arc::clone(&stats);
         let thread = std::thread::Builder::new()
             .name("sound-out".to_owned())
-            .spawn(move || run(config, &callback, &inbox, &opened))
+            .spawn(move || run(config, &callback, &counted, &inbox, &opened))
             .map_err(|e| OutputError::Device(e.to_string()))?;
         match answer.recv_timeout(OPEN * 2) {
             Ok(Ok(())) => Ok(Self {
                 orders,
                 thread: Some(thread),
+                stats,
             }),
             Ok(Err(error)) => {
                 let _ = thread.join();
@@ -143,6 +163,13 @@ impl WindowsOutput {
 
     pub(crate) fn hold(&self, on: bool) {
         let _ = self.orders.send(Order::Hold(on));
+    }
+
+    pub(crate) fn stats(&self) -> (u32, u32) {
+        (
+            self.stats.rebuilds.load(Ordering::Relaxed),
+            self.stats.silent.load(Ordering::Relaxed),
+        )
     }
 }
 
@@ -160,13 +187,14 @@ impl Drop for WindowsOutput {
 fn run(
     config: OutputConfig,
     callback: &Callback,
+    stats: &Arc<Stats>,
     inbox: &mpsc::Receiver<Order>,
     opened: &Sender<Result<(), OutputError>>,
 ) {
     let host = cpal::default_host();
     let lost = Arc::new(AtomicBool::new(false));
     let mut held = false;
-    let mut current = match open_stream(&host, config, callback, &lost, held) {
+    let mut current = match open_stream(&host, config, callback, &lost, stats, held) {
         Ok(stream) => {
             let _ = opened.send(Ok(()));
             Some(stream)
@@ -177,6 +205,7 @@ fn run(
         }
     };
     let mut quiet = Quiet::new(config);
+    let mut moved_looks = 0;
     loop {
         match inbox.recv_timeout(if current.is_some() {
             WATCH
@@ -196,10 +225,13 @@ fn run(
         let moved = current
             .as_ref()
             .is_some_and(|(_, device)| host.default_output_device().as_ref() != Some(device));
-        if moved || lost.swap(false, Ordering::AcqRel) || current.is_none() {
+        moved_looks = if moved { moved_looks + 1 } else { 0 };
+        if moved_looks >= MOVED_LOOKS || lost.swap(false, Ordering::AcqRel) || current.is_none() {
             // The old stream goes first: only one may hold the callback.
+            moved_looks = 0;
             drop(current.take());
-            current = open_stream(&host, config, callback, &lost, held).ok();
+            current = open_stream(&host, config, callback, &lost, stats, held).ok();
+            stats.rebuilds.fetch_add(1, Ordering::Relaxed);
         }
         if current.is_none() && !held {
             quiet.run(callback);

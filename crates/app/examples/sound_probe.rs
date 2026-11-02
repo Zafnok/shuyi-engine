@@ -275,6 +275,13 @@ async fn play_scenario(plan: &Plan, scenario: &Scenario) -> Result<(), String> {
         tick().await;
     }
     player.stop_all(&mut backend);
+    #[cfg(all(feature = "in-house-sound", not(target_arch = "wasm32")))]
+    {
+        let (rebuilds, silent) = backend.output_stats();
+        say(&format!(
+            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent}}}"#
+        ));
+    }
     Ok(())
 }
 

@@ -183,6 +183,19 @@ impl Output {
         self.rate
     }
 
+    /// How many times the system's stream was built again, as when its device went
+    /// away, and how many of its callbacks were silence instead of the mix. Nothing
+    /// asks this but a probe, to say what a recording went through: 0 and 0 where
+    /// there is no stream to build.
+    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    pub fn stats(&self) -> (u32, u32) {
+        #[cfg(windows)]
+        if let Inner::Windows(output) = &self.inner {
+            return output.stats();
+        }
+        (0, 0)
+    }
+
     /// Stops calling the callback, for as long as the system suspends the game.
     pub fn suspend(&self) {
         self.hold(true);

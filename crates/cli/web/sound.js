@@ -206,6 +206,14 @@
         });
         node.port.onmessage = on_message;
         node.connect(context.destination);
+        // Ahead from the first moment it runs, not from its first word: a sound played
+        // on the gesture that starts the context would begin with a gap.
+        top_up();
+        context.addEventListener("statechange", function () {
+            if (context.state === "running") {
+                top_up();
+            }
+        });
     }
 
     function register_plugin(importObject) {
