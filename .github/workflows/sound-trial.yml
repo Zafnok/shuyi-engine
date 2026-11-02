@@ -38,26 +38,24 @@ jobs:
           (Get-FileHash scream.zip -Algorithm SHA256).Hash
           Expand-Archive scream.zip -DestinationPath scream
           Get-ChildItem scream -Recurse | Select-Object FullName | Format-Table -AutoSize -Wrap
-          $sys = Get-ChildItem scream -Recurse -Filter Scream.sys | Where-Object FullName -Match 'x64|amd64|driver' | Select-Object -First 1
-          $sig = Get-AuthenticodeSignature $sys.FullName
-          $sig | Format-List Status,StatusMessage
-          $sig.SignerCertificate | Format-List Subject,NotAfter
-          $cat = Get-ChildItem scream -Recurse -Filter *.cat | Select-Object -First 1
-          $catsig = Get-AuthenticodeSignature $cat.FullName
+          $driver = "scream\Install\driverd"
+          $sig = Get-AuthenticodeSignature "$driver\Scream.sys"
+          $catsig = Get-AuthenticodeSignature "$driver\scream.cat"
           $catsig | Format-List Status,StatusMessage
           $store = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher", "LocalMachine")
           $store.Open("ReadWrite")
           $store.Add($catsig.SignerCertificate)
           $store.Add($sig.SignerCertificate)
           $store.Close()
-          $inf = Get-ChildItem scream -Recurse -Filter Scream.inf | Select-Object -First 1
-          $devcon = Get-ChildItem scream -Recurse -Filter devcon*x64*.exe | Select-Object -First 1
-          if (-not $devcon) { $devcon = Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Recurse -Filter devcon.exe | Where-Object FullName -Match 'x64' | Select-Object -First 1 }
-          Write-Output "devcon: $($devcon.FullName), inf: $($inf.FullName)"
-          Push-Location $inf.DirectoryName
-          & $devcon.FullName install $inf.Name '*Scream'
-          Write-Output "devcon exit: $LASTEXITCODE"
-          Pop-Location
+          $devcon = (Resolve-Path "scream\Install\helpers\devcon-x64.exe").Path
+          $p = Start-Process -FilePath $devcon -ArgumentList 'install','Scream.inf','*Scream' -WorkingDirectory (Resolve-Path $driver).Path -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(120000)) {
+            Write-Output "devcon hung; killing it"
+            Stop-Process -Id $p.Id -Force
+          } else {
+            Write-Output "devcon exit: $($p.ExitCode)"
+          }
+          Get-Content C:\Windows\INF\setupapi.dev.log -Tail 40
           Start-Sleep 5
           Restart-Service audiosrv -Force -ErrorAction Continue
           Start-Sleep 5
