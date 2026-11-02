@@ -110,9 +110,8 @@ None.
 - **The menu:** a "Debug view" entry on `DebugMenuScreen`. It opens a
   small screen listing every offered channel with on or off, toggled
   with Confirm. It uses the menu widget and the `ListCursor` from 2307.
-  **Either order with 2519:** if 2519 is done, the entry goes beside
-  its "Save session" entry, the engine's two together; if not, nothing
-  to do (2519 puts its entry beside this one).
+  **From 2519 (done):** the entry goes beside its "Save session" entry
+  in `DebugMenuScreen::new`, the engine's two together.
 - **Painting:** `Game::frame` asks the stack for gizmos after it draws,
   when debug tools are on and any channel is on. It hands them to
   `debug::glyph::paint_gizmos`, which adds them to the `GlyphBuffer`

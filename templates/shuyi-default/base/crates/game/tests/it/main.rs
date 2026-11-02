@@ -5,6 +5,8 @@
 use std::path::Path;
 
 use game::title::Title;
+use shuyi::platform::harness::Harness;
+use shuyi::platform::session::Stamps;
 use shuyi::prelude::UiAction;
 use shuyi_cli::contract::bots::BotsInput;
 use shuyi_cli::contract::check::{CheckInput, check, targets};
@@ -112,6 +114,20 @@ fn every_screen_declares_its_actions_and_they_fit_every_target() {
         "{:?}",
         answer.limits
     );
+}
+
+#[test]
+fn a_session_recorded_from_the_real_start_plays_through_the_tools() {
+    let mut h = Harness::start_recording(game::game().start()).unwrap_or_else(|e| panic!("{e}"));
+    h.keys("Enter Down Up").wait(0.1);
+    let record = h.session().unwrap_or_else(|| panic!("nothing recorded"));
+    let mut session = game::stages::tools()
+        .session_from(record, Stamps::Check)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let played = session.play_record().unwrap_or_else(|| panic!("no record"));
+    assert_eq!(played.first_difference, None);
+    assert_eq!(played.frames, played.of);
+    assert_eq!(session.screens(), h.screens());
 }
 
 /// `check --target all`'s input.

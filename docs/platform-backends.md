@@ -472,6 +472,13 @@ named `*.session.ron`). A backend writes no capture code: `App` notes each value
 where it reads it (the frame's time, `system_events`, `poll_input`, `text_input`,
 `music_playing`, and `display`, `storage` and `facts` at the load).
 
+`shuyi-app` records with debug tools on, and never without
+([ADR-0074](adr/0074-session-records-from-real-builds-whole-sessions-kept-beside-the-saves-and-a-screens-own-state-hash.md)):
+on a desktop it writes `<unix ms of its start>.session.ron` to `sessions/` under
+the game's data folder at quit and when the debug menu asks, the newest ten kept;
+on the web that ask offers a download. A backend takes the ask with
+`App::take_session_save` after each frame.
+
 Two things hold for a backend that records:
 
 - **A new value that reaches the game from the platform gets a field in the

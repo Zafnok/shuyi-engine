@@ -334,7 +334,11 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
                 Ok(input) if op == Op::Run => {
                     print(json, &run::run_at(game, &project.root, &input), run::text)
                 }
-                Ok(input) => print(json, &run::scene(game, &input), run::scene_output_text),
+                Ok(input) => print(
+                    json,
+                    &run::scene_at(game, &project.root, &input),
+                    run::scene_output_text,
+                ),
                 Err(e) => wrong(json, op, &e, &run::usage(command, op, options)),
             }
         }

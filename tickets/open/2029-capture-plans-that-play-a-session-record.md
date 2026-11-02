@@ -181,9 +181,9 @@ None.
   - on wasm32 a session plan is refused with an error, logged as a
     plan that doesn't parse is.
 - **No recording in a capture run.** 2519's `run` records a session in
-  debug builds. A capture run, of either form, doesn't: the pure
-  decision in `crates/app/src/sessions.rs` (whether to record) gains
-  the capture case, with a test. A capture run reads and writes nothing
+  debug builds, after the capture path has returned, so a capture run,
+  of either form, doesn't: keep `capture::run` ahead of
+  `sessions::Kept::start`, and say so in a test or a comment. A capture run reads and writes nothing
   outside `SHUYI_CAPTURE_OUT`, as 2018 says, so nothing lands under
   `<data dir>/sessions/`.
 - **Hello, Grid:**

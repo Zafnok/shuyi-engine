@@ -69,6 +69,12 @@ impl FileStorage {
         Ok(Self::at(dir, Box::new(StdDisk), log_warning))
     }
 
+    /// A storage in `dir`, for tests outside this module.
+    #[cfg(test)]
+    pub(crate) fn in_dir(dir: PathBuf) -> Self {
+        Self::at(dir, Box::new(StdDisk), log_warning)
+    }
+
     /// A storage in `dir`, through `disk`, that warns with `warn`.
     fn at(dir: PathBuf, disk: Box<dyn Disk>, warn: fn(&str)) -> Self {
         Self {

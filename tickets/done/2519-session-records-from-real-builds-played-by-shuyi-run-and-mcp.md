@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2518", "2575", "1133", "2511"]
 nick_input: none
-completed:
+completed: 2026-11-02
 ---
 
 # 2519 — Session records from real builds, played by shuyi run and MCP
@@ -370,37 +370,37 @@ for Nick (parked 3047 asks it for crash reports).
 
 ## Acceptance criteria
 
-- [ ] `sessions.rs`: the file name, keeping the newest ten, and a later
+- [x] `sessions.rs`: the file name, keeping the newest ten, and a later
       write of one session replacing its file are tested on a temporary
       folder; a record written there is not among
       `FileStorage::list`'s keys.
-- [ ] With debug tools off, `shuyi-app` never calls `App::record` (a
+- [x] With debug tools off, `shuyi-app` never calls `App::record` (a
       test of the pure decision in `sessions.rs`).
-- [ ] `shuyi run --session examples/hello-grid/tests/sessions/stage.session.ron`
+- [x] `shuyi run --session examples/hello-grid/tests/sessions/stage.session.ron`
       plays it with no difference and answers the stage's scene. A copy
       with one input removed answers `ok: false`, its
       `session.first_difference` names the frame, and its `scene` is
       that frame's.
-- [ ] Start options with `--session` are refused; a file that isn't a
+- [x] Start options with `--session` are refused; a file that isn't a
       record is refused naming the file; a record with another stamp is
       refused unless `--any-stamp`; a game whose tools lack
       `session_from` gets the default's message (the fake game).
-- [ ] The contract's schemas and version line are regenerated, and the
+- [x] The contract's schemas and version line are regenerated, and the
       schema test passes.
-- [ ] MCP's scripted client starts Hello, Grid from the golden session
+- [x] MCP's scripted client starts Hello, Grid from the golden session
       and reads the scene, and `reset` starts it from the record again
       (the same frame and scene).
-- [ ] Hello, Grid's golden session test passes. `bless_session` on the
+- [x] Hello, Grid's golden session test passes. `bless_session` on the
       golden text keeps every input and gives this build's stamp and
       hashes (a test on the text, with no file); bless runs through
       `SHUYI_BLESS=1`, or `cargo xtask golden --bless`. CI's
       `determinism` job plays the session on wasm32.
-- [ ] A new game from each template plays a session: the grid
+- [x] A new game from each template plays a session: the grid
       template's `tests/it/main.rs` and `BasicTools`' tests in
       `shuyi-cli` record one with `Harness::start_recording` and play it
       through `session_from` with no difference, and CI's `templates`
       job passes.
-- [ ] Unless **Size** moved them out:
+- [x] Unless **Size** moved them out:
   - the debug menu shows "Save session" only while `App` records or
     plays a record; choosing it makes `App::take_session_save` true
     once; and a recorded session that chooses it plays back with no
@@ -412,9 +412,9 @@ for Nick (parked 3047 asks it for crash reports).
     `crates/app/src/sessions/web.rs` declares, its version matches, and
     `index.html` loads it between the bundle and the game (the
     `shuyi-cli` tests).
-- [ ] If **Size** moved them out, the completion notes name the
+- [x] If **Size** moved them out, the completion notes name the
       follow-up ticket.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -433,4 +433,92 @@ for Nick (parked 3047 asks it for crash reports).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done, all of it: part A (playing records), part B (recording in real builds),
+the debug menu entry, Hello, Grid's debug menu and the web download. ADR-0074
+holds the choices.
+
+**Size.** The **Size** clause's 600 lines were this ticket's own number, older
+than the `write-ticket` skill's "about 1,500". Nick pointed that out as the split
+began, so nothing moved to a follow-up. The PR is about 1,950 changed lines without
+the schemas, the golden session, `plans.golden` and tickets, about a third of them
+tests: past that 1,500 too. It was kept whole, as the parts share the record's
+start and the ticket's tests.
+
+**Checked by hand**, on Windows:
+
+- Hello, Grid's debug build closed from its window: the file was written, the log
+  named it, and `cargo shuyi run --session` played its 740 frames with no difference.
+- F2, then Enter, in the window (keys sent by scan code): the log named the file
+  while the game ran, and again at quit. That file played its 1,277 frames with no
+  difference.
+- The debug web build in the browser pane: F2 and Enter, frames and keys driven from
+  JS as the pane was hidden. `shuyi_download` made the blob and clicked the link for
+  `<ms>.session.ron`; the click was intercepted, so the browser's own download was
+  not seen. `run --session` played its text, a record with `target: "web"`, with no
+  difference, on the debug menu.
+
+**Deviations from the ticket:**
+
+- **The grid template's start.** The ticket names `templates/grid/.../main.rs`; the
+  template has since moved to the short path, `run_game(game::game())`, with its
+  `Start` from `BasicGame::start`. So its `lib.rs` and `main.rs` don't change, which
+  keeps the blank game's files as they were. Its `session_from` plays from
+  `BasicGame::start`.
+- **The grid stage's state hash** comes from a new `Screen::state_hash` (defaulted),
+  which `BasicGame::start` reads through `Game::state_hash` (ADR-0074 §5): a hash set
+  only in its tools would differ from every record its real build made.
+- **`BasicGame::made`'s word** is the game's id and version, not its name: that is
+  what the base template's `made()` writes, so `run_game`'s records and
+  `GameTools::made` agree (ADR-0074 §6).
+- **`run::run` and `run::scene` keep their signatures.** `run_at` has come since the
+  ticket was written, so `scene_at` joins it. That breaks less for the game.
+- **`Ctx::session_recording`** is a method with a setter, not a field: Clippy's limit
+  on a struct's bools. Its two flags are one private field.
+- **`hello_grid::start_over(over)`** sits beside `hello_grid::start()`, for the
+  binary's watched layer, which `lib.rs` can't name.
+- **`crates/app/src/sessions/disk.rs`** holds the desktop's ring and writer, so the web
+  build compiles none of it. The web records too, and saves only when asked.
+- **The file's name uses the system's time, not `SessionRecord::start`.** Since 3067,
+  a desktop's frame clock starts near 0 each launch.
+- **MCP's `start` keeps the game on a differing frame**, with `ok: false`, and the
+  server keeps its host when an answer has a result (ADR-0074 §8).
+- **`--perf` with `--session`** measures only what comes after the record.
+- **`Headless` is safe before the load**: a record of no frames, or a load that failed,
+  answers with no game and a limit.
+
+**Found on the way:** 3086 (written): a desktop launch's seed comes from that same
+clock, so launches share few seeds, whatever `Setup::seed`'s docs say.
+
+**A frame's hash doesn't see all a player does.** Moving Hello, Grid's cursor changes
+no hash until a sound or a rule shows it (ADR-0074, *Consequences*). So the ticket's
+"a copy with one input removed" test removes the last press, a Confirm.
+
+The game's PR that moves the pin follows this one. Its debug builds start writing
+sessions to `<data dir>/sessions/`, and to offer `session_from` its `Start` moves out
+of its binary, as Hello, Grid's did. No game ticket names this one yet.
+
+Breaking: shuyi-cli: `contract::run::SceneOutput` and `mcp::StartOutput`: gain `session`; a struct literal of either adds `session: None`.
+
+```migration
+since: 0.1.0
+what: The answers of scene and of MCP's start say how far a session record played.
+old: SceneOutput { frames, top_screen, scene, log }
+new: SceneOutput { frames, top_screen, scene, log, session }
+before: |
+  let out = SceneOutput { frames: 0, top_screen: String::new(), scene: None, log: Vec::new() };
+after: |
+  let out = SceneOutput { frames: 0, top_screen: String::new(), scene: None, log: Vec::new(), session: None };
+```
+
+Breaking: hello-grid: tests/golden/hello-grid.ron "asset keymap.ron" and "fingerprint files": the keymap has a Debug action; only the example's table moves, and a game changes nothing.
+
+```migration
+since: 0.1.0
+what: Hello, Grid's keymap gained Debug, so two rows of its golden table moved.
+old: the example's table with no Debug action in its keymap
+new: the example's table with F2 bound to Debug
+before: |
+  "asset keymap.ron": "950f9516da8a766d",
+after: |
+  "asset keymap.ron": "79cefbc7be17411e",
+```

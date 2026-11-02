@@ -108,7 +108,8 @@ pub struct DebugMenuView {
 
 /// The debug menu the Debug key opens: the game's tools, in its order,
 /// then each installed module's ([`Install::debug_entry`](crate::module::Install::debug_entry)),
-/// in install order; Cancel closes it. A tool that opens nothing leaves the menu on it, its
+/// in install order, then, while the platform records the run or plays a
+/// record ([`Ctx::session_recording`]), the engine's "Save session"; Cancel closes it. A tool that opens nothing leaves the menu on it, its
 /// names read again.
 pub struct DebugMenuScreen<G: GameData> {
     /// Each item stands for its entry's index in `entries`.
@@ -130,9 +131,17 @@ impl<G: GameData> DebugMenuScreen<G> {
     pub const NAME: &'static str = "debug_menu";
 
     /// The menu of the game's `entries`, then the entries of the modules
-    /// installed on `ctx`, made now, its first tool focused.
+    /// installed on `ctx`, made now, then the engine's, its first tool
+    /// focused.
     pub fn new(ctx: &Ctx<G>, mut entries: Vec<DebugEntry<G>>) -> Self {
         entries.extend(ctx.modules.debug_entries());
+        if ctx.session_recording() {
+            // check-text: not player text (debug tools are English only)
+            entries.push(DebugEntry::new("Save session", |ctx| {
+                ctx.ask_session_save();
+                Transition::None
+            }));
+        }
         let menu = Self::menu_of(ctx, &entries);
         Self { menu, entries }
     }

@@ -79,6 +79,12 @@
 //! A build without debug tools logs why and writes nothing; a file that
 //! can't be written is one warning, and the game goes on.
 //!
+//! A desktop debug build keeps its last sessions in `sessions/` under the
+//! game's data folder (the `sessions` module, ADR-0074): the record of a run,
+//! written when the game quits and when the debug menu's "Save session" asks,
+//! the newest ten kept. On the web that entry offers a download. `shuyi run
+//! --session <file>` plays one.
+//!
 //! Every debug build counts the heap: this crate turns on
 //! `shuyi_alloc_count`'s `global` feature, whose `#[global_allocator]`
 //! counts the bytes the whole program asks for, every thread's, and each
@@ -95,7 +101,8 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
+//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `download.js`'s,
+//! `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
 //! (`crates/cli/web/README.md` shows how).
@@ -129,6 +136,7 @@ mod pictures;
 ))]
 mod readback;
 pub mod render;
+mod sessions;
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 mod watch;
@@ -395,11 +403,13 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             }
         }
     }
+    let recorded_manifest = voice_manifest.clone();
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
     let mut platform = Macroquad::new(&mut config, facts);
     let mut app = App::new(start);
+    let kept = sessions::Kept::start(&mut app, config.storage_name, recorded_manifest);
     let mut pacer = Pacer::new(config.window.vsync);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     let mut link = link::start(config.window.title);
@@ -425,6 +435,9 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             link.before_frame(&app, platform.link_input());
         }
         let outcome = app.frame(&mut platform, now);
+        if app.take_session_save() {
+            kept.save(&app);
+        }
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         if let Some(link) = &mut link {
             answer_link(link, &app, &mut platform);
@@ -449,6 +462,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         // Native: leaving the loop closes the window. The web page can't be
         // closed, so it keeps showing the last frame.
         if outcome == FrameOutcome::Quit && !cfg!(target_arch = "wasm32") {
+            kept.save_at_quit(&app);
             break;
         }
         pace(&mut pacer, &platform, &mut app);

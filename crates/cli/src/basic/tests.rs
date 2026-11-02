@@ -164,3 +164,22 @@ fn the_controls_are_the_keymap_and_the_first_screen() {
     );
     assert!(tools(BROKEN).controls().is_some_and(|c| c.is_err()));
 }
+
+#[test]
+fn a_session_recorded_from_the_real_start_plays_through_the_tools() {
+    let tools = tools(GOOD);
+    let made = tools.game.made();
+    assert_eq!(made.game, "com.example.demo 0.1.0");
+    assert_eq!(made.content, tools.game.bundle().fingerprint());
+    let mut h = Harness::start_recording(tools.game.start()).unwrap();
+    h.keys("Enter").wait(0.1);
+    let record = h.session().unwrap();
+    assert_eq!(record.made.as_ref(), Some(&made));
+    assert_eq!(tools.made(), Some(made));
+    let mut session = tools.session_from(record, Stamps::Check).unwrap();
+    let played = session.play_record().unwrap();
+    assert_eq!(played.frames, played.of);
+    assert_eq!(played.first_difference, None);
+    assert_eq!(session.frame_count(), played.of);
+    assert_eq!(session.screens(), ["hello"]);
+}

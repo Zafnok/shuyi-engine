@@ -73,11 +73,16 @@ use shuyi::assets::voice::ClipVariant;
 #[cfg(feature = "std")]
 use shuyi::core::Made;
 use shuyi::core::TerrainId;
+#[cfg(feature = "std")]
+use shuyi::core::{StateHash, state_hash};
+#[cfg(feature = "std")]
+use shuyi::platform::{Card, Setup, Start};
 use shuyi::platform::{Look, OneBitLook};
+use shuyi::ui::debug::DebugMenuScreen;
 use shuyi::ui::frame::onebit::{Font, PatternMap};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
-use shuyi::ui::{Ctx, Game, GameData, GameHooks};
+use shuyi::ui::{Ctx, Game, GameData, GameHooks, ScreenHook};
 
 pub use action::Action;
 use prelude::*;
@@ -523,9 +528,71 @@ fn ctx_of(loaded: Result<Hello, Vec<ContentError>>, seed: u64) -> Ctx<Hello> {
     ctx
 }
 
-/// The game on `ctx`, at its title.
+/// The game on `ctx`, at its title, its Debug action opening the debug menu.
 pub fn game(ctx: Ctx<Hello>) -> Game<Hello> {
-    Game::new(ctx, Box::new(screens::Title::new()), GameHooks::default())
+    let hooks = GameHooks {
+        debug: Some(ScreenHook {
+            name: DebugMenuScreen::<Hello>::NAME,
+            open: |ctx| Box::new(DebugMenuScreen::new(ctx, Vec::new())),
+        }),
+        debug_screens: &[DebugMenuScreen::<Hello>::NAME],
+        ..GameHooks::default()
+    };
+    Game::new(ctx, Box::new(screens::Title::new()), hooks)
+}
+
+/// The game's title: the window's, and its loading card's.
+pub const TITLE: &str = app_info::APP.name;
+
+/// How the game starts, on any platform: [`start_over`] with nothing laid
+/// over its files.
+#[cfg(feature = "std")]
+pub fn start() -> Start<Hello> {
+    start_over(None)
+}
+
+/// How the game starts with `over` laid over its files (a folder on disk,
+/// under `cargo shuyi run --watch`): its card, then its load. A session
+/// record of it is stamped [`made`], and each frame's hash has the stage's
+/// rules state in it.
+#[cfg(feature = "std")]
+pub fn start_over(over: Option<Layer>) -> Start<Hello> {
+    Start::new(Card::text(TITLE), Hello::look, move |setup| {
+        load(setup, over)
+    })
+    .made(made())
+    .state_hash(stage_hash)
+}
+
+/// The game on the platform's `setup`, at its title, with its files as
+/// the target the platform names has them. The stages' luck is seeded
+/// from the clock (the platform's music seed), so each launch plays
+/// differently. With `over`, its palette reloads as its file changes.
+#[cfg(feature = "std")]
+fn load(setup: Setup, over: Option<Layer>) -> Result<Game<Hello>, String> {
+    let target = setup.platform.target.clone();
+    let bundle = bundle_over(over, &target);
+    let mut ctx = setup.ctx(ctx_from(&bundle, &target, 0));
+    ctx.game.seed = ctx.music_seed;
+    let game = game(ctx);
+    if over.is_none() {
+        return Ok(game);
+    }
+    let lines = |errors: Vec<ContentError>| {
+        let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        lines.join(
+            "
+",
+        )
+    };
+    let palette = hot_palette::HotPalette::new(&bundle).map_err(lines)?;
+    game.with_module(palette).map_err(|e| e.to_string())
+}
+
+/// The hash of the rules state of the stage on screen, if one is.
+#[cfg(feature = "std")]
+fn stage_hash(game: &Game<Hello>) -> Option<StateHash> {
+    state_hash(&game.screen::<screens::StageScreen>()?.stage).ok()
 }
 
 /// Which clip of a voiced line plays: the game has no voices, so only

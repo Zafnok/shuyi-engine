@@ -31,6 +31,18 @@
         "steps": []
       }
     },
+    "session": {
+      "description": "Start from this session record, played to its end, in place of the\nstart options: the game's real start is the record's. A frame that\nplays differently stops it there, and the script and `frames` don't\nplay.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SessionInput"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "start": {
       "description": "The game's own start options (`frame-png --help` lists them), in\nthe order given.",
       "type": "array",
@@ -79,6 +91,25 @@
       "additionalProperties": false,
       "required": [
         "steps"
+      ]
+    },
+    "SessionInput": {
+      "description": "A session record to play, in place of a game's start options.",
+      "type": "object",
+      "properties": {
+        "any_stamp": {
+          "description": "Play a record stamped by another build or with other content too\n(`--any-stamp`), which is otherwise refused; it may then differ for\nthat reason alone.",
+          "type": "boolean",
+          "default": false
+        },
+        "file": {
+          "description": "The record's file, from the project's root.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file"
       ]
     },
     "Step": {

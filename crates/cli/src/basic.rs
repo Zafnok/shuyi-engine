@@ -1,7 +1,7 @@
 //! [`BasicTools`]: the [`GameTools`] of a game on the short path
 //! (ADR-0036), from its `BasicGame`: `frame-png`, `lang-status`, the
-//! contract's `check`, `run` and `scene` (a session with no scene), and
-//! the controls `check --target` checks. A game that adds a scene, a
+//! contract's `check`, `run` and `scene` (a session with no scene, or one
+//! played from a session record), and the controls `check --target` checks. A game that adds a scene, a
 //! record, bots, importers or a bake writes its own `GameTools` and calls
 //! these methods for the rest.
 
@@ -9,8 +9,10 @@ use std::fmt::Debug;
 
 use shuyi_assets::ContentError;
 use shuyi_assets::keymap::ActionSet;
+use shuyi_core::Made;
 use shuyi_platform::BasicGame;
 use shuyi_platform::harness::Harness;
+use shuyi_platform::session::{SessionRecord, Stamps};
 use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
@@ -105,6 +107,24 @@ impl<A: ActionSet, T: Debug + 'static> GameTools for BasicTools<A, T> {
         let session = Headless::new(self.harness()?)
             .with_picture(|h, scale| Self::picture(h, scale.unwrap_or(1)));
         Ok(Box::new(session))
+    }
+
+    /// The record played from the game's real start (`BasicGame::start`).
+    fn session_from(
+        &self,
+        record: &SessionRecord,
+        stamps: Stamps,
+    ) -> Result<Box<dyn Session>, String> {
+        let harness =
+            Harness::from_session(self.game.start(), record, stamps).map_err(|e| e.to_string())?;
+        let session =
+            Headless::new(harness).with_picture(|h, scale| Self::picture(h, scale.unwrap_or(1)));
+        Ok(Box::new(session))
+    }
+
+    /// `BasicGame::made`, which its session records carry.
+    fn made(&self) -> Option<Made> {
+        Some(self.game.made())
     }
 
     /// Its keymap and every screen it can show (`BasicGame::screens`).

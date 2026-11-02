@@ -24,6 +24,18 @@
       ],
       "default": null
     },
+    "session": {
+      "description": "A session record to start from, as `run`'s: played to its end, or\nthe first frame this build plays differently (`ok` false, the game\nkept on that frame), and `step`, `scene` and `frame_png` go on from\nthere; `reset` plays it again. No start options with it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SessionInput"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "start": {
       "description": "The game's own start options (`start`'s answer lists them), in the\norder given. None with `link`: the build runs with its own.",
       "type": "array",
@@ -55,6 +67,25 @@
       "additionalProperties": false,
       "required": [
         "flag"
+      ]
+    },
+    "SessionInput": {
+      "description": "A session record to play, in place of a game's start options.",
+      "type": "object",
+      "properties": {
+        "any_stamp": {
+          "description": "Play a record stamped by another build or with other content too\n(`--any-stamp`), which is otherwise refused; it may then differ for\nthat reason alone.",
+          "type": "boolean",
+          "default": false
+        },
+        "file": {
+          "description": "The record's file, from the project's root.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file"
       ]
     },
     "StartLink": {

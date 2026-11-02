@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::core::{Bot, Made, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
 use shuyi::platform::harness::Harness;
+use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
@@ -117,6 +118,16 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
     Ok(play)
 }
 
+/// A session of `harness`, with the stage's scene and events and the game's
+/// picture.
+fn session_of(harness: Harness<Data>) -> Box<dyn Session> {
+    let session = Headless::new(harness)
+        .with_scene(scene)
+        .with_events(events)
+        .with_picture(|h, scale| BasicTools::<UiAction, Own>::picture(h, scale.unwrap_or(1)));
+    Box::new(session)
+}
+
 /// The game's tools: the engine's, and the stage's on top.
 #[derive(Debug, Clone, Copy)]
 pub struct Tools {
@@ -179,11 +190,19 @@ impl GameTools for Tools {
     }
 
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
-        let session = Headless::new(self.harness(seed_of(options)?)?)
-            .with_scene(scene)
-            .with_events(events)
-            .with_picture(|h, scale| BasicTools::<UiAction, Own>::picture(h, scale.unwrap_or(1)));
-        Ok(Box::new(session))
+        Ok(session_of(self.harness(seed_of(options)?)?))
+    }
+
+    /// The record played from the game's real start, as `src/main.rs`
+    /// runs it (`BasicGame::start`).
+    fn session_from(
+        &self,
+        record: &SessionRecord,
+        stamps: Stamps,
+    ) -> Result<Box<dyn Session>, String> {
+        let harness =
+            Harness::from_session(self.game.start(), record, stamps).map_err(|e| e.to_string())?;
+        Ok(session_of(harness))
     }
 
     fn replay(&self, record: &Record) -> Result<ReplayRun, String> {

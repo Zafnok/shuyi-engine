@@ -14,6 +14,7 @@ mod perf;
 mod scene_camera;
 mod screens;
 mod scripts;
+mod sessions;
 mod sprites;
 
 use std::cell::RefCell;

@@ -24,6 +24,7 @@ use shuyi_ui::input::fit::Controls;
 
 use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries};
 use shuyi_core::{BalanceSettings, Balanced, Knob, Made, autobalance_by};
+use shuyi_platform::session::{SessionRecord, Stamps};
 
 use crate::contract::autobalance::AutobalanceInput;
 use crate::contract::bots::{BotsInput, BotsOutput};
@@ -515,6 +516,24 @@ pub trait GameTools {
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         let _ = options;
         Err(unsupported("run and scene", "session"))
+    }
+
+    /// `run --session` and `scene --session`: the game's real start, made
+    /// ready to play `record`, most simply a
+    /// [`Headless`](crate::contract::session::Headless) over
+    /// [`Harness::from_session`](shuyi_platform::harness::Harness::from_session),
+    /// its error as text. The engine plays it. Give [`made`](Self::made)
+    /// too, so a record another build made is refused as such.
+    fn session_from(
+        &self,
+        record: &SessionRecord,
+        stamps: Stamps,
+    ) -> Result<Box<dyn Session>, String> {
+        let _ = (record, stamps);
+        Err(unsupported(
+            "run --session and scene --session",
+            "session_from",
+        ))
     }
 
     /// `replay`: `record`, in the game's record format, re-run by its

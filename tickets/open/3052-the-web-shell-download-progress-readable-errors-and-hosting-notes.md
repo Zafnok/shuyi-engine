@@ -299,8 +299,10 @@ None.
   ticket's parts.
 - **From 3039 (done):** `shell.js` goes in `SHELL_NOTICES` (`web.rs`'s
   notices table) as the engine's own (its test fails until it does).
-- **Either order with 3043, 2522, 2519, 2349 and 2377:** they add
-  `lifecycle.js`, `net.js`, `download.js`, `languages.js` and
+- **From 2519 (done):** `download.js` is in `SHELL`, and stays in the
+  page between the bundle and `load(...)`.
+- **Either order with 3043, 2522, 2349 and 2377:** they add
+  `lifecycle.js`, `net.js`, `languages.js` and
   `motion.js` to `SHELL` and load them between the bundle and
   `load(...)`. `load("%WASM%")` stays in the page, so their tests hold
   either way; whichever lands later sets `SHELL`'s length.

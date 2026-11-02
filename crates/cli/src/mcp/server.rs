@@ -626,7 +626,7 @@ impl<'a> Server<'a> {
             limits.push("the build that was attached was left running".to_owned());
         }
         if let Some(to) = &input.link {
-            if !input.start.is_empty() {
+            if !input.start.is_empty() || input.session.is_some() {
                 let error = "start: a build attached over the link runs with its own options";
                 return failed(op, codes::WRONG_ARGUMENTS, error);
             }
@@ -654,13 +654,15 @@ impl<'a> Server<'a> {
         };
         let request = Request {
             op,
-            input: json!({ "start": input.start }),
+            input: json!({ "start": input.start, "session": input.session }),
         };
         let (mut answer, _) = match host.call(&request) {
             Ok(reply) => answer_of(op, reply, project.config.command()),
             Err(e) => return failed(op, codes::GAME_PROGRAM, e),
         };
-        if answer["ok"] == true {
+        // A session record that played differently has `ok` false and a
+        // result: the game stands on that frame, to look at.
+        if answer["ok"] == true || !answer["result"].is_null() {
             self.game = Some(host);
             project.config.command().clone_into(&mut self.command);
         }

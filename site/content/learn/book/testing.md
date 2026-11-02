@@ -213,6 +213,60 @@ To keep a record, `record.to_ron()` is its text, one frame per line, so two reco
 frame by frame in any diff tool. `SessionRecord::from_ron` reads it back. The name to give the
 file is `*.session.ron`.
 
+### Sessions from your own builds
+
+You don't need a test to get a record. A debug build (what `cargo run` makes) records every
+run, and when you quit it writes the record to a folder called `sessions/`, inside the folder
+where the game keeps its saves. The last ten stay. A build for players (`--release`) records
+nothing, because a record holds what the player pressed and what they saved.
+
+Something went wrong just now and you don't want to quit? If your game has a debug menu, it
+lists **Save session**, which writes the record so far and carries on. In a browser, where a
+page has no folders, that entry downloads the file instead.
+
+Now play it, from the command line, with the path the game's log printed:
+
+```bash
+cargo shuyi run --session path/to/1730000000000.session.ron
+```
+
+This runs the game with no window, from its real start, through everything that happened, and
+answers with the screens and the scene where the session ended. If this build plays it
+differently, say because you changed a rule, the answer isn't `ok`, and its
+`session.first_difference` names the frame where the two first parted. Everything else in the
+answer is that frame's, so you read the game at the moment it went another way. A record made
+by another build of the game is refused, since it may differ for that reason alone; add
+`--any-stamp` to play it anyway.
+
+Two things to know about your game:
+
+- `shuyi run` needs to start your game the way your binary does. On the short path it already
+  can. If you wrote your own `Start`, move it from `main.rs` into your library, and have your
+  tools' `session_from` play the record from it.
+- The comparison is made from a **hash** of each frame: a short number worked out from what
+  happened in it, such as the screens open and the sounds asked for. To put your rules in it
+  too, give the screen that holds them a `state_hash` method. Then a difference is found at the
+  frame the rules moved, not only when a screen or a sound shows it.
+
+### Keeping a session as a test
+
+Once you have fixed the bug, the session that found it is a good test: it fails if the bug
+comes back. Copy the file into your game's `tests/` folder and play it there:
+
+{{ snippet(file="src/testing.rs", anchor="keep_session") }}
+
+The record is stamped with the build that made it, so any change to your game's files makes
+the test refuse it. If that change was meant, make the file again with this build, keeping the
+same key presses:
+
+```bash
+SHUYI_BLESS=1 cargo test golden
+```
+
+`assert_session` does this when `SHUYI_BLESS` is `1`. The test's name has `golden` in it so that
+this command finds it. Read what changed in the file before you commit it. If the game now reads
+its keys differently, blessing fails and says so, and you record the session again.
+
 ## Golden values
 
 A record kept in the repository pins what the game does: its hash at every step, in a

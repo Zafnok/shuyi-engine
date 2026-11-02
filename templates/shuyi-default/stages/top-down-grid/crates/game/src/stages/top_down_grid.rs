@@ -18,7 +18,7 @@ use std::any::Any;
 use rules::{Command, Event, Feature, Outcome, Stage, TERRAIN_NAMES};
 use shuyi::assets::grid_map::GridMap;
 use shuyi::assets::lighting::Lighting;
-use shuyi::core::{Dir, Pos, Sides, TerrainId, TurnRules};
+use shuyi::core::{Dir, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
 use shuyi::prelude::*;
 use shuyi::ui::frame::Palette;
 use shuyi::ui::grid::{
@@ -327,6 +327,11 @@ impl Screen<Data> for StageScreen {
         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
         let scene = self.scene(Self::view_tiles());
         GLYPHS.paint(&looks, &scene, AREA, &Letters { palette }, buf);
+    }
+
+    /// The rules' state, in each frame's hash in a session record.
+    fn state_hash(&self) -> Option<StateHash> {
+        state_hash(&self.stage).ok()
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
