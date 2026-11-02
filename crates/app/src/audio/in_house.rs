@@ -53,12 +53,9 @@ const JOBS: usize = 64;
 /// The frames a ring of decoded sound holds, ahead of the mix, however long the track
 /// is: `mixer_memory` in `tools/sound-parity/budget.ron` holds the backend to it.
 const FEED_FRAMES: usize = 4096;
-/// The frames the callback is asked for at a time, natively and on the web.
-const BLOCK_FRAMES: u32 = if cfg!(target_arch = "wasm32") {
-    512
-} else {
-    256
-};
+/// The frames the callback is asked for at a time: on the web a block of `sound.js`'s
+/// lead, which is what a sound waits to be heard there, so small.
+const BLOCK_FRAMES: u32 = 256;
 /// A volume change's ramp, in milliseconds: a step in a mix's level clicks.
 const VOLUME_RAMP_MS: u64 = 8;
 /// The mix's rate when the device doesn't say: the corpus's own.

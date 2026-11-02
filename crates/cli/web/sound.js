@@ -11,9 +11,11 @@
 //   copied at once.
 // - They go to an AudioWorklet in a transferred buffer, which it copies into a PcmRing
 //   and sends back to be used again, so a block costs no garbage. Every block's worth
-//   of frames it says how many it has played, and each time this tops its lead back up
-//   to LEAD_BLOCKS blocks. It takes no timer and no animation frame, so a hidden tab
-//   keeps its sound.
+//   of frames it says how many it has played, and each time this tops its lead back up.
+//   It takes no timer and no animation frame, so a hidden tab keeps its sound.
+// - The lead starts at FEWEST_LEAD_BLOCKS, which is what a sound waits to be heard, and
+//   grows a block each time the worklet runs dry while playing, up to MOST_LEAD_BLOCKS:
+//   a page that keeps up stays quick, and one whose frames stall gets the room it needs.
 // - The worklet plays what it has and silence after that, and counts neither as lost:
 //   the mix is only asked for what will be heard, so a late page delays the sound.
 // - Nothing is shared but messages. So this needs a secure context, as AudioWorklet
@@ -30,9 +32,11 @@
     // Keep equal to PLUGIN_VERSION in crates/sound-out/src/sys.rs.
     var VERSION = 1;
 
-    // How many blocks the worklet is kept ahead by, and how many its ring holds.
-    var LEAD_BLOCKS = 4;
-    var RING_BLOCKS = 8;
+    // How many blocks the worklet is kept ahead by, at first and at most, and how many
+    // its ring holds.
+    var FEWEST_LEAD_BLOCKS = 4;
+    var MOST_LEAD_BLOCKS = 16;
+    var RING_BLOCKS = 32;
     // How often the timer looks, in milliseconds, before the context runs.
     var IDLE_MS = 20;
 
@@ -125,6 +129,8 @@
     var block = 0;
     var sent = 0;
     var played = 0;
+    var lead_blocks = FEWEST_LEAD_BLOCKS;
+    var silent = 0;
     var spare = [];
     var held = false;
     var last_idle = 0;
@@ -142,7 +148,7 @@
         if (held) {
             return;
         }
-        while (((sent - played) >>> 0) + block <= LEAD_BLOCKS * block) {
+        while (((sent - played) >>> 0) + block <= lead_blocks * block) {
             var frames = next_block();
             if (frames === null) {
                 return;
@@ -158,6 +164,11 @@
         if (event.data.back) {
             spare.push(event.data.back);
         } else {
+            // Ran dry since the last word, once it had begun: a block more of lead.
+            if (event.data.silent !== silent && played !== 0) {
+                lead_blocks = Math.min(lead_blocks + 1, MOST_LEAD_BLOCKS);
+            }
+            silent = event.data.silent;
             played = event.data.played;
             top_up();
         }
