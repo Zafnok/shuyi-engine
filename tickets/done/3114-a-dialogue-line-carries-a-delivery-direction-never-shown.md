@@ -73,7 +73,59 @@ A clip whose direction changed stays in `Playable`: it still says the words on
 screen, and a silent line would be worse. `needs_remake` is what a clip-making
 tool asks.
 
+Book: none, the book names the `.dlg` format only as a format; its syntax is in the `shuyi-dialogue` skill, updated here.
+
 Breaking: shuyi-assets: `dialogue::Step::Say`, `dialogue::Step::Narrate`: new field `direction`; a game that builds or fully matches one adds it.
+
+```migration
+since: 0.2.0
+what: A speech or narration step has a direction.
+old: Step::Narrate { text, line }
+new: Step::Narrate { text, direction, line }
+before: |
+  Step::Narrate { text: "Rain.".into(), line: LineId::default() }
+after: |
+  Step::Narrate { text: "Rain.".into(), direction: None, line: LineId::default() }
+find: ["Step::Narrate { text: \"Rain.\".into(), line"]
+```
+
 Breaking: shuyi-assets: `dialogue::Line`: new field `direction`; a game that builds one adds it.
+
+```migration
+since: 0.2.0
+what: A line that `Scene::lines` lists has a direction.
+old: Line { id, speaker, text }
+new: Line { id, speaker, text, direction }
+before: |
+  Line { id, speaker, text }
+after: |
+  Line { id, speaker, text, direction: None }
+find: ["Line { id, speaker, text }"]
+```
+
 Breaking: shuyi-assets: `voice::VoiceClip`: new field `direction`; a game that builds one adds it.
-Breaking: `.dlg` format: a speech line's head may hold ` (direction)`, and `@delivery` is the engine's; a game with its own `@delivery` directive renames it.
+
+```migration
+since: 0.2.0
+what: A voice clip records the direction it was made under.
+old: VoiceClip { line, variant, spoken, voice, made_by }
+new: VoiceClip { line, variant, spoken, direction, voice, made_by }
+before: |
+  VoiceClip { line, variant, spoken, voice, made_by }
+after: |
+  VoiceClip { line, variant, spoken, direction: None, voice, made_by }
+find: ["VoiceClip { line, variant, spoken, voice, made_by }"]
+```
+
+Breaking: shuyi-assets: `.dlg` format and `pack::VERSION`: a speech line's head may hold ` (direction)` and `@delivery` is the engine's, and a baked pack is of version 7; a game with its own `@delivery` directive renames it, and every game bakes again.
+
+```migration
+since: 0.2.0
+what: "@delivery is the engine's, and packs baked before this change are refused."
+old: "@delivery as a game's own directive; pack version 6"
+new: "@delivery <direction> and @delivery clear; pack version 7"
+before: |
+  shuyi bake
+after: |
+  shuyi bake
+```
