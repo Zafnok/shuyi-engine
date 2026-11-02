@@ -703,8 +703,8 @@ specifications, never copied. The order, when unparked:
   Nick unparked the whole chain on 2026-10-31, ahead of the MVP
   ([`decisions.md`](decisions.md)). It starts with a working native/browser
   baseline gate (2573), then PCM/decoder adapters (2210), mixer (3030),
-  Windows/web (3031), Linux/macOS (3032), loop regions (2397), and the new
-  default (3084). Each stage qualifies consumers while retaining the old path,
+  Windows/web (3031) and its headphones check (3087), Linux/macOS (3032), loop
+  regions (2397), and the new default (3084). Each stage qualifies consumers while retaining the old path,
   and each can be backed out if a hurdle can't be climbed
   ([ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
   Only final ticket 3079 removes quad-snd, after the complete comparative matrix

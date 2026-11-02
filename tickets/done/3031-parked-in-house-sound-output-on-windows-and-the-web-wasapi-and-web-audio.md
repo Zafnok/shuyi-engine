@@ -155,19 +155,20 @@ sounds wrong, cuts out, or starts late.
 
 ## Acceptance criteria
 
-- [x] ~~With `in-house-sound`, the game's sounds and music play on Windows
-      and in the browser: fades, loops, variants and volumes as before.~~ (not done
-      yet: the gate's scenarios hold each of these on both, and the game itself waits
-      for Nick's sign-off)
+- [x] With `in-house-sound`, the game's sounds and music play on Windows
+      and in the browser: fades, loops, variants and volumes as before. Nick played
+      both, and the gate's scenarios hold each of these on both.
 - [x] ~~Unplugging headphones on Windows keeps sound going on the speakers
-      within a second.~~ (not done yet: CI's `device-loss` cell takes the device away
-      and gives it back; real headphones wait for Nick's sign-off)
+      within a second.~~ (not done: CI's `device-loss` cell holds it on a virtual
+      endpoint, heard again 15 to 31 ms after it is back; real headphones are 3087's,
+      as Nick had none at hand and asked for it apart)
 - [x] With no audio device, the game runs silent and logs one line, through
       the backend's `warn` as the player's are (`macroquad::logging::warn!`): 3041,
       the log's sinks, isn't done, and no `log` crate is in the engine yet.
 - [x] The PR body says the code was written from the documents listed in
       the completion notes.
-- [x] ~~Nick signs off.~~ (not done yet)
+- [x] Nick signs off: the sounds and the music on Windows and in the browser.
+      Headphones are 3087's.
 - [x] ~~Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.~~ (not done yet: calibrating)
 - [x] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory.
 - [x] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
@@ -238,8 +239,6 @@ tool calls, is undocumented.
 Nick's machine (Realtek speakers, the GNU build, at no volume): median 2.85 ms, 95th
 percentile 9.82 ms, against an aim of 30 ms. The device's own buffer comes after.
 
-**Follow-up tickets**: 2043 (mutation testing of the adapters).
-
 Breaking: shuyi-sound: `wav::WavSource` and `vorbis::VorbisSource`: their lifetime is now a type, what they read: nothing to change where a game calls `new` with a slice, and `WavSource<'a>` written out becomes `WavSource<&'a [u8]>`
 
 ```migration
@@ -256,4 +255,21 @@ find: ["WavSource<'"]
 
 Book: none, the book teaches no sound backend, and what a backend writes is `docs/platform-backends.md`'s, which says `hold_output`.
 
-**For Nick**: the sign-off is below, once CI is green.
+**Nick's sign-off** (2026-11-02), after playing the game with `in-house-sound` on, on
+Windows and in the browser, the private art in:
+
+> all sounds good, I haven't tested headphones yet, we can do that in a decoupled followup (i.e. keep working on critical path and revisit headphones when I have access to them)
+
+His first try found native music silent: the copy built for him had no `music` folder
+beside its executable, and started elsewhere, it found none. Both backends look for it
+there the same way, and it played once started from the game's folder. 3087 is the
+headphones check.
+
+**How the game was built for it** (a scratch worktree of the game, never committed):
+its engine pins moved to this branch, `[patch.crates-io] alsa-sys = { git =
+"https://github.com/Zafnok/shuyi-engine", rev = "<the pin>" }` added to its root
+`Cargo.toml`, and `shuyi-app = { workspace = true, features = ["in-house-sound"] }` in
+`crates/app/Cargo.toml`; then `cargo build -p trpg-app --release --features
+private-assets` and `cargo shuyi web --release --private-assets`.
+
+**Follow-up tickets**: 2043 (mutation testing of the adapters), 3087 (headphones).
