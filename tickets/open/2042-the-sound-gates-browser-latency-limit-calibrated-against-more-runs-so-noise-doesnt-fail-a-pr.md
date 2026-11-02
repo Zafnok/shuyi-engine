@@ -39,6 +39,13 @@ often it is, and that a limit is raised only with new calibration runs, never to
 pass. So one such run blocks a PR, and `ci-result` with it, and only a person
 re-running the job clears it.
 
+Native latency shows the same kind of noise. On PR 232 (ticket 2210), CI run
+41366247884, `linux-native perf:latency_ms` stayed `inconclusive` on all three
+attempts: medians 1.011, 0.990 and 0.999, spreads 0.103, 0.122 and 0.120 against a
+limit of 0.09. Its samples sit near 26.5 or 30.5 ms, about one 4 ms tick of the
+probe's loop apart, so the spread may be that tick rather than the machine. The
+measurement in this ticket covers `linux-native` too.
+
 ADR-0066 and ticket 2573 hold what the gate is for.
 
 ## Nick input

@@ -1327,7 +1327,7 @@ fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let real = packages(&root, &System).unwrap();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
-    assert_eq!(API_CRATES.len(), 9);
+    assert_eq!(API_CRATES.len(), 10);
 }
 
 #[test]

@@ -38,3 +38,7 @@ text = "the tools: the tool contract, the MCP server, and BasicTools and GameToo
 [[crate]]
 name = "shuyi_alloc_count"
 text = "the heap counter of debug builds"
+
+[[crate]]
+name = "shuyi_sound"
+text = "decoded sound and its WAV and Ogg Vorbis adapters, which no backend plays through yet"

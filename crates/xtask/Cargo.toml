@@ -26,6 +26,8 @@ toml = { version = "1.1", default-features = false, features = ["parse", "serde"
 
 # `sound-parity`: the SHA-256 that pins the corpus and the evidence.
 sha2 = { version = "0.10", default-features = false }
+# `sound-parity`'s decoder stage: the adapters held to the corpus (ticket 2210).
+shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
 
 [dev-dependencies]
 # `llms`'s snapshots of the fixture site.
