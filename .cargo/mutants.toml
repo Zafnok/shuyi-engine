@@ -39,11 +39,11 @@ timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
     # The default `hold_output` does nothing: its only viable mutant is itself.
-    "replace Backend::hold_output with \\(\\)",
+    'replace Backend::hold_output with \(\)',
     # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.
     "replace Output::preferred_rate -> Option<u32> with None",
     # Off Windows `Output::stats` is `(0, 0)`, its only viable mutant there.
-    "replace Output::stats -> \(u32, u32\) with \(0, 0\)",
+    'replace Output::stats -> \(u32, u32\) with \(0, 0\)',
     # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
     # `NoDirective` has no values, so its `print` can never run.
