@@ -221,8 +221,12 @@ fn perf_failures(root: &Path, platform: &str, dir: &Path) -> Vec<String> {
     };
     let base = dir.join(platform);
     let mut cells = performance_cells(platform, &base, &budget);
+    // Every timing the gate judges of it, so that a noisy one is measured again.
     if matches!(budget.platforms.get(platform), Some(Contract::NewBackend)) {
         cells.extend(old_new_cells(platform, &base, &budget));
+    } else {
+        cells.extend(decoder_speed_cells(platform, &base, &budget));
+        cells.extend(mixer_speed_cells(platform, &base, &budget));
     }
     failures(&json!({"schema": SCHEMA, "cells": cells}).to_string())
 }

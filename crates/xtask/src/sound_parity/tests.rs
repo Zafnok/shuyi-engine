@@ -761,6 +761,22 @@ fn a_backend_must_come_back_when_its_device_does() {
 }
 
 #[test]
+fn the_timings_a_job_measures_again_are_every_one_the_gate_judges() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let empty = empty_folder("perf-only");
+    let named = |platform: &str| perf_failures(&root, platform, &empty).join("\n");
+    // A captured platform's: its own timings, and its decoders' and mixer's.
+    let reference = named("windows");
+    for check in ["perf", "decoder-speed", "mixer-share"] {
+        assert!(reference.contains(&format!("windows {check}:")), "{reference}");
+    }
+    // A new backend's: its own, and against the old; the decoders are the old one's.
+    let new = named("windows-in-house");
+    assert!(new.contains("windows-in-house old-new:"), "{new}");
+    assert!(!new.contains("decoder-speed"), "{new}");
+}
+
+#[test]
 fn a_new_backend_without_its_evidence_or_a_budget_fails_closed() {
     let budget = new_backend_budget();
     let empty = empty_folder("closed");

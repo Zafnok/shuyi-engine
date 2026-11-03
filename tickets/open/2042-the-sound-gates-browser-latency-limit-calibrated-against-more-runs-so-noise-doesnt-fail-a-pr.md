@@ -31,6 +31,11 @@ The two sides of those pairs ran the same audio code, so the ratio of 1.146 is
 noise, or a real bias in how latency is measured. The limit is 1.14 and the
 spread limit 0.53 (`tools/sound-parity/budget.ron`), so it missed by 0.006.
 
+A second sample: PR 240 (ticket 3031), CI run 41503572435, gave
+`browser-chromium perf:latency_ms` a median ratio of 1.180 and spread 0.216, again
+quad-snd against itself, with `linux-native perf:latency_ms` inconclusive (spread
+0.132) in the same run.
+
 `budget.ron` says each `max_ratio` is 1 plus twice the worst distance from 1 of
 an old-against-old median, over three runs. Three runs may not show how far this
 metric moves. `tools/sound-parity/README.md`, *Performance*, is deliberate that a
