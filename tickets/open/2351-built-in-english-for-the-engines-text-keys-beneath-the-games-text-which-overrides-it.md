@@ -190,6 +190,13 @@ None.
     player) adds engine keys too: if it is done first, its rows' keys
     are in the toy's `en.ron`, and this PR moves them with the rest; if
     not, nothing to do (2404 puts them straight in the engine's file).
+  - **Either order with 3201** (a credits screen; adds `credits.title`,
+    `credits.group.{music,sound_effects,art,fonts,software}`,
+    `credits.entry`, `credits.help.rolling`, `credits.help.stopped`): if
+    3201 is done, those keys are in the toy's `en.ron`, and this PR moves
+    them into the engine's file with the rest and adds `credits.` to the
+    engine prefixes the test collects; if not, nothing to do (3201 puts
+    them straight in the engine's file).
   - **2353** (a pseudo-language): if it is done, a test builds a `Lang`
     with `with_engine_english` and then `with_pseudo`, and the pseudo
     pack has an entry for an engine-only key; `with_pseudo`'s doc says

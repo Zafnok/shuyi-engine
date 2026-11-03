@@ -141,6 +141,10 @@ None.
   sheets of 2514, which write `Image`'s public fields; both keep working.
 - 3103's (parked) rasterizer names `shuyi_ui::frame::raster::Image`,
   which keeps its path: nothing to hand it.
+- Making `glyph_tiles`' stamp public, with a rule for a clear pixel,
+  and `Image::set_pixel`: 2580 does it after this one (it is blocked by
+  this ticket), for the game's test tileset (game#1226). Keep `stamp`
+  private here.
 
 ## Implementation steps
 

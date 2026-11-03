@@ -50,7 +50,7 @@ half: moves inside one widget that is a grid.
     so the way back finds it.
 - Nothing shared turns a `UiAction` into a `shuyi_core::Dir`
   (`crates/core/src/grid.rs`, line 52): the toy's grid screen matches
-  them by hand (`crates/ui/src/toy/grid.rs`, lines 686 to 689).
+  them by hand (`crates/ui/src/toy/grid.rs`, lines 678 to 681).
 
 **Why it matters.** The engine's menus are played with a pad, and on
 the Playdate with a d-pad alone (ADR-0008 §3); its name grid and its key
@@ -118,7 +118,10 @@ None.
   depends on `shuyi-core`): `Some` for the four directions, `None` for
   Confirm, Cancel and Debug. **Either order with 2355:** whichever
   lands first adds it, and the other uses it. The toy's grid screen
-  uses it instead of its own match.
+  uses it instead of its own match. **Either order with 3206:** if
+  3206 is done, `UiAction::dir` exists and the toy's grid screen
+  already uses it: add nothing; if not, add it here (3206 then uses it
+  in the toy and Hello, Grid).
 - **`NameEntry` moves onto it:** the `at` field becomes a `GridCursor`
   built from the widths of `grid(rules)`'s rows, `GoalColumn::Clamp`,
   every cell enabled, `wrap` on both ways. `NameEntry::focus()` and

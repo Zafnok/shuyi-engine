@@ -51,9 +51,21 @@ two copies cost:
 replacing `GameTools::playtest`) and plays the tries on every core. 2533
 adds a history and summary lines from the game's named measures. This
 ticket comes after both, so `bots` is folded once into the shape they
-leave. Visions of Shuyi implements neither `GameTools::bots` nor
-`GameTools::playtest` (its `crates/xtask/src/game_tools.rs`), so the game
-is not affected.
+leave.
+
+**The game is affected now.** Since game#1193 Visions of Shuyi
+implements `GameTools::bots` (`crates/xtask/src/game_tools.rs` and
+`game_tools/plays.rs`), and the game/engine boundary audit of
+2026-11-03 found its `bots` copying `play_tries`' loop only to keep each
+play's commands for its record, since `Tried` drops them. Its follow-up
+is [game#1240](https://github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/1240-bot-play-records-from-the-engines-bots-operation.md):
+after this ticket it gives its bot run as a plan whose try writes the
+record, and drops `GameTools::bots`. The game ticket is not a blocker.
+The game ticket game#1195 (stamping those records with the build that made them) says
+where the stamp goes in either order with game#1240.
+So a plan must be able to give a try's record from the try's seed and
+commands (a hook on the plan or its entrant), and the PR that moves the
+game's pin past this one follows it.
 
 ## Nick input
 
@@ -90,7 +102,8 @@ None.
   and the root `README.md`. A breaking change: the completion notes
   carry a `Breaking:` line for `shuyi-cli` (`GameTools::bots` and the
   `bots` operation go; a game gives its bot as a playtest plan with
-  one entrant and no checks). The game implements neither hook.
+  one entrant and no checks). The game implements `GameTools::bots`;
+  game#1240 moves it onto the plan.
 - **From 2568 (done):** `game_arg` and `check_start` live in
   `crates/cli/src/game.rs`, and `bots.rs`'s `pub use
   crate::game::game_arg;` goes with the file (add
@@ -149,7 +162,8 @@ None.
 **Out (do not do):**
 - `shuyi_core::play` and `shuyi_core::bots::playtest`'s judging: only the
   CLI's answer grows;
-- the game's use of `playtest` (game#1180).
+- the game's use of `playtest` (game#1180, game#1207) and its move off
+  `GameTools::bots` (game#1240).
 
 **`shuyi autobalance` (2541, done)** plays its tries through the same
 helpers (`contract::playtest`'s `choose`, `checks_of` and `played`) and

@@ -65,16 +65,19 @@ timings and quiet interval.
   `MusicCommand::Gain` and `Stop`; backends need no new command.
 - Rustdoc and a small compiled example in the book's audio discussion.
   No manifest, pack, save or contract-schema change is intended.
-- Engine first, then `game#1080` moves its pin and adopts this stop
-  request plus 2341's fade-in. Name that game PR in completion notes.
+- Engine first, then the game adopts this stop request: `game#1080`
+  if it moves its pin past this ticket, or else the game follow-up that
+  1080 writes when it ships 2341's fade-ins first (1080 names it here
+  in place of `game#1080`). Name that game PR in completion notes.
   Run the API gate; if the implementation introduces any actual break,
   add its `Breaking:` and migration notes rather than suppress the gate.
 - About 350–650 changed lines, with tests. No new dependency.
 
 **Out (do not do):**
 - The game's schedule, its quiet interval and adoption (`game#1080`);
-  that ticket names this engine ticket as a blocker. The engine ticket
-  does not depend on the game ticket.
+  that ticket names this engine ticket either order (its fade-ins start
+  on 2341 alone), and only the fade-out's adoption waits for it. The
+  engine ticket does not depend on the game ticket.
 - A music sequencer, per-track manifest defaults, different fade curves,
   sound effects, or changing any backend's mixer.
 
