@@ -82,6 +82,11 @@ What was done:
   read `<.a>`, from when the source borrowed `'a`, and it is now `<B>`. It is
   `<\w+>` now, and it still applies, since that mutant hangs every read.
 
+- `tools/sound-parity/footprint.ron` (ADR-0068) follows the new text of
+  `mutants.toml`, and takes the adapters' jobs and flags back out of
+  `mutants.yml` if the sound replacement is given up. Giving up on a copy of
+  this branch leaves `mutants.yml` exactly as it is on `main`.
+
 The evidence comes from the workflow, dispatched on this branch, because this
 PR's diff touches no `.rs` file. Only its adapters job was read, and each run
 was cancelled after it.
