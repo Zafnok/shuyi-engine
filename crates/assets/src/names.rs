@@ -145,36 +145,46 @@ impl Names {
     /// of its short forms (`Ada Brook` is `smith`, not `family.brook`).
     /// See [`literal_form`] for what counts.
     pub fn literal_in(&self, text: &str) -> Option<(&str, &str)> {
-        let starts = WordStarts::of(text);
-        let mut longest: Option<(&str, &str)> = None;
-        for (id, name) in &self.names {
-            let Some(form) = literal_form(name) else {
-                continue;
-            };
-            if longest.is_none_or(|(_, l)| form.len() > l.len()) && starts.has_word(form) {
-                longest = Some((id.as_str(), form));
-            }
-        }
-        longest
+        Literals::of(self).find_in(text)
     }
 }
 
-/// Where a whole word may start in a text's plain parts (outside tokens):
-/// at the start of a part or after a character that is no ASCII letter or
-/// digit. Found once per text, so that looking for each of a table's names
-/// costs a few byte comparisons, not a substring search: a search per name
-/// per line of every script took most of a handheld's start.
-struct WordStarts<'t> {
-    /// Each start: the part, and the byte offset in it.
-    starts: Vec<(&'t str, usize)>,
-    /// Whether some start begins with each byte.
-    first: [bool; 256],
+/// The literal forms of a table's names ([`literal_form`]) by their first
+/// byte, found once for many texts: a text tries at each place a whole
+/// word may start only the names that begin with the byte there. A
+/// substring search per name per line of every script took most of a
+/// handheld's start.
+pub(crate) struct Literals<'n> {
+    /// Each name with a literal form, as its id and the form, by id.
+    forms: Vec<(&'n str, &'n str)>,
+    /// For each first byte, the forms (their places in `forms`) that
+    /// begin with it.
+    by_first: BTreeMap<u8, Vec<usize>>,
 }
 
-impl<'t> WordStarts<'t> {
-    fn of(text: &'t str) -> Self {
-        let mut starts = Vec::new();
-        let mut first = [false; 256];
+impl<'n> Literals<'n> {
+    /// The literal forms of `names`.
+    pub(crate) fn of(names: &'n Names) -> Self {
+        let forms: Vec<(&str, &str)> = names
+            .names
+            .iter()
+            .filter_map(|(id, name)| Some((id.as_str(), literal_form(name)?)))
+            .filter(|(_, form)| !form.is_empty())
+            .collect();
+        let mut by_first: BTreeMap<u8, Vec<usize>> = BTreeMap::new();
+        for (k, (_, form)) in forms.iter().enumerate() {
+            by_first.entry(form.as_bytes()[0]).or_default().push(k);
+        }
+        Self { forms, by_first }
+    }
+
+    /// [`Names::literal_in`]: the longest form written as whole words in
+    /// `text` outside its tokens, with its id; of equally long ones, the
+    /// first by id. A whole word starts at the start of a part or after a
+    /// character that is no ASCII letter or digit, and is not followed by
+    /// one.
+    pub(crate) fn find_in(&self, text: &str) -> Option<(&'n str, &'n str)> {
+        let mut best: Option<usize> = None;
         let plain = split_tokens(text).filter_map(|part| match part {
             Part::Text(t) | Part::Unclosed(t) => Some(t),
             Part::Token(_) => None,
@@ -182,31 +192,37 @@ impl<'t> WordStarts<'t> {
         for part in plain {
             let mut at_start = true;
             for (i, c) in part.char_indices() {
-                if at_start {
-                    starts.push((part, i));
-                    first[usize::from(part.as_bytes()[i])] = true;
+                if at_start && let Some(forms) = self.by_first.get(&part.as_bytes()[i]) {
+                    for &k in forms {
+                        if self.beats(k, best) && whole_word_at(part, i, self.forms[k].1) {
+                            best = Some(k);
+                        }
+                    }
                 }
                 at_start = !c.is_ascii_alphanumeric();
             }
         }
-        Self { starts, first }
+        best.map(|k| self.forms[k])
     }
 
-    /// Whether `word` is written at one of the starts, as a whole word: not
-    /// followed by a letter or digit, case-sensitively.
-    fn has_word(&self, word: &str) -> bool {
-        let Some(&b) = word.as_bytes().first() else {
-            return false;
-        };
-        self.first[usize::from(b)]
-            && self.starts.iter().any(|&(part, i)| {
-                part.as_bytes()[i..].starts_with(word.as_bytes())
-                    && !part[i + word.len()..]
-                        .chars()
-                        .next()
-                        .is_some_and(|c| c.is_ascii_alphanumeric())
-            })
+    /// Whether form `k` is reported over `best`: it is longer, or as long
+    /// and first by id.
+    fn beats(&self, k: usize, best: Option<usize>) -> bool {
+        best.is_none_or(|b| {
+            let (len, best_len) = (self.forms[k].1.len(), self.forms[b].1.len());
+            len > best_len || (len == best_len && k < b)
+        })
     }
+}
+
+/// Whether `word` is written in `text` at byte `i` and is not followed by
+/// an ASCII letter or digit, case-sensitively.
+fn whole_word_at(text: &str, i: usize, word: &str) -> bool {
+    text.as_bytes()[i..].starts_with(word.as_bytes())
+        && !text[i + word.len()..]
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphanumeric())
 }
 
 /// What of display name `name` the literal-name check looks for: the name
