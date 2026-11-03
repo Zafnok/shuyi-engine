@@ -768,7 +768,10 @@ fn the_timings_a_job_measures_again_are_every_one_the_gate_judges() {
     // A captured platform's: its own timings, and its decoders' and mixer's.
     let reference = named("windows");
     for check in ["perf", "decoder-speed", "mixer-share"] {
-        assert!(reference.contains(&format!("windows {check}:")), "{reference}");
+        assert!(
+            reference.contains(&format!("windows {check}:")),
+            "{reference}"
+        );
     }
     // A new backend's: its own, and against the old; the decoders are the old one's.
     let new = named("windows-in-house");
