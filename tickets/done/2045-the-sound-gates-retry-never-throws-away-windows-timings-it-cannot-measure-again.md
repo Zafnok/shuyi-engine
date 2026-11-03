@@ -5,10 +5,10 @@ type: bug
 milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-03
 ---
 
 # 2045 — The sound gate's retry never throws away Windows timings it can't measure again
@@ -70,13 +70,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An inconclusive `windows` or `windows-in-house` cell leaves its
+- [x] An inconclusive `windows` or `windows-in-house` cell leaves its
       `perf.jsonl` in place, and the job fails on the inconclusive cell, never on
       `no samples`.
-- [ ] An inconclusive `linux-native`, `browser-chromium` or `browser-in-house`
+- [x] An inconclusive `linux-native`, `browser-chromium` or `browser-in-house`
       cell is still measured again, up to twice.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -86,5 +86,30 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- The gate step's choice of what to measure again moved into
+  `tools/sound-parity/retry.py`. Given `matrix.json`, it prints the inconclusive
+  platforms of this job (`linux-native`, `browser-chromium`, `browser-in-house`),
+  one per line. A mandatory inconclusive cell of any other platform (`windows`,
+  `windows-in-house`) stands: it prints that cell, exits 1, and the loop stops
+  without moving any `perf.jsonl` aside. A Windows cell that isn't mandatory
+  doesn't stop the others being measured again.
+- `retry_test.py` tests it and runs in the job, as a step before the gate. Its
+  cases: an inconclusive `windows` or `windows-in-house` cell stands, with
+  nothing printed; an inconclusive `browser-in-house` cell is measured again; each
+  of this job's platforms is printed once; a Windows cell that isn't mandatory
+  doesn't stop the rest.
+- Step 3 by hand: the loop's shell, with `cargo`, `jq` and `capture.py` stubbed,
+  on a `matrix.json` whose only inconclusive cell is `windows perf:peak_kib`,
+  stopped after the first pass with every `perf.jsonl` in place. With only
+  `browser-in-house` inconclusive, it measured it again twice and failed after
+  the third pass.
+- Deviation: the script instead of inline `jq`, as step 3 allows. It made the
+  logic testable, and `jq` isn't on Nick's machine to check it by hand.
+- The step's comment and the README's *Performance* paragraph say the Windows
+  job measures its own timings again.
+- No other copy of the loop: the Windows job's own retry already measures only
+  its platforms.
+
+No break.
+
+Book: none, only CI's sound gate changed, and no public item.

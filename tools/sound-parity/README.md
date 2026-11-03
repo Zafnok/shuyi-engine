@@ -16,6 +16,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `install-endpoint.ps1` | CI's real render endpoint on a Windows runner, which has none: Scream, pinned by its hash |
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
 | `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
+| `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
@@ -176,7 +177,9 @@ interquartile range. Over the budget's `max_spread` it is `inconclusive`,
 which fails like anything else not passed; over `max_ratio` it is `failed`.
 CI's job measures an `inconclusive` platform again, up to twice, keeping every
 attempt's samples as `perf-attempt-N.jsonl`: a noisy machine says nothing either
-way. A `failed` cell is never measured again, and a slowdown shows in the median
+way. The Windows job does this for `windows` and `windows-in-house` before it
+uploads them, so the gate never measures those again: an `inconclusive` cell of
+theirs stands there, and their samples stay (`retry.py`). A `failed` cell is never measured again, and a slowdown shows in the median
 however often it is. The injected slowdown must fail. Raise a limit only with new calibration runs
 that justify it, written in `budget.ron`, never to pass.
 
