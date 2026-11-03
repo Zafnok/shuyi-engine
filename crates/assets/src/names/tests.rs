@@ -156,6 +156,12 @@ fn literal_check_reports_the_longest_name() {
         names.literal_in("A Brook never runs."),
         Some(("family.brook", "Brook"))
     );
+    // Longest even when a shorter name comes first by id and is met first.
+    let short_first = table(&[("a", "Ada"), ("b", "Ada Brook")]);
+    assert_eq!(
+        short_first.literal_in("Ada Brook"),
+        Some(("b", "Ada Brook"))
+    );
     // Of equally long names, the first by id.
     assert_eq!(
         names.literal_in("Wynn and Cole."),
@@ -178,6 +184,50 @@ fn literal_check_is_whole_word() {
     assert_eq!(names.literal_in("Osgars and Osgar2 and XOsgar"), None);
     assert_eq!(names.literal_in("Tamr. Tam's"), Some(("outcast", "Tam")));
     assert_eq!(names.literal_in("_Tam"), Some(("outcast", "Tam")));
+}
+
+/// A name found where an earlier, overlapping try at it failed: the first
+/// `Ash Ash` in `XAsh Ash Ash` follows a letter, the second is whole.
+#[test]
+fn literal_check_finds_a_name_overlapping_a_miss() {
+    let names = table(&[("twins", "Ash Ash")]);
+    assert_eq!(names.literal_in("XAsh Ash Ash"), Some(("twins", "Ash Ash")));
+    assert_eq!(names.literal_in("XAsh Ash"), None);
+}
+
+/// Whether `text` holds `word` as a whole word, tried at every offset:
+/// what the literal-name check must agree with.
+fn whole_word_anywhere(text: &str, word: &str) -> bool {
+    let is_word = |c: char| c.is_ascii_alphanumeric();
+    (0..=text.len())
+        .filter(|&i| text.is_char_boundary(i))
+        .any(|i| {
+            text[i..].starts_with(word)
+                && !text[..i].chars().next_back().is_some_and(is_word)
+                && !text[i + word.len()..].chars().next().is_some_and(is_word)
+        })
+}
+
+proptest! {
+    /// The check finds a name exactly where a search at every offset of
+    /// the text outside its tokens does.
+    #[test]
+    fn literal_check_agrees_with_a_search_at_every_offset(
+        text in "[ATa_. ,'{}nN:k1é]{0,24}",
+    ) {
+        let names = table(&[("king", "Ta"), ("pair", "Ta a"), ("one", "T1")]);
+        let plain: Vec<&str> = split_tokens(&text)
+            .filter_map(|part| match part {
+                Part::Text(t) | Part::Unclosed(t) => Some(t),
+                Part::Token(_) => None,
+            })
+            .collect();
+        let expected = [("pair", "Ta a"), ("king", "Ta"), ("one", "T1")]
+            .into_iter()
+            .filter(|(_, form)| plain.iter().any(|t| whole_word_anywhere(t, form)))
+            .max_by(|a, b| a.1.len().cmp(&b.1.len()).then(b.0.cmp(a.0)));
+        prop_assert_eq!(names.literal_in(&text), expected);
+    }
 }
 
 #[test]

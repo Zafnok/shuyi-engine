@@ -17,7 +17,7 @@ use super::{
 };
 use crate::error::ContentError;
 use crate::lang::text_width;
-use crate::names::{Names, is_name_id, name_token};
+use crate::names::{Literals, Names, is_name_id, name_token};
 use crate::text::word_wrap;
 
 /// The `{tokens}` a game fills in itself, besides the names table's
@@ -126,6 +126,8 @@ pub fn check_scene<D: Directive>(
         limits: *rules.limits(),
         tokens: rules.tokens(),
         names: rules.names(),
+        longest_name: rules.names().map(Names::longest),
+        literals: rules.names().map(Literals::of),
         hashes: BTreeMap::new(),
         errors: Vec::new(),
     };
@@ -195,6 +197,11 @@ struct Checker<'a, R> {
     limits: DialogueLimits,
     tokens: &'a dyn Tokens,
     names: Option<&'a Names>,
+    /// The width of the longest name of `names`, found once for the scene
+    /// rather than for each line.
+    longest_name: Option<usize>,
+    /// The literal forms of `names`, found once for the scene too.
+    literals: Option<Literals<'a>>,
     /// The first line of the scene with each line-id hash: its source
     /// line, speaker and text.
     hashes: BTreeMap<String, (u32, String, String)>,
@@ -308,22 +315,21 @@ impl<R> Checker<'_, R> {
 
     /// [`lines_at_longest`] of `text`, with the names of the table.
     fn pages(&self, text: &str) -> usize {
-        let name = self.names.map(Names::longest);
-        lines_at_longest(text, self.tokens, name, self.limits.box_width)
+        lines_at_longest(text, self.tokens, self.longest_name, self.limits.box_width)
     }
 
     /// [`longest_width`] of `text`, with the names of the table.
     fn len(&self, text: &str) -> usize {
-        longest_width(text, self.tokens, self.names.map(Names::longest))
+        longest_width(text, self.tokens, self.longest_name)
     }
 
     /// Reports a display name from the names table written out in `text`
     /// instead of its token, which a rename would leave behind.
     fn literal_names(&mut self, line: u32, text: &str) {
-        let Some(names) = self.names else {
+        let (Some(names), Some(literals)) = (self.names, &self.literals) else {
             return;
         };
-        let Some((id, form)) = names.literal_in(text) else {
+        let Some((id, form)) = literals.find_in(text) else {
             return;
         };
         let message = self.tokens.written_name(id, form).unwrap_or_else(|| {

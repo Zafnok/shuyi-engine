@@ -238,6 +238,7 @@ pub(super) fn add_lines(
     let raw = crate::ron::parse_ron_seed(file, source, seed)
         .map_err(|e| errors.push(e))
         .unwrap_or_default();
+    let longest_name = names.longest();
     for entry in raw {
         let at = |message: &str| ContentError::new(file, format!("\"{}\": {message}", entry.key));
         if scene_of_key(&entry.key).is_none() {
@@ -263,7 +264,7 @@ pub(super) fn add_lines(
             for problem in token_problems(text, rules.tokens, Some(&data.names)) {
                 errors.push(at(&problem));
             }
-            let width = longest_width(text, rules.tokens, Some(names.longest()));
+            let width = longest_width(text, rules.tokens, Some(longest_name));
             match english.and_then(|line| limit(line.kind, &rules.limits)) {
                 Some(limit) if width > limit => {
                     errors.push(at(&format!("text is {width} cells; the limit is {limit}")));

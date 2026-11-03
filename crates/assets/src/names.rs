@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
+use core::cmp::Reverse;
 
 use shuyi_core::text::{Part, split_tokens};
 
@@ -145,25 +146,78 @@ impl Names {
     /// of its short forms (`Ada Brook` is `smith`, not `family.brook`).
     /// See [`literal_form`] for what counts.
     pub fn literal_in(&self, text: &str) -> Option<(&str, &str)> {
-        let plain: Vec<&str> = split_tokens(text)
-            .filter_map(|part| match part {
-                Part::Text(t) | Part::Unclosed(t) => Some(t),
-                Part::Token(_) => None,
-            })
+        Literals::of(self).find_in(text)
+    }
+}
+
+/// The literal forms of a table's names ([`literal_form`]) by their first
+/// byte, found once for many texts: a text tries at each place a whole
+/// word may start only the names that begin with the byte there. A
+/// substring search per name per line of every script took most of a
+/// handheld's start.
+pub(crate) struct Literals<'n> {
+    /// Each name with a literal form, as its id and the form, by id.
+    forms: Vec<(&'n str, &'n str)>,
+    /// For each first byte, the forms (their places in `forms`) that
+    /// begin with it.
+    by_first: BTreeMap<u8, Vec<usize>>,
+}
+
+impl<'n> Literals<'n> {
+    /// The literal forms of `names`.
+    pub(crate) fn of(names: &'n Names) -> Self {
+        let forms: Vec<(&str, &str)> = names
+            .names
+            .iter()
+            .filter_map(|(id, name)| Some((id.as_str(), literal_form(name)?)))
+            .filter(|(_, form)| !form.is_empty())
             .collect();
-        let mut longest: Option<(&str, &str)> = None;
-        for (id, name) in &self.names {
-            let Some(form) = literal_form(name) else {
-                continue;
-            };
-            if longest.is_none_or(|(_, l)| form.len() > l.len())
-                && plain.iter().any(|t| contains_word(t, form))
-            {
-                longest = Some((id.as_str(), form));
+        let mut by_first: BTreeMap<u8, Vec<usize>> = BTreeMap::new();
+        for (k, (_, form)) in forms.iter().enumerate() {
+            by_first.entry(form.as_bytes()[0]).or_default().push(k);
+        }
+        Self { forms, by_first }
+    }
+
+    /// [`Names::literal_in`]: the longest form written as whole words in
+    /// `text` outside its tokens, with its id; of equally long ones, the
+    /// first by id. A whole word starts at the start of a part or after a
+    /// character that is no ASCII letter or digit, and is not followed by
+    /// one.
+    pub(crate) fn find_in(&self, text: &str) -> Option<(&'n str, &'n str)> {
+        let mut found: Vec<usize> = Vec::new();
+        let plain = split_tokens(text).filter_map(|part| match part {
+            Part::Text(t) | Part::Unclosed(t) => Some(t),
+            Part::Token(_) => None,
+        });
+        for part in plain {
+            let mut at_start = true;
+            for (i, c) in part.char_indices() {
+                if at_start && let Some(forms) = self.by_first.get(&part.as_bytes()[i]) {
+                    found.extend(
+                        forms
+                            .iter()
+                            .filter(|&&k| whole_word_at(part, i, self.forms[k].1)),
+                    );
+                }
+                at_start = !c.is_ascii_alphanumeric();
             }
         }
-        longest
+        found
+            .into_iter()
+            .max_by_key(|&k| (self.forms[k].1.len(), Reverse(k)))
+            .map(|k| self.forms[k])
     }
+}
+
+/// Whether `word` is written in `text` at byte `i` and is not followed by
+/// an ASCII letter or digit, case-sensitively.
+fn whole_word_at(text: &str, i: usize, word: &str) -> bool {
+    text.as_bytes()[i..].starts_with(word.as_bytes())
+        && !text[i + word.len()..]
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphanumeric())
 }
 
 /// What of display name `name` the literal-name check looks for: the name
@@ -179,17 +233,6 @@ pub fn literal_form(name: &str) -> Option<&str> {
         .find_map(|article| name.strip_prefix(article))
         .unwrap_or(name);
     Some(form)
-}
-
-/// Whether `text` contains `word` as whole words, case-sensitively: not
-/// preceded or followed by a letter or digit.
-fn contains_word(text: &str, word: &str) -> bool {
-    let is_word = |c: char| c.is_ascii_alphanumeric();
-    text.match_indices(word).any(|(i, _)| {
-        let before = text[..i].chars().next_back();
-        let after = text[i + word.len()..].chars().next();
-        !before.is_some_and(is_word) && !after.is_some_and(is_word)
-    })
 }
 
 /// Whether `c` is a letter of the Latin script: ASCII, Latin-1 or Latin
