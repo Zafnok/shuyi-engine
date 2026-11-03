@@ -1227,6 +1227,71 @@ fn duplicate_scene_ids_across_files_and_line_order() {
     );
 }
 
+/// The files of `sources`, parsed, as the `.dlg` format reads them.
+fn parsed_files(sources: &[(&str, &str)]) -> Vec<DialogueFile<Cue>> {
+    sources
+        .iter()
+        .map(|(file, source)| DialogueFile {
+            scenes: parse_dlg(file, source).0,
+        })
+        .collect()
+}
+
+/// Checked a scene at a time, scripts give what one call gives: the same
+/// scenes, or the same errors in the same order.
+#[test]
+fn scripts_checked_a_scene_at_a_time_are_the_same() {
+    let rules = Rules::default();
+    let good = [(
+        "a.dlg",
+        "@scene s
+> x
+@end
+@scene t
+> y
+@end
+",
+    )];
+    let bad = [
+        (
+            "a.dlg",
+            "@scene s
+> x
+@end
+",
+        ),
+        (
+            "b.dlg",
+            "
+@scene s
+> y
+@end
+@scene t
+> {
+@end
+",
+        ),
+    ];
+    for sources in [&good[..], &bad[..]] {
+        let at_once = scripts_from_parsed(parsed_files(sources), &rules);
+        let mut check = ScriptsCheck::new(parsed_files(sources));
+        let mut steps = 0;
+        while check.check_next(&rules) {
+            steps += 1;
+        }
+        assert!(!check.check_next(&rules));
+        assert_eq!(steps, if sources.len() == 1 { 2 } else { 3 });
+        assert_eq!(check.finish(&rules), at_once);
+    }
+    // Finishing early checks the rest.
+    let mut check = ScriptsCheck::new(parsed_files(&bad));
+    assert!(check.check_next(&rules));
+    assert_eq!(
+        check.finish(&rules),
+        scripts_from_parsed(parsed_files(&bad), &rules)
+    );
+}
+
 #[test]
 fn files_that_are_not_utf8() {
     let ok = "@scene a\n> x\n@end\n";

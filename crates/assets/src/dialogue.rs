@@ -505,7 +505,7 @@ pub fn scripts_from_sources<D: Directive, F: AsRef<str>>(
         errors.extend(e);
         scenes.extend(parsed);
     }
-    checked(scenes, errors, rules)
+    ScriptsCheck::with_errors(scenes, errors).finish(rules)
 }
 
 /// Validates scenes already parsed (`files`, from the `.dlg` format
@@ -516,40 +516,85 @@ pub fn scripts_from_parsed<D: Directive>(
     files: impl IntoIterator<Item = DialogueFile<D>>,
     rules: &impl SceneRules<D>,
 ) -> Result<Scripts<D>, Vec<ContentError>> {
-    let scenes = files.into_iter().flat_map(|file| file.scenes).collect();
-    checked(scenes, Vec::new(), rules)
+    ScriptsCheck::new(files).finish(rules)
 }
 
-/// [`Scripts`] of `scenes`, or every problem with them added to `errors`
-/// (those found parsing them), ordered by file and line.
-fn checked<D: Directive>(
+/// [`scripts_from_parsed`] one scene at a time, for a game that must hand
+/// control back to its platform between them (a handheld's update
+/// callback, which its OS ends when it runs too long): [`Self::new`], then
+/// [`Self::check_next`] until it returns false, then [`Self::finish`]. The
+/// scripts and the errors are the same.
+pub struct ScriptsCheck<D = NoDirective> {
+    /// The scenes, in file order.
     scenes: Vec<ParsedScene<D>>,
-    mut errors: Vec<ContentError>,
-    rules: &impl SceneRules<D>,
-) -> Result<Scripts<D>, Vec<ContentError>> {
-    for s in &scenes {
-        errors.extend(check_scene(s, rules));
-        errors.extend(rules.scene_problems(s));
+    /// How many of them are checked.
+    checked: usize,
+    /// The problems found so far.
+    errors: Vec<ContentError>,
+}
+
+impl<D: Directive> ScriptsCheck<D> {
+    /// The check of the scenes of `files` (from the `.dlg` format [`Dlg`],
+    /// in file order), none checked yet.
+    pub fn new(files: impl IntoIterator<Item = DialogueFile<D>>) -> Self {
+        let scenes = files.into_iter().flat_map(|file| file.scenes).collect();
+        Self::with_errors(scenes, Vec::new())
     }
-    errors.extend(check_duplicates(&scenes));
-    if errors.is_empty() {
-        let table = DialogueTable {
-            scenes: scenes
-                .iter()
-                .map(|p| (p.scene.id.clone(), p.scene.clone()))
-                .collect(),
-            files: scenes
-                .iter()
-                .map(|p| (p.scene.id.clone(), p.file.clone()))
-                .collect(),
+
+    /// The check of `scenes`, the problems found reading them in `errors`.
+    fn with_errors(scenes: Vec<ParsedScene<D>>, errors: Vec<ContentError>) -> Self {
+        Self {
+            scenes,
+            checked: 0,
+            errors,
+        }
+    }
+
+    /// Checks the next scene with [`check_scene`] and the game's own
+    /// [`SceneRules::scene_problems`]; false if every scene was checked
+    /// already.
+    pub fn check_next(&mut self, rules: &impl SceneRules<D>) -> bool {
+        let Some(scene) = self.scenes.get(self.checked) else {
+            return false;
         };
-        Ok(Scripts {
-            table,
-            parsed: scenes,
-        })
-    } else {
-        errors.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-        Err(errors)
+        self.errors.extend(check_scene(scene, rules));
+        self.errors.extend(rules.scene_problems(scene));
+        self.checked += 1;
+        true
+    }
+
+    /// [`Scripts`] of the scenes, or every problem with them, ordered by
+    /// file and line: those [`Self::check_next`] found, and the scene ids
+    /// across files. The scenes not checked yet are checked with `rules`
+    /// first.
+    ///
+    /// # Errors
+    ///
+    /// Every problem found, if there is one.
+    pub fn finish(mut self, rules: &impl SceneRules<D>) -> Result<Scripts<D>, Vec<ContentError>> {
+        while self.check_next(rules) {}
+        let mut errors = core::mem::take(&mut self.errors);
+        let scenes = self.scenes;
+        errors.extend(check_duplicates(&scenes));
+        if errors.is_empty() {
+            let table = DialogueTable {
+                scenes: scenes
+                    .iter()
+                    .map(|p| (p.scene.id.clone(), p.scene.clone()))
+                    .collect(),
+                files: scenes
+                    .iter()
+                    .map(|p| (p.scene.id.clone(), p.file.clone()))
+                    .collect(),
+            };
+            Ok(Scripts {
+                table,
+                parsed: scenes,
+            })
+        } else {
+            errors.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+            Err(errors)
+        }
     }
 }
 
