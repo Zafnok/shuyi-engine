@@ -237,12 +237,11 @@ None.
     its GBA backend can pan too: each mixer voice's pan comes from
     `pan_gains`, tested with 3027's host mixer. If not, 3027 fills in
     the pan when it lands, as its own clause says;
-  - **either order with 3031 (parked, in-house sound):** if 3031 is
-    done, its `in-house-sound` backend can pan too: it starts each
+  - **from 3031 (done):** its `in-house-sound` backend can pan too: it starts each
     voice with 3030's `Params::balance` set from `pan_gains` divided by
-    16 (1/65536 to 1/4096), with a test on 3031's null output that a
-    full-right pan sounds only on the right. If not, 3031 does it, as
-    its own clause says;
+    16 (1/65536 to 1/4096), with a test on the side its tests call
+    (`crates/app/src/audio/in_house/tests.rs`) that a full-right pan sounds only
+    on the right;
   - **either order with 3017 (parked, target capabilities):** if 3017
     is done, add `Pan` to the audio `features` of each profile whose
     backend now pans (`targets/playdate.ron`, and
@@ -331,7 +330,7 @@ None.
 5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues` if it is
    done. Then add it to the player's backend as a provided method with
    its warning, to the Playdate backend, to the GBA's if
-   3027 is done and to the in-house one if 3031 is done, and `Pan` to
+   3027 is done, to the in-house one (3031's), and `Pan` to
    their profiles if 3017 is done.
 6. Add the grid listener, and 1120's if 1120 is done.
 7. Add `volume` and `pan` to the contract's `Sound`, raise `VERSION`,
@@ -381,7 +380,7 @@ None.
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
 - [ ] The Playdate backend's fake SDK gets the left and right volumes
       `pan_gains` gives.
-- [ ] If 3027 or 3031 is done: its backend gets the balance
+- [ ] The in-house backend (3031's), and 3027's if 3027 is done, gets the balance
       `pan_gains` gives, and a full-right pan sounds only on the right.
       If 3017 is done: each profile whose backend pans lists `Pan`.
 - [ ] `shuyi-ui` and `shuyi-assets` still build for

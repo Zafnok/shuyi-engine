@@ -87,5 +87,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0072](0072-session-records-app-notes-what-the-platform-gives-a-hash-per-frame-of-what-happened-and-ron-never-migrated.md) | Session records: App notes what the platform gives, a hash per frame of what happened, and RON that is never migrated | Accepted; extends ADR-0024, ADR-0022 |
 | [0073](0073-the-mixers-seams-commands-as-words-in-a-safe-ring-streams-through-a-workers-ring-and-a-bank-of-sounds.md) | The mixer's seams: commands as words in a safe ring, streams through a worker's ring, and a bank of sounds | Accepted; extends ADR-0066 |
 | [0074](0074-session-records-from-real-builds-whole-sessions-kept-beside-the-saves-and-a-screens-own-state-hash.md) | Session records from real builds: whole sessions kept beside the saves, and a screen's own state hash | Accepted; extends ADR-0072, ADR-0036, ADR-0022, ADR-0051 |
+| [0075](0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md) | In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

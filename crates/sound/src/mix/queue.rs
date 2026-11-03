@@ -263,8 +263,14 @@ impl Command {
     }
 }
 
-/// Makes the two ends for `voices` voices.
-pub(super) fn ends(voices: usize, commands: usize) -> (Remote, Inbox) {
+/// Makes the two ends for `voices` voices, with the bank and the stream slots as
+/// they are: each one's generation and whether it is taken.
+pub(super) fn ends(
+    voices: usize,
+    sounds: Vec<(u32, bool)>,
+    streams: Vec<(u32, bool)>,
+    commands: usize,
+) -> (Remote, Inbox) {
     let commands = Shared::new(Ring::new(commands, COMMAND_WORDS));
     let ended = Shared::new(Ring::new(voices.max(1), EVENT_WORDS));
     (
@@ -272,9 +278,33 @@ pub(super) fn ends(voices: usize, commands: usize) -> (Remote, Inbox) {
             commands: Shared::clone(&commands),
             ended: Shared::clone(&ended),
             voices: alloc::vec![(0, false); voices],
+            sounds,
+            streams,
         },
         Inbox { commands, ended },
     )
+}
+
+/// The next tenant of a free place of `table`, which is taken from now on.
+fn reserve(table: &mut [(u32, bool)]) -> Result<Handle, Full> {
+    let index = table.iter().position(|place| !place.1).ok_or(Full)?;
+    let generation = table[index].0.wrapping_add(1);
+    table[index] = (generation, true);
+    Ok(Handle {
+        index: u32::try_from(index).map_err(|_| Full)?,
+        generation,
+    })
+}
+
+/// Frees `handle`'s place of `table`, if it is still its tenant's.
+fn release(table: &mut [(u32, bool)], handle: Handle) {
+    if let Some(place) = usize::try_from(handle.index)
+        .ok()
+        .and_then(|index| table.get_mut(index))
+        .filter(|place| place.0 == handle.generation)
+    {
+        place.1 = false;
+    }
 }
 
 /// The mixer as a game's thread sees it, when the mixer is on the audio thread:
@@ -288,6 +318,9 @@ pub struct Remote {
     ended: Shared<Ring>,
     /// Each voice's generation, and whether it is busy.
     voices: Vec<(u32, bool)>,
+    /// The same of the bank's places and the stream slots, which this end hands out.
+    sounds: Vec<(u32, bool)>,
+    streams: Vec<(u32, bool)>,
 }
 
 impl Remote {
@@ -330,6 +363,29 @@ impl Remote {
         {
             *entry = (voice.0.generation, true);
         }
+    }
+
+    /// A place in the bank, named now, so that a play can follow at once: a backend
+    /// hands the sound over to [`Mixer::put_sound`] by a route of its own, ahead of
+    /// that play. [`Full`] says the bank has none free.
+    pub fn reserve_sound(&mut self) -> Result<SoundId, Full> {
+        reserve(&mut self.sounds).map(SoundId)
+    }
+
+    /// Frees a place [`reserve_sound`](Self::reserve_sound) named.
+    pub fn release_sound(&mut self, sound: SoundId) {
+        release(&mut self.sounds, sound.0);
+    }
+
+    /// A stream slot, named now, as [`reserve_sound`](Self::reserve_sound) names a
+    /// place in the bank, for [`Mixer::put_stream`].
+    pub fn reserve_stream(&mut self) -> Result<StreamId, Full> {
+        reserve(&mut self.streams).map(StreamId)
+    }
+
+    /// Frees a slot [`reserve_stream`](Self::reserve_stream) named.
+    pub fn release_stream(&mut self, stream: StreamId) {
+        release(&mut self.streams, stream.0);
     }
 
     /// [`Mixer::play`], from here.
@@ -400,8 +456,16 @@ impl Inbox {
     /// Applies every command that has come, and says which voices ended. It takes
     /// no lock and allocates nothing.
     pub fn apply(&mut self, mixer: &mut Mixer) {
+        self.apply_with(mixer, |_| {});
+    }
+
+    /// [`apply`](Self::apply), calling `before` ahead of each command. A backend's
+    /// own hand-over goes there: whatever was handed over before a command was sent
+    /// has arrived once that command has, so a play always finds its sound.
+    pub fn apply_with(&mut self, mixer: &mut Mixer, mut before: impl FnMut(&mut Mixer)) {
         let mut slot = [0; COMMAND_WORDS];
         while self.commands.pop(&mut slot) {
+            before(mixer);
             if let Some(command) = Command::decode(&slot) {
                 mixer.apply(command);
             }

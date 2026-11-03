@@ -128,6 +128,12 @@ pub trait Backend {
         Err(Unsupported)
     }
 
+    /// The system suspends the game (`on`) or has resumed it: a backend whose output
+    /// can stop stops it here, after the player has held what sounds.
+    fn hold_output(&mut self, on: bool) {
+        let _ = on;
+    }
+
     /// Says a problem of the player's in the backend's log, by default
     /// nowhere.
     fn warn(&mut self, _line: &str) {}
@@ -777,10 +783,12 @@ impl<B: Backend> Audio for PlayerDevice<B> {
         if let Some(player) = &mut self.player {
             player.suspend(&mut self.backend);
         }
+        self.backend.hold_output(true);
         self.log_warnings();
     }
 
     fn resume(&mut self) {
+        self.backend.hold_output(false);
         if let Some(player) = &mut self.player {
             player.resume(&mut self.backend);
         }

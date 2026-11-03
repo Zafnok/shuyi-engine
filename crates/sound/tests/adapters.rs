@@ -348,6 +348,25 @@ fn a_seek_among_the_headers_reads_on_into_the_sound() {
 
 // -- Malformed input --
 
+#[test]
+fn a_header_is_held_to_the_bytes_there_when_a_source_is_made() {
+    let limits = Limits::default();
+    let whole = wav16(2, 8_000, &[1; 100]);
+    assert!(
+        WavSource::new(&whole, &limits).is_ok(),
+        "exactly what it says"
+    );
+    let mut longer = whole.clone();
+    longer.extend_from_slice(&[0; 8]);
+    assert!(
+        WavSource::new(&longer, &limits).is_ok(),
+        "more than it needs"
+    );
+    // The last frame short: a cut of one sample is seen now, not as it plays.
+    let cut = &whole[..whole.len() - 4];
+    assert!(WavSource::new(cut, &limits).is_err());
+}
+
 /// `bytes` with up to a few of them changed, and maybe cut short.
 fn damaged(bytes: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
     (

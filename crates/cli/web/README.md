@@ -29,6 +29,9 @@ itself, so a game needs no copy of its own.
   string/object marshalling) loaded first. Both vendored, see below.
 - `gamepad.js`: controllers, a miniquad JS plugin over the browser's
   Gamepad API. The engine's own code, not vendored. See below.
+- `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
+  with `shuyi-app`'s `in-house-sound` feature plays through. The engine's own
+  code, not vendored. See below.
 - `download.js`: offers the browser a file, for the debug menu's "Save
   session". The engine's own code, not vendored. See below.
 
@@ -173,6 +176,23 @@ Dependabot's `backend` group too.
   the plugin reports no pads; the keyboard still works.
 - `index.html` loads it after `mq_js_bundle.js` (it calls the bundle's
   `miniquad_add_plugin`) and before `load(...)`.
+
+## The engine's own `sound.js`
+
+- It and `crates/sound-out/src/sys.rs` list the same `shuyi_sound_*` functions and
+  the same plugin version: `shuyi-cli`'s tests fail otherwise. A build without
+  `in-house-sound` never calls it, and the loader logs that it is unused.
+- **What it needs:** a secure context (HTTPS, or `localhost`), as `AudioWorklet`
+  does. No cross-origin isolation, no special headers and no atomics: nothing is
+  shared but messages. A page's Content Security Policy has to allow `blob:` in
+  `script-src`, where its worklet loads from. Anywhere it can't run, the game goes on
+  silently and says so once in the console.
+- **The queue:** the comment at its top is the contract, and `crates/sound-out/src/web.rs`
+  says it from the Rust side. `tools/sound-parity/ring_test.js` tests its ring under
+  node, in CI's `sound-parity` job, its indices wrapping.
+- The `AudioContext` starts on the first gesture, as a browser asks: `index.html`
+  resumes every context on one. Until then the mix runs on a timer and is discarded,
+  so what plays keeps its place on the player's clock.
 
 ## Building and running
 

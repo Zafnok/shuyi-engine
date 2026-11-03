@@ -1,0 +1,44 @@
+[package]
+name = "shuyi-sound-out"
+description = "Shuyi Engine's sound output: hands a mix of 16-bit samples to the system, through CPAL natively and a Web Audio worklet of its own in the browser, with an output that discards it for a machine with no sound"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# The workspace lints (`[workspace.lints]` in the root Cargo.toml), copied because
+# one differs, as `shuyi-app`'s are (ADR-0021 §6): `unsafe_code` is `deny` here, and
+# `src/sys.rs` alone allows it. A test in `lib.rs` keeps the rest equal.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+undocumented_unsafe_blocks = "warn"
+
+[dependencies]
+shuyi-sound = { path = "../sound" }
+thiserror.workspace = true
+
+# Windows' output (ADR-0066): none of its features, so no ASIO. Linux and macOS come
+# with ticket 3032; until then they have only the output that discards.
+[target.'cfg(windows)'.dependencies]
+cpal = { version = "0.18.2", default-features = false }
+
+[dev-dependencies]
+# The null output against the mixer's golden table.
+shuyi-assets = { path = "../assets", default-features = false, features = ["golden"] }

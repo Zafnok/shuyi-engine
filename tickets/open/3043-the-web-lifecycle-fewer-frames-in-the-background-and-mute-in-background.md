@@ -272,7 +272,8 @@ Visions of Shuyi.
 - the Page Lifecycle API's `freeze` and `resume` events: a frozen page
   was hidden first, so `visibilitychange` covers it;
 - holding the sound on `Suspend` (2394), and the browser's
-  `AudioContext.suspend()` (3031, parked);
+  `AudioContext.suspend()` (3031 did it: `Output::suspend`, which `Audio::suspend`
+  reaches through the backend's `hold_output`);
 - `Suspend` for a minimized desktop window (3034; 3042 says why);
 - a lower frame rate on an idle screen that has the focus (3013 writes
   that ticket if the Deck's idle draw needs it);

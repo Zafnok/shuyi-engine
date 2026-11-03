@@ -12,6 +12,10 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `corpus.ron`, `corpus/` | The hashes that pin the test signals, how the Ogg files were made, and those files |
 | `budget.ron` | The fixed tolerances, the performance limits and each platform's evidence contract, with how each number was measured |
 | `capture.py` | Records the real output and the paired timings |
+| `wasapi.py` | Windows' recorder: WASAPI loopback, through the documented COM interfaces |
+| `install-endpoint.ps1` | CI's real render endpoint on a Windows runner, which has none: Scream, pinned by its hash |
+| `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
+| `ring_test.js` | The web sound ring's indices, under node |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
@@ -57,7 +61,23 @@ The browser half builds the same example for `wasm32-unknown-unknown`, puts it
 beside the loader as CI's job does, and runs `capture.py browser --page <its
 folder>`. The gate writes `target/sound-parity/matrix.json` and exits non-zero
 unless every mandatory cell passed. On a machine with one platform's capture
-it fails on the other's: only CI, with both, can pass.
+it fails on the others': only CI, with all of them, can pass.
+
+The Windows half is CI's `sound-parity-windows` job, whose recordings go to this one
+to be judged. On a person's machine it refuses to record unless the default endpoint
+already runs at 44,100 Hz, and it would play the test signals out loud: nothing makes
+that needed. To see only the timings of a recording:
+
+```bash
+cargo xtask sound-parity perf windows --dir target/sound-parity
+```
+
+How long a play takes to reach the device's buffer, measured at no volume, so that
+it can be run anywhere with nothing heard. It runs in a folder set up as the probe says.
+
+```bash
+cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release
+```
 
 `capture.py encode` remakes the Ogg files and `corpus.ron`, by hand on Linux,
 never in CI. A change to the corpus's numbers fails until then.
@@ -82,7 +102,9 @@ never in CI. A change to the corpus's numbers fails until then.
 - **What today's backend does wrong is no oracle.** `future_pause`,
   `future_rate` and `future_region` hold what a replacement must do, as their
   own expected signals; on quad-snd they report `unsupported`. `mute` pins
-  today's fallback and holds on quad-snd alone.
+  today's fallback and holds on quad-snd alone. `stream_gapless` holds a stream's
+  loop to every frame of its join, and `voices_full` holds that a sound with no voice
+  free takes none.
 
 ## The decoders
 
@@ -158,6 +180,15 @@ way. A `failed` cell is never measured again, and a slowdown shows in the median
 however often it is. The injected slowdown must fail. Raise a limit only with new calibration runs
 that justify it, written in `budget.ron`, never to pass.
 
+## A new backend
+
+`windows-in-house` and `browser-in-house` are `NewBackend`s in `budget.ron`. Their
+recordings are held to the same expected signals, and their own timings to the same
+kind of limits, every cell mandatory. `old-new.jsonl` holds the same workload on the
+old backend and the new in turn, and each `old-new:<metric>` is judged by the median of
+the paired ratios against `old_new` in the budget. The decoders and the mixer stay
+measured on the old platform's row, being the same code.
+
 ## The matrix
 
 `matrix.json` has one cell per platform and check, each `passed`, `failed`,
@@ -170,7 +201,8 @@ another corpus fails: it is never a skip.
 | -------- | -------------- | ------------------ |
 | Linux, native | Actual output on a null sink, ALSA routed to it | This gate |
 | Chromium, the real loader | Actual output on the same sink, with a real click | This gate |
-| Windows | None: **blocks that port** | 3031, through WASAPI loopback on a real render endpoint, before its output code |
+| Windows | Actual output on a virtual render endpoint through WASAPI loopback, on the pinned image | This gate (3031) |
+| Each of those, on the new backend | The same scenarios, as `windows-in-house` and `browser-in-house`, with `old-new` cells against quad-snd on that platform. Linux's is 3032's | This gate (3031) |
 | macOS | None: **blocks that port**. Hosted capture is unproved | 3032, before its output code; if no route works it stays blocked on the old backend |
 | Playdate | Its SDK regressions, unchanged | Not part of this harness |
 | GBA | Not required | Its future ticket |
@@ -178,7 +210,7 @@ another corpus fails: it is never a skip.
 Before a port's new output implementation or switch:
 
 ```bash
-cargo xtask sound-parity port-ready windows --matrix target/sound-parity/matrix.json
+cargo xtask sound-parity port-ready macos --matrix target/sound-parity/matrix.json
 ```
 
 It fails until that platform has passed capture evidence with no unmet cell, and
@@ -192,7 +224,7 @@ of it mandatory.
 | ----- | -------------------- | ------------------ |
 | 2210 decoders | This gate passing | Decoder PCM against the oracles, errors and limits, equal-work decode |
 | 3030 mixer | 2210 | Exact mixer samples from independent signals; an offline render budget; bounded decoded PCM over short and long streams |
-| 3031 Windows, web | 3030, and Windows `port-ready` | A selectable backend beside quad-snd; old against new; `future_pause` and `future_rate` |
+| 3031 Windows, web | 3030, and Windows `port-ready` | A selectable backend beside quad-snd; old against new; `future_pause`, `future_rate`, `stream_gapless` and `voices_full` |
 | 3032 Linux, macOS | 3031, and macOS `port-ready` | The same, on both Mac architectures |
 | 2397 regions | 3031 | `future_region`, on the cue's new fields |
 | 3084 new default | 3032, 2397, 2234, 2378 | The complete matrix on both backends, then one line flipped |

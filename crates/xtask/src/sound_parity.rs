@@ -10,6 +10,8 @@
 //!   one passed. Missing, stale or silent evidence is a failure, never a skip.
 //! - `port-ready <platform>` reads a matrix and exits non-zero unless that
 //!   platform has real evidence: what a port's output work must pass first.
+//! - `perf <platform> --dir D` judges only that platform's timings: what a job that
+//!   measures again when they are noisy reads, on a machine with no oracle.
 //! - `decoders --dir D` holds `shuyi-sound`'s adapters to the corpus and the
 //!   oracle under `D`, as `gate` does too ([`decoders`]): no capture needed.
 //! - `mixer` holds `shuyi-sound`'s mixer to expected samples worked out from the
@@ -77,6 +79,11 @@ pub(crate) struct Budget {
     mixer: mixer::MixerLimits,
     /// What a stream may hold decoded.
     mixer_memory: mixer::MixerMemory,
+    /// Each new backend's verdicts against the old one, by metric.
+    old_new: BTreeMap<String, BTreeMap<String, Limit>>,
+    /// How long each new backend with a device to lose may take to be heard again,
+    /// in milliseconds.
+    device_loss_ms: BTreeMap<String, f64>,
     /// Which platforms a parity claim needs, and who establishes the others.
     platforms: BTreeMap<String, Contract>,
 }
@@ -98,6 +105,10 @@ pub(crate) struct Limit {
 enum Contract {
     /// Its capture runs in CI: every cell of it is mandatory.
     Captured,
+    /// A new backend, captured in CI beside the one it would replace on the same
+    /// platform: every cell is mandatory, and its speed is held to that one's. The
+    /// decoders and the mixer are measured there, as they are the same code.
+    NewBackend,
     /// Nothing captures it yet: this ticket has to establish that before
     /// that port's output work starts.
     Blocked(String),
@@ -169,6 +180,7 @@ pub(crate) fn run(root: &Path, args: &[String]) -> Vec<String> {
                 Err(e) => vec![e],
             }
         }
+        ["perf", platform, "--dir", dir] => perf_failures(root, platform, Path::new(dir)),
         ["decoders", "--dir", dir] => decoder_failures(root, Path::new(dir)),
         ["mixer"] => mixer_failures(root),
         ["give-up"] => give_up::run(root, false),
@@ -199,6 +211,24 @@ fn decoder_failures(root: &Path, dir: &Path) -> Vec<String> {
         Ok(cells) => failures(&json!({"schema": SCHEMA, "cells": cells}).to_string()),
         Err(e) => vec![e],
     }
+}
+
+/// What `perf` prints: every cell of the platform's timings that didn't pass.
+fn perf_failures(root: &Path, platform: &str, dir: &Path) -> Vec<String> {
+    let budget: Budget = match read_ron(&root.join(TOOL).join("budget.ron")) {
+        Ok(budget) => budget,
+        Err(e) => return vec![e],
+    };
+    let base = dir.join(platform);
+    let mut cells = performance_cells(platform, &base, &budget);
+    // Every timing the gate judges of it, so that a noisy one is measured again.
+    if matches!(budget.platforms.get(platform), Some(Contract::NewBackend)) {
+        cells.extend(old_new_cells(platform, &base, &budget));
+    } else {
+        cells.extend(decoder_speed_cells(platform, &base, &budget));
+        cells.extend(mixer_speed_cells(platform, &base, &budget));
+    }
+    failures(&json!({"schema": SCHEMA, "cells": cells}).to_string())
 }
 
 /// What `mixer` prints: every cell of it that didn't pass.
@@ -364,7 +394,7 @@ fn gate(root: &Path, dir: &Path, revision: &str) -> Result<(), Vec<String>> {
             Contract::Blocked(who) => {
                 cells.push(cell(platform, "capture", false, "unsupported", who));
             }
-            Contract::Captured => {
+            Contract::Captured | Contract::NewBackend => {
                 cells.extend(platform_cells(dir, platform, &plan, &budget, &pins));
             }
         }
@@ -503,8 +533,86 @@ fn platform_cells(
     }
     cells.extend(fault_cells(platform, plan, &runs[0], &oracle, tolerance));
     cells.extend(performance_cells(platform, &base, budget));
-    cells.extend(decoder_speed_cells(platform, &base, budget));
-    cells.extend(mixer_speed_cells(platform, &base, budget));
+    if matches!(budget.platforms.get(platform), Some(Contract::NewBackend)) {
+        cells.extend(old_new_cells(platform, &base, budget));
+        cells.extend(device_loss_cell(platform, &base, budget));
+    } else {
+        cells.extend(decoder_speed_cells(platform, &base, budget));
+        cells.extend(mixer_speed_cells(platform, &base, budget));
+    }
+    cells
+}
+
+/// Whether a backend came back when its device did, from `base/device-loss.json`: none
+/// for a platform with no device to lose. Evidence that isn't there fails.
+fn device_loss_cell(platform: &str, base: &Path, budget: &Budget) -> Option<Value> {
+    let limit = budget.device_loss_ms.get(platform)?;
+    let path = base.join("device-loss.json");
+    let report: Value = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
+    let alive = report["still_running"] == json!(true);
+    let heard = report["heard_ms"].as_f64();
+    let status = if alive && heard.is_some_and(|ms| ms <= *limit) {
+        "passed"
+    } else {
+        "failed"
+    };
+    let detail = format!("{report} from {}, limit {limit} ms", path.display());
+    Some(cell(platform, "device-loss", true, status, &detail))
+}
+
+/// A new backend against the old on its platform, from `base/old-new.jsonl`: the same
+/// workload in turn. Nothing here is equal work to the sample, so each metric has a
+/// limit of its own, and a gap in the new one's recording is a failure.
+fn old_new_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
+    let path = base.join("old-new.jsonl");
+    let rows: Vec<Value> = fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect();
+    let Some(limits) = budget.old_new.get(platform) else {
+        return vec![cell(platform, "old-new", true, "failed", "no budget")];
+    };
+    if rows.is_empty() {
+        let why = format!("no samples in {}", path.display());
+        return vec![cell(platform, "old-new", true, "failed", &why)];
+    }
+    let side = |name: &str, metric: &str| -> Vec<f64> {
+        rows.iter()
+            .filter(|row| row["side"] == name)
+            .filter_map(|row| row["metrics"][metric].as_f64())
+            .collect()
+    };
+    let gaps: f64 = side("new", "underruns").iter().sum();
+    let status = if gaps == 0.0 && !side("new", "underruns").is_empty() {
+        "passed"
+    } else {
+        "failed"
+    };
+    let detail = format!("{gaps} gaps while everything played");
+    let mut cells = vec![cell(platform, "old-new:underruns", true, status, &detail)];
+    for (metric, limit) in limits {
+        let (old, new) = (side("old", metric), side("new", metric));
+        let against = ratios(&old, &new);
+        let detail = format!(
+            "new against old: median ratio {:.3}, spread {:.3}, {} pairs, new {:.2}, old {:.2}",
+            against.median,
+            against.spread,
+            against.pairs,
+            median(&new),
+            median(&old),
+        );
+        cells.push(cell(
+            platform,
+            &format!("old-new:{metric}"),
+            true,
+            judge(&against, *limit),
+            &detail,
+        ));
+    }
     cells
 }
 

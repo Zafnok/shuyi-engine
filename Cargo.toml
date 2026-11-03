@@ -27,6 +27,12 @@ libm = "0.2"
 proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
 insta = "1"
 
+# Cargo allows one crate of a build to say `links = "alsa"`, on any target, and
+# quad-snd and CPAL each bring one. While both are here this holds CPAL's place, and
+# CPAL is built only for Windows (ADR-0075). Ticket 3079 takes it out.
+[patch.crates-io]
+alsa-sys = { path = "tools/sound-parity/alsa-sys-held" }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"

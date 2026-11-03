@@ -204,14 +204,13 @@ None.
   - Web music: `load_music` (wasm32) takes the length from
     `track_length_ms` and hands the file to the browser as it is.
   - The docs of `Backend::length` and `Clip` say OGG, FLAC or MP3.
-  - **Either order with 3031** (parked, the replacement backend): if
-    3031 is done, supply FLAC/MP3 through 2210's source contract and
+  - **From 3031 (done):** supply FLAC/MP3 through 2210's source contract and
     the external decoder adapters in bounded chunks, on native and
-    the current-loader web path. Do not turn a streamed replacement
-    track into one whole WAV/AudioBuffer. Its comparative tests use
-    2573's correctness/speed checks and retain the old reference until
-    3079. If not, nothing to do (3031 adds the bounded source path and
-    these comparative checks when it lands).
+    the current-loader web path: `Kind` and `track_source` in
+    `crates/app/src/audio/in_house.rs` are where a format joins the stream.
+    Do not turn a streamed replacement track into one whole WAV/AudioBuffer.
+    Its comparative tests use 2573's correctness/speed checks and retain the old
+    reference until 3079.
 
 - **No feature of their own.** `shuyi-app` and `shuyi-cli` add none.
   With every format feature off nothing changes: no new dependency in

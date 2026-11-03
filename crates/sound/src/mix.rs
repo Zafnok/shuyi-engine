@@ -277,7 +277,68 @@ impl Mixer {
     /// The two ends for commanding this mixer from another thread, with room for
     /// `commands` commands waiting ([`queue`]).
     pub fn remote(&self, commands: usize) -> (Remote, Inbox) {
-        queue::ends(self.voices.len(), commands)
+        let sounds = self
+            .generations
+            .iter()
+            .zip(&self.sounds)
+            .map(|(generation, sound)| (*generation, sound.is_some()))
+            .collect();
+        let streams = self
+            .streams
+            .iter()
+            .map(|slot| (slot.generation, slot.source.is_some()))
+            .collect();
+        queue::ends(self.voices.len(), sounds, streams, commands)
+    }
+
+    /// Puts `pcm` in the place of the bank [`Remote::reserve_sound`] named, and gives
+    /// back what was there for the caller to free. It neither allocates nor frees, so
+    /// a backend's hand-over can call it on the audio thread.
+    pub fn put_sound(&mut self, sound: SoundId, pcm: SharedPcm) -> Option<SharedPcm> {
+        let Some(index) = usize::try_from(sound.0.index)
+            .ok()
+            .filter(|index| *index < self.sounds.len())
+        else {
+            return Some(pcm);
+        };
+        self.generations[index] = sound.0.generation;
+        self.sounds[index].replace(pcm)
+    }
+
+    /// Holds `source` in the stream slot [`Remote::reserve_stream`] named, and gives
+    /// back what was there for the caller to free. It neither allocates nor frees.
+    pub fn put_stream(
+        &mut self,
+        stream: StreamId,
+        source: Box<dyn Source + Send>,
+    ) -> Option<Box<dyn Source + Send>> {
+        let Some(slot) = usize::try_from(stream.0.index)
+            .ok()
+            .and_then(|index| self.streams.get_mut(index))
+        else {
+            return Some(source);
+        };
+        let old = slot.source.take();
+        slot.hold(source);
+        slot.generation = stream.0.generation;
+        old
+    }
+
+    /// Takes `stream` out of its slot, ending what is playing it, for the caller to
+    /// free where it may. A mix never frees one.
+    pub fn take_stream(&mut self, stream: StreamId) -> Option<Box<dyn Source + Send>> {
+        let index = usize::try_from(stream.0.index).ok()?;
+        if self.streams.get(index)?.generation != stream.0.generation {
+            return None;
+        }
+        for voice in &mut self.voices {
+            if voice.active && voice.origin == Origin::Stream(index) {
+                voice.finish(&mut self.streams);
+            }
+        }
+        let slot = &mut self.streams[index];
+        slot.retired = false;
+        slot.source.take()
     }
 
     /// Puts `pcm` in the bank.

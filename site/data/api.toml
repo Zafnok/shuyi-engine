@@ -41,4 +41,8 @@ text = "the heap counter of debug builds"
 
 [[crate]]
 name = "shuyi_sound"
-text = "decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which no backend plays through yet"
+text = "decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which only the backend of `shuyi-app`'s `in-house-sound` feature plays through yet"
+
+[[crate]]
+name = "shuyi_sound_out"
+text = "hands a mix to the system: CPAL on Windows, a Web Audio worklet in the browser, and an output that discards it"

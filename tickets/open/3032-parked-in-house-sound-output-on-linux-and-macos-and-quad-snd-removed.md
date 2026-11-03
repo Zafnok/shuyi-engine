@@ -17,6 +17,22 @@ completed:
 
 3031 provides Windows/web output over the owned mixer and decoder adapters.
 This ticket adds Linux (the Steam Deck included) and macOS through CPAL.
+
+**From 3031 (done):**
+
+- **`links = "alsa"`.** CPAL's Linux path needs `alsa-sys` and quad-snd's needs
+  `quad-alsa-sys`, each with `links = "alsa"`, which Cargo allows once in a build on
+  any target. 3031 patches `alsa-sys` to an empty crate
+  (`tools/sound-parity/alsa-sys-held`, [ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md))
+  and builds CPAL only for Windows. Linux needs real ALSA, so this ticket starts by
+  replacing that patch: a held crate that re-exports `quad-alsa-sys`'s bindings under
+  the name CPAL's `alsa` wants, or `quad-alsa-sys` patched to use `alsa-sys`, proved
+  on Linux with quad-snd's own cells still passing. Its result goes in an ADR.
+- **What is there to extend:** `Output` (`crates/sound-out`) with `src/windows.rs`'s
+  thread, which owns the stream and watches the default device; `in_house.rs` in
+  `shuyi-app` needs no change for a new system. A new backend's platform is a
+  `NewBackend` row of `budget.ron`, and `capture.py native` gains what
+  `capture.py windows` has, `--new-probe` and `--only`.
 Keep old/new paths side by side; the separate final ticket 3079 owns removal.
 See [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)
 and [2902's evidence](../../docs/research/2902-sound-after-quad-snd.md).

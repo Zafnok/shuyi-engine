@@ -5,7 +5,7 @@
 // from 58 runs (ticket 2042, written at `performance`). Change one only with new
 // runs that justify it, written here, and raise `version`: never to pass.
 (
-    version: 5,
+    version: 6,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -77,6 +77,32 @@
             // the 0.53 that stays: around 29 ms, a few ms of jitter is a big ratio.
             "latency_ms": (max_ratio: 1.36, max_spread: 0.53, slows: false),
         },
+        "windows": {
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 1.08, max_spread: 0.15, slows: false),
+        },
+        // A new backend against itself, as its platform's old one is: the same limits
+        // as that one's, which three runs held (ticket 3031).
+        "windows-in-house": {
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 1.25, max_spread: 0.50, slows: false),
+        },
+        "browser-in-house": {
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.52, slows: true),
+            "decode_wav_ms": (max_ratio: 1.17, max_spread: 0.22, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.19, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.09, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 1.14, max_spread: 0.53, slows: false),
+        },
     },
     // The adapters against the old path (ticket 2210), from CI run 41366247884 and
     // the runs named in the ticket's notes. Natively it is the same libraries on the
@@ -96,6 +122,10 @@
             "wav": (ratio: None, max_share: 0.05),
             "ogg": (ratio: None, max_share: 0.05),
         },
+        "windows": {
+            "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.20, slows: true)), max_share: 0.03),
+            "ogg": (ratio: Some((max_ratio: 1.05, max_spread: 0.05, slows: true)), max_share: 0.03),
+        },
     },
     // The mixer (ticket 3030). quad-snd has no offline mix to compare with, so this
     // is a share of the sound's own length: 32 voices, at other rates and looped,
@@ -108,16 +138,47 @@
     mixer: {
         "linux-native": (max_share: 0.13, min_slowdown: 1.5),
         "browser-chromium": (max_share: 0.28, min_slowdown: 1.5),
+        "windows": (max_share: 0.15, min_slowdown: 1.5),
     },
     // A stream holds a worker's ring of 4096 frames and a voice's 128, however long
     // it is: bounded by construction, measured the same over 1 and 10 seconds.
     mixer_memory: (max_held_frames: 4224),
+    // A new backend against the old one on its platform (ticket 3031): the same
+    // workload in turn, so a ratio is new over old. They are different work, so 1 is
+    // no target: each limit is a guard a quarter past the worst measured, and each
+    // spread twice the worst. On Windows, CI runs 41407007407, 41413879571 and
+    // 41419687839: CPU 2.52, 3.16 and 3.16 times quad-snd's cycles (spread at most
+    // 0.30), a little under 1 % of a core; latency 0.23, 0.22 and 0.23 of its own (19
+    // ms against 85; the limit holds it near the ticket's aim of 30); memory 0.71. In
+    // the browser, run 41419687839, one run of the worklet's lead as it is now so far
+    // (ticket 2042 measures more): latency 1.80 of quad-snd's (54 ms against 30), CPU
+    // 1.07 and 1.09, memory 1.00.
+    old_new: {
+        "windows-in-house": {
+            "cpu_ms": (max_ratio: 4.0, max_spread: 0.60, slows: false),
+            "peak_kib": (max_ratio: 0.85, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 0.35, max_spread: 0.10, slows: false),
+        },
+        "browser-in-house": {
+            "cpu_ms": (max_ratio: 1.35, max_spread: 0.10, slows: false),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 2.25, max_spread: 0.82, slows: false),
+        },
+    },
+    // How long a new backend may take to be heard again, from when an endpoint is back
+    // after the one it played on went away: the second the ticket gives a player whose
+    // headphones came out, in milliseconds.
+    device_loss_ms: {
+        "windows-in-house": 1000,
+    },
     // Each platform's evidence. Only a `Captured` one can support a parity claim,
     // and every cell of it is mandatory. `Blocked` says who must establish it.
     platforms: {
         "linux-native": Captured,
         "browser-chromium": Captured,
-        "windows": Blocked("3031 establishes capture first, through WASAPI loopback on a real render endpoint"),
+        "windows": Captured,
+        "windows-in-house": NewBackend,
+        "browser-in-house": NewBackend,
         "macos": Blocked("3032 establishes capture first; hosted Mac capture is unproved"),
     },
 )

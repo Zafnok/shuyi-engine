@@ -74,6 +74,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2040 | Close the API gate's crate-coverage gap: every shipped engine crate, including the Playdate backend and heap counter |
 | 2041 | The API listing sees what the semver check sees, in every crate: one feature choice per crate |
 | 2042 | The sound gate's browser latency limit calibrated against more runs, so a noisy machine doesn't fail a pull request |
+| 2043 | Mutation-test `shuyi-sound`'s adapters, which a run on one package doesn't build |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
@@ -702,8 +703,8 @@ specifications, never copied. The order, when unparked:
   Nick unparked the whole chain on 2026-10-31, ahead of the MVP
   ([`decisions.md`](decisions.md)). It starts with a working native/browser
   baseline gate (2573), then PCM/decoder adapters (2210), mixer (3030),
-  Windows/web (3031), Linux/macOS (3032), loop regions (2397), and the new
-  default (3084). Each stage qualifies consumers while retaining the old path,
+  Windows/web (3031) and its headphones check (3087), Linux/macOS (3032), loop
+  regions (2397), and the new default (3084). Each stage qualifies consumers while retaining the old path,
   and each can be backed out if a hurdle can't be climbed
   ([ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
   Only final ticket 3079 removes quad-snd, after the complete comparative matrix

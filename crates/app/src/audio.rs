@@ -10,9 +10,19 @@
 //! quad-snd can't pause (ADR-0056), so [`device::Macroquad`] keeps the
 //! backend's defaults there, and the player mutes what it holds.
 
+#[cfg(feature = "in-house-sound")]
+pub(crate) mod in_house;
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg_attr(feature = "in-house-sound", allow(dead_code))]
 mod native_music;
 pub(crate) mod voice;
+
+/// The backend this build plays through: the one place that chooses, by the feature
+/// `in-house-sound` (ADR-0068). No game code or file names one.
+#[cfg(not(feature = "in-house-sound"))]
+pub use device::Macroquad as Chosen;
+#[cfg(feature = "in-house-sound")]
+pub use in_house::InHouse as Chosen;
 
 use std::path::{Path, PathBuf};
 
@@ -59,6 +69,7 @@ pub(crate) fn platform_folder(folder: &str) -> String {
 /// worker thread into contexts of its own ([`native_music`], game
 /// ADR-0028); on the web the browser decodes it asynchronously, so it goes
 /// through macroquad's.
+#[cfg(not(feature = "in-house-sound"))]
 pub(crate) mod device {
     #[cfg(target_arch = "wasm32")]
     use macroquad::audio::{
