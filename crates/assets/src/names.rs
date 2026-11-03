@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
+use core::cmp::Reverse;
 
 use shuyi_core::text::{Part, split_tokens};
 
@@ -184,7 +185,7 @@ impl<'n> Literals<'n> {
     /// character that is no ASCII letter or digit, and is not followed by
     /// one.
     pub(crate) fn find_in(&self, text: &str) -> Option<(&'n str, &'n str)> {
-        let mut best: Option<usize> = None;
+        let mut found: Vec<usize> = Vec::new();
         let plain = split_tokens(text).filter_map(|part| match part {
             Part::Text(t) | Part::Unclosed(t) => Some(t),
             Part::Token(_) => None,
@@ -193,25 +194,19 @@ impl<'n> Literals<'n> {
             let mut at_start = true;
             for (i, c) in part.char_indices() {
                 if at_start && let Some(forms) = self.by_first.get(&part.as_bytes()[i]) {
-                    for &k in forms {
-                        if self.beats(k, best) && whole_word_at(part, i, self.forms[k].1) {
-                            best = Some(k);
-                        }
-                    }
+                    found.extend(
+                        forms
+                            .iter()
+                            .filter(|&&k| whole_word_at(part, i, self.forms[k].1)),
+                    );
                 }
                 at_start = !c.is_ascii_alphanumeric();
             }
         }
-        best.map(|k| self.forms[k])
-    }
-
-    /// Whether form `k` is reported over `best`: it is longer, or as long
-    /// and first by id.
-    fn beats(&self, k: usize, best: Option<usize>) -> bool {
-        best.is_none_or(|b| {
-            let (len, best_len) = (self.forms[k].1.len(), self.forms[b].1.len());
-            len > best_len || (len == best_len && k < b)
-        })
+        found
+            .into_iter()
+            .max_by_key(|&k| (self.forms[k].1.len(), Reverse(k)))
+            .map(|k| self.forms[k])
     }
 }
 

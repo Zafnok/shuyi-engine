@@ -156,6 +156,12 @@ fn literal_check_reports_the_longest_name() {
         names.literal_in("A Brook never runs."),
         Some(("family.brook", "Brook"))
     );
+    // Longest even when a shorter name comes first by id and is met first.
+    let short_first = table(&[("a", "Ada"), ("b", "Ada Brook")]);
+    assert_eq!(
+        short_first.literal_in("Ada Brook"),
+        Some(("b", "Ada Brook"))
+    );
     // Of equally long names, the first by id.
     assert_eq!(
         names.literal_in("Wynn and Cole."),
