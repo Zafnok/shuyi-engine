@@ -99,7 +99,9 @@ None.
       whether the ratio leans one way.
 - [x] `budget.ron` says why its limit is what it is, naming those runs.
 - [x] The injected slowdown still fails, on every metric where it `slows`.
-- [x] The `sound-parity` job passes on ten runs in a row with no sound change.
+- [x] The `sound-parity` job passes on ten runs in a row with no sound change
+      (before 3031 merged; after it, every failure is a 3031 cell, ticketed in
+      3088, 3089 and 2044, and none of this ticket's cells failed in 20 runs).
 - [x] The book's chapter is updated (2802), or the completion notes have a
       `Book:` line saying why not.
 - [x] All gates in the `run-gates` skill pass.
@@ -141,7 +143,8 @@ ms around 29, so a few ms of jitter is a large ratio.
 **The fix: the same rule over these runs**, for the four cells: `max_ratio` 1 +
 twice the worst distance, `max_spread` twice the worst range, rounded up. Browser
 latency 1.36 (its spread stays 0.53, never reached), browser Ogg 1.26 and 0.39,
-native latency 1.20 and 0.46, native Ogg 1.09 and 0.24. Budget version 5.
+native latency 1.20 and 0.46, native Ogg 1.09 and 0.24. Budget version 6 (3031
+made it 5 while this was open).
 Every other limit was never exceeded in these runs, and stays. Native
 `decode_wav_ms` (2 of 77 over 0.05) and `cpu_ms` (1 of 77 over 0.10) were
 inconclusive now and then, which the job's retry is for.
@@ -167,6 +170,36 @@ beside it. All ten passed. Nine passed on their first measure; run 7's native
 leaves) and passed when the job measured again. A first try of the ten failed in
 the gate's own tests, as the scratch workflow named the sound chain without a
 `footprint.ron` line; it now deletes itself from its checkout first.
+
+**After 3031 merged.** Main gained the in-house backends while this was open, so
+the job ran again, 20 times on the merge (2758d9a0), as CI run 41595469804:
+twenty numbered copies of the `sound-parity-windows` and `sound-parity` pair, as a
+matrix would share their artifacts' names. Run 41602987496 gathered their timings.
+No cell this ticket changed failed or stayed inconclusive. 11 of the 20 jobs
+passed; the other 9 failed only on cells 3031 brought:
+
+- 7 (jobs 2, 4, 10, 11, 18, 19, 20): a `browser-in-house` scenario's marker
+  missing, nearly always at one of two exact correlations: **3088**. PR 245's own
+  run failed this way too, and passed when run again;
+- job 10: one gap in `windows-in-house perf:underruns`: **3089**;
+- jobs 4 and 12: `windows perf` limits from three runs (a `cpu_ms` failed at
+  1.086), and job 7: `linux-native decoder-speed:ogg` inconclusive three times:
+  **2044**, the same treatment as this ticket for those limits.
+
+3084 (the new default) now waits for all three.
+
+**From 3031's handoff:** `old_new`'s `browser-in-house` `latency_ms`, over those
+20 runs: medians 1.659 to 1.965, spreads up to 0.473, so by `old_new`'s rule (a
+quarter past the worst, twice the worst spread) 2.46 and 0.95, from 2.25 and 0.82
+set on one run. None of the 20 was over the old limit. `browser-in-house`
+against itself stayed inside the limits it copied from `browser-chromium` before
+this ticket (latency medians 0.906 to 1.051, spread at most 0.150; Ogg 0.989 to
+1.006, 0.052), so they stay.
+
+How to run the job many times: a scratch branch with a workflow made from
+`ci.yml`'s two jobs, numbered, triggered on a push to that branch and never
+merged. It deletes itself from its checkout before the gate's tests, which
+refuse a file naming the sound chain that `footprint.ron` doesn't cover.
 
 **Gates.** This changes `budget.ron` and the ticket: the skill sync, `cargo fmt`,
 `cargo test -p xtask`, the ticket lint, links, the docs map and typos pass

@@ -2,7 +2,7 @@
 // comes from recordings of quad-snd on CI's pinned image, three independent runs
 // of the job (attempts 1 to 3 of CI run 41271510575, 2026-11-01), then held by the
 // fresh runs named in the ticket's notes. Four performance limits were set again
-// from 58 runs (ticket 2042, written at `performance`). Change one only with new
+// from 58 runs and one of `old_new` from 20 (ticket 2042, written at each). Change one only with new
 // runs that justify it, written here, and raise `version`: never to pass.
 (
     version: 6,
@@ -95,6 +95,9 @@
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
             "latency_ms": (max_ratio: 1.25, max_spread: 0.50, slows: false),
         },
+        // Its own noise, over the 20 runs of CI run 41595469804, stays inside the
+        // limits `browser-chromium` had before ticket 2042 (latency medians 0.906 to
+        // 1.051, spread at most 0.150; Ogg decode 0.989 to 1.006, 0.052), so they stay.
         "browser-in-house": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.52, slows: true),
             "decode_wav_ms": (max_ratio: 1.17, max_spread: 0.22, slows: true),
@@ -150,9 +153,9 @@
     // 41419687839: CPU 2.52, 3.16 and 3.16 times quad-snd's cycles (spread at most
     // 0.30), a little under 1 % of a core; latency 0.23, 0.22 and 0.23 of its own (19
     // ms against 85; the limit holds it near the ticket's aim of 30); memory 0.71. In
-    // the browser, run 41419687839, one run of the worklet's lead as it is now so far
-    // (ticket 2042 measures more): latency 1.80 of quad-snd's (54 ms against 30), CPU
-    // 1.07 and 1.09, memory 1.00.
+    // the browser, over the 20 runs of CI run 41595469804 (ticket 2042): latency 1.659
+    // to 1.965 of quad-snd's (about 54 ms against 30), spread at most 0.473; CPU 1.07
+    // to 1.11; memory 1.00. Its latency had been set from one run, 1.80.
     old_new: {
         "windows-in-house": {
             "cpu_ms": (max_ratio: 4.0, max_spread: 0.60, slows: false),
@@ -162,7 +165,7 @@
         "browser-in-house": {
             "cpu_ms": (max_ratio: 1.35, max_spread: 0.10, slows: false),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
-            "latency_ms": (max_ratio: 2.25, max_spread: 0.82, slows: false),
+            "latency_ms": (max_ratio: 2.46, max_spread: 0.95, slows: false),
         },
     },
     // How long a new backend may take to be heard again, from when an endpoint is back
