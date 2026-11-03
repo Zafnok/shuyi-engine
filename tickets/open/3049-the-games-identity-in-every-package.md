@@ -74,6 +74,13 @@ Why it matters:
 - **Visions of Shuyi:** its desktop and web packages look finished: an
   exe with its icon, name and version in Explorer, a `.app` with a bundle
   id (signing, 3051, needs one), a page with its icon in the tab.
+  The game/engine boundary audit of 2026-11-03 found the game doing the
+  Windows part itself: its own PNG-in-ICO writer and a build script with
+  the `winresource` crate that types the name out again. Its follow-up,
+  [game#1229](https://github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/1229-the-exe-icon-and-version-from-the-engine.md),
+  deletes both once the pin passes this ticket (the game ticket is not a
+  blocker). Its window icons draw their own 16 and 32 px pictures
+  (`app.icon_sizes`, 3113, done) because a downscale blurs a glyph.
 - **Other 2D games:** the same for every game that ships, with nothing
   written per OS.
 - **The end goal** (Nick, 2026-10-19, `docs/decisions.md`): an agent
@@ -101,7 +108,10 @@ None.
     PNG at each size no larger than the source, through `decode_png`,
     3072's `downscale` and `encode_png`. Empty without an icon. `shuyi
     web` doesn't run `check --target`, so a bad icon is an error here
-    too, naming its path;
+    too, naming its path. **From 3113 (done):** a size that
+    `app.icon_sizes` draws by hand is that file, not a downscale, as the
+    window's icons already do (so `Identity` carries the part's
+    `icon_sizes` too);
   - `ico(pictures) -> Vec<u8>`: the 6-byte header (0, type 1, the
     count), one 16-byte entry per picture (width and height, 0 for
     256; 0 colours; 0; planes 1; 32 bits; the PNG's length; its offset),
@@ -233,7 +243,10 @@ None.
 - **For the game:** a `shuyi.ron` with `web.title` reads as before.
   `Web::title`'s type changes, for code that builds a `Web` by hand.
   Nothing else changes until the game adds an `app` part. Say so in the
-  PR.
+  PR. Visions of Shuyi has one, and embeds its own icon and version
+  resource from a build script: its exported exe would get two resource
+  sections, so the game's PR moving the pin past this one (game#1229)
+  drops its own in the same change.
 - **Size:** if the PR passes about 600 changed lines, the web part (the
   icons, `%ICONS%`, the title from `app.name` and its escaping, the
   README, and the `NOTICES.txt` heading) goes to a follow-up ticket (the

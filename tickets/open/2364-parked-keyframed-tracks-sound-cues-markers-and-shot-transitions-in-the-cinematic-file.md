@@ -80,6 +80,18 @@ Why it matters:
   its `engine-change` skill, for a cinematic that shots alone can't
   make: a fade between shots, a sound at a time, or a value keyed over
   time.
+- **Timed sounds outside a cinematic.** The game/engine boundary audit
+  of 2026-11-03 found a game keeping two copies of "sounds at times,
+  handed out as a clock passes them" on one screen, about 25 lines: a
+  countdown queue of (seconds left, cue) ticked each frame (a delayed
+  cue), and a track of (time, cue) read by `from < at <= to` under a
+  clock the player can speed up. Part 2's `crossed` and `play_cues`
+  cover the second; when this part is designed, write the cue track so
+  it works without a cinematic and under any clock the caller passes,
+  and say whether a delayed cue (play this cue in N ms) belongs on
+  `AudioQueue` or is a one-cue track. It is not a request to unpark:
+  one screen uses it, and the game adopts it when this lands, with no
+  game ticket now.
 - **Other 2D games.** A title sequence, an intro, a boss's entrance, a
   credits roll. With tracks, an agent writes these in RON,
   `cinematic::check_with` reports mistakes with the file, 2220 reloads

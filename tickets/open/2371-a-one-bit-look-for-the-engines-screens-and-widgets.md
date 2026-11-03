@@ -5,8 +5,8 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
-blocked_by: ["3053"]
+status: todo
+blocked_by: []
 nick_input: none
 completed:
 ---
@@ -46,7 +46,17 @@ A request from the game.
    (3001) can name it as the default for a one-bit target. The widget
    painters take a **look** (box style, the roles of the frame, the
    focus bar, disabled text and the note rule) so that a game's own
-   menus can use the same painter in either look.
+   menus can use the same painter in either look. The game/engine
+   boundary audit of 2026-11-03 (in the game) found that a game's own
+   menus need two more things of the menu painter, or game#1184 keeps
+   its copy of it (about 60 of its 90 lines): **a title and a footer set
+   into the frame** (a round number in the top edge, a count left
+   centred in the bottom one) and **the rows clamped to a height** (a
+   menu taller than the space it opens in shows as many rows as fit,
+   scrolled with `Scroll::Centred` around the focus, its `▲`/`▼` marks
+   in the frame). `Scroll::Centred` is the rule: the game moves its
+   one-bit lists onto it (game#1077) before game#1184 starts, and
+   nothing here waits for that.
 5. **Examples from games that aren't tactics:** a puzzle game on the
    Playdate needs its Options and Key bindings screens and a "Quit?"
    question; a farming game's one-bit handheld build needs Profiles and
@@ -69,10 +79,22 @@ None.
   one-bit font the frame draws with), using the widgets in `ONE_BIT`.
 - The target profile (3001) names a default painter set (`glyph` or
   `onebit`) that the screens use when the game gives none. It reaches
-  a running game through 3053's facts: `PlatformFacts::from_profile`
+  a running game through 3053's facts (3053 is done): `PlatformFacts::from_profile`
   copies it, and the screens read it from `ctx.platform`.
 - Snapshots of every one-bit painter, as cells and as a one-bit frame
   (`frame/onebit.rs` `to_one_bit`).
+- The menu painter's frame, in every look: `widgets/menu/glyph.rs` gets
+  `size_in` and `paint_in`, which take a `MenuFrame` (`#[non_exhaustive]`
+  with `MenuFrame::new()`, `with_title`, `with_footer`, `fitting(rows)`;
+  `size` and `paint` stay and call them with `MenuFrame::new()`). The
+  title is printed two cells in on the top edge, the footer centred on
+  the bottom edge, each with a space either side and cut to fit; the
+  window is at least as wide as each needs (its text plus 6). With
+  `fitting(rows)`, a menu whose `shown` rows (plus its note rule and
+  note) don't fit `rows` shows as many as do, the first by
+  `Scroll::Centred` around the focus (as `ListCursor::window`
+  computes it), with the `▲`/`▼` marks where the look puts them. A
+  menu that fits keeps its own `first_shown`. Additive: no break.
 - `docs/`: where screens and widgets are documented, a line on the one-bit
   look and how to pick it.
 
@@ -111,6 +133,13 @@ ordinary row, with no focus bar and no note, as `GLYPH` does, and
 to do (2355 paints the inactive menu in every look, its clause says
 so).
 
+**Either order with 3201:** if 3201 is done, `screens/credits` is an
+engine screen: give it a one-bit painter (and its `CreditsLayout` for a
+50 × 15 console) with the others, picked by `WidgetLook::ONE_BIT`; if
+not, nothing to do (3201 adds `credits::onebit` itself, its clause says
+so). The game's credits screen moves to 3201 in game#1211, and its
+Playdate credits (game#1046) use this painter if it exists.
+
 **The game's look as the reference:** the game's one-bit skins
 (`crates/ui/src/screens/playdate.rs`, `options/playdate.rs`,
 `key_bindings/playdate.rs`, `profile/playdate.rs`,
@@ -120,7 +149,7 @@ it. Read them for the layout, take nothing game-specific (the game's
 palette names stay the game's; here the roles are `EngineColor`'s).
 
 **Size:** if the change passes about 600 lines, split it: this ticket
-keeps the widgets' `WidgetLook` and the Options and question painters;
+keeps the widgets' `WidgetLook`, `MenuFrame` and the Options and question painters;
 a follow-up (written in the same PR) takes Key bindings, Profiles, name
 entry and the layout picker.
 
@@ -132,7 +161,8 @@ entry and the layout picker.
    `PanelLook`, `BoxStyle`), `frame/onebit.rs` and `frame/onebit/roles.rs`,
    3001's target profiles, and the game's one-bit skins named above.
 2. **`WidgetLook`** and the widget paints taking it; `GLYPH` keeps every
-   snapshot.
+   snapshot. Then **`MenuFrame`** (`size_in`, `paint_in`): title,
+   footer and `fitting(rows)`, in both looks.
 3. **The one-bit painters**, one screen at a time, each with snapshots.
 4. **The profile's default painter set**.
 5. **Docs**.
@@ -144,6 +174,12 @@ entry and the layout picker.
       (cells and one-bit frame) that fits the one-bit frame.
 - [ ] A menu longer than its window scrolls with `Scroll::Centred` and
       shows `▲`/`▼` in the one-bit look (a test).
+- [ ] A menu painted with `MenuFrame::new().with_title(..).with_footer(..)`
+      shows both in its frame, and is widened to fit them (snapshots in
+      both looks).
+- [ ] A 12-item menu painted with `fitting(6)` and its focus on item 7
+      shows the rows `ListCursor::window` gives under `Scroll::Centred`
+      for that focus and room, with both marks (a test).
 - [ ] A game whose target profile names `onebit` gets the one-bit Options
       screen without calling `painted_by` (a test with a fake game).
 - [ ] All gates in the `run-gates` skill pass.
@@ -151,7 +187,8 @@ entry and the layout picker.
 ## Tests required
 
 - Snapshot: the one-bit painters.
-- Unit: `WidgetLook` roles; the default painter set from a profile.
+- Unit: `WidgetLook` roles; the default painter set from a profile;
+  `MenuFrame`'s width with a title and footer, and its clamped rows.
 
 ## Completion notes
 
