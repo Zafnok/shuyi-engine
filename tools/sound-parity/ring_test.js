@@ -1,5 +1,7 @@
-// The web sound ring's indices, wrapping (ticket 3031): `sound.js` itself, the ring it
-// hands to its worklet, run under node with nothing of a browser. `node ring_test.js`.
+// The web sound plugin under node, with nothing of a browser but fakes: `sound.js`
+// itself. The ring it hands to its worklet, its indices wrapping (ticket 3031), and
+// what of the mix reaches the worklet as the context starts (ticket 3088).
+// `node ring_test.js`.
 "use strict";
 
 const assert = require("node:assert");
@@ -8,15 +10,23 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const file = path.join(__dirname, "..", "..", "crates", "cli", "web", "sound.js");
-let plugin = null;
-vm.runInNewContext(fs.readFileSync(file, "utf8"), {
-    miniquad_add_plugin: (added) => {
-        plugin = added;
-    },
-    Int16Array,
-    Math,
-});
-const PcmRing = plugin.ring;
+const source = fs.readFileSync(file, "utf8");
+
+// The plugin `sound.js` adds, run with `globals` as its page.
+function load(globals) {
+    let plugin = null;
+    vm.runInNewContext(source, {
+        miniquad_add_plugin: (added) => {
+            plugin = added;
+        },
+        Int16Array,
+        Math,
+        ...globals,
+    });
+    return plugin;
+}
+
+const PcmRing = load({}).ring;
 
 const stereo = (...samples) => Int16Array.from(samples);
 
@@ -82,4 +92,154 @@ assert.strictEqual(new PcmRing(8).capacity, 8);
     assert.ok(ring.written < 0xfffffffb, "it did wrap");
 }
 
-console.log("the sound ring holds");
+const RATE = 44100;
+const BLOCK = 256;
+
+// A page with the plugin's output open on it: a clock moved by hand, a context that
+// runs when told, and a mix whose every block carries its number, so what reached the
+// worklet says what was discarded. With `activation` false the browser doesn't say
+// whether the page has had its gesture.
+function page({ activation = true } = {}) {
+    const state = {
+        now: 0,
+        made: 0,
+        posted: [],
+        activation: { hasBeenActive: false },
+        gestures: [],
+    };
+    const memory = { buffer: new ArrayBuffer(4 + BLOCK * 4) };
+    class Context {
+        constructor(options) {
+            this.sampleRate = options.sampleRate;
+            this.state = "suspended";
+            this.changes = [];
+            this.audioWorklet = { addModule: () => ({ then: (loaded) => (state.loaded = loaded) }) };
+            state.context = this;
+        }
+        addEventListener(type, listener) {
+            this.changes.push(listener);
+        }
+        connect() {}
+        suspend() {
+            this.state = "suspended";
+        }
+        resume() {}
+    }
+    class Node {
+        constructor() {
+            this.port = {
+                postMessage: (buffer) => state.posted.push(new Int16Array(buffer)[0]),
+                onmessage: null,
+            };
+            state.node = this;
+        }
+        connect() {}
+    }
+    const plugin = load({
+        window: {
+            AudioContext: Context,
+            isSecureContext: true,
+            navigator: activation ? { userActivation: state.activation } : {},
+            document: { addEventListener: (type, listener) => state.gestures.push(listener) },
+        },
+        AudioWorkletNode: Node,
+        Blob: class {},
+        URL: { createObjectURL: () => "blob:" },
+        performance: { now: () => state.now },
+        setInterval: (tick) => (state.tick = tick),
+        wasm_exports: {
+            shuyi_sound_fill: () => {
+                new Int16Array(memory.buffer, 4, BLOCK * 2)[0] = state.made++;
+                return 4;
+            },
+        },
+        wasm_memory: memory,
+        console,
+    });
+    const env = {};
+    plugin.register_plugin({ env });
+    assert.strictEqual(env.shuyi_sound_open(RATE, BLOCK, 0), RATE);
+    state.loaded();
+    // Time passing, the timer looking every 20 milliseconds.
+    state.pass = (ms) => {
+        for (let at = 0; at < ms; at += 20) {
+            state.now += 20;
+            state.tick();
+        }
+    };
+    // The worklet saying it has played everything sent, as it does each block.
+    state.played = () =>
+        state.node.port.onmessage({ data: { played: state.posted.length * BLOCK, silent: 0 } });
+    state.runs = () => {
+        state.context.state = "running";
+        state.context.changes.forEach((change) => change());
+        state.played();
+    };
+    state.gesture = () => {
+        state.activation.hasBeenActive = true;
+        state.gestures.forEach((gesture) => gesture());
+    };
+    state.hold = (on) => env.shuyi_sound_hold(on ? 1 : 0);
+    return state;
+}
+
+// Every block from `first` on reached the worklet, in order: none was discarded.
+function heard_from(state, first) {
+    const after = state.posted.filter((block) => block >= first);
+    assert.ok(after.length > 0, "something was heard");
+    after.forEach((block, i) => assert.strictEqual(block, first + i, "a block was discarded"));
+}
+
+// Before the gesture the mix runs on the clock and is discarded; from it, a sound is
+// heard whole however long the context takes to start.
+{
+    const state = page();
+    state.pass(200);
+    const before = state.made;
+    assert.ok(before >= 30, `the clock ran before the gesture: ${before} blocks`);
+    assert.ok(!state.posted.includes(before - 1), "nothing before the gesture was heard");
+    state.gesture();
+    // What a sound asked for on the gesture starts in.
+    const asked = state.made;
+    state.pass(40);
+    state.runs();
+    heard_from(state, asked);
+}
+
+// Where the browser doesn't say, the page's own gestures count.
+{
+    const state = page({ activation: false });
+    state.pass(100);
+    state.gesture();
+    const asked = state.made;
+    state.pass(40);
+    state.runs();
+    heard_from(state, asked);
+}
+
+// A context that never starts doesn't stop the clock: the mix catches up on it.
+{
+    const state = page();
+    state.gesture();
+    const asked = state.made;
+    state.pass(1000);
+    assert.strictEqual(state.made, asked, "the mix waits while the context starts");
+    state.pass(1100);
+    assert.ok(state.made - asked >= 340, `the mix caught up: ${state.made - asked} blocks`);
+}
+
+// A hold let go is heard whole too, while the context starts again.
+{
+    const state = page();
+    state.gesture();
+    state.runs();
+    state.hold(true);
+    state.pass(100);
+    state.hold(false);
+    const asked = state.made;
+    state.pass(40);
+    state.runs();
+    heard_from(state, asked);
+}
+
+console.log("the sound ring holds, and the context's start loses nothing");

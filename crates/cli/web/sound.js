@@ -23,9 +23,13 @@
 //   no atomics. Where there is no worklet, `shuyi_sound_open` says 0 and Rust carries
 //   on silently. The worklet's code loads from a blob: URL, which a page's own Content
 //   Security Policy has to allow in `script-src`.
-// - A timer asks for the frames that time passes and discards them until the context
-//   runs, which takes the first gesture (index.html resumes every context on one), so
-//   what plays keeps its place on the player's clock and its commands are heard.
+// - A timer asks for the frames that time passes and discards them until the first
+//   gesture (index.html resumes every context on one), so what plays keeps its place
+//   on the player's clock and its commands are heard.
+// - From the gesture the context is starting, which takes a device a moment, and the
+//   mix waits for it: a sound asked for on that gesture, or as a hold lets go, is heard
+//   whole and that moment late. A context that hasn't run within START_MS goes back to
+//   the timer, so one that never runs doesn't stop the player's clock.
 (function () {
     "use strict";
 
@@ -39,6 +43,8 @@
     var RING_BLOCKS = 32;
     // How often the timer looks, in milliseconds, before the context runs.
     var IDLE_MS = 20;
+    // How long the mix waits for a context that is starting, in milliseconds.
+    var START_MS = 2000;
 
     // The worklet's code, run there as a string of its source and here for what the
     // ring is, which CI's ring test reads from this plugin's `ring`.
@@ -135,6 +141,8 @@
     var held = false;
     var last_idle = 0;
     var timer = null;
+    var gestured = false;
+    var starting_since = -1;
     var vets = [];
 
     // The next block of the mix, or null while Rust has no output open.
@@ -174,12 +182,29 @@
         }
     }
 
+    // Whether the page has had the gesture that lets its context run. Escape and the
+    // modifier keys aren't one, though index.html resumes on them too.
+    function activated() {
+        var activation = window.navigator.userActivation;
+        return activation ? activation.hasBeenActive : gestured;
+    }
+
     // Before the context runs, or with none: the frames time has passed, discarded.
     function idle() {
         var now = performance.now();
         if (held || (node && context.state === "running")) {
             last_idle = now;
+            starting_since = -1;
             return;
+        }
+        if (context && activated()) {
+            if (starting_since < 0) {
+                starting_since = now;
+            }
+            // Starting: the mix waits, and catches up on the clock if it gives up.
+            if (now - starting_since < START_MS) {
+                return;
+            }
         }
         var block_ms = (block * 1000) / rate;
         while (now - last_idle >= block_ms) {
@@ -247,6 +272,18 @@
                 return 0;
             }
             context = opened;
+            if (!window.navigator.userActivation) {
+                // A browser that doesn't say whether the page has had its gesture.
+                ["keydown", "mousedown", "touchend"].forEach(function (type) {
+                    window.document.addEventListener(
+                        type,
+                        function () {
+                            gestured = true;
+                        },
+                        true
+                    );
+                });
+            }
             start_idle();
             var source = "(" + worklet_scope.toString() + ")(true);";
             var url = URL.createObjectURL(new Blob([source], { type: "application/javascript" }));

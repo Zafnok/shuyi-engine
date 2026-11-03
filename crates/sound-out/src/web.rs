@@ -13,9 +13,12 @@
 //!   special headers nor atomics.
 //! - A worklet with nothing to play sounds silence and counts it: the mix is only
 //!   asked for what will be heard, so a late page delays the sound and loses nothing.
-//! - Until the first gesture starts the `AudioContext`, or where a page has no worklet,
-//!   a timer asks for the frames that time has passed and discards them, so that what
-//!   plays keeps its place on the player's clock.
+//! - Until the first gesture, or where a page has no worklet, a timer asks for the
+//!   frames that time has passed and discards them, so that what plays keeps its place
+//!   on the player's clock.
+//! - From the gesture the `AudioContext` is starting, and the mix waits for it: a sound
+//!   asked for on the gesture is heard whole, as late as the device is to start. One
+//!   that hasn't started within a few seconds goes back to the timer.
 //!
 //! A panic stops the program here, since `wasm32-unknown-unknown` doesn't unwind.
 

@@ -188,11 +188,13 @@ Dependabot's `backend` group too.
   `script-src`, where its worklet loads from. Anywhere it can't run, the game goes on
   silently and says so once in the console.
 - **The queue:** the comment at its top is the contract, and `crates/sound-out/src/web.rs`
-  says it from the Rust side. `tools/sound-parity/ring_test.js` tests its ring under
-  node, in CI's `sound-parity` job, its indices wrapping.
+  says it from the Rust side. `tools/sound-parity/ring_test.js` tests it under node,
+  in CI's `sound-parity` job: its ring's indices wrapping, and that nothing mixed
+  after the gesture is lost while the context starts.
 - The `AudioContext` starts on the first gesture, as a browser asks: `index.html`
   resumes every context on one. Until then the mix runs on a timer and is discarded,
-  so what plays keeps its place on the player's clock.
+  so what plays keeps its place on the player's clock. From the gesture the mix waits
+  for the device to start, so a sound played on that click is heard whole.
 
 ## Building and running
 
