@@ -288,7 +288,11 @@ jobs:
           path: mutants.out
           if-no-files-found: ignore
 
-  # The sound adapters with their features, as the PR run's `adapters` job.
+  # The sound adapters with their features, as the PR run's `adapters` job, and
+  # with its nextest profile: three mutants of a source's `read` make a read
+  # never end, which a test that checks one read catches at once, but under
+  # `cargo test` the run waits on the tests that keep reading and calls the
+  # mutant a timeout.
   weekly-adapters:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: mutants (full, sound adapters)
@@ -303,12 +307,15 @@ jobs:
         run: bash scripts/setup-linux.sh
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
-          tool: cargo-mutants
+          tool: cargo-mutants,cargo-nextest
       - name: Run cargo mutants on the sound adapters
         continue-on-error: true
+        env:
+          NEXTEST_PROFILE: mutants
         run: >
           cargo mutants --features wav,vorbis
           -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs
+          --test-tool=nextest -vV
       - name: Upload mutants.out
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
