@@ -19,12 +19,11 @@
 # sound parity gates.
 #
 # `shuyi-sound`'s `wav.rs` and `vorbis.rs` are built only with its features, which a
-# run on one package doesn't turn on, so every mutant there would be missed whatever
-# the tests say. Their tests run with `--all-features` in `sound-parity`.
+# run with each package's default ones doesn't turn on: the workflow leaves them out
+# of that run with `-e` and tests them in a run of their own with the features on
+# (ticket 2043).
 exclude_globs = [
     "crates/app/**",
-    "crates/sound/src/wav.rs",
-    "crates/sound/src/vorbis.rs",
     "crates/sound-out/src/windows.rs",
     "crates/sound-out/src/web.rs",
     "crates/playdate/src/device/**",
@@ -159,5 +158,5 @@ exclude_re = [
     # A Vorbis source's `read` asks `next_packet` until the file ends: the mutant
     # that decodes nothing never ends, so it costs a shard its whole timeout and
     # fails it as one, though every test that reads a file would hang on it.
-    'VorbisSource<.a>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
+    'VorbisSource<\w+>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
 ]

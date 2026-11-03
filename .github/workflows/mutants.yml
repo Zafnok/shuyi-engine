@@ -34,6 +34,7 @@ jobs:
       mutants: ${{ steps.count.outputs.mutants }}
       shards: ${{ steps.count.outputs.shards }}
       of: ${{ steps.count.outputs.of }}
+      adapters: ${{ steps.count.outputs.adapters }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -56,14 +57,24 @@ jobs:
         run: bash .github/mutants-diff.sh > git.diff
       # 1 shard up to 40 mutants, 4 up to 160, otherwise 8: every shard pays
       # for its own setup and first full build, so a small diff gets one.
+      #
+      # `shuyi-sound`'s adapters (`wav.rs`, `vorbis.rs`) are built only with
+      # its `wav` and `vorbis` features, which a run with each package's
+      # default features never turns on: they are counted apart, and tested
+      # with them on in the `adapters` job (ticket 2043).
       - name: Count mutants and pick shards
         id: count
         run: |
           set -euo pipefail
           mutants=0
+          adapters=0
           if [ -s git.diff ]; then
-            cargo mutants --in-diff git.diff --list > mutants.txt
+            cargo mutants --in-diff git.diff --list \
+              -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs > mutants.txt
             mutants=$(wc -l < mutants.txt)
+            cargo mutants --in-diff git.diff --list \
+              -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs > adapters.txt
+            adapters=$(wc -l < adapters.txt)
           fi
           if [ "$mutants" -le 40 ]; then
             of=1
@@ -74,7 +85,9 @@ jobs:
           fi
           shards=$(seq -s, 0 $((of - 1)))
           echo "$mutants mutants in the diff: $of shard(s)"
+          echo "$adapters mutants in the sound adapters"
           {
+            echo "adapters=$adapters"
             echo "mutants=$mutants"
             echo "of=$of"
             echo "shards=[$shards]"
@@ -151,6 +164,7 @@ jobs:
         run: >
           CARGO_INCREMENTAL=1
           cargo mutants --in-diff git.diff --jobs 2
+          -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs
           --shard "$SHARD/$OF" --sharding round-robin
           --test-tool=nextest --baseline=skip --timeout 720 -vV
       - name: Upload mutants.out
@@ -161,12 +175,57 @@ jobs:
           path: mutants.out
           if-no-files-found: ignore
 
+  # `shuyi-sound`'s adapters with the features they are built with, on their
+  # own: in the shards `--features` would be every package's, and other
+  # crates' features aren't meant to combine. One shard, as a mutant here
+  # builds only `shuyi-sound`. The shared baseline is without the features,
+  # so this run tests its tree unmutated first.
+  adapters:
+    needs: [changes, plan]
+    if: needs.plan.outputs.adapters != '0'
+    name: mutants (diff, sound adapters)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-mutants,cargo-nextest
+      - name: Compute diff against base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          CARVED: 986e0342d4cd7c249871162baad07bff096a93e2
+        run: bash .github/mutants-diff.sh > git.diff
+      - name: Run cargo mutants on the sound adapters
+        env:
+          NEXTEST_PROFILE: mutants
+        run: >
+          CARGO_INCREMENTAL=1
+          cargo mutants --in-diff git.diff --jobs 2
+          -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs
+          --features wav,vorbis
+          --test-tool=nextest --timeout 720 -vV
+      - name: Upload mutants.out
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-pr-adapters-${{ github.run_id }}
+          path: mutants.out
+          if-no-files-found: ignore
+
   # Single required check for the PR run (game ADR-0014): the shards are
   # matrix legs, so branch protection requires this job.
   mutants-result:
     name: mutants (diff)
     if: always() && github.event_name == 'pull_request'
-    needs: [changes, plan, baseline, pr]
+    needs: [changes, plan, baseline, pr, adapters]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled
@@ -218,11 +277,42 @@ jobs:
           tool: cargo-mutants
       - name: Run cargo mutants shard
         continue-on-error: true
-        run: cargo mutants --shard ${{ matrix.shard }}/4 --baseline=skip
+        run: >
+          cargo mutants --shard ${{ matrix.shard }}/4 --baseline=skip
+          -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs
       - name: Upload mutants.out
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutants-weekly-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: mutants.out
+          if-no-files-found: ignore
+
+  # The sound adapters with their features, as the PR run's `adapters` job.
+  weekly-adapters:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: mutants (full, sound adapters)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-mutants
+      - name: Run cargo mutants on the sound adapters
+        continue-on-error: true
+        run: >
+          cargo mutants --features wav,vorbis
+          -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs
+      - name: Upload mutants.out
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-weekly-adapters-${{ github.run_id }}
           path: mutants.out
           if-no-files-found: ignore
