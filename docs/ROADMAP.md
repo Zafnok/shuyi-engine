@@ -360,8 +360,8 @@ On 2026-11-03 Nick added Bad Apple and DOOM after the maze chase, open
 must run Bad Apple and anything that can run video game logic must be
 able to run DOOM". The order:
 
-1. 2399 (pictures a skin paints at run time), 2243 (one-bit
-   flipbooks), 2244 (sounds made at run time) and 3088 (files dropped on
+1. 2399 (pictures a skin paints at run time), 2248 (one-bit
+   flipbooks), 2249 (sounds made at run time) and 3092 (files dropped on
    the window), in any order;
 2. 2779: the flipbook player, the Bad Apple test, on Pages and the
    Playdate;

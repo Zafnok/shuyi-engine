@@ -64,9 +64,9 @@ None.
   game before its first frame, through a small JS plugin of the port's
   own, made as the engine's are (`crates/cli/web/gamepad.js`, a version
   the loader checks).
-- **Either order with 3088:** if 3088 is done, a WAD dropped on the
+- **Either order with 3092:** if 3092 is done, a WAD dropped on the
   page's canvas starts the game with it (the player's own `doom2.wad`,
-  say), and the page says so. If not, Freedoom only; when 3088 lands
+  say), and the page says so. If not, Freedoom only; when 3092 lands
   the port adds the drop as a ticket of its own in its repository.
 - **Pages**: the port's own GitHub Pages site plays it, with the GPL
   notice and a link to the source on the page (the GPL asks that the
@@ -92,7 +92,7 @@ None.
 2. Link doomgeneric for wasm32 with Clang against nothing, list the
    undefined symbols, and write the libc for them.
 3. The build through the engine's export; the JS plugin for the WAD.
-4. The drop, if 3088 is done.
+4. The drop, if 3092 is done.
 5. The port's Pages site; play Freedoom's first map in a browser.
 6. The wasm32 demo test, if 2781 is done.
 7. The card and the PR here.
@@ -108,7 +108,7 @@ None.
       game.
 - [ ] The engine's examples page links to it, marked as a separate GPL
       project.
-- [ ] A dropped WAD plays, if 3088 is done (else the completion notes
+- [ ] A dropped WAD plays, if 3092 is done (else the completion notes
       say the port's own ticket adds it).
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass, here and the port's own.

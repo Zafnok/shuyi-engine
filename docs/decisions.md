@@ -1493,9 +1493,9 @@ maze chase"**.
   make a flipbook from their own copy.
 - **The tickets are open, after the maze chase (2776)**, and the game
   still comes first. Bad Apple: 2399 (pictures painted at run time),
-  2243 (one-bit flipbooks), then 2779 (the example). DOOM: 2399, 2244
+  2248 (one-bit flipbooks), then 2779 (the example). DOOM: 2399, 2249
   (sounds made at run time) and 2137, then 2780 (the port on the
   desktop), then 2781 (its demos replayed), 2782 (the browser) and 2783
-  (the Playdate). 3088 (files dropped on the window) lets a player bring
+  (the Playdate). 3092 (files dropped on the window) lets a player bring
   their own clip or WAD. DOOM's music (2784) needs MIDI and is parked
   with it.

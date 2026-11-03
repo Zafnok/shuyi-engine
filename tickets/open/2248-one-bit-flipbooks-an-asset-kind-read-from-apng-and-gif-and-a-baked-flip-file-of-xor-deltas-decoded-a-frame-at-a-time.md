@@ -1,5 +1,5 @@
 ---
-id: "2243"
+id: "2248"
 title: "One-bit flipbooks: an asset kind read from APNG and GIF, and a baked .flip file of XOR deltas decoded a frame at a time"
 type: feature
 milestone: "Engine: demos"
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2243 — One-bit flipbooks
+# 2248 — One-bit flipbooks
 
 ## Context
 

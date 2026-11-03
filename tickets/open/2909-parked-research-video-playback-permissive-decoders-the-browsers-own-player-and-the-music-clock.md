@@ -95,7 +95,7 @@ Why it matters:
 This ticket is research: a report, an ADR, and parked tickets for the
 build. It promises no crate.
 
-Since 2026-11-03, 2243 gives the engine one-bit flipbooks (long
+Since 2026-11-03, 2248 gives the engine one-bit flipbooks (long
 black-and-white clips decoded a frame at a time, for the Bad Apple
 test, 2779), and 2399 a picture a skin paints at run time. The research
 starts from both: a decoded video frame is a painted picture, and a

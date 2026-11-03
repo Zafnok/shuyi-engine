@@ -28,7 +28,7 @@ What there is:
   (3010, done); the game runs on a stack of its own (3028);
 - 2399 dithers an indexed picture to one bit through `onebit::BAYER`,
   in integers, at paint time;
-- 2244 plays sounds a game adds at run time, on the Playdate too;
+- 2249 plays sounds a game adds at run time, on the Playdate too;
 - the budgets for the Playdate are provisional (3011 measures them on
   a device).
 
@@ -81,7 +81,7 @@ how it plays with the d-pad and crank (if the crank is used, below).
   if `shuyi-playdate` reports it as an analog action; if it doesn't,
   the crank is unused and the completion notes say so). All of it
   through the keymap's `playdate` table.
-- **Sound**: DOOM's sound lumps through 2244 on the Playdate.
+- **Sound**: DOOM's sound lumps through 2249 on the Playdate.
 - **Measuring**: frame times in the simulator through the engine's
   frame records (3063), written in the completion notes; on a device
   too if Nick has one.

@@ -6,7 +6,7 @@ milestone: "Engine: demos"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
-blocked_by: ["2399", "2244", "2137"]
+blocked_by: ["2399", "2249", "2137"]
 nick_input: setup
 completed:
 ---
@@ -31,7 +31,7 @@ permissive code (`AGENTS.md` rule 7, ADR-0002 §8). So:
 - **It lives in `github.com/Zafnok/shuyi-doom`**, public, under the
   GPL. It depends on the engine by a pinned git revision, as the game
   does. The engine is taken under its MIT license. This repository gets
-  no GPL code: only the generic pieces DOOM needs (2399, 2244), and
+  no GPL code: only the generic pieces DOOM needs (2399, 2249), and
   this ticket, which its PR here moves to `done/` with a link to the
   port.
 - **The license version.** Chocolate Doom's file headers say "either
@@ -79,7 +79,7 @@ How DOOM fits the engine's rules (ADR-0002, ADR-0003 §2):
   2399 indexed `Painted` picture each frame and places it at the
   largest whole scale that fits, 4:3 corrected by drawing it 6 pixels
   tall for every 5 (as DOOM looked on a CRT; a setting turns it off).
-- **Sound** through 2244: the port reads each `DS*` lump (DMX: a
+- **Sound** through 2249: the port reads each `DS*` lump (DMX: a
   header, then 8-bit unsigned samples) when the game starts, adds it
   as a cue named after the lump, and plays DOOM's `S_StartSound` calls
   as `PlaySound` with DOOM's volume, centered: DOOM's stereo
@@ -160,7 +160,7 @@ How DOOM fits the engine's rules (ADR-0002, ADR-0003 §2):
 
 ## Implementation steps
 
-1. Read ADR-0002, ADR-0003 §2, 2137's `TickDriver`, 2399's ADR, 2244's
+1. Read ADR-0002, ADR-0003 §2, 2137's `TickDriver`, 2399's ADR, 2249's
    requests, `crates/app/src/folder.rs`, `examples/hello-grid` (its
    short path and tools), and doomgeneric's `doomgeneric.h`,
    `doomgeneric.c`, `i_video.c`, `i_sound.c`, `w_file*.c` and

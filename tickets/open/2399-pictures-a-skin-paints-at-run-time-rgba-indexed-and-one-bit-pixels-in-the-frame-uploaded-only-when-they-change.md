@@ -34,7 +34,7 @@ same table.
 
 Who needs a picture painted at run time:
 
-- **Bad Apple** (2779): each frame of a one-bit flipbook (2243) is
+- **Bad Apple** (2779): each frame of a one-bit flipbook (2248) is
   decoded into one 400 × 240 one-bit picture;
 - **DOOM** (2780): its software renderer writes a 320 × 200 picture of
   palette indices, 35 times a second, and flashes its palette
@@ -117,7 +117,7 @@ None.
   and when to use sprites.
 
 **Out (do not do):**
-- Decoding anything: flipbooks are 2243, DOOM's renderer is DOOM's.
+- Decoding anything: flipbooks are 2248, DOOM's renderer is DOOM's.
 - Rotation, tint and blend modes on a painted picture (2335 and 2337
   own those for sprites; either may extend to painted pictures later).
 - Shaders and GPU effects (2326, 2327, parked).

@@ -6,7 +6,7 @@ milestone: "Engine: demos"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
-blocked_by: ["2399", "2243"]
+blocked_by: ["2399", "2248"]
 nick_input: sign-off
 completed:
 ---
@@ -32,7 +32,7 @@ its name in a file the example loads. What it carries is:
 - an **original clip**: a short shadow animation of our own, made by a
   program in the repository, with an original tune, both under the
   engine's licenses;
-- a **player** that plays any flipbook (2243) in time with its music;
+- a **player** that plays any flipbook (2248) in time with its music;
 - **the recipe**, in the example's README: the player makes a flipbook
   from their own copy of the video with `ffmpeg` and `shuyi bake`, and
   drops it on the window or puts it in a folder beside the program.
@@ -41,7 +41,7 @@ It builds on:
 
 - 2399: a picture a skin paints at run time. Each frame is decoded
   into one one-bit picture;
-- 2243: the flipbook kind, read from APNG and GIF and baked to `.flip`;
+- 2248: the flipbook kind, read from APNG and GIF and baked to `.flip`;
 - `ctx.music_clock` (`crates/ui/src/ctx.rs`): where the music is in its
   track, so the frame shown is `seconds × rate`, and the picture keeps
   time with the sound even when frames are dropped. In silence it
@@ -99,10 +99,10 @@ or sounds out of time.
   - on the desktop, `clip.flip` (and its music, `clip.ogg`) in a
     folder named `mine` beside the program is read with `read_folder`
     and laid over the example's files;
-  - **Either order with 3088:** if 3088 is done, a flipbook and its
+  - **Either order with 3092:** if 3092 is done, a flipbook and its
     music dropped on the window are played too, on the desktop and the
     web, and the title says "Drop a flipbook here" where
-    `ctx.platform` says drops work. If not, nothing more here: 3088
+    `ctx.platform` says drops work. If not, nothing more here: 3092
     adds it;
   - the README's recipe: `ffmpeg -i bad_apple.mp4 -vf scale=480:360
     -f apng clip.png`, then `ffmpeg -i bad_apple.mp4 -vn clip.ogg`,
@@ -128,12 +128,12 @@ or sounds out of time.
 
 1. Read `examples/hello-grid` end to end (its `shuyi.ron`, `build.rs`,
    `files@playdate`, `src/tools.rs`, `src/playdate.rs`), 2399's ADR,
-   2243's kind, and `ctx.music_clock`.
+   2248's kind, and `ctx.music_clock`.
 2. Write `make-clip`: the shapes and the walk cycle in integers, the
    APNG through the `png` crate, the tune.
 3. The view, the pixel skin, the screens and the actions.
 4. The text skin.
-5. The player's own clip on the desktop, and the drop if 3088 is done.
+5. The player's own clip on the desktop, and the drop if 3092 is done.
 6. The web build on Pages, the Playdate build in the simulator.
 7. The README with the recipe; the docs; the gates.
 8. Play it start to end on the desktop and the web, and in the
