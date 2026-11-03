@@ -145,24 +145,67 @@ impl Names {
     /// of its short forms (`Ada Brook` is `smith`, not `family.brook`).
     /// See [`literal_form`] for what counts.
     pub fn literal_in(&self, text: &str) -> Option<(&str, &str)> {
-        let plain: Vec<&str> = split_tokens(text)
-            .filter_map(|part| match part {
-                Part::Text(t) | Part::Unclosed(t) => Some(t),
-                Part::Token(_) => None,
-            })
-            .collect();
+        let starts = WordStarts::of(text);
         let mut longest: Option<(&str, &str)> = None;
         for (id, name) in &self.names {
             let Some(form) = literal_form(name) else {
                 continue;
             };
-            if longest.is_none_or(|(_, l)| form.len() > l.len())
-                && plain.iter().any(|t| contains_word(t, form))
-            {
+            if longest.is_none_or(|(_, l)| form.len() > l.len()) && starts.has_word(form) {
                 longest = Some((id.as_str(), form));
             }
         }
         longest
+    }
+}
+
+/// Where a whole word may start in a text's plain parts (outside tokens):
+/// at the start of a part or after a character that is no ASCII letter or
+/// digit. Found once per text, so that looking for each of a table's names
+/// costs a few byte comparisons, not a substring search: a search per name
+/// per line of every script took most of a handheld's start.
+struct WordStarts<'t> {
+    /// Each start: the part, and the byte offset in it.
+    starts: Vec<(&'t str, usize)>,
+    /// Whether some start begins with each byte.
+    first: [bool; 256],
+}
+
+impl<'t> WordStarts<'t> {
+    fn of(text: &'t str) -> Self {
+        let mut starts = Vec::new();
+        let mut first = [false; 256];
+        let plain = split_tokens(text).filter_map(|part| match part {
+            Part::Text(t) | Part::Unclosed(t) => Some(t),
+            Part::Token(_) => None,
+        });
+        for part in plain {
+            let mut at_start = true;
+            for (i, c) in part.char_indices() {
+                if at_start {
+                    starts.push((part, i));
+                    first[usize::from(part.as_bytes()[i])] = true;
+                }
+                at_start = !c.is_ascii_alphanumeric();
+            }
+        }
+        Self { starts, first }
+    }
+
+    /// Whether `word` is written at one of the starts, as a whole word: not
+    /// followed by a letter or digit, case-sensitively.
+    fn has_word(&self, word: &str) -> bool {
+        let Some(&b) = word.as_bytes().first() else {
+            return false;
+        };
+        self.first[usize::from(b)]
+            && self.starts.iter().any(|&(part, i)| {
+                part.as_bytes()[i..].starts_with(word.as_bytes())
+                    && !part[i + word.len()..]
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_ascii_alphanumeric())
+            })
     }
 }
 
@@ -179,17 +222,6 @@ pub fn literal_form(name: &str) -> Option<&str> {
         .find_map(|article| name.strip_prefix(article))
         .unwrap_or(name);
     Some(form)
-}
-
-/// Whether `text` contains `word` as whole words, case-sensitively: not
-/// preceded or followed by a letter or digit.
-fn contains_word(text: &str, word: &str) -> bool {
-    let is_word = |c: char| c.is_ascii_alphanumeric();
-    text.match_indices(word).any(|(i, _)| {
-        let before = text[..i].chars().next_back();
-        let after = text[i + word.len()..].chars().next();
-        !before.is_some_and(is_word) && !after.is_some_and(is_word)
-    })
 }
 
 /// Whether `c` is a letter of the Latin script: ASCII, Latin-1 or Latin

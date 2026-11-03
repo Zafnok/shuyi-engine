@@ -126,6 +126,7 @@ pub fn check_scene<D: Directive>(
         limits: *rules.limits(),
         tokens: rules.tokens(),
         names: rules.names(),
+        longest_name: rules.names().map(Names::longest),
         hashes: BTreeMap::new(),
         errors: Vec::new(),
     };
@@ -195,6 +196,9 @@ struct Checker<'a, R> {
     limits: DialogueLimits,
     tokens: &'a dyn Tokens,
     names: Option<&'a Names>,
+    /// The width of the longest name of `names`, found once for the scene
+    /// rather than for each line.
+    longest_name: Option<usize>,
     /// The first line of the scene with each line-id hash: its source
     /// line, speaker and text.
     hashes: BTreeMap<String, (u32, String, String)>,
@@ -308,13 +312,12 @@ impl<R> Checker<'_, R> {
 
     /// [`lines_at_longest`] of `text`, with the names of the table.
     fn pages(&self, text: &str) -> usize {
-        let name = self.names.map(Names::longest);
-        lines_at_longest(text, self.tokens, name, self.limits.box_width)
+        lines_at_longest(text, self.tokens, self.longest_name, self.limits.box_width)
     }
 
     /// [`longest_width`] of `text`, with the names of the table.
     fn len(&self, text: &str) -> usize {
-        longest_width(text, self.tokens, self.names.map(Names::longest))
+        longest_width(text, self.tokens, self.longest_name)
     }
 
     /// Reports a display name from the names table written out in `text`
