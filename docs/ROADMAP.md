@@ -450,7 +450,8 @@ deletes that code once the engine has the piece.
 
 The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
-shipped game keeps).
+shipped game keeps, since split out as 3090 by the game's boundary
+audit of 2026-11-03).
 
 The game's retro of its last 50 PRs (2026-10-22) added two more, and
 notes to 2021 (a push's changed files and a lever script) and 3010
@@ -460,6 +461,35 @@ notes to 2021 (a push's changed files and a lever script) and 3010
 | ------ | ---- | --- |
 | 2233 | The bundle's folder loader file by file, as the registry's is, and one all-or-nothing helper | game#1186 |
 | 2371 | A one-bit look for the engine's screens and widgets | game#1184 |
+
+The game's boundary audit (2026-11-03) looked for game code that
+belongs here, copies what is here, or was left behind by the carve.
+Most of what it found is the game's to clean up; these are the pieces
+the engine lacks. Each game ticket deletes the game's copy after the
+pin moves past its engine ticket:
+
+| Ticket | What | For |
+| ------ | ---- | --- |
+| 3090 | The Playdate backend's opt-in run report, split out of 3011 | game#1170 |
+| 3201 | A credits screen | game#1211 |
+| 3202 | A sprite-test debug screen | game#1212 |
+| 3203 | The grid kit's skins paint edge arrows and a range outline | game#1213 |
+| 3204 | Tests read a frame's text; a game's own Harness keeps the scripts | game#1214 |
+| 3205 | A how-many question widget | game#1215 |
+| 3206 | A grid viewport, reading-order cycling and walk progress | game#1217 |
+| 3207 | The dialogue player's tests cover what the game's copy tests | game#1218 |
+| 2243 | Terrain tiles for a tileset as a format | game#1219 |
+| 2244 | A public comment-keeping RON editor (from 2517) | game#1220 |
+| 2245 | The one-bit bake takes styles, scale, a lift and a rim | game#1221 |
+| 2246 | A picture set: named pictures per id | game#1222 |
+| 2247 | Loader errors in one call each | game#1223 |
+| 2578 | `shuyi skills`: write and check a game's copy of the skill pack | game#1224 |
+| 2579 | A lint that a screen's draw only paints its view | game#1225 |
+| 2580 | Glyph stamping onto a picture, public | game#1226 |
+| 3091 | Built-in target profiles readable from a no_std crate | game#1227 |
+
+It also added notes to 2109 (game#1228), 2371, 2517, 2544
+(game#1240), 3011 and 3049 (game#1229).
 
 ### A frame cap
 
@@ -549,6 +579,7 @@ The tickets, in order:
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |
 | 3010 | The Playdate backend and `shuyi export playdate` |
+| 3090 | The Playdate backend's opt-in run report a shipped game keeps (split out of 3011; game#1170 waits on it) |
 | 3076 | A crash report on the Playdate (after 3046) |
 | 3077 | The Simulator's crash files out of the repository |
 | 3078 | Voice clips baked for the Playdate |

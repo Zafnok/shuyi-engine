@@ -257,7 +257,7 @@ None.
 - crash reports, symbols and sending anything anywhere (3046, 2520, and
   parked 3047);
 - timing spans (2325, parked);
-- the Playdate's sink (3010) and its device report (3011);
+- the Playdate's sink (3010) and its opt-in run report (3090);
 - a log file on the web (`localStorage` is for saves);
 - sending the web build's console lines to a terminal (2528);
 - miniquad's own `eprintln!` messages (they leave with macroquad, 3034);

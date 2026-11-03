@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["3007", "3008", "3009", "3010", "3028"]
+blocked_by: ["3007", "3008", "3009", "3010", "3028", "3090"]
 nick_input: setup
 completed:
 ---
@@ -51,9 +51,10 @@ check on the numbers.
 **In:**
 - **A bench build.** `shuyi export playdate --bench` builds the example
   with the bench scenarios (3008) built in. Each scenario runs from a
-  menu, and the build logs per-frame times
-  (`getElapsedTime` around `App::frame` and the display flush) and the
-  peak heap over the SDK's console log.
+  menu, and the build turns on 3090's run report with the draw's phases
+  (needed first: its times of `App::frame` and the draw and flush, and
+  its stack mark), adding only per-frame times and the peak heap over the
+  SDK's console log.
 - **Collecting the log** over USB, with the SDK's tools (the Simulator's
   device console, or `pdutil`; record which one works on Windows).
 - **Run on the device from the computer.** `shuyi export playdate --run
@@ -87,30 +88,16 @@ check on the numbers.
     Playdate from 3008's gate.
 
   The PR carries the measurements that justify every number it changes.
-- **The report a shipped game keeps** (from the game's friction sweep,
-  game#1153). Lift from the game's Playdate front end (`src/report.rs`,
-  `src/pd/bench.rs`), which logs on every run, not only in a bench
-  build: when the loading card and the first frame were shown, the
-  slowest files to load (through the bundle's read hook), once a minute
-  the frame times, and the stack's high-water mark (3028). The backend
-  offers it; a game turns it on. Its lines go out the way App's lines do
-  on the Playdate (3010's sink, the SDK's console), with the category
-  `platform` of 3040's log.
-  **Consumer handoff, 2026-11-01 audit:** `game#1170` now explicitly
-  waits for this report surface before adopting the backend. Expose the
-  opt-in callbacks/observations needed for loading-card and first-frame
-  timestamps, slow bundle reads, periodic frame and stack figures, and
-  bench-phase observations. The game owns its labels and content; the
-  backend owns clocks, measurements and output. The game's follow-up
-  `game#1205` removes its superseded report only after adoption verifies
-  equivalent observations. Do not count logs from the example's private
-  bench code as a reusable shipped-game report API.
 - **If a scenario misses 30 fps.** Write a ticket per cause found (for
   example, the 1-bit conversion, the scene build, or the bot), each with
   its measurement. Don't fix them here.
 
 **Out (do not do):**
 - optimizing (follow-up tickets);
+- the report a shipped game keeps (the loading card and first frame,
+  slow reads, the minute's frame and stack figures, the draw's phases):
+  3090, split out of this ticket by the game/engine boundary audit of
+  2026-11-03 so `game#1170` needn't wait for a device;
 - the game's own content (a game ticket runs the game's scenarios once
   its port starts, game 1025).
 
@@ -134,20 +121,12 @@ check on the numbers.
 - [ ] `targets/playdate.ron` stays `status: Supported`, and a
       follow-up ticket exists for each scenario that misses 30 fps.
 - [ ] Nick's sign-off is recorded in the completion notes.
-- [ ] A toy consumer enables the shipped-game report through public
-      backend interfaces and receives loading/first-frame, slow-read,
-      periodic frame/stack and bench-phase observations without its own
-      device clock or SDK driver; the API and the `game#1170` handoff are
-      documented. Disabled reporting adds no unsolicited periodic output.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Hardware runs above measure/calibrate performance; the bench gate
-  (3008) enforces the result.
-- Unit/integration: opt-in report callbacks using a fake SDK/clock and
-  a toy consumer, plus disabled-report behavior. These verify the reusable
-  interface independently of the hardware measurements.
+  (3008) enforces the result. The report's own tests are 3090's.
 
 ## Completion notes
 

@@ -149,7 +149,13 @@ None.
   and it lacks (byte strings, numbers, the `#![enable(…)]` line,
   stopping at `---`). If the move can't keep `ron_merge`'s tests
   unchanged, write the scanner private to `format::changes` as before,
-  and the completion notes say why. Either way:
+  and the completion notes say why. **Either order with 2244:** if 2244
+  is done, the parser is already public as `shuyi_assets::ron_text`
+  (moved for a game's comment-keeping edits, game#1220): don't move it
+  again, build `find` on its tree and add what this ticket lacks there,
+  keeping its `append_to_list` and `set_field` tests green; if not, move
+  it here as above, and 2244 adds its accessors and edits to the moved
+  module. Either way:
   - it skips whitespace, `//` and nested `/* */` comments, strings
     (`"…"` with escapes, raw `r"…"` and `r#"…"#`, byte strings), chars,
     numbers, and the `#![enable(…)]` line;
@@ -374,9 +380,9 @@ None.
    `crates/assets/src/format.rs`, `crates/cli/src/contract/import.rs`,
    `crates/cli/src/contract/check.rs`, `crates/cli/src/contract/cli.rs`
    and 2511's `BasicTools`, and `crates/cli/src/template/ron_merge.rs`.
-2. Move `ron_merge`'s parser into `shuyi-assets` (or write the scanner,
-   as above), then `find`, then `apply`, with their unit and property
-   tests.
+2. Move `ron_merge`'s parser into `shuyi-assets` (or use 2244's
+   `ron_text` if it is done, or write the scanner, as above), then
+   `find`, then `apply`, with their unit and property tests.
 3. Add `Format::changes`, `Formats::changes` and `project::CHANGES`.
 4. Write the op, its walk and its answer. Add it to `Op` and `Op::ALL`,
    `schemas()`, `runs_the_game` and `with_game` in `contract/cli.rs`,

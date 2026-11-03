@@ -175,6 +175,8 @@ None.
 5. **`UiAction::dir`.** **Either order with 2354:** whichever lands
    first adds `UiAction::dir(self) -> Option<Dir>` to
    `crates/assets/src/keymap/action_set.rs`, and the other uses it.
+   **Either order with 3206:** if 3206 is done, `UiAction::dir`
+   exists: use it; if not, add it here (3206 then uses it).
 6. **Either order with 2405** (mouse and touch for menus): if 2405 is
    done, `Focus::point(&mut self, pointer: Option<&PointerInput>, node:
    impl Fn(WidgetKey) -> Option<NodeKey>) -> bool` sets the focus from

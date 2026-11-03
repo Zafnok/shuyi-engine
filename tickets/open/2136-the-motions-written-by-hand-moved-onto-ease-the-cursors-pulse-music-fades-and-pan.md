@@ -200,6 +200,8 @@ None.
   they are written in their own tickets' terms, and 2109's Out says
   they may ease with it.
 - An ADR: 2109's ADR covers this.
+- The game's own hand-written curves (its fight stage's quad eases and
+  its AI camera's pan): game#1228 moves them onto 2109's, in the game.
 
 ## Implementation steps
 

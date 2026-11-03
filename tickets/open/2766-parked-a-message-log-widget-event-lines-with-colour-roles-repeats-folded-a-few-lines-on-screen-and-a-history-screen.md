@@ -38,6 +38,21 @@ of a `StyledText` that 2347's Out leaves to the box that needs it). If
 not, a whole line takes one role, and 2347 turns the lines into
 `StyledText` and wraps them over their spans, as its clause says.
 
+**A candidate from the game** (the game/engine boundary audit of
+2026-11-03): the game's dialogue screen keeps a backlog of a talk, about
+60 production lines with nothing of the game in them but the player
+type (game `crates/ui/src/screens/dialogue/history.rs`): each line seen
+as a copy of `DialoguePlayer<H>` there, with the reply picked and the
+`MusicLine` playing; jumping back to a line shows the scene as it was,
+keeps the lines after it, and cuts them from the first reply on, so a
+reply is asked again. As `shuyi_ui::dialogue::History<H: DialogueHooks>`
+(`reached`, `replied`, `jump`) it could feed this ticket's history screen
+for a game's talk, as `MessageLog` does for events. Whoever unparks this
+decides whether it comes in; if it does, write the game ticket that
+swaps the game's copy for it. The game ticket game#1218, which trims that screen's
+tests, leaves `history.rs` in place for this. Parked 2723's visual novel backlog is its
+own, over the story's events.
+
 ## Nick input
 
 None.
@@ -60,7 +75,8 @@ None.
 
 **Out (do not do):**
 - 2749's paced battle log (it may later push its lines here too);
-- speech bubbles in the world.
+- speech bubbles in the world;
+- 2723's visual novel backlog.
 
 ## Implementation steps
 

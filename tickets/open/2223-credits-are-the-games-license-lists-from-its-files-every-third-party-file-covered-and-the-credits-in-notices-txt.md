@@ -264,10 +264,13 @@ ships (rule 7, `deny.toml`) don't change.
   `CODE_LICENSES` too).
 
 **Out (do not do):**
-- An engine screen of credits or notices. Godot leaves it to the game,
-  `merge` already hands a game the data, and only consoles and stores
-  with no folder a player can browse need one (3014–3016, parked).
-  Write it when one of them, or a game, asks.
+- An engine screen of credits: a game asked (game#1211, from the
+  game/engine boundary audit of 2026-11-03), and 3201 writes it. It
+  shows `merge`'s `Credits`, which this ticket doesn't change, so
+  either can land first.
+- An engine screen of notices. Godot leaves it to the game, and only
+  consoles and stores with no folder a player can browse need one
+  (3014–3016, parked). Write it when one of them, or a game, asks.
 - The crates' and the web shell's notices (3039), and the engine's own
   non-crate files in native packages (3004).
 - Audio files in the pass: each cue already names its credit in the

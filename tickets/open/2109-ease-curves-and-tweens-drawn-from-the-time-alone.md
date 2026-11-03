@@ -62,10 +62,18 @@ No ticket owns tweens. Parked tickets already wait for this one: 2362's
 camera blends, 2363's fall-off of sound by distance and 2364's
 keyframed tracks take their curves from `shuyi_core::ease`. After MVP
 tickets 2339 and 2343 may use it, in either order; 2341's music fades
-(done) move onto it with 2136.
+(done) move onto it with 2136. In the game, game#1228
+(`github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/1228-fight-stage-eases-on-the-engines-eases.md`)
+waits for it, as the game/engine boundary audit of 2026-11-03 found.
 
-**Why it matters.** Visions of Shuyi asks for no tweens. Its curves
-above keep working, and this ticket changes none of them. Most other 2D
+**Why it matters.** Visions of Shuyi writes a few curves of its own:
+its fight stage's quad ease-in and ease-out (`ease_in`, `ease_out` in
+its `stage/motion.rs`, `t^2` and `1 - (1 - t)^2`) and the straight pan
+of its camera in an AI phase (`AiAction::camera`, a hand lerp between
+two tiles). game#1228 moves them onto `ease_f32` with `In(Quad)` and
+`Out(Quad)` and onto `Lerp` for `(i32, i32)` once this lands. The
+engine's curves above keep working, and this ticket changes none of
+them. Most other 2D
 games do need them: a score that pops, a menu that slides in, a title
 that bobs, a card that flips. With this ticket each is one line, under
 the names agents know. That serves the end goal of 2026-10-19 (an agent
@@ -268,6 +276,8 @@ None.
     walk frames stay as they are.
 - **What changes for the game:** nothing. The API grows, and
   `ease_in_out` and `Rgb::lerp` stay as they are. The PR says so.
+  game#1228 follows it in the game, putting its own quad eases and
+  pan on it; it is not a blocker of this one.
 
 **Out (do not do):**
 - `Sequence` and `Points` (2135), and moving the motions written by
