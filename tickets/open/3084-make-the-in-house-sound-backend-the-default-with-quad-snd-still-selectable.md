@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2573", "3032", "2397", "2234", "2378", "3087"]
+blocked_by: ["2573", "3032", "2397", "2234", "2378", "3087", "3088", "3089", "2044"]
 nick_input: none
 completed:
 ---
