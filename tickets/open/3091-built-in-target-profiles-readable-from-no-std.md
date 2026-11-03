@@ -1,5 +1,5 @@
 ---
-id: "3089"
+id: "3091"
 title: "The engine's built-in target profiles readable by id from a no_std crate, one copy for the engine and its games"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3089 — Built-in target profiles readable from no_std
+# 3091 — Built-in target profiles readable from no_std
 
 ## Context
 

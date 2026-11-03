@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["3007", "3008", "3009", "3010", "3028", "3088"]
+blocked_by: ["3007", "3008", "3009", "3010", "3028", "3090"]
 nick_input: setup
 completed:
 ---
@@ -51,7 +51,7 @@ check on the numbers.
 **In:**
 - **A bench build.** `shuyi export playdate --bench` builds the example
   with the bench scenarios (3008) built in. Each scenario runs from a
-  menu, and the build turns on 3088's run report with the draw's phases
+  menu, and the build turns on 3090's run report with the draw's phases
   (needed first: its times of `App::frame` and the draw and flush, and
   its stack mark), adding only per-frame times and the peak heap over the
   SDK's console log.
@@ -96,7 +96,7 @@ check on the numbers.
 - optimizing (follow-up tickets);
 - the report a shipped game keeps (the loading card and first frame,
   slow reads, the minute's frame and stack figures, the draw's phases):
-  3088, split out of this ticket by the game/engine boundary audit of
+  3090, split out of this ticket by the game/engine boundary audit of
   2026-11-03 so `game#1170` needn't wait for a device;
 - the game's own content (a game ticket runs the game's scenarios once
   its port starts, game 1025).
@@ -126,7 +126,7 @@ check on the numbers.
 ## Tests required
 
 - Hardware runs above measure/calibrate performance; the bench gate
-  (3008) enforces the result. The report's own tests are 3088's.
+  (3008) enforces the result. The report's own tests are 3090's.
 
 ## Completion notes
 

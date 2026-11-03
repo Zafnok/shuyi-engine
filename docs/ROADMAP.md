@@ -450,7 +450,7 @@ deletes that code once the engine has the piece.
 
 The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
-shipped game keeps, since split out as 3088 by the game's boundary
+shipped game keeps, since split out as 3090 by the game's boundary
 audit of 2026-11-03).
 
 The game's retro of its last 50 PRs (2026-10-22) added two more, and
@@ -470,7 +470,7 @@ pin moves past its engine ticket:
 
 | Ticket | What | For |
 | ------ | ---- | --- |
-| 3088 | The Playdate backend's opt-in run report, split out of 3011 | game#1170 |
+| 3090 | The Playdate backend's opt-in run report, split out of 3011 | game#1170 |
 | 3201 | A credits screen | game#1211 |
 | 3202 | A sprite-test debug screen | game#1212 |
 | 3203 | The grid kit's skins paint edge arrows and a range outline | game#1213 |
@@ -486,7 +486,7 @@ pin moves past its engine ticket:
 | 2578 | `shuyi skills`: write and check a game's copy of the skill pack | game#1224 |
 | 2579 | A lint that a screen's draw only paints its view | game#1225 |
 | 2580 | Glyph stamping onto a picture, public | game#1226 |
-| 3089 | Built-in target profiles readable from a no_std crate | game#1227 |
+| 3091 | Built-in target profiles readable from a no_std crate | game#1227 |
 
 It also added notes to 2109 (game#1228), 2371, 2517, 2544
 (game#1240), 3011 and 3049 (game#1229).
@@ -579,7 +579,7 @@ The tickets, in order:
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |
 | 3010 | The Playdate backend and `shuyi export playdate` |
-| 3088 | The Playdate backend's opt-in run report a shipped game keeps (split out of 3011; game#1170 waits on it) |
+| 3090 | The Playdate backend's opt-in run report a shipped game keeps (split out of 3011; game#1170 waits on it) |
 | 3076 | A crash report on the Playdate (after 3046) |
 | 3077 | The Simulator's crash files out of the repository |
 | 3078 | Voice clips baked for the Playdate |

@@ -1,5 +1,5 @@
 ---
-id: "3088"
+id: "3090"
 title: "The Playdate backend's opt-in run report: when the loading card and the first frame were shown, the slowest reads, a minute's frame and stack figures, and the draw's phases"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3088 — The Playdate backend's opt-in run report
+# 3090 — The Playdate backend's opt-in run report
 
 ## Context
 
