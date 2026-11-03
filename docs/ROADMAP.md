@@ -355,6 +355,22 @@ does. The order, after the game's own requests:
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
    what it may spend.
 
+On 2026-11-03 Nick added Bad Apple and DOOM after the maze chase, open
+([`decisions.md`](decisions.md)): "anything that can display graphics
+must run Bad Apple and anything that can run video game logic must be
+able to run DOOM". The order:
+
+1. 2399 (pictures a skin paints at run time), 2243 (one-bit
+   flipbooks), 2244 (sounds made at run time) and 3088 (files dropped on
+   the window), in any order;
+2. 2779: the flipbook player, the Bad Apple test, on Pages and the
+   Playdate;
+3. 2780: DOOM on the desktop, in its own GPL repository,
+   `Zafnok/shuyi-doom`, after 2137;
+4. 2781 (DOOM's demos replayed through the engine), 2782 (DOOM in the
+   browser) and 2783 (DOOM on the Playdate). DOOM's music, 2784, is
+   parked with MIDI.
+
 The rest of real time stays parked, 1119 among them (now fixed-point
 numbers and the entity arena, after 2137). The small games of the gallery (2736–2738) and the roguelike
 (2735) are the eval's reference answers once they are unparked.

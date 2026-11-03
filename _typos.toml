@@ -12,6 +12,9 @@ flate = "flate"
 # `lune-caf`, the crate name `shuyi new` makes of "Lune Café", the
 # tests' game name beyond ASCII.
 caf = "caf"
+# DOOM's own name for its per-tic sync check, misspelled in its source
+# (`consistancy` in `g_game.c`, ticket 2781).
+consistancy = "consistancy"
 
 [files]
 extend-exclude = [

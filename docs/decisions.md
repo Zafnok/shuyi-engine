@@ -1459,3 +1459,43 @@ Nick:
 - **Outside pull requests stay closed** at the first release, and
   `CONTRIBUTING.md` no longer promises a decision before it.
 - 2525 and 2807 no longer wait for 2016.
+
+## 2026-11-03: Bad Apple and DOOM
+
+Source: Nick, in a session of this repository:
+
+> "as is tradition we simply must have a Bad Apple and DOOM demo for our
+> engine... anything that can display graphics must run Bad Apple and
+> anything that can run video game logic must be able to run DOOM... add
+> some tickets for this with whatever deps you think make sense"
+
+Told that DOOM's released code is GPL-2.0, so it can't live in the
+engine, and asked where the port lives (a new GPL repository; a GPL
+folder in this repository; or an original DOOM-like shooter instead of
+DOOM), with the first recommended, he chose **"New GPL repo"**. Asked
+whether the tickets are open or parked, given that real time and video
+wait for the game's launch (2026-10-20), he chose **"Open, after the
+maze chase"**.
+
+**Rules:**
+
+- **DOOM runs from its own released code,** through doomgeneric, in a
+  new public repository, `Zafnok/shuyi-doom`, under the GPL (the version
+  its vendored files allow: GPL-2.0-or-later if every file says "or
+  later"). It uses the engine as any game does, under the engine's MIT
+  license. This repository gets no GPL code, only the generic pieces DOOM
+  needs, and a link to the port. Nothing of id Software's game data is
+  shipped: the port plays Freedoom (BSD-style), and a player may load
+  their own WAD.
+- **Bad Apple!! isn't shipped either.** The video and its song belong
+  to their makers (`AGENTS.md` rule 7). The engine ships a flipbook
+  player, an original clip of our own, and a recipe for the player to
+  make a flipbook from their own copy.
+- **The tickets are open, after the maze chase (2776)**, and the game
+  still comes first. Bad Apple: 2399 (pictures painted at run time),
+  2243 (one-bit flipbooks), then 2779 (the example). DOOM: 2399, 2244
+  (sounds made at run time) and 2137, then 2780 (the port on the
+  desktop), then 2781 (its demos replayed), 2782 (the browser) and 2783
+  (the Playdate). 3088 (files dropped on the window) lets a player bring
+  their own clip or WAD. DOOM's music (2784) needs MIDI and is parked
+  with it.
