@@ -522,8 +522,8 @@ pub fn scripts_from_parsed<D: Directive>(
 /// [`scripts_from_parsed`] one scene at a time, for a game that must hand
 /// control back to its platform between them (a handheld's update
 /// callback, which its OS ends when it runs too long): [`Self::new`], then
-/// [`Self::check_next`] until it returns false, then [`Self::finish`]. The
-/// scripts and the errors are the same.
+/// [`Self::check_next`] as many times as [`Self::unchecked`] says, then
+/// [`Self::finish`]. The scripts and the errors are the same.
 pub struct ScriptsCheck<D = NoDirective> {
     /// The scenes, in file order.
     scenes: Vec<ParsedScene<D>>,
@@ -550,17 +550,18 @@ impl<D: Directive> ScriptsCheck<D> {
         }
     }
 
+    /// How many scenes are left to check.
+    pub fn unchecked(&self) -> usize {
+        self.scenes.len() - self.checked
+    }
+
     /// Checks the next scene with [`check_scene`] and the game's own
-    /// [`SceneRules::scene_problems`]; false if every scene was checked
-    /// already.
-    pub fn check_next(&mut self, rules: &impl SceneRules<D>) -> bool {
-        let Some(scene) = self.scenes.get(self.checked) else {
-            return false;
-        };
-        self.errors.extend(check_scene(scene, rules));
-        self.errors.extend(rules.scene_problems(scene));
-        self.checked += 1;
-        true
+    /// [`SceneRules::scene_problems`], if one is left.
+    pub fn check_next(&mut self, rules: &impl SceneRules<D>) {
+        if let Some(scene) = self.scenes.get(self.checked) {
+            self.errors.extend(scene_errors(scene, rules));
+            self.checked += 1;
+        }
     }
 
     /// [`Scripts`] of the scenes, or every problem with them, ordered by
@@ -571,9 +572,11 @@ impl<D: Directive> ScriptsCheck<D> {
     /// # Errors
     ///
     /// Every problem found, if there is one.
-    pub fn finish(mut self, rules: &impl SceneRules<D>) -> Result<Scripts<D>, Vec<ContentError>> {
-        while self.check_next(rules) {}
-        let mut errors = core::mem::take(&mut self.errors);
+    pub fn finish(self, rules: &impl SceneRules<D>) -> Result<Scripts<D>, Vec<ContentError>> {
+        let mut errors = self.errors;
+        for scene in &self.scenes[self.checked..] {
+            errors.extend(scene_errors(scene, rules));
+        }
         let scenes = self.scenes;
         errors.extend(check_duplicates(&scenes));
         if errors.is_empty() {
@@ -596,6 +599,17 @@ impl<D: Directive> ScriptsCheck<D> {
             Err(errors)
         }
     }
+}
+
+/// What [`check_scene`] and the game's own [`SceneRules::scene_problems`]
+/// find in `scene`.
+fn scene_errors<D: Directive>(
+    scene: &ParsedScene<D>,
+    rules: &impl SceneRules<D>,
+) -> Vec<ContentError> {
+    let mut errors = check_scene(scene, rules);
+    errors.extend(rules.scene_problems(scene));
+    errors
 }
 
 /// Writes `scene` in `.dlg` format (one line per step, reactions indented

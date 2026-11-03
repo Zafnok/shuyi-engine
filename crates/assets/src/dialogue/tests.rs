@@ -1275,21 +1275,43 @@ fn scripts_checked_a_scene_at_a_time_are_the_same() {
     for sources in [&good[..], &bad[..]] {
         let at_once = scripts_from_parsed(parsed_files(sources), &rules);
         let mut check = ScriptsCheck::new(parsed_files(sources));
-        let mut steps = 0;
-        while check.check_next(&rules) {
-            steps += 1;
+        let scenes = if sources.len() == 1 { 2 } else { 3 };
+        for left in (1..=scenes).rev() {
+            assert_eq!(check.unchecked(), left);
+            check.check_next(&rules);
         }
-        assert!(!check.check_next(&rules));
-        assert_eq!(steps, if sources.len() == 1 { 2 } else { 3 });
+        assert_eq!(check.unchecked(), 0);
+        // Nothing is left to check: the next check does nothing.
+        check.check_next(&rules);
+        assert_eq!(check.unchecked(), 0);
         assert_eq!(check.finish(&rules), at_once);
     }
-    // Finishing early checks the rest.
-    let mut check = ScriptsCheck::new(parsed_files(&bad));
-    assert!(check.check_next(&rules));
-    assert_eq!(
-        check.finish(&rules),
-        scripts_from_parsed(parsed_files(&bad), &rules)
-    );
+}
+
+/// Finishing before every scene is checked checks the rest, and the
+/// problems a checked scene had are kept.
+#[test]
+fn finishing_a_scripts_check_early_checks_the_rest() {
+    let rules = Rules::default();
+    let bad = [(
+        "a.dlg",
+        "@scene t
+> {
+@end
+@scene u
+> }{
+@end
+",
+    )];
+    let at_once = scripts_from_parsed(parsed_files(&bad), &rules);
+    assert!(at_once.is_err());
+    for checked in 0..=2 {
+        let mut check = ScriptsCheck::new(parsed_files(&bad));
+        for _ in 0..checked {
+            check.check_next(&rules);
+        }
+        assert_eq!(check.finish(&rules), at_once, "after {checked} checked");
+    }
 }
 
 #[test]
