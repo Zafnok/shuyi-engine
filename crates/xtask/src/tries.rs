@@ -149,11 +149,18 @@ pub fn apply(text: &str, edit: &Edit) -> Result<String, String> {
 /// The manifest of a copy of the book's game, which leaves the workspace it
 /// inherits from: its own text, given as `crate_toml`, and the workspace's,
 /// `root_toml`, without the members, making the copy its own one-crate
-/// workspace with the same versions, lints and profiles.
+/// workspace with the same versions, lints and profiles. Without the patches too:
+/// their paths are from the root, and it builds with what the engine builds by default.
 pub fn book_manifest(crate_toml: &str, root_toml: &str) -> String {
+    let mut in_patch = false;
     let root: Vec<&str> = root_toml
         .lines()
-        .filter(|line| !line.starts_with("members = "))
+        .filter(|line| {
+            if line.starts_with('[') {
+                in_patch = line.starts_with("[patch");
+            }
+            !in_patch && !line.starts_with("members = ")
+        })
         .collect();
     format!("{crate_toml}\n{}\n", root.join("\n"))
 }

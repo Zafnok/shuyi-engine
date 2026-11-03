@@ -48,9 +48,11 @@ fn last_page(bytes: &[u8]) -> Option<(u64, u32)> {
     ))
 }
 
-/// An Ogg Vorbis file's samples, decoded from its bytes as they are asked for.
-pub struct VorbisSource<'a> {
-    reader: OggStreamReader<Cursor<&'a [u8]>>,
+/// An Ogg Vorbis file's samples, decoded from its bytes as they are asked for. It
+/// borrows them or owns them, as `B` does: a worker that outlives its caller holds
+/// an `Arc<[u8]>`.
+pub struct VorbisSource<B: AsRef<[u8]>> {
+    reader: OggStreamReader<Cursor<B>>,
     format: PcmFormat,
     max_frames: u64,
     /// How many frames it has decoded, to check against `max_frames`.
@@ -75,11 +77,12 @@ fn malformed(error: &VorbisError) -> Error {
     }
 }
 
-impl<'a> VorbisSource<'a> {
+impl<B: AsRef<[u8]>> VorbisSource<B> {
     /// A source of `bytes`, whose headers say what it holds, which must be
     /// within `limits`. It decodes no audio yet.
-    pub fn new(bytes: &'a [u8], limits: &Limits) -> Result<Self, Error> {
+    pub fn new(bytes: B, limits: &Limits) -> Result<Self, Error> {
         guarded(FORMAT, || {
+            let last = last_page(bytes.as_ref());
             let reader = OggStreamReader::new(Cursor::new(bytes)).map_err(|e| malformed(&e))?;
             let format = PcmFormat::new(
                 reader.ident_hdr.audio_sample_rate,
@@ -87,7 +90,7 @@ impl<'a> VorbisSource<'a> {
                 limits,
             )?;
             let serial = reader.stream_serial();
-            let end = last_page(bytes)
+            let end = last
                 .filter(|(_, last)| *last == serial)
                 .map(|(granule, _)| granule);
             Ok(Self {
@@ -218,7 +221,7 @@ impl<'a> VorbisSource<'a> {
     }
 }
 
-impl Source for VorbisSource<'_> {
+impl<B: AsRef<[u8]>> Source for VorbisSource<B> {
     fn format(&self) -> PcmFormat {
         self.format
     }

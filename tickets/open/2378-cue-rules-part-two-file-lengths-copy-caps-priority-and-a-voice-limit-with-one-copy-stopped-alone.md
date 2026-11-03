@@ -207,13 +207,12 @@ None.
   running target's `capabilities.audio.channels`, a `None` on either
   side being no limit, as 3017 says; if not, nothing to do (3017 does
   it when it lands).
-- **Either order with 3031** (parked, in-house output): if 3031 is
-  done, size its `Mixer` for the voices `App` admits, including the
-  explicit allowance for music and handled sounds outside cue-copy
-  caps. Hardware capacity must be visible to `App` before admission;
-  the backend never steals or silently drops a sound using another
-  policy. If not, nothing to do (3031 applies this sizing/admission
-  contract and 2573's comparative voice tests). **From 2902 (done):**
+- **From 3031 (done):** size its `Mixer` (`VOICES` in
+  `crates/app/src/audio/in_house.rs`, 32 until now) for the voices `App` admits,
+  including the explicit allowance for music and handled sounds outside cue-copy
+  caps. Hardware capacity must be visible to `App` before admission; the backend
+  never steals or silently drops a sound using another policy. `voices_full` in
+  `tools/sound-parity/scenarios.ron` holds that today. **From 2902 (done):**
   keep the old reference until 3079's final parity/removal gate.
 - **Either order with 2218:** if 2218 is done, its `AudioManifestRon`
   writer writes a cue's `max_copies` (bare), `when_full` and `priority`,

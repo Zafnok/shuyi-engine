@@ -429,6 +429,8 @@ fn a_gate_without_budget_or_samples_fails_closed() {
         decoders: BTreeMap::new(),
         mixer: BTreeMap::new(),
         mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
+        old_new: BTreeMap::new(),
+        device_loss_ms: BTreeMap::new(),
         platforms: BTreeMap::new(),
     };
     let dir = std::env::temp_dir();
@@ -648,11 +650,172 @@ fn a_platform_without_decoder_evidence_fails_closed() {
         decoders: BTreeMap::new(),
         mixer: BTreeMap::new(),
         mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
+        old_new: BTreeMap::new(),
+        device_loss_ms: BTreeMap::new(),
         platforms: BTreeMap::new(),
     };
     let cells = decoder_speed_cells("linux-native", &dir, &budget);
     assert_eq!(cells[0]["status"], "failed");
     assert_eq!(cells[0]["detail"], "no budget");
+}
+
+/// A budget holding a new backend's `cpu_ms` to at most 1.5 times the old one's.
+fn new_backend_budget() -> Budget {
+    let limit = Limit {
+        max_ratio: 1.5,
+        max_spread: 0.2,
+        slows: false,
+    };
+    let metrics = BTreeMap::from([("cpu_ms".to_owned(), limit)]);
+    Budget {
+        version: 1,
+        correctness: tolerance(),
+        performance: BTreeMap::new(),
+        decoders: BTreeMap::new(),
+        mixer: BTreeMap::new(),
+        mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
+        old_new: BTreeMap::from([("new".to_owned(), metrics)]),
+        device_loss_ms: BTreeMap::from([("new".to_owned(), 1000.0)]),
+        platforms: BTreeMap::from([("new".to_owned(), Contract::NewBackend)]),
+    }
+}
+
+/// A new folder for a test called `name`.
+fn empty_folder(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("xtask-old-new-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap_or_else(|e| panic!("{e}"));
+    dir
+}
+
+/// `old-new.jsonl` in a new folder: nine pairs, with these numbers.
+fn old_new_rows(name: &str, old: f64, new: f64, gaps: f64) -> PathBuf {
+    let dir = empty_folder(name);
+    let mut text = String::new();
+    for pair in 0..9 {
+        for (side, cpu, underruns) in [("old", old, 0.0), ("new", new, gaps)] {
+            let row = json!({"side": side, "pair": pair, "metrics": {"cpu_ms": cpu, "underruns": underruns}});
+            text.push_str(&row.to_string());
+            text.push('\n');
+        }
+    }
+    fs::write(dir.join("old-new.jsonl"), text).unwrap_or_else(|e| panic!("{e}"));
+    dir
+}
+
+fn status_of<'a>(cells: &'a [Value], check: &str) -> &'a str {
+    cells
+        .iter()
+        .find(|cell| cell["check"] == check)
+        .and_then(|cell| cell["status"].as_str())
+        .unwrap_or("missing")
+}
+
+#[test]
+fn a_new_backend_is_held_to_the_old_ones_speed_and_to_no_gaps() {
+    let budget = new_backend_budget();
+    let good = old_new_rows("good", 10.0, 12.0, 0.0);
+    let cells = old_new_cells("new", &good, &budget);
+    assert_eq!(status_of(&cells, "old-new:underruns"), "passed");
+    assert_eq!(status_of(&cells, "old-new:cpu_ms"), "passed");
+    let slow = old_new_rows("slow", 10.0, 16.0, 0.0);
+    let cells = old_new_cells("new", &slow, &budget);
+    assert_eq!(status_of(&cells, "old-new:cpu_ms"), "failed");
+    let gaps = old_new_rows("gaps", 10.0, 12.0, 1.0);
+    let cells = old_new_cells("new", &gaps, &budget);
+    assert_eq!(status_of(&cells, "old-new:underruns"), "failed");
+}
+
+#[test]
+fn a_backend_must_come_back_when_its_device_does() {
+    let budget = new_backend_budget();
+    let report = |name: &str, text: &str| {
+        let dir = empty_folder(name);
+        fs::write(dir.join("device-loss.json"), text).unwrap_or_else(|e| panic!("{e}"));
+        let cell = device_loss_cell("new", &dir, &budget).unwrap_or_else(|| panic!("a limit"));
+        cell["status"].as_str().unwrap_or("").to_owned()
+    };
+    assert_eq!(
+        report("in-time", r#"{"still_running":true,"heard_ms":300.0}"#),
+        "passed"
+    );
+    assert_eq!(
+        report("late", r#"{"still_running":true,"heard_ms":1300.0}"#),
+        "failed"
+    );
+    assert_eq!(
+        report("never", r#"{"still_running":true,"heard_ms":null}"#),
+        "failed"
+    );
+    assert_eq!(
+        report("crashed", r#"{"still_running":false,"heard_ms":300.0}"#),
+        "failed"
+    );
+    let empty = empty_folder("no-report");
+    let cell = device_loss_cell("new", &empty, &budget).unwrap_or_else(|| panic!("a limit"));
+    assert_eq!(cell["status"], "failed", "no evidence is a failure");
+    assert!(
+        device_loss_cell("another", &empty, &budget).is_none(),
+        "no device to lose"
+    );
+}
+
+#[test]
+fn the_timings_a_job_measures_again_are_every_one_the_gate_judges() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let empty = empty_folder("perf-only");
+    let named = |platform: &str| perf_failures(&root, platform, &empty).join("\n");
+    // A captured platform's: its own timings, and its decoders' and mixer's.
+    let reference = named("windows");
+    for check in ["perf", "decoder-speed", "mixer-share"] {
+        assert!(
+            reference.contains(&format!("windows {check}:")),
+            "{reference}"
+        );
+    }
+    // A new backend's: its own, and against the old; the decoders are the old one's.
+    let new = named("windows-in-house");
+    assert!(new.contains("windows-in-house old-new:"), "{new}");
+    assert!(!new.contains("decoder-speed"), "{new}");
+}
+
+#[test]
+fn a_new_backend_without_its_evidence_or_a_budget_fails_closed() {
+    let budget = new_backend_budget();
+    let empty = empty_folder("closed");
+    let cells = old_new_cells("new", &empty, &budget);
+    assert_eq!(status_of(&cells, "old-new"), "failed");
+    let cells = old_new_cells("another", &empty, &budget);
+    assert_eq!(status_of(&cells, "old-new"), "failed");
+    assert_eq!(cells[0]["detail"], "no budget");
+}
+
+#[test]
+fn the_windows_port_needs_its_evidence_and_the_budget_says_so() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let budget: Budget =
+        read_ron(&root.join(TOOL).join("budget.ron")).unwrap_or_else(|e| panic!("{e}"));
+    assert!(matches!(
+        budget.platforms.get("windows"),
+        Some(Contract::Captured)
+    ));
+    for platform in ["windows-in-house", "browser-in-house"] {
+        assert!(
+            matches!(budget.platforms.get(platform), Some(Contract::NewBackend)),
+            "{platform}"
+        );
+        assert!(budget.old_new.contains_key(platform), "{platform}");
+        assert!(budget.performance.contains_key(platform), "{platform}");
+    }
+    // Nothing recorded under an empty folder, and it fails: never a skip.
+    let empty = empty_folder("windows");
+    let plan: Plan =
+        read_ron(&root.join(TOOL).join("scenarios.ron")).unwrap_or_else(|e| panic!("{e}"));
+    let pins = pins();
+    let cells = platform_cells(&empty, "windows", &plan, &budget, &pins);
+    assert_eq!(cells.len(), 1);
+    assert_eq!(cells[0]["check"], "capture");
+    assert_eq!(cells[0]["status"], "failed");
 }
 
 // -- giving up --

@@ -143,3 +143,17 @@ fn a_copy_of_the_books_game_is_its_own_workspace() {
     );
     assert!(manifest.contains("[workspace.package]"), "{manifest}");
 }
+
+#[test]
+fn a_copy_of_the_books_game_leaves_the_roots_patches_behind() {
+    let manifest = book_manifest(
+        "[package]\nname = \"book-snippets\"\n",
+        "[workspace]\nresolver = \"3\"\n\n[patch.crates-io]\nsome-sys = { path = \"tools/held\" }\n\n[workspace.lints.rust]\nunsafe_code = \"forbid\"\n",
+    );
+    assert!(!manifest.contains("[patch"), "{manifest}");
+    assert!(!manifest.contains("some-sys"), "{manifest}");
+    assert!(
+        manifest.contains("unsafe_code"),
+        "the section after it stays: {manifest}"
+    );
+}

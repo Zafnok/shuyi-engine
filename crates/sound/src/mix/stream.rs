@@ -116,6 +116,12 @@ impl Feeder {
     pub fn close(&mut self) {
         self.closed.store(true, Ordering::Release);
     }
+
+    /// Whether [`close`](Self::close) has been called, as
+    /// [`fill_from`](Self::fill_from) does at its source's end: nothing more to do.
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Acquire)
+    }
 }
 
 /// The end of a [`feed`] the mixer reads, a [`Source`] that never waits.
