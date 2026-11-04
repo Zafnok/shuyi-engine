@@ -9,7 +9,8 @@ use crate::dialogue::{DialogueTable, NoDirective, Scene, Step, caption_key, pars
 
 /// Data text rules of the tests' game: a `tips.*` text is at most 5 cells.
 fn data_problem(key: &str, text: &str) -> Option<String> {
-    (key.starts_with("tips.") && text_width(text) > 5).then(|| "a tip is 5 cells".to_owned())
+    (key.starts_with("tips.") && text_width(text, &CellWidths::NARROW) > 5)
+        .then(|| "a tip is 5 cells".to_owned())
 }
 
 const RULES: PackRules<'static> = PackRules {

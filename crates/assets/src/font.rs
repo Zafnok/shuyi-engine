@@ -4,9 +4,16 @@
 //! map is a sidecar read with the PNG beside it ([`FontAtlasRon`]). Once
 //! the atlas and the game's text both load, [`undrawn`] finds every
 //! character of the text the atlas can't draw.
+//!
+//! An atlas may hold a second, wide font beside the narrow one: a wide
+//! glyph (a Japanese or Chinese character) takes two cells of the atlas,
+//! side by side, and two cells of the screen. [`CellWidths`] says which
+//! characters are wide, for everything that measures text.
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::rc::Rc;
+use core::iter::Peekable;
 
 use serde::{Deserialize, Serialize};
 
@@ -85,6 +92,12 @@ pub struct FontAtlasDef {
     pub columns: u32,
     /// Every glyph in the atlas → its cell index (row-major).
     pub glyphs: BTreeMap<char, u32>,
+    /// Every wide glyph, two cells wide, → the cell index of its left half;
+    /// its right half is the next cell, in the same row. A character is
+    /// narrow or wide, never both. Empty in an atlas without wide glyphs,
+    /// and left out of its file.
+    #[serde(default)]
+    pub wide: BTreeMap<char, u32>,
 }
 
 /// A pixel rectangle inside the atlas image.
@@ -112,20 +125,37 @@ impl FontAtlasDef {
         }
     }
 
-    /// The pixel rectangle of glyph `c`, or `None` if the atlas lacks it.
+    /// The pixel rectangle of narrow glyph `c`, or `None` if the atlas
+    /// lacks it or has it wide ([`wide_rect`](Self::wide_rect)).
     pub fn glyph_rect(&self, c: char) -> Option<AtlasRect> {
         self.glyphs.get(&c).map(|&i| self.cell_rect(i))
     }
 
-    /// Whether the atlas draws `c`: the one answer to "can this character
-    /// be drawn?" that the tools and checks ask ([`undrawn`]).
+    /// The pixel rectangle of wide glyph `c`, both its cells, or `None` if
+    /// the atlas has no wide glyph `c`.
+    pub fn wide_rect(&self, c: char) -> Option<AtlasRect> {
+        self.wide.get(&c).map(|&i| {
+            let rect = self.cell_rect(i);
+            AtlasRect {
+                w: rect.w * 2,
+                ..rect
+            }
+        })
+    }
+
+    /// Whether the atlas draws `c`, narrow or wide: the one answer to "can
+    /// this character be drawn?" that the tools and checks ask
+    /// ([`undrawn`]).
     pub fn draws(&self, c: char) -> bool {
-        self.glyphs.contains_key(&c)
+        self.glyphs.contains_key(&c) || self.wide.contains_key(&c)
     }
 
     /// Every character [`draws`](Self::draws) accepts, in code-point order.
     pub fn drawn(&self) -> impl Iterator<Item = char> + '_ {
-        self.glyphs.keys().copied()
+        Merged {
+            a: self.glyphs.keys().copied().peekable(),
+            b: self.wide.keys().copied().peekable(),
+        }
     }
 
     /// Parses glyph map `source` (errors attributed to `file`) and validates
@@ -160,8 +190,20 @@ impl FontAtlasDef {
         }
     }
 
+    /// Every cell a glyph takes: `(cell index, glyph)`, a narrow glyph's
+    /// one and both of a wide glyph's.
+    fn cells(&self) -> impl Iterator<Item = (u32, char)> + '_ {
+        let narrow = self.glyphs.iter().map(|(&c, &i)| (i, c));
+        let wide = self
+            .wide
+            .iter()
+            .flat_map(|(&c, &i)| [(i, c), (i.saturating_add(1), c)]);
+        narrow.chain(wide)
+    }
+
     /// Problems with the glyph map on its own, in plain words: a size of 0,
-    /// a glyph of `required` it lacks, or two glyphs in one cell.
+    /// a glyph of `required` it lacks, two glyphs in one cell, a character
+    /// both narrow and wide, or a wide glyph split across a row's end.
     pub fn problems(&self, required: &str) -> Vec<String> {
         let mut out = Vec::new();
         for (name, v) in [
@@ -175,20 +217,36 @@ impl FontAtlasDef {
         }
         let missing: Vec<String> = required
             .chars()
-            .filter(|c| !self.glyphs.contains_key(c))
+            .filter(|&c| !self.draws(c))
             .map(describe)
             .collect();
         if !missing.is_empty() {
             out.push(format!("missing required glyphs: {}", missing.join(", ")));
         }
+        for c in self.wide.keys().filter(|c| self.glyphs.contains_key(c)) {
+            out.push(format!("{} is both narrow and wide", describe(*c)));
+        }
+        if self.columns > 0 {
+            for (&c, &i) in &self.wide {
+                if i % self.columns == self.columns - 1 {
+                    out.push(format!(
+                        "wide {} has cell index {i}, the last of its row: its right half \
+                         would start the next row",
+                        describe(c)
+                    ));
+                }
+            }
+        }
         let mut owner: BTreeMap<u32, char> = BTreeMap::new();
-        for (&c, &i) in &self.glyphs {
+        for (i, c) in self.cells() {
             if let Some(&first) = owner.get(&i) {
-                out.push(format!(
-                    "{} and {} share cell index {i}",
-                    describe(first),
-                    describe(c)
-                ));
+                if first != c {
+                    out.push(format!(
+                        "{} and {} share cell index {i}",
+                        describe(first),
+                        describe(c)
+                    ));
+                }
             } else {
                 owner.insert(i, c);
             }
@@ -215,13 +273,70 @@ impl FontAtlasDef {
             ));
         }
         let cells = u64::from(self.columns) * u64::from(height / self.cell_h);
-        if let Some((&c, &i)) = self.glyphs.iter().find(|&(_, &i)| u64::from(i) >= cells) {
+        if let Some((i, c)) = self.cells().find(|&(i, _)| u64::from(i) >= cells) {
             out.push(format!(
                 "{} has cell index {i}, but the image only holds {cells} cells",
                 describe(c)
             ));
         }
         out
+    }
+}
+
+/// Two iterators of characters in code-point order, merged in that order.
+struct Merged<A: Iterator<Item = char>, B: Iterator<Item = char>> {
+    a: Peekable<A>,
+    b: Peekable<B>,
+}
+
+impl<A: Iterator<Item = char>, B: Iterator<Item = char>> Iterator for Merged<A, B> {
+    type Item = char;
+
+    fn next(&mut self) -> Option<char> {
+        match (self.a.peek(), self.b.peek()) {
+            (Some(a), Some(b)) if b < a => self.b.next(),
+            (Some(_), _) => self.a.next(),
+            (None, _) => self.b.next(),
+        }
+    }
+}
+
+/// How many cells of the screen each character takes: two for a
+/// character with a wide glyph ([`FontAtlasDef::wide`]), one for any
+/// other. [`text_width`](crate::lang::text_width) measures text with it,
+/// and a glyph buffer prints with it. [`CellWidths::NARROW`] has nothing
+/// wide. Cheap to clone: the set is shared.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CellWidths {
+    /// The wide characters; `None` when there are none.
+    wide: Option<Rc<BTreeSet<char>>>,
+}
+
+impl CellWidths {
+    /// Nothing is wide: one cell for every character.
+    pub const NARROW: Self = Self { wide: None };
+
+    /// The widths of `atlas`'s glyphs: its wide glyphs take two cells.
+    pub fn of(atlas: &FontAtlasDef) -> Self {
+        Self::wide(atlas.wide.keys().copied())
+    }
+
+    /// Widths where the characters of `wide` take two cells.
+    pub fn wide(wide: impl IntoIterator<Item = char>) -> Self {
+        let wide: BTreeSet<char> = wide.into_iter().collect();
+        Self {
+            wide: (!wide.is_empty()).then(|| Rc::new(wide)),
+        }
+    }
+
+    /// Whether `c` takes two cells.
+    pub fn is_wide(&self, c: char) -> bool {
+        self.wide.as_ref().is_some_and(|wide| wide.contains(&c))
+    }
+
+    /// How many cells `c` takes: 1 or 2.
+    pub fn of_char(&self, c: char) -> usize {
+        if self.is_wide(c) { 2 } else { 1 }
     }
 }
 
@@ -329,6 +444,7 @@ mod tests {
             cell_h: 16,
             columns: 16,
             glyphs: REQUIRED.chars().zip(0..).collect(),
+            ..FontAtlasDef::default()
         }
     }
 
@@ -357,6 +473,7 @@ mod tests {
             cell_h: 16,
             columns: 32,
             glyphs: [('a', 0), ('b', 31), ('c', 32), ('d', 70)].into(),
+            wide: [('あ', 33)].into(),
         };
         let r = |x, y| Some(AtlasRect { x, y, w: 8, h: 16 });
         assert_eq!(def.glyph_rect('a'), r(0, 0));
@@ -364,6 +481,83 @@ mod tests {
         assert_eq!(def.glyph_rect('c'), r(0, 16));
         assert_eq!(def.glyph_rect('d'), r(48, 32));
         assert_eq!(def.glyph_rect('z'), None);
+        // A wide glyph is both its cells, and no narrow glyph.
+        let wide = Some(AtlasRect {
+            x: 8,
+            y: 16,
+            w: 16,
+            h: 16,
+        });
+        assert_eq!(def.wide_rect('あ'), wide);
+        assert_eq!(def.glyph_rect('あ'), None);
+        assert_eq!(def.wide_rect('a'), None);
+    }
+
+    /// [`required_only`] with wide glyphs `あ` and `い` after it, in cells
+    /// 16 and 17, and 18 and 19.
+    fn with_wide() -> FontAtlasDef {
+        FontAtlasDef {
+            wide: [('あ', 16), ('い', 18)].into(),
+            ..required_only()
+        }
+    }
+
+    #[test]
+    fn a_wide_glyph_is_drawn_and_listed_among_the_narrow_ones() {
+        let def = with_wide();
+        assert_eq!(def.problems(REQUIRED), Vec::<String>::new());
+        assert_eq!(def.image_problems(128, 32), Vec::<String>::new());
+        assert!(def.draws('あ') && def.draws('A') && !def.draws('う'));
+        let drawn: Vec<char> = def.drawn().collect();
+        let mut sorted = drawn.clone();
+        sorted.sort_unstable();
+        assert_eq!(drawn, sorted, "in code-point order");
+        assert_eq!(drawn.len(), REQUIRED.chars().count() + 2);
+        // A required glyph may be wide.
+        assert_eq!(def.problems("あ"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn wide_glyph_problems() {
+        // Both narrow and wide.
+        let mut def = with_wide();
+        def.glyphs.insert('あ', 30);
+        assert_eq!(
+            def.problems(REQUIRED),
+            ["'あ' (U+3042) is both narrow and wide"]
+        );
+        // Its right half in a narrow glyph's cell.
+        let mut def = with_wide();
+        def.wide.insert('う', 12);
+        assert_eq!(
+            def.problems(REQUIRED),
+            ["'─' (U+2500) and 'う' (U+3046) share cell index 12"]
+        );
+        // Split across a row's end: cell 31 is the last of the second row,
+        // and the last the image holds, so its right half is past it too.
+        let mut def = with_wide();
+        def.wide.insert('う', 31);
+        assert_eq!(
+            def.problems(REQUIRED),
+            [
+                "wide 'う' (U+3046) has cell index 31, the last of its row: its right half \
+                 would start the next row"
+            ]
+        );
+        assert_eq!(
+            def.image_problems(128, 32),
+            ["'う' (U+3046) has cell index 32, but the image only holds 32 cells"]
+        );
+    }
+
+    #[test]
+    fn widths_count_a_wide_glyph_twice() {
+        let widths = CellWidths::of(&with_wide());
+        assert!(widths.is_wide('あ') && !widths.is_wide('A'));
+        assert_eq!((widths.of_char('い'), widths.of_char('A')), (2, 1));
+        assert_eq!(CellWidths::of(&required_only()), CellWidths::NARROW);
+        assert_eq!(CellWidths::wide([]), CellWidths::default());
+        assert!(!CellWidths::NARROW.is_wide('あ'));
     }
 
     #[test]
@@ -439,6 +633,7 @@ mod tests {
             cell_h: 16,
             columns: 2,
             glyphs: [('a', 5)].into(),
+            ..FontAtlasDef::default()
         };
         assert_eq!(narrow.image_problems(16, 48), Vec::<String>::new());
         assert_eq!(narrow.image_problems(16, 32).len(), 1);
@@ -508,6 +703,7 @@ mod tests {
                 cell_h: 16,
                 columns: 16,
                 glyphs: (' '..='~').chain(extra.chars()).zip(0..).collect(),
+                ..FontAtlasDef::default()
             }
         }
 
@@ -565,6 +761,20 @@ mod tests {
                  font-atlas from a font that has it"
             );
             assert_eq!(errors(&ascii_and("Ж"), &lang), Vec::<String>::new());
+        }
+
+        #[test]
+        fn a_wide_glyph_counts_as_drawn() {
+            let lang = lang(
+                &[("menu.title", "Start")],
+                &[("ja", &[("menu.title", "あA")])],
+            );
+            let found = errors(&ascii_and(""), &lang);
+            assert_eq!(found.len(), 1, "{found:?}");
+            assert!(found[0].starts_with("ja/ui.ron: 'あ' (U+3042) isn't in the font atlas"));
+            let mut atlas = ascii_and("");
+            atlas.wide.insert('あ', 96);
+            assert_eq!(errors(&atlas, &lang), Vec::<String>::new());
         }
 
         #[test]

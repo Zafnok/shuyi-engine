@@ -76,7 +76,7 @@ pub fn paint_camera(palette: &Palette, view: &SceneCameraView, buf: &mut GlyphBu
 /// right-aligned on row `y`, one cell in from the edge, unless those cells
 /// or the one before them already hold text.
 pub fn paint_hint(palette: &Palette, hint: &str, buf: &mut GlyphBuffer, y: i32) {
-    let len = i32::try_from(hint.chars().count()).unwrap_or(i32::MAX);
+    let len = buf.text_cells(hint);
     let x = i32::from(buf.width()) - 1 - len;
     let free = (x - 1..x + len).all(|cx| buf.get(cx, y).is_some_and(|c| c.glyph == ' '));
     if free {

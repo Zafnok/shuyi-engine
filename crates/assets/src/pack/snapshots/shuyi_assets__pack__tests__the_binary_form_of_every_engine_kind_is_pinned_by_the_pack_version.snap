@@ -2,7 +2,7 @@
 source: crates/assets/src/pack/tests.rs
 expression: out
 ---
-pack format version 7
+pack format version 8
 image:
     02 01
 image pixels:
@@ -19,7 +19,7 @@ credits:
     01 04 66 6f 6e 74 03 06 41 20 46 6f 6e 74 03 41 6e 6e 18 68 74 74 70 73 3a 2f 2f 65 78 61 6d 70
     6c 65 2e 6f 72 67 2f 66 6f 6e 74 07 4f 46 4c 2d 31 2e 31 00 00
 font atlas:
-    08 10 10 02 01 61 00 01 62 01
+    08 10 10 02 01 61 00 01 62 01 00
 palette:
     02 05 62 6c 61 63 6b 00 00 00 05 67 72 61 73 73 00 ff 00
 pattern map:

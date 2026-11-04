@@ -18,6 +18,7 @@ use core::fmt::{Debug, Display};
 
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::dialogue::LineId;
+use shuyi_assets::font::CellWidths;
 use shuyi_assets::hot::Reload;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, Layout};
 use shuyi_assets::lang::{Lang, LangCode};
@@ -230,6 +231,11 @@ pub struct Ctx<G: GameData> {
     /// ([`GameData::console`]) unless a front end sets its own before the
     /// [`Game`](crate::Game) starts.
     pub console: ConsoleSpec,
+    /// Which characters take two cells of the console: those the font
+    /// atlas has wide. Nothing is wide here; the platform sets the
+    /// atlas's when the game has loaded
+    /// ([`Game::set_widths`](crate::Game::set_widths)).
+    widths: CellWidths,
     /// The active key bindings, for help text that names keys: the chosen
     /// layout's with the player's changes, or the layout picker's
     /// ([`Keymap::layout_picker`]) until one is chosen. Change it with
@@ -370,6 +376,7 @@ impl<G: GameData> Ctx<G> {
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         Ok(Self {
             console: game.console(),
+            widths: CellWidths::NARROW,
             game,
             palette,
             keymap,
@@ -402,6 +409,20 @@ impl<G: GameData> Ctx<G> {
             modules: module::States::default(),
             reload_errors: module::ReloadErrors::default(),
         })
+    }
+
+    /// Which characters take two cells of the console, for a screen that
+    /// measures text before it has the frame to draw it in
+    /// ([`text_width`](shuyi_assets::lang::text_width)): the same as the
+    /// frame's ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)).
+    pub fn widths(&self) -> &CellWidths {
+        &self.widths
+    }
+
+    /// Sets [`widths`](Self::widths): only with the frame's, by
+    /// [`Game::set_widths`](crate::Game::set_widths).
+    pub(crate) fn set_widths(&mut self, widths: CellWidths) {
+        self.widths = widths;
     }
 
     /// Takes how the asset `id` reloaded (`Hot::refresh`'s answer): a

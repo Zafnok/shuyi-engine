@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::{ContentError, codes};
+use crate::font::CellWidths;
 use crate::format::AssetKind;
 use crate::import_settings::is_settings_file;
 use crate::names::Names;
@@ -55,11 +56,12 @@ const DIALOGUE_DIR: &str = "dialogue/";
 /// Extension of a pack's dialogue files.
 const DIALOGUE_EXTENSION: &str = ".ron";
 
-/// How many cells of the screen `text` takes: one per character today.
-/// Every length limit on text is counted with this, so that it can learn
-/// the glyphs that are two cells wide in one place.
-pub fn text_width(text: &str) -> usize {
-    text.chars().count()
+/// How many cells of the screen `text` takes: one per character, two for a
+/// character `widths` has wide (a Japanese or Chinese one, from the font
+/// atlas's wide glyphs). Every length limit on text and every layout that
+/// measures it counts with this.
+pub fn text_width(text: &str, widths: &CellWidths) -> usize {
+    text.chars().map(|c| widths.of_char(c)).sum()
 }
 
 /// Longest [`LangCode`], in characters.
@@ -1053,9 +1055,14 @@ mod tests {
     }
 
     #[test]
-    fn width_counts_characters() {
-        assert_eq!(text_width(""), 0);
-        assert_eq!(text_width("abc"), 3);
-        assert_eq!(text_width("né!"), 3);
+    fn width_counts_characters_and_a_wide_one_twice() {
+        let narrow = &CellWidths::NARROW;
+        assert_eq!(text_width("", narrow), 0);
+        assert_eq!(text_width("abc", narrow), 3);
+        assert_eq!(text_width("né!", narrow), 3);
+        assert_eq!(text_width("あA", narrow), 2);
+        let wide = &CellWidths::wide(['あ', 'い']);
+        assert_eq!(text_width("あA", wide), 3);
+        assert_eq!(text_width("あいう", wide), 5);
     }
 }

@@ -68,6 +68,9 @@ crc32fast = { version = "1", default-features = false, features = ["std"] }
 # them to ADPCM. Readers, on the developer's machine (`tools/layers.ron`).
 lewton = "0.9"
 hound = "3.5"
+# `font-atlas`: a Japanese BDF font's JIS X 0208 code points read as
+# Unicode, through the EUC-JP decoder's table.
+encoding_rs = { version = "0.8.35", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.

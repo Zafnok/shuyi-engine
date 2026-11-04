@@ -181,11 +181,15 @@ fn bad_arguments_print_the_usage() {
     for (args, said) in [
         (
             &["font-atlas", "one"][..],
-            "usage: shuyi font-atlas [--no-text] <font.bdf>... <out-dir>",
+            "usage: shuyi font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>",
         ),
         (
             &["font-atlas", "--no-text", "one"],
-            "usage: shuyi font-atlas [--no-text] <font.bdf>... <out-dir>",
+            "usage: shuyi font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>",
+        ),
+        (
+            &["font-atlas", "one.bdf", "out", "--wide"],
+            "usage: shuyi font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>",
         ),
         (&["glyph-tiles", "one"], "usage: shuyi glyph-tiles"),
         (

@@ -701,7 +701,9 @@ impl<G: GameData> Harness<G> {
     }
 
     /// The current frame in the snapshot format of
-    /// [`shuyi_ui::frame::snapshot`].
+    /// [`shuyi_ui::frame::snapshot`]. The second cell of a wide character
+    /// (Japanese, Chinese) prints as nothing, so a row of wide text reads
+    /// as it is drawn; its colour row still has a key a cell.
     pub fn snapshot(&self) -> String {
         let game = self.game();
         game.buffer().to_snapshot(&game.ctx().palette)

@@ -274,10 +274,10 @@ None.
     change (`one_bit` still refuses cells wider than 8 pixels, as it does
     for a BDF).
     `run` reads every font through `read_any` and gains the
-    `outline: Option<OutlineSize>` parameter. **Either order with
-    2301:** if 2301 is done, `--wide` reads its font through `read_any`
-    too, with the wide cell as its `--cell`; if not, 2301 does it (its
-    scope says so).
+    `outline: Option<OutlineSize>` parameter. **From 2301 (done):**
+    `--wide` (`run`'s `wide_path`, read with `read_font` and checked by
+    `check_wide`) reads its font through `read_any` too, with the wide
+    cell as its `--cell`.
   - **proportional:** a new command, `text-font <font.ttf|.otf>
     <out-dir> --px <n> [--smooth] [--glyphs <chars>]`
     (`crates/cli/src/text_font.rs`). It runs in a project, as

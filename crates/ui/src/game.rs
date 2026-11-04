@@ -29,6 +29,7 @@ use crate::input::state::{Device, InputState};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
+use shuyi_assets::font::CellWidths;
 
 /// A keyboard or controller event as the platform reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -260,7 +261,7 @@ impl<G: GameData> Game<G> {
         let mut game = Self {
             stack,
             input,
-            buffer: GlyphBuffer::with_spec(ctx.console, blank),
+            buffer: GlyphBuffer::with_spec(ctx.console, blank).with_widths(ctx.widths().clone()),
             ctx,
             hooks,
             quit: false,
@@ -618,6 +619,22 @@ impl<G: GameData> Game<G> {
         }
     }
 
+    /// Prints the characters `widths` has wide in two cells, as the font
+    /// atlas the frame is drawn with has them ([`CellWidths::of`]): the
+    /// frame's ([`GlyphBuffer::widths`]) and the context's
+    /// ([`Ctx::widths`]). The frame is drawn again with them. The platform
+    /// calls it once the game has loaded, with its look's atlas.
+    ///
+    /// [`CellWidths::of`]: shuyi_assets::font::CellWidths::of
+    pub fn set_widths(&mut self, widths: CellWidths) {
+        if *self.ctx.widths() == widths {
+            return;
+        }
+        self.buffer.set_widths(widths.clone());
+        self.ctx.set_widths(widths);
+        self.redraw();
+    }
+
     /// Clears the buffer and draws the stack into it, then the modules
     /// over it: after a change made from outside the frame loop (a test
     /// changing the context).
@@ -662,7 +679,7 @@ impl<G: GameData> Game<G> {
         );
         self.buffer
             .fill_rect(Rect::new(0, y, width, 1), Cell::new(' ', ink, paper));
-        let len = i32::try_from(hint.chars().count()).unwrap_or(width);
+        let len = self.buffer.text_cells(hint);
         self.buffer
             .print((width - len).max(0) / 2, y, hint, ink, paper);
     }

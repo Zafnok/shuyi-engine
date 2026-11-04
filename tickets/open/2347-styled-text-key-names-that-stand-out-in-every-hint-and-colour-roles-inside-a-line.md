@@ -264,12 +264,11 @@ game's palette names `key`.
   picks its look. Say all this in the PR.
 - **Public types (ADR-0039):** `TextRole` and `TextSpan` follow it
   (`#[non_exhaustive]` and constructors).
-- **Either order with 2301:** if 2301 is done, `StyledText::width` and
-  `cut` take its `CellWidths`, and `print_styled` advances two cells
-  for a wide glyph as `print` does. If not, 2301 does it: its step 3
-  changes the printing that `print_styled` shares with `print`, and
-  its step 4 changes `text_width` and the layout code that counts
-  characters, `width` and `cut` among them.
+- **From 2301 (done):** `StyledText::width` and `cut` take a
+  `CellWidths` (the frame's, `GlyphBuffer::widths`, or `Ctx::widths`),
+  as `frame::draw::cut` and `text_width` do, and `print_styled`
+  advances two cells for a wide glyph as `print` does: it goes through
+  `print_with`, which does.
 - **Either order with 2330:** if 2330 is done, its `Text` node paints
   with `Ctx::label_styled` and `print_styled` in this PR; if not, 2330
   does it.

@@ -10,6 +10,8 @@ use super::view::AskView;
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
+use shuyi_assets::font::CellWidths;
+use shuyi_assets::lang::text_width;
 
 /// Height of the box: its two lines, a blank row above and below, and the
 /// border.
@@ -18,16 +20,16 @@ pub const HEIGHT: i32 = 6;
 const ANSWER_GAP: usize = 3;
 
 /// The answers of `view` on one line: each name with a space either side,
-/// [`ANSWER_GAP`] cells apart. Returns the line and where each answer
-/// starts in it.
-fn answers_line<T>(view: &AskView<T>) -> (String, Vec<usize>) {
+/// [`ANSWER_GAP`] cells apart. Returns the line and the cell where each
+/// answer starts in it, measured with `widths`.
+fn answers_line<T>(view: &AskView<T>, widths: &CellWidths) -> (String, Vec<usize>) {
     let mut line = String::new();
     let mut starts = Vec::new();
     for (i, answer) in view.answers.iter().enumerate() {
         if i > 0 {
             line.push_str(&" ".repeat(ANSWER_GAP));
         }
-        starts.push(line.chars().count());
+        starts.push(text_width(&line, widths));
         line.push(' ');
         line.push_str(&answer.label);
         line.push(' ');
@@ -38,11 +40,12 @@ fn answers_line<T>(view: &AskView<T>) -> (String, Vec<usize>) {
 /// The box `view` is painted in on `buf`: as wide as its widest line and
 /// a margin of two cells either side, [`HEIGHT`] tall, in the middle.
 pub fn rect<T>(view: &AskView<T>, buf: &GlyphBuffer) -> Rect {
+    let widths = buf.widths();
     let under = match &view.keys {
-        Some(keys) => keys.chars().count(),
-        None => answers_line(view).0.chars().count(),
+        Some(keys) => text_width(keys, widths),
+        None => text_width(&answers_line(view, widths).0, widths),
     };
-    let widest = view.text.chars().count().max(under);
+    let widest = text_width(&view.text, widths).max(under);
     let w = i32::try_from(widest).unwrap_or(0) + 4;
     Rect::new(
         (i32::from(buf.width()) - w) / 2,
@@ -66,7 +69,7 @@ pub fn paint<T>(palette: &Palette, view: &AskView<T>, buf: &mut GlyphBuffer) {
         return;
     }
     let bar = c(EngineColor::Focus);
-    let (_, starts) = answers_line(view);
+    let (_, starts) = answers_line(view, buf.widths());
     for (answer, start) in view.answers.iter().zip(starts) {
         let x = x + i32::try_from(start).unwrap_or(0);
         let shown = format!(" {} ", answer.label);

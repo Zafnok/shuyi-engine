@@ -125,6 +125,21 @@ fn centring_in_a_rectangle_cuts_and_keeps_the_background() {
 }
 
 #[test]
+fn wide_text_is_centred_and_cut_by_its_cells() {
+    let widths = CellWidths::wide(['あ', 'い']);
+    let mut buf = GlyphBuffer::new(8, 1, BLANK).with_widths(widths.clone());
+    // Four cells, centred in eight: two each side.
+    assert_eq!(buf.print_centred(buf.bounds(), "あい", RED), 4);
+    assert_eq!(buf.get(2, 0).unwrap().glyph, 'あ');
+    assert_eq!(buf.get(4, 0).unwrap().glyph, 'い');
+    let mut buf = GlyphBuffer::new(8, 1, BLANK).with_widths(widths.clone());
+    assert_eq!(buf.print_cut(0, 0, 4, "あいA", RED), 3);
+    assert_eq!(buf.get(2, 0).unwrap().glyph, '…');
+    assert_eq!(cut("aい", 2, &widths), "a…");
+    assert_eq!(cut("いa", 3, &widths), "いa");
+}
+
+#[test]
 fn printing_cut_to_a_width() {
     let mut buf = GlyphBuffer::new(8, 1, BLANK);
     assert_eq!(buf.print_cut(1, 0, 4, "Escape", RED), 4);

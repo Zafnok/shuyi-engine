@@ -92,10 +92,9 @@ None.
      draws, `-` and `'`, ASCII digits where the rules allow them, and
      single spaces between words. `×`, `÷`, punctuation and symbols stay
      refused.
-   - The length is counted with `shuyi_assets::lang::text_width` (one
-     per character today). **Either order with 2301:** whichever lands
-     second passes 2301's width table (its `CellWidths`), so a wide
-     letter counts as two.
+   - The length is counted with `shuyi_assets::lang::text_width` over
+     the frame's width table (`Ctx::widths()`, a `CellWidths`, from
+     2301, done), so a wide letter counts as two.
    - **`Ctx` learns what the font draws:** a public field `font_chars:
      Option<BTreeSet<char>>` in `crates/ui/src/ctx.rs` (`BTreeSet` from
      `alloc`, as the crate builds without `std`). `None`, the default,
@@ -248,7 +247,7 @@ it again (`pack::VERSION`). The PR says so, with a `Breaking:` line
 (2010), and the game's PR that moves its pin follows it. On
 Windows the game's players get the IME off during play. If the game
 answers game#0042 with a kana grid, its Japanese pack lists the pages
-as `Rows` once 2301 is done.
+as `Rows` (wide glyphs are there: 2301, done).
 
 **Out (do not do):**
 - Kana pages and a dakuten cell (a cell that voices the kana before

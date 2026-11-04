@@ -130,6 +130,20 @@ the key, not a line:
 `cargo shuyi font-atlas files-src/ter-u16n.bdf crates/game/files/font` remakes it: it
 runs the game, and keeps every character its text uses that the font has.
 
+Japanese and Chinese characters are twice as wide as a letter: each takes **two cells**
+of the screen. They come from a second font, twice as wide (16 × 16 pixels beside
+8 × 16), given with `--wide`:
+
+```text
+cargo shuyi font-atlas --wide files-src/my-16x16.bdf files-src/ter-u16n.bdf crates/game/files/font
+```
+
+The atlas then keeps the wide font's glyphs of every character the text uses that the
+narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` names
+(a name entry's letters, say). Text measured for a layout counts a wide character as
+two: `shuyi::assets::lang::text_width` does, with the widths of the frame
+(`buf.widths()`), and `buf.text_cells(text)` gives the same as a column count.
+
 ## Layers
 
 A bundle is **layers** read in order: a file comes from the first layer that has it. So

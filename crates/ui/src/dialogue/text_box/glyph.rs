@@ -169,7 +169,7 @@ fn paint_lines(
     let top = text_y + i32::from(centred && text.lines.len() == 1 && alone);
     for ((y, line), visible) in (top..).zip(&text.lines).zip(text.revealed()) {
         let x = if centred {
-            let len = i32::try_from(line.chars().count()).unwrap_or(0);
+            let len = buf.text_cells(line);
             place.frame.x + (place.frame.w - len) / 2
         } else {
             place.text_x
@@ -208,11 +208,11 @@ fn paint_waiting(palette: &Palette, buf: &mut GlyphBuffer, frame: Rect, waiting:
     let right = frame.x + frame.w - 4;
     let bottom = frame.y + frame.h - 2;
     let key = &waiting.key;
-    let w = i32::try_from(key.chars().count()).unwrap_or(0);
+    let w = buf.text_cells(key);
     buf.print(right - 1 - w, bottom, key, c(EngineColor::TextDim), bg);
     // The log's key, if it has one, before it.
     if let Some(hint) = &waiting.log_hint {
-        let hint_w = i32::try_from(hint.chars().count()).unwrap_or(0);
+        let hint_w = buf.text_cells(hint);
         let x = right - 1 - w - LOG_HINT_GAP - hint_w;
         buf.print(x, bottom, hint, c(EngineColor::TextDim), bg);
     }

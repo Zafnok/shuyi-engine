@@ -8,21 +8,24 @@
 //!
 //! - cells: backgrounds in several colours, see-through cells, glyphs in
 //!   several colours, and a glyph the atlas lacks (the fallback, in
-//!   [`MISSING_COLOR`](super::MISSING_COLOR));
+//!   [`MISSING_COLOR`](super::MISSING_COLOR)); wide glyphs among narrow
+//!   ones, each over its two cells, and one without its continuation
+//!   (the fallback too);
 //! - rectangles and sprites in both layers; sprites in every [`Paint`], at
 //!   opacity 255 and 128, at brightness 255 and 102, mirrored, cut by
 //!   their `clip`, and one whose image is missing;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel.
 //!
 //! Its pictures are made in code: the [test card](super::test_card) and a
-//! small font atlas of boxes and bars. A new `Item`, `Paint` or `Layer`
-//! variant goes on the card in the change that adds it: the tests don't
-//! compile until it does.
+//! small font atlas of boxes and bars, and a wide glyph. A new `Item`,
+//! `Paint` or `Layer` variant goes on the card in the change that adds it:
+//! the tests don't compile until it does.
 
 use alloc::collections::BTreeMap;
+use alloc::format;
 use alloc::rc::Rc;
 
-use shuyi_assets::font::{FALLBACK_GLYPH, FontAtlasDef};
+use shuyi_assets::font::{CellWidths, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::{ImageId, ImageInfo, ImageTable};
 use shuyi_assets::lighting::Light;
 
@@ -62,6 +65,9 @@ const FOREGROUNDS: [Rgb; 5] = [
 const GLYPHS: [char; 4] = ['#', 'o', '-', '|'];
 /// A glyph the atlas lacks.
 const MISSING_GLYPH: char = 'Z';
+/// The atlas's wide glyph: a box with a bar down left of its middle, so
+/// its two halves differ.
+const WIDE_GLYPH: char = '田';
 /// The sprites' gallery: two background colours, a cell each, in turn.
 const STRIPES: [Rgb; 2] = [Rgb::new(70, 70, 80), Rgb::new(200, 190, 170)];
 
@@ -71,7 +77,7 @@ const STRIPES: [Rgb; 2] = [Rgb::new(70, 70, 80), Rgb::new(200, 190, 170)];
 pub struct RenderCard {
     /// The frame.
     pub buffer: GlyphBuffer,
-    /// The font atlas: boxes and bars, and the fallback glyph.
+    /// The font atlas: boxes and bars, the fallback glyph and a wide one.
     pub atlas: FontAtlasDef,
     /// The atlas's picture.
     pub atlas_image: Image,
@@ -127,16 +133,19 @@ pub fn build() -> RenderCard {
     }
 }
 
-/// A 48 × 16 atlas of six 8 × 16 cells: the space, a box (`#`), a box's
-/// outline (`o`), a bar across (`-`), a bar down (`|`), and the fallback
-/// glyph, a checkerboard. Glyph pixels are white, the rest see-through.
+/// A 64 × 16 atlas of eight 8 × 16 cells: the space, a box (`#`), a box's
+/// outline (`o`), a bar across (`-`), a bar down (`|`), the fallback
+/// glyph, a checkerboard, and the wide glyph over the last two. Glyph
+/// pixels are white, the rest see-through.
 fn atlas() -> (FontAtlasDef, Image) {
     const CELL: (u32, u32) = (8, 16);
     let order = [' ', '#', 'o', '-', '|', FALLBACK_GLYPH];
     let glyphs: BTreeMap<char, u32> = order.iter().copied().zip(0..).collect();
-    let columns = u32::try_from(order.len()).unwrap_or(0);
+    let narrow = u32::try_from(order.len()).unwrap_or(0);
+    let columns = narrow + 2;
     let (width, height) = (CELL.0 * columns, CELL.1);
-    // Whether pixel `(x, y)` of glyph `glyph`'s cell is set.
+    // Whether pixel `(x, y)` of glyph `glyph`'s cell (both cells of the
+    // wide one) is set.
     let set = |glyph: char, x: u32, y: u32| match glyph {
         '#' => (1..7).contains(&x) && (2..14).contains(&y),
         'o' => {
@@ -146,12 +155,20 @@ fn atlas() -> (FontAtlasDef, Image) {
         '-' => (7..9).contains(&y),
         '|' => (3..5).contains(&x),
         FALLBACK_GLYPH => (1..7).contains(&x) && (2..14).contains(&y) && (x + y).is_multiple_of(2),
+        WIDE_GLYPH => {
+            let (across, down) = ((1..15).contains(&x), (2..14).contains(&y));
+            across && down && (x == 1 || x == 14 || x == 5 || y == 2 || y == 13 || y == 7)
+        }
         _ => false,
     };
     let rgba = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .flat_map(|(x, y)| {
-            let on = set(order[(x / CELL.0) as usize], x % CELL.0, y);
+            let cell = x / CELL.0;
+            let on = match order.get(cell as usize) {
+                Some(&glyph) => set(glyph, x % CELL.0, y),
+                None => set(WIDE_GLYPH, x - narrow * CELL.0, y),
+            };
             [if on { 255 } else { 0 }; 4]
         })
         .collect();
@@ -160,6 +177,7 @@ fn atlas() -> (FontAtlasDef, Image) {
         cell_h: CELL.1,
         columns,
         glyphs,
+        wide: BTreeMap::from([(WIDE_GLYPH, narrow)]),
     };
     (
         def,
@@ -174,7 +192,8 @@ fn atlas() -> (FontAtlasDef, Image) {
 /// The card's frame, its sprites showing `card`, but one showing
 /// `missing`.
 fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
-    let mut buf = GlyphBuffer::new(COLUMNS, ROWS, Cell::new(' ', FOREGROUNDS[0], CLEAR));
+    let mut buf = GlyphBuffer::new(COLUMNS, ROWS, Cell::new(' ', FOREGROUNDS[0], CLEAR))
+        .with_widths(CellWidths::wide([WIDE_GLYPH]));
     cells(&mut buf);
     rects(&mut buf);
     sprites(&mut buf, card, missing);
@@ -185,8 +204,9 @@ fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
 /// The cells: a band of backgrounds and glyphs in every colour (row 0),
 /// glyphs on the clear colour and the glyph the atlas lacks (row 1), the
 /// sprites' gallery on stripes (rows 2 to 10, columns 0 to 19), glyphs
-/// over the `Under` sprites (row 6), and see-through cells where there is
-/// no backdrop (row 11).
+/// over the `Under` sprites (row 6), see-through cells where there is no
+/// backdrop (row 11, columns 0 to 8), and wide glyphs among narrow ones
+/// and one wide glyph without its continuation (row 11, from column 10).
 fn cells(buf: &mut GlyphBuffer) {
     for x in 0..i32::from(COLUMNS) {
         let i = nth(x);
@@ -216,6 +236,16 @@ fn cells(buf: &mut GlyphBuffer) {
         buf.set(x, 11, Cell::see_through(glyph, FOREGROUNDS[2]));
     }
     buf.set(8, 11, Cell::see_through(MISSING_GLYPH, FOREGROUNDS[1]));
+    let wide = format!("{WIDE_GLYPH}#{WIDE_GLYPH}{WIDE_GLYPH}o");
+    buf.print(10, 11, &wide, FOREGROUNDS[1], CLEAR);
+    buf.print(
+        18,
+        11,
+        &format!("{WIDE_GLYPH}|"),
+        FOREGROUNDS[3],
+        BACKGROUNDS[0],
+    );
+    buf.set(22, 11, Cell::new(WIDE_GLYPH, FOREGROUNDS[2], CLEAR));
 }
 
 /// The rectangles: an `Under` bar through row 1's glyphs, `Over` squares

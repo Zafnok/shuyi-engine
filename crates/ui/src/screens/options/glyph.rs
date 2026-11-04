@@ -132,7 +132,7 @@ fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, pa
     buf.print(value_x, y, &value, value_fg, bg);
     if row.focused && adjustable {
         buf.print(value_x - 2, y, "◄", dim, bg);
-        let after = value_x + i32::try_from(value.chars().count()).unwrap_or(0) + 1;
+        let after = value_x + buf.text_cells(&value) + 1;
         buf.print(after, y, "►", dim, bg);
     }
 }

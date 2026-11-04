@@ -11,6 +11,8 @@ pub mod profiles;
 
 use crate::prelude::*;
 
+use shuyi_assets::lang::text_width;
+
 pub use crate::frame::draw::cut;
 
 use crate::ctx::{Ctx, GameData};
@@ -41,8 +43,8 @@ pub fn centre_x(buf: &GlyphBuffer, width: usize) -> i32 {
 /// Prints `text` centred on row `y`. A text wider than `buf` starts at
 /// column 0, [`cut`] to the buffer's width.
 pub fn print_centred(buf: &mut GlyphBuffer, y: i32, text: &str, fg: Rgb, bg: Rgb) {
-    let shown = cut(text, usize::from(buf.width()));
-    let x = centre_x(buf, shown.chars().count());
+    let shown = cut(text, usize::from(buf.width()), buf.widths());
+    let x = centre_x(buf, text_width(&shown, buf.widths()));
     buf.print(x, y, &shown, fg, bg);
 }
 

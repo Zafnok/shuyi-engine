@@ -28,11 +28,6 @@ const MARK_DX: i32 = 24;
 /// Width of the name boxes (no wider than the buffer).
 const NAME_BOX_W: i32 = 46;
 
-/// Cells `text` takes, as a coordinate.
-fn cells(text: &str) -> i32 {
-    i32::try_from(text.chars().count()).unwrap_or(0)
-}
-
 /// The panel for `rows` rows on `buf`: the border, a blank row above and
 /// below them, and one between the profiles and the row that adds one.
 fn panel(rows: usize, buf: &GlyphBuffer) -> Rect {
@@ -141,8 +136,8 @@ fn paint_actions<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, actions: &Act
     let (bg, text) = (c(EngineColor::Panel), c(EngineColor::Text));
     let items = &actions.menu.items;
     let labels: Vec<String> = items.iter().map(|i| ctx.label(&i.label)).collect();
-    let widest = labels.iter().map(|l| cells(l)).max();
-    let w = widest.unwrap_or(0).max(cells(&actions.title) + 2) + 6;
+    let widest = labels.iter().map(|l| buf.text_cells(l)).max();
+    let w = widest.unwrap_or(0).max(buf.text_cells(&actions.title) + 2) + 6;
     let h = i32::try_from(items.len()).unwrap_or(0) + 4;
     let rect = middle(buf, w, h);
     buf.fill_rect(rect, Cell::new(' ', text, bg));

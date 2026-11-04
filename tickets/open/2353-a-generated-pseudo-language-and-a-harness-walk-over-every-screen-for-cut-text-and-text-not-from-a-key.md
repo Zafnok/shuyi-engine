@@ -97,10 +97,9 @@ None.
        `~` before the closing bracket if the vowels run out (whole
        numbers only);
     4. it is wrapped in `[` and `]`.
-  - **Either order with 2301:** if it is done, `pseudo_text` and
-    `with_pseudo` also take the atlas's width table and measure with
-    `text_width` over it; if not, they use `text_width` as it is, and
-    2301 adds the table when it changes `text_width`.
+  - **From 2301 (done):** `pseudo_text` and `with_pseudo` also take
+    the atlas's width table (a `CellWidths`) and measure with
+    `text_width` over it.
   - **Either order with 2348:** if it is done, `pseudo_text` reads a
     text with `Message::parse`. It keeps a message's syntax as it is
     (argument names and types, branch selectors, `#`) and changes only
@@ -195,8 +194,8 @@ None.
       own name, say) is not reported where it stands on the row.
   - **Rule 9:** cut text is a look, so the walk reads cells, as tests of
     a look may (`AGENTS.md` rule 9).
-  - **Either order with 2301:** if it is done, the walk skips wide-glyph
-    continuation cells; if not, 2301 teaches it to.
+  - **From 2301 (done):** the walk skips wide-glyph continuation cells
+    (`Cell::is_continuation`).
   - **Either order with 2323 (parked):** if 2323 is done, its
     `check_text_sizes` and this walk share `Stop` and the cut finding,
     and the walk runs at every offered size; if not, 2323 builds its

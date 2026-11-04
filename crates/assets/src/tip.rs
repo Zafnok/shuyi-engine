@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
 use crate::error::ContentError;
+use crate::font::CellWidths;
 use crate::lang::text_width;
 use crate::ron::parse_ron;
 
@@ -137,7 +138,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
         if !triggers.insert(&tip.trigger) {
             err(format!("{:?} already has a tip", tip.trigger));
         }
-        if tip.title.is_empty() || text_width(&tip.title) > title_chars {
+        if tip.title.is_empty() || text_width(&tip.title, &CellWidths::NARROW) > title_chars {
             err(format!("the title must be 1 to {title_chars} characters"));
         }
         let lines: Vec<&str> = tip.text.lines().collect();
@@ -145,7 +146,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
             err(format!("the text must have 1 to {text_lines} lines"));
         }
         for line in lines {
-            if text_width(line) > line_chars {
+            if text_width(line, &CellWidths::NARROW) > line_chars {
                 err(format!(
                     "a text line is over {line_chars} characters: {line:?}"
                 ));

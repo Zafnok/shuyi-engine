@@ -11,7 +11,7 @@ use shuyi_assets::ink::Ink;
 use super::{
     Font, Frame, HEIGHT, Image, Images, InkShades, Phase, ROW_BYTES, Shade, Shades, WIDTH,
 };
-use crate::frame::glyph_buffer::{GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
 pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
@@ -105,6 +105,35 @@ fn rows<'a>(font: &Font<'a>, glyph: char) -> Option<&'a [u8]> {
     let rows = font.atlas.cell_h as usize;
     let start = *index as usize * rows;
     font.bits.get(start..start + rows)
+}
+
+/// The pixel rows of half `half` of wide glyph `glyph`, looked up in the
+/// wide glyph map.
+fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize) -> Option<&'a [u8]> {
+    let index = font.atlas.wide.get(&glyph)?;
+    let rows = font.atlas.cell_h as usize;
+    let start = (*index as usize + half) * rows;
+    font.bits.get(start..start + rows)
+}
+
+/// What cell `(x, y)` of `buf` draws of a glyph, as
+/// [`Font::cell_rows`] says: nothing for a space, a half of a wide glyph
+/// in each of its cells, else the glyph's rows or the fallback's.
+fn cell_rows<'a>(font: &Font<'a>, buf: &GlyphBuffer, x: i32, y: i32) -> Option<&'a [u8]> {
+    let cell = buf.get(x, y)?;
+    if cell.is_continuation() {
+        return wide_rows(font, buf.get(x - 1, y)?.glyph, 1);
+    }
+    if cell.glyph == ' ' {
+        return None;
+    }
+    let next = buf.get(x + 1, y);
+    if next.is_some_and(Cell::is_continuation)
+        && let Some(rows) = wide_rows(font, cell.glyph, 0)
+    {
+        return Some(rows);
+    }
+    rows(font, cell.glyph)
 }
 
 /// A rectangle of screen pixels, `x0..x1` × `y0..y1`.
@@ -226,11 +255,12 @@ fn draw_layers<I: Images, S: Shades>(
         (0..i32::from(buf.height())).flat_map(move |y| {
             (0..i32::from(buf.width())).filter_map(move |x| {
                 let rect = PxRect::new(x * cell_w, y * cell_h, cell_w, cell_h);
-                buf.get(x, y).map(|cell| (at.screen(rect), cell))
+                let rows = cell_rows(font, buf, x, y);
+                buf.get(x, y).map(|cell| (at.screen(rect), cell, rows))
             })
         })
     };
-    for (rect, cell) in cells() {
+    for (rect, cell, _) in cells() {
         if !cell.see_through {
             target.fill(rect, Pen::Paint(shades.ground(cell.bg)));
         }
@@ -238,17 +268,16 @@ fn draw_layers<I: Images, S: Shades>(
     mark(Phase::Backgrounds);
     draw_items(target, buf, Layer::Under, at, look);
     mark(Phase::Under);
-    for (rect, cell) in cells() {
+    for (rect, cell, rows) in cells() {
         if shades.glyph(cell.fg).edged {
-            draw_glyph(target, font, cell.glyph, rect, at.scale, Glyph::Edge);
+            draw_glyph(target, rows, rect, at.scale, Glyph::Edge);
         }
     }
     mark(Phase::Edges);
-    for (rect, cell) in cells() {
+    for (rect, cell, rows) in cells() {
         draw_glyph(
             target,
-            font,
-            cell.glyph,
+            rows,
             rect,
             at.scale,
             Glyph::Paint(shades.glyph(cell.fg)),
@@ -293,18 +322,8 @@ enum Glyph {
     Edge,
 }
 
-fn draw_glyph(
-    target: &mut Target<'_>,
-    font: &Font<'_>,
-    glyph: char,
-    cell: Clip,
-    scale: i64,
-    part: Glyph,
-) {
-    if glyph == ' ' {
-        return;
-    }
-    let Some(rows) = rows(font, glyph) else {
+fn draw_glyph(target: &mut Target<'_>, rows: Option<&[u8]>, cell: Clip, scale: i64, part: Glyph) {
+    let Some(rows) = rows else {
         return;
     };
     let height = i64::try_from(rows.len()).unwrap_or(0) * scale;

@@ -411,6 +411,7 @@ mod tests {
             cell_h: 8,
             columns: 16,
             glyphs: alloc::collections::BTreeMap::new(),
+            wide: alloc::collections::BTreeMap::new(),
         };
         let images = ImageTable::default();
         let map = PatternMap::default();
@@ -430,6 +431,7 @@ mod tests {
             cell_h: 8,
             columns: 16,
             glyphs: alloc::collections::BTreeMap::new(),
+            wide: alloc::collections::BTreeMap::new(),
         };
         let images = ImageTable::default();
         let look = Look::new(&font, &images);

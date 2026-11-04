@@ -116,6 +116,7 @@ mod tests {
         cell_h: 0,
         columns: 0,
         glyphs: BTreeMap::new(),
+        wide: BTreeMap::new(),
     };
     static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 

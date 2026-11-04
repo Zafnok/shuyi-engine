@@ -41,6 +41,7 @@ fn drawn() -> &'static Drawn {
             cell_h: 16,
             columns: 16,
             glyphs: BTreeMap::from([('?', 0)]),
+            wide: BTreeMap::new(),
         }));
         Drawn {
             atlas,

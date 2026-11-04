@@ -403,6 +403,7 @@ them.
 | 2304 | The grid scene says where the map goes on past the view; the grid skins let a game paint over the units and under the cursor | game#0449 |
 | 2305 | The text box paints narration from the left when the game asks | game#0740 |
 | 2301 | Wide glyphs: two cells in the glyph buffer, from a wide font in the atlas | game#0236 |
+| 2250 | The text checks measure with the font atlas's wide glyphs, and a reloaded atlas changes the frame's widths | 2301 |
 | 2302 | Line breaking for text without spaces, and a report of translated text too long for its place | game#0237 |
 | 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
