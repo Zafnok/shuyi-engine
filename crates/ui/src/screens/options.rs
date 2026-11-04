@@ -358,6 +358,29 @@ impl<G: GameData> OptionRow<G> {
         )
     }
 
+    /// Whether voice clips play (in the settings). Turning it off stops
+    /// the voice that is playing.
+    pub fn voices() -> Self {
+        Self::new(
+            "options.row.voices",
+            RowValue::Toggle {
+                get: |ctx| ctx.settings().voices,
+                set: |ctx, on| ctx.preview_settings(|s| s.voices = on),
+            },
+        )
+    }
+
+    /// How loud voice clips play (in the settings).
+    pub fn voice_volume() -> Self {
+        Self::new(
+            "options.row.voice_volume",
+            RowValue::Volume {
+                get: |ctx| ctx.settings().voice_volume,
+                set: |ctx, v| ctx.preview_settings(|s| s.voice_volume = v),
+            },
+        )
+    }
+
     /// Puts every setting back to its default but the layout, asking
     /// first; kept or thrown away on leaving, like any change.
     pub fn restore_defaults() -> Self {

@@ -61,11 +61,6 @@ pub const CHORD_JOIN_TEXT: &str = "keys.chord_join";
 /// `Player {n}`, made on a first launch.
 pub const PROFILE_NUMBERED_TEXT: &str = "profile.numbered";
 
-/// The loudest [`Ctx::voice_volume`].
-pub const MAX_VOICE_VOLUME: u8 = 10;
-/// [`Ctx::voice_volume`] until the player changes it (*tunable*).
-pub const DEFAULT_VOICE_VOLUME: u8 = 8;
-
 /// [`Ctx::music_seed`] until the platform sets it.
 pub const DEFAULT_MUSIC_SEED: u64 = 0;
 
@@ -312,10 +307,6 @@ pub struct Ctx<G: GameData> {
     /// reports it each frame through
     /// [`Game::set_music_playing`](crate::Game::set_music_playing).
     pub music_clock: Option<MusicClock>,
-    /// Whether voice clips play.
-    pub voices_on: bool,
-    /// How loud voice clips play, 0 to [`MAX_VOICE_VOLUME`].
-    pub voice_volume: u8,
     /// The voice clips that may be played: none until the platform hands
     /// over a manifest ([`set_voice_manifest`](Self::set_voice_manifest)).
     voices: Playable<G::Voice>,
@@ -398,8 +389,6 @@ impl<G: GameData> Ctx<G> {
             idle_motion: IdleMotion::Off,
             audio,
             music_clock: None,
-            voices_on: true,
-            voice_volume: DEFAULT_VOICE_VOLUME,
             voices: Playable::default(),
             music_seed: DEFAULT_MUSIC_SEED,
             music_picks: 0,
@@ -544,7 +533,7 @@ impl<G: GameData> Ctx<G> {
     /// The clip `line` would play now, if voices are on and it has one
     /// that may be played.
     fn voice_for(&self, line: &LineId) -> Option<G::Voice> {
-        if !self.voices_on {
+        if !self.settings.voices {
             return None;
         }
         self.voices.variant_for(line, self.game.voice_variant())
@@ -585,9 +574,11 @@ impl<G: GameData> Ctx<G> {
         }
     }
 
-    /// [`voice_volume`](Self::voice_volume) as a 0–1 factor.
-    pub fn voice_gain(&self) -> f32 {
-        f32::from(self.voice_volume.min(MAX_VOICE_VOLUME)) / f32::from(MAX_VOICE_VOLUME)
+    /// Whether any line has a voice clip that may be played: the platform
+    /// found the clips and the game can use them. Voices off in the
+    /// settings doesn't change it, so a game can ask whether to play them.
+    pub fn has_voices(&self) -> bool {
+        !self.voices.is_empty()
     }
 
     /// The layout in use, or `None` if the player hasn't picked one yet.
@@ -928,6 +919,9 @@ impl<G: GameData> Ctx<G> {
         }
         if self.settings.frame_cap != before.frame_cap {
             self.next_frame_cap_serial();
+        }
+        if before.voices && !self.settings.voices {
+            self.stop_voice();
         }
         self.game.apply_settings(&self.settings, Some(&before));
         if self.settings.theme != before.theme {

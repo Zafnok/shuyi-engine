@@ -29,6 +29,8 @@
     "options.row.theme": "Colors",
     "options.row.music_volume": "Music volume",
     "options.row.sound_volume": "Sound volume",
+    "options.row.voices": "Voices",
+    "options.row.voice_volume": "Voice volume",
     "options.row.layout": "Layout",
     "options.row.key_bindings": "Key bindings",
     "options.row.restore_defaults": "Restore defaults",

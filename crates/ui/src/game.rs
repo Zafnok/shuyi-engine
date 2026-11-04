@@ -159,7 +159,8 @@ pub struct FrameOutput<'a, V> {
     /// Whether the game should fill the screen (the Fullscreen setting);
     /// the platform switches when this changes.
     pub fullscreen: bool,
-    /// How loud voice clips play, 0–1 ([`Ctx::voice_volume`]). The
+    /// How loud voice clips play, 0–1
+    /// ([`Settings::voice_volume`](crate::settings::Settings::voice_volume)). The
     /// platform applies it to the voice that is playing too.
     pub voice_volume: f32,
     /// The most frames a second to show (the player's frame cap): the
@@ -432,7 +433,7 @@ impl<G: GameData> Game<G> {
             music_volume: self.ctx.settings().music_factor(),
             sound_volume: self.ctx.settings().sound_factor(),
             fullscreen: self.ctx.settings().fullscreen,
-            voice_volume: self.ctx.voice_gain(),
+            voice_volume: self.ctx.settings().voice_factor(),
             frame_cap: self.ctx.settings().frame_cap,
             frame_cap_serial: self.ctx.frame_cap_serial(),
         }

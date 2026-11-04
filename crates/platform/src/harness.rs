@@ -619,6 +619,12 @@ impl<G: GameData> Harness<G> {
         (music, sound)
     }
 
+    /// The voice volume the last frame told the platform to play at, 0–1
+    /// ([`AudioFrame`](crate::AudioFrame)).
+    pub fn voice_volume(&self) -> f32 {
+        self.platform.speaker().volumes().2
+    }
+
     /// Whether the last frame told the platform to fill the screen.
     pub fn fullscreen(&self) -> bool {
         matches!(

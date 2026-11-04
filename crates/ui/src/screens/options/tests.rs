@@ -13,6 +13,7 @@ use crate::frame_cap::FrameCap;
 use crate::settings::{SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::toy::{self, Action, LEFT_HANDED, Prefs, Theme, Toy, ToyCtx, ctx};
+use core::sync::atomic::{AtomicU8, Ordering::Relaxed};
 
 type Ctx = ToyCtx;
 type OptionsScreen = super::OptionsScreen<Toy>;
@@ -953,8 +954,12 @@ fn leave_choices_and_questions_name_their_keys() {
     assert!(!OptionRow::<Toy>::restore_defaults().is_setting());
 }
 
-/// Rows that aren't settings: a toggle (debug tools) and a volume (the
-/// voices').
+/// The level [`unsaved_rows`]' volume sets: kept by no setting. Only
+/// one test reads it.
+static LEVEL: AtomicU8 = AtomicU8::new(0);
+
+/// Rows that aren't settings: a toggle (debug tools) and a volume
+/// ([`LEVEL`]).
 fn unsaved_rows(_: &Ctx) -> Vec<OptionRow<Toy>> {
     vec![
         OptionRow::new(
@@ -972,12 +977,8 @@ fn unsaved_rows(_: &Ctx) -> Vec<OptionRow<Toy>> {
         OptionRow::new(
             "toy.level",
             RowValue::Volume {
-                get: |ctx| ctx.voice_volume,
-                set: |ctx, v| {
-                    let changed = ctx.voice_volume != v;
-                    ctx.voice_volume = v;
-                    changed
-                },
+                get: |_| LEVEL.load(Relaxed),
+                set: |_, v| LEVEL.swap(v, Relaxed) != v,
             },
         )
         .unsaved(),
@@ -990,15 +991,15 @@ fn a_toggle_and_a_volume_that_arent_settings_are_put_back_on_discard() {
     for on in [true, false] {
         let mut c = ctx();
         c.debug_tools = on;
-        c.voice_volume = 8;
+        LEVEL.store(8, Relaxed);
         let mut s = OptionsScreen::new(unsaved_rows);
         press(&mut s, &mut c, &[Confirm, CursorDown, CursorLeft]);
-        assert_eq!((c.debug_tools, c.voice_volume), (!on, 3));
+        assert_eq!((c.debug_tools, LEVEL.load(Relaxed)), (!on, 3));
         assert!(s.changed(&c));
         // The key that asks isn't the answer: Discard comes after.
         press(&mut s, &mut c, &[Cancel]);
         press(&mut s, &mut c, &[CursorLeft, Confirm]);
-        assert_eq!((c.debug_tools, c.voice_volume), (on, 8), "on: {on}");
+        assert_eq!((c.debug_tools, LEVEL.load(Relaxed)), (on, 8), "on: {on}");
     }
 }
 
@@ -1051,4 +1052,21 @@ fn the_row_values_constructors_give_the_variants() {
         RowValue::<Toy>::action(shown, refuse, help),
         RowValue::Action { value, help, .. } if value(&ctx).is_none() && help(&ctx) == HELP_OPEN
     ));
+}
+
+/// The voices' rows set the settings: off stops nothing that isn't
+/// playing, and the volume steps like the others.
+#[test]
+fn the_voice_rows_set_the_voices_and_their_volume() {
+    use Action::{CursorDown, CursorLeft};
+    let mut c = ctx();
+    let mut s = OptionsScreen::new(|_| vec![OptionRow::voices(), OptionRow::voice_volume()]);
+    press(&mut s, &mut c, &[CursorLeft]);
+    assert!(!c.settings().voices);
+    press(&mut s, &mut c, &[CursorDown, CursorLeft]);
+    assert_eq!(
+        c.settings().voice_volume,
+        crate::settings::DEFAULT_VOLUME - VOLUME_STEP
+    );
+    assert!(OptionRow::<Toy>::voices().is_setting());
 }

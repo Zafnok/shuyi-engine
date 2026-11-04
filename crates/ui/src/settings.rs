@@ -106,6 +106,8 @@ struct EngineOnly {
     fullscreen: bool,
     music_volume: u8,
     sound_volume: u8,
+    voices: bool,
+    voice_volume: u8,
     frame_cap: FrameCap,
     layout: Option<String>,
 }
@@ -123,6 +125,8 @@ impl EngineOnly {
             fullscreen: s.fullscreen,
             music_volume: s.music_volume,
             sound_volume: s.sound_volume,
+            voices: s.voices,
+            voice_volume: s.voice_volume,
             frame_cap: s.frame_cap,
             layout: s.layout.map(|l| l.name().to_owned()),
         }
@@ -145,6 +149,8 @@ impl GameSettings for () {
             fullscreen: file.fullscreen,
             music_volume: file.music_volume,
             sound_volume: file.sound_volume,
+            voices: file.voices,
+            voice_volume: file.voice_volume,
             frame_cap: file.frame_cap,
             layout: file.layout.as_deref().and_then(Layout::from_name),
             ..Settings::default()
@@ -166,6 +172,12 @@ pub struct Settings<S: GameSettings> {
     pub music_volume: u8,
     /// Sound volume, 0 (silent) to [`MAX_VOLUME`].
     pub sound_volume: u8,
+    /// Whether voice clips play
+    /// ([`Ctx::play_voice`](crate::Ctx::play_voice)). Turning it off stops
+    /// the one playing.
+    pub voices: bool,
+    /// Voice volume, 0 (silent) to [`MAX_VOLUME`].
+    pub voice_volume: u8,
     /// The most frames a second the platform shows: the game's
     /// [`GameSettings::DEFAULT_FRAME_CAP`] until the player picks another.
     /// Every change of it takes the next serial, which the platform reports
@@ -188,6 +200,8 @@ impl<S: GameSettings> Default for Settings<S> {
             theme: S::Theme::default(),
             music_volume: DEFAULT_VOLUME,
             sound_volume: DEFAULT_VOLUME,
+            voices: true,
+            voice_volume: DEFAULT_VOLUME,
             frame_cap: S::DEFAULT_FRAME_CAP,
             layout: None,
             game: S::default(),
@@ -242,6 +256,11 @@ impl<S: GameSettings> Settings<S> {
         volume_factor(self.sound_volume)
     }
 
+    /// The multiplier on every voice clip's volume, 0–1.
+    pub fn voice_factor(&self) -> f32 {
+        volume_factor(self.voice_volume)
+    }
+
     /// The saved form ([`GameSettings::to_ron`]).
     pub fn to_ron(&self) -> String {
         S::to_ron(self)
@@ -270,6 +289,7 @@ mod tests {
         assert!(!s.fullscreen);
         assert_eq!(s.theme, Theme::default());
         assert_eq!((s.music_volume, s.sound_volume), (80, 80));
+        assert_eq!((s.voices, s.voice_volume), (true, 80));
         assert_eq!(s.frame_cap, FrameCap::Fps(60));
         assert_eq!(s.layout(), None);
         assert_eq!(s.game, Prefs::default());
@@ -283,6 +303,8 @@ mod tests {
         s.theme = Theme::Night;
         s.music_volume = 3;
         s.sound_volume = 4;
+        s.voices = false;
+        s.voice_volume = 5;
         s.frame_cap = FrameCap::Off;
         s.game.speed = 9;
         assert_eq!(s.layout(), Some(LEFT_HANDED));
@@ -316,6 +338,8 @@ mod tests {
         let mut s = super::Settings::<()>::default().with_layout(LEFT_HANDED);
         s.text_speed = TextSpeed::Instant;
         s.sound_volume = 12;
+        s.voices = false;
+        s.voice_volume = 30;
         s.frame_cap = FrameCap::Fps(144);
         assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
         let s = super::Settings::<()>::default();
@@ -413,6 +437,11 @@ mod tests {
         // Out of range (set in code) is still at most full volume.
         s.sound_volume = 200;
         assert!((s.sound_factor() - 1.0).abs() < f32::EPSILON);
+        assert!((s.voice_factor() - 0.8).abs() < 1e-6);
+        s.voice_volume = 0;
+        assert!(s.voice_factor().abs() < f32::EPSILON);
+        s.voice_volume = 30;
+        assert!((s.voice_factor() - 0.3).abs() < 1e-6);
     }
 
     #[test]

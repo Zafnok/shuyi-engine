@@ -76,7 +76,8 @@ version, the game's word for its build, and a fingerprint of the files it ships.
 ## Settings
 
 The player's settings are the engine's (text speed, full screen, the color theme, the
-music and sound volumes, the frame cap, the layout of keys) and the game's own.
+music and sound volumes, whether voices play and how loud, the frame cap, the layout of
+keys) and the game's own.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in
 the profile:
 
