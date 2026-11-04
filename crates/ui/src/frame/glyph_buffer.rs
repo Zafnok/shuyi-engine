@@ -1190,6 +1190,13 @@ mod tests {
         let mut b = wide_buf(4, 1);
         b.blit(&src, 1, 0);
         assert_eq!(halves(&b, 0), " あ+ ");
+        // Cut on the right below the top row, its source's cell before
+        // the cut not a continuation: the first half alone still goes.
+        let mut narrow_then_wide = wide_buf(4, 1);
+        narrow_then_wide.print(0, 0, "abい", RED, BLUE);
+        let mut b = wide_buf(5, 2);
+        b.blit(&narrow_then_wide, 2, 1);
+        assert_eq!(halves(&b, 1), "  ab ");
         // Over a pair of the buffer's own, cutting it.
         let mut b = wide_buf(4, 1);
         b.print(0, 0, "あい", FG, BG);

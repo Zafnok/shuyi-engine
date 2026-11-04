@@ -579,6 +579,10 @@ mod tests {
         assert_eq!(def.problems(REQUIRED), ["cell_h must be greater than 0"]);
         let got = def.image_problems(0, 0);
         assert!(got.is_empty(), "{got:?}");
+        // No columns, and a wide glyph: said, not divided by.
+        let mut def = with_wide();
+        def.columns = 0;
+        assert_eq!(def.problems(REQUIRED), ["columns must be greater than 0"]);
     }
 
     #[test]
