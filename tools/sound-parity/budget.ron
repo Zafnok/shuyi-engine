@@ -61,8 +61,9 @@
     // the rest stay. Nothing leans that a limit feels: the side measured second
     // against the first is within 0.002 of 1 on every metric but browser latency,
     // where it is 0.978 (second faster, 299 pairs to 250), and the turns a, b, b, a
-    // put that in the range, never the median. The injected slowdown's least was
-    // 1.84 natively (file reads) and 1.65 in the browser (file reads).
+    // put that in the range, never the median. The injected slowdown's least, with
+    // the ten runs of CI run 41881473138, was 1.84 natively and 1.53 in the browser,
+    // both on file reads.
     performance: {
         "linux-native": {
             // Medians 0.959 to 1.057 (one failed at 1.05, job 13 of CI run
