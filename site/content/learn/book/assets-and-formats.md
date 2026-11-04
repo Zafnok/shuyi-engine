@@ -119,6 +119,17 @@ And no file at all:
 help[SH2003]: add the file at that path, or fix the name that asks for it
 ```
 
+A letter the font atlas can't draw, `Łódź` in `en.ron`. The text is checked against the
+atlas once every file loads, and a language keeps its text by key, so the message names
+the key, not a line:
+
+```text
+  en: 'Ł' (U+0141) isn't in the font atlas (title.subtitle); remake the atlas with font-atlas from a font that has it
+```
+
+`cargo shuyi font-atlas files-src/ter-u16n.bdf crates/game/files/font` remakes it: it
+runs the game, and keeps every character its text uses that the font has.
+
 ## Layers
 
 A bundle is **layers** read in order: a file comes from the first layer that has it. So

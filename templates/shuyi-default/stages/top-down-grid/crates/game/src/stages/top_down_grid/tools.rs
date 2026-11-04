@@ -1,6 +1,7 @@
 //! The game's tools with its grid stage, for the engine's `shuyi` (`cargo
 //! shuyi <command>`): the engine's for a game on the short path
-//! (`BasicTools`: `frame-png`, `lang-status`, `check` and the controls
+//! (`BasicTools`: `frame-png`, `lang-status`, `check` with the font atlas
+//! its text is checked against, and the controls
 //! `check --target` checks), with a `--seed` for the first stage, and the
 //! stage's own: `run` and `scene` with its map scene and state, `replay`
 //! (a [`StageRecord`], stamped with what made it: [`crate::made`]), `bots`
@@ -12,6 +13,7 @@ use std::collections::BTreeMap;
 
 use rules::{Command, Feature, Outcome, Player, Stage};
 use serde::{Deserialize, Serialize};
+use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::core::{Bot, Made, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
 use shuyi::platform::harness::Harness;
@@ -244,6 +246,10 @@ impl GameTools for Tools {
     }
 
     /// Its keymap and every screen it can show (`game::game`'s screens).
+    fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
+        self.basic().font_atlas()
+    }
+
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
         self.basic().controls()
     }

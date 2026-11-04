@@ -50,8 +50,15 @@ fn check_finds_no_error_in_the_games_files() {
     let answer = check(&HelloTools, &CheckInput::default());
     assert!(answer.ok, "{answer:?}");
     assert_eq!(answer.op, contract::Op::Check);
+    // Its text is checked against its font atlas too.
+    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
     let got = answer.result.unwrap().errors;
     assert!(got.is_empty(), "{got:?}");
+    let lang = HelloTools.lang().unwrap().lang;
+    assert!(
+        lang.texts().iter().any(|(at, _)| at.path() == "intro.dlg"),
+        "the dialogue's English is checked"
+    );
 }
 
 #[test]

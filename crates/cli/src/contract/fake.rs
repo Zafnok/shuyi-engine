@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use shuyi_assets::ContentError;
 use shuyi_assets::bundle::{Bundle, Layer};
+use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
 use shuyi_assets::names::Names;
@@ -218,6 +219,12 @@ pub struct Fake {
     /// Its one-bit skin, or why it doesn't load; `None`: it doesn't offer
     /// one.
     pub one_bit: Option<Result<OneBitSkin, String>>,
+    /// Its languages (empty English by default), or why they don't load.
+    pub lang: Result<Lang, String>,
+    /// Its font atlas, or why it doesn't load; `None`: it doesn't offer
+    /// one. An empty atlas by default, which the empty text needs nothing
+    /// of.
+    pub font_atlas: Option<Result<FontAtlasDef, String>>,
 }
 
 /// A game's sources: a names table, a palette and a picture.
@@ -243,6 +250,8 @@ impl Default for Fake {
             sources: Some(SOURCES),
             controls: None,
             one_bit: None,
+            lang: Ok(Lang::default()),
+            font_atlas: Some(Ok(FontAtlasDef::default())),
         }
     }
 }
@@ -371,7 +380,7 @@ impl GameTools for Fake {
 
     fn lang(&self) -> Result<GameLang, String> {
         Ok(GameLang {
-            lang: Lang::default(),
+            lang: self.lang.clone()?,
             variants: Vec::new(),
         })
     }
@@ -540,6 +549,10 @@ impl GameTools for Fake {
 
     fn one_bit(&self, _target: &str) -> Option<Result<OneBitSkin, String>> {
         self.one_bit.clone()
+    }
+
+    fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
+        self.font_atlas.clone()
     }
 
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {

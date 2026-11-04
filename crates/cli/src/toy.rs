@@ -23,7 +23,7 @@ use shuyi_ui::toy::{self, Toy};
 
 use crate::codec::encode_png;
 use crate::contract::session::{Headless, Session};
-use crate::font_atlas::{BitmapFont, build_atlas};
+use crate::font_atlas::{AtlasChars, BitmapFont, build_atlas};
 use crate::frame_png::{Painter, Script, Shot};
 use crate::game::{GameArg, GameLang, GameOption, GameTools};
 
@@ -103,11 +103,14 @@ fn box_atlas() -> Result<(shuyi_assets::font::FontAtlasDef, Vec<u8>), String> {
         .chain('\u{2500}'..='\u{25ff}')
         .map(|c| (c, pixels(c).clone()))
         .collect();
-    let atlas = build_atlas(&BitmapFont {
-        cell_w,
-        cell_h,
-        glyphs,
-    });
+    let atlas = build_atlas(
+        &BitmapFont {
+            cell_w,
+            cell_h,
+            glyphs,
+        },
+        &AtlasChars::default(),
+    );
     let png = encode_png(atlas.width, atlas.height, &atlas.rgba)?;
     Ok((atlas.def, png))
 }

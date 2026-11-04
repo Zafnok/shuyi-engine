@@ -77,7 +77,9 @@ scout: I'll keep watch.
   shown. Every reply rejoins the scene after the block.
 - `@if <id>` … `@else` … `@endif`: lines that play only while that
   character is there (`Present`), and the lines played instead.
-- Text is printable ASCII: write `'` and `...`, not curly quotes or `…`.
+- Text holds any character but a control character. `check` names a
+  character the font atlas can't draw, with its file and key; `font-atlas`
+  adds it if the font has it.
 
 Every speech, narration and reply line has a line id,
 `<scene id>_<8 hex>`, a hash of who says it and its English. Translations

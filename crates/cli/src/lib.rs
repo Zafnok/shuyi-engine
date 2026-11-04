@@ -142,7 +142,9 @@ commands:
                                      its length, its worked example and its problem codes
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
-  font-atlas <font.bdf>... <out-dir> build the font atlas from BDF fonts
+  font-atlas [--no-text] <font.bdf>... <out-dir>
+                                     build the font atlas from BDF fonts, with the characters
+                                     the game's text uses; --no-text: without them
   app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
@@ -302,7 +304,12 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             Some(game) => Ok(lang_status(project, args, game)),
             None => Ok(game::run_in_game_program(project, name, args)),
         },
-        "font-atlas" => font_atlas(project, args),
+        "font-atlas" => match game {
+            None if project.config.game.is_some() && !args.iter().any(|a| a == NO_TEXT) => Ok(
+                game::run_in_game_program(project, name, &from_the_root(project, args)),
+            ),
+            game => font_atlas(project, args, game),
+        },
         "app-info" => app_info(project, args),
         "glyph-tiles" => glyph_tiles(project, args),
         "frame-png" => match game {
@@ -481,16 +488,67 @@ fn lang_status(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
     }
 }
 
-fn font_atlas(project: &Project, args: &[String]) -> Outcome {
+/// `font-atlas`'s flag for an atlas without the game's text.
+const NO_TEXT: &str = "--no-text";
+
+/// `args` (paths), each relative one made relative to `project`'s root
+/// rather than the working folder, for the game's tool program, which runs
+/// there.
+fn from_the_root(project: &Project, args: &[String]) -> Vec<String> {
+    let Ok(here) = std::env::current_dir() else {
+        return args.to_vec();
+    };
+    if here == project.root {
+        return args.to_vec();
+    }
+    let moved = |arg: &String| {
+        let path = Path::new(arg);
+        if arg.starts_with('-') || path.is_absolute() {
+            arg.clone()
+        } else {
+            here.join(path).to_string_lossy().into_owned()
+        }
+    };
+    args.iter().map(moved).collect()
+}
+
+/// `font-atlas`: with the game's tools, the atlas keeps the characters its
+/// text uses too; without them (or with `--no-text`), the ranges and the
+/// required glyphs only.
+fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> Outcome {
     let rules = project.part(&project.config.font_atlas, "font_atlas")?;
     let command = project.config.command();
+    let no_text = args.iter().any(|a| a == NO_TEXT);
+    let args: Vec<&String> = args.iter().filter(|a| *a != NO_TEXT).collect();
     let Some((out_dir, fonts @ [_, ..])) = args.split_last() else {
-        eprintln!("usage: {command} font-atlas <font.bdf>... <out-dir>");
+        eprintln!("usage: {command} font-atlas [{NO_TEXT}] <font.bdf>... <out-dir>");
         return Ok(2);
     };
     let fonts: Vec<PathBuf> = fonts.iter().map(PathBuf::from).collect();
+    let chars = if let Some(game) = game.filter(|_| !no_text) {
+        match game.lang() {
+            Ok(lang) => font_atlas::AtlasChars::of_lang(&lang.lang, &rules.required_glyphs),
+            Err(e) => {
+                eprintln!("font-atlas: the game's text doesn't load: {e}");
+                eprintln!("font-atlas: {NO_TEXT} remakes the atlas without the text");
+                return Ok(1);
+            }
+        }
+    } else {
+        let why = if no_text {
+            NO_TEXT.to_owned()
+        } else {
+            format!("{} names no game tool program (`game`)", project::FILE)
+        };
+        println!(
+            "font-atlas: keeping the ranges and the required glyphs only, not the text's \
+             characters: {why}"
+        );
+        let none = shuyi_assets::lang::Lang::default();
+        font_atlas::AtlasChars::of_lang(&none, &rules.required_glyphs)
+    };
     Ok(
-        match font_atlas::run(rules, command, &fonts, Path::new(out_dir)) {
+        match font_atlas::run(rules, command, &fonts, Path::new(out_dir), &chars) {
             Ok(summary) => {
                 println!("{summary}");
                 0
@@ -637,4 +695,61 @@ fn private_assets(project: &Project, args: &[String]) -> Outcome {
             }
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use shuyi_assets::lang::Lang;
+
+    use super::*;
+    use crate::contract::fake::Fake;
+
+    /// A 4 × 4 font of `?`, `A` and `Ж`.
+    const FONT: &str = "STARTFONT 2.1\nFONTBOUNDINGBOX 4 4 0 0\n\
+        STARTCHAR q\nENCODING 63\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\n\
+        STARTCHAR A\nENCODING 65\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\n\
+        STARTCHAR zhe\nENCODING 1046\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\nENDFONT\n";
+
+    #[test]
+    fn font_atlas_keeps_the_characters_the_games_text_uses() {
+        let dir = std::env::temp_dir().join(format!("shuyi-font-game-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("f.bdf"), FONT).unwrap();
+        let project = Project {
+            root: dir.clone(),
+            config: project::Config::parse(r#"(font_atlas: (required_glyphs: "?"))"#).unwrap(),
+        };
+        let path = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        let args = [path("f.bdf"), path("out")];
+        let english = [("a.one".to_owned(), "\u{416}A".to_owned())];
+        let game = Fake {
+            lang: Ok(Lang::new(english.into(), std::collections::BTreeMap::new())),
+            ..Fake::default()
+        };
+        let atlas = || fs::read_to_string(dir.join("out/atlas.ron")).unwrap();
+        assert_eq!(font_atlas(&project, &args, Some(&game)), Ok(0));
+        assert!(atlas().contains('\u{416}'), "{}", atlas());
+        // Without the text, the ranges and the required glyphs only.
+        let no_text = [NO_TEXT.to_owned(), path("f.bdf"), path("out")];
+        assert_eq!(font_atlas(&project, &no_text, Some(&game)), Ok(0));
+        assert!(!atlas().contains('\u{416}'), "{}", atlas());
+        // A text that doesn't load fails, before anything is written.
+        let broken = Fake {
+            lang: Err("lang/en/ui.ron: bad".to_owned()),
+            ..Fake::default()
+        };
+        assert_eq!(font_atlas(&project, &args, Some(&broken)), Ok(1));
+        // Run from another folder than the root, a relative path is made
+        // absolute for the tool program, which runs in the root.
+        assert_eq!(from_the_root(&project, &args), args);
+        let here = std::env::current_dir().unwrap().join("f.bdf");
+        let relative = ["f.bdf".to_owned(), NO_TEXT.to_owned()];
+        assert_eq!(
+            from_the_root(&project, &relative),
+            [here.to_string_lossy().into_owned(), NO_TEXT.to_owned()]
+        );
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

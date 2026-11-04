@@ -292,8 +292,13 @@ fn an_empty_direction_is_an_error() {
         ["line is outside a scene; start one with @scene <id>"],
     );
     assert_eq!(
+        messages("@scene a\n@left m neutral\nm (caf\u{7}): Run!\n@end\n"),
+        ["control character U+0007 in dialogue text"],
+    );
+    let accented: [&str; 0] = [];
+    assert_eq!(
         messages("@scene a\n@left m neutral\nm (caf\u{e9}): Run!\n@end\n"),
-        ["unsupported character '\u{e9}'; dialogue text is plain ASCII"],
+        accented,
     );
 }
 
@@ -763,35 +768,35 @@ fn lines_outside_scenes_and_missing_ends() {
 }
 
 #[test]
-fn non_ascii_text_names_its_column() {
-    let (_, errors) = parse_dlg::<Cue>(
-        "t.dlg",
-        "@scene a\n> It\u{2019}s \u{e9}\n  \u{2026}\n@end\n",
-    );
+fn any_character_but_a_control_character_loads() {
+    let text = "It\u{2019}s caf\u{e9}, \u{142}\u{f3}d\u{17a} and \u{416}\u{2026}";
+    let (scenes, errors) = parse_dlg::<Cue>("t.dlg", &format!("@scene a\n> {text}\n@end\n"));
+    assert_eq!(errors, []);
+    let lines: Vec<&str> = scenes[0]
+        .scene
+        .lines()
+        .into_iter()
+        .map(|line| line.text)
+        .collect();
+    assert_eq!(lines, [text]);
+}
+
+#[test]
+fn a_control_character_names_its_column() {
+    let (_, errors) = parse_dlg::<Cue>("t.dlg", "@scene a\n> It\u{7}s \u{e9}\n  \u{1b}\n@end\n");
     let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
     assert_eq!(
         errors,
         [
-            "t.dlg:2:5: non-ASCII punctuation '\u{2019}'; use ' instead",
-            "t.dlg:2:8: unsupported character '\u{e9}'; dialogue text is plain ASCII",
-            "t.dlg:3:3: non-ASCII punctuation '\u{2026}'; use ... instead",
+            "t.dlg:2:5: control character U+0007 in dialogue text",
+            "t.dlg:3:3: control character U+001B in dialogue text",
         ]
     );
-    for (c, ascii) in [
-        ('\u{201C}', "\""),
-        ('\u{2014}', "--"),
-        ('\u{2013}', "-"),
-        ('\u{2018}', "'"),
-        ('\u{201D}', "\""),
-    ] {
-        assert_eq!(
-            char_problem(c),
-            Some(format!("non-ASCII punctuation {c:?}; use {ascii} instead"))
-        );
+    for c in [' ', '~', '\u{e9}', '\u{416}', '\u{2019}', '\u{301}'] {
+        assert_eq!(char_problem(c), None, "{c:?}");
     }
-    assert_eq!(char_problem(' '), None);
-    assert_eq!(char_problem('~'), None);
     assert!(char_problem('\u{7f}').is_some());
+    assert!(char_problem('\t').is_some());
 }
 
 // --- Choices and @if blocks -------------------------------------------------

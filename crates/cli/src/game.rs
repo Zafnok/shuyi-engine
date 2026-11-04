@@ -4,8 +4,10 @@
 //! of its own, which runs [`crate::main_with`] with them; `shuyi.ron`
 //! names that program ([`crate::project::GameProgram`]) and `shuyi` runs
 //! it with `cargo run` for the commands that run the game: `frame-png`,
-//! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
-//! `bots`, `playtest`, `autobalance`, `import` and `bake`.
+//! `lang-status`, `font-atlas` (which keeps the characters the game's text
+//! uses; `--no-text` runs it without the game), and the contract's
+//! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
+//! `import` and `bake`.
 
 use std::collections::BTreeMap;
 use std::process::Command;
@@ -15,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
 use shuyi_assets::audio::{AudioManifest, Files};
 use shuyi_assets::bundle::Bundle;
+use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
 use shuyi_assets::onebit::PatternMapDef;
@@ -615,6 +618,16 @@ pub trait GameTools {
         None
     }
 
+    /// `check`: the game's font atlas, for the check that it draws every
+    /// character of the game's text ([`lang`](Self::lang);
+    /// `shuyi_assets::font::undrawn`), most simply the atlas it loads.
+    /// `None`, the default, doesn't offer it: `check` then says the text
+    /// isn't checked against it. An error (the atlas doesn't load) fails
+    /// the check.
+    fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
+        None
+    }
+
     /// `check --target` on a one-bit target: the skin's palette and its
     /// pattern map for `target`, for the check that every role has
     /// patterns and the roles that tell things apart stay distinct
@@ -771,6 +784,7 @@ mod tests {
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
         assert_eq!(Plain.made(), None);
         assert!(Plain.controls().is_none());
+        assert!(Plain.font_atlas().is_none());
         assert!(Plain.one_bit("playdate").is_none());
         assert_eq!(
             Plain

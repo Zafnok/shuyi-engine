@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::*;
-use crate::font_atlas::{BitmapFont, build_atlas};
+use crate::font_atlas::{AtlasChars, BitmapFont, build_atlas};
 use crate::project::GlyphTile;
 
 /// A font of 2 × 3 cells: `a` all on, `b` only its top-left pixel.
@@ -10,11 +10,14 @@ fn font() -> (FontAtlasDef, u32, Vec<u8>) {
         ('a', vec![true; 6]),
         ('b', vec![true, false, false, false, false, false]),
     ]);
-    let atlas = build_atlas(&BitmapFont {
-        cell_w: 2,
-        cell_h: 3,
-        glyphs,
-    });
+    let atlas = build_atlas(
+        &BitmapFont {
+            cell_w: 2,
+            cell_h: 3,
+            glyphs,
+        },
+        &AtlasChars::default(),
+    );
     (atlas.def, atlas.width, atlas.rgba)
 }
 

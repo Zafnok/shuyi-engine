@@ -112,13 +112,11 @@ None.
      code-point order (`crates/assets/src/font.rs`). Today that is the
      keys of `glyphs`; 2301 adds its wide glyphs and 2303 every wide
      set, in these two functions only, so a kana the atlas draws is in
-     `font_chars` with no change here. **Either order with 2350:** if
-     2350 is done, it added both for `font::undrawn`: fill `font_chars`
-     from its `drawn`; if not, add them here, and 2350's `undrawn` calls
-     `draws`. **Either order with 2353:** if 2353 is done, Hello, Grid's
-     `can_draw` (`Hello::load_from`) becomes `|c| font.draws(c)`, unless
-     2350 already made it so; if not, nothing to do (2353 calls
-     `draws`).
+     `font_chars` with no change here. **From 2350 (done):** it added
+     both for `font::undrawn`: fill `font_chars` from its `drawn`.
+     **Either order with 2353:** if 2353 is done, Hello, Grid's
+     `can_draw` (`Hello::load_from`) becomes `|c| font.draws(c)`; if
+     not, nothing to do (2353 calls `draws`).
    - Names already saved load as they are: the rules apply only while
      typing.
    - The module's docs (lines 10 to 12) say the new rules.
@@ -277,11 +275,13 @@ as `Rows` once 2301 is done.
   than English (2226): a follow-up if a game asks.
 - Which characters the atlas keeps (Latin Extended-A's `Œ`, `Ł`, `Ő`):
   2350's.
-- Checking a pack's grid characters against the atlas. **Either order
-  with 2350:** if 2350 is done, add each pack's pages
-  (`GridPage::rows` of `LangInfo::name_grid`) to its scan as
-  `TextPart::NameGrid`; if not, 2350 adds them. Until then a cell the
-  font lacks is left out at run time (In, 3).
+- Checking a pack's grid characters against the atlas. **From 2350
+  (done):** add each pack's pages (`GridPage::rows` of
+  `LangInfo::name_grid`) to its scan, `Lang::texts`
+  (`crates/assets/src/lang/texts.rs`), as `TextPart::NameGrid` (the
+  enum is `#[non_exhaustive]`), with `TextAt::path` naming the pack's
+  `lang.ron`. Until then a cell the font lacks is left out at run time
+  (In, 3).
 - The mouse and touch on the letter grid: 2409, 2405's follow-up for
   the engine's other widgets. If 2409 is done first, the new pages'
   cells and the Page cell take the pointer as the other cells do.
@@ -297,8 +297,7 @@ as `Rows` once 2301 is done.
 2. `GridPage` and `LangInfo::name_grid`, the validation,
    `pack::VERSION` and the pinned binary form snapshot, and
    `docs/formats.md`.
-3. `FontAtlasDef::draws` and `drawn` (unless 2350 added them),
-   `Ctx::font_chars`, the new letter rule, the module's docs, and
+3. `Ctx::font_chars` (from 2350's `FontAtlasDef::drawn`), the new letter rule, the module's docs, and
    `App::load` filling it.
 4. Pages in `NameEntry`, `GridCell::Page`, `Ctx::name_grid`,
    `open_name`'s new argument, the text key and the toy's debug pack.

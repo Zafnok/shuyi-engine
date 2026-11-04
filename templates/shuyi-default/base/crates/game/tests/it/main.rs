@@ -67,6 +67,12 @@ fn check_finds_no_error_in_the_files() {
     assert!(answer.ok, "{answer:?}");
     let answer = check(&game::stages::tools(), &CheckInput::default());
     assert!(answer.ok, "{answer:?}");
+    // The text is checked against the font atlas too.
+    assert!(
+        !answer.limits.iter().any(|l| l.contains("font atlas")),
+        "{:?}",
+        answer.limits
+    );
 }
 
 #[test]

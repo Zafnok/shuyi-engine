@@ -1,16 +1,22 @@
-//! `font-atlas <font.bdf>... <out-dir>`: turns a BDF bitmap font into a
+//! `font-atlas [--no-text] <font.bdf>... <out-dir>`: turns a BDF bitmap font into a
 //! font atlas (`atlas.png` + `atlas.ron`, read as
 //! [`shuyi_assets::font::FontAtlasDef`]) and its one-bit copy for a one-bit
-//! screen (`atlas_1bit.bin`). Only glyphs in [`ATLAS_RANGES`] are kept.
-//! Further BDF files add glyphs the first lacks (a game's own, e.g.
-//! controller button shapes). The atlas must have the glyphs the project
-//! requires ([`crate::project::FontAtlas::required_glyphs`]).
+//! screen (`atlas_1bit.bin`). It keeps the glyphs the font has of
+//! [`ATLAS_RANGES`], of the characters the game's text uses and of the
+//! glyphs the project requires ([`AtlasChars`]): when `shuyi.ron` names a
+//! game tool program, `font-atlas` runs in it and reads the game's text
+//! (`--no-text`: the ranges and the required glyphs only). Further BDF
+//! files add glyphs the first lacks (a game's own, e.g. controller button
+//! shapes). The atlas must have the glyphs the project requires
+//! ([`crate::project::FontAtlas::required_glyphs`]); a character the text
+//! uses that the fonts lack is named, and `check` fails on it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use shuyi_assets::font::FontAtlasDef;
+use shuyi_assets::font::{FontAtlasDef, describe, is_combining_mark};
+use shuyi_assets::lang::Lang;
 
 use crate::codec::encode_png;
 use crate::project::FontAtlas;
@@ -32,6 +38,59 @@ pub const ATLAS_RANGES: &[(char, char)] = &[
 
 /// Atlas cells per row.
 pub const COLUMNS: u32 = 32;
+
+/// The characters an atlas keeps, of those its font has: every one of
+/// [`ATLAS_RANGES`], every character the game's text uses, and the glyphs
+/// the project requires; never a combining mark or a control character.
+/// [`AtlasChars::default`] is the ranges alone.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AtlasChars {
+    /// The characters the text uses.
+    used: BTreeSet<char>,
+    /// The glyphs the project requires.
+    required: BTreeSet<char>,
+}
+
+/// Whether an atlas may keep `c` at all: it isn't a control character or a
+/// combining mark.
+fn keepable(c: char) -> bool {
+    !c.is_control() && !is_combining_mark(c)
+}
+
+impl AtlasChars {
+    /// The ranges, every character of `lang`'s text ([`Lang::texts`]) and
+    /// the glyphs of `required`.
+    pub fn of_lang(lang: &Lang, required: &str) -> Self {
+        let used = lang
+            .texts()
+            .iter()
+            .flat_map(|(_, text)| text.chars())
+            .filter(|&c| keepable(c))
+            .collect();
+        Self {
+            used,
+            required: required.chars().filter(|&c| keepable(c)).collect(),
+        }
+    }
+
+    /// Whether the atlas keeps `c`, if its font has it.
+    pub fn wants(&self, c: char) -> bool {
+        keepable(c)
+            && (ATLAS_RANGES.iter().any(|(lo, hi)| (lo..=hi).contains(&&c))
+                || self.used.contains(&c)
+                || self.required.contains(&c))
+    }
+
+    /// The characters the text uses, without control characters and
+    /// combining marks.
+    pub fn used(&self) -> &BTreeSet<char> {
+        &self.used
+    }
+}
+
+/// How many of the characters the text uses that the fonts lack
+/// [`run`]'s summary lists by name.
+const LACKED_SHOWN: usize = 20;
 
 /// The one-bit atlas's file name, next to `atlas.png`.
 pub const ONE_BIT_FILE: &str = "atlas_1bit.bin";
@@ -196,13 +255,13 @@ pub struct Atlas {
     pub rgba: Vec<u8>,
 }
 
-/// Lays out every glyph of `font` in [`ATLAS_RANGES`], in codepoint order,
+/// Lays out every glyph of `font` that `chars` wants, in codepoint order,
 /// [`COLUMNS`] per row.
-pub fn build_atlas(font: &BitmapFont) -> Atlas {
+pub fn build_atlas(font: &BitmapFont, chars: &AtlasChars) -> Atlas {
     let chosen: Vec<(&char, &Vec<bool>)> = font
         .glyphs
         .iter()
-        .filter(|&(c, _)| ATLAS_RANGES.iter().any(|(lo, hi)| (lo..=hi).contains(&c)))
+        .filter(|&(&c, _)| chars.wants(c))
         .collect();
     let count = u32::try_from(chosen.len()).unwrap_or(u32::MAX);
     let rows = count.div_ceil(COLUMNS).max(1);
@@ -285,15 +344,46 @@ pub fn read_font(path: &Path) -> Result<BitmapFont, String> {
     parse_bdf(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// The line of [`run`]'s summary naming the characters the text uses that
+/// `font` lacks, the first [`LACKED_SHOWN`] by name; `None` if it has them
+/// all.
+fn lacked(font: &BitmapFont, chars: &AtlasChars) -> Option<String> {
+    let lacked: Vec<char> = chars
+        .used()
+        .iter()
+        .copied()
+        .filter(|c| !font.glyphs.contains_key(c))
+        .collect();
+    if lacked.is_empty() {
+        return None;
+    }
+    let mut named: Vec<String> = lacked
+        .iter()
+        .take(LACKED_SHOWN)
+        .map(|&c| describe(c))
+        .collect();
+    if lacked.len() > LACKED_SHOWN {
+        named.push(format!("and {} more", lacked.len() - LACKED_SHOWN));
+    }
+    Some(format!(
+        "font-atlas: the fonts lack {} character(s) the text uses: {}",
+        lacked.len(),
+        named.join(", ")
+    ))
+}
+
 /// Runs the command: reads the fonts at `font_paths` (the first is the
-/// font; the rest add glyphs to it), writes `atlas.png`, `atlas.ron` and
-/// `atlas_1bit.bin` into `out_dir`. Fails if the result lacks a glyph
-/// `rules` require. `command` is what `atlas.ron`'s header calls the tool.
+/// font; the rest add glyphs to it), writes the glyphs `chars` wants to
+/// `atlas.png`, `atlas.ron` and `atlas_1bit.bin` in `out_dir`. Fails if
+/// the result lacks a glyph `rules` require; a character the text uses
+/// that the fonts lack is named in the summary, not a failure. `command` is
+/// what `atlas.ron`'s header calls the tool.
 pub fn run(
     rules: &FontAtlas,
     command: &str,
     font_paths: &[PathBuf],
     out_dir: &Path,
+    chars: &AtlasChars,
 ) -> Result<String, String> {
     let (font_path, extras) = font_paths.split_first().ok_or("no font given")?;
     let mut font = read_font(font_path)?;
@@ -302,7 +392,7 @@ pub fn run(
         font.add(extra)
             .map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    let atlas = build_atlas(&font);
+    let atlas = build_atlas(&font, chars);
     let problems = atlas.def.problems(&rules.required_glyphs);
     if !problems.is_empty() {
         return Err(format!(
@@ -333,13 +423,18 @@ pub fn run(
         let path = out_dir.join(file);
         fs::write(&path, bytes).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
-    Ok(format!(
+    let mut summary = format!(
         "font-atlas: {} glyphs, {}×{} px → {}",
         atlas.def.glyphs.len(),
         atlas.width,
         atlas.height,
         out_dir.display()
-    ))
+    );
+    if let Some(lacked) = lacked(&font, chars) {
+        summary.push('\n');
+        summary.push_str(&lacked);
+    }
+    Ok(summary)
 }
 
 #[cfg(test)]
@@ -428,7 +523,7 @@ mod tests {
 
     #[test]
     fn atlas_layout_and_pixels() {
-        let atlas = build_atlas(&parse_bdf(TINY).unwrap());
+        let atlas = build_atlas(&parse_bdf(TINY).unwrap(), &AtlasChars::default());
         assert_eq!(atlas.def.columns, COLUMNS);
         assert_eq!(atlas.def.glyphs, [('A', 0), ('b', 1)].into());
         assert_eq!((atlas.width, atlas.height), (COLUMNS * 4, 4));
@@ -444,7 +539,7 @@ mod tests {
 
     #[test]
     fn ron_round_trips_with_header() {
-        let def = build_atlas(&parse_bdf(TINY).unwrap()).def;
+        let def = build_atlas(&parse_bdf(TINY).unwrap(), &AtlasChars::default()).def;
         let text = atlas_ron(&def, "tiny.bdf", "shuyi", None).unwrap();
         assert!(text.starts_with(
             "// Generated by `shuyi font-atlas` from tiny.bdf. Do not edit.\n\
@@ -466,7 +561,9 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let bdf = dir.join("tiny.bdf");
         fs::write(&bdf, TINY).unwrap();
-        let run = |fonts: &[PathBuf], out: &Path| run(&rules(), "shuyi", fonts, out);
+        let run = |fonts: &[PathBuf], out: &Path| {
+            run(&rules(), "shuyi", fonts, out, &AtlasChars::default())
+        };
         let err = run(std::slice::from_ref(&bdf), &dir.join("out")).unwrap_err();
         assert!(err.contains("missing required glyphs"), "{err}");
         assert!(!dir.join("out").exists());
@@ -492,7 +589,14 @@ mod tests {
         let question = "STARTCHAR q\nENCODING 63\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\n";
         fs::write(&bdf, TINY.replace("ENDFONT", question)).unwrap();
         let out = dir.join("out");
-        let said = run(&rules(), "shuyi", std::slice::from_ref(&bdf), &out).unwrap();
+        let said = run(
+            &rules(),
+            "shuyi",
+            std::slice::from_ref(&bdf),
+            &out,
+            &AtlasChars::default(),
+        )
+        .unwrap();
         assert_eq!(
             said,
             format!("font-atlas: 3 glyphs, 128×4 px → {}", out.display())
@@ -525,9 +629,141 @@ mod tests {
         assert_eq!(font.add(tall).unwrap_err(), "cell size 4×5, expected 4×4");
     }
 
+    /// `TINY` with `?`, and `Ж`, `ł` and a combining acute (U+0301), none
+    /// of them in the ranges.
+    fn wider() -> String {
+        let glyph = |name: &str, code: u32| {
+            format!("STARTCHAR {name}\nENCODING {code}\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\n")
+        };
+        let extra = [
+            ("q", 63),
+            ("zhe", 0x416),
+            ("lstroke", 0x142),
+            ("acute", 0x301),
+        ]
+        .map(|(name, code)| glyph(name, code))
+        .concat();
+        TINY.replace("ENDFONT", &extra)
+    }
+
+    /// English screen text `menu.title` written `text`.
+    fn text(text: &str) -> Lang {
+        let english = [("menu.title".to_owned(), text.to_owned())];
+        Lang::new(english.into(), BTreeMap::new())
+    }
+
+    #[test]
+    fn the_atlas_keeps_the_ranges_the_text_and_the_required_glyphs() {
+        let chars = AtlasChars::of_lang(&text("Жar\u{301}\n"), "Ł");
+        let used: String = chars.used().iter().collect();
+        assert_eq!(used, "arЖ", "no control character or combining mark");
+        for c in ['A', 'é', '♣', 'Ж', 'Ł'] {
+            assert!(chars.wants(c), "{c:?}");
+        }
+        for c in ['ł', '\u{301}', '\n', '\u{7}'] {
+            assert!(!chars.wants(c), "{c:?}");
+        }
+        // The ranges alone, as before.
+        let ranges = AtlasChars::default();
+        assert!(ranges.used().is_empty());
+        assert!(ranges.wants('A') && ranges.wants('é') && !ranges.wants('Ж'));
+        assert!(!AtlasChars::of_lang(&Lang::default(), "\u{301}").wants('\u{301}'));
+    }
+
+    #[test]
+    fn the_atlas_has_the_texts_glyphs_in_code_point_order() {
+        let font = parse_bdf(&wider()).unwrap();
+        let plain = build_atlas(&font, &AtlasChars::default());
+        assert_eq!(plain.def.drawn().collect::<String>(), "?Ab");
+        let chars = AtlasChars::of_lang(&text("Ж ł e\u{301}"), "");
+        let atlas = build_atlas(&font, &chars);
+        assert_eq!(atlas.def.drawn().collect::<String>(), "?AbłЖ");
+        // The ranges' glyphs keep their cells; the text's come after.
+        assert_eq!(atlas.def.glyphs[&'b'], plain.def.glyphs[&'b']);
+        assert_eq!(atlas.def.glyphs[&'Ж'], 4);
+    }
+
+    #[test]
+    fn run_keeps_the_texts_characters_and_names_those_the_fonts_lack() {
+        let dir = std::env::temp_dir().join(format!("shuyi-font-text-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let bdf = dir.join("wider.bdf");
+        fs::write(&bdf, wider()).unwrap();
+        let out = dir.join("out");
+        let chars = AtlasChars::of_lang(&text("ЖłЖЯ∑b\u{301}"), "");
+        let said = run(&rules(), "shuyi", std::slice::from_ref(&bdf), &out, &chars).unwrap();
+        assert_eq!(
+            said,
+            format!(
+                "font-atlas: 5 glyphs, 128×4 px → {}\nfont-atlas: the fonts lack 2 character(s) \
+                 the text uses: 'Я' (U+042F), '∑' (U+2211)",
+                out.display()
+            )
+        );
+        let ron = fs::read_to_string(out.join("atlas.ron")).unwrap();
+        let def: FontAtlasDef = ron::from_str(&ron).unwrap();
+        assert_eq!(def.drawn().collect::<String>(), "?AbłЖ");
+        // A text of every character but the few the summary lists.
+        let many: String = ('\u{4e00}'..'\u{4e19}').collect();
+        let chars = AtlasChars::of_lang(&text(&many), "");
+        let said = run(&rules(), "shuyi", std::slice::from_ref(&bdf), &out, &chars).unwrap();
+        assert!(said.contains("lack 25 character(s)"), "{said}");
+        let last = format!("{}, and 5 more", describe('\u{4e13}'));
+        assert!(said.ends_with(&last), "{said}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_templates_atlas_is_what_font_atlas_makes_of_its_bdf() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/shuyi-default/base");
+        let shuyi_ron = fs::read_to_string(base.join("shuyi.ron")).unwrap();
+        let config = crate::project::Config::parse(&shuyi_ron).unwrap();
+        let rules = config.font_atlas.unwrap();
+        assert_eq!(rules.required_glyphs, shuyi_ui::basic::BASIC_GLYPHS);
+        let font = read_font(&base.join("files-src/ter-u16n.bdf")).unwrap();
+        // A new game's text uses nothing outside the ranges: the atlas is
+        // the ranges' alone.
+        let atlas = build_atlas(&font, &AtlasChars::default());
+        let committed = base.join("crates/game/files/font");
+        let png = fs::read(committed.join("atlas.png")).unwrap();
+        let (width, height, rgba) = decode_png(&png).unwrap();
+        assert_eq!((width, height), (atlas.width, atlas.height));
+        assert!(rgba == atlas.rgba, "the template's atlas.png is stale");
+        let command = config.command.as_deref().unwrap_or("shuyi");
+        let ron = atlas_ron(&atlas.def, "ter-u16n.bdf", command, rules.readme.as_deref()).unwrap();
+        let written = fs::read_to_string(committed.join("atlas.ron")).unwrap();
+        assert_eq!(
+            written.replace("\r\n", "\n"),
+            ron,
+            "the template's atlas.ron is stale"
+        );
+        let found = atlas.def.problems(&rules.required_glyphs);
+        assert!(found.is_empty(), "{found:?}");
+    }
+
+    proptest::proptest! {
+        /// Every character of the text is used, unless it is a control
+        /// character or a combining mark.
+        #[test]
+        fn every_character_of_the_text_is_used_but_controls_and_marks(
+            texts in proptest::collection::vec("\\PC{0,8}|[a\\n\u{301}é\u{7}]{0,4}", 1..4),
+        ) {
+            let english: BTreeMap<String, String> = texts
+                .iter()
+                .enumerate()
+                .map(|(i, text)| (format!("k.{i}"), text.clone()))
+                .collect();
+            let chars = AtlasChars::of_lang(&Lang::new(english, BTreeMap::new()), "");
+            for c in texts.iter().flat_map(|t| t.chars()) {
+                let kept = !c.is_control() && !is_combining_mark(c);
+                proptest::prop_assert_eq!(chars.used().contains(&c), kept, "{:?}", c);
+            }
+        }
+    }
+
     #[test]
     fn the_one_bit_atlas_packs_rows_left_pixel_highest() {
-        let atlas = build_atlas(&parse_bdf(TINY).unwrap());
+        let atlas = build_atlas(&parse_bdf(TINY).unwrap(), &AtlasChars::default());
         let bits = one_bit(&atlas.def, atlas.width, &atlas.rgba).unwrap();
         // 'A' (index 0) then 'b' (index 1), four rows each.
         assert_eq!(bits, [0, 0b1100_0000, 0b1000_0000, 0, 0, 0, 0, 0b0010_0000]);

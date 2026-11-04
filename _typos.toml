@@ -24,6 +24,7 @@ extend-exclude = [
     "*-LICENSE*.txt",
     # The Terminus font of Hello, Grid and the atlas made from it.
     "examples/hello-grid/files-src/*.bdf",
+    "templates/shuyi-default/base/files-src/*.bdf",
     "examples/hello-grid/files/font/atlas.ron",
     "templates/shuyi-default/base/crates/game/files/font/atlas.ron",
     # Vendored JavaScript (THIRD_PARTY_ASSETS.md), never edited by hand.

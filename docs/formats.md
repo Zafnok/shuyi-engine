@@ -148,7 +148,9 @@ What each one reads:
   (`AudioQueue::start_sound`, ADR-0055). Left out, it is `false`, and
   the sound plays once.
 - **The font atlas** reads the PNG beside its glyph map with the same
-  name (`fonts/atlas.ron` and `fonts/atlas.png`).
+  name (`fonts/atlas.ron` and `fonts/atlas.png`). Whether it draws the
+  game's text is a check across assets, once both load
+  (`font::undrawn`, which `check` runs).
 - **A language pack** is read from its `lang.ron`, in a directory named
   by its code (`lang/fr/lang.ron`). With it come its `ui.ron`, checked
   against English's beside it (`lang/en/ui.ron`), and its `data.ron` and

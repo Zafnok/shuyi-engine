@@ -1,5 +1,6 @@
 //! The game's tools for `shuyi`: `frame-png` (a picture of a scripted
 //! frame, painted with the game's own font and tileset), `lang-status`,
+//! `font-atlas` (the characters its text uses kept, through [`GameTools::lang`]),
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
 //! against the foe's mind), `playtest` (a random hero and a walker,
@@ -21,6 +22,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::ContentError;
 use shuyi::assets::bundle::Bundle;
+use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon};
 use shuyi::assets::onebit::PatternMapDef;
@@ -316,6 +318,11 @@ impl GameTools for HelloTools {
     /// Its keymap and every screen it can show ([`crate::screens::all`]).
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
         Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
+    }
+
+    /// The font atlas it loads, which `check` checks its text against.
+    fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
+        Some(loaded().map(|game| game.font))
     }
 
     /// Its palette and pattern map, the same on every one-bit target.

@@ -63,7 +63,7 @@ use shuyi::assets::format::{AssetKind, Formats};
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::assets::image::{ImageId, ImageTable};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon, Layout};
-use shuyi::assets::lang::Lang;
+use shuyi::assets::lang::{Lang, SourceText};
 use shuyi::assets::lighting::Lighting;
 use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::pack::{Bake, Pack};
@@ -182,7 +182,7 @@ pub fn bake() -> Bake {
         .asset::<English>("en.ron")
         .asset::<KeymapDef<Action>>("keymap.ron")
         .asset::<PaletteDef>("palette.ron")
-        .asset::<DialogueFile>("intro.dlg")
+        .asset::<DialogueFile>(DIALOGUE)
         .asset::<GridMap<TerrainId, Feature>>("stage.map")
         .asset::<FontAtlasDef>(FONT_RON)
 }
@@ -201,6 +201,17 @@ fn gather<T>(
     load: impl FnOnce() -> Result<T, Vec<ContentError>>,
 ) -> Option<T> {
     load().map_err(|e| errors.extend(e)).ok()
+}
+
+/// The game's dialogue, in `files/`.
+pub const DIALOGUE: &str = "intro.dlg";
+
+/// The English of `dialogue`'s lines, so the text checked against the font
+/// atlas holds them too.
+fn dialogue_text(dialogue: &DialogueTable) -> SourceText {
+    let mut source = SourceText::default();
+    source.add_dialogue(dialogue);
+    source
 }
 
 /// The font atlas's description and picture, in `files/`.
@@ -376,12 +387,18 @@ impl Hello {
             formats.load::<PaletteDef>(bundle, "palette.ron")
         });
         let dialogue = gather(&mut errors, || {
-            let file = formats.load::<DialogueFile>(bundle, "intro.dlg")?;
+            let file = formats.load::<DialogueFile>(bundle, DIALOGUE)?;
             let scenes = file
                 .scenes
                 .into_iter()
                 .map(|p| (p.scene.id.clone(), p.scene));
-            Ok(DialogueTable::new(scenes.collect()))
+            let mut table = DialogueTable::new(scenes.collect());
+            table.files = table
+                .scenes
+                .keys()
+                .map(|id| (id.clone(), DIALOGUE.to_owned()))
+                .collect();
+            Ok(table)
         });
         let stage_map = gather(&mut errors, || {
             let map = formats.load::<GridMap<TerrainId, Feature>>(bundle, "stage.map")?;
@@ -406,7 +423,7 @@ impl Hello {
                 Some(images),
             ) => Ok(Self {
                 console: CONSOLE,
-                lang: Lang::new(english.0, BTreeMap::new()),
+                lang: Lang::with_source(english.0, dialogue_text(&dialogue), BTreeMap::new()),
                 keymap,
                 audio: sound::manifest(),
                 palette,

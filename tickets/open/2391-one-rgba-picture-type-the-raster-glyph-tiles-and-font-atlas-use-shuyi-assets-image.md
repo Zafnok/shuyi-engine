@@ -102,11 +102,9 @@ None.
   raster's `Image`: drop the copy and hand the decoded `Image` to the
   painter as it is; if not, nothing to do (2234 hands it over without a
   copy).
-- **Either order with 2350:** if 2350 is done, `build_atlas` takes an
-  `&AtlasChars` and its callers pass one: keep that, and change only
-  the picture fields of the `Atlas` it returns; if not, nothing to do
-  (2350 changes `build_atlas`'s parameters and leaves the picture
-  alone).
+- **From 2350 (done):** `build_atlas` takes an `&AtlasChars` and its
+  callers pass one: keep that, and change only the picture fields of
+  the `Atlas` it returns.
 - **Either order with 2224:** if 2224 is done, `text-font`
   (`crates/cli/src/text_font.rs`) builds a page picture: if it keeps a
   width, a height and an RGBA `Vec<u8>` of its own, make it an `Image`;
