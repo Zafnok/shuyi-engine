@@ -149,7 +149,11 @@ fn the_harness_says_what_music_sounds_and_how_loud() {
     let music = h.ctx().settings().music_factor();
     assert!(music > 0.0 && music < 1.0, "{music}");
     assert_eq!(h.volumes(), (music, 0.0));
-    assert!((h.voice_volume() - 0.3).abs() < 1e-6, "{}", h.voice_volume());
+    assert!(
+        (h.voice_volume() - 0.3).abs() < 1e-6,
+        "{}",
+        h.voice_volume()
+    );
 }
 
 /// A screen that declares Confirm alone, but pops on Cancel too, and
