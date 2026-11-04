@@ -584,19 +584,14 @@ pub fn render_changed_with(
     let place = Place::ORIGIN;
     let reach = Reach::of(new, font, 1);
     let changed = |x: i32, y: i32| old.get(x, y) != new.get(x, y);
-    // A wide glyph's halves are drawn from its first cell's glyph and
-    // whether its continuation follows: each is drawn again when the
-    // other changes.
-    let continuation = |x: i32, y: i32| {
-        [old, new]
-            .iter()
-            .any(|b| b.get(x, y).is_some_and(Cell::is_continuation))
-    };
+    // A continuation draws its first cell's glyph's right half: it is
+    // drawn again when that cell changes. (Its first cell never needs the
+    // same for a change of the continuation: replacing a continuation
+    // makes its first cell a space.)
+    let continues = |x: i32, y: i32| new.get(x, y).is_some_and(Cell::is_continuation);
     for y in 0..i32::from(new.height()) {
         for x in 0..i32::from(new.width()) {
-            let partner = (continuation(x, y) && changed(x - 1, y))
-                || (continuation(x + 1, y) && changed(x + 1, y));
-            if changed(x, y) || partner {
+            if changed(x, y) || (continues(x, y) && changed(x - 1, y)) {
                 dirty.add(reach.around(place, x, y));
             }
         }

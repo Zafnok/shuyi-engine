@@ -140,7 +140,8 @@ cargo shuyi font-atlas --wide files-src/my-16x16.bdf files-src/ter-u16n.bdf crat
 
 The atlas then keeps the wide font's glyphs of every character the text uses that the
 narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` names
-(a name entry's letters, say). Text measured for a layout counts a wide character as
+(a name entry's letters, say). A font in JIS X 0208, as many Japanese bitmap fonts are,
+needs `shuyi-cli`'s `jis` feature in the game's `tools`. Text measured for a layout counts a wide character as
 two: `shuyi::assets::lang::text_width` does, with the widths of the frame
 (`buf.widths()`), and `buf.text_cells(text)` gives the same as a column count.
 

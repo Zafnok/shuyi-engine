@@ -244,11 +244,13 @@ fn a_missing_glyph_is_the_fallback_and_a_space_is_nothing() {
 }
 
 /// The test font with a wide `田` in cells 5 and 6: its left half's first
-/// row the left four pixels, its right half's the right two.
+/// row the left four pixels, its right half's the right two; and a wide
+/// `い` of no pixels in cells 7 and 8.
 fn wide_font() -> (FontAtlasDef, Vec<u8>) {
     let (mut atlas, mut bits) = test_font();
     atlas.wide.insert('田', 5);
-    bits.resize(7 * 16, 0);
+    atlas.wide.insert('い', 7);
+    bits.resize(9 * 16, 0);
     bits[80] = 0b1111_0000;
     bits[96] = 0b0000_0011;
     (atlas, bits)
@@ -272,6 +274,63 @@ fn a_wide_glyph_draws_a_half_in_each_of_its_cells() {
     assert_eq!(text(&frame, 0, 0, 8, 1), ["#......#"]);
     // A one-bit atlas shorter than the wide glyph's halves is refused.
     assert!(Font::new(&atlas, &bits[..6 * 16]).is_err());
+}
+
+/// A buffer of `w` cells 6 pixels wide, its wide glyphs `田` and `い`, with
+/// `text` printed from its third cell.
+fn narrow_cells(w: u16, text: &str) -> GlyphBuffer {
+    let spec = ConsoleSpec {
+        cols: w,
+        rows: 1,
+        cell_w: 6,
+        cell_h: 16,
+    };
+    let blank = Cell::new(' ', c(Ink::Black), c(Ink::White));
+    let mut b = GlyphBuffer::with_spec(spec, blank)
+        .with_widths(shuyi_assets::font::CellWidths::wide(['田', 'い']));
+    b.print(2, 0, text, c(Ink::Black), c(Ink::White));
+    b
+}
+
+/// A wide glyph replaced by another: its continuation cell is the same, but
+/// what it draws isn't, and it is drawn again. On cells 6 pixels wide the
+/// right half's last two pixels (24 and 25) lie past what the first cell's
+/// change reaches.
+#[test]
+fn a_continuation_is_drawn_again_when_its_first_half_changes() {
+    let (atlas, bits) = wide_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let (old, new) = (narrow_cells(6, "田"), narrow_cells(6, "い"));
+    assert_eq!(
+        old.get(3, 0),
+        new.get(3, 0),
+        "the continuations are the same"
+    );
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    render(&old, &font, &(), &mut frame);
+    assert_eq!(text(&frame, 22, 0, 4, 1), ["..##"]);
+    render_changed(&old, &new, &font, &(), &mut frame);
+    let mut full = Box::new([0u8; FRAME_BYTES]);
+    render(&new, &font, &(), &mut full);
+    assert_eq!(text(&frame, 22, 0, 4, 1), ["...."]);
+    assert_eq!(*frame, *full);
+}
+
+/// A wide glyph that didn't change isn't drawn again: a pixel of its
+/// continuation's tile spoiled on purpose stays spoiled.
+#[test]
+fn an_unchanged_wide_glyph_is_not_drawn_again() {
+    let (atlas, bits) = wide_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut b = buf(6, 1).with_widths(shuyi_assets::font::CellWidths::wide(['田']));
+    b.print(2, 0, "田", c(Ink::Black), c(Ink::White));
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    render(&b, &font, &(), &mut frame);
+    // The continuation is cell 3: pixels 24 to 31 of row 0, byte 3.
+    frame[3] ^= 0b0100_0000;
+    let spoiled = frame.clone();
+    render_changed(&b, &b, &font, &(), &mut frame);
+    assert_eq!(*frame, *spoiled);
 }
 
 /// Cells, then `Under` items, then glyphs, then `Over` items; inverts

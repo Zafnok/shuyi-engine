@@ -14,7 +14,6 @@ Budget(
     // The most crates a new `blank` game's dependency tree may hold, the
     // engine's among them (`cargo metadata`, every platform's, with the
     // engine's Cargo.lock). A change that adds one raises this number in
-    // the same PR, so each new dependency is a choice. 145: `encoding_rs`,
-    // for `font-atlas` to read a Japanese font in JIS X 0208 (ticket 2301).
-    dependencies: 145,
+    // the same PR, so each new dependency is a choice.
+    dependencies: 144,
 )

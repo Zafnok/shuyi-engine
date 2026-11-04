@@ -16,7 +16,8 @@
 //! as the narrow font's: the atlas keeps its glyphs of the characters the
 //! text uses that the narrow fonts lack, and of the project's
 //! `wide_glyphs`, each over two cells after the narrow glyphs. A BDF font
-//! in JIS X 0208 (`CHARSET_REGISTRY "JISX0208..."`) is read as Unicode.
+//! in JIS X 0208 (`CHARSET_REGISTRY "JISX0208..."`) is read as Unicode,
+//! with the crate's `jis` feature (without it, such a font is refused).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -188,11 +189,32 @@ impl Encoding {
             Self::Jis => jis_char(code),
         }
     }
+
+    /// Whether this build reads fonts of this encoding: JIS X 0208's
+    /// needs the `jis` feature.
+    const fn read_here(self) -> bool {
+        matches!(self, Self::Unicode) || cfg!(feature = "jis")
+    }
+}
+
+/// Why a JIS font isn't read without the `jis` feature.
+const NO_JIS: &str = "the font is in JIS X 0208 (CHARSET_REGISTRY JISX0208): turn on \
+                      shuyi-cli's `jis` feature for the game's tools, or convert the font to \
+                      Unicode";
+
+/// The Unicode character of JIS X 0208 code `code` (row in the high byte,
+/// cell in the low), read as its EUC-JP bytes (both bytes with their high
+/// bit set), or `None` if it has none. Without the `jis` feature, none
+/// ([`parse_bdf`] refuses such a font first).
+#[cfg(not(feature = "jis"))]
+fn jis_char(_: i64) -> Option<char> {
+    None
 }
 
 /// The Unicode character of JIS X 0208 code `code` (row in the high byte,
 /// cell in the low), read as its EUC-JP bytes (both bytes with their high
 /// bit set), or `None` if it has none.
+#[cfg(feature = "jis")]
 fn jis_char(code: i64) -> Option<char> {
     let [_, _, _, _, _, _, row, cell] = code.to_be_bytes();
     let inside = |b: u8| (0x21..=0x7e).contains(&b);
@@ -211,7 +233,8 @@ fn jis_char(code: i64) -> Option<char> {
 /// Parses a BDF font. Glyph bitmaps are positioned in the cell using the
 /// font and glyph bounding boxes; pixels outside the cell are dropped. A
 /// font whose `CHARSET_REGISTRY` is JIS X 0208's has its codes read as
-/// Unicode; a code with no Unicode character is left out.
+/// Unicode (with the `jis` feature; refused without it); a code with no
+/// Unicode character is left out.
 pub fn parse_bdf(text: &str) -> Result<BitmapFont, String> {
     let mut lines = text.lines().enumerate().map(|(i, l)| (i + 1, l.trim()));
     let mut font_box: Option<BoundingBox> = None;
@@ -223,6 +246,9 @@ pub fn parse_bdf(text: &str) -> Result<BitmapFont, String> {
             Some("FONTBOUNDINGBOX") => font_box = Some(numbers(words, n)?),
             Some("CHARSET_REGISTRY") => {
                 encoding = Encoding::of_registry(words.next().unwrap_or_default());
+                if !encoding.read_here() {
+                    return Err(format!("line {n}: {NO_JIS}"));
+                }
             }
             Some("STARTCHAR") => {
                 let font_box =

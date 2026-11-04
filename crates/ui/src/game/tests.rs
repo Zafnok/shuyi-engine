@@ -155,6 +155,31 @@ fn a_redraw_shows_what_changed_outside_the_loop() {
     assert_eq!(game.buffer().get(5, 5).map(|c| c.bg), Some(night));
 }
 
+#[test]
+fn new_widths_go_to_the_frame_and_the_context_and_the_frame_is_drawn_again() {
+    use shuyi_assets::font::CellWidths;
+    let mut game = home(ctx());
+    assert_eq!(*game.ctx().widths(), CellWidths::NARROW);
+    assert_eq!(*game.buffer().widths(), CellWidths::NARROW);
+    let night = game.ctx().game.theme_def(crate::toy::Theme::Night).unwrap();
+    game.ctx_mut().palette = crate::frame::color::Palette::new::<EngineColor>(night).unwrap();
+    let panel = game.ctx().palette.engine(EngineColor::Panel);
+    let wide = CellWidths::wide(['あ']);
+    game.set_widths(wide.clone());
+    assert_eq!(*game.ctx().widths(), wide);
+    assert_eq!(*game.buffer().widths(), wide);
+    assert_eq!(
+        game.buffer().get(5, 5).map(|c| c.bg),
+        Some(panel),
+        "drawn again"
+    );
+    // The same widths again change nothing, and draw nothing.
+    let day = game.ctx().game.palette_def();
+    game.ctx_mut().palette = crate::frame::color::Palette::new::<EngineColor>(day).unwrap();
+    game.set_widths(wide.clone());
+    assert_eq!(game.buffer().get(5, 5).map(|c| c.bg), Some(panel));
+}
+
 /// What a [`Spy`] saw, frame by frame.
 type Seen = Rc<RefCell<Vec<FrameInput<Action>>>>;
 

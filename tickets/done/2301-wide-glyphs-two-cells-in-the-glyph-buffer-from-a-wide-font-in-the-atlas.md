@@ -238,7 +238,8 @@ font (game#0236).
   when there are none, so the template's and the examples' atlases are
   unchanged byte for byte. The one-bit copy keeps each half as a cell.
   A BDF in JIS X 0208 (`CHARSET_REGISTRY "JISX0208…"`) is read as
-  Unicode through `encoding_rs`' EUC-JP table.
+  Unicode through `encoding_rs`' EUC-JP table, with `shuyi-cli`'s `jis`
+  feature; without it such a font is refused, saying to turn it on.
 - **Fixtures:** `crates/cli/tests/fixtures/fonts/wide-16.bdf` and
   `wide-16-jis.bdf` (four CJK characters made of straight lines, drawn
   for this ticket: MIT OR Apache-2.0, no license row) and the reference
@@ -266,9 +267,13 @@ font (game#0236).
 - The JIS conversion needs JIS X 0208's table: `encoding_rs` 0.8
   (`(Apache-2.0 OR MIT) AND BSD-3-Clause`, all in `deny.toml`'s allow
   list; `default-features = false, features = ["alloc"]`) rather than a
-  table of 7,000 rows in the repository. It is one more crate in a new
-  game's tree: `tools/compile-budget.ron` goes from 144 to 145 (CI
-  measured 144 on `main`).
+  table of 7,000 rows in the repository. It brings five crates, so it is
+  optional, behind `shuyi-cli`'s `jis` feature (on for this crate's
+  tests): a new game's tree stays at 144 crates, and only a game whose
+  font is in JIS turns it on.
+- The one-bit renderer's partial redraw draws a continuation again when
+  its first cell changes; the other way round can't happen (replacing a
+  continuation makes its first cell a space), so it has no rule.
 - The pack's binary form of a font atlas has the new field:
   `pack::VERSION` is 8.
 - Either-order clauses: 2224, 2239, 2346, 2347, 2353 were not done, so

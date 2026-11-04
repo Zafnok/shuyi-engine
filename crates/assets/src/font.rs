@@ -13,7 +13,6 @@ use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::rc::Rc;
-use core::iter::Peekable;
 
 use serde::{Deserialize, Serialize};
 
@@ -150,12 +149,16 @@ impl FontAtlasDef {
         self.glyphs.contains_key(&c) || self.wide.contains_key(&c)
     }
 
-    /// Every character [`draws`](Self::draws) accepts, in code-point order.
+    /// Every character [`draws`](Self::draws) accepts, in code-point order,
+    /// each once.
     pub fn drawn(&self) -> impl Iterator<Item = char> + '_ {
-        Merged {
-            a: self.glyphs.keys().copied().peekable(),
-            b: self.wide.keys().copied().peekable(),
-        }
+        let both: BTreeSet<char> = self
+            .glyphs
+            .keys()
+            .chain(self.wide.keys())
+            .copied()
+            .collect();
+        both.into_iter()
     }
 
     /// Parses glyph map `source` (errors attributed to `file`) and validates
@@ -280,24 +283,6 @@ impl FontAtlasDef {
             ));
         }
         out
-    }
-}
-
-/// Two iterators of characters in code-point order, merged in that order.
-struct Merged<A: Iterator<Item = char>, B: Iterator<Item = char>> {
-    a: Peekable<A>,
-    b: Peekable<B>,
-}
-
-impl<A: Iterator<Item = char>, B: Iterator<Item = char>> Iterator for Merged<A, B> {
-    type Item = char;
-
-    fn next(&mut self) -> Option<char> {
-        match (self.a.peek(), self.b.peek()) {
-            (Some(a), Some(b)) if b < a => self.b.next(),
-            (Some(_), _) => self.a.next(),
-            (None, _) => self.b.next(),
-        }
     }
 }
 
@@ -515,6 +500,13 @@ mod tests {
         assert_eq!(drawn.len(), REQUIRED.chars().count() + 2);
         // A required glyph may be wide.
         assert_eq!(def.problems("あ"), Vec::<String>::new());
+        // Narrow and wide in turn are listed in turn, either first.
+        let mixed = FontAtlasDef {
+            glyphs: [('b', 0), ('d', 1)].into(),
+            wide: [('a', 2), ('c', 4), ('e', 6)].into(),
+            ..FontAtlasDef::default()
+        };
+        assert_eq!(mixed.drawn().collect::<String>(), "abcde");
     }
 
     #[test]
