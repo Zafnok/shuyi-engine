@@ -237,17 +237,44 @@ class Endpoint:
         self.thread.join(5)
 
 
+@dataclass
+class Loss:
+    """Where a recording lost frames (ticket 2047): after how many frames, how many
+    the device's position skipped, how long the reader hadn't looked before the
+    packet that says so, and the buffer's length. A wait as long as the buffer is the
+    recorder's fault, as the buffer filled; a short one says the system dropped them.
+    The packet's own timestamp says nothing here: it is the first one after the hole."""
+
+    at: int
+    lost: int
+    waited_ms: float
+    buffer_ms: float
+
+    def __str__(self) -> str:
+        return (
+            f"{self.lost} frames after frame {self.at}, the reader having waited "
+            f"{self.waited_ms:.0f} ms of the buffer's {self.buffer_ms:.0f}"
+        )
+
+
 class Loopback:
     """A recording of the default endpoint, into `path`, as 16-bit stereo at stop.
 
     `frames` counts what has come; `start` is the wall clock of frame 0, the earliest
-    arrival less the frames before it, as `capture.py`'s recorder has it."""
+    arrival less the frames before it, as `capture.py`'s recorder has it. `losses`
+    holds each place the system says frames were dropped, and `longest_ms` the
+    longest the reader went between two looks."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
         self.frames = 0
         self.start = float("inf")
-        self.discontinuities = 0
+        self.losses: list[Loss] = []
+        self.longest_ms = 0.0
+        # How long the reader hadn't looked, at its latest look.
+        self.waited_ms = 0.0
+        # The device position the next packet should start at.
+        self.position: int | None = None
         self.form: Format | None = None
         self.running = True
         self.failure: BaseException | None = None
@@ -265,18 +292,24 @@ class Loopback:
             client = Client(STREAMFLAGS_LOOPBACK)
             self.form = client.format
             capture = client.service(IID_CAPTURE)
+            buffer_ms = client.size() * 1000 / self.form.rate
             client.start()
             self.ready.set()
+            looked = time.perf_counter()
             while self.running:
                 time.sleep(0.005)
-                while self.read_packet(capture):
+                now = time.perf_counter()
+                self.waited_ms = (now - looked) * 1000
+                self.longest_ms = max(self.longest_ms, self.waited_ms)
+                looked = now
+                while self.read_packet(capture, buffer_ms):
                     pass
             client.stop()
         except OSError as error:
             self.failure = error
             self.ready.set()
 
-    def read_packet(self, capture: ctypes.c_void_p) -> bool:
+    def read_packet(self, capture: ctypes.c_void_p, buffer_ms: float) -> bool:
         waiting = c_uint32()
         call(capture, 5, (POINTER(c_uint32),), byref(waiting))
         if waiting.value == 0:
@@ -284,6 +317,7 @@ class Loopback:
         data = ctypes.c_void_p()
         frames = c_uint32()
         flags = c_uint32()
+        position = c_uint64()
         call(
             capture,
             3,
@@ -291,7 +325,7 @@ class Loopback:
             byref(data),
             byref(frames),
             byref(flags),
-            None,
+            byref(position),
             None,
         )
         size = frames.value * self.form.frame_bytes
@@ -301,7 +335,9 @@ class Loopback:
             self.chunks.append(ctypes.string_at(data, size))
         # The first packet after a start says so, and means nothing was lost.
         if flags.value & BUFFER_DISCONTINUITY and self.frames > 0:
-            self.discontinuities += 1
+            lost = position.value - self.position if self.position is not None else 0
+            self.losses.append(Loss(self.frames, lost, self.waited_ms, buffer_ms))
+        self.position = position.value + frames.value
         self.frames += frames.value
         self.start = min(self.start, time.time() - self.frames / self.form.rate)
         call(capture, 4, (c_uint32,), frames.value)

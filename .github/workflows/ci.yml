@@ -678,6 +678,9 @@ jobs:
           cp target/release/examples/sound_probe.exe target/sound-parity/probe-old.exe
           cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked
           cp target/release/examples/sound_probe.exe target/sound-parity/probe-new.exe
+      # A recording the loopback lost frames from is refused and made again (ticket 2047).
+      - name: Which recordings are made again
+        run: python tools/sound-parity/capture_test.py
       - name: Record both backends
         env:
           REVISION: ${{ github.sha }}
