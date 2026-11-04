@@ -316,6 +316,51 @@ fn set_keymap_switches_bindings_and_forgets_held_keys() {
 }
 
 #[test]
+fn an_update_keeps_its_presses_without_repeats_and_what_was_let_go() {
+    let mut s = default_state();
+    s.key_down(chord("l"));
+    assert_eq!(s.update(0.0), [CursorRight]);
+    assert_eq!(s.presses(), [CursorRight]);
+    // Held past the delay: repeats, which are no presses.
+    assert_eq!(s.update(ms(300)), [CursorRight, CursorRight, CursorRight]);
+    assert_eq!(s.presses(), []);
+    assert_eq!(s.released(), []);
+    // Two keys on one action: let go when the last one comes up.
+    s.key_down(chord("h"));
+    s.key_down(chord("Left"));
+    assert_eq!(s.update(0.0), [CursorLeft, CursorLeft]);
+    assert_eq!(s.presses(), [CursorLeft, CursorLeft]);
+    s.key_up(Key::H);
+    s.key_up(Key::L);
+    assert_eq!(s.update(0.0), []);
+    assert_eq!(s.released(), [CursorRight]);
+    s.key_up(Key::Left);
+    s.update(0.0);
+    assert_eq!(s.released(), [CursorLeft]);
+    s.update(0.0);
+    assert_eq!(s.released(), []);
+    // A tap between two updates: pressed and let go.
+    s.key_down(chord("f"));
+    s.key_up(Key::F);
+    assert_eq!(s.update(0.0), [Confirm]);
+    assert_eq!(
+        (s.presses(), s.released()),
+        (&[Confirm][..], &[Confirm][..])
+    );
+}
+
+#[test]
+fn set_keymap_lets_go_of_what_it_held() {
+    let mut s = default_state();
+    s.key_down(chord("l"));
+    s.key_down(chord("f"));
+    s.update(0.0);
+    s.set_keymap(test_keymap(170, 55));
+    s.update(0.0);
+    assert_eq!(s.released(), [CursorRight, Confirm]);
+}
+
+#[test]
 fn set_keymap_forgets_held_buttons_too() {
     let mut s = pad_state();
     s.pad_down(Button::DpadRight, PAD);

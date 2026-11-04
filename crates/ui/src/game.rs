@@ -236,6 +236,9 @@ pub struct Game<G: GameData> {
     /// The fixed simulation steps due in the next frame
     /// ([`set_ticks`](Self::set_ticks)).
     ticks: u32,
+    /// Whether the game came back from a suspend before the next frame
+    /// ([`set_resumed`](Self::set_resumed)).
+    resumed: bool,
     /// The installed modules, and what each declared, in install order.
     modules: Vec<Box<dyn Module<G>>>,
     installed: Vec<InstalledModule>,
@@ -265,6 +268,7 @@ impl<G: GameData> Game<G> {
             audio_out: Vec::new(),
             music_out: Vec::new(),
             ticks: 0,
+            resumed: false,
             modules: Vec::new(),
             installed: Vec::new(),
         };
@@ -369,6 +373,16 @@ impl<G: GameData> Game<G> {
         self.ticks = ticks;
     }
 
+    /// Says the system resumed the game from a suspend before the next
+    /// [`frame`](Self::frame): its screen reads it as
+    /// [`FrameInput::resumed`], and a tick stage's
+    /// [`TickDriver`](crate::tick::TickDriver) forgets the presses it kept
+    /// from before. The platform's `App` calls it on the system's
+    /// `Resume`.
+    pub fn set_resumed(&mut self) {
+        self.resumed = true;
+    }
+
     /// Flips the Fullscreen setting, as a window's own shortcut does. The
     /// platform then switches the window on the next frame, and an options
     /// screen shows the new value. Does nothing where the game isn't in a
@@ -409,13 +423,14 @@ impl<G: GameData> Game<G> {
         // the music alike.
         let dt = frame_seconds(dt);
         let ticks = core::mem::take(&mut self.ticks);
+        let resumed = core::mem::take(&mut self.resumed);
         if !self.quit {
             // The update's and the drawing's times, in a frame the
             // platform measures, and with memory scopes their tags
             // (crate::perf).
             let tagged = self.ctx.enter_tag(TagClass::Phase, "update");
             let start = self.ctx.perf_now_in_frame();
-            self.step(events, dt, ticks);
+            self.step(events, dt, (ticks, resumed));
             let drawing = self.ctx.perf_now_in_frame();
             perf::leave_tag(tagged);
             let tagged = self.ctx.enter_tag(TagClass::Phase, "draw");
@@ -467,7 +482,9 @@ impl<G: GameData> Game<G> {
         self.music.update(dt, &mut self.music_out);
     }
 
-    fn step(&mut self, events: &[RawInputEvent], dt: f32, ticks: u32) {
+    /// One frame's update: `events` in order, `dt` seconds, and the fixed
+    /// steps due with whether the game just resumed.
+    fn step(&mut self, events: &[RawInputEvent], dt: f32, (ticks, resumed): (u32, bool)) {
         // Bindings changed between frames (a test rebinding keys).
         self.sync_keymap();
         let mut pressed = Vec::new();
@@ -543,11 +560,16 @@ impl<G: GameData> Game<G> {
             // chord window: that is pad input too.
             let from_pad = !buttons_down.is_empty()
                 || (!actions.is_empty() && matches!(self.ctx.device, Device::Pad(_)));
+            // The actions that went down and came up, for the fixed steps.
+            let downs = self.input.presses().to_vec();
+            let ups = self.input.released().to_vec();
             let input = FrameInput::new(actions, dt, held)
+                .with_presses(downs, ups)
                 .with_typing(pressed, text)
                 .with_buttons(buttons_down, buttons_up)
                 .with_pad(from_pad)
-                .with_ticks(ticks);
+                .with_ticks(ticks)
+                .with_resumed(resumed);
             self.quit = self.stack.update(&mut self.ctx, &input);
             self.sync_keymap();
         }
@@ -558,7 +580,9 @@ impl<G: GameData> Game<G> {
     /// action from outside the keys and buttons, such as an entry of the
     /// platform's own menu (the Playdate's system menu, ticket 1035). The
     /// screen does with it what it does with the key, or nothing. Its
-    /// sounds come out with the next frame. After a quit, nothing.
+    /// sounds come out with the next frame. No step is due in it: a tick
+    /// stage keeps it as a tap (pressed, and let go unless a key holds it)
+    /// for its next step. After a quit, nothing.
     pub fn act(&mut self, action: G::Action) {
         if self.quit {
             return;

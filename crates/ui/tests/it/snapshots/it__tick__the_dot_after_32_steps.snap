@@ -1,0 +1,9 @@
+---
+source: crates/ui/tests/it/tick.rs
+expression: "lines.join(\"\\n\")"
+---
+step 20: at 36, 0, heading Right at speed 3
+step 25: at 36, 5, heading Down at speed 1
+step 28: at 36, 8, heading Down at speed 1
+step 32: at 36, 8, still
+runs: 8

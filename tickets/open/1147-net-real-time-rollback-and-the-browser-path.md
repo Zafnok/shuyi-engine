@@ -50,8 +50,8 @@ None.
    desync hashes every N steps. Compare them on licenses, the WASM build
    under our loader, code size, and test results under seeded faults.
    Both spikes keep 1119's rule that a step's events are handed on once
-   (its Scope, *A step's events are handed on once*:
-   `TickDriver::rewind_to`). The ADR says what happens to events that a
+   (**from 2137, done:** `TickDriver::rewind_to` in `shuyi_ui::tick`,
+   which sets the steps back and keeps the highest step handed on). The ADR says what happens to events that a
    correction changes. An event the predicted run handed on, which the
    corrected run doesn't make (a sound already heard), is not taken
    back. An event the corrected run adds is handed on at once, unless

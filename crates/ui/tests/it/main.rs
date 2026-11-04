@@ -16,6 +16,7 @@ mod screens;
 mod scripts;
 mod sessions;
 mod sprites;
+mod tick;
 
 use std::cell::RefCell;
 use std::rc::Rc;

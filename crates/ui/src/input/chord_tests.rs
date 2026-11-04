@@ -203,6 +203,8 @@ fn b_alone_cancels_when_let_go() {
         assert_eq!(frame(&mut s, &[(West, true)], held_ms), []);
         assert!(!s.is_held(Cancel));
         assert_eq!(frame(&mut s, &[(West, false)], 33), [Cancel], "{held_ms}");
+        // A tap: pressed and let go at once.
+        assert_eq!((s.presses(), s.released()), (&[Cancel][..], &[Cancel][..]));
         assert_eq!(idle(&mut s, 30, 33), []);
     }
 }

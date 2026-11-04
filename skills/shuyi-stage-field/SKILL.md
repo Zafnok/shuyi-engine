@@ -9,12 +9,13 @@ metadata:
 
 # A real-time stage
 
-**Not built yet.** Shuyi Engine plays turn-based stages today. Its
-real-time stage is planned: `cargo shuyi modules` lists `fixed ticks`
-(Time), `top-down free` and `side view` (Perspective) and `movers and
-drawn clips` (Bodies and motion) as `parked`. When they are `ready`,
-this skill gets its steps and a worked example. Until then, don't build
-a game that needs them without telling the person who asked for it.
+**Not built yet.** Shuyi Engine runs rules in fixed steps (`cargo shuyi
+modules` lists `fixed ticks`, under Time, as `ready`), but its free
+movement is planned: it lists `top-down free` and `side view`
+(Perspective) and `movers and drawn clips` (Bodies and motion) as
+`parked`. When they are `ready`, this skill gets its steps and a worked
+example. Until then, don't build a game that needs them without telling
+the person who asked for it.
 
 ## When to use it
 
@@ -34,6 +35,13 @@ a game that needs them without telling the person who asked for it.
   game down rather than piling steps up). A screen reads the steps due
   this frame as `FrameInput::ticks()`: 0 to 4, and 0 while the game is
   suspended.
+- **Rules in steps.** A stage's rules implement `TickSim`
+  (`shuyi::core::tick`): each step gets a `TickInput`, what the player
+  pressed, held and released, and answers with events. A `TickDriver`
+  (`shuyi::ui::tick`) steps them `ticks()` times a frame and gives each
+  press and release to one step (`shuyi-input`). A `TickRecord`, a run's
+  seed and each step's input, replays to a hash a step with
+  `tick::replay`.
 - **Luck and hashes.** `SimRng`, kept in the state, and
   `shuyi_core::state_hash`, which is the same on every machine for a
   state whose maps are ordered.
@@ -47,10 +55,9 @@ a game that needs them without telling the person who asked for it.
 
 ## What is coming
 
-A simulation stepped by those fixed steps, in fixed-point numbers
-(whole numbers with a fraction of a pixel, never floats), with a record
-of each step's input that replays to the same hash on every machine.
-Beside it: tile collision and boxes, movers that step a pixel at a time
+Fixed-point numbers for those steps' positions and speeds (whole numbers
+with a fraction of a pixel, never floats), and an arena of the world's
+things. Beside them: tile collision and boxes, movers that step a pixel at a time
 and say what they hit, triggers, a top-down controller as data, and a
 camera that follows with a dead zone and parallax.
 
@@ -62,23 +69,27 @@ shape the engine's simulation will take:
 1. **Keep the world's rules in `crates/rules`**, pure, behind the same
    fence as a turn game's (`shuyi-gates`): no I/O, no clock, no floats,
    no luck but a `SimRng` in the state, `BTreeMap` for maps.
-2. **Step the rules once per step due.** In the screen's `update`, call
-   the rules' own `step` with this frame's input `input.ticks()` times.
-   The rules never read `dt`: `input.dt()` is how long a frame took,
-   which differs from machine to machine. Only a skin reads it, to show
-   motion between steps.
+2. **Step the rules once per step due**, as a `TickSim`, with a
+   `TickDriver` in the screen: `driver.update(&mut self.rules, input)` in
+   its `update`, and `driver.clear()` in its `covered`. The rules never
+   read `dt`: `input.dt()` is how long a frame took, which differs from
+   machine to machine. Only a skin reads it, to show motion between
+   steps.
 3. **Count in whole numbers.** Positions in pixels, or in parts of a pixel
    (256 to the pixel) in an `i32`; speeds in those units per step. Time a rule
    with `shuyi_core::timer`'s `Countdown` and `Every` in the state, advanced by
    one in each step of `FrameInput::ticks()`: a cooldown of 30 steps is half a
    second.
-4. **Hand the rules plain input.** Turn the frame's actions into a value
-   of the rules' own (which way, which button pressed this step), so a
-   test, a bot or a replay can give the same input without a screen.
+4. **Read input from the step.** The rules read the `TickInput` each
+   step gets, never the frame's actions, so a test, a bot or a replay
+   can give the same input without a screen. It names actions by
+   `ActionId`, an action's place in the game's list (`action.id()`, with
+   `shuyi::ui::tick::ActionIds`, in the game's crate).
 5. **Keep a record.** The seed and each step's input are enough to play
-   the world again. A test of the rules steps them from a record and
-   compares `state_hash` at the end, and the game's `GameTools::replay`
-   can give `cargo shuyi replay` a hash per step (`shuyi-debug-replay`).
+   the world again: `TickDriver::recording` keeps a `TickRecord`. A test
+   of the rules replays one with `tick::replay` and compares the hashes,
+   and the game's `GameTools::replay` can give `cargo shuyi replay` a
+   hash per step (`shuyi-debug-replay`).
 
 ## When it fails
 

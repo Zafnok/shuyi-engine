@@ -466,6 +466,25 @@ fn declared_input_keeps_all_but_the_other_actions() {
     assert!(none.is_empty(), "{none:?}");
 }
 
+/// The presses, releases and held actions a fixed step reads are the
+/// declared ones' too.
+#[test]
+fn declared_input_steps_see_only_the_declared_actions() {
+    use Action::{Cancel, Confirm, Info};
+    let input = FrameInput::new(vec![Confirm, Cancel], 0.0, vec![Confirm, Info])
+        .with_presses(vec![Confirm, Cancel], vec![Info, Cancel]);
+    let (seen, _) = input.declared("s", &[Confirm, Info]);
+    assert_eq!(seen.presses(), [Confirm]);
+    assert_eq!(seen.released(), [Info]);
+    assert_eq!(seen.held(), [Confirm, Info]);
+    let (seen, _) = input.declared("s", &[Cancel]);
+    assert_eq!(
+        (seen.presses(), seen.released()),
+        (&[Cancel][..], &[Cancel][..])
+    );
+    assert!(seen.held().is_empty(), "{:?}", seen.held());
+}
+
 #[test]
 #[should_panic(expected = "screen \"s\" asks whether Cancel is held, but doesn't declare it")]
 fn asking_about_an_undeclared_action_panics() {

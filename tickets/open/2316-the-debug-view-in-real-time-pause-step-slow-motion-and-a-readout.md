@@ -117,9 +117,10 @@ None.
   readout's line count (0 with the `readout` channel off), and add a
   test with both channels on that finds no two labels on one row; if
   not, nothing to do (2375 starts its lines below the readout).
-- **A tick game.** If 2137 (tick simulation) is done, a step is one
-  fixed simulation step, and the readout names the step number. If
-  2137 isn't done, 2137 adds that, and this ticket steps frames.
+- **A tick game. From 2137 (done):** a step is one fixed simulation
+  step (a frame with `FrameInput::ticks()` of 1, which a stage's
+  `TickDriver` steps once), and the readout names the step number
+  (`TickDriver::steps`).
   **Either order with 2123** (game speed, parked): if 2123 is done, do
   the four points of its *Debug pause and slow motion* part, with its
   tests of the pair. `Game::clock_speed` returns `STOPPED` while
@@ -161,8 +162,8 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR and code, `game.rs`, the `input-actions` skill, and
-   `keymap/sample.rs`. Check which of 2137, 2123, 2394, 2361 and 2367
-   are done (the either-order clauses).
+   `keymap/sample.rs`, and 2137's `TickDriver`. Check which of 2123,
+   2394, 2361 and 2367 are done (the either-order clauses).
 2. Add the two `UiAction`s, and map them in the sample keymap and the
    toy.
 3. Add pause, step and slow motion to `Game::frame`, with Harness tests:

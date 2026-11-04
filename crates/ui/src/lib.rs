@@ -11,7 +11,8 @@
 //!   files every game on the short path has;
 //! - [`screen`]s on a stack, the context they share ([`ctx`]: [`Ctx`],
 //!   with the game's part in it, [`GameData`]) and the frame loop
-//!   ([`game`]: [`Game`]), with the player's [`settings`] and
+//!   ([`game`]: [`Game`]), a stage's rules run in fixed steps
+//!   ([`tick`]: `TickDriver`), with the player's [`settings`] and
 //!   [`profiles`], [`storage`], [`audio`] requests and the music, and
 //!   [`text`] placeholders;
 //! - the [`frame_cap`]: the most frames a second the platform shows, the
@@ -84,6 +85,7 @@ pub mod settings;
 pub mod storage;
 pub mod system_keyboard;
 pub mod text;
+pub mod tick;
 pub mod tips;
 #[cfg(any(test, feature = "toy"))]
 pub mod toy;

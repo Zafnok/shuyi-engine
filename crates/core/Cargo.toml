@@ -19,11 +19,20 @@ std = ["serde/std"]
 # JSON schemas of the playtest report and its checks, for the tool
 # contract (`shuyi-cli`).
 schema = ["dep:schemars"]
+# `toy`: a toy tick simulation, for the engine's tests (`shuyi-ui`'s toy
+# game steps it).
+toy = []
 
 [dependencies]
 serde.workspace = true
 schemars = { version = "1", optional = true, default-features = false, features = ["derive"] }
 
 [dev-dependencies]
+# The toy tick simulation, for the golden table in tests/.
+shuyi-core = { path = ".", default-features = false, features = ["toy"] }
+# The golden tables (a dev-dependency cycle Cargo allows: the integration
+# tests see one `shuyi-core`). Without `std`, so the run without it stays
+# so.
+shuyi-assets = { path = "../assets", default-features = false, features = ["golden"] }
 proptest.workspace = true
 ron = { workspace = true, features = ["std"] }

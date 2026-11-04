@@ -28,7 +28,7 @@
             alternatives: true,
             answers: [
                 (id: "turns", name: "turns", by: "default", status: ready, tickets: []),
-                (id: "fixed-ticks", name: "fixed ticks", by: "default", status: parked, tickets: ["1119"]),
+                (id: "fixed-ticks", name: "fixed ticks", by: "default", status: ready, tickets: ["2137"]),
             ],
         ),
         (

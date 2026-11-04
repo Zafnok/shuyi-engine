@@ -32,8 +32,9 @@ onebit-reference = []
 # The tests have it anyway.
 raster = []
 # `toy`: a toy game of a few screens over the sample game's actions, for
-# this crate's integration tests.
-toy = ["shuyi-assets/sample-actions"]
+# this crate's integration tests, with a stage stepping core's toy tick
+# simulation.
+toy = ["shuyi-assets/sample-actions", "shuyi-core/toy"]
 # JSON schemas of the perf records (`perf`), for the tool contract
 # (`shuyi-cli`).
 schema = ["dep:schemars"]

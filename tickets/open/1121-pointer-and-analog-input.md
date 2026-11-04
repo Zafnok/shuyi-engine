@@ -81,7 +81,11 @@ None. Our game doesn't use these unless a later ticket says so.
   records replay exactly (1119). Each step takes the latest values:
   every step a frame runs sees that frame's axes and pointer. Mouse
   buttons reach a step as actions, so 1119's latch gives each press and
-  release to exactly one step.
+  release to exactly one step. **From 2137 (done):** the latch is
+  2137's `TickDriver` (`shuyi_ui::tick`), and a step's input is a
+  `SeatInput` per seat (`shuyi_core::tick`), `#[non_exhaustive]`: the
+  axes and the pointer are new fields there, each `#[serde(default)]` so
+  older records still read.
 - Axes and the pointer belong to a seat (2406): a stick's axes to its
   pad's seat, and the mouse and touches to the seat holding the
   keyboard (or its first half). **Either order with 2406:** if 2406 is

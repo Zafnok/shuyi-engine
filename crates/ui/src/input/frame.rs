@@ -21,7 +21,8 @@ pub fn frame_seconds(dt: f32) -> f32 {
 /// One frame's input as a screen sees it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FrameInput<A: ActionSet> {
-    /// Actions this frame, in order: key presses, then key repeats.
+    /// Actions this frame, in order: key presses, then key repeats. A fixed
+    /// step reads [`presses`](Self::presses) instead, which have no repeats.
     pub actions: Vec<A>,
     /// Seconds since the previous frame: finite and at least 0
     /// ([`frame_seconds`]).
@@ -40,6 +41,12 @@ pub struct FrameInput<A: ActionSet> {
     buttons_up: Vec<Button>,
     /// The fixed simulation steps due this frame.
     ticks: u32,
+    /// The actions pressed this frame, in order, without the key repeats.
+    presses: Vec<A>,
+    /// The actions let go this frame, in order.
+    released: Vec<A>,
+    /// Whether the game came back from a suspend just before this frame.
+    resumed: bool,
     /// The screen this input was [filtered](Self::declared) for, and the
     /// actions it declares: asking about any other is a bug in the
     /// screen's declaration.
@@ -49,9 +56,20 @@ pub struct FrameInput<A: ActionSet> {
 impl<A: ActionSet> FrameInput<A> {
     /// Input for one frame; `held` lists the actions whose keys are down.
     /// No [`pressed_chords`](Self::pressed_chords). A `dt` that is not
-    /// finite or is negative counts as 0 ([`frame_seconds`]).
+    /// finite or is negative counts as 0 ([`frame_seconds`]). Each of
+    /// `actions` is a press ([`presses`](Self::presses)), and one that
+    /// isn't held is a tap, let go too ([`released`](Self::released)),
+    /// until [`with_presses`](Self::with_presses) says otherwise.
     pub fn new(actions: Vec<A>, dt: f32, held: Vec<A>) -> Self {
+        let mut released: Vec<A> = Vec::new();
+        for &action in &actions {
+            if !held.contains(&action) && !released.contains(&action) {
+                released.push(action);
+            }
+        }
         Self {
+            presses: actions.clone(),
+            released,
             actions,
             dt: frame_seconds(dt),
             held,
@@ -61,6 +79,7 @@ impl<A: ActionSet> FrameInput<A> {
             buttons_down: Vec::new(),
             buttons_up: Vec::new(),
             ticks: 0,
+            resumed: false,
             declared: None,
         }
     }
@@ -70,15 +89,73 @@ impl<A: ActionSet> FrameInput<A> {
     /// only those actions, with the actions held back (in order, as often
     /// as they came). Asking the result whether an action outside
     /// `declared` is [held](Self::is_held) panics: the screen reads an
-    /// action it didn't declare. Keys, buttons and text stay as they were.
+    /// action it didn't declare. Its [`presses`](Self::presses),
+    /// [`released`](Self::released) and [`held`](Self::held) actions are
+    /// `declared`'s alone. Keys, buttons and text stay as they were.
     pub fn declared(&self, screen: &'static str, declared: &[A]) -> (Self, Vec<A>) {
         let (actions, missed) = self.actions.iter().partition(|a| declared.contains(a));
+        let only = |list: &[A]| {
+            list.iter()
+                .copied()
+                .filter(|a| declared.contains(a))
+                .collect()
+        };
         let input = Self {
             actions,
+            presses: only(&self.presses),
+            released: only(&self.released),
+            held: only(&self.held),
             declared: Some((screen, declared.to_vec())),
             ..self.clone()
         };
         (input, missed)
+    }
+
+    /// The same input with the actions `presses`, pressed this frame in
+    /// order without the key repeats, and `released`, let go this frame in
+    /// order, as [`InputState`](super::InputState) gives them.
+    #[must_use]
+    pub fn with_presses(mut self, presses: Vec<A>, released: Vec<A>) -> Self {
+        self.presses = presses;
+        self.released = released;
+        self
+    }
+
+    /// The actions pressed this frame, in order, without the key repeats
+    /// that [`actions`](Self::actions) has after them: what a fixed step
+    /// reads. A tick stage reads them through its
+    /// [`TickDriver`](crate::tick::TickDriver), which gives each to one
+    /// step.
+    pub fn presses(&self) -> &[A] {
+        &self.presses
+    }
+
+    /// The actions let go this frame, in order: each when no key or button
+    /// holds it any more.
+    pub fn released(&self) -> &[A] {
+        &self.released
+    }
+
+    /// The actions whose key or button is down at the end of this frame, in
+    /// the game's order ([`ActionSet::ALL`]).
+    pub fn held(&self) -> &[A] {
+        &self.held
+    }
+
+    /// The same input with whether the game came back from a suspend just
+    /// before this frame.
+    #[must_use]
+    pub fn with_resumed(mut self, resumed: bool) -> Self {
+        self.resumed = resumed;
+        self
+    }
+
+    /// Whether the game came back from a suspend just before this frame
+    /// (the platform's `SystemEvent::Resume`): a tick stage forgets the
+    /// presses it kept from before ([`TickDriver`](crate::tick::TickDriver)
+    /// does).
+    pub fn resumed(&self) -> bool {
+        self.resumed
     }
 
     /// The same input with the controller buttons that went `down` and

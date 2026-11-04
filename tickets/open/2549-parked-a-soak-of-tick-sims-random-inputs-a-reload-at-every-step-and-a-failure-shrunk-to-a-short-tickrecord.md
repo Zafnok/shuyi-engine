@@ -69,9 +69,10 @@ soak. No new dependency, and no float.
   gets 0. A closure `FnMut(u32) -> TickInput` implements it, so a game
   can hand in a script of its own.
 - `RandomInputs`, the random player:
-  - `RandomInputs::new(seed: u64, actions: &[A], seats: u8)`, where `A`
-    is the action id type `TickInput` holds. `seats` is clamped to 1 to
-    4 (`TickInput`'s most), and the docs say so.
+  - `RandomInputs::new(seed: u64, actions: &[ActionId], seats: u8)`,
+    `ActionId` being the action id type `TickInput` holds. `seats` is
+    clamped to 1 to 4 (`TickInput`'s most, `MAX_SEATS`), and the docs
+    say so.
   - It draws from its own `SimRng::new(seed)`, in a fixed order: each
     step, each seat from 0, each action in list order. So a seed gives
     the same inputs on every platform. It never sees the state, so it
@@ -119,19 +120,17 @@ soak. No new dependency, and no float.
   Failure<TickInput>>`: steps `steps` times (a `TickSim` has no
   outcome), and checks every step. On a pass it returns the play's
   record: `blank` with every step's input added. `blank` is an empty
-  record for `start`, made as 2137 makes one (its seed, and its `Made`
-  stamp if `TickRecord` has one).
+  record for `start`, made as 2137 makes one (`TickRecord::new` with its
+  `Made` stamp and its seed).
 - `inputs<S, C>(start: &S, blank: &TickRecord, inputs: &[TickInput],
   checks) -> Result<(), Failure<TickInput>>`: a fixed list checked the
   same way, for a kept record and for shrinking. Every list plays,
   because `TickSim::step` takes any `TickInput`.
 - `record(blank: &TickRecord, inputs: &[TickInput]) -> TickRecord`: the
-  record a failure's inputs make, which 2137's `replay` reproduces. If
-  2137's `TickRecord` has no public way to add one step's input, or to
-  list the inputs it holds, add `TickRecord::push(&mut self, input:
-  TickInput)` and `TickRecord::inputs(&self) -> Vec<TickInput>` in
-  `crates/core/src/tick.rs`, run-length encoded as the driver writes
-  it.
+  record a failure's inputs make, which 2137's `replay` reproduces,
+  made with `TickRecord::push(&mut self, input: TickInput)` (run-length
+  encoded as the driver writes it); `TickRecord::inputs` gives each
+  step's input back.
 - `shrink<S, C>(start: &S, blank: &TickRecord, failure:
   Failure<TickInput>, checks, runs: u32) -> Shrunk<TickInput>`: 2527's
   delta debugging over the steps. A step is kept or dropped whole. A
@@ -170,14 +169,14 @@ leave out a field that the serde form holds.
 At the end of a play or a list, steps 1 and 2 run once more on the last
 state. Then the play's `record(blank, inputs)` goes through the codec,
 and `replay` runs it from a clone of `start`. It must give one hash for
-each step played (and the start's, if 2137's `replay` returns one), and
-each must equal A's `TickSim::hash` at that step (`record`). If 2137's
-`replay` takes the build's `Made`, pass the record's own: the soak
-tests the state, not the stamp.
+each step played (2137's `replay` gives none for the start), and each
+must equal A's `TickSim::hash` at that step (`record`). 2137's `replay`
+takes the build's `Made`: pass the record's own (`TickRecord::made`),
+since the soak tests the state, not the stamp.
 
-**2137's example sim** (the dot moved by input, in the
-engine's tests) is soaked. Its state derives `Clone`, `Serialize` and
-`Deserialize` if it doesn't yet. A test beside its own tests runs
+**2137's example sim** (the dot moved by input, `shuyi_core::toy::Dot`,
+behind core's `toy` feature) is soaked. Its state derives `Clone`,
+`Serialize` and `Deserialize`. A test beside its own tests runs
 `play` for 50 seeds of 600 steps each (10 seconds of play), with
 `RandomInputs` over its actions and one seat, the codec RON and no
 invariants. It passes.

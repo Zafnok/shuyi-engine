@@ -1631,6 +1631,8 @@ dependencies = [
  "ron",
  "schemars",
  "serde",
+ "shuyi-assets",
+ "shuyi-core",
 ]
 
 [[package]]
