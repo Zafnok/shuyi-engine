@@ -66,8 +66,8 @@ fn a_new_ctx_starts_on_the_games_palette_console_and_picker_keys() {
     let found = c.audio.pending();
     assert!(found.is_empty(), "{found:?}");
     assert!(c.clock_s.abs() < f64::EPSILON);
-    assert!(c.voices_on);
-    assert_eq!(c.voice_volume, DEFAULT_VOICE_VOLUME);
+    assert!(c.settings().voices);
+    assert!(!c.has_voices());
     assert_eq!(c.lang, LangCode::english());
     assert!(c.game.applied.is_empty(), "nothing loaded yet");
 }
@@ -247,7 +247,14 @@ fn only_lines_with_a_playable_clip_are_said() {
         c.audio.take(),
         [play(&lines[0], Voice::Only), AudioRequest::StopVoice]
     );
-    c.voices_on = false;
+    c.play_voice(&lines[0]);
+    // Turning voices off stops the one playing; the clips are still there.
+    assert!(c.preview_settings(|s| s.voices = false));
+    assert_eq!(
+        c.audio.take(),
+        [play(&lines[0], Voice::Only), AudioRequest::StopVoice]
+    );
+    assert!(c.has_voices());
     assert!(!c.has_voice(&lines[0]));
     c.play_voice(&lines[0]);
     c.preload_voices(&lines);
@@ -317,14 +324,17 @@ fn a_manifest_the_game_refuses_leaves_no_voices_and_a_warning() {
     assert!(found.is_empty(), "{found:?}");
 }
 
+/// Turning voices on, or changing another setting, stops nothing.
 #[test]
-fn the_voice_volume_is_a_factor_of_ten_steps() {
+fn only_turning_voices_off_stops_the_voice() {
     let mut c = ctx();
-    assert!((c.voice_gain() - 0.8).abs() < f32::EPSILON);
-    for (volume, gain) in [(0, 0.0), (5, 0.5), (10, 1.0), (200, 1.0)] {
-        c.voice_volume = volume;
-        assert!((c.voice_gain() - gain).abs() < f32::EPSILON, "{volume}");
-    }
+    c.preview_settings(|s| s.voices = false);
+    assert_eq!(c.audio.take(), [AudioRequest::StopVoice]);
+    c.preview_settings(|s| s.voices = true);
+    c.preview_settings(|s| s.voice_volume = 10);
+    c.preview_settings(|s| s.music_volume = 10);
+    let found = c.audio.pending();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

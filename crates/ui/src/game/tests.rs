@@ -844,9 +844,9 @@ fn frames_carry_the_volumes_and_fullscreen() {
         .change_settings(|s| {
             s.music_volume = 25;
             s.sound_volume = 50;
+            s.voice_volume = 30;
         })
         .unwrap();
-    game.ctx_mut().voice_volume = 3;
     let out = game.frame(&[], 0.0);
     assert!((out.music_volume - 0.25).abs() < 1e-6);
     assert!((out.sound_volume - 0.5).abs() < 1e-6);
