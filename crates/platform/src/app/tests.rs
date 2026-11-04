@@ -147,9 +147,17 @@ fn a_second_of_frames_steps_sixty_times_and_a_late_one_four() {
     }
     let ticks: u32 = log.borrow().iter().map(|s| s.ticks).sum();
     assert_eq!(ticks, 60);
-    // A frame half a second late runs at most four steps.
+    // A frame half a second late runs at most four steps, and `App` says
+    // how many the game was handed.
     let _ = app.frame(&mut p, Millis(now + 500));
     assert_eq!(log.borrow().last().map(|s| s.ticks), Some(4));
+    assert_eq!(app.ticks(), 4);
+    let _ = app.frame(&mut p, Millis(now + 517));
+    assert_eq!(app.ticks(), 1);
+    // A suspended frame hands it none, whatever time passed.
+    p.push_system(SystemEvent::Suspend);
+    let _ = app.frame(&mut p, Millis(now + 1017));
+    assert_eq!(app.ticks(), 0);
 }
 
 /// The steps at which an `Every::new(8)`, advanced once per step, fires over

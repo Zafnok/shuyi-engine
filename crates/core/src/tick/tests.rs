@@ -43,6 +43,14 @@ fn a_seat_says_what_it_pressed_held_and_released() {
     assert!(input.seat(1).is_none());
     assert!(SeatInput::default().is_empty());
     assert!(!input.seats[0].is_empty());
+    // One list filled is enough not to be empty.
+    for (pressed, held, released) in [
+        (vec![UP], vec![], vec![]),
+        (vec![], vec![UP], vec![]),
+        (vec![], vec![], vec![UP]),
+    ] {
+        assert!(!SeatInput::new(pressed, held, released).is_empty());
+    }
 }
 
 #[test]
@@ -68,6 +76,21 @@ fn steps_in_a_row_with_one_input_are_one_run() {
     assert_eq!(record.inputs().filter(|&i| *i == right).count(), 3);
     assert!(!record.is_empty());
     assert!(TickRecord::new(made(), 1).is_empty());
+}
+
+#[test]
+fn a_full_run_starts_another() {
+    // A run of as many steps as it can count, read back from its text.
+    let text = alloc::format!(
+        "(made:(engine:\"0.1.0\",game:\"dot\",content:\"0000000000000000\"),seed:1,\
+         runs:[(steps:{},input:(seats:[(held:[3])]))])",
+        u32::MAX
+    );
+    let mut record: TickRecord = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+    record.push(seat(&[], &[RIGHT]));
+    let counts: Vec<u32> = record.runs().iter().map(|run| run.steps).collect();
+    assert_eq!(counts, [u32::MAX, 1]);
+    assert_eq!(record.len(), u64::from(u32::MAX) + 1);
 }
 
 #[test]
@@ -116,6 +139,7 @@ fn a_record_is_written_as_its_stamp_seed_and_runs_and_read_back() {
     );
     let back: TickRecord = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(back, record);
+    assert_eq!(back.seed(), 42);
     // A record of no step leaves its runs out.
     let empty = TickRecord::new(back.made().clone(), 0);
     let text = ron::to_string(&empty).unwrap_or_else(|e| panic!("{e}"));
@@ -197,9 +221,18 @@ fn the_dot_speeds_up_every_eight_steps_held_up_to_four() {
     assert_eq!(speeds[2 * every], 3);
     assert_eq!(speeds[3 * every], TOP_SPEED);
     assert_eq!(speeds.last(), Some(&TOP_SPEED));
+    // Each step moved it its speed's pixels.
+    assert_eq!((dot.x, dot.y), (speeds.iter().sum(), 0));
     // A turn starts again at a pixel a step.
     dot.step(&seat(&[UP], &[RIGHT, UP]));
     assert_eq!((dot.heading(), dot.speed()), (Some(Dir::Up), 1));
+    // Up held, it speeds up as it went right.
+    let mut up = 1;
+    for _ in 0..20 {
+        dot.step(&seat(&[], &[UP]));
+        up += dot.speed();
+    }
+    assert_eq!(dot.y, -up);
 }
 
 #[test]

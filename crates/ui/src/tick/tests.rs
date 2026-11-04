@@ -202,6 +202,26 @@ fn a_cleared_latch_forgets_presses_no_step_had_but_keeps_releases_of_those_it_ha
 }
 
 #[test]
+fn a_press_a_step_had_is_let_go_first_when_a_tap_follows_a_clear() {
+    let mut driver = TickDriver::new();
+    let mut sim = Seen::default();
+    // Up given to a step, let go on a frame with no step, then cleared:
+    // its release is forgotten, but Up is still down for the steps.
+    driver.update(&mut sim, &frame(1, &[CursorUp], &[], &[CursorUp]));
+    driver.update(&mut sim, &frame(0, &[], &[CursorUp], &[]));
+    driver.clear();
+    // A tap: the steps see the first press let go, then the tap.
+    driver.update(&mut sim, &frame(2, &[CursorUp], &[CursorUp], &[]));
+    assert_eq!(
+        sim.0[1..],
+        [
+            seat(&[CursorUp], &[], &[CursorUp]),
+            seat(&[], &[], &[CursorUp])
+        ]
+    );
+}
+
+#[test]
 fn repeats_among_a_frames_actions_never_reach_a_step() {
     // Right held long enough to repeat twice: three actions, one press.
     let input = FrameInput::new(vec![CursorRight; 3], 0.0, vec![CursorRight])
@@ -218,16 +238,16 @@ fn events_are_handed_on_once_with_their_step_and_a_rewind_never_hands_them_again
     let tap = || frame(1, &[CursorUp], &[CursorUp], &[]);
     let idle = || frame(1, &[], &[], &[]);
     let mut handed = Vec::new();
-    for input in [tap(), idle(), idle(), tap(), idle()] {
+    for input in [tap(), idle(), idle(), idle(), tap()] {
         handed.extend(driver.update(&mut sim, &input));
     }
-    assert_eq!(handed, [(1, CursorUp.id()), (4, CursorUp.id())]);
-    // Back to step 2: steps 3 to 5 run again, their events kept back, and
-    // step 6 is new.
+    assert_eq!(handed, [(1, CursorUp.id()), (5, CursorUp.id())]);
+    // Back to step 2: steps 3 to 5 run again, their events kept back (step
+    // 5's, the last handed on, included), and step 6 is new.
     driver.rewind_to(2);
     assert_eq!((driver.steps(), driver.handed()), (2, 5));
     let mut again = Vec::new();
-    for input in [idle(), tap(), idle(), tap()] {
+    for input in [idle(), idle(), tap(), tap()] {
         again.extend(driver.update(&mut sim, &input));
     }
     assert_eq!(again, [(6, CursorUp.id())]);

@@ -405,6 +405,23 @@ mod tests {
     // ANCHOR_END: tick-test
 
     #[test]
+    fn the_bee_lands_every_tenth_step_held_and_hovers_otherwise() {
+        use shuyi::core::tick::SeatInput;
+
+        let held = |ids: &[ActionId]| TickInput::one(SeatInput::new(vec![], ids.to_vec(), vec![]));
+        let mut bee = Bee::new(6);
+        let landed: Vec<usize> = (1..=25)
+            .filter(|_| !bee.step(&held(&[RIGHT])).is_empty())
+            .collect();
+        assert_eq!((landed, bee.at()), (vec![10, 20], 2));
+        // Both held, or neither: it hovers, and starts its ten again.
+        assert_eq!(bee.step(&held(&[LEFT, RIGHT])), []);
+        let landed = (1..=10).filter(|_| !bee.step(&held(&[LEFT])).is_empty());
+        assert_eq!((landed.count(), bee.at()), (1, 1));
+        assert_eq!(bee.hash(), state_hash(&bee).unwrap().0);
+    }
+
+    #[test]
     fn it_rains_every_third_turn_and_the_can_waits_two() {
         let mut seasons = Seasons::new(3, 2);
         assert!(seasons.water());
