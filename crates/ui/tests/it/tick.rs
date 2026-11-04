@@ -4,7 +4,9 @@
 //! releases, each in one step; a tap on a frame with no step, a late
 //! frame, key repeats and an action from `Game::act` reach the steps as
 //! they should; a press kept for a step never fires after the stage is
-//! covered or the game suspended; and a rewind plays no stop twice.
+//! covered or the game suspended; a direction let go while suspended
+//! stops the dot at the resume (ticket 2411); and a rewind plays no stop
+//! twice.
 //! What happened is read from the stage's record and its sounds.
 
 use std::time::Duration;
@@ -373,6 +375,25 @@ fn a_press_kept_for_a_step_never_reaches_one_after_a_suspend() {
     let edges = edges(dot(&h).record());
     assert!(edges.is_empty(), "{edges:?}");
     assert_eq!(dot(&h).dot.x, 0);
+}
+
+#[test]
+fn a_direction_let_go_while_suspended_stops_the_dot_at_the_resume() {
+    let mut h = stage();
+    h.frame(&[down(Key::Right)], FRAME_DT).steps(3);
+    let moved = dot(&h).dot.x;
+    assert!(moved > 0, "{moved}");
+    h.clear_audio();
+    // Right comes up while suspended, unheard.
+    h.system(SystemEvent::Suspend);
+    h.frame(&[up(Key::Right)], FRAME_DT);
+    h.system(SystemEvent::Resume).wait(1.0);
+    assert_eq!(dot(&h).dot.x, moved);
+    assert_eq!(h.sounds(), [STOP]);
+    // Down pressed: the dot moves again.
+    h.frame(&[down(Key::Down)], FRAME_DT).steps(2);
+    assert!(dot(&h).dot.y > 0);
+    assert_eq!(dot(&h).dot.x, moved);
 }
 
 /// Runs a frame of one step with `events`.

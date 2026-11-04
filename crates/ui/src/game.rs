@@ -378,8 +378,11 @@ impl<G: GameData> Game<G> {
     /// [`frame`](Self::frame): its screen reads it as
     /// [`FrameInput::resumed`], and a tick stage's
     /// [`TickDriver`](crate::tick::TickDriver) forgets the presses it kept
-    /// from before. The platform's `App` calls it on the system's
-    /// `Resume`.
+    /// from before. That frame lets go of every key and button held before
+    /// the suspend ([`InputState::release_all`]) before it applies its
+    /// events, so a key let go while suspended doesn't stay held, and one
+    /// pressed in that frame counts. The platform's `App` calls it on the
+    /// system's `Resume`.
     pub fn set_resumed(&mut self) {
         self.resumed = true;
     }
@@ -488,6 +491,11 @@ impl<G: GameData> Game<G> {
     fn step(&mut self, events: &[RawInputEvent], dt: f32, (ticks, resumed): (u32, bool)) {
         // Bindings changed between frames (a test rebinding keys).
         self.sync_keymap();
+        // A key let go while the game was suspended never came up: let go
+        // of everything held before, ahead of this frame's presses.
+        if resumed {
+            self.input.release_all();
+        }
         let mut pressed = Vec::new();
         let mut text = Vec::new();
         let mut buttons_down = Vec::new();

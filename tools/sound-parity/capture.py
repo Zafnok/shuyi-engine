@@ -39,9 +39,12 @@ import sys
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypeVar
+
+T = TypeVar("T")
 
 TOOL = Path(__file__).resolve().parent
 SINK = "shuyi_parity"
@@ -193,8 +196,35 @@ class LoopbackRecorder:
     def stop(self) -> None:
         self.loopback.stop()
         # The system dropped frames while this was reading: not a recording of it all.
-        if self.loopback.discontinuities:
-            raise SystemExit(f"the loopback lost frames {self.loopback.discontinuities} times")
+        if losses := self.loopback.losses:
+            where = "; ".join(str(loss) for loss in losses)
+            raise LostFrames(
+                f"the loopback lost frames {len(losses)} times ({where}; "
+                f"the reader's longest wait {self.loopback.longest_ms:.0f} ms)"
+            )
+
+
+class LostFrames(Exception):
+    """A recording the system dropped frames from: no evidence of what played."""
+
+
+# The most recordings of one play that may lose frames before the step fails.
+TRIES = 3
+
+
+def whole(play: Callable[[], T], tries: int = TRIES) -> T:
+    """`play`'s answer, played again while its recording lost frames (ticket 2047).
+
+    A recording with a hole in it is never judged: it is made again, up to `tries`
+    times, and if each loses frames the step fails, as one did before."""
+    for attempt in range(1, tries + 1):
+        try:
+            return play()
+        except LostFrames as lost:
+            if attempt == tries:
+                raise SystemExit(f"{lost}, in each of {tries} recordings") from lost
+            print(f"::warning::{lost}: recording it again", file=sys.stderr, flush=True)
+    raise AssertionError("unreachable")
 
 
 def write_meta(run: Path, revision: str, backend: str, extra: dict[str, object]) -> None:
@@ -297,6 +327,12 @@ class Windows:
     stage: Path
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
+        return whole(lambda: self.play_once(order, record, perf))
+
+    def play_once(self, order: str, record: Path, perf: dict[str, float] | None) -> list[str]:
+        # Nothing of a refused recording's run is kept.
+        if perf is not None:
+            perf.clear()
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
         recorder = LoopbackRecorder(record)
         recorder.flowing()

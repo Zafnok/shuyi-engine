@@ -13,7 +13,9 @@
 //! the audio comes back and `App` forgets the time it was away, so a sleep
 //! never becomes a burst of catch-up steps, and tells the game
 //! ([`Game::set_resumed`]), so a tick stage forgets the presses it kept
-//! from before.
+//! from before and every key and button held before the suspend is let go
+//! (a key may come up while suspended, unheard); one still down counts
+//! once it is pressed again.
 //!
 //! `App` keeps the log (ADR-0030): at the end of every frame it takes the
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
@@ -829,7 +831,8 @@ impl<G: GameData> App<G> {
                 self.suspended = false;
                 self.clock.restart();
                 platform.audio().resume();
-                // A tick stage forgets what it kept from before.
+                // A tick stage forgets what it kept from before, and the
+                // input lets go of what was held.
                 if let Some(game) = self.game_mut() {
                     game.set_resumed();
                 }
