@@ -2,7 +2,8 @@
 // comes from recordings of quad-snd on CI's pinned image, three independent runs
 // of the job (attempts 1 to 3 of CI run 41271510575, 2026-11-01), then held by the
 // fresh runs named in the ticket's notes. Four performance limits were set again
-// from 58 runs and one of `old_new` from 20 (ticket 2042, written at each). Change one only with new
+// from 58 runs and one of `old_new` from 20 (ticket 2042, written at each), and
+// Windows' and the decoders' from 69 and 20 (ticket 2044). Change one only with new
 // runs that justify it, written here, and raise `version`: never to pass.
 (
     version: 7,
@@ -80,38 +81,38 @@
         // Windows' limits came from three runs (ticket 3031), and one job in ten failed
         // on them with no sound change. These are the same rule over every
         // `sound-parity-windows` artifact from 3031's merge to 2026-11-04 (ticket 2044):
-        // 49 jobs in 11 CI runs (41595169987 to 41776135194, 20 of them in 41595469804
-        // and 20 in 41689870848, gathered by run 41783186508), 81 attempts. Nothing
-        // leans: the side measured second was slower in 356 pairs to 370 (file reads),
-        // 360 to 369, 365 to 364, 376 to 353, 378 to 349 and 378 to 351. The injected
-        // slowdown's least was 1.77 (Ogg decode), 1.79 (file reads), 1.86 (WAV) and 57.7
-        // (CPU). A limit no attempt exceeded stays.
+        // 69 jobs in 12 CI runs (41595169987 to 41785090975; 20 each in 41595469804,
+        // 41689870848 and 41785090975; the first 49 gathered by run 41783186508), 101
+        // attempts. Nothing leans: the median ratio of the side measured second to the
+        // first is within 0.005 of 1 on every metric. The injected slowdown's least was
+        // 1.77 (Ogg decode), 1.79 (file reads), 1.86 (WAV) and 57.7 (CPU). A limit no
+        // attempt exceeded stays.
         "windows": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
-            // Medians 0.973 to 1.037, ranges up to 0.153: 19 of 81 over 0.05.
+            // Medians 0.971 to 1.037, ranges up to 0.153: 27 of 101 over 0.05.
             "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.31, slows: true),
-            // Medians 0.965 to 1.043, ranges up to 0.194: 11 over 0.05.
-            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.39, slows: true),
-            // Medians 0.850 to 1.086 (two failed at 1.05), ranges up to 0.325 (13 over
+            // Medians 0.965 to 1.053 (one failed at 1.05), ranges up to 0.194: 19 over
+            // 0.05.
+            "decode_ogg_ms": (max_ratio: 1.11, max_spread: 0.39, slows: true),
+            // Medians 0.850 to 1.094 (two failed at 1.05), ranges up to 0.341 (24 over
             // 0.10): a process's cycles over three seconds of a 10 ms period.
-            "cpu_ms": (max_ratio: 1.30, max_spread: 0.65, slows: true),
-            // Medians 0.970 to 1.025, ranges up to 0.106: 5 over 0.05.
+            "cpu_ms": (max_ratio: 1.30, max_spread: 0.69, slows: true),
+            // Medians 0.970 to 1.025, ranges up to 0.106: 6 over 0.05.
             "peak_kib": (max_ratio: 1.05, max_spread: 0.22, slows: false),
             // Medians 0.917 to 1.062, ranges up to 0.177: 1 over 0.15.
             "latency_ms": (max_ratio: 1.08, max_spread: 0.36, slows: false),
         },
         // A new backend against itself, as its platform's old one is: at first the same
         // limits as that one's, which three runs held (ticket 3031), then the same rule
-        // over the same 49 jobs, 66 attempts (ticket 2044). Nothing leans: the side
-        // measured second was slower in 276 pairs to 311 at the most (file reads). The
+        // over the same 69 jobs, 86 attempts (ticket 2044). Nothing leans, as above. The
         // injected slowdown's least was 1.84 (file reads), 1.86 (WAV), 1.93 (Ogg) and
         // 26.2 (CPU).
         "windows-in-house": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
-            // Medians 0.950 to 1.069 (one failed at 1.05), ranges up to 0.139.
-            "decode_wav_ms": (max_ratio: 1.14, max_spread: 0.28, slows: true),
+            // Medians 0.950 to 1.069 (one failed at 1.05), ranges up to 0.150.
+            "decode_wav_ms": (max_ratio: 1.14, max_spread: 0.30, slows: true),
             "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
-            // Medians 0.927 to 1.065, ranges up to 0.187 (8 over 0.10).
+            // Medians 0.927 to 1.065, ranges up to 0.187 (10 over 0.10).
             "cpu_ms": (max_ratio: 1.15, max_spread: 0.38, slows: true),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
             // Samples fall anywhere from 6 to 24 ms, a period of the endpoint's buffer,
@@ -140,6 +141,18 @@
     // down (0.53 on WAV, 1.26 on Ogg). `max_share` is about ten times the worst
     // measured: 0.0026 natively and 0.0045 in the browser of a sound's length, as raw
     // times move by half between machines. It leaves room for twenty streams at once.
+    //
+    // Over 49 Windows and 52 native jobs from 3031's merge (ticket 2044), the ratio
+    // leaned on which side went first. A process's first decode was slow (Windows
+    // WAV: new 4.8 % slower first, in 48 of 49 jobs, ranges up to 0.109), and natively
+    // new decoded Ogg 2.7 % slower just after old (49 of 52, ranges up to 0.059,
+    // inconclusive). So each side now decodes once untimed and they take turns old,
+    // new, new, old. Over the 20 jobs of CI run 41785090975 with that, neither leans
+    // (5 and 13 of 20). Native WAV leans a little (new 3 % slower first, 17 of 20),
+    // inside a range of 0.022. The worst ranges are 0.029 and 0.040 on Windows (WAV,
+    // Ogg) and 0.022 and 0.037 natively. Windows' WAV spread is twice its worst; the
+    // rest were never exceeded and stay. The injected slowdown's least was 1.93 and
+    // 1.95 on Windows, 1.96 and 1.99 natively.
     decoders: {
         "linux-native": {
             "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.05, slows: true)), max_share: 0.03),
@@ -150,7 +163,7 @@
             "ogg": (ratio: None, max_share: 0.05),
         },
         "windows": {
-            "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.20, slows: true)), max_share: 0.03),
+            "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.06, slows: true)), max_share: 0.03),
             "ogg": (ratio: Some((max_ratio: 1.05, max_spread: 0.05, slows: true)), max_share: 0.03),
         },
     },
