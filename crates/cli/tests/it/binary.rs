@@ -181,7 +181,11 @@ fn bad_arguments_print_the_usage() {
     for (args, said) in [
         (
             &["font-atlas", "one"][..],
-            "usage: shuyi font-atlas <font.bdf>... <out-dir>",
+            "usage: shuyi font-atlas [--no-text] <font.bdf>... <out-dir>",
+        ),
+        (
+            &["font-atlas", "--no-text", "one"],
+            "usage: shuyi font-atlas [--no-text] <font.bdf>... <out-dir>",
         ),
         (&["glyph-tiles", "one"], "usage: shuyi glyph-tiles"),
         (
@@ -200,6 +204,15 @@ fn bad_arguments_print_the_usage() {
     let output = shuyi(&dir, &["font-atlas", "no/such.bdf", "out"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(stderr(&output).starts_with("font-atlas: reading no/such.bdf"));
+    // With no game tool program, the text isn't read, and that is said.
+    assert_eq!(
+        stdout(&output).trim(),
+        "font-atlas: keeping the ranges and the required glyphs only, not the text's \
+         characters: shuyi.ron names no game tool program (`game`)"
+    );
+    let output = shuyi(&dir, &["font-atlas", "--no-text", "no/such.bdf", "out"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stdout(&output).trim().ends_with("characters: --no-text"));
     let output = shuyi(&dir, &["glyph-tiles"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(

@@ -1,6 +1,6 @@
 //! The `.dlg` parser: lines → scenes. Reports syntax and structure errors
-//! (unknown directives, bad ids, missing `@end`, blocks left open, non-ASCII
-//! text); checks that need the whole scene or other files are in `check`.
+//! (unknown directives, bad ids, missing `@end`, blocks left open, control
+//! characters); checks that need the whole scene or other files are in `check`.
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -119,26 +119,13 @@ pub fn is_id(s: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
-/// What is wrong with character `c` in dialogue text, if anything. Text
-/// must be printable ASCII (the font may lack anything else); common
-/// typographic punctuation gets its ASCII spelling suggested.
+/// What is wrong with character `c` in dialogue text, if anything: text
+/// holds any character but a control character. Whether the font draws it
+/// is checked once the game's text and its atlas load
+/// ([`crate::font::undrawn`]), not here.
 pub fn char_problem(c: char) -> Option<String> {
-    if (' '..='~').contains(&c) {
-        return None;
-    }
-    let ascii = match c {
-        '\u{2018}' | '\u{2019}' => "'",
-        '\u{201C}' | '\u{201D}' => "\"",
-        '\u{2026}' => "...",
-        '\u{2014}' => "--",
-        '\u{2013}' => "-",
-        _ => {
-            return Some(format!(
-                "unsupported character {c:?}; dialogue text is plain ASCII"
-            ));
-        }
-    };
-    Some(format!("non-ASCII punctuation {c:?}; use {ascii} instead"))
+    c.is_control()
+        .then(|| format!("control character U+{:04X} in dialogue text", u32::from(c)))
 }
 
 /// What an id that isn't one ([`is_id`]) is told.
@@ -708,7 +695,7 @@ impl<D: Directive> Parser<'_, D> {
     }
 
     /// `direction`, trimmed, reporting `when_empty` if nothing is left and
-    /// every unsupported character.
+    /// every control character ([`char_problem`]).
     fn checked_direction(&mut self, n: u32, direction: &str, when_empty: &str) -> Option<String> {
         let direction = direction.trim();
         if direction.is_empty() {
@@ -750,7 +737,7 @@ impl<D: Directive> Parser<'_, D> {
         }
     }
 
-    /// Reports every unsupported character of `text`, a suffix of `line`,
+    /// Reports every control character of `text`, a suffix of `line`,
     /// with its column.
     fn check_chars(&mut self, n: u32, line: &str, text: &str) {
         let before = line[..line.len() - text.len()].chars().count();

@@ -67,7 +67,8 @@ same command again; 1, it ran and found something wrong.
 
 | Command | What it tells you |
 | ------- | ----------------- |
-| `cargo shuyi check` | every error in `files/`, with file and line |
+| `cargo shuyi check` | every error in `files/`, with file and line, and every character of the text the font atlas lacks, with its file and key |
+| `cargo shuyi font-atlas files-src/ter-u16n.bdf crates/game/files/font` | remakes the font atlas from the font, with every character the text uses that the font has: run it when `check` names one |
 | `cargo shuyi run --script "Enter" --frames 30` | the screens, what happened and the sounds |
 | `cargo shuyi run --watch` | the game in its window, its files on disk laid over the embedded ones; a module of the game's reloads what it keeps as a `Hot` value when one changes |
 | `cargo shuyi frame-png title.png` | a picture of a frame, with no window |

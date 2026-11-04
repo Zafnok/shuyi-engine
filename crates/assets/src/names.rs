@@ -289,8 +289,10 @@ pub fn with_part(
 }
 
 /// Parses and validates names `source`, attributing errors to `file`:
-/// valid ids, each once; values non-empty plain ASCII without braces, each
-/// used once. Reports every problem found.
+/// valid ids, each once; values non-empty, without braces or control
+/// characters ([`char_problem`]), each used once. Whether the font draws a
+/// name is checked with the rest of the text
+/// ([`undrawn`](crate::font::undrawn)). Reports every problem found.
 pub fn from_source(file: &str, source: &str) -> Result<Names, Vec<ContentError>> {
     let names: BTreeMap<String, String> = parse_ron(file, source).map_err(|e| vec![e])?;
     let mut errors = Vec::new();

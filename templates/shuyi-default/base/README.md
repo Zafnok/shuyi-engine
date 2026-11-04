@@ -20,6 +20,7 @@ cargo shuyi                  # the engine's tools on it (AGENTS.md)
 | `crates/game/src/stages.rs` | The stages, in order, and each one's part of the data (`stages/`) |
 | `crates/game/examples/tools.rs` | The program `cargo shuyi` runs the game's tools in |
 | `crates/game/files/` | Embedded: the keys, the palette, the English text and the font |
+| `files-src/ter-u16n.bdf` | The font the atlas in `crates/game/files/font/` is made from (`cargo shuyi font-atlas`) |
 | `crates/game/tests/` | The game played through the engine's Harness, and through its tools |
 | `shuyi.ron` | The project file of the engine's tools |
 | `AGENTS.md` | How to work on the game, for people and agents |
@@ -33,4 +34,7 @@ It is on the engine's short path; `AGENTS.md` says how it grows past it.
 
 The font is Terminus Font 4.49.1, under the SIL Open Font License 1.1
 (`crates/game/files/font/Terminus-LICENSE.txt`); the atlas in
-`crates/game/files/font/` was made from it by the engine's `font-atlas`.
+`crates/game/files/font/` was made from `files-src/ter-u16n.bdf` by the
+engine's `font-atlas`. `cargo shuyi check` names a character of the text
+the atlas lacks, and `cargo shuyi font-atlas files-src/ter-u16n.bdf
+crates/game/files/font` adds it if the font has it.

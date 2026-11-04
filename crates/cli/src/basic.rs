@@ -1,13 +1,15 @@
 //! [`BasicTools`]: the [`GameTools`] of a game on the short path
 //! (ADR-0036), from its `BasicGame`: `frame-png`, `lang-status`, the
 //! contract's `check`, `run` and `scene` (a session with no scene, or one
-//! played from a session record), and the controls `check --target` checks. A game that adds a scene, a
+//! played from a session record), the font atlas `check` checks the text
+//! against, and the controls `check --target` checks. A game that adds a scene, a
 //! record, bots, importers or a bake writes its own `GameTools` and calls
 //! these methods for the rest.
 
 use std::fmt::Debug;
 
 use shuyi_assets::ContentError;
+use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_core::Made;
 use shuyi_platform::BasicGame;
@@ -25,6 +27,15 @@ use crate::game::{GameArg, GameLang, GameOption, GameTools};
 #[derive(Debug)]
 pub struct BasicTools<A: ActionSet, T: Debug + 'static = ()> {
     game: BasicGame<A, T>,
+}
+
+/// `errors`, one per line.
+fn in_lines(errors: &[ContentError]) -> String {
+    let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    lines.join(
+        "
+",
+    )
 }
 
 /// No option of the game's own.
@@ -125,6 +136,12 @@ impl<A: ActionSet, T: Debug + 'static> GameTools for BasicTools<A, T> {
     /// `BasicGame::made`, which its session records carry.
     fn made(&self) -> Option<Made> {
         Some(self.game.made())
+    }
+
+    /// The font atlas it loads, which `check` checks its text against.
+    fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
+        let data = self.game.data().map_err(|errors| in_lines(&errors));
+        Some(data.map(|data| data.font))
     }
 
     /// Its keymap and every screen it can show (`BasicGame::screens`).

@@ -240,6 +240,20 @@ fn valid_source_loads() {
 }
 
 #[test]
+fn a_name_holds_any_character_but_a_control_character() {
+    let t = from_source(
+        "n.ron",
+        "{\n    \"a\": \"Zo\u{eb}\",\n    \"b\": \"\u{141}ucja\",\n    \"c\": \"\u{416}enya\",\n}",
+    );
+    let names = [
+        ("a", "Zo\u{eb}"),
+        ("b", "\u{141}ucja"),
+        ("c", "\u{416}enya"),
+    ];
+    assert_eq!(t, Ok(table(&names)));
+}
+
+#[test]
 fn bad_ids_are_reported() {
     assert_eq!(
         errors("{\n    \"King\": \"Osgar\",\n}"),
@@ -259,12 +273,12 @@ fn duplicate_ids_are_reported() {
 fn bad_values_are_reported() {
     assert_eq!(
         errors(
-            "{\n    \"a\": \" \",\n    \"b\": \"{n:a}\",\n    \"c\": \"Zo\u{eb}\",\n    \"d\": \"x}\",\n}"
+            "{\n    \"a\": \" \",\n    \"b\": \"{n:a}\",\n    \"c\": \"Zo\u{7}\",\n    \"d\": \"x}\",\n}"
         ),
         [
             "n.ron:2: name \"a\" is empty",
             "n.ron:3: name \"b\" contains a brace; names can't hold tokens",
-            "n.ron:4: name \"c\": unsupported character '\u{eb}'; dialogue text is plain ASCII",
+            "n.ron:4: name \"c\": control character U+0007 in dialogue text",
             "n.ron:5: name \"d\" contains a brace; names can't hold tokens",
         ]
     );

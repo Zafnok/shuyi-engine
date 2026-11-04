@@ -95,8 +95,8 @@ font (game#0236).
    glyph fit the PNG and the same row; no character is both narrow and
    wide. `glyph_rect` stays narrow; add `wide_rect(char)` for the
    16 × 16 rectangle. An atlas with no wide glyphs reads as today.
-   `FontAtlasDef::draws` and `drawn` (added by 2350 or 2346, whichever
-   landed first) take the wide glyphs too, so 2350's `font::undrawn`,
+   `FontAtlasDef::draws` and `drawn` (added by 2350) take the wide
+   glyphs too, so 2350's `font::undrawn`,
    2346's `Ctx::font_chars` and 2353's `can_draw` count a character
    with a wide glyph as drawn. Nothing else reads the glyph maps to
    answer it.

@@ -34,12 +34,23 @@
     ),
 
     // The game's tool program, for the commands that run the game:
-    // frame-png, lang-status, check, run, scene, replay, bots, import.
+    // frame-png, lang-status, font-atlas, check, run, scene, replay, bots,
+    // import.
     game: (package: "{{crate_name}}", example: "tools", features: ["tools"]),
 
     // The folder of the game's files, which `cargo shuyi run --watch` lays
     // over the embedded ones.
     assets: "crates/game/files",
+
+    // `cargo shuyi font-atlas files-src/ter-u16n.bdf crates/game/files/font`:
+    // the atlas of Terminus. It runs the game and keeps the characters its
+    // text uses, and every glyph the engine's screens draw (these, which the
+    // game's loader requires too); `cargo shuyi check` names a character
+    // the atlas lacks.
+    font_atlas: (
+        required_glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·…─│┌┐└┘├┤┬┴┼═║╔╗╚╝▓▲▼◄►",
+        readme: "README.md",
+    ),
 
     // `cargo shuyi check --target all`: the targets the game ships on (the
     // engine's profiles, `targets/` in its repository), each with its

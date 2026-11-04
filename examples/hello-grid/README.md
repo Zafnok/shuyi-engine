@@ -43,7 +43,9 @@ cargo test -p hello-grid             # the tests
 Never edit these by hand; a test fails when one is stale.
 
 - `files/font/` (the atlas of Terminus):
-  `cargo shuyi font-atlas files-src/ter-u16n.bdf files/font`.
+  `cargo shuyi font-atlas files-src/ter-u16n.bdf files/font`. It runs the
+  game and keeps every character its text uses (the dialogue's too);
+  `cargo shuyi check` names one the atlas lacks.
 - `files/tiles.png` (the tileset, from the font and the palette's colors;
   `shuyi.ron` lists the tiles): `cargo shuyi glyph-tiles`.
 - A picture of a frame, to look at: `cargo shuyi frame-png stage.png

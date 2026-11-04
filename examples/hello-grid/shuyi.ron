@@ -25,7 +25,9 @@
         ],
     ),
 
-    // The game's tool program, for `frame-png` and `lang-status`.
+    // The game's tool program, for the commands that run the game:
+    // `frame-png`, `lang-status`, `font-atlas` (which reads the game's text)
+    // and the contract's `check`, `run`, `scene` and the rest.
     game: (package: "hello-grid", example: "tools", features: ["tools"]),
 
     // The folder of its files, which `cargo shuyi run --watch` lays over the
@@ -34,7 +36,9 @@
 
     // `cargo shuyi font-atlas files-src/ter-u16n.bdf files/font`: the
     // atlas of Terminus, with every glyph the game draws
-    // (`hello_grid::REQUIRED_GLYPHS`; a test keeps the two equal).
+    // (`hello_grid::REQUIRED_GLYPHS`; a test keeps the two equal). It runs
+    // the game, and keeps the characters its text uses too; `check` names
+    // one the atlas lacks.
     font_atlas: (
         required_glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·…─│┌┐└┘├┤┬┴┼═║╔╗╚╝▓▲▼◄►",
         readme: "README.md",

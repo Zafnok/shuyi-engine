@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-03
 ---
 
 # 2350 — The font atlas keeps the characters the text uses
@@ -383,41 +383,41 @@ moves its pin follows it.
 
 ## Acceptance criteria
 
-- [ ] `Lang::texts` lists every text of a `Lang` with English's screen,
+- [x] `Lang::texts` lists every text of a `Lang` with English's screen,
       data and dialogue text and a pack with a name, screen text, data
       text and a line with two variants, each with its part, key and
       file (unit test).
-- [ ] With an atlas that has every character of the fake game's text but
+- [x] With an atlas that has every character of the fake game's text but
       `Ж`, `check` on a fake game whose `ru` pack's `menu.title` is "Жa"
       fails with exactly one error: file `ru/ui.ron`, a message naming
       `Ж`, U+0416 and `menu.title`. With the glyph it passes (test with
       the fake game).
-- [ ] Two keys of one pack using the same missing character give one
+- [x] Two keys of one pack using the same missing character give one
       error that counts the other key; the same character in two packs
       gives two errors (unit test).
-- [ ] A combining mark (U+0301) is an error even with its glyph in the
+- [x] A combining mark (U+0301) is an error even with its glyph in the
       atlas; an undrawn `’` names `'` as its ASCII spelling; a `\n` is
       never an error (unit tests).
-- [ ] `check` on a game whose tools don't offer `font_atlas` passes as
+- [x] `check` on a game whose tools don't offer `font_atlas` passes as
       before, with the limit saying the text isn't checked against the
       atlas; with validator errors, the limit says it is checked once
       the content loads (tests).
-- [ ] `.dlg` text and names table values with `é`, `ł` and `Ж` load; a
+- [x] `.dlg` text and names table values with `é`, `ł` and `Ж` load; a
       control character (U+0007) is still an error with its line and
       column (unit tests).
-- [ ] `font-atlas` with text using `Ж` and `ł` keeps both from a font
+- [x] `font-atlas` with text using `Ж` and `ł` keeps both from a font
       that has them, keeps every glyph of `ATLAS_RANGES` the font has,
       never keeps U+0301, and names a used character the font lacks
       without failing (test).
-- [ ] Hello, Grid's and the templates' `atlas.png` and `atlas.ron` are
+- [x] Hello, Grid's and the templates' `atlas.png` and `atlas.ron` are
       unchanged. A test in `crates/cli` finds each template's atlas equal
       to what `build_atlas` makes of its `files-src/ter-u16n.bdf` with
       `AtlasChars::default()`.
-- [ ] `check` on Hello, Grid (`examples/hello-grid/tests/it/contract.rs`)
+- [x] `check` on Hello, Grid (`examples/hello-grid/tests/it/contract.rs`)
       and on each template (`crates/game/tests/it/main.rs`) passes with
       no limit about the font atlas.
-- [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -441,5 +441,97 @@ moves its pin follows it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** Every either-order ticket (2346, 2353, 2351, 2226,
+2391, 2224, 2237, 2348) was still open, so each *if not* branch was taken,
+and each of those tickets now says what holds ("From 2350 (done)").
+
+- `shuyi_assets::lang` (`lang/texts.rs`): `TextPart` and `TextAt`
+  (both `#[non_exhaustive]`), `Lang::texts`, and `TextAt::path`, the
+  file a text is from under the languages' folder (`ru/ui.ron`,
+  `ru/dialogue/ch01.ron`, `ch01.dlg`, `en`). The path lives on `TextAt`
+  rather than inside `undrawn`, since 2301, 2303 and 2226 name the same
+  files.
+- `shuyi_assets::font`: `FontAtlasDef::draws` and `drawn`, `undrawn`,
+  and two helpers it and `font-atlas` share: `is_combining_mark` and
+  `ascii_spelling` (the hint `char_problem` used to give).
+- `dialogue::char_problem` refuses only control characters ("control
+  character U+0007 in dialogue text"); `names::from_source` keeps using
+  it. The skill pack's `shuyi-dialogue` said "Text is printable ASCII":
+  it now says what holds.
+- `shuyi_cli::font_atlas`: `AtlasChars` (`default`, `of_lang`, `wants`,
+  `used`); `build_atlas` and `run` take one; `run`'s summary names the
+  characters the text uses that the fonts lack (20, then a count).
+- `font-atlas` runs in the game's tool program when `shuyi.ron` names
+  one, reading the text through `GameTools::lang`; `--no-text`, or no
+  tool program, keeps the ranges and the required glyphs and says so.
+  Relative paths are made absolute before the tool program (which runs
+  in the project's root) gets them, so it works from a subfolder too.
+- `GameTools::font_atlas` (default `None`), the check in `check::check`
+  with its two limits, and `BasicTools::font_atlas`.
+- Hello, Grid: its `Lang` carries `intro.dlg`'s English (the table's
+  `files` name it), `HelloTools::font_atlas`, and its tests. `cargo
+  shuyi font-atlas files-src/ter-u16n.bdf files/font` there printed
+  `font-atlas: 547 glyphs, 256×288 px → files/font`, and `git status`
+  showed no change to the atlas.
+- The template: `base/files-src/ter-u16n.bdf` (Hello, Grid's,
+  unmodified), a `font_atlas` part in `base/shuyi.ron` (its
+  `required_glyphs` are `shuyi_ui::basic::BASIC_GLYPHS`, which a test
+  checks), the grid stage's tools offer `font_atlas`, and the README,
+  `AGENTS.md`, `THIRD_PARTY_ASSETS.md` and `_typos.toml`. The plans
+  golden was rewritten.
+- Step 9, run: `cargo shuyi new grid lune --engine-path <this checkout>`,
+  then `"title.subtitle": "made with Shuyi Engine in Łódź"` in
+  `crates/game/files/en.ron`. `cargo shuyi check` printed:
+
+  ```text
+  check: 2 error(s)
+    en: 'Ł' (U+0141) isn't in the font atlas (title.subtitle); remake the atlas with font-atlas from a font that has it
+    en: 'ź' (U+017A) isn't in the font atlas (title.subtitle); remake the atlas with font-atlas from a font that has it
+  limits:
+    - some errors are about a whole file: their validator gives no line
+  ```
+
+  (`ó` is Latin-1, already drawn). `cargo shuyi font-atlas
+  files-src/ter-u16n.bdf crates/game/files/font` printed `font-atlas: 549
+  glyphs, 256×288 px → crates/game/files/font`, and `cargo shuyi check`
+  then printed `check: OK`. The new game's `cargo test --workspace`
+  passes with its text put back.
+
+**Deviations.**
+- The ticket names both templates' `crates/game/src/tools.rs`; the
+  template has one `base` that both `blank` and `grid` share, with no
+  such file. The blank game's tools are the engine's `BasicTools`, and
+  the grid's are `stages/top-down-grid/.../top_down_grid/tools.rs`: both
+  offer `font_atlas` now. So there is one BDF copy (in `base`), not
+  two, and one template test in `crates/cli`
+  (`font_atlas::tests::the_templates_atlas_is_what_font_atlas_makes_of_its_bdf`).
+- `Fake::lang` is a `Result<Lang, String>` (default `Ok(Lang::default())`),
+  not a `Lang`, so a test can make the text fail to load.
+- `check --baked`: the atlas check runs when the game's validators found
+  nothing, whatever the bake found; its errors come after the bake's.
+- The `ru` test pack's name is ASCII (`Russkij`), so the only character
+  the atlas lacks is `Ж`, as the criterion asks.
+
+**Follow-ups.** None new.
+
+**For the game.** The game's PR that moves its pin to this change is
+not open yet; nothing in the game must change at that bump (below), and
+the game's `check` says in its limits that its text isn't checked
+against the atlas until its tools offer `font_atlas`.
+
+Breaking: shuyi-cli: font_atlas::build_atlas and font_atlas::run: each takes an `&AtlasChars` last; pass `&AtlasChars::default()` for the atlas of before.
+
+```migration
+since: 0.1.0
+what: build_atlas and run take the characters the atlas keeps; AtlasChars::default() is the ranges alone, as before.
+old: font_atlas::build_atlas(&BitmapFont)
+new: font_atlas::build_atlas(&BitmapFont, &AtlasChars)
+before: |
+  let atlas = build_atlas(&font);
+after: |
+  let atlas = build_atlas(&font, &AtlasChars::default());
+find: ["build_atlas(&font)"]
+```
+
+Book: updated (`assets-and-formats`, *When a file is wrong*: a letter the
+font atlas can't draw, and `font-atlas` remaking it).

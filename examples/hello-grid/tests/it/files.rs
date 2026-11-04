@@ -8,9 +8,10 @@ use std::path::Path;
 use hello_grid::map::{FOE_TILE, HERO_TILE, TERRAIN_LOOKS, TILE_COLUMNS, TILE_PX, piece_look};
 use hello_grid::rules::Side;
 use hello_grid::{FONT_PNG, FONT_RON, Hello, REQUIRED_GLYPHS};
+use shuyi::ui::GameData;
 use shuyi_cli::Project;
 use shuyi_cli::codec::decode_png;
-use shuyi_cli::font_atlas::{atlas_ron, build_atlas, read_font};
+use shuyi_cli::font_atlas::{AtlasChars, atlas_ron, build_atlas, read_font};
 use shuyi_cli::glyph_tiles;
 
 /// The example's folder, which holds its `shuyi.ron`.
@@ -44,7 +45,10 @@ fn the_font_atlas_is_what_font_atlas_makes_of_the_bdf() {
     let rules = config.font_atlas.unwrap();
     assert_eq!(rules.required_glyphs, REQUIRED_GLYPHS);
     let font = read_font(&root().join("files-src/ter-u16n.bdf")).unwrap();
-    let atlas = build_atlas(&font);
+    // `font-atlas` runs the game, and keeps the characters its text uses.
+    let game = Hello::load().unwrap_or_else(|e| panic!("{e:?}"));
+    let chars = AtlasChars::of_lang(game.lang(), &rules.required_glyphs);
+    let atlas = build_atlas(&font, &chars);
     let (width, height, rgba) = decode_png(embedded(FONT_PNG)).unwrap();
     assert_eq!((width, height), (atlas.width, atlas.height));
     assert!(rgba == atlas.rgba, "files/font/atlas.png is stale");

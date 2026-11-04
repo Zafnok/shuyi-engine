@@ -249,13 +249,14 @@ None.
     are an error, never a panic;
   - the characters: for `font-atlas`, those of `ATLAS_RANGES` (what
     `build_atlas` keeps); for `text-font`, those of `ATLAS_RANGES` plus
-    `--glyphs`. **Either order with 2350:** if 2350 is done, the
-    characters its `AtlasChars` wants (`font_atlas::AtlasChars::wants`:
-    the ranges, the characters the game's text uses and the required
-    set, never a combining mark): `font-atlas` passes the `AtlasChars`
-    it builds, and `text-font` passes `AtlasChars::default()` and adds
-    `--glyphs`; if not, as above, and 2350 hands `read_any` its
-    `AtlasChars` when it lands (its scope says so).
+    `--glyphs`. **From 2350 (done):** the characters an `AtlasChars`
+    wants (`font_atlas::AtlasChars::wants`: the ranges, the characters
+    the game's text uses and the required set, never a combining mark):
+    `font-atlas` passes the `AtlasChars` its `run` takes (`run(rules,
+    command, font_paths, out_dir, chars)`; keep `outline` beside
+    `chars`), and `text-font` passes `AtlasChars::default()` and adds
+    `--glyphs`. Test it on a fixture TTF with a glyph outside the
+    ranges (`Ж`, say).
   - **cells:** `read_font(path)` stays as it is, BDF only, because
     Hello, Grid's test (`examples/hello-grid/tests/it/files.rs`) calls
     it, and the game may. A new `font_atlas::read_any(path, outline:

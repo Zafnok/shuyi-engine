@@ -86,7 +86,7 @@ PR follows this one (game#0239).
    narrow glyphs.
 2. **The atlas.** `FontAtlasDef`'s wide glyphs become a map per set
    name. Validation: a set's cells fit the PNG; a character may be in
-   several sets. `FontAtlasDef::draws` and `drawn` (2350 or 2346)
+   several sets. `FontAtlasDef::draws` and `drawn` (2350's)
    take every set, so a character in any set counts as drawn where no
    language is named (2346's `Ctx::font_chars`); step 3's check reads
    a pack's own set.

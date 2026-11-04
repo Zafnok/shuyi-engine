@@ -2,8 +2,10 @@
 //! validator it has, and the answer lists every error found, each with its
 //! file, line and message. With `--baked`, the game's sources are baked
 //! into a pack too, and every asset read from the pack must equal the one
-//! read from its source ([`bake::check_baked`]). It passes when there are
-//! no errors.
+//! read from its source ([`bake::check_baked`]). Once the content loads
+//! without errors, the game's text is checked against its font atlas
+//! ([`GameTools::font_atlas`], `shuyi_assets::font::undrawn`): a character
+//! the atlas can't draw is an error. It passes when there are no errors.
 //!
 //! `check --target <id>` checks instead that the game fits target `id`,
 //! or every target its `shuyi.ron` lists with `--target all`
@@ -18,8 +20,11 @@ use std::path::Path;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_assets::ContentError;
+use shuyi_assets::font;
 use shuyi_assets::target::Color;
 
+use super::codes::Code;
 use super::target::{self, Level, TargetReport};
 use super::{Answer, Op, Problem, bake, codes};
 use crate::app_info;
@@ -68,13 +73,24 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
         );
     }
     let found = game.check().and_then(|mut errors| {
+        let loaded = errors.is_empty();
         if input.baked {
             errors.extend(bake::check_baked(game)?);
         }
-        Ok(errors)
+        Ok((errors, loaded))
     });
     match found {
-        Ok(errors) => {
+        Ok((mut errors, loaded)) => {
+            let mut atlas_limit = None;
+            if loaded {
+                match undrawn(game) {
+                    Ok(Some(found)) => errors.extend(found),
+                    Ok(None) => atlas_limit = Some(ATLAS_NOT_OFFERED),
+                    Err((code, e)) => return Answer::failed(Op::Check, code, e),
+                }
+            } else {
+                atlas_limit = Some(ATLAS_AFTER_ERRORS);
+            }
             let errors: Vec<Problem> = errors.iter().map(Problem::from).collect();
             let mut limits = Vec::new();
             if errors.iter().any(|e| e.line.is_none()) {
@@ -82,6 +98,7 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
                     "some errors are about a whole file: their validator gives no line".to_owned(),
                 );
             }
+            limits.extend(atlas_limit.map(str::to_owned));
             let output = CheckOutput {
                 errors,
                 targets: Vec::new(),
@@ -90,6 +107,34 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
         }
         Err(e) => Answer::failed(Op::Check, code_of(&e), e),
     }
+}
+
+/// `check`'s limit when the game's tools don't offer its font atlas.
+const ATLAS_NOT_OFFERED: &str = "the text isn't checked against the font atlas: the game's tools \
+                                 don't offer it (GameTools::font_atlas)";
+
+/// `check`'s limit when the content has errors.
+const ATLAS_AFTER_ERRORS: &str =
+    "the text is checked against the font atlas once the content loads without errors";
+
+/// Every character of `game`'s text its font atlas can't draw
+/// ([`font::undrawn`]); `None` if its tools don't offer the atlas, and the
+/// code and message to fail with if the atlas or the text doesn't load.
+fn undrawn(game: &dyn GameTools) -> Result<Option<Vec<ContentError>>, (Code, String)> {
+    let atlas = match game.font_atlas() {
+        None => return Ok(None),
+        Some(Ok(atlas)) => atlas,
+        Some(Err(e)) => {
+            return Err((
+                code_of(&e),
+                format!("the game's font atlas doesn't load: {e}"),
+            ));
+        }
+    };
+    let lang = game
+        .lang()
+        .map_err(|e| (code_of(&e), format!("the game's text doesn't load: {e}")))?;
+    Ok(Some(font::undrawn(&atlas, &lang.lang)))
 }
 
 /// `check --target`: how the game of `config` (the project at `root`)
@@ -272,8 +317,8 @@ pub fn text(output: &CheckOutput) -> String {
 
 #[cfg(test)]
 mod tests {
-    use shuyi_assets::ContentError;
-
+    use shuyi_assets::font::FontAtlasDef;
+    use shuyi_assets::lang::Lang;
     use shuyi_assets::onebit::{Pattern, PatternMapDef};
     use shuyi_assets::palette::PaletteDef;
 
@@ -303,19 +348,146 @@ mod tests {
         assert_eq!(out.errors[0].line, Some(2));
         assert_eq!(
             answer.limits,
-            ["some errors are about a whole file: their validator gives no line"]
+            [
+                "some errors are about a whole file: their validator gives no line",
+                ATLAS_AFTER_ERRORS
+            ]
         );
         assert_eq!(
             text(out),
             "check: 2 error(s)\n  a.ron:2:5: bad\n  b.map: missing\n"
         );
-        // Errors that all have a line need no limit.
+        // Errors that all have a line need no limit of their own.
         let lined = Fake {
             check: Ok(vec![ContentError::new("a.ron", "bad").at(1, None)]),
             ..Fake::default()
         };
         let got = check(&lined, &CheckInput::default()).limits;
-        assert!(got.is_empty(), "{got:?}");
+        assert_eq!(
+            got,
+            ["the text is checked against the font atlas once the content loads without errors"]
+        );
+    }
+
+    /// English's `menu.title`, and the pack `ru`, whose `menu.title` is
+    /// written `title`.
+    fn russian(title: &str) -> Lang {
+        use shuyi_assets::lang::{LangFile, PackRules, from_files};
+        let ui = format!(r#"[(key: "menu.title", source: "Start", text: "{title}")]"#);
+        let files = [
+            ("en/ui.ron", r#"{"menu.title": "Start"}"#),
+            ("ru/lang.ron", r#"(name: "Russkij", made_by: Machine)"#),
+            ("ru/ui.ron", ui.as_str()),
+        ]
+        .map(|(path, source)| LangFile {
+            path,
+            source: Some(source),
+        });
+        let rules = PackRules {
+            data_problem: |_, _| None,
+            tokens: &shuyi_assets::dialogue::NoTokens,
+            limits: shuyi_assets::dialogue::DialogueLimits {
+                box_width: 40,
+                box_lines: 3,
+                max_text: 200,
+                max_option: 30,
+                min_options: 2,
+                max_options: 4,
+                max_reaction_texts: 3,
+            },
+            variants: &[],
+        };
+        from_files(&files, None, str::to_owned, &rules).unwrap()
+    }
+
+    /// An atlas of ASCII's printable characters, and `extra`.
+    fn ascii_and(extra: &str) -> FontAtlasDef {
+        FontAtlasDef {
+            cell_w: 8,
+            cell_h: 16,
+            columns: 16,
+            glyphs: (' '..='~').chain(extra.chars()).zip(0..).collect(),
+        }
+    }
+
+    #[test]
+    fn check_fails_on_a_character_the_font_atlas_cant_draw() {
+        let game = Fake {
+            lang: Ok(russian("Жa")),
+            font_atlas: Some(Ok(ascii_and(""))),
+            ..Fake::default()
+        };
+        let answer = check(&game, &CheckInput::default());
+        assert!(!answer.ok);
+        let errors = &answer.result.as_ref().unwrap().errors;
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].file, "ru/ui.ron");
+        assert_eq!(errors[0].line, None);
+        assert!(
+            errors[0]
+                .message
+                .starts_with("'Ж' (U+0416) isn't in the font atlas (menu.title)"),
+            "{}",
+            errors[0].message
+        );
+        assert_eq!(
+            answer.limits,
+            ["some errors are about a whole file: their validator gives no line"]
+        );
+        // With the glyph, it passes.
+        let drawn = Fake {
+            font_atlas: Some(Ok(ascii_and("Ж"))),
+            ..game
+        };
+        let answer = check(&drawn, &CheckInput::default());
+        assert!(answer.ok, "{:?}", answer.result);
+        assert!(answer.limits.is_empty(), "{:?}", answer.limits);
+    }
+
+    #[test]
+    fn a_game_that_doesnt_offer_its_atlas_passes_and_says_so() {
+        let game = Fake {
+            lang: Ok(russian("Жa")),
+            font_atlas: None,
+            ..Fake::default()
+        };
+        let answer = check(&game, &CheckInput::default());
+        assert!(answer.ok);
+        assert_eq!(
+            answer.limits,
+            [
+                "the text isn't checked against the font atlas: the game's tools don't offer it \
+                 (GameTools::font_atlas)"
+            ]
+        );
+    }
+
+    #[test]
+    fn an_atlas_or_a_text_that_doesnt_load_fails_the_check() {
+        let atlas = Fake {
+            font_atlas: Some(Err("font/atlas.ron: bad".to_owned())),
+            ..Fake::default()
+        };
+        let answer = check(&atlas, &CheckInput::default());
+        assert_eq!(
+            answer.error.as_deref(),
+            Some("the game's font atlas doesn't load: font/atlas.ron: bad")
+        );
+        let text = Fake {
+            lang: Err("lang/en/ui.ron: bad".to_owned()),
+            ..Fake::default()
+        };
+        let answer = check(&text, &CheckInput::default());
+        assert_eq!(
+            answer.error.as_deref(),
+            Some("the game's text doesn't load: lang/en/ui.ron: bad")
+        );
+        // With errors in the content, neither is asked for.
+        let both = Fake {
+            check: Ok(vec![ContentError::new("a.ron", "bad").at(1, None)]),
+            ..atlas
+        };
+        assert_eq!(check(&both, &CheckInput::default()).error, None);
     }
 
     #[test]

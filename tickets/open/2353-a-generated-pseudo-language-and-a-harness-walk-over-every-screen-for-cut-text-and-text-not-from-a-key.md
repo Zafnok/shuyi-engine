@@ -127,13 +127,13 @@ None.
   - `LangPack::texts(&self) -> impl Iterator<Item = (&str, &str)>`: key
     and text of every screen and data entry and every one-text line, for
     the walk to name a key.
-  - **Either order with 2350:** if 2350 is done, `with_pseudo` takes
-    the English it copies from `Lang::texts` (the rows whose `lang` is
-    `None`), and `LangPack::texts` gives a pack's `Screen`, `Data` and
-    `Dialogue` rows of the same walk (one function over a pack, which
-    `Lang::texts` calls too), so a `TextPart` added later reaches the
-    pseudo pack and the walk's key; if not, write both as above, and
-    2350 builds `Lang::texts` over that one walk.
+  - **From 2350 (done):** `with_pseudo` takes the English it copies
+    from `Lang::texts` (`crates/assets/src/lang/texts.rs`; the rows
+    whose `lang` is `None`), and `LangPack::texts` gives a pack's
+    `Screen`, `Data` and `Dialogue` rows of the same walk: split the
+    per-pack half of `Lang::texts` into one function over a pack, which
+    `Lang::texts` and `LangPack::texts` both call, so a `TextPart` added
+    later reaches the pseudo pack and the walk's key.
 - **Builds with debug tools only.** `Ctx::effective_lang` treats
   `PSEUDO` as it treats the game's debug language: English unless
   `debug_tools` is on. A game adds the pack where it loads its text,
@@ -218,11 +218,8 @@ None.
     `toy::lobby()`, and a `Field` game as `crates/ui/tests/it/grid.rs`
     makes one;
   - `examples/hello-grid`: `Hello::load_from` adds the pack under
-    `DEBUG_TOOLS` with `|c| font.glyph_rect(c).is_some()` (**either
-    order with 2346 and 2350:** if 2346 or 2350 is done, with
-    `|c| font.draws(c)`, `FontAtlasDef::draws`, the one answer to "can
-    the atlas draw this?"; if not, as written, and whichever of them
-    adds `draws` moves it there); a test in
+    `DEBUG_TOOLS` with `|c| font.draws(c)` (`FontAtlasDef::draws`,
+    2350's one answer to "can the atlas draw this?"); a test in
     `examples/hello-grid/tests/it/pseudo.rs` walks `title`, `talk`,
     `stage` (its map in `skip`), `leave` and `end`, and the engine's
     `options` and `profiles` from the title;

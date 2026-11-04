@@ -199,9 +199,11 @@ None.
   - **2346** (name grids from the pack): if it is done, `Ctx::name_grid`
     takes the first pack along `Lang::chain` that has a grid; if not,
     2346 does that.
-  - **2350** (characters the atlas lacks): if it is done, its errors
-    name the source's folder by `Lang::source_lang()`'s code where they
-    say `en`; if not, 2350 does that.
+  - **From 2350 (done)** (characters the atlas lacks): its errors
+    (`font::undrawn`, their file from `TextAt::path` in
+    `crates/assets/src/lang/texts.rs`) say `en` for English's screen and
+    data text: name the source's folder by `Lang::source_lang()`'s code
+    there instead.
   - **2353** (the pseudo-language): if it is done, its `PSEUDO` code
     becomes `qps-ploc`, the BCP 47 pseudo-locale; if not, 2353 uses
     that code.
