@@ -17,6 +17,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
 | `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
 | `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
+| `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
@@ -67,7 +68,11 @@ it fails on the others': only CI, with all of them, can pass.
 The Windows half is CI's `sound-parity-windows` job, whose recordings go to this one
 to be judged. On a person's machine it refuses to record unless the default endpoint
 already runs at 44,100 Hz, and it would play the test signals out loud: nothing makes
-that needed. To see only the timings of a recording:
+that needed. A recording the loopback lost frames from is never judged, so `capture.py` plays that scenario or timing
+again, up to three times, and fails the step if each loses frames (ticket 2047).
+Each refusal is a warning in the job's log, with how many frames went, where, and
+how long the reader hadn't looked: as long as the half-second buffer, the recorder
+was late; much less, the system dropped them. To see only the timings of a recording:
 
 ```bash
 cargo xtask sound-parity perf windows --dir target/sound-parity
