@@ -88,6 +88,11 @@ None. This is technical.
   as the default, patching as an option), `docs/research/code-reload.md`
   with the numbers, and the tickets that build it.
 
+- **Either order with 2916:** if 2916 is done, read
+  `docs/research/code-pad.md`, and say in this ticket's report whether
+  the chosen reload changes its recommendation; if not, nothing to do
+  (2916 reads this ticket's ADR and research).
+
 **Out (do not do):**
 - building it beyond the prototypes the measurements need.
 

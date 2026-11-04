@@ -1499,3 +1499,57 @@ maze chase"**.
   (the Playdate). 3092 (files dropped on the window) lets a player bring
   their own clip or WAD. DOOM's music (2784) needs MIDI and is parked
   with it.
+
+## 2026-11-03: one book, read at the reader's level, and the code pad researched now
+
+Source: Nick, in a session of this repository:
+
+> "I want to fold the book and tutorial together. How it should work is,
+> the Book will contain everything. The Tutorial can be an example game or
+> project (several programming books have project walkthroughs)."
+
+> "The Book should then have an option to skip ahead, to filter content,
+> etc depending on familiarity. Familiarity with general programming,
+> familiarity with Rust, familiarity with Shuyi. So new ppl to programming
+> and game dev can pick up. New ppl to Rust can pick up. Experienced devs
+> only wanting to see how Shuyi Engine differs can just filter to that
+> experience level and get rid of the novice crap. Or even someone that
+> used Shuyi in v1.0 (yet to be launched, but bare with the example) and
+> now wants to check out Shuyi in v12.0 can see how it's changed."
+
+> "It should be a unified learning resource and highly interactive (we def
+> wanna have a coderpad thing soon!)"
+
+Asked whether to unpark 2916 (the code pad's research, parked for the cost
+of a build server), he chose **"Unpark research"**: the research is free,
+and he decides on paying for anything after it reports. Asked when the
+merge lands, he chose **"All before public"**: the merge, the familiarity
+marks, the reader's filter and the exercises come before the engine goes
+public. Asked what a first-time visitor sees, he wrote his own:
+
+> "short welcome page with skip to bring to full book & a bar to tune at
+> top to revisit if they picked wrong onboarding option or skipped"
+
+**Rules:**
+
+- **One book holds everything.** The tutorial becomes the book's project,
+  a whole game built step by step, as the Rust book's guessing game and
+  its later projects are. The concept chapters stay, and the book can
+  take more projects later (2823, 2824).
+- **Every passage says who it is for:** a reader new to programming and
+  game making, new to Rust, or new to Shuyi. What is left is what everyone
+  reads (2825).
+- **A reader filters the book to what they know.** A short welcome page
+  asks the three questions, with a skip to the whole book, and a bar at
+  the top of every page changes the answers later. A reader can skip
+  ahead to where their knowledge ends (2826).
+- **A reader who knew an earlier Shuyi sees what changed since.** It has
+  nothing to show until there are two releases, so it comes after the MVP
+  (2829).
+- **The book is interactive:** quick checks in the page (2827), exercises
+  done in the playground and checked by the game (2828), and the
+  playground on the project's steps (2820). So the playground's chain
+  (3069, 2814, 2820) comes before going public too.
+- **The code pad's research is unparked** (2916). Renting a build server
+  still waits for Nick's answer to what it reports, and the playground
+  keeps editing data files until then.
