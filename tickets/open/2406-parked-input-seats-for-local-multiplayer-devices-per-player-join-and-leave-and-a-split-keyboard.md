@@ -292,11 +292,12 @@ online)?
     `setting` as `GameControls::with_seats` and `keymap split_keyboard`.
     These are new values in the answer, not a new shape (the version
     goes up once, for `Step::Pad` above).
-- **Either order with 2137:** if 2137 is done, `TickInput` holds one
-  entry per seat, by seat number, and `TickDriver` fills each filled
-  seat's from `FrameInput::seat(n)`. A seat that joins or leaves changes
-  the entries from the next step, so a `TickRecord` replays it. If 2137
-  isn't done, 2137 does this (its clause says so).
+- **From 2137 (done):** `TickInput` holds one entry per seat, by seat
+  number (`TickInput::seats`, at most `MAX_SEATS`), and today
+  `TickDriver` fills seat 0 alone, from the shared input, with one latch.
+  Make it keep a latch per seat and fill each filled seat's entry from
+  `FrameInput::seat(n)`. A seat that joins or leaves changes the entries
+  from the next step, so a `TickRecord` replays it.
 - **Either order with 1120:** if 1120 is done with its viewports, a test
   scene gives each filled seat the stage's layers in a viewport from
   `split_viewports(frame, n)` for the n filled seats, each camera
@@ -360,8 +361,8 @@ online)?
 1. Read ADR-0003 §2 and §8, ADR-0025, 2013's ADR, `pad.rs`, `game.rs`,
    `input/state.rs`, `input/frame.rs`, `ctx.rs` (`keymap`, `keymap_for`,
    `pad_bindings`), `harness.rs`, `frame_png.rs`'s `Step` and `Script`,
-   `fit.rs` and `target.rs`. Check which of 2137, 1120, 1121, 2405,
-   2408 and 3042 are done.
+   `fit.rs`, `target.rs` and 2137's `tick.rs`. Check which of 1120,
+   1121, 2405, 2408 and 3042 are done.
 2. Write the ADR.
 3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,
    `from_crank`'s pad. Move `two_pads_holding_one_button_are_one_press`

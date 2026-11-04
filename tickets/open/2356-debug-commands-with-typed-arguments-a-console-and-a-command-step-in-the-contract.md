@@ -280,6 +280,16 @@ None.
     commands. 2316 keeps the debug screens updating while paused (edit
     requested there). If the 2316 that landed does not, make them
     update here.
+- **Commands for tick games. From 2137 (done):** a tick screen's
+  `Screen::debug_command` queues the game's debug inputs for its next
+  step: `TickInput` (`shuyi_core::tick`) carries them, as the game's
+  own type and never a `DebugCall`, so a `TickRecord` holds them and
+  `tick::replay` reproduces them. `TickInput` is `#[non_exhaustive]`
+  and not generic today: a field for them (with `#[serde(default)]`,
+  so older records read) or a type parameter is this ticket's choice,
+  with a `Breaking:` line if `TickSim`'s signature changes. Repeat this
+  ticket's replay-hash test on 2137's example sim, `shuyi_core::toy::Dot`
+  (stepped by the toy's `shuyi_ui::toy::tick::DotStage`).
 
 **Out (do not do):**
 - Variables (get and set over settings fields). The options screen and
@@ -288,9 +298,6 @@ None.
 - A typed listing of commands in `run`'s answer, and one MCP tool per
   command with its own schema. `help` answers as text. Write a ticket
   when an agent needs more.
-- Commands for tick games. 2137 adds them as inputs of the
-  next step (its clause says so). If 2137 is done first, add them here
-  as its clause describes.
 - Rewind (2357). It seeks over session records, so it gets commands
   through 2518 and needs nothing here.
 - A pad path for the console (a list of commands without arguments,

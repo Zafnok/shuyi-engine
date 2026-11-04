@@ -113,6 +113,10 @@ the player's keymap.
    buttons by their place; the engine swaps Confirm and Cancel on a
    Nintendo-style pad, and turns a stick pushed far enough (`stick`'s
    thresholds) into one held direction button.
+8. **Presses reach fixed steps once.** A tick stage reads input from
+   `TickInput`, never from `FrameInput::actions`: `TickDriver` keeps a
+   frame's presses and releases until a step runs, gives each to exactly
+   one step, and never gives a key repeat to a step.
 
 ## The short path's actions, and leaving them
 

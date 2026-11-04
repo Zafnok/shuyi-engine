@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
-status: todo
+status: done
 blocked_by: ["2115"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2137 — TickSim, records that replay, and TickDriver with its input latch
@@ -213,35 +213,35 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Replaying a record twice gives identical hash lists (property
+- [x] Replaying a record twice gives identical hash lists (property
       test over random inputs).
-- [ ] The example record's hashes match their golden table in CI's
+- [x] The example record's hashes match their golden table in CI's
       `test` and `determinism` jobs (x64, ARM64, wasm32).
-- [ ] The Harness steps the example sim headlessly; a snapshot of its
+- [x] The Harness steps the example sim headlessly; a snapshot of its
       state passes.
-- [ ] Harness sweep: one script of presses and releases, each event
+- [x] Harness sweep: one script of presses and releases, each event
       delivered with the first frame at or after its time through
       `Harness::frame`, at 30, 60, 61, 144 and 240 Hz and with jittered
       frame times, gives at every rate the same presses and releases in
       the same order, each in exactly one step, and no press later than
       the first step run in or after the frame that read it.
-- [ ] A tap read on a frame with no step is `pressed` in the next step
+- [x] A tap read on a frame with no step is `pressed` in the next step
       and `released` in the one after; a press on a late frame that runs
       4 steps is `pressed` in the first only; a key repeat is never
       `pressed` in a step; an action handed in by `Game::act` reaches the
       next step.
-- [ ] A press latched on a frame with no step, just before the stage is
+- [x] A press latched on a frame with no step, just before the stage is
       covered by another screen, doesn't reach a step after the stage is
       uncovered.
-- [ ] Run the example sim for 10 steps, rewind it to its state at step
+- [x] Run the example sim for 10 steps, rewind it to its state at step
       5, and run it to step 10 again. The events of steps 6 to 10 are
       handed on once: the Harness's `audio_log` shows each cue once.
-- [ ] The `shuyi-input` skill states the rule, and `check-skills`
+- [x] The `shuyi-input` skill states the rule, and `check-skills`
       passes.
-- [ ] `docs/modules.ron`'s `fixed-ticks` answer is ready and names 2137,
+- [x] `docs/modules.ron`'s `fixed-ticks` answer is ready and names 2137,
       and `cargo xtask check-modules` passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -254,5 +254,97 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **`shuyi_core::tick`** (`crates/core/src/tick.rs`): `TickSim` as the
+  Scope writes it; `ActionId(u16)`, an action by its place in
+  `ActionSet::ALL`; `SeatInput` (`pressed`, `held`, `released`) and
+  `TickInput` (one `SeatInput` per seat, at most `MAX_SEATS`, 4), each
+  `#[non_exhaustive]` with `new` (and `TickInput::one` for seat 0);
+  `TickRecord` (private fields: `new(made, seed)`, `push`, `inputs`,
+  `runs`, `len`, `truncate`), run-length encoded as `Run { steps, input }`;
+  and `replay`. Re-exported at the crate root but `replay`.
+- **`replay(sim: &mut S, record, made) -> Result<Vec<u64>, Mismatch>`**:
+  it takes the state the caller built from the record's seed (as 2739's
+  contract `replay::ticks` expects), refuses a record whose stamp isn't
+  `made` before anything steps (`Made::check`), gives one hash per step
+  (none for the start) and leaves `sim` at the record's end.
+- **The example sim** is `shuyi_core::toy::Dot`, behind a new `toy`
+  feature of `shuyi-core` (`shuyi-ui`'s `toy` turns it on), not a file
+  under `tests/`: core's golden table and ui's Harness tests both step it.
+  Its directions are the sample actions' first four ids. Stopping is its
+  event (`DotEvent::Stopped`); the toy game's stage
+  (`shuyi_ui::toy::tick::DotStage`, new) plays it as the cue `stop`, added
+  to the toy's manifest, and opens the toy's `Menu` on Cancel.
+- **The golden table**, `crates/core/tests/golden/tick.ron`: the record's
+  text (with a fixed stamp, so it never moves at a release), the hash
+  before any step and after each of its 44 steps, and where the dot ends.
+  Checked by `crates/core/tests/golden.rs`, with a dev-dependency on
+  `shuyi-assets` (`default-features = false, features = ["golden"]`).
+- **`FrameInput`** gains `presses()` (the frame's presses without the key
+  repeats), `released()`, `held()`, `with_presses`, `resumed()` and
+  `with_resumed`. `InputState` gains `presses()` and `released()`: an
+  action is released when no key or button holds it any more, a chord
+  button's own action given on its release is a tap (pressed and
+  released at once), and `set_keymap` now reports what it let go as
+  released. `FrameInput::new` treats its actions as presses, and the ones
+  not held as taps, so `Game::act`'s action is a tap for a tick stage.
+- **Resume:** `App::on_system_event` calls the new `Game::set_resumed` on
+  `SystemEvent::Resume`, and the next frame's `FrameInput::resumed()` is
+  true; `TickDriver` clears its latch on it.
+- **`shuyi_ui::tick`** (`crates/ui/src/tick.rs`): `TickDriver<A>` with
+  `new`, `recording(TickRecord)`, `update(&mut sim, &input) -> Vec<(u64,
+  Event)>` (events with their step numbers, from 1), `clear`,
+  `rewind_to`, `steps`, `handed`, `record` and `take_record`; and
+  `ActionIds`, `id()` and `from_id()` for every `ActionSet`.
+- **Pressed twice before a step: the second press waits.** It isn't
+  merged. The next step has the first press, the one after has its
+  release and the press again (a step may show an action released and
+  pressed, never pressed and released), and so on: every press and
+  release reaches a step, in order. Merging would lose a fast double tap
+  in a late frame or in a slowed game. The cost: a press of an action
+  that already has an edge waiting lands a step later than the first
+  step after its frame. Written in `TickDriver`'s docs.
+- **The latch works on actions, not keys:** a second key on an action
+  already held presses nothing; a release of a press no step saw (a key
+  held since before the stage opened, or across a `clear`) is dropped;
+  a press a step had stays down across a `clear`, so its release still
+  comes; and an action down but no longer held is let go.
+- **Harness support:** `Harness::steps(count)` runs frames until exactly
+  `count` steps were due, reading the new `App::ticks()` (the steps the
+  last frame handed the game).
+- **Tests:** core's unit and property tests (`tick/tests.rs`: records,
+  text, `replay` and its stamp, the dot), the golden table; the latch's
+  unit tests (`crates/ui/src/tick/tests.rs`); `InputState`'s presses and
+  releases (`input/tests.rs`, `chord_tests.rs`); and the Harness tests in
+  `crates/ui/tests/it/tick.rs`: the sweep at 30, 60, 61, 144 and 240 Hz
+  and jittered frames, the property test over random frame times (0 to
+  100 ms) and scripts, a tap on a frame with no step, a late frame of 4
+  steps, key repeats, `Game::act`, cover, suspend, the rewind with
+  `audio_log`, and an insta snapshot of the dot's state. Broken on
+  purpose (a release in its press's step, presses dropped on frames with
+  no step, no clear on cover), the sweep, the property test and the
+  cover test each fail.
+- **Either order:** 2108, 2316, 2356, 2406 and 1148 aren't done, so each
+  takes its part; their clauses now say what holds ("From 2137 (done)"),
+  as do 2357, 2549 and 2904. 1121 and 1147 name the latch and
+  `rewind_to` where they now live. For 2356, `TickInput` isn't generic:
+  its clause says carrying the game's debug inputs is its choice (a
+  field or a type parameter).
+- **The ECS (2108):** no example needs one. The dot is one struct;
+  snake and the maze chase are tens of things. 2108's clause now has it
+  write `EcsTickSim` over `TickSim`.
+- **Docs:** rustdoc of every item; the `shuyi-input` skill's rule 8; the
+  `shuyi-stage-field` skill no longer says fixed ticks are parked, and
+  points at `TickSim`, `TickDriver` and `TickRecord` (its `waits_for`
+  keeps 1119); `docs/modules.ron`'s `fixed-ticks` is ready and names
+  2137; the book's chapter 6 has a section *Rules in fixed steps*, with a
+  bee over the garden (`Bee`, `site/snippets/src/rules.rs`) and its
+  record replayed.
+- **Not checked through the MCP session on Hello, Grid:** it is a turn
+  game, and nothing a player sees in it changed. The Harness tests drive
+  the toy's tick stage instead.
+- **Follow-up:** 2411, a key let go while the game is suspended stays
+  held after the resume (found here: `App::run` drains a suspended
+  frame's input, so `held` keeps the key and a tick stage keeps moving).
+- For the game: nothing changes. The API only grows, and `set_keymap`'s
+  new releases reach nothing it reads. No pin bump is needed.
+- No break: no `Breaking:` line. The book is changed, so no `Book:` line.

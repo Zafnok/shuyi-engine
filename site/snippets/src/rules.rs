@@ -1,13 +1,15 @@
 //! Chapter 6, rules as commands: the garden's rules, a state that takes
 //! commands and answers with what happened ([`TurnRules`]), its luck
 //! from a seeded RNG kept in the state, its history, and the hash that
-//! says two runs played the same.
+//! says two runs played the same; and a bee over it in fixed steps
+//! ([`TickSim`]).
 
 use core::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi::core::bots::Sides;
-use shuyi::core::{Countdown, Every, SimRng, TurnRules};
+use shuyi::core::tick::{ActionId, TickInput, TickSim};
+use shuyi::core::{Countdown, Every, SimRng, TurnRules, state_hash};
 
 use crate::assets::Plan;
 
@@ -216,6 +218,73 @@ impl Seasons {
 }
 // ANCHOR_END: time
 
+// ANCHOR: tick
+/// The game's Left and Right, by their places in its list of actions.
+pub const LEFT: ActionId = ActionId(2);
+/// See [`LEFT`].
+pub const RIGHT: ActionId = ActionId(3);
+
+/// A bee over the plots, in real time: it flies a plot along every 10
+/// steps while Left or Right is held.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Bee {
+    at: usize,
+    plots: usize,
+    wings: Every,
+}
+
+/// What the bee did in a step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Buzz {
+    /// It landed on this plot.
+    Landed(usize),
+}
+
+impl Bee {
+    /// A bee over the first of `plots` plots.
+    pub fn new(plots: usize) -> Self {
+        Self {
+            at: 0,
+            plots,
+            wings: Every::new(10),
+        }
+    }
+
+    /// The plot it is over.
+    pub fn at(&self) -> usize {
+        self.at
+    }
+}
+
+impl TickSim for Bee {
+    type Event = Buzz;
+
+    fn step(&mut self, input: &TickInput) -> Vec<Buzz> {
+        let left = input.is_held(0, LEFT);
+        let right = input.is_held(0, RIGHT);
+        if left == right {
+            // Neither held, or both: it hovers.
+            self.wings.reset();
+            return Vec::new();
+        }
+        if self.wings.advance(1) == 0 {
+            return Vec::new();
+        }
+        let last = self.plots.saturating_sub(1);
+        self.at = if right {
+            (self.at + 1).min(last)
+        } else {
+            self.at.saturating_sub(1)
+        };
+        vec![Buzz::Landed(self.at)]
+    }
+
+    fn hash(&self) -> u64 {
+        state_hash(self).map_or(0, |hash| hash.0)
+    }
+}
+// ANCHOR_END: tick
+
 impl fmt::Display for Refusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // check-text: not player text, what a replay's step says
@@ -305,6 +374,35 @@ mod tests {
         assert_eq!(play(7), play(7));
     }
     // ANCHOR_END: hash
+
+    // ANCHOR: tick-test
+    #[test]
+    fn the_bee_flies_a_plot_every_ten_steps_and_its_record_replays() {
+        use shuyi::core::tick::{self, TickRecord};
+        use shuyi::core::{ContentHash, Made};
+        use shuyi::prelude::UiAction;
+        use shuyi::ui::FrameInput;
+        use shuyi::ui::tick::{ActionIds, TickDriver};
+
+        // The rules' ids are the game's actions'.
+        assert_eq!((UiAction::Left.id(), UiAction::Right.id()), (LEFT, RIGHT));
+        let made = Made::new("garden 1.0", ContentHash(0));
+        let mut bee = Bee::new(6);
+        let mut driver = TickDriver::new().recording(TickRecord::new(made.clone(), 1));
+        // Right held for a second, at 30 frames a second: two steps a frame.
+        for _ in 0..30 {
+            let frame = FrameInput::new(vec![], 1.0 / 30.0, vec![UiAction::Right]);
+            driver.update(&mut bee, &frame.with_ticks(2));
+        }
+        assert_eq!(bee.at(), 5);
+        // The record of the 60 steps replays to the same bee.
+        let record = driver.take_record().unwrap();
+        let mut again = Bee::new(6);
+        let hashes = tick::replay(&mut again, &record, &made).unwrap();
+        assert_eq!(hashes.len(), 60);
+        assert_eq!(again, bee);
+    }
+    // ANCHOR_END: tick-test
 
     #[test]
     fn it_rains_every_third_turn_and_the_can_waits_two() {

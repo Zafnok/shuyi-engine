@@ -25,7 +25,8 @@ screen, [chapter 2](@/learn/book/games-and-screens.md)), and a command changes t
 
 A turn game sends a command for each thing a player does. A real-time game sends its
 inputs once per fixed step instead, 60 steps a second, counted from whole nanoseconds
-so every machine steps alike. This chapter is about turn games.
+so every machine steps alike. This chapter is about turn games, until
+[Rules in fixed steps](#rules-in-fixed-steps) near its end.
 
 ## The state and its commands
 
@@ -145,6 +146,52 @@ advances them by one in each step, stepping its rules once for each of `input.ti
 so a timer fires on the same step at 30 and at 60 frames a second. `input.dt()` is the
 seconds since the last frame, for what only looks, such as a glide or a blink: a rule
 timed by it would change with the frame rate, and replays would stop agreeing.
+
+## Rules in fixed steps
+
+A real-time game's rules implement `shuyi_core::tick::TickSim` instead of `TurnRules`.
+There are no commands: each step gets a `TickInput`, what each player pressed, held
+and let go of since the last step, and answers with what happened. Here a bee flies
+over the garden while Left or Right is held, a plot every 10 steps:
+
+{{ snippet(file="src/rules.rs", anchor="tick") }}
+
+> **Rust:** `ActionId(2)` is an action by its place in the game's list of actions,
+> counting from 0: the rules name actions that way, so they need nothing but the
+> engine's core. `left == right` is true when neither is held, and when both are.
+
+The contract is `TurnRules`' first one: the same state and input always give the same
+events and the same new state. Events are also the only way out of a step: a sound or
+a picture comes from what `step` returns, never from inside it.
+
+A screen doesn't step the rules itself. It keeps a `TickDriver` (`shuyi_ui::tick`), and
+its `update` calls `driver.update(&mut self.bee, input)` with the frame's input. The
+driver steps the rules as many times as the frame has steps due (`input.ticks()`, 0 to
+4) and hands back each step's events with its number. Frames and steps don't line up:
+on a 120 Hz screen every other frame has no step, and a late frame has several. So the
+driver keeps what each frame read until a step takes it:
+
+- each press is pressed in one step, the first one after it, and each release in a step
+  after its press's, so a quick tap is never lost;
+- a key's repeats never reach a step: the step reads what is held instead;
+- an action pressed twice before a step waits, so the next steps have each press and
+  release in turn.
+
+A screen whose rules step calls `driver.clear()` from its `covered`, so a press made
+just before a pause menu opens doesn't fire after it closes.
+
+A **record** of a real-time run is its seed and each step's input, a `TickRecord`, with
+the stamp of the build that made it. `TickDriver::recording` keeps one as the game
+plays, and `tick::replay` plays it again, giving the state's hash after each step:
+
+{{ snippet(file="src/rules.rs", anchor="tick-test") }}
+
+> **Rust:** `use` lines inside a function name things for that function alone.
+> `vec![UiAction::Right]` is the list of actions held in each of those frames.
+
+The record holds what each step saw, after the driver handed out the presses, so it
+replays the same whatever frame rate made it. A record from another build is refused,
+naming what differs: a new version of the rules may step the same inputs differently.
 
 ## A rules crate of their own
 

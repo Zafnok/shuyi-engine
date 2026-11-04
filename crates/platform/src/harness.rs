@@ -1,6 +1,7 @@
 //! A headless test driver for any game on the engine (game ADR-0007 layer 4):
 //! scripted key and controller-button presses and waits in, in frames of
-//! 1/60 s, screen names, snapshots and the audio asked for out. No window,
+//! 1/60 s or by a tick stage's fixed steps ([`Harness::steps`]), screen
+//! names, snapshots and the audio asked for out. No window,
 //! no clock, no sound card: it runs the game in an [`App`] on the
 //! [`HeadlessPlatform`], through the same frame the devices run, and the
 //! headless backend's [`Speaker`](crate::headless::Speaker) says what music
@@ -471,6 +472,31 @@ impl<G: GameData> Harness<G> {
     pub fn wait(&mut self, seconds: f32) -> &mut Self {
         self.advance(&[], seconds);
         self
+    }
+
+    /// Runs frames with no input until exactly `count` fixed simulation
+    /// steps were due in them ([`App::ticks`]), so a tick stage steps its
+    /// rules `count` times: frames of [`FRAME_DT`], which run at most two
+    /// steps, and a half one for the last step, which runs at most one.
+    ///
+    /// # Panics
+    ///
+    /// If that takes more than [`MAX_FRAMES`] frames: the game runs no
+    /// steps (it is suspended, or hasn't loaded).
+    pub fn steps(&mut self, count: u32) -> &mut Self {
+        let mut left = count;
+        for _ in 0..MAX_FRAMES {
+            if left == 0 {
+                return self;
+            }
+            let dt = if left >= 2 { FRAME_DT } else { FRAME_DT / 2.0 };
+            self.frame(&[], dt);
+            left = left.saturating_sub(self.app.ticks());
+        }
+        if left == 0 {
+            return self;
+        }
+        panic!("Harness: {left} of {count} steps still due after {MAX_FRAMES} frames");
     }
 
     /// Runs frames totalling `seconds` (at least one frame); `first` goes

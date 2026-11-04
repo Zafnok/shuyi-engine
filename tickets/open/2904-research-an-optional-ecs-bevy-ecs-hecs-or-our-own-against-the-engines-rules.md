@@ -134,9 +134,8 @@ None. This is technical.
       is opt-in; a turn game keeps its state as a plain struct behind
       `TurnRules` (`crates/core/src/turn.rs`); tick games get no store
       until 1119; and since kits name no store, nothing built before
-      1119 is rewritten for it. It also says what 2108's tick adapter
-      does before 2137, which gives `TickSim` (2108's either-order
-      clause leaves a line in 2137).
+      1119 is rewritten for it. It also says what 2108's tick adapter,
+      `EcsTickSim`, does over 2137's `TickSim` (done).
   - the measurements in `docs/research/ecs.md`. The benchmark code lives
     in `research/ecs/`, a crate listed under `exclude` in the root
     `Cargo.toml` (as 2705 plans for its own), so no candidate enters the

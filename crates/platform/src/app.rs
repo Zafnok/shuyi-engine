@@ -11,7 +11,9 @@
 //! `App` stops stepping and the device holds the audio
 //! ([`Audio::suspend`](crate::Audio::suspend)); on [`SystemEvent::Resume`]
 //! the audio comes back and `App` forgets the time it was away, so a sleep
-//! never becomes a burst of catch-up steps.
+//! never becomes a burst of catch-up steps, and tells the game
+//! ([`Game::set_resumed`]), so a tick stage forgets the presses it kept
+//! from before.
 //!
 //! `App` keeps the log (ADR-0030): at the end of every frame it takes the
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
@@ -496,6 +498,8 @@ pub struct App<G: GameData> {
     /// The run being recorded, once [`record`](Self::record) says.
     recorder: Option<Box<Recorder>>,
     frame_hashes: FrameHashes,
+    /// The fixed steps the last frame handed the game ([`ticks`](Self::ticks)).
+    ticks: u32,
 }
 
 impl<G: GameData> App<G> {
@@ -563,6 +567,7 @@ impl<G: GameData> App<G> {
             game_hash: None,
             recorder: None,
             frame_hashes: FrameHashes::default(),
+            ticks: 0,
         }
     }
 
@@ -823,6 +828,10 @@ impl<G: GameData> App<G> {
                 self.suspended = false;
                 self.clock.restart();
                 platform.audio().resume();
+                // A tick stage forgets what it kept from before.
+                if let Some(game) = self.game_mut() {
+                    game.set_resumed();
+                }
             }
             SystemEvent::FocusLost => self.focused = false,
             SystemEvent::FocusGained => self.focused = true,
@@ -848,6 +857,7 @@ impl<G: GameData> App<G> {
         self.lists.audio.clear();
         self.lists.music.clear();
         self.lists.sounds.clear();
+        self.ticks = 0;
         if self.suspended && !self.quit {
             // Suspended: nothing steps and nothing is shown.
             drain(platform, &mut self.lists.input);
@@ -880,6 +890,7 @@ impl<G: GameData> App<G> {
                     recorder.reloaded(self.frames);
                 }
                 step(platform, game, &mut self.lists, elapsed, recorder);
+                self.ticks = elapsed.ticks;
                 if game.quit_requested() {
                     platform.audio().stop_all();
                     self.quit = true;
@@ -1040,6 +1051,13 @@ impl<G: GameData> App<G> {
     /// Whether the system has suspended the game.
     pub fn is_suspended(&self) -> bool {
         self.suspended
+    }
+
+    /// The fixed simulation steps the last frame handed the game
+    /// ([`Game::set_ticks`]): 0 in a frame that didn't run it (loading,
+    /// suspended, quit).
+    pub fn ticks(&self) -> u32 {
+        self.ticks
     }
 
     /// Whether the game's window has the player's attention (until the

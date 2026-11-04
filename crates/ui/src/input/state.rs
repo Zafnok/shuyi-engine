@@ -132,6 +132,12 @@ pub struct InputState<A: ActionSet> {
     keymap: Keymap<A>,
     /// Actions from presses and releases since the last update.
     pending: Vec<A>,
+    /// Actions let go since the last update, in order.
+    letting_go: Vec<A>,
+    /// The last update's actions from presses, without its repeats.
+    presses: Vec<A>,
+    /// The actions let go before the last update, in order.
+    released: Vec<A>,
     /// Bound keys and buttons currently down with the actions they
     /// triggered (one entry each), oldest first.
     held: Vec<Held<A>>,
@@ -151,6 +157,9 @@ impl<A: ActionSet> InputState<A> {
         Self {
             keymap,
             pending: Vec::new(),
+            letting_go: Vec::new(),
+            presses: Vec::new(),
+            released: Vec::new(),
             held: Vec::new(),
             repeat: None,
             buttons_down: ButtonSet::EMPTY,
@@ -184,11 +193,19 @@ impl<A: ActionSet> InputState<A> {
     /// Switches to other bindings (the player picked a layout). Forgets held
     /// keys, pending presses, waiting chord buttons and any running repeat,
     /// so nothing pressed under the old bindings leaks into the new ones; a
-    /// key still down is ignored until it is pressed again. The
-    /// [`device`](Self::device) stays.
+    /// key still down is ignored until it is pressed again. The actions it
+    /// held are let go ([`released`](Self::released) after the next
+    /// update). The [`device`](Self::device) stays.
     pub fn set_keymap(&mut self, keymap: Keymap<A>) {
+        let mut letting_go = core::mem::take(&mut self.letting_go);
+        for held in &self.held {
+            if !letting_go.contains(&held.action) {
+                letting_go.push(held.action);
+            }
+        }
         *self = Self {
             device: self.device,
+            letting_go,
             ..Self::new(keymap)
         };
     }
@@ -292,7 +309,9 @@ impl<A: ActionSet> InputState<A> {
         if let Some(i) = self.waiting.iter().position(|w| w.button == button) {
             let waited = self.waiting.remove(i);
             if !waited.used {
-                self.pending.extend(waited.actions);
+                // Pressed and let go at once: a tap.
+                self.pending.extend_from_slice(&waited.actions);
+                self.letting_go.extend(waited.actions);
             }
         }
         // Its own actions, and those of the chords it is the partner in.
@@ -333,16 +352,25 @@ impl<A: ActionSet> InputState<A> {
         }
     }
 
-    /// Lets go of the held actions that `gone` picks. If the repeating one
-    /// is among them, repeating passes to the most recent repeating one
-    /// still held.
+    /// Lets go of the held actions that `gone` picks; an action no key or
+    /// button holds any more is let go ([`released`](Self::released)). If
+    /// the repeating one is among them, repeating passes to the most recent
+    /// repeating one still held.
     fn release(&mut self, gone: impl Fn(&Held<A>) -> bool) {
         let repeating = |h: &Held<A>| {
             self.repeat
                 .is_some_and(|r| (r.input, r.action) == (h.input, h.action))
         };
         let stops = self.held.iter().any(|h| gone(h) && repeating(h));
+        let mut letting_go: Vec<A> = Vec::new();
+        for h in self.held.iter().filter(|h| gone(h)) {
+            if !letting_go.contains(&h.action) {
+                letting_go.push(h.action);
+            }
+        }
         self.held.retain(|h| !gone(h));
+        letting_go.retain(|&action| !self.is_held(action));
+        self.letting_go.append(&mut letting_go);
         if stops {
             self.repeat = self
                 .held
@@ -366,15 +394,37 @@ impl<A: ActionSet> InputState<A> {
         self.held.iter().any(|h| h.action == action)
     }
 
+    /// The last [`update`](Self::update)'s actions from presses, in order,
+    /// without its key repeats: what a fixed step reads
+    /// ([`TickDriver`](crate::tick::TickDriver)). An action pressed again
+    /// while another of its keys holds it is here again.
+    pub fn presses(&self) -> &[A] {
+        &self.presses
+    }
+
+    /// The actions let go before the last [`update`](Self::update), in
+    /// order: each when no key or button holds it any more, and a chord
+    /// button's own action, given as the button is let go
+    /// ([module docs](self)), at once.
+    pub fn released(&self) -> &[A] {
+        &self.released
+    }
+
     /// Advances time by `dt` seconds and returns the actions to handle this
     /// frame, in order: chord buttons whose window has just passed, presses
     /// and releases since the last update, then repeats (at most
     /// [`MAX_REPEATS_PER_UPDATE`]; repeats beyond the cap are dropped, not
-    /// deferred). Negative or non-finite `dt` counts as zero.
+    /// deferred). Negative or non-finite `dt` counts as zero. The same
+    /// actions without the repeats are [`presses`](Self::presses) until the
+    /// next update, and the actions let go since the last one
+    /// [`released`](Self::released).
     pub fn update(&mut self, dt: f32) -> Vec<A> {
         let dt_us = seconds_to_micros(dt);
         let mut actions = self.windows_passed(dt_us);
         actions.append(&mut self.pending);
+        self.presses.clone_from(&actions);
+        self.released.clear();
+        self.released.append(&mut self.letting_go);
         let RepeatDef {
             delay_ms,
             interval_ms,

@@ -6,13 +6,15 @@
 //! pool, voiced lines with two variants, one setting of its own, two
 //! images, two lights, and its screens: [`Home`], the [`Menu`] over it,
 //! the layout [`Picker`] the first key opens, the [`Gallery`] of pictures
-//! the Debug key opens ([`hooks`]), and a grid map's stage
-//! ([`grid::Field`]).
+//! the Debug key opens ([`hooks`]), a grid map's stage
+//! ([`grid::Field`]), and a stage that steps core's toy tick simulation
+//! ([`tick::DotStage`]).
 //!
 //! Built for this crate's tests and, with the `toy` feature, for its
 //! integration tests.
 
 pub mod grid;
+pub mod tick;
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -425,9 +427,9 @@ fn track(cue: &str) -> MusicCue {
 pub struct Toy {
     lang: Lang,
     keymap: KeymapDef<Action>,
-    /// The cues: the sound `click` and the engine's menu sounds, the looped
-    /// sound `hum` (the same file), the track `theme`, four more in the
-    /// pool `fights`, and a 0.5 s fade.
+    /// The cues: the sounds `click` and `stop` (the tick stage's) and the
+    /// engine's menu sounds, the looped sound `hum` (the same file), the
+    /// track `theme`, four more in the pool `fights`, and a 0.5 s fade.
     pub audio: AudioManifest,
     day: PaletteDef,
     night: PaletteDef,
@@ -487,6 +489,7 @@ impl Toy {
         audio.music_fade_ms = 500;
         let click = SoundCue::new(vec!["click.wav".to_owned()], 100, CreditRef::Own);
         audio.sounds.insert("click".to_owned(), click.clone());
+        audio.sounds.insert(tick::STOP.to_owned(), click.clone());
         let hum = click.clone().with_looped(true);
         audio.sounds.insert("hum".to_owned(), hum);
         // The engine's menu sounds, by their default names.
