@@ -289,6 +289,24 @@ fn a_new_keymap_forgets_waiting_buttons() {
 }
 
 #[test]
+fn a_waiting_button_gives_nothing_after_release_all() {
+    let mut s = playdate();
+    // A waits for the chord window: nothing when it passes.
+    frame(&mut s, &[(East, true)], 0);
+    s.release_all();
+    assert_eq!(idle(&mut s, 10, 50), []);
+    assert_eq!(frame(&mut s, &[(East, false)], 0), []);
+    // B waits for its release: nothing then.
+    frame(&mut s, &[(West, true)], 0);
+    s.release_all();
+    assert_eq!(frame(&mut s, &[(West, false)], 0), []);
+    assert_eq!(s.released(), []);
+    // B pressed again works as usual.
+    frame(&mut s, &[(West, true)], 0);
+    assert_eq!(frame(&mut s, &[(West, false)], 0), [Cancel]);
+}
+
+#[test]
 fn chords_bound_by_the_player_work_and_save() {
     let def = load_keymap().unwrap_or_default();
     let mut pad = PadBindings::defaults(&def);

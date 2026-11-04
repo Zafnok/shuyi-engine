@@ -227,7 +227,7 @@ Add what the system said since the last call:
 | Event | When | What `App` does |
 | ----- | ---- | --------------- |
 | `Suspend` | the device sleeps or locks, the home menu opens, the app goes to the background | `audio().suspend()` holds the audio; the game's hook saves; no update and nothing presented until `Resume` |
-| `Resume` | the game runs again | `audio().resume()` brings the audio back; the time away is forgotten: the next frame counts none, so no catch-up steps |
+| `Resume` | the game runs again | `audio().resume()` brings the audio back; the time away is forgotten: the next frame counts none, so no catch-up steps; that frame lets go of every key and button held before the suspend, since one may have come up unheard |
 | `FocusLost`, `FocusGained` | an overlay or another window takes the player's attention, and gives it back | the game's hook hears it (and may pause) |
 | `QuitRequested` | the player closes the game (a window's close button) | the game's hook saves, then `FrameOutcome::Quit` |
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
