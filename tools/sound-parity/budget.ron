@@ -5,7 +5,7 @@
 // from 58 runs and one of `old_new` from 20 (ticket 2042, written at each). Change one only with new
 // runs that justify it, written here, and raise `version`: never to pass.
 (
-    version: 6,
+    version: 7,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -77,23 +77,47 @@
             // the 0.53 that stays: around 29 ms, a few ms of jitter is a big ratio.
             "latency_ms": (max_ratio: 1.36, max_spread: 0.53, slows: false),
         },
+        // Windows' limits came from three runs (ticket 3031), and one job in ten failed
+        // on them with no sound change. These are the same rule over every
+        // `sound-parity-windows` artifact from 3031's merge to 2026-11-04 (ticket 2044):
+        // 49 jobs in 11 CI runs (41595169987 to 41776135194, 20 of them in 41595469804
+        // and 20 in 41689870848, gathered by run 41783186508), 81 attempts. Nothing
+        // leans: the side measured second was slower in 356 pairs to 370 (file reads),
+        // 360 to 369, 365 to 364, 376 to 353, 378 to 349 and 378 to 351. The injected
+        // slowdown's least was 1.77 (Ogg decode), 1.79 (file reads), 1.86 (WAV) and 57.7
+        // (CPU). A limit no attempt exceeded stays.
         "windows": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
-            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
-            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
-            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
-            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
-            "latency_ms": (max_ratio: 1.08, max_spread: 0.15, slows: false),
+            // Medians 0.973 to 1.037, ranges up to 0.153: 19 of 81 over 0.05.
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.31, slows: true),
+            // Medians 0.965 to 1.043, ranges up to 0.194: 11 over 0.05.
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.39, slows: true),
+            // Medians 0.850 to 1.086 (two failed at 1.05), ranges up to 0.325 (13 over
+            // 0.10): a process's cycles over three seconds of a 10 ms period.
+            "cpu_ms": (max_ratio: 1.30, max_spread: 0.65, slows: true),
+            // Medians 0.970 to 1.025, ranges up to 0.106: 5 over 0.05.
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.22, slows: false),
+            // Medians 0.917 to 1.062, ranges up to 0.177: 1 over 0.15.
+            "latency_ms": (max_ratio: 1.08, max_spread: 0.36, slows: false),
         },
-        // A new backend against itself, as its platform's old one is: the same limits
-        // as that one's, which three runs held (ticket 3031).
+        // A new backend against itself, as its platform's old one is: at first the same
+        // limits as that one's, which three runs held (ticket 3031), then the same rule
+        // over the same 49 jobs, 66 attempts (ticket 2044). Nothing leans: the side
+        // measured second was slower in 276 pairs to 311 at the most (file reads). The
+        // injected slowdown's least was 1.84 (file reads), 1.86 (WAV), 1.93 (Ogg) and
+        // 26.2 (CPU).
         "windows-in-house": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
-            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            // Medians 0.950 to 1.069 (one failed at 1.05), ranges up to 0.139.
+            "decode_wav_ms": (max_ratio: 1.14, max_spread: 0.28, slows: true),
             "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
-            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            // Medians 0.927 to 1.065, ranges up to 0.187 (8 over 0.10).
+            "cpu_ms": (max_ratio: 1.15, max_spread: 0.38, slows: true),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
-            "latency_ms": (max_ratio: 1.25, max_spread: 0.50, slows: false),
+            // Samples fall anywhere from 6 to 24 ms, a period of the endpoint's buffer,
+            // so a ratio of two is noise: medians 0.758 to 1.216, ranges up to 1.139 (5
+            // over 0.50). The median still holds: a buffer of 10 ms more is about 1.75.
+            "latency_ms": (max_ratio: 1.25, max_spread: 2.28, slows: false),
         },
         // Its own noise, over the 20 runs of CI run 41595469804, stays inside the
         // limits `browser-chromium` had before ticket 2042 (latency medians 0.906 to

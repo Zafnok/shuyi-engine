@@ -576,29 +576,35 @@ async fn timed_old(ctx: &AudioContext, bytes: &[u8]) -> f64 {
     (date::now() - timed) * 1000.0
 }
 
-/// Old against new on the same bytes in the same process, each side's turn first
-/// by `pair`, then the new side slowed: one line per kind of file, in
-/// milliseconds per decode.
+/// Old against new on the same bytes in the same process, then the new side
+/// slowed: one line per kind of file, in milliseconds per decode. Each side
+/// decodes once untimed first, as a process's first decode pays for what later
+/// ones find ready, then they take turns old, new, new, old (new first by
+/// `pair`), so neither is always measured just after the other (ticket 2044).
 async fn decoders(pair: u32) -> Result<(), String> {
     let wav = read("corpus/long.wav").await?;
     let ogg = read("corpus/long.ogg").await?;
     let ctx = AudioContext::new();
     wait_for_gesture().await;
-    let per_decode = |ms: f64| ms / f64::from(DECODER_DECODES);
+    let per_decode = |ms: f64, measures: u32| ms / f64::from(measures * DECODER_DECODES);
     for (file, kind, bytes) in [("wav", Kind::Wav, &wav), ("ogg", Kind::Ogg, &ogg)] {
+        timed_old(&ctx, bytes).await;
+        timed_new(kind, bytes, 0)?;
         let (old, new) = if pair.is_multiple_of(2) {
-            let old = timed_old(&ctx, bytes).await;
-            (old, timed_new(kind, bytes, 0)?)
+            let first = timed_old(&ctx, bytes).await;
+            let new = timed_new(kind, bytes, 0)? + timed_new(kind, bytes, 0)?;
+            (first + timed_old(&ctx, bytes).await, new)
         } else {
-            let new = timed_new(kind, bytes, 0)?;
-            (timed_old(&ctx, bytes).await, new)
+            let first = timed_new(kind, bytes, 0)?;
+            let old = timed_old(&ctx, bytes).await + timed_old(&ctx, bytes).await;
+            (old, first + timed_new(kind, bytes, 0)?)
         };
         let burn = timed_new(kind, bytes, DECODER_BURN)?;
         say(&format!(
             r#"{{"event":"decode","file":"{file}","pair":{pair},"old":{:.3},"new":{:.3},"burn":{:.3},"audio_ms":{DECODER_AUDIO_MS}}}"#,
-            per_decode(old),
-            per_decode(new),
-            per_decode(burn),
+            per_decode(old, 2),
+            per_decode(new, 2),
+            per_decode(burn, 1),
         ));
     }
     Ok(())

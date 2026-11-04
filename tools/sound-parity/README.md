@@ -119,7 +119,10 @@ them: quad-snd exposes no decoded samples to compare directly.
 - `decoder-refuses:<case>`: each malformed file (`corpus::malformed_wavs`, a
   damaged Ogg file) and each file over a limit gives an error.
 - `decoder-speed:<wav|ogg>`, on each captured platform, from `decoders.jsonl`:
-  whole decodes of `long`, old and new in one process, each going first in turn.
+  whole decodes of `long`, old and new in one process: each decodes once untimed,
+  then they take turns old, new, new, old, with new first in every other process.
+  Without both, a process's first decode and the one just after the other side's
+  leaned the ratio by as much as its limit's spread (ticket 2044).
   Natively old and new are the same work on the same libraries, so the ratio is a
   verdict and `decoder-slowdown` must catch an injected one. A browser decodes
   with its own code on its own threads, seen to end at a frame, so there the ratio
