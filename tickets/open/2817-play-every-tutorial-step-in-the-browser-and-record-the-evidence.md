@@ -25,6 +25,11 @@ The archived 2803 now records that acceptance gap truthfully. This ticket
 finishes the browser-play requirement on the current engine revision,
 with evidence a later reader can inspect. It adds no tutorial feature.
 
+**Either order with 2824:** if 2824 is done, play each step from its
+page in the book's project part, and open one old `/learn/tutorial/`
+address to see it redirect; if not, play each from `/learn/tutorial/`,
+and nothing is left to 2824.
+
 ## Nick input
 
 None. The session exercises the pages and records the results; no new

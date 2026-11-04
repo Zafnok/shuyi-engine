@@ -2,7 +2,7 @@
 id: "2820"
 title: "The tutorial's steps in the playground: each step's page edits that step's data files beside its game, and each before-and-after can be tried there"
 type: feature
-milestone: After MVP
+milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
@@ -28,7 +28,17 @@ then try on the page, with no install.
 
 This edits data files, not Rust. Hot reload (2905) doesn't change that: it
 rebuilds on the developer's own machine, and a browser has no compiler.
-Rust in the page is [2916](2916-parked-research-editing-a-games-rust-code-in-a-web-page.md)'s.
+Rust in the page is [2916](2916-research-editing-a-games-rust-code-in-a-web-page.md)'s.
+
+Nick, 2026-11-03 (*one book, read at the reader's level*): the tutorial
+becomes the book's project (2824), its interactive parts come before
+the engine goes public, and the book's exercises (2828) run in this
+ticket's playground.
+
+**Either order with 2824:** if 2824 is done, the steps' pages are in the
+book's project part, with the template its completion notes name: build
+the playground there; if not, build it in `tutorial-step.html` as
+written, and 2824 moves it with the pages.
 
 ## Nick input
 

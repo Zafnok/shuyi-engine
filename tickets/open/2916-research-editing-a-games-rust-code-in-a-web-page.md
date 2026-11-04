@@ -1,23 +1,17 @@
 ---
 id: "2916"
-title: "Parked: Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free"
+title: "Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free"
 type: research
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
-blocked_by: ["2905"]
+status: todo
+blocked_by: []
 nick_input: decision
 completed:
 ---
 
 # 2916 — Research: editing a game's Rust code in a web page
-
-> **Parked** until Nick unparks it. A build server costs money every month,
-> and [`docs/decisions.md`](../../docs/decisions.md) (2026-10-28) keeps the
-> playground to data files for that reason. Nick asked on 2026-11-01 about a
-> code pad "once we have hot reload", and this ticket holds what that needs
-> until he decides.
 
 ## Context
 
@@ -30,6 +24,19 @@ own machine, which has a compiler. A browser has none, so the Rust must
 compile somewhere else, or the page must run something other than Rust.
 The playground for data files (2814, and 2820 for the tutorial) needs
 neither, and is free.
+
+Nick, 2026-11-03 ([`docs/decisions.md`](../../docs/decisions.md), *one
+book, read at the reader's level*): "we def wanna have a coderpad thing
+soon!" He unparked this research; renting a build server still waits for
+his answer to what it reports. The tutorial is now the book's project
+(2824), and the book has exercises checked by the game (2828), which edit
+data files only: the code pad is what would let an exercise edit Rust.
+
+**Either order with 2905:** if 2905 is done, read its ADR and
+`docs/research/code-reload.md`, and measure option 4 with what it chose;
+if not, measure option 4 with `shuyi web --serve` (2528) or a rebuild by
+hand, and say in the report what hot reload would change, for 2905 to
+check.
 
 ## Nick input
 
@@ -55,7 +62,9 @@ running game, and what it can't do:
    what it leaves out.
 
 **Writes:** `docs/research/code-pad.md`, an ADR with the recommendation,
-and an `ask-nick` question with the cost in dollars a month.
+an `ask-nick` question with the cost in dollars a month, and, for the
+recommended option, how a book exercise (2828) that edits Rust would
+run on it.
 
 **Out (do not do):**
 - building any of it beyond what the numbers need;
@@ -63,7 +72,8 @@ and an `ask-nick` question with the cost in dollars a month.
 
 ## Implementation steps
 
-1. Read 2905's ADR and research, 2814's completion notes and ADR-0049.
+1. Read 2814's completion notes, ADR-0049, 2828's exercise shape, and
+   2905's ADR and research as the clause above says.
 2. Measure each option on `site/tutorial/02-board`.
 3. Write the report and the ADR, then ask Nick.
 

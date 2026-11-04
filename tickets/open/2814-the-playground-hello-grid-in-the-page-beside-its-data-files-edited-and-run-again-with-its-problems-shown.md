@@ -2,7 +2,7 @@
 id: "2814"
 title: "The playground: Hello, Grid playing in a Learn page beside its data files, which a reader edits and runs again, with its problems shown"
 type: feature
-milestone: After MVP
+milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
@@ -40,6 +40,16 @@ What there is once the blockers are done:
   what it is and which files it edits.
 - The site loads nothing from another host (`site/README.md`, *The
   rules*), and has no JS framework or editor library.
+
+Nick, 2026-11-03 (*one book, read at the reader's level*): the book and
+the tutorial fold into one book (2824), and its interactive parts come
+before the engine goes public, so this ticket does too.
+
+**Either order with 2824:** if 2824 is done, the Learn landing page and
+the book's landing page are as it left them: link the playground from
+both, and from the top menu; if not, link it from Learn's landing page
+and the top menu as they are, and 2824 keeps the links when it rewrites
+them.
 
 ## Nick input
 

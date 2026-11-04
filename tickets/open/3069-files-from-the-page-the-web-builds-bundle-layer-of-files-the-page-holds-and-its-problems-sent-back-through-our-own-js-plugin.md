@@ -2,7 +2,7 @@
 id: "3069"
 title: "Files from the page: a web build lays the files its page holds over its own, as a bundle layer, and sends its problems back, through our own JS plugin"
 type: feature
-milestone: After MVP
+milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
