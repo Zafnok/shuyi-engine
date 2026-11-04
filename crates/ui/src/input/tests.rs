@@ -361,6 +361,45 @@ fn set_keymap_lets_go_of_what_it_held() {
 }
 
 #[test]
+fn release_all_lets_go_of_what_was_held_and_keeps_the_bindings() {
+    let mut s = pad_state();
+    s.key_down(chord("l"));
+    s.pad_down(Button::South, PAD);
+    s.update(0.0);
+    s.release_all();
+    assert!(!s.is_held(CursorRight) && !s.is_held(Confirm));
+    assert_eq!(s.update(ms(1000)), vec![]);
+    assert_eq!(s.released(), [CursorRight, Confirm]);
+    assert_eq!(s.device(), Device::Pad(PAD));
+    // Let go late, still down: nothing until pressed again.
+    s.key_up(Key::L);
+    s.update(0.0);
+    assert_eq!(s.released(), []);
+    s.key_down(chord("l"));
+    s.pad_down(Button::South, PAD);
+    assert_eq!(s.update(0.0), vec![CursorRight, Confirm]);
+}
+
+#[test]
+fn a_key_still_down_after_release_all_is_ignored_until_pressed_again() {
+    let mut s = default_state();
+    s.key_down(chord("l"));
+    s.update(0.0);
+    s.release_all();
+    // The key never came up: a second press of it counts.
+    s.key_down(chord("l"));
+    assert_eq!(s.update(0.0), vec![CursorRight]);
+    assert!(s.is_held(CursorRight));
+    // A button still down: pressing it again counts too.
+    let mut s = pad_state();
+    s.pad_down(Button::South, PAD);
+    s.release_all();
+    s.update(0.0);
+    s.pad_down(Button::South, PAD);
+    assert_eq!(s.update(0.0), vec![Confirm]);
+}
+
+#[test]
 fn set_keymap_forgets_held_buttons_too() {
     let mut s = pad_state();
     s.pad_down(Button::DpadRight, PAD);

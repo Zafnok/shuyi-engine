@@ -127,6 +127,8 @@ struct Waiting<A> {
 /// repeatable one is the one that repeats; releasing it hands repeating
 /// back to the most recent repeatable one still held, which waits a full
 /// delay before repeating. Button chords: see the [module docs](self).
+/// After a time it heard no keys (a resume from a suspend), it lets go of
+/// everything ([`release_all`](Self::release_all)).
 #[derive(Debug, Clone)]
 pub struct InputState<A: ActionSet> {
     keymap: Keymap<A>,
@@ -190,24 +192,47 @@ impl<A: ActionSet> InputState<A> {
         &self.keymap
     }
 
-    /// Switches to other bindings (the player picked a layout). Forgets held
-    /// keys, pending presses, waiting chord buttons and any running repeat,
-    /// so nothing pressed under the old bindings leaks into the new ones; a
-    /// key still down is ignored until it is pressed again. The actions it
-    /// held are let go ([`released`](Self::released) after the next
-    /// update). The [`device`](Self::device) stays.
+    /// Switches to other bindings (the player picked a layout). Lets go of
+    /// everything first ([`release_all`](Self::release_all)), so nothing
+    /// pressed under the old bindings leaks into the new ones.
     pub fn set_keymap(&mut self, keymap: Keymap<A>) {
-        let mut letting_go = core::mem::take(&mut self.letting_go);
-        for held in &self.held {
-            if !letting_go.contains(&held.action) {
-                letting_go.push(held.action);
+        self.keymap = keymap;
+        self.release_all();
+    }
+
+    /// Lets go of everything: forgets held keys and buttons, pending
+    /// presses, waiting chord buttons (which give nothing) and any running
+    /// repeat. A key or button still down is ignored until it is pressed
+    /// again. The actions it held are let go
+    /// ([`released`](Self::released) after the next update). The
+    /// [`device`](Self::device) and the bindings stay. The game calls it
+    /// on the first frame after a resume, whose keys may have come up
+    /// while it was suspended.
+    pub fn release_all(&mut self) {
+        // Every field named, so a new one can't be forgotten here.
+        let Self {
+            keymap: _,
+            pending,
+            letting_go,
+            presses,
+            released,
+            held,
+            repeat,
+            buttons_down,
+            waiting,
+            device: _,
+        } = self;
+        for h in held.drain(..) {
+            if !letting_go.contains(&h.action) {
+                letting_go.push(h.action);
             }
         }
-        *self = Self {
-            device: self.device,
-            letting_go,
-            ..Self::new(keymap)
-        };
+        pending.clear();
+        presses.clear();
+        released.clear();
+        *repeat = None;
+        *buttons_down = ButtonSet::EMPTY;
+        waiting.clear();
     }
 
     /// A key went down (with its modifier state). Unbound chords and keys

@@ -11,6 +11,7 @@ mod layout_picker;
 mod memory_tags;
 mod modules;
 mod perf;
+mod resume;
 mod scene_camera;
 mod screens;
 mod scripts;
@@ -28,7 +29,8 @@ use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
 use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};
 
 /// What a [`Recorder`] saw in each frame: the actions, the frame time, the
-/// buttons and the chords that went down, and the text typed.
+/// buttons and the chords that went down, the text typed and the actions
+/// held.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Seen {
     actions: Vec<Action>,
@@ -36,6 +38,7 @@ pub struct Seen {
     buttons: Vec<Button>,
     chords: Vec<String>,
     text: String,
+    held: Vec<Action>,
 }
 
 /// Every frame a [`Recorder`] saw, oldest first.
@@ -60,6 +63,7 @@ impl Screen<Toy> for Recorder {
                 .map(ToString::to_string)
                 .collect(),
             text: input.text().iter().collect(),
+            held: input.held().to_vec(),
         });
         Transition::None
     }

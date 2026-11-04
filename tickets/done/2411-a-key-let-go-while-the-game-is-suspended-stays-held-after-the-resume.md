@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2411 — A key or button let go while the game is suspended stays held after the resume
@@ -93,14 +93,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A key held across a suspend and let go during it gives no repeat
+- [x] A key held across a suspend and let go during it gives no repeat
       after the resume, and `is_held` is false.
-- [ ] The toy's dot stops at the resume and doesn't move again until a
+- [x] The toy's dot stops at the resume and doesn't move again until a
       direction is pressed.
-- [ ] A key pressed in the first frame after the resume counts.
-- [ ] `set_keymap` lets go as before (its tests pass unchanged).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A key pressed in the first frame after the resume counts.
+- [x] `set_keymap` lets go as before (its tests pass unchanged).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -112,5 +112,24 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `InputState::release_all` lets go of every held key and button,
+  pending presses, waiting chord buttons and the running repeat; the
+  actions it held come out as `released` after the next update, and the
+  device and bindings stay. It names every field, so a new one can't be
+  missed. `set_keymap` now swaps the bindings and calls it.
+- `Game::step` calls it on the first frame after `Game::set_resumed`,
+  after the keymap sync and before the frame's events.
+- Tests: two unit tests beside `set_keymap_lets_go_of_what_it_held`, one
+  in `chord_tests.rs` (a waiting button gives nothing after it); Harness
+  tests in the new `tests/it/resume.rs` (the `Recorder` now records
+  `held` too) and in `tests/it/tick.rs` (the dot). All three integration
+  tests fail without the call in `Game::step`.
+- Deviation: the Harness runs a system event in a frame of its own, so
+  "a key pressed in the first frame after the resume" drives `Game`
+  directly (`set_resumed`, then a frame with the press), as `App` does.
+- Docs: `App`'s module docs, `Game::set_resumed`, `InputState`'s,
+  `docs/platform-backends.md`'s `Resume` row, and the book's *Actions*
+  chapter (`site/content/learn/book/actions.md`).
+
+No break: `release_all` is an addition, and `set_keymap` behaves as
+before (its tests pass unchanged).
