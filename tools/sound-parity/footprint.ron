@@ -28,7 +28,7 @@
             find: r##"    # A Vorbis source's `read` asks `next_packet` until the file ends: the mutant
     # that decodes nothing never ends, so it costs a shard its whole timeout and
     # fails it as one, though every test that reads a file would hang on it.
-    'VorbisSource<.a>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
+    'VorbisSource<\w+>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
 "##,
             with: "",
         ),
@@ -257,16 +257,15 @@ sound-probe = []
 # sound parity gates.
 #
 # `shuyi-sound`'s `wav.rs` and `vorbis.rs` are built only with its features, which a
-# run on one package doesn't turn on, so every mutant there would be missed whatever
-# the tests say. Their tests run with `--all-features` in `sound-parity`.
+# run with each package's default ones doesn't turn on: the workflow leaves them out
+# of that run with `-e` and tests them in a run of their own with the features on
+# (ticket 2043).
 "##,
             with: "",
         ),
         Replace(
             file: ".cargo/mutants.toml",
-            find: r##"    "crates/sound/src/wav.rs",
-    "crates/sound/src/vorbis.rs",
-    "crates/sound-out/src/windows.rs",
+            find: r##"    "crates/sound-out/src/windows.rs",
     "crates/sound-out/src/web.rs",
 "##,
             with: "",
@@ -491,6 +490,119 @@ pub(crate) mod device {
             file: "crates/xtask/src/main.rs",
             from: "\n  cargo xtask sound-parity corpus",
             to: "\";\n\nfn main()",
+        ),
+        // Ticket 2043: the mutation runs of `shuyi-sound`'s adapters.
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: "      adapters: ${{ steps.count.outputs.adapters }}\n",
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"      #
+      # `shuyi-sound`'s adapters (`wav.rs`, `vorbis.rs`) are built only with
+      # its `wav` and `vorbis` features, which a run with each package's
+      # default features never turns on: they are counted apart, and tested
+      # with them on in the `adapters` job (ticket 2043).
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"          adapters=0
+          if [ -s git.diff ]; then
+            cargo mutants --in-diff git.diff --list \
+              -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs > mutants.txt
+            mutants=$(wc -l < mutants.txt)
+            cargo mutants --in-diff git.diff --list \
+              -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs > adapters.txt
+            adapters=$(wc -l < adapters.txt)
+"##,
+            with: r##"          if [ -s git.diff ]; then
+            cargo mutants --in-diff git.diff --list > mutants.txt
+            mutants=$(wc -l < mutants.txt)
+"##,
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"          echo "$adapters mutants in the sound adapters"
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"            echo "adapters=$adapters"
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"          -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs
+          --shard "$SHARD/$OF" --sharding round-robin
+"##,
+            with: r##"          --shard "$SHARD/$OF" --sharding round-robin
+"##,
+        ),
+        Cut(
+            file: ".github/workflows/mutants.yml",
+            from: "  # `shuyi-sound`'s adapters with the features they are built with",
+            to: "  # Single required check for the PR run",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: "    needs: [changes, plan, baseline, pr, adapters]\n",
+            with: "    needs: [changes, plan, baseline, pr]\n",
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"        run: >
+          cargo mutants --shard ${{ matrix.shard }}/4 --baseline=skip
+          -e crates/sound/src/wav.rs -e crates/sound/src/vorbis.rs
+"##,
+            with: r##"        run: cargo mutants --shard ${{ matrix.shard }}/4 --baseline=skip
+"##,
+        ),
+        Replace(
+            file: ".github/workflows/mutants.yml",
+            find: r##"
+
+  # The sound adapters with their features, as the PR run's `adapters` job, and
+  # with its nextest profile: three mutants of a source's `read` make a read
+  # never end, which a test that checks one read catches at once, but under
+  # `cargo test` the run waits on the tests that keep reading and calls the
+  # mutant a timeout.
+  weekly-adapters:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: mutants (full, sound adapters)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-mutants,cargo-nextest
+      - name: Run cargo mutants on the sound adapters
+        continue-on-error: true
+        env:
+          NEXTEST_PROFILE: mutants
+        run: >
+          cargo mutants --features wav,vorbis
+          -f crates/sound/src/wav.rs -f crates/sound/src/vorbis.rs
+          --test-tool=nextest -vV
+      - name: Upload mutants.out
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-weekly-adapters-${{ github.run_id }}
+          path: mutants.out
+          if-no-files-found: ignore
+"##,
+            with: "\n",
         ),
         Replace(
             file: "crates/xtask/src/main.rs",
