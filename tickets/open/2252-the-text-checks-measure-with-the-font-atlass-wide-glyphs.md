@@ -1,5 +1,5 @@
 ---
-id: "2250"
+id: "2252"
 title: "The text checks measure with the font atlas's wide glyphs, and a reloaded atlas changes the frame's widths"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2250 — The text checks measure with the font atlas's wide glyphs
+# 2252 — The text checks measure with the font atlas's wide glyphs
 
 ## Context
 

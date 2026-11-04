@@ -254,10 +254,10 @@ font (game#0236).
 - Step 4's "every caller in the engine passes the table it has": the
   text checks (`longest_width`, `lines_at_longest`, `Names::longest`,
   the tips' check) run as the text loads, before anything has the
-  atlas, so they pass `CellWidths::NARROW`. Ticket **2250** gives them
+  atlas, so they pass `CellWidths::NARROW`. Ticket **2252** gives them
   the atlas's widths through `PackRules` and `TipRules`, and makes a hot
   reload of the atlas change the frame's widths (today it keeps those it
-  had at load). 2239's clause now points at 2250.
+  had at load). 2239's clause now points at 2252.
 - `Ctx` gets the widths too (`Ctx::widths`, set only by
   `Game::set_widths`): the menu's size is measured from the context,
   before it has a frame.
@@ -279,7 +279,7 @@ font (game#0236).
 - Either-order clauses: 2224, 2239, 2346, 2347, 2353 were not done, so
   each took its other branch; their clauses now say what holds.
 
-**Follow-ups.** 2250 (above).
+**Follow-ups.** 2252 (above).
 
 **For the game.** game#0236 adds its Japanese font with `--wide` at the
 pin bump that follows this PR; that game PR isn't open yet. The bump's

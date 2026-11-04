@@ -99,11 +99,11 @@ None.
   and passes it on. If not, nothing more to do here (2302's rules reach
   the pack check through `lines_at_longest`, and 2302 adds that test).
 - **From 2301 (done):** `text_width` takes a `CellWidths`, and the
-  checks pass `CellWidths::NARROW` today; 2250 gives them the atlas's.
-- **Either order with 2250:** if 2250 is done, `longest_width` and
+  checks pass `CellWidths::NARROW` today; 2252 gives them the atlas's.
+- **Either order with 2252:** if 2252 is done, `longest_width` and
   `lines_at_longest` take a `CellWidths`: `box_fit` takes it too, and
   its two callers pass the table they pass to those. If not, nothing to
-  do (2250 passes it through `box_fit`, as its clause says).
+  do (2252 passes it through `box_fit`, as its clause says).
 - **Either order with 2241:** if 2241 is done, `add_lines` also runs
   the game's `speech_problem` on a speech line's `width`, after the
   `limit` check: keep that call after the `match` on `box_fit`, on the
@@ -127,7 +127,7 @@ None.
 
 1. Read `Checker::step` and `Checker::pages` in
    `crates/assets/src/dialogue/check.rs`, and `add_lines` and `limit`
-   in `crates/assets/src/lang/lines.rs`. Check whether 2250 and 2302
+   in `crates/assets/src/lang/lines.rs`. Check whether 2252 and 2302
    are done (the clauses above).
 2. Add `BoxFit` and `box_fit` beside `lines_at_longest` in
    `check.rs`, with a doc comment.
@@ -140,7 +140,7 @@ None.
    and its unit test if nothing else calls it, and import `box_fit`
    from `crate::dialogue` (re-export it there as `pub(crate)` if the
    module path needs it).
-5. Settle the 2250 and 2302 clauses with what is done.
+5. Settle the 2252 and 2302 clauses with what is done.
 6. Write the tests below, and run the gates.
 
 ## Acceptance criteria
