@@ -1,6 +1,7 @@
 //! Scripts: each step's check, `wait_frames`, `press_for`, each step's
 //! frames in the plan, and how its errors name the step.
 
+use shuyi_ui::input::state::Device;
 use shuyi_ui::input::{Key, RepeatDef};
 use shuyi_ui::toy::{self, Toy};
 
@@ -283,6 +284,20 @@ fn the_harness_plays_a_script_as_its_own_presses() {
     assert_eq!(by_script.frame_count(), 2 + 3 + 2 + 1);
     assert_eq!(by_script.screens(), by_hand.screens());
     assert_eq!(by_script.snapshot(), by_hand.snapshot());
+}
+
+#[test]
+fn a_script_presses_buttons_on_the_harnesss_pad() {
+    let kind = PadKind::ALL
+        .iter()
+        .copied()
+        .find(|k| *k != PadKind::default())
+        .unwrap();
+    let mut h = Harness::new(toy::game());
+    h.use_pad(kind);
+    Script::new(vec![pad("DpadDown")]).play(&mut h);
+    // A bound button's press switches the player's device to its pad.
+    assert_eq!(h.game().input().device(), Device::Pad(kind));
 }
 
 #[test]

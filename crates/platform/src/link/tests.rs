@@ -27,6 +27,8 @@ struct Build<G: GameData> {
     server: Server,
     /// Every answer sent, in order.
     sent: Vec<String>,
+    /// The input the server gave each frame, in order.
+    inputs: Vec<Vec<RawInputEvent>>,
 }
 
 impl<G: GameData> Build<G> {
@@ -36,6 +38,7 @@ impl<G: GameData> Build<G> {
             platform: HeadlessPlatform::new(),
             server: Server::new(TOKEN.to_owned(), "Toy".to_owned()),
             sent: Vec::new(),
+            inputs: Vec::new(),
         };
         let hello = build.send(&hello(VERSION));
         assert!(matches!(hello, Handled::Answer(_)), "{hello:?}");
@@ -58,6 +61,7 @@ impl<G: GameData> Build<G> {
         let mut events = Vec::new();
         self.server.input(&self.app, &mut events);
         self.platform.push_input(&events);
+        self.inputs.push(events);
         let _ = self.app.frame_after(&mut self.platform, FRAME_DT);
         let due = self.server.after_frame(&self.app);
         self.sent.extend(due);
@@ -358,7 +362,6 @@ fn harness_play_on(game: Game<Toy>, steps: &[Step]) -> Harness<Toy> {
 fn plays_as_the_harness(steps: &[Step]) {
     let h = harness_play(steps);
     let mut b = toy_build();
-    assert!(b.app.record());
     let answer = b.play(steps.to_vec());
     let Answer::Played(played) = answer else {
         panic!("{answer:?}");
@@ -370,14 +373,20 @@ fn plays_as_the_harness(steps: &[Step]) {
         unreachable!()
     };
     assert_eq!((frame, limit), (h.snapshot(), None));
-    let inputs = |app: &mut App<Toy>| -> Vec<Vec<RawInputEvent>> {
-        let record = app.take_session().unwrap();
-        record.frames.into_iter().map(|frame| frame.input).collect()
-    };
-    let mut recorded = Harness::new(toy::game());
-    assert!(recorded.app_mut().record());
+    // The Harness's frames of the script, as its session record holds
+    // them (a record of a real start, after its card's and load's frames).
+    let start = Start::new(Card::text("Toy"), look, |setup| {
+        Ok(toy::game_on(setup.ctx(toy::ctx())))
+    });
+    let mut recorded = Harness::start_recording(start).unwrap_or_else(|e| panic!("{e}"));
+    let started = recorded.session().unwrap().frames.len();
     Script::new(steps.to_vec()).play(&mut recorded);
-    assert_eq!(inputs(&mut b.app), inputs(recorded.app_mut()));
+    let record = recorded.session().unwrap();
+    let played: Vec<Vec<RawInputEvent>> = record.frames[started..]
+        .iter()
+        .map(|frame| frame.input.clone())
+        .collect();
+    assert_eq!(b.inputs, played);
 }
 
 #[test]

@@ -287,3 +287,27 @@ proptest! {
         prop_assert_eq!(read.frames(&keymap()).unwrap().len(), total);
     }
 }
+
+#[test]
+fn what_isnt_a_step_says_what_one_is() {
+    use serde::de::IntoDeserializer;
+    use serde::de::value::Error;
+    let flag = PlanStep::deserialize(IntoDeserializer::<Error>::into_deserializer(true));
+    let error = flag.unwrap_err().to_string();
+    assert!(
+        error.contains("a plan's step: keys, pad, act, wait or capture"),
+        "{error}"
+    );
+    let named_by_number = PlanStep::deserialize(IntoDeserializer::<Error>::into_deserializer(5u32));
+    let error = named_by_number.unwrap_err().to_string();
+    assert!(error.contains("a step's name"), "{error}");
+    let read: PlanStep = serde_json::from_str(r#"{"capture": "title"}"#).unwrap();
+    assert_eq!(read, PlanStep::Capture("title".to_owned()));
+}
+
+#[test]
+fn a_wait_of_the_longest_is_planned() {
+    let most = plan(&format!("wait({MAX_WAIT})")).unwrap();
+    let frames = most.frames(&keymap()).unwrap();
+    assert_eq!(frames.len(), 36_000);
+}
