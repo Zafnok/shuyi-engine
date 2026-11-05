@@ -1223,6 +1223,25 @@ fn a_suspended_frame_makes_no_record_and_its_time_is_no_wait() {
 }
 
 #[test]
+fn a_paused_frame_makes_no_record_and_never_reads_the_clock() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    app.background = Background::KEEP_RUNNING.paused();
+    let mut p = clocked();
+    let _ = app.frame(&mut p, Millis(0));
+    // The frame that loses focus started measured, and makes no record.
+    p.push_system(SystemEvent::FocusLost);
+    let _ = app.frame(&mut p, Millis(16));
+    let reads = clock_reads(&app);
+    let _ = app.frame(&mut p, Millis(32));
+    let _ = app.frame(&mut p, Millis(48));
+    assert!(app.is_paused());
+    assert_eq!(clock_reads(&app), reads);
+    let frames: Vec<_> = app.perf().records().map(|r| r.frame).collect();
+    assert_eq!(frames, [1]);
+}
+
+#[test]
 fn the_frames_after_a_quit_make_no_record() {
     let (game, _) = steps_game();
     let mut app = App::running(game);
