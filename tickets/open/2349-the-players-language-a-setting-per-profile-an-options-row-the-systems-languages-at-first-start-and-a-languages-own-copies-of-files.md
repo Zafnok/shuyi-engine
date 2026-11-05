@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2226", "2511"]
+blocked_by: ["2226", "2253", "2511"]
 nick_input: none
 completed:
 ---
@@ -69,7 +69,8 @@ and Unreal 5.8.
     `LangPackRon::decode` in `lang/formats.rs`). A language has no copy
     of any other file.
 - **Builds on 2226:** tags such as `pt-BR`, `LangCode::parse`,
-  `Lang::chain`, `best_match` and the source language (`SourceLang`).
+  `Lang::chain` and the source language (`SourceLang`); **and on 2253:**
+  `best_match`.
   **And on 2511** (MVP): the blank template's saved form is the
   engine's `()` form.
 - **Outside tactics:** a farming game's shop sign drawn as a picture of
@@ -112,7 +113,7 @@ engine gives the pieces and a default, and the game chooses.
   1. `Settings::language`, when the player picked one;
   2. else the game's policy, `GameData::first_language(&self) ->
      FirstLanguage` (`FirstLanguage` in `crates/ui/src/settings.rs`):
-     - `FirstLanguage::System`, the default: `best_match` (2226) of the
+     - `FirstLanguage::System`, the default: `best_match` (2253) of the
        system's languages among the source and the packs, else the
        source;
      - `FirstLanguage::Source`: the source, until the player picks;

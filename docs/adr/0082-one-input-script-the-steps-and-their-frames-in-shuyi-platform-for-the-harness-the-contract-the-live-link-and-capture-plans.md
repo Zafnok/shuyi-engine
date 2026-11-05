@@ -1,4 +1,4 @@
-# ADR-0080: One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans
+# ADR-0082: One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans
 
 - **Status:** Accepted; amends ADR-0047 §7 (the link's steps and waits)
   and ADR-0052 (a plan's input steps)

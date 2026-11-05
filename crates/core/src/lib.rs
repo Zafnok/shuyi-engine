@@ -1,5 +1,6 @@
 //! Shuyi Engine's core: the seeded RNG, timers in steps or turns
-//! ([`timer`]), the simulation traits (turns, [`TurnRules`], and fixed
+//! ([`timer`]), ease curves and tweens drawn from the time alone, in
+//! integers ([`ease`]: [`Ease`], [`Tween`], [`Lerp`]), the simulation traits (turns, [`TurnRules`], and fixed
 //! steps in time, [`tick`]: [`TickSim`], its input, its records and their
 //! [`replay`](tick::replay)), a toy one for the engine's tests (`toy`, with
 //! the `toy` feature) and the tactics kit (a square grid, paths over it, the tiles each piece can
@@ -32,6 +33,7 @@ extern crate alloc;
 
 pub mod bots;
 pub mod character;
+pub mod ease;
 pub mod grid;
 pub mod hash;
 pub mod history;
@@ -54,6 +56,7 @@ pub use bots::{
     play_observed, ranked_order,
 };
 pub use character::CharacterId;
+pub use ease::{Ease, Easing, Family, Lerp, Tween};
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};
 pub use hash::{HashError, StateHash, state_hash};
 pub use history::{History, NoSuchPoint, Replayed};

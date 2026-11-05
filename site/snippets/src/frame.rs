@@ -4,7 +4,7 @@
 //! skin that paints a picture's pixels itself, a plasma moving with the
 //! steps.
 
-use shuyi::core::TurnRules;
+use shuyi::core::{Ease, Family, TurnRules, Tween};
 use shuyi::prelude::*;
 use shuyi::ui::frame::{Layer, Painted, PaintedId, PaintedSprite};
 
@@ -88,6 +88,18 @@ pub fn paint_garden(view: &GardenView, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
 }
 // ANCHOR_END: skin
 
+// ANCHOR: tween
+/// How a new sprout comes up: from 8 pixels below its plot to its place in
+/// 300 milliseconds, a little past and back, eased out with a "back".
+pub const SPROUT_RISE: Tween<i32> = Tween::new(8, 0, 300).with_ease(Ease::Out(Family::Back));
+
+/// How many pixels below its plot a sprout planted `ms` milliseconds ago is
+/// drawn: worked out from the time alone, so nothing has to update it.
+pub fn sprout_offset(ms: u32) -> i32 {
+    SPROUT_RISE.value_at(ms)
+}
+// ANCHOR_END: tween
+
 // ANCHOR: plasma
 /// The plasma's name among the frame's pictures.
 pub const PLASMA: PaintedId = PaintedId::new("plasma");
@@ -145,6 +157,26 @@ mod tests {
         assert!(frame.contains("9 seeds left"), "{frame}");
     }
     // ANCHOR_END: test_look
+
+    // ANCHOR: test_tween
+    #[test]
+    fn a_sprout_rises_past_its_place_and_settles() {
+        assert_eq!(sprout_offset(0), 8);
+        // Over half the way up in a sixth of the time, then a pixel past.
+        assert_eq!(sprout_offset(50), 3);
+        assert_eq!(sprout_offset(200), -1);
+        assert_eq!(sprout_offset(300), 0);
+        assert_eq!(sprout_offset(5000), 0);
+        // "It landed": true in exactly one frame, given the last frame's
+        // time and this one's.
+        let frames = [0, 16, 33, 150, 290, 307, 323];
+        let landed = frames
+            .windows(2)
+            .filter(|w| SPROUT_RISE.finished_between(w[0], w[1]))
+            .count();
+        assert_eq!(landed, 1);
+    }
+    // ANCHOR_END: test_tween
 
     // ANCHOR: test_plasma
     #[test]

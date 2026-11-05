@@ -171,14 +171,17 @@ None.
     every `p`. `Tween`'s defaulted `ease` needs it;
   - `points(&self) -> &[(u16, i32)]` reads the list back;
   - it derives `Debug`, `Clone`, `PartialEq`, `Eq` and `Hash`.
-- **2109's `Tween` with a curve of a game's own.** 2109 says that after
+- **From 2109 (done): its `Tween` with a curve of a game's own.** After
   its last play a tween holds "the value that play ended on", which for
-  a `Points` curve that ends at `y = 0` is `from`. Check that
-  `Tween::value_at` computes that end value through the curve
-  (`T::mix(from, to, ease.ease(ONE))`, and the mirror of it after a
-  yoyo play), not as `to` written out. If it writes `to`, change it:
-  every `Ease` gives exactly `ONE` there (2109's criteria), so no
-  `Ease` value and no test of 2109 changes.
+  a `Points` curve that ends at `y = 0` is `from`. 2109's
+  `Tween::value_at` computes it through the curve already
+  (`T::mix(from, to, ease.ease(ONE))`, and `ease.ease(0)` after an even
+  number of yoyo plays); add a test with a `Points` curve that ends at
+  0. Its builders `with_delay`, `with_repeat` and `with_yoyo` are
+  `const fn`s that ask for `T: Copy` and `E: Copy` (a `const fn` can't
+  drop a part of a generic value on stable Rust, ADR-0080), so a
+  `Tween<T, Points>` calls them before `with_ease(points)`, as the
+  squash doctest should show, or assigns the fields.
 - **Public types (ADR-0039):** `Sequence` and `Points` keep their
   fields private (kind 8: `Points` keeps the rules above, and
   `Sequence` is built step by step). `SequenceStep` and `PointsError`

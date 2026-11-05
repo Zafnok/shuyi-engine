@@ -400,7 +400,7 @@ fn lines_and_scenes_in_a_language() {
     );
     // English, an unknown code, an unknown key.
     assert_eq!(
-        lang.line(&LangCode::english(), &shut, "The gate is shut.", "a"),
+        lang.line(&LangCode::default(), &shut, "The gate is shut.", "a"),
         "The gate is shut."
     );
     assert_eq!(
@@ -554,8 +554,8 @@ fn from_files_reads_data_and_dialogue() {
         "Corde"
     );
     assert_eq!(lang.source(), &source());
-    assert_eq!(lang.english("items.rope.name"), Some("Rope"));
-    assert_eq!(lang.english(&id("Gone.")), Some("Gone."));
+    assert_eq!(lang.source_text("items.rope.name"), Some("Rope"));
+    assert_eq!(lang.source_text(&id("Gone.")), Some("Gone."));
     // Without the data, a pack's data and dialogue are left out.
     let lang = from_files(&files, None, str::to_owned, &RULES).unwrap();
     assert_eq!(lang.source(), &SourceText::default());

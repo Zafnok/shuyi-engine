@@ -12,6 +12,7 @@ use alloc::collections::BTreeMap;
 use core::any::TypeId;
 
 use shuyi_assets::palette::PaletteDef;
+use shuyi_core::Lerp;
 
 /// A 24-bit RGB colour. Ordered red, then green, then blue: an order for
 /// maps, not a look.
@@ -68,6 +69,19 @@ impl Rgb {
     /// Lowercase `#rrggbb`.
     pub fn to_hex(self) -> String {
         shuyi_assets::palette::format_hex([self.r, self.g, self.b])
+    }
+}
+
+/// Channel by channel, in integers: what a [`Tween`](shuyi_core::Tween) of
+/// a colour goes through. Past its ends each channel stops at 0 and 255.
+/// [`Rgb::lerp`] is the same in `f32`.
+impl Lerp for Rgb {
+    fn mix(from: Self, to: Self, p: i32) -> Self {
+        Rgb::new(
+            u8::mix(from.r, to.r, p),
+            u8::mix(from.g, to.g, p),
+            u8::mix(from.b, to.b, p),
+        )
     }
 }
 
@@ -531,6 +545,20 @@ pub(crate) mod tests {
         assert_eq!(a.lerp(b, -3.0), a);
         assert_eq!(a.lerp(b, 7.0), b);
         assert_eq!(a.lerp(b, f32::NAN), a);
+    }
+
+    #[test]
+    fn mix_is_lerp_in_integers_and_stops_at_the_channels_ends() {
+        use shuyi_core::ease::ONE;
+        let a = Rgb::new(0, 100, 255);
+        let b = Rgb::new(200, 0, 55);
+        assert_eq!(Rgb::mix(a, b, 0), a);
+        assert_eq!(Rgb::mix(a, b, ONE), b);
+        assert_eq!(Rgb::mix(a, b, ONE / 2), a.lerp(b, 0.5));
+        assert_eq!(Rgb::mix(a, b, ONE / 4), a.lerp(b, 0.25));
+        // An overshoot goes on in a line and stops at 0 and 255.
+        assert_eq!(Rgb::mix(a, b, -ONE / 10), Rgb::new(0, 110, 255));
+        assert_eq!(Rgb::mix(a, b, 11 * ONE / 10), Rgb::new(220, 0, 35));
     }
 
     #[test]

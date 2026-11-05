@@ -29,7 +29,9 @@ use crate::image::{
     png_header,
 };
 use crate::keymap::{KeymapDef, KeymapRon, sample};
-use crate::lang::{self, Lang, LangCode, LangFile, LangPack, LangPackRon, PackRules, SourceText};
+use crate::lang::{
+    self, Lang, LangCode, LangFile, LangPack, LangPackRon, PackRules, SourceLang, SourceText,
+};
 use crate::lighting::{self, LightingRon};
 use crate::names::{self, Names, NamesRon};
 use crate::onebit::{PatternMapDef, PatternMapRon};
@@ -914,7 +916,15 @@ fn a_language_packs_errors_name_its_files() {
     let bad_code = ("lang/x1/lang.ron", PACK_INFO.into());
     assert_eq!(
         pack(vec![english.clone(), bad_code], "lang/x1/lang.ron"),
-        ["base/lang/x1: a language's directory must be named with 2 to 8 lowercase letters"]
+        [
+            "base/lang/x1: name a language's folder by a BCP 47 tag (en, pt-BR, zh-Hans): a tag \
+          starts with its language, 2 to 8 letters, not \"x1\""
+        ]
+    );
+    let lower = ("lang/pt-br/lang.ron", PACK_INFO.into());
+    assert_eq!(
+        pack(vec![english.clone(), lower], "lang/pt-br/lang.ron"),
+        ["base/lang/pt-br: name a language's folder by its tag as BCP 47 writes it: pt-BR"]
     );
     let in_english = ("lang/en/lang.ron", PACK_INFO.into());
     let files = vec![english.clone(), info.clone(), ui.clone(), in_english];
@@ -948,8 +958,43 @@ fn a_language_packs_errors_name_its_files() {
     );
     assert_eq!(
         shown(read),
-        ["base/lang/xx/ui.ron: \"a.zero\": no such key in English"]
+        ["base/lang/xx/ui.ron: \"a.zero\": no such key in the source language (en)"]
     );
+}
+
+#[test]
+fn a_pack_of_a_game_written_in_japanese_is_checked_against_its_folder() {
+    let ja = SourceLang::new(LangCode::new("ja").unwrap(), "日本語");
+    let format = lang_pack().source_lang(ja);
+    let source = (
+        "lang/ja/ui.ron",
+        br#"{"a.one": "Ichi", "a.two": "Ni"}"#.to_vec(),
+    );
+    let info = ("lang/en/lang.ron", PACK_INFO.into());
+    let ui = (
+        "lang/en/ui.ron",
+        br#"[(key: "a.one", source: "Ichi", text: "One")]"#.to_vec(),
+    );
+    let files = bundle(vec![source.clone(), info.clone(), ui]);
+    let pack = bundled(&format, files, "lang/en/lang.ron").unwrap();
+    assert_eq!(pack.entry("a.one").map(|e| e.text.as_str()), Some("One"));
+    // The source's own folder is no pack, and a `lang.ron` there is refused.
+    let own = ("lang/ja/lang.ron", PACK_INFO.into());
+    assert_eq!(
+        shown(bundled(
+            &format,
+            bundle(vec![source, own]),
+            "lang/ja/lang.ron"
+        )),
+        ["base/lang/ja/lang.ron: not a file a language has: a pack is read from its lang.ron"]
+    );
+    // Without the source's folder, its screen text is missing.
+    let ui = ("lang/en/ui.ron", b"[]".to_vec());
+    assert_eq!(
+        shown(bundled(&format, bundle(vec![info, ui]), "lang/en/lang.ron")),
+        ["base/lang/ja/ui.ron: file not found in asset bundle"]
+    );
+    assert!(format!("{format:?}").contains("source: \"ja\""));
 }
 
 /// The English of a game's data: an item's name, and one scene's line,
@@ -1116,7 +1161,7 @@ fn the_formats_of_a_games_types_show_what_they_are() {
     assert_eq!(
         format!("{:?}", lang_pack().variants(&["a"])),
         format!(
-            "LangPackRon {{ limits: {LIMITS:?}, wide: {{}}, variants: [\"a\"], data: false, .. }}"
+            "LangPackRon {{ limits: {LIMITS:?}, wide: {{}}, variants: [\"a\"], data: false, source: \"en\", .. }}"
         )
     );
     let with_data = lang_pack().with_data(SourceText::default());

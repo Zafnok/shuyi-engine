@@ -79,5 +79,5 @@ fn frame_png_paints_what_the_harness_shows() {
     let usage = frame_png::usage("cargo shuyi", HelloTools.frame_options(), "");
     assert!(usage.contains("--tiles"), "{usage}");
     let lang = HelloTools.lang().unwrap();
-    assert_eq!(lang.lang.english("title.name"), Some("Hello, Grid"));
+    assert_eq!(lang.lang.source_text("title.name"), Some("Hello, Grid"));
 }

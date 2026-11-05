@@ -162,13 +162,24 @@ What each one reads:
   combining marks (write `é` as one character, U+00E9), no joining and
   no reordering. Right-to-left and shaped scripts (Arabic, Hebrew, Thai,
   Devanagari) aren't drawn.
-- **A language pack** is read from its `lang.ron`, in a directory named
-  by its code (`lang/fr/lang.ron`). With it come its `ui.ron`, checked
-  against English's beside it (`lang/en/ui.ron`), and its `data.ron` and
-  `dialogue/*.ron`, checked against the game's data text when the format
-  has it (`LangPackRon::with_data`) and left out otherwise. Any other file
-  in its directory is an error, except import settings files (below),
-  which are skipped. Its text is drawn as the font atlas's cells draw
+- **A language pack** is read from its `lang.ron`, in a folder named by
+  its BCP 47 tag as BCP 47 writes it (`lang/fr/lang.ron`,
+  `lang/pt-BR/lang.ron`, `lang/zh-Hans/lang.ron`; `lang::LangCode`):
+  the language in lower case, then a script in title case, a region in
+  upper case, variants and a private-use part (`en-x-pseudo`), at most
+  35 characters. A folder named another way (`pt-br`) is an error naming
+  the tag, so a file system that ignores case never makes it a second
+  language; extensions (`-u-`) and grandfathered tags aren't taken. With
+  it come its `ui.ron`, checked against the source language's beside it
+  (`lang/en/ui.ron`, or the folder of the source a game declares:
+  `lang::from_files_in`, `LangPackRon::source_lang`), and its `data.ron`
+  and `dialogue/*.ron`, checked against the game's data text when the
+  format has it (`LangPackRon::with_data`) and left out otherwise. Any
+  other file in its folder is an error, except import settings files
+  (below), which are skipped; the source's folder holds its `ui.ron`
+  only. A key a pack lacks, or has stale, shows from the pack of the
+  next shorter tag the game has (`pt-BR`, then `pt`), then from the
+  source (`Lang::chain`). Its text is drawn as the font atlas's cells draw
   text (above): left to right, a character a cell or two for a wide one,
   so a pack in a language the atlas has no glyphs for, or in a script
   that joins or reorders its letters, fails `check` or shows wrongly.
@@ -185,7 +196,8 @@ What each one reads:
   opening bracket (`「`), and never at a no-break space
   (`text::NO_BREAK_SPACE`, which joins the words of a key's name filled
   into a text).
-- **English's screen text** (`lang/en/ui.ron`) is a map of key to text.
+- **The source language's screen text** (`lang/en/ui.ron`, English
+  unless the game declares another) is a map of key to text.
   A key's value can instead be `(text: "Start", max_cells: 12, note:
   "The title menu's first item.")`: `max_cells`, how many cells wide the
   place its text is drawn in is (at least 1), and `note`, what a
@@ -193,7 +205,7 @@ What each one reads:
   never shown in the game; both are optional
   (`lang::english_and_places_from_source`, `Lang::max_cells`,
   `Lang::note`). A pack's `ui.ron` entry can't set either.
-  `lang-status <code>` lists the pack's entries wider than their key's
+  `lang-status <tag>` lists the pack's entries wider than their key's
   `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
   they fail no gate.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what

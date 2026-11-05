@@ -77,11 +77,11 @@ None.
 
 - **The generator, `shuyi_assets::lang::pseudo`** (`crates/assets/src/lang/pseudo.rs`,
   `no_std` with `alloc` like the rest of the crate):
-  - `pub const PSEUDO: &str = "qps"`, a valid `LangCode` today (2 to 8
-    lowercase letters; `qps` is in ISO 639's range for local use,
-    `qaa` to `qtz`). **Either order with 2226:** if 2226 is done, the
-    code is `qps-ploc`, the pseudo-locale tag Windows uses; if not,
-    `qps`, and 2226 renames it (its clause says so).
+  - `pub const PSEUDO: &str = "qps-Ploc"`, the pseudo-locale tag Windows
+    uses (`qps-ploc`), as a `LangCode` writes it (**from 2226, done:**
+    `qps` is in ISO 639's range for local use, `qaa` to `qtz`, and
+    `ploc`, four letters after the language, is a script subtag, so its
+    canonical case is `Ploc`; `LangCode::parse("qps-ploc")` gives it).
   - `pub fn pseudo_text(text: &str, can_draw: &dyn Fn(char) -> bool) -> String`:
     1. everything between `{` and `}` is copied as it is, as
        `shuyi_core::text::split_tokens` reads them (the rule
@@ -153,7 +153,7 @@ None.
     `--keys`, `--pad` and `--wait`, so `frame-png`, `run` and `scene`
     take it. It is a step like the others: every step after it plays in
     that language. In the contract's JSON script it is
-    `{"lang": "qps"}`, so the MCP server (1133) gets it too.
+    `{"lang": "qps-Ploc"}`, so the MCP server (1133) gets it too.
   - The contract's schema changes, so raise `contract::VERSION`,
     regenerate `crates/cli/schemas/` and add the line in
     `crates/cli/schemas/versions.json` (ADR-0022 §5).

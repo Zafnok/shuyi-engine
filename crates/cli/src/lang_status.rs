@@ -1,12 +1,13 @@
-//! `lang-status <code>`: what a language pack of the game lacks:
+//! `lang-status <tag>`: what a language pack of the game lacks:
 //! the **missing** keys (no entry), the **stale** ones (an entry made
-//! from English that has since changed) and the **orphaned** dialogue
+//! from source text that has since changed) and the **orphaned** dialogue
 //! entries (their line was reworded or cut, so it has a new id or none),
 //! each with the untranslated line of its scene nearest to what it
-//! translated. All show in English in the game and fail no gate; this
-//! lists them for whoever translates. After the screen text's missing and
+//! translated. All show in the game as a shorter tag's pack or the source
+//! language has them ([`Lang::chain`]) and fail no gate; this lists them
+//! for whoever translates. After the screen text's missing and
 //! stale keys come its entries **too long** for their place: wider than
-//! their key's `max_cells` in English's `ui.ron` ([`Lang::overflow`]),
+//! their key's `max_cells` in the source's `ui.ron` ([`Lang::overflow`]),
 //! measured with the font atlas's wide glyphs. They fail no gate either. Screen text comes first, then the
 //! data's, then the dialogue's, each with its counts. Test text (the
 //! `test*.dlg` scenes, data ids starting with `test`) is left out, and
@@ -160,7 +161,8 @@ impl Scope<'_> {
     }
 }
 
-/// The report for the pack `code` of `lang`, or why there is none.
+/// The report for the pack `code` of `lang` (a tag in any spelling
+/// [`LangCode::parse`] reads: `pt_br` is `pt-BR`), or why there is none.
 /// `variants` are a line's variants, in the pack files' order; `widths`
 /// measure the screen text against its places (the font atlas's,
 /// [`CellWidths::of`], or [`CellWidths::NARROW`]).
@@ -175,7 +177,7 @@ pub fn report<S: AsRef<str>>(
         let codes: Vec<&str> = lang.codes().map(LangCode::as_str).collect();
         format!("the packs are: {}", codes.join(", "))
     };
-    let code = LangCode::new(code).ok_or_else(|| format!("no language \"{code}\"; {}", known()))?;
+    let code = LangCode::parse(code).map_err(|_| format!("no language \"{code}\"; {}", known()))?;
     let (Some(pack), Some(status)) = (lang.pack(&code), lang.status(&code)) else {
         return Err(format!("no language pack \"{code}\"; {}", known()));
     };
@@ -247,8 +249,8 @@ pub fn report<S: AsRef<str>>(
             out.push_str("missing:\n");
         }
         for key in &missing {
-            let english = lang.english(key).unwrap_or_default();
-            let _ = writeln!(out, "  {key}\n    english: {english:?}");
+            let source = lang.source_text(key).unwrap_or_default();
+            let _ = writeln!(out, "  {key}\n    source: {source:?}");
         }
         if !stale.is_empty() {
             out.push_str("stale:\n");
@@ -257,7 +259,7 @@ pub fn report<S: AsRef<str>>(
             let entry = pack.entry(key).map(|e| &e.source);
             let was = entry.or_else(|| pack.line(key).map(|e| &e.source));
             let was = was.map_or("", String::as_str);
-            let now = lang.english(key).unwrap_or_default();
+            let now = lang.source_text(key).unwrap_or_default();
             let _ = writeln!(out, "  {key}\n    was: {was:?}\n    now: {now:?}");
         }
         if part == Part::Screen {
@@ -303,7 +305,7 @@ fn write_orphan<S: AsRef<str>>(out: &mut String, lang: &Lang, variants: &[S], or
     }
     match &orphan.nearest {
         Some(key) => {
-            let now = lang.english(key).unwrap_or_default();
+            let now = lang.source_text(key).unwrap_or_default();
             let _ = writeln!(out, "    nearest: {key}\n    now: {now:?}");
         }
         None => out.push_str("    nearest: no untranslated line in its scene\n"),
@@ -369,7 +371,7 @@ mod tests {
             report(&lang, "xx", &Options::default()).unwrap(),
             "lang-status xx (Xx, machine-made): 1 missing, 1 stale, 0 orphaned\n\
              screen text: 1 missing, 1 stale, 0 too long\n\
-             missing:\n  a.three\n    english: \"Three\"\n\
+             missing:\n  a.three\n    source: \"Three\"\n\
              stale:\n  a.two\n    was: \"Too\"\n    now: \"Two\"\n\
              data: 0 missing, 0 stale\n\
              dialogue: 0 missing, 0 stale, 0 orphaned\n"
@@ -452,6 +454,23 @@ mod tests {
         );
     }
 
+    /// A tag is read in any spelling: `pt-br` is the `pt-BR` pack.
+    #[test]
+    fn a_tag_in_another_spelling_names_its_pack() {
+        let english = english_from_source("en/ui.ron", r#"{"a.one": "One"}"#).unwrap();
+        let info = r#"(name: "Português do Brasil", made_by: Machine)"#;
+        let pack = pack_from_sources(("l", info), ("u", "[]"), &english, &RULES).unwrap();
+        let packs = BTreeMap::from([(LangCode::new("pt-BR").unwrap(), pack)]);
+        let lang = Lang::new(english, packs);
+        for spelling in ["pt-br", "pt_BR.UTF-8", "PT-BR"] {
+            let said = report(&lang, spelling, &Options::default()).unwrap();
+            assert!(
+                said.starts_with("lang-status pt-BR (Português do Brasil, machine-made)"),
+                "{said}"
+            );
+        }
+    }
+
     /// The scenes of `files` (path and text), each knowing its file.
     fn table(files: &[(&str, &str)]) -> DialogueTable {
         let mut table = DialogueTable::default();
@@ -528,7 +547,7 @@ mod tests {
                  screen text: 0 missing, 0 stale, 0 too long\n\
                  data: 0 missing, 0 stale\n\
                  dialogue: 1 missing, 0 stale, 2 orphaned\n\
-                 missing:\n  {new_id}\n    english: \"The gate is barred.\"\n\
+                 missing:\n  {new_id}\n    source: \"The gate is barred.\"\n\
                  orphaned:\n  {gate}\n    was: \"The gate is shut.\"\n    \
                  text: \"THE GATE IS SHUT.\"\n    \
                  nearest: {new_id}\n    now: \"The gate is barred.\"\n  \
@@ -623,7 +642,7 @@ mod tests {
         assert_eq!(
             ui,
             "lang-status xx (Xx, machine-made): 1 missing, 0 stale, 0 orphaned\n\
-             screen text: 1 missing, 0 stale, 0 too long\nmissing:\n  a.one\n    english: \"One\"\n"
+             screen text: 1 missing, 0 stale, 0 too long\nmissing:\n  a.one\n    source: \"One\"\n"
         );
         let data = report(&lang, "xx", &only(Part::Data)).unwrap();
         assert!(data.contains("\ndata: 0 missing, 0 stale\n"), "{data}");

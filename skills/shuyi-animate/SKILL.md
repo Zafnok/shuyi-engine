@@ -1,6 +1,6 @@
 ---
 name: shuyi-animate
-description: Motion in a game on Shuyi Engine, drawn from the time alone by the skin and never by the rules. It covers what exists today (sprites cut from a sheet, a grid walk shown at the player's speed, text typing out, the hurry clock, idle motion, cinematic pans and eases). Animation clips as data and particles aren't built yet. Use when something on screen should move, blink, walk or type out, or when a test needs any moment of a motion. Not for a stage that moves in real time (shuyi-stage-field) or timed shots set to music (shuyi-cinematic).
+description: Motion in a game on Shuyi Engine, drawn from the time alone by the skin and never by the rules. It covers what exists today (sprites cut from a sheet, a grid walk shown at the player's speed, text typing out, the hurry clock, idle motion, ease curves and tweens, cinematic pans). Animation clips as data and particles aren't built yet. Use when something on screen should move, blink, walk or type out, or when a test needs any moment of a motion. Not for a stage that moves in real time (shuyi-stage-field) or timed shots set to music (shuyi-cinematic).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -54,9 +54,50 @@ a worked example. Until then, use what is below.
 - **Idle motion.** `ctx.idle_motion` (`IdleMotion::On` or `Off`) says
   whether a screen left alone may move its decoration. A screen that
   sways or twinkles on its own checks it first.
-- **Eases and pans.** The cinematic player's `ease_in_out` and `Pan`
-  (a picture moved across the frame's backdrop) work outside a
-  cinematic too (`shuyi-cinematic`).
+- **Ease curves and tweens.** `shuyi_core::ease`: a value from one
+  end to another over a time, along a named curve (below).
+- **Pans.** The cinematic player's `Pan` (a picture moved across the
+  frame's backdrop) works outside a cinematic too (`shuyi-cinematic`).
+
+## Ease curves and tweens
+
+A `Tween` is a value going from `from` to `to` over `duration`, along
+an `Ease`, drawn from the time since it started alone: it stores no
+progress, so nothing updates it.
+
+```rust
+use shuyi_core::{Ease, Family, Tween};
+
+// A score that pops: 6 pixels up in 300 ms, a little past, and back.
+const POP: Tween<i32> = Tween::new(0, -6, 300).with_ease(Ease::Out(Family::Back));
+let y = POP.value_at(ms_since_the_score_changed);
+```
+
+- **The curves** are easings.net's and Godot's names: `Linear`,
+  `Smooth`, `Steps(n)`, and a `Family` (`Sine`, `Quad`, `Cubic`,
+  `Quart`, `Quint`, `Expo`, `Circ`, `Back`, `Elastic`, `Bounce`) eased
+  `In`, `Out`, `InOut` or `OutIn`. `easeInOutCubic` is
+  `Ease::InOut(Family::Cubic)`, and in RON `InOut(Cubic)`. `Back` and
+  `Elastic` overshoot. The module docs name each beside Godot's,
+  Bevy's and Defold's.
+- **The time is a `u32` in your unit:** whole milliseconds in a screen
+  (keep the millisecond it started), steps or turns in the rules. A
+  screen's time comes in seconds, so it counts its own milliseconds.
+  The curves are integers, so the rules can tween too: store the tween
+  and the step it started on.
+- **More of it:** `with_delay`, `with_repeat(Repeat::Times(3))` or
+  `Repeat::Loop` (`shuyi_core::ease::Repeat`), and `with_yoyo(true)` to
+  come back each second play.
+- **"It landed"**: `tween.finished_between(prev, now)`, given the last
+  frame's time and this one's, is true once. Keep no flag.
+- **What it can move** is any `Lerp` type: `i32`, `i64`, `u8`, `u16`,
+  `u32`, `(i32, i32)` and a colour, `Rgb`. A type of your own
+  implements `Lerp::mix`.
+- **A skin in floats** eases a fraction through
+  `shuyi_ui::ease::ease_f32(&Ease::Smooth, p)`, the same curve.
+- **Tweens are data:** `(from: 0, to: 10, duration: 300, ease:
+  Out(Back))` in a game's RON file reads into a `Tween<i32>`; left-out
+  fields take their defaults.
 
 ## Steps
 

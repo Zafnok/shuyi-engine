@@ -183,12 +183,13 @@ CSV is needed too (see *Out*).
   `Lang` (`Lang::note(key)`, `Lang::max_cells(key)`), never shown in the
   game; a pack can't set either. Write both into the PO file's
   comments.
-- **If 2226 is done** (language tags and a source language the game
+- **From 2226 (done)** (language tags and a source language the game
   declares): `msgid` is the source language's text
-  (`Lang::source_text`), `#:` names `<source tag>/ui.ron`, `Language:`
-  is the pack's tag with `_` for `-` as gettext writes it (`pt_BR`), and
-  both commands read a tag with `LangCode::parse`. If not, nothing
-  here: 2226 does it (its clause says so).
+  (`Lang::source_text`), `#:` names `<source tag>/ui.ron`
+  (`Lang::source_lang().code`), `Language:` is the pack's tag with `_`
+  for `-` as gettext writes it (`pt_BR`), and both commands read a tag
+  with `LangCode::parse`, so a PO saved with `Language: pt_BR` matches
+  the folder `pt-BR`.
 - **If 2351 is done** (the engine's own English): a screen-text key
   whose English is the engine's (`Lang::is_engine`) goes out as a `ui`
   entry with `#: engine`. If not, nothing here (2351 does it, as its

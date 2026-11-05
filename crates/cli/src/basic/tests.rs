@@ -98,7 +98,7 @@ fn the_frame_is_the_first_screen_painted_with_the_games_font() {
 fn the_text_and_check_come_from_the_files() {
     let lang = tools(GOOD).lang().unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(
-        lang.lang.english("title.subtitle"),
+        lang.lang.source_text("title.subtitle"),
         Some("made with Shuyi Engine")
     );
     assert!(lang.variants.is_empty(), "{:?}", lang.variants);
