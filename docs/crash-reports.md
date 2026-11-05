@@ -110,6 +110,13 @@ Stack overflows, aborts, running out of memory and faults in native code end
 the game without a panic, and write nothing. A panic the engine catches on
 purpose (a music file that fails to decode) is not a crash.
 
+A panic the game survives still writes a report. On a Linux machine with no
+sound card the sound library's own threads panic as the game starts, and the
+game runs on without sound; their reports say why, and the next start offers the
+newest of them as the last crash. A game that shows a notice may read the report
+at `last_crash.key` from its storage (`CrashReport::parse`) and check its
+`thread` first.
+
 ## Trying it
 
 `SHUYI_PANIC_AT_FRAME=<n>` panics at frame `n` on purpose, on desktop, in any

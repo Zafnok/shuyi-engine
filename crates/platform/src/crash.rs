@@ -172,13 +172,8 @@ impl CrashReport {
 
 /// `text` cut at `bytes` bytes, at the last whole character that fits.
 fn cut(text: &mut String, bytes: usize) {
-    if text.len() <= bytes {
-        return;
-    }
-    let mut end = bytes;
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
+    // At or past its end, the boundary is its end: nothing is cut.
+    let end = text.floor_char_boundary(bytes);
     text.truncate(end);
 }
 

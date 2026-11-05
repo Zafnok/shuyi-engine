@@ -298,14 +298,18 @@ jobs:
             echo "::error::hello-grid exited $code after a panic on purpose, not 101"
             exit 1
           fi
-          reports=("$data"/shuyi-hello-grid/crash-*.ron)
-          if [ "${#reports[@]}" != 1 ] || [ ! -f "${reports[0]}" ]; then
-            echo "::error::not one crash report under $data: ${reports[*]}"
+          # The runner has no sound card, so quad-snd's own threads panic
+          # too ("Can't open PCM device") and write reports of their own:
+          # exactly one report is the panic on purpose.
+          mapfile -t reports < <(grep -l 'message: "a panic on purpose (SHUYI_PANIC_AT_FRAME)"' "$data"/shuyi-hello-grid/crash-*.ron)
+          if [ "${#reports[@]}" != 1 ]; then
+            echo "::error::not one report of the panic on purpose under $data: ${reports[*]}"
+            ls -l "$data"/shuyi-hello-grid
             exit 1
           fi
           cat "${reports[0]}"
-          grep -q 'message: "a panic on purpose (SHUYI_PANIC_AT_FRAME)"' "${reports[0]}"
           grep -q 'frame: 3,' "${reports[0]}"
+          grep -q 'thread: Some("main"),' "${reports[0]}"
           grep -q 'top_screen: Some("title"),' "${reports[0]}"
           grep -q 'record: None,' "${reports[0]}"
       - name: The captures in the summary

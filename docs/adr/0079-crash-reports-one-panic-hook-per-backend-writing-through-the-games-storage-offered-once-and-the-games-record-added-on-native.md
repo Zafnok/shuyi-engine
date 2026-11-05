@@ -137,6 +137,10 @@ so a playback offers it again and plays the same.
 - Stack overflows, aborts, running out of memory and faults in native code
   end the process without a panic hook: they leave no report. No
   minidumps.
+- A panic on a thread the game survives writes a report too: on a Linux
+  machine with no sound card quad-snd's own threads panic at the start,
+  and the next start offers that report as the last crash. 3095 keeps
+  such reports but offers only the panics that ended the game.
 - The web's report has no record, and on the web the hook's storage
   shares `localStorage`'s quota with the saves, hence one report kept.
 - `run` installs a process-wide hook: a game that sets its own hook after

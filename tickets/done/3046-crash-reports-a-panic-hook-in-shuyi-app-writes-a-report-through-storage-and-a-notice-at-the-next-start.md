@@ -462,6 +462,12 @@ Deviations:
   `target: "windows x86_64 release"`, its backtrace all `<unknown>`
   (the stripped binary, as the ticket expects until 2520).
 
+CI found that on a machine with no sound card quad-snd's own threads
+panic as the game starts; the hook reports them, and the next start
+offers them as the last crash though the game ran on. The `render` step
+checks the report of the panic on purpose among them, and 3095 keeps
+such reports from being offered as crashes.
+
 Settled: 3012's and 3041's clauses on 3046 now say what holds
 (`From 3046 (done)`); 2512 names 3094 back.
 

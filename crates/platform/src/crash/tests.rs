@@ -91,11 +91,29 @@ fn an_older_report_without_the_optional_fields_still_reads() {
 }
 
 #[test]
+fn the_limits_are_their_sizes() {
+    assert_eq!(MESSAGE_BYTES, 4_096);
+    assert_eq!(BACKTRACE_BYTES, 32_768);
+    assert_eq!((LOG_LINES, LOG_LINE_BYTES), (200, 1_024));
+    assert_eq!(RECORD_BYTES, 1_048_576);
+    assert_eq!(TEXT_BYTES, 2_097_152);
+}
+
+#[test]
 fn text_over_the_limit_is_not_read() {
     let mut report = CrashReport::new(1, "boom");
     report.backtrace = "x".repeat(TEXT_BYTES);
     let error = CrashReport::parse(&report.to_text()).unwrap_err();
     assert!(error.contains("over"), "{error}");
+}
+
+#[test]
+fn text_of_the_limit_exactly_is_read() {
+    let report = full();
+    let mut text = report.to_text();
+    text.push_str(&" ".repeat(TEXT_BYTES - text.len()));
+    assert_eq!(text.len(), TEXT_BYTES);
+    assert_eq!(CrashReport::parse(&text), Ok(report));
 }
 
 #[test]
@@ -108,8 +126,12 @@ fn every_cut_of_a_report_reads_or_errs() {
 
 #[test]
 fn the_message_backtrace_and_log_are_cut_to_their_limits() {
-    let mut report = CrashReport::new(1, "é".repeat(MESSAGE_BYTES));
-    assert!(report.message.len() <= MESSAGE_BYTES && report.message.len() > MESSAGE_BYTES - 2);
+    // The limit falls inside an `é`: the cut is at the character before.
+    let mut report = CrashReport::new(1, format!("a{}", "é".repeat(MESSAGE_BYTES)));
+    assert_eq!(report.message.len(), MESSAGE_BYTES - 1);
+    assert!(report.message.ends_with('é'));
+    let whole = CrashReport::new(1, "m".repeat(MESSAGE_BYTES));
+    assert_eq!(whole.message.len(), MESSAGE_BYTES);
     report.backtrace = "b".repeat(BACKTRACE_BYTES + 5);
     report.log = (0..LOG_LINES + 3).map(|i| format!("{i}")).collect();
     report.log.push("l".repeat(LOG_LINE_BYTES * 2));
