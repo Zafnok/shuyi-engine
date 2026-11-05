@@ -67,7 +67,7 @@ fn painted(kit: &Kit, skin: &SpriteSkin, scene: &MapScene<Piece>) -> GlyphBuffer
 pub(crate) fn rect_at(buf: &GlyphBuffer, i: usize) -> Overlay {
     match buf.items()[i] {
         Item::Rect(o) => o,
-        Item::Sprite(s) => panic!("item {i} is a sprite: {s:?}"),
+        other => panic!("item {i} isn't a rectangle: {other:?}"),
     }
 }
 
@@ -75,7 +75,7 @@ pub(crate) fn rect_at(buf: &GlyphBuffer, i: usize) -> Overlay {
 pub(crate) fn sprite_at(buf: &GlyphBuffer, i: usize) -> Sprite {
     match buf.items()[i] {
         Item::Sprite(s) => s,
-        Item::Rect(o) => panic!("item {i} is a rectangle: {o:?}"),
+        other => panic!("item {i} isn't a sprite: {other:?}"),
     }
 }
 
@@ -267,6 +267,7 @@ fn at_twice_the_zoom_everything_is_twice_the_size() {
                 base: sprite.base.map(double),
                 ..sprite
             }),
+            other => panic!("the grid painted {other:?}"),
         };
         assert_eq!(*two, expected);
     }
@@ -405,6 +406,7 @@ fn the_path_runs_under_the_pieces_and_its_arrowhead_over_them() {
             Item::Sprite(_) => "tile",
             Item::Rect(o) if o.color == path => "path",
             Item::Rect(_) => "under",
+            _ => "other",
         })
         .collect();
     // Four tiles; what lies under the piece; the line; the piece; the
@@ -498,7 +500,7 @@ fn what_lies_over_the_units_is_painted_under_the_cursor() {
         let cursor = looks.cursor(&GLYPH.colors);
         let cursor_marks = with.items()[n..].iter().filter(|i| match i {
             Item::Rect(o) => o.color == cursor,
-            Item::Sprite(_) => false,
+            _ => false,
         });
         assert!(cursor_marks.count() > 0, "{name}");
     }
@@ -708,6 +710,7 @@ fn without_terrain_tiles_the_ground_is_the_glyph_skins() {
             Item::Rect(o) if o.color == path => "path",
             Item::Rect(o) if o.color == cursor => "cursor",
             Item::Rect(_) => "under",
+            _ => "other",
         })
         .collect();
     let mut expect = vec!["under", "path", "card"];

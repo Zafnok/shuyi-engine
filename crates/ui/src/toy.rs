@@ -7,13 +7,15 @@
 //! images, two lights, and its screens: [`Home`], the [`Menu`] over it,
 //! the layout [`Picker`] the first key opens, the [`Gallery`] of pictures
 //! the Debug key opens ([`hooks`]), a grid map's stage
-//! ([`grid::Field`]), and a stage that steps core's toy tick simulation
-//! ([`tick::DotStage`]).
+//! ([`grid::Field`]), a stage that steps core's toy tick simulation
+//! ([`tick::DotStage`]), and a stage whose skin paints pictures at run time
+//! ([`plasma::PlasmaStage`]).
 //!
 //! Built for this crate's tests and, with the `toy` feature, for its
 //! integration tests.
 
 pub mod grid;
+pub mod plasma;
 pub mod tick;
 
 use crate::prelude::*;

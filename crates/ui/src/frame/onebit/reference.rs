@@ -5,13 +5,16 @@
 //! the two, and the Playdate's bench build (`cargo xtask playdate --bench`)
 //! times both on the device. Never drawn by the game.
 
+use shuyi_assets::bitmap::dither::brightness;
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::ink::Ink;
 
 use super::{
-    Font, Frame, HEIGHT, Image, Images, InkShades, Phase, ROW_BYTES, Shade, Shades, WIDTH,
+    Font, Frame, HEIGHT, Image, Images, InkShades, Phase, Placed, ROW_BYTES, Shade, Shades, WIDTH,
+    alpha_drawn, darken,
 };
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::painted::{PaintedKind, PaintedSprite, PaintedTable};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
 pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
@@ -73,11 +76,12 @@ pub fn render_marked_with(
             y: window.y0 + dy,
             scale: i64::from(backdrop.zoom()),
         };
-        let look = (font, images, shades);
+        let look = (font, images, shades, buf.pictures());
         draw_layers(&mut scene, backdrop.scene(), at, look, &mut |_| {});
     }
     mark(Phase::Backdrop);
-    draw_layers(&mut target, buf, place, (font, images, shades), mark);
+    let look = (font, images, shades, buf.pictures());
+    draw_layers(&mut target, buf, place, look, mark);
 }
 
 /// The eight pixels of screen row `y` that `shade` paints in a byte.
@@ -238,8 +242,9 @@ impl Target<'_> {
     }
 }
 
-/// The font, the pictures and the colours' shades.
-type Look<'a, I, S> = (&'a Font<'a>, &'a I, &'a S);
+/// The font, the pictures, the colours' shades and the frame's painted
+/// pictures.
+type Look<'a, I, S> = (&'a Font<'a>, &'a I, &'a S, &'a PaintedTable);
 
 fn draw_layers<I: Images, S: Shades>(
     target: &mut Target<'_>,
@@ -248,7 +253,7 @@ fn draw_layers<I: Images, S: Shades>(
     look: Look<'_, I, S>,
     mark: &mut impl FnMut(Phase),
 ) {
-    let (font, _, shades) = look;
+    let (font, _, shades, _) = look;
     let spec = buf.spec();
     let (cell_w, cell_h) = (i32::from(spec.cell_w), i32::from(spec.cell_h));
     let cells = || {
@@ -312,6 +317,7 @@ fn draw_items<I: Images, S: Shades>(
                 }
             }
             Item::Sprite(s) => draw_sprite(target, s, at, look),
+            Item::Painted(p) => draw_painted(target, p, at, look),
         }
     }
 }
@@ -378,11 +384,85 @@ fn draw_sprite<I: Images, S: Shades>(
         target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
         return;
     };
+    draw_one_bit(
+        target,
+        &Placed::of_sprite(sprite),
+        &image,
+        at,
+        look.2,
+        shown,
+    );
+}
+
+/// A painted picture's item: a one-bit picture as a sprite, any other
+/// dithered pixel by pixel through the 8 × 8 Bayer order at the screen's
+/// pixels, a grey rectangle if the frame's table lacks it.
+fn draw_painted<I: Images, S: Shades>(
+    target: &mut Target<'_>,
+    painted: &PaintedSprite,
+    at: Place,
+    look: Look<'_, I, S>,
+) {
+    let placed = Placed::of_painted(painted);
+    let shown = at.screen(painted.clip).within(target.clip);
+    let Some(picture) = look.3.get(painted.picture) else {
+        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
+        return;
+    };
+    let (width, height) = picture.size();
+    if picture.kind() == PaintedKind::OneBit {
+        if let Some(image) = Image::new(width, height, picture.pixels(), picture.mask()) {
+            draw_one_bit(target, &placed, &image, at, look.2, shown);
+        }
+        return;
+    }
+    let (src, dest) = (placed.src, placed.dest);
+    for y in shown.y0..shown.y1 {
+        let dy = (y - at.y).div_euclid(at.scale) - i64::from(dest.y);
+        let v = Image::sample(
+            dy,
+            src.y.into(),
+            src.h.into(),
+            dest.h.into(),
+            height,
+            height,
+        );
+        for x in shown.x0..shown.x1 {
+            let dx = (x - at.x).div_euclid(at.scale) - i64::from(dest.x);
+            let u = Image::sample(dx, src.x.into(), src.w.into(), dest.w.into(), width, width);
+            let (Ok(u), Ok(v)) = (u16::try_from(u), u16::try_from(v)) else {
+                continue;
+            };
+            if u >= width || v >= height {
+                continue;
+            }
+            let rgba = picture.rgba_at(u, v);
+            if !alpha_drawn(rgba[3]) {
+                continue;
+            }
+            let light = darken(brightness(rgba), placed.brightness);
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..8
+            let rank = shuyi_assets::onebit::BAYER[(y & 7) as usize][(x & 7) as usize];
+            target.set(x, y, u16::from(rank) * 4 + 2 >= u16::from(255 - light));
+        }
+    }
+}
+
+/// Draws the screen pixels `shown` of one-bit `image` placed as `sprite`,
+/// a solid paint in its shade from `shades`.
+fn draw_one_bit(
+    target: &mut Target<'_>,
+    sprite: &Placed,
+    image: &Image<'_>,
+    at: Place,
+    shades: &impl Shades,
+    shown: Clip,
+) {
     let (src, dest) = (sprite.src, sprite.dest);
     let (src_w, src_h) = (i64::from(src.w), i64::from(src.h));
     let (dest_w, dest_h) = (i64::from(dest.w), i64::from(dest.h));
     let solid = match sprite.paint {
-        Paint::Solid(color) => Some(look.2.shape(color)),
+        Paint::Solid(color) => Some(shades.shape(color)),
         Paint::Image | Paint::Dimmed | Paint::Shaded(_) => None,
     };
     for y in shown.y0..shown.y1 {
