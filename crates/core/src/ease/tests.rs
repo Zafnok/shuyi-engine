@@ -407,6 +407,12 @@ fn a_tween_holds_from_through_its_delay() {
     assert_eq!(tween.value_at(100), 15);
     assert_eq!(tween.value_at(150), 20);
     assert_eq!(tween.done_at(), Some(150));
+    // The time is counted from the end of the delay.
+    let late = Tween::new(0, 100, 100).with_delay(30);
+    assert_eq!(
+        (late.value_at(40), late.value_at(80), late.value_at(129)),
+        (10, 50, 99)
+    );
 }
 
 #[test]
