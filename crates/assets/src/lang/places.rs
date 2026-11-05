@@ -156,7 +156,7 @@ mod tests {
     };
     use super::*;
 
-    const ENGLISH: &str = r#"{
+    const SOURCE_UI: &str = r#"{
         "title.start": (text: "Start", max_cells: 8, note: "The title menu's first item."),
         "title.quit": (text: "Quit", max_cells: 6),
         "title.help": (text: "Press {Confirm}", note: "{Confirm} is a key's name."),
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn a_key_with_max_cells_and_a_note_loads() {
-        let (english, places) = english_and_places_from_source("en/ui.ron", ENGLISH).unwrap();
+        let (english, places) = english_and_places_from_source("en/ui.ron", SOURCE_UI).unwrap();
         assert_eq!(english["title.start"], "Start");
         assert_eq!(english["title.name"], "Demo");
         assert_eq!(places.len(), 3, "{places:?}");
@@ -198,7 +198,10 @@ mod tests {
         assert_eq!(lang.place("title.name"), None);
         assert_eq!(lang.place("no.such"), None);
         // Text alone reads the same as before.
-        assert_eq!(english_from_source("en/ui.ron", ENGLISH).unwrap().len(), 4);
+        assert_eq!(
+            english_from_source("en/ui.ron", SOURCE_UI).unwrap().len(),
+            4
+        );
     }
 
     #[test]
@@ -220,7 +223,7 @@ mod tests {
 
     #[test]
     fn a_pack_sets_neither() {
-        let (english, _) = english_and_places_from_source("en/ui.ron", ENGLISH).unwrap();
+        let (english, _) = english_and_places_from_source("en/ui.ron", SOURCE_UI).unwrap();
         let info = r#"(name: "X", made_by: Machine)"#;
         let ui = r#"[(key: "title.quit", source: "Quit", text: "Q", max_cells: 9)]"#;
         let errors = pack_from_sources(("xx/lang.ron", info), ("xx/ui.ron", ui), &english, &RULES)
@@ -237,7 +240,7 @@ mod tests {
             (key: "title.name", source: "Demo", text: "Démonstration"),
         ]"#;
         let files = [
-            ("en/ui.ron", ENGLISH),
+            ("en/ui.ron", SOURCE_UI),
             ("xx/lang.ron", r#"(name: "X", made_by: Machine)"#),
             ("xx/ui.ron", ui),
         ]
@@ -268,7 +271,7 @@ mod tests {
         let keys: Vec<&str> = exact.iter().map(|o| o.key.as_str()).collect();
         assert_eq!(keys, ["title.quit"]);
         assert_eq!(
-            lang.overflow(&LangCode::english(), &CellWidths::NARROW),
+            lang.overflow(&LangCode::default(), &CellWidths::NARROW),
             None
         );
     }

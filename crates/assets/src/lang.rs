@@ -1,16 +1,32 @@
 //! Languages: the source language's screen text by key (`en/ui.ron`), and
-//! the packs that overlay it (`<code>/`): their screen text (`ui.ron`), the
+//! the packs that overlay it (`<tag>/`): their screen text (`ui.ron`), the
 //! game's data text (`data.ron`: names, and whatever else the game hands
 //! over by key) and the dialogue's lines and captions (`dialogue/*.ron`).
-//! A pack entry carries the English it was made from; when that is no
-//! longer today's English the entry is **stale**, and a key with no entry
-//! is **missing**. Both show in English and fail nothing.
+//!
+//! **The source** is the language the game is written in ([`SourceLang`]):
+//! English unless the game declares another
+//! ([`Lang::with_source_lang`]), its folder holding its screen text only. A
+//! pack entry carries the source text it was made from; when that is no
+//! longer today's the entry is **stale**, and a key with no entry is
+//! **missing**. Neither fails anything.
+//!
+//! **Tags.** A language is named by its BCP 47 tag ([`LangCode`]: `ja`,
+//! `pt-BR`, `zh-Hans`), and its folder by that tag as BCP 47 writes it, so
+//! `pt-br` never quietly becomes a second language on a file system that
+//! ignores case. The engine reads the subset of tags it takes itself rather
+//! than with `icu_locale_core`: checking a tag is a short function, and the
+//! engine wants none of CLDR's data.
+//!
+//! **The fallback chain.** A key a pack lacks, or has stale, falls back
+//! along [`Lang::chain`]: the pack of each shorter tag the game has
+//! (`pt-BR`, then `pt`), then the source. So a small `pt-BR` pack can sit
+//! over a full `pt` one.
 //!
 //! The game names its folder and says what else its text must keep to
-//! ([`PackRules`]); the English of its data is the [`SourceText`] it builds.
-//! As a format (ADR-0007), one pack is read from its `lang.ron`
+//! ([`PackRules`]); the source text of its data is the [`SourceText`] it
+//! builds. As a format (ADR-0007), one pack is read from its `lang.ron`
 //! ([`LangPackRon`]). [`Lang::texts`] lists every text of every language,
-//! each with its part, key and file ([`TextAt`]). English's screen text
+//! each with its part, key and file ([`TextAt`]). The source's screen text
 //! can say where each key's text is drawn ([`Place`]: its width in cells
 //! and a note for translators), and [`Lang::overflow`] lists a pack's
 //! entries too wide for it.
@@ -20,6 +36,7 @@ mod formats;
 mod lines;
 mod places;
 mod source;
+mod tag;
 mod texts;
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -42,10 +59,12 @@ pub use formats::LangPackRon;
 pub use lines::{LineEntry, LineText, Orphan};
 pub use places::{Overflow, Place, Places};
 pub use source::{LineKind, SourceLine, SourceText, names_key};
+pub use tag::{LangCode, TagError};
 pub use texts::{TextAt, TextPart};
 
-/// The source language's code.
-pub const ENGLISH: &str = "en";
+/// English's tag, the source language when a game declares none.
+#[deprecated(note = "a game's source language is `Lang::source_lang()`")]
+pub const ENGLISH: &str = tag::DEFAULT_SOURCE;
 
 /// File name of a language's screen text.
 const UI_FILE: &str = "ui.ron";
@@ -70,43 +89,32 @@ pub fn text_width(text: &str, widths: &CellWidths) -> usize {
     text.chars().map(|c| widths.of_char(c)).sum()
 }
 
-/// Longest [`LangCode`], in characters.
-const MAX_CODE_CHARS: usize = 8;
+/// The language the game is written in: its screen text is in its folder
+/// (`<code>/ui.ron`), and its data and dialogue in the game's own files.
+/// Every pack is checked against it, and every lookup ends with it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SourceLang {
+    /// Its tag, the name of its folder.
+    pub code: LangCode,
+    /// Its own name for itself, which a language menu shows.
+    pub name: String,
+}
 
-/// A language's id: 2 to 8 lowercase letters (`en`, `ja`), the name of its
-/// directory among the languages.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LangCode(String);
-
-impl LangCode {
-    /// `code` as a language id, or `None` if it isn't 2 to 8 lowercase
-    /// letters.
-    pub fn new(code: &str) -> Option<Self> {
-        let ok = (2..=MAX_CODE_CHARS).contains(&code.len())
-            && code.bytes().all(|b| b.is_ascii_lowercase());
-        ok.then(|| Self(code.to_owned()))
-    }
-
-    /// English, the source language.
-    pub fn english() -> Self {
-        Self(ENGLISH.to_owned())
-    }
-
-    /// The id as text.
-    pub fn as_str(&self) -> &str {
-        &self.0
+impl SourceLang {
+    /// The source language `code`, named `name` in itself.
+    pub fn new(code: LangCode, name: impl Into<String>) -> Self {
+        Self {
+            code,
+            name: name.into(),
+        }
     }
 }
 
-impl Default for LangCode {
+impl Default for SourceLang {
+    /// English, named "English".
     fn default() -> Self {
-        Self::english()
-    }
-}
-
-impl fmt::Display for LangCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        Self::new(LangCode::default(), "English")
     }
 }
 
@@ -135,13 +143,13 @@ pub struct LangInfo {
 pub struct Entry {
     /// Which text this is.
     pub key: String,
-    /// The English `text` was made from.
+    /// The source text `text` was made from.
     pub source: String,
     /// The text in the pack's language.
     pub text: String,
 }
 
-/// One language other than English.
+/// One language other than the source.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LangPack {
     /// Its name and who made it.
@@ -167,10 +175,10 @@ impl LangPack {
 pub struct LangStatus {
     /// Keys the pack has no entry for.
     pub missing: Vec<String>,
-    /// Keys whose entry was made from English that has since changed.
+    /// Keys whose entry was made from source text that has since changed.
     pub stale: Vec<String>,
-    /// Dialogue entries whose line English no longer has (it was reworded
-    /// or cut), each with the line it most likely became.
+    /// Dialogue entries whose line the source no longer has (it was
+    /// reworded or cut), each with the line it most likely became.
     pub orphans: Vec<Orphan>,
 }
 
@@ -185,89 +193,139 @@ impl AssetKind for English {
     const NAME: &'static str = "english";
 }
 
-/// English's text and every pack.
+/// The source language's text and every pack.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Lang {
-    /// English screen text, by key.
-    english: BTreeMap<String, String>,
-    /// English data and dialogue text, by key.
+    /// Which language the game is written in ([`Lang::with_source_lang`]).
+    written_in: SourceLang,
+    /// The source's screen text, by key.
+    ui: BTreeMap<String, String>,
+    /// The source's data and dialogue text, by key.
     source: SourceText,
-    /// The other languages, by code.
+    /// The other languages, by tag.
     packs: BTreeMap<LangCode, LangPack>,
-    /// Where English's screen text is drawn, by key ([`Lang::with_places`]).
+    /// Where the source's screen text is drawn, by key
+    /// ([`Lang::with_places`]).
     places: Places,
 }
 
 impl Lang {
-    /// English screen text with `packs` over it, and no data or dialogue.
-    pub fn new(english: BTreeMap<String, String>, packs: BTreeMap<LangCode, LangPack>) -> Self {
-        Self::with_source(english, SourceText::default(), packs)
+    /// The source's screen text `ui` with `packs` over it, and no data or
+    /// dialogue. The source is English until
+    /// [`with_source_lang`](Self::with_source_lang) says otherwise.
+    pub fn new(ui: BTreeMap<String, String>, packs: BTreeMap<LangCode, LangPack>) -> Self {
+        Self::with_source(ui, SourceText::default(), packs)
     }
 
-    /// English screen text and `source` (the data's and the dialogue's
-    /// English), with `packs` over them.
+    /// The source's screen text `ui` and `source` (the data's and the
+    /// dialogue's source text), with `packs` over them. The source is
+    /// English until [`with_source_lang`](Self::with_source_lang) says
+    /// otherwise.
     pub fn with_source(
-        english: BTreeMap<String, String>,
+        ui: BTreeMap<String, String>,
         source: SourceText,
         packs: BTreeMap<LangCode, LangPack>,
     ) -> Self {
         Self {
-            english,
+            written_in: SourceLang::default(),
+            ui,
             source,
             packs,
             places: BTreeMap::new(),
         }
     }
 
-    /// The English of the data and the dialogue, by key.
+    /// These languages, the game written in `source`.
+    #[must_use]
+    pub fn with_source_lang(self, source: SourceLang) -> Self {
+        Self {
+            written_in: source,
+            ..self
+        }
+    }
+
+    /// The language the game is written in.
+    pub fn source_lang(&self) -> &SourceLang {
+        &self.written_in
+    }
+
+    /// The source text of the data and the dialogue, by key.
     pub fn source(&self) -> &SourceText {
         &self.source
     }
 
-    /// Whether English's screen text has `key`.
+    /// Whether the source's screen text has `key`.
     pub fn has(&self, key: &str) -> bool {
-        self.english.contains_key(key)
+        self.ui.contains_key(key)
     }
 
-    /// Today's English for `key`, if there is such a key: a screen text's,
-    /// a data text's, or a dialogue line's or caption's.
-    pub fn english(&self, key: &str) -> Option<&str> {
+    /// Today's source text for `key`, if there is such a key: a screen
+    /// text's, a data text's, or a dialogue line's or caption's.
+    pub fn source_text(&self, key: &str) -> Option<&str> {
         let line = || self.source.lines.get(key).map(|line| &line.text);
-        self.english
+        self.ui
             .get(key)
             .or_else(|| self.source.data.get(key))
             .or_else(line)
             .map(String::as_str)
     }
 
-    /// The pack for `code`; `None` for English or an unknown code.
+    /// Today's source text for `key`: [`source_text`](Self::source_text).
+    #[deprecated(note = "renamed `source_text`: the source language needn't be English")]
+    pub fn english(&self, key: &str) -> Option<&str> {
+        self.source_text(key)
+    }
+
+    /// The pack for `code`; `None` for the source or an unknown tag.
     pub fn pack(&self, code: &LangCode) -> Option<&LangPack> {
         self.packs.get(code)
     }
 
-    /// The codes of the packs, in order (English isn't one).
+    /// The tags of the packs, in order (the source isn't one).
     pub fn codes(&self) -> impl Iterator<Item = &LangCode> {
         self.packs.keys()
     }
 
-    /// The text for `key` in language `code`: the pack's, when it has an
-    /// entry made from today's English; otherwise English. A key English
-    /// lacks comes back as it is.
-    pub fn text<'a>(&'a self, code: &LangCode, key: &'a str) -> &'a str {
-        let Some(english) = self.english.get(key) else {
-            return key;
-        };
-        let entry = self.packs.get(code).and_then(|pack| pack.ui.get(key));
-        match entry {
-            Some(entry) if entry.source == *english => &entry.text,
-            _ => english,
-        }
+    /// The packs a lookup in `code` reads, nearest first: `code`'s, then
+    /// each of its parents' that the game has; never the source's. Walks
+    /// `code`'s text without allocating.
+    fn packs_along<'a>(
+        &'a self,
+        code: &LangCode,
+    ) -> impl Iterator<Item = (&'a LangCode, &'a LangPack)> {
+        let source = self.written_in.code.as_str();
+        tag::ancestry(code.as_str())
+            .filter(move |tag| *tag != source)
+            .filter_map(|tag| self.packs.get_key_value(tag))
     }
 
-    /// What `code`'s pack lacks. English lacks nothing; `None` for a code
-    /// with no pack.
+    /// Where a lookup in `code` looks, in order: `code`, then each of its
+    /// [`parent`](LangCode::parent)s, keeping the tags that have a pack,
+    /// then the source, which always ends it. With packs `pt` and `pt-BR`,
+    /// `pt-BR`'s chain is `pt-BR`, `pt`, `en`. Each lookup takes the first
+    /// entry along it made from today's source text.
+    pub fn chain(&self, code: &LangCode) -> Vec<LangCode> {
+        let mut chain: Vec<LangCode> = self.packs_along(code).map(|(c, _)| c.clone()).collect();
+        chain.push(self.written_in.code.clone());
+        chain
+    }
+
+    /// The text for `key` in language `code`: the first entry along
+    /// [`chain`](Self::chain) made from today's source text, else the
+    /// source's. A key the source lacks comes back as it is.
+    pub fn text<'a>(&'a self, code: &LangCode, key: &'a str) -> &'a str {
+        let Some(source) = self.ui.get(key) else {
+            return key;
+        };
+        self.packs_along(code)
+            .find_map(|(_, pack)| pack.ui.get(key).filter(|entry| entry.source == *source))
+            .map_or(source, |entry| &entry.text)
+    }
+
+    /// What `code`'s pack lacks, itself, without its chain. The source
+    /// lacks nothing; `None` for a tag with no pack.
     pub fn status(&self, code: &LangCode) -> Option<LangStatus> {
-        if code.as_str() == ENGLISH {
+        if *code == self.written_in.code {
             return Some(LangStatus::default());
         }
         let pack = self.packs.get(code)?;
@@ -277,7 +335,7 @@ impl Lang {
             Some(source) if source != english => status.stale.push(key.clone()),
             Some(_) => {}
         };
-        for (key, english) in &self.english {
+        for (key, english) in &self.ui {
             check(key, english, pack.ui.get(key).map(|e| &e.source));
         }
         for (key, english) in &self.source.data {
@@ -328,10 +386,10 @@ fn key_ok(key: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.')
 }
 
-/// Parses and validates English screen text `source` (a map of key to
-/// text), attributing errors to `file`. Reports every problem found. A
-/// key's places ([`english_and_places_from_source`]) are read and left
-/// out.
+/// Parses and validates the source language's screen text `source` (a map
+/// of key to text), whatever the language, attributing errors to `file`.
+/// Reports every problem found. A key's places
+/// ([`english_and_places_from_source`]) are read and left out.
 pub fn english_from_source(
     file: &str,
     source: &str,
@@ -339,7 +397,7 @@ pub fn english_from_source(
     english_and_places_from_source(file, source).map(|(english, _)| english)
 }
 
-/// English's screen text and where it is drawn, by key: what
+/// The source's screen text and where it is drawn, by key: what
 /// [`english_from_source`] reads, with each key's [`Place`] where its value
 /// is written as `(text: …, max_cells: …, note: …)` rather than as text
 /// (both optional). A `max_cells` is at least 1, and a note isn't empty.
@@ -504,17 +562,29 @@ pub fn pack_from_sources(
 }
 
 /// Parses and validates the pack made of `sources`, its screen text
-/// checked against `english` and its data and dialogue text against
-/// `data` (left out without it: the data files failed to load). Reports
-/// every problem found.
+/// checked against `english` (the source's screen text, whatever the
+/// language) and its data and dialogue text against `data` (left out
+/// without it: the data files failed to load). Reports every problem
+/// found; the messages call the source `en`.
 ///
-/// A `ui.ron` or `data.ron` entry's key must be one of English's and be
+/// A `ui.ron` or `data.ron` entry's key must be one of the source's and be
 /// there once, and its text must have the same placeholders as its
 /// `source`; a name, and the game's data text, also keep to the rules of
-/// the English ones (`rules`). A dialogue entry is checked as
-/// [`LineEntry`] says: one whose line English no longer has is an orphan,
-/// not an error.
+/// the source's (`rules`). A dialogue entry is checked as [`LineEntry`]
+/// says: one whose line the source no longer has is an orphan, not an
+/// error.
 pub fn pack_from_files(
+    sources: &PackSources<'_>,
+    english: &BTreeMap<String, String>,
+    data: Option<&SourceText>,
+    rules: &PackRules<'_>,
+) -> Result<LangPack, Vec<ContentError>> {
+    pack_from_files_in(&LangCode::default(), sources, english, data, rules)
+}
+
+/// [`pack_from_files`], its messages naming the source by its tag `source`.
+fn pack_from_files_in(
+    source: &LangCode,
     sources: &PackSources<'_>,
     english: &BTreeMap<String, String>,
     data: Option<&SourceText>,
@@ -529,13 +599,8 @@ pub fn pack_from_files(
         errors.push(ContentError::new(info_file, "the name must not be empty"));
     }
     let problem = rules.data_problem;
-    let ui = entries(
-        sources.ui,
-        english,
-        "no such key in English",
-        problem,
-        &mut errors,
-    );
+    let no_key = format!("no such key in the source language ({source})");
+    let ui = entries(sources.ui, english, &no_key, problem, &mut errors);
     let mut pack_data = BTreeMap::new();
     let mut pack_lines = BTreeMap::new();
     if let Some(data) = data {
@@ -584,15 +649,43 @@ fn is_dialogue_file(name: &str) -> bool {
         .is_some_and(|stem| !stem.is_empty() && !stem.contains('/'))
 }
 
-/// Validates the languages made of `files`: English's `en/ui.ron` (with
-/// its keys' places, [`english_and_places_from_source`]), and a
-/// pack for every other directory, which needs its `lang.ron` and
-/// `ui.ron` and may have a `data.ron` and `dialogue/<file>.ron` files
-/// (checked against `data`; left out without it). Import settings files
-/// are skipped (ADR-0057); any other file is an error. `display` gives the name a path is reported under. Reports
-/// every problem found; with English broken the packs are not checked
-/// (each entry would be an unknown key).
+/// The tag a pack's folder `dir` names, or what its error says: a folder is
+/// named by a tag as BCP 47 writes it, so `pt-br` is refused rather than
+/// becoming a second language where file names ignore case.
+fn pack_code(dir: &str) -> Result<LangCode, String> {
+    match LangCode::parse(dir) {
+        Ok(code) if code.as_str() == dir => Ok(code),
+        Ok(code) => Err(format!(
+            "name a language's folder by its tag as BCP 47 writes it: {code}"
+        )),
+        Err(e) => Err(format!(
+            "name a language's folder by a BCP 47 tag (en, pt-BR, zh-Hans): {e}"
+        )),
+    }
+}
+
+/// [`from_files_in`] for a game written in English.
 pub fn from_files(
+    files: &[LangFile<'_>],
+    data: Option<SourceText>,
+    display: impl Fn(&str) -> String,
+    rules: &PackRules<'_>,
+) -> Result<Lang, Vec<ContentError>> {
+    from_files_in(&SourceLang::default(), files, data, display, rules)
+}
+
+/// Validates the languages made of `files`, for a game written in
+/// `source`: the source's screen text, `<code>/ui.ron` (with its keys'
+/// places, [`english_and_places_from_source`]), and a pack for every other
+/// folder, named by its tag, which needs its `lang.ron` and `ui.ron` and
+/// may have a `data.ron` and `dialogue/<file>.ron` files (checked against
+/// `data`; left out without it). Import settings files are skipped
+/// (ADR-0057); any other file is an error, a `lang.ron` in the source's
+/// folder too. `display` gives the name a path is reported under. Reports
+/// every problem found; with the source's screen text broken the packs are
+/// not checked (each entry would be an unknown key).
+pub fn from_files_in(
+    source: &SourceLang,
     files: &[LangFile<'_>],
     data: Option<SourceText>,
     display: impl Fn(&str) -> String,
@@ -613,7 +706,7 @@ pub fn from_files(
             continue;
         }
         let known = match file.path.split_once('/') {
-            Some((ENGLISH, name)) => name == UI_FILE,
+            Some((dir, name)) if dir == source.code.as_str() => name == UI_FILE,
             Some((dir, name)) => {
                 dirs.insert(dir);
                 [UI_FILE, INFO_FILE, DATA_FILE].contains(&name) || is_dialogue_file(name)
@@ -627,7 +720,7 @@ pub fn from_files(
             ));
         }
     }
-    let english_path = format!("{ENGLISH}/{UI_FILE}");
+    let english_path = format!("{}/{UI_FILE}", source.code);
     let english = read(&english_path, &mut errors)
         .map(|source| english_and_places_from_source(&display(&english_path), source));
     let (english, places) = match english {
@@ -640,12 +733,12 @@ pub fn from_files(
     };
     let mut packs = BTreeMap::new();
     for dir in dirs {
-        let Some(code) = LangCode::new(dir) else {
-            errors.push(ContentError::new(
-                display(dir),
-                "a language's directory must be named with 2 to 8 lowercase letters",
-            ));
-            continue;
+        let code = match pack_code(dir) {
+            Ok(code) => code,
+            Err(message) => {
+                errors.push(ContentError::new(display(dir), message));
+                continue;
+            }
         };
         let info_path = format!("{dir}/{INFO_FILE}");
         let ui_path = format!("{dir}/{UI_FILE}");
@@ -672,7 +765,7 @@ pub fn from_files(
             data: data_source.map(|source| (data_name.as_str(), source)),
             dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), *s)).collect(),
         };
-        match pack_from_files(&sources, english, data.as_ref(), rules) {
+        match pack_from_files_in(&source.code, &sources, english, data.as_ref(), rules) {
             Ok(pack) => {
                 packs.insert(code, pack);
             }
@@ -681,12 +774,16 @@ pub fn from_files(
     }
     match english {
         Some(english) if errors.is_empty() => {
-            Ok(Lang::with_source(english, data.unwrap_or_default(), packs).with_places(places))
+            Ok(Lang::with_source(english, data.unwrap_or_default(), packs)
+                .with_places(places)
+                .with_source_lang(source.clone()))
         }
         _ => Err(errors),
     }
 }
 
+#[cfg(test)]
+mod chain_tests;
 #[cfg(test)]
 mod pack_tests;
 
@@ -761,15 +858,19 @@ mod tests {
     }
 
     #[test]
-    fn codes_are_two_to_eight_lowercase_letters() {
-        for good in ["en", "ja", "test", "abcdefgh"] {
-            assert_eq!(LangCode::new(good).unwrap().as_str(), good);
+    #[expect(deprecated)]
+    fn english_is_the_default_sources_tag() {
+        assert_eq!(ENGLISH, LangCode::default().as_str());
+        assert_eq!(ENGLISH, SourceLang::default().code.as_str());
+    }
+
+    #[test]
+    #[expect(deprecated)]
+    fn english_of_a_key_is_its_source_text() {
+        let lang = lang();
+        for key in ["a.one", "a.nope"] {
+            assert_eq!(lang.english(key), lang.source_text(key), "{key}");
         }
-        for bad in ["", "e", "EN", "e1", "pt-br", "abcdefghi", "日本"] {
-            assert_eq!(LangCode::new(bad), None, "{bad}");
-        }
-        assert_eq!(LangCode::default(), LangCode::english());
-        assert_eq!(LangCode::english().to_string(), "en");
     }
 
     #[test]
@@ -839,7 +940,10 @@ mod tests {
     #[test]
     fn an_unknown_key_fails_with_file_and_key() {
         let errors = pack(r#"[(key: "a.nope", source: "x", text: "y")]"#).unwrap_err();
-        assert_eq!(errors, ["xx/ui.ron: \"a.nope\": no such key in English"]);
+        assert_eq!(
+            errors,
+            ["xx/ui.ron: \"a.nope\": no such key in the source language (en)"]
+        );
     }
 
     #[test]
@@ -914,14 +1018,14 @@ mod tests {
         assert_eq!(lang.text(&xx, "a.two"), "Two {count}");
         assert_eq!(lang.text(&xx, "a.three"), "Three");
         // English, and a code with no pack, are English.
-        assert_eq!(lang.text(&LangCode::english(), "a.one"), "One");
+        assert_eq!(lang.text(&LangCode::default(), "a.one"), "One");
         assert_eq!(lang.text(&code("zz"), "a.one"), "One");
         // An unknown key comes back as it is.
         assert_eq!(lang.text(&xx, "a.nope"), "a.nope");
         assert!(lang.has("a.one"));
         assert!(!lang.has("a.nope"));
-        assert_eq!(lang.english("a.one"), Some("One"));
-        assert_eq!(lang.english("a.nope"), None);
+        assert_eq!(lang.source_text("a.one"), Some("One"));
+        assert_eq!(lang.source_text("a.nope"), None);
     }
 
     #[test]
@@ -931,13 +1035,13 @@ mod tests {
         assert_eq!(status.missing, ["a.three"]);
         assert_eq!(status.stale, ["a.two"]);
         assert_eq!(
-            lang.status(&LangCode::english()),
+            lang.status(&LangCode::default()),
             Some(LangStatus::default())
         );
         assert_eq!(lang.status(&code("zz")), None);
         assert_eq!(lang.codes().collect::<Vec<_>>(), [&code("xx")]);
         assert!(lang.pack(&code("xx")).is_some());
-        assert!(lang.pack(&LangCode::english()).is_none());
+        assert!(lang.pack(&LangCode::default()).is_none());
     }
 
     /// The languages made of `files` (path, text), or the errors as text.
@@ -1053,7 +1157,7 @@ mod tests {
                 ("JA/ui.ron", UI),
             ])
             .unwrap_err(),
-            ["lang/JA: a language's directory must be named with 2 to 8 lowercase letters"]
+            ["lang/JA: name a language's folder by its tag as BCP 47 writes it: ja"]
         );
     }
 
@@ -1070,8 +1174,8 @@ mod tests {
             ])
             .unwrap_err(),
             [
-                "lang/xx/ui.ron: \"a.nope\": no such key in English",
-                "lang/yy/ui.ron: \"a.nope\": no such key in English",
+                "lang/xx/ui.ron: \"a.nope\": no such key in the source language (en)",
+                "lang/yy/ui.ron: \"a.nope\": no such key in the source language (en)",
             ]
         );
     }

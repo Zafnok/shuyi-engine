@@ -289,13 +289,12 @@ and the plural table are technical.
     unchanged.
   - **From 3053 (done):** fill `target` from `ctx.platform.target`,
     beside `device`.
-  - **2226:** if it is done, look the plural table up by
+  - **From 2226 (done):** look the plural table up by
     `LangCode::language()` (`pt-BR` uses `pt`), and `Lang::text_in` and
-    `Lang::data_text_in` give the code of whichever language in the
-    fallback chain gave the text (the source's when they fall back). If
-    not, look it up by `LangCode` as it is, and 2226 moves the lookup
-    to the subtag and makes `text_in` and `data_text_in` give the
-    chain's language (its clause says so).
+    `Lang::data_text_in` walk the fallback chain as `text` and
+    `data_text` do (the private `Lang::packs_along`, `lang.rs`) and give
+    the code of whichever language gave the text (the source's,
+    `Lang::source_lang().code`, when they fall back).
   - **2353** (a pseudo-language): if it is done, its `pseudo_text`
     changes only a message's literal text and keeps its syntax (a
     plural's `other` and its braces stay as written). If not, 2353 does

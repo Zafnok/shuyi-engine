@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 2226 — Language tags, a fallback chain and the source language
@@ -284,36 +284,36 @@ only user. The completion notes say so.
 
 ## Acceptance criteria
 
-- [ ] `en`, `ja`, `dbg`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant-TW`,
+- [x] `en`, `ja`, `dbg`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant-TW`,
       `sr-Latn-RS`, `de-CH-1996` and `en-x-pseudo` are canonical tags;
       `pt-br`, `PT-BR`, `pt_BR`, `zh-hans`, `en-u-ca-gregory`,
       `i-klingon`, `en--US` and the empty string are not (unit tests).
-- [ ] `LangCode::parse` turns `pt_br.UTF-8`, `ZH-hans-cn` and
+- [x] `LangCode::parse` turns `pt_br.UTF-8`, `ZH-hans-cn` and
       `en_US@euro` into `pt-BR`, `zh-Hans-CN` and `en-US`, and refuses
       `C` (unit tests).
-- [ ] With packs `pt` and `pt-BR`: a key only `pt` has shows `pt`'s
+- [x] With packs `pt` and `pt-BR`: a key only `pt` has shows `pt`'s
       text in `pt-BR`; a key neither has shows the source's; a stale
       `pt-BR` entry shows `pt`'s fresh one (unit tests over `text`,
       `data_text`, `line` and `scene`).
-- [ ] A game written in Japanese (`ja/ui.ron`, a pack `en`) loads
+- [x] A game written in Japanese (`ja/ui.ron`, a pack `en`) loads
       through `from_files_in` and through `LangPackRon::source_lang`,
       shows Japanese for a key the pack lacks, and refuses a
       `ja/lang.ron` (unit tests). Through `Ctx::text` too (a test game
       in `crates/ui/src/ctx/tests.rs`).
-- [ ] A folder `pt-br` is refused by both readers with a message naming
+- [x] A folder `pt-br` is refused by both readers with a message naming
       `pt-BR`, and a folder `x1` with `TagError`'s words (unit tests).
-- [ ] `best_match` gives `pt` for `[pt-BR]` over `[en, pt]`, `zh-Hans`
+- [x] ~~`best_match` gives `pt` for `[pt-BR]` over `[en, pt]`, `zh-Hans`
       for `[zh-CN]` over `[en, zh-Hans]`, `None` for `[zh-TW]` over
       `[en, zh-Hans]`, and `fr` for `[de, fr-CA]` over `[en, fr]` (unit
-      tests).
-- [ ] No code in `crates/`, `examples/` or `templates/` calls
+      tests).~~ (not done: moved to 2253, as the size rule says)
+- [x] No code in `crates/`, `examples/` or `templates/` calls
       `Lang::english`, `LangCode::english` or `ENGLISH`, except the
       one `#[expect(deprecated)]` test of each alias.
-- [ ] Every existing language test passes, with only the messages that
+- [x] Every existing language test passes, with only the messages that
       said "English" and the badly named folder's message changed.
-- [ ] `shuyi-assets` builds for `thumbv7em-none-eabihf` (the no-std
+- [x] `shuyi-assets` builds for `thumbv7em-none-eabihf` (the no-std
       gate).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -332,5 +332,68 @@ only user. The completion notes say so.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `LangCode` is a BCP 47 tag in the subset (`crates/assets/src/lang/tag.rs`):
+  `new` (canonical only), `parse` (any case, `_`, a POSIX locale's
+  `.charset` and `@modifier` dropped; `C` and `POSIX` refused),
+  `language`, `script`, `region`, `parent`, `Borrow<str>`, and
+  `TagError` (`#[non_exhaustive]`, `Display`), with unit tests and a
+  proptest over tags built from the subset's parts.
+- `SourceLang` and `Lang::source_lang`, `Lang::with_source_lang`,
+  `Lang::source_text`, `lang::from_files_in` and
+  `LangPackRon::source_lang`. `Lang::english`, `LangCode::english` and
+  `ENGLISH` are `#[deprecated]` aliases, each with one
+  `#[expect(deprecated)]` test; nothing else calls them.
+- `Lang::chain`, and every lookup (`text`, `data_text`, `name`, `names`,
+  `found`, `line`, `scene`) walks the chain through the private
+  `Lang::packs_along`, which looks packs up by `&str` slices of the tag
+  and allocates nothing. `status` is still one pack's.
+- Both readers check a folder's name in one function, `pack_code`
+  (`lang.rs`), with the two messages the ticket gives.
+- `Ctx` lost its `english` field: `lang` starts at the source,
+  `effective_lang` falls back to `game.lang().source_lang().code`, and
+  `numbered_profile` reads the source's text. A test game written in
+  Japanese (`InJapanese`, `crates/ui/src/ctx/tests.rs`).
+- "no such key in English" is "no such key in the source language
+  (<tag>)"; `lang-status` reads its tag with `LangCode::parse` and
+  prints `source:` for `english:`. From 2350: `TextAt::path` names the
+  source's folder by its tag (a private `source` field of the
+  `#[non_exhaustive]` `TextAt`).
+- Docs: `docs/formats.md`'s language pack bullet and the source's
+  screen text bullet, and `lang.rs`'s module docs (the subset, the
+  chain, the source, and why not `icu_locale_core`).
+
+**Deviations.**
+
+- `best_match` moved to **2253** (blocked by this one, added to 2349's
+  `blocked_by` and to the roadmap beside it): the change came to about
+  730 added lines before tests, past the ticket's 600. 2349 names 2253
+  for it.
+- `pack_from_files` and `pack_from_sources` keep their signatures, so
+  their own messages call the source `en`; the readers go through a
+  private `pack_from_files_in` that names the declared source's tag.
+- `Lang`'s private field for the source is `written_in` (clippy's
+  pedantic `struct_field_names` refuses `source_lang` on `Lang`).
+- 2353's pseudo-language tag is `qps-Ploc`, not `qps-ploc`: four letters
+  after the language are a script, so the ticket's own case rule makes
+  `Ploc` canonical; `LangCode::parse("qps-ploc")` gives it. 2353 says so.
+- `LangPackRon`'s `Debug` shows the source's tag.
+
+**Clauses settled:** 2227, 2238, 2346, 2348, 2351, 2352 and 2353 now say
+what holds after this ticket.
+
+**For the game:** the pin bump renames `Lang::english` to
+`Lang::source_text` (the old name warns). A pack folder named in lower
+case letters is still a canonical tag. Messages that said "English",
+`lang-status`'s `english:` line and the badly named folder's message
+change. Nothing is removed.
+
+No break.
+
+Book: none, the book teaches no language packs or tags yet; `docs/formats.md` and the rustdoc of `shuyi_assets::lang` carry the tags, the fallback chain and the source language.
+
+**For Nick:** nothing to decide. A game can now name languages like
+Brazilian Portuguese (`pt-BR`) and Simplified Chinese (`zh-Hans`),
+let a small `pt-BR` pack fall back to a full `pt` one, and be written
+first in a language other than English.

@@ -50,7 +50,7 @@ fn files_named(errors: &[ContentError]) -> Vec<String> {
 fn the_standard_files_load_into_the_games_data() {
     let data = Data::load(bundle(GOOD), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
     assert_eq!(
-        data.lang().english("title.subtitle"),
+        data.lang().source_text("title.subtitle"),
         Some("made with Shuyi Engine")
     );
     assert_eq!(
