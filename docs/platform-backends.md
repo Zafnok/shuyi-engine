@@ -186,7 +186,12 @@ next. `frame.show` is one of:
   `background` (also the letterbox's). `look` holds the game's font atlas
   and image table: make the backend's textures from them the first time
   and keep them. If they can't be made, show why instead, as for `Errors`.
-  A one-bit display draws with `look.one_bit` instead (a
+  A painted item (`Item::Painted`, ADR-0077) shows a picture of the
+  buffer's own table (`buffer.pictures()`), also for an item of a
+  backdrop's scene: keep a texture per `PaintedId`, upload it again only
+  when its `revision()` moved, drop it when a frame no longer draws it,
+  and sample it at the nearest pixel (`Painted::rgba_into` gives any kind
+  as RGBA). A one-bit display draws with `look.one_bit` instead (a
   `OneBitLook`, ADR-0062): the pattern map, the font's one-bit rows and
   the pictures, which the game's load makes from its pack;
   `shuyi_ui::frame::onebit::render_changed_with` draws them. The picture to match, pixel for pixel at

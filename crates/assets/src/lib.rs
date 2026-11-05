@@ -47,7 +47,7 @@ pub mod cinematic;
 pub mod credits;
 pub mod dialogue;
 pub mod error;
-mod fnv;
+pub mod fnv;
 pub mod font;
 pub mod format;
 #[cfg(feature = "golden")]

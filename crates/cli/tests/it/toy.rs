@@ -67,6 +67,36 @@ fn frame_png_renders_the_toy() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The plasma stage's pictures a skin paints at run time (ADR-0077), as
+/// `frame-png` paints them for the desktop and for the Playdate, black and
+/// white: golden pictures (the `.png` beside each `.snap`).
+#[test]
+fn frame_png_paints_the_plasma_on_the_desktop_and_the_playdate() {
+    let dir = scratch("toy-plasma");
+    let project = toy_project(&dir);
+    let png = |out: &str, extra: &[&str]| {
+        let mut all = vec![
+            "frame-png",
+            out,
+            "--plasma",
+            "--wait",
+            "0.2",
+            "--scale",
+            "1",
+        ];
+        all.extend_from_slice(extra);
+        assert_eq!(run(&project, &args(&all), Some(&ToyTools)), 0, "{extra:?}");
+        fs::read(dir.join(out)).unwrap()
+    };
+    let desktop = png("plasma.png", &[]);
+    let playdate = png("plasma-playdate.png", &["--target", "playdate"]);
+    let (width, height, _) = decode_png(&playdate).unwrap();
+    assert_eq!((width, height), (400, 240));
+    insta::assert_binary_snapshot!("plasma.png", desktop);
+    insta::assert_binary_snapshot!("plasma_playdate.png", playdate);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 #[test]
 fn lang_status_reports_the_toys_debug_pack() {
     let project = toy_project(Path::new("."));

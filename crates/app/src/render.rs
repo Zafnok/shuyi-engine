@@ -7,7 +7,9 @@
 //! colours (game ADR-0049). A buffer's backdrop (game ADR-0048), a second buffer
 //! panned and zoomed, is drawn the same way inside its window, behind the
 //! console. A wide glyph (its continuation cell after it) is one quad over
-//! both its cells, as the raster paints it.
+//! both its cells, as the raster paints it. A painted picture (ADR-0077) is
+//! a texture of its own, uploaded only in a frame whose revision moved
+//! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 
 use std::collections::{HashMap, HashSet};
 
@@ -18,7 +20,9 @@ use shuyi_assets::lighting::Light;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::console::{Layout, layout};
 use shuyi_ui::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, Sprite};
+use shuyi_ui::frame::painted::{PaintedSprite, PaintedTable};
 
+use crate::painted::PaintedTextures;
 use crate::pictures::{Fresh, Remake, src_fits};
 
 /// The colour of what is missing: the fallback glyph drawn for a glyph the
@@ -69,6 +73,8 @@ pub struct Renderer {
     /// The size of each image made again since the start, for what its
     /// sprites may show ([`src_fits`]).
     remade: HashMap<ImageId, (u16, u16)>,
+    /// The textures of the frame's painted pictures.
+    painted: PaintedTextures<Texture2D>,
 }
 
 impl Renderer {
@@ -119,6 +125,7 @@ impl Renderer {
             warned_images: HashSet::new(),
             sources,
             remade: HashMap::new(),
+            painted: PaintedTextures::new(),
         })
     }
 
@@ -183,8 +190,9 @@ impl Renderer {
             f32::from(buf.height()) * f32::from(buf.spec().cell_h) * scale,
             color(self.clear),
         );
+        let pictures = buf.pictures();
         if let Some(backdrop) = buf.backdrop() {
-            self.draw_backdrop(backdrop, &fit, window_h);
+            self.draw_backdrop(backdrop, pictures, &fit, window_h);
         }
         // Over a scene, a cell in the clear colour must hide it.
         let fills = if buf.backdrop().is_some() {
@@ -192,7 +200,8 @@ impl Renderer {
         } else {
             Fills::NotClear
         };
-        self.draw_layers(buf, (offset_x, offset_y), scale, fills);
+        self.draw_layers((buf, pictures), (offset_x, offset_y), scale, fills);
+        self.painted.end_frame();
     }
 
     /// Draws `backdrop`'s scene in its window: every scene pixel
@@ -204,9 +213,15 @@ impl Renderer {
     /// isn't drawn. (macroquad's scissor is only reachable through an
     /// `unsafe` call, which this workspace forbids.) `window_h` is the
     /// window's height in physical pixels: a viewport counts rows from the
-    /// bottom.
+    /// bottom. Its painted items show the frame's `pictures`.
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // whole pixels
-    fn draw_backdrop(&mut self, backdrop: &Backdrop, fit: &Layout, window_h: f32) {
+    fn draw_backdrop(
+        &mut self,
+        backdrop: &Backdrop,
+        pictures: &PaintedTable,
+        fit: &Layout,
+        window_h: f32,
+    ) {
         let scale = fit.scale as f32;
         let clip = backdrop.clip_px();
         let (x, y) = (
@@ -223,7 +238,7 @@ impl Renderer {
         let (dx, dy) = backdrop.scene_offset(fit.scale);
         let scene_scale = f32::from(backdrop.zoom()) * scale;
         self.draw_layers(
-            backdrop.scene(),
+            (backdrop.scene(), pictures),
             (dx as f32, dy as f32),
             scene_scale,
             Fills::NotClear,
@@ -234,8 +249,14 @@ impl Renderer {
     /// Draws `buf`'s cells and items with its top-left corner at `origin`
     /// and each of its pixels `scale` big: cell backgrounds (`fills` says
     /// which; never a see-through cell's), `Under` items, glyphs, `Over`
-    /// items.
-    fn draw_layers(&mut self, buf: &GlyphBuffer, origin: (f32, f32), scale: f32, fills: Fills) {
+    /// items. Its painted items show `pictures`, the frame's.
+    fn draw_layers(
+        &mut self,
+        (buf, pictures): (&GlyphBuffer, &PaintedTable),
+        origin: (f32, f32),
+        scale: f32,
+        fills: Fills,
+    ) {
         let (offset_x, offset_y) = origin;
         let cell_w = f32::from(buf.spec().cell_w) * scale;
         let cell_h = f32::from(buf.spec().cell_h) * scale;
@@ -253,7 +274,7 @@ impl Renderer {
                 draw_rectangle(px, py, cell_w, cell_h, color(cell.bg));
             }
         }
-        self.draw_items(buf, Layer::Under, origin, scale);
+        self.draw_items((buf, pictures), Layer::Under, origin, scale);
         for (x, y, cell, wide) in buf.glyphs() {
             if cell.glyph == ' ' {
                 continue;
@@ -275,12 +296,19 @@ impl Renderer {
                 },
             );
         }
-        self.draw_items(buf, Layer::Over, origin, scale);
+        self.draw_items((buf, pictures), Layer::Over, origin, scale);
     }
 
-    /// Draws `buf`'s items of `layer`, in order. `origin` is the buffer's
-    /// top-left corner and `scale` the size of one of its pixels.
-    fn draw_items(&mut self, buf: &GlyphBuffer, layer: Layer, origin: (f32, f32), scale: f32) {
+    /// Draws `buf`'s items of `layer`, in order, its painted items from
+    /// `pictures`. `origin` is the buffer's top-left corner and `scale` the
+    /// size of one of its pixels.
+    fn draw_items(
+        &mut self,
+        (buf, pictures): (&GlyphBuffer, &PaintedTable),
+        layer: Layer,
+        origin: (f32, f32),
+        scale: f32,
+    ) {
         for item in buf.items().iter().filter(|item| item.layer() == layer) {
             let visible = item.visible();
             #[allow(clippy::cast_precision_loss)] // console pixels < 2^21
@@ -292,6 +320,9 @@ impl Renderer {
             match item {
                 Item::Rect(rect) => draw_rectangle(x, y, size.x, size.y, color(rect.color)),
                 Item::Sprite(sprite) => self.draw_sprite(sprite, x, y, size),
+                Item::Painted(painted) => self.draw_painted(painted, pictures, x, y, size),
+                // A kind of item this backend doesn't know yet draws nothing.
+                _ => {}
             }
         }
     }
@@ -349,6 +380,50 @@ impl Renderer {
                 dest_size: Some(size),
                 source: Some(Rect::new(sx, sy, sw, sh)),
                 flip_x: sprite.flip_x,
+                ..Default::default()
+            },
+        );
+    }
+
+    /// Draws the visible part of `painted` (its `clip`) at `(x, y)`, `size`
+    /// big, from its picture's texture, uploaded only when the picture's
+    /// revision moved; a [`MISSING_COLOR`] rectangle if `pictures` lacks
+    /// it (ADR-0077).
+    fn draw_painted(
+        &mut self,
+        painted: &PaintedSprite,
+        pictures: &PaintedTable,
+        x: f32,
+        y: f32,
+        size: Vec2,
+    ) {
+        let Some(picture) = pictures.get(painted.picture) else {
+            draw_rectangle(x, y, size.x, size.y, MISSING_COLOR);
+            return;
+        };
+        let (width, height) = picture.size();
+        if width == 0 || height == 0 {
+            return;
+        }
+        let make = |rgba: &[u8]| {
+            let texture = Texture2D::from_rgba8(width, height, rgba);
+            texture.set_filter(FilterMode::Nearest);
+            texture
+        };
+        let update = |texture: &Texture2D, rgba: &[u8]| {
+            texture.update_from_bytes(width.into(), height.into(), rgba);
+        };
+        let texture = self.painted.texture(painted.picture, picture, make, update);
+        let [sx, sy, sw, sh] = painted.clipped_src();
+        let bright = painted.brightness;
+        draw_texture_ex(
+            texture,
+            x,
+            y,
+            Color::from_rgba(bright, bright, bright, 255),
+            DrawTextureParams {
+                dest_size: Some(size),
+                source: Some(Rect::new(sx, sy, sw, sh)),
                 ..Default::default()
             },
         );

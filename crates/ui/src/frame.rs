@@ -3,7 +3,8 @@
 //! ([`Item`]s, in [`Layer`]s) and its [`Backdrop`]; colors by name
 //! ([`Rgb`], [`Palette`]); the text form snapshot tests read
 //! ([`snapshot`]); fitting the console to a window ([`console`]), a shot
-//! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]); and
+//! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]);
+//! pictures a skin paints at run time ([`painted`], ADR-0077); and
 //! the one-bit renderer ([`onebit`]); with the `raster` feature, the
 //! software painter whose picture every backend must match
 //! ([`raster`]).
@@ -24,6 +25,7 @@ pub mod console;
 pub mod draw;
 pub mod glyph_buffer;
 pub mod onebit;
+pub mod painted;
 pub mod portrait;
 #[cfg(any(test, feature = "raster"))]
 pub mod raster;
@@ -34,6 +36,7 @@ pub use console::ConsoleSpec;
 pub use glyph_buffer::{
     Backdrop, BoxStyle, Cell, GlyphBuffer, Item, Layer, Overlay, Paint, PxRect, Rect, Sprite,
 };
+pub use painted::{Painted, PaintedId, PaintedKind, PaintedSprite, PaintedTable};
 
 #[cfg(test)]
 mod tests;

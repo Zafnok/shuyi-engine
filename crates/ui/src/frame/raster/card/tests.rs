@@ -5,12 +5,18 @@ use insta::assert_snapshot;
 use super::*;
 use crate::frame::color::tests::engine_palette;
 use crate::frame::glyph_buffer::Item;
+use crate::frame::painted::{PaintedKind, PaintedTable};
 use crate::frame::raster::MISSING_COLOR;
 
 /// Every kind of thing a frame draws, as [`kinds`] names them.
-const ALL: [&str; 8] = [
+const ALL: [&str; 13] = [
     "Item::Rect",
     "Item::Sprite",
+    "Item::Painted",
+    "PaintedKind::Rgba",
+    "PaintedKind::Indexed",
+    "PaintedKind::OneBit",
+    "PaintedKind::Missing",
     "Layer::Under",
     "Layer::Over",
     "Paint::Image",
@@ -19,10 +25,11 @@ const ALL: [&str; 8] = [
     "Paint::Shaded",
 ];
 
-/// What `item` is: its `Item` variant, its `Layer` and a sprite's `Paint`.
-/// Every `match` here has no `_` arm, so a new variant doesn't compile
-/// until it is named here; then [`ALL`] names it, and the card shows it.
-fn kinds(item: &Item) -> Vec<&'static str> {
+/// What `item` is: its `Item` variant, its `Layer`, a sprite's `Paint` and
+/// a painted picture's kind in `pictures` (or that it is missing). Every
+/// `match` here has no `_` arm, so a new variant doesn't compile until it
+/// is named here; then [`ALL`] names it, and the card shows it.
+fn kinds(item: &Item, pictures: &PaintedTable) -> Vec<&'static str> {
     let layer = match item.layer() {
         Layer::Under => "Layer::Under",
         Layer::Over => "Layer::Over",
@@ -37,6 +44,15 @@ fn kinds(item: &Item) -> Vec<&'static str> {
                 Paint::Shaded(_) => "Paint::Shaded",
             };
             vec!["Item::Sprite", layer, paint]
+        }
+        Item::Painted(painted) => {
+            let kind = match pictures.get(painted.picture).map(Painted::kind) {
+                Some(PaintedKind::Rgba) => "PaintedKind::Rgba",
+                Some(PaintedKind::Indexed) => "PaintedKind::Indexed",
+                Some(PaintedKind::OneBit) => "PaintedKind::OneBit",
+                None => "PaintedKind::Missing",
+            };
+            vec!["Item::Painted", layer, kind]
         }
     }
 }
@@ -54,7 +70,7 @@ fn items(card: &RenderCard) -> Vec<Item> {
 fn sprites(card: &RenderCard) -> Vec<Sprite> {
     let sprite = |item: Item| match item {
         Item::Sprite(sprite) => Some(sprite),
-        Item::Rect(_) => None,
+        Item::Rect(_) | Item::Painted(_) => None,
     };
     items(card).into_iter().filter_map(sprite).collect()
 }
@@ -63,7 +79,8 @@ fn sprites(card: &RenderCard) -> Vec<Sprite> {
 fn every_item_paint_and_layer_is_on_the_card() {
     let card = build();
     let mut count = BTreeMap::new();
-    for kind in items(&card).iter().flat_map(kinds) {
+    let pictures = card.buffer.pictures();
+    for kind in items(&card).iter().flat_map(|item| kinds(item, pictures)) {
         *count.entry(kind).or_insert(0) += 1;
     }
     let shown: BTreeSet<_> = count.keys().copied().collect();

@@ -1,0 +1,48 @@
+---
+source: crates/ui/tests/it/plasma.rs
+expression: text
+---
+step 0 phase 0
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r1 07c25fca356e6f81
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r1 b4fb6fe9fe75d5b7
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r1 6f871bfcefffbbf9
+step 1 phase 0
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r1 07c25fca356e6f81
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r1 b4fb6fe9fe75d5b7
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r1 6f871bfcefffbbf9
+step 2 phase 0
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r1 07c25fca356e6f81
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r1 b4fb6fe9fe75d5b7
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r1 6f871bfcefffbbf9
+step 3 phase 0
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r1 07c25fca356e6f81
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r1 b4fb6fe9fe75d5b7
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r1 6f871bfcefffbbf9
+step 4 phase 1
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r2 18cf50a94736d4ef
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r2 6bfcd8f791207328
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r2 aebd744e3ee36334
+step 5 phase 1
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r2 18cf50a94736d4ef
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r2 6bfcd8f791207328
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r2 aebd744e3ee36334
+step 6 phase 1
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r2 18cf50a94736d4ef
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r2 6bfcd8f791207328
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r2 aebd744e3ee36334
+step 7 phase 1
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r2 18cf50a94736d4ef
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r2 6bfcd8f791207328
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r2 aebd744e3ee36334
+step 8 phase 2
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r3 8545b18f44d26230
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r3 e45916e1e253fdea
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r3 502eaf517515bebb
+step 9 phase 2
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r3 8545b18f44d26230
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r3 e45916e1e253fdea
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r3 502eaf517515bebb
+step 10 phase 2
+  under painted 8,16 128x96  plasma/rgba 64x48 rgba r3 8545b18f44d26230
+  under painted 152,16 128x96  plasma/indexed 64x48 indexed r3 e45916e1e253fdea
+  under painted 8,128 128x96  plasma/one-bit 64x48 one-bit r3 502eaf517515bebb

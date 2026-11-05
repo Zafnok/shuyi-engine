@@ -30,6 +30,12 @@ The packer is pure and deterministic: the same images in the same order
 give the same pages, so a baked atlas can be tested equal to the one
 packed at load (ADR-0007).
 
+**From 2399 (done):** a picture a skin paints at run time
+(`shuyi_ui::frame::painted`, ADR-0077) is never a source of the atlas
+here: `shuyi-app` keeps a texture per painted picture, uploaded when its
+revision moves. Packing painted pictures into pages is left out of this
+ticket too unless it says otherwise.
+
 ## Nick input
 
 None.

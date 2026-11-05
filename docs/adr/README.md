@@ -89,5 +89,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0074](0074-session-records-from-real-builds-whole-sessions-kept-beside-the-saves-and-a-screens-own-state-hash.md) | Session records from real builds: whole sessions kept beside the saves, and a screen's own state hash | Accepted; extends ADR-0072, ADR-0036, ADR-0022, ADR-0051 |
 | [0075](0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md) | In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence | Accepted |
 | [0076](0076-focus-from-miniquads-minimize-and-restore-held-input-let-go-on-focus-loss-and-pads-ignored-without-focus.md) | Focus from miniquad's minimize and restore, held input let go on focus loss, and pads ignored without focus | Accepted; extends ADR-0024 §5 |
+| [0077](0077-pictures-a-skin-paints-at-run-time-kept-in-the-frames-buffer-with-a-revision-rgba-indexed-or-one-bit-and-dithered-at-paint-time.md) | Pictures a skin paints at run time: kept in the frame's buffer with a revision, RGBA, indexed or one-bit, and dithered at paint time | Accepted; extends ADR-0002 §4, ADR-0026 |
 
 Template: [`0000-template.md`](0000-template.md).

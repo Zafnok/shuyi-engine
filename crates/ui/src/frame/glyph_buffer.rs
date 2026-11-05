@@ -36,6 +36,7 @@ use shuyi_assets::lighting::Light;
 
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
+use crate::frame::painted::{PaintedSprite, PaintedTable};
 
 /// One console cell: a glyph with foreground and background colours.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -295,37 +296,46 @@ impl Sprite {
     /// The part of `src` that maps to `clip`, as `[x, y, w, h]` in image
     /// pixels (fractions of a pixel when `clip` cuts through a scaled
     /// one). With `flip_x`, the left of `clip` shows the right of `src`.
-    #[allow(clippy::cast_precision_loss)] // pixel coordinates are small
     pub fn clipped_src(&self) -> [f32; 4] {
-        let Self {
-            src, dest, clip, ..
-        } = *self;
-        let wide = |v: i32| i64::from(v);
-        // From `dest`'s edge to `clip`'s, on the side `src` starts from.
-        let inset_x = if self.flip_x {
-            wide(dest.x) + wide(dest.w) - wide(clip.x) - wide(clip.w)
-        } else {
-            wide(clip.x) - wide(dest.x)
-        };
-        let inset_y = wide(clip.y) - wide(dest.y);
-        let scale_x = src.w as f32 / dest.w as f32;
-        let scale_y = src.h as f32 / dest.h as f32;
-        [
-            src.x as f32 + inset_x as f32 * scale_x,
-            src.y as f32 + inset_y as f32 * scale_y,
-            clip.w as f32 * scale_x,
-            clip.h as f32 * scale_y,
-        ]
+        clipped_src(self.src, self.dest, self.clip, self.flip_x)
     }
 }
 
-/// Something drawn on top of the cell grid, in console pixels.
+/// The part of `src` that maps to `clip` when `src` is stretched to
+/// `dest` (mirrored if `flip_x`), as `[x, y, w, h]` in the picture's
+/// pixels: [`Sprite::clipped_src`], and a painted picture's.
+#[allow(clippy::cast_precision_loss)] // pixel coordinates are small
+pub(crate) fn clipped_src(src: PxRect, dest: PxRect, clip: PxRect, flip_x: bool) -> [f32; 4] {
+    let wide = |v: i32| i64::from(v);
+    // From `dest`'s edge to `clip`'s, on the side `src` starts from.
+    let inset_x = if flip_x {
+        wide(dest.x) + wide(dest.w) - wide(clip.x) - wide(clip.w)
+    } else {
+        wide(clip.x) - wide(dest.x)
+    };
+    let inset_y = wide(clip.y) - wide(dest.y);
+    let scale_x = src.w as f32 / dest.w as f32;
+    let scale_y = src.h as f32 / dest.h as f32;
+    [
+        src.x as f32 + inset_x as f32 * scale_x,
+        src.y as f32 + inset_y as f32 * scale_y,
+        clip.w as f32 * scale_x,
+        clip.h as f32 * scale_y,
+    ]
+}
+
+/// Something drawn on top of the cell grid, in console pixels. More kinds
+/// may come: a `match` on it has a `_` arm.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[non_exhaustive]
 pub enum Item {
     /// A solid rectangle.
     Rect(Overlay),
-    /// A picture.
+    /// A picture from an image file.
     Sprite(Sprite),
+    /// A picture a skin painted at run time (ADR-0077), from the frame's
+    /// [`PaintedTable`].
+    Painted(PaintedSprite),
 }
 
 impl Item {
@@ -334,15 +344,17 @@ impl Item {
         match self {
             Item::Rect(o) => o.layer,
             Item::Sprite(s) => s.layer,
+            Item::Painted(p) => p.layer,
         }
     }
 
     /// The console pixels the item is drawn in: a rectangle's `rect`, a
-    /// sprite's `clip`.
+    /// sprite's or a painted picture's `clip`.
     pub const fn visible(&self) -> PxRect {
         match self {
             Item::Rect(o) => o.rect,
             Item::Sprite(s) => s.clip,
+            Item::Painted(p) => p.clip,
         }
     }
 
@@ -350,7 +362,7 @@ impl Item {
     /// `hole` are replaced: a sprite's [`overhang`](Sprite::overhang).
     fn overhang(&self, hole: PxRect) -> Option<PxRect> {
         match self {
-            Item::Rect(_) => None,
+            Item::Rect(_) | Item::Painted(_) => None,
             Item::Sprite(s) => s.overhang(hole),
         }
     }
@@ -360,6 +372,7 @@ impl Item {
         match self {
             Item::Rect(o) => Item::Rect(Overlay { rect: visible, ..o }),
             Item::Sprite(s) => Item::Sprite(Sprite { clip: visible, ..s }),
+            Item::Painted(p) => Item::Painted(PaintedSprite { clip: visible, ..p }),
         }
     }
 }
@@ -462,6 +475,9 @@ pub struct GlyphBuffer {
     backdrop: Option<Backdrop>,
     /// Which characters take two cells.
     widths: CellWidths,
+    /// The pictures skins paint (ADR-0077): kept when the frame is drawn
+    /// again, so the frame's owner keeps them between frames.
+    pictures: PaintedTable,
 }
 
 impl GlyphBuffer {
@@ -481,6 +497,7 @@ impl GlyphBuffer {
             items: Vec::new(),
             backdrop: None,
             widths: CellWidths::NARROW,
+            pictures: PaintedTable::default(),
         }
     }
 
@@ -537,9 +554,22 @@ impl GlyphBuffer {
         origin_px: (f32, f32),
         zoom: u8,
     ) {
+        self.absorb_pictures(&scene);
         self.backdrop = clip
             .intersect(&self.bounds())
             .map(|clip| Backdrop::new(scene, self.spec, clip, origin_px, zoom));
+    }
+
+    /// The pictures skins paint (ADR-0077), which its painted items show.
+    pub fn pictures(&self) -> &PaintedTable {
+        &self.pictures
+    }
+
+    /// The pictures to paint: what a skin writes a picture's pixels in
+    /// before it places it ([`add_painted`](Self::add_painted)). Drawing
+    /// the buffer again keeps them.
+    pub fn pictures_mut(&mut self) -> &mut PaintedTable {
+        &mut self.pictures
     }
 
     /// Removes the backdrop.
@@ -563,7 +593,7 @@ impl GlyphBuffer {
     pub fn overlays(&self) -> Vec<Overlay> {
         let rect = |item: &Item| match item {
             Item::Rect(o) => Some(*o),
-            Item::Sprite(_) => None,
+            _ => None,
         };
         self.items.iter().filter_map(rect).collect()
     }
@@ -572,9 +602,18 @@ impl GlyphBuffer {
     pub fn sprites(&self) -> Vec<Sprite> {
         let sprite = |item: &Item| match item {
             Item::Sprite(s) => Some(*s),
-            Item::Rect(_) => None,
+            _ => None,
         };
         self.items.iter().filter_map(sprite).collect()
+    }
+
+    /// Only the painted pictures' items, in drawing order.
+    pub fn painted_sprites(&self) -> Vec<PaintedSprite> {
+        let painted = |item: &Item| match item {
+            Item::Painted(p) => Some(*p),
+            _ => None,
+        };
+        self.items.iter().filter_map(painted).collect()
     }
 
     /// Adds `overlay`, clipped to the buffer; one wholly outside (or empty)
@@ -598,6 +637,37 @@ impl GlyphBuffer {
             .and_then(|clip| clip.intersect(&self.pixel_bounds()));
         if let Some(clip) = clip {
             self.items.push(Item::Sprite(Sprite { clip, ..sprite }));
+        }
+    }
+
+    /// Adds `painted` with its `clip` clipped to its `dest` and to the
+    /// buffer, as [`add_sprite`](Self::add_sprite) does; one with nothing
+    /// to show is dropped. Its picture is looked up in
+    /// [`pictures`](Self::pictures) when the frame is drawn: write it
+    /// before or after, but in the same frame.
+    pub fn add_painted(&mut self, painted: PaintedSprite) {
+        if painted.src.is_empty() {
+            return;
+        }
+        let clip = painted
+            .clip
+            .intersect(&painted.dest)
+            .and_then(|clip| clip.intersect(&self.pixel_bounds()));
+        if let Some(clip) = clip {
+            self.items
+                .push(Item::Painted(PaintedSprite { clip, ..painted }));
+        }
+    }
+
+    /// Copies into this buffer's pictures those that `other`'s painted
+    /// items show (ADR-0077 §3).
+    fn absorb_pictures(&mut self, other: &GlyphBuffer) {
+        for item in &other.items {
+            if let Item::Painted(p) = item
+                && let Some(picture) = other.pictures.get(p.picture)
+            {
+                self.pictures.absorb(p.picture, picture);
+            }
         }
     }
 
@@ -877,10 +947,11 @@ impl GlyphBuffer {
         for item in &mut self.items {
             match item {
                 Item::Rect(o) => o.color = o.color.scale(brightness),
-                Item::Sprite(s) => {
+                Item::Sprite(Sprite { brightness: b, .. })
+                | Item::Painted(PaintedSprite { brightness: b, .. }) => {
                     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255
-                    let darker = (f32::from(s.brightness) * brightness).round() as u8;
-                    s.brightness = darker;
+                    let darker = (f32::from(*b) * brightness).round() as u8;
+                    *b = darker;
                 }
             }
         }
@@ -930,8 +1001,15 @@ impl GlyphBuffer {
                         self.items.push(Item::Sprite(moved).with_visible(visible));
                     }
                 }
+                Item::Painted(p) => {
+                    if let Some(dest) = offset(p.dest, dx, dy) {
+                        let moved = PaintedSprite { dest, ..p };
+                        self.items.push(Item::Painted(moved).with_visible(visible));
+                    }
+                }
             }
         }
+        self.absorb_pictures(other);
     }
 }
 

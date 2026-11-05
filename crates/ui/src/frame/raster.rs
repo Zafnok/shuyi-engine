@@ -8,7 +8,8 @@
 //!
 //! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
 //! pixel at whole scales: the clear colour, cell backgrounds, `Under`
-//! items in order, glyphs tinted with their fg (a wide one over its two
+//! items in order (a painted picture, ADR-0077, from the frame's table,
+//! as a sprite of the same pixels), glyphs tinted with their fg (a wide one over its two
 //! cells, a wide one without its continuation as the fallback), `Over`
 //! items in order;
 //! and before all that, a backdrop's scene in its window. Textures are
@@ -33,6 +34,7 @@ use crate::prelude::*;
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 use crate::frame::onebit::{self, Frame};
+use crate::frame::painted::{Painted, PaintedSprite, PaintedTable};
 
 pub mod card;
 pub mod test_card;
@@ -99,6 +101,18 @@ impl Image {
             self.rgba[i + 2],
             self.rgba[i + 3],
         ]
+    }
+
+    /// `picture`'s pixels as RGBA ([`Painted::rgba_into`]).
+    pub fn of_painted(picture: &Painted) -> Self {
+        let (width, height) = picture.size();
+        let mut rgba = Vec::new();
+        picture.rgba_into(&mut rgba);
+        Self {
+            width: u32::from(width),
+            height: u32::from(height),
+            rgba,
+        }
     }
 
     /// The pixel at `(x, y)`, or `None` outside the picture.
@@ -183,20 +197,28 @@ impl Painter {
         let width = u32::try_from(i64::from(buf.width()) * cell_w).unwrap_or(0);
         let height = u32::try_from(i64::from(buf.height()) * cell_h).unwrap_or(0);
         let mut out = Image::filled(width, height, self.clear);
+        let pictures = buf.pictures();
         if let Some(backdrop) = buf.backdrop() {
-            self.draw_backdrop(&mut out, backdrop, scale);
+            self.draw_backdrop(&mut out, backdrop, pictures, scale);
         }
         // Over a scene, a cell in the clear colour must hide it.
         let all_fills = buf.backdrop().is_some();
-        self.draw_layers(&mut out, buf, (0, 0), s, all_fills);
+        self.draw_layers(&mut out, (buf, pictures), (0, 0), s, all_fills);
         out
     }
 
     /// Draws `backdrop`'s scene in its window of `out`: every scene pixel
     /// `zoom × scale` pixels big, placed by [`Backdrop::scene_offset`].
     /// The scene is drawn into a picture the size of the window, which
-    /// clips it, and that is copied in.
-    fn draw_backdrop(&self, out: &mut Image, backdrop: &Backdrop, scale: u32) {
+    /// clips it, and that is copied in. Its painted items show the frame's
+    /// `pictures`.
+    fn draw_backdrop(
+        &self,
+        out: &mut Image,
+        backdrop: &Backdrop,
+        pictures: &PaintedTable,
+        scale: u32,
+    ) {
         let s = i64::from(scale);
         let clip = backdrop.clip_px();
         let size = |v: i32| u32::try_from(i64::from(v) * s).unwrap_or(0);
@@ -204,7 +226,7 @@ impl Painter {
         let scene_px = i64::from(backdrop.zoom()) * s;
         self.draw_layers(
             &mut window,
-            backdrop.scene(),
+            (backdrop.scene(), pictures),
             backdrop.scene_offset(scale),
             scene_px,
             false,
@@ -222,11 +244,11 @@ impl Painter {
     /// at `corner` and each of its pixels `px` × `px` big: cell
     /// backgrounds (all of them if `all_fills`, else all but those in the
     /// clear colour; never a see-through cell's), `Under` items, glyphs,
-    /// `Over` items.
+    /// `Over` items. Its painted items show `pictures`, the frame's.
     fn draw_layers(
         &self,
         out: &mut Image,
-        buf: &GlyphBuffer,
+        (buf, pictures): (&GlyphBuffer, &PaintedTable),
         corner: (i64, i64),
         px: i64,
         all_fills: bool,
@@ -250,7 +272,7 @@ impl Painter {
                 out.fill((x, y, cell_w, cell_h), cell.bg);
             }
         }
-        self.draw_items(out, buf, Layer::Under, corner, px);
+        self.draw_items(out, (buf, pictures), Layer::Under, corner, px);
         for (cx, cy, cell, wide) in buf.glyphs() {
             if cell.glyph == ' ' {
                 continue;
@@ -272,15 +294,15 @@ impl Painter {
                 [fg[0], fg[1], fg[2], 1.0],
             );
         }
-        self.draw_items(out, buf, Layer::Over, corner, px);
+        self.draw_items(out, (buf, pictures), Layer::Over, corner, px);
     }
 
     /// Draws `buf`'s items of `layer`, in order, from `corner`, each of
-    /// the buffer's pixels `scale` big.
+    /// the buffer's pixels `scale` big, its painted items from `pictures`.
     fn draw_items(
         &self,
         out: &mut Image,
-        buf: &GlyphBuffer,
+        (buf, pictures): (&GlyphBuffer, &PaintedTable),
         layer: Layer,
         corner: (i64, i64),
         scale: i64,
@@ -297,6 +319,7 @@ impl Painter {
             match item {
                 Item::Rect(rect) => out.fill(to_px(rect.rect), rect.color),
                 Item::Sprite(sprite) => self.draw_sprite(out, sprite, to_px(sprite.clip)),
+                Item::Painted(painted) => draw_painted(out, painted, pictures, to_px(painted.clip)),
             }
         }
     }
@@ -336,6 +359,31 @@ impl Painter {
         }
         Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR, 1))
     }
+}
+
+/// Draws the visible part of `painted` into `dest` from its picture in
+/// `pictures`, as a sprite of the same pixels draws (ADR-0077): or a
+/// `MISSING_COLOR` rectangle if the table lacks it.
+fn draw_painted(
+    out: &mut Image,
+    painted: &PaintedSprite,
+    pictures: &PaintedTable,
+    dest: (i64, i64, i64, i64),
+) {
+    let Some(picture) = pictures.get(painted.picture) else {
+        out.fill(dest, MISSING_COLOR);
+        return;
+    };
+    let bright = f32::from(painted.brightness) / 255.0;
+    blit(
+        out,
+        &Image::of_painted(picture),
+        painted.clipped_src(),
+        dest,
+        false,
+        Paint::Image,
+        [bright, bright, bright, 1.0],
+    );
 }
 
 /// Stretches the `src` part of `image` (`[x, y, w, h]` in image pixels)

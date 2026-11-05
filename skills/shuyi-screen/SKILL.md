@@ -1,6 +1,6 @@
 ---
 name: shuyi-screen
-description: Add or change a screen of a game on Shuyi Engine — a screen is logic (update to a Transition), a view (plain data the tests read) and a skin (draw paints the view), with its text by key and its actions declared. Covers the Screen trait, the screen stack, overlays, a screen that answers the one below (PopWith), the engine's ready-made screens and widgets, and putting a screen on the game's list so `check --target` sees it. Use when adding a menu, a title, a question, a results screen or any other screen, or when a screen's text, look or controls change. Not for the keys a screen reacts to (shuyi-input), a turn-based grid stage (shuyi-stage-grid) or a screen's tests in depth (shuyi-test).
+description: Add or change a screen of a game on Shuyi Engine — a screen is logic (update to a Transition), a view (plain data the tests read) and a skin (draw paints the view), with its text by key and its actions declared. Covers the Screen trait, the screen stack, overlays, a screen that answers the one below (PopWith), sprites or a picture the skin paints at run time, the engine's ready-made screens and widgets, and putting a screen on the game's list so `check --target` sees it. Use when adding a menu, a title, a question, a results screen or any other screen, or when a screen's text, look or controls change. Not for the keys a screen reacts to (shuyi-input), a turn-based grid stage (shuyi-stage-grid) or a screen's tests in depth (shuyi-test).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -149,6 +149,42 @@ palette by role, never as numbers: `ctx.palette.engine(EngineColor::Text)`
 `Focus`, `Warning`, `Accent`, `Bright`), or `ctx.palette.lookup(name)`
 for a name of the game's own `files/palette.ron`. A larger game puts its
 painters in a module of their own (a `skin.rs`), each taking a view.
+
+## Sprites or a painted picture
+
+A picture from the game's image files is a **sprite**
+(`buf.add_sprite`): art made before the game runs, as tiles, units and
+portraits are. Use sprites whenever the pixels are in a file.
+
+When the skin makes the pixels while the game runs (a decoded video
+frame, an emulator's screen, a software renderer's view, a minimap of
+the fog of war, a plasma), paint a picture
+(`shuyi::ui::frame::painted`): RGBA (`Painted::rgba`), indexed with a
+palette of 256 colours (`Painted::indexed`) or one-bit
+(`Painted::one_bit`). It lives in the frame's table, which keeps it
+between frames, and it is placed like a sprite, scaled without
+smoothing:
+
+```rust
+const MINIMAP: PaintedId = PaintedId::new("minimap");
+
+fn draw(&self, _: &Ctx<Data>, buf: &mut GlyphBuffer) {
+    // Made afresh from the view; `update` keeps the old one, and its
+    // revision, when they look the same.
+    let picture = self.view().minimap_picture();
+    buf.pictures_mut().update(MINIMAP, picture);
+    let whole = Rect::new(0, 0, 32, 32);
+    buf.add_painted(PaintedSprite::new(MINIMAP, whole, Rect::new(8, 8, 64, 64), Layer::Over));
+}
+```
+
+A big picture changed in place writes through `pixels_mut` (or
+`palette_mut`) only in a frame that changes it: every borrow moves the
+picture's revision, and the window uploads it again only when the
+revision moved. A one-bit target dithers an RGBA or indexed picture as
+it draws it; a one-bit picture shows as it is. Tests read the view; the
+snapshot lists the picture as one line with its revision and a hash of
+its pixels, so a test sees that it changed without reading it.
 
 ## A screen that answers the one below
 

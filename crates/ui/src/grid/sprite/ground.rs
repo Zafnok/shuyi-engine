@@ -558,7 +558,7 @@ mod tests {
             items
                 .filter_map(|item| match item {
                     Item::Rect(r) => Some(*r),
-                    Item::Sprite(_) => None,
+                    _ => None,
                 })
                 .collect()
         };
@@ -666,7 +666,7 @@ mod tests {
             .iter()
             .find_map(|item| match item {
                 Item::Rect(o) => Some(*o),
-                Item::Sprite(_) => None,
+                _ => None,
             })
             .unwrap();
         assert_eq!(

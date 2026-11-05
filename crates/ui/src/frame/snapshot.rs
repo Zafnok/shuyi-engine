@@ -33,7 +33,14 @@
 //! ` solid=colour`, ` dimmed` or
 //! ` shade=grey:red,green,blue` (how its pixels are coloured, game ADR-0049; a
 //! shade is a light's numbers in thousandths, game ADR-0058) and
-//! ` clip=x,y wxh` (not all of `dest` is drawn).
+//! ` clip=x,y wxh` (not all of `dest` is drawn). A painted picture
+//! (ADR-0077) is `layer  painted x,y wxh  id WxH kind rN hash`: where it is
+//! drawn (`dest`), the picture's id, its size, `rgba`, `indexed` or
+//! `one-bit`, its revision and the FNV hash of its pixels, palette and mask
+//! (sixteen hex digits), so a test sees it changed without reading it;
+//! `id missing` when the frame's table lacks it. After that come
+//! ` src=x,y wxh` (not the whole picture), ` bright=N` and ` clip=x,y wxh`,
+//! only when they aren't the default.
 //!
 //! A see-through cell (game ADR-0048) gets a key of its own, whose legend line
 //! says `bg:see-through`: in the colour rows a hole can't be taken for a
@@ -49,6 +56,7 @@ use core::fmt::Write as _;
 use crate::frame::color::{Palette, Rgb};
 use crate::frame::glyph_buffer::Cell;
 use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Paint, PxRect, Sprite};
+use crate::frame::painted::{PaintedSprite, PaintedTable};
 
 /// What a see-through cell's background is called in the legend.
 const SEE_THROUGH: &str = "see-through";
@@ -59,6 +67,12 @@ const CONTROL_GLYPH: char = '\u{fffd}';
 impl GlyphBuffer {
     /// Renders the buffer in the snapshot format described in [`crate::frame::snapshot`].
     pub fn to_snapshot(&self, palette: &Palette) -> String {
+        self.snapshot_with(palette, self.pictures())
+    }
+
+    /// [`to_snapshot`](Self::to_snapshot), its painted items showing
+    /// `pictures`, the frame's (also for a backdrop's scene).
+    fn snapshot_with(&self, palette: &Palette, pictures: &PaintedTable) -> String {
         let (w, h) = (i32::from(self.width()), i32::from(self.height()));
         let cells = || (0..h).flat_map(move |y| (0..w).filter_map(move |x| self.get(x, y)));
         // A see-through cell's `bg` isn't shown, so it isn't part of its key.
@@ -116,11 +130,14 @@ impl GlyphBuffer {
                 Item::Sprite(s) => {
                     let _ = writeln!(out, "{layer:<5} {}", sprite_line(s, &name));
                 }
+                Item::Painted(p) => {
+                    let _ = writeln!(out, "{layer:<5} {}", painted_line(p, pictures));
+                }
             }
         }
         if let Some(backdrop) = self.backdrop() {
             let _ = writeln!(out, "--- backdrop: {} ---", backdrop_line(backdrop));
-            out.push_str(&backdrop.scene().to_snapshot(palette));
+            out.push_str(&backdrop.scene().snapshot_with(palette, pictures));
         }
         out
     }
@@ -175,6 +192,39 @@ fn sprite_line(s: &Sprite, name: &dyn Fn(Rgb) -> String) -> String {
     }
     if s.clip != s.dest {
         let _ = write!(line, " clip={}", px(s.clip));
+    }
+    line
+}
+
+/// A painted picture's snapshot line, after the layer, its picture from
+/// `pictures`.
+fn painted_line(p: &PaintedSprite, pictures: &PaintedTable) -> String {
+    let mut line = format!("painted {}  {}", px(p.dest), p.picture);
+    let picture = pictures.get(p.picture);
+    if let Some(picture) = picture {
+        let (w, h) = picture.size();
+        let _ = write!(
+            line,
+            " {w}x{h} {} r{} {:016x}",
+            picture.kind().name(),
+            picture.revision(),
+            picture.fingerprint()
+        );
+    } else {
+        line.push_str(" missing");
+    }
+    let whole = picture.map(|picture| {
+        let (w, h) = picture.size();
+        PxRect::new(0, 0, w.into(), h.into())
+    });
+    if whole != Some(p.src) {
+        let _ = write!(line, " src={}", px(p.src));
+    }
+    if p.brightness != u8::MAX {
+        let _ = write!(line, " bright={}", p.brightness);
+    }
+    if p.clip != p.dest {
+        let _ = write!(line, " clip={}", px(p.clip));
     }
     line
 }

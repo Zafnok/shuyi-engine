@@ -74,6 +74,12 @@ Graphics are a skin (ADR-0002 §4, `AGENTS.md` rule 9). Tint and blend
 are look data a skin sets on frame items. No scene, view, simulation or
 record holds them.
 
+**From 2399 (done):** a painted picture (`Item::Painted`, ADR-0077) has
+no tint or blend mode, only a `brightness`. Whether this ticket's tint and
+blend modes reach painted items too is its call; if they do, the raster,
+`shuyi-app` and the one-bit renderer's `draw_painted` take them as they
+take a sprite's.
+
 ## Nick input
 
 None.

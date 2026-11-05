@@ -14,12 +14,18 @@
 //! - rectangles and sprites in both layers; sprites in every [`Paint`], at
 //!   opacity 255 and 128, at brightness 255 and 102, mirrored, cut by
 //!   their `clip`, and one whose image is missing;
-//! - a backdrop at zoom 2, its scene offset by half a scene pixel.
+//! - painted pictures (ADR-0077) of every kind, RGBA (some pixels clear
+//!   or half clear), indexed and one-bit (with a mask and without), in
+//!   both layers, at brightness 102, cut by a `clip`, part of one, and one
+//!   the frame's table lacks;
+//! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
+//!   a painted picture of its own.
 //!
 //! Its pictures are made in code: the [test card](super::test_card) and a
-//! small font atlas of boxes and bars, and a wide glyph. A new `Item`,
-//! `Paint` or `Layer` variant goes on the card in the change that adds it:
-//! the tests don't compile until it does.
+//! small font atlas of boxes and bars, and a wide glyph, and the painted
+//! pictures' pixels. A new `Item`, `Paint`, `Layer` or `PaintedKind`
+//! variant goes on the card in the change that adds it: the tests don't
+//! compile until it does.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -32,6 +38,7 @@ use shuyi_assets::lighting::Light;
 use super::{Image, Painter, test_card};
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, Paint, Rect, Sprite};
+use crate::frame::painted::{Painted, PaintedId, PaintedSprite};
 
 /// The card's size in cells (8 × 16 pixels each): 256 × 192 pixels.
 pub const COLUMNS: u16 = 32;
@@ -70,6 +77,19 @@ const MISSING_GLYPH: char = 'Z';
 const WIDE_GLYPH: char = '田';
 /// The sprites' gallery: two background colours, a cell each, in turn.
 const STRIPES: [Rgb; 2] = [Rgb::new(70, 70, 80), Rgb::new(200, 190, 170)];
+
+/// The painted RGBA picture.
+pub const PAINTED_RGBA: PaintedId = PaintedId::new("card/rgba");
+/// The painted indexed picture.
+pub const PAINTED_INDEXED: PaintedId = PaintedId::new("card/indexed");
+/// The painted one-bit picture with a mask.
+pub const PAINTED_MASKED: PaintedId = PaintedId::new("card/masked");
+/// The painted one-bit picture without a mask.
+pub const PAINTED_ONE_BIT: PaintedId = PaintedId::new("card/one-bit");
+/// The backdrop scene's painted picture.
+pub const PAINTED_SCENE: PaintedId = PaintedId::new("card/scene");
+/// A painted picture the frame's table lacks.
+pub const PAINTED_MISSING: PaintedId = PaintedId::new("card/painted-missing");
 
 /// One fixed frame with every kind of thing a frame draws, and what
 /// paints it.
@@ -197,6 +217,7 @@ fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
     cells(&mut buf);
     rects(&mut buf);
     sprites(&mut buf, card, missing);
+    painted(&mut buf);
     backdrop(&mut buf, card);
     buf
 }
@@ -319,6 +340,109 @@ fn sprites(buf: &mut GlyphBuffer, card: ImageId, missing: ImageId) {
     buf.add_sprite(cut);
 }
 
+/// An 8 × 8 RGBA picture: red across, green down, a blue checker, the
+/// top-left pixels clear and the bottom row half clear.
+fn rgba_picture() -> Painted {
+    let mut picture = Painted::rgba(8, 8);
+    for (i, pixel) in picture
+        .pixels_mut()
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .enumerate()
+    {
+        let (x, y) = (i % 8, i / 8);
+        let alpha = match (x, y) {
+            (0..2, 0..2) => 0,
+            (_, 7) => 128,
+            _ => 255,
+        };
+        let level = |v: usize| u8::try_from(v * 36).unwrap_or(u8::MAX);
+        let blue = if (x + y) % 2 == 0 { 200 } else { 40 };
+        pixel.copy_from_slice(&[level(x), level(y), blue, alpha]);
+    }
+    picture
+}
+
+/// An 8 × 8 indexed picture of four colours in diagonal bands.
+fn indexed_picture() -> Painted {
+    let palette = [
+        BACKGROUNDS[1],
+        FOREGROUNDS[1],
+        FOREGROUNDS[2],
+        BACKGROUNDS[2],
+    ];
+    let mut picture = Painted::indexed(8, 8, &palette);
+    for (i, pixel) in picture.pixels_mut().iter_mut().enumerate() {
+        *pixel = u8::try_from(usize::midpoint(i % 8, i / 8) % 4).unwrap_or(0);
+    }
+    picture
+}
+
+/// A one-bit picture `width` × 8: a white frame round a black one, a
+/// white cross in it; with a mask, its corners and its middle column
+/// left out.
+fn one_bit_picture(width: u16, masked: bool) -> Painted {
+    let mut picture = Painted::one_bit(width, 8);
+    if masked {
+        picture = picture.with_mask();
+    }
+    let stride = picture.stride();
+    let w = usize::from(width);
+    let white =
+        |x: usize, y: usize| x == 0 || y == 0 || x == w - 1 || y == 7 || x == y || x + y == w - 1;
+    let pixels = picture.pixels_mut();
+    for y in 0..8 {
+        for x in 0..w {
+            if white(x, y) {
+                pixels[y * stride + x / 8] |= 0x80 >> (x % 8);
+            }
+        }
+    }
+    if let Some(mask) = picture.mask_mut() {
+        for y in 0..8 {
+            for x in 0..w {
+                let corner = (x == 0 || x == w - 1) && (y == 0 || y == 7);
+                if corner || x == w / 2 {
+                    mask[y * stride + x / 8] &= !(0x80 >> (x % 8));
+                }
+            }
+        }
+    }
+    picture
+}
+
+/// The painted pictures, from y 140 below the sprites' gallery, each
+/// twice its size: the RGBA one `Under` and `Over` at brightness 102, the
+/// indexed one whole and cut by a `clip` on odd pixels, the masked one,
+/// the left half of the unmasked one, and one the table lacks, twice
+/// (the second from y 158).
+fn painted(buf: &mut GlyphBuffer) {
+    let pictures = buf.pictures_mut();
+    pictures.insert(PAINTED_RGBA, rgba_picture());
+    pictures.insert(PAINTED_INDEXED, indexed_picture());
+    pictures.insert(PAINTED_MASKED, one_bit_picture(8, true));
+    pictures.insert(PAINTED_ONE_BIT, one_bit_picture(16, false));
+    let eight = Rect::new(0, 0, 8, 8);
+    let at = |x: i32| Rect::new(x, 140, 16, 16);
+    let place = |id, x, layer| PaintedSprite::new(id, eight, at(x), layer);
+    buf.add_painted(place(PAINTED_RGBA, 4, Layer::Under));
+    let mut dim = place(PAINTED_RGBA, 26, Layer::Over);
+    dim.brightness = 102;
+    buf.add_painted(dim);
+    buf.add_painted(place(PAINTED_INDEXED, 48, Layer::Over));
+    let mut cut = place(PAINTED_INDEXED, 70, Layer::Under);
+    cut.clip = Rect::new(73, 143, 9, 11);
+    buf.add_painted(cut);
+    buf.add_painted(place(PAINTED_MASKED, 92, Layer::Over));
+    buf.add_painted(place(PAINTED_ONE_BIT, 114, Layer::Under));
+    buf.add_painted(place(PAINTED_MISSING, 136, Layer::Over));
+    let mut missing = place(PAINTED_MISSING, 4, Layer::Under);
+    missing.dest.y = 158;
+    missing.clip = missing.dest;
+    buf.add_painted(missing);
+}
+
 /// The backdrop: a scene of 6 × 5 cells, zoom 2, behind cells 21 to 30
 /// of rows 2 to 10, its scene pixel (0.5, 0.5) at the window's top-left.
 /// The cells there are see-through, some with glyphs, but a few solid
@@ -349,6 +473,13 @@ fn backdrop(buf: &mut GlyphBuffer, card: ImageId) {
     ));
     let line = Overlay::new(Rect::new(3, 45, 30, 2), Rgb::new(230, 40, 40), Layer::Under);
     scene.add_overlay(line);
+    // Its own picture, which `set_backdrop` copies into the frame's table.
+    scene
+        .pictures_mut()
+        .insert(PAINTED_SCENE, one_bit_picture(16, true));
+    let whole = Rect::new(0, 0, 16, 8);
+    let painted = PaintedSprite::new(PAINTED_SCENE, whole, Rect::new(30, 4, 16, 8), Layer::Over);
+    scene.add_painted(painted);
     let clip = Rect::new(21, 2, 10, 9);
     for y in clip.y..clip.y + clip.h {
         for x in clip.x..clip.x + clip.w {

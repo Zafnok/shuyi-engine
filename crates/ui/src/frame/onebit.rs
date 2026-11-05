@@ -25,7 +25,10 @@
 //! halves as two cells),
 //! `Over` items, and last the [`Ink::Invert`] rectangles, which flip what
 //! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
-//! *One-bit pictures*). Nothing here allocates.
+//! *One-bit pictures*). A painted picture (ADR-0077) is looked up in the
+//! frame's table: a one-bit one is drawn as a one-bit sprite, an RGBA or
+//! indexed one dithered as it is drawn ([`dither_row`]). Nothing here
+//! allocates.
 //!
 //! Made for the device's speed (ticket 1055, game ADR-0077): 32-bit
 //! coordinates, a pattern's byte looked up, whole bytes written whole
@@ -37,6 +40,7 @@
 use core::ops::Range;
 
 use shuyi_assets::bitmap::Bitmap;
+use shuyi_assets::bitmap::dither::brightness;
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageId;
@@ -45,6 +49,7 @@ pub use shuyi_assets::onebit::{Base, Pattern, PatternMapDef, RolePatterns, Rows}
 
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::painted::{Painted, PaintedKind, PaintedSprite, PaintedTable};
 
 mod roles;
 pub use roles::{OneBitFrame, PatternMap, RowMask, changed_rows, luminance, to_one_bit};
@@ -547,6 +552,7 @@ pub fn render_marked_with(
         font,
         images,
         shades,
+        pictures: buf.pictures(),
     };
     draw(buf, &look, out, Clip::SCREEN, mark);
 }
@@ -555,7 +561,8 @@ pub fn render_marked_with(
 /// `render` would draw it, redrawing only the 8 × 16 pixel tiles of the
 /// screen where they may differ: around a changed cell (one pixel more
 /// for a glyph's edge), under a changed item (the old and the new one),
-/// and the window of a changed backdrop.
+/// the window of a changed backdrop, and a painted item whose picture
+/// changed.
 pub fn render_changed(
     old: &GlyphBuffer,
     new: &GlyphBuffer,
@@ -597,15 +604,25 @@ pub fn render_changed_with(
         }
     }
     let (before, after) = (old.items(), new.items());
+    // A painted item shows its picture as the frame's table has it.
+    let repainted = |items: &[Item]| {
+        items.iter().any(|item| match item {
+            Item::Painted(p) => old.pictures().get(p.picture) != new.pictures().get(p.picture),
+            _ => false,
+        })
+    };
     for i in 0..before.len().max(after.len()) {
         let (was, is) = (before.get(i), after.get(i));
-        if was != is {
+        if was != is || is.is_some_and(|item| repainted(core::slice::from_ref(item))) {
             for item in was.into_iter().chain(is) {
                 dirty.add(place.screen(item.visible()));
             }
         }
     }
-    if old.backdrop() != new.backdrop() {
+    let scene_repainted = new
+        .backdrop()
+        .is_some_and(|backdrop| repainted(backdrop.scene().items()));
+    if old.backdrop() != new.backdrop() || scene_repainted {
         for backdrop in old.backdrop().into_iter().chain(new.backdrop()) {
             dirty.add(place.screen(backdrop.clip_px()));
         }
@@ -614,6 +631,7 @@ pub fn render_changed_with(
         font,
         images,
         shades,
+        pictures: new.pictures(),
     };
     for region in dirty.regions() {
         Target {
@@ -625,12 +643,14 @@ pub fn render_changed_with(
     }
 }
 
-/// What the renderer draws with: the font, the pictures, and what each
-/// colour is drawn in.
+/// What the renderer draws with: the font, the pictures, what each
+/// colour is drawn in, and the frame's painted pictures (a backdrop's
+/// scene's painted items show them too).
 struct Look<'a, I, S> {
     font: &'a Font<'a>,
     images: &'a I,
     shades: &'a S,
+    pictures: &'a PaintedTable,
 }
 
 /// The 8 × 16 pixel tiles of the screen (50 × 15) that must be redrawn,
@@ -1089,6 +1109,7 @@ fn draw_items<I: Images, S: Shades>(
                 }
             }
             Item::Sprite(s) => draw_sprite(target, s, at, look),
+            Item::Painted(p) => draw_painted(target, p, at, look),
         }
     }
 }
@@ -1209,6 +1230,74 @@ fn byte_at(row: &[u8], u: i32) -> u8 {
     (pair << (u & 7) >> 8) as u8
 }
 
+/// Whether a painted pixel of alpha `alpha` is drawn: from half opaque up,
+/// as a one-bit picture's bake cuts by default.
+pub(crate) const fn alpha_drawn(alpha: u8) -> bool {
+    alpha >= 128
+}
+
+/// `light` made darker by `brightness` (255 = as it is, 0 = black), in
+/// integers rounded to the nearest.
+pub(crate) fn darken(light: u8, brightness: u8) -> u8 {
+    let product = (u32::from(light) * u32::from(brightness) + 127) / 255;
+    u8::try_from(product).unwrap_or(u8::MAX)
+}
+
+/// The eight pixels of a frame byte on screen row `y` (a byte's first
+/// pixel is always at a multiple of 8 across) whose brightnesses are
+/// `light` (0 black to 255 white, the first the leftmost), dithered as
+/// ADR-0077 says: pixel `i` is white where `4 × BAYER[y % 8][i] + 2 ≥ 255 −
+/// light[i]` ([`shuyi_assets::onebit::BAYER`]), the Bayer dither of
+/// `shuyi bake` at the screen's pixels. Its highest bit is the leftmost
+/// pixel, a set bit white. Integers only: the same on every platform.
+#[allow(clippy::cast_sign_loss)] // 0..8
+pub fn dither_row(light: [u8; 8], y: i32) -> u8 {
+    let order = &shuyi_assets::onebit::BAYER[(y & 7) as usize];
+    let mut byte = 0;
+    for (i, (&level, &rank)) in light.iter().zip(order).enumerate() {
+        if u16::from(rank) * 4 + 2 >= u16::from(u8::MAX - level) {
+            byte |= 0x80 >> i;
+        }
+    }
+    byte
+}
+
+/// Where and how a picture is drawn: a sprite's placing, or a painted
+/// picture's (unmirrored, solid, in its own colours).
+#[derive(Copy, Clone)]
+struct Placed {
+    src: PxRect,
+    dest: PxRect,
+    flip_x: bool,
+    opacity: u8,
+    brightness: u8,
+    paint: Paint,
+}
+
+impl Placed {
+    const fn of_sprite(s: &Sprite) -> Self {
+        Self {
+            src: s.src,
+            dest: s.dest,
+            flip_x: s.flip_x,
+            opacity: s.opacity,
+            brightness: s.brightness,
+            paint: s.paint,
+        }
+    }
+
+    const fn of_painted(p: &PaintedSprite) -> Self {
+        Self {
+            src: p.src,
+            dest: p.dest,
+            flip_x: false,
+            opacity: u8::MAX,
+            brightness: p.brightness,
+            paint: Paint::Image,
+        }
+    }
+}
+
 /// One row of a sprite's picture: its pixels and its mask (`None`: all
 /// drawn).
 #[derive(Copy, Clone)]
@@ -1234,10 +1323,16 @@ enum Columns {
 }
 
 impl Columns {
-    /// The columns of `sprite`'s screen columns `shown`, drawn from
-    /// `image` at `at`: each takes the picture column under its centre
-    /// ([`Image::sample`]).
-    fn of_sprite(sprite: &Sprite, image: &Image<'_>, at: Place, shown: Clip) -> Option<Self> {
+    /// The columns of `sprite`'s screen columns `shown`, drawn at `at`
+    /// from a picture `width` wide standing for one `source_width` wide
+    /// ([`Image`]'s source size): each takes the picture column under its
+    /// centre ([`Image::sample`]).
+    fn of_sprite(
+        sprite: &Placed,
+        (width, source_width): (u16, u16),
+        at: Place,
+        shown: Clip,
+    ) -> Option<Self> {
         let (src, dest) = (sprite.src, sprite.dest);
         let (src_w, dest_w) = (i64::from(src.w), i64::from(dest.w));
         let column = |x: i32| {
@@ -1245,25 +1340,26 @@ impl Columns {
             if sprite.flip_x {
                 dx = dest_w - 1 - dx;
             }
-            Image::sample(
-                dx,
-                src.x.into(),
-                src_w,
-                dest_w,
-                image.width,
-                image.source_width,
-            )
+            Image::sample(dx, src.x.into(), src_w, dest_w, width, source_width)
         };
         // Shown columns lie in `dest`, so from a `src` column of 0 or
         // more every sample divides a sum of 0 or more: a floor.
         let steady = at.scale == 1 && src.x >= 0;
-        Self::of(
-            shown.x0..shown.x1,
-            steady,
-            sprite.flip_x,
-            image.width,
-            column,
-        )
+        Self::of(shown.x0..shown.x1, steady, sprite.flip_x, width, column)
+    }
+
+    /// The picture column screen column `x` (a shown one) takes, if it is
+    /// on a picture `width` wide.
+    #[allow(clippy::cast_sign_loss)] // `x` from `x0` on
+    fn column(&self, x: i32, width: u16) -> Option<u16> {
+        let u = match *self {
+            Self::Run { k, flipped } => {
+                let u = if flipped { k - x } else { k + x };
+                u16::try_from(u).ok()?
+            }
+            Self::Table { x0, ref table } => table[(x - x0) as usize],
+        };
+        (u < width).then_some(u)
     }
 
     /// The columns of screen columns `shown` (on the screen, at least
@@ -1366,7 +1462,6 @@ impl Columns {
 /// and the opacity's, brightness's and paint's pixels are patterns, a
 /// byte a row. A sprite shown pixel for pixel takes a row's eight pixels
 /// from the picture's in one shift.
-#[allow(clippy::cast_sign_loss)] // on the screen
 fn draw_sprite<I: Images, S: Shades>(
     target: &mut Target<'_>,
     sprite: &Sprite,
@@ -1381,13 +1476,129 @@ fn draw_sprite<I: Images, S: Shades>(
         target.fill(shown, Pen::ink(Ink::Grey));
         return;
     };
-    let Some(columns) = Columns::of_sprite(sprite, &image, at, shown) else {
+    let placed = Placed::of_sprite(sprite);
+    draw_one_bit(target, &placed, &image, at, look.shades, shown);
+}
+
+/// Draws a painted picture's item at `at` from the frame's table
+/// (ADR-0077): a one-bit picture as a one-bit sprite of the same pixels,
+/// an RGBA or indexed one dithered ([`draw_dithered`]); a grey rectangle
+/// if the table lacks it.
+fn draw_painted<I: Images, S: Shades>(
+    target: &mut Target<'_>,
+    painted: &PaintedSprite,
+    at: Place,
+    look: &Look<'_, I, S>,
+) {
+    let shown = at.screen(painted.clip).within(target.clip);
+    if shown.is_empty() {
+        return;
+    }
+    let Some(picture) = look.pictures.get(painted.picture) else {
+        target.fill(shown, Pen::ink(Ink::Grey));
+        return;
+    };
+    let placed = Placed::of_painted(painted);
+    let (width, height) = picture.size();
+    match picture.kind() {
+        PaintedKind::OneBit => {
+            if let Some(image) = Image::new(width, height, picture.pixels(), picture.mask()) {
+                draw_one_bit(target, &placed, &image, at, look.shades, shown);
+            }
+        }
+        PaintedKind::Rgba | PaintedKind::Indexed => {
+            draw_dithered(target, &placed, picture, at, shown);
+        }
+    }
+}
+
+/// Draws the screen pixels `shown` of an RGBA or indexed `picture` placed
+/// as `placed` at `at`, dithered (ADR-0077): each takes the picture's
+/// pixel under its centre, as a sprite's do; one less than half opaque
+/// isn't drawn; the others' brightnesses, darkened by the item's, become
+/// black and white a frame byte at a time ([`dither_row`]).
+#[allow(clippy::cast_sign_loss)] // on the screen
+fn draw_dithered(
+    target: &mut Target<'_>,
+    placed: &Placed,
+    picture: &Painted,
+    at: Place,
+    shown: Clip,
+) {
+    let (width, height) = picture.size();
+    let Some(columns) = Columns::of_sprite(placed, (width, width), at, shown) else {
+        return;
+    };
+    // An indexed picture's colours' brightnesses, worked out once.
+    let mut palette = [0u8; 256];
+    for (light, c) in palette.iter_mut().zip(picture.palette()) {
+        *light = brightness([c.r, c.g, c.b, u8::MAX]);
+    }
+    let (stride, pixels) = (picture.stride(), picture.pixels());
+    let indexed = picture.kind() == PaintedKind::Indexed;
+    let light = |u: u16, v: u16| {
+        if indexed {
+            let index = pixels[usize::from(v) * stride + usize::from(u)];
+            return Some(palette[usize::from(index)]);
+        }
+        let rgba = picture.rgba_at(u, v);
+        alpha_drawn(rgba[3]).then(|| brightness(rgba))
+    };
+    let (src, dest) = (placed.src, placed.dest);
+    for y in shown.y0..shown.y1 {
+        let dy = i64::from((y - at.y).div_euclid(at.scale)) - i64::from(dest.y);
+        let v = Image::sample(
+            dy,
+            src.y.into(),
+            src.h.into(),
+            dest.h.into(),
+            height,
+            height,
+        );
+        let Some(v) = u16::try_from(v).ok().filter(|&v| v < height) else {
+            continue;
+        };
+        let line = &mut target.frame[y as usize * ROW_BYTES..][..ROW_BYTES];
+        for x in ((shown.x0 & !7)..shown.x1).step_by(8) {
+            let lanes = ones(shown.x1 - x) & !ones(shown.x0 - x);
+            let (mut levels, mut drawn) = ([0u8; 8], 0u8);
+            for (i, level) in (0..8).zip(&mut levels) {
+                let bit = 0x80 >> i;
+                let pixel = (lanes & bit != 0)
+                    .then(|| columns.column(x + i, width))
+                    .flatten()
+                    .and_then(|u| light(u, v));
+                if let Some(pixel) = pixel {
+                    *level = darken(pixel, placed.brightness);
+                    drawn |= bit;
+                }
+            }
+            let byte = &mut line[(x >> 3) as usize];
+            *byte ^= (*byte ^ dither_row(levels, y)) & drawn;
+        }
+    }
+}
+
+/// Draws the screen pixels `shown` of one-bit `image` placed as `sprite`
+/// at `at` (the body of [`draw_sprite`]), a solid paint in its shade from
+/// `shades`.
+#[allow(clippy::cast_sign_loss)] // on the screen
+fn draw_one_bit(
+    target: &mut Target<'_>,
+    sprite: &Placed,
+    image: &Image<'_>,
+    at: Place,
+    shades: &impl Shades,
+    shown: Clip,
+) {
+    let size = (image.width, image.source_width);
+    let Some(columns) = Columns::of_sprite(sprite, size, at, shown) else {
         return;
     };
     let (src, dest) = (sprite.src, sprite.dest);
     let (src_h, dest_h) = (i64::from(src.h), i64::from(dest.h));
     let solid = match sprite.paint {
-        Paint::Solid(color) => Some(look.shades.shape(color)),
+        Paint::Solid(color) => Some(shades.shape(color)),
         Paint::Image | Paint::Dimmed | Paint::Shaded(_) => None,
     };
     let opacity = [0, 1, 2, 3].map(|y| shows_byte(sprite.opacity, y));
@@ -1437,6 +1648,8 @@ fn draw_sprite<I: Images, S: Shades>(
     }
 }
 
+#[cfg(test)]
+mod painted_tests;
 #[cfg(test)]
 mod speed_tests;
 #[cfg(test)]

@@ -80,6 +80,11 @@ today's drawing in every renderer.
 
 **From 2707 (open):** Parked: `shuyi_core::angle::Angle` (256 steps) is the facing of a unit in 2707's `UnitTable`. If 2707 starts first, 1119 writes `Angle`; this ticket then uses it.
 
+**From 2399 (done):** a painted picture (`Item::Painted`, ADR-0077) has
+no rotation or flip. Whether this ticket's rotation and `flip_y` reach
+painted items too is its call; if they do, the raster, `shuyi-app` and
+the one-bit renderer's `draw_painted` take them as they take a sprite's.
+
 ## Nick input
 
 None. Nick decided on 2026-10-20 that rotated sprites come out of 2703
