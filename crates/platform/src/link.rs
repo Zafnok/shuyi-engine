@@ -21,20 +21,20 @@ pub mod base64;
 
 use crate::alloc_prelude::*;
 use alloc::collections::VecDeque;
-use alloc::{format, vec};
+use alloc::format;
 
 use serde::{Deserialize, Serialize};
-use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap};
+use shuyi_ui::input::PadKind;
 use shuyi_ui::log::LogRing;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES, PerfRing};
 use shuyi_ui::{GameData, RawInputEvent};
 
 use crate::app::App;
-use crate::press;
+use crate::script::{self, Planned, Step};
 
 /// The link's version: a client and a build speak the same, or the build
 /// closes the link after its hello.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 /// The longest request line, in bytes: a longer one closes the link.
 pub const MAX_LINE: usize = 64 * 1024;
@@ -43,15 +43,15 @@ pub const MAX_LINE: usize = 64 * 1024;
 /// backend drops the client.
 pub const MAX_UNSENT: usize = 64 * 1024 * 1024;
 
-/// The most frames one [`Step::Wait`] may hold: about 28 minutes at 60 a
-/// second.
-pub const MAX_WAIT: u32 = 100_000;
+/// The longest [`Step::Wait`] of a play, in seconds: half an hour, played
+/// as the build's frames at 60 a second ([`script::wait_frames`]).
+pub const MAX_WAIT: f32 = 1_800.0;
 
 /// How many records a [`Request::Perf`] answers when it doesn't say.
 pub const PERF_MAX: u32 = 120;
 
 /// A line a client sends, tagged by `op`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Request {
@@ -70,7 +70,9 @@ pub enum Request {
     /// The window's picture, as a PNG, after the next frame is shown.
     Screenshot,
     /// Steps played as a player's input, frame by frame: answered when
-    /// the last has run.
+    /// the last has run. A wait's seconds are the build's frames at 60 a
+    /// second ([`script::wait_frames`]); a crank isn't played over the
+    /// link yet.
     Play {
         /// The steps, in order.
         steps: Vec<Step>,
@@ -111,94 +113,6 @@ impl Request {
         // An enum of strings and numbers: serializing can't fail.
         serde_json::to_string(self).unwrap_or_default()
     }
-}
-
-/// One step of a [`Request::Play`], as the Harness's test scripts have
-/// them.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[non_exhaustive]
-pub enum Step {
-    /// Each whitespace-separated chord (`"Enter Shift+Space"`) pressed in
-    /// one frame and let go in the next, as `Harness::keys` does.
-    Keys(String),
-    /// Each whitespace-separated controller button (`"South"`; buttons
-    /// joined by `+` go down together) pressed on a generic pad in one
-    /// frame and let go in the next, as `Harness::pad` does.
-    Pad(String),
-    /// The game's action of this name, pressed by its primary key or else
-    /// its primary button ([`press_for`]), as a key or button step.
-    Act(String),
-    /// This many frames with no input.
-    Wait(u32),
-}
-
-impl Step {
-    /// Whether it can be played: names `Chord::parse` and `Button::parse`
-    /// know, an action named, a wait of at most [`MAX_WAIT`] frames. An
-    /// action's name is looked up when its play starts.
-    pub fn check(&self) -> Result<(), String> {
-        match self {
-            Step::Keys(script) => {
-                for token in script.split_whitespace() {
-                    Chord::parse(token).map_err(|e| format!("keys: {e}"))?;
-                }
-            }
-            Step::Pad(script) => {
-                for token in script.split_whitespace() {
-                    press::buttons(token).map_err(|e| format!("pad: {e}"))?;
-                }
-            }
-            Step::Act(name) => {
-                if name.trim().is_empty() {
-                    return Err("act: no action named".to_owned());
-                }
-            }
-            Step::Wait(frames) => {
-                if *frames > MAX_WAIT {
-                    return Err(format!(
-                        "wait: at most {MAX_WAIT} frames in one step, not {frames}"
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// What presses an action: a key chord, or a button (or two together).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Press {
-    /// The action's primary key chord.
-    Keys(Chord),
-    /// Its primary button, or button chord.
-    Pad(ButtonChord),
-}
-
-/// What presses the game's action named `name` in `keymap`: its primary
-/// key ([`Keymap::primary`]), else its primary button
-/// ([`Keymap::primary_button`]). The one lookup of an action by name, so
-/// every tool presses an action as a player would. An error names the
-/// action: the game has none of that name, or it has neither a key nor a
-/// button.
-pub fn press_for<A: ActionSet>(keymap: &Keymap<A>, name: &str) -> Result<Press, String> {
-    let Some(action) = A::from_name(name) else {
-        let names: Vec<&str> = A::ALL.iter().map(|a| a.name()).collect();
-        return Err(format!(
-            "act: the game has no action {name:?}; its actions are {}",
-            names.join(", ")
-        ));
-    };
-    if let Some(chord) = keymap.primary(action) {
-        return Ok(Press::Keys(chord));
-    }
-    keymap
-        .primary_button(action)
-        .map(Press::Pad)
-        .ok_or_else(|| {
-            format!("act: {name} has neither a key nor a button in the player's keymap now")
-        })
 }
 
 /// Which part of its life the game is in.
@@ -430,13 +344,6 @@ pub enum Handled {
     Close(Option<String>),
 }
 
-/// One frame of a play: the events it gives, or frames with none.
-#[derive(Debug, Clone, PartialEq)]
-enum Planned {
-    Events(Vec<RawInputEvent>),
-    Idle(u32),
-}
-
 /// A play being played.
 #[derive(Debug)]
 struct Play {
@@ -573,13 +480,13 @@ impl Server {
                 return Handled::Screenshot;
             }
             Request::Play { steps } => {
-                for (i, step) in steps.iter().enumerate() {
-                    if let Err(e) = step.check() {
-                        return Handled::Answer(Answer::error(format!("step {}: {e}", i + 1)));
-                    }
+                if let Err(e) = check_play(&steps) {
+                    return Handled::Answer(Answer::error(e));
                 }
                 // A play of no frames (nothing, or waits of none) is done.
-                if steps.iter().all(|step| *step == Step::Wait(0)) {
+                let none =
+                    |step: &Step| matches!(step, Step::Wait(s) if script::wait_frames(*s) == 0);
+                if steps.iter().all(none) {
                     Answer::Played(Played {
                         frames: 0,
                         waited_loading: false,
@@ -627,7 +534,7 @@ impl Server {
             return;
         };
         if play.frames.is_none() {
-            match plan(&play.steps, game.input().keymap()) {
+            match script::frames(&play.steps, game.input().keymap(), PadKind::default()) {
                 Ok(frames) if frames.is_empty() => {
                     let played = Played {
                         frames: 0,
@@ -637,7 +544,7 @@ impl Server {
                     self.end_play(Answer::Played(played).to_line());
                     return;
                 }
-                Ok(frames) => play.frames = Some(frames),
+                Ok(frames) => play.frames = Some(frames.into()),
                 Err(e) => {
                     self.end_play(Answer::error(e));
                     return;
@@ -838,54 +745,18 @@ fn perf_read(ring: &PerfRing, since: u64, max: u32) -> PerfAnswer {
     answer
 }
 
-/// The frames `steps` give with `keymap`, waits of no frame left out; an
-/// error names the step whose action can't be pressed.
-fn plan<A: ActionSet>(steps: &[Step], keymap: &Keymap<A>) -> Result<VecDeque<Planned>, String> {
-    let mut frames = VecDeque::new();
+/// Whether a play's `steps` can be played: each step
+/// ([`Step::check`](script::Step::check)), waits of at most [`MAX_WAIT`]
+/// seconds, and no crank; an error names the step. An action's name is
+/// looked up when the play starts.
+pub fn check_play(steps: &[Step]) -> Result<(), String> {
     for (i, step) in steps.iter().enumerate() {
-        let at = |e: String| format!("step {}: {e}", i + 1);
-        match step {
-            Step::Keys(script) => {
-                for token in script.split_whitespace() {
-                    let chord = Chord::parse(token).map_err(|e| at(format!("keys: {e}")))?;
-                    press_keys(&mut frames, chord);
-                }
-            }
-            Step::Pad(script) => {
-                for token in script.split_whitespace() {
-                    let buttons = press::buttons(token).map_err(|e| at(format!("pad: {e}")))?;
-                    press_pad(&mut frames, &buttons);
-                }
-            }
-            Step::Act(name) => match press_for(keymap, name).map_err(at)? {
-                Press::Keys(chord) => press_keys(&mut frames, chord),
-                Press::Pad(chord) => {
-                    let buttons = match chord.buttons() {
-                        Some((a, b)) => vec![a, b],
-                        None => vec![chord.first()],
-                    };
-                    press_pad(&mut frames, &buttons);
-                }
-            },
-            Step::Wait(n) => {
-                if *n > 0 {
-                    frames.push_back(Planned::Idle(*n));
-                }
-            }
+        step.check().map_err(|e| format!("step {}: {e}", i + 1))?;
+        if matches!(step, Step::Crank(_)) {
+            return Err(format!("step {}: crank: not over the live link yet", i + 1));
         }
     }
-    Ok(frames)
-}
-
-/// `chord` down in one frame and its key up in the next.
-fn press_keys(frames: &mut VecDeque<Planned>, chord: Chord) {
-    frames.extend(press::keys(chord).map(Planned::Events));
-}
-
-/// `buttons` down together on a generic pad in one frame, and up in the
-/// next.
-fn press_pad(frames: &mut VecDeque<Planned>, buttons: &[Button]) {
-    frames.extend(press::pad(buttons).map(Planned::Events));
+    script::check_waits(steps, MAX_WAIT)
 }
 
 #[cfg(test)]

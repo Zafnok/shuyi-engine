@@ -157,13 +157,14 @@ None.
   - The contract's schema changes, so raise `contract::VERSION`,
     regenerate `crates/cli/schemas/` and add the line in
     `crates/cli/schemas/versions.json` (ADR-0022 §5).
-  - **Either order with 2566:** if 2566 is done, the steps are
-    `shuyi_platform::script::Step` (`crates/platform/src/script.rs`,
-    re-exported as `frame_png::Step`): add `Lang(String)` there, played
-    by `Script::play` with `Harness::set_lang`, read by
-    `frame_png::parse_step`, and make the link's plan
-    (`script::frames`) refuse it ("lang: not over the live link yet");
-    if not, nothing to do (2566 moves it).
+  - **From 2566 (done):** the steps are `shuyi_platform::script::Step`
+    (`crates/platform/src/script.rs`, re-exported as `frame_png::Step`):
+    add `Lang(String)` there, played by `Script::play` with
+    `Harness::set_lang` (as `Crank` is played with `Harness::crank`),
+    read by `frame_png::parse_step`; make the link's plan
+    (`script::frames`, and `link::check_play`) refuse it ("lang: not
+    over the live link yet"), and a capture plan too
+    (`capture::Plan::parse`, as it refuses a crank).
 - **The walk, `shuyi_platform::harness::walk`** (`crates/platform/src/harness/walk.rs`,
   behind the `harness` feature, `no_std` with `alloc` like the Harness):
   - `pub struct Stop<G: GameData> { pub screen: &'static str, pub reach: fn(&mut Harness<G>), pub skip: Vec<Rect> }`:

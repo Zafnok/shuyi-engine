@@ -23,9 +23,9 @@ What is there once the blockers land:
 - **2018's capture mode** (`crates/app/src/capture.rs`, behind
   `shuyi-app`'s `capture` feature) runs a plan
   (`shuyi_platform::capture::Plan`) of steps: keys, pad buttons, waits
-  and captures. They are `capture::Step`s (`keys`, `pad`, `wait`,
-  `capture`), or, when 2566 landed first, `capture::PlanStep`s over
-  `shuyi_platform::script::Step` (2566 folds them).
+  and captures. They are `capture::PlanStep`s: `Input` over
+  `shuyi_platform::script::Step` (`keys`, `pad`, `act`, `wait`) or
+  `Capture` (2566 folded 2018's `capture::Step` into them).
   `Plan` is a struct with private fields, made only by `Plan::parse`
   and read through `steps()` and `tolerance()`; `Plan::frames()` gives
   a `PlannedFrame` per frame. The run drives `App::frame_after(platform,
@@ -123,12 +123,11 @@ None.
     so;
   - it stays `no_std` + `alloc`, so the `no-std` job's line for
     `--features capture` still builds it.
-- **Either order with 2566:** if 2566 is done, the step form's steps
-  are `capture::PlanStep`s over `script::Step` (2566 folded 2018's
-  `capture::Step` into them), and `Plan::frames` takes the keymap; the session form doesn't change, and `Plan::frames`
-  still gives no frames for a session plan. If not, nothing to do (2566
-  moves the step form's steps onto `script::Step` and leaves the
-  session form alone).
+- **From 2566 (done):** the step form's steps are `capture::PlanStep`s
+  over `script::Step`, and `Plan::frames(&self, keymap)` answers a
+  `Result` (an action the keymap can't press is an error); the session
+  form doesn't change, and `Plan::frames` still gives no frames for a
+  session plan.
 - **Playback on a platform other than `HeadlessPlatform`**
   (`shuyi_platform::session`). 2518's `Playback::next` takes
   `&mut HeadlessPlatform` only, so give it a trait instead:

@@ -31,13 +31,32 @@ fn an_input_the_harness_cant_play_is_refused() {
         script: keys("NoSuchKey"),
         ..RunInput::default()
     };
-    assert!(bad.check().unwrap_err().starts_with("keys: "));
+    assert!(bad.check().unwrap_err().starts_with("step 1: keys: "));
     let answer = run(&Fake::default(), &too_many);
     assert_eq!(
         answer.error.as_deref(),
         Some("frames: at most 100000, not 100001")
     );
     assert!(scene(&Fake::default(), &bad).error.is_some());
+}
+
+#[test]
+fn an_action_the_game_cant_press_is_refused_before_anything_plays() {
+    let input = |name: &str| RunInput {
+        script: Script::new(vec![Step::Keys("Enter".into()), Step::Act(name.to_owned())]),
+        ..RunInput::default()
+    };
+    let ran = run(&Fake::default(), &input("Confirm"));
+    assert!(ran.ok, "{ran:?}");
+    // The key's two frames and the action's.
+    assert_eq!(ran.result.unwrap().frames, 4);
+    let said = "step 2: act: no action `Jump` with a key or a button; the game's are Up, Down, \
+                Left, Right, Confirm, Cancel";
+    let refused = run(&Fake::default(), &input("Jump"));
+    assert_eq!(refused.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    assert_eq!(refused.error.as_deref(), Some(said));
+    let refused = scene(&Fake::default(), &input("Jump"));
+    assert_eq!(refused.error.as_deref(), Some(said));
 }
 
 #[test]
@@ -129,8 +148,8 @@ fn scene_passes_only_with_a_scene() {
 fn the_arguments_are_steps_frames_and_the_games_options() {
     let input = parse_args(
         &args(&[
-            "--script", "Enter", "--keys", "Up", "--pad", "South", "--wait", "0.5", "--frames",
-            "30", "--seed", "4",
+            "--script", "Enter", "--keys", "Up", "--pad", "South", "--act", "Confirm", "--wait",
+            "0.5", "--frames", "30", "--seed", "4",
         ]),
         &OPTIONS,
     )
@@ -141,6 +160,7 @@ fn the_arguments_are_steps_frames_and_the_games_options() {
             Step::Keys("Enter".into()),
             Step::Keys("Up".into()),
             Step::Pad("South".into()),
+            Step::Act("Confirm".into()),
             Step::Wait(0.5),
         ]
     );
@@ -170,6 +190,8 @@ fn the_arguments_are_steps_frames_and_the_games_options() {
         &["--script"][..],
         &["--keys", "Nope"],
         &["--wait", "soon"],
+        &["--act", ""],
+        &["--act"],
         &["--frames"],
         &["--frames", "100001"],
         &["--frames", "x"],
@@ -190,6 +212,7 @@ fn the_usage_lists_the_steps_and_the_games_options() {
     let usage = usage("tools", Op::Scene, &OPTIONS);
     assert!(usage.starts_with("usage: tools scene [steps] [--frames N] [options] [--json]\n"));
     assert!(usage.contains("--script \"Enter Up\""));
+    assert!(usage.contains("--act Confirm"), "{usage}");
     assert!(
         usage.contains("\nthe game's options:\n  --seed N             seed it\n"),
         "{usage}"

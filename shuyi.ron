@@ -10,16 +10,14 @@
         platform_file: "crates/app/src/keys.rs",
         // The files that may name keys and buttons, each for its reason.
         key_files: [
-            // The platform backends' readers, the link's, the Harness's
-            // and the capture's plans' key and button scripts, and the
-            // presses they share.
+            // The platform backends' readers, the Harness's key and
+            // button scripts, and the one input script the Harness, the
+            // link and the capture's plans play (`script`).
             "crates/app/src/keys.rs",
             "crates/app/src/pads/native.rs",
             "crates/playdate/src/input.rs",
-            "crates/platform/src/capture.rs",
             "crates/platform/src/harness.rs",
-            "crates/platform/src/link.rs",
-            "crates/platform/src/press.rs",
+            "crates/platform/src/script.rs",
             // The keymap format, the fixed key of `UiAction::Cancel`
             // (ADR-0036) and the sample game's actions.
             "crates/assets/src/keymap.rs",

@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2566 — One input script: the steps the Harness, the contract and the live link play
@@ -187,12 +187,10 @@ None.
   Script`, and its test that `n` waits of `FRAME_DT` run exactly `n`
   more frames passes under `wait_frames`; if not, nothing to do (2514
   writes the free function).
-- **From 3008 (done):** the inputs of its `.bench.ron` scenarios
-  (`Scenario::script` in `crates/cli/src/bench.rs`, a
-  `frame_png::Script`, read with serde and played with `Session::play`
-  then `Session::idle`) move onto `script::Step` with the contract's
-  steps, and the scenarios' files (`examples/hello-grid/bench/`,
-  `crates/cli/toy/bench/`) keep reading.
+- **Either order with 3008:** if 3008 is done, the inputs of its
+  `.bench.ron` scenarios move onto `script::Step` with the contract's
+  steps; if not, nothing to do (3008 writes its scenarios' inputs as a
+  `script::Script`).
 - **Either order with 2569:** if 2569 is done, `shuyi-platform` already
   has a `schema` feature (`["dep:schemars"]`, turned on by `shuyi-cli`)
   and `schemars` in its `outside` list in `tools/layers.ron`, with
@@ -247,30 +245,31 @@ None.
 
 ## Acceptance criteria
 
-- [ ] One type of input step in the engine:
+- [x] One type of input step in the engine:
       `grep -rn "enum Step" crates/cli crates/platform` finds only
       `shuyi_platform::script::Step` (and the dialogue's and text box's,
-      which are not input). 2018's `capture::Step` is gone too: a
+      which are not input; and `export::playdate::Step`, a build step of
+      the Playdate exporter). 2018's `capture::Step` is gone too: a
       plan's steps are `capture::PlanStep`s over `script::Step`.
-- [ ] `RawInputEvent::Down` for a script's key is built in one place:
+- [x] `RawInputEvent::Down` for a script's key is built in one place:
       the link and the Harness both play `script::frames`.
-- [ ] `cargo shuyi run --act Confirm` and `scene --act Confirm` on a
+- [x] `cargo shuyi run --act Confirm` and `scene --act Confirm` on a
       game made with `shuyi new --template grid` press its Confirm key;
       `--act Jump` is refused before anything plays, naming the game's
       actions.
-- [ ] `frame-png --act Confirm` draws the same frame as `--keys` with
+- [x] `frame-png --act Confirm` draws the same frame as `--keys` with
       Confirm's primary key.
-- [ ] `shuyi attach --act Confirm --wait 0.5` plays the same frames as
+- [x] `shuyi attach --act Confirm --wait 0.5` plays the same frames as
       before on the toy's link host (`act`, then 30 frames).
-- [ ] An MCP `step` naming an action the game lacks answers `SH0001` and
+- [x] An MCP `step` naming an action the game lacks answers `SH0001` and
       the session stays up.
-- [ ] `contract::VERSION` and `link::VERSION` are each one higher; the
+- [x] `contract::VERSION` and `link::VERSION` are each one higher; the
       schemas are regenerated; `attach.input.json` describes the same
-      JSON as before.
-- [ ] `cargo xtask check-layers` passes with `schemars` in
+      JSON as before (and lists `crank` too, which `attach` refuses).
+- [x] `cargo xtask check-layers` passes with `schemars` in
       `shuyi-platform`'s list.
-- [ ] Each either-order clause above is settled in the PR.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Each either-order clause above is settled in the PR.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -291,5 +290,163 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+One input script for the engine: `shuyi_platform::script` (new) holds
+`Step` (`Keys`, `Pad`, `Act`, `Wait` in seconds, `Crank`), `Script`
+(`new`, `check`, and `play` on a Harness), `Planned` and `frames` (the
+one plan of a script's frames), `wait_frames` (seconds at 60 a second,
+rounded up, within a thousandth of a whole number), `check_waits` (the
+player's longest wait), `press_for` and `Press` (moved from `link`), and
+`pressable` (the actions with a key or a button). `Harness::keys`,
+`Harness::pad` and `Script::play`, the link's server and
+`capture::Plan::frames` are built on the plan, so a key press's events
+are built in one place. Recorded as ADR-0082, which amends ADR-0047 §7
+and ADR-0052.
+
+- **Harness:** `Script::play` plays `Act` by the game's keymap (an
+  action it can't press panics, naming the step) and `Crank` by
+  `Harness::crank`; `harness::MAX_WAIT` (33.3 s) is the longest wait it
+  plays; `harness::FRAME_DT` is `script::FRAME_DT`.
+- **Link:** `Request::Play { steps: Vec<script::Step> }`, waits in
+  seconds on the wire, `link::MAX_WAIT` 1 800 s, a crank refused
+  (`link::check_play`, the one check both ends run); `link::Step`,
+  `plan`, `press_keys`, `press_pad` and the crate-private `press` module
+  are gone; `link::VERSION` is 3.
+- **Capture:** a plan's steps are `capture::PlanStep`s
+  (`Input(script::Step)` or `Capture`), read from the same RON with
+  `act("Confirm")` (a crank refused); `Plan::frames(&keymap)` answers a
+  `Result`; `shuyi-app`'s capture run plans a plan that presses an action
+  once the game has loaded (`Plan::presses_actions`).
+- **Contract:** `frame_png` re-exports `Script` and `Step`;
+  `frame_png::parse_step` reads `--act` too, for `frame-png`, `run`,
+  `scene` and `attach`; `frame_png::check` adds the Harness's longest
+  wait. `AttachStep` is gone (`AttachInput::steps` is `Vec<Step>`; the
+  frames after are waits that play exactly that many frames,
+  `attach::idle`). `Session::actions` (default: none; `Headless` from its
+  game's keymap; the fake's `Up, Down, Left, Right, Confirm, Cancel`);
+  `run::check_actions` refuses a script naming an action not in the list
+  before anything plays, in `run`, `scene` and MCP's `step` (`SH0001`,
+  the session kept). `contract::VERSION` is 36, the schemas
+  regenerated.
+- **Docs:** ADR-0082 (and the status lines of ADR-0047 and ADR-0052),
+  `docs/contract.md` (the steps, `--act`, the waits' rule, the MCP `step`
+  rows), the template's `AGENTS.md` table (`run --act Confirm`), the
+  book's *Testing* and *Tools for agents* chapters, and the
+  `shuyi-test` and `shuyi-cinematic` skills.
+
+Checked on Hello, Grid through the MCP session: `step` with `{"act":
+"Jump"}` answers `SH0001` naming the game's actions with nothing played,
+and `{"act": "Confirm"}, {"wait": 0.5}` opens the stage in 2 + 30
+frames; `frame-png --act Confirm --wait 0.25` writes the same PNG as
+`--keys Enter --wait 0.25`; `scene --act Confirm` reaches the stage and
+`run --act Jump` is refused.
+
+Deviations:
+
+- No `script` feature: `serde` is already a non-optional dependency of
+  `shuyi-platform` (session records), so the feature would gate nothing.
+  The `schema` feature is `["dep:schemars"]`, and 2569's clause says so.
+- The check of the longest wait is `script::check_waits(steps, max)`,
+  called by each player (`frame_png::check` for the Harness,
+  `link::check_play`, `capture::Plan::parse`), rather than a method.
+- `attach.input.json`'s step now lists `crank` too (it is
+  `script::Step`), which `attach` refuses ("crank: not over the live link
+  yet"); every JSON it read before reads the same. `attach` waits may be
+  up to 1 800 s (they were held to the Harness's 33.3 s before).
+- A capture plan that presses an action by name waits for the game to
+  load before its frames start, since the keymap comes with the game;
+  plans without `act` play as before.
+- The capture plan's longest wait stays its own `capture::MAX_WAIT`
+  (600 s).
+
+Either-order clauses: 2540 is done (the crank moved into
+`script::Step`, the link's plan and a capture plan refuse it); 2353,
+2356, 2556, 2029, 2514, 3008 and 2569 are not done, so their clauses
+here needed nothing, and each of those tickets now says what holds
+("From 2566 (done)"). 2524 keeps the rest of its scope.
+
+Nick input: none.
+
+Breaking: shuyi-cli: frame_png::Step, frame_png::Script: re-exports of `shuyi_platform::script::{Step, Script}`; `Step` gains `Act`, and `Script` is built with `Script::new` (its fields can't be named from another crate).
+
+```migration
+since: 0.2.0
+what: The contract's script is shuyi-platform's, and a step can press an action by name.
+old: 'Script { steps: vec![Step::Keys(..)] }'
+new: 'Script::new(vec![Step::Keys(..)])'
+before: |
+  let script = Script { steps: vec![Step::Keys("Enter".to_owned())] };
+after: |
+  let script = Script::new(vec![Step::Act("Confirm".to_owned())]);
+find: ["Script { steps"]
+```
+
+Breaking: shuyi-cli: frame_png::Script::parse_step, frame_png::MAX_WAIT: now `frame_png::parse_step(flag, text)`, which reads `--act` too, and `shuyi_platform::harness::MAX_WAIT`; `Script::check` no longer checks the longest wait: `frame_png::check(&script)` does.
+
+```migration
+since: 0.2.0
+what: A script flag is read by a free function, and the Harness's longest wait is checked with the script.
+old: 'Script::parse_step(flag, text); script.check()'
+new: 'frame_png::parse_step(flag, text); frame_png::check(&script)'
+before: |
+  if let Some(step) = Script::parse_step(arg, &text) { steps.push(step?); }
+  script.check()?;
+after: |
+  if let Some(step) = frame_png::parse_step(arg, &text) { steps.push(step?); }
+  frame_png::check(&script)?;
+find: ["Script::parse_step", "script.check()"]
+```
+
+Breaking: shuyi-cli: contract::attach::AttachStep, AttachStep::of, frames_of, FRAMES_PER_SECOND: gone; `AttachInput::steps` and `link_steps` are `Vec<frame_png::Step>`, waits in seconds.
+
+```migration
+since: 0.2.0
+what: attach takes the contract's steps.
+old: 'AttachStep::Act(name)'
+new: 'Step::Act(name)'
+before: |
+  input.steps = vec![AttachStep::Act("Confirm".into()), AttachStep::Wait(0.5)];
+after: |
+  input.steps = vec![Step::Act("Confirm".into()), Step::Wait(0.5)];
+find: ["AttachStep"]
+```
+
+Breaking: shuyi-platform: link::Step, link::Press, link::press_for, link::MAX_WAIT, link::VERSION: the steps are `script::Step`, waits in seconds (`link::MAX_WAIT` is 1 800.0 seconds), `press_for` and `Press` are `script`'s, `Request` is no longer `Eq`, and the link speaks version 3.
+
+```migration
+since: 0.2.0
+what: The link's steps are a script's, with waits in seconds.
+old: 'link::Step::Wait(30)'
+new: 'script::Step::Wait(0.5)'
+before: |
+  let steps = vec![link::Step::Act("Confirm".into()), link::Step::Wait(30)];
+after: |
+  let steps = vec![script::Step::Act("Confirm".into()), script::Step::Wait(0.5)];
+find: ["link::Step"]
+```
+
+Breaking: shuyi-platform: capture::Step, capture::Plan::steps, capture::Plan::frames, capture::FRAME_DT, capture::wait_frames: a plan's steps are `capture::PlanStep`s (`Input(script::Step)` or `Capture`), `Plan::frames` takes the game's keymap and answers a `Result`, and the frame and wait rule are `script::FRAME_DT` and `script::wait_frames`.
+
+```migration
+since: 0.2.0
+what: A capture plan's frames are planned with the game's keymap.
+old: 'plan.frames()'
+new: 'plan.frames(game.input().keymap())?'
+before: |
+  let frames = plan.frames();
+after: |
+  let frames = plan.frames(game.input().keymap())?;
+find: ["plan.frames()"]
+```
+
+Breaking: shuyi-cli, shuyi-platform: a script's wait: played as `script::wait_frames` frames (rounded up, none for 0) by `Script::play`, not by `Harness::wait`'s shorter last frame, so a `frame-png` picture after a wait that isn't whole frames, or of 0, can change; `Harness::wait` keeps its seconds.
+
+```migration
+since: 0.2.0
+what: A script's wait plays whole frames, rounded up.
+old: 'Step::Wait(0.51) as 30.6 frames'
+new: 'Step::Wait(0.51) as 31 frames'
+before: |
+  Script::new(vec![Step::Wait(0.51)]).play(&mut h);
+after: |
+  Script::new(vec![Step::Wait(31.0 / 60.0)]).play(&mut h);
+```

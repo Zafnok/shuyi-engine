@@ -65,7 +65,10 @@ fn a_scenario_that_doesnt_read_names_the_file_line_and_column() {
     let unknown = err("(format_version: 1, seconds: 3)");
     assert!(unknown.starts_with("bench/a.bench.ron:1:"), "{unknown}");
     let key = err(r#"(format_version: 1, script: (steps: [keys("NoSuchKey")]))"#);
-    assert!(key.starts_with("bench/a.bench.ron: script: keys:"), "{key}");
+    assert!(
+        key.starts_with("bench/a.bench.ron: script: step 1: keys:"),
+        "{key}"
+    );
     for range in ["Frames(first: 0, last: 3)", "Frames(first: 5, last: 4)"] {
         let text = format!("(format_version: 1, measure: {range})");
         assert!(err(&text).contains("measure: frames"), "{range}");
@@ -615,4 +618,18 @@ fn a_target_the_game_lists_but_doesnt_support_yet_isnt_gated() {
             "no scenario nope.bench.ron in the game's folder"
         )
     );
+}
+
+#[test]
+fn every_scenario_the_engine_ships_reads() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for folder in ["examples/hello-grid", "crates/cli/toy"] {
+        let dir = root.join(folder);
+        let files = find(&dir);
+        assert!(!files.is_empty(), "{folder}");
+        for file in files {
+            let text = fs::read_to_string(dir.join(&file)).unwrap();
+            Scenario::read(&file, &text).unwrap_or_else(|e| panic!("{folder}/{e}"));
+        }
+    }
 }

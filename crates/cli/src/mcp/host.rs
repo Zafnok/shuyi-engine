@@ -397,7 +397,7 @@ fn step(game: &mut dyn Session, input: &StepInput) -> Answer<run::RunOutput> {
         ..RunInput::default()
     }
     .check();
-    if let Err(e) = checked {
+    if let Err(e) = checked.and_then(|()| run::check_actions(game, &input.script)) {
         return Answer::failed(Op::Step, codes::WRONG_ARGUMENTS, e);
     }
     game.play(&input.script);

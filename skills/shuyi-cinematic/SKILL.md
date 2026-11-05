@@ -117,7 +117,7 @@ music, jump or loop, and a test can draw any moment.
    ```
 
    `run` answers with the frame as text (`/result/frame`); `frame-png`
-   draws it (its steps are `--keys`, `--pad` and `--wait`). In a test,
+   draws it (its steps are `--keys`, `--pad`, `--act` and `--wait`). In a test,
    the Harness's `wait(seconds)` does the same, and `music_clock()` says
    where the music is.
 

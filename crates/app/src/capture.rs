@@ -8,8 +8,10 @@
 //! ([`PASSED`], [`FAILED`] or [`CANNOT_RUN`]):
 //!
 //! - **exact frames:** every frame is `App::frame_after` one
-//!   `capture::FRAME_DT` after the last, from the first, so the time, the
-//!   fixed steps and the game's seed are the same on every run;
+//!   `script::FRAME_DT` after the last, from the first, so the time, the
+//!   fixed steps and the game's seed are the same on every run; a plan that
+//!   presses an action by name (`act`) starts once the game has loaded,
+//!   whose keymap says what presses it;
 //! - **only the plan plays:** the keyboard, controllers, the window's
 //!   shortcuts and focus aren't read; the close button still quits;
 //! - **nothing outside:** storage is in memory (no save is read or
@@ -38,7 +40,8 @@
 use std::path::{Path, PathBuf};
 
 use macroquad::prelude::*;
-use shuyi_platform::capture::{FRAME_DT, Plan, PlannedFrame};
+use shuyi_platform::capture::{Plan, PlannedFrame};
+use shuyi_platform::script::FRAME_DT;
 use shuyi_platform::{
     App, DisplayInfo, Frame, Look, Platform, Show, Silent, Start, Storage, SystemEvent, TextInput,
 };
@@ -46,6 +49,7 @@ use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::console::{Layout, layout};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::raster::{self, Comparison, Painter, Tolerance};
+use shuyi_ui::input::{Keymap, RepeatDef};
 use shuyi_ui::storage::MemoryStorage;
 use shuyi_ui::{GameData, PlatformFacts, RawInputEvent};
 
@@ -170,9 +174,29 @@ async fn play<G: GameData>(
     finish(code, || app.present_again(&mut platform)).await;
 }
 
-/// Plays `plan`'s frames and gives the exit code.
+/// Plays `plan`'s frames and gives the exit code. A plan that presses an
+/// action by name waits for the game to load: its keymap says what presses
+/// the action.
 async fn play_frames<G: GameData>(app: &mut App<G>, platform: &mut Capturing, plan: &Plan) -> i32 {
-    let frames = plan.frames();
+    while plan.presses_actions() && app.game().is_none() {
+        platform.frame = PlannedFrame::default();
+        let _ = app.frame_after(platform, FRAME_DT);
+        for line in app.take_new_log() {
+            crate::print_line(&line);
+        }
+        if let Some(errors) = app.errors() {
+            return cannot_run(&format!("the game didn't load: {errors}"));
+        }
+        next_frame().await;
+    }
+    let keymap = app.game().map_or_else(
+        || Keymap::new([], RepeatDef::default()),
+        |game| game.input().keymap().clone(),
+    );
+    let frames = match plan.frames(&keymap) {
+        Ok(frames) => frames,
+        Err(e) => return cannot_run(&format!("the plan: {e}")),
+    };
     let captures = frames.iter().filter(|f| f.capture.is_some()).count();
     for frame in frames {
         platform.frame = frame;

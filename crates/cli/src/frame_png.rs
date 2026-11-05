@@ -2,8 +2,9 @@
 //! without a window, for looking at a skin, a picture or a mockup. Never a
 //! gate: snapshots stay text.
 //!
-//! The command plays a [`Script`] of keys, controller buttons and waits in
-//! the game's Harness, which the game's [`GameTools::frame`] starts with
+//! The command plays a [`Script`] of keys, controller buttons, actions by
+//! name and waits in the game's Harness (`shuyi_platform::script`'s, the one
+//! the live link and the capture plans play), which the game's [`GameTools::frame`] starts with
 //! the game's own options, and writes the picture the game paints of it.
 //! A game paints a frame with [`Painter`], or, for a one-bit screen, with
 //! the one-bit renderer and [`one_bit_picture`]. With `--target <id>`, a
@@ -19,17 +20,15 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageTable;
 use shuyi_assets::target::{Color, TargetProfile};
-use shuyi_platform::harness::{FRAME_DT, Harness, MAX_FRAMES};
-use shuyi_ui::GameData;
+use shuyi_platform::harness::MAX_WAIT;
+use shuyi_platform::script::check_waits;
+pub use shuyi_platform::script::{Script, Step};
 use shuyi_ui::frame::raster;
 pub use shuyi_ui::frame::raster::{Image, one_bit_picture};
 use shuyi_ui::frame::{GlyphBuffer, Rgb};
-use shuyi_ui::input::{Button, Chord};
 
 use crate::codec::{decode_png, encode_png};
 use crate::game::{GameArg, GameOption, GameTools, game_arg};
@@ -52,7 +51,8 @@ steps (each may repeat):
   --keys \"F2 Up f\"   press and release each key chord in turn
   --pad \"South\"      press and release each controller button in turn
                      (\"East+DpadDown\": those buttons together)
-  --wait 0.5         let that many seconds pass
+  --act Confirm      press the game's action by its key, or else its button
+  --wait 0.5         let that many seconds pass (60 frames a second, rounded up)
   --crank -30        wind the crank that many degrees in one frame
                      (backwards is negative)
 
@@ -78,7 +78,8 @@ options:
         "
 Key and button names are the Harness's test-script names (Chord::parse,
 Button::parse): input to a test script, not game code, so the
-never-hard-code-a-key rule doesn't apply to them.",
+never-hard-code-a-key rule doesn't apply to them. --act names the game's
+action instead, and presses whatever the player's keymap binds to it.",
     );
     if !notes.is_empty() {
         out.push_str("\n\n");
@@ -87,119 +88,39 @@ never-hard-code-a-key rule doesn't apply to them.",
     out
 }
 
-/// One step of the script, run in the order given.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-// A set that grows: a step is added without a break (ADR-0039).
-#[non_exhaustive]
-pub enum Step {
-    /// `Harness::keys`: each chord pressed and released in turn
-    /// (`"Enter Up Shift+Space"`).
-    Keys(String),
-    /// `Harness::pad`: each controller button pressed and released in
-    /// turn (`"South"`, `"East+DpadDown"`: those buttons together).
-    Pad(String),
-    /// `Harness::wait`: that many seconds pass, at most [`MAX_WAIT`] in
-    /// one step.
-    Wait(f32),
-    /// `Harness::crank`: the crank winds that many degrees in one frame
-    /// (backwards is negative), as a Playdate front end reports it.
-    Crank(f32),
+/// Reads the script flag `flag` with its value `value`, if it is one:
+/// `--keys` (or `--script`), `--pad`, `--act`, `--wait` or `--crank`. A
+/// step no player can play ([`Step::check`]) is an error, not a panic
+/// later. The longest wait is the player's to check (the Harness's with
+/// [`check`]), and an action's name is looked up in the game's keymap.
+pub fn parse_step(flag: &str, value: &str) -> Option<Result<Step, String>> {
+    let step = match flag {
+        "--keys" | "--script" => Step::Keys(value.to_owned()),
+        "--pad" => Step::Pad(value.to_owned()),
+        "--act" => Step::Act(value.to_owned()),
+        "--wait" => match value.parse::<f32>() {
+            Ok(seconds) => Step::Wait(seconds),
+            Err(_) => {
+                return Some(Err(format!("--wait: not a number of seconds: {value}")));
+            }
+        },
+        "--crank" => match value.parse::<f32>() {
+            Ok(degrees) => Step::Crank(degrees),
+            Err(_) => {
+                return Some(Err(format!("--crank: not a number of degrees: {value}")));
+            }
+        },
+        _ => return None,
+    };
+    Some(step.check().map(|()| step).map_err(|e| format!("--{e}")))
 }
 
-/// The longest wait of one step, in seconds: the Harness's most frames
-/// in one wait.
-#[allow(clippy::cast_precision_loss)] // 2000 frames
-pub const MAX_WAIT: f32 = MAX_FRAMES as f32 * FRAME_DT;
-
-impl Step {
-    /// Whether the Harness can play it: names it knows, a wait it can
-    /// run. A step that isn't would panic the Harness.
-    pub fn check(&self) -> Result<(), String> {
-        match self {
-            Step::Keys(script) => {
-                for token in script.split_whitespace() {
-                    Chord::parse(token).map_err(|e| format!("keys: {e}"))?;
-                }
-            }
-            Step::Pad(script) => {
-                for button in script.split_whitespace().flat_map(|t| t.split('+')) {
-                    Button::parse(button).map_err(|e| format!("pad: {e}"))?;
-                }
-            }
-            Step::Wait(seconds) => {
-                if !(seconds.is_finite() && (0.0..=MAX_WAIT).contains(seconds)) {
-                    return Err(format!(
-                        "wait: {seconds} is not a number of seconds from 0 to {MAX_WAIT:.1}"
-                    ));
-                }
-            }
-            Step::Crank(degrees) => {
-                if !degrees.is_finite() {
-                    return Err(format!("crank: {degrees} is not a number of degrees"));
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// What to do in the game before taking the frame.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-// Built with `Script::new` or `default()`: it may grow (ADR-0039).
-#[non_exhaustive]
-pub struct Script {
-    /// The steps, in order.
-    pub steps: Vec<Step>,
-}
-
-impl Script {
-    /// The script of `steps`, in order.
-    pub fn new(steps: Vec<Step>) -> Self {
-        Self { steps }
-    }
-
-    /// Plays the steps in `h`.
-    pub fn play<G: GameData>(&self, h: &mut Harness<G>) {
-        for step in &self.steps {
-            match step {
-                Step::Keys(script) => h.keys(script),
-                Step::Pad(script) => h.pad(script),
-                Step::Wait(seconds) => h.wait(*seconds),
-                Step::Crank(degrees) => h.crank(*degrees),
-            };
-        }
-    }
-
-    /// Whether the Harness can play every step ([`Step::check`]).
-    pub fn check(&self) -> Result<(), String> {
-        self.steps.iter().try_for_each(Step::check)
-    }
-
-    /// Reads the script flag `flag` with its value `value`, if it is one:
-    /// `--keys` (or `--script`), `--pad`, `--wait` or `--crank`. A step the Harness
-    /// can't play is an error, not a panic later.
-    pub fn parse_step(flag: &str, value: &str) -> Option<Result<Step, String>> {
-        let step = match flag {
-            "--keys" | "--script" => Step::Keys(value.to_owned()),
-            "--pad" => Step::Pad(value.to_owned()),
-            "--wait" => match value.parse::<f32>() {
-                Ok(seconds) => Step::Wait(seconds),
-                Err(_) => {
-                    return Some(Err(format!("--wait: not a number of seconds: {value}")));
-                }
-            },
-            "--crank" => match value.parse::<f32>() {
-                Ok(degrees) => Step::Crank(degrees),
-                Err(_) => {
-                    return Some(Err(format!("--crank: not a number of degrees: {value}")));
-                }
-            },
-            _ => return None,
-        };
-        Some(step.check().map(|()| step).map_err(|e| format!("--{e}")))
-    }
+/// Whether the Harness can play every step of `script`: each step
+/// ([`Script::check`]), and waits of at most [`MAX_WAIT`] seconds. An error
+/// names the step.
+pub fn check(script: &Script) -> Result<(), String> {
+    script.check()?;
+    check_waits(&script.steps, MAX_WAIT)
 }
 
 /// The command's arguments.
@@ -219,8 +140,8 @@ pub struct Options {
 }
 
 /// Parses `frame-png`'s arguments, the game's `options` among them,
-/// checking key and button names up front so a typo is an error, not a
-/// Harness panic.
+/// checking key and button names and waits up front ([`check`]) so a typo
+/// is an error, not a Harness panic.
 pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, String> {
     let mut out = None;
     let mut parsed = Options {
@@ -239,9 +160,9 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                 .cloned()
         };
         match arg.as_str() {
-            "--keys" | "--pad" | "--wait" | "--crank" => {
+            "--keys" | "--pad" | "--act" | "--wait" | "--crank" => {
                 let text = value()?;
-                if let Some(step) = Script::parse_step(arg, &text) {
+                if let Some(step) = parse_step(arg, &text) {
                     steps.push(step?);
                 }
             }
@@ -265,6 +186,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
         }
     }
     parsed.out = out.ok_or("missing <out.png>")?;
+    check(&parsed.script)?;
     Ok(parsed)
 }
 

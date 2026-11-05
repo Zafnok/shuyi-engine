@@ -83,7 +83,7 @@ look, and press another, as you would:
 | Tool | Does |
 | ---- | ---- |
 | `start` | builds the game's tool program and starts the game, with its start options |
-| `step` | plays a script of keys, then idle frames, and answers as `run` does |
+| `step` | plays a script of keys, buttons, actions by name and waits, then idle frames, and answers as `run` does |
 | `scene` | the scene on screen now, and the log |
 | `frame_png` | a picture of the frame now |
 | `events` | what happened since the start, and the sounds |

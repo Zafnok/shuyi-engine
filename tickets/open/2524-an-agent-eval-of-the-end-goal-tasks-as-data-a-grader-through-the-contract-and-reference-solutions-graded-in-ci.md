@@ -54,10 +54,10 @@ What the engine has (checked 2026-10-21):
   (`crates/assets/src/keymap/action_set.rs`) and `Keymap::primary` and
   `Keymap::primary_button` (`crates/ui/src/input/keymap.rs`) can find
   them, but no step of the contract's scripts uses them. 2521 (done)
-  gave the live link an `act` step: `shuyi_platform::link::Step::Act`,
-  looked up by `link::press_for`, and `shuyi attach --act`. 2566 (which
-  blocks this ticket) makes one input script of the two, with `--act`
-  for `run`, `scene` and `frame-png`.
+  gave the live link an `act` step, and 2566 (done) made one input
+  script of all of them: `shuyi_platform::script::Step::Act`, looked up
+  by `script::press_for`, with `--act` for `run`, `scene`, `frame-png`
+  and `attach`, and `{"act": "Confirm"}` in MCP's `step`.
 - **The grid template** (`templates/grid`): a turn game whose tools
   (`crates/game/src/tools.rs`) give a session with a scene, `replay`,
   `bots` and the controls. Its actions are `Up`, `Down`, `Left`,
@@ -96,7 +96,7 @@ None. Spending money on agent runs is 2525's question.
 
 **In:**
 - **Actions by name in the contract's scripts** (`AGENTS.md` rule 8):
-  2566 does it, and this ticket is blocked by it: one
+  2566 (done) did it, and this ticket was blocked by it: one
   `shuyi_platform::script::Step` with `Act`, read from `--act` by
   `frame_png::parse_step` for `run`, `scene` and `frame-png`,
   `Session::actions` and the refusal of an action the game lacks, MCP's

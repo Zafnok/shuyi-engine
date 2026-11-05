@@ -77,7 +77,7 @@
       ]
     },
     "Script": {
-      "description": "What to do in the game before taking the frame.",
+      "description": "Steps played in order.",
       "type": "object",
       "properties": {
         "steps": {
@@ -113,10 +113,10 @@
       ]
     },
     "Step": {
-      "description": "One step of the script, run in the order given.",
+      "description": "One step of a script, played in the order written.",
       "oneOf": [
         {
-          "description": "`Harness::keys`: each chord pressed and released in turn\n(`\"Enter Up Shift+Space\"`).",
+          "description": "Each whitespace-separated key chord pressed in one frame and let go\nin the next, in turn (`\"Enter Up Shift+Space\"`).",
           "type": "object",
           "properties": {
             "keys": {
@@ -129,7 +129,7 @@
           ]
         },
         {
-          "description": "`Harness::pad`: each controller button pressed and released in\nturn (`\"South\"`, `\"East+DpadDown\"`: those buttons together).",
+          "description": "Each whitespace-separated controller button pressed in one frame\nand let go in the next, in turn (`\"South\"`; `\"East+DpadDown\"`:\nthose buttons together).",
           "type": "object",
           "properties": {
             "pad": {
@@ -142,7 +142,20 @@
           ]
         },
         {
-          "description": "`Harness::wait`: that many seconds pass, at most [`MAX_WAIT`] in\none step.",
+          "description": "The game's action of that name (`Confirm`), pressed by the player's\nprimary key for it, or its primary button if it has no key.",
+          "type": "object",
+          "properties": {
+            "act": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "act"
+          ]
+        },
+        {
+          "description": "That many seconds of frames with no input, 60 a second, rounded up.",
           "type": "object",
           "properties": {
             "wait": {
@@ -156,7 +169,7 @@
           ]
         },
         {
-          "description": "`Harness::crank`: the crank winds that many degrees in one frame\n(backwards is negative), as a Playdate front end reports it.",
+          "description": "The crank wound that many degrees in one frame (backwards is\nnegative), as a Playdate front end reports it.",
           "type": "object",
           "properties": {
             "crank": {

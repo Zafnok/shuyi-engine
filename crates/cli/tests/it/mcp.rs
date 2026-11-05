@@ -161,10 +161,12 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         .collect();
     assert!(flags.contains(&"--stage"), "{flags:?}");
 
-    // Step to the battle: Enter on the title opens the stage.
+    an_action_the_game_lacks_is_refused(&mut client);
+
+    // Step to the battle: Confirm (its key) on the title opens the stage.
     let stepped = client.call(
         "step",
-        &json!({ "script": { "steps": [{ "keys": "Enter" }] }, "frames": 2 }),
+        &json!({ "script": { "steps": [{ "act": "Confirm" }] }, "frames": 2 }),
     );
     assert_eq!(stepped["isError"], false, "{stepped}");
     let result = &stepped["structuredContent"]["result"];
@@ -398,6 +400,24 @@ fn take_heap_snapshots_and_a_diff(client: &mut Client) {
     client.call("reset", &json!({}));
 }
 
+/// A step naming an action the game lacks is refused (`SH0001`, the
+/// game's actions listed), and nothing plays.
+fn an_action_the_game_lacks_is_refused(client: &mut Client) {
+    let refused = client.call(
+        "step",
+        &json!({ "script": { "steps": [{ "act": "Jump" }] } }),
+    );
+    assert_eq!(refused["isError"], true, "{refused}");
+    assert_eq!(refused["structuredContent"]["code"], "SH0001", "{refused}");
+    let error = refused["structuredContent"]["error"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(
+        error.contains("no action `Jump`") && error.contains("Confirm"),
+        "{refused}"
+    );
+}
+
 /// The session attached to a running build over the live link (the toy
 /// behind a test host): stepped, its frame, its picture and its frames' records
 /// read.
@@ -411,7 +431,7 @@ fn attach_to_a_running_build(client: &mut Client) {
     assert_eq!(attached["structuredContent"]["result"]["game"], "Toy");
     let stepped = client.call(
         "step",
-        &json!({ "script": { "steps": [{ "keys": "f" }] }, "frames": 1 }),
+        &json!({ "script": { "steps": [{ "act": "Confirm" }] }, "frames": 1 }),
     );
     let result = &stepped["structuredContent"]["result"];
     assert_eq!(result["screens"], json!(["home", "menu"]), "{stepped}");

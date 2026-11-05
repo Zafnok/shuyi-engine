@@ -1,6 +1,6 @@
 //! `run` and `scene`: the game started headless as the game's options
-//! say, a script of keys, controller buttons and waits played, and some
-//! frames more. `run` answers with the top screen, the frame as text, the
+//! say, a script of keys, controller buttons, actions by name and waits
+//! played, and some frames more. `run` answers with the top screen, the frame as text, the
 //! scene, what happened, the sounds asked for, the game's log and its
 //! modules; `scene` with the scene and the log. With `--perf`, `run` also
 //! measures each frame and answers a summary of the times, and with
@@ -27,7 +27,7 @@ use super::session::{
     measured_start,
 };
 use super::{Answer, Op, codes};
-use crate::frame_png::{Script, Step};
+use crate::frame_png::{self, Script, Step};
 use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
 
 /// The most frames `frames` may ask for: about 28 simulated minutes.
@@ -111,11 +111,12 @@ pub struct SceneOutput {
 
 impl RunInput {
     /// Whether the Harness can play it: every step of its script
-    /// ([`Script::check`]), at most [`MAX_IDLE_FRAMES`] frames after, and no
-    /// start options with a session record, whose start is the game's real
-    /// one.
+    /// ([`frame_png::check`]), at most [`MAX_IDLE_FRAMES`] frames after, and
+    /// no start options with a session record, whose start is the game's
+    /// real one. Its actions' names are the game's to check
+    /// ([`check_actions`]).
     pub fn check(&self) -> Result<(), String> {
-        self.script.check()?;
+        frame_png::check(&self.script)?;
         if self.session.is_some() && !self.start.is_empty() {
             return Err(
                 "session: a record starts as the game really starts, with no start options"
@@ -185,6 +186,8 @@ fn played<T>(
         .is_some_and(|played| played.first_difference.is_some());
     let mut first = None;
     if !differs {
+        check_actions(&*session, &input.script)
+            .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
         if input.measures() {
             session.set_perf(true);
             first = session.heap_snapshot();
@@ -205,6 +208,32 @@ fn played<T>(
         limits,
         differs,
     })
+}
+
+/// Whether `session`'s game can press every action `script` names: one
+/// with a key or a button ([`Session::actions`]). An error names the step
+/// and the game's actions, before anything plays (`run`, `scene` and MCP's
+/// `step` call it).
+pub fn check_actions(session: &dyn Session, script: &Script) -> Result<(), String> {
+    let mut actions = None;
+    for (i, step) in script.steps.iter().enumerate() {
+        let Step::Act(name) = step else {
+            continue;
+        };
+        let actions = actions.get_or_insert_with(|| session.actions());
+        if !actions.contains(name) {
+            let theirs = if actions.is_empty() {
+                "the game has none".to_owned()
+            } else {
+                format!("the game's are {}", actions.join(", "))
+            };
+            return Err(format!(
+                "step {}: act: no action `{name}` with a key or a button; {theirs}",
+                i + 1
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// What a run of `frames` frames couldn't show: the frames after the game
@@ -423,7 +452,8 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
          steps (each may repeat, played in order):\n  \
          --script \"Enter Up\"  press and release each key chord in turn (or --keys)\n  \
          --pad \"South\"        press and release each controller button in turn\n  \
-         --wait 0.5           let that many seconds pass\n\n\
+         --act Confirm        press the game's action by its key, or else its button\n  \
+         --wait 0.5           let that many seconds pass (60 frames a second, rounded up)\n\n\
          --frames N           then run N frames (1/60 s each) with no input\n\n\
          --session <file>     start from a session record, from the project's folder,\n                     \
          played to its end or the first frame that differs; no start options\n\
@@ -466,9 +496,12 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
                 .ok_or_else(|| format!("{arg} needs a value"))
                 .cloned()
         };
-        if matches!(arg.as_str(), "--script" | "--keys" | "--pad" | "--wait") {
+        if matches!(
+            arg.as_str(),
+            "--script" | "--keys" | "--pad" | "--act" | "--wait"
+        ) {
             let text = value()?;
-            if let Some(step) = Script::parse_step(arg, &text) {
+            if let Some(step) = frame_png::parse_step(arg, &text) {
                 input.script.steps.push(step?);
             }
             continue;
@@ -643,9 +676,7 @@ pub fn scene_output_text(output: &SceneOutput) -> String {
 
 /// A script of keys, for tests and callers that only press keys.
 pub fn keys(script: &str) -> Script {
-    Script {
-        steps: vec![Step::Keys(script.to_owned())],
-    }
+    Script::new(vec![Step::Keys(script.to_owned())])
 }
 
 #[cfg(test)]

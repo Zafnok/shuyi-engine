@@ -120,7 +120,7 @@ fn run_says_what_it_could_not_see() {
     bad.script = keys("NoSuchKey");
     let refused = run(&HelloTools, &bad);
     assert!(!refused.ok);
-    assert!(refused.error.unwrap().starts_with("keys: "));
+    assert!(refused.error.unwrap().starts_with("step 1: keys: "));
     let mut unknown = RunInput::default();
     unknown.start = vec![GameArg {
         flag: "--hard".into(),

@@ -107,6 +107,9 @@
                 // The live link's requests and answers, JSON lines (its
                 // optional `link` feature, ADR-0047).
                 "serde_json",
+                // The JSON schemas of a script's steps, for the tool
+                // contract (its optional `schema` feature, ticket 2566).
+                "schemars",
             ]),
             devices: false,
             floats: true,

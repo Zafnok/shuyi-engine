@@ -34,13 +34,20 @@ is another way to reach them.
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
 A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
-released in turn), `--pad "South"` (controller buttons, by position) 
-`--wait 0.5` (seconds) or `--crank -30` (the crank winds that many
-degrees in one frame, backwards negative; `frame-png`, `run` and `scene`
-only, the live link refuses it). Key and button names are the Harness's test-script
-names. `attach` also takes `--act <Action>`: the game's action by name,
-pressed by the player's primary key for it, or its primary button when it
-has no key. The game's own start options (`frame-png --help` lists them, such
+released in turn), `--pad "South"` (controller buttons, by position),
+`--act Confirm` (the game's action by name, pressed by the player's
+primary key for it, or its primary button when it has no key), `--wait
+0.5` (seconds, played as frames at 60 a second, rounded up: 0.5 is 30
+frames, 0.51 is 31, 0 is none) or `--crank -30` (the crank winds that
+many degrees in one frame, backwards negative; `frame-png`, `run` and
+`scene` only, the live link refuses it). Every operation that plays steps
+reads the same ones, and in JSON they are `{"keys": "Enter Up"}`,
+`{"pad": "South"}`, `{"act": "Confirm"}`, `{"wait": 0.5}` and
+`{"crank": -30}`. Key and button names are the Harness's test-script
+names. An action the game has no key or button for is refused before
+anything plays (`SH0001`), and the error lists the game's actions; one
+wait is at most 33.3 seconds headless (the Harness's 2000 frames) and
+half an hour over the live link. The game's own start options (`frame-png --help` lists them, such
 as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
 `playtest` and `autobalance` too.
 An option the game doesn't offer, one missing its value and one given a value it
@@ -56,7 +63,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 35,
+  "contract": 36,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
@@ -310,8 +317,8 @@ way to test a change.
   on from there), and the frames' records by number, read once or
   followed into a file as the build runs ([Perf
   traces](#perf-traces)). Waits are counted in the build's own frames, at
-  60 a second; the steps wait while the build loads or is suspended,
-  and `limits` says so.
+  60 a second, rounded up as headless; the steps wait while the build
+  loads or is suspended, and `limits` says so.
 - **What it never does:** change the game any way but a player's input
   (no settings, no files, no commands), or start, stop or reset it.
   Nothing is built or run: start the build yourself, then attach.
@@ -432,7 +439,7 @@ A **session** keeps one game running headless between calls:
 | Tool | Input | Does |
 | ---- | ----- | ---- |
 | `start` | `project`, `start` (the game's start options), or `session` (`file`, `any_stamp`) in their place | builds the game's tool program and starts its game; the answer lists the options it offers. From a [session record](#session-records), the game is on the frame it stopped on, and `reset` plays the record again. A game already running is stopped |
-| `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start |
+| `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start. A script naming an action the game can't press is refused (`SH0001`), and the game keeps running |
 | `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
 | `events` | nothing | what happened since the start, and the sounds |
@@ -452,7 +459,7 @@ build and another link version answer `attach`'s codes (`SH0004`,
 
 | Tool | Over the link |
 | ---- | ------------- |
-| `step` | plays the script as a player's input (waits in the build's frames, at 60 a second), then `frames` as a wait; answers as `run` does from the build's screens, frame and log, with no scene, events or sounds |
+| `step` | plays the script as a player's input (waits in seconds, played as the build's frames at 60 a second, rounded up; an action pressed as the build's keymap says), then `frames` as a wait; answers as `run` does from the build's screens, frame and log, with no scene, events or sounds |
 | `scene` | the frame's text in place of a scene (`kind` `frame`), and the log |
 | `frame_png` | the window's picture, at the window's size; `scale` is refused |
 | `events` | none: the limit says so |
