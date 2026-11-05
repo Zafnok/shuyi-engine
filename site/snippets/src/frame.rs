@@ -1,9 +1,12 @@
 //! Chapter 4, the frame and skins: what the garden shows as plain data
 //! (its view), and the skin that paints that view in glyphs. The rules
-//! and the view never name a color or a glyph; only the skin does.
+//! and the view never name a color or a glyph; only the skin does. And a
+//! skin that paints a picture's pixels itself, a plasma moving with the
+//! steps.
 
 use shuyi::core::TurnRules;
 use shuyi::prelude::*;
+use shuyi::ui::frame::{Layer, Painted, PaintedId, PaintedSprite};
 
 use crate::Data;
 use crate::rules::Outcome;
@@ -85,6 +88,32 @@ pub fn paint_garden(view: &GardenView, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
 }
 // ANCHOR_END: skin
 
+// ANCHOR: plasma
+/// The plasma's name among the frame's pictures.
+pub const PLASMA: PaintedId = PaintedId::new("plasma");
+
+/// A skin that paints a 64 × 48 plasma from the step count, pixel by
+/// pixel, and shows it twice its size with its top-left at `(x, y)`.
+pub fn paint_plasma(step: u32, (x, y): (i32, i32), buf: &mut GlyphBuffer) {
+    // Up from 0 to 248 and back down over 64 steps of `v`.
+    let wave = |v: u32| u8::try_from((v % 64).abs_diff(32) * 31 / 4).unwrap_or(u8::MAX);
+    let mut picture = Painted::rgba(64, 48);
+    let rows = picture.pixels_mut().as_chunks_mut::<4>().0.chunks_mut(64);
+    for (py, row) in (0u32..).zip(rows) {
+        for (px, pixel) in (0u32..).zip(row) {
+            let red = wave(px + step);
+            let green = wave(py + 2 * step);
+            let blue = wave(px + py + 3 * step);
+            *pixel = [red, green, blue, 255];
+        }
+    }
+    buf.pictures_mut().update(PLASMA, picture);
+    let whole = Rect::new(0, 0, 64, 48);
+    let place = Rect::new(x, y, 128, 96);
+    buf.add_painted(PaintedSprite::new(PLASMA, whole, place, Layer::Over));
+}
+// ANCHOR_END: plasma
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,6 +145,42 @@ mod tests {
         assert!(frame.contains("9 seeds left"), "{frame}");
     }
     // ANCHOR_END: test_look
+
+    // ANCHOR: test_plasma
+    #[test]
+    fn the_plasma_moves_with_the_steps() {
+        let black = Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+        let mut buf = GlyphBuffer::new(48, 24, black);
+        let mut revision = |step| {
+            buf.fill_rect(buf.bounds(), black);
+            paint_plasma(step, (16, 16), &mut buf);
+            buf.pictures().get(PLASMA).map(Painted::revision)
+        };
+        let first = revision(0);
+        // The same step paints the same picture: nothing to upload.
+        assert_eq!(revision(0), first);
+        // The next one moves it.
+        assert_ne!(revision(1), first);
+    }
+    // ANCHOR_END: test_plasma
+
+    #[test]
+    fn the_plasmas_pixels_are_its_waves() {
+        let black = Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+        let pixel = |step: u32, (x, y): (usize, usize)| {
+            let mut buf = GlyphBuffer::new(48, 24, black);
+            paint_plasma(step, (0, 0), &mut buf);
+            let picture = buf.pictures().get(PLASMA).unwrap();
+            let at = (y * 64 + x) * 4;
+            picture.pixels()[at..at + 4].to_vec()
+        };
+        // A wave is `|v % 64 - 32| × 31 / 4`.
+        assert_eq!(pixel(0, (0, 0)), [248, 248, 248, 255]);
+        // Red wave(10 + 5), green wave(3 + 10), blue wave(13 + 15).
+        assert_eq!(pixel(5, (10, 3)), [131, 147, 31, 255]);
+        // wave(163), wave(247), wave(410).
+        assert_eq!(pixel(100, (63, 47)), [23, 178, 46, 255]);
+    }
 
     #[test]
     fn the_row_is_centred_the_cursor_boxes_its_plot_and_the_help_is_last() {

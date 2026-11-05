@@ -91,6 +91,14 @@ under sprite 4,98 32x32  card/test_card.png 0,0 16x16
 over  sprite 42,98 32x32  card/test_card.png 0,0 16x16 clip=47,101 21x23
 over  sprite 80,98 32x32  card/test_card.png 0,0 16x16 flip clip=85,101 21x23
 under sprite 118,98 32x32  card/test_card.png 0,0 16x16 solid=#5adcf0 clip=121,105 25x15
+under painted 4,140 16x16  card/rgba 8x8 rgba r1 89d15defe6ebb86f
+over  painted 26,140 16x16  card/rgba 8x8 rgba r1 89d15defe6ebb86f bright=102
+over  painted 48,140 16x16  card/indexed 8x8 indexed r1 70779cbe868900e0
+under painted 70,140 16x16  card/indexed 8x8 indexed r1 70779cbe868900e0 clip=73,143 9x11
+over  painted 92,140 16x16  card/masked 8x8 one-bit r2 c20cd8efcf7608a3
+under painted 114,140 16x16  card/one-bit 16x8 one-bit r1 12fcaa45906de8f8 src=0,0 8x8
+over  painted 136,140 16x16  card/painted-missing missing src=0,0 8x8
+under painted 4,158 16x16  card/painted-missing missing src=0,0 8x8
 --- backdrop: clip 21,2 10x9  origin 0.5,0.5  zoom 2 ---
 # -   
 - # - 
@@ -124,3 +132,4 @@ q = fg:#f05ac8 bg:#1e643c
 --- overlays ---
 over  sprite 12,20 16x16  card/test_card.png 0,0 16x16
 under 3,45 30x2  #e62828
+over  painted 30,4 16x8  card/scene 16x8 one-bit r2 6345351235b0d290

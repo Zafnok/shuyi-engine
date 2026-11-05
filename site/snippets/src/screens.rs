@@ -195,6 +195,15 @@ impl Screen<Data> for Leave {
 }
 // ANCHOR_END: leave
 
+// ANCHOR: music
+/// Leaving the garden: its music fades out over three seconds, slower
+/// than the manifest's default fade. The next screen starts its own
+/// track when it is ready.
+pub fn fade_out_the_garden(ctx: &mut Ctx<Data>) {
+    ctx.audio.stop_music_with(3000);
+}
+// ANCHOR_END: music
+
 // ANCHOR: game_data
 /// A game's data written by hand, for a game whose data outgrows
 /// `BasicData`: its own sounds, voices, themes or settings. Each method
@@ -325,6 +334,17 @@ mod tests {
         assert_eq!(h.screens(), ["title"]);
     }
     // ANCHOR_END: harness
+
+    #[test]
+    fn leaving_the_garden_fades_the_music_over_three_seconds() {
+        let mut h = game().harness();
+        super::fade_out_the_garden(h.ctx_mut());
+        let asked = h.ctx().audio.pending().to_vec();
+        assert_eq!(
+            asked,
+            [shuyi::ui::audio::AudioRequest::stop_music_with(3000)]
+        );
+    }
 
     // ANCHOR: as_target
     #[test]

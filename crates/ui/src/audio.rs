@@ -169,8 +169,18 @@ pub enum AudioRequest<V> {
         /// manifest's default ([`AudioManifest::music_switch`]).
         switch: Option<MusicSwitch>,
     },
-    /// Fade the music out.
+    /// Fade the music out over the audio manifest's default fade-out
+    /// ([`MusicSwitch`]'s `out_ms`).
     StopMusic,
+    /// Fade the music out over `fade_ms`, for this stop only: the time
+    /// from full gain to silence, so a track at half gain takes half of
+    /// it; 0 stops at once. Build it with
+    /// [`AudioRequest::stop_music_with`] (ADR-0039).
+    #[non_exhaustive]
+    StopMusicWith {
+        /// Milliseconds a fade from full gain to silence takes.
+        fade_ms: u32,
+    },
     /// Say a dialogue line: play its voice clip once, stopping the voice
     /// that is playing (one voice at a time).
     PlayVoice {
@@ -200,6 +210,12 @@ impl<V> AudioRequest<V> {
         }
     }
 
+    /// A [`StopMusicWith`](Self::StopMusicWith): the music fades out over
+    /// `fade_ms` (0: at once), whatever the manifest's default.
+    pub fn stop_music_with(fade_ms: u32) -> Self {
+        Self::StopMusicWith { fade_ms }
+    }
+
     /// The cue this request names, if any: a sound played or started, or
     /// a track.
     pub fn cue(&self) -> Option<&str> {
@@ -212,6 +228,7 @@ impl<V> AudioRequest<V> {
             | Self::PauseSounds
             | Self::ResumeSounds
             | Self::StopMusic
+            | Self::StopMusicWith { .. }
             | Self::PlayVoice { .. }
             | Self::StopVoice
             | Self::PreloadVoices { .. } => None,
@@ -300,9 +317,17 @@ impl<V> AudioQueue<V> {
             .push(AudioRequest::play_music(cue, Some(switch)));
     }
 
-    /// Fades the music out.
+    /// Fades the music out over the audio manifest's default fade-out.
     pub fn stop_music(&mut self) {
         self.requests.push(AudioRequest::StopMusic);
+    }
+
+    /// Fades the music out over `fade_ms` instead of the default, for
+    /// this stop only: the time from full gain to silence (0 stops at
+    /// once). A quiet interval before the next track is the caller's to
+    /// time.
+    pub fn stop_music_with(&mut self, fade_ms: u32) {
+        self.requests.push(AudioRequest::stop_music_with(fade_ms));
     }
 
     /// Plays the `variant` clip of `line`. Screens call
@@ -710,7 +735,8 @@ impl MusicState {
             AudioRequest::PlayMusic { cue, switch } => {
                 self.play(cue, switch.unwrap_or(self.default), out);
             }
-            AudioRequest::StopMusic => self.stop(out),
+            AudioRequest::StopMusic => self.stop(self.default.out_ms, out),
+            AudioRequest::StopMusicWith { fade_ms } => self.stop(*fade_ms, out),
         }
     }
 
@@ -788,10 +814,12 @@ impl MusicState {
         }
     }
 
-    fn stop(&mut self, out: &mut Vec<MusicCommand>) {
+    /// Fades every track out, a whole fade taking `fade_ms`, and drops
+    /// the one waiting to start.
+    fn stop(&mut self, fade_ms: u32, out: &mut Vec<MusicCommand>) {
         self.drop_waiting(out);
         for track in [&mut self.current, &mut self.next].into_iter().flatten() {
-            track.aim(false, self.default.out_ms);
+            track.aim(false, fade_ms);
         }
     }
 
@@ -1208,6 +1236,93 @@ mod tests {
         assert_eq!(m.current(), None);
     }
 
+    fn stop_with(fade_ms: u32) -> AudioRequest {
+        AudioRequest::stop_music_with(fade_ms)
+    }
+
+    #[test]
+    fn a_stop_with_its_own_fade_takes_that_long_from_full_gain() {
+        // The default fade is 0.5 s; this stop asks for 3 s.
+        let mut m = playing("title");
+        assert_eq!(
+            frame(&mut m, &[stop_with(3000)], 1.0),
+            [gain("title", 1.0 - 1.0 / 3.0)]
+        );
+        assert_eq!(m.target(), None);
+        // Asking again doesn't restart the fade.
+        assert_eq!(
+            frame(&mut m, &[stop_with(3000), stop_with(3000)], 1.0),
+            [gain("title", 1.0 - 2.0 / 3.0)]
+        );
+        assert_eq!(frame(&mut m, &[], 1.0), [stop("title")]);
+        assert_eq!(m.current(), None);
+        assert_eq!(frame(&mut m, &[], 1.0), []);
+        // The default is unchanged for the next track and the next stop.
+        let mut q = AudioQueue::default();
+        q.play_music("battle");
+        q.stop_music();
+        let requests = q.take();
+        assert_eq!(requests, [play("battle"), AudioRequest::StopMusic]);
+        assert_eq!(
+            frame(&mut m, &requests, 0.25),
+            [load("battle"), start("battle"), gain("battle", 0.5)]
+        );
+        assert_eq!(frame(&mut m, &[], 0.25), [stop("battle")]);
+    }
+
+    #[test]
+    fn a_stop_with_no_fade_stops_at_once_and_drops_the_waiting_track() {
+        let mut m = playing("title");
+        assert_eq!(frame(&mut m, &[stop_with(0)], 0.0), [stop("title")]);
+        assert_eq!(m.current(), None);
+        // During a switch: the track waiting to start never starts.
+        let mut m = playing("title");
+        frame(&mut m, &[play("battle")], 0.25);
+        assert_eq!(
+            frame(&mut m, &[stop_with(0)], 0.0),
+            [stop("battle"), stop("title")]
+        );
+        assert_eq!((m.current(), m.target()), (None, None));
+        assert_eq!(frame(&mut m, &[], 1.0), []);
+    }
+
+    #[test]
+    fn a_stop_with_its_own_fade_of_silence_does_nothing() {
+        let mut m = MusicState::new(0.5);
+        assert_eq!(frame(&mut m, &[stop_with(3000), stop_with(0)], 1.0), []);
+        assert_eq!(frame(&mut m, &[], 5.0), []);
+        assert_eq!(m.current(), None);
+    }
+
+    #[test]
+    fn a_stop_with_its_own_fade_during_a_switch_fades_from_where_the_gain_is() {
+        // Half-way through the default fade-out, 2 s from full gain to
+        // silence leaves 1 s.
+        let mut m = playing("title");
+        frame(&mut m, &[play("battle")], 0.25);
+        assert_eq!(
+            frame(&mut m, &[stop_with(2000)], 0.5),
+            [stop("battle"), gain("title", 0.25)]
+        );
+        assert_eq!(frame(&mut m, &[], 0.5), [stop("title")]);
+        assert_eq!(m.current(), None);
+    }
+
+    #[test]
+    fn a_stop_with_its_own_fade_during_a_crossfade_fades_both_tracks() {
+        // `title` is at 0.75 and `battle` at 0.25: at 2 s a whole fade,
+        // they take 1.5 s and 0.5 s.
+        let mut m = crossfading(0.25);
+        assert_eq!(
+            frame(&mut m, &[stop_with(2000)], 0.5),
+            [gain("title", 0.5), stop("battle")]
+        );
+        assert_eq!((m.current(), m.target()), (Some("title"), None));
+        assert_eq!(frame(&mut m, &[], 0.5), [gain("title", 0.25)]);
+        assert_eq!(frame(&mut m, &[], 0.5), [stop("title")]);
+        assert_eq!(m.current(), None);
+    }
+
     #[test]
     fn the_default_switch_is_the_one_a_request_without_one_gets() {
         let mut m = MusicState::with_switch(MusicSwitch::crossfade(1000));
@@ -1280,6 +1395,7 @@ mod tests {
         q.play_sound_at("e", f32::NAN);
         q.play_music("m");
         q.stop_music();
+        q.stop_music_with(3000);
         let sound = |cue: &str, volume| AudioRequest::PlaySound {
             cue: cue.into(),
             volume,
@@ -1292,6 +1408,7 @@ mod tests {
             sound("e", 0.0),
             play("m"),
             AudioRequest::StopMusic,
+            AudioRequest::stop_music_with(3000),
         ];
         assert_eq!(q.pending(), expected);
         assert_eq!(q.take(), expected);
@@ -1299,7 +1416,7 @@ mod tests {
         assert!(found.is_empty(), "{found:?}");
         assert_eq!(
             expected.map(|r| r.cue().map(str::to_owned))[4..],
-            [Some("e".to_owned()), Some("m".to_owned()), None]
+            [Some("e".to_owned()), Some("m".to_owned()), None, None]
         );
     }
 
@@ -1491,6 +1608,7 @@ mod tests {
     enum Step {
         Play(usize, Option<MusicSwitch>),
         Stop,
+        StopWith(u32),
         Heard(Option<usize>),
         Frame(f32),
     }
@@ -1502,6 +1620,7 @@ mod tests {
         prop_oneof![
             (0usize..4, proptest::option::of(switch)).prop_map(|(c, s)| Step::Play(c, s)),
             Just(Step::Stop),
+            (0u32..4000).prop_map(Step::StopWith),
             proptest::option::of(0usize..4).prop_map(Step::Heard),
             (0.0f32..1.0).prop_map(Step::Frame),
         ]
@@ -1525,6 +1644,7 @@ mod tests {
                 match step {
                     Step::Play(c, switch) => m.request(&AudioRequest::play_music(CUES[c], switch), &mut out),
                     Step::Stop => m.request(&AudioRequest::StopMusic, &mut out),
+                    Step::StopWith(ms) => m.request(&AudioRequest::stop_music_with(ms), &mut out),
                     Step::Heard(c) => m.heard(c.map(|c| clock(CUES[c])).as_ref()),
                     Step::Frame(dt) => m.update(dt, &mut out),
                 }

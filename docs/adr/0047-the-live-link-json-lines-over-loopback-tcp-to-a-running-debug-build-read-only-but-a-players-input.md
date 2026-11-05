@@ -1,6 +1,6 @@
 # ADR-0047: The live link: JSON lines over loopback TCP to a running debug build, read-only but a player's input
 
-- **Status:** Accepted; amended by ADR-0078 (§7: the steps are
+- **Status:** Accepted; amended by ADR-0079 (§7: the steps are
   `shuyi_platform::script::Step`, waits in seconds on the wire)
 - **Date:** 2026-10-25
 - **Related tickets:** 2521 (this: the wire, the listener in `shuyi-app`,

@@ -154,6 +154,16 @@ Every `update` gets the context `&mut`, so it may change it, and every `draw` ge
 - `ctx.audio` takes the sounds a screen asks for, and `ctx.log(…)` writes a line to the
   engine's log.
 
+A screen asks for music by its cue in the game's audio manifest:
+`ctx.audio.play_music("garden")` switches to a track, and `ctx.audio.stop_music()` fades
+it out, both with the manifest's default fade. A screen that wants a slower or quicker
+fade names its own, for that switch or stop only:
+
+{{ snippet(file="src/screens.rs", anchor="music") }}
+
+A quiet moment before the next track is the screen's to time: it asks for the next
+track when the moment is over.
+
 ## Text by key
 
 No screen writes its text in its code. If it did, translating the game would mean

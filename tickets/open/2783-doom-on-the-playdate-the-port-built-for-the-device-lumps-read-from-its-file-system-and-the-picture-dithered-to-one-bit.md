@@ -49,6 +49,11 @@ What's hard:
   pixels a frame; the target is 30 frames a second on the device
   (the screen's own rate), 20 at worst.
 
+**From 2399 (done):** the engine dithers an RGBA or indexed picture
+through `BAYER` only (at the screen's pixels). The setting's plain
+threshold is the port's own: it makes the picture one-bit itself
+(`Painted::one_bit`), which the renderer shows as it is.
+
 ## Nick input
 
 **Sign-off:** play Freedoom's first map in the Playdate simulator, and

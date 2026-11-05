@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: demos"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2399 — Pictures a skin paints at run time
@@ -150,24 +150,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The ADR is written, with its row in `docs/adr/README.md`.
-- [ ] A skin paints an RGBA, an indexed and a one-bit picture, and
+- [x] The ADR is written, with its row in `docs/adr/README.md`.
+- [x] A skin paints an RGBA, an indexed and a one-bit picture, and
       each is drawn by `shuyi-app`, `frame-png`, `frame-png --target
       playdate` and the Playdate backend.
-- [ ] A picture whose revision didn't move is not uploaded again; a
+- [x] A picture whose revision didn't move is not uploaded again; a
       palette change is one upload (a test reads the debug counter).
-- [ ] The raster renderer draws a painted picture equal to a sprite of
+- [x] The raster renderer draws a painted picture equal to a sprite of
       the same pixels.
-- [ ] An RGBA picture on a one-bit target is dithered in integers
+- [x] An RGBA picture on a one-bit target is dithered in integers
       through `BAYER`, the same on native and wasm32 (a golden row of
       the one-bit renderer's table).
-- [ ] A painted item's snapshot line names its id, size, kind, place,
+- [x] A painted item's snapshot line names its id, size, kind, place,
       revision and hash.
-- [ ] `Item` is `#[non_exhaustive]`. The completion notes have a
+- [x] `Item` is `#[non_exhaustive]`. The completion notes have a
       `Breaking:` line for `Item` with its `migration` block (ADR-0038,
       `tickets/README.md`).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -185,5 +185,84 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- [ADR-0078](../../docs/adr/0078-pictures-a-skin-paints-at-run-time-kept-in-the-frames-buffer-with-a-revision-rgba-indexed-or-one-bit-and-dithered-at-paint-time.md):
+  the pictures live in the frame's own `GlyphBuffer` (its `PaintedTable`),
+  which `Game` keeps between frames, so no painter's signature changed.
+  A skin reaches it with `buf.pictures_mut()`. `blit` and `set_backdrop`
+  copy the pictures their painted items show into the receiving buffer
+  (only when they differ), and every painter looks a painted item up in
+  the frame's table, also for a backdrop's scene.
+- `shuyi_ui::frame::painted`: `PaintedId`, `Painted` (RGBA, indexed with
+  256 colours, one-bit with an optional mask), `PaintedKind`,
+  `PaintedSprite` (with a `brightness` that `fade` lowers, as a
+  sprite's), `PaintedTable` (`get_or_insert_with`, `insert`, `update`:
+  puts a picture in only if it looks different, so the revision moves only
+  then). `Item::Painted`, and `Item` is `#[non_exhaustive]`.
+- The raster draws a painted picture through the sprite's own blit. The
+  one-bit renderer and its reference draw a one-bit picture as a one-bit
+  sprite and dither an RGBA or indexed one through `onebit::BAYER` at the
+  screen's pixels, a frame byte at a time (`onebit::dither_row`, public);
+  `render_changed` redraws a painted item whose picture changed. The
+  Playdate backend draws through `render_changed_with`, so it needed no
+  change. `shuyi-app` keeps a texture per `PaintedId` (`painted.rs`, made
+  without a window), updated with `update_from_bytes` only when the
+  revision moved, dropped when a frame doesn't draw it.
+- The snapshot's line: `layer  painted x,y wxh  id WxH kind rN hash`.
+  `shuyi_assets::fnv` is public for its hash.
+- The render card has painted pictures of every kind (both layers, dimmed,
+  clipped, part of one, missing, one in the backdrop's scene); the
+  window matched the raster locally with 0 pixels over.
+- The toy's plasma stage (`shuyi_ui::toy::plasma`) paints all three kinds
+  from its step count; the toy's tool program has `--plasma` and now
+  `frame-png --target playdate`. Its scene and snapshot over 10 steps
+  (`crates/ui/tests/it/plasma.rs`), its two pictures as golden PNG files
+  (`crates/cli/tests/it/toy.rs`), and the one-bit renderer's golden table
+  (`crates/ui/tests/golden/onebit.ron`).
+- Docs: the book's chapter 4 has *A picture the skin paints* with a
+  plasma snippet and its test; the `shuyi-screen` skill says when to
+  paint a picture and when to use sprites; `docs/platform-backends.md`
+  says what a backend does with a painted item.
+
+Deviations:
+
+- The upload counter is counted in test builds (`cfg(test)`), not every
+  debug build: in a game's debug build nothing reads it, so it would be
+  dead code there. The test reads it as the ticket asks.
+- `PaintedSprite` has a `brightness` the ticket didn't list, so a fade
+  to black darkens a painted picture as it does a sprite.
+- `PaintedTable::update` is added beside the listed API: the plain way
+  for a skin that makes its picture afresh each frame.
+- The Playdate backend wasn't run on a device: it draws through the
+  one-bit renderer, whose fast path is held equal to its reference and
+  whose redraw of what changed is held equal to a full draw, painted
+  pictures included (`onebit::speed_tests`).
+
+Follow-ups: none new. Handed over in 2335, 2337, 2222 and 2783 (a
+*From 2399 (done)* note each).
+
+Breaking: shuyi-ui: frame::glyph_buffer::Item: a new variant, `Painted`, and the enum is `#[non_exhaustive]`: a `match` on `Item` outside the engine adds a `_` arm.
+
+```migration
+since: 0.2.0
+what: Item has a new variant for pictures a skin paints, and more may come.
+old: match item { Item::Rect(o) => .., Item::Sprite(s) => .. }
+new: match item { Item::Rect(o) => .., Item::Sprite(s) => .., _ => .. }
+before: |
+  match item {
+      Item::Rect(o) => draw_rect(o),
+      Item::Sprite(s) => draw_sprite(s),
+  }
+after: |
+  match item {
+      Item::Rect(o) => draw_rect(o),
+      Item::Sprite(s) => draw_sprite(s),
+      Item::Painted(p) => draw_painted(p),
+      _ => {}
+  }
+```
+
+The game matches on `Item` in `crates/ui/src/map_view/sprite.rs` and
+`crates/ui/src/map_view/sprite/units.rs` (its `main` at `f62e7480`): the
+game's PR that moves its pin past this one adds the `_` arms.
