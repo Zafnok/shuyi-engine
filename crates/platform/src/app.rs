@@ -890,6 +890,10 @@ impl<G: GameData> App<G> {
                     }
                 }
                 let told = tell_changed(platform, game, &mut self.lists.changed);
+                if told {
+                    // A reloaded font atlas may have new wide glyphs.
+                    use_look_widths(game, self.look);
+                }
                 if let Some(recorder) = recorder.as_deref_mut().filter(|_| told) {
                     recorder.reloaded(self.frames);
                 }
@@ -948,10 +952,7 @@ impl<G: GameData> App<G> {
         self.perf.load_us = loading.zip(done).map(|(from, to)| micros(from, to));
         match loaded {
             Ok(mut game) => {
-                if let Some(look) = self.look {
-                    let widths = CellWidths::of(look(&game.ctx().game).font);
-                    game.set_widths(widths);
-                }
+                use_look_widths(&mut game, self.look);
                 present_game(platform, &game, self.look);
                 self.phase = Phase::Running(Box::new(game));
                 self.give_clock();
@@ -1165,6 +1166,16 @@ impl<G: GameData> App<G> {
 fn drain(platform: &mut impl Platform, input: &mut Vec<RawInputEvent>) {
     input.clear();
     platform.poll_input(input);
+}
+
+/// Has `game` print wide what the font atlas of its `look` has wide
+/// ([`Game::set_widths`]), which draws it again if that changed: once it
+/// has loaded, and after its files change, as the atlas may have.
+fn use_look_widths<G: GameData>(game: &mut Game<G>, look: Option<LookOf<G>>) {
+    if let Some(look) = look {
+        let widths = CellWidths::of(look(&game.ctx().game).font);
+        game.set_widths(widths);
+    }
 }
 
 /// Hands the files the platform says changed to `game`'s modules: while

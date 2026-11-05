@@ -63,6 +63,12 @@ None.
   worst case (a typed Latin name of that length), so keep it. If
   `word_wrap` takes 2301's width table, pass it on. A unit test:
   `lines_at_longest` on a Japanese line with a name token.
+- **From 2252 (done):** `lines_at_longest` takes a `&CellWidths`, and
+  until `word_wrap` measures in cells it writes each wide character as
+  `WW` before wrapping, so the count of cells is right but a break
+  between two wide characters can't happen. When `word_wrap` takes the
+  width table, pass `widths` to it and drop the `WW`s, so the check
+  and the box break at the same places.
 - **Either order with 2239:** if 2239 is done, the language-pack check
   (`add_lines`, `crates/assets/src/lang/lines.rs`) counts a translated
   speech line's pages through `dialogue::box_fit` and

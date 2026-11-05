@@ -73,6 +73,13 @@ pub trait SceneRules<D> {
     /// How much text the box and the menu hold.
     fn limits(&self) -> &DialogueLimits;
 
+    /// How many cells each character takes, which the limits count: the
+    /// font atlas's ([`CellWidths::of`]). One cell for every character,
+    /// the default, when the game doesn't say.
+    fn widths(&self) -> &CellWidths {
+        &CellWidths::NARROW
+    }
+
     /// The game's own `{tokens}`.
     fn tokens(&self) -> &dyn Tokens;
 
@@ -125,9 +132,10 @@ pub fn check_scene<D: Directive>(
         file: &parsed.file,
         rules,
         limits: *rules.limits(),
+        widths: rules.widths(),
         tokens: rules.tokens(),
         names: rules.names(),
-        longest_name: rules.names().map(Names::longest),
+        longest_name: rules.names().map(|names| names.longest(rules.widths())),
         literals: rules.names().map(Literals::of),
         hashes: BTreeMap::new(),
         errors: Vec::new(),
@@ -196,6 +204,8 @@ struct Checker<'a, R> {
     file: &'a str,
     rules: &'a R,
     limits: DialogueLimits,
+    /// How many cells each character takes.
+    widths: &'a CellWidths,
     tokens: &'a dyn Tokens,
     names: Option<&'a Names>,
     /// The width of the longest name of `names`, found once for the scene
@@ -210,47 +220,69 @@ struct Checker<'a, R> {
 }
 
 /// Cells `text` can take once every token is filled in, at most
-/// ([`text_width`]): the game's `tokens` at their longest
-/// ([`Tokens::longest`]) and every name token as `longest_name` (the
-/// longest name in the table, so a rename can't push the line over its
-/// limit). Unknown tokens, and name tokens without a table, count as
-/// written.
-pub fn longest_width(text: &str, tokens: &dyn Tokens, longest_name: Option<usize>) -> usize {
+/// ([`text_width`], a wide character of `widths` two cells): the game's
+/// `tokens` at their longest ([`Tokens::longest`]) and every name token
+/// as `longest_name` (the longest name in the table, so a rename can't
+/// push the line over its limit). Unknown tokens, and name tokens without
+/// a table, count as written.
+pub fn longest_width(
+    text: &str,
+    tokens: &dyn Tokens,
+    longest_name: Option<usize>,
+    widths: &CellWidths,
+) -> usize {
     split_tokens(text)
         .map(|part| match part {
-            Part::Text(t) | Part::Unclosed(t) => text_width(t, &CellWidths::NARROW),
-            Part::Token(t) => token_cells(t, tokens, longest_name),
+            Part::Text(t) | Part::Unclosed(t) => text_width(t, widths),
+            Part::Token(t) => token_cells(t, tokens, longest_name, widths),
         })
         .sum()
 }
 
 /// Cells `{token}` takes at its longest, as [`longest_width`] counts it.
-fn token_cells(token: &str, tokens: &dyn Tokens, longest_name: Option<usize>) -> usize {
+fn token_cells(
+    token: &str,
+    tokens: &dyn Tokens,
+    longest_name: Option<usize>,
+    widths: &CellWidths,
+) -> usize {
     match (name_token(token), longest_name) {
         (Some(_), Some(longest)) => longest,
         _ => tokens
             .longest(token)
-            .unwrap_or(text_width(token, &CellWidths::NARROW) + 2),
+            .unwrap_or(text_width(token, widths) + 2),
     }
 }
 
 /// Lines `text` takes in a box `width` cells wide ([`word_wrap`]) once
 /// every token is filled in as its longest: each token is written out as
 /// that many letters, with the tokens and names counted as in
-/// [`longest_width`]. A line that fits the box here fits it with any
-/// player's name.
+/// [`longest_width`], and each wide character of `widths` as two. A line
+/// that fits the box here fits it with any player's name.
 pub fn lines_at_longest(
     text: &str,
     tokens: &dyn Tokens,
     longest_name: Option<usize>,
     width: usize,
+    widths: &CellWidths,
 ) -> usize {
-    let filled: String = split_tokens(text)
-        .map(|part| match part {
-            Part::Text(t) | Part::Unclosed(t) => t.to_owned(),
-            Part::Token(t) => "W".repeat(token_cells(t, tokens, longest_name)),
-        })
-        .collect();
+    let mut filled = String::new();
+    for part in split_tokens(text) {
+        match part {
+            Part::Text(t) | Part::Unclosed(t) => {
+                for c in t.chars() {
+                    if widths.is_wide(c) {
+                        filled.push_str("WW");
+                    } else {
+                        filled.push(c);
+                    }
+                }
+            }
+            Part::Token(t) => {
+                filled.push_str(&"W".repeat(token_cells(t, tokens, longest_name, widths)));
+            }
+        }
+    }
     word_wrap(&filled, width).len()
 }
 
@@ -318,12 +350,18 @@ impl<R> Checker<'_, R> {
 
     /// [`lines_at_longest`] of `text`, with the names of the table.
     fn pages(&self, text: &str) -> usize {
-        lines_at_longest(text, self.tokens, self.longest_name, self.limits.box_width)
+        lines_at_longest(
+            text,
+            self.tokens,
+            self.longest_name,
+            self.limits.box_width,
+            self.widths,
+        )
     }
 
     /// [`longest_width`] of `text`, with the names of the table.
     fn len(&self, text: &str) -> usize {
-        longest_width(text, self.tokens, self.longest_name)
+        longest_width(text, self.tokens, self.longest_name, self.widths)
     }
 
     /// Reports a display name from the names table written out in `text`

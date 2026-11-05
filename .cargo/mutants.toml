@@ -95,6 +95,10 @@ exclude_re = [
     # returns an empty leaked `Vec` is the same function. Its other mutants
     # are caught.
     'GridSkin::zoom_levels -> .* with Vec::leak\(Vec::new\(\)\)',
+    # The default `SceneRules::widths` is `CellWidths::NARROW`, which is
+    # `CellWidths::default()` (nothing wide): the mutant that returns a
+    # leaked default is the same function.
+    'replace SceneRules::widths -> &CellWidths with Box::leak\(Box::new\(Default::default\(\)\)\)',
     # The default `playtest_stages` is `Vec::new()`: its only viable
     # mutant, `vec![]`, is the same function.
     'replace GameTools::playtest_stages -> Vec<String> with vec!\[\]',

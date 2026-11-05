@@ -166,6 +166,7 @@ fn rules(variants: &'static [&'static str]) -> PackRules<'static> {
         data_problem: |_, _| None,
         tokens: &NoTokens,
         limits: LIMITS,
+        widths: &crate::font::CellWidths::NARROW,
         variants,
     }
 }
@@ -1025,9 +1026,28 @@ fn a_language_packs_data_and_dialogue_are_read_against_the_games_data_text() {
     assert_eq!(shown(bundled(&plain, varied, info_path)).len(), 1);
     let both = lang_pack().variants(&["a", "b"]).with_data(source.clone());
     let pack = bundled(&both, varied, info_path);
-    let lang = languages(varied, Some(source), &rules(&["a", "b"])).unwrap_or_default();
+    let lang = languages(varied, Some(source.clone()), &rules(&["a", "b"])).unwrap_or_default();
     assert_eq!(pack.as_ref().ok(), lang.pack(&code("xx")));
     assert!(pack.is_ok());
+    // With the font atlas's widths, a line of wide characters is measured in
+    // cells: 41 of "あ" are 82, over the limit of 80.
+    let mut wide: Vec<_> = pack_files().into();
+    let text = "あ".repeat(LIMITS.max_text / 2 + 1);
+    wide.extend([dialogue(&format!("text: {text:?}"))]);
+    let wide = bundle(wide);
+    let narrow = lang_pack().with_data(source.clone());
+    assert!(bundled(&narrow, wide, info_path).is_ok());
+    let atlas = crate::font::FontAtlasDef {
+        wide: [('あ', 0)].into(),
+        ..crate::font::FontAtlasDef::default()
+    };
+    let measured = lang_pack().widths_of(&atlas).with_data(source);
+    assert_eq!(
+        shown(bundled(&measured, wide, info_path)),
+        [format!(
+            "base/lang/xx/dialogue/gate.ron: {key:?}: text is 82 cells; the limit is 80"
+        )]
+    );
 }
 
 #[test]
@@ -1095,7 +1115,9 @@ fn the_formats_of_a_games_types_show_what_they_are() {
     );
     assert_eq!(
         format!("{:?}", lang_pack().variants(&["a"])),
-        format!("LangPackRon {{ limits: {LIMITS:?}, variants: [\"a\"], data: false, .. }}")
+        format!(
+            "LangPackRon {{ limits: {LIMITS:?}, wide: {{}}, variants: [\"a\"], data: false, .. }}"
+        )
     );
     let with_data = lang_pack().with_data(SourceText::default());
     assert!(format!("{with_data:?}").contains("data: true"));

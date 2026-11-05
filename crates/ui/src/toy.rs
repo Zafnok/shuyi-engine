@@ -473,6 +473,7 @@ impl Toy {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
+            widths: &shuyi_assets::font::CellWidths::NARROW,
             variants: &[],
         };
         let info = r#"(name: "Debug", made_by: Machine)"#;

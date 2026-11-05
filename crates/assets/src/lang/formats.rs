@@ -2,12 +2,15 @@
 //! the other files of its directory and English's screen text beside it.
 use crate::prelude::*;
 
+use alloc::collections::BTreeSet;
+
 use super::{
     DATA_FILE, ENGLISH, INFO_FILE, LangCode, LangPack, PackRules, PackSources, SourceText, UI_FILE,
     english_from_source, is_dialogue_file, pack_from_files,
 };
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
+use crate::font::{CellWidths, FontAtlasDef};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
 use crate::import_settings::is_settings_file;
 
@@ -24,11 +27,16 @@ const NOT_A_LANGUAGE_FILE: &str = "not a file a language has";
 /// its `data.ron` and `dialogue/*.ron`, checked against the game's data
 /// text when it gives it ([`LangPackRon::with_data`]; left out
 /// otherwise). Any other file in the directory is an error. Checked as
-/// [`pack_from_files`] says, with the game's rules.
+/// [`pack_from_files`] says, with the game's rules, its limits counting a
+/// character of the font atlas's wide glyphs as two cells when the game
+/// gives the atlas ([`LangPackRon::widths_of`]).
 pub struct LangPackRon {
     data_problem: fn(&str, &str) -> Option<String>,
     tokens: &'static (dyn Tokens + Sync),
     limits: DialogueLimits,
+    /// The characters that take two cells ([`CellWidths`], which can't be
+    /// shared between threads, is made of them as a pack is read).
+    wide: BTreeSet<char>,
     variants: &'static [&'static str],
     data: Option<SourceText>,
 }
@@ -42,8 +50,19 @@ impl LangPackRon {
             data_problem: |_, _| None,
             tokens,
             limits,
+            wide: BTreeSet::new(),
             variants: &[],
             data: None,
+        }
+    }
+
+    /// These packs, their limits counting a character with a wide glyph in
+    /// `atlas` as two cells ([`CellWidths::of`]), as the screen prints it.
+    #[must_use]
+    pub fn widths_of(self, atlas: &FontAtlasDef) -> Self {
+        Self {
+            wide: atlas.wide.keys().copied().collect(),
+            ..self
         }
     }
 
@@ -79,6 +98,7 @@ impl core::fmt::Debug for LangPackRon {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("LangPackRon")
             .field("limits", &self.limits)
+            .field("wide", &self.wide)
             .field("variants", &self.variants)
             .field("data", &self.data.is_some())
             .finish_non_exhaustive()
@@ -160,10 +180,12 @@ impl Format for LangPackRon {
                 .map(|(shown, source)| (shown.as_str(), *source)),
             dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), *s)).collect(),
         };
+        let widths = CellWidths::wide(self.wide.iter().copied());
         let rules = PackRules {
             data_problem: self.data_problem,
             tokens: self.tokens,
             limits: self.limits,
+            widths: &widths,
             variants: self.variants,
         };
         match pack_from_files(&sources, &english, self.data.as_ref(), &rules) {

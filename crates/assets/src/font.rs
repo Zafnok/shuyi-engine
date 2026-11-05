@@ -689,6 +689,7 @@ mod tests {
             data_problem: |_, _| None,
             tokens: &crate::dialogue::NoTokens,
             limits: crate::dialogue::tests::LIMITS,
+            widths: &crate::font::CellWidths::NARROW,
             variants: &[],
         };
 

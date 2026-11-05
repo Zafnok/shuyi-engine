@@ -305,6 +305,7 @@ mod tests {
             max_options: 4,
             max_reaction_texts: 3,
         },
+        widths: &shuyi_assets::font::CellWidths::NARROW,
         variants: &[],
     };
 

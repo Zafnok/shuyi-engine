@@ -172,6 +172,13 @@ What each one reads:
   text (above): left to right, a character a cell or two for a wide one,
   so a pack in a language the atlas has no glyphs for, or in a script
   that joins or reorders its letters, fails `check` or shows wrongly.
+  Its limits (a line's length, a reply's, a name's) count cells too: a
+  wide character is two once the format has the atlas
+  (`LangPackRon::widths_of`), or the rules have its widths
+  (`PackRules::widths`, `CellWidths::of(&atlas)`), so a game loads its
+  atlas before its text. Without them every character is one cell. A
+  dialogue's limits (`SceneRules::widths`) and a tip's
+  (`TipRules::widths`) count the same way.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
@@ -532,6 +539,9 @@ top-left corner: a picture that grows shows the same pixels, and a sprite whose
 source is past the edge of one that shrank draws as a missing picture, magenta.
 The game's `ImageTable` keeps the size it loaded, and an atlas's glyph rectangles
 stay what its font file says, so a font picture is saved at its own size.
+A module that reads the atlas's description again (its `atlas.ron`) changes
+which characters print wide: after files change, the App hands the frame the
+widths of the look's atlas (`Game::set_widths`), and draws it again if they moved.
 
 ## Optimized formats
 

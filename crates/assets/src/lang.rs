@@ -364,6 +364,9 @@ pub struct PackRules<'a> {
     pub tokens: &'a dyn Tokens,
     /// How much text the dialogue box and the reply menu hold.
     pub limits: DialogueLimits,
+    /// How many cells each character takes, which the limits count: the
+    /// font atlas's ([`CellWidths::of`]), or [`CellWidths::NARROW`].
+    pub widths: &'a CellWidths,
     /// The names of the variants a dialogue entry may have instead of one
     /// `text` (`text_<variant>` fields, every one of them): one per hero
     /// a line can be said of, say. Empty for none.
@@ -374,6 +377,7 @@ impl fmt::Debug for PackRules<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PackRules")
             .field("limits", &self.limits)
+            .field("widths", &self.widths)
             .field("variants", &self.variants)
             .finish_non_exhaustive()
     }
@@ -699,6 +703,7 @@ mod tests {
         data_problem: |_, _| None,
         tokens: &crate::dialogue::NoTokens,
         limits: crate::dialogue::tests::LIMITS,
+        widths: &CellWidths::NARROW,
         variants: &[],
     };
 
