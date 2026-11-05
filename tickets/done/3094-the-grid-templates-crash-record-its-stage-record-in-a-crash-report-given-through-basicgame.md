@@ -131,6 +131,10 @@ None.
   nothing, as the ticket asks; a stage module now gives `crash_record`
   besides `own`, `first`, `screens` and `Tools` (docs/templates.md, the
   base's AGENTS.md).
+- A `stages.rs` written by hand now names `crash_record()` too, since the
+  base's `game()` calls it: the `shuyi-dialogue` and `shuyi-cinematic`
+  skills' worked examples give `None`. A game already made keeps its own
+  `lib.rs`, so it is not affected.
 - Integration test in the template's `tests/stage.rs`: two commands
   taken and a third pending give a record of the three, which the tools'
   `replay` runs (four steps); at the title, `None`.
