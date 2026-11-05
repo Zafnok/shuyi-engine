@@ -82,6 +82,12 @@
 //! A build without debug tools logs why and writes nothing; a file that
 //! can't be written is one warning, and the game goes on.
 //!
+//! A panic writes a crash report through the game's storage, beside its
+//! saves (the [`crash`] module, ADR-0079): `crash-<when>.ron` in its data
+//! folder on native, and in `localStorage` on the web. At its next start
+//! the game hears of it once (`shuyi_platform::Setup::last_crash`).
+//! [`AppConfig::crash`] names the game's version in it, or turns it off.
+//!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
 //! game's data folder (the `sessions` module, ADR-0074): the record of a run,
 //! written when the game quits and when the debug menu's "Save session" asks,
@@ -122,6 +128,7 @@ mod audio;
 mod backend;
 #[cfg(feature = "capture")]
 pub mod capture;
+pub mod crash;
 mod facts;
 mod focus;
 #[cfg(not(target_arch = "wasm32"))]
@@ -151,7 +158,7 @@ use core::fmt::Debug;
 use macroquad::prelude::*;
 use shuyi_assets::audio::{Bytes, Files};
 use shuyi_assets::keymap::ActionSet;
-use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Start, TextInput};
+use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Platform, Start, TextInput};
 use shuyi_ui::GameData;
 use shuyi_ui::basic::FONT_PNG;
 use shuyi_ui::log::{LogLevel, LogLine};
@@ -160,6 +167,7 @@ use shuyi_ui::log::{LogLevel, LogLine};
 pub use crate::audio::Chosen as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
+pub use crate::crash::CrashReports;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use crate::folder::watched_file;
 #[cfg(not(target_arch = "wasm32"))]
@@ -307,6 +315,10 @@ pub struct AppConfig {
     /// (Steam's on-screen keyboard is the game's: its ticket 0903);
     /// `None` where the player types on keys.
     pub text_input: Option<Box<dyn TextInput>>,
+    /// Whether a panic writes a crash report, and the game's version in it
+    /// ([`crash`]): reports with no version until the game assigns
+    /// [`CrashReports::new`] with its own, or [`CrashReports::off`].
+    pub crash: CrashReports,
 }
 
 impl AppConfig {
@@ -329,6 +341,7 @@ impl AppConfig {
             sounds,
             voices: None,
             text_input: None,
+            crash: CrashReports::new(""),
         }
     }
 }
@@ -387,6 +400,12 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// the game before the next. On the web the browser sets the rate: a frame
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
+///
+/// A panic writes a crash report as [`AppConfig::crash`] says ([`crash`]).
+/// On native a panic of the game's frame then stops the sound, adds the
+/// game's record of its play to the report and ends the process with exit
+/// code 101; the game's system hook isn't called, so a broken game never
+/// saves.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     // Which target this build is: an unknown one is the load's error.
     let (start, facts) = facts::start_as(facts::this_target(), start);
@@ -412,6 +431,9 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
+    let storage_name = config.storage_name;
+    crash::install(config.crash, move || storage::platform(storage_name));
+    let panic_at = crash::panic_at_frame();
     let mut platform = Macroquad::new(&mut config, facts);
     let mut app = App::new(start);
     let kept = sessions::Kept::start(&mut app, config.storage_name, recorded_manifest);
@@ -439,7 +461,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         if let Some(link) = &mut link {
             link.before_frame(&app, platform.link_input());
         }
-        let outcome = app.frame(&mut platform, now);
+        let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at);
         if app.take_session_save() {
             kept.save(&app);
         }
@@ -450,6 +472,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
             print_line(&line);
+            let (level, category) = (line.level.name(), line.category.name());
+            crash::note_log(format!("f{} {level} {category}: {}", line.frame, line.text));
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(file) = perf_file.take() {
@@ -473,6 +497,33 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         pace(&mut pacer, &platform, &mut app);
         next_frame().await;
     }
+}
+
+/// Runs `app`'s frame at `now`, and panics first if it is the one
+/// `SHUYI_PANIC_AT_FRAME` names (`panic_at`). A panic has written its
+/// report: the sound stops, the game's record is added to it, and the
+/// process ends with exit code 101.
+fn frame_or_crash<G: GameData>(
+    app: &mut App<G>,
+    platform: &mut Macroquad,
+    now: Millis,
+    panic_at: Option<u32>,
+) -> FrameOutcome {
+    let frame = app.frame_number().saturating_add(1);
+    crash::set_frame(frame, app.game().and_then(shuyi_ui::Game::top_screen));
+    let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        assert!(panic_at != Some(frame), "{}", crash::PANIC_ON_PURPOSE);
+        app.frame(platform, now)
+    }));
+    if let Ok(outcome) = run {
+        return outcome;
+    }
+    platform.audio().stop_all();
+    let record = crash::quiet(|| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.crash_record()))
+    });
+    crash::add_record(record.ok().flatten());
+    std::process::exit(101);
 }
 
 /// After a frame is drawn: the cap it asked for applies from the next, and
@@ -567,16 +618,19 @@ fn sound_left_out(_: &str) -> bool {
 
 /// What the backend needs to know about a game on the short path: its
 /// storage's name (`AppInfo::storage`), its files from the installed bundle and its font's
-/// picture; no sounds, no voices and no system keyboard.
+/// picture, and its version in its crash reports (`AppInfo::version`); no
+/// sounds, no voices and no system keyboard.
 fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
     let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
-    AppConfig::new(
+    let mut config = AppConfig::new(
         basic_window(game),
         game.storage_name(),
         installed_file,
         FONT_PNG,
         sounds,
-    )
+    );
+    config.crash = CrashReports::new(game.app().version);
+    config
 }
 
 /// Prints a line of App's log with macroquad's macro for its level.
@@ -728,6 +782,32 @@ mod tests {
         let small = basic().console(shuyi_ui::frame::ConsoleSpec::text(20, 10));
         let window = basic_window(&small);
         assert_eq!((window.width, window.height), (336, 336));
+    }
+
+    #[test]
+    fn a_short_path_games_crash_reports_name_its_version() {
+        assert_eq!(basic_config(&basic()).crash, CrashReports::new("0.1.0"));
+        assert_eq!(basic_config(&basic()).crash.game_version, "0.1.0");
+    }
+
+    /// A config built in a `const fn`, as `AppConfig::new` stays one.
+    const fn const_config(sounds: Files<'static>) -> AppConfig {
+        AppConfig::new(
+            Window::new("A game", 640, 480),
+            "a-game",
+            installed_file,
+            FONT_PNG,
+            sounds,
+        )
+    }
+
+    #[test]
+    fn a_new_config_writes_reports_with_no_version_and_off_keeps_none() {
+        let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
+        let config = const_config(sounds);
+        assert_eq!(config.crash, CrashReports::default());
+        assert_eq!((config.crash.game_version, config.crash.keep), ("", 5));
+        assert_eq!(CrashReports::off().keep, 0);
     }
 
     #[test]

@@ -94,7 +94,10 @@ impl Music {
         let ctx = contexts.take();
         // quad-snd `unwrap`s the decode; a corrupt file must not cost the
         // context (its mixer thread would idle forever unused).
-        if let Ok(sound) = catch_unwind(AssertUnwindSafe(|| Sound::load(&ctx, &bytes))) {
+        // Caught on purpose, so no crash report (`crate::crash::quiet`).
+        let decoded =
+            crate::crash::quiet(|| catch_unwind(AssertUnwindSafe(|| Sound::load(&ctx, &bytes))));
+        if let Ok(sound) = decoded {
             Ok(Self {
                 sound,
                 length_ms,

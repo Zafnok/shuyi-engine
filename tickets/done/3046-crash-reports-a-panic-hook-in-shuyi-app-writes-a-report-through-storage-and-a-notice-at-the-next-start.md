@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3040", "2511"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 3046 — Crash reports: a panic hook, and a notice at the next start
@@ -364,37 +364,37 @@ anywhere is 3047's question for Nick.
 
 ## Acceptance criteria
 
-- [ ] With the hook installed over a test storage, a panic inside
+- [x] With the hook installed over a test storage, a panic inside
       `catch_unwind` stores one `crash-<when>` report whose message,
       location, thread, frame, top screen and log lines are the ones
       set, and the hook that was there before is called once.
-- [ ] After that panic, `crash::add_record(Some(text))` leaves one
+- [x] After that panic, `crash::add_record(Some(text))` leaves one
       report under the same key, holding `text`; with text over 1 MiB,
       `record` is `None` and the last log line says why.
-- [ ] A panic inside `crash::quiet` stores nothing.
-- [ ] After six panics, five reports remain, the newest; with `keep: 1`,
+- [x] A panic inside `crash::quiet` stores nothing.
+- [x] After six panics, five reports remain, the newest; with `keep: 1`,
       one.
-- [ ] `CrashReport::parse` of text over 2 MiB, of random bytes as text
+- [x] `CrashReport::parse` of text over 2 MiB, of random bytes as text
       and of every cut of a valid report returns an error or a report,
       and never panics.
-- [ ] Through the headless backend, a storage holding two reports gives
+- [x] Through the headless backend, a storage holding two reports gives
       `Setup::last_crash` the newer one at the first load, and `None` at
       a second load on the storage the first game kept.
-- [ ] A hello-grid test: a stage with two commands taken and a third
+- [x] A hello-grid test: a stage with two commands taken and a third
       pending gives a record of the three, which its tools' `replay`
       reads. `tools::StageRecord` still names the record type.
-- [ ] hello-grid's release build run with `SHUYI_PANIC_AT_FRAME=3`
+- [x] hello-grid's release build run with `SHUYI_PANIC_AT_FRAME=3`
       writes a report with the fixed message, `frame: 3` and its top
       screen, with `record: None` (no stage is open at frame 3), and
-      exits with 101 (in the PR description, and in 2018's `render`
-      job).
-- [ ] `run_game`'s config function sets `crash` to the game's version
+      exits with 101 (in the PR description; in 2018's `render` job on
+      the debug build that job already builds, see the notes).
+- [x] `run_game`'s config function sets `crash` to the game's version
       (a unit test with `BasicGame`).
-- [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`
+- [x] `shuyi-platform` still builds for `thumbv7em-none-eabihf`
       (`cargo xtask check-no-std`), and `cargo xtask check-layers`
       passes (CI's `layers` job).
-- [ ] The ADR is written and listed in `docs/adr/README.md`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and listed in `docs/adr/README.md`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -417,4 +417,56 @@ anywhere is 3047's question for Nick.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, with these changes:
+
+- **`shuyi_platform::crash`** (`crates/platform/src/crash.rs`):
+  `CrashReport` (with `new`, `limit`, `set_record`, `to_text`, `parse`),
+  `crash_key`, `report_when`, `report_keys`, `keep_newest`, `LastCrash`
+  and `offer_last_crash`, which `App::load` calls. `serde`, `ron` and
+  `proptest` were already `shuyi-platform`'s (ADR-0072 added the first
+  two to ADR-0024 §1's list, and `tools/layers.ron` already names them),
+  so no dependency or layers line changed, and the ADR doesn't amend
+  ADR-0024 §1 again.
+- **`Setup::last_crash`** is filled after a session record has read the
+  storage, so a playback offers the same report and plays the same.
+  `crash-offered` holds the report's key as a RON string.
+- **`Start::crash_record`** and `App::crash_record`; `Start` was already
+  `#[non_exhaustive]`, so its new field is no break.
+- **`shuyi_app::crash`**: `CrashReports`, `install`, `set_frame`,
+  `note_log`, `quiet`, `add_record` and `PANIC_ON_PURPOSE`.
+  `install` sets the hook once a process and, called again, changes
+  what it writes (the integration test switches to `keep: 1` and then
+  off that way). On the web `when` comes from `miniquad::date::now`,
+  since `SystemTime` panics there.
+- **hello-grid:** `StageRecord`, `crash_record` and `StageScreen::seed`
+  and `pending` in `screens/stage.rs`; `StageScreen` answers
+  `as_any_mut`, for the test. Its `Start::crash_record` is set in
+  `hello_grid::start_over` (the library's), not `main`, since that is
+  where its `Start::new` is.
+
+Deviations:
+
+- **Size.** Code and tests came to about 1,200 changed lines before the
+  template, past the 650 of **Size**, so the grid template's part is
+  3094 (After MVP, `blocked_by: ["3046"]`). It also needs a design of
+  its own: since 2511 the template's `main` is one `run_game` call, and
+  its `Start` is made inside `BasicGame::start`, so 3094 adds
+  `BasicGame::crash_record`.
+- **CI's `render` step** runs the debug build of hello-grid the job
+  already builds (with `capture`, which does nothing unless
+  `SHUYI_CAPTURE` is set), not a release build: a release build would
+  add a whole release compile to the job for no difference in the hook.
+  The release build was run here, on Windows 11 (GNU toolchain), with
+  `APPDATA` pointed at a scratch folder: exit code 101 and one report,
+  `frame: 3`, `top_screen: Some("title")`, `record: None`,
+  `target: "windows x86_64 release"`, its backtrace all `<unknown>`
+  (the stripped binary, as the ticket expects until 2520).
+
+Settled: 3012's and 3041's clauses on 3046 now say what holds
+(`From 3046 (done)`); 2512 names 3094 back.
+
+No break: `Setup`, `Start` and `AppConfig` were already
+`#[non_exhaustive]`, so their new fields are additive, and the rest is
+new. The game's PR that moves the pin may set `AppConfig::crash` to
+`CrashReports::new(<its version>)` and give `Start::crash_record`; it
+needs neither to build.

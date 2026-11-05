@@ -111,10 +111,9 @@ None. Running it on a real Deck is 3013.
     saves and settings: the folder `shuyi_app::storage::data_dir` gives
     inside the Steam Linux Runtime (check whether it sets
     `XDG_DATA_HOME`), and how a player finds it in desktop mode.
-    **Either order with 3046:** if 3046 is done, the page says that
-    crash reports (`crash-<when>.ron`) land there, and
-    `docs/crash-reports.md` links to this page for the Deck; if not,
-    3046 adds that line and the link (its scope says so).
+    **From 3046 (done):** the page says that crash reports
+    (`crash-<when>.ron`) land there, and `docs/crash-reports.md`'s
+    *Where it lands* links to this page for the Deck.
     **Either order with 3041:** if 3041 is done, the page says that
     the log files land in its `logs` folder (`storage::log_dir`); if
     not, 3041 adds that line (its scope says so).

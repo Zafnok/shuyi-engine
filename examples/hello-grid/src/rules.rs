@@ -102,7 +102,7 @@ pub enum Side {
 }
 
 /// What a side asks for. A record of a stage is its seed and these
-/// (`tools::StageRecord`).
+/// (`screens::stage::StageRecord`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Command {
     /// Your piece walks to this tile, within its reach; its own tile waits.

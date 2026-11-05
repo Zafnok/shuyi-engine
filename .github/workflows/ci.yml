@@ -288,6 +288,26 @@ jobs:
             echo "::error::hello-grid exited $code on a plan with an unknown key, not 2"
             exit 1
           fi
+      - name: A panic on purpose writes a crash report and exits 101
+        run: |
+          data="$RUNNER_TEMP/crash-data"
+          code=0
+          SHUYI_PANIC_AT_FRAME=3 XDG_DATA_HOME="$data" \
+            xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid || code=$?
+          if [ "$code" != 101 ]; then
+            echo "::error::hello-grid exited $code after a panic on purpose, not 101"
+            exit 1
+          fi
+          reports=("$data"/shuyi-hello-grid/crash-*.ron)
+          if [ "${#reports[@]}" != 1 ] || [ ! -f "${reports[0]}" ]; then
+            echo "::error::not one crash report under $data: ${reports[*]}"
+            exit 1
+          fi
+          cat "${reports[0]}"
+          grep -q 'message: "a panic on purpose (SHUYI_PANIC_AT_FRAME)"' "${reports[0]}"
+          grep -q 'frame: 3,' "${reports[0]}"
+          grep -q 'top_screen: Some("title"),' "${reports[0]}"
+          grep -q 'record: None,' "${reports[0]}"
       - name: The captures in the summary
         if: always()
         run: |
