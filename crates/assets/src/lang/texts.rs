@@ -26,17 +26,19 @@ pub enum TextPart {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct TextAt<'a> {
-    /// The language: `None` for English, else the pack's code.
+    /// The language: `None` for the source, else the pack's tag.
     pub lang: Option<&'a LangCode>,
     /// The part of the language.
     pub part: TextPart,
     /// Its key: a screen or data text's key, a line id or caption key, and
     /// `name` for a [`TextPart::LangName`].
     pub key: &'a str,
-    /// For a dialogue line, the stem of its English line's `.dlg` file
+    /// For a dialogue line, the stem of its source line's `.dlg` file
     /// ([`SourceLine::file`](super::SourceLine::file)); empty otherwise,
-    /// and for a pack's line English no longer has.
+    /// and for a pack's line the source no longer has.
     pub file: &'a str,
+    /// The source language's tag, which names its folder.
+    source: &'a LangCode,
 }
 
 /// The key a [`TextPart::LangName`] text is listed under.
@@ -47,16 +49,17 @@ impl TextAt<'_> {
     /// under the languages' directory, as [`from_files`](super::from_files)
     /// reads it: `ru/lang.ron` for its name, `ru/ui.ron`, `ru/data.ron`,
     /// and for a line `ru/dialogue/` and its English line's `.dlg` stem
-    /// (`ru/dialogue/ch01.ron`; just `ru/dialogue/` for a line English no
-    /// longer has). English's is a line's `.dlg` file (`ch01.dlg`), and
-    /// `en` for the rest: a [`Lang`] doesn't keep which file the game read
-    /// them from.
+    /// (`ru/dialogue/ch01.ron`; just `ru/dialogue/` for a line the source
+    /// no longer has). The source's is a line's `.dlg` file (`ch01.dlg`),
+    /// and its folder for the rest (`en`, or the tag of the source the game
+    /// declares): a [`Lang`] doesn't keep which file the game read them
+    /// from.
     pub fn path(&self) -> String {
         let Some(code) = self.lang else {
             return if self.part == TextPart::Dialogue && !self.file.is_empty() {
                 format!("{}.dlg", self.file)
             } else {
-                super::ENGLISH.to_owned()
+                self.source.to_string()
             };
         };
         match self.part {
@@ -75,21 +78,23 @@ impl TextAt<'_> {
 }
 
 impl Lang {
-    /// Every text the languages hold, with where each is from. First
-    /// English: its screen text, its data text (names included, as
+    /// Every text the languages hold, with where each is from. First the
+    /// source: its screen text, its data text (names included, as
     /// `names.<id>`), then its dialogue lines and captions, each in key
-    /// order. Then each pack in code order: its name, its screen text, its
+    /// order. Then each pack in tag order: its name, its screen text, its
     /// data text and its dialogue lines, every variant of a line with
     /// variants ([`LineText::all`](super::LineText::all)).
     pub fn texts(&self) -> Vec<(TextAt<'_>, &str)> {
+        let source = &self.written_in.code;
         let at = |lang, part, key, file| TextAt {
             lang,
             part,
             key,
             file,
+            source,
         };
         let mut texts = Vec::new();
-        for (key, text) in &self.english {
+        for (key, text) in &self.ui {
             texts.push((at(None, TextPart::Screen, key, ""), text.as_str()));
         }
         for (key, text) in &self.source.data {
@@ -128,7 +133,7 @@ mod tests {
 
     use super::*;
     use crate::lang::{Entry, LangInfo, LangPack, LineEntry, LineText, MadeBy};
-    use crate::lang::{LineKind, SourceLine, SourceText};
+    use crate::lang::{LineKind, SourceLang, SourceLine, SourceText};
     use crate::names::Names;
 
     fn owned(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
@@ -248,13 +253,23 @@ mod tests {
                 "ru/dialogue/",
             ]
         );
-        // An English line not read from a file is English's too.
+        // A source line not read from a file is the source's too.
+        let en = LangCode::default();
         let unfiled = TextAt {
             lang: None,
             part: TextPart::Dialogue,
             key: "a.l1",
             file: "",
+            source: &en,
         };
         assert_eq!(unfiled.path(), "en");
+    }
+
+    #[test]
+    fn a_declared_sources_texts_name_its_folder() {
+        let ja = SourceLang::new(LangCode::new("ja").unwrap(), "日本語");
+        let lang = lang().with_source_lang(ja);
+        let paths: Vec<String> = lang.texts().iter().map(|(at, _)| at.path()).collect();
+        assert_eq!(paths[..4], ["ja", "ja", "ja", "gate.dlg"]);
     }
 }

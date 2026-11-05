@@ -158,11 +158,9 @@ None.
      pack for `effective_lang()` (`self.game.lang().pack(..)`), or
      `[GridPage::Latin]` when there is no pack or its `name_grid` is
      empty. English has no `lang.ron`, so English keeps today's one page
-     and every existing snapshot stays the same. **Either order with
-     2226:** if it is done, `Ctx::name_grid` takes the first pack along
-     `Lang::chain(effective_lang())` that has a `name_grid`; if not, the
-     pack for `effective_lang()` as written here, and 2226 moves it to
-     the chain.
+     and every existing snapshot stays the same. **From 2226
+     (done):** `Ctx::name_grid` takes the first pack along
+     `Lang::chain(effective_lang())` that has a `name_grid`.
    - `NameEntry::with_pages(self, pages: Vec<GridPage>) -> Self`.
      `NameEntry::new` keeps one `Latin` page. `ProfilesScreen::open_name`
      (`crates/ui/src/screens/profiles.rs`) takes no `Ctx` today: it

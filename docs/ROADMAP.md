@@ -191,7 +191,7 @@ Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 (game#0250, key names that stand out), 2228
 (game#1013, mod tables merged by id), 2342 (game#0826, the voices'
-volume), and 2226 and 2349 (game#0825, the language option).
+volume), and 2226, 2253 and 2349 (game#0825, the language option).
 
 **Seeing what players see:**
 
@@ -237,6 +237,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2351 | Built-in English for the engine's own text keys, which a game's text overrides |
 | 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
 | 2348 | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 2253 | Picking the game's language that fits the system's languages |
 | 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |

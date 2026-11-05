@@ -175,10 +175,10 @@ Record the answers with the `ask-nick` skill in `docs/decisions.md`.
 - `docs/formats.md`, *A language pack*: one sentence on
   `Lang::with_engine_packs`.
 - **Either order:**
-  - **2226** (language tags and fallback chains): if it is done, the
-    engine's packs take part in its chain (a `pt-BR` game pack falls
-    back to the engine's `pt` pack before the source text); if not,
-    2226 adds them to it, as its clause says.
+  - **From 2226 (done)** (language tags and fallback chains): the
+    engine's packs take part in its chain (`Lang::chain`, walked by the
+    private `Lang::packs_along`): a `pt-BR` game pack falls back to the
+    engine's `pt` pack before the source text.
   - **2223** (credits and notices): if it is done, the credits section
     of a game's `NOTICES.txt` says which languages' engine screens the
     game shows machine-translated (`Lang::engine_pack_codes` of the
@@ -208,8 +208,8 @@ About 550 changed lines, the packs and the snapshots aside.
 - Translating a game's own text.
 - A language picker or the player's saved language (2349).
 - Languages that need tags with a region or script (2226) or wide
-  glyphs (2301, done, and 2303). **Either order with 2226 and 2303:** if
-  they are done, Nick may pick such a language (question 2); if not,
+  glyphs (2301, done, and 2303). 2226 is done. **Either order with
+  2303:** if it is done, Nick may pick such a language (question 2); if not,
   it is left out, and nothing is left to them (an engine pack in it
   later is a ticket of its own, if Nick asks). Right-to-left and
   shaped scripts (2908).

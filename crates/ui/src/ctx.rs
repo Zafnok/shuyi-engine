@@ -349,13 +349,12 @@ pub struct Ctx<G: GameData> {
     /// the Steam Deck), if the platform has one: absent here, and the
     /// platform's `App` says so before every frame.
     pub system_keyboard: SystemKeyboard,
-    /// The language screen text is shown in: English until the player
-    /// picks another. The game's debug language
-    /// ([`GameData::debug_lang`]) counts only with
-    /// [`debug_tools`](Self::debug_tools) on; anywhere else it is English.
+    /// The language screen text is shown in: the game's source language
+    /// ([`Lang::source_lang`]) until the player picks another. The game's
+    /// debug language ([`GameData::debug_lang`]) counts only with
+    /// [`debug_tools`](Self::debug_tools) on; anywhere else it is the
+    /// source.
     pub lang: LangCode,
-    /// English, for [`effective_lang`](Self::effective_lang).
-    english: LangCode,
     /// The installed modules' states and debug menu entries.
     pub(crate) modules: module::States<G>,
     /// The hot reloads that failed ([`note_reload`](Self::note_reload)).
@@ -374,6 +373,7 @@ impl<G: GameData> Ctx<G> {
         let settings = Settings::default();
         let audio = AudioQueue::new(game.audio_config());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
+        let lang = game.lang().source_lang().code.clone();
         Ok(Self {
             console: game.console(),
             widths: CellWidths::NARROW,
@@ -404,8 +404,7 @@ impl<G: GameData> Ctx<G> {
             crank_docked: false,
             platform: PlatformFacts::default(),
             system_keyboard: SystemKeyboard::default(),
-            lang: LangCode::english(),
-            english: LangCode::english(),
+            lang,
             modules: module::States::default(),
             reload_errors: module::ReloadErrors::default(),
         })
@@ -452,14 +451,14 @@ impl<G: GameData> Ctx<G> {
     }
 
     /// The screen text for `key` in the player's language, placeholders
-    /// and all: the language's text if it has one made from today's
-    /// English, else English.
+    /// and all: the first text along its fallback chain
+    /// ([`Lang::chain`]) made from today's source text, else the source's.
     ///
-    /// A key English lacks is a bug in the screen: it panics in debug
+    /// A key the source lacks is a bug in the screen: it panics in debug
     /// builds, and shows as the key itself in release builds.
     pub fn text<'a>(&'a self, key: &'a str) -> &'a str {
         let lang = self.game.lang();
-        debug_assert!(lang.has(key), "text key not in the English text: {key:?}");
+        debug_assert!(lang.has(key), "text key not in the source text: {key:?}");
         lang.text(self.effective_lang(), key)
     }
 
@@ -499,13 +498,13 @@ impl<G: GameData> Ctx<G> {
         crate::text::fill(self.text(key), args, |name| self.game.key_text(name, keys))
     }
 
-    /// The language text is shown in: [`lang`](Self::lang), but English
-    /// for the game's debug language without
+    /// The language text is shown in: [`lang`](Self::lang), but the
+    /// game's source language for its debug language without
     /// [`debug_tools`](Self::debug_tools).
     pub fn effective_lang(&self) -> &LangCode {
         let debug = self.game.debug_lang();
         if debug == Some(self.lang.as_str()) && !self.debug_tools {
-            return &self.english;
+            return &self.game.lang().source_lang().code;
         }
         &self.lang
     }
@@ -1173,9 +1172,9 @@ impl<G: GameData> Ctx<G> {
 }
 
 /// The name of the profile numbered `n` when the player hasn't named it
-/// ([`PROFILE_NUMBERED_TEXT`], in English).
+/// ([`PROFILE_NUMBERED_TEXT`], in the source language).
 fn numbered_profile(lang: &Lang, n: u32) -> String {
-    let text = lang.text(&LangCode::english(), PROFILE_NUMBERED_TEXT);
+    let text = lang.text(&lang.source_lang().code, PROFILE_NUMBERED_TEXT);
     crate::text::fill_values(text, &[("n", &n)])
 }
 

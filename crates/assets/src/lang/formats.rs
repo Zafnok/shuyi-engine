@@ -1,12 +1,12 @@
 //! A language pack as a format (ADR-0007): read from its `lang.ron`, with
-//! the other files of its directory and English's screen text beside it.
+//! the other files of its folder and the source's screen text beside it.
 use crate::prelude::*;
 
 use alloc::collections::BTreeSet;
 
 use super::{
-    DATA_FILE, ENGLISH, INFO_FILE, LangCode, LangPack, PackRules, PackSources, SourceText, UI_FILE,
-    english_from_source, is_dialogue_file, pack_from_files,
+    DATA_FILE, INFO_FILE, LangPack, PackRules, PackSources, SourceLang, SourceText, UI_FILE,
+    english_from_source, is_dialogue_file, pack_code, pack_from_files_in,
 };
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
@@ -22,14 +22,17 @@ impl AssetKind for LangPack {
 const NOT_A_LANGUAGE_FILE: &str = "not a file a language has";
 
 /// A language pack (`lang-pack`, `.ron`), read from its `lang.ron` in its
-/// directory (`lang/fr/lang.ron`), which is named by its code: its
-/// `ui.ron` beside it, checked against English's (`lang/en/ui.ron`), and
-/// its `data.ron` and `dialogue/*.ron`, checked against the game's data
-/// text when it gives it ([`LangPackRon::with_data`]; left out
-/// otherwise). Any other file in the directory is an error. Checked as
-/// [`pack_from_files`] says, with the game's rules, its limits counting a
-/// character of the font atlas's wide glyphs as two cells when the game
-/// gives the atlas ([`LangPackRon::widths_of`]).
+/// folder (`lang/pt-BR/lang.ron`), which is named by its tag as BCP 47
+/// writes it: its `ui.ron` beside it, checked against the source's
+/// (`lang/en/ui.ron`, or the folder of the source the game declares,
+/// [`LangPackRon::source_lang`]), and its `data.ron` and
+/// `dialogue/*.ron`, checked against the game's data text when it gives it
+/// ([`LangPackRon::with_data`]; left out otherwise). Any other file in the
+/// folder is an error, and the source's folder is no pack. Checked as
+/// [`pack_from_files`](super::pack_from_files) says, with the game's
+/// rules, its limits counting a character of the font atlas's wide glyphs
+/// as two cells when the game gives the atlas
+/// ([`LangPackRon::widths_of`]).
 pub struct LangPackRon {
     data_problem: fn(&str, &str) -> Option<String>,
     tokens: &'static (dyn Tokens + Sync),
@@ -39,12 +42,13 @@ pub struct LangPackRon {
     wide: BTreeSet<char>,
     variants: &'static [&'static str],
     data: Option<SourceText>,
+    source: SourceLang,
 }
 
 impl LangPackRon {
     /// Packs whose dialogue fits `limits` and may use the game's `tokens`,
-    /// with no rules of the game's for its data text, no variants, and no
-    /// data text to check theirs against.
+    /// with no rules of the game's for its data text, no variants, no data
+    /// text to check theirs against, and English as the source.
     pub fn new(limits: DialogueLimits, tokens: &'static (dyn Tokens + Sync)) -> Self {
         Self {
             data_problem: |_, _| None,
@@ -53,7 +57,15 @@ impl LangPackRon {
             wide: BTreeSet::new(),
             variants: &[],
             data: None,
+            source: SourceLang::default(),
         }
+    }
+
+    /// These packs, of a game written in `source`: checked against its
+    /// screen text (`<languages>/<code>/ui.ron`), its folder no pack.
+    #[must_use]
+    pub fn source_lang(self, source: SourceLang) -> Self {
+        Self { source, ..self }
     }
 
     /// These packs, their limits counting a character with a wide glyph in
@@ -84,7 +96,7 @@ impl LangPackRon {
     }
 
     /// These packs, their data and dialogue text read and checked against
-    /// the English of the game's data, `data`.
+    /// the source text of the game's data, `data`.
     #[must_use]
     pub fn with_data(self, data: SourceText) -> Self {
         Self {
@@ -101,6 +113,7 @@ impl core::fmt::Debug for LangPackRon {
             .field("wide", &self.wide)
             .field("variants", &self.variants)
             .field("data", &self.data.is_some())
+            .field("source", &self.source.code.as_str())
             .finish_non_exhaustive()
     }
 }
@@ -129,15 +142,15 @@ impl Format for LangPackRon {
         let info = text(file, bytes)?;
         let dir = file.dir();
         let (languages, code) = dir.rsplit_once('/').unwrap_or(("", dir));
-        if file.name() != INFO_FILE || code == ENGLISH {
+        let source = &self.source.code;
+        if file.name() != INFO_FILE || code == source.as_str() {
             let message = format!("{NOT_A_LANGUAGE_FILE}: a pack is read from its {INFO_FILE}");
             return Err(vec![ContentError::new(file.shown(), message)]);
         }
-        if LangCode::new(code).is_none() {
-            let message = "a language's directory must be named with 2 to 8 lowercase letters";
+        if let Err(message) = pack_code(code) {
             return Err(vec![ContentError::new(cx.shown(dir), message)]);
         }
-        let english_path = join(&join(languages, ENGLISH), UI_FILE);
+        let english_path = join(&join(languages, source.as_str()), UI_FILE);
         let english_shown = cx.shown(&english_path);
         let english = english_from_source(
             &english_shown,
@@ -188,7 +201,7 @@ impl Format for LangPackRon {
             widths: &widths,
             variants: self.variants,
         };
-        match pack_from_files(&sources, &english, self.data.as_ref(), &rules) {
+        match pack_from_files_in(source, &sources, &english, self.data.as_ref(), &rules) {
             Ok(pack) if errors.is_empty() => Ok(pack),
             Ok(_) => Err(errors),
             Err(e) => {

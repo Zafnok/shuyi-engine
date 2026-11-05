@@ -1,5 +1,5 @@
 //! A pack's dialogue text (`dialogue/<file>.ron`): one entry per line id or
-//! caption key. Rewording an English line gives it a new id, so the old
+//! caption key. Rewording a source line gives it a new id, so the old
 //! entry becomes an **orphan**: it fails nothing, and [`Lang::status`]
 //! pairs it with the new line it most likely belongs to.
 use crate::prelude::*;
@@ -337,8 +337,8 @@ impl LangPack {
 
 impl Lang {
     /// The dialogue line or caption `key` in language `code`, as played
-    /// for `variant`: the pack's text when its entry was made from exactly
-    /// `english`; otherwise `english`.
+    /// for `variant`: the first entry along [`chain`](Self::chain) made
+    /// from exactly `english` (today's source text); otherwise `english`.
     pub fn line<'a>(
         &'a self,
         code: &LangCode,
@@ -346,21 +346,19 @@ impl Lang {
         english: &'a str,
         variant: &str,
     ) -> &'a str {
-        let entry = self.packs.get(code).and_then(|pack| pack.lines.get(key));
-        match entry {
-            Some(entry) if entry.source == english => entry.text.get(variant).unwrap_or(english),
-            _ => english,
-        }
+        self.packs_along(code)
+            .find_map(|(_, pack)| pack.lines.get(key).filter(|entry| entry.source == english))
+            .map_or(english, |entry| entry.text.get(variant).unwrap_or(english))
     }
 
     /// `scene` in language `code`, as played for `variant`: every line,
-    /// reply and caption the pack translates in its language, the others
-    /// in English. The lines keep their ids (a voice clip is found by
-    /// them) and their tokens.
+    /// reply and caption translated along [`chain`](Self::chain), the
+    /// others as the source has them. The lines keep their ids (a voice
+    /// clip is found by them) and their tokens.
     #[must_use]
     pub fn scene<D: Clone>(&self, code: &LangCode, scene: &Scene<D>, variant: &str) -> Scene<D> {
         let mut scene = scene.clone();
-        if self.packs.contains_key(code) {
+        if self.packs_along(code).next().is_some() {
             let id = scene.id.clone();
             self.translate(code, &id, &mut scene.steps, variant);
         }

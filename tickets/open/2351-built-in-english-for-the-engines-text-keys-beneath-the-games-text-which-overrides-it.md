@@ -162,10 +162,11 @@ None.
 - **Either order:**
   - **2511** (done): `BasicData::load` builds its `Lang` with
     `with_engine_english`, as the bullet above says.
-  - **2226** (language tags and a source language the game declares):
-    if it is done, the engine's English sits beneath the game's source
-    text whatever language the game declares; if not, 2226 keeps it
-    there.
+  - **From 2226 (done)** (language tags and a source language the game
+    declares): the engine's English sits beneath the game's source text
+    whatever language the game declares (`Lang::source_lang`), and the
+    lookups that fall back to the source (`Lang::text` after the packs
+    along `Lang::chain`) fall back to it last.
   - **2348** (plurals in text): if it is done,
     `profile.message.too_many` uses its plural form; if not, 2348
     changes it with the rest.
