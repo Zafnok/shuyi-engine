@@ -109,12 +109,12 @@ and follow the MVP.
   - Re-exported as `shuyi_core::Angle`. 1119's `Fx` sine and cosine,
     2701's `atan2` and `acos`, 2105's bones and 2103's particles use
     this type and this table, not a second one.
-  - **Either order with 2109:** if 2109 is done, it has a private
-    quarter-wave table in `crates/core/src/ease/tables.rs`. If that
-    table has the same 65 entries in the same units, move it here and
-    make `ease` use `Angle`'s. If not, both stay, and the Completion
-    notes say why. If 2109 isn't done, it decides whether to use this
-    table.
+  - **From 2109 (done):** `shuyi_core::ease` has a private
+    quarter-wave table in `crates/core/src/ease/tables.rs` of 257
+    entries in 1/65536, with straight lines between them. 65 entries
+    are too coarse for its bounds (a sine off by up to about five
+    units between entries; ADR-0077), so both tables stay, and this
+    ticket's Completion notes say so.
   - **Either order with 1119 (parked):** if 1119 is done, it wrote this
     module's `Angle` type and its table as this list says. Keep them and
     their tests, check them against this list, and add only what is

@@ -20,11 +20,11 @@ completed:
 in floats. It changes none of the engine's own motions. Its Context
 lists them as "motions written by hand", and its Scope promised the
 follow-up that moves them. This is that follow-up. 2364 (parked)
-leaves moving `Pan` onto 2109's ease to it, and 2339 leaves it its
-private smoothstep if 2339 lands before 2109.
+leaves moving `Pan` onto 2109's ease to it. 2109 landed before 2339,
+so 2339 has no private smoothstep to leave it.
 
-Two rules of 2109's ADR ("Easing and tweens: integer curves in
-`shuyi-core`, drawn from the time alone") apply here:
+Two rules of 2109's ADR (ADR-0077, "Easing and tweens: integer curves
+in `shuyi-core`, drawn from the time alone") apply here:
 
 - a tween's time is a plain `u32` whose unit the caller picks;
 - a skin that works in floats eases through `ease_f32`, which goes
@@ -50,9 +50,9 @@ What is written by hand today (read on 2026-10-24):
 - **`Pan::centre`** (`crates/ui/src/cinematic.rs`): eased by
   `ease_in_out`, the `f32` smoothstep. 2109 keeps `ease_in_out` as it
   is, so the game's own calls of it draw as today.
-- If 2339 landed before 2109: its
-  `shuyi_ui::frame::transition::progress`, a smoothstep in thousandths
-  written out by hand.
+- 2339's `shuyi_ui::frame::transition::progress` is not on the list:
+  2109 landed before 2339, so 2339 takes `Ease::Smooth` when it is
+  built.
 
 Three more are on 2109's list, and stay as they are. This ticket writes
 down why, so nobody moves them later by mistake:
@@ -154,14 +154,6 @@ None.
     characters itself;
   - the Completion notes say why each of the three stays (the Context
     above).
-- **Either order with 2339:** if 2339 is done and its
-  `transition::progress` still has its private formula
-  (`p² × (3000 − 2p) / 1 000 000` in thousandths, which it has if 2339
-  landed before 2109), move it onto `Ease::Smooth` through
-  `Easing::ease`, scaled from and to thousandths, as 2339's clause on
-  2109 says (if it uses `Ease::Smooth` already, leave it); if not,
-  nothing to do: 2109 is done before this ticket, so 2339 takes
-  `Ease::Smooth` when it is built (its clause on 2109 says so).
 - **From 2341 (done):** `MusicState` has fade-ins, overlaps and a
   `MusicSwitch` in whole milliseconds, each fade a `Ramp`: move every
   gain it computes (the fade-out, the fade-in, an overlap's two, and a
@@ -211,7 +203,7 @@ None.
    `grid/glyph/cursor.rs`, `audio.rs` (`MusicState` and its tests),
    `game.rs` (`with_stack`), `cinematic.rs` and `cinematic/tests.rs`,
    `frame/color.rs`, `dialogue/text_box.rs` and `hurry.rs`, all under
-   `crates/ui/src/`. Check whether 2339 and 2364 are done.
+   `crates/ui/src/`. Check whether 2364 is done.
 2. Run the workspace's tests before changing anything, so every
    snapshot is known to pass.
 3. In each module's tests, copy today's formula as a private reference
@@ -220,11 +212,9 @@ None.
 4. The cursor's pulse.
 5. Music fades: every fade 2341 built (each `Ramp`), onto the tween.
 6. `Pan::centre`.
-7. If 2339 is done and still has its private formula,
-   `transition::progress`.
-8. The doc comments of `Rgb::lerp` and `type_on`, and the `Rgb` twin
+7. The doc comments of `Rgb::lerp` and `type_on`, and the `Rgb` twin
    test.
-9. Run the gates, the `no_std` build of `shuyi-ui` included. Check
+8. Run the gates, the `no_std` build of `shuyi-ui` included. Check
    that `git status` shows no changed or new `.snap` file. Expect about
    400 changed lines, with 2341's fades.
 
@@ -249,10 +239,6 @@ None.
       every `k` from 0 to 256 and every pair of channel values.
 - [ ] `Rgb::lerp`'s and `type_on`'s doc comments say why they are not
       tweens, and the Completion notes say why the three stay.
-- [ ] If 2339 is done and had its private formula, `progress` goes
-      through `Ease::Smooth`. It is within one thousandth of the
-      formula at every `elapsed_ms` from 0 to `ms`, for `ms` of 1, 7,
-      400 and 65 535, and gives 1000 when `ms` is 0.
 - [ ] Each of 2341's fades reads a `Tween`, and its tests pass
       unchanged.
 - [ ] Every existing test keeps its expected values, and the PR lists
@@ -270,7 +256,7 @@ None.
   1, not a number and infinity.
 - Comparison against today's formulas, kept in the tests: the cursor
   at 4096 points of a period, the two fades frame by frame, the pan at
-  1001 progresses, and 2339's `progress` if it moved.
+  1001 progresses.
 - Property: the cursor's brightness stays within `BLINK_MIN..=1` for
   any `blink_t`.
 - Exhaustive: `Rgb::lerp` against `Lerp::mix` at every whole 1/256.

@@ -10,7 +10,9 @@
 //! whoever owns the clock can follow the music, jump or loop, and a test
 //! can draw any moment. The player has no clock of its own.
 //!
-//! The engine also gives what most shots move by: an [`ease_in_out`], and
+//! The engine also gives what most shots move by: an [`ease_in_out`] (and
+//! every curve of `shuyi_core::ease`, through
+//! [`ease_f32`](crate::ease::ease_f32)), and
 //! a [`Pan`] over a picture shown as the frame's backdrop (game ADR-0048,
 //! [`cinema::view`]), its frame ([`PanFrame`]) and its paint
 //! ([`paint_pan`]).
@@ -156,7 +158,9 @@ pub fn millis(t: f32) -> u64 {
 }
 
 /// `p` (0 to 1; clamped, not a number counts as 0) eased in and out: slow
-/// at both ends, fastest in the middle.
+/// at both ends, fastest in the middle. It is smoothstep, the curve of
+/// [`Ease::Smooth`](shuyi_core::Ease::Smooth), in `f32`; through
+/// [`ease_f32`](crate::ease::ease_f32) a skin has every other curve too.
 pub fn ease_in_out(p: f32) -> f32 {
     let p = if p.is_finite() {
         p.clamp(0.0, 1.0)

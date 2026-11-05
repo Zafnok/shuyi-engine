@@ -120,11 +120,9 @@ None.
     night" section shows an ambience over the light cycle. If not,
     nothing to do (2370's "weather" section shows the two together).
 
-**Either order with 2109:** if 2109 is done, a stop may name the
-`Ease` its blend into the next stop uses (`ease: InOut(Sine)`, default
-`Linear`), applied to `permille` before `Light::mix`. If not, every
-blend is straight, and 2109 adds `ease` to the stops when it lands
-(its clause on 2369 says so).
+**From 2109 (done):** a stop may name the `Ease` its blend into the
+next stop uses (`ease: InOut(Sine)`, default `Linear`), applied to
+`permille` before `Light::mix`.
 
 **Either order with 2328:** if 2328 is done, a lit world layer (1120,
 2328) takes `look.light_blend` too, and when it is `Some` the mixed

@@ -248,7 +248,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 
 | Ticket | What |
 | ------ | ---- |
-| 2109 | Ease curves in integers, and tweens and sequences drawn from the time alone |
+| 2109 (done) | Ease curves in integers, and tweens drawn from the time alone |
 | 2114 | RNG helpers: ranges, chances, picks, shuffles, bags, named streams and forks |
 | 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |

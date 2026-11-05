@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2109 — Ease curves and tweens drawn from the time alone
@@ -321,44 +321,44 @@ None.
 
 ## Acceptance criteria
 
-- [ ] At every `p` from 0 to 65536, every curve (`Linear`, `Smooth`,
+- [x] At every `p` from 0 to 65536, every curve (`Linear`, `Smooth`,
       `Steps(1)`, `Steps(3)`, `Steps(16)`, and each `Family` in all four
       modes) is within one unit (1/65536) of its `f64` formula for
       `Linear`, `Smooth`, `Steps` and `Quad` to `Quint`, and within two
       units for `Sine`, `Expo`, `Circ`, `Back`, `Elastic` and `Bounce`.
       The PR lists the worst error per curve.
-- [ ] Every curve gives exactly 0 at `p = 0` and exactly `ONE` at
+- [x] Every curve gives exactly 0 at `p = 0` and exactly `ONE` at
       `p = ONE`, and `p` below 0 or above `ONE` gives the same as 0 or
       `ONE`.
-- [ ] A golden snapshot of every curve at 65 points (every 1024) is
+- [x] A golden snapshot of every curve at 65 points (every 1024) is
       committed (`insta`, a new dev-dependency of `shuyi-core` from the
       workspace: Apache-2.0, which `deny.toml` allows, and already used
       by `shuyi-ui` and `shuyi-assets`).
-- [ ] `mix(a, b, 0) == a` and `mix(a, b, ONE) == b` for every `Lerp`
+- [x] `mix(a, b, 0) == a` and `mix(a, b, ONE) == b` for every `Lerp`
       type. At `p = -ONE / 10` and `p = 11 * ONE / 10`, signed values
       and pairs go past their ends, and `u8` and `Rgb` stop at 0 and
       255.
-- [ ] `Tween`: `value_at` is `from` before the delay and the end value
+- [x] `Tween`: `value_at` is `from` before the delay and the end value
       at and after `done_at`. With `Loop`, `value_at(t + duration) ==
       value_at(t)` for every `t` at or after the delay. Over any split
       of time from 0 into windows one after another, `finished_between`
       is true in exactly one window for a tween that ends (a tween done
       at 0 included), and in none for `Loop`.
-- [ ] Every `Ease` and a `Tween` read back equal from RON, and a
+- [x] Every `Ease` and a `Tween` read back equal from RON, and a
       `Tween` written with only `from`, `to` and `duration` reads with
       the defaults.
-- [ ] `shuyi-core` and `shuyi-ui` still build for
+- [x] `shuyi-core` and `shuyi-ui` still build for
       `thumbv7em-none-eabihf`, and `cargo clippy -p shuyi-core --lib --
       -D clippy::float_arithmetic` passes (2015's float ban in its
       `lib.rs` passes too).
-- [ ] `ease_f32(&Ease::Smooth, p)` is within 2/65536 of
+- [x] `ease_f32(&Ease::Smooth, p)` is within 2/65536 of
       `cinematic::ease_in_out(p)` across 0 to 1, and no `frame-png` or
       scene snapshot in the repository changes.
-- [ ] The ADR is written, ADR-0004's `Status:` line is updated, and
+- [x] The ADR is written, ADR-0004's `Status:` line is updated, and
       `docs/adr/README.md` has the new row and ADR-0004's changed one.
-- [ ] If 1119 is done, `Fx` and `FxVec2` implement `Lerp`, and `mix`
+- [x] If 1119 is done, `Fx` and `FxVec2` implement `Lerp`, and `mix`
       hits both ends exactly.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -378,4 +378,100 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done** (sources read 2026-11-04):
+
+- **ADR-0077** ("Easing and tweens: integer curves in `shuyi-core`,
+  drawn from the time alone") with the seven points of the Scope.
+  ADR-0004's `Status:` line and both index rows are updated.
+- **`shuyi_core::ease`** (`crates/core/src/ease.rs`, `ease/tables.rs`,
+  `ease/tests.rs`): `ONE`, `Easing`, `Family`, `Ease`, `Lerp` (for
+  `i32`, `i64`, `u8`, `u16`, `u32`, `(i32, i32)`), `Repeat` and
+  `Tween`, `no_std`, no float outside the tests. Every curve is an exact
+  fraction rounded once: the polynomials and `Bounce` (its constants as
+  `121/16` and `11/4`) in `i128`, `Sine`, `Expo` and `Elastic` through
+  the two tables of 257 entries (`Elastic`'s angle in 1/2^24 of a
+  turn), `Circ` through `u128::isqrt`. `shuyi_core` re-exports `Ease`,
+  `Easing`, `Family`, `Lerp` and `Tween`; its crate docs name them, and
+  `timer`'s module docs point at `ease`.
+- **The name table** in the module docs: a family table and a mode
+  table beside Godot 4.7's `Tween`, Bevy 0.20.1's `EaseFunction` (now
+  in the `bevy_curve` crate), Defold 1.14.0's `go.EASING_*` and MDN's
+  `<easing-function>`, all read on 2026-11-04. Three notes from the
+  sources: Godot's `TRANS_EXPO` is Penner's first version shifted by a
+  thousandth, Bevy's `Exponential*` are rescaled to meet 0 and 1, and
+  Bevy's `BackInOut` takes its constant as `c1 + 1.525`, not
+  `c1 * 1.525`. `TRANS_SPRING`, `Elastic(omega)`, Bevy's `SmoothStepIn`,
+  `SmoothStepOut` and `SmootherStep*`, and CSS's named Béziers have no
+  match.
+- **`shuyi_ui::ease::ease_f32`**, and `Lerp` for `Rgb`.
+  `cinematic::ease_in_out` keeps its body and tests; its doc points at
+  `Ease::Smooth`.
+- **The skill** `shuyi-animate` has a section on ease curves and tweens;
+  **the book's** chapter 4 has *Things that move*, its code in
+  `site/snippets/src/frame.rs` (anchors `tween` and `test_tween`), kept
+  apart from the garden's skin so no picture changes.
+
+**The worst error per curve** against its `f64` formula, in 1/65536
+(measured by the loop of `every_curve_is_its_formula_at_every_p`):
+
+| Curve | `In` | `Out` | `InOut` | `OutIn` |
+| ----- | ---- | ----- | ------- | ------- |
+| `Sine` | 1.214 | 1.214 | 0.836 | 0.836 |
+| `Quad` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Cubic` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Quart` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Quint` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Expo` | 0.745 | 0.745 | 0.625 | 0.625 |
+| `Circ` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Back` | 0.500 | 0.500 | 0.500 | 0.500 |
+| `Elastic` | 1.061 | 1.061 | 0.757 | 0.760 |
+| `Bounce` | 0.500 | 0.500 | 0.500 | 0.500 |
+
+`Linear` 0, `Smooth` 0.500, `Steps(1)` 0, `Steps(3)` 0.333,
+`Steps(16)` 0.
+
+**Deviations:**
+
+- The `const fn` builders `with_delay`, `with_repeat` and `with_yoyo`
+  ask for `T: Copy` and `E: Copy`, and `new` and `with_ease` for
+  `T: Copy`: on stable Rust a `const fn` can't drop a part of a generic
+  value (E0493; precise live drops are unstable). Every `Lerp` type and
+  `Ease` are `Copy`. `with_ease` takes any curve type and returns a
+  `Tween<T, F>`, so a game's own curve goes in last. The ADR says so,
+  and 2135's clause now does (its `Points` isn't `Copy`).
+- With `yoyo`, a play backwards reads the curve at `ONE - p` (time
+  backwards, as CSS's `alternate` and DOTween's `Yoyo`), not the curve
+  forwards from `to` to `from`. The ticket allowed either.
+- The end value after the last play goes through the curve
+  (`mix(from, to, ease(ONE))`, or `ease(0)` after an even number of
+  yoyo plays): `to` or `from` for every `Ease`, and what 2135 asked of
+  it for `Points`.
+- `finished_between`'s arguments are named `prev` and `now`, not `from`
+  and `to`, which are the tween's own fields.
+- A `done_at` that saturates at `u32::MAX` counts as the end:
+  `value_at(u32::MAX)` is the end value then.
+
+**The clauses this ticket settled:**
+
+- **1119 (open):** not done, so nothing here; its clause now says to
+  implement `Lerp` for `Fx` and `FxVec2`.
+- **2335 (open), its table:** `ease` keeps its own private quarter-wave
+  table of 257 entries. 65 entries miss the bounds here, so the two
+  tables stay apart whichever lands first; 2335's clause says so.
+- **2369 (parked):** not done, so nothing here; its clause now says a
+  stop takes an `ease`.
+- **2339 and 2136:** 2109 landed first, so 2339 takes `Ease::Smooth`
+  and 2136 has no private smoothstep of 2339's to move.
+- **2135:** its clause on `Tween`'s end value is done here; it adds a
+  test with a `Points` curve.
+
+**Follow-ups:** 2135 and 2136, written before this ticket.
+
+**What changes for the game:** nothing. The API only grows;
+`ease_in_out` and `Rgb::lerp` are as they were. game#1228
+(`Zafnok/visions-of-shuyi`, *Fight stage eases on the engine's eases*)
+moves the pin to this change and puts the game's quad eases and its AI
+camera's pan on `Ease` and `Lerp`; no game PR exists yet. This engine
+PR merges first.
+
+No break.

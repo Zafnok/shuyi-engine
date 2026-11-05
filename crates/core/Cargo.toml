@@ -34,5 +34,6 @@ shuyi-core = { path = ".", default-features = false, features = ["toy"] }
 # tests see one `shuyi-core`). Without `std`, so the run without it stays
 # so.
 shuyi-assets = { path = "../assets", default-features = false, features = ["golden"] }
+insta.workspace = true
 proptest.workspace = true
 ron = { workspace = true, features = ["std"] }
