@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2341"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2398 — Stop music with a fade chosen per request
@@ -92,25 +92,25 @@ timings and quiet interval.
 
 ## Acceptance criteria
 
-- [ ] With a 500 ms manifest default, a full-gain track stopped with
+- [x] With a 500 ms manifest default, a full-gain track stopped with
       3,000 ms has gain about 2/3 after one second and 1/3 after two,
       and emits one stop at three seconds (stepped-frame tests).
-- [ ] Legacy `stop_music()` and direct unit `StopMusic` still fade over
+- [x] Legacy `stop_music()` and direct unit `StopMusic` still fade over
       500 ms in that fixture; the override leaves the default unchanged
       for the next track and stop.
-- [ ] Zero stops without a later track starting; a waiting next track
+- [x] Zero stops without a later track starting; a waiting next track
       is canceled and never gets a start command.
-- [ ] Both tracks in a crossfade stop, with at most the existing two
+- [x] Both tracks in a crossfade stop, with at most the existing two
       tracks loaded; a half-gain track follows the existing fade pace.
-- [ ] Repeated identical stops do not postpone silence, and a stop of
+- [x] Repeated identical stops do not postpone silence, and a stop of
       silence emits no load or start.
-- [ ] A toy screen's new queue request reaches the same gain/stop
+- [x] A toy screen's new queue request reaches the same gain/stop
       commands through the Harness; no backend change is required.
-- [ ] The old public request shape remains usable; the API verdict and
+- [x] The old public request shape remains usable; the API verdict and
       any required migration are recorded without weakening the gate.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -122,5 +122,33 @@ timings and quiet interval.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, the game's adoption PR, follow-up tickets, notes for Nick.)*
+- `AudioRequest::StopMusicWith { fade_ms }` (a `#[non_exhaustive]`
+  variant), built by `AudioRequest::stop_music_with`, and
+  `AudioQueue::stop_music_with(fade_ms)`. `stop_music()` and the unit
+  `StopMusic` are unchanged and still fade over the manifest's default.
+- `MusicState::stop` takes the fade length: the default for `StopMusic`,
+  the request's own for `StopMusicWith`. It aims every track at silence
+  with `Track::aim`, so a track part-way down takes its share of the
+  time (ADR-0054's rule), a repeated identical stop keeps the fade's
+  progress, a waiting track is dropped, and 0 stops on the next update.
+  No new `MusicCommand`; no backend changed.
+- `AudioRequest::cue`, `MusicState::request` and `game.rs`'s `is_known`
+  name the new variant.
+- Tests: unit tests in `crates/ui/src/audio.rs` (3 s from full gain with
+  a 0.5 s default, repeated stops, the default kept for the next track
+  and stop, zero with and without a waiting track, silence, a stop during
+  a switch's fade and during a crossfade), the property test's steps now
+  include stops with their own fade, and a Harness test through a toy
+  screen.
+- Deviation: the Harness test is in `crates/ui/tests/it/audio.rs`, beside
+  the other music Harness tests and their helpers, not in
+  `crates/platform/tests/it/`; it drives the same `Game` → Harness music
+  commands with no sound device or wall clock.
+- Book: `games-and-screens.md`'s context section says how a screen asks
+  for music and shows a compiled snippet (`site/snippets/src/screens.rs`,
+  anchor `music`) with a test.
+- API: an added variant of a `#[non_exhaustive]` enum and two added
+  functions; no break. No ADR: this is ADR-0054's per-request switch
+  applied to the stop.
+- The game adopts it in `game#1087` (no game PR yet); that ticket's PR
+  moves the pin to this change.

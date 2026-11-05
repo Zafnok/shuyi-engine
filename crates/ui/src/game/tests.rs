@@ -839,6 +839,7 @@ fn cues_must_be_of_the_right_kind() {
     let line = shuyi_assets::dialogue::LineId::new("x");
     for request in [
         AudioRequest::StopMusic,
+        AudioRequest::stop_music_with(3000),
         AudioRequest::PlayVoice {
             line: line.clone(),
             variant: Voice::Low,
