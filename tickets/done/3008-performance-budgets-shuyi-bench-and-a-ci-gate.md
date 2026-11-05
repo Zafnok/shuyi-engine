@@ -264,7 +264,7 @@ None.
   adds its largest and unread files (its clause now says so).
 - 2906's `asset_memory.rs` doesn't exist yet: nothing to add there.
 
-**Follow-ups.** The game's ticket: Zafnok/visions-of-shuyi#552 writes
+**Follow-ups.** The game's ticket: Zafnok/visions-of-shuyi#553 writes
 game ticket 1244 (benchmark scenarios for its heaviest battle, menus and
 dialogue), blocked by this one; its PR moves the pin.
 
