@@ -20,7 +20,10 @@
 //! **The fallback chain.** A key a pack lacks, or has stale, falls back
 //! along [`Lang::chain`]: the pack of each shorter tag the game has
 //! (`pt-BR`, then `pt`), then the source. So a small `pt-BR` pack can sit
-//! over a full `pt` one.
+//! over a full `pt` one. Which language a game starts in is
+//! [`best_match`] of the system's languages among the source and the
+//! packs: a tag, its shorter tags, Chinese's script from its region, then
+//! the one pack of the same language.
 //!
 //! The game names its folder and says what else its text must keep to
 //! ([`PackRules`]); the source text of its data is the [`SourceText`] it
@@ -34,6 +37,7 @@ use crate::prelude::*;
 
 mod formats;
 mod lines;
+mod matching;
 mod places;
 mod source;
 mod tag;
@@ -57,6 +61,7 @@ use places::UiValue;
 
 pub use formats::LangPackRon;
 pub use lines::{LineEntry, LineText, Orphan};
+pub use matching::best_match;
 pub use places::{Overflow, Place, Places};
 pub use source::{LineKind, SourceLine, SourceText, names_key};
 pub use tag::{LangCode, TagError};

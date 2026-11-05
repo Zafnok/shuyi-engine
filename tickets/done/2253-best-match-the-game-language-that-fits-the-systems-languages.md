@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2226"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 2253 — best_match: the game's language that fits the system's languages
@@ -84,14 +84,14 @@ call it. No `Breaking:` line.
 
 ## Acceptance criteria
 
-- [ ] `best_match` gives `pt` for `[pt-BR]` over `[en, pt]`, `zh-Hans`
+- [x] `best_match` gives `pt` for `[pt-BR]` over `[en, pt]`, `zh-Hans`
       for `[zh-CN]` over `[en, zh-Hans]`, `None` for `[zh-TW]` over
       `[en, zh-Hans]`, and `fr` for `[de, fr-CA]` over `[en, fr]` (unit
       tests).
-- [ ] Step 2 gives its script for each of its five regions, and step 3
+- [x] Step 2 gives its script for each of its five regions, and step 3
       gives `None` with two offered tags of one language (unit tests).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -102,5 +102,17 @@ call it. No `Breaking:` line.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_assets::lang::best_match` in a new module
+  `crates/assets/src/lang/matching.rs`, its three steps as the scope
+  says, with private `chinese_script`, `offered_along` (over
+  `tag::ancestry`) and `match_one`. Re-exported from `lang.rs`, whose
+  module docs name it under **The fallback chain**.
+- Step 3 reads the offered tag's script the same way as the preferred
+  one's: written, or from step 2's regions. So `zh-HK` doesn't match a
+  lone `zh-CN`, and does match a lone `zh-TW`.
+- Unit tests: every case the ticket lists, the five regions, two offered
+  tags of one language, an empty `preferred` and an empty `offered`.
+- No deviations, no follow-up tickets. 2349 already names this ticket for
+  `best_match`.
+
+Book: none, the book teaches no language packs or tags yet; the rustdoc of `shuyi_assets::lang` carries `best_match` beside the fallback chain.
