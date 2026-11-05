@@ -124,9 +124,10 @@ mod toy {
     #[test]
     fn a_session_plays_scripts_and_idles() {
         let mut s = session();
-        s.play(&Script {
-            steps: vec![Step::Keys("f f".into()), Step::Wait(0.05)],
-        });
+        s.play(&Script::new(vec![
+            Step::Keys("f f".into()),
+            Step::Wait(0.05),
+        ]));
         assert_eq!(s.frame_count(), 7);
         s.idle(3);
         assert_eq!(s.frame_count(), 10);
@@ -145,9 +146,7 @@ mod toy {
     #[test]
     fn its_events_are_the_screens_the_quit_and_the_games_own() {
         let mut s = session().with_events(|h| vec![format!("{} frames", h.frame_count())]);
-        s.play(&Script {
-            steps: vec![Step::Keys("f d d".into())],
-        });
+        s.play(&Script::new(vec![Step::Keys("f d d".into())]));
         assert_eq!(s.quit_frame(), Some(5));
         assert_eq!(
             s.events(),

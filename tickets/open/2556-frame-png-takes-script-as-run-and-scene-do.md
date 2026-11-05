@@ -43,23 +43,20 @@ None.
 
 **In:**
 - `frame_png::parse_args` takes `--script` as `--keys`: `"--keys" |
-  "--script" | "--pad" | "--wait"`, each handed to `Script::parse_step`
-  as now.
+  "--script" | "--pad" | "--act" | "--wait" | "--crank"`, each handed to
+  `frame_png::parse_step`, which reads `--script` already.
 - `frame_png::usage` lists `--script "F2 Up f"` beside `--keys`, as the
   same step ("press and release each key chord in turn").
-- **Either order with 2566:** if 2566 is done, `Script::parse_step` is
-  `frame_png::parse_step`: hand `--script` to it; if not, nothing to do
-  (2566 keeps `--script` when it moves the parser).
 - The skill pack says `frame-png` takes `--script` too:
   - `skills/shuyi-cinematic/SKILL.md`, step 6: "its steps are
-    `--script` (or `--keys`), `--pad` and `--wait`", as `run`'s are;
+    `--script` (or `--keys`), `--pad`, `--act` and `--wait`", as `run`'s are;
   - `skills/shuyi-test/SKILL.md`, step 6: the same words;
   - any other skill that says `frame-png` takes only `--keys` (grep
     `skills/` for `frame-png`).
   `cargo shuyi check-skills skills --tickets tickets/open` passes.
 
 **Out (do not do):**
-- new step kinds, or `--act` (2566 adds actions by name to every
+- new step kinds, or `--act` (2566 added actions by name to every
   operation's script);
 - changing `run`'s or `scene`'s parsing;
 - the grid template's `AGENTS.md` table: once `--script` works, its

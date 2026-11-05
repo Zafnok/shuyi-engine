@@ -86,7 +86,7 @@ That command makes this:
 
 {{ try_it(name="book-frame-png") }}
 
-`--keys`, `--pad` and `--wait` are the steps, `--scale` the size, and `--target <id>` a
+`--keys`, `--pad`, `--act` (an action by name, pressed by its key) and `--wait` are the steps, `--scale` the size, and `--target <id>` a
 target's display. The picture is for people; tests read the state.
 
 That picture is the raster's, painted in software. To check that your window draws the same

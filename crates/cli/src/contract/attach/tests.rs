@@ -21,7 +21,7 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
-fn input(address: &str, steps: Vec<AttachStep>) -> AttachInput {
+fn input(address: &str, steps: Vec<Step>) -> AttachInput {
     AttachInput {
         address: address.to_owned(),
         token: TOKEN.to_owned(),
@@ -57,10 +57,10 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
     assert_eq!(
         parsed.steps,
         [
-            AttachStep::Keys("Enter Up".into()),
-            AttachStep::Act("Confirm".into()),
-            AttachStep::Pad("South+East".into()),
-            AttachStep::Wait(0.5),
+            Step::Keys("Enter Up".into()),
+            Step::Act("Confirm".into()),
+            Step::Pad("South+East".into()),
+            Step::Wait(0.5),
         ]
     );
     assert_eq!(
@@ -74,16 +74,16 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
     assert_eq!(
         parsed.link_steps(),
         [
-            link::Step::Keys("Enter Up".into()),
-            link::Step::Act("Confirm".into()),
-            link::Step::Pad("South+East".into()),
-            link::Step::Wait(30),
-            link::Step::Wait(3),
+            Step::Keys("Enter Up".into()),
+            Step::Act("Confirm".into()),
+            Step::Pad("South+East".into()),
+            Step::Wait(0.5),
+            Step::Wait(0.05),
         ]
     );
     // `--script` is `--keys`, as for `run`.
     let script = parse_args(&args(&["h:1", "--token", "t", "--script", "f"])).unwrap();
-    assert_eq!(script.steps, [AttachStep::Keys("f".into())]);
+    assert_eq!(script.steps, [Step::Keys("f".into())]);
     for (bad, said) in [
         (vec!["--token", TOKEN], "address is missing"),
         (vec!["127.0.0.1:1"], "--token is missing"),
@@ -101,8 +101,16 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
             "--wait: not a number",
         ),
         (
-            vec!["a:1", "--token", "t", "--wait", "99"],
-            "--wait: 99 is not",
+            vec!["a:1", "--token", "t", "--wait", "-1"],
+            "--wait: -1 is not",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--wait", "1801"],
+            "step 1: wait: at most 1800.0 seconds in one step, not 1801",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--crank", "30"],
+            "step 1: crank: not over the live link yet",
         ),
         (
             vec!["a:1", "--token", "t", "--act", " "],
@@ -124,19 +132,43 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
 }
 
 #[test]
-fn a_wait_is_the_builds_frames_at_60_a_second() {
-    assert_eq!(frames_of(0.0), 0);
-    assert_eq!(frames_of(1.0 / 60.0), 1);
-    assert_eq!(frames_of(0.5), 30);
-    assert_eq!(frames_of(2.0), 120);
-    assert_eq!(frames_of(-1.0), 0);
+fn the_frames_after_are_waits_of_exactly_as_many_frames() {
+    assert_eq!(idle(0), []);
+    assert_eq!(idle(3), [Step::Wait(0.05)]);
+    assert_eq!(idle(120), [Step::Wait(2.0)]);
+    for frames in (0..=MAX_IDLE_FRAMES).step_by(7).chain([MAX_IDLE_FRAMES]) {
+        let played: u32 = idle(frames)
+            .iter()
+            .map(|step| match step {
+                Step::Wait(seconds) => wait_frames(*seconds),
+                other => panic!("{other}"),
+            })
+            .sum();
+        assert_eq!(played, frames);
+    }
+}
+
+#[test]
+fn an_action_and_a_wait_play_the_frames_they_did() {
+    // `--act Confirm --wait 0.5`: the action's press and release, then 30
+    // frames.
+    let host = Host::start();
+    let mut link = Connection::open(&host.address()).unwrap();
+    hello(&mut link, TOKEN).unwrap();
+    let asked = parse_args(&args(&[
+        "h:1", "--token", TOKEN, "--act", "Confirm", "--wait", "0.5",
+    ]))
+    .unwrap();
+    let seen = played(&mut link, &asked).unwrap_or_else(|(_, e)| panic!("{e}"));
+    assert_eq!(seen.played.unwrap().frames, 2 + 30);
+    assert_eq!(seen.status.screens, ["home", "menu"]);
 }
 
 #[test]
 fn it_plays_the_steps_in_the_running_build_and_reads_what_it_shows() {
     let host = Host::start();
     let dir = scratch("plays");
-    let mut asked = input(&host.address(), vec![AttachStep::Keys("f".into())]);
+    let mut asked = input(&host.address(), vec![Step::Keys("f".into())]);
     asked.frames = 2;
     asked.screenshot = Some("shot.png".to_owned());
     let answer = attach(&asked, &dir);
@@ -183,13 +215,13 @@ fn an_action_is_pressed_by_its_key_and_one_it_cant_press_is_named() {
     let host = Host::start();
     let dir = scratch("act");
     let answer = attach(
-        &input(&host.address(), vec![AttachStep::Act("Confirm".into())]),
+        &input(&host.address(), vec![Step::Act("Confirm".into())]),
         &dir,
     );
     assert_eq!(answer.result.unwrap().screens, ["home", "menu"]);
     host.let_go();
     let answer = attach(
-        &input(&host.address(), vec![AttachStep::Act("Menu".into())]),
+        &input(&host.address(), vec![Step::Act("Menu".into())]),
         &dir,
     );
     assert_eq!(
@@ -262,7 +294,7 @@ fn a_wrong_input_is_refused_before_connecting() {
     asked.token = String::new();
     let answer = attach(&asked, &scratch("refused"));
     assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
-    let mut asked = input("127.0.0.1:1", vec![AttachStep::Wait(-1.0)]);
+    let mut asked = input("127.0.0.1:1", vec![Step::Wait(-1.0)]);
     asked.frames = MAX_IDLE_FRAMES + 1;
     assert_eq!(attach(&asked, &scratch("refused")).exit_code(), 2);
 }

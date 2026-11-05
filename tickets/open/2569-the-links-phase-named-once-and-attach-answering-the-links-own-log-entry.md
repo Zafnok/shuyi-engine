@@ -43,9 +43,9 @@ by field, into the contract's own types. One of the copies guesses:
   build copies `link::LogEntry` into it with a private `log_entry`
   (`crates/cli/src/mcp/attached.rs:277`).
 
-The link's types can't derive `JsonSchema` today: `shuyi-platform` has no
-`schemars`. 2566 adds a `schema` feature to `shuyi-platform` for its
-script steps, so the clause below shares it.
+`shuyi-platform` has `schemars` behind its `schema` feature, which 2566
+added for its script steps; the link's types can derive `JsonSchema`
+behind it.
 
 ## Nick input
 
@@ -82,18 +82,12 @@ None.
   `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
   schemas*). The JSON `attach` answers doesn't change, and nor does the
   link's: `link::VERSION` stays.
-- **Either order with 2566:** if 2566 is done, `shuyi-platform` has the
-  `schema` feature (`["script", "dep:schemars"]`, turned on by
-  `shuyi-cli`) and `schemars` in its `outside` list in
-  `tools/layers.ron`: derive `JsonSchema` on `link::LogEntry` behind it;
-  if not, add the feature here as `schema = ["dep:schemars"]`, with
-  `schemars = { version = "1", optional = true, default-features =
-  false, features = ["derive"] }` in `crates/platform/Cargo.toml` (as
-  `crates/ui/Cargo.toml` has it), `"schema"` in `shuyi-cli`'s
-  `shuyi-platform` features, and `schemars` in `shuyi-platform`'s
-  `outside` list with its reason ("The JSON schemas of the live link's
-  answers, for the tool contract (its optional `schema` feature)"), and
-  2566 adds `script` to the feature.
+- **From 2566 (done):** `shuyi-platform` has the `schema` feature
+  (`["dep:schemars"]`, turned on by `shuyi-cli`), and `schemars` is in
+  its `outside` list in `tools/layers.ron`: derive `JsonSchema` on
+  `link::LogEntry` behind it (`#[cfg_attr(feature = "schema",
+  derive(schemars::JsonSchema))]`, as `script::Step` has it), and widen
+  the layers line's reason to the live link's answers too.
 - **For the game:** no break expected. `Phase::name` and the
   `JsonSchema` derive are additive; `AttachLogEntry` stays a public name
   with the same fields, still `#[non_exhaustive]`. If CI's `api` job
@@ -117,9 +111,8 @@ None.
 
 1. Add `Phase::name` to `crates/platform/src/link.rs`, with its doc
    (the words are its serde form).
-2. Settle the 2566 clause: the `schema` feature, then the
-   `cfg_attr` derive on `link::LogEntry`, and copy `AttachLogEntry`'s
-   field docs onto it.
+2. Add the `cfg_attr` derive on `link::LogEntry` behind the `schema`
+   feature, and copy `AttachLogEntry`'s field docs onto it.
 3. In `crates/cli/src/contract/attach.rs`: replace the `phase` `match`
    in `output` with `Phase::name`; delete the `AttachLogEntry` struct,
    re-export the link's type under that name, and move the log lines

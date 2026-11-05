@@ -8,7 +8,8 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use shuyi_platform::headless::HeadlessPlatform;
-use shuyi_platform::link::{Request, Step, VERSION};
+use shuyi_platform::link::{Request, VERSION};
+use shuyi_platform::script::Step;
 use shuyi_ui::toy::{self, Toy};
 
 use super::*;
@@ -116,7 +117,8 @@ fn a_client_says_hello_plays_and_reads_over_a_real_socket() {
         let (mut reader, mut stream) = connect(port);
         send(&mut stream, &hello());
         let hello = answer(&mut reader);
-        let steps = vec![Step::Keys("f".to_owned())];
+        // A wait's seconds are the build's frames: 0.05 s is 3.
+        let steps = vec![Step::Keys("f".to_owned()), Step::Wait(0.05)];
         send(&mut stream, &Request::Play { steps });
         send(&mut stream, &Request::Status);
         send(&mut stream, &Request::Frame);
@@ -145,7 +147,7 @@ fn a_client_says_hello_plays_and_reads_over_a_real_socket() {
         panic!("{answers:?}");
     };
     assert!(
-        matches!(played, Answer::Played(p) if p.frames == 2),
+        matches!(played, Answer::Played(p) if p.frames == 2 + 3),
         "{played:?}"
     );
     let Answer::Status(status) = status else {

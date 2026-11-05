@@ -50,6 +50,7 @@ use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 use crate::app::{App, Start, SystemHook};
 use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
 use crate::platform::{Millis, SystemEvent};
+use crate::script::{self, Planned};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
 #[cfg(feature = "std")]
@@ -57,12 +58,17 @@ mod kept;
 #[cfg(feature = "std")]
 pub use kept::assert_session;
 
-/// Simulated length of one frame, in seconds (60 fps).
-pub const FRAME_DT: f32 = 1.0 / 60.0;
+/// Simulated length of one frame, in seconds (60 fps): a script's frame.
+pub use crate::script::FRAME_DT;
 
 /// Most frames one [`Harness::hold`] or [`Harness::wait`] may run (about
 /// half a simulated minute), so a runaway script fails instead of hanging.
 pub const MAX_FRAMES: u32 = 2_000;
+
+/// The longest wait of one step of a [`Script`](crate::script::Script) the
+/// Harness plays, in seconds: [`MAX_FRAMES`] frames.
+#[allow(clippy::cast_precision_loss)] // 2000 frames
+pub const MAX_WAIT: f32 = MAX_FRAMES as f32 * FRAME_DT;
 
 /// The clock of a Harness on a game's real [`Start`]: the whole milliseconds
 /// [`App::frame`] takes, from the microseconds its frames add up to, so
@@ -356,11 +362,9 @@ impl<G: GameData> Harness<G> {
     ///
     /// On a chord [`Chord::parse`] rejects.
     pub fn keys(&mut self, script: &str) -> &mut Self {
-        for token in script.split_whitespace() {
-            let chord = parse(token);
-            self.frame(&[RawInputEvent::Down(chord)], FRAME_DT);
-            self.frame(&[RawInputEvent::Up(chord.key)], FRAME_DT);
-        }
+        let frames =
+            script::key_frames(script).unwrap_or_else(|e| panic!("bad chord in test script: {e}"));
+        self.play_planned(&frames);
         self
     }
 
@@ -411,17 +415,39 @@ impl<G: GameData> Harness<G> {
     ///
     /// On a button [`Button::parse`] rejects.
     pub fn pad(&mut self, script: &str) -> &mut Self {
-        for token in script.split_whitespace() {
-            let buttons: Vec<Button> = token.split('+').map(parse_button).collect();
-            let down: Vec<_> = buttons
-                .iter()
-                .map(|&b| RawInputEvent::PadDown(b, self.pad_kind))
-                .collect();
-            self.frame(&down, FRAME_DT);
-            let up: Vec<_> = buttons.iter().map(|&b| RawInputEvent::PadUp(b)).collect();
-            self.frame(&up, FRAME_DT);
-        }
+        let frames = script::pad_frames(script, self.pad_kind)
+            .unwrap_or_else(|e| panic!("bad button in test script: {e}"));
+        self.play_planned(&frames);
         self
+    }
+
+    /// The kind of controller [`pad`](Self::pad) presses buttons on.
+    pub(crate) fn pad_kind(&self) -> PadKind {
+        self.pad_kind
+    }
+
+    /// Plays `frames` of a script's plan, each [`FRAME_DT`] long.
+    ///
+    /// # Panics
+    ///
+    /// On an idle run of more than [`MAX_FRAMES`] frames.
+    pub(crate) fn play_planned(&mut self, frames: &[Planned]) {
+        for planned in frames {
+            match planned {
+                Planned::Events(events) => {
+                    self.frame(events, FRAME_DT);
+                }
+                Planned::Idle(n) => {
+                    assert!(
+                        *n <= MAX_FRAMES,
+                        "Harness: more than {MAX_FRAMES} frames in one wait"
+                    );
+                    for _ in 0..*n {
+                        self.frame(&[], FRAME_DT);
+                    }
+                }
+            }
+        }
     }
 
     /// Notches of `def` for [`crank`](Self::crank) (the game's keymap

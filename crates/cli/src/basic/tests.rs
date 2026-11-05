@@ -120,9 +120,7 @@ fn a_session_plays_the_game_and_paints_it() {
     assert_eq!(session.screens(), ["hello"]);
     assert!(session.picture(Some(1)).is_ok());
     assert!(session.scene().is_err());
-    session.play(&Script {
-        steps: vec![Step::Keys("Backspace".to_owned())],
-    });
+    session.play(&Script::new(vec![Step::Keys("Backspace".to_owned())]));
     assert_eq!(session.quit_frame(), Some(1));
 }
 
