@@ -19,7 +19,9 @@
 //! - [`audio`]: the shared player's backend, on the SDK's sample and file
 //!   players;
 //! - [`stack`]: the arithmetic of the game's own stack, which every call from
-//!   the SDK into the game runs on.
+//!   the SDK into the game runs on;
+//! - [`report`]: the run report a game may turn on, of its start and its
+//!   speed, in the console.
 #![no_std]
 
 extern crate alloc;
@@ -33,6 +35,7 @@ pub mod display;
 pub mod driver;
 pub mod heap;
 pub mod input;
+pub mod report;
 pub mod sdk;
 pub mod stack;
 pub mod storage;
@@ -47,6 +50,7 @@ mod fake;
 
 pub use backend::Playdate;
 pub use driver::Driver;
+pub use report::RunReport;
 
 #[cfg(shuyi_playdate_sdk)]
 pub use device::{pack, stack_high_water};
@@ -69,18 +73,29 @@ pub fn stack_high_water() -> Option<usize> {
 /// The game's entry points, for the crate `shuyi export playdate` builds:
 /// `main!(start)`, with `start` a `fn() -> Start<G>`, or `main!(start,
 /// stack_bytes = 128 * 1024)` for a game's own stack of another size than
-/// [`stack::DEFAULT_BYTES`]. Off the device it only checks `start` exists.
+/// [`stack::DEFAULT_BYTES`]. `report = RunReport::new()` after either turns
+/// on the run report ([`report`]). Off the device it only checks they exist.
 #[cfg(shuyi_playdate_sdk)]
 #[macro_export]
 macro_rules! main {
     ($start:path) => {
-        $crate::main!($start, stack_bytes = $crate::stack::DEFAULT_BYTES);
+        $crate::main!(@entry $start, $crate::stack::DEFAULT_BYTES, None);
+    };
+    ($start:path, report = $report:expr) => {
+        $crate::main!(@entry $start, $crate::stack::DEFAULT_BYTES, Some($report));
     };
     ($start:path, stack_bytes = $bytes:expr) => {
+        $crate::main!(@entry $start, $bytes, None);
+    };
+    ($start:path, stack_bytes = $bytes:expr, report = $report:expr) => {
+        $crate::main!(@entry $start, $bytes, Some($report));
+    };
+    (@entry $start:path, $bytes:expr, $report:expr) => {
         /// The SDK's first event.
         #[unsafe(no_mangle)]
         pub extern "C" fn shuyi_playdate_init() {
-            $crate::device::init($start, $bytes);
+            let report: Option<$crate::RunReport> = $report;
+            $crate::device::init($start, $bytes, report);
         }
 
         /// The SDK's update callback; 1 when the screen changed.
@@ -106,7 +121,8 @@ macro_rules! main {
 /// The game's entry points, for the crate `shuyi export playdate` builds:
 /// `main!(start)`, with `start` a `fn() -> Start<G>`, or `main!(start,
 /// stack_bytes = 128 * 1024)` for a game's own stack of another size than
-/// [`stack::DEFAULT_BYTES`]. Off the device it only checks `start` exists.
+/// [`stack::DEFAULT_BYTES`]. `report = RunReport::new()` after either turns
+/// on the run report ([`report`]). Off the device it only checks they exist.
 #[cfg(not(shuyi_playdate_sdk))]
 #[macro_export]
 macro_rules! main {
@@ -115,11 +131,24 @@ macro_rules! main {
             let _ = $start;
         };
     };
+    ($start:path, report = $report:expr) => {
+        const _: () = {
+            let _ = $start;
+        };
+        const _: fn() -> $crate::RunReport = || $report;
+    };
     ($start:path, stack_bytes = $bytes:expr) => {
         const _: () = {
             let _ = $start;
             let _: usize = $bytes;
         };
+    };
+    ($start:path, stack_bytes = $bytes:expr, report = $report:expr) => {
+        const _: () = {
+            let _ = $start;
+            let _: usize = $bytes;
+        };
+        const _: fn() -> $crate::RunReport = || $report;
     };
 }
 

@@ -156,7 +156,10 @@ game for the target and writes into `dist/export/<target>/`:
 - `playdate`: a `.pdx` and its zip, for sideloading (installing by hand, with no store): the game's
   library built without `std`, Rust's standard library, its pack baked one-bit, its sounds and music
   baked to ADPCM from what its tools' `GameTools::audio` names. A game adds a `playdate` feature and
-  says how it starts with `shuyi_playdate::main!`;
+  says how it starts with `shuyi_playdate::main!`, where `report = RunReport::new()` makes every run
+  say in the console how its start went and how fast it runs ([the Playdate's
+  page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report));
+
 - `windows`: a zip of the `.exe`;
 - `linux`: a `tar.gz` that runs on any Linux with glibc 2.31 or newer;
 - `macos`: a folder with one `.app` for Apple silicon and Intel Macs, signed ad hoc;

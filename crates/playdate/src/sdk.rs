@@ -151,6 +151,18 @@ pub trait Sdk: Clone + fmt::Debug + 'static {
     fn file_length(&self, player: Self::FilePlayer) -> f32;
     /// Stops `player` and frees it: it isn't used again.
     fn file_close(&self, player: Self::FilePlayer);
+    /// `fileplayer->didUnderrun`: whether `player` ran out of data to play.
+    /// Without it, never.
+    fn file_did_underrun(&self, player: Self::FilePlayer) -> bool {
+        let _ = player;
+        false
+    }
+    /// The bytes of the game's own stack it has ever used
+    /// ([`stack_high_water`](crate::stack_high_water)): `None` where they
+    /// aren't measured, as on the Simulator.
+    fn stack_used(&self) -> Option<usize> {
+        None
+    }
 }
 
 /// A file call's error, as storage reports it.

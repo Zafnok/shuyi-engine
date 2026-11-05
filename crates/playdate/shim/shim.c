@@ -203,6 +203,7 @@ void pd_fileplayer_stop(void* player) { pd->sound->fileplayer->stop((FilePlayer*
 void pd_fileplayer_rewind(void* player) { pd->sound->fileplayer->setOffset((FilePlayer*)player, 0.0f); }
 int pd_fileplayer_is_playing(void* player) { return pd->sound->fileplayer->isPlaying((FilePlayer*)player); }
 float pd_fileplayer_length(void* player) { return pd->sound->fileplayer->getLength((FilePlayer*)player); }
+int pd_fileplayer_did_underrun(void* player) { return pd->sound->fileplayer->didUnderrun((FilePlayer*)player); }
 void pd_fileplayer_close(void* player)
 {
 	pd->sound->fileplayer->stop((FilePlayer*)player);

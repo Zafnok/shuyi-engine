@@ -19,6 +19,7 @@ use shuyi_ui::frame::onebit::Frame;
 use shuyi_ui::perf::HeapCounts;
 
 use crate::driver::Driver;
+use crate::report::{Reads, RunReport};
 use crate::sdk::{Sdk, SdkEvent};
 use crate::text::c_string;
 
@@ -76,6 +77,7 @@ unsafe extern "C" {
     fn pd_fileplayer_is_playing(player: *mut c_void) -> c_int;
     fn pd_fileplayer_length(player: *mut c_void) -> c_float;
     fn pd_fileplayer_close(player: *mut c_void);
+    fn pd_fileplayer_did_underrun(player: *mut c_void) -> c_int;
 }
 
 /// How many bytes a read asks the SDK for at a time.
@@ -358,6 +360,15 @@ impl Sdk for Device {
         // SAFETY: `FileClip` closes its player once, as it goes.
         unsafe { pd_fileplayer_close(player) };
     }
+
+    fn file_did_underrun(&self, player: *mut c_void) -> bool {
+        // SAFETY: a player `FileClip` holds open.
+        unsafe { pd_fileplayer_did_underrun(player) != 0 }
+    }
+
+    fn stack_used(&self) -> Option<usize> {
+        stack_high_water()
+    }
 }
 
 /// The game's baked pack, which `shuyi export playdate` places in the
@@ -403,6 +414,21 @@ fn running() -> Option<&'static mut Box<dyn Running>> {
     unsafe { (*GAME.0.get()).as_mut() }
 }
 
+/// The reads the run report notes during the load.
+struct NotedReads(UnsafeCell<Option<Reads>>);
+
+// SAFETY: the Playdate runs the game on one thread (see `Game`).
+unsafe impl Sync for NotedReads {}
+
+static READS: NotedReads = NotedReads(UnsafeCell::new(None));
+
+/// Runs `f` on the reads the run report notes, if any.
+pub(crate) fn with_reads<R>(f: impl FnOnce(&mut Option<Reads>) -> R) -> R {
+    // SAFETY: one thread (see `Game`), and `f` reads no file of the bundle,
+    // so the watcher doesn't call back in.
+    f(unsafe { &mut *READS.0.get() })
+}
+
 /// The bytes of the game's stack it has ever used, or `None` where they aren't
 /// measured: on the Simulator, which runs on the computer's stack.
 pub fn stack_high_water() -> Option<usize> {
@@ -410,8 +436,8 @@ pub fn stack_high_water() -> Option<usize> {
 }
 
 /// The SDK's first event: takes the game's stack of `stack_bytes` bytes, and on
-/// it makes the game `start` says.
-pub fn init<G: GameData>(start: fn() -> Start<G>, stack_bytes: usize) {
+/// it makes the game `start` says, with the run report if `report`.
+pub fn init<G: GameData>(start: fn() -> Start<G>, stack_bytes: usize, report: Option<RunReport>) {
     game_stack::init(stack_bytes);
     game_stack::run(|| {
         if cfg!(debug_assertions) {
@@ -419,7 +445,11 @@ pub fn init<G: GameData>(start: fn() -> Start<G>, stack_bytes: usize) {
             // check-text: not player text (for the console)
             Device.log("storage: the conformance suite passed");
         }
-        let driver: Box<dyn Running> = Box::new(Driver::new(start(), Device));
+        let driver: Box<dyn Running> = Box::new(match report {
+            Some(report) => Driver::with_report(start(), Device, report.stack_bytes(stack_bytes)),
+            None => Driver::new(start(), Device),
+        });
+
         // SAFETY: one thread (see `Game`), before any update.
         unsafe { *GAME.0.get() = Some(driver) };
     });

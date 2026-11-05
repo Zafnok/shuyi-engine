@@ -13,6 +13,7 @@ use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::onebit::{self, FRAME_BYTES, ROW_BYTES, RowMask, luminance};
 
+use crate::report::{Measured, Phases};
 use crate::sdk::Sdk;
 
 /// What a one-bit look that isn't there says.
@@ -37,6 +38,20 @@ fn runs(rows: &RowMask) -> impl Iterator<Item = (i32, i32)> + '_ {
     })
 }
 
+/// What the screen last showed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum Showing {
+    /// Nothing yet.
+    #[default]
+    Nothing,
+    /// The loading card.
+    Card,
+    /// The errors, or a game without a one-bit look.
+    Errors,
+    /// The game's frame.
+    Game,
+}
+
 /// The screen, as the backend last drew it.
 #[derive(Debug)]
 pub struct Screen {
@@ -52,6 +67,9 @@ pub struct Screen {
     stale: bool,
     /// Whether anything reached the SDK since [`take_changed`](Self::take_changed).
     changed: bool,
+    showing: Showing,
+    /// What the run report measures of the draws, while it is on.
+    measured: Option<Measured>,
 }
 
 impl Default for Screen {
@@ -62,25 +80,57 @@ impl Default for Screen {
             text: None,
             stale: true,
             changed: false,
+            showing: Showing::Nothing,
+            measured: None,
         }
     }
 }
 
 impl Screen {
     /// Shows `frame`.
-    pub fn present(&mut self, sdk: &impl Sdk, frame: &Frame<'_>) {
+    pub fn present<S: Sdk>(&mut self, sdk: &S, frame: &Frame<'_>) {
         match frame.show {
             Show::Card(Card::Text {
                 line, background, ..
-            }) => self.text(sdk, line, is_light(*background)),
-            Show::Card(card) => self.text(sdk, "", is_light(card.background())),
-            Show::Errors(text) => self.text(sdk, text, true),
+            }) => self.text(sdk, line, is_light(*background), Showing::Card),
+            Show::Card(card) => self.text(sdk, "", is_light(card.background()), Showing::Card),
+            Show::Errors(text) => self.text(sdk, text, true, Showing::Errors),
             Show::Game { buffer, look, .. } => match look.and_then(|look| look.one_bit) {
                 Some(one_bit) => self.game(sdk, buffer, &one_bit),
-                None => self.text(sdk, NO_LOOK, true),
+                None => self.text(sdk, NO_LOOK, true, Showing::Errors),
             },
             _ => {}
         }
+    }
+
+    /// What the screen last showed.
+    pub(crate) fn showing(&self) -> Showing {
+        self.showing
+    }
+
+    /// Times each draw of the game's frame from now on, and each of its
+    /// phases if `phases`.
+    pub(crate) fn measure(&mut self, phases: bool) {
+        self.measured = Some(Measured {
+            phases: phases.then(Phases::default),
+            ..Measured::default()
+        });
+    }
+
+    /// What was measured since the last take, which starts again; nothing
+    /// unless [`measure`](Self::measure) was called.
+    pub(crate) fn take_measured(&mut self) -> Measured {
+        let Some(measured) = &mut self.measured else {
+            return Measured::default();
+        };
+        let phases = measured.phases.map(|_| Phases::default());
+        core::mem::replace(
+            measured,
+            Measured {
+                phases,
+                ..Measured::default()
+            },
+        )
     }
 
     /// The next frame must reach the SDK's frame buffer whatever it shows:
@@ -95,7 +145,8 @@ impl Screen {
         core::mem::take(&mut self.changed)
     }
 
-    fn text(&mut self, sdk: &impl Sdk, text: &str, white: bool) {
+    fn text(&mut self, sdk: &impl Sdk, text: &str, white: bool, showing: Showing) {
+        self.showing = showing;
         if self.text.as_deref() == Some(text) && !self.stale {
             return;
         }
@@ -106,29 +157,42 @@ impl Screen {
         self.changed = true;
     }
 
-    fn game(&mut self, sdk: &impl Sdk, buffer: &GlyphBuffer, look: &OneBitLook<'_>) {
+    fn game<S: Sdk>(&mut self, sdk: &S, buffer: &GlyphBuffer, look: &OneBitLook<'_>) {
         self.text = None;
-        let (font, map) = (look.font, look.map);
-        match &mut self.shown {
-            Some(shown) if shown == buffer && !self.stale => return,
-            Some(shown) => {
-                onebit::render_changed_with(
-                    shown,
-                    buffer,
-                    font,
-                    &look.images,
-                    map,
-                    &mut self.drawn,
-                );
-                shown.clone_from(buffer);
-            }
-            None => {
-                onebit::render_with(buffer, font, &look.images, map, &mut self.drawn);
-                self.shown = Some(buffer.clone());
+        self.showing = Showing::Game;
+        if self.stale || self.shown.as_ref() != Some(buffer) {
+            let start = self.measured.is_some().then(S::clock_us);
+            self.draw::<S>(buffer, look);
+            self.copy(sdk);
+            if let (Some(start), Some(measured)) = (start, &mut self.measured) {
+                measured.draw.add(S::clock_us().saturating_sub(start));
             }
         }
-        self.copy(sdk);
         self.stale = false;
+    }
+
+    /// Draws `buffer` into [`drawn`](Self::drawn): where it differs from the
+    /// last frame, or whole with each phase timed when phases are measured.
+    fn draw<S: Sdk>(&mut self, buffer: &GlyphBuffer, look: &OneBitLook<'_>) {
+        let (font, map) = (look.font, look.map);
+        if let Some(phases) = self.measured.as_mut().and_then(|m| m.phases.as_mut()) {
+            let mut last = S::clock_us();
+            let mark = &mut |phase| {
+                let now = S::clock_us();
+                phases.add(phase, now.saturating_sub(last));
+                last = now;
+            };
+            onebit::render_marked_with(buffer, font, &look.images, map, &mut self.drawn, mark);
+            self.shown = Some(buffer.clone());
+            return;
+        }
+        if let Some(shown) = &mut self.shown {
+            onebit::render_changed_with(shown, buffer, font, &look.images, map, &mut self.drawn);
+            shown.clone_from(buffer);
+        } else {
+            onebit::render_with(buffer, font, &look.images, map, &mut self.drawn);
+            self.shown = Some(buffer.clone());
+        }
     }
 
     /// Copies the rows that differ into the SDK's frame buffer, and marks

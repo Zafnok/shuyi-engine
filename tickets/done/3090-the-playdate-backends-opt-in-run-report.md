@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["3010", "3028"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 3090 — The Playdate backend's opt-in run report
@@ -98,17 +98,17 @@ Expected size: about 300 production lines, 350 test lines.
 
 ## Acceptance criteria
 
-- [ ] A toy game on the fake SDK and clock, with the report on, logs the
+- [x] A toy game on the fake SDK and clock, with the report on, logs the
       card and first-frame times, the load time, the stack line, the
       slowest reads with a named step, and a minute's lines on the
       minute, through public API only (`report_lines_on_the_fake`).
-- [ ] With the report off, a five-minute run on the fake logs no report
+- [x] With the report off, a five-minute run on the fake logs no report
       line and never reads `clock_us` for it.
-- [ ] Phases on, the minute lines give every `onebit::Phase`; phases off,
+- [x] Phases on, the minute lines give every `onebit::Phase`; phases off,
       none.
-- [ ] A named report file holds the start lines and every read.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A named report file holds the start lines and every read.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -119,5 +119,41 @@ Expected size: about 300 production lines, 350 test lines.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done. `crates/playdate/src/report.rs` holds `RunReport` (builder: `file`,
+`every_seconds`, `slowest`, `phases`), `Timing`, the reads table and
+`report::mark`, and the lines; `Driver::with_report` turns it on, and
+`main!(start, report = …)` / `main!(start, stack_bytes = n, report = …)`
+pass it to `device::init`, which adds the stack's size for the stack line.
+`Sdk` gained `stack_used` and `file_did_underrun`, both with default bodies;
+the device answers them with `stack_high_water()` and a new `shim.c` call of
+the file player's `didUnderrun`. The speaker keeps a list of its open file
+players so the minute can ask each without touching a closed one.
+
+Deviations:
+
+- Times are whole microseconds from `Sdk::clock_us`, not floats as in the
+  game's copy, and shown in milliseconds to a tenth.
+- The bundle's watcher is process-wide and a plain function, so the reads
+  live outside the driver: a static on the device, one per thread in the
+  tests. A second report in one process reuses the watcher it set; a
+  watcher set by anything else first is refused and the report says so.
+- `Timing`'s line says `1,800 times` where the game's said `n = 1,800`: the
+  engine's text lint reads a lone letter as a key.
+- The docs are in `docs/targets/playdate.md`, *The run report*, the home the
+  docs map gives the Playdate backend, not `docs/platform-backends.md`,
+  which is about every backend.
+- The off test compares the timer's reads of a five-minute run through the
+  driver with the same frames on `App` and `Playdate` alone: the app reads
+  the timer itself in a debug build, so "never" means "no more than it".
+
+No break: every change to the public API is an addition.
+
+Book: chapter 9 (`targets-and-export.md`) names `report = RunReport::new()`
+in `main!` and links the Playdate's page.
+
+Follow-ups: none. The game's pin moves with game#1170
+(`Zafnok/visions-of-shuyi`), which deletes its own `report.rs` and
+`pd/bench.rs` for this; 3011's bench build turns it on with phases.
+
+Nick: nothing to decide.
+
