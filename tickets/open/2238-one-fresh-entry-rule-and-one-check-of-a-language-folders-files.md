@@ -33,11 +33,11 @@ Found by an analysis of the engine for areas that do the same job twice
   - `Lang::line` (`lang/lines.rs:350`), which `Lang::scene` goes through.
 
   The closure in `pack_from_files` is `Lang::names` again, for one pack.
-  2226 makes every lookup walk a fallback chain (`pt-BR`, then `pt`,
+  2226 made every lookup walk a fallback chain (`pt-BR`, then `pt`,
   then the source), and its list (`Lang::text`, `data_text`, `name`,
   `names`, `found`, `line` and `scene`) doesn't name this closure. So
-  after 2226 the names a pack's lines are checked with could differ from
-  the names play fills them with, and nothing would show it.
+  the names a pack's lines are checked with can differ from the names
+  play fills them with, and nothing shows it.
 - **Both readers of a languages folder check its files.**
   `lang::from_files` (`lang.rs:572-587` and `600-607`) and
   `LangPackRon::decode` (`lang/formats.rs:111-118` and `139-149`) each
@@ -45,11 +45,10 @@ Found by an analysis of the engine for areas that do the same job twice
   `data.ron`, `dialogue/<file>.ron`) and whether its name is a language
   code, and each writes the same two messages: `formats.rs:18` has
   `NOT_A_LANGUAGE_FILE`, while `lang.rs:584` writes "not a file a
-  language has" again, and "a language's directory must be named with 2
-  to 8 lowercase letters" is written at `lang.rs:604` and
-  `formats.rs:116`. Both already parse through the shared
-  `pack_from_files`, so only this check is doubled. 2226, 2229 and 2349
-  each change it in both places.
+  language has" again; the folder name's check is one function,
+  `pack_code` (2226), called from both. Both already parse through the
+  shared `pack_from_files`, so only this check is doubled. 2229 and
+  2349 each change it in both places.
 
 ## Nick input
 
@@ -84,15 +83,16 @@ None.
 
   `from_files` and `LangPackRon::decode` call both, and write neither
   message themselves. Their results and messages don't change.
-- **Either order with 2226:** if 2226 is done, its folder-name check
-  and its two messages (a non-canonical tag, a `TagError`) go into
-  `pack_code`, which returns the message as a `String`; its chain walk
-  tests each pack along the chain with `fresh`; and `pack_names` takes
-  the chain's `data` maps in order (the first fresh entry wins), with
-  `Lang::names` passing the chain's packs and `pack_from_files` its own
-  pack alone, since it reads one pack; if not, merge today's code, and
-  2226 changes the check and the walk in the one place each (its
-  clause).
+- **From 2226 (done):** the folder-name check and its two messages (a
+  non-canonical tag, a `TagError`) are already one function,
+  `pack_code` (`crates/assets/src/lang.rs`), which both readers call and
+  which returns the message as a `String`: the shared check calls it.
+  Every lookup walks the fallback chain through the private
+  `Lang::packs_along` (`lang.rs`): test each pack along it with `fresh`
+  (`text`, `data_text`, `found`, `line`). `pack_names` takes the chain's
+  `data` maps in order (the first fresh entry wins), with `Lang::names`
+  passing the chain's packs and `pack_from_files` its own pack alone,
+  since it reads one pack.
 - **From 2229 (done):** both readers skip a settings file
   (`is_settings_file`, in `LangPackRon::decode`'s loop and in
   `lang::from_files`'s): move that skip into the shared check, so a
@@ -120,8 +120,8 @@ None.
   (a `pt-BR` pack's lines with `pt`'s names): `LangPackRon` reads one
   pack without its parents, so it would need them handed in. Not this
   ticket; `pack_from_files` keeps using its own pack's names.
-- The English folder's own rule (only `ui.ron`, no `lang.ron`), and the
-  `en/ui.ron` path in both readers: 2226 makes them the source
+- The source folder's own rule (only `ui.ron`, no `lang.ron`), and the
+  `<source>/ui.ron` path in both readers: 2226 made them the source
   language's.
 - Merging the two readers into one: they read files differently (a
   list handed in, against `DecodeCx`), and both already parse through

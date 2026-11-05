@@ -103,13 +103,9 @@ None. Which look the game uses stays Nick's choice in game#0813.
     and out with `ease_in_out`'s curve in integers. With `p` the linear
     thousandths (`elapsed_ms × 1000 / ms`, at most 1000), it is
     `p² × (3000 − 2p) / 1 000 000` in `u32`. It is 1000 when `ms` is 0
-    or the time is up. **Either order with 2109:** if 2109's
-    `shuyi_core::ease` is done, use `Ease::Smooth` through its
-    `Easing::ease` (1/65536 in and out, scaled from and to
-    thousandths); if not, this private formula, and 2136 moves it
-    onto `Ease::Smooth`, tested within one thousandth of it (its
-    clause on 2339 says so). 2136 is blocked by 2109, so if 2136
-    lands first, use `Ease::Smooth` as above.
+    or the time is up. **From 2109 (done):** use `Ease::Smooth`
+    through its `Easing::ease` (1/65536 in and out, scaled from and to
+    thousandths), not a private formula.
   - `compose(look, from: &GlyphBuffer, to: &mut GlyphBuffer, permille:
     u16)`, pure: `to` holds the new frame and becomes what shows at that
     progress. Two buffers of different `spec`s compose as a cut.

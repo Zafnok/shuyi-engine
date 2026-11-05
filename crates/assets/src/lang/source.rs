@@ -1,8 +1,8 @@
-//! The English a pack's `data.ron` and `dialogue/` files translate: the
-//! game's data text by key, every dialogue line and caption by key, and the
-//! names table ([`SourceText`]); and the lookups that give each in a
-//! language. English stays in the game's files; a lookup is handed today's
-//! English and returns the pack's text only when its entry was made from
+//! The source text a pack's `data.ron` and `dialogue/` files translate:
+//! the game's data text by key, every dialogue line and caption by key, and
+//! the names table ([`SourceText`]); and the lookups that give each in a
+//! language. The source text stays in the game's files; a lookup is handed
+//! today's and returns a pack's text only when its entry was made from
 //! exactly that.
 use crate::prelude::*;
 
@@ -144,22 +144,24 @@ impl SourceText {
 }
 
 impl Lang {
-    /// `english` in language `code`: the pack's `data.ron` text for the key
-    /// `key` gives, when its entry was made from exactly `english`;
-    /// otherwise `english`. The key is only built when `code` has a pack.
+    /// `english` (today's source text) in language `code`: the first
+    /// `data.ron` entry along [`chain`](Self::chain) for the key `key`
+    /// gives that was made from exactly `english`; otherwise `english`. The
+    /// key is only built when the chain has a pack.
     pub fn data_text<'a>(
         &'a self,
         code: &LangCode,
         key: impl FnOnce() -> String,
         english: &'a str,
     ) -> &'a str {
-        let Some(pack) = self.packs.get(code) else {
+        let mut packs = self.packs_along(code).peekable();
+        if packs.peek().is_none() {
             return english;
-        };
-        match pack.data.get(&key()) {
-            Some(entry) if entry.source == english => &entry.text,
-            _ => english,
         }
+        let key = key();
+        packs
+            .find_map(|(_, pack)| pack.data.get(&key).filter(|entry| entry.source == english))
+            .map_or(english, |entry| &entry.text)
     }
 
     /// The display name `id` of the names table in language `code`;
@@ -168,11 +170,11 @@ impl Lang {
         self.data_text(code, || names_key(id), english)
     }
 
-    /// The names table in language `code`: each name the pack translates
-    /// in its language, the others in English. What a name token in a
-    /// line shown in `code` is filled from.
+    /// The names table in language `code`: each name translated along
+    /// [`chain`](Self::chain), the others as the source has them. What a
+    /// name token in a line shown in `code` is filled from.
     pub fn names(&self, code: &LangCode, names: &Names) -> Names {
-        if !self.packs.contains_key(code) {
+        if self.packs_along(code).next().is_none() {
             return names.clone();
         }
         let translated = |(id, english): (&String, &String)| {
@@ -184,19 +186,26 @@ impl Lang {
     }
 
     /// `english` in language `code`, for a text whose key isn't known
-    /// where it is shown: the pack's text for a key starting with `prefix`
-    /// whose English is `english` today and was when the entry was made;
-    /// otherwise `english`.
+    /// where it is shown: the first pack along [`chain`](Self::chain) with
+    /// an entry for a key starting with `prefix` whose source text is
+    /// `english` today and was when the entry was made; otherwise
+    /// `english`.
     pub fn found<'a>(&'a self, code: &LangCode, prefix: &str, english: &'a str) -> &'a str {
-        let Some(pack) = self.packs.get(code) else {
+        let mut packs = self.packs_along(code).peekable();
+        if packs.peek().is_none() {
             return english;
-        };
+        }
         let end = format!("{prefix}\u{10ffff}");
-        self.source
+        let keys = self
+            .source
             .data
             .range(prefix.to_owned()..end)
-            .filter(|&(_, today)| today == english)
-            .find_map(|(key, today)| pack.data.get(key).filter(|e| e.source == *today))
+            .filter(|&(_, today)| today == english);
+        packs
+            .find_map(|(_, pack)| {
+                keys.clone()
+                    .find_map(|(key, today)| pack.data.get(key).filter(|e| e.source == *today))
+            })
             .map_or(english, |entry| entry.text.as_str())
     }
 }

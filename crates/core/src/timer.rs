@@ -4,6 +4,9 @@
 //! two conversions a length in milliseconds goes through
 //! ([`steps_from_ms`], [`ms_from_steps`]).
 //!
+//! A timer says when; a tween ([`ease`](crate::ease)) says how far, drawn
+//! from the time alone.
+//!
 //! # Two kinds of time
 //!
 //! **Simulation time** is steps or turns. A tick game steps its rules once

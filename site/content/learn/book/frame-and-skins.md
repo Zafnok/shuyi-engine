@@ -161,6 +161,46 @@ PNG with no window. Every picture in this book is made that way. Look at it, and
 the tests on the view. [Chapter 8](@/learn/book/testing.md#a-look) says how to keep a
 look in a test.
 
+## Things that move
+
+A sprout that pops up, a menu that slides in, a title that bobs: the skin shows a change
+over time, and the rules never wait for it. The engine draws such a motion from **the
+time alone**. A **tween** is a value going from one end to another over a time, along an
+**ease curve** that says how it speeds up and slows down, and its value at a moment is
+worked out from how long it has run. Nothing steps it along from the frame before, so
+it looks the same at any frame rate, and a test can ask for any moment:
+
+{{ snippet(file="src/frame.rs", anchor="tween") }}
+
+> **Rust:** `const` makes a value the program has from the start, built by `const fn`s
+> such as `Tween::new`. `Tween<i32>` is a tween of whole numbers; a tween of a pair, a
+> color or a number of your own type works the same way.
+
+The curves have the names other engines and websites give them, after Robert Penner's
+equations: `Ease::Out(Family::Back)` is `easeOutBack` on easings.net, and Godot's
+`TRANS_BACK` with `EASE_OUT`. `Back` goes a little past its end and comes back; `Linear`
+moves as the time does, `InOut(Sine)` starts and stops gently, `Out(Bounce)` bounces.
+The API docs of `shuyi::core::ease` list them all, beside other engines' names. In a
+RON file a tween is data, like everything else: `(from: 8, to: 0, duration: 300, ease:
+Out(Back))`.
+
+The time is a whole number in the unit you choose. A screen counts milliseconds: it
+keeps the moment its sprout was planted, and draws it at `sprout_offset(now -
+planted)`. The rules count steps or turns. The curves are worked out in whole numbers,
+never fractions, so they are the same on every machine, and the rules may use them too.
+
+A test reads the motion at any moment, and asks when it ended:
+
+{{ snippet(file="src/frame.rs", anchor="test_tween") }}
+
+> **Rust:** `frames.windows(2)` goes through each pair of neighbors in the list, here
+> one frame's time and the next. `.filter(...)` keeps the pairs where the sprout landed,
+> and `.count()` counts them.
+
+`finished_between` is how a screen hears "it landed": given the time of the frame
+before and this one's, it is true once, so the screen plays its sound or moves on
+without keeping a flag.
+
 ## When it goes wrong
 
 **A glyph the font doesn't have.** The font is a picture of the characters it knows, in

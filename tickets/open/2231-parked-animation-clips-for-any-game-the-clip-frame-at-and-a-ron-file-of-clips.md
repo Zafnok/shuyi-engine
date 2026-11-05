@@ -254,7 +254,7 @@ None.
   tile-layer painter with Tiled's tile animations (2360, 1124);
 - storing `(clip, start_step)` in a tick simulation: the game does, in
   whichever store it uses (the last line below);
-- particles (2103); tweens and easing (the cinematics today, 2109);
+- particles (2103); tweens and easing (`shuyi_core::ease`, 2109);
   skeletal animation (2105);
 - packing pictures into atlas pages (2222);
 - the rest of the `shuyi-animate` skill: it is 1134's, and this

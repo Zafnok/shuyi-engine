@@ -68,7 +68,7 @@ fn a_new_ctx_starts_on_the_games_palette_console_and_picker_keys() {
     assert!(c.clock_s.abs() < f64::EPSILON);
     assert!(c.settings().voices);
     assert!(!c.has_voices());
-    assert_eq!(c.lang, LangCode::english());
+    assert_eq!(c.lang, LangCode::default());
     assert!(c.game.applied.is_empty(), "nothing loaded yet");
 }
 
@@ -118,12 +118,12 @@ fn text_comes_from_the_language_in_use() {
     c.lang = code(DEBUG_LANG);
     assert_eq!(c.effective_lang(), &code(DEBUG_LANG));
     assert_eq!(c.text("home.greeting"), "HELLO, {name}");
-    // Stale and missing entries are English.
+    // Stale and missing entries are the source's, English.
     assert_eq!(c.text("menu.title"), "Menu");
     assert_eq!(c.text("profile.numbered"), "Player {n}");
     // The debug language is only for builds with debug tools.
     c.debug_tools = false;
-    assert_eq!(c.effective_lang(), &LangCode::english());
+    assert_eq!(c.effective_lang(), &LangCode::default());
     assert_eq!(c.text("home.greeting"), "Hello, {name}");
     // Another language with no pack is English, debug tools or not.
     c.lang = code("zz");
@@ -133,7 +133,7 @@ fn text_comes_from_the_language_in_use() {
 
 #[test]
 #[cfg(debug_assertions)]
-#[should_panic(expected = "text key not in the English text: \"home.nope\"")]
+#[should_panic(expected = "text key not in the source text: \"home.nope\"")]
 fn an_unknown_text_key_panics_in_debug_builds() {
     let c = ctx();
     let _ = c.text("home.nope");
@@ -836,6 +836,92 @@ fn a_game_that_leaves_the_defaults_has_no_debug_language_voices_or_old_keys() {
     // Settings change with no game to tell.
     c.change_settings(|s| s.game.speed = 1).unwrap();
     assert_eq!(c.settings().game.speed, 1);
+}
+
+/// The toy written in Japanese, with an English pack that translates its
+/// greeting only, and the toy's debug language.
+#[derive(Debug)]
+struct InJapanese(Toy, Lang);
+
+impl InJapanese {
+    fn new() -> Self {
+        use shuyi_assets::dialogue::{DialogueLimits, NoTokens};
+        use shuyi_assets::lang::{PackRules, SourceLang, pack_from_sources};
+        let ui: alloc::collections::BTreeMap<String, String> = [
+            ("home.greeting", "こんにちは、{name}"),
+            ("profile.numbered", "プレイヤー{n}"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
+        let rules = PackRules {
+            data_problem: |_, _| None,
+            tokens: &NoTokens,
+            limits: DialogueLimits {
+                box_width: 40,
+                box_lines: 3,
+                max_text: 200,
+                max_option: 30,
+                min_options: 2,
+                max_options: 4,
+                max_reaction_texts: 3,
+            },
+            widths: &CellWidths::NARROW,
+            variants: &[],
+        };
+        let en_ui = r#"[(key: "home.greeting", source: "こんにちは、{name}", text: "Hi, {name}")]"#;
+        let info = r#"(name: "English", made_by: Machine)"#;
+        let en = pack_from_sources(("en/lang.ron", info), ("en/ui.ron", en_ui), &ui, &rules);
+        let lang = Lang::new(ui, [(code("en"), en.unwrap())].into())
+            .with_source_lang(SourceLang::new(code("ja"), "日本語"));
+        Self(Toy::new(), lang)
+    }
+}
+
+impl GameData for InJapanese {
+    type Action = Action;
+    type Colors = EngineColor;
+    type Voice = Voice;
+    type Settings = Prefs;
+    fn lang(&self) -> &Lang {
+        &self.1
+    }
+    fn debug_lang(&self) -> Option<&str> {
+        Some(DEBUG_LANG)
+    }
+    fn keymap_def(&self) -> &KeymapDef<Action> {
+        self.0.keymap_def()
+    }
+    fn audio_manifest(&self) -> &AudioManifest {
+        self.0.audio_manifest()
+    }
+    fn palette_def(&self) -> &PaletteDef {
+        self.0.palette_def()
+    }
+    fn console(&self) -> ConsoleSpec {
+        self.0.console()
+    }
+    fn theme_def(&self, theme: Theme) -> Option<&PaletteDef> {
+        self.0.theme_def(theme)
+    }
+    fn voice_variant(&self) -> Voice {
+        Voice::Only
+    }
+}
+
+#[test]
+fn a_game_written_in_japanese_starts_in_japanese_and_falls_back_to_it() {
+    let mut c = Ctx::new(InJapanese::new()).unwrap();
+    assert_eq!(c.lang, code("ja"));
+    assert_eq!(c.text("home.greeting"), "こんにちは、{name}");
+    assert_eq!(c.profiles().all()[0].name, "プレイヤー1");
+    c.lang = code("en");
+    assert_eq!(c.text("home.greeting"), "Hi, {name}");
+    // A key the pack lacks shows in Japanese.
+    assert_eq!(c.text("profile.numbered"), "プレイヤー{n}");
+    // The debug language without debug tools is the source.
+    c.lang = code(DEBUG_LANG);
+    c.debug_tools = false;
+    assert_eq!(c.effective_lang(), &code("ja"));
 }
 
 #[test]

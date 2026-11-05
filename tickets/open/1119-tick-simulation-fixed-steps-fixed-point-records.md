@@ -50,10 +50,10 @@ None (technical). Scheduling: see above.
   - **Either order with 2335:** if 2335 isn't done when this starts,
     write `shuyi_core::angle` as 2335's scope says (the `Angle` type and
     its table only), and 2335 builds on it.
-  - **Either order with 2109:** if 2109 is done, implement its
-    `shuyi_core::ease::Lerp` for `Fx` and `FxVec2` here, rounding as
-    `Fx` does, with a test that `mix` hits both ends exactly; if not,
-    2109 adds them.
+  - **From 2109 (done):** implement its `shuyi_core::ease::Lerp` for
+    `Fx` and `FxVec2` here, rounding as `Fx` does, with a test that
+    `mix` hits both ends exactly. `ease::ONE` is 65 536, `Fx`'s unit, so
+    a curve's value scales a difference of `Fx` with no conversion.
   - **Either order with 2118:** if 2118 is done, add a one-line
     `shuyi_procgen::noise::to_fx`, a noise value as an `Fx` (`n >> 8`),
     with a test; if not, nothing to do (2118 adds it).

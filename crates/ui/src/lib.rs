@@ -29,7 +29,9 @@
 //!   given through [`Ctx::log`];
 //! - [`perf`]: frame times and the spans a game marks
 //!   ([`Ctx::span`]), as data, in debug builds;
-//! - the float methods `core` lacks, for the `no_std` build ([`float`]).
+//! - the float methods `core` lacks, for the `no_std` build ([`float`]);
+//! - [`ease`]: `shuyi_core`'s integer ease curves for a skin that works in
+//!   floats.
 //!
 //! - [`widgets`] screens are built from (that module lists them);
 //! - [`screens`] any game can use, with the game's rows (that module
@@ -67,6 +69,7 @@ pub mod cinematic;
 pub mod ctx;
 pub mod debug;
 pub mod dialogue;
+pub mod ease;
 pub mod float;
 pub mod frame;
 pub mod frame_cap;
