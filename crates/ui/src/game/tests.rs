@@ -227,6 +227,22 @@ fn screens_see_actions_dt_and_held_keys() {
     assert!(got.is_empty(), "{got:?}");
 }
 
+/// What the platform calls on a lost focus: what was held is let go at
+/// once, and the next frame's screen sees it let go and nothing repeat.
+#[test]
+fn forget_held_input_lets_go_of_what_is_held() {
+    let (mut game, seen) = spied();
+    game.frame(&[down(Key::Right)], 0.0);
+    assert!(game.input().is_held(Action::CursorRight));
+    game.forget_held_input();
+    assert!(!game.input().is_held(Action::CursorRight));
+    game.frame(&[], 1.0);
+    let seen = seen.borrow();
+    assert!(!seen[1].is_held(Action::CursorRight));
+    let got = &seen[1].actions;
+    assert!(got.is_empty(), "no repeat: {got:?}");
+}
+
 #[test]
 fn the_steps_due_reach_the_next_frame_only() {
     let (mut game, seen) = spied();
