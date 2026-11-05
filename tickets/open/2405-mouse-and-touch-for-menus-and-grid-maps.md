@@ -233,10 +233,12 @@ MVP, not parked.
      - The pointer never opens the first-key screen, and never changes
        `ctx.device` (help text keeps naming the keys or buttons used
        last).
-   - **Either order with 3042:** if 3042 is done,
-     `Game::forget_held_input` also forgets a held pointer press (its
-     release is then no click) and the pointer's place. If not, 3042
-     does it.
+   - **From 3042 (done):** this ticket makes `Game::forget_held_input`
+     (`crates/ui/src/game.rs`), which `App` calls on `FocusLost`, also
+     forget a held pointer press (its release is then no click) and the
+     pointer's place (`FrameInput::pointer()` is `None` until it moves
+     again), with a Harness test beside hello-grid's
+     `tests/it/focus.rs`.
 6. **The menu takes the pointer** (`crates/ui/src/widgets/menu.rs`,
    `menu/view.rs` and `menu/glyph.rs`):
    - `menu::glyph::paint` records the box as `Hit::AREA`, then each
@@ -423,7 +425,7 @@ follows it. The rest is additive.
    `crates/app/src/backend.rs`, `keys.rs` and `render.rs`,
    `crates/platform/src/platform.rs`, `harness.rs` and `headless.rs`,
    and Hello, Grid's `screens.rs`, `screens/stage.rs`, `skin.rs` and
-   `tests/it/main.rs`. Check whether 2333, 2334, 2355 and 3042 are
+   `tests/it/main.rs`. Check whether 2333, 2334 and 2355 are
    done.
 2. Write the hit areas and the stack's rule, with their tests.
 3. Add the events, `Pointer`, `PointerInput`, `FrameInput::pointer` and

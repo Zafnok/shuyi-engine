@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["3042", "2321", "2511"]
+blocked_by: ["3042", "3093", "2321", "2511"]
 nick_input: none
 completed:
 ---
@@ -33,8 +33,8 @@ What Shuyi has today (checked 2026-10-21):
   `visibilitychange`, `pagehide` or `pageshow` listener. The vendored
   `mq_js_bundle.js` has one listener on `visibilitychange`, `focus` and
   `blur`, which only calls `wasm_exports.focus` (false when the page is
-  hidden or has no focus); 3042 turns that into `FocusLost` and
-  `FocusGained`. Nothing sends `Suspend` or `Resume`.
+  hidden or has no focus); since 3042 the backend turns that into
+  `FocusLost` and `FocusGained` (`crates/app/src/focus.rs`). Nothing sends `Suspend` or `Resume`.
 - **Closing the tab never reaches the game's hook.** ADR-0024 §5 says
   `Suspend` and `QuitRequested` are where a game saves.
   `Macroquad::new` calls `prevent_quit` only on native
@@ -75,7 +75,7 @@ What Shuyi has today (checked 2026-10-21):
   or minimized: this one. On the desktop miniquad reports a minimize as
   a focus change (3042). On the web a hidden tab already runs no
   frames; a visible but unfocused page runs at the full rate.
-- **Muting in the background:** 3042 gives the game a
+- **Muting in the background:** 3093 gives the game a
   `GameSettings::BACKGROUND` policy (`Keep` or `Mute`). The player has
   no say.
 - **The engine's own settings:** 2511 (MVP) adds `impl GameSettings for
@@ -161,7 +161,7 @@ Visions of Shuyi.
   `index.html` loads it between the bundle and the game.
   `package_copies_wasm_and_writes_the_shell` lists the new file.
 - **Fewer frames in the background**, on 2321's pacer:
-  - `Background` (3042) gains `frame_cap: Option<FrameCap>` and a const
+  - `Background` (3093) gains `frame_cap: Option<FrameCap>` and a const
     `with_frame_cap(self, cap)`. `None`, the default, is today's
     behaviour;
   - while `App::is_focused()` is false, the pacer applies the lower of
@@ -176,7 +176,7 @@ Visions of Shuyi.
   - `templates/grid` sets the same in its `impl GameSettings`
     (`crates/game/src/settings.rs`). The template files aren't formatted
     by `cargo fmt --all`; CI's template job checks them;
-  - names here are 3042's as its ticket writes them: use what it built.
+  - names here are 3093's as its ticket writes them: use what it built.
     **From 2321 (done):** the pacer is `shuyi_app`'s private
     `pacing::Pacer` (`set_cap`, `start`, `wait`, `waited`, `web_frame`
     and `pacing`), handed the cap in `run`'s `pace` from the frame
@@ -190,7 +190,7 @@ Visions of Shuyi.
     `GameSettings::BACKGROUND.audio == BackgroundAudio::Mute`, so
     `Settings::restored()` and Restore defaults return to it. `App`
     mutes while unfocused when it is true, in place of reading the
-    game's policy directly (3042);
+    game's policy directly (3093);
   - `OptionRow::mute_in_background()`, a toggle row with the text key
     `options.row.mute_in_background` ("Mute in background"), through
     `preview_settings` like `OptionRow::fullscreen()`;
@@ -264,8 +264,7 @@ Visions of Shuyi.
   keeps the rest.
 
 **Out (do not do):**
-- the focus events, held input let go, and the game's pause and
-  Keep or Mute policy: 3042;
+- the game's pause and Keep or Mute policy: 3093;
 - the player's frame cap and its options row: 2321;
 - a "Leave site?" prompt (`beforeunload`): it blocks the back-forward
   cache and phones ignore it;

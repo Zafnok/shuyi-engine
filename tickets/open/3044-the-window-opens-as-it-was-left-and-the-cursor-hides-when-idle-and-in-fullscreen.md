@@ -265,9 +265,8 @@ None.
     `SHUYI_CAPTURE` (`shuyi_app::capture::PLAN_VAR`) is set, with the
     `capture` feature, and a capture run writes none and leaves the
     cursor alone;
-  - with 3042 (focus): if it is done, `IdleCursor` shows the cursor on
-    `FocusLost`, so it is never hidden over another program; if not,
-    3042 adds that (its scope says so);
+  - **From 3042 (done):** `IdleCursor` shows the cursor on
+    `FocusLost`, so it is never hidden over another program;
   - with 3106 (3D cameras, parked): a locked pointer is never shown.
     If 3106 is done, `IdleCursor` takes a `locked: bool`, set while
     3106's pointer lock holds, that hides the cursor and wins over
@@ -288,7 +287,7 @@ None.
 - **Size:** if the PR passes about 600 changed lines, the cursor
   (`IdleCursor`, its wiring and its docs) goes to a follow-up ticket
   (the `write-ticket` skill, After MVP, blocked by this one), and the
-  `IdleCursor` clauses in 1121, 3042 and 3106 then name that ticket.
+  `IdleCursor` clauses in 1121 and 3106 then name that ticket.
 
 **Out (do not do):**
 - an options row for the window's size (1×, 2×, …): the largest

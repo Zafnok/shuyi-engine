@@ -89,7 +89,7 @@ None. Running it on a real Deck is 3013.
   signal. When the macroquad backend sees more than 1 s between two
   frames, it sends `Resume` (3003), so the game never runs a burst of
   catch-up steps.
-- **Focus.** 3042 makes the macroquad backend send `FocusLost` and
+- **Focus.** Since 3042 the macroquad backend sends `FocusLost` and
   `FocusGained` from miniquad's focus events on Linux as on every
   desktop, so nothing Deck-specific is added here. Under gamescope the
   Steam overlay may not take the window's focus; a game that must know

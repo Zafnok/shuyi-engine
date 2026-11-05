@@ -68,8 +68,10 @@ None.
   - a toggled action latches on its press: `is_held` is true until the
     next press; its release does nothing;
   - a lost focus or a suspend clears latches as it clears held keys:
-    `InputState::forget_held` (3042), which `App` calls on `FocusLost`
-    and `Suspend`, forgets latches too, so nothing stays stuck;
+    `InputState::release_all` (2411, done), which `Game` calls on the
+    frame after a `Resume` and `App` on `FocusLost`
+    (`Game::forget_held_input`, 3042, done), forgets latches too, so
+    nothing stays stuck;
   - `InputState::set_player_input(&PlayerInput)` applies the three
     settings; `Game` calls it when they change.
   - **either order with 2406 (parked):** if 2406 is done, `Game` calls
@@ -101,8 +103,8 @@ None.
 
 ## Implementation steps
 
-1. Read the `input-actions` skill, `InputState` (with 3042's
-   `forget_held`), `Keymap`, `RepeatDef` and `Settings`. Check whether
+1. Read the `input-actions` skill, `InputState` (with 2411's
+   `release_all`), `Keymap`, `RepeatDef` and `Settings`. Check whether
    2110, 2314, 2340 and 2351 are done.
 2. Add `can_toggle` and the keymap check.
 3. Add the settings and their saved form.

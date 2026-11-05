@@ -101,7 +101,8 @@ None.
     3040 moved to `backend.rs:147` (`platform`). Also every other
     macroquad log call in `crates/app/src` when this ticket is worked
     (`rg 'warn!|error!|info!|debug!' crates/app/src`): 2019, 2519, 2521,
-    2522, 3042 and 3044 may have added some, and 3045 added
+    2522 and 3044 may have added some, 3042 added the debug line of each
+    system event in `backend.rs` (`Macroquad::system_events`), and 3045 added
     `log_warning` in `storage/native.rs` (`storage`), the warning of a
     read that falls back to a save's backup. They name the `log`
     crate, not macroquad's prelude, so they outlive macroquad (3034).

@@ -304,7 +304,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 
 | Ticket | What |
 | ------ | ---- |
-| 3042 | Focus on the desktop and the web: held input let go on focus loss, and a game may pause or mute |
+| 3042 | Focus on the desktop and the web: held input let go on focus loss, and pads ignored without focus |
+| 3093 | A background policy the game sets: paused or muted while its window has no focus (after 3042) |
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
 | 3044 | The window opens as it was left, and the cursor hides when idle and in fullscreen |
 | 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
@@ -332,7 +333,7 @@ stays first):
 1. What lets the rest be checked: 2514, 2116, 2020, 2524, 2111
    and 2518 (which waits for 2111).
 2. What keeps players' data safe, before the game ships on Steam
-   (game#0903): 3045, 3042, 3043, 3041, 3046 and 2110.
+   (game#0903): 3045, 3042, 3093, 3043, 3041, 3046 and 2110.
 3. The rest, a group at a time, each in the order of its table. The
    shipping group goes with 3004 (done), and 2112 comes before 3009.
 

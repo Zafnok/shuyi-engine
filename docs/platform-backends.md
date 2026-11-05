@@ -228,11 +228,23 @@ Add what the system said since the last call:
 | ----- | ---- | --------------- |
 | `Suspend` | the device sleeps or locks, the home menu opens, the app goes to the background | `audio().suspend()` holds the audio; the game's hook saves; no update and nothing presented until `Resume` |
 | `Resume` | the game runs again | `audio().resume()` brings the audio back; the time away is forgotten: the next frame counts none, so no catch-up steps; that frame lets go of every key and button held before the suspend, since one may have come up unheard |
-| `FocusLost`, `FocusGained` | an overlay or another window takes the player's attention, and gives it back | the game's hook hears it (and may pause) |
+| `FocusLost`, `FocusGained` | the window loses the keyboard's focus to an overlay or another window, and gets it back | on `FocusLost` every key and button held is let go at once, since a window without focus hears no release; the game's hook hears both (and may pause) |
 | `QuitRequested` | the player closes the game (a window's close button) | the game's hook saves, then `FrameOutcome::Quit` |
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
 | `CrankDocked`, `CrankUndocked` | the device's crank is folded away, or out; said once the game has loaded, then on each change | `Ctx::crank_docked`: a screen whose required action is only on the crank gets a hint to unfold it (the text key `crank.unfold`) |
+
+A window that loses focus sends `FocusLost`, not `Suspend`: `Suspend`
+means the game can't be seen or can't run (ADR-0076). The macroquad
+backend reads focus from miniquad's minimize and restore
+(`crates/app/src/focus.rs`), which every desktop and the web send on a
+focus change: a second minimize in a row is dropped (Windows sends two),
+and a key or mouse press while unfocused means focus is back (macOS says
+minimized when the window moves, with no restore). It hands focus events
+over before the fullscreen shortcut and the close button, and while
+unfocused hands `poll_input` no pad presses, only the releases of what
+pads held; a button held across the change counts once pressed again.
+In debug builds it logs each system event it sends.
 
 A device that freezes the process without a word (the Steam Deck asleep)
 sends `Resume` itself when it sees a long gap between frames (ticket

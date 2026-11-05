@@ -130,9 +130,9 @@ None. When it unparks is his call (above).
     an end screen with the score that starts again on `Confirm`. The
     stage steps the rules once for each of `input.ticks()` through
     1119's driver, and keeps the run's `TickRecord`. A suspended game
-    gets 0 ticks, so the ball waits. If 3042 is done, losing focus opens
-    the pause menu (its system hook on `FocusLost`); if not, 3042 adds
-    that.
+    gets 0 ticks, so the ball waits. Losing focus opens the pause menu
+    (its system hook on `FocusLost`, which `shuyi-app` sends since
+    3042), with a Harness test in its `tests/it/`.
   - **the drawing:** `Overlay`s on the glyph console. The bricks take a
     palette role per row (`files/palette.ron`), then the paddle and the
     ball. The score and the lives are text. **Either order with 2336:**

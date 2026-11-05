@@ -1,11 +1,15 @@
 //! Translation from macroquad key codes to `shuyi-ui`'s hardware-agnostic
-//! [`Key`], and collecting a frame's keyboard events as [`RawInputEvent`]s.
+//! [`Key`], collecting a frame's keyboard events as [`RawInputEvent`]s, and
+//! hearing what the window's focus is made from (`WindowHeard`).
 
+use macroquad::miniquad::{EventHandler, KeyMods, MouseButton};
 use macroquad::prelude::{
     KeyCode, get_char_pressed, get_keys_pressed, get_keys_released, is_key_down,
 };
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::input::{Chord, Key};
+
+use crate::focus::Heard;
 
 /// The game key for a macroquad key code; `None` for keys the game ignores
 /// (bare modifiers, which only form `Shift+` chords, and rare keys).
@@ -167,6 +171,34 @@ pub fn ordered(
         .filter(|&&key| tapped(key))
         .map(|&key| RawInputEvent::Up(key));
     ups.chain(downs).chain(taps).collect()
+}
+
+/// What macroquad's input queue replays into for the window's focus
+/// ([`crate::focus`]): its minimizes, restores and presses, in order, and
+/// nothing else. A press counts whatever its key or button.
+#[derive(Debug, Default)]
+pub(crate) struct WindowHeard(pub(crate) Vec<Heard>);
+
+impl EventHandler for WindowHeard {
+    fn update(&mut self) {}
+
+    fn draw(&mut self) {}
+
+    fn key_down_event(&mut self, _: KeyCode, _: KeyMods, _: bool) {
+        self.0.push(Heard::Pressed);
+    }
+
+    fn mouse_button_down_event(&mut self, _: MouseButton, _: f32, _: f32) {
+        self.0.push(Heard::Pressed);
+    }
+
+    fn window_minimized_event(&mut self) {
+        self.0.push(Heard::Minimized);
+    }
+
+    fn window_restored_event(&mut self) {
+        self.0.push(Heard::Restored);
+    }
 }
 
 #[cfg(test)]

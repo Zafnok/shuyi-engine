@@ -109,12 +109,11 @@ Steam Cloud works two ways (Steamworks documentation, *Steam Cloud*):
     `SystemEvent::FocusLost` when the overlay opens and `FocusGained`
     when it closes, sent from `Macroquad::system_events`
     (`crates/app/src/backend.rs:272`). The game's hook hears it like any
-    focus change. **Either order with 3042:** if 3042 is done, the
-    overlay's open and close feed its `Focus` tracker
-    (`crates/app/src/focus.rs`), so held input is let go, pads are
-    ignored while the overlay is open, and no focus event comes twice;
-    if not, send the two events straight, and 3042 feeds them to its
-    tracker (its clause says so);
+    focus change. **From 3042 (done):** the overlay's open and close
+    feed its `Focus` tracker (`crates/app/src/focus.rs`, as a
+    `Heard::Minimized` and a `Heard::Restored`), so held input is let
+    go, pads are ignored while the overlay is open, and no focus event
+    comes twice;
   - one handle for everything else: this ticket's backends, `shuyi-net`'s
     Steam transport and lobbies (1144), presence (3055), and the game's
     own Steam code (its on-screen keyboard, and its Workshop in the

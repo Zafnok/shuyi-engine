@@ -302,7 +302,7 @@ A frame number here counts `App::frame` calls from 1, as 2518's
      - the replayed game replaces the running one;
      - `App::branch_here` (new, shared with step 6) restarts the clock,
        as after a load (line 498), so the jump counts no time; forgets
-       held input (`Game::forget_held_input`, 3042), so a key held at
+       held input (`Game::forget_held_input`, 3042, done), so a key held at
        the target in the old run doesn't stick; and pauses the game
        (2316's `DebugView::paused`);
      - the device's music and voice stop (`Audio::stop_all`,

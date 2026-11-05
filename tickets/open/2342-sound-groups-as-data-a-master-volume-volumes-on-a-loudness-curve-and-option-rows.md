@@ -182,7 +182,7 @@ moves to the MVP.
   `SoundGroups` and `GroupGains`. It answers `sound(cue)`,
   `music(cue)`, `voice()` and `group(id)`, each a `Gain`; `each()`,
   every group's id and gain, for a device that records them; and
-  `muted()`, the same view with every gain 0, for 3042's mute in the
+  `muted()`, the same view with every gain 0, for 3093's mute in the
   background. `crates/platform/src/app.rs` (lines 605–616 today)
   passes it on.
 - **The backends:**
@@ -246,10 +246,10 @@ moves to the MVP.
   aren't under the shared player), move it onto `gains` here,
   with its sound effects if they read the volumes too, as `shuyi-app`'s
   player; if not, nothing to do (3061 reads the gains).
-- **3042** (focus and the game's background policy): if it is done, its
-  mute while unfocused moves onto `Gains` here, with every group's gain
-  at 0 in the frames it mutes (`Gains::muted`); if not, 3042 mutes on
-  `Gains`.
+- **Either order with 3093** (the game's background policy): if 3093 is
+  done, its mute while unfocused moves onto `Gains` here, with every
+  group's gain at 0 in the frames it mutes (`Gains::muted`); if not,
+  3093 mutes on `Gains` (its clause says so).
 - **2110** (save migrations): if it is done, the forms it versions (the
   engine's `()` settings and the grid template's) each get their next
   `VERSION`, a `Migrate::upgrade` step that reads `music_volume` and
@@ -339,7 +339,7 @@ After MVP, and this PR keeps only the five built-in groups.
    `crates/ui/src/{audio,settings,ctx,game}.rs`,
    `crates/ui/src/screens/options.rs`,
    `crates/platform/src/{audio,app,headless,harness}.rs` and
-   `crates/app/src/{audio,backend}.rs`. Check which of 3029, 3042,
+   `crates/app/src/{audio,backend}.rs`. Check which of 3029, 3093,
    2110, 2351, 2218, 2344, 2345, 2408 and 2501 are done. List every
    use of the old names outside `tickets/`:
    `grep -rn "music_volume\|sound_volume\|voice_volume\|voice_gain\|music_factor\|sound_factor\|DEFAULT_VOLUME\|MAX_VOICE_VOLUME" crates examples templates docs`.

@@ -123,6 +123,7 @@ mod backend;
 #[cfg(feature = "capture")]
 pub mod capture;
 mod facts;
+mod focus;
 #[cfg(not(target_arch = "wasm32"))]
 mod folder;
 pub mod keys;

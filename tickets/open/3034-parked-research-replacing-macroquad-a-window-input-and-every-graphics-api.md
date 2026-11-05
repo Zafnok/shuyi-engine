@@ -153,7 +153,7 @@ when (dropping a platform for a while, say), it asks Nick with the
   - the system keyboard (3003's `TextInput`);
   - high-DPI, full screen and the Steam Deck's screen;
   - suspend and resume (3003's `SystemEvent`), and focus and visibility
-    as 3042's ADR maps them: `WindowEvent::Focused` to `FocusLost` and
+    as ADR-0076 maps them: `WindowEvent::Focused` to `FocusLost` and
     `FocusGained`, and `WindowEvent::Occluded` to `Suspend` and
     `Resume` where it is reliable, which miniquad 0.4.11 can't give;
   - the window facts miniquad 0.4.11 lacks, which 3044 leaves out:
@@ -260,7 +260,7 @@ when (dropping a platform for a while, say), it asks Nick with the
 2. Read what the macroquad backend does today that the new one keeps,
    and note which of these tickets are done: 2018's and 2019's capture
    mode and jobs, 2337's blend rules, 2346's IME calls, 3041's sinks,
-   3042's ADR, 3043's `lifecycle.js`, 3044's window record and cursor
+   ADR-0076, 3043's `lifecycle.js`, 3044's window record and cursor
    rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
    `shuyi-app-3d` and 3106's pointer lock.
 3. Read wgpu's and winit's documentation and examples, and the WGSL

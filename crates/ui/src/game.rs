@@ -387,6 +387,15 @@ impl<G: GameData> Game<G> {
         self.resumed = true;
     }
 
+    /// Lets go of every key and button held now ([`InputState::release_all`]):
+    /// the next frame reports their actions let go, and one still down
+    /// counts once it is pressed again. The platform's `App` calls it on
+    /// the system's `FocusLost`, since a window without focus hears no
+    /// release.
+    pub fn forget_held_input(&mut self) {
+        self.input.release_all();
+    }
+
     /// Flips the Fullscreen setting, as a window's own shortcut does. The
     /// platform then switches the window on the next frame, and an options
     /// screen shows the new value. Does nothing where the game isn't in a

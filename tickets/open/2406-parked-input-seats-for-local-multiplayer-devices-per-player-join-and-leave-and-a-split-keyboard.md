@@ -316,8 +316,10 @@ online)?
   - 2405: its pointer events (`PointerMoved`, `PointerDown`,
     `PointerUp`, `Wheel`) go to the seat holding the keyboard, or its
     first half, and stay in the shared stream for menus;
-  - 3042: `Game::forget_held_input` forgets every seat's held input and
-    each seat's held pad buttons. Its unfocused pad filter hands
+  - 3042 (done), so this ticket does it: `Game::forget_held_input`
+    forgets every seat's held input and each seat's held pad buttons.
+    The unfocused pad filter (`pad_events`, `crates/app/src/pads.rs`)
+    hands
     `RawInputEvent::from_pads` every connected pad with an empty
     `PadState`, not an empty list, so an alt-tab releases what pads hold
     but no pad loses its seat;
@@ -362,7 +364,7 @@ online)?
    `input/state.rs`, `input/frame.rs`, `ctx.rs` (`keymap`, `keymap_for`,
    `pad_bindings`), `harness.rs`, `frame_png.rs`'s `Step` and `Script`,
    `fit.rs`, `target.rs` and 2137's `tick.rs`. Check which of 1120,
-   1121, 2405, 2408 and 3042 are done.
+   1121, 2405 and 2408 are done.
 2. Write the ADR.
 3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,
    `from_crank`'s pad. Move `two_pads_holding_one_button_are_one_press`
@@ -387,7 +389,7 @@ online)?
 9. `local_players` in the profiles, `GameControls::with_seats`, the new
    rules and the contract's settings.
 10. The either-order parts that are due, the lines this PR adds to the
-    open tickets of 2405 and 3042, the docs and the skill.
+    open ticket of 2405, the docs and the skill.
 11. Run the gates.
 
 ## Acceptance criteria
