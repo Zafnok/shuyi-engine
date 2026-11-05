@@ -1,4 +1,4 @@
-# ADR-0077: Easing and tweens: integer curves in `shuyi-core`, drawn from the time alone
+# ADR-0078: Easing and tweens: integer curves in `shuyi-core`, drawn from the time alone
 
 - **Status:** Accepted
 - **Date:** 2026-11-04

@@ -113,7 +113,7 @@ and follow the MVP.
     quarter-wave table in `crates/core/src/ease/tables.rs` of 257
     entries in 1/65536, with straight lines between them. 65 entries
     are too coarse for its bounds (a sine off by up to about five
-    units between entries; ADR-0077), so both tables stay, and this
+    units between entries; ADR-0078), so both tables stay, and this
     ticket's Completion notes say so.
   - **Either order with 1119 (parked):** if 1119 is done, it wrote this
     module's `Angle` type and its table as this list says. Keep them and

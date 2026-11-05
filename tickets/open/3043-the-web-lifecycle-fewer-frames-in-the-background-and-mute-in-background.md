@@ -176,7 +176,11 @@ Visions of Shuyi.
   - `templates/grid` sets the same in its `impl GameSettings`
     (`crates/game/src/settings.rs`). The template files aren't formatted
     by `cargo fmt --all`; CI's template job checks them;
-  - names here are 3093's as its ticket writes them: use what it built.
+  - **From 3093 (done):** `Background` and `BackgroundAudio` are in
+    `crates/ui/src/settings.rs`, both `#[non_exhaustive]`, with
+    `KEEP_RUNNING`, `paused()` and `muted()`; `App` keeps the policy in
+    its private `background` field and mutes while `is_muted()`
+    (`crates/platform/src/app.rs`), which the player's setting replaces.
     **From 2321 (done):** the pacer is `shuyi_app`'s private
     `pacing::Pacer` (`set_cap`, `start`, `wait`, `waited`, `web_frame`
     and `pacing`), handed the cap in `run`'s `pace` from the frame
