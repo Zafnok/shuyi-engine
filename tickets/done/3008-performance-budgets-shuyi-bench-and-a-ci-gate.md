@@ -250,6 +250,13 @@ None.
   map, `contract.md`'s `GameTools` table, the book's *Size and speed*,
   the `shuyi-perf` skill (1.4) and the `run-gates` skill.
 
+- **The examples' numbers** (CI's first `bench` run, 2026-11-05), beside
+  the budgets in `docs/targets/desktop.md`, `web.md` and `playdate.md`,
+  the budgets unchanged: Hello, Grid's heaviest frame takes 394,501
+  instructions on the colour targets (20 M budget) and 907,519 on the
+  Playdate with its one-bit conversion (2 M); its heap peaks at 158.5 KB;
+  its web zip is 993.4 KB (25 MB). Both runs counted every frame the same.
+
 **Deviations.**
 
 - Hello, Grid has no attack and no portraits: its scenarios are

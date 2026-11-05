@@ -220,6 +220,20 @@ budgets are and how `shuyi bench` checks them is in
 
 Not yet measured on a device: ticket 3011 measures it.
 
+## Hello, Grid's numbers
+
+From CI's `bench` job on 2026-11-05 (ticket 3008's pull request): the
+heaviest of Hello, Grid's eight scenarios
+([`examples/hello-grid/bench/`](../../examples/hello-grid/bench/)), on an
+x86-64 Linux runner. They are proxies, not a device's frame times, and
+the budgets above stay as they are until a device is measured.
+
+| Measure | Hello, Grid | Budget |
+| ------- | ----------- | ------ |
+| Instructions in its heaviest frame, converted to one bit | 907,519 (`dialogue`, frame 71) | 2,000,000 |
+| Heap's peak | 137.9 KB (`idle-map-tiles`) | 10 MB |
+| Package | not measured: CI has no Playdate SDK | 40 MB |
+
 ## What doesn't work yet
 
 - **Voice clips** aren't baked: a voice plays as silence, with a warning.
