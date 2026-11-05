@@ -247,7 +247,7 @@ mod tests {
         });
         let lang = from_files(&files, None, str::to_owned, &RULES).unwrap();
         let xx = LangCode::new("xx").unwrap();
-        let overflow = |widths| lang.overflow(&xx, widths).unwrap();
+        let overflow = |widths: &CellWidths| lang.overflow(&xx, widths).unwrap();
         // Narrow, `はじめから` is 5 cells and fits 8; `Beenden!` is 8 > 6.
         let narrow = overflow(&CellWidths::NARROW);
         assert_eq!(
@@ -263,6 +263,10 @@ mod tests {
         let wide = overflow(&CellWidths::wide("はじめから".chars()));
         let keys: Vec<(&str, usize)> = wide.iter().map(|o| (o.key.as_str(), o.width)).collect();
         assert_eq!(keys, [("title.quit", 8), ("title.start", 10)]);
+        // Exactly as wide as its place, it fits: 8 cells of 8.
+        let exact = overflow(&CellWidths::wide("はじめ".chars()));
+        let keys: Vec<&str> = exact.iter().map(|o| o.key.as_str()).collect();
+        assert_eq!(keys, ["title.quit"]);
         assert_eq!(
             lang.overflow(&LangCode::english(), &CellWidths::NARROW),
             None

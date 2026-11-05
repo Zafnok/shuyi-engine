@@ -98,7 +98,7 @@ impl Lines<'_> {
     fn add(&mut self, piece: &str, spaced: bool) {
         let cells = text_width(piece, self.widths);
         let gap = usize::from(spaced && self.cells > 0);
-        if self.cells > 0 && self.cells + gap + cells <= self.width {
+        if self.cells + gap + cells <= self.width {
             if gap > 0 {
                 self.line.push(' ');
             }
@@ -109,7 +109,7 @@ impl Lines<'_> {
         self.end_line();
         for c in piece.chars() {
             let c_cells = self.widths.of_char(c);
-            if self.cells > 0 && self.cells + c_cells > self.width {
+            if self.cells + c_cells > self.width {
                 self.end_line();
             }
             self.line.push(c);
@@ -211,6 +211,19 @@ mod tests {
         );
         // A wide character never straddles the end of a line.
         assert_eq!(word_wrap("今日は", 5, &widths), ["今日", "は"]);
+    }
+
+    #[test]
+    fn japanese_breaks_between_characters_without_an_atlas_and_a_wide_one_anywhere() {
+        // Measured narrow, Japanese still breaks between its characters:
+        // `今日` joins `a` rather than the run being cut.
+        assert_eq!(
+            word_wrap("a 今日はいい", 4, &CellWidths::NARROW),
+            ["a 今日", "はいい"]
+        );
+        // A wide character of no Japanese script breaks around it too.
+        let hearts = CellWidths::wide(['♥']);
+        assert_eq!(word_wrap("a ♥♥", 4, &hearts), ["a ♥", "♥"]);
     }
 
     #[test]
