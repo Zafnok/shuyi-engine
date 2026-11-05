@@ -138,6 +138,9 @@ confirmed. A backend that never reports leaves every request pending.
    that same one;
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
    nothing presented;
+   while paused without focus (`App::is_paused`), `poll_input`
+   (dropped), `audio().play` with nothing at volume 0 if the game is
+   muted too, and `present` of the last frame: no update, no steps;
 4. `changed_files`, with debug tools on: the paths go to the game's
    modules before its update (never in a build that ships);
 5. `poll_input`;
@@ -146,7 +149,8 @@ confirmed. A backend that never reports leaves every request pending.
 7. `audio().music_playing(now)`, for the screens that keep time with the
    music;
 8. the game's update (`shuyi_ui::Game::frame`);
-9. `audio().play(&frame, now)` with that frame's audio, every frame;
+9. `audio().play(&frame, now)` with that frame's audio, every frame (its
+   volumes at 0 while the game is muted without focus);
 10. `text_input().open(&ask)` if a screen asked for the system keyboard;
 11. `audio().stop_all()` if the game quit in that update;
 12. `present(&frame)` (timed, in a frame `App` measures, and the
@@ -228,7 +232,7 @@ Add what the system said since the last call:
 | ----- | ---- | --------------- |
 | `Suspend` | the device sleeps or locks, the home menu opens, the app goes to the background | `audio().suspend()` holds the audio; the game's hook saves; no update and nothing presented until `Resume` |
 | `Resume` | the game runs again | `audio().resume()` brings the audio back; the time away is forgotten: the next frame counts none, so no catch-up steps; that frame lets go of every key and button held before the suspend, since one may have come up unheard |
-| `FocusLost`, `FocusGained` | the window loses the keyboard's focus to an overlay or another window, and gets it back | on `FocusLost` every key and button held is let go at once, since a window without focus hears no release; the game's hook hears both (and may pause) |
+| `FocusLost`, `FocusGained` | the window loses the keyboard's focus to an overlay or another window, and gets it back | on `FocusLost` every key and button held is let go at once, since a window without focus hears no release; until `FocusGained`, `App` applies the game's `GameSettings::BACKGROUND` (ADR-0077): paused, no update and the last frame presented again, and the time away forgotten on `FocusGained`; muted, the audio at volume 0; the game's hook hears both after `App`'s part |
 | `QuitRequested` | the player closes the game (a window's close button) | the game's hook saves, then `FrameOutcome::Quit` |
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
