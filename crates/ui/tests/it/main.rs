@@ -11,6 +11,7 @@ mod layout_picker;
 mod memory_tags;
 mod modules;
 mod perf;
+mod plasma;
 mod resume;
 mod scene_camera;
 mod screens;

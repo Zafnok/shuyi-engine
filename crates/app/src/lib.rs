@@ -131,6 +131,7 @@ pub mod keys;
 mod link;
 mod pacing;
 pub mod pads;
+mod painted;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
 mod pictures;

@@ -380,7 +380,7 @@ None.
 
 **What was done** (sources read 2026-11-04):
 
-- **ADR-0078** ("Easing and tweens: integer curves in `shuyi-core`,
+- **ADR-0079** ("Easing and tweens: integer curves in `shuyi-core`,
   drawn from the time alone") with the seven points of the Scope.
   ADR-0004's `Status:` line and both index rows are updated.
 - **`shuyi_core::ease`** (`crates/core/src/ease.rs`, `ease/tables.rs`,

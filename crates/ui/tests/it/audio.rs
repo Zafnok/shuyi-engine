@@ -11,7 +11,8 @@ use shuyi_ui::toy::{self, Action, Toy, ToyCtx, Voice};
 use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};
 
 /// Clicks on Confirm, plays the track `theme` on Cancel, the fights' pool
-/// on Info, and crossfades to `drums` over 1 s on Menu.
+/// on Info, and crossfades to `drums` over 1 s on Menu; stops the music
+/// over 3 s on Select, and with the default fade on down.
 struct Beeper;
 
 impl Screen<Toy> for Beeper {
@@ -32,6 +33,8 @@ impl Screen<Toy> for Beeper {
                 Action::Menu => ctx
                     .audio
                     .play_music_with("drums", MusicSwitch::crossfade(1000)),
+                Action::Select => ctx.audio.stop_music_with(3000),
+                Action::CursorDown => ctx.audio.stop_music(),
                 _ => {}
             }
         }
@@ -300,4 +303,67 @@ fn a_crossfade_plays_both_tracks_until_the_old_one_has_faded() {
     };
     assert!(h.music_commands().contains(&stop));
     assert_eq!(gains(&h, "drums").last().map(|(_, gain)| *gain), Some(1.0));
+}
+
+/// The frames that stopped `cue`.
+fn stops(h: &Harness<Toy>, cue: &str) -> Vec<u32> {
+    let log = h.music_log().into_iter();
+    log.filter_map(|(frame, command)| match command {
+        MusicCommand::Stop { cue: c } => (c == cue).then_some(frame),
+        _ => None,
+    })
+    .collect()
+}
+
+/// The gain `gains` gave in `frame`.
+fn gain_at(gains: &[(u32, f32)], frame: u32) -> f32 {
+    let found = gains.iter().find(|(f, _)| *f == frame);
+    found.map_or(f32::NAN, |(_, gain)| *gain)
+}
+
+/// A screen's stop of 3 s, with the toy's default fade of 0.5 s: two
+/// thirds of the gain after one second, one third after two, and one stop
+/// at three. The default fade is the next stop's again.
+#[test]
+fn a_stop_with_its_own_fade_takes_that_long() {
+    let mut h = beeper();
+    h.act(Action::Cancel).wait(1.0).clear_audio();
+    h.act(Action::Select);
+    let asked = h.frame_count();
+    assert_eq!(
+        h.audio_log(),
+        [(asked, &AudioRequest::stop_music_with(3000))]
+    );
+    h.wait(3.1);
+    // The frame of the request already moves the fade one frame's time.
+    // `FRAME_DT` is a sixtieth of a second.
+    let per_second = 60;
+    assert!((FRAME_DT * 60.0 - 1.0).abs() < 1e-6);
+    let theme = gains(&h, "theme");
+    let at = |seconds: u32| gain_at(&theme, asked + seconds * per_second - 1);
+    assert!((at(1) - 2.0 / 3.0).abs() < 1e-3, "{theme:?}");
+    assert!((at(2) - 1.0 / 3.0).abs() < 1e-3, "{theme:?}");
+    let stopped = stops(&h, "theme");
+    assert_eq!(stopped.len(), 1, "{stopped:?}");
+    assert!(
+        stopped[0].abs_diff(asked + 3 * per_second - 1) <= 1,
+        "{stopped:?}"
+    );
+    let found: Vec<_> = h
+        .music_log()
+        .into_iter()
+        .filter(|(_, c)| matches!(c, MusicCommand::Load { .. } | MusicCommand::Start { .. }))
+        .collect();
+    assert!(found.is_empty(), "{found:?}");
+    // The next track's stop fades over the default 0.5 s.
+    h.act(Action::Cancel).wait(1.0).clear_audio();
+    h.act(Action::CursorDown);
+    let asked = h.frame_count();
+    h.wait(1.0);
+    let stopped = stops(&h, "theme");
+    assert_eq!(stopped.len(), 1, "{stopped:?}");
+    assert!(
+        stopped[0].abs_diff(asked + per_second / 2 - 1) <= 1,
+        "{stopped:?}"
+    );
 }

@@ -179,7 +179,7 @@ None.
   number of yoyo plays); add a test with a `Points` curve that ends at
   0. Its builders `with_delay`, `with_repeat` and `with_yoyo` are
   `const fn`s that ask for `T: Copy` and `E: Copy` (a `const fn` can't
-  drop a part of a generic value on stable Rust, ADR-0078), so a
+  drop a part of a generic value on stable Rust, ADR-0079), so a
   `Tween<T, Points>` calls them before `with_ease(points)`, as the
   squash doctest should show, or assigns the fields.
 - **Public types (ADR-0039):** `Sequence` and `Points` keep their

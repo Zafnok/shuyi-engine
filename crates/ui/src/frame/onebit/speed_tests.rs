@@ -12,6 +12,7 @@ use shuyi_assets::ink::Ink;
 use super::*;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, Overlay, Rect};
+use crate::frame::painted::{Painted, PaintedId, PaintedSprite};
 use crate::prelude::*;
 
 mod timing;
@@ -203,6 +204,85 @@ enum Thing {
     /// in a colour of [`colors`] after it), the layer, and which of
     /// [`PICTURES`] it is.
     Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool, usize),
+    /// A painted picture (ADR-0078): which of [`PAINTED`] it is, painted
+    /// from a seed, then `src`, `dest`, `clip`, brightness and the layer.
+    Painted(usize, u32, Rect, Rect, Rect, u8, bool),
+}
+
+/// The painted pictures: an id, its kind (0 RGBA, 1 indexed, 2 one-bit,
+/// 3 one-bit with a mask, 4 none: the table lacks it) and its size.
+const PAINTED: [(&str, u8, (u16, u16)); 5] = [
+    ("rgba", 0, (13, 7)),
+    ("indexed", 1, (13, 7)),
+    ("one-bit", 2, (21, 5)),
+    ("masked", 3, (21, 5)),
+    ("gone", 4, (9, 9)),
+];
+
+/// Painted picture `i` of [`PAINTED`], its bytes from `seed`; `None` for
+/// the one the table lacks.
+fn painted_picture(i: usize, seed: u32) -> Option<Painted> {
+    let (_, kind, (w, h)) = PAINTED[i];
+    let mut picture = match kind {
+        0 => Painted::rgba(w, h),
+        1 => Painted::indexed(w, h, &[]),
+        2 => Painted::one_bit(w, h),
+        3 => Painted::one_bit(w, h).with_mask(),
+        _ => return None,
+    };
+    repaint(&mut picture, seed);
+    Some(picture)
+}
+
+/// Writes `picture`'s pixels, palette and mask again from `seed`.
+fn repaint(picture: &mut Painted, seed: u32) {
+    let pixels = picture.pixels_mut();
+    let bytes = noise(pixels.len(), seed);
+    pixels.copy_from_slice(&bytes);
+    let palette = picture.palette_mut();
+    let colours = noise(palette.len() * 3, seed ^ 0x5a5a);
+    for (c, rgb) in palette.iter_mut().zip(colours.as_chunks::<3>().0) {
+        *c = Rgb::new(rgb[0], rgb[1], rgb[2]);
+    }
+    if let Some(mask) = picture.mask_mut() {
+        let bytes = noise(mask.len(), seed ^ 0xa5a5);
+        mask.copy_from_slice(&bytes);
+    }
+}
+
+/// A [`Thing::Painted`].
+fn painted() -> impl Strategy<Value = Thing> {
+    (0..PAINTED.len())
+        .prop_flat_map(|i| {
+            let (_, _, (w, h)) = PAINTED[i];
+            let side = |size: i32| {
+                prop_oneof![
+                    3 => (0..size).prop_flat_map(move |at| (Just(at), 1..=size - at)),
+                    1 => (-4..size).prop_flat_map(move |at| (Just(at), 1..=size + 4 - at)),
+                ]
+            };
+            let src =
+                (side(w.into()), side(h.into())).prop_map(|((x, w), (y, h))| Rect::new(x, y, w, h));
+            (
+                Just(i),
+                any::<u32>(),
+                src,
+                px_rect(420, 260),
+                px_rect(420, 260),
+                prop_oneof![Just(u8::MAX), any::<u8>()],
+                any::<bool>(),
+                any::<bool>(),
+            )
+        })
+        .prop_map(|(i, seed, src, dest, clip, bright, over, exact)| {
+            // Half the time pixel for pixel, or twice the size.
+            let dest = match (exact, dest.w % 2) {
+                (true, 0) => Rect::new(dest.x, dest.y, src.w, src.h),
+                (true, _) => Rect::new(dest.x, dest.y, src.w * 2, src.h * 2),
+                (false, _) => dest,
+            };
+            Thing::Painted(i, seed, src, dest, clip, bright, over)
+        })
 }
 
 fn px_rect(w: i32, h: i32) -> impl Strategy<Value = Rect> {
@@ -237,6 +317,7 @@ fn thing() -> impl Strategy<Value = Thing> {
     prop_oneof![
         (px_rect(420, 260), 0..n, any::<bool>()).prop_map(|(r, c, l)| Thing::Rect(r, c, l)),
         sprite(),
+        painted(),
     ]
 }
 
@@ -283,6 +364,16 @@ impl Thing {
                     paint,
                     ..Sprite::new(picture_of(picture), src, dest, layer(over))
                 });
+            }
+            Thing::Painted(i, seed, src, dest, clip, brightness, over) => {
+                let id = PaintedId::new(PAINTED[i].0);
+                if let Some(picture) = painted_picture(i, seed) {
+                    buf.pictures_mut().insert(id, picture);
+                }
+                let mut item = PaintedSprite::new(id, src, dest, layer(over));
+                item.clip = clip;
+                item.brightness = brightness;
+                buf.add_painted(item);
             }
         }
     }
@@ -369,6 +460,8 @@ enum Edit {
     /// Fills cells, which cuts the items over them.
     Fill(Rect, Cell),
     Backdrop(Option<Backdrop>),
+    /// Writes a painted picture's bytes again, if the table has it.
+    Repaint(usize, u32),
 }
 
 fn edit() -> impl Strategy<Value = Edit> {
@@ -378,6 +471,7 @@ fn edit() -> impl Strategy<Value = Edit> {
         1 => (0..52, 0..16, 1..12, 1..6, cell())
             .prop_map(|(x, y, w, h, c)| Edit::Fill(Rect::new(x, y, w, h), c)),
         1 => prop::option::of(backdrop()).prop_map(Edit::Backdrop),
+        2 => (0..PAINTED.len(), any::<u32>()).prop_map(|(i, seed)| Edit::Repaint(i, seed)),
     ]
 }
 
@@ -393,6 +487,11 @@ impl Edit {
             Edit::Fill(rect, cell) => buf.fill_rect(*rect, *cell),
             Edit::Backdrop(None) => buf.clear_backdrop(),
             Edit::Backdrop(Some(b)) => return with_backdrop(buf, Some(b.clone())),
+            Edit::Repaint(i, seed) => {
+                if let Some(picture) = buf.pictures_mut().get_mut(PaintedId::new(PAINTED[*i].0)) {
+                    repaint(picture, *seed);
+                }
+            }
         }
         buf
     }
@@ -1018,7 +1117,12 @@ fn run_of(sprite: &Sprite, image: &Image<'_>, at: Place, (x0, x1): (i32, i32)) -
         x1,
         y1: 1,
     };
-    match Columns::of_sprite(sprite, image, at, shown)? {
+    match Columns::of_sprite(
+        &Placed::of_sprite(sprite),
+        (image.width, image.source_width),
+        at,
+        shown,
+    )? {
         Columns::Run { k, .. } => Some(k),
         Columns::Table { .. } => None,
     }
@@ -1027,6 +1131,31 @@ fn run_of(sprite: &Sprite, image: &Image<'_>, at: Place, (x0, x1): (i32, i32)) -
 /// A sprite is pixel for pixel when its part of the picture is the
 /// picture's size on the screen: not one pixel of picture or of screen
 /// more or less, and not at a scale that only lands its ends right.
+#[test]
+fn a_screen_column_takes_its_picture_column_if_it_is_on_the_picture() {
+    let run = Columns::Run {
+        k: 10,
+        flipped: false,
+    };
+    assert_eq!(run.column(5, 16), Some(15));
+    // Column 16 of a picture 16 wide is past it, column 15 its last.
+    assert_eq!(run.column(6, 16), None);
+    assert_eq!(run.column(-11, 16), None);
+    let flipped = Columns::Run {
+        k: 10,
+        flipped: true,
+    };
+    assert_eq!(flipped.column(3, 16), Some(7));
+    assert_eq!(flipped.column(10, 16), Some(0));
+    assert_eq!(flipped.column(11, 16), None);
+    let mut table = [u16::MAX; WIDTH as usize];
+    table[..3].copy_from_slice(&[4, 7, 8]);
+    let table = Columns::Table { x0: 20, table };
+    assert_eq!(table.column(21, 8), Some(7));
+    assert_eq!(table.column(22, 8), None);
+    assert_eq!(table.column(23, 8), None);
+}
+
 #[test]
 fn pixel_for_pixel_is_found_exactly() {
     let data = [0u8; 21 * 4];
@@ -1078,7 +1207,8 @@ fn pixel_for_pixel_is_found_exactly() {
         src: Rect::new(100, 0, 80, 4),
         ..sprite(160, false)
     };
-    assert!(Columns::of_sprite(&past, &image(160), at, Clip::SCREEN).is_none());
+    let (placed, size) = (Placed::of_sprite(&past), (160, 80));
+    assert!(Columns::of_sprite(&placed, size, at, Clip::SCREEN).is_none());
     // At scale 2, columns 1, 3, 3 of an 8-pixel picture shrunk to 4 end
     // two apart over three screen columns, but they don't step by one.
     let eight = Image::new(8, 4, &data, None).unwrap();

@@ -6,6 +6,7 @@ use shuyi_assets::image::{ImageInfo, ImageTable};
 use shuyi_assets::lighting::Light;
 
 use super::*;
+use crate::frame::painted::PaintedId;
 use crate::frame::{Cell, Overlay, Rect};
 
 /// The test card's path in the image table.
@@ -567,4 +568,98 @@ proptest! {
         let buf = card_frame(&table, x);
         prop_assert_eq!(painter.render(&buf, scale), painter.render(&buf, scale));
     }
+}
+
+/// `len` bytes of noise from `seed` (xorshift), cheap to make by the
+/// hundred thousand.
+fn noise(len: usize, seed: u64) -> Vec<u8> {
+    let mut state = seed | 1;
+    (0..len)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state.to_le_bytes()[3]
+        })
+        .collect()
+}
+
+/// A frame of 50 × 15 cells (400 × 240 pixels) on the clear colour, with
+/// `item` in it.
+fn frame_with(item: impl FnOnce(&mut GlyphBuffer)) -> GlyphBuffer {
+    let mut buf = GlyphBuffer::new(50, 15, Cell::new(' ', CLEAR, CLEAR));
+    item(&mut buf);
+    buf
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(24))]
+
+    /// ADR-0078 §7: a painted picture is drawn as a sprite of the same
+    /// pixels, alpha and all, at any size up to the screen's and any
+    /// place and scale.
+    #[test]
+    fn a_painted_picture_draws_as_a_sprite_of_its_pixels(
+        (w, h) in (1_u16..=400, 1_u16..=240),
+        seed in any::<u64>(),
+        (x, y, dw, dh) in (-40_i32..400, -40_i32..240, 1_i32..800, 1_i32..480),
+        layer in prop_oneof![Just(Layer::Under), Just(Layer::Over)],
+        brightness in prop_oneof![Just(u8::MAX), any::<u8>()],
+    ) {
+        let id = PaintedId::new("noise");
+        let mut picture = Painted::rgba(w, h);
+        picture.pixels_mut().copy_from_slice(&noise(usize::from(w) * usize::from(h) * 4, seed));
+        let image = Image::of_painted(&picture);
+        prop_assert_eq!(&image.rgba, picture.pixels());
+        let table = ImageTable::new([("noise.png", ImageInfo::new(w.into(), h.into()))].into());
+        let image_id = table.id("noise.png").unwrap();
+        let (atlas, atlas_image) = tiny_atlas();
+        let painter = Painter::new(atlas, atlas_image, BTreeMap::from([(image_id, image)]), CLEAR);
+        let (src, dest) = (Rect::new(0, 0, w.into(), h.into()), Rect::new(x, y, dw, dh));
+        let painted = frame_with(|buf| {
+            buf.pictures_mut().insert(id, picture);
+            let mut item = PaintedSprite::new(id, src, dest, layer);
+            item.brightness = brightness;
+            buf.add_painted(item);
+        });
+        let sprite = frame_with(|buf| {
+            let mut item = Sprite::new(image_id, src, dest, layer);
+            item.brightness = brightness;
+            buf.add_sprite(item);
+        });
+        prop_assert!(painter.render(&painted, 1) == painter.render(&sprite, 1));
+    }
+}
+
+#[test]
+fn every_kind_of_painted_picture_draws_its_rgba() {
+    let (painter, _) = painter(false);
+    let id = PaintedId::new("pixel");
+    let one = Rect::new(0, 0, 1, 1);
+    let draw = |picture: Painted| {
+        let mut buf = GlyphBuffer::new(1, 1, Cell::new(' ', CLEAR, CLEAR));
+        buf.pictures_mut().insert(id, picture);
+        buf.add_painted(PaintedSprite::new(
+            id,
+            one,
+            Rect::new(0, 0, 8, 16),
+            Layer::Over,
+        ));
+        painter.render(&buf, 1).pixel(3, 3)
+    };
+    let mut indexed = Painted::indexed(1, 1, &[Rgb::new(0, 0, 0), Rgb::new(10, 200, 30)]);
+    indexed.pixels_mut()[0] = 1;
+    assert_eq!(draw(indexed), Some([10, 200, 30, 255]));
+    let mut white = Painted::one_bit(1, 1);
+    white.pixels_mut()[0] = 0x80;
+    assert_eq!(draw(white), Some([255, 255, 255, 255]));
+    // Left out by its mask: the clear colour shows.
+    let mut hidden = Painted::one_bit(1, 1).with_mask();
+    hidden.mask_mut().unwrap()[0] = 0;
+    assert_eq!(draw(hidden), Some([16, 16, 16, 255]));
+    // A picture the frame's table lacks is the missing colour.
+    let mut buf = GlyphBuffer::new(1, 1, Cell::new(' ', CLEAR, CLEAR));
+    buf.add_painted(PaintedSprite::new(id, one, one, Layer::Over));
+    let Rgb { r, g, b } = MISSING_COLOR;
+    assert_eq!(painter.render(&buf, 2).pixel(0, 0), Some([r, g, b, 255]));
 }

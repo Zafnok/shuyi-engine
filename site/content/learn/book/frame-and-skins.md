@@ -99,6 +99,41 @@ changes. The grid kit's map (`shuyi::ui::grid`) works this way: a **scene** of t
 visible tiles, painted by a glyph skin or a sprite skin, with the game's units by a
 painter of its own. Hello, Grid shows both.
 
+## A picture the skin paints
+
+Pictures from the game's image files are made before the game runs. Some
+pictures can't be: a video's frames, an old console's screen in an
+emulator, a minimap of what the player has seen, a moving plasma. Their
+**pixels** (the dots a picture is made of) are made while the game runs.
+A skin paints such a picture itself, as a `Painted` picture, and places
+it in the frame like any other:
+
+{{ snippet(file="src/frame.rs", anchor="plasma") }}
+
+The frame keeps its pictures from one frame to the next, by name. Each
+has a **revision**, a count that goes up whenever its pixels are written,
+and the window sends a picture to the graphics card again only when its
+revision moved. `update` puts the picture in only if it differs from the
+one already there, so a plasma painted afresh at every frame costs
+nothing in the frames where it didn't change.
+
+> **Rust:** `as_chunks_mut::<4>()` cuts the pixels' bytes into groups of
+> four, red, green, blue and how solid the pixel is (255 is fully), and
+> `.0` takes the whole groups. `.chunks_mut(64)` cuts those into rows of
+> 64 pixels, and `(0u32..).zip(rows)` numbers the rows, so `py` is a
+> pixel's row; the inner loop numbers each row's pixels, its column `px`.
+> `abs_diff` is how far apart two numbers are, never negative.
+
+A picture comes in three kinds: `Painted::rgba` (four bytes a pixel, as
+here), `Painted::indexed` (a byte a pixel and a palette of up to 256
+colors, so changing a color changes every pixel of it at once) and
+`Painted::one_bit` (black and white). It's drawn without smoothing, at any
+size, and on a black-and-white display a colored picture is turned to a
+pattern of black and white dots as it's drawn. The test reads the
+picture's revision, not its pixels:
+
+{{ snippet(file="src/frame.rs", anchor="test_plasma") }}
+
 ## Why tests read the view
 
 A test of what happened reads the view, or the state behind it:

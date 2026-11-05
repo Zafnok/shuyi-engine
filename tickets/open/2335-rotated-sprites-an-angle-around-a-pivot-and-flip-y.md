@@ -80,6 +80,11 @@ today's drawing in every renderer.
 
 **From 2707 (open):** Parked: `shuyi_core::angle::Angle` (256 steps) is the facing of a unit in 2707's `UnitTable`. If 2707 starts first, 1119 writes `Angle`; this ticket then uses it.
 
+**From 2399 (done):** a painted picture (`Item::Painted`, ADR-0079) has
+no rotation or flip. Whether this ticket's rotation and `flip_y` reach
+painted items too is its call; if they do, the raster, `shuyi-app` and
+the one-bit renderer's `draw_painted` take them as they take a sprite's.
+
 ## Nick input
 
 None. Nick decided on 2026-10-20 that rotated sprites come out of 2703
@@ -113,7 +118,7 @@ and follow the MVP.
     quarter-wave table in `crates/core/src/ease/tables.rs` of 257
     entries in 1/65536, with straight lines between them. 65 entries
     are too coarse for its bounds (a sine off by up to about five
-    units between entries; ADR-0078), so both tables stay, and this
+    units between entries; ADR-0079), so both tables stay, and this
     ticket's Completion notes say so.
   - **Either order with 1119 (parked):** if 1119 is done, it wrote this
     module's `Angle` type and its table as this list says. Keep them and

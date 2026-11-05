@@ -1,6 +1,6 @@
 # ADR-0004: Assets: standard files in, the engine's own data out; a deterministic movement kit, physics optional
 
-- **Status:** Accepted (Nick chose plan B, 2026-10-14; see `docs/decisions.md`). First proposed as the game repository's ADR-0065 (game ticket 1101); its §3 sentence on easing is superseded by ADR-0078
+- **Status:** Accepted (Nick chose plan B, 2026-10-14; see `docs/decisions.md`). First proposed as the game repository's ADR-0065 (game ticket 1101); its §3 sentence on easing is superseded by ADR-0079
 - **Date:** 2026-10-14
 - **Related tickets:** 1103–1105 (asset types move), 1122 (collision and
   movers), 1123 (animation and Aseprite), 1124 (Tiled and LDtk), 1128
