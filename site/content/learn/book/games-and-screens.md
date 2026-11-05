@@ -187,6 +187,12 @@ focus, a question box, name entry and word wrap are in `shuyi::ui::widgets`. A
 **widget** is a part of a screen, as a menu is. Each takes the game's rows or text, and
 says what it shows as a view.
 
+Word wrap measures in cells of the screen, with `ctx.widths()`: a Japanese character
+takes two. English breaks at spaces. Japanese has none, so it breaks between any two
+characters, but never before `。` or `、` and never after `「`, as a reader of Japanese
+expects. A key's name filled into a text, such as `Left Shift`, is never split across
+two lines.
+
 ## Modules
 
 The default engine stays small, so a game doesn't pay for what it doesn't use.

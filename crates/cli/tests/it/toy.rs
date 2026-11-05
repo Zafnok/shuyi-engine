@@ -82,6 +82,7 @@ fn lang_status_reports_the_toys_debug_pack() {
     let report = shuyi_cli::lang_status::report(
         &shuyi_cli::GameTools::lang(&ToyTools).unwrap().lang,
         &[] as &[&str],
+        &shuyi_assets::font::CellWidths::NARROW,
         "dbg",
         &shuyi_cli::lang_status::Options::default(),
     )

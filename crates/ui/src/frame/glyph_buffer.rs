@@ -33,6 +33,7 @@ pub use backdrop::{Backdrop, MAX_ZOOM};
 use shuyi_assets::font::CellWidths;
 use shuyi_assets::image::ImageId;
 use shuyi_assets::lighting::Light;
+use shuyi_assets::text::NO_BREAK_SPACE;
 
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
@@ -737,7 +738,8 @@ impl GlyphBuffer {
 
     /// Writes `text` left to right from `(x, y)`, clipped to the buffer:
     /// one `char` per cell, and a wide one ([`widths`](Self::widths)) in
-    /// two, its second a continuation in the same colours. A wide one
+    /// two, its second a continuation in the same colours. A no-break
+    /// space ([`NO_BREAK_SPACE`]) is written as a space. A wide one
     /// that the buffer's edge would cut isn't drawn. Returns how many
     /// cells were written.
     pub fn print(&mut self, x: i32, y: i32, text: &str, fg: Rgb, bg: Rgb) -> u16 {
@@ -766,6 +768,7 @@ impl GlyphBuffer {
         let mut written = 0;
         let mut cx = i64::from(x);
         for glyph in text.chars() {
+            let glyph = if glyph == NO_BREAK_SPACE { ' ' } else { glyph };
             if cx >= columns {
                 break;
             }
@@ -1078,6 +1081,14 @@ mod tests {
         assert_eq!(b.print(i32::MAX, 0, "abc", RED, BG), 0);
         assert_eq!(b.print(i32::MIN, 0, "abc", RED, BG), 0);
         assert_eq!(b, before);
+    }
+
+    #[test]
+    fn a_no_break_space_is_printed_as_a_space() {
+        let mut b = buf(5, 1);
+        assert_eq!(b.print(0, 0, "a\u{a0}b", RED, BG), 3);
+        assert_eq!(row(&b, 0), "a b  ");
+        assert_eq!(glyph(&b, 1, 0), ' ');
     }
 
     #[test]

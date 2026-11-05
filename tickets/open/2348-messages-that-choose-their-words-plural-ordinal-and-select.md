@@ -279,12 +279,14 @@ and the plural table are technical.
     is `fill_styled(…).plain()`: build `fill_styled` on `walk`, so a
     key's name in any branch is still a `Key` span, and its `args` take
     `&dyn ToArg`. If not, 2347 builds `fill_styled` on `walk`.
-  - **2302:** if it is done, its `max_cells` overflow list measures each
-    form (`Message::forms`) and reports the widest; do that here. 2302
-    also made `fill` join a multi-word key name's words with a no-break
-    space: keep that join where `fill` writes a `Piece::Arg` by
-    `lookup`, so 2302's test passes unchanged. If not, 2302 does both
-    (its step 3 joins the words where `fill` writes a key's name).
+  - **From 2302 (done):** its `max_cells` overflow list
+    (`Lang::overflow`, `crates/assets/src/lang/places.rs`) measures the
+    raw text: make it measure each form (`Message::forms`) and report
+    the widest. 2302 also made `fill` join the words of what `lookup`
+    gives (a key's name) with a no-break space: keep that join where
+    `fill` writes a `Piece::Arg` by `lookup`, so its test
+    (`a_key_name_of_two_words_is_never_split_across_lines`) passes
+    unchanged.
   - **From 3053 (done):** fill `target` from `ctx.platform.target`,
     beside `device`.
   - **2226:** if it is done, look the plural table up by

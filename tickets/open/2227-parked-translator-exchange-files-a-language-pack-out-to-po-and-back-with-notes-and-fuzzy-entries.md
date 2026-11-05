@@ -178,11 +178,11 @@ CSV is needed too (see *Out*).
     out. Then it says to run `shuyi check`, which checks the pack with
     the game's own rules (its tokens, its data text, its dialogue
     limits).
-- **Notes.** 2302 adds an optional `note` beside `max_cells` in
-  English's `ui.ron`. If 2302 was done without it, add it here the same
-  way: optional, in the same value form as `max_cells`, kept by `Lang`
-  (`Lang::note(key)`), never shown in the game, and a pack can't set
-  it.
+- **From 2302 (done):** English's `ui.ron` has an optional `note`
+  beside `max_cells` (`(text: …, max_cells: …, note: …)`), kept by
+  `Lang` (`Lang::note(key)`, `Lang::max_cells(key)`), never shown in the
+  game; a pack can't set either. Write both into the PO file's
+  comments.
 - **If 2226 is done** (language tags and a source language the game
   declares): `msgid` is the source language's text
   (`Lang::source_text`), `#:` names `<source tag>/ui.ron`, `Language:`
@@ -240,24 +240,23 @@ calls changes, so the next pin bump needs no change in the game.
    `LineEntry`, `add_lines`, `orphans`), `lang/source.rs`
    (`SourceLine`, `LineKind`), `crates/cli/src/lang_status.rs` and the
    `lang-status` arm and `lang_status` function in
-   `crates/cli/src/lib.rs`, and how 2302 reads `max_cells` (and `note`)
-   in `english_from_source`.
-2. If 2302 left `note` out, add it (*Notes* above) with a unit test.
-3. Move the placeholder check out of `entries` into a function that
+   `crates/cli/src/lib.rs`, and how `max_cells` and `note` are read
+   (`english_and_places_from_source`, `lang/places.rs`).
+2. Move the placeholder check out of `entries` into a function that
    `entries` and `read_po` share.
-4. Write `write_po` in `lang/po.rs` with its unit tests, then the
+3. Write `write_po` in `lang/po.rs` with its unit tests, then the
    snapshot of a fixture pack.
-5. Write `read_po` with a test per error and the other-tool fixture,
+4. Write `read_po` with a test per error and the other-tool fixture,
    then the round trip and the random-input property tests.
-6. Write `pack_files` in `lang/write.rs` and its test that
+5. Write `pack_files` in `lang/write.rs` and its test that
    `pack_from_files` reads its files back to the same pack.
-7. Write `crates/cli/src/lang_exchange.rs` (argument parsing, the
+6. Write `crates/cli/src/lang_exchange.rs` (argument parsing, the
    comment scan, writing and removing files) and wire both commands
    into `main_with` and `usage`; then the integration test on the toy's
    tools (`crates/cli/src/toy.rs`) in a folder under
    `std::env::temp_dir()`, as `check_keys.rs`'s tests do.
-8. Write the docs.
-9. Run the gates.
+7. Write the docs.
+8. Run the gates.
 
 If the diff passes about 600 changed lines (tests included, snapshots
 aside) by the end of step 6, open the PR with steps 1 to 6 and the
