@@ -228,13 +228,13 @@ impl Talk {
     pub fn new(ctx: &HelloCtx, id: &str) -> Self {
         let scene = ctx.game.dialogue.get(id).cloned().unwrap_or_default();
         let player = DialoguePlayer::new(&scene, Plain, &Present::Everyone);
-        let text = Self::text_of(&player);
+        let text = Self::text_of(&player, ctx);
         Self { player, text }
     }
 
-    fn text_of(player: &DialoguePlayer<Plain>) -> TextBox {
+    fn text_of(player: &DialoguePlayer<Plain>, ctx: &HelloCtx) -> TextBox {
         let text = player.current().text.unwrap_or_default();
-        TextBox::new(&text, Self::WIDTH, Self::LINES)
+        TextBox::new(&text, Self::WIDTH, Self::LINES, ctx.widths())
     }
 
     /// What its text box shows.
@@ -280,7 +280,7 @@ impl Screen<Hello> for Talk {
                     if self.player.is_finished() {
                         return Transition::Pop;
                     }
-                    self.text = Self::text_of(&self.player);
+                    self.text = Self::text_of(&self.player, ctx);
                 }
                 _ => {}
             }

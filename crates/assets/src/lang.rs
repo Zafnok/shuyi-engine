@@ -10,11 +10,15 @@
 //! ([`PackRules`]); the English of its data is the [`SourceText`] it builds.
 //! As a format (ADR-0007), one pack is read from its `lang.ron`
 //! ([`LangPackRon`]). [`Lang::texts`] lists every text of every language,
-//! each with its part, key and file ([`TextAt`]).
+//! each with its part, key and file ([`TextAt`]). English's screen text
+//! can say where each key's text is drawn ([`Place`]: its width in cells
+//! and a note for translators), and [`Lang::overflow`] lists a pack's
+//! entries too wide for it.
 use crate::prelude::*;
 
 mod formats;
 mod lines;
+mod places;
 mod source;
 mod texts;
 
@@ -30,11 +34,13 @@ use crate::font::CellWidths;
 use crate::format::AssetKind;
 use crate::import_settings::is_settings_file;
 use crate::names::Names;
-use crate::ron::parse_ron;
+use crate::ron::{parse_ron, parse_ron_implicit_some};
 use crate::tip::placeholders;
+use places::UiValue;
 
 pub use formats::LangPackRon;
 pub use lines::{LineEntry, LineText, Orphan};
+pub use places::{Overflow, Place, Places};
 pub use source::{LineKind, SourceLine, SourceText, names_key};
 pub use texts::{TextAt, TextPart};
 
@@ -188,6 +194,8 @@ pub struct Lang {
     source: SourceText,
     /// The other languages, by code.
     packs: BTreeMap<LangCode, LangPack>,
+    /// Where English's screen text is drawn, by key ([`Lang::with_places`]).
+    places: Places,
 }
 
 impl Lang {
@@ -207,6 +215,7 @@ impl Lang {
             english,
             source,
             packs,
+            places: BTreeMap::new(),
         }
     }
 
@@ -284,20 +293,20 @@ impl Lang {
 
 /// A RON map read as its pairs in file order, so a key written twice is
 /// seen twice.
-struct Pairs(Vec<(String, String)>);
+struct Pairs<V>(Vec<(String, V)>);
 
-impl<'de> Deserialize<'de> for Pairs {
+impl<'de, V: Deserialize<'de>> Deserialize<'de> for Pairs<V> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct PairsVisitor;
+        struct PairsVisitor<V>(core::marker::PhantomData<V>);
 
-        impl<'de> Visitor<'de> for PairsVisitor {
-            type Value = Pairs;
+        impl<'de, V: Deserialize<'de>> Visitor<'de> for PairsVisitor<V> {
+            type Value = Pairs<V>;
 
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.write_str("a map of key to text")
             }
 
-            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Pairs, A::Error> {
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Pairs<V>, A::Error> {
                 let mut pairs = Vec::new();
                 while let Some(pair) = map.next_entry()? {
                     pairs.push(pair);
@@ -306,7 +315,7 @@ impl<'de> Deserialize<'de> for Pairs {
             }
         }
 
-        deserializer.deserialize_map(PairsVisitor)
+        deserializer.deserialize_map(PairsVisitor(core::marker::PhantomData))
     }
 }
 
@@ -320,31 +329,50 @@ fn key_ok(key: &str) -> bool {
 }
 
 /// Parses and validates English screen text `source` (a map of key to
-/// text), attributing errors to `file`. Reports every problem found.
+/// text), attributing errors to `file`. Reports every problem found. A
+/// key's places ([`english_and_places_from_source`]) are read and left
+/// out.
 pub fn english_from_source(
     file: &str,
     source: &str,
 ) -> Result<BTreeMap<String, String>, Vec<ContentError>> {
-    let Pairs(pairs) = parse_ron(file, source).map_err(|e| vec![e])?;
+    english_and_places_from_source(file, source).map(|(english, _)| english)
+}
+
+/// English's screen text and where it is drawn, by key: what
+/// [`english_from_source`] reads, with each key's [`Place`] where its value
+/// is written as `(text: …, max_cells: …, note: …)` rather than as text
+/// (both optional). A `max_cells` is at least 1, and a note isn't empty.
+pub fn english_and_places_from_source(
+    file: &str,
+    source: &str,
+) -> Result<(BTreeMap<String, String>, Places), Vec<ContentError>> {
+    let Pairs(pairs) =
+        parse_ron_implicit_some::<Pairs<UiValue>>(file, source).map_err(|e| vec![e])?;
     let mut errors = Vec::new();
     let mut english = BTreeMap::new();
-    for (key, text) in pairs {
+    let mut places = BTreeMap::new();
+    for (key, UiValue { text, place }) in pairs {
+        let at = |message: &str| ContentError::new(file, format!("\"{key}\": {message}"));
         if !key_ok(&key) {
-            errors.push(ContentError::new(
-                file,
-                format!("\"{key}\": a key must be lowercase letters, digits, `_` and `.`"),
-            ));
+            errors.push(at("a key must be lowercase letters, digits, `_` and `.`"));
         }
         if english.contains_key(&key) {
-            errors.push(
-                ContentError::new(file, format!("\"{key}\": the key is used twice"))
-                    .with_code(codes::DUPLICATE),
-            );
+            errors.push(at("the key is used twice").with_code(codes::DUPLICATE));
+        }
+        if place.max_cells == Some(0) {
+            errors.push(at("max_cells must be at least 1"));
+        }
+        if place.note.as_ref().is_some_and(|n| n.trim().is_empty()) {
+            errors.push(at("a note must not be empty"));
+        }
+        if place != Place::default() {
+            places.insert(key.clone(), place);
         }
         english.insert(key, text);
     }
     if errors.is_empty() {
-        Ok(english)
+        Ok((english, places))
     } else {
         Err(errors)
     }
@@ -556,7 +584,8 @@ fn is_dialogue_file(name: &str) -> bool {
         .is_some_and(|stem| !stem.is_empty() && !stem.contains('/'))
 }
 
-/// Validates the languages made of `files`: English's `en/ui.ron`, and a
+/// Validates the languages made of `files`: English's `en/ui.ron` (with
+/// its keys' places, [`english_and_places_from_source`]), and a
 /// pack for every other directory, which needs its `lang.ron` and
 /// `ui.ron` and may have a `data.ron` and `dialogue/<file>.ron` files
 /// (checked against `data`; left out without it). Import settings files
@@ -600,14 +629,14 @@ pub fn from_files(
     }
     let english_path = format!("{ENGLISH}/{UI_FILE}");
     let english = read(&english_path, &mut errors)
-        .map(|source| english_from_source(&display(&english_path), source));
-    let english = match english {
-        Some(Ok(english)) => Some(english),
+        .map(|source| english_and_places_from_source(&display(&english_path), source));
+    let (english, places) = match english {
+        Some(Ok((english, places))) => (Some(english), places),
         Some(Err(e)) => {
             errors.extend(e);
-            None
+            (None, BTreeMap::new())
         }
-        None => None,
+        None => (None, BTreeMap::new()),
     };
     let mut packs = BTreeMap::new();
     for dir in dirs {
@@ -652,7 +681,7 @@ pub fn from_files(
     }
     match english {
         Some(english) if errors.is_empty() => {
-            Ok(Lang::with_source(english, data.unwrap_or_default(), packs))
+            Ok(Lang::with_source(english, data.unwrap_or_default(), packs).with_places(places))
         }
         _ => Err(errors),
     }
@@ -788,7 +817,7 @@ mod tests {
         use serde::de::IntoDeserializer;
         use serde::de::value::{BoolDeserializer, Error};
         let wrong: BoolDeserializer<Error> = true.into_deserializer();
-        let error = Pairs::deserialize(wrong).err().unwrap();
+        let error = Pairs::<UiValue>::deserialize(wrong).err().unwrap();
         assert_eq!(
             error.to_string(),
             "invalid type: boolean `true`, expected a map of key to text"

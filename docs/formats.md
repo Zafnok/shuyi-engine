@@ -178,7 +178,24 @@ What each one reads:
   (`PackRules::widths`, `CellWidths::of(&atlas)`), so a game loads its
   atlas before its text. Without them every character is one cell. A
   dialogue's limits (`SceneRules::widths`) and a tip's
-  (`TipRules::widths`) count the same way.
+  (`TipRules::widths`) count the same way. Text is wrapped in cells too
+  (`text::word_wrap`): Latin text at spaces, text without spaces
+  (Japanese) between any two characters, but never before closing
+  punctuation or a small kana (`。`, `、`, `」`, `っ`) nor after an
+  opening bracket (`「`), and never at a no-break space
+  (`text::NO_BREAK_SPACE`, which joins the words of a key's name filled
+  into a text).
+- **English's screen text** (`lang/en/ui.ron`) is a map of key to text.
+  A key's value can instead be `(text: "Start", max_cells: 12, note:
+  "The title menu's first item.")`: `max_cells`, how many cells wide the
+  place its text is drawn in is (at least 1), and `note`, what a
+  translator should know (where it shows, what a placeholder holds),
+  never shown in the game; both are optional
+  (`lang::english_and_places_from_source`, `Lang::max_cells`,
+  `Lang::note`). A pack's `ui.ron` entry can't set either.
+  `lang-status <code>` lists the pack's entries wider than their key's
+  `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
+  they fail no gate.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

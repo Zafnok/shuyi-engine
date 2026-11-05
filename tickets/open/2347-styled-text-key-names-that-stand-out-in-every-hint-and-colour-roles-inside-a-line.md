@@ -164,11 +164,13 @@ game's palette names `key`.
     `args` are plain. `fill` becomes `fill_styled(…).plain()`: one
     implementation, so the two never drift. The shape of `key_args` is
     the implementer's; say it in the completion notes.
-  - **Either order with 2302 and 2348,** which both change `fill`.
-    Whichever lands second keeps `fill` as `fill_styled(…).plain()`
-    and makes its change in `fill_styled`. If 2302 is done,
-    `fill_styled` keeps its no-break join of a key name's words, inside
-    the `Key` span. If 2348 is done, `fill_styled` takes its `lang` and
+  - **From 2302 (done):** `fill` joins the words of what `lookup` gives
+    (a key's name) with a no-break space (`text::NO_BREAK_SPACE`), so
+    `word_wrap` never splits it: `fill_styled` keeps that join, inside
+    the `Key` span.
+  - **Either order with 2348,** which changes `fill` too. Whichever
+    lands second keeps `fill` as `fill_styled(…).plain()` and makes its
+    change in `fill_styled`. If 2348 is done, `fill_styled` takes its `lang` and
     typed arguments and formats a message as its `fill` does, each key
     name in it still a `Key` span, and `Ctx`'s styled functions take
     the same arguments as `text_with`.

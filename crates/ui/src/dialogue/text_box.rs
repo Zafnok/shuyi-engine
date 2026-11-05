@@ -11,6 +11,7 @@ use crate::prelude::*;
 use crate::hurry::{HURRY_DELAY, HURRY_FACTOR, HurryClock};
 use crate::widgets::menu::MenuView;
 use crate::widgets::word_wrap;
+use shuyi_assets::font::CellWidths;
 
 /// Reveal speed multiplier while the key that goes on is held (the
 /// [`HurryClock`]'s default factor).
@@ -52,11 +53,12 @@ fn page_len(lines: &[String]) -> f32 {
 }
 
 impl TextBox {
-    /// `text` wrapped at `width` characters, `per_page` lines a page, on
-    /// its first page with nothing revealed yet.
-    pub fn new(text: &str, width: usize, per_page: usize) -> Self {
+    /// `text` wrapped at `width` cells ([`word_wrap`], a wide character of
+    /// `widths` two cells: [`Ctx::widths`](crate::Ctx::widths)), `per_page`
+    /// lines a page, on its first page with nothing revealed yet.
+    pub fn new(text: &str, width: usize, per_page: usize, widths: &CellWidths) -> Self {
         Self {
-            lines: word_wrap(text, width),
+            lines: word_wrap(text, width, widths),
             per_page: per_page.max(1),
             page: 0,
             shown: 0.0,

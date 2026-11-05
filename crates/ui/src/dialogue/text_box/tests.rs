@@ -7,7 +7,7 @@ const TEXT: &str = "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj"
 
 #[test]
 fn text_is_wrapped_into_pages_of_so_many_lines() {
-    let mut b = TextBox::new(TEXT, 11, 2);
+    let mut b = TextBox::new(TEXT, 11, 2, &CellWidths::NARROW);
     assert_eq!(b.page_lines(), ["aaaaa bbbbb", "ccccc ddddd"]);
     assert!(b.next_page());
     assert_eq!(b.page_lines(), ["eeeee fffff", "ggggg hhhhh"]);
@@ -16,12 +16,12 @@ fn text_is_wrapped_into_pages_of_so_many_lines() {
     assert!(!b.next_page(), "the last page");
     assert_eq!(b.page_lines(), ["iiiii jjjjj"]);
     // No text is one empty page; a page of no lines is a page of one.
-    let mut empty = TextBox::new("", 11, 2);
+    let mut empty = TextBox::new("", 11, 2, &CellWidths::NARROW);
     let found = empty.page_lines();
     assert!(found.is_empty(), "{found:?}");
     assert!(empty.is_revealed());
     assert!(!empty.next_page());
-    let mut one = TextBox::new("ab cd", 2, 0);
+    let mut one = TextBox::new("ab cd", 2, 0, &CellWidths::NARROW);
     assert_eq!(one.page_lines(), ["ab"]);
     assert!(one.next_page());
     assert_eq!(one.page_lines(), ["cd"]);
@@ -29,7 +29,7 @@ fn text_is_wrapped_into_pages_of_so_many_lines() {
 
 #[test]
 fn a_page_types_out_at_the_speed_and_waits_once_revealed() {
-    let mut b = TextBox::new("hello there", 40, 3);
+    let mut b = TextBox::new("hello there", 40, 3, &CellWidths::NARROW);
     assert_eq!((b.shown(), b.progress()), (0, 0.0));
     assert!(!b.is_revealed());
     b.type_on(0.25, Some(10.0));
@@ -45,11 +45,11 @@ fn a_page_types_out_at_the_speed_and_waits_once_revealed() {
     b.type_on(0.5, Some(10.0));
     assert!(b.marker_lit());
     // Instant: the whole page at once.
-    let mut b = TextBox::new("hello", 40, 3);
+    let mut b = TextBox::new("hello", 40, 3, &CellWidths::NARROW);
     b.type_on(0.0, None);
     assert!(b.is_revealed());
     // Revealed at once by a key.
-    let mut b = TextBox::new("hello", 40, 3);
+    let mut b = TextBox::new("hello", 40, 3, &CellWidths::NARROW);
     b.reveal();
     assert_eq!(b.shown(), 5);
 }
@@ -57,7 +57,7 @@ fn a_page_types_out_at_the_speed_and_waits_once_revealed() {
 #[test]
 fn holding_the_key_types_faster_after_a_moment() {
     let typed = |held_for: f32| {
-        let mut b = TextBox::new(&"x".repeat(200), 300, 3);
+        let mut b = TextBox::new(&"x".repeat(200), 300, 3, &CellWidths::NARROW);
         b.hold(true, held_for);
         b.type_on(0.1, Some(10.0));
         b.progress()
@@ -73,7 +73,7 @@ fn holding_the_key_types_faster_after_a_moment() {
         "{part}"
     );
     // Let go, or released, the count starts over.
-    let mut b = TextBox::new(&"x".repeat(200), 300, 3);
+    let mut b = TextBox::new(&"x".repeat(200), 300, 3, &CellWidths::NARROW);
     b.hold(true, 1.0);
     b.hold(false, 0.1);
     b.type_on(0.1, Some(10.0));
@@ -83,7 +83,7 @@ fn holding_the_key_types_faster_after_a_moment() {
     b.type_on(0.1, Some(10.0));
     assert!((b.progress() - 2.0).abs() < 1e-4);
     // A page turned starts over too.
-    let mut b = TextBox::new("ab cd", 2, 1);
+    let mut b = TextBox::new("ab cd", 2, 1, &CellWidths::NARROW);
     b.hold(true, 1.0);
     b.reveal();
     b.type_on(0.75, Some(10.0));
@@ -96,11 +96,11 @@ fn holding_the_key_types_faster_after_a_moment() {
 
 #[test]
 fn the_last_page_shows_revealed_for_a_choice() {
-    let mut b = TextBox::new(TEXT, 11, 2);
+    let mut b = TextBox::new(TEXT, 11, 2, &CellWidths::NARROW);
     b.to_last_page();
     assert_eq!(b.page_lines(), ["iiiii jjjjj"]);
     assert!(b.is_revealed());
-    let mut b = TextBox::new("", 11, 2);
+    let mut b = TextBox::new("", 11, 2, &CellWidths::NARROW);
     b.to_last_page();
     let found = b.page_lines();
     assert!(found.is_empty(), "{found:?}");
@@ -128,7 +128,7 @@ fn a_view_reveals_its_lines_from_the_start() {
 
 #[test]
 fn the_marker_is_out_from_half_a_second_on() {
-    let mut b = TextBox::new("a", 40, 3);
+    let mut b = TextBox::new("a", 40, 3, &CellWidths::NARROW);
     b.reveal();
     b.type_on(BLINK_S, Some(10.0));
     assert!(!b.marker_lit(), "out at exactly half a second");
@@ -138,7 +138,7 @@ fn the_marker_is_out_from_half_a_second_on() {
 
 #[test]
 fn confirm_reveals_the_page_then_turns_it_then_is_done() {
-    let mut b = TextBox::new(TEXT, 11, 2);
+    let mut b = TextBox::new(TEXT, 11, 2, &CellWidths::NARROW);
     b.type_on(0.1, Some(10.0));
     assert_eq!(b.confirm(), Step::Revealed, "a page being typed");
     assert!(b.is_revealed());
@@ -157,7 +157,27 @@ fn confirm_reveals_the_page_then_turns_it_then_is_done() {
     assert_eq!(b.page_lines(), ["iiiii jjjjj"]);
     assert!(b.is_revealed());
     // An empty box is revealed at once: done.
-    assert_eq!(TextBox::new("", 11, 2).confirm(), Step::Done);
+    assert_eq!(
+        TextBox::new("", 11, 2, &CellWidths::NARROW).confirm(),
+        Step::Done
+    );
+}
+
+/// A Japanese line pages in cells, breaking between characters and
+/// never before `。` or after `「`: lines of at most 12 cells, two to a
+/// page.
+#[test]
+fn a_japanese_line_pages_in_cells() {
+    let text = "彼女は「明日また来ます」と言った。";
+    let widths = CellWidths::wide(text.chars());
+    let mut b = TextBox::new(text, 12, 2, &widths);
+    assert_eq!(b.page_lines(), ["彼女は「明日", "また来ます」"]);
+    // The page types out by characters, not cells.
+    b.reveal();
+    assert_eq!(b.shown(), 12);
+    assert!(b.next_page());
+    assert_eq!(b.page_lines(), ["と言った。"]);
+    assert!(!b.next_page());
 }
 
 #[test]
