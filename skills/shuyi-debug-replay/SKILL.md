@@ -115,8 +115,13 @@ hashes differ, and that step's command is where to look.
 - A record replays the rules, not the screens: it says nothing of what
   was drawn. Look at a frame with `cargo shuyi frame-png` (`shuyi-test`).
 
-Reproducing a player's crash from a crash report is still to come: today
-a bug is reproduced from a record of the rules, or from a session.
+A player's crash report (`crash-<when>.ron` in the game's data folder)
+holds the game's record of its play in its `record` field, on a
+computer, when the game gives one (`Start::crash_record`): write that
+text to a file and replay it as above; it ends with the command the
+rules were applying when they panicked. The report also names the frame,
+the screen on top and the log's last lines. Replaying a report to its
+panic in one command is still to come.
 
 ## From a session record
 

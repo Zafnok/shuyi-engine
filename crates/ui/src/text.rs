@@ -5,6 +5,7 @@
 
 use crate::prelude::*;
 use shuyi_assets::keymap::ActionSet;
+use shuyi_assets::text::NO_BREAK_SPACE;
 
 use crate::input::help_keys::{HelpKeys, cursor_keys_name, key_name};
 
@@ -35,6 +36,11 @@ pub fn fill_values(text: &str, args: &[(&str, &dyn Display)]) -> String {
 /// `lookup` gives for it, else left as written. What is filled in is not
 /// looked at again, so a value may hold braces. An unclosed `{` and what
 /// follows it are plain text.
+///
+/// What `lookup` gives (a key's name, `Left Shift`) is kept on one line:
+/// its spaces become [`NO_BREAK_SPACE`]s, which
+/// [`word_wrap`](crate::widgets::word_wrap) never breaks at and a glyph
+/// buffer draws as spaces.
 pub fn fill(
     text: &str,
     args: &[(&str, &dyn Display)],
@@ -53,7 +59,11 @@ pub fn fill(
         if let Some((_, value)) = args.iter().find(|(arg, _)| *arg == name) {
             out.push_str(&value.to_string());
         } else if let Some(found) = lookup(name) {
-            out.push_str(&found);
+            out.extend(
+                found
+                    .chars()
+                    .map(|c| if c == ' ' { NO_BREAK_SPACE } else { c }),
+            );
         } else {
             out.push('{');
             out.push_str(name);
@@ -148,6 +158,22 @@ mod tests {
     fn a_filled_value_is_not_filled_again() {
         assert_eq!(fill("{a}{b}", &[("a", &"{b}")], upper), "{b}{b}");
         assert_eq!(fill("{a}", &[("a", &"{key}")], upper), "{key}");
+    }
+
+    #[test]
+    fn a_key_name_of_two_words_is_never_split_across_lines() {
+        use shuyi_assets::font::CellWidths;
+        let key = |name: &str| (name == "Run").then(|| "Left Shift".to_owned());
+        let filled = fill("hold {Run} to run, {who}", &[("who", &"Ada Brook")], key);
+        // The key's name is joined; a value given is not.
+        assert_eq!(filled, "hold Left\u{a0}Shift to run, Ada Brook");
+        for width in 10..20 {
+            let lines = crate::widgets::word_wrap(&filled, width, &CellWidths::NARROW);
+            assert!(
+                lines.iter().any(|l| l.contains("Left\u{a0}Shift")),
+                "{width}: {lines:?}"
+            );
+        }
     }
 
     #[test]

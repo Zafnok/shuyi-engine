@@ -23,7 +23,7 @@ follow-up that moves them. This is that follow-up. 2364 (parked)
 leaves moving `Pan` onto 2109's ease to it. 2109 landed before 2339,
 so 2339 has no private smoothstep to leave it.
 
-Two rules of 2109's ADR (ADR-0079, "Easing and tweens: integer curves
+Two rules of 2109's ADR (ADR-0080, "Easing and tweens: integer curves
 in `shuyi-core`, drawn from the time alone") apply here:
 
 - a tween's time is a plain `u32` whose unit the caller picks;

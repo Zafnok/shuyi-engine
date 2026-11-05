@@ -17,9 +17,12 @@ completed:
 
 **From 3010 (done):** `shuyi-playdate`'s panic handler
 (`crates/playdate/src/device/panic.rs`) writes the panic's message to the
-SDK's error screen and console. 3010 says that once 3046 is done it also
-writes a `shuyi_platform::crash::CrashReport`; 3046 wasn't done when 3010
-landed, so this ticket holds that part.
+SDK's error screen and console. 3010 left writing a
+`shuyi_platform::crash::CrashReport` there to this ticket, since 3046
+wasn't done when 3010 landed. **From 3046 (done):** the report, its key
+(`crash_key`), `to_text` and `keep_newest` are in
+`shuyi_platform::crash`, which builds without `std`
+([ADR-0079](../../docs/adr/0079-crash-reports-one-panic-hook-per-backend-writing-through-the-games-storage-offered-once-and-the-games-record-added-on-native.md)).
 
 ## Nick input
 

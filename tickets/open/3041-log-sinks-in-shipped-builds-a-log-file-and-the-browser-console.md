@@ -174,9 +174,8 @@ None.
     - **The first line:** the engine's version (`shuyi-app`'s
       `CARGO_PKG_VERSION`, which every `shuyi-*` crate shares), the OS
       and architecture (`std::env::consts`), debug or release, and the
-      game's storage name. `AppConfig` holds no version of the game. If
-      3046 is done, the game's version that its `AppConfig::crash` holds
-      goes in the line too.
+      game's storage name. **From 3046 (done):** the game's version,
+      `AppConfig::crash.game_version`, goes in the line too.
     - **A cap:** 2 MiB per run (`LOG_FILE_CAP`). Past it, one line says
       the log was cut, and after that only `Error` lines go in (a panic's
       line is one), up to 256 KiB more. A loop of warnings never fills a
@@ -221,14 +220,14 @@ None.
     `crash::quiet` keeps it out of crash reports;
   - then the earlier hook runs, as before. On the web that is
     miniquad's, so its `console.log` line still follows ours.
-  - **Either order with 3046** (crash reports): if it is done, add the
-    log line to its hook, feed its log ring (`crash::note_log`) from the
-    sink in place of `run`'s lines, have its hook read `set_frame`'s
-    counter in place of its own, and add to its `docs/crash-reports.md`
+  - **From 3046 (done):** `shuyi_app::crash::install` sets one hook
+    already, once per process, chaining the one before it. Add the log
+    line to that hook rather than setting a second; feed its log ring
+    (`crash::note_log`) from the sink in place of `run`'s lines; have
+    its hook read `set_frame`'s counter in place of its own `FRAME`
+    static (`crash::set_frame`); and add to `docs/crash-reports.md`
     that the log files sit beside the reports (`storage::log_dir`) and
-    that a player sends both; if not, this ticket sets the hook, and
-    3046 adds its report to it, writes that paragraph and does the
-    rest. One hook, chained, either way.
+    that a player sends both. One hook, chained.
 - **Docs:** a *Logs* section in `docs/platform-backends.md`: what `App`
   hands over, how `shuyi-app` sinks it, where the file is on Windows,
   macOS and Linux, `SHUYI_LOG`'s syntax, that miniquad's own messages
@@ -269,8 +268,8 @@ None.
 1. Read 3040's ADR and `shuyi_ui::log`; `crates/app/src/lib.rs`,
    `backend.rs` and `storage/`; macroquad 0.4.16's `src/lib.rs:139-146`
    (its `logging` module) and `src/prelude.rs`; miniquad 0.4.11's
-   `src/log.rs` and `src/native/wasm.rs:60`. Check whether 3012 and
-   3046 are done.
+   `src/log.rs` and `src/native/wasm.rs:60`, and 3046's
+   `crates/app/src/crash.rs`. Check whether 3012 is done.
 2. `LogFilter::parse`, the other-target levels and `allows_target` in
    `shuyi-ui`, with their unit tests.
 3. `log_sink.rs`: the line, the filter check, the rotation, the cap, the

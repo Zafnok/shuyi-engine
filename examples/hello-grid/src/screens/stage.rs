@@ -9,10 +9,18 @@
 //!
 //! What it shows is a [`MapScene`] that the skin of the player's settings
 //! paints, and a [`StageView`] of the lines round it.
+//!
+//! Its play is a [`StageRecord`], which the tools' `replay` reads, and
+//! which a crash report holds ([`crash_record`]).
 
 use core::any::Any;
 
 use crate::prelude::*;
+
+use serde::{Deserialize, Serialize};
+use shuyi::core::Made;
+#[cfg(feature = "std")]
+use shuyi::ui::Game;
 
 use shuyi::core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
 use shuyi::ui::audio::MenuSound;
@@ -36,6 +44,29 @@ pub fn area(console: ConsoleSpec) -> Rect {
     Rect::new(0, 1, i32::from(console.cols), i32::from(console.rows) - 2)
 }
 
+/// A record of a stage: its seed and the commands sent to its rules, and
+/// what made it. The game's record format for `replay`; `bots` writes one
+/// of each play, and a crash report holds the open stage's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageRecord {
+    /// The stage's seed.
+    pub seed: u64,
+    /// The commands, in order.
+    pub commands: Vec<Command>,
+    /// What made it ([`crate::made`]); a record without one still reads.
+    #[serde(default)]
+    pub made: Option<Made>,
+}
+
+/// The game's record of its play for a crash report: the open stage's
+/// [`StageRecord`] as RON, or `None` when no stage is open or its seed
+/// isn't known.
+#[cfg(feature = "std")]
+pub fn crash_record(game: &Game<Hello>) -> Option<String> {
+    ron::to_string(&game.screen::<StageScreen>()?.record()?).ok()
+}
+
 /// A piece on its way along its path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Walk {
@@ -52,8 +83,14 @@ pub struct Walk {
 pub struct StageScreen {
     /// The rules' state.
     pub stage: Stage,
-    /// Every command sent to the rules, in order.
+    /// The seed [`new`](Self::new) drew; `None` for a stage that came from
+    /// elsewhere ([`of`](Self::of)).
+    pub seed: Option<u64>,
+    /// Every command the rules took, in order.
     pub commands: Vec<Command>,
+    /// The command the rules are applying, until they return: so a record
+    /// made in a panic of theirs ends with it.
+    pub pending: Option<Command>,
     /// Every event of the rules, in order.
     pub events: Vec<Event>,
     /// The cursor.
@@ -80,7 +117,10 @@ impl StageScreen {
     pub fn new(ctx: &mut HelloCtx) -> Self {
         let seed = ctx.game.next_seed();
         let stage = Stage::new(&ctx.game.stage_map, seed).unwrap_or_else(|e| panic!("{e}"));
-        Self::of(stage)
+        Self {
+            seed: Some(seed),
+            ..Self::of(stage)
+        }
     }
 
     /// The screen of `stage`, already briefed: no scene opens.
@@ -88,7 +128,9 @@ impl StageScreen {
         Self {
             cursor: Cursor::new(stage.hero()),
             stage,
+            seed: None,
             commands: Vec::new(),
+            pending: None,
             events: Vec::new(),
             selected: None,
             walk: None,
@@ -161,9 +203,23 @@ impl StageScreen {
         }
     }
 
+    /// Its play so far: the seed, the commands taken and the one pending,
+    /// stamped with what made it. `None` without a seed.
+    #[cfg(feature = "std")]
+    pub fn record(&self) -> Option<StageRecord> {
+        Some(StageRecord {
+            seed: self.seed?,
+            commands: self.commands.iter().chain(&self.pending).copied().collect(),
+            made: Some(crate::made()),
+        })
+    }
+
     /// Sends `command` to the rules and keeps it, if they take it.
     fn send(&mut self, command: Command) -> Option<Vec<Event>> {
-        let events = self.stage.apply(&command).ok()?;
+        self.pending = Some(command);
+        let applied = self.stage.apply(&command);
+        self.pending = None;
+        let events = applied.ok()?;
         self.commands.push(command);
         self.events.extend_from_slice(&events);
         Some(events)
@@ -348,6 +404,10 @@ impl Screen<Hello> for StageScreen {
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
+        Some(self)
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         Some(self)
     }
 }

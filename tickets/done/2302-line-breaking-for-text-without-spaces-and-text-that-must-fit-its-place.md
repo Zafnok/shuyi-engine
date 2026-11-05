@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["2301"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2302 — Line breaking for text without spaces, and text that must fit its place
@@ -149,17 +149,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Japanese paragraph wraps within the width, with no line starting
+- [x] A Japanese paragraph wraps within the width, with no line starting
       with `。` or `、` and none ending with `「` (unit tests with real
       sentences).
-- [ ] English wrapping is unchanged (the existing tests and snapshots).
-- [ ] A key name of two words filled into a placeholder is never split
+- [x] English wrapping is unchanged (the existing tests and snapshots).
+- [x] A key name of two words filled into a placeholder is never split
       across lines (unit test).
-- [ ] `lang-status` reports an entry made too long on purpose as overflow
+- [x] `lang-status` reports an entry made too long on purpose as overflow
       (test with a fixture pack).
-- [ ] A key with `max_cells` and a `note` loads, and `Lang::note` gives
+- [x] A key with `max_cells` and a `note` loads, and `Lang::note` gives
       the note (unit test).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -171,5 +171,116 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done:**
+
+- `shuyi_assets::text::word_wrap(text, width, widths)` measures in cells
+  (`text_width`, a wide character two). Latin text breaks at spaces as
+  before, and a word wider than a line is still cut. Inside a word (text
+  between spaces), a line may break between two characters when either
+  is wide in `widths` or Japanese or Chinese by its code point (CJK
+  punctuation, kana, ideographs, fullwidth forms), so text breaks the
+  same before an atlas has its wide glyphs. It never breaks before
+  `、。，．・：；？！）」』】〕ー`, the small kana or ASCII closing
+  punctuation, never after `（「『【〔` or an ASCII opening bracket, and
+  never beside a no-break space. A run of Latin letters or digits is
+  kept whole, since a break needs a wide or Japanese character on one
+  side. Where the rules leave no break that fits, the piece is cut at the
+  width.
+- The text box pages through it: `TextBox::new` takes the width table
+  (`ctx.widths()`), and so do the toy, `hello-grid` and the
+  `shuyi-dialogue` skill's example.
+- `lines_at_longest` passes its `widths` to `word_wrap` and no longer
+  writes a wide character as `WW`, so the check and the box break at the
+  same places. A token is still written as that many `W`s (an unbroken
+  Latin run, the worst case). The dialogue test that paged
+  space-separated runs of `あ` was rewritten around a Latin run, because
+  those runs now break between characters.
+- **The key-name join:** `shuyi_ui::text::fill` turns each space of what
+  `lookup` gives (a key's name, `Left Shift`) into `NO_BREAK_SPACE`
+  (U+00A0, `shuyi_assets::text::NO_BREAK_SPACE`). Values from `args` are
+  left alone. `word_wrap` never breaks at it or beside it, and
+  `GlyphBuffer::print` writes it as a space, so every renderer draws a
+  space.
+- `en/ui.ron`: a key's value may be `(text: …, max_cells: …, note: …)`,
+  both optional (`max_cells` at least 1, a note not empty), read with
+  `implicit_some`. `english_and_places_from_source` returns the text and
+  the places; `english_from_source` keeps its signature and drops them.
+  `from_files` gives them to `Lang` (`Lang::with_places`), and
+  `Lang::place`, `Lang::max_cells` and `Lang::note` read them
+  (`crates/assets/src/lang/places.rs`). A pack's entry can't set either,
+  because `Entry` denies unknown fields (tested).
+- `lang-status <code>`: the screen-text line counts `N too long`, and a
+  `too long:` list follows the missing and stale lists: key, its width in
+  cells, its place's `max_cells`, and the text (`Lang::overflow`). The
+  report is measured with the game's font atlas (`GameTools::font_atlas`)
+  when it gives one, else narrow. Every entry is measured, stale ones too,
+  as written (placeholders unfilled). It fails no gate.
+
+**Either-order clauses:** 2239, 2347, 2348, 2352 and 2390 were not done,
+so I took each one's *if not* branch: the overflow list measures the raw
+text, the join is in today's `fill` loop, and the engine's own keys get
+no `max_cells` (there is no `crates/ui/lang/` yet). Each of those tickets'
+clauses now says what 2302 left for it.
+
+**Deviations:**
+
+- The `English` asset kind (a `blank` or `grid` game's `files/en.ron`,
+  read by `BasicGame`) still takes text values only. `max_cells` is read
+  from the languages folder's `lang/en/ui.ron`, as the ticket says, and a
+  basic game has no packs to measure.
+- `lang-status`'s report takes the width table, so its signature changed
+  (below).
+- The `hello-grid` dialogue was not checked through the MCP session
+  tools: it has only English text, which wraps exactly as before (the
+  existing text box tests and snapshots pass unchanged).
+
+**Follow-ups:** none new. Chinese rules stay with 2303, the runtime walk
+for cut text with 2353, and PO notes with 2227.
+
+**For the game:** game#0237's PR moves the pin and passes `ctx.widths()`
+to `TextBox::new` and `word_wrap`.
+
+Book: none needed beyond the change to `games-and-screens.md` (word
+wrap in cells, the Japanese rules and the key-name join).
+
+Breaking: shuyi-assets, shuyi-ui: `text::word_wrap` (re-exported as `ui::widgets::word_wrap`): takes the width table; a game passes `ctx.widths()` (or `&CellWidths::NARROW`).
+
+```migration
+since: 0.1.0
+what: word_wrap measures in cells and takes the width table, so a wide character counts as two and Japanese breaks between characters.
+old: 'word_wrap(text: &str, width: usize) -> Vec<String>'
+new: 'word_wrap(text: &str, width: usize, widths: &CellWidths) -> Vec<String>'
+before: |
+  let lines = word_wrap(&text, 30);
+after: |
+  let lines = word_wrap(&text, 30, ctx.widths());
+find: ["word_wrap(&text, 30)"]
+```
+
+Breaking: shuyi-ui: `dialogue::text_box::TextBox::new`: takes the width table; a game passes `ctx.widths()`.
+
+```migration
+since: 0.1.0
+what: A text box wraps its text in cells, so it takes the width table.
+old: 'TextBox::new(text: &str, width: usize, per_page: usize)'
+new: 'TextBox::new(text: &str, width: usize, per_page: usize, widths: &CellWidths)'
+before: |
+  let text = TextBox::new(&line, WIDTH, LINES);
+after: |
+  let text = TextBox::new(&line, WIDTH, LINES, ctx.widths());
+find: ["TextBox::new(&line, WIDTH, LINES)"]
+```
+
+Breaking: shuyi-cli: `lang_status::report`: takes the width table after the variants; a caller passes the atlas's (`CellWidths::of`) or `&CellWidths::NARROW`.
+
+```migration
+since: 0.1.0
+what: lang-status's report measures screen text against its places, so it takes the width table.
+old: 'lang_status::report(lang, variants, code, options)'
+new: 'lang_status::report(lang, variants, widths, code, options)'
+before: |
+  let said = report(&lang, &variants, "ja", &Options::default())?;
+after: |
+  let said = report(&lang, &variants, &CellWidths::NARROW, "ja", &Options::default())?;
+find: ["report(&lang, &variants, \"ja\""]
+```

@@ -285,6 +285,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 3086 | A desktop launch's seed differs from launch to launch, kept in its session record |
 | 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
+| 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
+| 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
 | 2520 | `shuyi crash` and `replay --crash`, with the debug file kept for each release |
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |

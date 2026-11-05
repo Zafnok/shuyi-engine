@@ -62,6 +62,7 @@ use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::audio::{AudioFrame, SoundRequest};
+use crate::crash::{self, LastCrash};
 use crate::platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
 use crate::session::{Recorder, SessionRecord};
 use crate::text_input::TextInput;
@@ -172,6 +173,11 @@ pub struct Setup {
     /// Whether the game waits for a first key press (browsers block sound
     /// until one): [`KeyPrompt::Waiting`] unless the backend says not.
     pub key_prompt: KeyPrompt,
+    /// The last crash, if the game hasn't heard of it: the newest report in
+    /// [`storage`](Self::storage) newer than the last one offered
+    /// ([`crash::offer_last_crash`]), so each is offered once. What the
+    /// player sees of it, if anything, is the game's to word.
+    pub last_crash: Option<LastCrash>,
 }
 
 impl Setup {
@@ -214,6 +220,11 @@ pub type SystemHook<G> = fn(&mut Game<G>, SystemEvent);
 /// The game's own state hash, for the frame's hash ([`Start::state_hash`]).
 pub type GameHash<G> = fn(&Game<G>) -> Option<StateHash>;
 
+/// The game's record of its play as text, in the format its tools' `replay`
+/// reads, for a crash report ([`Start::crash_record`]); `None` when it has
+/// none (no stage is open).
+pub type CrashRecord<G> = fn(&Game<G>) -> Option<String>;
+
 /// How a game starts: the card shown while it loads, the load, where its
 /// look is and its hook for the system's events. Built with [`Start::new`],
 /// its optional parts set by the methods named for them (ADR-0039).
@@ -231,6 +242,8 @@ pub struct Start<G: GameData> {
     pub made: Option<Made>,
     /// The game's own state hash, in each frame's hash.
     pub state_hash: Option<GameHash<G>>,
+    /// The game's record of its play, for a crash report.
+    pub crash_record: Option<CrashRecord<G>>,
 }
 
 impl<G: GameData> Start<G> {
@@ -248,6 +261,7 @@ impl<G: GameData> Start<G> {
             on_system: None,
             made: None,
             state_hash: None,
+            crash_record: None,
         }
     }
 
@@ -275,6 +289,16 @@ impl<G: GameData> Start<G> {
     #[must_use]
     pub fn state_hash(mut self, hash: GameHash<G>) -> Self {
         self.state_hash = Some(hash);
+        self
+    }
+
+    /// The same start with the game's record of its play, which a backend
+    /// that catches a panic adds to its crash report
+    /// ([`App::crash_record`]). A record should not hold what the player
+    /// typed (a name).
+    #[must_use]
+    pub fn crash_record(mut self, hook: CrashRecord<G>) -> Self {
+        self.crash_record = Some(hook);
         self
     }
 
@@ -509,6 +533,8 @@ pub struct App<G: GameData> {
     made: Option<Made>,
     /// The game's own state hash ([`Start::state_hash`]).
     game_hash: Option<GameHash<G>>,
+    /// The game's record of its play ([`Start::crash_record`]).
+    crash_record: Option<CrashRecord<G>>,
     /// The run being recorded, once [`record`](Self::record) says.
     recorder: Option<Box<Recorder>>,
     frame_hashes: FrameHashes,
@@ -526,6 +552,7 @@ impl<G: GameData> App<G> {
             on_system,
             made,
             state_hash,
+            crash_record,
         } = start;
         let mut app = Self::in_phase(
             Phase::Loading {
@@ -538,6 +565,7 @@ impl<G: GameData> App<G> {
         );
         app.made = made;
         app.game_hash = state_hash;
+        app.crash_record = crash_record;
         app
     }
 
@@ -580,6 +608,7 @@ impl<G: GameData> App<G> {
             pacing: None,
             made: None,
             game_hash: None,
+            crash_record: None,
             recorder: None,
             frame_hashes: FrameHashes::default(),
             ticks: 0,
@@ -968,17 +997,20 @@ impl<G: GameData> App<G> {
     /// made, or why it couldn't. The game prints wide what its look's font
     /// atlas has wide ([`Game::set_widths`]).
     fn load(&mut self, platform: &mut impl Platform, load: Load<G>, now: Millis) {
-        let setup = Setup {
+        let mut setup = Setup {
             display: platform.display(),
             storage: platform.storage(),
             seed: mix(now.0),
             voice_manifest: None,
             platform: platform.facts(),
             key_prompt: KeyPrompt::Waiting,
+            last_crash: None,
         };
         if let Some(recorder) = &mut self.recorder {
             recorder.handed_over(setup.display, setup.storage.as_ref(), &setup.platform);
         }
+        // After the record took the storage: a playback offers it again.
+        setup.last_crash = crash::offer_last_crash(setup.storage.as_mut());
         drain(platform, &mut self.lists.input);
         let tagged = enter(self.perf.scopes, "load");
         let loading = self.perf.clock.as_mut().map(PerfClock::read);
@@ -1079,6 +1111,13 @@ impl<G: GameData> App<G> {
             Phase::Running(game) => Some(*game),
             Phase::Loading { .. } | Phase::Failed(_) => None,
         }
+    }
+
+    /// The game's record of its play ([`Start::crash_record`]), for a crash
+    /// report: `None` while it loads, after a failed load, or if it has no
+    /// record.
+    pub fn crash_record(&self) -> Option<String> {
+        (self.crash_record?)(self.game()?)
     }
 
     /// Whether the game hasn't loaded yet.

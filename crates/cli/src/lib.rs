@@ -455,8 +455,8 @@ fn check_skills(cwd: &Path, args: &[String], command: &str) -> u8 {
     }
 }
 
-/// Prints what a language pack lacks. Missing and stale keys are not a
-/// failure: the exit code is 0 unless the game's languages don't load (1)
+/// Prints what a language pack lacks, and its screen text too long for
+/// its place. None of it is a failure: the exit code is 0 unless the game's languages don't load (1)
 /// or there is no such pack (2).
 fn lang_status(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
     let (code, options) = match lang_status::parse_args(args) {
@@ -477,7 +477,12 @@ fn lang_status(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
             return 1;
         }
     };
-    match lang_status::report(&lang.lang, &lang.variants, &code, &options) {
+    // The screen text is measured as the game's atlas draws it.
+    let widths = match game.font_atlas() {
+        Some(Ok(atlas)) => shuyi_assets::font::CellWidths::of(&atlas),
+        _ => shuyi_assets::font::CellWidths::NARROW,
+    };
+    match lang_status::report(&lang.lang, &lang.variants, &widths, &code, &options) {
         Ok(report) => {
             print!("{report}");
             0

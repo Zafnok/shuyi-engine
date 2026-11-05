@@ -188,11 +188,12 @@ Record the answers with the `ask-nick` skill in `docs/decisions.md`.
     plural message in each engine pack, with the categories of the
     pack's language; if not, 2348 makes it one in each engine pack, as
     its clause says (the upkeep test holds its PR to that).
-  - **2302** (`max_cells`): if it is done, give the engine's English
-    keys a `max_cells` where their place on the engine's screens has a
-    fixed width, and the upkeep test also fails on an engine pack entry
-    wider than its key's `max_cells`; if not, the snapshots are the
-    check, and 2302 adds both (its clause says so).
+  - **From 2302 (done):** give the engine's English keys a `max_cells`
+    where their place on the engine's screens has a fixed width (the
+    `(text: …, max_cells: …)` form, read by
+    `english_and_places_from_source`), and make the upkeep test also
+    fail on an engine pack entry wider than its key's `max_cells`
+    (`Lang::overflow`).
   - **1132** (community files): if it is done, add Nick's answer to
     question 4 to its `CONTRIBUTING.md`; if not, 1132 writes it there
     from `docs/decisions.md`, as its clause says.
