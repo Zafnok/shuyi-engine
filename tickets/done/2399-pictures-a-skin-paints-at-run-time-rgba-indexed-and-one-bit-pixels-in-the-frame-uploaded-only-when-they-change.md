@@ -262,3 +262,7 @@ after: |
       _ => {}
   }
 ```
+
+The game matches on `Item` in `crates/ui/src/map_view/sprite.rs` and
+`crates/ui/src/map_view/sprite/units.rs` (its `main` at `f62e7480`): the
+game's PR that moves its pin past this one adds the `_` arms.
