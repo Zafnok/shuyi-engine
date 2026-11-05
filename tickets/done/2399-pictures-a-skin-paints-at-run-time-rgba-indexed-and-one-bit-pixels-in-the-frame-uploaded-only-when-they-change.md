@@ -187,7 +187,7 @@ None.
 
 What was done:
 
-- [ADR-0077](../../docs/adr/0077-pictures-a-skin-paints-at-run-time-kept-in-the-frames-buffer-with-a-revision-rgba-indexed-or-one-bit-and-dithered-at-paint-time.md):
+- [ADR-0078](../../docs/adr/0078-pictures-a-skin-paints-at-run-time-kept-in-the-frames-buffer-with-a-revision-rgba-indexed-or-one-bit-and-dithered-at-paint-time.md):
   the pictures live in the frame's own `GlyphBuffer` (its `PaintedTable`),
   which `Game` keeps between frames, so no painter's signature changed.
   A skin reaches it with `buf.pictures_mut()`. `blit` and `set_backdrop`

@@ -1,5 +1,5 @@
 //! Pictures a skin paints at run time through the Harness (ticket 2399,
-//! ADR-0077): the toy's plasma stage paints an RGBA, an indexed and a
+//! ADR-0078): the toy's plasma stage paints an RGBA, an indexed and a
 //! one-bit picture from its step count. What happened is read from the
 //! stage's view and the snapshot's lines, never from pixels: each picture
 //! is one line, its revision moving only when the plasma does.

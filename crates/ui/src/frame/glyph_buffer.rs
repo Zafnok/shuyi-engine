@@ -333,7 +333,7 @@ pub enum Item {
     Rect(Overlay),
     /// A picture from an image file.
     Sprite(Sprite),
-    /// A picture a skin painted at run time (ADR-0077), from the frame's
+    /// A picture a skin painted at run time (ADR-0078), from the frame's
     /// [`PaintedTable`].
     Painted(PaintedSprite),
 }
@@ -475,7 +475,7 @@ pub struct GlyphBuffer {
     backdrop: Option<Backdrop>,
     /// Which characters take two cells.
     widths: CellWidths,
-    /// The pictures skins paint (ADR-0077): kept when the frame is drawn
+    /// The pictures skins paint (ADR-0078): kept when the frame is drawn
     /// again, so the frame's owner keeps them between frames.
     pictures: PaintedTable,
 }
@@ -560,7 +560,7 @@ impl GlyphBuffer {
             .map(|clip| Backdrop::new(scene, self.spec, clip, origin_px, zoom));
     }
 
-    /// The pictures skins paint (ADR-0077), which its painted items show.
+    /// The pictures skins paint (ADR-0078), which its painted items show.
     pub fn pictures(&self) -> &PaintedTable {
         &self.pictures
     }
@@ -660,7 +660,7 @@ impl GlyphBuffer {
     }
 
     /// Copies into this buffer's pictures those that `other`'s painted
-    /// items show (ADR-0077 §3).
+    /// items show (ADR-0078 §3).
     fn absorb_pictures(&mut self, other: &GlyphBuffer) {
         for item in &other.items {
             if let Item::Painted(p) = item

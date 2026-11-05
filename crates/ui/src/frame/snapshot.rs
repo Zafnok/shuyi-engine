@@ -34,7 +34,7 @@
 //! ` shade=grey:red,green,blue` (how its pixels are coloured, game ADR-0049; a
 //! shade is a light's numbers in thousandths, game ADR-0058) and
 //! ` clip=x,y wxh` (not all of `dest` is drawn). A painted picture
-//! (ADR-0077) is `layer  painted x,y wxh  id WxH kind rN hash`: where it is
+//! (ADR-0078) is `layer  painted x,y wxh  id WxH kind rN hash`: where it is
 //! drawn (`dest`), the picture's id, its size, `rgba`, `indexed` or
 //! `one-bit`, its revision and the FNV hash of its pixels, palette and mask
 //! (sixteen hex digits), so a test sees it changed without reading it;

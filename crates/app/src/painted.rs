@@ -1,4 +1,4 @@
-//! The textures of the pictures a skin paints at run time (ADR-0077),
+//! The textures of the pictures a skin paints at run time (ADR-0078),
 //! without a window: one per [`PaintedId`], made the first frame the
 //! picture is drawn, updated only in a frame whose revision differs from
 //! the one uploaded (made again when its size changed), and dropped at the

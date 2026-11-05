@@ -4,7 +4,7 @@
 //! high bits into the low ones. Each step is a bijection of the hash so
 //! far, so any one word changed changes it. Every integer is a `u64`,
 //! whatever the platform. A frame's snapshot hashes a painted picture with
-//! it too (ADR-0077).
+//! it too (ADR-0078).
 
 /// The 64-bit FNV-1a offset basis: where a hash starts.
 pub(crate) const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;

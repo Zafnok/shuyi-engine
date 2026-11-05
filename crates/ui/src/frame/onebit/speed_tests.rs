@@ -204,7 +204,7 @@ enum Thing {
     /// in a colour of [`colors`] after it), the layer, and which of
     /// [`PICTURES`] it is.
     Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool, usize),
-    /// A painted picture (ADR-0077): which of [`PAINTED`] it is, painted
+    /// A painted picture (ADR-0078): which of [`PAINTED`] it is, painted
     /// from a seed, then `src`, `dest`, `clip`, brightness and the layer.
     Painted(usize, u32, Rect, Rect, Rect, u8, bool),
 }

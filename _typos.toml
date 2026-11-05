@@ -1,6 +1,6 @@
 [default]
 # A 64-bit hash as sixteen hex digits, as snapshots print one (a painted
-# picture's, ADR-0077): its letters are no word.
+# picture's, ADR-0078): its letters are no word.
 extend-ignore-re = ['\b[0-9a-f]{16}\b']
 
 [default.extend-words]

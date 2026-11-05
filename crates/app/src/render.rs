@@ -7,7 +7,7 @@
 //! colours (game ADR-0049). A buffer's backdrop (game ADR-0048), a second buffer
 //! panned and zoomed, is drawn the same way inside its window, behind the
 //! console. A wide glyph (its continuation cell after it) is one quad over
-//! both its cells, as the raster paints it. A painted picture (ADR-0077) is
+//! both its cells, as the raster paints it. A painted picture (ADR-0078) is
 //! a texture of its own, uploaded only in a frame whose revision moved
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 
@@ -388,7 +388,7 @@ impl Renderer {
     /// Draws the visible part of `painted` (its `clip`) at `(x, y)`, `size`
     /// big, from its picture's texture, uploaded only when the picture's
     /// revision moved; a [`MISSING_COLOR`] rectangle if `pictures` lacks
-    /// it (ADR-0077).
+    /// it (ADR-0078).
     fn draw_painted(
         &mut self,
         painted: &PaintedSprite,

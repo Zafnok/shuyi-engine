@@ -1,4 +1,4 @@
-//! Pictures a skin paints at run time (ADR-0077): a [`Painted`] picture
+//! Pictures a skin paints at run time (ADR-0078): a [`Painted`] picture
 //! whose pixels the game makes while it runs (a decoded video frame, a
 //! software renderer's screen, a plasma), kept between frames in the
 //! frame's [`PaintedTable`] and placed with a [`PaintedSprite`].
@@ -105,7 +105,7 @@ impl PaintedKind {
     }
 }
 
-/// A picture a skin paints at run time (ADR-0077). Its fields keep their
+/// A picture a skin paints at run time (ADR-0078). Its fields keep their
 /// sizes, so they are read and written through methods; the ones that
 /// write move its [revision](Self::revision).
 #[derive(Clone, PartialEq, Eq)]
@@ -327,7 +327,7 @@ impl fmt::Debug for Painted {
     }
 }
 
-/// Where a painted picture is drawn (ADR-0077): part of it, `src`,
+/// Where a painted picture is drawn (ADR-0078): part of it, `src`,
 /// stretched to `dest` with nearest-pixel sampling, never smoothed.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 #[non_exhaustive]
@@ -372,7 +372,7 @@ impl PaintedSprite {
     }
 }
 
-/// The painted pictures of a frame, by id (ADR-0077). A [`GlyphBuffer`]
+/// The painted pictures of a frame, by id (ADR-0078). A [`GlyphBuffer`]
 /// holds one ([`GlyphBuffer::pictures_mut`]).
 ///
 /// [`GlyphBuffer`]: crate::frame::glyph_buffer::GlyphBuffer
@@ -457,7 +457,7 @@ impl PaintedTable {
     }
 
     /// Copies `picture` in as `id` as [`update`](Self::update) does: a
-    /// sub-buffer's or a scene's picture coming into the frame (ADR-0077
+    /// sub-buffer's or a scene's picture coming into the frame (ADR-0078
     /// §3), copied only when it differs.
     pub(crate) fn absorb(&mut self, id: PaintedId, picture: &Painted) {
         if !self.get(id).is_some_and(|old| old.same_look(picture)) {

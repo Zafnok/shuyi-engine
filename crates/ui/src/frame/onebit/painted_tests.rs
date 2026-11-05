@@ -1,4 +1,4 @@
-//! Painted pictures on the one-bit target (ADR-0077): a one-bit picture
+//! Painted pictures on the one-bit target (ADR-0078): a one-bit picture
 //! drawn as a sprite, an RGBA or indexed one dithered through the 8 × 8
 //! Bayer order at the screen's pixels. Pictures are text, a row a line:
 //! `#` black, `.` white.
@@ -205,7 +205,7 @@ fn black_and_white(w: u16, h: u16, bits: &[bool]) -> (Painted, Painted) {
 }
 
 proptest! {
-    /// ADR-0077 §7: dithering a picture of only black and white gives its
+    /// ADR-0078 §7: dithering a picture of only black and white gives its
     /// threshold, wherever and at whatever size it is drawn.
     #[test]
     fn a_black_and_white_picture_dithers_to_its_threshold(
@@ -254,7 +254,7 @@ fn hash(frame: &Frame) -> String {
     format!("{:016x}", hasher.finish())
 }
 
-/// ADR-0077 §7: an RGBA and an indexed picture dither the same on every
+/// ADR-0078 §7: an RGBA and an indexed picture dither the same on every
 /// platform: the same frames on native and on wasm32 (CI's `determinism`
 /// job runs this there).
 #[test]

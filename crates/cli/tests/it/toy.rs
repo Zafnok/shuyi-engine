@@ -67,7 +67,7 @@ fn frame_png_renders_the_toy() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
-/// The plasma stage's pictures a skin paints at run time (ADR-0077), as
+/// The plasma stage's pictures a skin paints at run time (ADR-0078), as
 /// `frame-png` paints them for the desktop and for the Playdate, black and
 /// white: golden pictures (the `.png` beside each `.snap`).
 #[test]

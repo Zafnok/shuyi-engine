@@ -8,7 +8,7 @@
 //!
 //! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
 //! pixel at whole scales: the clear colour, cell backgrounds, `Under`
-//! items in order (a painted picture, ADR-0077, from the frame's table,
+//! items in order (a painted picture, ADR-0078, from the frame's table,
 //! as a sprite of the same pixels), glyphs tinted with their fg (a wide one over its two
 //! cells, a wide one without its continuation as the fallback), `Over`
 //! items in order;
@@ -362,7 +362,7 @@ impl Painter {
 }
 
 /// Draws the visible part of `painted` into `dest` from its picture in
-/// `pictures`, as a sprite of the same pixels draws (ADR-0077): or a
+/// `pictures`, as a sprite of the same pixels draws (ADR-0078): or a
 /// `MISSING_COLOR` rectangle if the table lacks it.
 fn draw_painted(
     out: &mut Image,

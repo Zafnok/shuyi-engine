@@ -17,7 +17,10 @@
 //! (a key may come up while suspended, unheard); one still down counts
 //! once it is pressed again. On [`SystemEvent::FocusLost`] the game lets go
 //! of what is held at once ([`Game::forget_held_input`]), for the same
-//! reason.
+//! reason, and until [`SystemEvent::FocusGained`] `App` applies the game's
+//! [`Background`] policy (ADR-0077): paused, the game isn't updated and its
+//! last frame is shown again, and the time away is forgotten as after a
+//! resume; muted, its audio goes to the device at volume 0.
 //!
 //! `App` keeps the log (ADR-0030): at the end of every frame it takes the
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
@@ -53,6 +56,7 @@ use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRin
 use shuyi_ui::perf::{
     FrameRecord, HeapSnapshot, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass,
 };
+use shuyi_ui::settings::{Background, BackgroundAudio, GameSettings};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInputEvent};
@@ -203,7 +207,8 @@ pub type LookOf<G> = fn(&G) -> Look<'_>;
 /// [`QuitRequested`](SystemEvent::QuitRequested) and
 /// [`LowBattery`](SystemEvent::LowBattery) it is where the game saves what
 /// it hasn't; on [`FocusLost`](SystemEvent::FocusLost), whose held input
-/// `App` has let go of, it may pause.
+/// `App` has let go of and whose [`GameSettings::BACKGROUND`] it applies,
+/// it may do more (open a pause menu).
 pub type SystemHook<G> = fn(&mut Game<G>, SystemEvent);
 
 /// The game's own state hash, for the frame's hash ([`Start::state_hash`]).
@@ -480,6 +485,9 @@ pub struct App<G: GameData> {
     clock: Clock,
     suspended: bool,
     focused: bool,
+    /// What the game does without focus: its settings'
+    /// [`GameSettings::BACKGROUND`].
+    background: Background,
     quit: bool,
     lists: Lists<G::Voice>,
     /// Frames run: 0 before the first.
@@ -554,6 +562,7 @@ impl<G: GameData> App<G> {
             clock: Clock::default(),
             suspended: false,
             focused: true,
+            background: <G::Settings as GameSettings>::BACKGROUND,
             quit: false,
             lists: Lists {
                 input: Vec::new(),
@@ -744,7 +753,7 @@ impl<G: GameData> App<G> {
     fn begin_perf(&mut self) {
         self.perf.start = None;
         self.perf.paint_us = None;
-        if self.suspended || self.quit {
+        if self.suspended || self.quit || self.is_paused() {
             return;
         }
         if let Phase::Running(game) = &mut self.phase
@@ -848,7 +857,13 @@ impl<G: GameData> App<G> {
                     game.forget_held_input();
                 }
             }
-            SystemEvent::FocusGained => self.focused = true,
+            SystemEvent::FocusGained => {
+                if self.is_paused() {
+                    // As after a resume: the time away makes no steps.
+                    self.clock.restart();
+                }
+                self.focused = true;
+            }
             SystemEvent::QuitRequested => self.quit = true,
             SystemEvent::ToggleFullscreen => {
                 if let Some(game) = self.game_mut() {
@@ -878,6 +893,8 @@ impl<G: GameData> App<G> {
             return FrameOutcome::Continue;
         }
         let mut loading = None;
+        let paused = self.is_paused();
+        let muted = self.is_muted();
         match &mut self.phase {
             Phase::Loading { card, load, shown } => {
                 if *shown && !self.quit {
@@ -887,6 +904,15 @@ impl<G: GameData> App<G> {
                     platform.present(&Frame::new(Show::Card(card)));
                     drain(platform, &mut self.lists.input);
                 }
+            }
+            Phase::Running(game) if paused => {
+                // Paused without focus: no update, its last frame again,
+                // and in silence if it is muted too.
+                drain(platform, &mut self.lists.input);
+                if muted {
+                    platform.audio().play(&silent(&[], &[]), elapsed.now);
+                }
+                present_tagged(platform, game, self.look);
             }
             Phase::Running(game) if !self.quit => {
                 let recording = self.recorder.as_ref().is_some_and(|r| r.is_on());
@@ -907,7 +933,7 @@ impl<G: GameData> App<G> {
                 if let Some(recorder) = recorder.as_deref_mut().filter(|_| told) {
                     recorder.reloaded(self.frames);
                 }
-                step(platform, game, &mut self.lists, elapsed, recorder);
+                step(platform, game, &mut self.lists, elapsed, muted, recorder);
                 self.ticks = elapsed.ticks;
                 if game.quit_requested() {
                     platform.audio().stop_all();
@@ -1086,6 +1112,22 @@ impl<G: GameData> App<G> {
         self.focused
     }
 
+    /// Whether the game is paused because its window has no focus and its
+    /// [`GameSettings::BACKGROUND`] pauses it: it runs, hasn't quit, and
+    /// isn't updated.
+    pub fn is_paused(&self) -> bool {
+        !self.focused
+            && self.background.pause
+            && !self.quit
+            && matches!(self.phase, Phase::Running(_))
+    }
+
+    /// Whether the game's audio goes to the device at volume 0: its window
+    /// has no focus and its [`GameSettings::BACKGROUND`] mutes it.
+    fn is_muted(&self) -> bool {
+        !self.focused && self.background.audio == BackgroundAudio::Mute
+    }
+
     /// Whether the game has quit.
     pub fn has_quit(&self) -> bool {
         self.quit
@@ -1208,14 +1250,27 @@ fn tell_changed<G: GameData>(
     told
 }
 
+/// `requests` and `music` at volume 0: a muted frame's audio.
+fn silent<'a>(requests: &'a [SoundRequest], music: &'a [MusicCommand]) -> AudioFrame<'a> {
+    AudioFrame {
+        requests,
+        music,
+        music_volume: 0.0,
+        sound_volume: 0.0,
+        voice_volume: 0.0,
+    }
+}
+
 /// One frame of the running game: the input, the system keyboard's
 /// answer, the music sounding and the steps due go in; the update runs;
-/// its audio goes to the device and a keyboard it asked for opens.
+/// its audio goes to the device, at volume 0 if `muted`, and a keyboard
+/// it asked for opens.
 fn step<G: GameData>(
     platform: &mut impl Platform,
     game: &mut Game<G>,
     lists: &mut Lists<G::Voice>,
     elapsed: Elapsed,
+    muted: bool,
     mut recorder: Option<&mut Recorder>,
 ) {
     lists.input.clear();
@@ -1249,12 +1304,16 @@ fn step<G: GameData>(
     lists.sounds.clear();
     let sounds = lists.audio.iter().filter_map(SoundRequest::from_request);
     lists.sounds.extend(sounds);
-    let audio = AudioFrame {
-        requests: &lists.sounds,
-        music: &lists.music,
-        music_volume,
-        sound_volume,
-        voice_volume,
+    let audio = if muted {
+        silent(&lists.sounds, &lists.music)
+    } else {
+        AudioFrame {
+            requests: &lists.sounds,
+            music: &lists.music,
+            music_volume,
+            sound_volume,
+            voice_volume,
+        }
     };
     platform.audio().play(&audio, elapsed.now);
     let keyboard = &mut game.ctx_mut().system_keyboard;

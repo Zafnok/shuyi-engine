@@ -14,7 +14,7 @@
 //! - rectangles and sprites in both layers; sprites in every [`Paint`], at
 //!   opacity 255 and 128, at brightness 255 and 102, mirrored, cut by
 //!   their `clip`, and one whose image is missing;
-//! - painted pictures (ADR-0077) of every kind, RGBA (some pixels clear
+//! - painted pictures (ADR-0078) of every kind, RGBA (some pixels clear
 //!   or half clear), indexed and one-bit (with a mask and without), in
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;

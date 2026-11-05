@@ -1,4 +1,4 @@
-//! The toy game's plasma stage (ticket 2399, ADR-0077): three pictures a
+//! The toy game's plasma stage (ticket 2399, ADR-0078): three pictures a
 //! skin paints at run time from the step count, each 64 × 48 and drawn
 //! twice its size: a plasma in RGBA, the same plasma's levels through a
 //! palette that turns with the steps (indexed), and its bright half in

@@ -1,4 +1,4 @@
-# ADR-0077: Pictures a skin paints at run time: kept in the frame's buffer with a revision, RGBA, indexed or one-bit, and dithered at paint time
+# ADR-0078: Pictures a skin paints at run time: kept in the frame's buffer with a revision, RGBA, indexed or one-bit, and dithered at paint time
 
 - **Status:** Accepted
 - **Date:** 2026-11-04

@@ -25,7 +25,7 @@
 //! halves as two cells),
 //! `Over` items, and last the [`Ink::Invert`] rectangles, which flip what
 //! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
-//! *One-bit pictures*). A painted picture (ADR-0077) is looked up in the
+//! *One-bit pictures*). A painted picture (ADR-0078) is looked up in the
 //! frame's table: a one-bit one is drawn as a one-bit sprite, an RGBA or
 //! indexed one dithered as it is drawn ([`dither_row`]). Nothing here
 //! allocates.
@@ -1246,7 +1246,7 @@ pub(crate) fn darken(light: u8, brightness: u8) -> u8 {
 /// The eight pixels of a frame byte on screen row `y` (a byte's first
 /// pixel is always at a multiple of 8 across) whose brightnesses are
 /// `light` (0 black to 255 white, the first the leftmost), dithered as
-/// ADR-0077 says: pixel `i` is white where `4 × BAYER[y % 8][i] + 2 ≥ 255 −
+/// ADR-0078 says: pixel `i` is white where `4 × BAYER[y % 8][i] + 2 ≥ 255 −
 /// light[i]` ([`shuyi_assets::onebit::BAYER`]), the Bayer dither of
 /// `shuyi bake` at the screen's pixels. Its highest bit is the leftmost
 /// pixel, a set bit white. Integers only: the same on every platform.
@@ -1481,7 +1481,7 @@ fn draw_sprite<I: Images, S: Shades>(
 }
 
 /// Draws a painted picture's item at `at` from the frame's table
-/// (ADR-0077): a one-bit picture as a one-bit sprite of the same pixels,
+/// (ADR-0078): a one-bit picture as a one-bit sprite of the same pixels,
 /// an RGBA or indexed one dithered ([`draw_dithered`]); a grey rectangle
 /// if the table lacks it.
 fn draw_painted<I: Images, S: Shades>(
@@ -1513,7 +1513,7 @@ fn draw_painted<I: Images, S: Shades>(
 }
 
 /// Draws the screen pixels `shown` of an RGBA or indexed `picture` placed
-/// as `placed` at `at`, dithered (ADR-0077): each takes the picture's
+/// as `placed` at `at`, dithered (ADR-0078): each takes the picture's
 /// pixel under its centre, as a sprite's do; one less than half opaque
 /// isn't drawn; the others' brightnesses, darkened by the item's, become
 /// black and white a frame byte at a time ([`dither_row`]).

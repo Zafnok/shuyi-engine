@@ -595,7 +595,7 @@ fn frame_with(item: impl FnOnce(&mut GlyphBuffer)) -> GlyphBuffer {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]
 
-    /// ADR-0077 §7: a painted picture is drawn as a sprite of the same
+    /// ADR-0078 §7: a painted picture is drawn as a sprite of the same
     /// pixels, alpha and all, at any size up to the screen's and any
     /// place and scale.
     #[test]

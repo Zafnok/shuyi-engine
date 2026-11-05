@@ -4,7 +4,7 @@
 //!
 //! The toy has no font, so its pictures draw every letter as a box, and
 //! its images (sizes only) as the missing colour. `--plasma` starts it on
-//! its plasma stage, whose skin paints pictures at run time (ADR-0077);
+//! its plasma stage, whose skin paints pictures at run time (ADR-0078);
 //! `--target playdate` draws the frame on the Playdate's console, black
 //! and white. Its session (`run`)
 //! measures every frame with a fake clock ([`PerfClock::fake`]) and reads a
