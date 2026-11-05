@@ -111,7 +111,7 @@ tickets, in order:
 | 3080 | Web export uses clean staging and rejects stale files before packaging a public build |
 | 3085 | Exports refuse the live link through resolved defaults, aliases and dependency features, before a build |
 | 3066 | The web build's vendored scripts point at their notices: a header line in `dist`, and a `rel="license"` link on the page |
-| 2398 | Stop music with a fade chosen per request, preserving the default stop (game#1080 adopts it afterward) |
+| 2398 | Stop music with a fade chosen per request, preserving the default stop (game#1087 adopts it afterward) |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
 | 2777 | New games build for the web as they are: a `web` part, a `build.rs` and the wasm target in the templates, so the quick start ends in the browser |
