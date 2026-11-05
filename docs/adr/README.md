@@ -90,7 +90,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0075](0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md) | In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence | Accepted |
 | [0076](0076-focus-from-miniquads-minimize-and-restore-held-input-let-go-on-focus-loss-and-pads-ignored-without-focus.md) | Focus from miniquad's minimize and restore, held input let go on focus loss, and pads ignored without focus | Accepted; extends ADR-0024 §5; extended by ADR-0077 (background policy) |
 | [0077](0077-a-background-policy-in-the-games-settings-paused-or-muted-without-focus-applied-by-app.md) | A background policy in the game's settings, paused or muted without focus, applied by App | Accepted; extends ADR-0076 |
-| [0076](0076-focus-from-miniquads-minimize-and-restore-held-input-let-go-on-focus-loss-and-pads-ignored-without-focus.md) | Focus from miniquad's minimize and restore, held input let go on focus loss, and pads ignored without focus | Accepted; extends ADR-0024 §5 |
 | [0078](0078-one-input-script-the-steps-and-their-frames-in-shuyi-platform-for-the-harness-the-contract-the-live-link-and-capture-plans.md) | One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans | Accepted; amends ADR-0047 §7 and ADR-0052 |
 
 Template: [`0000-template.md`](0000-template.md).
