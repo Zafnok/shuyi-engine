@@ -231,3 +231,20 @@ fn a_mark_or_a_read_with_no_report_on_notes_nothing() {
         ]
     );
 }
+
+/// The report's watcher is set once; a refusal after that is of its own
+/// watcher, and one before it is another's.
+#[test]
+fn the_watcher_is_set_once_and_another_set_first_is_refused() {
+    fn taken(watcher: Watcher) -> Result<(), Watcher> {
+        Err(watcher)
+    }
+    let free: fn(Watcher) -> Result<(), Watcher> = |_| Ok(());
+
+    let watching = AtomicBool::new(false);
+    assert!(watch_once(taken, &watching, noted).is_err());
+    assert!(!watching.load(Ordering::Relaxed));
+    assert!(watch_once(free, &watching, noted).is_ok());
+    assert!(watching.load(Ordering::Relaxed));
+    assert!(watch_once(taken, &watching, noted).is_ok(), "its own");
+}

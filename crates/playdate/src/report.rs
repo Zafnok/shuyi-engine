@@ -384,12 +384,9 @@ pub(crate) fn with_reads<R>(f: impl FnOnce(&mut Option<Reads>) -> R) -> R {
     READS.with_borrow_mut(f)
 }
 
-/// Runs `f` on the reads being noted, if any: the bundle's watcher is a
-/// plain function, so they live outside the driver.
+/// On the device the reads are a static of its own.
 #[cfg(all(not(test), shuyi_playdate_sdk))]
-pub(crate) fn with_reads<R>(f: impl FnOnce(&mut Option<Reads>) -> R) -> R {
-    crate::device::with_reads(f)
-}
+pub(crate) use crate::device::with_reads;
 
 /// Off the device no game runs, so there are no reads to note.
 #[cfg(all(not(test), not(shuyi_playdate_sdk)))]
@@ -404,12 +401,22 @@ static WATCHING: AtomicBool = AtomicBool::new(false);
 /// `Ok` if it is, from now or from an earlier report; else the other
 /// watcher, which was set first.
 pub(crate) fn watch_bundle(watcher: Watcher) -> Result<(), Watcher> {
-    match shuyi_assets::bundle::watch(watcher) {
+    watch_once(shuyi_assets::bundle::watch, &WATCHING, watcher)
+}
+
+/// Sets `watcher` with `set`, `watching` saying whether it was set before:
+/// a refusal then is of the report's own watcher, and no refusal.
+fn watch_once(
+    set: fn(Watcher) -> Result<(), Watcher>,
+    watching: &AtomicBool,
+    watcher: Watcher,
+) -> Result<(), Watcher> {
+    match set(watcher) {
         Ok(()) => {
-            WATCHING.store(true, Ordering::Relaxed);
+            watching.store(true, Ordering::Relaxed);
             Ok(())
         }
-        Err(_) if WATCHING.load(Ordering::Relaxed) => Ok(()),
+        Err(_) if watching.load(Ordering::Relaxed) => Ok(()),
         Err(other) => Err(other),
     }
 }

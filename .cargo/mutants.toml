@@ -37,6 +37,11 @@ exclude_globs = [
 timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
+    # The Playdate's `Sdk` keeps two calls additive with default bodies,
+    # `false` and `None`; the fake and the device both answer them, so no
+    # test runs the defaults.
+    "replace Sdk::file_did_underrun -> bool",
+    "replace Sdk::stack_used -> Option<usize>",
     # The default `hold_output` does nothing: its only viable mutant is itself.
     'replace Backend::hold_output with \(\)',
     # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.

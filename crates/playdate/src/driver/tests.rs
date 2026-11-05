@@ -836,3 +836,45 @@ fn a_minute_runs_across_the_counters_wrap() {
         "{minute:?}"
     );
 }
+
+/// The start's times are from `init`, and the load's from the card: on a
+/// timer that stands still within an update and is set between them. The
+/// toy's first frame shows in the update that loads it.
+#[test]
+fn the_start_times_are_from_init_and_the_load_from_the_card() {
+    let sdk = FakeSdk::default();
+    FakeSdk::set_clock_step_us(0);
+    FakeSdk::set_clock_us(1_000_000);
+    let mut driver = Driver::with_report(start(), sdk.clone(), RunReport::new());
+    for us in [1_180_000, 3_400_000] {
+        FakeSdk::set_clock_us(us);
+        driver.update();
+    }
+    let lines = report_lines(&sdk);
+    for line in [
+        "Loading card shown 180 ms after start",
+        "Game data loaded in 2,220 ms",
+        "First frame of the game shown 2,400 ms after start",
+    ] {
+        assert!(lines.contains(&line.to_string()), "{line} in {lines:?}");
+    }
+}
+
+/// A game that quits while it loads shows its card again on each update:
+/// the card's time is said once, the first time.
+#[test]
+fn the_card_is_said_once_though_it_shows_again() {
+    let sdk = FakeSdk::default();
+    let mut driver = Driver::with_report(start(), sdk.clone(), RunReport::new());
+    driver.update();
+    driver.event(SdkEvent::Terminate);
+    for _ in 0..3 {
+        driver.update();
+    }
+    assert_eq!(driver.platform().showing(), crate::display::Showing::Card);
+    let cards = report_lines(&sdk)
+        .iter()
+        .filter(|line| line.starts_with("Loading card"))
+        .count();
+    assert_eq!(cards, 1, "{:?}", report_lines(&sdk));
+}
