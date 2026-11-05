@@ -24,6 +24,9 @@
 //! - [`crash`]: the report a backend's panic hook writes through the
 //!   game's storage, and the last crash the game hears of at its next
 //!   start ([`Setup::last_crash`]);
+//! - [`script`]: the steps of a player's input a tool plays (keys,
+//!   buttons, an action by name, waits), and the one plan of their frames
+//!   that the Harness, the live link and a capture's plans play;
 //! - [`session`]: a run recorded where the platform hands things to [`App`]
 //!   ([`App::record`]), its text, and its playback on the headless backend;
 //! - the live `link`'s wire and server (the `link` feature), which a
@@ -64,8 +67,7 @@ pub mod heap;
 #[cfg(feature = "link")]
 pub mod link;
 pub mod platform;
-#[cfg(any(feature = "link", feature = "capture"))]
-mod press;
+pub mod script;
 pub mod session;
 pub mod text_input;
 pub mod tick;

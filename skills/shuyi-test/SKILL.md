@@ -106,7 +106,7 @@ colours or the frame's text.
    cargo shuyi frame-png stage.png --keys "Enter Right" --scale 2 --seed 3
    ```
 
-   `--keys`, `--pad` and `--wait` are the steps, `--scale` the size,
+   `--keys`, `--pad`, `--act` and `--wait` are the steps, `--scale` the size,
    `--target <id>` a target's display (a one-bit one, such as the
    Playdate's, needs the game's one-bit skin), and the game's own
    options (`--seed`) follow (`cargo shuyi frame-png --help` lists

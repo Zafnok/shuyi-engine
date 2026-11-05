@@ -31,6 +31,7 @@ use crate::game::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
     Tunable,
 };
+use shuyi_platform::script::wait_frames;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PerfRing};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
@@ -90,15 +91,22 @@ impl Session for FakeSession {
                 Step::Keys(keys) | Step::Pad(keys) => {
                     2 * u32::try_from(keys.split_whitespace().count()).unwrap_or(0)
                 }
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                Step::Wait(seconds) => (seconds * 60.0).ceil() as u32,
-                Step::Crank(_) => 1,
+                Step::Act(_) => 2,
+                Step::Wait(seconds) => wait_frames(*seconds),
+                // A step a later engine adds: a frame.
+                _ => 1,
             };
         }
     }
 
     fn idle(&mut self, frames: u32) {
         self.frames += frames;
+    }
+
+    fn actions(&self) -> Vec<String> {
+        ["Up", "Down", "Left", "Right", "Confirm", "Cancel"]
+            .map(str::to_owned)
+            .to_vec()
     }
 
     fn frame_count(&self) -> u32 {

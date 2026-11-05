@@ -71,7 +71,7 @@ None.
   and Playdate budgets (2360 leaves chunk caching to them); if not,
   nothing to do (2360 adds it).
 
-  **Either order with 2566:** if 2566 is done, a scenario's inputs are a
+  **From 2566 (done):** a scenario's inputs are a
   `shuyi_platform::script::Script` (the contract's steps in their serde
   form, `act` among them), never a step type of its own, and its setup
   is the game's start options as `RunInput::start` holds them. The bench
@@ -80,10 +80,7 @@ None.
   one `run --perf` reports (`HeapSummary::peak_bytes`,
   `crates/cli/src/contract/perf.rs`), not a second reading. The
   instruction counts stay this ticket's own: `run --perf` times frames
-  on the clock, which is never a gate here. If not, the inputs are
-  `frame_png::Script`'s steps, played and measured the same way, and
-  2566 moves them onto `script::Step` with the rest (its own clause
-  says so).
+  on the clock, which is never a gate here.
 - **`shuyi bench [--target <id>] [--scenario <name>]`.** It plays each
   scenario through the headless backend (3003), including the conversion
   the target needs. **From 3006 (done):** on a `color: OneBit` target

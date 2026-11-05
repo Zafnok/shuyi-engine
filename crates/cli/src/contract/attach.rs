@@ -6,7 +6,8 @@
 //!
 //! It connects, says hello, plays the steps as a player's input (keys,
 //! controller buttons, an action by name, waits counted in the build's
-//! own frames), lets `frames` more frames pass, then reads the build's
+//! own frames: `shuyi_platform::script`'s steps, `run`'s), lets `frames`
+//! more frames pass, then reads the build's
 //! status, its frame as text, its log from `log_since`, and, if asked,
 //! the window's picture, written to a file. It changes nothing else in
 //! the build. The wire's types are `shuyi_platform::link`'s, the build's
@@ -30,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_platform::link::{
     self, Answer as Line, LogAnswer, PerfAnswer, Phase, Played, Request, Status,
 };
+use shuyi_platform::script::wait_frames;
 use shuyi_ui::log::LOG_LINES;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot};
 
@@ -37,34 +39,13 @@ use super::codes::{self, Code};
 use super::perf::{self, PerfSummary};
 use super::run::MAX_IDLE_FRAMES;
 use super::{Answer, Op};
-use crate::frame_png::{Script, Step};
-
-/// How many frames a build runs in a second, to turn `--wait`'s seconds
-/// into its frames.
-pub const FRAMES_PER_SECOND: f32 = 60.0;
+use crate::frame_png::{self, Step};
 
 /// How long a connection may take.
 const CONNECT: Duration = Duration::from_secs(3);
 
 /// How long an answer may take, a play's waits aside.
 const ANSWER: Duration = Duration::from_secs(10);
-
-/// One step played over the link.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum AttachStep {
-    /// Each key chord pressed and let go in turn (`"Enter Up"`).
-    Keys(String),
-    /// Each controller button pressed and let go in turn (`"South"`,
-    /// `"East+DpadDown"`: those together).
-    Pad(String),
-    /// That many seconds, played as the build's frames at 60 a second.
-    Wait(f32),
-    /// The game's action of that name (`Confirm`), pressed by the
-    /// player's primary key for it, or its primary button if it has no
-    /// key.
-    Act(String),
-}
 
 /// What `attach` reaches and plays.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -77,8 +58,9 @@ pub struct AttachInput {
     pub address: String,
     /// The token the build logged when it started listening.
     pub token: String,
-    /// The steps to play, in order.
-    pub steps: Vec<AttachStep>,
+    /// The steps to play, in order: waits in seconds, played as the build's
+    /// frames at 60 a second, rounded up; no crank.
+    pub steps: Vec<Step>,
     /// Frames to let pass after the steps, with no input.
     pub frames: u32,
     /// Where to write the window's picture, a PNG file (from the working
@@ -233,9 +215,7 @@ impl AttachInput {
                 self.frames
             ));
         }
-        for step in self.link_steps() {
-            step.check()?;
-        }
+        link::check_play(&self.steps)?;
         if let Some(seconds) = self.follow_for {
             if self.perf_follow.is_none() {
                 return Err("follow_for: only with perf_follow".to_owned());
@@ -255,51 +235,37 @@ impl AttachInput {
         Ok(())
     }
 
-    /// The steps as the link plays them, the frames after as a wait.
-    pub fn link_steps(&self) -> Vec<link::Step> {
-        let mut steps: Vec<link::Step> = self.steps.iter().map(AttachStep::to_link).collect();
-        if self.frames > 0 {
-            steps.push(link::Step::Wait(self.frames));
-        }
+    /// The steps as the link plays them, the frames after as waits
+    /// ([`idle`]).
+    pub fn link_steps(&self) -> Vec<Step> {
+        let mut steps = self.steps.clone();
+        steps.extend(idle(self.frames));
         steps
     }
 
     /// Whether the steps or the frames after wait.
     fn waits(&self) -> bool {
-        self.frames > 0 || self.steps.iter().any(|s| matches!(s, AttachStep::Wait(_)))
+        self.frames > 0 || self.steps.iter().any(|s| matches!(s, Step::Wait(_)))
     }
 }
 
-impl AttachStep {
-    /// `run`'s script step `step`, played over the link.
-    pub(crate) fn of(step: &Step) -> Result<Self, String> {
-        Ok(match step {
-            Step::Keys(script) => AttachStep::Keys(script.clone()),
-            Step::Pad(script) => AttachStep::Pad(script.clone()),
-            Step::Wait(seconds) => AttachStep::Wait(*seconds),
-            Step::Crank(_) => return Err("crank: not over the live link yet".to_owned()),
-        })
+/// `frames` frames with no input as waits the link plays as exactly that
+/// many: the whole seconds, then the frames left over (none for 0). A
+/// second's 60 frames are exact in seconds, and so are fewer than 60.
+pub fn idle(frames: u32) -> Vec<Step> {
+    let (seconds, left) = (frames / 60, frames % 60);
+    let mut steps = Vec::new();
+    // Whole seconds of at most 100 000 frames, and fewer than 60 frames:
+    // exact in an `f32`.
+    #[allow(clippy::cast_precision_loss)]
+    let (seconds, left) = (seconds as f32, left as f32);
+    if seconds > 0.0 {
+        steps.push(Step::Wait(seconds));
     }
-
-    /// The step as the link plays it: a wait in the build's frames.
-    fn to_link(&self) -> link::Step {
-        match self {
-            AttachStep::Keys(script) => link::Step::Keys(script.clone()),
-            AttachStep::Pad(script) => link::Step::Pad(script.clone()),
-            AttachStep::Act(name) => link::Step::Act(name.clone()),
-            AttachStep::Wait(seconds) => link::Step::Wait(frames_of(*seconds)),
-        }
+    if left > 0.0 {
+        steps.push(Step::Wait(left / 60.0));
     }
-}
-
-/// `seconds` in frames at [`FRAMES_PER_SECOND`], to the nearest.
-pub fn frames_of(seconds: f32) -> u32 {
-    let frames = (seconds.max(0.0) * FRAMES_PER_SECOND).round();
-    // Not negative, and `as` saturates past `u32::MAX`; `Script::parse_step`
-    // checks a wait is at most `MAX_WAIT` seconds anyway.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let frames = frames as u32;
-    frames
+    steps
 }
 
 /// The usage of `attach`.
@@ -337,8 +303,14 @@ pub fn parse_args(args: &[String]) -> Result<AttachInput, String> {
                 .ok_or_else(|| format!("{arg} needs a value"))
                 .cloned()
         };
-        if let Some(step) = parse_step(arg, &mut value) {
-            input.steps.push(step?);
+        if matches!(
+            arg.as_str(),
+            "--keys" | "--script" | "--pad" | "--act" | "--wait" | "--crank"
+        ) {
+            let text = value()?;
+            if let Some(step) = frame_png::parse_step(arg, &text) {
+                input.steps.push(step?);
+            }
             continue;
         }
         match arg.as_str() {
@@ -397,33 +369,8 @@ pub fn parse_args(args: &[String]) -> Result<AttachInput, String> {
     if input.perf_snapshot && input.perf_since.is_none() && input.perf_follow.is_none() {
         return Err("--perf-snapshot: only with --perf-since or --perf-follow".to_owned());
     }
+    link::check_play(&input.steps)?;
     Ok(input)
-}
-
-/// The step flag `flag`, if it is one, read with the value `value` gives:
-/// `run`'s (`Script::parse_step`) and `--act`.
-fn parse_step(
-    flag: &str,
-    value: &mut impl FnMut() -> Result<String, String>,
-) -> Option<Result<AttachStep, String>> {
-    if flag == "--act" {
-        return Some(value().and_then(|name| {
-            let step = AttachStep::Act(name);
-            step.to_link()
-                .check()
-                .map(|()| step)
-                .map_err(|e| format!("--{e}"))
-        }));
-    }
-    if !matches!(flag, "--keys" | "--script" | "--pad" | "--wait" | "--crank") {
-        return None;
-    }
-    let text = match value() {
-        Ok(text) => text,
-        Err(e) => return Some(Err(e)),
-    };
-    let step = Script::parse_step(flag, &text)?;
-    Some(step.and_then(|step| AttachStep::of(&step)))
 }
 
 /// Why `attach` stopped: its code and what to say.
@@ -856,7 +803,7 @@ pub(crate) fn played(link: &mut Connection, input: &AttachInput) -> Result<Seen,
         let frames: u32 = steps
             .iter()
             .map(|s| match s {
-                link::Step::Wait(n) => *n,
+                Step::Wait(seconds) => wait_frames(*seconds),
                 _ => 2,
             })
             .sum();

@@ -49,25 +49,25 @@ fn the_session_starts_plays_looks_and_stops() {
     let stepped = ask(
         &mut host,
         Op::Step,
-        json!({ "script": { "steps": [{ "keys": "Enter Up" }] }, "frames": 3 }),
+        json!({ "script": { "steps": [{ "keys": "Enter Up" }, { "act": "Confirm" }] }, "frames": 3 }),
     );
     assert_eq!(
         (stepped["op"].as_str(), stepped["ok"].as_bool()),
         (Some("step"), Some(true))
     );
-    assert_eq!(stepped["result"]["frames"], 7);
+    assert_eq!(stepped["result"]["frames"], 9);
     assert_eq!(stepped["result"]["scene"]["kind"], "grid map");
     assert!(stepped["result"]["log"].is_array());
     // It plays on from where it was.
     let stepped = ask(&mut host, Op::Step, json!({ "frames": 1 }));
-    assert_eq!(stepped["result"]["frames"], 8);
+    assert_eq!(stepped["result"]["frames"], 10);
 
     let scene = ask(&mut host, Op::Scene, Value::Null);
     assert_eq!(
         (scene["op"].as_str(), scene["ok"].as_bool()),
         (Some("scene"), Some(true))
     );
-    assert_eq!(scene["result"]["frames"], 8);
+    assert_eq!(scene["result"]["frames"], 10);
     assert_eq!(scene["result"]["scene"]["text"], "map");
 
     let events = ask(&mut host, Op::Events, json!({}));
@@ -84,7 +84,7 @@ fn the_session_starts_plays_looks_and_stops() {
             answer["result"]["width"].as_u64(),
             answer["result"]["height"].as_u64()
         ),
-        (Some(16), Some(2))
+        (Some(20), Some(2))
     );
     assert!(
         reply.png.unwrap().starts_with("iVBORw0KGgo"),
@@ -130,6 +130,10 @@ fn a_session_tool_refuses_input_it_doesnt_take_and_keeps_its_game() {
             json!({ "script": { "steps": [{ "keys": "NoSuchKey" }] } }),
         ),
         (Op::Step, json!({ "frames": 100_001 })),
+        (
+            Op::Step,
+            json!({ "script": { "steps": [{ "keys": "Enter" }, { "act": "Jump" }] } }),
+        ),
         (Op::Step, json!({ "frame": 1 })),
         (Op::Scene, json!({ "x": 1 })),
         (Op::Events, json!({ "since": 1 })),
@@ -143,10 +147,16 @@ fn a_session_tool_refuses_input_it_doesnt_take_and_keeps_its_game() {
         assert_eq!(answer["code"], "SH0001", "{op:?} {input}: {answer}");
         assert!(answer["help"].is_string());
     }
+    let still = ask(&mut host, Op::Scene, json!({}));
+    assert_eq!(still["ok"], true, "still running");
+    // Nothing of a refused step played.
+    assert_eq!(still["result"]["frames"], 0);
+    let jump = json!({ "script": { "steps": [{ "act": "Jump" }] } });
+    let refused = ask(&mut host, Op::Step, jump);
     assert_eq!(
-        ask(&mut host, Op::Scene, json!({}))["ok"],
-        true,
-        "still running"
+        refused["error"],
+        "step 1: act: no action `Jump` with a key or a button; the game's are Up, Down, Left, \
+         Right, Confirm, Cancel"
     );
 }
 

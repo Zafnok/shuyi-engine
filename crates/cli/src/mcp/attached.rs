@@ -19,12 +19,13 @@ use super::{
     EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartLink,
     StartOutput, StepInput, StopOutput,
 };
-use crate::contract::attach::{self, AttachInput, AttachStep, Connection, Failed, Seen};
+use crate::contract::attach::{self, AttachInput, Connection, Failed, Seen};
 use crate::contract::codes;
 use crate::contract::perf::PerfRead;
 use crate::contract::run::{RunOutput, SceneOutput};
 use crate::contract::session::{LogEntry, Scene};
 use crate::contract::{Answer, Op};
+use crate::frame_png::Step;
 
 /// The limit of an answer that has no scene.
 pub const NO_SCENE: &str = "no scene over the link";
@@ -154,7 +155,7 @@ impl Attached {
     }
 
     /// `attach`'s input for the build: `steps` and `frames` after.
-    fn input(&self, steps: Vec<AttachStep>, frames: u32) -> AttachInput {
+    fn input(&self, steps: Vec<Step>, frames: u32) -> AttachInput {
         let mut input = AttachInput::default();
         input.address.clone_from(&self.address);
         input.token.clone_from(&self.token);
@@ -165,19 +166,8 @@ impl Attached {
 
     /// `step`: `input` played over the link, answered as `run` answers.
     fn step(&mut self, input: &StepInput) -> Result<(Value, Option<String>), Failed> {
-        let steps = input
-            .script
-            .steps
-            .iter()
-            .map(AttachStep::of)
-            .collect::<Result<_, _>>()
-            .map_err(wrong)?;
-        let asked = self.input(steps, input.frames);
-        input
-            .script
-            .check()
-            .and_then(|()| asked.check())
-            .map_err(wrong)?;
+        let asked = self.input(input.script.steps.clone(), input.frames);
+        asked.check().map_err(wrong)?;
         let seen = attach::played(&mut self.link, &asked)?;
         let mut limits = attach::limits_of(&asked, &seen);
         if seen.status.quit {
