@@ -67,6 +67,64 @@ impl TextSpeed {
     }
 }
 
+/// What the game's sound does while its window has no focus.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BackgroundAudio {
+    /// The sound goes on as it was.
+    #[default]
+    Keep,
+    /// The music, the sounds and the voices are silent; the music keeps
+    /// its place, and the player's volumes come back with the focus.
+    Mute,
+}
+
+/// What a game does while its window has no focus
+/// ([`GameSettings::BACKGROUND`]): whether it pauses, and what its sound
+/// does. A game writes it from [`KEEP_RUNNING`](Self::KEEP_RUNNING):
+/// `Background::KEEP_RUNNING.paused().muted()`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Background {
+    /// Whether the game stops: no update, no steps and no time for its
+    /// screens, its last frame shown again.
+    pub pause: bool,
+    /// What its sound does.
+    pub audio: BackgroundAudio,
+}
+
+impl Background {
+    /// The game runs on with its sound, as with the focus.
+    pub const KEEP_RUNNING: Self = Self {
+        pause: false,
+        audio: BackgroundAudio::Keep,
+    };
+
+    /// The same, and the game pauses.
+    #[must_use]
+    pub const fn paused(self) -> Self {
+        Self {
+            pause: true,
+            ..self
+        }
+    }
+
+    /// The same, and the game's sound is muted.
+    #[must_use]
+    pub const fn muted(self) -> Self {
+        Self {
+            audio: BackgroundAudio::Mute,
+            ..self
+        }
+    }
+}
+
+impl Default for Background {
+    fn default() -> Self {
+        Self::KEEP_RUNNING
+    }
+}
+
 /// The settings a game adds to the engine's, and the saved form of both:
 /// one record, so the game decides its form (and keeps the one it has
 /// always written).
@@ -86,6 +144,11 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// 30, 60, 120, 144, 165 and 240 frames a second, then none, unless the
     /// game says otherwise ([`frame_cap::CHOICES`]).
     const FRAME_CAP_CHOICES: &'static [FrameCap] = &frame_cap::CHOICES;
+
+    /// What the game does while its window has no focus (ADR-0077): it
+    /// keeps running with its sound ([`Background::KEEP_RUNNING`]) unless
+    /// the game says otherwise.
+    const BACKGROUND: Background = Background::KEEP_RUNNING;
 
     /// The saved form of `settings` (RON).
     fn to_ron(settings: &Settings<Self>) -> String;
@@ -399,6 +462,22 @@ mod tests {
         assert_eq!(Fast::FRAME_CAP_CHOICES.len(), 2);
         s.frame_cap = FrameCap::Off;
         assert_eq!(s.restored().frame_cap, FrameCap::Fps(120));
+    }
+
+    #[test]
+    fn the_background_keeps_running_until_the_game_says() {
+        let keep = Background::KEEP_RUNNING;
+        assert_eq!((keep.pause, keep.audio), (false, BackgroundAudio::Keep));
+        assert_eq!(Background::default(), keep);
+        assert_eq!(<() as GameSettings>::BACKGROUND, keep);
+        assert_eq!(Prefs::BACKGROUND, keep);
+        let paused = keep.paused();
+        assert_eq!((paused.pause, paused.audio), (true, BackgroundAudio::Keep));
+        let muted = keep.muted();
+        assert_eq!((muted.pause, muted.audio), (false, BackgroundAudio::Mute));
+        let both = keep.paused().muted();
+        assert_eq!(both, keep.muted().paused());
+        assert_eq!((both.pause, both.audio), (true, BackgroundAudio::Mute));
     }
 
     #[test]

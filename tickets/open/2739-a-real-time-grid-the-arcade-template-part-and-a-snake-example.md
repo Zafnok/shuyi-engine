@@ -176,9 +176,9 @@ None.
     2137's driver, and builds a `MapScene` whose units are the head, the
     body and the food. A suspended game gets 0 ticks, so the snake
     waits. Its system hook pushes the pause menu on
-    `FocusLost` (sent since 3042). **Either order with 3093:** if 3093
-    is done, the example's `GameSettings::BACKGROUND` is
-    `Background::KEEP_RUNNING.paused()`; if not, 3093 does it.
+    `FocusLost` (sent since 3042). The example's
+    `GameSettings::BACKGROUND` is `Background::KEEP_RUNNING.paused()`
+    (`shuyi_ui::settings`, built by 3093).
   - **the actions:** `Up`, `Down`, `Left`, `Right`, `Confirm` and
     `Cancel`, the grid template's six
     (`templates/grid/crates/game/src/action.rs`). `files/keymap.ron` has
@@ -289,9 +289,8 @@ None.
     while a direction is held, the wanderer every 16 steps. An agent
     reading the two parts side by side sees what changes between turns
     and ticks. It is not snake, so the eval's snake task (below) stays a
-    task. **Either order with 3093:** if 3093 is done,
-    its `GameSettings::BACKGROUND` is
-    `Background::KEEP_RUNNING.paused()`; if not, 3093 does it;
+    task. Its `GameSettings::BACKGROUND` is
+    `Background::KEEP_RUNNING.paused()` (built by 3093);
   - `--template arcade` is a short name for those answers, as `grid`
     and `blank` are, and `--set time=ticks` picks it. If 2502 is done,
     its prompts show the question;

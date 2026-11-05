@@ -94,6 +94,14 @@ apart, by the Key bindings screen. A game with settings of its own writes a
 `GameSettings` type and its own `GameData`
 ([chapter 2](@/learn/book/games-and-screens.md#when-a-game-outgrows-the-short-path)).
 
+What the game does while its window has no focus is the game's choice, not the player's:
+a constant of its `GameSettings`. By default it runs on with its sound. A game that
+pauses, or goes quiet, or both, says so in one line of its `impl GameSettings`:
+`const BACKGROUND: Background = Background::KEEP_RUNNING.paused().muted();`.
+Paused, the game isn't updated and shows its last frame until the player comes back, and
+the time away makes no steps. Muted, its music keeps its place in silence. `Background`
+is in `shuyi::ui::settings`.
+
 ## When it goes wrong
 
 **Forgetting the copy.** Write `garden,` in place of `garden: garden.clone(),`, and the

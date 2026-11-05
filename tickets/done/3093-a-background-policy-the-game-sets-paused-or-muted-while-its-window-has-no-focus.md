@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["3042"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 3093 — A background policy the game sets: paused or muted while its window has no focus
@@ -122,22 +122,22 @@ made in its own repository.
 
 ## Acceptance criteria
 
-- [ ] `Background` builder tests: `KEEP_RUNNING` keeps running with its
+- [x] `Background` builder tests: `KEEP_RUNNING` keeps running with its
       sound; `paused()` and `muted()` each set only their part, in either
       order.
-- [ ] `App` tests with the policy set to `paused()`: after `FocusLost`,
+- [x] `App` tests with the policy set to `paused()`: after `FocusLost`,
       frames run no update and no steps and present the last frame; after
       `FocusGained` the first frame counts no time, and a 10-minute gap
       steps at most once; `QuitRequested` while paused quits.
-- [ ] `App` tests with `muted()`: while unfocused the `AudioFrame` volumes
+- [x] `App` tests with `muted()`: while unfocused the `AudioFrame` volumes
       are 0 and its requests are still passed; paused and muted, `play` is
       called with no requests at volume 0; after `FocusGained` the
       player's volumes come back.
-- [ ] With the default policy, every existing Harness, snapshot and
+- [x] With the default policy, every existing Harness, snapshot and
       replay test passes unchanged.
-- [ ] The ADR is written and ADR-0076's row names it.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and ADR-0076's row names it.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -147,5 +147,43 @@ made in its own repository.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi-ui` (`crates/ui/src/settings.rs`): `Background { pause, audio }`
+  and `BackgroundAudio::{Keep, Mute}`, both `#[non_exhaustive]`, with
+  `Background::KEEP_RUNNING`, the const builders `paused()` and `muted()`,
+  `Default` as `KEEP_RUNNING`, and `GameSettings::BACKGROUND` defaulting to
+  it. Unit test `the_background_keeps_running_until_the_game_says`.
+- `shuyi-platform` (`crates/platform/src/app.rs`): `App` keeps the policy
+  in a private `background` field, from `<G::Settings as
+  GameSettings>::BACKGROUND`. Paused (`App::is_paused()`: unfocused,
+  running, not quit, the policy pauses), a frame drains the input,
+  presents the last frame, makes no perf record and hands the game 0
+  ticks; `FocusGained` while paused restarts the clock as `Resume` does.
+  Muted while unfocused, `step` hands the device its `AudioFrame` with the
+  three volumes at 0; paused and muted, `play` is called each frame with
+  nothing at 0. The game's hook still hears both focus events after
+  `App`'s part.
+- Tests through `HeadlessPlatform` in `crates/platform/src/app/tests.rs`:
+  the default runs on with its sound; paused runs nothing, presents the
+  last frame, and after 10 minutes and `FocusGained` counts no time and
+  steps at most once; quitting while paused quits; muted passes the
+  requests at volume 0 and the player's volumes come back; paused and
+  muted hears silence each frame.
+- ADR-0077 extends ADR-0076; ADR-0076's row in `docs/adr/README.md` names
+  it. `docs/platform-backends.md`: the focus row of the `system_events`
+  table and *What one frame does* (step 3's paused branch, step 9's mute).
+- 2342 and 2739 are not done: the mute is three volumes at 0 (2342 moves
+  it onto `Gains::muted()`, its clause rewritten to say where), and snake
+  and the arcade part set `Background::KEEP_RUNNING.paused()` when 2739
+  writes them (its clauses rewritten as what holds). 3043's handoff names
+  what was built.
+- No deviation from the steps.
+
+No break: `GameSettings::BACKGROUND` has a default, and `Background`,
+`BackgroundAudio` and `App::is_paused` are new. The game's PR that moves
+the pin follows this one, with nothing to change unless it opts in.
+
+The book: the *Settings* section of
+`site/content/learn/book/saves-and-settings.md` gains the background
+policy.
+
+Nick input: none.
