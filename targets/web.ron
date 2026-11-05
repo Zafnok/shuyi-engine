@@ -27,10 +27,12 @@
     // The player leaves by closing the tab: a game shows no Quit.
     quit: System,
     budgets: (
-        // Provisional: 3008's benchmarks calibrate it.
+        // Provisional: `shuyi bench`'s numbers for the examples are in
+        // docs/targets/web.md.
         frame_instructions: 20_000_000,
         peak_heap_bytes: 268_435_456, // 256 MB
-        // Provisional: the download, measured by 3008.
+        // Provisional: the download; the examples' packages are in
+        // docs/targets/web.md.
         package_bytes: 26_214_400, // 25 MB
         startup_ms: 5_000, // at 25 Mbit/s
     ),

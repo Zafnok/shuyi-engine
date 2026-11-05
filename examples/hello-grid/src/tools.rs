@@ -12,8 +12,10 @@
 //! one-bit, [`crate::one_bit_bake`]), the controls `check --target` checks
 //! ([`controls`]), and its look on a one-bit target: the pattern map
 //! `check --target` checks ([`one_bit_skin`]) and `frame-png --target
-//! playdate` paints with ([`one_bit_picture`]). `examples/tools.rs` is the
-//! tool program that runs them; the tests use them too.
+//! playdate` paints with ([`one_bit_picture`]), and `bench` on the
+//! Playdate's console, each frame converted to one bit as there
+//! ([`GameTools::session_on`]). `examples/tools.rs` is the tool program
+//! that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
@@ -36,7 +38,9 @@ use shuyi::core::{
     play_observed,
 };
 use shuyi::platform::harness::Harness;
+use shuyi::platform::headless::PresentHook;
 use shuyi::platform::session::{SessionRecord, Stamps};
+use shuyi::platform::{Frame, Show};
 use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi::ui::{Game, GameData, GameHooks};
@@ -172,6 +176,22 @@ pub fn one_bit_picture(
     Ok(frame_png::one_bit_picture(frame.bytes(), scale))
 }
 
+/// What the Playdate's backend does to each frame `h` presents: it
+/// converts it to one bit with the skin's pattern map and the one-bit font.
+/// The font is kept for the program's life, as the device keeps it.
+fn one_bit_conversion(h: &Harness<Hello>) -> Result<PresentHook, String> {
+    let ctx = h.ctx();
+    let map = PatternMap::new(ctx.palette.iter(), &one_bit_skin()?.map);
+    let bits = crate::file(FONT_1BIT).ok_or("no one-bit font atlas")?;
+    let atlas: &'static FontAtlasDef = Box::leak(Box::new(ctx.game.font.clone()));
+    let font = Font::new(atlas, bits)?;
+    Ok(Box::new(move |frame: &Frame<'_>| {
+        if let Show::Game { buffer, .. } = frame.show {
+            std::hint::black_box(to_one_bit(buffer, &map, &font, &()));
+        }
+    }))
+}
+
 /// The game's tools.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct HelloTools;
@@ -227,6 +247,16 @@ impl GameTools for HelloTools {
 
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         Ok(session_of(Start::from_options(options)?.harness()))
+    }
+
+    /// The game on `target`'s console; on a one-bit target, each frame
+    /// presented converted as the Playdate's backend converts it.
+    fn session_on(&self, target: &str, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let mut h = Start::from_options(options)?.harness_on(target);
+        if is_one_bit(target) {
+            h.set_present_hook(Some(one_bit_conversion(&h)?));
+        }
+        Ok(session_of(h))
     }
 
     /// The record played from the game's real start, [`crate::start`].

@@ -196,10 +196,10 @@ None.
   `layout` channel (`shuyi_ui::debug::layout`) outlines each tile-layer
   item's map bounds and its `visible` rectangle (`Bounds`); if not, the
   PR adds that line to 2318's Scope.
-- **A bench scenario, either order with 3008:** if 3008 is done, add a
-  `.bench.ron` scenario that scrolls the camera across the test map, so
-  its numbers say whether chunk caching is needed; if not, 3008 adds it
-  (its clause says so).
+- **A bench scenario. From 3008 (done):** add a `.bench.ron` scenario
+  (`docs/targets/README.md`) that scrolls the camera across the test map,
+  so its numbers say whether culling alone keeps tile layers in the web
+  and Playdate budgets, and whether chunk caching is needed.
 - **A short ADR** (the `write-adr` skill) extending ADR-0003 §5: a world
   layer holds tile-layer items, one per map layer, culled before any
   painter reads them, and each backend draws them its own way (ADR-0012

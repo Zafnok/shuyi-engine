@@ -257,6 +257,34 @@ fn the_platform_keeps_the_last_frame_it_was_shown() {
 }
 
 #[test]
+fn a_present_hook_sees_each_frame_after_it_is_kept_until_taken_away() {
+    let mut p = HeadlessPlatform::new();
+    let seen = alloc::rc::Rc::new(core::cell::RefCell::new(Vec::new()));
+    let log = alloc::rc::Rc::clone(&seen);
+    p.set_present_hook(Some(Box::new(move |frame: &Frame<'_>| {
+        let glyph = match frame.show {
+            Show::Game { buffer, .. } => buffer.get(0, 0).map_or('?', |cell| cell.glyph),
+            _ => '-',
+        };
+        log.borrow_mut().push(glyph);
+    })));
+    assert!(format!("{p:?}").contains("PresentHook"));
+    let a = buffer('a');
+    let game = Frame::new(Show::Game {
+        buffer: &a,
+        background: Rgb::new(0, 0, 0),
+        look: None,
+    });
+    p.present(&game);
+    p.present(&Frame::new(Show::Errors("no font")));
+    assert_eq!(*seen.borrow(), ['a', '-']);
+    p.set_present_hook(None);
+    p.present(&game);
+    assert_eq!(*seen.borrow(), ['a', '-']);
+    assert_eq!(p.presented(), 3);
+}
+
+#[test]
 fn a_frame_with_its_look_is_kept_as_without() {
     let mut p = HeadlessPlatform::new();
     let font = shuyi_assets::font::FontAtlasDef::default();

@@ -1,0 +1,13 @@
+// Two turns: each of your moves, then the foe's mind choosing its step.
+// Hello, Grid has two units on its map, its most.
+(
+    format_version: 1,
+    about: "the foe's turns, after two moves",
+    start: [(flag: "--stage")],
+    script: (steps: [
+        keys("z Up Right Right Right z"),
+        wait(1.0),
+        keys("z Right Right Up Up z"),
+        wait(1.0),
+    ]),
+)

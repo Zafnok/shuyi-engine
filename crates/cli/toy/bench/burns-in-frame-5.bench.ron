@@ -1,0 +1,10 @@
+// A fixture of `bench`: the toy spends some millions of instructions in
+// frame 5, over the Playdate's budget of a frame and within a desktop's.
+// CI's `bench` job checks that `bench --target playdate` fails on it,
+// naming frame 5.
+(
+    format_version: 1,
+    about: "the toy burns instructions in frame 5",
+    start: [(flag: "--burn-frame", value: "5")],
+    frames: 10,
+)

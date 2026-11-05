@@ -128,3 +128,15 @@ A game made with `shuyi new` has `scripts/setup-linux.sh`, which
 installs Rust and the libraries; the package lands in
 `dist/export/linux/` on the host. The engine's CI pins the same image
 by its digest (`.github/workflows/ci.yml`, the `export` job).
+
+## Budgets
+
+Its row of ADR-0008 §6's table; *prov.* marks a starting guess. What the
+budgets are and how `shuyi bench` checks them is in
+[`README.md`](README.md).
+
+| Target | Frame time on device | `frame_instructions` | `peak_heap_bytes` | `package_bytes` | `startup_ms` | Also |
+| ------ | -------------------- | -------------------- | ----------------- | --------------- | ------------ | ---- |
+| `desktop` | p99 ≤ 16.7 ms | 20 M (prov.) | 512 MB | — | 2 000 | — |
+
+Not yet measured on a device: no ticket covers the desktop yet.

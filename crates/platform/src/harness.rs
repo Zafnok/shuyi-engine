@@ -48,7 +48,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, Start, SystemHook};
-use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
+use crate::headless::{HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
@@ -808,6 +808,16 @@ impl<G: GameData> Harness<G> {
     /// ([`HeadlessPlatform::with_fake_memory`]).
     pub fn set_heap_snapshots(&mut self, snapshot: Option<fn() -> HeapSnapshot>) -> &mut Self {
         self.platform.set_heap_snapshots(snapshot);
+        self
+    }
+
+    /// Runs `hook` on each frame presented from now on, in the headless
+    /// backend's present, or runs none (`None`): the work a device's
+    /// backend does on each frame, such as a one-bit display's conversion
+    /// (`to_one_bit`), so `shuyi bench` counts it in the frame
+    /// ([`HeadlessPlatform::set_present_hook`]).
+    pub fn set_present_hook(&mut self, hook: Option<PresentHook>) -> &mut Self {
+        self.platform.set_present_hook(hook);
         self
     }
 

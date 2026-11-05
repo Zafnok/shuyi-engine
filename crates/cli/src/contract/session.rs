@@ -22,6 +22,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use schemars::JsonSchema;
@@ -427,6 +428,27 @@ pub struct Headless<G: GameData> {
     perf_scopes: bool,
 }
 
+/// Whether [`Session::set_perf`] gives a [`Headless`] a fake clock from
+/// now on ([`measure_with_a_fake_clock`]).
+static FAKE_CLOCK: AtomicBool = AtomicBool::new(false);
+
+/// Has every [`Headless`] measure with a fake clock from now on: `bench`
+/// counts instructions, which a real clock's readings could change from
+/// run to run, and reads no time.
+pub(crate) fn measure_with_a_fake_clock() {
+    FAKE_CLOCK.store(true, Ordering::Relaxed);
+}
+
+/// The clock a [`Headless`] measures with: this machine's, unless
+/// [`measure_with_a_fake_clock`] was called.
+fn perf_clock() -> PerfClock {
+    if FAKE_CLOCK.load(Ordering::Relaxed) {
+        PerfClock::fake()
+    } else {
+        PerfClock::Real(now_us)
+    }
+}
+
 /// The microseconds since this machine's clock was first read here: the
 /// real clock a [`Headless`] measures with.
 fn now_us() -> u64 {
@@ -437,7 +459,12 @@ fn now_us() -> u64 {
 
 /// This program's heap counter's reading: the real memory a [`Headless`]
 /// reads, handed over only in a build that counts (zeros otherwise).
-fn process_heap() -> HeapCounts {
+///
+/// It is also `bench`'s frame marker: a measured frame reads the heap
+/// once, at its end, so Callgrind dumps its count before each call
+/// (`crate::bench`'s `MARKER`). Never inlined, so it keeps its name.
+#[inline(never)]
+pub(crate) fn process_heap() -> HeapCounts {
     global::reading().map_or_else(HeapCounts::default, |counts| {
         HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs)
     })
@@ -728,7 +755,7 @@ impl<G: GameData> Session for Headless<G> {
         let scopes = platform.memory_scopes().is_none();
         if on {
             if !self.perf_clock && clock {
-                self.harness.set_clock(Some(PerfClock::Real(now_us)));
+                self.harness.set_clock(Some(perf_clock()));
                 self.perf_clock = true;
             }
             if !self.perf_memory && memory && global::COUNTING {

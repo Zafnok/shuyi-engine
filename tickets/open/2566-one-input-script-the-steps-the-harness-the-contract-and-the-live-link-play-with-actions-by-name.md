@@ -187,10 +187,12 @@ None.
   Script`, and its test that `n` waits of `FRAME_DT` run exactly `n`
   more frames passes under `wait_frames`; if not, nothing to do (2514
   writes the free function).
-- **Either order with 3008:** if 3008 is done, the inputs of its
-  `.bench.ron` scenarios move onto `script::Step` with the contract's
-  steps; if not, nothing to do (3008 writes its scenarios' inputs as a
-  `script::Script`).
+- **From 3008 (done):** the inputs of its `.bench.ron` scenarios
+  (`Scenario::script` in `crates/cli/src/bench.rs`, a
+  `frame_png::Script`, read with serde and played with `Session::play`
+  then `Session::idle`) move onto `script::Step` with the contract's
+  steps, and the scenarios' files (`examples/hello-grid/bench/`,
+  `crates/cli/toy/bench/`) keep reading.
 - **Either order with 2569:** if 2569 is done, `shuyi-platform` already
   has a `schema` feature (`["dep:schemars"]`, turned on by `shuyi-cli`)
   and `schemars` in its `outside` list in `tools/layers.ron`, with

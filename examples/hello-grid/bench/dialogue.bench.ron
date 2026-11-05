@@ -1,0 +1,7 @@
+// The stage's opening scene: its text typed out over the map, then the
+// next line. Hello, Grid's dialogue has no portraits.
+(
+    format_version: 1,
+    about: "a line of dialogue typing out over the map",
+    script: (steps: [keys("Enter"), wait(1.5), keys("Enter"), wait(1.0)]),
+)

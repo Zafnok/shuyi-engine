@@ -27,7 +27,8 @@
         keyboard: true,
     ),
     budgets: (
-        // Provisional: 3008's benchmarks calibrate it.
+        // Provisional: `shuyi bench`'s numbers for the examples are in
+        // docs/targets/desktop.md.
         frame_instructions: 20_000_000,
         peak_heap_bytes: 536_870_912, // 512 MB
         startup_ms: 2_000,

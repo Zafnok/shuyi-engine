@@ -234,6 +234,24 @@ it allows. `cargo shuyi run --perf` measures each frame headless, and the engine
 a frame's time and memory go; the `shuyi-perf` skill
 ([chapter 10](@/learn/book/tools-for-agents.md#the-skills)) walks through them.
 
+A frame's time changes from one run to the next, so it can't be a test. `cargo shuyi bench` measures
+what doesn't: it plays your benchmark scenarios, files named `<name>.bench.ron` with the start, the
+steps and the frames to measure, and counts each frame's instructions (with Valgrind, on Linux), the
+heap's peak and the package's size. It compares each with the budgets of every target your `shuyi.ron`
+lists, and fails naming the scenario, the frame and the target when one is over:
+
+```ron
+(
+    format_version: 1,
+    about: "the stage's map, idle",
+    start: [(flag: "--stage")],
+    frames: 60,
+)
+```
+
+Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
+dialogue.
+
 ## When it goes wrong
 
 The point of `check --target` is that these show up before you build anything. These are its

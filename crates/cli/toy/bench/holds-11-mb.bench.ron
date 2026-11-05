@@ -1,0 +1,9 @@
+// A fixture of `bench`: the toy holds 11 MB from its first frame on, over
+// the Playdate's heap budget (10 MB) and within a desktop's. CI's `bench`
+// job checks that it fails on `playdate` and passes on `desktop`.
+(
+    format_version: 1,
+    about: "the toy holds 11 MB from its first frame",
+    start: [(flag: "--hold-mb", value: "11")],
+    frames: 5,
+)

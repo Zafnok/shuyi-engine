@@ -1,0 +1,7 @@
+// The stage open with no input, the map drawn with the tileset.
+(
+    format_version: 1,
+    about: "the stage's map, idle, in the Tiles look",
+    start: [(flag: "--stage"), (flag: "--tiles")],
+    frames: 60,
+)
