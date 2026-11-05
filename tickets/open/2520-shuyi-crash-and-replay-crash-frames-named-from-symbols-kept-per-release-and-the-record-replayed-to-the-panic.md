@@ -262,7 +262,8 @@ None.
   with `replay --crash`.
 - **The skill pack. From 1134 (done):** write its `shuyi-debug-replay`
   skill's crash path (`skills/shuyi-debug-replay/SKILL.md`), in place
-  of the note that it is still to come: `shuyi crash <report> --symbols
+  of the paragraph 3046 left there (the report's `record` copied to a
+  file and replayed by hand, the one command still to come): `shuyi crash <report> --symbols
   <file>` reads the report, `shuyi replay --crash <report>` reproduces
   it (`ok: false` while it panics), and the skill loops fix, then
   replay, until `ok: true`; `check-skills` passes. If **Size** moves

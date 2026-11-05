@@ -478,6 +478,72 @@ fn by_default_the_setup_waits_for_a_key_on_a_keyboard() {
     assert_eq!(ctx.key_prompt, KeyPrompt::Waiting);
 }
 
+/// A storage two games share, one after the other.
+#[derive(Debug, Clone, Default)]
+struct Shared(Rc<RefCell<MemoryStorage>>);
+
+impl Storage for Shared {
+    fn read(&self, key: &str) -> Result<Option<String>, shuyi_ui::storage::StorageError> {
+        self.0.borrow().read(key)
+    }
+    fn write(&mut self, key: &str, value: &str) -> Result<(), shuyi_ui::storage::StorageError> {
+        self.0.borrow_mut().write(key, value)
+    }
+    fn delete(&mut self, key: &str) -> Result<(), shuyi_ui::storage::StorageError> {
+        self.0.borrow_mut().delete(key)
+    }
+    fn list(&self) -> Result<Vec<String>, shuyi_ui::storage::StorageError> {
+        self.0.borrow().list()
+    }
+}
+
+/// A game loaded on `storage`: the last crash its setup gave, and the app.
+fn loaded_on(storage: &Shared) -> (Option<crash::LastCrash>, App<Toy>) {
+    let heard = Rc::new(RefCell::new(None));
+    let kept = Rc::clone(&heard);
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        move |setup: Setup| {
+            *kept.borrow_mut() = setup.last_crash.clone();
+            Ok(toy::game_on(setup.ctx(toy::ctx())))
+        },
+    )
+    .crash_record(|game| game.top_screen().map(|name| format!("on {name}")));
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new().with_storage(Box::new(storage.clone()));
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(app.crash_record(), None, "loading");
+    let _ = app.frame(&mut p, Millis(16));
+    let last = heard.borrow().clone();
+    (last, app)
+}
+
+#[test]
+fn the_newer_crash_is_offered_at_the_first_load_and_not_again() {
+    let storage = Shared::default();
+    for (when, message) in [(100, "older"), (200, "newer")] {
+        let text = crash::CrashReport::new(when, message).to_text();
+        let key = crash::crash_key(when);
+        storage.0.borrow_mut().write(&key, &text).unwrap();
+    }
+    let (last, app) = loaded_on(&storage);
+    let last = last.unwrap();
+    assert_eq!((last.when, last.message.as_str()), (200, "newer"));
+    assert_eq!(last.key, "crash-200");
+    // The game's record, once it runs.
+    let top = running(&app).top_screen().unwrap();
+    assert_eq!(app.crash_record(), Some(format!("on {top}")));
+    let (again, _) = loaded_on(&storage);
+    assert_eq!(again, None);
+}
+
+#[test]
+fn a_game_without_a_crash_record_gives_none() {
+    let (game, _) = steps_game();
+    assert_eq!(App::running(game).crash_record(), None);
+}
+
 /// The platform's facts reach the game's context: the Steam Deck's, with
 /// no keyboard and always full screen.
 #[test]

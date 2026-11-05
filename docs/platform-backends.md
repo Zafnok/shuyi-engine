@@ -526,6 +526,22 @@ A game's tests do both on the test Harness (`Harness::start_recording`,
 [*Recording a session*](../site/content/learn/book/testing.md#recording-a-session)
 and the [`shuyi-test` skill](../skills/shuyi-test/SKILL.md).
 
+## Panics
+
+A backend installs one panic hook that writes a crash report through the
+storage it hands the game
+([ADR-0079](adr/0079-crash-reports-one-panic-hook-per-backend-writing-through-the-games-storage-offered-once-and-the-games-record-added-on-native.md)):
+`shuyi_platform::crash::CrashReport` at `crash_key(when)`, its text from
+`to_text`, the newest few kept with `keep_newest`. Its frame is the one about to
+run (`App::frame_number() + 1`), its top screen `Game::top_screen`, and its log
+the last lines `App::take_new_log` gave. A backend that can catch the game's
+frame adds the game's record (`App::crash_record`) and ends the process without
+calling the game's system hook. `App::load` offers the newest report to the game
+once (`Setup::last_crash`): a backend does nothing for that.
+
+`shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is
+[`crash-reports.md`](crash-reports.md).
+
 ## The headless backend, as a reference
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete
@@ -567,6 +583,8 @@ one side, the engine's types on the other.
       (`shuyi_ui::frame::raster::card`, drawn and compared as `shuyi-app`'s
       `render_card` example does) and a game's plans, within the plan's
       tolerance, in CI where the device can run there.
+- [ ] A panic writes a `CrashReport` through the backend's storage, or the
+      backend's docs say why it can't.
 - [ ] A target profile (`targets/<id>.ron`, ADR-0008 §1) naming it, and
       the target's device ticket for the numbers (ADR-0008 §6).
 - [ ] For a closed console: a private repository, and nothing of it here.

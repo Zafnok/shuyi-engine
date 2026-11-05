@@ -15,6 +15,7 @@ repository has no row here.
 | A problem code and its fix | [`crates/cli/errors/`](../crates/cli/errors/), one `SHnnnn.md` each, read by `shuyi explain` ([ADR-0028](adr/0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md)); the website's `/learn/errors/` is written from them by [`site/errors.sh`](../site/errors.sh) | adds or changes an error the contract gives |
 | The engine's file formats and the registry | [`formats.md`](formats.md) | adds or changes a format, an asset kind or the registry |
 | What a platform backend must do | [`platform-backends.md`](platform-backends.md) | changes the platform boundary or adds a backend |
+| What a crash report holds, where it lands on each OS, how a game tells its player and gives its record of play | [`crash-reports.md`](crash-reports.md) | changes the panic hook, `CrashReport`, `Setup::last_crash` or `Start::crash_record` |
 | How to build a game for the Playdate and sideload it, what `export playdate` writes, and what doesn't work there yet | [`targets/playdate.md`](targets/playdate.md) | changes the Playdate exporter or backend |
 | What each file of the Playdate backend is | [`crates/playdate/README.md`](../crates/playdate/README.md) | moves a file of the backend, or adds one |
 | What each desktop package (`export windows`, `linux`, `macos`) holds and runs on, a release build's renamed paths and debug file, and the Linux package made by hand | [`targets/desktop.md`](targets/desktop.md) | changes a desktop exporter, its package or what it runs on |

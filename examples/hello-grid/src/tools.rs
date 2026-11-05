@@ -61,6 +61,9 @@ use shuyi_cli::{
 use crate::map::Terrain;
 use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Tuning, Walk};
 use crate::screens::StageScreen;
+/// The game's record format, kept beside the stage screen, whose play it
+/// records for a crash report too.
+pub use crate::screens::stage::StageRecord;
 use crate::{Action, FONT_PNG, Hello, MapLook};
 pub use crate::{FONT_1BIT, PATTERN_MAP};
 
@@ -412,21 +415,6 @@ fn loaded() -> Result<Hello, String> {
 fn lines(errors: &[ContentError]) -> String {
     let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
     errors.join("\n")
-}
-
-/// A record of a stage: its seed and the commands sent to its rules, and
-/// what made it. The game's record format for `replay`; `bots` writes one
-/// of each play.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StageRecord {
-    /// The stage's seed.
-    pub seed: u64,
-    /// The commands, in order.
-    pub commands: Vec<Command>,
-    /// What made it ([`crate::made`]); a record without one still reads.
-    #[serde(default)]
-    pub made: Option<Made>,
 }
 
 /// The stage's scene in `h`: its map as the skin of the player's

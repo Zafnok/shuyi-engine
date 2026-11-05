@@ -252,6 +252,20 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
 
+## When a player's game crashes
+
+If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
+data folder on a computer, and in the browser's storage on the web. It holds the panic's message and
+place, the versions, the frame, the screen on top and the log's last lines, never the player's
+settings or saves, and it stays on the player's machine. The player sends it to you; the game's
+version in it is `shuyi.ron`'s `app.version`.
+
+At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
+anything, and in what words, is up to the game. A game that gives `Start::crash_record` a function
+writing its record of play (the record its `replay` reads) gets that in the report too, on a computer,
+so a crash can be replayed to the panic. To try it, run the game with `SHUYI_PANIC_AT_FRAME=3`: it
+panics at its third frame on purpose and exits with code 101.
+
 ## When it goes wrong
 
 The point of `check --target` is that these show up before you build anything. These are its

@@ -288,6 +288,30 @@ jobs:
             echo "::error::hello-grid exited $code on a plan with an unknown key, not 2"
             exit 1
           fi
+      - name: A panic on purpose writes a crash report and exits 101
+        run: |
+          data="$RUNNER_TEMP/crash-data"
+          code=0
+          SHUYI_PANIC_AT_FRAME=3 XDG_DATA_HOME="$data" \
+            xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid || code=$?
+          if [ "$code" != 101 ]; then
+            echo "::error::hello-grid exited $code after a panic on purpose, not 101"
+            exit 1
+          fi
+          # The runner has no sound card, so quad-snd's own threads panic
+          # too ("Can't open PCM device") and write reports of their own:
+          # exactly one report is the panic on purpose.
+          mapfile -t reports < <(grep -l 'message: "a panic on purpose (SHUYI_PANIC_AT_FRAME)"' "$data"/shuyi-hello-grid/crash-*.ron)
+          if [ "${#reports[@]}" != 1 ]; then
+            echo "::error::not one report of the panic on purpose under $data: ${reports[*]}"
+            ls -l "$data"/shuyi-hello-grid
+            exit 1
+          fi
+          cat "${reports[0]}"
+          grep -q 'frame: 3,' "${reports[0]}"
+          grep -q 'thread: Some("main"),' "${reports[0]}"
+          grep -q 'top_screen: Some("title"),' "${reports[0]}"
+          grep -q 'record: None,' "${reports[0]}"
       - name: The captures in the summary
         if: always()
         run: |
