@@ -3,10 +3,11 @@
 // of the job (attempts 1 to 3 of CI run 41271510575, 2026-11-01), then held by the
 // fresh runs named in the ticket's notes. Four performance limits were set again
 // from 58 runs and one of `old_new` from 20 (ticket 2042, written at each), and
-// Windows' and the decoders' from 69 and 20 (ticket 2044). Change one only with new
-// runs that justify it, written here, and raise `version`: never to pass.
+// Windows' and the decoders' from 69 and 20 (ticket 2044), and four more natively and
+// in the browser from 59 (ticket 2046). Change one only with new runs that justify
+// it, written here, and raise `version`: never to pass.
 (
-    version: 7,
+    version: 8,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -51,10 +52,25 @@
     // square root, six times as many for browser latency. Latency doesn't `slows`;
     // its limits still catch a replacement that adds a buffer of 10 ms. The other
     // limits, never exceeded in those runs, stay.
+    //
+    // Ticket 2046 judged every `sound-parity` artifact from 2042's merge to
+    // 2026-11-04 the same way: 59 jobs in 10 CI runs (41689870848 to 41809586244; 20
+    // each in 41689870848 and 41785090975, 10 in 41796857018, gathered by run
+    // 41879925714), 62 native attempts and 61 in the browser. One median and three
+    // ranges went over a limit, and those four numbers are set again by the rule;
+    // the rest stay. Nothing leans that a limit feels: the side measured second
+    // against the first is within 0.002 of 1 on every metric but browser latency,
+    // where it is 0.978 (second faster, 299 pairs to 250), and the turns a, b, b, a
+    // put that in the range, never the median. The injected slowdown's least, with
+    // the ten runs of CI run 41881473138, was 1.84 natively and 1.53 in the browser,
+    // both on file reads.
     performance: {
         "linux-native": {
-            "file_io_ms": (max_ratio: 1.05, max_spread: 0.17, slows: true),
-            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            // Medians 0.959 to 1.057 (one failed at 1.05, job 13 of CI run
+            // 41785090975), ranges up to 0.134 under the 0.17 that stays.
+            "file_io_ms": (max_ratio: 1.12, max_spread: 0.17, slows: true),
+            // Medians 0.981 to 1.026, ranges up to 0.055: 1 of 62 over 0.05.
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.12, slows: true),
             // Medians 0.956 to 1.031, interquartile ranges up to 0.116: 15 of the 77
             // attempts were over 0.05. The injected slowdown's least was 1.95.
             "decode_ogg_ms": (max_ratio: 1.09, max_spread: 0.24, slows: true),
@@ -70,9 +86,12 @@
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.52, slows: true),
             "decode_wav_ms": (max_ratio: 1.17, max_spread: 0.22, slows: true),
             // Medians 0.873 to 1.089 (one failed at 1.05), ranges up to 0.192. The
-            // injected slowdown's least was 1.60.
-            "decode_ogg_ms": (max_ratio: 1.26, max_spread: 0.39, slows: true),
-            "cpu_ms": (max_ratio: 1.05, max_spread: 0.09, slows: true),
+            // injected slowdown's least was 1.60. Then (2046) medians 0.871 to 1.087,
+            // and one range of 0.587 (CI run 41796857018): a decode is seen to end at
+            // a frame, so its times fall on steps of 17 ms, 133 against 250 at worst.
+            "decode_ogg_ms": (max_ratio: 1.26, max_spread: 1.18, slows: true),
+            // Medians 0.953 to 1.035, ranges up to 0.112 (2046): 1 of 61 over 0.09.
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.23, slows: true),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
             // Medians 0.866 to 1.180 (two failed at 1.14), ranges up to 0.400 under
             // the 0.53 that stays: around 29 ms, a few ms of jitter is a big ratio.
