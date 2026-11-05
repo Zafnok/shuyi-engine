@@ -94,13 +94,13 @@ impl Names {
         self.names.get(id).map(String::as_str)
     }
 
-    /// Cells of the longest display name (0 for an empty table): what
-    /// every name token counts as when measuring text, so a rename can't
-    /// push a line past its limit.
-    pub fn longest(&self) -> usize {
+    /// Cells of the longest display name (0 for an empty table), a wide
+    /// character of `widths` two cells: what every name token counts as
+    /// when measuring text, so a rename can't push a line past its limit.
+    pub fn longest(&self, widths: &CellWidths) -> usize {
         self.names
             .values()
-            .map(|n| text_width(n, &CellWidths::NARROW))
+            .map(|n| text_width(n, widths))
             .max()
             .unwrap_or(0)
     }

@@ -23,6 +23,7 @@ fn rules_with<'a>(
 ) -> TipRules<'a> {
     TipRules {
         limits: LIMITS,
+        widths: &CellWidths::NARROW,
         placeholder,
         face_problem,
         default_face: "calm",
@@ -125,4 +126,32 @@ fn placeholders_are_the_names_between_braces() {
     assert_eq!(placeholders("{a}{b} {"), ["a", "b"]);
     assert_eq!(placeholders("none"), [] as [&str; 0]);
     assert_eq!(placeholders("{open"), [] as [&str; 0]);
+}
+
+#[test]
+fn a_wide_character_is_two_cells_of_the_title_and_the_lines() {
+    // Four characters of title and six of a line: under the limits of 6
+    // and 10, but 8 and 12 cells where they are wide.
+    let source = r#"(tips: [(id: "a", trigger: Jumped, title: "あいうえ", text: "あいうえおか")])"#;
+    let yes = |_: &str| true;
+    let none = |_: &str| None;
+    assert!(from_source::<Trigger>("t.ron", source, &rules_with(&yes, &none)).is_ok());
+    let widths = CellWidths::wide("あいうえおか".chars());
+    let rules = TipRules {
+        widths: &widths,
+        ..rules_with(&yes, &none)
+    };
+    let errors: Vec<String> = from_source::<Trigger>("t.ron", source, &rules)
+        .err()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.message)
+        .collect();
+    assert_eq!(
+        errors,
+        [
+            "tip \"a\": the title must be 1 to 6 characters",
+            "tip \"a\": a text line is over 10 characters: \"あいうえおか\"",
+        ]
+    );
 }

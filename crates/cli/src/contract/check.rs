@@ -395,6 +395,7 @@ mod tests {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
+            widths: &shuyi_assets::font::CellWidths::NARROW,
             variants: &[],
         };
         from_files(&files, None, str::to_owned, &rules).unwrap()
@@ -435,6 +436,54 @@ mod tests {
         };
         let answer = check(&drawn, &CheckInput::default());
         assert!(answer.ok, "{:?}", answer.result);
+    }
+
+    /// The errors of a game's tips, `title` the one tip's title, whose
+    /// loader measures them with `atlas`'s widths, as a game's does when
+    /// its atlas loads before its text.
+    fn tip_errors(title: &str, atlas: &FontAtlasDef) -> Vec<ContentError> {
+        use shuyi_assets::font::CellWidths;
+        use shuyi_assets::tip::{TipLimits, TipRules, from_source};
+        let source =
+            format!(r#"(tips: [(id: "a", trigger: "jumped", title: {title:?}, text: "x")])"#);
+        let widths = CellWidths::of(atlas);
+        let rules = TipRules {
+            limits: TipLimits {
+                text_lines: 1,
+                line_chars: 10,
+                title_chars: 6,
+            },
+            widths: &widths,
+            placeholder: &|_| true,
+            face_problem: &|_| None,
+            default_face: "calm",
+        };
+        from_source::<String>("tips.ron", &source, &rules)
+            .err()
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn check_measures_the_text_with_the_font_atlass_wide_glyphs() {
+        // Four characters, under the title's 6; but 8 cells drawn wide.
+        let title = "日本語だ";
+        let narrow = ascii_and(title);
+        let mut wide = ascii_and("");
+        wide.wide = title.chars().zip(96..).collect();
+        for (atlas, ok) in [(narrow, true), (wide, false)] {
+            let game = Fake {
+                check: Ok(tip_errors(title, &atlas)),
+                lang: Ok(russian(title)),
+                font_atlas: Some(Ok(atlas)),
+                ..Fake::default()
+            };
+            let answer = check(&game, &CheckInput::default());
+            assert_eq!(answer.ok, ok, "{:?}", answer.result);
+            let errors = &answer.result.as_ref().unwrap().errors;
+            let messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
+            let over = ["tip \"a\": the title must be 1 to 6 characters"];
+            assert_eq!(messages, if ok { &[][..] } else { &over[..] });
+        }
     }
 
     #[test]

@@ -102,10 +102,15 @@ fn leaves_other_tokens_and_unknown_ids() {
 
 #[test]
 fn longest_is_the_longest_name() {
-    assert_eq!(story().longest(), "the Guild of Lamps".len());
-    assert_eq!(Names::default().longest(), 0);
+    let narrow = &CellWidths::NARROW;
+    assert_eq!(story().longest(narrow), "the Guild of Lamps".len());
+    assert_eq!(Names::default().longest(narrow), 0);
     // Counted in cells, not bytes.
-    assert_eq!(table(&[("a", "né"), ("b", "x")]).longest(), 2);
+    assert_eq!(table(&[("a", "né"), ("b", "x")]).longest(narrow), 2);
+    // A wide character is two cells: "あい" outgrows "abc".
+    let japanese = table(&[("a", "abc"), ("b", "あい")]);
+    assert_eq!(japanese.longest(narrow), 3);
+    assert_eq!(japanese.longest(&CellWidths::wide(['あ', 'い'])), 4);
 }
 
 #[test]

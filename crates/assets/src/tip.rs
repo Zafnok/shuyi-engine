@@ -90,6 +90,9 @@ impl<T: PartialEq + Copy> TipTable<T> {
 pub struct TipRules<'a> {
     /// How much text the box holds.
     pub limits: TipLimits,
+    /// How many cells each character takes, which the limits count: the
+    /// font atlas's ([`CellWidths::of`]), or [`CellWidths::NARROW`].
+    pub widths: &'a CellWidths,
     /// Whether `{name}` is a placeholder the game fills in.
     pub placeholder: &'a dyn Fn(&str) -> bool,
     /// What is wrong with a tip showing the face `face` (its own, or the
@@ -138,7 +141,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
         if !triggers.insert(&tip.trigger) {
             err(format!("{:?} already has a tip", tip.trigger));
         }
-        if tip.title.is_empty() || text_width(&tip.title, &CellWidths::NARROW) > title_chars {
+        if tip.title.is_empty() || text_width(&tip.title, rules.widths) > title_chars {
             err(format!("the title must be 1 to {title_chars} characters"));
         }
         let lines: Vec<&str> = tip.text.lines().collect();
@@ -146,7 +149,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
             err(format!("the text must have 1 to {text_lines} lines"));
         }
         for line in lines {
-            if text_width(line, &CellWidths::NARROW) > line_chars {
+            if text_width(line, rules.widths) > line_chars {
                 err(format!(
                     "a text line is over {line_chars} characters: {line:?}"
                 ));

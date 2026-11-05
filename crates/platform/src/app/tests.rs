@@ -313,6 +313,11 @@ static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef
 static IMAGES: shuyi_assets::image::ImageTable =
     shuyi_assets::image::ImageTable::new(BTreeMap::new());
 
+/// A font atlas reloaded while the game runs, with `std` for the
+/// thread's note of it.
+#[cfg(feature = "std")]
+mod reloaded_atlas;
+
 #[test]
 fn the_game_is_shown_with_its_look_and_its_background() {
     let start = Start::new(

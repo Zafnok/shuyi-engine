@@ -17,6 +17,7 @@ const RULES: PackRules<'static> = PackRules {
     data_problem,
     tokens: &HeroTokens,
     limits: LIMITS,
+    widths: &CellWidths::NARROW,
     variants: &["a", "b"],
 };
 
@@ -265,6 +266,36 @@ fn a_dialogue_key_used_twice_fails() {
         )
     );
     assert_eq!(errors[0].code, Some(codes::DUPLICATE));
+}
+
+#[test]
+fn a_line_of_wide_characters_is_measured_in_cells() {
+    // 41 characters, under the limit of 80, but 82 cells where "あ" is wide.
+    let gone = id("Gone.");
+    let text = "あ".repeat(LIMITS.max_text / 2 + 1);
+    let entries = format!("[(key: {gone:?}, source: \"Gone.\", text: {text:?})]");
+    assert_eq!(line_errors(&entries), [] as [&str; 0]);
+    let widths = CellWidths::wide(['あ']);
+    let rules = PackRules {
+        widths: &widths,
+        ..RULES
+    };
+    let sources = PackSources {
+        info: ("xx/lang.ron", INFO),
+        ui: ("xx/ui.ron", "[]"),
+        data: Some(("xx/data.ron", "[]")),
+        dialogue: vec![("xx/dialogue/gate.ron", entries.as_str())],
+    };
+    let errors = pack_from_files(&sources, &BTreeMap::new(), Some(&source()), &rules)
+        .err()
+        .unwrap_or_default();
+    let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    assert_eq!(
+        errors,
+        [format!(
+            "xx/dialogue/gate.ron: {gone:?}: text is 82 cells; the limit is 80"
+        )]
+    );
 }
 
 #[test]

@@ -144,6 +144,10 @@ narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` 
 needs `shuyi-cli`'s `jis` feature in the game's `tools`. Text measured for a layout counts a wide character as
 two: `shuyi::assets::lang::text_width` does, with the widths of the frame
 (`buf.widths()`), and `buf.text_cells(text)` gives the same as a column count.
+The checks that keep text to a length count so too, once they have the atlas's widths
+(`CellWidths::of(&atlas)`): a language pack's rules (`PackRules::widths`, or
+`LangPackRon::widths_of`), a tip's (`TipRules::widths`) and a dialogue's
+(`SceneRules::widths`). So load the font atlas before the text.
 
 ## Layers
 

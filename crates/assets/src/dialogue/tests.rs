@@ -8,6 +8,7 @@ use alloc::collections::BTreeSet;
 use proptest::prelude::*;
 
 use super::*;
+use crate::font::CellWidths;
 use crate::names::Names;
 
 /// The limits the tests check scripts and packs against.
@@ -81,6 +82,7 @@ impl Tokens for HeroTokens {
 /// The tests' game: who may speak, their expressions, its names and cues.
 struct Rules {
     limits: DialogueLimits,
+    widths: CellWidths,
     speakers: Option<BTreeSet<&'static str>>,
     names: Option<Names>,
 }
@@ -89,6 +91,7 @@ impl Default for Rules {
     fn default() -> Self {
         Self {
             limits: LIMITS,
+            widths: CellWidths::NARROW,
             speakers: None,
             names: None,
         }
@@ -98,6 +101,10 @@ impl Default for Rules {
 impl SceneRules<Cue> for Rules {
     fn limits(&self) -> &DialogueLimits {
         &self.limits
+    }
+
+    fn widths(&self) -> &CellWidths {
+        &self.widths
     }
 
     fn tokens(&self) -> &dyn Tokens {
@@ -984,6 +991,17 @@ fn text_length_limits() {
     );
     let exact = "x".repeat(LIMITS.max_text);
     assert_eq!(errors(&scene(&format!("scout: {exact}"))), [] as [&str; 0]);
+    // A wide character counts as two cells: 41 of them are 82.
+    let wide = Rules {
+        widths: CellWidths::wide(['あ']),
+        ..Rules::default()
+    };
+    let japanese = scene(&format!("scout: {}", "あ".repeat(LIMITS.max_text / 2 + 1)));
+    assert_eq!(errors(&japanese), [] as [&str; 0]);
+    assert_eq!(
+        errors_with(&japanese, &wide),
+        ["t.dlg:4: text is 82 characters; the limit is 80"]
+    );
     // A token counts as its longest.
     let near = "x".repeat(LIMITS.max_text - 9);
     assert_eq!(
@@ -1011,6 +1029,19 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
     let spills = format!("scout: {pad} {} {{hero}}", "b".repeat(31));
     assert_eq!(
         errors(&scene(&spills)),
+        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+    );
+    // A wide character takes two cells of the box's width: three words of
+    // 12 are three lines of 24 cells.
+    let wide = Rules {
+        widths: CellWidths::wide(['あ']),
+        ..Rules::default()
+    };
+    let word = "あ".repeat(12);
+    let japanese = scene(&format!("scout: {word} {word} {word}"));
+    assert_eq!(errors(&japanese), [] as [&str; 0]);
+    assert_eq!(
+        errors_with(&japanese, &wide),
         ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
     );
 }
@@ -1163,13 +1194,25 @@ fn tokens_and_names() {
     let long = Names {
         names: [("a".to_owned(), "x".repeat(70))].into(),
     };
+    let narrow = &CellWidths::NARROW;
     assert_eq!(
-        longest_width("{n:a} {n:b}", &NoTokens, Some(long.longest())),
+        longest_width("{n:a} {n:b}", &NoTokens, Some(long.longest(narrow)), narrow),
         141
     );
-    assert_eq!(longest_width("{n:a} {zz}", &NoTokens, None), 10);
-    assert_eq!(longest_width("{hero}!", &HeroTokens, None), 11);
-    assert_eq!(longest_width("{a", &HeroTokens, None), 2);
+    assert_eq!(longest_width("{n:a} {zz}", &NoTokens, None, narrow), 10);
+    assert_eq!(longest_width("{hero}!", &HeroTokens, None, narrow), 11);
+    assert_eq!(longest_width("{a", &HeroTokens, None, narrow), 2);
+    // A wide character is two cells, in the text and in a name.
+    let wide = &CellWidths::wide(['あ', 'い']);
+    let japanese = Names {
+        names: [("a".to_owned(), "あい".to_owned())].into(),
+    };
+    assert_eq!(japanese.longest(wide), 4);
+    assert_eq!(
+        longest_width("あ {n:a}", &NoTokens, Some(japanese.longest(wide)), wide),
+        7
+    );
+    assert_eq!(longest_width("{あ}", &NoTokens, None, wide), 4);
     assert_eq!(
         token_problems("{n:a} {b}", &NoTokens, Some(&long)),
         ["unknown token \"{b}\"; use a name, {n:<id>}"]
