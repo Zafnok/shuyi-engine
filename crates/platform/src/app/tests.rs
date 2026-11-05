@@ -651,6 +651,134 @@ fn losing_focus_lets_go_of_what_is_held_before_the_hook_hears_it() {
     assert_eq!(rights(&log), 2);
 }
 
+/// By default a game without focus runs on with its sound.
+#[test]
+fn by_default_a_game_without_focus_runs_on_with_its_sound() {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    p.push_system(SystemEvent::FocusLost);
+    p.push_input(&press(Key::F));
+    let _ = app.frame(&mut p, Millis(17));
+    assert!(!app.is_focused() && !app.is_paused());
+    assert_eq!(log.borrow().len(), 2);
+    assert_eq!(app.ticks(), 1);
+    assert_eq!(p.speaker().requests().len(), 1);
+    assert!(p.speaker().volumes().0 > 0.0, "{:?}", p.speaker().volumes());
+}
+
+/// Paused without focus: no update and no steps, the last frame shown
+/// again; with the focus back the time away makes no steps.
+#[test]
+fn paused_without_focus_the_game_runs_nothing_and_shows_its_last_frame() {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    app.background = Background::KEEP_RUNNING.paused();
+    let mut p = HeadlessPlatform::new();
+    let mut now = 0;
+    for _ in 0..3 {
+        now += 17;
+        let _ = app.frame(&mut p, Millis(now));
+    }
+    let (updates, presented) = (log.borrow().len(), p.presented());
+    let shown = p.last_frame().cloned();
+    p.push_system(SystemEvent::FocusLost);
+    for _ in 0..5 {
+        now += 17;
+        p.push_input(&press(Key::F));
+        assert_eq!(app.frame(&mut p, Millis(now)), FrameOutcome::Continue);
+        assert_eq!(app.ticks(), 0);
+    }
+    assert!(app.is_paused());
+    assert_eq!(log.borrow().len(), updates);
+    assert_eq!(p.presented(), presented + 5);
+    assert_eq!(p.last_frame().cloned(), shown);
+    // Not muted: the device heard nothing from the paused frames.
+    assert!(p.speaker().volumes().0 > 0.0);
+    // Ten minutes away, then the focus is back.
+    now += 10 * 60 * 1000;
+    p.push_system(SystemEvent::FocusGained);
+    let _ = app.frame(&mut p, Millis(now));
+    now += 17;
+    let _ = app.frame(&mut p, Millis(now));
+    assert!(!app.is_paused());
+    let after: Vec<Seen> = log.borrow()[updates..].to_vec();
+    assert_eq!(after.len(), 2);
+    assert!(after[0].dt.abs() < f32::EPSILON, "{}", after[0].dt);
+    assert!(after.iter().map(|s| s.ticks).sum::<u32>() <= 1, "{after:?}");
+    // The presses made while paused were dropped.
+    assert!(after.iter().all(|s| s.actions.is_empty()), "{after:?}");
+}
+
+#[test]
+fn quitting_while_paused_quits() {
+    let mut app = App::running(toy::game());
+    app.background = Background::KEEP_RUNNING.paused();
+    let mut p = HeadlessPlatform::new();
+    p.push_system(SystemEvent::FocusLost);
+    let _ = app.frame(&mut p, Millis(0));
+    assert!(app.is_paused());
+    p.push_system(SystemEvent::QuitRequested);
+    assert_eq!(app.frame(&mut p, Millis(17)), FrameOutcome::Quit);
+    assert!(app.has_quit() && !app.is_paused());
+}
+
+/// Muted without focus: the audio still goes to the device, at volume 0,
+/// and the player's volumes come back with the focus.
+#[test]
+fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    app.background = Background::KEEP_RUNNING.muted();
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let volumes = p.speaker().volumes();
+    assert!(
+        volumes.0 > 0.0 && volumes.1 > 0.0 && volumes.2 > 0.0,
+        "{volumes:?}"
+    );
+    p.push_system(SystemEvent::FocusLost);
+    p.push_input(&press(Key::F));
+    let _ = app.frame(&mut p, Millis(17));
+    assert!(!app.is_paused());
+    assert_eq!(log.borrow().len(), 2);
+    let click = SoundRequest::Sound {
+        cue: "click".into(),
+        volume: 1.0,
+    };
+    assert_eq!(p.speaker().requests(), [click]);
+    assert_eq!(p.speaker().volumes(), (0.0, 0.0, 0.0));
+    p.push_system(SystemEvent::FocusGained);
+    let _ = app.frame(&mut p, Millis(34));
+    assert_eq!(p.speaker().volumes(), volumes);
+}
+
+/// Paused and muted: no update, and the device is still told each frame,
+/// with nothing to play, at volume 0.
+#[test]
+fn paused_and_muted_the_device_hears_silence_each_frame() {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    app.background = Background::KEEP_RUNNING.paused().muted();
+    let mut p = HeadlessPlatform::new();
+    p.push_input(&press(Key::F));
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(p.speaker().requests().len(), 1);
+    let volumes = p.speaker().volumes();
+    p.push_system(SystemEvent::FocusLost);
+    p.push_input(&press(Key::F));
+    let _ = app.frame(&mut p, Millis(17));
+    assert!(app.is_paused());
+    assert_eq!(log.borrow().len(), 1);
+    let found = p.speaker().requests();
+    assert!(found.is_empty(), "{found:?}");
+    assert_eq!(p.speaker().volumes(), (0.0, 0.0, 0.0));
+    p.push_system(SystemEvent::FocusGained);
+    let _ = app.frame(&mut p, Millis(34));
+    assert_eq!(p.speaker().volumes(), volumes);
+}
+
 /// The frame cap goes to the backend with its serial; the backend's report
 /// reaches the game before the next update, and confirms a request.
 #[test]

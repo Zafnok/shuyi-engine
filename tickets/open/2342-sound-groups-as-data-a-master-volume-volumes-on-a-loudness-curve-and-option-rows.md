@@ -246,10 +246,15 @@ moves to the MVP.
   aren't under the shared player), move it onto `gains` here,
   with its sound effects if they read the volumes too, as `shuyi-app`'s
   player; if not, nothing to do (3061 reads the gains).
-- **Either order with 3093** (the game's background policy): if 3093 is
-  done, its mute while unfocused moves onto `Gains` here, with every
-  group's gain at 0 in the frames it mutes (`Gains::muted`); if not,
-  3093 mutes on `Gains` (its clause says so).
+- **From 3093 (done):** the game's background policy mutes while
+  unfocused through `silent`, a private function in
+  `crates/platform/src/app.rs` that builds the `AudioFrame` with its
+  three volumes at 0 (used by `step` and by the paused branch of
+  `App::run`). Move it onto `Gains` here, with every group's gain at 0
+  in the frames it mutes (`Gains::muted`); `App`'s tests
+  `muted_without_focus_the_audio_goes_on_at_volume_zero` and
+  `paused_and_muted_the_device_hears_silence_each_frame` read the
+  volumes from the headless `Speaker`.
 - **2110** (save migrations): if it is done, the forms it versions (the
   engine's `()` settings and the grid template's) each get their next
   `VERSION`, a `Migrate::upgrade` step that reads `music_volume` and
@@ -339,7 +344,7 @@ After MVP, and this PR keeps only the five built-in groups.
    `crates/ui/src/{audio,settings,ctx,game}.rs`,
    `crates/ui/src/screens/options.rs`,
    `crates/platform/src/{audio,app,headless,harness}.rs` and
-   `crates/app/src/{audio,backend}.rs`. Check which of 3029, 3093,
+   `crates/app/src/{audio,backend}.rs`. Check which of 3029,
    2110, 2351, 2218, 2344, 2345, 2408 and 2501 are done. List every
    use of the old names outside `tickets/`:
    `grep -rn "music_volume\|sound_volume\|voice_volume\|voice_gain\|music_factor\|sound_factor\|DEFAULT_VOLUME\|MAX_VOICE_VOLUME" crates examples templates docs`.
