@@ -612,6 +612,45 @@ fn focus_and_battery_go_to_the_game_and_the_window_shortcut_flips_fullscreen() {
     );
 }
 
+/// A key held when the window loses focus never comes up where the game
+/// hears it: `App` lets go of it before the game's hook, so it doesn't
+/// repeat, and a press once focus is back counts.
+#[test]
+fn losing_focus_lets_go_of_what_is_held_before_the_hook_hears_it() {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    app.set_system_hook(|game, event| {
+        if event == SystemEvent::FocusLost {
+            let held = game.input().is_held(Action::CursorRight);
+            let _ = game.ctx_mut().storage.write("held", &format!("{held}"));
+        }
+    });
+    let mut p = HeadlessPlatform::new();
+    p.push_input(&press(Key::Right));
+    let _ = app.frame(&mut p, Millis(0));
+    assert!(running(&app).input().is_held(Action::CursorRight));
+    p.push_system(SystemEvent::FocusLost);
+    let mut now = 0;
+    for _ in 0..60 {
+        now += 17;
+        let _ = app.frame(&mut p, Millis(now));
+    }
+    let game = running(&app);
+    assert!(!game.input().is_held(Action::CursorRight));
+    assert_eq!(game.ctx().storage.read("held"), Ok(Some("false".into())));
+    let rights = |log: &Log| {
+        let seen = log.borrow();
+        let all = seen.iter().flat_map(|s| s.actions.iter());
+        all.filter(|&&a| a == Action::CursorRight).count()
+    };
+    assert_eq!(rights(&log), 1, "a second without a repeat");
+    // Focus back, the key still down: it counts once pressed again.
+    p.push_system(SystemEvent::FocusGained);
+    p.push_input(&press(Key::Right));
+    let _ = app.frame(&mut p, Millis(now + 17));
+    assert_eq!(rights(&log), 2);
+}
+
 /// The frame cap goes to the backend with its serial; the backend's report
 /// reaches the game before the next update, and confirms a request.
 #[test]

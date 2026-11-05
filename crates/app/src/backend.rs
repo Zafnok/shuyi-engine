@@ -1,6 +1,7 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
-//! controllers, the window's own shortcut and close button, the OS's data
+//! controllers, the window's focus ([`focus`](crate::focus)), its own
+//! shortcut and close button, the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
 //! memory tags and its snapshots, in debug builds. It keeps the frame cap
@@ -27,6 +28,7 @@ use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, Perf
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::audio;
+use crate::focus::WindowFocus;
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
@@ -59,6 +61,8 @@ pub(crate) struct Macroquad {
     fullscreen: bool,
     /// The controllers, once the game's stick thresholds are known.
     pads: Option<PadInput>,
+    /// Whether the window has focus, from miniquad's events.
+    focus: WindowFocus,
     sound: Sound,
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
@@ -100,6 +104,7 @@ impl Macroquad {
             card_picture: None,
             fullscreen: false,
             pads: None,
+            focus: WindowFocus::default(),
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
@@ -135,11 +140,12 @@ impl Macroquad {
     /// Reads the input and the system's events of a frame that doesn't run
     /// the game (the web's, before the cap's due time) and keeps them, in
     /// order, for the next frame that does: macroquad forgets a frame's key
-    /// presses and releases at its end.
+    /// presses and releases at its end. The system's events first, as
+    /// `App` reads them, so the pads hear this frame's focus.
     pub(crate) fn hold_input(&mut self) {
         let (mut input, mut system) = (Vec::new(), Vec::new());
-        self.poll_input(&mut input);
         self.system_events(&mut system);
+        self.poll_input(&mut input);
         self.held.keep(input, system);
     }
 
@@ -363,7 +369,7 @@ impl Platform for Macroquad {
         self.held.take_input(out);
         out.extend(keys::poll());
         if let Some(pads) = &mut self.pads {
-            out.extend(pads.poll());
+            out.extend(pads.poll(self.focus.is_focused()));
         }
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         out.append(&mut self.link_input);
@@ -371,11 +377,18 @@ impl Platform for Macroquad {
 
     fn system_events(&mut self, out: &mut Vec<SystemEvent>) {
         self.held.take_system(out);
+        let start = out.len();
+        self.focus.events(out);
         if keys::fullscreen_shortcut() {
             out.push(SystemEvent::ToggleFullscreen);
         }
         if is_quit_requested() {
             out.push(SystemEvent::QuitRequested);
+        }
+        if cfg!(debug_assertions) {
+            for event in &out[start..] {
+                info!("system event: {:?}", event);
+            }
         }
     }
 

@@ -15,7 +15,9 @@
 //! ([`Game::set_resumed`]), so a tick stage forgets the presses it kept
 //! from before and every key and button held before the suspend is let go
 //! (a key may come up while suspended, unheard); one still down counts
-//! once it is pressed again.
+//! once it is pressed again. On [`SystemEvent::FocusLost`] the game lets go
+//! of what is held at once ([`Game::forget_held_input`]), for the same
+//! reason.
 //!
 //! `App` keeps the log (ADR-0030): at the end of every frame it takes the
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
@@ -200,7 +202,8 @@ pub type LookOf<G> = fn(&G) -> Look<'_>;
 /// has done its part. On [`SystemEvent::Suspend`],
 /// [`QuitRequested`](SystemEvent::QuitRequested) and
 /// [`LowBattery`](SystemEvent::LowBattery) it is where the game saves what
-/// it hasn't; on [`FocusLost`](SystemEvent::FocusLost) it may pause.
+/// it hasn't; on [`FocusLost`](SystemEvent::FocusLost), whose held input
+/// `App` has let go of, it may pause.
 pub type SystemHook<G> = fn(&mut Game<G>, SystemEvent);
 
 /// The game's own state hash, for the frame's hash ([`Start::state_hash`]).
@@ -837,7 +840,14 @@ impl<G: GameData> App<G> {
                     game.set_resumed();
                 }
             }
-            SystemEvent::FocusLost => self.focused = false,
+            SystemEvent::FocusLost => {
+                self.focused = false;
+                // A window without focus hears no release: let go now, so
+                // nothing held repeats while the player is elsewhere.
+                if let Some(game) = self.game_mut() {
+                    game.forget_held_input();
+                }
+            }
             SystemEvent::FocusGained => self.focused = true,
             SystemEvent::QuitRequested => self.quit = true,
             SystemEvent::ToggleFullscreen => {

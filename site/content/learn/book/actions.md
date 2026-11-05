@@ -29,8 +29,9 @@ A screen's `update` gets a `FrameInput` of the game's actions: `input.actions` h
 those pressed this frame, and `input.is_held(action)` says whether one is held down. A
 held action that repeats comes again at the keymap's repeat rate, so a screen never times
 key presses itself. When the game comes back from a suspend (the device slept, or the
-player switched apps), nothing is held any more: a key let go while it was away doesn't
-stay held, and one still down counts once it is pressed again. The garden's `update`, in
+player switched apps), or its window loses focus, nothing is held any more: a key let go
+while it was away doesn't stay held, and one still down counts once it is pressed again.
+While the window has no focus the controllers do nothing. The garden's `update`, in
 [chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below), turns each action
 into a command of its rules.
 

@@ -220,10 +220,11 @@ if he wants rumble in the game.
     a pause menu, and 2316's debug pause, which pauses through the
     queue's `OUTSIDE_THE_STACK` owner. Cues asked for after it play, as
     a menu's own sounds do. 2394 left this wiring to this ticket;
-  - **either order with 3042 and 3043:** they make `shuyi-app` send
-    `FocusLost` from the window and `Suspend` from a hidden tab. The
-    rule above needs nothing more from them, and it holds whatever
-    background policy (3042) the game picks.
+  - **From 3042 (done):** `shuyi-app` sends `FocusLost` from the
+    window (ADR-0076). **Either order with 3043:** if 3043 is done, it
+    sends `Suspend` from a hidden tab; if not, nothing to do. The rule
+    above needs nothing more from them, and it holds whatever background
+    policy (3093) the game picks.
 - **The platform slot** (`crates/platform/src/rumble.rs`,
   `crates/platform/src/platform.rs`):
   - `trait Motors { fn set(&mut self, level: MotorLevel, for_ms: u32);
@@ -372,8 +373,8 @@ if he wants rumble in the game.
    audio path (`crates/ui/src/audio.rs`; `Game::frame` and
    `collect_audio` in `crates/ui/src/game.rs`; `step` in
    `crates/platform/src/app.rs`; `crates/platform/src/audio.rs`) and the
-   Harness. Check which of 2110, 2340, 2342, 2344, 2351, 2406, 2515
-   and 3042 are done.
+   Harness. Check which of 2110, 2340, 2342, 2344, 2351, 2406 and 2515
+   are done.
 2. Write `shuyi_assets::rumble`, its format and its tests; register it;
    add the rows to `docs/formats.md`, the kind to
    `Importers::standard()` and the golden row (2116); add 2515's part

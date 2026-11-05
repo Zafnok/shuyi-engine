@@ -175,9 +175,10 @@ None.
     stage steps the rules once for each of `input.ticks()` through
     2137's driver, and builds a `MapScene` whose units are the head, the
     body and the food. A suspended game gets 0 ticks, so the snake
-    waits. If 3042 is done, the example's `GameSettings::BACKGROUND` is
-    `Background::KEEP_RUNNING.paused()`, and its system hook pushes the
-    pause menu on `FocusLost`; if not, 3042 does it.
+    waits. Its system hook pushes the pause menu on
+    `FocusLost` (sent since 3042). **Either order with 3093:** if 3093
+    is done, the example's `GameSettings::BACKGROUND` is
+    `Background::KEEP_RUNNING.paused()`; if not, 3093 does it.
   - **the actions:** `Up`, `Down`, `Left`, `Right`, `Confirm` and
     `Cancel`, the grid template's six
     (`templates/grid/crates/game/src/action.rs`). `files/keymap.ron` has
@@ -288,8 +289,9 @@ None.
     while a direction is held, the wanderer every 16 steps. An agent
     reading the two parts side by side sees what changes between turns
     and ticks. It is not snake, so the eval's snake task (below) stays a
-    task. If 3042 is done, its `GameSettings::BACKGROUND` is
-    `Background::KEEP_RUNNING.paused()`; if not, 3042 does it;
+    task. **Either order with 3093:** if 3093 is done,
+    its `GameSettings::BACKGROUND` is
+    `Background::KEEP_RUNNING.paused()`; if not, 3093 does it;
   - `--template arcade` is a short name for those answers, as `grid`
     and `blank` are, and `--set time=ticks` picks it. If 2502 is done,
     its prompts show the question;
@@ -351,7 +353,7 @@ None.
   snapshots, move the template part, its CI entry, the guide section and
   the skill to a follow-up ticket (the
   `write-ticket` skill), and say so in the PR. The same PR changes
-  2004's and 3042's mentions of 2739 for those pieces to the new
+  2004's and 3093's mentions of 2739 for those pieces to the new
   ticket's id.
   The eval's snake task then keeps the `template` 2524 gave it (or
   `blank`, if this ticket writes the file), and the follow-up sets it
@@ -364,7 +366,7 @@ None.
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
    tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3010 and 3042.
+   2524, 2801, 3004, 3010 and 3093.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.

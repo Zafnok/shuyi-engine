@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 3042 — Focus lost and gained, held input let go, and a background policy
@@ -334,43 +334,43 @@ choice, made in its own repository.
 
 ## Acceptance criteria
 
-- [ ] `Focus` unit tests: one `FocusLost` for two minimizes in a row;
+- [x] `Focus` unit tests: one `FocusLost` for two minimizes in a row;
       `FocusGained` on a restore while unfocused, nothing on a restore
       while focused; `FocusGained` on a key press or a mouse button
       press while unfocused, nothing on one while focused.
-- [ ] Pad filter tests: unfocused with a button and a stick direction
+- [x] Pad filter tests: unfocused with a button and a stick direction
       held gives their `PadUp`s and no `PadDown`; a press while
       unfocused gives nothing; on regaining focus a button still held
       gives no `PadDown`, and its later release and press give a
       `PadUp` then a `PadDown`.
-- [ ] `InputState::forget_held` tests: a held repeatable action stops
+- [x] `InputState::forget_held` tests: a held repeatable action stops
       repeating; a waiting chord button gives no action, then or on its
       release; the device and keymap stay; the next press of the same
       key acts.
-- [ ] Harness, hello-grid, on the stage: `Right` held on a frame with
+- [x] Harness, hello-grid, on the stage: `Right` held on a frame with
       no release, then `system(SystemEvent::FocusLost)`: `is_held` is
       false for its action, and after a second of frames the cursor is
       where the press left it.
-- [ ] Harness, hello-grid, on the stage: `Right` held, `Suspend`, its
+- [x] Harness, hello-grid, on the stage: `Right` held, `Suspend`, its
       release sent while suspended, `Resume`: after a second of frames
       the cursor is where the press left it. (On `main` this fails,
       since the release is dropped and the move repeats; check it does
       first, and say so in the Completion notes.)
-- [ ] `App` tests with the policy set to `paused()`: after `FocusLost`,
+- [x] ~~`App` tests with the policy set to `paused()`~~ (not done: moved to 3093): after `FocusLost`,
       frames run no update and no steps and present the last frame;
       after `FocusGained` the first frame counts no time, and a
       10-minute gap steps at most once.
-- [ ] `App` tests with `muted()`: while unfocused the `AudioFrame`
+- [x] ~~`App` tests with `muted()`~~ (not done: moved to 3093): while unfocused the `AudioFrame`
       volumes are 0 and its requests are still passed; paused and
       muted, `play` is called with no requests at volume 0; after
       `FocusGained` the player's volumes come back.
-- [ ] If 2405 is done: a pointer press held across `FocusLost` gives no
+- [x] If 2405 is done (it isn't: 2405 does it): a pointer press held across `FocusLost` gives no
       click on its release, and `FrameInput::pointer()` is `None` until
       the pointer moves (Harness).
-- [ ] With the default policy, every existing Harness, snapshot and
+- [x] With the default policy, every existing Harness, snapshot and
       replay test passes unchanged.
-- [ ] The ADR is written and ADR-0024's row names it.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and ADR-0024's row names it.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -383,4 +383,69 @@ choice, made in its own repository.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Split by the size rule.** With the background policy the PR would
+  have passed about 600 changed lines, so `Background`,
+  `GameSettings::BACKGROUND`, the pause and the mute went to **3093**
+  (After MVP, blocked by this one), as the Size bullet says. 3043 now
+  waits for 3093 too, and 2342's, 2408's and 2739's mentions of the
+  policy name 3093.
+- **Deviation: no `InputState::forget_held`.** 2411 (done the same day,
+  after this ticket was written) added `InputState::release_all`, which
+  is the method this ticket describes: it forgets what is held, pending,
+  waiting and repeating, keeps the keymap and the device, and
+  `set_keymap` calls it. It reports the held actions as `released` after
+  the next update, which a game reading releases wants. So
+  `Game::forget_held_input` calls `release_all`, and 2411's tests are the
+  `forget_held` criteria (a held repeatable action stops, a waiting chord
+  button gives nothing, device and keymap stay, the next press acts).
+  2404's mentions now name `release_all`.
+- **Deviation: nothing more on `Suspend`.** 2411 already lets go of held
+  input on the first frame after `Resume`, and nothing runs between the
+  two, so `App` only adds the release on `FocusLost`
+  (`App::on_system_event`, before the hook). The Suspend Harness test
+  passes on `main` for that reason (since 2411, not failing as the
+  ticket expected); it fails with 2411's call removed, and the FocusLost
+  test fails with this ticket's call removed (both checked).
+- **Deviation: the subscriber is made on the first frame read**, not in
+  `Macroquad::new`: a capture run never reads the window, and macroquad
+  would queue every key and mouse event for a subscriber nobody drains.
+  `Macroquad::hold_input` now reads the system's events before the input,
+  so the web's skipped frames hand the pads that frame's focus.
+- Code: `crates/app/src/focus.rs` (`Focus`, `WindowFocus`), the
+  recording `EventHandler` (`WindowHeard`) in `keys.rs`, since the key
+  lint lets only that file name `KeyCode`, `Macroquad::system_events` (focus events first, a
+  debug `info!` line per event sent), `pads::pad_events` and
+  `PadInput::poll(focused)`, `Game::forget_held_input`, and `App` on
+  `FocusLost`. ADR-0076; `docs/platform-backends.md`'s table row and a
+  paragraph on the macroquad backend; the book's *Actions* chapter.
+- Either-order clauses taken: 2342 (not done, its clause now names
+  3093), 2405 (not done: it makes `forget_held_input` forget the
+  pointer), 3037 (parked: it feeds the tracker), 3041 (not done: it moves
+  the debug line, macroquad's `info!`), 3044 (not done: it shows the
+  cursor on `FocusLost`), 2406 (parked), 2408 (parked, needs nothing),
+  2738 (parked), 2739 (not done: it pushes its pause menu, and the
+  policy part names 3093).
+- **Manual check.** Windows, hello-grid's debug build: switching to
+  Notepad and back logged `system event: FocusLost` then
+  `system event: FocusGained`. The web, hello-grid's debug web build in
+  the browser pane, calling `wasm_exports.focus(false)` and `(true)` as
+  the bundle's `blur`/`focus` listener does, with `Right` held across:
+  the console showed `FocusLost` and `FocusGained` between the markers,
+  in order. No pad was plugged in, so the pad filter is checked by its
+  unit tests only. Not run on macOS or Linux.
+- No game ticket: the game needs no change; its hook hears the new
+  events at its next pin bump, and a `_` arm covers them.
+
+Breaking: shuyi-app: PadInput::poll: takes whether the window has focus.
+
+```migration
+since: 0.2.0
+what: Polling the controllers takes whether the window has focus, and ignores the pads without it.
+old: "PadInput::poll(&mut self)"
+new: "PadInput::poll(&mut self, focused: bool)"
+before: |
+  let events = pads.poll();
+after: |
+  let events = pads.poll(true);
+find: ["pads.poll()"]
+```
