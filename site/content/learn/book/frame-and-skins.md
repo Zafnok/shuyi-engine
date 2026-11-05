@@ -119,9 +119,10 @@ nothing in the frames where it didn't change.
 
 > **Rust:** `as_chunks_mut::<4>()` cuts the pixels' bytes into groups of
 > four, red, green, blue and how solid the pixel is (255 is fully), and
-> `.0` takes the whole groups. `(0u32..).zip(pixels)` numbers them, so
-> `i % 64` is a pixel's column and `i / 64` its row. `abs_diff` is how far
-> apart two numbers are, never negative.
+> `.0` takes the whole groups. `.chunks_mut(64)` cuts those into rows of
+> 64 pixels, and `(0u32..).zip(rows)` numbers the rows, so `py` is a
+> pixel's row; the inner loop numbers each row's pixels, its column `px`.
+> `abs_diff` is how far apart two numbers are, never negative.
 
 A picture comes in three kinds: `Painted::rgba` (four bytes a pixel, as
 here), `Painted::indexed` (a byte a pixel and a palette of up to 256

@@ -98,13 +98,14 @@ pub fn paint_plasma(step: u32, (x, y): (i32, i32), buf: &mut GlyphBuffer) {
     // Up from 0 to 248 and back down over 64 steps of `v`.
     let wave = |v: u32| u8::try_from((v % 64).abs_diff(32) * 31 / 4).unwrap_or(u8::MAX);
     let mut picture = Painted::rgba(64, 48);
-    let pixels = picture.pixels_mut().as_chunks_mut::<4>().0;
-    for (i, pixel) in (0u32..).zip(pixels) {
-        let (px, py) = (i % 64, i / 64);
-        let red = wave(px + step);
-        let green = wave(py + 2 * step);
-        let blue = wave(px + py + 3 * step);
-        *pixel = [red, green, blue, 255];
+    let rows = picture.pixels_mut().as_chunks_mut::<4>().0.chunks_mut(64);
+    for (py, row) in (0u32..).zip(rows) {
+        for (px, pixel) in (0u32..).zip(row) {
+            let red = wave(px + step);
+            let green = wave(py + 2 * step);
+            let blue = wave(px + py + 3 * step);
+            *pixel = [red, green, blue, 255];
+        }
     }
     buf.pictures_mut().update(PLASMA, picture);
     let whole = Rect::new(0, 0, 64, 48);
