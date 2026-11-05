@@ -151,7 +151,9 @@ map) with a type that implements `Directive`: the parser hands it every
      is `narration`, and the `choices` while a choice is open.
    - `advance()` moves to the next text box; at a choice it waits for
      `choose(n)`. `is_choosing()` and `is_finished()` say where it is.
-   - `TextBox::new(&text, width, lines)` pages and types a line out:
+   - `TextBox::new(&text, width, lines, ctx.widths())` pages and types
+     a line out, wrapped in cells (a wide character is two; Japanese
+     breaks between characters, never before `。` or after `「`):
      `type_on(input.dt(), ctx.settings().text_speed.chars_per_s())` each
      frame, `hold` while the key that goes on is held, and `confirm()`,
      which answers `Revealed`, `NextPage` or `Done`. On `Done`, advance

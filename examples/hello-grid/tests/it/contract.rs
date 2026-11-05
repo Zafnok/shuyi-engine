@@ -188,6 +188,48 @@ fn replay_of(record: &str, other: Option<&str>) -> ReplayInput {
     input
 }
 
+/// A crash in the rules: the record of the open stage holds the commands
+/// taken and the one pending, and `replay` reads it.
+#[test]
+fn a_crash_record_holds_the_commands_taken_and_the_pending_one() {
+    use hello_grid::rules::Chase;
+    use hello_grid::screens::StageScreen;
+    use hello_grid::screens::stage::crash_record;
+    use shuyi::core::{Bot, RandomBot, Sides, TurnRules};
+
+    let title = HelloStart::from_options(&[]).unwrap().harness();
+    assert_eq!(crash_record(title.game()), None);
+    let mut h = HelloStart::from_options(&on_the_stage()).unwrap().harness();
+    let screen = h.screen_mut::<StageScreen>().unwrap();
+    let seed = screen.seed.unwrap();
+    let mut hero = RandomBot::new(seed);
+    let mut choose = |stage: &hello_grid::rules::Stage| match stage.side_to_move() {
+        hello_grid::rules::Side::Hero => hero.choose(stage),
+        hello_grid::rules::Side::Foe => Chase.choose(stage),
+    };
+    for _ in 0..2 {
+        let command = choose(&screen.stage);
+        screen.stage.apply(&command).unwrap();
+        screen.commands.push(command);
+    }
+    screen.pending = Some(choose(&screen.stage));
+    let text = crash_record(h.game()).unwrap();
+    let record: StageRecord = ron::from_str(&text).unwrap();
+    assert_eq!((record.seed, record.commands.len()), (seed, 3));
+    assert_eq!(record.made, Some(hello_grid::made()));
+    let dir = scratch("crash-record");
+    fs::write(dir.join("crash.ron"), &text).unwrap();
+    let answer = replay(&HelloTools, &dir, &replay_of("crash.ron", None));
+    assert!(answer.ok, "{answer:?}");
+    let run = &answer.result.unwrap().runs[0];
+    assert_eq!(run.steps.len(), 4);
+    assert!(
+        run.steps.iter().all(|step| step.refused.is_none()),
+        "{run:?}"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 fn scene_at_title() -> contract::Answer<contract::run::SceneOutput> {
     scene(&HelloTools, &RunInput::default())
 }

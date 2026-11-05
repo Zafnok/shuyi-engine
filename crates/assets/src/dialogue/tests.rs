@@ -1031,19 +1031,36 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
         errors(&scene(&spills)),
         ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
     );
-    // A wide character takes two cells of the box's width: three words of
-    // 12 are three lines of 24 cells.
+    // A wide character takes two cells of the box's width, and the line
+    // breaks between two of them as the box does: 15 of them, a Latin run
+    // of 20 kept whole, and 15 more are lines of 30, 40 and 10 cells.
     let wide = Rules {
         widths: CellWidths::wide(['あ']),
         ..Rules::default()
     };
-    let word = "あ".repeat(12);
-    let japanese = scene(&format!("scout: {word} {word} {word}"));
+    let half = "あ".repeat(15);
+    let japanese = scene(&format!("scout: {half}{}{half}", "b".repeat(20)));
     assert_eq!(errors(&japanese), [] as [&str; 0]);
     assert_eq!(
         errors_with(&japanese, &wide),
         ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
     );
+}
+
+#[test]
+fn lines_at_longest_breaks_japanese_as_the_box_does() {
+    let wide = &CellWidths::wide(['あ', '。']);
+    let half = "あ".repeat(15);
+    // A name token is a Latin run as long as the longest name, never
+    // broken: 30 cells, 20, then 30 that the line breaks between.
+    let line = format!("{half}{{n:a}}{half}");
+    assert_eq!(lines_at_longest(&line, &NoTokens, Some(20), 40, wide), 3);
+    assert_eq!(lines_at_longest(&line, &NoTokens, Some(10), 40, wide), 2);
+    // No line starts with `。`: 20 wide characters fill a line, and the
+    // last goes down with the `。`.
+    let full = format!("{}。", "あ".repeat(20));
+    assert_eq!(lines_at_longest(&full, &NoTokens, None, 40, wide), 2);
+    assert_eq!(lines_at_longest(&full, &NoTokens, None, 42, wide), 1);
 }
 
 #[test]

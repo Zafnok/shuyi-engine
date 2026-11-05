@@ -4,7 +4,10 @@
 //! entries (their line was reworded or cut, so it has a new id or none),
 //! each with the untranslated line of its scene nearest to what it
 //! translated. All show in English in the game and fail no gate; this
-//! lists them for whoever translates. Screen text comes first, then the
+//! lists them for whoever translates. After the screen text's missing and
+//! stale keys come its entries **too long** for their place: wider than
+//! their key's `max_cells` in English's `ui.ron` ([`Lang::overflow`]),
+//! measured with the font atlas's wide glyphs. They fail no gate either. Screen text comes first, then the
 //! data's, then the dialogue's, each with its counts. Test text (the
 //! `test*.dlg` scenes, data ids starting with `test`) is left out, and
 //! counted, except in the report of the test pack (code `test`); `--only`
@@ -13,7 +16,8 @@
 
 use std::fmt::Write as _;
 
-use shuyi_assets::lang::{Lang, LangCode, LineText, MadeBy, Orphan};
+use shuyi_assets::font::CellWidths;
+use shuyi_assets::lang::{Lang, LangCode, LineText, MadeBy, Orphan, Overflow};
 
 /// The code of the pack whose report keeps the test text.
 pub const TEST_PACK: &str = "test";
@@ -157,10 +161,13 @@ impl Scope<'_> {
 }
 
 /// The report for the pack `code` of `lang`, or why there is none.
-/// `variants` are a line's variants, in the pack files' order.
+/// `variants` are a line's variants, in the pack files' order; `widths`
+/// measure the screen text against its places (the font atlas's,
+/// [`CellWidths::of`], or [`CellWidths::NARROW`]).
 pub fn report<S: AsRef<str>>(
     lang: &Lang,
     variants: &[S],
+    widths: &CellWidths,
     code: &str,
     options: &Options,
 ) -> Result<String, String> {
@@ -184,6 +191,11 @@ pub fn report<S: AsRef<str>>(
     };
     let missing: Vec<&String> = status.missing.iter().filter(|k| scope.keeps(k)).collect();
     let stale: Vec<&String> = status.stale.iter().filter(|k| scope.keeps(k)).collect();
+    let overflow = if scope.shows(Part::Screen) {
+        lang.overflow(&code, widths).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
     let orphans: Vec<&Orphan> = status
         .orphans
         .iter()
@@ -221,8 +233,14 @@ pub fn report<S: AsRef<str>>(
             missing.len(),
             stale.len()
         );
-        if part == Part::Dialogue {
-            let _ = write!(out, ", {} orphaned", orphans.len());
+        match part {
+            Part::Screen => {
+                let _ = write!(out, ", {} too long", overflow.len());
+            }
+            Part::Dialogue => {
+                let _ = write!(out, ", {} orphaned", orphans.len());
+            }
+            Part::Data => {}
         }
         out.push('\n');
         if !missing.is_empty() {
@@ -242,6 +260,9 @@ pub fn report<S: AsRef<str>>(
             let now = lang.english(key).unwrap_or_default();
             let _ = writeln!(out, "  {key}\n    was: {was:?}\n    now: {now:?}");
         }
+        if part == Part::Screen {
+            write_overflow(&mut out, &overflow);
+        }
         if !orphans.is_empty() {
             out.push_str("orphaned:\n");
         }
@@ -250,6 +271,19 @@ pub fn report<S: AsRef<str>>(
         }
     }
     Ok(out)
+}
+
+fn write_overflow(out: &mut String, overflow: &[Overflow]) {
+    if !overflow.is_empty() {
+        out.push_str("too long:\n");
+    }
+    for entry in overflow {
+        let _ = writeln!(
+            out,
+            "  {}\n    {} cells; the place has {}\n    text: {:?}",
+            entry.key, entry.width, entry.max_cells, entry.text
+        );
+    }
 }
 
 fn write_orphan<S: AsRef<str>>(out: &mut String, lang: &Lang, variants: &[S], orphan: &Orphan) {
@@ -313,7 +347,7 @@ mod tests {
     const ONE_TEXT: [&str; 0] = [];
 
     fn report(lang: &Lang, code: &str, options: &Options) -> Result<String, String> {
-        super::report(lang, &ONE_TEXT, code, options)
+        super::report(lang, &ONE_TEXT, &CellWidths::NARROW, code, options)
     }
 
     fn lang(info: &str, ui: &str) -> Lang {
@@ -334,7 +368,7 @@ mod tests {
         assert_eq!(
             report(&lang, "xx", &Options::default()).unwrap(),
             "lang-status xx (Xx, machine-made): 1 missing, 1 stale, 0 orphaned\n\
-             screen text: 1 missing, 1 stale\n\
+             screen text: 1 missing, 1 stale, 0 too long\n\
              missing:\n  a.three\n    english: \"Three\"\n\
              stale:\n  a.two\n    was: \"Too\"\n    now: \"Two\"\n\
              data: 0 missing, 0 stale\n\
@@ -353,10 +387,54 @@ mod tests {
         assert_eq!(
             report(&lang, "xx", &Options::default()).unwrap(),
             "lang-status xx (Xx, by A. Translator): 0 missing, 0 stale, 0 orphaned\n\
-             screen text: 0 missing, 0 stale\n\
+             screen text: 0 missing, 0 stale, 0 too long\n\
              data: 0 missing, 0 stale\n\
              dialogue: 0 missing, 0 stale, 0 orphaned\n"
         );
+    }
+
+    /// An entry made too long on purpose for its key's place is listed,
+    /// measured with the atlas's widths; `--only data` leaves it out.
+    #[test]
+    fn lists_the_screen_text_too_long_for_its_place() {
+        let english = r#"{
+            "a.one": (text: "One", max_cells: 4, note: "A button."),
+            "a.two": (text: "Two", max_cells: 5),
+            "a.three": "Three",
+        }"#;
+        let ui = r#"[
+            (key: "a.one", source: "One", text: "Einhundert"),
+            (key: "a.two", source: "Two", text: "にばん"),
+            (key: "a.three", source: "Three", text: "Dreihundertdreiunddreißig"),
+        ]"#;
+        let files = [
+            ("en/ui.ron", english),
+            ("xx/lang.ron", r#"(name: "Xx", made_by: Machine)"#),
+            ("xx/ui.ron", ui),
+        ]
+        .map(|(path, source)| LangFile {
+            path,
+            source: Some(source),
+        });
+        let lang = from_files(&files, None, str::to_owned, &RULES).unwrap();
+        let wide = CellWidths::wide("にばん".chars());
+        let said = super::report(&lang, &ONE_TEXT, &wide, "xx", &Options::default()).unwrap();
+        assert_eq!(
+            said,
+            "lang-status xx (Xx, machine-made): 0 missing, 0 stale, 0 orphaned\n\
+             screen text: 0 missing, 0 stale, 2 too long\n\
+             too long:\n\
+             \x20 a.one\n    10 cells; the place has 4\n    text: \"Einhundert\"\n\
+             \x20 a.two\n    6 cells; the place has 5\n    text: \"にばん\"\n\
+             data: 0 missing, 0 stale\n\
+             dialogue: 0 missing, 0 stale, 0 orphaned\n"
+        );
+        let only_data = Options {
+            only: Some(Part::Data),
+            ..Options::default()
+        };
+        let said = super::report(&lang, &ONE_TEXT, &wide, "xx", &only_data).unwrap();
+        assert!(!said.contains("too long"), "{said}");
     }
 
     #[test]
@@ -436,7 +514,7 @@ mod tests {
         assert_eq!(
             report(&lang(before.clone()), "xx", &Options::default()).unwrap(),
             "lang-status xx (Xx, machine-made): 0 missing, 0 stale, 0 orphaned\n\
-             screen text: 0 missing, 0 stale\n\
+             screen text: 0 missing, 0 stale, 0 too long\n\
              data: 0 missing, 0 stale\n\
              dialogue: 0 missing, 0 stale, 0 orphaned\n"
         );
@@ -447,7 +525,7 @@ mod tests {
             report(&lang(after.clone()), "xx", &Options::default()).unwrap(),
             format!(
                 "lang-status xx (Xx, machine-made): 1 missing, 0 stale, 2 orphaned\n\
-                 screen text: 0 missing, 0 stale\n\
+                 screen text: 0 missing, 0 stale, 0 too long\n\
                  data: 0 missing, 0 stale\n\
                  dialogue: 1 missing, 0 stale, 2 orphaned\n\
                  missing:\n  {new_id}\n    english: \"The gate is barred.\"\n\
@@ -528,7 +606,7 @@ mod tests {
             report(&lang, "xx", &Options::default()).unwrap(),
             "lang-status xx (Xx, machine-made): 0 missing, 0 stale, 0 orphaned; \
              2 test texts left out\n\
-             screen text: 0 missing, 0 stale\n\
+             screen text: 0 missing, 0 stale, 0 too long\n\
              data: 0 missing, 0 stale\n\
              dialogue: 0 missing, 0 stale, 0 orphaned\n"
         );
@@ -545,7 +623,7 @@ mod tests {
         assert_eq!(
             ui,
             "lang-status xx (Xx, machine-made): 1 missing, 0 stale, 0 orphaned\n\
-             screen text: 1 missing, 0 stale\nmissing:\n  a.one\n    english: \"One\"\n"
+             screen text: 1 missing, 0 stale, 0 too long\nmissing:\n  a.one\n    english: \"One\"\n"
         );
         let data = report(&lang, "xx", &only(Part::Data)).unwrap();
         assert!(data.contains("\ndata: 0 missing, 0 stale\n"), "{data}");
@@ -603,7 +681,14 @@ mod tests {
             source: Some(source),
         });
         let lang = from_files(&files, Some(after.clone()), str::to_owned, &rules).unwrap();
-        let said = super::report(&lang, &["m", "f"], TEST_PACK, &Options::default()).unwrap();
+        let said = super::report(
+            &lang,
+            &["m", "f"],
+            &CellWidths::NARROW,
+            TEST_PACK,
+            &Options::default(),
+        )
+        .unwrap();
         assert!(!said.contains("left out"), "{said}");
         assert!(said.contains("  names.test_guide\n"), "{said}");
         assert!(

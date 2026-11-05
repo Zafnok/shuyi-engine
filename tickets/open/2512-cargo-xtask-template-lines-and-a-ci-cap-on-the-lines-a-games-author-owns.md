@@ -213,6 +213,10 @@ choice, and it only goes down.
     (the parked brick-breaker), the line to change is where its README
     counted `examples/bricks` by hand and said how: it becomes this
     command's code count.
+  - **Either order with 3094** (the grid template's crash record): if
+    3094 is done, its lines in the grid game are counted like the rest,
+    and the cap is set from the count with them; if not, nothing to do
+    (3094 runs this command once it exists).
 
 **Out (do not do):**
 

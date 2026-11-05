@@ -254,11 +254,12 @@ fn token_cells(
     }
 }
 
-/// Lines `text` takes in a box `width` cells wide ([`word_wrap`]) once
-/// every token is filled in as its longest: each token is written out as
-/// that many letters, with the tokens and names counted as in
-/// [`longest_width`], and each wide character of `widths` as two. A line
-/// that fits the box here fits it with any player's name.
+/// Lines `text` takes in a box `width` cells wide ([`word_wrap`], a wide
+/// character of `widths` two cells) once every token is filled in as its
+/// longest: each token is written out as that many `W`s, with the tokens
+/// and names counted as in [`longest_width`]. A token is so a Latin run
+/// that is never broken, the worst case (a typed name of that length).
+/// A line that fits the box here fits it with any player's name.
 pub fn lines_at_longest(
     text: &str,
     tokens: &dyn Tokens,
@@ -269,21 +270,13 @@ pub fn lines_at_longest(
     let mut filled = String::new();
     for part in split_tokens(text) {
         match part {
-            Part::Text(t) | Part::Unclosed(t) => {
-                for c in t.chars() {
-                    if widths.is_wide(c) {
-                        filled.push_str("WW");
-                    } else {
-                        filled.push(c);
-                    }
-                }
-            }
+            Part::Text(t) | Part::Unclosed(t) => filled.push_str(t),
             Part::Token(t) => {
                 filled.push_str(&"W".repeat(token_cells(t, tokens, longest_name, widths)));
             }
         }
     }
-    word_wrap(&filled, width).len()
+    word_wrap(&filled, width, widths).len()
 }
 
 /// What is wrong with name token `{token}`, if anything: its id must be in

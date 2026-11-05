@@ -299,7 +299,7 @@ player's longest wait), `press_for` and `Press` (moved from `link`), and
 `pressable` (the actions with a key or a button). `Harness::keys`,
 `Harness::pad` and `Script::play`, the link's server and
 `capture::Plan::frames` are built on the plan, so a key press's events
-are built in one place. Recorded as ADR-0079, which amends ADR-0047 §7
+are built in one place. Recorded as ADR-0080, which amends ADR-0047 §7
 and ADR-0052.
 
 - **Harness:** `Script::play` plays `Act` by the game's keymap (an
@@ -327,7 +327,7 @@ and ADR-0052.
   before anything plays, in `run`, `scene` and MCP's `step` (`SH0001`,
   the session kept). `contract::VERSION` is 36, the schemas
   regenerated.
-- **Docs:** ADR-0079 (and the status lines of ADR-0047 and ADR-0052),
+- **Docs:** ADR-0080 (and the status lines of ADR-0047 and ADR-0052),
   `docs/contract.md` (the steps, `--act`, the waits' rule, the MCP `step`
   rows), the template's `AGENTS.md` table (`run --act Confirm`), the
   book's *Testing* and *Tools for agents* chapters, and the

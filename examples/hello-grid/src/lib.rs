@@ -579,6 +579,7 @@ pub fn start_over(over: Option<Layer>) -> Start<Hello> {
     })
     .made(made())
     .state_hash(stage_hash)
+    .crash_record(screens::stage::crash_record)
 }
 
 /// The game on the platform's `setup`, at its title, with its files as

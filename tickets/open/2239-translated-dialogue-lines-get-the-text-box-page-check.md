@@ -91,13 +91,12 @@ None.
   cells; the limit is L" (the game's tests compare it), and `Lines` is
   new: "text takes N lines of W cells; the box shows B". A
   `LineKind::Reply` keeps its `max_option` check; a caption keeps none.
-- **Either order with 2302:** if 2302 is done, `lines_at_longest`
-  already breaks Japanese text by its rules, so add a unit test here: a
+- **From 2302 (done):** `lines_at_longest` breaks Japanese text by its
+  rules (it hands its `&CellWidths` to `word_wrap`, which measures in
+  cells and breaks between wide characters), so add a unit test here: a
   pack's Japanese speech line within `max_text` that wraps past
-  `box_lines` fails with the `Lines` message; if `word_wrap` or
-  `lines_at_longest` took a width table there, `box_fit` takes it too
-  and passes it on. If not, nothing more to do here (2302's rules reach
-  the pack check through `lines_at_longest`, and 2302 adds that test).
+  `box_lines` fails with the `Lines` message. `box_fit` takes the width
+  table and passes it on to `lines_at_longest`.
 - **From 2301 and 2252 (done):** `text_width`, `longest_width` and
   `lines_at_longest` take a `&CellWidths` (the `Checker`'s from
   `SceneRules::widths`, `add_lines`' from `PackRules::widths`):
@@ -126,8 +125,7 @@ None.
 
 1. Read `Checker::step` and `Checker::pages` in
    `crates/assets/src/dialogue/check.rs`, and `add_lines` and `limit`
-   in `crates/assets/src/lang/lines.rs`. Check whether 2302 is done
-   (the clause above).
+   in `crates/assets/src/lang/lines.rs`.
 2. Add `BoxFit` and `box_fit` beside `lines_at_longest` in
    `check.rs`, with a doc comment.
 3. Rewrite the `if len > limit … else if self.pages(text) > …` block of
@@ -139,8 +137,7 @@ None.
    and its unit test if nothing else calls it, and import `box_fit`
    from `crate::dialogue` (re-export it there as `pub(crate)` if the
    module path needs it).
-5. Settle the 2302 clause with what is done.
-6. Write the tests below, and run the gates.
+5. Write the tests below, and run the gates.
 
 ## Acceptance criteria
 

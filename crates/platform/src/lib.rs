@@ -21,6 +21,9 @@
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
+//! - [`crash`]: the report a backend's panic hook writes through the
+//!   game's storage, and the last crash the game hears of at its next
+//!   start ([`Setup::last_crash`]);
 //! - [`script`]: the steps of a player's input a tool plays (keys,
 //!   buttons, an action by name, waits), and the one plan of their frames
 //!   that the Harness, the live link and a capture's plans play;
@@ -55,6 +58,7 @@ pub mod audio;
 pub mod basic;
 #[cfg(feature = "capture")]
 pub mod capture;
+pub mod crash;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
@@ -68,7 +72,9 @@ pub mod session;
 pub mod text_input;
 pub mod tick;
 
-pub use app::{App, Card, FrameOutcome, GameHash, Load, LookOf, Setup, Start, SystemHook};
+pub use app::{
+    App, Card, CrashRecord, FrameOutcome, GameHash, Load, LookOf, Setup, Start, SystemHook,
+};
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;

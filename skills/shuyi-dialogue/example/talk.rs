@@ -109,7 +109,7 @@ impl Talk {
     pub fn new(ctx: &Ctx<Data>, id: &str) -> Self {
         let scene = ctx.game.own.scenes.get(id).cloned().unwrap_or_default();
         let player = DialoguePlayer::new(&scene, Plain, &Present::Everyone);
-        let text = Self::text_of(&player);
+        let text = Self::text_of(&player, ctx);
         Self {
             player,
             text,
@@ -119,9 +119,9 @@ impl Talk {
 
     /// A text box of the player's text now: revealed at once while the
     /// replies are up, since that line was read already.
-    fn text_of(player: &DialoguePlayer<Plain>) -> TextBox {
+    fn text_of(player: &DialoguePlayer<Plain>, ctx: &Ctx<Data>) -> TextBox {
         let text = player.current().text.unwrap_or_default();
-        let mut text = TextBox::new(&text, WIDTH, LINES);
+        let mut text = TextBox::new(&text, WIDTH, LINES, ctx.widths());
         if player.is_choosing() {
             text.reveal();
         }
@@ -198,12 +198,12 @@ impl Screen<Data> for Talk {
                 UiAction::Confirm if replies > 0 => {
                     self.player.choose(self.reply);
                     self.reply = 0;
-                    self.text = Self::text_of(&self.player);
+                    self.text = Self::text_of(&self.player, ctx);
                 }
                 // The last page read: the next line.
                 UiAction::Confirm if self.text.confirm() == Step::Done => {
                     self.player.advance();
-                    self.text = Self::text_of(&self.player);
+                    self.text = Self::text_of(&self.player, ctx);
                 }
                 _ => {}
             }

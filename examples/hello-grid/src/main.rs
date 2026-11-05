@@ -8,7 +8,7 @@
 use hello_grid::app_info::APP;
 use hello_grid::{FONT_PNG, TITLE, sound};
 use macroquad::window::Conf;
-use shuyi::app::{AppConfig, Window};
+use shuyi::app::{AppConfig, CrashReports, Window};
 
 /// The window, titled with the game's name: the console at twice its
 /// size, and a small margin, with the game's icon (none yet).
@@ -16,15 +16,18 @@ const WINDOW: Window =
     Window::new(TITLE, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16).with_icon(APP.window_icon);
 
 /// What the macroquad backend needs to know about the game: its settings
-/// and key bindings are kept under `APP.storage`.
+/// and key bindings are kept under `APP.storage`, and its crash reports
+/// name `APP.version`.
 fn config() -> AppConfig {
-    AppConfig::new(
+    let mut config = AppConfig::new(
         WINDOW,
         APP.storage,
         hello_grid::file,
         FONT_PNG,
         sound::files(),
-    )
+    );
+    config.crash = CrashReports::new(APP.version);
+    config
 }
 
 fn window_conf() -> Conf {
