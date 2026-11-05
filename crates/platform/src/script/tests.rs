@@ -287,7 +287,7 @@ fn the_harness_plays_a_script_as_its_own_presses() {
 }
 
 #[test]
-fn a_script_presses_buttons_on_the_harnesss_pad() {
+fn a_script_presses_buttons_on_the_pad_the_harness_uses() {
     let kind = PadKind::ALL
         .iter()
         .copied()
