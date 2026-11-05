@@ -125,9 +125,13 @@ Done. `crates/playdate/src/report.rs` holds `RunReport` (builder: `file`,
 `main!(start, report = …)` / `main!(start, stack_bytes = n, report = …)`
 pass it to `device::init`, which adds the stack's size for the stack line.
 `Sdk` gained `stack_used` and `file_did_underrun`, both with default bodies;
-the device answers them with `stack_high_water()` and a new `shim.c` call of
-the file player's `didUnderrun`. The speaker keeps a list of its open file
-players so the minute can ask each without touching a closed one.
+the device answers them with `stack_high_water()` and a new `shim.c` call
+that asks `didUnderrun` of each file player open now: the shim keeps that
+list as it opens and closes them, so the minute never asks a closed one.
+`file_did_underrun` asks of all of them, not of one player as the ticket
+said: keeping the list in the Rust speaker would have taken its `Send` and
+`Sync` away, a break of the API for nothing a game asks.
+
 
 Deviations:
 

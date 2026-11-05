@@ -670,12 +670,12 @@ impl Sdk for FakeSdk {
         at.open = false;
     }
 
-    fn file_did_underrun(&self, player: usize) -> bool {
+    fn file_did_underrun(&self) -> bool {
         let state = self.0.borrow();
         state
             .file_players
-            .get(player)
-            .is_some_and(|p| p.open && state.underruns.contains(&p.path))
+            .iter()
+            .any(|p| p.open && state.underruns.contains(&p.path))
     }
 
     fn stack_used(&self) -> Option<usize> {

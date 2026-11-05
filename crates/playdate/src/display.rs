@@ -88,7 +88,12 @@ impl Default for Screen {
 
 impl Screen {
     /// Shows `frame`.
-    pub fn present<S: Sdk>(&mut self, sdk: &S, frame: &Frame<'_>) {
+    pub fn present(&mut self, sdk: &impl Sdk, frame: &Frame<'_>) {
+        self.show(sdk, frame);
+    }
+
+    /// [`present`](Self::present), with the SDK's type named for its timer.
+    fn show<S: Sdk>(&mut self, sdk: &S, frame: &Frame<'_>) {
         match frame.show {
             Show::Card(Card::Text {
                 line, background, ..

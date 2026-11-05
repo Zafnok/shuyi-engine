@@ -197,8 +197,8 @@ impl<S: Sdk> Playdate<S> {
     }
 
     /// Whether a file player open now ran out of data.
-    pub(crate) fn underran(&mut self) -> bool {
-        self.audio.backend_mut().underran()
+    pub(crate) fn underran(&self) -> bool {
+        self.sdk.file_did_underrun()
     }
 
     /// What it applied, for `App::set_pacing`: the device runs at the

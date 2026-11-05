@@ -77,7 +77,7 @@ unsafe extern "C" {
     fn pd_fileplayer_is_playing(player: *mut c_void) -> c_int;
     fn pd_fileplayer_length(player: *mut c_void) -> c_float;
     fn pd_fileplayer_close(player: *mut c_void);
-    fn pd_fileplayer_did_underrun(player: *mut c_void) -> c_int;
+    fn pd_fileplayer_any_underrun() -> c_int;
 }
 
 /// How many bytes a read asks the SDK for at a time.
@@ -361,9 +361,8 @@ impl Sdk for Device {
         unsafe { pd_fileplayer_close(player) };
     }
 
-    fn file_did_underrun(&self, player: *mut c_void) -> bool {
-        // SAFETY: a player `FileClip` holds open.
-        unsafe { pd_fileplayer_did_underrun(player) != 0 }
+    fn file_did_underrun(&self) -> bool {
+        unsafe { pd_fileplayer_any_underrun() != 0 }
     }
 
     fn stack_used(&self) -> Option<usize> {

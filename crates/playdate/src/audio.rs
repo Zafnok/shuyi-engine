@@ -13,10 +13,9 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cell::{Cell, RefCell};
+use core::cell::Cell;
 use core::future::{Future, ready};
 use core::pin::pin;
 use core::task::{Context, Poll, Waker};
@@ -45,9 +44,6 @@ fn rate_factor(rate: u32) -> f32 {
     rate / one
 }
 
-/// The file players open, by the number each was opened with.
-type Open<S> = Rc<RefCell<BTreeMap<u32, <S as Sdk>::FilePlayer>>>;
-
 /// One sample player.
 #[derive(Debug)]
 struct Slot<S: Sdk> {
@@ -71,10 +67,6 @@ pub struct Speaker<S: Sdk> {
     serial: u32,
     /// The slot a sound takes when all play: they are taken in turn.
     oldest: usize,
-    /// The file players open now: each [`FileClip`] leaves it as it goes.
-    open: Open<S>,
-    /// How many file players were opened.
-    opened: u32,
 }
 
 /// A sound the SDK holds, or a file player open on a track or a clip.
@@ -101,14 +93,10 @@ pub struct FileClip<S: Sdk> {
     played: Cell<bool>,
     /// Its rate from its next play, 16.16.
     rate: Cell<u32>,
-    /// Its number in `open`.
-    id: u32,
-    open: Open<S>,
 }
 
 impl<S: Sdk> Drop for FileClip<S> {
     fn drop(&mut self) {
-        self.open.borrow_mut().remove(&self.id);
         self.sdk.file_close(self.player);
     }
 }
@@ -154,18 +142,7 @@ impl<S: Sdk> Speaker<S> {
             loaded: BTreeMap::new(),
             serial: 0,
             oldest: 0,
-            open: Rc::default(),
-            opened: 0,
         }
-    }
-
-    /// Whether a file player open now ran out of data to play (the SDK's
-    /// `didUnderrun`): the music stuttered.
-    pub fn underran(&self) -> bool {
-        self.open
-            .borrow()
-            .values()
-            .any(|&player| self.sdk.file_did_underrun(player))
     }
 
     /// The slot for a new sound: one that is free, else the next in turn that
@@ -242,19 +219,12 @@ impl<S: Sdk> Backend for Speaker<S> {
     fn load_music(&mut self, path: &str) -> Self::Loading {
         let opened = self.sdk.file_open(without_extension(path));
         Some(match opened {
-            Some(player) => {
-                let id = self.opened;
-                self.opened = self.opened.wrapping_add(1);
-                self.open.borrow_mut().insert(id, player);
-                Ok(Clip::File(FileClip {
-                    sdk: self.sdk.clone(),
-                    player,
-                    played: Cell::new(false),
-                    rate: Cell::new(RATE_ONE),
-                    id,
-                    open: Rc::clone(&self.open),
-                }))
-            }
+            Some(player) => Ok(Clip::File(FileClip {
+                sdk: self.sdk.clone(),
+                player,
+                played: Cell::new(false),
+                rate: Cell::new(RATE_ONE),
+            })),
             // check-text: not player text (for the log)
             None => Err("not in the .pdx".to_owned()),
         })
