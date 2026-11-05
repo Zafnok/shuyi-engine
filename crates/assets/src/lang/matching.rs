@@ -123,6 +123,15 @@ mod tests {
     }
 
     #[test]
+    fn only_chinese_without_a_script_takes_one_from_its_region() {
+        let script = |text: &str| chinese_script(&tags(&[text])[0]);
+        assert_eq!(script("zh-SG"), Some("Hans"));
+        assert_eq!(script("ms-SG"), None);
+        assert_eq!(script("zh-Hant-CN"), None);
+        assert_eq!(best(&["ms-SG"], &["en", "ms-Arab"]), Some("ms-Arab".into()));
+    }
+
+    #[test]
     fn a_lone_tag_of_the_language_matches_unless_the_scripts_differ() {
         assert_eq!(best(&["pt-PT"], &["en", "pt-BR"]), Some("pt-BR".into()));
         assert_eq!(best(&["pt-PT"], &["en", "pt-BR", "pt-AO"]), None);
