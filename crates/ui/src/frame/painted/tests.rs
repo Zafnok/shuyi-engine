@@ -151,6 +151,10 @@ fn a_picture_put_over_another_takes_a_revision_past_it() {
         table.iter().map(|(id, _)| id.name()).collect::<Vec<_>>(),
         ["plasma"]
     );
+    assert!(!table.is_empty());
+    table.insert(PaintedId::new("other"), Painted::rgba(1, 1));
+    assert_eq!(table.len(), 2);
+    table.remove(PaintedId::new("other"));
     assert!(table.get_mut(ID).is_some());
     assert_eq!(table.remove(ID).map(|p| p.size()), Some((4, 4)));
     assert!(table.get(ID).is_none());
@@ -233,6 +237,26 @@ fn a_painted_item_is_clipped_and_drawing_again_keeps_its_picture() {
     b.fill_rect(b.bounds(), Cell::new(' ', white(), white()));
     assert_eq!(b.items(), []);
     assert_eq!(b.pictures().len(), 1);
+}
+
+#[test]
+fn cells_drawn_over_part_of_a_painted_item_cut_it() {
+    let mut b = buf();
+    // Over cells 0 to 3 of row 0 (8 × 16 pixels each).
+    let dest = Rect::new(0, 0, 32, 16);
+    b.add_painted(PaintedSprite::new(
+        ID,
+        Rect::new(0, 0, 4, 4),
+        dest,
+        Layer::Over,
+    ));
+    b.fill_rect(Rect::new(0, 0, 2, 1), Cell::new(' ', white(), white()));
+    let left = b.painted_sprites();
+    assert_eq!(left.len(), 1);
+    assert_eq!(
+        (left[0].dest, left[0].clip),
+        (dest, Rect::new(16, 0, 16, 16))
+    );
 }
 
 #[test]

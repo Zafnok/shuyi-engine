@@ -364,7 +364,8 @@ fn rgba_picture() -> Painted {
     picture
 }
 
-/// An 8 × 8 indexed picture of four colours in diagonal bands.
+/// An 8 × 8 indexed picture of three of its four colours in diagonal
+/// bands, a pixel wide.
 fn indexed_picture() -> Painted {
     let palette = [
         BACKGROUNDS[1],
@@ -374,7 +375,7 @@ fn indexed_picture() -> Painted {
     ];
     let mut picture = Painted::indexed(8, 8, &palette);
     for (i, pixel) in picture.pixels_mut().iter_mut().enumerate() {
-        *pixel = u8::try_from(usize::midpoint(i % 8, i / 8) % 4).unwrap_or(0);
+        *pixel = u8::try_from((i % 8 + i / 8) % 3).unwrap_or(0);
     }
     picture
 }

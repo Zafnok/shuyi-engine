@@ -164,6 +164,24 @@ mod tests {
     // ANCHOR_END: test_plasma
 
     #[test]
+    fn the_plasmas_pixels_are_its_waves() {
+        let black = Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+        let pixel = |step: u32, (x, y): (usize, usize)| {
+            let mut buf = GlyphBuffer::new(48, 24, black);
+            paint_plasma(step, (0, 0), &mut buf);
+            let picture = buf.pictures().get(PLASMA).unwrap();
+            let at = (y * 64 + x) * 4;
+            picture.pixels()[at..at + 4].to_vec()
+        };
+        // A wave is `|v % 64 - 32| × 31 / 4`.
+        assert_eq!(pixel(0, (0, 0)), [248, 248, 248, 255]);
+        // Red wave(10 + 5), green wave(3 + 10), blue wave(13 + 15).
+        assert_eq!(pixel(5, (10, 3)), [131, 147, 31, 255]);
+        // wave(163), wave(247), wave(410).
+        assert_eq!(pixel(100, (63, 47)), [23, 178, 46, 255]);
+    }
+
+    #[test]
     fn the_row_is_centred_the_cursor_boxes_its_plot_and_the_help_is_last() {
         let mut h = game().harness();
         h.keys("Enter Right");

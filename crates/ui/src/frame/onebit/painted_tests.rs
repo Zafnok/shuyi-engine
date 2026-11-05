@@ -3,6 +3,7 @@
 //! Bayer order at the screen's pixels. Pictures are text, a row a line:
 //! `#` black, `.` white.
 
+use alloc::rc::Rc;
 use alloc::string::String;
 
 use proptest::prelude::*;
@@ -109,6 +110,73 @@ fn a_grey_picture_dithers_at_the_screens_pixels() {
     // Moved one pixel right, the pattern stays where it was on the screen.
     let moved = draw(&one(Rect::new(1, 0, 8, 4)));
     assert_eq!(text(&moved, 1, 0, 7, 2), [".#.#.#.", "#.#.#.#"]);
+}
+
+/// A `w × h` RGBA picture, opaque, its grey rising to the right and
+/// down: no two neighbours alike.
+fn ramp(w: u16, h: u16) -> Painted {
+    let mut picture = Painted::rgba(w, h);
+    let pixels = picture.pixels_mut().as_chunks_mut::<4>().0;
+    for (i, pixel) in (0u32..).zip(pixels) {
+        let (x, y) = (i % u32::from(w), i / u32::from(w));
+        let level = u8::try_from((x * 37 + y * 101) % 256).unwrap_or(0);
+        *pixel = [level, level, level, u8::MAX];
+    }
+    picture
+}
+
+#[test]
+fn a_picture_on_white_dithers_as_on_black() {
+    let white = Rgb::from(Ink::White.code());
+    let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::new(' ', white, white));
+    buf.pictures_mut().insert(ID, grey(4, 2, 128));
+    let src = Rect::new(0, 0, 4, 2);
+    buf.add_painted(PaintedSprite::new(
+        ID,
+        src,
+        Rect::new(0, 0, 8, 4),
+        Layer::Over,
+    ));
+    let on_black = draw(&frame_of(Some(grey(4, 2, 128)), src, Rect::new(0, 0, 8, 4)));
+    assert_eq!(text(&draw(&buf), 0, 0, 8, 4), text(&on_black, 0, 0, 8, 4));
+}
+
+#[test]
+fn a_source_past_the_pictures_edges_draws_nothing_there() {
+    // Two pixels past the right edge, then two past the bottom: the black
+    // cells show where there is no picture.
+    for src in [Rect::new(0, 0, 6, 4), Rect::new(0, 0, 4, 6)] {
+        let dest = Rect::new(0, 0, src.w * 2, src.h * 2);
+        let frame = draw(&frame_of(Some(grey(4, 4, u8::MAX)), src, dest));
+        assert_eq!(text(&frame, 0, 0, 8, 8), vec![".".repeat(8); 8]);
+        let past = if src.w > 4 {
+            text(&frame, 8, 0, 4, 8)
+        } else {
+            text(&frame, 0, 8, 8, 4)
+        };
+        assert!(past.iter().all(|row| !row.contains('.')), "{past:?}");
+    }
+}
+
+#[test]
+fn a_picture_in_a_zoomed_scene_away_from_the_corner_draws_as_the_reference() {
+    let black = Rgb::from(Ink::Black.code());
+    let ground = Cell::new(' ', black, black);
+    let mut scene = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15).sized(6, 4), ground);
+    scene.pictures_mut().insert(ID, ramp(12, 9));
+    let src = Rect::new(0, 0, 12, 9);
+    scene.add_painted(PaintedSprite::new(
+        ID,
+        src,
+        Rect::new(5, 3, 24, 27),
+        Layer::Over,
+    ));
+    let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::see_through(' ', black));
+    buf.set_backdrop(Rc::new(scene), Rect::new(3, 2, 20, 8), (1.5, 2.5), 2);
+    // `draw` holds the fast renderer to the reference; and something of
+    // the picture shows.
+    let frame = draw(&buf);
+    assert!(text(&frame, 0, 0, 400, 240).concat().contains('.'));
 }
 
 #[test]

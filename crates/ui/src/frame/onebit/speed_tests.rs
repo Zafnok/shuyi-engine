@@ -1132,6 +1132,31 @@ fn run_of(sprite: &Sprite, image: &Image<'_>, at: Place, (x0, x1): (i32, i32)) -
 /// picture's size on the screen: not one pixel of picture or of screen
 /// more or less, and not at a scale that only lands its ends right.
 #[test]
+fn a_screen_column_takes_its_picture_column_if_it_is_on_the_picture() {
+    let run = Columns::Run {
+        k: 10,
+        flipped: false,
+    };
+    assert_eq!(run.column(5, 16), Some(15));
+    // Column 16 of a picture 16 wide is past it, column 15 its last.
+    assert_eq!(run.column(6, 16), None);
+    assert_eq!(run.column(-11, 16), None);
+    let flipped = Columns::Run {
+        k: 10,
+        flipped: true,
+    };
+    assert_eq!(flipped.column(3, 16), Some(7));
+    assert_eq!(flipped.column(10, 16), Some(0));
+    assert_eq!(flipped.column(11, 16), None);
+    let mut table = [u16::MAX; WIDTH as usize];
+    table[..3].copy_from_slice(&[4, 7, 8]);
+    let table = Columns::Table { x0: 20, table };
+    assert_eq!(table.column(21, 8), Some(7));
+    assert_eq!(table.column(22, 8), None);
+    assert_eq!(table.column(23, 8), None);
+}
+
+#[test]
 fn pixel_for_pixel_is_found_exactly() {
     let data = [0u8; 21 * 4];
     // A picture `width` wide standing for an 80-pixel-wide image.

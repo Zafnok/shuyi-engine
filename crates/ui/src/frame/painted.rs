@@ -275,7 +275,6 @@ impl Painted {
             out.extend_from_slice(&self.pixels);
             return;
         }
-        out.reserve(usize::from(self.width) * usize::from(self.height) * 4);
         for y in 0..self.height {
             for x in 0..self.width {
                 out.extend_from_slice(&self.rgba_at(x, y));

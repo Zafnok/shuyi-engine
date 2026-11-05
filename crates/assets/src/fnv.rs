@@ -59,3 +59,20 @@ impl Default for Hasher {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finish_gives_the_hash_so_far() {
+        assert_eq!(Hasher::new().finish(), OFFSET);
+        assert_eq!(Hasher::default().finish(), OFFSET);
+        let mut one = Hasher::new();
+        one.word(1);
+        let mut two = Hasher::new();
+        two.word(2);
+        assert_ne!(one.finish(), two.finish());
+        assert_eq!(one.finish(), one.0);
+    }
+}
