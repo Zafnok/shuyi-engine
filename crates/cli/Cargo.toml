@@ -25,6 +25,10 @@ required-features = ["toy"]
 # `toy`: the toy game's tools (`shuyi_cli::toy`), for this crate's tests and
 # its `toy` example.
 toy = ["shuyi-ui/toy"]
+# `jis`: `font-atlas` reads a BDF font in JIS X 0208 (a Japanese bitmap
+# font's codes) as Unicode. Off by default: a game whose font is in Unicode
+# doesn't build the table.
+jis = ["dep:encoding_rs"]
 
 [dependencies]
 # The state hash `replay` compares, and the turn rules it re-runs.
@@ -68,10 +72,13 @@ crc32fast = { version = "1", default-features = false, features = ["std"] }
 # them to ADPCM. Readers, on the developer's machine (`tools/layers.ron`).
 lewton = "0.9"
 hound = "3.5"
+# `font-atlas`, with `jis`: a Japanese BDF font's JIS X 0208 code points
+# read as Unicode, through the EUC-JP decoder's table.
+encoding_rs = { version = "0.8.35", default-features = false, features = ["alloc"], optional = true }
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.
-shuyi-cli = { path = ".", features = ["toy"] }
+shuyi-cli = { path = ".", features = ["toy", "jis"] }
 # The template loader and the composer, fed any input.
 proptest.workspace = true
 # The toy's perf summary and trace, as committed snapshots.

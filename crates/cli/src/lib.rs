@@ -142,9 +142,10 @@ commands:
                                      its length, its worked example and its problem codes
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
-  font-atlas [--no-text] <font.bdf>... <out-dir>
+  font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>
                                      build the font atlas from BDF fonts, with the characters
-                                     the game's text uses; --no-text: without them
+                                     the game's text uses; --no-text: without them; --wide:
+                                     two cells wide from a font twice as wide (Japanese)
   app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
@@ -491,6 +492,9 @@ fn lang_status(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
 /// `font-atlas`'s flag for an atlas without the game's text.
 const NO_TEXT: &str = "--no-text";
 
+/// `font-atlas`'s option naming the wide font.
+const WIDE: &str = "--wide";
+
 /// `args` (paths), each relative one made relative to `project`'s root
 /// rather than the working folder, for the game's tool program, which runs
 /// there.
@@ -514,14 +518,29 @@ fn from_the_root(project: &Project, args: &[String]) -> Vec<String> {
 
 /// `font-atlas`: with the game's tools, the atlas keeps the characters its
 /// text uses too; without them (or with `--no-text`), the ranges and the
-/// required glyphs only.
+/// required glyphs only. `--wide <font>` adds a wide font.
 fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> Outcome {
     let rules = project.part(&project.config.font_atlas, "font_atlas")?;
     let command = project.config.command();
     let no_text = args.iter().any(|a| a == NO_TEXT);
-    let args: Vec<&String> = args.iter().filter(|a| *a != NO_TEXT).collect();
-    let Some((out_dir, fonts @ [_, ..])) = args.split_last() else {
-        eprintln!("usage: {command} font-atlas [{NO_TEXT}] <font.bdf>... <out-dir>");
+    let mut rest: Vec<&String> = Vec::new();
+    let mut wide: Option<PathBuf> = None;
+    let mut words = args.iter().filter(|a| *a != NO_TEXT);
+    let mut usage = false;
+    while let Some(word) = words.next() {
+        if word == WIDE {
+            match words.next() {
+                Some(path) if wide.is_none() => wide = Some(PathBuf::from(path)),
+                _ => usage = true,
+            }
+        } else {
+            rest.push(word);
+        }
+    }
+    let Some((out_dir, fonts @ [_, ..])) = rest.split_last().filter(|_| !usage) else {
+        eprintln!(
+            "usage: {command} font-atlas [{NO_TEXT}] [{WIDE} <wide.bdf>] <font.bdf>... <out-dir>"
+        );
         return Ok(2);
     };
     let fonts: Vec<PathBuf> = fonts.iter().map(PathBuf::from).collect();
@@ -547,8 +566,10 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
         let none = shuyi_assets::lang::Lang::default();
         font_atlas::AtlasChars::of_lang(&none, &rules.required_glyphs)
     };
+    let chars = chars.with_wide(&rules.wide_glyphs);
+    let out_dir = Path::new(out_dir);
     Ok(
-        match font_atlas::run(rules, command, &fonts, Path::new(out_dir), &chars) {
+        match font_atlas::run(rules, command, &fonts, wide.as_deref(), out_dir, &chars) {
             Ok(summary) => {
                 println!("{summary}");
                 0
@@ -741,6 +762,17 @@ mod tests {
             ..Fake::default()
         };
         assert_eq!(font_atlas(&project, &args, Some(&broken)), Ok(1));
+        // `--wide` names one font, never two, and never none.
+        let words = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
+        let twice = [words(&[WIDE, "w.bdf", WIDE, "v.bdf"]), args.to_vec()].concat();
+        let none = [args.to_vec(), words(&[WIDE])].concat();
+        for wrong in [twice, none] {
+            assert_eq!(
+                font_atlas(&project, &wrong, Some(&game)),
+                Ok(2),
+                "{wrong:?}"
+            );
+        }
         // Run from another folder than the root, a relative path is made
         // absolute for the tool program, which runs in the root.
         assert_eq!(from_the_root(&project, &args), args);

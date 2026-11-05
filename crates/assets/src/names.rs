@@ -14,6 +14,7 @@ use shuyi_core::text::{Part, split_tokens};
 
 use crate::dialogue::char_problem;
 use crate::error::{ContentError, line_of};
+use crate::font::CellWidths;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::lang::text_width;
 use crate::ron::parse_ron;
@@ -99,7 +100,7 @@ impl Names {
     pub fn longest(&self) -> usize {
         self.names
             .values()
-            .map(|n| text_width(n))
+            .map(|n| text_width(n, &CellWidths::NARROW))
             .max()
             .unwrap_or(0)
     }

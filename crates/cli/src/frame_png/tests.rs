@@ -25,6 +25,7 @@ fn tiny_atlas() -> (FontAtlasDef, Vec<u8>) {
         cell_h: 16,
         columns: 3,
         glyphs: BTreeMap::from([(' ', 0), ('A', 1), (FALLBACK_GLYPH, 2)]),
+        wide: BTreeMap::new(),
     };
     let mut rgba = vec![0; 24 * 16 * 4];
     let mut set = |x: usize, y: usize| rgba[(y * 24 + x) * 4..][..4].copy_from_slice(&[255; 4]);
@@ -519,4 +520,54 @@ fn a_new_shot_has_no_warning_and_a_new_script_its_steps() {
     assert_eq!(Shot::new(image, "title"), literal);
     let steps = vec![Step::Keys("Enter".to_owned()), Step::Wait(0.5)];
     assert_eq!(Script::new(steps.clone()), Script { steps });
+}
+
+/// The committed reference picture of a line of wide and narrow glyphs.
+const WIDE_REFERENCE: &str = "tests/fixtures/fonts/wide-line.png";
+
+/// A line of narrow glyphs from the template's font and wide ones from our
+/// fixture font, in two colours and on a coloured cell, drawn by the
+/// raster as `frame-png` draws it: the same as its committed reference.
+/// When it changes on purpose, the test writes the new picture beside the
+/// old (`wide-line.new.png`): look at it, then move it over the old one.
+#[test]
+fn a_line_of_wide_and_narrow_glyphs_matches_its_reference() {
+    use crate::font_atlas::{AtlasChars, build_wide_atlas, read_font};
+    use shuyi_assets::font::CellWidths;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let narrow =
+        read_font(&root.join("../../templates/shuyi-default/base/files-src/ter-u16n.bdf")).unwrap();
+    let wide = read_font(&root.join("tests/fixtures/fonts/wide-16.bdf")).unwrap();
+    let chars = AtlasChars::default().with_wide("口田日一");
+    let atlas = build_wide_atlas(&narrow, Some(&wide), &chars);
+    let png = encode_png(atlas.width, atlas.height, &atlas.rgba).unwrap();
+    let widths = CellWidths::of(&atlas.def);
+    let table = ImageTable::new(BTreeMap::new());
+    let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
+    let mut buf = GlyphBuffer::new(14, 1, Cell::new(' ', CLEAR, CLEAR)).with_widths(widths);
+    let (gold, white) = (Rgb::new(250, 200, 60), Rgb::new(255, 255, 255));
+    let x = buf.print(0, 0, "A口b田", white, CLEAR);
+    let x = i32::from(x) + i32::from(buf.print(i32::from(x), 0, "日", gold, Rgb::new(40, 60, 120)));
+    buf.print(x, 0, "1一!", white, CLEAR);
+    let image = painter.render(&buf, 2);
+    assert_eq!((image.width, image.height), (14 * 8 * 2, 16 * 2));
+    let reference = root.join(WIDE_REFERENCE);
+    let matches = fs::read(&reference)
+        .ok()
+        .and_then(|bytes| decode_png(&bytes).ok())
+        .is_some_and(|(w, h, rgba)| {
+            (w, h, rgba) == (image.width, image.height, image.rgba.clone())
+        });
+    if !matches {
+        let new = reference.with_extension("new.png");
+        fs::write(
+            &new,
+            encode_png(image.width, image.height, &image.rgba).unwrap(),
+        )
+        .unwrap();
+        panic!(
+            "the wide line isn't its reference {WIDE_REFERENCE}: the new picture is {}",
+            new.display()
+        );
+    }
 }

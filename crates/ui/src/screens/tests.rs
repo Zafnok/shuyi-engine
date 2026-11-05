@@ -80,10 +80,22 @@ fn a_text_wider_than_the_buffer_starts_at_column_0_cut_with_an_ellipsis() {
 
 #[test]
 fn cut_keeps_a_text_that_fits_and_ends_a_longer_one_with_an_ellipsis() {
-    assert_eq!(super::cut("abc", 3), "abc");
-    assert_eq!(super::cut("abcd", 3), "ab…");
-    assert_eq!(super::cut("abcd", 1), "…");
-    assert_eq!(super::cut("abcd", 0), "");
+    assert_eq!(
+        super::cut("abc", 3, &shuyi_assets::font::CellWidths::NARROW),
+        "abc"
+    );
+    assert_eq!(
+        super::cut("abcd", 3, &shuyi_assets::font::CellWidths::NARROW),
+        "ab…"
+    );
+    assert_eq!(
+        super::cut("abcd", 1, &shuyi_assets::font::CellWidths::NARROW),
+        "…"
+    );
+    assert_eq!(
+        super::cut("abcd", 0, &shuyi_assets::font::CellWidths::NARROW),
+        ""
+    );
 }
 
 /// What each engine screen declares (ADR-0025), with the toy's actions:

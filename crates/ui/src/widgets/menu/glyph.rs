@@ -12,6 +12,8 @@ use crate::frame::color::{EngineColor, Palette};
 use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
+use shuyi_assets::font::CellWidths;
+use shuyi_assets::lang::text_width;
 
 /// What each item's label says, in the player's language: the view's
 /// labels as [`Ctx::label`] words them, in order.
@@ -19,18 +21,18 @@ fn labels<G: GameData>(ctx: &Ctx<G>, view: &MenuView) -> Vec<String> {
     view.items.iter().map(|i| ctx.label(&i.label)).collect()
 }
 
-/// Cells `label` and the suffix of `item` take.
-fn width(item: &MenuItemView, label: &str) -> usize {
+/// Cells `label` and the suffix of `item` take, measured with `widths`.
+fn width(item: &MenuItemView, label: &str, widths: &CellWidths) -> usize {
     let suffix = item
         .suffix
         .as_ref()
-        .map_or(0, |(t, _)| t.chars().count() + 1);
-    label.chars().count() + suffix
+        .map_or(0, |(t, _)| text_width(t, widths) + 1);
+    text_width(label, widths) + suffix
 }
 
-/// Cells the note of `item` takes.
-fn note_width(item: &MenuItemView) -> usize {
-    item.note.as_ref().map_or(0, |n| n.chars().count())
+/// Cells the note of `item` takes, measured with `widths`.
+fn note_width(item: &MenuItemView, widths: &CellWidths) -> usize {
+    item.note.as_ref().map_or(0, |n| text_width(n, widths))
 }
 
 /// Whether the menu has a note row: some item has a note.
@@ -43,16 +45,16 @@ fn has_notes(view: &MenuView) -> bool {
 /// a space and a border on each side, by one row per item shown plus the
 /// border, and a rule and a note row if any item has a note.
 pub fn size<G: GameData>(ctx: &Ctx<G>, view: &MenuView) -> (i32, i32) {
-    size_with(view, &labels(ctx, view))
+    size_with(view, &labels(ctx, view), ctx.widths())
 }
 
-/// [`size`], the labels worded as `labels`.
-fn size_with(view: &MenuView, labels: &[String]) -> (i32, i32) {
+/// [`size`], the labels worded as `labels` and measured with `widths`.
+fn size_with(view: &MenuView, labels: &[String], widths: &CellWidths) -> (i32, i32) {
     let widest = view
         .items
         .iter()
         .zip(labels)
-        .map(|(i, label)| width(i, label).max(note_width(i)))
+        .map(|(i, label)| width(i, label, widths).max(note_width(i, widths)))
         .max()
         .unwrap_or(0);
     let w = i32::try_from(widest).unwrap_or(i32::MAX).saturating_add(4);
@@ -88,7 +90,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
     let color = |e| palette.engine(e);
     let bg = color(EngineColor::Panel);
     let labels = labels(ctx, view);
-    let (w, h) = size_with(view, &labels);
+    let (w, h) = size_with(view, &labels, buf.widths());
     let rect = Rect::new(x, y, w, h);
     let look = PanelLook::new(BoxStyle::Single, color(EngineColor::Text), bg)
         .border(color(EngineColor::Border));
@@ -105,7 +107,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
         buf.fill_rect(Rect::new(x + 1, row, w - 2, 1), Cell::new(' ', fg, row_bg));
         buf.print(x + 2, row, label, fg, row_bg);
         if let Some((text, kind)) = &item.suffix {
-            let at = x + 3 + i32::try_from(label.chars().count()).unwrap_or(0);
+            let at = x + 3 + buf.text_cells(label);
             // On the focus bar the colour would vanish: keep the bar's.
             let fg = if item.focused {
                 fg

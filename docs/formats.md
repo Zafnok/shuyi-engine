@@ -150,14 +150,28 @@ What each one reads:
 - **The font atlas** reads the PNG beside its glyph map with the same
   name (`fonts/atlas.ron` and `fonts/atlas.png`). Whether it draws the
   game's text is a check across assets, once both load
-  (`font::undrawn`, which `check` runs).
+  (`font::undrawn`, which `check` runs). Beside its narrow glyphs
+  (`glyphs`, a cell each) it may hold wide ones (`wide`, left out when
+  there are none): a Japanese or Chinese character drawn over two cells
+  side by side, in one row of the picture, `wide` giving the left one.
+  `font-atlas --wide <font.bdf>` makes them from a font twice as wide
+  (16 × 16 beside 8 × 16). A character is narrow or wide, never both.
+  **What the cells draw:** text left to right, one character to a cell
+  and two to a wide one (`font::CellWidths` says which, and
+  `lang::text_width` counts with it). A cell holds one character: no
+  combining marks (write `é` as one character, U+00E9), no joining and
+  no reordering. Right-to-left and shaped scripts (Arabic, Hebrew, Thai,
+  Devanagari) aren't drawn.
 - **A language pack** is read from its `lang.ron`, in a directory named
   by its code (`lang/fr/lang.ron`). With it come its `ui.ron`, checked
   against English's beside it (`lang/en/ui.ron`), and its `data.ron` and
   `dialogue/*.ron`, checked against the game's data text when the format
   has it (`LangPackRon::with_data`) and left out otherwise. Any other file
   in its directory is an error, except import settings files (below),
-  which are skipped.
+  which are skipped. Its text is drawn as the font atlas's cells draw
+  text (above): left to right, a character a cell or two for a wide one,
+  so a pack in a language the atlas has no glyphs for, or in a script
+  that joins or reorders its letters, fails `check` or shows wrongly.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

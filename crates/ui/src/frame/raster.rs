@@ -8,7 +8,9 @@
 //!
 //! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
 //! pixel at whole scales: the clear colour, cell backgrounds, `Under`
-//! items in order, glyphs tinted with their fg, `Over` items in order;
+//! items in order, glyphs tinted with their fg (a wide one over its two
+//! cells, a wide one without its continuation as the fallback), `Over`
+//! items in order;
 //! and before all that, a backdrop's scene in its window. Textures are
 //! sampled at the nearest pixel and blended over what is beneath with
 //! their alpha, as the GPU does. [`one_bit_picture`] paints a one-bit
@@ -231,15 +233,16 @@ impl Painter {
     ) {
         let spec = buf.spec();
         let (cell_w, cell_h) = (i64::from(spec.cell_w) * px, i64::from(spec.cell_h) * px);
+        let at = |x: i32, y: i32| {
+            (
+                corner.0 + i64::from(x) * cell_w,
+                corner.1 + i64::from(y) * cell_h,
+            )
+        };
         let cells = || {
             (0..i32::from(buf.height())).flat_map(move |y| {
-                (0..i32::from(buf.width())).filter_map(move |x| {
-                    let at = (
-                        corner.0 + i64::from(x) * cell_w,
-                        corner.1 + i64::from(y) * cell_h,
-                    );
-                    buf.get(x, y).map(|cell| (at, cell))
-                })
+                (0..i32::from(buf.width()))
+                    .filter_map(move |x| buf.get(x, y).map(|cell| (at(x, y), cell)))
             })
         };
         for ((x, y), cell) in cells() {
@@ -248,21 +251,22 @@ impl Painter {
             }
         }
         self.draw_items(out, buf, Layer::Under, corner, px);
-        for ((x, y), cell) in cells() {
+        for (cx, cy, cell, wide) in buf.glyphs() {
             if cell.glyph == ' ' {
                 continue;
             }
-            let Some((rect, fg)) = self.atlas_cell(cell.glyph, cell.fg) else {
+            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide) else {
                 continue;
             };
             let fg = unit(fg);
             #[allow(clippy::cast_precision_loss)] // atlas coordinates are small
             let src = [rect.x, rect.y, rect.w, rect.h].map(|v| v as f32);
+            let (x, y) = at(cx, cy);
             blit(
                 out,
                 &self.atlas_image,
                 src,
-                (x, y, cell_w, cell_h),
+                (x, y, cell_w * cells, cell_h),
                 false,
                 Paint::Image,
                 [fg[0], fg[1], fg[2], 1.0],
@@ -319,13 +323,18 @@ impl Painter {
         );
     }
 
-    /// Where to find `glyph` in the atlas and what colour to tint it:
-    /// `fg`, or the fallback glyph in `MISSING_COLOR`.
-    fn atlas_cell(&self, glyph: char, fg: Rgb) -> Option<(AtlasRect, Rgb)> {
-        if let Some(rect) = self.atlas.glyph_rect(glyph) {
-            return Some((rect, fg));
+    /// Where to find `glyph` in the atlas, what colour to tint it and how
+    /// many cells it covers: `fg` over both cells for a wide glyph whose
+    /// continuation follows it (`wide`), over one for a narrow glyph, or
+    /// the fallback glyph in `MISSING_COLOR` over one.
+    fn atlas_cell(&self, glyph: char, fg: Rgb, wide: bool) -> Option<(AtlasRect, Rgb, i64)> {
+        if let Some(rect) = self.atlas.wide_rect(glyph).filter(|_| wide) {
+            return Some((rect, fg, 2));
         }
-        Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR))
+        if let Some(rect) = self.atlas.glyph_rect(glyph) {
+            return Some((rect, fg, 1));
+        }
+        Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR, 1))
     }
 }
 

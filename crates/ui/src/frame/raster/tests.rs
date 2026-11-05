@@ -23,6 +23,7 @@ fn tiny_atlas() -> (FontAtlasDef, Image) {
         cell_h: 16,
         columns: 3,
         glyphs: BTreeMap::from([(' ', 0), ('A', 1), (FALLBACK_GLYPH, 2)]),
+        wide: BTreeMap::new(),
     };
     let mut rgba = vec![0; 24 * 16 * 4];
     let mut set = |x: usize, y: usize| rgba[(y * 24 + x) * 4..][..4].copy_from_slice(&[255; 4]);

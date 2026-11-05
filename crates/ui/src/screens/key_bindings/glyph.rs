@@ -28,6 +28,8 @@ use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::{cut, print_centred};
 use crate::widgets::ask;
+use shuyi_assets::font::CellWidths;
+use shuyi_assets::lang::text_width;
 
 /// The panel, in cells, on a 100 × 32 console: at most this wide, with a
 /// margin of `PANEL.x` cells either side, and down to the row over the
@@ -83,8 +85,14 @@ impl Layout {
     /// The layout of `view` on a console of `width` × `height` cells: the
     /// panel as wide as the console allows up to [`PANEL`]'s width,
     /// centred; on a narrower panel, the label column as wide as the
-    /// longest label and the slots sharing the rest.
-    fn new<A: Copy + PartialEq>(view: &KeyBindingsView<A>, width: u16, height: u16) -> Self {
+    /// longest label (measured with `widths`) and the slots sharing the
+    /// rest.
+    fn new<A: Copy + PartialEq>(
+        view: &KeyBindingsView<A>,
+        width: u16,
+        height: u16,
+        widths: &CellWidths,
+    ) -> Self {
         let (width, height) = (i32::from(width), i32::from(height));
         let w = PANEL.w.min(width - 2 * PANEL.x).max(0);
         let h = (height - PANEL.y - BELOW_PANEL).max(0);
@@ -100,7 +108,7 @@ impl Layout {
             };
         }
         let narrow = |with_fixed| {
-            let slots_x = label_x + LABEL_W.min(widest_label(view, with_fixed) + 2);
+            let slots_x = label_x + LABEL_W.min(widest_label(view, with_fixed, widths) + 2);
             let slots = to_i32(view.columns.len().max(1));
             let pitch = SLOT_PITCH.min((right(panel) - slots_x) / slots).max(0);
             Self {
@@ -161,14 +169,18 @@ fn fixed_text<A>(row: &RowView<A>) -> String {
 }
 
 /// Cells the widest action label takes; `with_fixed`, with two cells and
-/// its keys that can't change, if it has any.
-fn widest_label<A: Copy + PartialEq>(view: &KeyBindingsView<A>, with_fixed: bool) -> i32 {
+/// its keys that can't change, if it has any; measured with `widths`.
+fn widest_label<A: Copy + PartialEq>(
+    view: &KeyBindingsView<A>,
+    with_fixed: bool,
+    widths: &CellWidths,
+) -> i32 {
     let width = |row: &RowView<A>| {
-        let label = row.label.chars().count();
+        let label = text_width(&row.label, widths);
         if row.fixed.is_empty() || !with_fixed {
             label
         } else {
-            label + 2 + fixed_text(row).chars().count()
+            label + 2 + text_width(&fixed_text(row), widths)
         }
     };
     to_i32(view.rows().map(width).max().unwrap_or(0))
@@ -272,7 +284,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     let (black, bg) = (c(EngineColor::Background), c(EngineColor::Panel));
     let (text, dim) = (c(EngineColor::Text), c(EngineColor::TextDim));
     let bar = c(EngineColor::Focus);
-    let at = Layout::new(view, buf.width(), buf.height());
+    let at = Layout::new(view, buf.width(), buf.height(), buf.widths());
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let look = PanelLook::new(BoxStyle::Single, text, bg)
         .border(c(EngineColor::Border))
@@ -284,7 +296,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
 
     for (j, heading) in view.columns.iter().enumerate() {
         // Over the gap after the slot too, a cell short of the next one.
-        let heading = cut(heading, to_usize(at.pitch - 2));
+        let heading = cut(heading, to_usize(at.pitch - 2), buf.widths());
         buf.print(at.slot_x(j) + 1, COLUMNS_Y, &heading, dim, bg);
     }
     let placed = place(view);
@@ -357,7 +369,7 @@ fn paint_switch<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, switch: &Switc
         } else {
             buf.print(x, SWITCH_Y, name, c(EngineColor::Highlight), bg);
         }
-        x += i32::try_from(name.chars().count()).unwrap_or(0) + 4;
+        x += buf.text_cells(name) + 4;
     }
 }
 
@@ -388,13 +400,19 @@ fn paint_row<G: GameData>(
     };
     // The label and the fixed keys end a cell before the first slot.
     let room = to_usize(at.slots_x - at.label_x - 1);
-    let label_w = buf.print(at.label_x, y, &cut(&row.label, room), label_fg, bg);
+    let label_w = buf.print(
+        at.label_x,
+        y,
+        &cut(&row.label, room, buf.widths()),
+        label_fg,
+        bg,
+    );
     if !row.fixed.is_empty() {
         let used = usize::from(label_w) + 2;
-        let fixed = cut(&fixed_text(row), room.saturating_sub(used));
+        let fixed = cut(&fixed_text(row), room.saturating_sub(used), buf.widths());
         buf.print(at.label_x + i32::from(label_w) + 2, y, &fixed, dim, bg);
     }
-    let note_x = row.unmapped.then(|| note_x(view, row, at));
+    let note_x = row.unmapped.then(|| note_x(view, row, at, buf.widths()));
     for (j, slot) in row.slots.iter().enumerate() {
         let x = at.slot_x(j);
         if row.focus == Some(j) {
@@ -404,10 +422,12 @@ fn paint_row<G: GameData>(
                 SlotView::Empty => "",
             };
             let w = at.name_w;
-            let bar = format!(" {:<w$}", cut(shown, w));
+            let shown = cut(shown, w, buf.widths());
+            let pad = w.saturating_sub(text_width(&shown, buf.widths()));
+            let bar = format!(" {shown}{}", " ".repeat(pad));
             buf.print(x, y, &bar, bg, c(EngineColor::Focus));
         } else if let SlotView::Bound(name) = slot {
-            buf.print(x + 1, y, &cut(name, at.name_w), text, bg);
+            buf.print(x + 1, y, &cut(name, at.name_w, buf.widths()), text, bg);
         } else if note_x.is_none_or(|n| n == after_slots(row, at)) {
             buf.print(x + 1, y, EMPTY_SLOT, dim, bg);
         }
@@ -418,7 +438,7 @@ fn paint_row<G: GameData>(
         } else {
             dim
         };
-        let note = cut(&view.not_mapped, to_usize(at.right() - x));
+        let note = cut(&view.not_mapped, to_usize(at.right() - x), buf.widths());
         buf.print(x, y, &note, fg, bg);
     }
 }
@@ -426,9 +446,9 @@ fn paint_row<G: GameData>(
 /// The column of `row`'s not-mapped note: a cell after its slots if it fits
 /// there before the panel's right border; else over its slots (all empty),
 /// a cell into the first, or after the bar of the slot the cursor is on if
-/// it would cover the note.
-fn note_x<A>(view: &KeyBindingsView<A>, row: &RowView<A>, at: &Layout) -> i32 {
-    let len = to_i32(view.not_mapped.chars().count());
+/// it would cover the note. Its length is measured with `widths`.
+fn note_x<A>(view: &KeyBindingsView<A>, row: &RowView<A>, at: &Layout, widths: &CellWidths) -> i32 {
+    let len = to_i32(text_width(&view.not_mapped, widths));
     let after = after_slots(row, at);
     if after + len <= at.right() {
         return after;

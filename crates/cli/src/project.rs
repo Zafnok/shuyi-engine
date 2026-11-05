@@ -357,6 +357,10 @@ pub struct FontAtlas {
     pub required_glyphs: String,
     /// The README the generated `atlas.ron` points at, if any.
     pub readme: Option<String>,
+    /// The glyphs `font-atlas --wide` keeps from the wide font whatever
+    /// the text uses (a name entry's letters), in any order: empty by
+    /// default.
+    pub wide_glyphs: String,
 }
 
 /// `glyph-tiles`: a tileset of glyphs on colored squares

@@ -5,7 +5,7 @@
 use alloc::rc::Rc;
 
 use proptest::prelude::*;
-use shuyi_assets::font::FontAtlasDef;
+use shuyi_assets::font::{CellWidths, FontAtlasDef};
 use shuyi_assets::image::ImageId;
 use shuyi_assets::ink::Ink;
 
@@ -17,15 +17,17 @@ use crate::prelude::*;
 mod timing;
 
 /// A font of 8 × 16 cells: `X` a block, `?` (the fallback) two corners,
-/// `[` and `]` a column at either side, `"` two dots, `#` every pixel.
+/// `[` and `]` a column at either side, `"` two dots, `#` every pixel, and
+/// a wide `田`, its left half's left column and its right half's top row.
 fn test_font() -> (FontAtlasDef, Vec<u8>) {
     let atlas = FontAtlasDef {
         cell_w: 8,
         cell_h: 16,
         columns: 32,
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4), ('#', 5)].into(),
+        wide: [('田', 6)].into(),
     };
-    let mut bits = vec![0u8; 6 * 16];
+    let mut bits = vec![0u8; 8 * 16];
     bits[6] = 0b0001_1000;
     bits[7] = 0b0001_1000;
     bits[16] = 0b1000_0001;
@@ -33,12 +35,18 @@ fn test_font() -> (FontAtlasDef, Vec<u8>) {
     bits[48..64].fill(0b0000_0001);
     bits[72] = 0b0010_1000;
     bits[80..96].fill(u8::MAX);
+    bits[96..112].fill(0b1000_0000);
+    bits[112] = u8::MAX;
     (atlas, bits)
 }
 
 /// The glyphs drawn: some of the font, a space, and two it lacks (one
-/// ASCII, one not), drawn as the fallback.
-const GLYPHS: [char; 9] = [' ', ' ', 'X', '?', '[', ']', '"', '#', 'Z'];
+/// ASCII, one not), drawn as the fallback; and two printed wide
+/// ([`WIDE_GLYPHS`]), one the font has wide and one it lacks.
+const GLYPHS: [char; 11] = [' ', ' ', 'X', '?', '[', ']', '"', '#', 'Z', '田', 'あ'];
+
+/// The glyphs of [`GLYPHS`] a buffer prints in two cells.
+const WIDE_GLYPHS: [char; 2] = ['田', 'あ'];
 /// Every ink's code, and colours white or black by brightness, one each
 /// side of the half.
 fn colors() -> Vec<Rgb> {
@@ -306,9 +314,17 @@ fn plain_buffer(max_w: u16, max_h: u16, odds: f64) -> impl Strategy<Value = Glyp
                 cell_w,
                 cell_h,
             };
-            let mut buf = GlyphBuffer::with_spec(spec, cells[0]);
+            let mut buf =
+                GlyphBuffer::with_spec(spec, cells[0]).with_widths(CellWidths::wide(WIDE_GLYPHS));
             for (i, cell) in (0i32..).zip(cells) {
-                buf.set(i % i32::from(w), i / i32::from(w), cell);
+                let (x, y) = (i % i32::from(w), i / i32::from(w));
+                if WIDE_GLYPHS.contains(&cell.glyph) {
+                    // Its continuation after it; the next cell set may
+                    // take its place, and the pair is undone.
+                    buf.print(x, y, &cell.glyph.to_string(), cell.fg, cell.bg);
+                } else {
+                    buf.set(x, y, cell);
+                }
             }
             for thing in &things {
                 thing.put(&mut buf);
@@ -369,6 +385,9 @@ impl Edit {
     fn apply(&self, buf: GlyphBuffer) -> GlyphBuffer {
         let mut buf = buf;
         match self {
+            Edit::Set(x, y, cell) if WIDE_GLYPHS.contains(&cell.glyph) => {
+                buf.print(*x, *y, &cell.glyph.to_string(), cell.fg, cell.bg);
+            }
             Edit::Set(x, y, cell) => buf.set(*x, *y, *cell),
             Edit::Put(thing) => thing.put(&mut buf),
             Edit::Fill(rect, cell) => buf.fill_rect(*rect, *cell),

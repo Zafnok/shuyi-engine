@@ -3,6 +3,8 @@
 /examples/*/target/
 **/*.rs.bk
 *.snap.new
+# A reference picture a test drew anew, to look at before it replaces the old.
+*.new.png
 *.pending-snap
 __pycache__/
 .DS_Store

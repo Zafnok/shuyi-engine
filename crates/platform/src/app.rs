@@ -40,6 +40,7 @@ use alloc::format;
 use core::time::Duration;
 
 use serde::Serialize;
+use shuyi_assets::font::CellWidths;
 use shuyi_core::made::Made;
 use shuyi_core::{StateHash, state_hash};
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
@@ -924,7 +925,8 @@ impl<G: GameData> App<G> {
     }
 
     /// Runs the game's load, the card on the screen, and shows the game it
-    /// made, or why it couldn't.
+    /// made, or why it couldn't. The game prints wide what its look's font
+    /// atlas has wide ([`Game::set_widths`]).
     fn load(&mut self, platform: &mut impl Platform, load: Load<G>, now: Millis) {
         let setup = Setup {
             display: platform.display(),
@@ -945,7 +947,11 @@ impl<G: GameData> App<G> {
         leave(tagged);
         self.perf.load_us = loading.zip(done).map(|(from, to)| micros(from, to));
         match loaded {
-            Ok(game) => {
+            Ok(mut game) => {
+                if let Some(look) = self.look {
+                    let widths = CellWidths::of(look(&game.ctx().game).font);
+                    game.set_widths(widths);
+                }
                 present_game(platform, &game, self.look);
                 self.phase = Phase::Running(Box::new(game));
                 self.give_clock();

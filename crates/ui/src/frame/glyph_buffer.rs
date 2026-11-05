@@ -14,14 +14,23 @@
 //! A buffer may also hold one [`Backdrop`] (game ADR-0048): a second buffer, the
 //! *scene*, shown through a window of cells at a pixel offset and a whole
 //! zoom, behind the cells marked [`Cell::see_through`].
+//!
+//! Text is drawn left to right, one character to a cell, but a wide one
+//! (a Japanese or Chinese character, as the buffer's [`CellWidths`] say)
+//! takes two: the first holds the character, the second a continuation
+//! ([`Cell::is_continuation`]) in the same colours, and a renderer draws
+//! one glyph over both. Replacing either half of a wide character makes
+//! the other a space, so a continuation always follows its first half.
 
 mod backdrop;
 
 use crate::prelude::*;
 use alloc::rc::Rc;
+use core::ops::Range;
 
 pub use backdrop::{Backdrop, MAX_ZOOM};
 
+use shuyi_assets::font::CellWidths;
 use shuyi_assets::image::ImageId;
 use shuyi_assets::lighting::Light;
 
@@ -66,7 +75,17 @@ impl Cell {
             see_through: true,
         }
     }
+
+    /// Whether this is the second cell of a wide character, drawn by the
+    /// first: never a glyph of its own.
+    pub const fn is_continuation(&self) -> bool {
+        self.glyph == CONTINUATION
+    }
 }
+
+/// What the second cell of a wide character holds (a noncharacter, never
+/// in text). Ask [`Cell::is_continuation`], never compare with this.
+const CONTINUATION: char = '\u{ffff}';
 
 /// A rectangle of cells. A non-positive `w` or `h` means empty.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -441,24 +460,58 @@ pub struct GlyphBuffer {
     items: Vec<Item>,
     /// The scene behind the see-through cells, if any.
     backdrop: Option<Backdrop>,
+    /// Which characters take two cells.
+    widths: CellWidths,
 }
 
 impl GlyphBuffer {
     /// A `width × height` buffer of 8 × 16-pixel cells
-    /// ([`ConsoleSpec::text`]) with every cell set to `fill`.
+    /// ([`ConsoleSpec::text`]) with every cell set to `fill`. Nothing is
+    /// wide in it ([`with_widths`](Self::with_widths)).
     pub fn new(width: u16, height: u16, fill: Cell) -> Self {
         Self::with_spec(ConsoleSpec::text(width, height), fill)
     }
 
     /// A buffer the size of a `spec` console, with every cell set to
-    /// `fill`.
+    /// `fill`. Nothing is wide in it ([`with_widths`](Self::with_widths)).
     pub fn with_spec(spec: ConsoleSpec, fill: Cell) -> Self {
         Self {
             spec,
             cells: vec![fill; usize::from(spec.cols) * usize::from(spec.rows)],
             items: Vec::new(),
             backdrop: None,
+            widths: CellWidths::NARROW,
         }
+    }
+
+    /// The same buffer, printing the characters `widths` has wide in two
+    /// cells: those of the font atlas it is drawn with
+    /// ([`CellWidths::of`]).
+    #[must_use]
+    pub fn with_widths(mut self, widths: CellWidths) -> Self {
+        self.widths = widths;
+        self
+    }
+
+    /// Prints the characters `widths` has wide in two cells from now on;
+    /// what is already printed stays.
+    pub fn set_widths(&mut self, widths: CellWidths) {
+        self.widths = widths;
+    }
+
+    /// Which characters it prints in two cells: what text drawn into it is
+    /// measured with ([`text_width`](shuyi_assets::lang::text_width)).
+    pub fn widths(&self) -> &CellWidths {
+        &self.widths
+    }
+
+    /// How many cells `text` takes here ([`text_width`] with
+    /// [`widths`](Self::widths)), as an `i32` for a position (saturated).
+    ///
+    /// [`text_width`]: shuyi_assets::lang::text_width
+    pub fn text_cells(&self, text: &str) -> i32 {
+        let width = shuyi_assets::lang::text_width(text, &self.widths);
+        i32::try_from(width).unwrap_or(i32::MAX)
     }
 
     /// Its size in cells and the size of a cell, in pixels.
@@ -576,6 +629,31 @@ impl GlyphBuffer {
             .collect();
     }
 
+    /// After `other` was copied into `target` from column `dest_x`: a wide
+    /// character whose other half was left behind, off this buffer,
+    /// becomes a space.
+    fn mend_edges(&mut self, other: &GlyphBuffer, dest_x: i32, target: Rect) {
+        let Some(copied) = target.intersect(&self.bounds()) else {
+            return;
+        };
+        let last = copied.x + copied.w - 1;
+        for y in copied.y..copied.y + copied.h {
+            if let Some(c) = self.get_mut(copied.x, y).filter(|c| c.is_continuation()) {
+                c.glyph = ' ';
+            }
+            // The source's cell after the last one copied: in `other`'s
+            // `u16` range, so no overflow.
+            let after = i64::from(last) + 1 - i64::from(dest_x);
+            let left_behind = i32::try_from(after)
+                .ok()
+                .and_then(|sx| other.get(sx, y - target.y))
+                .is_some_and(Cell::is_continuation);
+            if left_behind && let Some(c) = self.get_mut(last, y) {
+                c.glyph = ' ';
+            }
+        }
+    }
+
     /// Width in cells.
     pub fn width(&self) -> u16 {
         self.spec.cols
@@ -608,10 +686,29 @@ impl GlyphBuffer {
         self.index(x, y).map(|i| &mut self.cells[i])
     }
 
-    /// Sets the cell at `(x, y)`; out of bounds is silently ignored.
+    /// Sets the cell at `(x, y)`; out of bounds is silently ignored. A wide
+    /// character's other half, if this was one, becomes a space.
     pub fn set(&mut self, x: i32, y: i32, cell: Cell) {
+        if self.index(x, y).is_some() {
+            self.unpair(y, x..x + 1);
+        }
         if let Some(c) = self.get_mut(x, y) {
             *c = cell;
+        }
+    }
+
+    /// Before cells `xs` of row `y` (inside the buffer) are replaced: the
+    /// half outside them of a wide character cut by their edges becomes a
+    /// space, so no continuation is left without its first half and no
+    /// first half without its continuation.
+    fn unpair(&mut self, y: i32, xs: Range<i32>) {
+        if self.get(xs.start, y).is_some_and(Cell::is_continuation)
+            && let Some(first) = xs.start.checked_sub(1).and_then(|x| self.get_mut(x, y))
+        {
+            first.glyph = ' ';
+        }
+        if let Some(next) = self.get_mut(xs.end, y).filter(|c| c.is_continuation()) {
+            next.glyph = ' ';
         }
     }
 
@@ -626,8 +723,23 @@ impl GlyphBuffer {
         }
     }
 
-    /// Writes `text` left to right from `(x, y)`, one `char` per cell,
-    /// clipped to the buffer. Returns how many cells were written.
+    /// [`unpair`](Self::unpair)s each row of `rect`, before its cells are
+    /// replaced.
+    fn unpair_rect(&mut self, rect: Rect) {
+        let columns = clip_span(rect.x, rect.w, self.spec.cols);
+        if columns.is_empty() {
+            return;
+        }
+        for y in clip_span(rect.y, rect.h, self.spec.rows) {
+            self.unpair(y, columns.clone());
+        }
+    }
+
+    /// Writes `text` left to right from `(x, y)`, clipped to the buffer:
+    /// one `char` per cell, and a wide one ([`widths`](Self::widths)) in
+    /// two, its second a continuation in the same colours. A wide one
+    /// that the buffer's edge would cut isn't drawn. Returns how many
+    /// cells were written.
     pub fn print(&mut self, x: i32, y: i32, text: &str, fg: Rgb, bg: Rgb) -> u16 {
         self.print_with(x, y, text, |c, glyph| *c = Cell::new(glyph, fg, bg))
     }
@@ -647,26 +759,54 @@ impl GlyphBuffer {
         text: &str,
         mut f: impl FnMut(&mut Cell, char),
     ) -> u16 {
+        if !(0..i32::from(self.spec.rows)).contains(&y) {
+            return 0;
+        }
+        let columns = i64::from(self.spec.cols);
         let mut written = 0;
-        for (i, glyph) in text.chars().enumerate() {
-            let Some(cx) = i32::try_from(i).ok().and_then(|i| x.checked_add(i)) else {
-                break;
-            };
-            if cx >= i32::from(self.spec.cols) {
+        let mut cx = i64::from(x);
+        for glyph in text.chars() {
+            if cx >= columns {
                 break;
             }
-            if let Some(c) = self.get_mut(cx, y) {
-                f(c, glyph);
-                written += 1;
+            let wide = self.widths.is_wide(glyph);
+            let cells: u16 = if wide { 2 } else { 1 };
+            if cx >= 0 && cx + i64::from(cells) <= columns {
+                // Inside the buffer: below `columns`, a `u16`.
+                let at = i32::try_from(cx).unwrap_or(0);
+                self.unpair(y, at..at + i32::from(cells));
+                if let Some(c) = self.get_mut(at, y) {
+                    f(c, glyph);
+                }
+                if wide && let Some(c) = self.get_mut(at + 1, y) {
+                    f(c, CONTINUATION);
+                }
+                written += cells;
             }
+            cx += i64::from(cells);
         }
         written
+    }
+
+    /// Each cell's glyph as a renderer draws it, row by row: `(x, y, cell,
+    /// wide)`, where `wide` says it is drawn over this cell and the next
+    /// (the continuation of a wide character). Continuations are left out.
+    pub fn glyphs(&self) -> impl Iterator<Item = (i32, i32, &Cell, bool)> + '_ {
+        let (w, h) = (i32::from(self.width()), i32::from(self.height()));
+        (0..h).flat_map(move |y| {
+            (0..w).filter_map(move |x| {
+                let cell = self.get(x, y).filter(|c| !c.is_continuation())?;
+                let wide = self.get(x + 1, y).is_some_and(Cell::is_continuation);
+                Some((x, y, cell, wide))
+            })
+        })
     }
 
     /// Sets every cell of `rect` to `cell`, removing the parts of items
     /// (rectangles and sprites) over it. Filling the whole buffer with a
     /// solid cell (how a frame is cleared) also removes the backdrop.
     pub fn fill_rect(&mut self, rect: Rect, cell: Cell) {
+        self.unpair_rect(rect);
         self.for_each_in(rect, |_, _, c| *c = cell);
         self.cut_items(rect);
         if !cell.see_through && rect.intersect(&self.bounds()) == Some(self.bounds()) {
@@ -682,22 +822,24 @@ impl GlyphBuffer {
         let [tl, tr, bl, br, horiz, vert] = style.glyphs();
         let right = i64::from(rect.x) + i64::from(rect.w) - 1;
         let bottom = i64::from(rect.y) + i64::from(rect.h) - 1;
-        self.for_each_in(rect, |x, y, c| {
-            let left_edge = x == rect.x;
-            let right_edge = i64::from(x) == right;
-            let top_edge = y == rect.y;
-            let bottom_edge = i64::from(y) == bottom;
-            let glyph = match (top_edge, bottom_edge, left_edge, right_edge) {
-                (true, _, true, _) => tl,
-                (true, _, _, true) => tr,
-                (_, true, true, _) => bl,
-                (_, true, _, true) => br,
-                (true, _, _, _) | (_, true, _, _) => horiz,
-                (_, _, true, _) | (_, _, _, true) => vert,
-                _ => return,
-            };
-            *c = Cell::new(glyph, fg, bg);
-        });
+        for y in clip_span(rect.y, rect.h, self.spec.rows) {
+            for x in clip_span(rect.x, rect.w, self.spec.cols) {
+                let left_edge = x == rect.x;
+                let right_edge = i64::from(x) == right;
+                let top_edge = y == rect.y;
+                let bottom_edge = i64::from(y) == bottom;
+                let glyph = match (top_edge, bottom_edge, left_edge, right_edge) {
+                    (true, _, true, _) => tl,
+                    (true, _, _, true) => tr,
+                    (_, true, true, _) => bl,
+                    (_, true, _, true) => br,
+                    (true, _, _, _) | (_, true, _, _) => horiz,
+                    (_, _, true, _) | (_, _, _, true) => vert,
+                    _ => continue,
+                };
+                self.set(x, y, Cell::new(glyph, fg, bg));
+            }
+        }
     }
 
     /// Tints the background of every cell in `rect` towards `color` by `t`
@@ -751,7 +893,8 @@ impl GlyphBuffer {
     /// clipped to this buffer. Items already over the copied area are
     /// removed, and `other`'s items come along, offset and clipped (a
     /// sprite's `dest` moves with it, its `clip` is clipped). Both buffers
-    /// have cells of the same size.
+    /// have cells of the same size. A wide character comes whole or not
+    /// at all: one this buffer's edge cuts becomes a space.
     pub fn blit(&mut self, other: &GlyphBuffer, dest_x: i32, dest_y: i32) {
         let target = Rect::new(
             dest_x,
@@ -759,12 +902,14 @@ impl GlyphBuffer {
             i32::from(other.width()),
             i32::from(other.height()),
         );
+        self.unpair_rect(target);
         self.for_each_in(target, |x, y, c| {
             // In-bounds of `target`, so the source offsets are in `other`.
             if let Some(src) = other.get(x - dest_x, y - dest_y) {
                 *c = *src;
             }
         });
+        self.mend_edges(other, dest_x, target);
         self.cut_items(target);
         let bounds = self.pixel_bounds();
         let (dx, dy) = (
@@ -940,6 +1085,138 @@ mod tests {
         let mut b = buf(4, 1);
         assert_eq!(b.print(0, 0, "é♣≈", RED, BG), 3);
         assert_eq!(row(&b, 0), "é♣≈ ");
+    }
+
+    /// A `w × h` buffer where `あ` and `い` are wide.
+    fn wide_buf(w: u16, h: u16) -> GlyphBuffer {
+        buf(w, h).with_widths(CellWidths::wide(['あ', 'い']))
+    }
+
+    /// Row `y` as text: a continuation is `+`, so a test sees where one is.
+    fn halves(b: &GlyphBuffer, y: i32) -> String {
+        (0..i32::from(b.width()))
+            .map(|x| {
+                let c = b.get(x, y).unwrap();
+                if c.is_continuation() { '+' } else { c.glyph }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_wide_character_fills_two_cells_and_the_next_follows() {
+        let mut b = wide_buf(4, 1);
+        assert_eq!(b.print(0, 0, "あA", RED, BLUE), 3);
+        assert_eq!(halves(&b, 0), "あ+A ");
+        assert_eq!(b.get(0, 0), Some(&Cell::new('あ', RED, BLUE)));
+        let second = b.get(1, 0).unwrap();
+        assert!(second.is_continuation());
+        assert_eq!((second.fg, second.bg), (RED, BLUE));
+        assert!(!b.get(2, 0).unwrap().is_continuation());
+        // Measured as it is printed.
+        assert_eq!(b.text_cells("あA"), 3);
+        assert_eq!(buf(4, 1).text_cells("あA"), 2);
+        // A narrow buffer prints it in one cell, as before.
+        let mut narrow = buf(4, 1);
+        assert_eq!(narrow.print(0, 0, "あA", RED, BLUE), 2);
+        assert_eq!(halves(&narrow, 0), "あA  ");
+    }
+
+    #[test]
+    fn a_wide_character_the_edge_would_cut_is_not_drawn() {
+        let mut b = wide_buf(4, 1);
+        assert_eq!(b.print(2, 0, "Aあ", RED, BLUE), 1);
+        assert_eq!(halves(&b, 0), "  A ");
+        let mut b = wide_buf(4, 1);
+        assert_eq!(b.print(-1, 0, "あいA", RED, BLUE), 3);
+        assert_eq!(halves(&b, 0), " い+A");
+        let mut b = wide_buf(3, 1);
+        assert_eq!(b.print(0, 0, "Aいあ", RED, BLUE), 3);
+        assert_eq!(halves(&b, 0), "Aい+");
+    }
+
+    #[test]
+    fn overwriting_either_half_leaves_no_orphan() {
+        // The first half.
+        let mut b = wide_buf(4, 1);
+        b.print(1, 0, "あ", RED, BLUE);
+        b.print(1, 0, "B", RED, BLUE);
+        assert_eq!(halves(&b, 0), " B  ");
+        // The continuation.
+        let mut b = wide_buf(4, 1);
+        b.print(1, 0, "あ", RED, BLUE);
+        b.print(2, 0, "C", RED, BLUE);
+        assert_eq!(halves(&b, 0), "  C ");
+        // A wide one half over another.
+        let mut b = wide_buf(5, 1);
+        b.print(0, 0, "あい", RED, BLUE);
+        b.print(1, 0, "あ", FG, BG);
+        assert_eq!(halves(&b, 0), " あ+  ");
+        // The colours of the half left stay: only its glyph goes.
+        assert_eq!(b.get(3, 0), Some(&Cell::new(' ', RED, BLUE)));
+        // Set, a fill and a box edge unpair too.
+        for redraw in [
+            |b: &mut GlyphBuffer| b.set(2, 0, BLANK),
+            |b: &mut GlyphBuffer| b.fill_rect(Rect::new(2, 0, 5, 1), BLANK),
+            |b: &mut GlyphBuffer| b.draw_box(Rect::new(-3, -1, 5, 3), BoxStyle::Single, FG, BG),
+        ] {
+            let mut b = wide_buf(4, 1);
+            b.print(0, 0, "Aあ", RED, BLUE);
+            redraw(&mut b);
+            let row = halves(&b, 0);
+            assert!(!row.contains('+') && !row.contains('あ'), "{row}");
+        }
+        // Colours alone keep the pair.
+        let mut b = wide_buf(4, 1);
+        b.print(0, 0, "あ", RED, BLUE);
+        b.dim(Rect::new(1, 0, 1, 1), 0.5);
+        b.blend_bg(Rect::new(0, 0, 1, 1), RED, 0.5);
+        b.print_fg(0, 0, "", RED);
+        assert_eq!(halves(&b, 0), "あ+  ");
+    }
+
+    #[test]
+    fn blit_keeps_a_wide_character_whole_or_drops_it() {
+        let mut src = wide_buf(4, 1);
+        src.print(0, 0, "あいB", RED, BLUE);
+        assert_eq!(halves(&src, 0), "あ+い+");
+        let mut b = wide_buf(5, 1);
+        b.blit(&src, 1, 0);
+        assert_eq!(halves(&b, 0), " あ+い+");
+        // Cut on the left: its continuation alone is not copied.
+        let mut b = wide_buf(4, 1);
+        b.blit(&src, -1, 0);
+        assert_eq!(halves(&b, 0), " い+ ");
+        // Cut on the right: its first half alone is not either.
+        let mut b = wide_buf(4, 1);
+        b.blit(&src, 1, 0);
+        assert_eq!(halves(&b, 0), " あ+ ");
+        // Cut on the right below the top row, its source's cell before
+        // the cut not a continuation: the first half alone still goes.
+        let mut narrow_then_wide = wide_buf(4, 1);
+        narrow_then_wide.print(0, 0, "abい", RED, BLUE);
+        let mut b = wide_buf(5, 2);
+        b.blit(&narrow_then_wide, 2, 1);
+        assert_eq!(halves(&b, 1), "  ab ");
+        // Over a pair of the buffer's own, cutting it.
+        let mut b = wide_buf(4, 1);
+        b.print(0, 0, "あい", FG, BG);
+        b.blit(&buf(1, 1), 1, 0);
+        assert_eq!(halves(&b, 0), "  い+");
+    }
+
+    #[test]
+    fn glyphs_skip_continuations_and_say_which_are_wide() {
+        let mut b = wide_buf(4, 2);
+        b.print(0, 0, "あA", RED, BLUE);
+        let found: Vec<(i32, i32, char, bool)> = b
+            .glyphs()
+            .map(|(x, y, c, wide)| (x, y, c.glyph, wide))
+            .collect();
+        assert_eq!(
+            found[..3],
+            [(0, 0, 'あ', true), (2, 0, 'A', false), (3, 0, ' ', false)]
+        );
+        assert_eq!(found.len(), 3 + 4);
     }
 
     #[test]
@@ -1229,6 +1506,39 @@ mod tests {
             unchanged_outside(&before, &after, target);
             let inside = target.intersect(&before.bounds()).map_or(0, |r| r.w);
             prop_assert_eq!(i32::from(n), inside);
+        }
+
+        /// However narrow and wide text is printed, filled and blitted, a
+        /// continuation always follows its first half.
+        #[test]
+        fn a_continuation_never_lacks_its_first_half(
+            w in 0u16..12,
+            prints in proptest::collection::vec(
+                (coord(), 0i32..3, "[aあいb ]{0,6}", 0u8..3, coord()),
+                1..8,
+            ),
+        ) {
+            let mut b = wide_buf(w, 3);
+            let mut src = wide_buf(5, 1);
+            src.print(0, 0, "aあいb", RED, BLUE);
+            for (x, y, text, how, other) in &prints {
+                match how {
+                    0 => { b.print(*x, *y, text, RED, BLUE); }
+                    1 => b.fill_rect(Rect::new(*x, *y, other.rem_euclid(4), 1), BLANK),
+                    _ => b.blit(&src, *x, *y),
+                }
+            }
+            for y in 0..3 {
+                for x in 0..i32::from(w) {
+                    if b.get(x, y).unwrap().is_continuation() {
+                        let first = x.checked_sub(1).and_then(|x| b.get(x, y));
+                        prop_assert!(
+                            first.is_some_and(|c| !c.is_continuation() && c.glyph != ' '),
+                            "row {} is {:?}", y, halves(&b, y)
+                        );
+                    }
+                }
+            }
         }
 
         #[test]

@@ -1,7 +1,7 @@
 //! Text dump of a [`GlyphBuffer`] for snapshot tests (game ADR-0007):
 //!
 //! ```text
-//! <glyph rows, exactly width chars each, trailing spaces kept>
+//! <glyph rows, a char a cell, trailing spaces kept>
 //! --- colours ---
 //! <rows of single-char keys, one per cell>
 //! --- legend ---
@@ -16,6 +16,12 @@
 //! `a-z`, `A-Z`, `0-9`, then further Unicode letters should a screen ever
 //! use more than 62 pairs. Colours print as their palette name when one
 //! matches exactly, else as `#rrggbb`. Lines end in `\n` on every OS.
+//!
+//! A wide character's second cell (a continuation,
+//! [`Cell::is_continuation`]) prints as nothing in the glyph rows, so a row
+//! with wide text reads as it is drawn, the wide character taking the
+//! room of two: such a row has fewer chars than the buffer is wide. The
+//! colour rows still have a key a cell.
 //!
 //! The overlays section lists the buffer's items in drawing order, in
 //! console pixels; it is left out when there are none. A rectangle
@@ -70,11 +76,13 @@ impl GlyphBuffer {
         let per_row = usize::from(self.width()).max(1);
         let mut out = String::new();
         for (i, c) in cells().enumerate() {
-            out.push(if c.glyph.is_control() {
-                CONTROL_GLYPH
+            if c.is_continuation() {
+                // Drawn by the wide character before it.
+            } else if c.glyph.is_control() {
+                out.push(CONTROL_GLYPH);
             } else {
-                c.glyph
-            });
+                out.push(c.glyph);
+            }
             if (i + 1) % per_row == 0 {
                 out.push('\n');
             }
@@ -228,6 +236,19 @@ mod tests {
              a = fg:#010203 bg:panel\n\
              b = fg:text bg:panel\n\
              c = fg:text bg:#010203\n"
+        );
+    }
+
+    #[test]
+    fn a_continuation_prints_as_nothing() {
+        let p = engine_palette();
+        let text = p.get(EngineColor::Text);
+        let widths = shuyi_assets::font::CellWidths::wide(['あ']);
+        let mut b = GlyphBuffer::new(4, 1, Cell::new(' ', text, text)).with_widths(widths);
+        b.print(0, 0, "あA", text, text);
+        assert_eq!(
+            b.to_snapshot(&p),
+            "あA \n--- colours ---\naaaa\n--- legend ---\na = fg:text bg:text\n"
         );
     }
 

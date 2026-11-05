@@ -407,7 +407,34 @@ mod tests {
             cell_h: 16,
             columns: 16,
             glyphs: (' '..='~').chain(extra.chars()).zip(0..).collect(),
+            ..FontAtlasDef::default()
         }
+    }
+
+    #[test]
+    fn check_counts_a_wide_glyph_as_drawn_and_fails_on_one_the_atlas_lacks() {
+        let game = Fake {
+            lang: Ok(russian("日a")),
+            font_atlas: Some(Ok(ascii_and(""))),
+            ..Fake::default()
+        };
+        let answer = check(&game, &CheckInput::default());
+        assert!(!answer.ok);
+        let errors = &answer.result.as_ref().unwrap().errors;
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(
+            errors[0]
+                .message
+                .starts_with("'日' (U+65E5) isn't in the font atlas")
+        );
+        let mut atlas = ascii_and("");
+        atlas.wide.insert('日', 96);
+        let drawn = Fake {
+            font_atlas: Some(Ok(atlas)),
+            ..game
+        };
+        let answer = check(&drawn, &CheckInput::default());
+        assert!(answer.ok, "{:?}", answer.result);
     }
 
     #[test]

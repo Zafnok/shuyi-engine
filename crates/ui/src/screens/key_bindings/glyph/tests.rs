@@ -32,7 +32,7 @@ const MESSAGE_ROW: i32 = PANEL.y + PANEL.h;
 
 /// Left edge of slot `i`'s highlight bar on [`PC`].
 fn slot_x(i: usize) -> i32 {
-    Layout::new(&view(Side::Keyboard), PC.cols, PC.rows).slot_x(i)
+    Layout::new(&view(Side::Keyboard), PC.cols, PC.rows, &CellWidths::NARROW).slot_x(i)
 }
 
 /// The row of `view` for `action`, mutable.
@@ -504,7 +504,7 @@ fn every_button_name_fits_a_slot() {
 fn on_the_pc_console_nothing_moves() {
     let mut v = view(Side::Keyboard);
     row_mut(&mut v, Action::Confirm).label = "A".to_owned();
-    let at = Layout::new(&v, PC.cols, PC.rows);
+    let at = Layout::new(&v, PC.cols, PC.rows, &CellWidths::NARROW);
     let expected = Layout {
         panel: PANEL,
         label_x: 6,
@@ -515,7 +515,7 @@ fn on_the_pc_console_nothing_moves() {
     assert_eq!(at, expected);
     assert_eq!(at.message_row(), 30);
     // Wider, the panel keeps its width, centred.
-    let wide = Layout::new(&v, 120, 32);
+    let wide = Layout::new(&v, 120, 32, &CellWidths::NARROW);
     assert_eq!(wide.panel, Rect::new(12, 1, 96, 29));
     assert_eq!(wide.slots_x - wide.panel.x, SLOTS_X - PANEL.x);
     assert_eq!((at.heading_x(), wide.heading_x()), (4, 14));
@@ -527,13 +527,17 @@ fn on_the_pc_console_nothing_moves() {
 fn the_widest_label_counts_the_fixed_keys_when_asked() {
     let mut v = view(Side::Keyboard);
     row_mut(&mut v, Action::Cancel).label = "A label of 20 cells.".to_owned();
-    assert_eq!(widest_label(&v, true), 20);
+    assert_eq!(widest_label(&v, true, &CellWidths::NARROW), 20);
     // "Cancel", two cells and "+ Escape, Space".
     let cancel = row_mut(&mut v, Action::Cancel);
     cancel.label = "Cancel".to_owned();
     cancel.fixed = vec!["Escape".to_owned(), "Space".to_owned()];
-    assert_eq!(widest_label(&v, true), 6 + 2 + 14);
-    assert_eq!(widest_label(&v, false), 19, "Previous ready unit");
+    assert_eq!(widest_label(&v, true, &CellWidths::NARROW), 6 + 2 + 14);
+    assert_eq!(
+        widest_label(&v, false, &CellWidths::NARROW),
+        19,
+        "Previous ready unit"
+    );
 }
 
 /// An unmapped row on the 100-cell console keeps its empty slots' dots,
@@ -554,10 +558,10 @@ fn an_unmapped_row_keeps_its_dots_where_the_note_fits_after_them() {
 
 #[test]
 fn a_name_too_long_for_its_cells_is_cut_with_an_ellipsis() {
-    assert_eq!(cut("Enter", 5), "Enter");
-    assert_eq!(cut("Backspace", 5), "Back…");
-    assert_eq!(cut("Backspace", 1), "…");
-    assert_eq!(cut("Backspace", 0), "");
+    assert_eq!(cut("Enter", 5, &CellWidths::NARROW), "Enter");
+    assert_eq!(cut("Backspace", 5, &CellWidths::NARROW), "Back…");
+    assert_eq!(cut("Backspace", 1, &CellWidths::NARROW), "…");
+    assert_eq!(cut("Backspace", 0, &CellWidths::NARROW), "");
 }
 
 /// The required actions only: what fits the height of [`SMALL`]. A
@@ -587,7 +591,7 @@ fn on_a_small_console_every_slot_is_inside_the_panel() {
     let c = ctx();
     let v = small_view();
     let buf = painted_on(&c, &v, SMALL);
-    let at = Layout::new(&v, SMALL.cols, SMALL.rows);
+    let at = Layout::new(&v, SMALL.cols, SMALL.rows, &CellWidths::NARROW);
     assert_eq!(at.panel, Rect::new(2, 1, 44, 21));
     assert_eq!(at.message_row(), 22);
     // The widest label, "Cursor right", and two cells: with Cancel's
@@ -622,7 +626,7 @@ fn on_a_small_console_every_slot_is_inside_the_panel() {
 fn on_a_small_console_the_note_keeps_clear_of_the_cursor() {
     let c = ctx();
     let mut v = small_view();
-    let at = Layout::new(&v, SMALL.cols, SMALL.rows);
+    let at = Layout::new(&v, SMALL.cols, SMALL.rows, &CellWidths::NARROW);
     assert_eq!((at.slots_x, at.pitch), (20, 8));
     let y = y_of(&v, Action::Confirm);
     let note_at = |v: &KeyBindingsView, focus| {

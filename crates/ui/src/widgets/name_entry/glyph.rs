@@ -13,14 +13,9 @@ use crate::prelude::*;
 /// row around each.
 pub const TYPING_HEIGHT: i32 = 7;
 
-/// Cells `text` takes, as a coordinate.
-fn cells(text: &str) -> i32 {
-    i32::try_from(text.chars().count()).unwrap_or(0)
-}
-
-/// The x that centres `text` in `rect`.
-fn centred_in(rect: Rect, text: &str) -> i32 {
-    rect.x + (rect.w - cells(text)) / 2
+/// The x that centres `text` in `rect` of `buf`.
+fn centred_in(buf: &GlyphBuffer, rect: Rect, text: &str) -> i32 {
+    rect.x + (rect.w - buf.text_cells(text)) / 2
 }
 
 /// A double-bordered box at `rect` with `title` in its top border.
@@ -40,10 +35,10 @@ pub fn paint_typing(palette: &Palette, buf: &mut GlyphBuffer, rect: Rect, typing
     let bg = c(EngineColor::Panel);
     paint_box(palette, buf, rect, &typing.title);
     let shown = format!("{}_", typing.typed);
-    let x = centred_in(rect, &shown);
+    let x = centred_in(buf, rect, &shown);
     buf.print(x, rect.y + 2, &shown, c(EngineColor::Text), bg);
     let hint = &typing.hint;
-    let x = centred_in(rect, hint);
+    let x = centred_in(buf, rect, hint);
     buf.print(x, rect.y + 4, hint, c(EngineColor::TextDim), bg);
 }
 
@@ -62,12 +57,12 @@ pub fn paint_grid(palette: &Palette, buf: &mut GlyphBuffer, rect: Rect, grid: &G
     let rect = Rect::new(rect.x, rect.y, rect.w, grid_height(grid));
     paint_box(palette, buf, rect, &grid.title);
     let shown = format!("{}_", grid.spelled);
-    let x = centred_in(rect, &shown);
+    let x = centred_in(buf, rect, &shown);
     buf.print(x, rect.y + 2, &shown, c(EngineColor::Text), bg);
     for (r, labels) in grid.rows.iter().enumerate() {
         let y = rect.y + 4 + i32::try_from(r * 2).unwrap_or(0);
         // Each cell is its label with a space either side.
-        let widths: Vec<i32> = labels.iter().map(|l| cells(l) + 2).collect();
+        let widths: Vec<i32> = labels.iter().map(|l| buf.text_cells(l) + 2).collect();
         let total: i32 = widths.iter().sum();
         let mut x = rect.x + (rect.w - total) / 2;
         for (col, (label, w)) in labels.iter().zip(&widths).enumerate() {

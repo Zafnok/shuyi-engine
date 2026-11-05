@@ -6,7 +6,8 @@
 //! recoloured copy of it when the sprite isn't painted in the image's own
 //! colours (game ADR-0049). A buffer's backdrop (game ADR-0048), a second buffer
 //! panned and zoomed, is drawn the same way inside its window, behind the
-//! console.
+//! console. A wide glyph (its continuation cell after it) is one quad over
+//! both its cells, as the raster paints it.
 
 use std::collections::{HashMap, HashSet};
 
@@ -253,20 +254,22 @@ impl Renderer {
             }
         }
         self.draw_items(buf, Layer::Under, origin, scale);
-        for ((px, py), cell) in cells() {
+        for (x, y, cell, wide) in buf.glyphs() {
             if cell.glyph == ' ' {
                 continue;
             }
-            let Some((rect, fg)) = self.atlas_cell(cell.glyph, cell.fg) else {
+            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide) else {
                 continue;
             };
+            #[allow(clippy::cast_precision_loss)] // cell coords < 2^16
+            let (px, py) = (offset_x + x as f32 * cell_w, offset_y + y as f32 * cell_h);
             draw_texture_ex(
                 &self.texture,
                 px,
                 py,
                 fg,
                 DrawTextureParams {
-                    dest_size: Some(vec2(cell_w, cell_h)),
+                    dest_size: Some(vec2(cell_w * cells, cell_h)),
                     source: Some(source_rect(rect)),
                     ..Default::default()
                 },
@@ -351,11 +354,17 @@ impl Renderer {
         );
     }
 
-    /// Where to find `glyph` in the atlas and what colour to tint it: `fg`,
-    /// or the fallback glyph in [`MISSING_COLOR`] (logged once per glyph).
-    fn atlas_cell(&mut self, glyph: char, fg: Rgb) -> Option<(AtlasRect, Color)> {
+    /// Where to find `glyph` in the atlas, what colour to tint it and how
+    /// many cells it covers: `fg` over both cells for a wide glyph whose
+    /// continuation follows it (`wide`), over one for a narrow glyph, or
+    /// the fallback glyph in [`MISSING_COLOR`] over one (logged once per
+    /// glyph). As the raster's painter does.
+    fn atlas_cell(&mut self, glyph: char, fg: Rgb, wide: bool) -> Option<(AtlasRect, Color, f32)> {
+        if let Some(rect) = self.atlas.wide_rect(glyph).filter(|_| wide) {
+            return Some((rect, color(fg), 2.0));
+        }
         if let Some(rect) = self.atlas.glyph_rect(glyph) {
-            return Some((rect, color(fg)));
+            return Some((rect, color(fg), 1.0));
         }
         if self.warned.insert(glyph) {
             warn!(
@@ -364,7 +373,7 @@ impl Renderer {
                 u32::from(glyph)
             );
         }
-        Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR))
+        Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR, 1.0))
     }
 }
 

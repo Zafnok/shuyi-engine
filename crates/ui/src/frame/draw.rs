@@ -3,7 +3,8 @@
 //! something is, a line [`print_centred`] in a rectangle and a line
 //! [`print_cut`] to a width (with [`cut`], the text it prints).
 //!
-//! Each counts one cell per `char`, as [`GlyphBuffer::print`] does.
+//! Each counts cells as [`GlyphBuffer::print`] does: one a `char`, two a
+//! wide one ([`GlyphBuffer::widths`]).
 //!
 //! [`panel`]: GlyphBuffer::panel
 //! [`meter`]: GlyphBuffer::meter
@@ -11,6 +12,9 @@
 //! [`print_cut`]: GlyphBuffer::print_cut
 
 use crate::prelude::*;
+
+use shuyi_assets::font::CellWidths;
+use shuyi_assets::lang::text_width;
 
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
@@ -24,18 +28,31 @@ const TITLE_DX: i32 = 2;
 /// title.
 const TITLE_FRAME: i32 = 6;
 
-/// `text` in at most `w` cells: cut, its last cell a `…`, if it is longer.
+/// `text` in at most `w` cells, measured with `widths`: cut, its last cell
+/// a `…`, if it is longer. A wide character that would reach that cell
+/// goes too.
 ///
 /// ```
+/// use shuyi_assets::font::CellWidths;
 /// use shuyi_ui::frame::draw::cut;
-/// assert_eq!(cut("Backspace", 5), "Back…");
-/// assert_eq!(cut("Enter", 5), "Enter");
+/// let narrow = &CellWidths::NARROW;
+/// assert_eq!(cut("Backspace", 5, narrow), "Back…");
+/// assert_eq!(cut("Enter", 5, narrow), "Enter");
+/// assert_eq!(cut("あいう", 5, &CellWidths::wide(['あ', 'い', 'う'])), "あい…");
 /// ```
-pub fn cut(text: &str, w: usize) -> String {
-    if text.chars().count() <= w {
+pub fn cut(text: &str, w: usize, widths: &CellWidths) -> String {
+    if text_width(text, widths) <= w {
         return text.to_owned();
     }
-    let kept: String = text.chars().take(w.saturating_sub(1)).collect();
+    let room = w.saturating_sub(1);
+    let mut used = 0;
+    let kept: String = text
+        .chars()
+        .take_while(|&c| {
+            used += widths.of_char(c);
+            used <= room
+        })
+        .collect();
     if w == 0 { kept } else { kept + "…" }
 }
 
@@ -139,7 +156,7 @@ impl GlyphBuffer {
         };
         let room = usize::try_from(rect.w.saturating_sub(TITLE_FRAME)).unwrap_or(0);
         if room > 0 {
-            let shown = format!(" {} ", cut(title, room));
+            let shown = format!(" {} ", cut(title, room, self.widths()));
             let x = rect.x.saturating_add(TITLE_DX);
             self.print(x, rect.y, &shown, look.title, look.bg);
         }
@@ -186,8 +203,8 @@ impl GlyphBuffer {
         if rect.is_empty() {
             return 0;
         }
-        let shown = cut(text, usize::try_from(rect.w).unwrap_or(0));
-        let len = i32::try_from(shown.chars().count()).unwrap_or(rect.w);
+        let shown = cut(text, usize::try_from(rect.w).unwrap_or(0), self.widths());
+        let len = self.text_cells(&shown).min(rect.w);
         let x = rect.x.saturating_add((rect.w - len) / 2);
         let y = rect.y.saturating_add((rect.h - 1) / 2);
         self.print_fg(x, y, &shown, fg)
@@ -207,7 +224,8 @@ impl GlyphBuffer {
     /// assert_eq!(row, "Back…...");
     /// ```
     pub fn print_cut(&mut self, x: i32, y: i32, width: usize, text: &str, fg: Rgb) -> u16 {
-        self.print_fg(x, y, &cut(text, width), fg)
+        let shown = cut(text, width, self.widths());
+        self.print_fg(x, y, &shown, fg)
     }
 }
 

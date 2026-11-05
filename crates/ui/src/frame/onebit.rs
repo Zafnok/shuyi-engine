@@ -20,7 +20,9 @@
 //!
 //! The order: the white ground; a backdrop's scene in its window
 //! (game ADR-0048), drawn the same way; then the cell backgrounds, `Under`
-//! items, the white edges of [`Ink::BlackEdged`] glyphs, the glyphs,
+//! items, the white edges of [`Ink::BlackEdged`] glyphs, the glyphs (each
+//! half of a wide one in its own cell: the font's one-bit atlas keeps the
+//! halves as two cells),
 //! `Over` items, and last the [`Ink::Invert`] rectangles, which flip what
 //! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
 //! *One-bit pictures*). Nothing here allocates.
@@ -42,7 +44,7 @@ use shuyi_assets::ink::Ink;
 pub use shuyi_assets::onebit::{Base, Pattern, PatternMapDef, RolePatterns, Rows};
 
 use crate::frame::color::Rgb;
-use crate::frame::glyph_buffer::{GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 
 mod roles;
 pub use roles::{OneBitFrame, PatternMap, RowMask, changed_rows, luminance, to_one_bit};
@@ -251,7 +253,9 @@ impl<'a> Font<'a> {
             return Err("the one-bit font has cells at most 8 pixels wide");
         }
         let rows = atlas.cell_h as usize;
-        let needed = atlas.glyphs.values().map(|&i| (i as usize + 1) * rows);
+        let narrow = atlas.glyphs.values().map(|&i| i as usize + 1);
+        let wide = atlas.wide.values().map(|&i| i as usize + 2);
+        let needed = narrow.chain(wide).map(|cells| cells * rows);
         if needed.max().unwrap_or(0) > bits.len() {
             // check-text: not player text (a build problem for the log)
             return Err("the one-bit atlas is shorter than its glyph map");
@@ -275,6 +279,35 @@ impl<'a> Font<'a> {
             None => rows_start(self.atlas, glyph)?,
         };
         self.bits.get(start..start + self.atlas.cell_h as usize)
+    }
+
+    /// The pixel rows of half `half` (0 the left, 1 the right) of wide
+    /// glyph `glyph`, or `None` if the font has no wide glyph `glyph`.
+    fn wide_rows(&self, glyph: char, half: usize) -> Option<&'a [u8]> {
+        let rows = self.atlas.cell_h as usize;
+        let start = (*self.atlas.wide.get(&glyph)? as usize + half) * rows;
+        self.bits.get(start..start + rows)
+    }
+
+    /// The pixel rows drawn in cell `(x, y)` of `buf`: its glyph's
+    /// ([`rows`](Self::rows)), or a half of a wide glyph's, the left in
+    /// its first cell and the right in its continuation. `None` for a
+    /// space, and for a continuation whose glyph the font has no wide
+    /// glyph for.
+    pub fn cell_rows(&self, buf: &GlyphBuffer, x: i32, y: i32) -> Option<&'a [u8]> {
+        let cell = buf.get(x, y)?;
+        if cell.is_continuation() {
+            let first = buf.get(x.checked_sub(1)?, y)?;
+            return self.wide_rows(first.glyph, 1);
+        }
+        if cell.glyph == ' ' {
+            return None;
+        }
+        let wide = buf.get(x + 1, y).is_some_and(Cell::is_continuation);
+        match self.wide_rows(cell.glyph, 0).filter(|_| wide) {
+            Some(rows) => Some(rows),
+            None => self.rows(cell.glyph),
+        }
     }
 
     /// How many screen rows a glyph drawn `scale` times as big covers.
@@ -550,9 +583,15 @@ pub fn render_changed_with(
     let mut dirty = Tiles::default();
     let place = Place::ORIGIN;
     let reach = Reach::of(new, font, 1);
+    let changed = |x: i32, y: i32| old.get(x, y) != new.get(x, y);
+    // A continuation draws its first cell's glyph's right half: it is
+    // drawn again when that cell changes. (Its first cell never needs the
+    // same for a change of the continuation: replacing a continuation
+    // makes its first cell a space.)
+    let continues = |x: i32, y: i32| new.get(x, y).is_some_and(Cell::is_continuation);
     for y in 0..i32::from(new.height()) {
         for x in 0..i32::from(new.width()) {
-            if old.get(x, y) != new.get(x, y) {
+            if changed(x, y) || (continues(x, y) && changed(x - 1, y)) {
                 dirty.add(reach.around(place, x, y));
             }
         }
@@ -950,12 +989,14 @@ fn draw_layers<I: Images, S: Shades>(
         y1: at.y + (y + 1) * reach.cell_h,
     };
     let (columns, rows) = (&columns, &rows);
-    // Each cell with its top-left on the screen.
+    // Each cell but a space with its top-left on the screen and where it
+    // is.
     let cells = || {
         rows.clone().flat_map(move |y| {
             columns.clone().filter_map(move |x| {
                 let top_left = (at.x + x * reach.cell_w, at.y + y * reach.cell_h);
-                buf.get(x, y).map(|cell| (top_left, cell))
+                let cell = buf.get(x, y).filter(|c| c.glyph != ' ')?;
+                Some((top_left, (x, y), cell))
             })
         })
     };
@@ -978,16 +1019,18 @@ fn draw_layers<I: Images, S: Shades>(
     draw_items(target, buf, Layer::Under, at, look);
     mark(Phase::Under);
     let mut glyphs = Remembered::new(|rgb| shades.glyph(rgb));
-    for (top_left, cell) in cells() {
-        if cell.glyph != ' ' && glyphs.of(cell.fg).edged {
-            draw_glyph(target, font, cell.glyph, top_left, at.scale, Glyph::Edge);
+    for (top_left, (x, y), cell) in cells() {
+        if glyphs.of(cell.fg).edged
+            && let Some(rows) = font.cell_rows(buf, x, y)
+        {
+            draw_glyph(target, rows, top_left, at.scale, Glyph::Edge);
         }
     }
     mark(Phase::Edges);
-    for (top_left, cell) in cells() {
-        if cell.glyph != ' ' {
+    for (top_left, (x, y), cell) in cells() {
+        if let Some(rows) = font.cell_rows(buf, x, y) {
             let shade = Glyph::Paint(glyphs.of(cell.fg));
-            draw_glyph(target, font, cell.glyph, top_left, at.scale, shade);
+            draw_glyph(target, rows, top_left, at.scale, shade);
         }
     }
     mark(Phase::Glyphs);
@@ -1059,25 +1102,17 @@ enum Glyph {
     Edge,
 }
 
-/// Draws `glyph` (a space is nothing) of `font` in `part` with its cell's
-/// top-left at screen `(left, top)`, each of its pixels `scale` screen
-/// pixels big.
+/// Draws a glyph's pixel `rows` in `part` with its cell's top-left at
+/// screen `(left, top)`, each of its pixels `scale` screen pixels big.
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)] // a glyph's rows
 #[allow(clippy::cast_sign_loss)] // checked to be a row first
 fn draw_glyph(
     target: &mut Target<'_>,
-    font: &Font<'_>,
-    glyph: char,
+    rows: &[u8],
     (left, top): (i32, i32),
     scale: i32,
     part: Glyph,
 ) {
-    if glyph == ' ' {
-        return;
-    }
-    let Some(rows) = font.rows(glyph) else {
-        return;
-    };
     match part {
         Glyph::Paint(shade) => {
             let mut y = top;

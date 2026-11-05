@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2350"]
 nick_input: none
-completed:
+completed: 2026-11-04
 ---
 
 # 2301 — Wide glyphs: two cells in the glyph buffer, from a wide font in the atlas
@@ -160,20 +160,21 @@ font (game#0236).
 
 ## Acceptance criteria
 
-- [ ] Printing `"あA"` fills three cells: wide, continuation, narrow
+- [x] Printing `"あA"` fills three cells: wide, continuation, narrow
       (unit test).
-- [ ] Overwriting either half of a wide glyph leaves no orphan half
+- [x] Overwriting either half of a wide glyph leaves no orphan half
       (unit test).
-- [ ] A frame PNG with wide text matches a committed reference (test).
-- [ ] `font-atlas --wide` takes exactly the wide characters the text
+- [x] A frame PNG with wide text matches a committed reference (test).
+- [x] `font-atlas --wide` takes exactly the wide characters the text
       uses plus the project's set, and 2350's check (`font::undrawn`)
       counts a wide glyph as drawn and fails `shuyi check` when a pack
       gains a wide character the atlas lacks (test).
-- [ ] An atlas without wide glyphs, every existing snapshot and every
-      narrow atlas cell are unchanged.
-- [ ] The fixture font is our own (no license row needed) or its license
+- [x] An atlas without wide glyphs, every existing snapshot and every
+      narrow atlas cell are unchanged (but the render card's snapshot,
+      which gains step 5's line of wide glyphs).
+- [x] The fixture font is our own (no license row needed) or its license
       is listed.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -186,5 +187,172 @@ font (game#0236).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+- **The atlas** (`shuyi_assets::font`): `FontAtlasDef::wide`, each wide
+  glyph's left cell (its right half the next, in the same row), read as
+  empty from an atlas without it. `wide_rect`; `draws` and `drawn` take
+  the wide glyphs too, so `font::undrawn` and `shuyi check` count one as
+  drawn. `problems` names a character both narrow and wide, a wide glyph
+  in a row's last cell and a cell two glyphs share; `image_problems` a
+  right half past the picture.
+- **Widths:** `font::CellWidths` (`NARROW`, `of(&atlas)`, `wide(chars)`,
+  `is_wide`, `of_char`), cheap to clone (the set is shared).
+  `lang::text_width(text, &CellWidths)`.
+- **The buffer** (`shuyi_ui::frame::glyph_buffer`): `with_widths`,
+  `set_widths`, `widths`, `text_cells`; `new` and `with_spec` stay
+  narrow. `print`, `print_fg` (and so everything built on `print_with`)
+  write a wide character in two cells, the second a continuation in the
+  same colours (`Cell::is_continuation`, the one test of it; the
+  reserved `char` is private). Replacing either half (`set`, `print`,
+  `fill_rect`, `draw_box`, `blit`) makes the other a space, keeping its
+  colours; `dim` and `blend_bg` leave pairs alone. A wide character the
+  buffer's edge would cut isn't drawn; `blit` copies pairs whole or not
+  at all. `glyphs()` gives the renderers each glyph and whether it is
+  drawn over two cells.
+- **Where the widths come from:** `Game::set_widths` gives the frame and
+  the context (`Ctx::widths`) the atlas's widths and draws again;
+  `shuyi_platform::App` calls it after the game loads, with its look's
+  atlas, on every backend.
+- **Layout:** `frame::draw::cut` takes the widths; `print_centred`,
+  `print_cut`, `panel`, `screens::print_centred`, the key bindings,
+  options, profiles and debug screens, the text box, the ask, menu and
+  name-entry widgets and the crank hint measure with the frame's widths
+  (the menu's `size` with `Ctx::widths`, as it has no frame).
+- **Renderers:** `shuyi-app` and the raster draw a wide glyph as one
+  quad over both cells and skip the continuation; a wide glyph without
+  its continuation draws the fallback. The one-bit renderer and its
+  reference draw a half in each cell (`Font::cell_rows`), and a partial
+  redraw (`render_changed`) redraws a pair's other half; the speed
+  tests' property tests now print wide glyphs too, and the fast
+  renderer still equals the reference. The render card has a line of
+  wide and narrow glyphs and one wide glyph without its continuation.
+- **Snapshots:** a continuation prints as nothing in the glyph rows; the
+  colour rows keep a key a cell (`frame::snapshot` and
+  `Harness::snapshot` say so).
+- **The tool:** `font-atlas --wide <font.bdf>` and `shuyi.ron`'s
+  `font_atlas.wide_glyphs`. The wide glyphs are the characters the text
+  uses that the narrow fonts lack, and the project's, laid out after the
+  narrow ones, two cells each, never across a row's end
+  (`build_wide_atlas`, `AtlasChars::with_wide`, `wants_wide`,
+  `check_wide` for a font twice as wide). `atlas.ron` leaves `wide` out
+  when there are none, so the template's and the examples' atlases are
+  unchanged byte for byte. The one-bit copy keeps each half as a cell.
+  A BDF in JIS X 0208 (`CHARSET_REGISTRY "JISX0208…"`) is read as
+  Unicode through `encoding_rs`' EUC-JP table, with `shuyi-cli`'s `jis`
+  feature; without it such a font is refused, saying to turn it on.
+- **Fixtures:** `crates/cli/tests/fixtures/fonts/wide-16.bdf` and
+  `wide-16-jis.bdf` (four CJK characters made of straight lines, drawn
+  for this ticket: MIT OR Apache-2.0, no license row) and the reference
+  `wide-line.png`, drawn by the raster with the template's Terminus and
+  the fixture. When it changes on purpose its test writes
+  `wide-line.new.png` beside it (ignored by git) to look at.
+- **Docs:** `docs/formats.md` (the font atlas and the language pack:
+  what the cells draw), the book's *Assets and formats*, the
+  `shuyi-import-art` skill's row, the rustdoc.
+
+**Deviations.**
+- Step 4's "every caller in the engine passes the table it has": the
+  text checks (`longest_width`, `lines_at_longest`, `Names::longest`,
+  the tips' check) run as the text loads, before anything has the
+  atlas, so they pass `CellWidths::NARROW`. Ticket **2252** gives them
+  the atlas's widths through `PackRules` and `TipRules`, and makes a hot
+  reload of the atlas change the frame's widths (today it keeps those it
+  had at load). 2239's clause now points at 2252.
+- `Ctx` gets the widths too (`Ctx::widths`, set only by
+  `Game::set_widths`): the menu's size is measured from the context,
+  before it has a frame.
+- `dialogue/text_box.rs` counts characters for the typewriter's reveal,
+  not for layout, and `profiles.rs` and `name_entry.rs` count a name's
+  stored length (2346 measures it); they still count characters.
+- The JIS conversion needs JIS X 0208's table: `encoding_rs` 0.8
+  (`(Apache-2.0 OR MIT) AND BSD-3-Clause`, all in `deny.toml`'s allow
+  list; `default-features = false, features = ["alloc"]`) rather than a
+  table of 7,000 rows in the repository. It brings five crates, so it is
+  optional, behind `shuyi-cli`'s `jis` feature (on for this crate's
+  tests): a new game's tree stays at 144 crates, and only a game whose
+  font is in JIS turns it on.
+- The one-bit renderer's partial redraw draws a continuation again when
+  its first cell changes; the other way round can't happen (replacing a
+  continuation makes its first cell a space), so it has no rule.
+- The pack's binary form of a font atlas has the new field:
+  `pack::VERSION` is 8.
+- Either-order clauses: 2224, 2239, 2346, 2347, 2353 were not done, so
+  each took its other branch; their clauses now say what holds.
+
+**Follow-ups.** 2252 (above).
+
+**For the game.** game#0236 adds its Japanese font with `--wide` at the
+pin bump that follows this PR; that game PR isn't open yet. The bump's
+changes are below: none if the game builds no `FontAtlasDef`, calls no
+`text_width` and no `cut`.
+
+Breaking: shuyi-assets: `font::FontAtlasDef`: new field `wide`; a game that builds one adds `wide: BTreeMap::new()`.
+
+```migration
+since: 0.1.0
+what: A font atlas may hold wide glyphs; one built in code says it has none.
+old: FontAtlasDef { cell_w, cell_h, columns, glyphs }
+new: FontAtlasDef { cell_w, cell_h, columns, glyphs, wide }
+before: |
+  let atlas = FontAtlasDef { cell_w: 8, cell_h: 16, columns: 32, glyphs };
+after: |
+  let atlas = FontAtlasDef { cell_w: 8, cell_h: 16, columns: 32, glyphs, wide: BTreeMap::new() };
+```
+
+Breaking: shuyi-assets: `lang::text_width`: takes the widths; pass the frame's (`buf.widths()`), the context's (`ctx.widths()`) or `&CellWidths::NARROW`.
+
+```migration
+since: 0.1.0
+what: text_width counts a wide character as two cells, so it takes the widths it measures with.
+old: lang::text_width(&str)
+new: lang::text_width(&str, &CellWidths)
+before: |
+  let w = text_width(label);
+after: |
+  let w = text_width(label, buf.widths());
+find: ["text_width(label)"]
+```
+
+Breaking: shuyi-ui: `frame::draw::cut` (and `screens::cut`): takes the widths; pass `buf.widths()`.
+
+```migration
+since: 0.1.0
+what: cut measures text in cells, a wide character two.
+old: cut(&str, usize)
+new: cut(&str, usize, &CellWidths)
+before: |
+  let shown = cut(name, 12);
+after: |
+  let shown = cut(name, 12, buf.widths());
+find: ["cut(name, 12)"]
+```
+
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "font atlas: font-atlas": a font atlas's binary form has `wide`, and a baked pack is of version 8; every game bakes again.
+
+```migration
+since: 0.1.0
+what: A pack baked before this engine is refused; bake it again.
+old: pack::VERSION 7
+new: pack::VERSION 8
+before: |
+  cargo shuyi bake
+after: |
+  cargo shuyi bake
+```
+
+Breaking: shuyi-cli: `font_atlas::run` takes the wide font's path after the fonts' (`None` for none), and `project::FontAtlas` has `wide_glyphs`.
+
+```migration
+since: 0.1.0
+what: font-atlas may read a wide font; a caller without one passes None.
+old: font_atlas::run(&rules, command, &fonts, out_dir, &chars)
+new: font_atlas::run(&rules, command, &fonts, None, out_dir, &chars)
+before: |
+  font_atlas::run(&rules, "shuyi", &fonts, out, &chars)
+after: |
+  font_atlas::run(&rules, "shuyi", &fonts, None, out, &chars)
+find: ["&fonts, out, &chars"]
+```
+
+Book: updated (`assets-and-formats`, after *When a file is wrong*: wide
+glyphs, `--wide`, `wide_glyphs` and measuring with the frame's widths).

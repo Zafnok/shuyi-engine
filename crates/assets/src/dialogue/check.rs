@@ -16,6 +16,7 @@ use super::{
     REPLY_SPEAKER, Side, Step,
 };
 use crate::error::ContentError;
+use crate::font::CellWidths;
 use crate::lang::text_width;
 use crate::names::{Literals, Names, is_name_id, name_token};
 use crate::text::word_wrap;
@@ -217,7 +218,7 @@ struct Checker<'a, R> {
 pub fn longest_width(text: &str, tokens: &dyn Tokens, longest_name: Option<usize>) -> usize {
     split_tokens(text)
         .map(|part| match part {
-            Part::Text(t) | Part::Unclosed(t) => text_width(t),
+            Part::Text(t) | Part::Unclosed(t) => text_width(t, &CellWidths::NARROW),
             Part::Token(t) => token_cells(t, tokens, longest_name),
         })
         .sum()
@@ -227,7 +228,9 @@ pub fn longest_width(text: &str, tokens: &dyn Tokens, longest_name: Option<usize
 fn token_cells(token: &str, tokens: &dyn Tokens, longest_name: Option<usize>) -> usize {
     match (name_token(token), longest_name) {
         (Some(_), Some(longest)) => longest,
-        _ => tokens.longest(token).unwrap_or(text_width(token) + 2),
+        _ => tokens
+            .longest(token)
+            .unwrap_or(text_width(token, &CellWidths::NARROW) + 2),
     }
 }
 
