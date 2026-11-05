@@ -214,19 +214,16 @@ impl Easing for Ease {
             Ease::Steps(n) => steps(n, p).units(),
             Ease::In(family) => rise(family, p, false).units(),
             Ease::Out(family) => i128::from(WIDE) - rise(family, WIDE - p, false).units(),
+            // Both halves are one curve about the middle, `side` saying
+            // which half `p` is in (0 at the middle, where both give HALF).
             Ease::InOut(family) => {
-                if p < HALF {
-                    rise(family, 2 * p, true).half().units()
-                } else {
-                    i128::from(WIDE) - rise(family, 2 * (WIDE - p), true).half().units()
-                }
+                let (side, off) = (i128::from((p - HALF).signum()), (p - HALF).abs());
+                let near = rise(family, 2 * (HALF - off), true).half().units();
+                i128::from(HALF) + side * (i128::from(HALF) - near)
             }
             Ease::OutIn(family) => {
-                if p < HALF {
-                    i128::from(HALF) - rise(family, WIDE - 2 * p, false).half().units()
-                } else {
-                    i128::from(HALF) + rise(family, 2 * p - WIDE, false).half().units()
-                }
+                let (side, off) = (i128::from((p - HALF).signum()), (p - HALF).abs());
+                i128::from(HALF) + side * rise(family, 2 * off, false).half().units()
             }
         };
         narrow(wide)
@@ -317,8 +314,8 @@ fn rise(family: Family, q: i64, in_out: bool) -> Frac {
             Frac::new((d + c) * x.pow(3) - c * x.pow(2) * one, d * one.pow(3))
         }
         // -2^(10x - 10) sin((10x - 10.75) 2PI/3); in and out,
-        // sin((20x - 22.25) 2PI/9) in 1/2^24 of a turn. 0 at 0, 1 at 1.
-        Family::Elastic if q == WIDE => Frac::new(1, 1),
+        // sin((20x - 22.25) 2PI/9) in 1/2^24 of a turn. At 1 the angle is
+        // exactly a quarter turn back, so it is exactly 1 there.
         Family::Elastic => {
             let (k, start, per) = if in_out {
                 (20, 1_458_176, 9)
@@ -341,14 +338,12 @@ fn rise(family: Family, q: i64, in_out: bool) -> Frac {
 /// in `0, 3/4, 15/16, 63/64`.
 fn bounce_down(u: i64) -> Frac {
     let (u, one) = (i128::from(u), i128::from(WIDE));
-    let (a, k) = if 11 * u < 4 * one {
-        (0, 0)
-    } else if 11 * u < 8 * one {
-        (12, 48)
-    } else if 11 * u < 10 * one {
-        (18, 60)
-    } else {
-        (21, 63)
+    // The arcs start at 4/11, 8/11 and 10/11, which no `u` falls on.
+    let (a, k) = match 11 * u / one {
+        0..=3 => (0, 0),
+        4..=7 => (12, 48),
+        8 | 9 => (18, 60),
+        _ => (21, 63),
     };
     let arc = (22 * u - a * one).pow(2);
     Frac::new((64 - k) * one * one - arc, 64 * one * one)
