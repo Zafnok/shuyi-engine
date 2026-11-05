@@ -94,7 +94,7 @@ impl fmt::Display for TagError {
             ),
             Self::RepeatedVariant(subtag) => write!(f, "the variant {subtag:?} is written twice"),
             Self::PrivateUse => f.write_str(
-                "a private-use part is x and one or more parts of 1 to 8 letters or digits",
+                "a private-use part is -x- then one or more parts of 1 to 8 letters or digits",
             ),
             Self::Misplaced(subtag) => write!(
                 f,
@@ -137,9 +137,11 @@ pub(super) fn parent_of(tag: &str) -> Option<&str> {
     }
 }
 
-/// `tag`, then each of its parents, down to its language.
+/// `tag`, then each of its parents, down to its language. A parent is
+/// shorter than its tag, so there are never more than `tag` has
+/// characters: the walk stops there even if a parent weren't.
 pub(super) fn ancestry(tag: &str) -> impl Iterator<Item = &str> {
-    core::iter::successors(Some(tag), |tag| parent_of(tag))
+    core::iter::successors(Some(tag), |tag| parent_of(tag)).take(tag.len())
 }
 
 /// What a subtag can be next, in a tag's order.
@@ -446,7 +448,7 @@ mod tests {
                  the language alone",
                 "extensions (-u-) aren't taken; only a private-use part (-x-)",
                 "the variant \"1996\" is written twice",
-                "a private-use part is x and one or more parts of 1 to 8 letters or digits",
+                "a private-use part is -x- then one or more parts of 1 to 8 letters or digits",
                 "\"Latn\" can't be there: a tag is its language, then a script, a region, \
                  variants and a private-use part, each if it has one",
             ]
@@ -542,7 +544,7 @@ mod tests {
             proptest::prop_assert_eq!(upper.as_str(), text.as_str());
             let posix = LangCode::parse(&subtags.join("_")).unwrap();
             proptest::prop_assert_eq!(posix.as_str(), text.as_str());
-            let steps = core::iter::successors(t, LangCode::parent).count();
+            let steps = core::iter::successors(t, LangCode::parent).take(subtags.len() + 1).count();
             proptest::prop_assert!(steps <= subtags.len(), "{} steps for {}", steps, text);
         }
     }
