@@ -28,16 +28,21 @@ pub type Data = BasicData<UiAction, stages::Own>;
 
 /// The game: who it is ([`app_info::APP`]: its name, and where the
 /// player's settings and keys are kept), its files and its stages' part of
-/// them, its first screen, every screen it can show, and the engine's
-/// modules its features turn on (`Cargo.toml`).
+/// them, its first screen, every screen it can show, the engine's modules
+/// its features turn on (`Cargo.toml`), and its stages' record of its play
+/// for a crash report, if they have one.
 pub fn game() -> BasicGame<UiAction, stages::Own> {
     // check-text: not player text, a folder
     let files = Layer::dir("files", &FILES);
-    BasicGame::with_own(app_info::APP, files, stages::own, |_| {
+    let game = BasicGame::with_own(app_info::APP, files, stages::own, |_| {
         Box::new(title::Title)
     })
     .screens(screens)
-    .modules(shuyi::enabled_modules)
+    .modules(shuyi::enabled_modules);
+    match stages::crash_record() {
+        Some(hook) => game.crash_record(hook),
+        None => game,
+    }
 }
 
 /// What made this build, for its records and saves: the game's id and

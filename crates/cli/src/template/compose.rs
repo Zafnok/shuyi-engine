@@ -310,7 +310,7 @@ fn module_of(stage: &str) -> String {
 /// The flow's list of stages ([`GENERATED_STAGES`]) for `stages`, in
 /// order, each a module `stages/<id with _>.rs` of the game crate that
 /// gives its `Own` part of the game's data and its `own` reader, its
-/// `first` screen, its `screens` and its `Tools`. With none, the title is
+/// `first` screen, its `screens`, its `crash_record` and its `Tools`. With none, the title is
 /// the game's one screen and its tools are `BasicTools`.
 pub fn stages_rs(stages: &[String]) -> String {
     let head = "//! The game's stages, in the order its template's parts add them. `shuyi\n\
@@ -333,6 +333,8 @@ pub fn stages_rs(stages: &[String]) -> String {
              /// Every screen the stages can show, for the check that the game's\n\
              /// controls fit each target: none.\n\
              pub fn screens(_: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {\n    Vec::new()\n}\n\n\
+             /// The game's record of its play for a crash report: none.\n\
+             pub fn crash_record() -> Option<shuyi::platform::CrashRecord<Data>> {\n    None\n}\n\n\
              /// The game's tools: the engine's, for a game on the short path.\n\
              #[cfg(feature = \"tools\")]\n\
              pub fn tools() -> shuyi_cli::BasicTools<UiAction, Own> {\n    \
@@ -363,6 +365,9 @@ pub fn stages_rs(stages: &[String]) -> String {
                  /// controls fit each target.\n\
                  pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {{\n    \
                  {module}::screens(ctx)\n}}\n\n\
+                 /// The game's record of its play for a crash report: its stage's.\n\
+                 pub fn crash_record() -> Option<shuyi::platform::CrashRecord<Data>> {{\n    \
+                 Some({module}::crash_record)\n}}\n\n\
                  /// The game's tools: its stage's, which give the engine's for the rest.\n\
                  #[cfg(feature = \"tools\")]\n\
                  pub fn tools() -> {module}::Tools {{\n    \

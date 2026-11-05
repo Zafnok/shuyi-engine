@@ -8,7 +8,9 @@
 //! shows is a [`MapScene`] that the engine's glyph skin paints
 //! ([`GLYPHS`]), and a [`StageView`] of the lines round it. Its look is
 //! here too: the terrains' glyphs and colors, and the pieces' letters. Its
-//! tools ([`Tools`]) add its scene, records, bots and map to the engine's.
+//! play is a [`StageRecord`], which its tools' `replay` reads and a crash
+//! report holds ([`crash_record`]). Its tools ([`Tools`]) add its scene,
+//! records, bots and map to the engine's.
 
 #[cfg(feature = "tools")]
 mod tools;
@@ -16,9 +18,10 @@ mod tools;
 use std::any::Any;
 
 use rules::{Command, Event, Feature, Outcome, Stage, TERRAIN_NAMES};
+use serde::{Deserialize, Serialize};
 use shuyi::assets::grid_map::GridMap;
 use shuyi::assets::lighting::Lighting;
-use shuyi::core::{Dir, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
+use shuyi::core::{Dir, Made, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
 use shuyi::prelude::*;
 use shuyi::ui::frame::Palette;
 use shuyi::ui::grid::{
@@ -29,11 +32,33 @@ use shuyi::ui::grid::{
 use crate::Data;
 
 #[cfg(feature = "tools")]
-pub use tools::{OPTIONS, StageRecord, Tools, seed_of};
+pub use tools::{OPTIONS, Tools, seed_of};
 
 /// The stage's map, in the game's files.
 // check-text: not player text, a file name
 pub const MAP: &str = "stage.map";
+
+/// A record of a stage: its seed and the commands sent to its rules, and
+/// what made it. The game's record format for `replay`; `bots` writes one
+/// of each play, and a crash report holds the open stage's
+/// ([`crash_record`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageRecord {
+    /// The stage's seed.
+    pub seed: u64,
+    /// The commands, in order.
+    pub commands: Vec<Command>,
+    /// What made it ([`crate::made`]); a record without one still reads.
+    #[serde(default)]
+    pub made: Option<Made>,
+}
+
+/// The game's record of its play for a crash report: the open stage's
+/// [`StageRecord`] as RON, or `None` when no stage is open.
+pub fn crash_record(game: &Game<Data>) -> Option<String> {
+    ron::to_string(&game.screen::<StageScreen>()?.record()).ok()
+}
 
 /// The stage's part of the game's data.
 #[derive(Debug)]
@@ -213,8 +238,11 @@ pub struct StageScreen {
     pub stage: Stage,
     /// Its seed.
     pub seed: u64,
-    /// Every command sent to the rules, in order.
+    /// Every command the rules took, in order.
     pub commands: Vec<Command>,
+    /// The command the rules are applying, until they return: a crash
+    /// inside them is in its [`record`](Self::record).
+    pub pending: Option<Command>,
     /// Every event of the rules, in order.
     pub events: Vec<Event>,
 }
@@ -232,6 +260,7 @@ impl StageScreen {
             stage,
             seed,
             commands: Vec::new(),
+            pending: None,
             events: Vec::new(),
         }
     }
@@ -266,9 +295,22 @@ impl StageScreen {
         }
     }
 
+    /// Its play so far: the seed, the commands taken and the one pending,
+    /// stamped with what made it.
+    pub fn record(&self) -> StageRecord {
+        StageRecord {
+            seed: self.seed,
+            commands: self.commands.iter().chain(&self.pending).copied().collect(),
+            made: Some(crate::made()),
+        }
+    }
+
     /// Sends `command` to the rules and keeps it, if they take it.
     fn send(&mut self, command: Command) {
-        if let Ok(events) = self.stage.apply(&command) {
+        self.pending = Some(command);
+        let applied = self.stage.apply(&command);
+        self.pending = None;
+        if let Ok(events) = applied {
             self.commands.push(command);
             self.events.extend(events);
         }
@@ -335,6 +377,10 @@ impl Screen<Data> for StageScreen {
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
+        Some(self)
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         Some(self)
     }
 }

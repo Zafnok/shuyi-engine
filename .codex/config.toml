@@ -1,0 +1,16 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+MCP_TIMEOUT = "300000"
+
+[mcp_servers.shuyi]
+command = "cargo"
+args = [
+    "run",
+    "-q",
+    "-p",
+    "shuyi-cli",
+    "--",
+    "mcp",
+]

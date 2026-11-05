@@ -117,7 +117,9 @@ hashes differ, and that step's command is where to look.
 
 A player's crash report (`crash-<when>.ron` in the game's data folder)
 holds the game's record of its play in its `record` field, on a
-computer, when the game gives one (`Start::crash_record`): write that
+computer, when the game gives one (`Start::crash_record`, or
+`BasicGame::crash_record` on the short path; the grid template's game
+gives its open stage's `StageRecord`): write that
 text to a file and replay it as above; it ends with the command the
 rules were applying when they panicked. The report also names the frame,
 the screen on top and the log's last lines. Replaying a report to its
