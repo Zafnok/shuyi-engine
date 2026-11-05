@@ -13,6 +13,8 @@ behind it in ADR-0062.
 | `src/sdk.rs` | `Sdk`, the SDK's calls as a small trait: the tests' fake (`src/fake.rs`) and the device's real calls implement it |
 | `src/backend.rs` | `Playdate`, the `Platform` |
 | `src/driver.rs` | `Driver`, the update callback's body around `App::frame`; its tests run the whole loop on the fake |
+| `src/report.rs` | `RunReport`, the opt-in run report: its timings, the reads of the load, and its lines |
+
 | `src/input.rs` | The buttons and the crank; the only file that names buttons |
 | `src/display.rs` | The frame buffer and its changed rows, the card and the errors |
 | `src/storage.rs` | The game's saves on the SDK's files, which pass the power-cut suite over the fake |

@@ -51,10 +51,12 @@ check on the numbers.
 **In:**
 - **A bench build.** `shuyi export playdate --bench` builds the example
   with the bench scenarios (3008) built in. Each scenario runs from a
-  menu, and the build turns on 3090's run report with the draw's phases
-  (needed first: its times of `App::frame` and the draw and flush, and
-  its stack mark), adding only per-frame times and the peak heap over the
+  menu, and the build turns on the run report with the draw's phases
+  (`main!(start, report = RunReport::new().phases(true))`, from 3090:
+  it gives the times of `App::frame` and of the draw and flush, and the
+  stack mark), adding only per-frame times and the peak heap over the
   SDK's console log.
+
 - **Collecting the log** over USB, with the SDK's tools (the Simulator's
   device console, or `pdutil`; record which one works on Windows).
 - **Run on the device from the computer.** `shuyi export playdate --run

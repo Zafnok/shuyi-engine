@@ -590,3 +590,291 @@ fn the_games_sounds_load_with_it_and_the_console_names_a_missing_one() {
     let line = "audio: sound \"click\": audio/click: not in the .pdx";
     assert!(logs.iter().any(|l| l == line), "{logs:?}");
 }
+
+/// The game files the reading toy's load reads.
+static FILES: &[(&str, &[u8])] = &[("data/a.ron", b"a"), ("data/b.ron", b"b")];
+
+/// The toy, whose load reads two files, names a step, and asks for a file
+/// the bundle lacks.
+fn reading_start() -> Start<Toy> {
+    Start::new(Card::text("Toy"), look, |setup| {
+        let bundle = shuyi_assets::Bundle::new(alloc::vec![shuyi_assets::bundle::Layer::table(
+            "game", FILES
+        )]);
+        let _ = bundle.bytes("data/a.ron");
+        crate::report::mark("the rules");
+        let _ = bundle.bytes("data/b.ron");
+        let _ = bundle.bytes("data/missing.ron");
+        let _ = bundle.bytes("data/a.ron");
+        Ok(load(setup))
+    })
+}
+
+/// The run report's lines in the console, without their frame.
+fn report_lines(sdk: &FakeSdk) -> Vec<String> {
+    sdk.logs()
+        .iter()
+        .filter_map(|line| line.split_once(" info platform: "))
+        .map(|(_, text)| text.to_string())
+        .collect()
+}
+
+/// Runs `driver` for `frames` updates of 33 milliseconds each, the counter
+/// going on from `from`; the counter's next reading.
+fn run_for(sdk: &FakeSdk, driver: &mut Driver<Toy, FakeSdk>, from: u32, frames: u32) -> u32 {
+    let mut now = from;
+    for _ in 0..frames {
+        sdk.set_millis(now);
+        driver.update();
+        now = now.wrapping_add(33);
+    }
+    now
+}
+
+/// The ticket: the start's lines, then a minute's, on the minute, through
+/// the public API.
+#[test]
+fn report_lines_on_the_fake() {
+    let sdk = FakeSdk::default();
+    FakeSdk::set_clock_us(0);
+    FakeSdk::set_clock_step_us(1_000);
+    sdk.set_stack_used(Some(4_096));
+    let mut driver = Driver::with_report(reading_start(), sdk.clone(), RunReport::new());
+    let now = run_for(&sdk, &mut driver, 0, 3);
+    let lines = report_lines(&sdk);
+    let starts = |prefix: &str| lines.iter().any(|l| l.starts_with(prefix));
+    assert!(starts("Loading card shown "), "{lines:?}");
+    assert!(starts("Game data loaded in "), "{lines:?}");
+    assert!(lines.contains(&"Game stack used: 4,096 bytes".to_string()));
+    assert!(
+        lines.contains(&"Bundle: 4 reads of 3 files, 1 not in the bundle".to_string()),
+        "{lines:?}"
+    );
+    assert!(lines.contains(&"Not in the bundle: data/missing.ron".to_string()));
+    let slowest = lines
+        .iter()
+        .find(|l| l.starts_with("Slowest reads, ms to the next read: "))
+        .unwrap_or_else(|| panic!("{lines:?}"));
+    assert!(slowest.contains("(the rules) "), "{slowest}");
+    assert!(starts("First frame of the game shown "), "{lines:?}");
+    let card = lines.iter().position(|l| l.starts_with("Loading card"));
+    let first = lines.iter().position(|l| l.starts_with("First frame"));
+    assert!(card < first, "{lines:?}");
+
+    // Nothing more until the minute is up, then the running lines.
+    let before = report_lines(&sdk).len();
+    let now = run_for(&sdk, &mut driver, now, 1_800);
+    assert_eq!(report_lines(&sdk).len(), before, "{:?}", report_lines(&sdk));
+    run_for(&sdk, &mut driver, now, 20);
+    let minute = report_lines(&sdk).split_off(before);
+    let top = driver.app().game().and_then(Game::top_screen);
+    let top = top.unwrap_or_else(|| panic!("a screen is open"));
+    assert_eq!(minute.len(), 5, "{minute:?}");
+    assert!(
+        minute[0].starts_with(&format!("On {top} for 60 seconds: 30.")),
+        "{minute:?}"
+    );
+    assert!(minute[1].starts_with("App::frame: min "), "{minute:?}");
+    assert!(minute[2].starts_with("Draw and flush: "), "{minute:?}");
+    assert_eq!(minute[3], "Game stack used: 4,096 bytes");
+    assert_eq!(minute[4], "Music: none");
+}
+
+/// The ticket: off, five minutes say nothing and read the timer no more
+/// than the app itself does.
+#[test]
+fn with_the_report_off_nothing_is_measured_or_said() {
+    const FRAMES: u32 = 5 * 60 * 30;
+    let sdk = FakeSdk::default();
+    let reads = FakeSdk::clock_reads();
+    let mut driver = Driver::new(reading_start(), sdk.clone());
+    run_for(&sdk, &mut driver, 0, FRAMES);
+    let by_driver = FakeSdk::clock_reads() - reads;
+    assert_eq!(report_lines(&sdk), [] as [String; 0]);
+
+    // The same frames on the app and the backend alone.
+    let bare = FakeSdk::default();
+    let reads = FakeSdk::clock_reads();
+    let mut app = App::new(reading_start());
+    let mut platform = Playdate::new(bare.clone());
+    let mut started = false;
+    for frame in 0..FRAMES {
+        let now = u64::from(frame) * 33;
+        app.set_pacing(platform.pacing(0));
+        let _ = app.frame(&mut platform, Millis(now));
+        if let (false, Some(game)) = (started, app.game()) {
+            platform.start(game);
+            started = true;
+        }
+    }
+    assert_eq!(by_driver, FakeSdk::clock_reads() - reads);
+}
+
+/// With `phases`, the running lines give every phase of the draw.
+#[test]
+fn phases_on_name_every_phase_and_off_none() {
+    for phases in [true, false] {
+        let sdk = FakeSdk::default();
+        let report = RunReport::new().every_seconds(1).phases(phases);
+        let mut driver = Driver::with_report(start(), sdk.clone(), report);
+        let now = run_for(&sdk, &mut driver, 0, 3);
+        press(&mut driver, Action::Confirm);
+        run_for(&sdk, &mut driver, now, 40);
+        let lines = report_lines(&sdk);
+        let line = lines.iter().find(|l| l.starts_with("Draw by phase"));
+        assert_eq!(line.is_some(), phases, "{lines:?}");
+        if let Some(line) = line {
+            for phase in shuyi_ui::frame::onebit::Phase::ALL {
+                assert!(line.contains(&format!(" {} ", phase.name())), "{line}");
+            }
+        }
+        let draws = lines.iter().find(|l| l.starts_with("Draw and flush"));
+        let draws = draws.unwrap_or_else(|| panic!("{lines:?}"));
+        assert!(draws.contains(" 1 times"), "the menu's draw: {draws}");
+    }
+}
+
+/// A watcher set before the report's keeps its place: the report says so
+/// and goes on without reads.
+#[test]
+fn a_second_watcher_is_refused_and_the_report_goes_on() {
+    fn other(_: &str, _: bool) {}
+    let sdk = FakeSdk::default();
+    let mut driver = Driver::reporting(reading_start(), sdk.clone(), RunReport::new(), |_| {
+        Err(other)
+    });
+    run_for(&sdk, &mut driver, 0, 3);
+    let lines = report_lines(&sdk);
+    assert_eq!(lines[0], crate::report::REFUSED);
+    assert!(!lines.iter().any(|l| l.starts_with("Bundle:")), "{lines:?}");
+    assert!(
+        lines.iter().any(|l| l.starts_with("First frame")),
+        "{lines:?}"
+    );
+}
+
+/// A named file holds the start's lines and every read, once the first
+/// frame is shown.
+#[test]
+fn the_report_file_holds_the_start_and_every_read() {
+    let sdk = FakeSdk::default();
+    let report = RunReport::new().file("run-report.txt");
+    let mut driver = Driver::with_report(reading_start(), sdk.clone(), report);
+    driver.update();
+    assert_eq!(
+        sdk.file("run-report.txt"),
+        None,
+        "not before the game shows"
+    );
+    run_for(&sdk, &mut driver, 0, 3);
+    let text = sdk
+        .file("run-report.txt")
+        .unwrap_or_else(|| panic!("written"));
+    let text = String::from_utf8(text).unwrap_or_else(|e| panic!("{e}"));
+    let lines: Vec<&str> = text.lines().collect();
+    for line in report_lines(&sdk) {
+        assert!(lines.contains(&line.as_str()), "{line} in {lines:?}");
+    }
+    for read in [
+        "data/a.ron",
+        "(the rules)",
+        "data/b.ron",
+        "data/missing.ron",
+    ] {
+        assert!(
+            lines.iter().any(|l| l.starts_with(&format!("  {read}: "))),
+            "{read} in {lines:?}"
+        );
+    }
+    assert!(lines.iter().any(|l| l.ends_with(", 2 reads")), "{lines:?}");
+    assert!(
+        lines.iter().any(|l| l.ends_with("ms, not in the bundle")),
+        "{lines:?}"
+    );
+}
+
+/// The running lines name the music heard, and say when its file player ran
+/// out of data.
+#[test]
+fn the_music_line_says_when_a_file_player_underran() {
+    let sdk = FakeSdk::default();
+    sdk.put_track("music/theme", 100.0);
+    let report = RunReport::new().every_seconds(1);
+    let mut driver = Driver::with_report(start(), sdk.clone(), report);
+    let now = run_for(&sdk, &mut driver, 0, 3);
+    let game = driver.app.game_mut().unwrap_or_else(|| panic!("loaded"));
+    game.ctx_mut().audio.play_music("theme");
+    let now = run_for(&sdk, &mut driver, now, 40);
+    let lines = report_lines(&sdk);
+    assert!(
+        lines.contains(&"Music: theme, no file player ran out of data".to_string()),
+        "{lines:?}"
+    );
+    sdk.underrun("music/theme");
+    run_for(&sdk, &mut driver, now, 40);
+    let lines = report_lines(&sdk);
+    assert!(
+        lines.contains(&"Music: theme, and a file player ran out of data".to_string()),
+        "{lines:?}"
+    );
+}
+
+/// The running lines' stretch goes on across the counter's wrap.
+#[test]
+fn a_minute_runs_across_the_counters_wrap() {
+    let sdk = FakeSdk::default();
+    let mut driver = Driver::with_report(start(), sdk.clone(), RunReport::new());
+    let from = u32::MAX - 30_000;
+    let now = run_for(&sdk, &mut driver, from, 3);
+    let before = report_lines(&sdk).len();
+    run_for(&sdk, &mut driver, now, 1_830);
+    let minute = report_lines(&sdk).split_off(before);
+    assert!(
+        minute
+            .first()
+            .is_some_and(|l| l.contains(" for 60 seconds: 30.")),
+        "{minute:?}"
+    );
+}
+
+/// The start's times are from `init`, and the load's from the card: on a
+/// timer that stands still within an update and is set between them. The
+/// toy's first frame shows in the update that loads it.
+#[test]
+fn the_start_times_are_from_init_and_the_load_from_the_card() {
+    let sdk = FakeSdk::default();
+    FakeSdk::set_clock_step_us(0);
+    FakeSdk::set_clock_us(1_000_000);
+    let mut driver = Driver::with_report(start(), sdk.clone(), RunReport::new());
+    for us in [1_180_000, 3_400_000] {
+        FakeSdk::set_clock_us(us);
+        driver.update();
+    }
+    let lines = report_lines(&sdk);
+    for line in [
+        "Loading card shown 180 ms after start",
+        "Game data loaded in 2,220 ms",
+        "First frame of the game shown 2,400 ms after start",
+    ] {
+        assert!(lines.contains(&line.to_string()), "{line} in {lines:?}");
+    }
+}
+
+/// A game that quits while it loads shows its card again on each update:
+/// the card's time is said once, the first time.
+#[test]
+fn the_card_is_said_once_though_it_shows_again() {
+    let sdk = FakeSdk::default();
+    let mut driver = Driver::with_report(start(), sdk.clone(), RunReport::new());
+    driver.update();
+    driver.event(SdkEvent::Terminate);
+    for _ in 0..3 {
+        driver.update();
+    }
+    assert_eq!(driver.platform().showing(), crate::display::Showing::Card);
+    let cards = report_lines(&sdk)
+        .iter()
+        .filter(|line| line.starts_with("Loading card"))
+        .count();
+    assert_eq!(cards, 1, "{:?}", report_lines(&sdk));
+}

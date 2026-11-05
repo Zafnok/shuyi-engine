@@ -8,8 +8,7 @@ use alloc::format;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cell::RefCell;
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::cell::{Cell, RefCell};
 
 use shuyi_ui::frame::onebit::{FRAME_BYTES, Frame};
 use shuyi_ui::perf::HeapCounts;
@@ -86,6 +85,10 @@ struct State {
     file_player_calls: Vec<String>,
     /// Whether a file player refuses to play.
     file_play_refused: bool,
+    /// The tracks whose file players ran out of data.
+    underruns: BTreeSet<String>,
+    /// What the stack's high-water mark reads.
+    stack_used: Option<usize>,
 }
 
 impl Default for State {
@@ -115,6 +118,8 @@ impl Default for State {
             file_players: Vec::new(),
             file_player_calls: Vec::new(),
             file_play_refused: false,
+            underruns: BTreeSet::new(),
+            stack_used: None,
         }
     }
 }
@@ -364,8 +369,41 @@ impl FakeSdk {
     }
 }
 
-/// The fake clock's next reading.
-static CLOCK_US: AtomicU64 = AtomicU64::new(0);
+std::thread_local! {
+    /// The fake timer's next reading, on this test's thread.
+    static CLOCK_US: Cell<u64> = const { Cell::new(0) };
+    /// How far the timer moves at each reading.
+    static CLOCK_STEP_US: Cell<u64> = const { Cell::new(100) };
+    /// How many times the timer was read.
+    static CLOCK_READS: Cell<u64> = const { Cell::new(0) };
+}
+
+impl FakeSdk {
+    /// The timer reads `us` next, on this thread.
+    pub fn set_clock_us(us: u64) {
+        CLOCK_US.set(us);
+    }
+
+    /// The timer moves `us` at each reading, on this thread.
+    pub fn set_clock_step_us(us: u64) {
+        CLOCK_STEP_US.set(us);
+    }
+
+    /// How many times the timer was read on this thread.
+    pub fn clock_reads() -> u64 {
+        CLOCK_READS.get()
+    }
+
+    /// The file players of the track at `path` ran out of data.
+    pub fn underrun(&self, path: &str) {
+        self.0.borrow_mut().underruns.insert(path.to_owned());
+    }
+
+    /// The stack's high-water mark reads `used`.
+    pub fn set_stack_used(&self, used: Option<usize>) {
+        self.0.borrow_mut().stack_used = used;
+    }
+}
 
 impl Sdk for FakeSdk {
     type Sample = usize;
@@ -377,7 +415,10 @@ impl Sdk for FakeSdk {
     }
 
     fn clock_us() -> u64 {
-        CLOCK_US.fetch_add(100, Ordering::Relaxed)
+        CLOCK_READS.set(CLOCK_READS.get() + 1);
+        let now = CLOCK_US.get();
+        CLOCK_US.set(now + CLOCK_STEP_US.get());
+        now
     }
 
     fn heap() -> Option<HeapCounts> {
@@ -627,5 +668,17 @@ impl Sdk for FakeSdk {
         let at = &mut state.file_players[player];
         at.playing = false;
         at.open = false;
+    }
+
+    fn file_did_underrun(&self) -> bool {
+        let state = self.0.borrow();
+        state
+            .file_players
+            .iter()
+            .any(|p| p.open && state.underruns.contains(&p.path))
+    }
+
+    fn stack_used(&self) -> Option<usize> {
+        self.0.borrow().stack_used
     }
 }

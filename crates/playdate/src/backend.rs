@@ -7,7 +7,9 @@ use alloc::vec::Vec;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::target::TargetProfile;
 use shuyi_platform::audio::player::PlayerDevice;
-use shuyi_platform::{Audio, DisplayInfo, Frame, Platform, Storage, SystemEvent, TextInput};
+use shuyi_platform::{
+    Audio, DisplayInfo, Frame, Millis, Platform, Storage, SystemEvent, TextInput,
+};
 use shuyi_ui::frame_cap::{FrameCap, Pacing};
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
@@ -15,8 +17,9 @@ use shuyi_ui::perf::{MemoryReading, PerfClock};
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::audio::{self, Speaker};
-use crate::display::Screen;
+use crate::display::{Screen, Showing};
 use crate::input::{PadInput, menu_button, menu_press};
+use crate::report::Measured;
 use crate::sdk::{PACK, Sdk, SdkEvent};
 use crate::storage::SdkStorage;
 
@@ -171,6 +174,31 @@ impl<S: Sdk> Playdate<S> {
     /// callback returns it.
     pub fn take_changed(&mut self) -> bool {
         self.screen.take_changed()
+    }
+
+    /// What the screen last showed.
+    pub(crate) fn showing(&self) -> Showing {
+        self.screen.showing()
+    }
+
+    /// Times each draw from now on, and each of its phases if `phases`.
+    pub(crate) fn measure(&mut self, phases: bool) {
+        self.screen.measure(phases);
+    }
+
+    /// The draws' times since the last take.
+    pub(crate) fn take_measured(&mut self) -> Measured {
+        self.screen.take_measured()
+    }
+
+    /// The music's cue heard at `now`, if any.
+    pub(crate) fn music(&self, now: Millis) -> Option<&str> {
+        self.audio.music_playing(now).map(|(cue, _)| cue)
+    }
+
+    /// Whether a file player open now ran out of data.
+    pub(crate) fn underran(&self) -> bool {
+        self.sdk.file_did_underrun()
     }
 
     /// What it applied, for `App::set_pacing`: the device runs at the

@@ -72,7 +72,72 @@ A game that reaches the stack's last 256 bytes stops with a panic that says so
 as soon as its call into the game comes back, before what it overwrote can do
 harm later.
 
+## The run report
+
+A game can say in the console, on every run, how its start went and how fast
+it runs, so a tester's log shows a slow start or a stutter without a special
+build. It is off unless the game's `main!` turns it on:
+
+```rust,ignore
+shuyi_playdate::main!(start, report = shuyi_playdate::RunReport::new());
+shuyi_playdate::main!(start, stack_bytes = 128 * 1024, report = shuyi_playdate::RunReport::new());
+```
+
+Its lines are the log's, at level `info` in the category `platform`. Once, at
+the start:
+
+```text
+Loading card shown 180 ms after start
+Game data loaded in 2,150 ms
+Game stack used: 15,256 of 65,536 bytes
+Bundle: 212 reads of 180 files, 1 not in the bundle
+Not in the bundle: lang/fr/ui.ron
+Slowest reads, ms to the next read: maps/lake.map 900, (the rules) 310, ...
+First frame of the game shown 2,400 ms after start
+```
+
+A file's time runs from its read to the next read: reading it, then parsing
+and checking what it holds. A step of the load that reads no file can have a
+name of its own, so its time isn't added to the last file's:
+
+```rust,ignore
+shuyi_playdate::report::mark("the rules");
+```
+
+Then every minute:
+
+```text
+On lake for 60 seconds: 29.8 frames a second
+App::frame: min 4.1 / avg 9.6 / max 31.2 ms, 1,788 times
+Draw and flush: min 1.0 / avg 3.4 / max 12.0 ms, 402 times
+Game stack used: 15,256 of 65,536 bytes
+Music: theme, no file player ran out of data
+```
+
+`Draw and flush` counts only the frames whose picture changed. The stack line
+says `measured on the device only` on the Simulator. A file player that ran out
+of data is music that stuttered: the reads from storage fell behind.
+
+`RunReport` takes these, each optional:
+
+- `.file("run-report.txt")` writes the start's lines and every read, with its
+  time, to that file in the game's data folder once the first frame is shown:
+  the Simulator has no console to read (`Disk/Data/<bundle ID>/`);
+- `.every_seconds(10)` logs the running lines more often;
+- `.slowest(20)` names more of the slowest reads;
+- `.phases(true)`, for a measuring build, adds a line with each phase of the
+  draw (the ground, the backdrop, the glyphs and so on), its average and most.
+  The backend then draws every changed frame whole instead of only where it
+  changed, which costs time of its own.
+
+The report times reads with the bundle's watcher
+(`shuyi_assets::bundle::watch`), which only one thing can set: if the game set
+one first, the report says so and goes on without the reads. Turned on, it
+reads the SDK's timer twice a frame and keeps a few numbers; the reads and the
+file cost only during the load.
+
 ## Sound
+
 
 Sounds and music play as they do on the PC, through the same player. The
 export bakes each file the game's `GameTools::audio` names, OGG Vorbis or WAV at

@@ -177,6 +177,11 @@ void pd_sampleplayer_set_paused(void* player, int paused)
 	pd->sound->sampleplayer->setPaused((SamplePlayer*)player, paused);
 }
 
+// The file players open now, for `pd_fileplayer_any_underrun`: a game has a
+// track or two at once, and one past these is only left out of that answer.
+#define OPEN_PLAYERS 16
+static FilePlayer* open_players[OPEN_PLAYERS];
+
 // A new file player on the file at `path` in the `.pdx`; NULL if there is none.
 void* pd_fileplayer_open(const char* path)
 {
@@ -184,6 +189,12 @@ void* pd_fileplayer_open(const char* path)
 	if (p != NULL && !pd->sound->fileplayer->loadIntoPlayer(p, path)) {
 		pd->sound->fileplayer->freePlayer(p);
 		return NULL;
+	}
+	for (int i = 0; p != NULL && i < OPEN_PLAYERS; i++) {
+		if (open_players[i] == NULL) {
+			open_players[i] = p;
+			break;
+		}
 	}
 	return p;
 }
@@ -203,11 +214,27 @@ void pd_fileplayer_stop(void* player) { pd->sound->fileplayer->stop((FilePlayer*
 void pd_fileplayer_rewind(void* player) { pd->sound->fileplayer->setOffset((FilePlayer*)player, 0.0f); }
 int pd_fileplayer_is_playing(void* player) { return pd->sound->fileplayer->isPlaying((FilePlayer*)player); }
 float pd_fileplayer_length(void* player) { return pd->sound->fileplayer->getLength((FilePlayer*)player); }
+// Whether a file player open now ran out of data (`didUnderrun`).
+int pd_fileplayer_any_underrun(void)
+{
+	for (int i = 0; i < OPEN_PLAYERS; i++) {
+		if (open_players[i] != NULL && pd->sound->fileplayer->didUnderrun(open_players[i])) {
+			return 1;
+		}
+	}
+	return 0;
+}
 void pd_fileplayer_close(void* player)
 {
+	for (int i = 0; i < OPEN_PLAYERS; i++) {
+		if (open_players[i] == player) {
+			open_players[i] = NULL;
+		}
+	}
 	pd->sound->fileplayer->stop((FilePlayer*)player);
 	pd->sound->fileplayer->freePlayer((FilePlayer*)player);
 }
+
 
 // --- the entry point --------------------------------------------------------
 
