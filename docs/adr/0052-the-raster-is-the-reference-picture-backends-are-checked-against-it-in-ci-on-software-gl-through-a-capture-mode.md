@@ -1,6 +1,7 @@
 # ADR-0052: The raster is the reference picture: backends are checked against it in CI on software GL, through a capture mode
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0078 (a plan's input steps are
+  `shuyi_platform::script::Step`, `act` among them)
 - **Date:** 2026-10-29
 - **Related tickets:** 2018 (this); 2332 (the raster); 2019 (the web
   build's capture); 2392 (the render card, measured in §5); 2566 (one input script);

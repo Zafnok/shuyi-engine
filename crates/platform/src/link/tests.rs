@@ -1,12 +1,12 @@
 //! The link's server on the toy game, on the headless backend: the wire's
-//! lines, the hello, each step's frames, `press_for`, a play matching the
-//! Harness's, the log by number, the frames' records by number with a heap
-//! snapshot, the picture, and the waits.
+//! lines, the hello, a play matching the Harness's (`Script::play`), an
+//! action by name, the log by number, the frames' records by number with a
+//! heap snapshot, the picture, and the waits.
 
 use alloc::collections::BTreeMap;
 
 use proptest::prelude::*;
-use shuyi_ui::input::{Chord, Key, PadKind, RepeatDef};
+use shuyi_ui::input::{Button, ButtonChord, Chord, Key};
 use shuyi_ui::log::{LogCategory, LogLevel, LogLine};
 use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy};
@@ -15,6 +15,7 @@ use shuyi_ui::{Game, GameData};
 use super::*;
 use crate::harness::{FRAME_DT, Harness};
 use crate::headless::HeadlessPlatform;
+use crate::script::{Press, Script, press_for};
 use crate::{Card, Look, Start, SystemEvent};
 
 const TOKEN: &str = "0123456789abcdef0123456789abcdef";
@@ -117,6 +118,12 @@ fn act(name: &str) -> Step {
     Step::Act(name.to_owned())
 }
 
+/// A wait of `frames` frames, in seconds.
+fn wait(frames: u32) -> Step {
+    #[allow(clippy::cast_precision_loss)] // a few frames
+    Step::Wait(frames as f32 / 60.0)
+}
+
 /// The link's input goes where a player's goes, so a session record holds
 /// it.
 #[test]
@@ -160,7 +167,7 @@ fn requests_and_answers_are_one_json_object_a_line() {
                 keys("f Up"),
                 pad("South+East"),
                 act("Confirm"),
-                Step::Wait(3),
+                Step::Wait(0.5),
             ],
         },
         Request::Log { since: 7 },
@@ -177,10 +184,10 @@ fn requests_and_answers_are_one_json_object_a_line() {
     }
     assert_eq!(
         Request::Play {
-            steps: vec![keys("f"), Step::Wait(2), act("Cancel")]
+            steps: vec![keys("f"), Step::Wait(0.5), act("Cancel")]
         }
         .to_line(),
-        r#"{"op":"play","steps":[{"keys":"f"},{"wait":2},{"act":"Cancel"}]}"#
+        r#"{"op":"play","steps":[{"keys":"f"},{"wait":0.5},{"act":"Cancel"}]}"#
     );
     let read = |line: &str| serde_json::from_str::<Request>(line);
     assert_eq!(read(r#"{"op":"log"}"#).unwrap(), Request::Log { since: 0 });
@@ -308,96 +315,6 @@ fn the_first_line_must_be_a_hello_with_the_token_or_the_link_closes() {
     assert_eq!(s.handle(&long, &app), Handled::Close(None));
 }
 
-/// A keymap with Confirm on a key, Cancel on a button, Info on two buttons
-/// together, and nothing for Menu.
-fn keymap() -> Keymap<toy::Action> {
-    use toy::Action;
-    let pair = ButtonChord::pair(Button::South, Button::East).unwrap();
-    Keymap::new(
-        [(Chord::plain(Key::F), Action::Confirm)],
-        RepeatDef::default(),
-    )
-    .with_pad([
-        (ButtonChord::single(Button::East), Action::Cancel),
-        (ButtonChord::single(Button::South), Action::Confirm),
-        (pair, Action::Info),
-    ])
-}
-
-#[test]
-fn press_for_takes_the_primary_key_then_the_primary_button() {
-    let keymap = keymap();
-    let pair = ButtonChord::pair(Button::South, Button::East).unwrap();
-    assert_eq!(
-        press_for(&keymap, "Confirm"),
-        Ok(Press::Keys(Chord::plain(Key::F)))
-    );
-    assert_eq!(
-        press_for(&keymap, "Cancel"),
-        Ok(Press::Pad(ButtonChord::single(Button::East)))
-    );
-    assert_eq!(press_for(&keymap, "Info"), Ok(Press::Pad(pair)));
-    let neither = press_for(&keymap, "Menu").unwrap_err();
-    assert!(
-        neither.contains("Menu") && neither.contains("neither"),
-        "{neither}"
-    );
-    let unknown = press_for(&keymap, "Jump").unwrap_err();
-    assert!(
-        unknown.contains("\"Jump\"") && unknown.contains("Confirm, Cancel"),
-        "{unknown}"
-    );
-}
-
-#[test]
-fn each_step_becomes_frames_of_events() {
-    let shift_space = Chord::shifted(Key::Space);
-    let kind = PadKind::default();
-    let frames = plan(
-        &[
-            keys("f Shift+Space"),
-            pad("South East+DpadDown"),
-            Step::Wait(0),
-            Step::Wait(3),
-            act("Info"),
-            act("Confirm"),
-        ],
-        &keymap(),
-    )
-    .unwrap();
-    let events = |e: &[RawInputEvent]| Planned::Events(e.to_vec());
-    let expected = [
-        events(&[RawInputEvent::Down(Chord::plain(Key::F))]),
-        events(&[RawInputEvent::Up(Key::F)]),
-        events(&[RawInputEvent::Down(shift_space)]),
-        events(&[RawInputEvent::Up(Key::Space)]),
-        events(&[RawInputEvent::PadDown(Button::South, kind)]),
-        events(&[RawInputEvent::PadUp(Button::South)]),
-        events(&[
-            RawInputEvent::PadDown(Button::East, kind),
-            RawInputEvent::PadDown(Button::DpadDown, kind),
-        ]),
-        events(&[
-            RawInputEvent::PadUp(Button::East),
-            RawInputEvent::PadUp(Button::DpadDown),
-        ]),
-        Planned::Idle(3),
-        events(&[
-            RawInputEvent::PadDown(Button::South, kind),
-            RawInputEvent::PadDown(Button::East, kind),
-        ]),
-        events(&[
-            RawInputEvent::PadUp(Button::South),
-            RawInputEvent::PadUp(Button::East),
-        ]),
-        events(&[RawInputEvent::Down(Chord::plain(Key::F))]),
-        events(&[RawInputEvent::Up(Key::F)]),
-    ];
-    assert_eq!(Vec::from(frames), expected);
-    let error = plan(&[keys("f"), act("Menu")], &keymap()).unwrap_err();
-    assert!(error.starts_with("step 2: act: Menu"), "{error}");
-}
-
 #[test]
 fn a_step_that_cant_be_played_is_refused_at_once_naming_it() {
     let mut b = toy_build();
@@ -405,7 +322,12 @@ fn a_step_that_cant_be_played_is_refused_at_once_naming_it() {
         (vec![keys("f"), keys("f Nope")], "step 2: keys: unknown key"),
         (vec![pad("South+Nope")], "step 1: pad: "),
         (vec![act(" ")], "step 1: act: no action named"),
-        (vec![Step::Wait(MAX_WAIT + 1)], "step 1: wait: at most"),
+        (vec![Step::Wait(-1.0)], "step 1: wait: -1 is not"),
+        (vec![Step::Wait(MAX_WAIT + 1.0)], "step 1: wait: at most"),
+        (
+            vec![keys("f"), Step::Crank(30.0)],
+            "step 2: crank: not over the live link",
+        ),
     ] {
         let Handled::Answer(line) = b.send(&Request::Play { steps }.to_line()) else {
             panic!("not answered at once");
@@ -418,38 +340,25 @@ fn a_step_that_cant_be_played_is_refused_at_once_naming_it() {
     assert_eq!(b.app.frame_number(), 0);
 }
 
-/// `steps` played by the Harness, waits in whole frames of `FRAME_DT`.
+/// `steps` played by the Harness as a script.
 fn harness_play(steps: &[Step]) -> Harness<Toy> {
     harness_play_on(toy::game(), steps)
 }
 
-/// `steps` played by the Harness on `game`.
+/// `steps` played by the Harness on `game` as a script.
 fn harness_play_on(game: Game<Toy>, steps: &[Step]) -> Harness<Toy> {
     let mut h = Harness::new(game);
-    for step in steps {
-        match step {
-            Step::Keys(script) => {
-                h.keys(script);
-            }
-            Step::Pad(script) => {
-                h.pad(script);
-            }
-            Step::Wait(n) => {
-                for _ in 0..*n {
-                    h.frame(&[], FRAME_DT);
-                }
-            }
-            _ => unreachable!("the Harness has no actions by name"),
-        }
-    }
+    Script::new(steps.to_vec()).play(&mut h);
     h
 }
 
 /// Whether the server's play of `steps` ends as the Harness's does: the
-/// same screens and frame text, in as many frames.
+/// same screens and frame text, in as many frames, with the same input in
+/// each frame.
 fn plays_as_the_harness(steps: &[Step]) {
     let h = harness_play(steps);
     let mut b = toy_build();
+    assert!(b.app.record());
     let answer = b.play(steps.to_vec());
     let Answer::Played(played) = answer else {
         panic!("{answer:?}");
@@ -461,16 +370,25 @@ fn plays_as_the_harness(steps: &[Step]) {
         unreachable!()
     };
     assert_eq!((frame, limit), (h.snapshot(), None));
+    let inputs = |app: &mut App<Toy>| -> Vec<Vec<RawInputEvent>> {
+        let record = app.take_session().unwrap();
+        record.frames.into_iter().map(|frame| frame.input).collect()
+    };
+    let mut recorded = Harness::new(toy::game());
+    assert!(recorded.app_mut().record());
+    Script::new(steps.to_vec()).play(&mut recorded);
+    assert_eq!(inputs(&mut b.app), inputs(recorded.app_mut()));
 }
 
 #[test]
 fn a_play_of_keys_buttons_and_waits_ends_as_the_harness_does() {
-    plays_as_the_harness(&[keys("f"), Step::Wait(3), keys("Down f")]);
-    plays_as_the_harness(&[pad("South"), Step::Wait(2), pad("DpadDown East")]);
-    plays_as_the_harness(&[keys("f Down"), pad("South"), Step::Wait(5), keys("d")]);
+    plays_as_the_harness(&[keys("f"), wait(3), keys("Down f")]);
+    plays_as_the_harness(&[pad("South"), wait(2), pad("DpadDown East")]);
+    plays_as_the_harness(&[keys("f Down"), pad("South"), wait(5), keys("d")]);
+    plays_as_the_harness(&[keys("f"), Step::Wait(0.51), act("Confirm"), Step::Wait(0.0)]);
 }
 
-/// A key or button step of the toy's, or a wait.
+/// A key or button step of the toy's, an action, or a wait.
 fn any_step() -> impl Strategy<Value = Step> {
     let key = prop::sample::select(vec![
         "f", "d", "j", "Up", "Down", "Left", "Right", "Space", "Enter", "Escape", "F2",
@@ -484,10 +402,13 @@ fn any_step() -> impl Strategy<Value = Step> {
         "Start",
         "South+East",
     ]);
+    let action = prop::sample::select(vec!["Confirm", "Cancel", "CursorUp", "CursorDown"]);
     prop_oneof![
         key.prop_map(keys),
         button.prop_map(pad),
-        (0u32..6).prop_map(Step::Wait),
+        action.prop_map(act),
+        (0u32..6).prop_map(wait),
+        (0.0f32..0.1).prop_map(Step::Wait),
     ]
 }
 
@@ -522,12 +443,15 @@ fn act_presses_an_actions_key_or_its_button_and_names_one_it_cant() {
     let h = harness_play(&[keys(confirm.key.name())]);
     assert_eq!(b.game().screens(), h.screens());
     assert_eq!(frame(&b.app), frame_of(&h));
+    assert_eq!(frame_of(&harness_play(&[act("Confirm")])), frame_of(&h));
 
     let mut b = build_of(first());
     assert!(matches!(b.play(vec![act("Cancel")]), Answer::Played(_)));
     let h = harness_play_on(first(), &[pad("East")]);
     assert_eq!(b.game().screens(), h.screens());
     assert_eq!(frame(&b.app), frame_of(&h));
+    let by_name = harness_play_on(first(), &[act("Cancel")]);
+    assert_eq!(frame_of(&by_name), frame_of(&h));
 
     for (name, said) in [
         ("Menu", "neither a key nor a button"),
@@ -578,7 +502,7 @@ fn a_request_after_a_play_waits_for_its_answer() {
     assert_eq!(status.screens, b.game().screens());
     assert!(matches!(b.answer(), Answer::Frame { limit: None, .. }));
     // A play of nothing, or of waits of no frame, is answered at once.
-    for steps in [vec![], vec![Step::Wait(0), Step::Wait(0)]] {
+    for steps in [vec![], vec![Step::Wait(0.0), Step::Wait(0.0)]] {
         let Handled::Answer(line) = b.send(&Request::Play { steps }.to_line()) else {
             panic!("not answered");
         };
@@ -640,7 +564,7 @@ fn the_steps_wait_while_the_game_loads_and_a_failed_load_ends_the_play() {
         panic!("{line}");
     };
     assert!(shot.limit.unwrap().contains("loading card"));
-    let Answer::Played(played) = b.play(vec![Step::Wait(2)]) else {
+    let Answer::Played(played) = b.play(vec![wait(2)]) else {
         panic!("not played");
     };
     assert!(played.waited_loading && !played.waited_suspended);
@@ -788,10 +712,11 @@ fn the_log_request_reads_the_apps_ring() {
 fn the_limits_are_the_adrs_and_hold_to_the_byte_and_the_frame() {
     assert_eq!(MAX_LINE, 65_536);
     assert_eq!(MAX_UNSENT, 67_108_864);
-    assert_eq!(MAX_WAIT, 100_000);
-    // A wait of the most frames is played; one more is refused.
-    assert_eq!(Step::Wait(MAX_WAIT).check(), Ok(()));
-    assert!(Step::Wait(MAX_WAIT + 1).check().is_err());
+    assert_eq!(MAX_WAIT.to_bits(), 1_800.0f32.to_bits());
+    // A wait of the most seconds is played; a longer one is refused.
+    assert_eq!(check_play(&[Step::Wait(MAX_WAIT)]), Ok(()));
+    assert!(check_play(&[Step::Wait(MAX_WAIT + 1.0)]).is_err());
+    assert_eq!(script::wait_frames(MAX_WAIT), 108_000);
     // A hello of exactly the longest line is heard; one byte more closes.
     let app = App::running(toy::game());
     let hello = hello(VERSION);

@@ -34,6 +34,9 @@ heap = ["dep:shuyi-alloc-count"]
 # it compares with the raster (ADR-0052, ticket 2018). `no_std`: CI's
 # `no-std` job builds it so.
 capture = ["shuyi-ui/raster"]
+# `schema`: the JSON schemas of a script's steps (`script::Step`,
+# `script::Script`), for the tool contract.
+schema = ["dep:schemars"]
 
 [dependencies]
 # The step rate, which `tick` re-exports; the frame's hash and the build's
@@ -53,10 +56,12 @@ serde_json = { version = "1", optional = true }
 # The heap counter's counts and rows (the `heap` feature), never its
 # global static.
 shuyi-alloc-count = { path = "../alloc-count", default-features = false, optional = true }
+# The JSON schemas of a script's steps (the `schema` feature).
+schemars = { version = "1", optional = true, default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 # The Harness and the toy game for the tests.
-shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap", "capture"] }
+shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap", "capture", "schema"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
 # The link's server and the Harness playing random scripts alike, and
 # random plans.

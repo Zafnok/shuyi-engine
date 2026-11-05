@@ -66,11 +66,11 @@
       "default": null
     },
     "steps": {
-      "description": "The steps to play, in order.",
+      "description": "The steps to play, in order: waits in seconds, played as the build's\nframes at 60 a second, rounded up; no crank.",
       "type": "array",
       "default": [],
       "items": {
-        "$ref": "#/$defs/AttachStep"
+        "$ref": "#/$defs/Step"
       }
     },
     "token": {
@@ -81,11 +81,11 @@
   },
   "additionalProperties": false,
   "$defs": {
-    "AttachStep": {
-      "description": "One step played over the link.",
+    "Step": {
+      "description": "One step of a script, played in the order written.",
       "oneOf": [
         {
-          "description": "Each key chord pressed and let go in turn (`\"Enter Up\"`).",
+          "description": "Each whitespace-separated key chord pressed in one frame and let go\nin the next, in turn (`\"Enter Up Shift+Space\"`).",
           "type": "object",
           "properties": {
             "keys": {
@@ -98,7 +98,7 @@
           ]
         },
         {
-          "description": "Each controller button pressed and let go in turn (`\"South\"`,\n`\"East+DpadDown\"`: those together).",
+          "description": "Each whitespace-separated controller button pressed in one frame\nand let go in the next, in turn (`\"South\"`; `\"East+DpadDown\"`:\nthose buttons together).",
           "type": "object",
           "properties": {
             "pad": {
@@ -111,7 +111,20 @@
           ]
         },
         {
-          "description": "That many seconds, played as the build's frames at 60 a second.",
+          "description": "The game's action of that name (`Confirm`), pressed by the player's\nprimary key for it, or its primary button if it has no key.",
+          "type": "object",
+          "properties": {
+            "act": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "act"
+          ]
+        },
+        {
+          "description": "That many seconds of frames with no input, 60 a second, rounded up.",
           "type": "object",
           "properties": {
             "wait": {
@@ -125,16 +138,17 @@
           ]
         },
         {
-          "description": "The game's action of that name (`Confirm`), pressed by the\nplayer's primary key for it, or its primary button if it has no\nkey.",
+          "description": "The crank wound that many degrees in one frame (backwards is\nnegative), as a Playdate front end reports it.",
           "type": "object",
           "properties": {
-            "act": {
-              "type": "string"
+            "crank": {
+              "type": "number",
+              "format": "float"
             }
           },
           "additionalProperties": false,
           "required": [
-            "act"
+            "crank"
           ]
         }
       ]

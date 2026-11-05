@@ -31,6 +31,7 @@ use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::heap;
+use shuyi_platform::script::pressable;
 use shuyi_platform::session::{Played, SessionRecord, Stamps};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
@@ -314,6 +315,13 @@ pub trait Session {
     /// Runs `frames` frames with no input.
     fn idle(&mut self, frames: u32);
 
+    /// The game's actions that have a key or a button now, in its action
+    /// set's order: those a script's `act` step can press (none by
+    /// default).
+    fn actions(&self) -> Vec<String> {
+        Vec::new()
+    }
+
     /// Plays the session record it was made ready for
     /// ([`GameTools::session_from`]) to
     /// its end, or its first frame that plays differently, and says how far
@@ -583,6 +591,12 @@ impl<G: GameData> Session for Headless<G> {
         for _ in 0..frames {
             self.harness.frame(&[], FRAME_DT);
         }
+    }
+
+    fn actions(&self) -> Vec<String> {
+        let game = self.harness.app().game();
+        game.map(|game| pressable(game.input().keymap()))
+            .unwrap_or_default()
     }
 
     fn play_record(&mut self) -> Option<Played> {

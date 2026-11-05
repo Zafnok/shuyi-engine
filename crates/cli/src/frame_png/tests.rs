@@ -209,14 +209,12 @@ fn parses_steps_in_order_and_the_games_options() {
         parsed,
         Options {
             out: PathBuf::from("out.png"),
-            script: Script {
-                steps: vec![
-                    Step::Keys("F2 Up".into()),
-                    Step::Wait(0.5),
-                    Step::Pad("South East+DpadDown".into()),
-                    Step::Keys("f".into()),
-                ],
-            },
+            script: Script::new(vec![
+                Step::Keys("F2 Up".into()),
+                Step::Wait(0.5),
+                Step::Pad("South East+DpadDown".into()),
+                Step::Keys("f".into()),
+            ]),
             scale: Some(3),
             target: None,
             game: vec![game("--light", Some("dusk")), game("--map", None)],
@@ -276,7 +274,15 @@ fn the_usage_lists_the_games_options_and_notes() {
         "{usage}"
     );
     assert!(usage.ends_with("\n\nPictures of bought art stay private."));
-    assert!(super::usage("shuyi", &[], "").ends_with("doesn't apply to them."));
+    let plain = super::usage("shuyi", &[], "");
+    assert!(
+        plain.ends_with("whatever the player's keymap binds to it."),
+        "{plain}"
+    );
+    assert!(
+        plain.contains("  --act Confirm      press the game's action"),
+        "{plain}"
+    );
 }
 
 /// A game that shows a 2 × 1 picture and says what it was given.
@@ -427,66 +433,80 @@ fn a_step_the_harness_cant_play_is_refused() {
             .unwrap_err()
             .starts_with("pad: ")
     );
-    assert!(Step::Wait(0.0).check().is_ok());
-    assert!(Step::Wait(MAX_WAIT).check().is_ok());
-    for bad in [-0.5, MAX_WAIT + 0.1, f32::NAN, f32::INFINITY] {
-        let error = Step::Wait(bad).check().unwrap_err();
-        assert!(error.starts_with("wait: "), "{error}");
-        assert!(error.ends_with("from 0 to 33.3"), "{error}");
+    let wait = |seconds| Script::new(vec![Step::Wait(seconds)]);
+    assert!(check(&wait(0.0)).is_ok());
+    assert!(check(&wait(MAX_WAIT)).is_ok());
+    for bad in [-0.5, f32::NAN, f32::INFINITY] {
+        let error = check(&wait(bad)).unwrap_err();
+        assert!(error.starts_with("step 1: wait: "), "{error}");
+        assert!(
+            error.ends_with("is not a number of seconds, 0 or more"),
+            "{error}"
+        );
     }
-    let script = Script {
-        steps: vec![Step::Wait(1.0), Step::Keys("Nope".into())],
-    };
-    assert!(script.check().is_err());
-    assert!(Script::default().check().is_ok());
+    // The Harness's longest wait: its 2000 frames.
+    let error = check(&wait(MAX_WAIT + 0.1)).unwrap_err();
+    assert!(
+        error.starts_with("step 1: wait: at most 33.3 seconds"),
+        "{error}"
+    );
+    let script = Script::new(vec![Step::Wait(1.0), Step::Keys("Nope".into())]);
+    assert!(check(&script).unwrap_err().starts_with("step 2: keys: "));
+    assert!(check(&Script::default()).is_ok());
 }
 
 #[test]
 fn a_step_is_read_from_its_flag() {
     assert_eq!(
-        Script::parse_step("--keys", "Up"),
+        parse_step("--keys", "Up"),
         Some(Ok(Step::Keys("Up".into())))
     );
     assert_eq!(
-        Script::parse_step("--script", "Up"),
+        parse_step("--script", "Up"),
         Some(Ok(Step::Keys("Up".into())))
     );
     assert_eq!(
-        Script::parse_step("--pad", "South"),
+        parse_step("--pad", "South"),
         Some(Ok(Step::Pad("South".into())))
     );
+    assert_eq!(parse_step("--wait", "0.5"), Some(Ok(Step::Wait(0.5))));
     assert_eq!(
-        Script::parse_step("--wait", "0.5"),
-        Some(Ok(Step::Wait(0.5)))
+        parse_step("--act", "Confirm"),
+        Some(Ok(Step::Act("Confirm".into())))
     );
     assert_eq!(
-        Script::parse_step("--wait", "soon"),
+        parse_step("--act", ""),
+        Some(Err("--act: no action named".into()))
+    );
+    assert_eq!(
+        parse_step("--wait", "soon"),
         Some(Err("--wait: not a number of seconds: soon".into()))
     );
-    let long = Script::parse_step("--wait", "100").unwrap().unwrap_err();
-    assert!(long.starts_with("--wait: 100 is not"), "{long}");
+    let negative = parse_step("--wait", "-1").unwrap().unwrap_err();
+    assert!(negative.starts_with("--wait: -1 is not"), "{negative}");
+    // The longest wait is the Harness's, checked with the script.
+    assert_eq!(parse_step("--wait", "100"), Some(Ok(Step::Wait(100.0))));
+    let long = parse_args(&args(&["a.png", "--wait", "100"]), &[]).unwrap_err();
+    assert!(long.starts_with("step 1: wait: at most 33.3"), "{long}");
     assert!(
-        Script::parse_step("--keys", "Nope")
+        parse_step("--keys", "Nope")
             .unwrap()
             .unwrap_err()
             .starts_with("--keys: ")
     );
-    assert_eq!(Script::parse_step("--scale", "2"), None);
+    assert_eq!(parse_step("--scale", "2"), None);
 }
 
 #[test]
 fn a_crank_step_is_read_checked_and_kept_in_order() {
     for (text, degrees) in [("30", 30.0), ("-30", -30.0), ("0.5", 0.5)] {
-        assert_eq!(
-            Script::parse_step("--crank", text),
-            Some(Ok(Step::Crank(degrees)))
-        );
+        assert_eq!(parse_step("--crank", text), Some(Ok(Step::Crank(degrees))));
     }
     assert_eq!(
-        Script::parse_step("--crank", "far"),
+        parse_step("--crank", "far"),
         Some(Err("--crank: not a number of degrees: far".into()))
     );
-    let nan = Script::parse_step("--crank", "NaN").unwrap().unwrap_err();
+    let nan = parse_step("--crank", "NaN").unwrap().unwrap_err();
     assert!(nan.starts_with("--crank: "), "{nan}");
     assert!(Step::Crank(f32::INFINITY).check().is_err());
     let parsed = parse_args(
@@ -519,7 +539,7 @@ fn a_new_shot_has_no_warning_and_a_new_script_its_steps() {
     };
     assert_eq!(Shot::new(image, "title"), literal);
     let steps = vec![Step::Keys("Enter".to_owned()), Step::Wait(0.5)];
-    assert_eq!(Script::new(steps.clone()), Script { steps });
+    assert_eq!(Script::new(steps.clone()).steps, steps);
 }
 
 /// The committed reference picture of a line of wide and narrow glyphs.
