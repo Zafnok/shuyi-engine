@@ -102,7 +102,7 @@ fn the_platforms_speaker_is_the_one_it_plays_on() {
 #[test]
 fn the_speaker_hears_a_voice_until_its_length_or_a_stop() {
     let mut s = Speaker::default();
-    let mut hear = |s: &mut Speaker, requests: &[SoundRequest], now: u64| {
+    let hear = |s: &mut Speaker, requests: &[SoundRequest], now: u64| {
         let frame = AudioFrame {
             requests,
             music: &[],
@@ -115,7 +115,7 @@ fn the_speaker_hears_a_voice_until_its_length_or_a_stop() {
     let say = SoundRequest::Voice {
         clip: "a.ogg".into(),
     };
-    hear(&mut s, &[say.clone()], 1000);
+    hear(&mut s, core::slice::from_ref(&say), 1000);
     assert_eq!(
         s.voice_playing(Millis(1_000_000)),
         Some("a.ogg"),
