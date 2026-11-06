@@ -5,7 +5,10 @@
 //! rules forbid it: never before closing punctuation or a small kana,
 //! never after an opening bracket. A run of Latin letters or digits inside
 //! it is kept whole, and so is text joined by a no-break space
-//! ([`NO_BREAK_SPACE`]).
+//! ([`NO_BREAK_SPACE`]). Chinese keeps the same rules with its own
+//! punctuation (`，` `》` `《`), and where its quotes, ellipsis and dash are
+//! wide ([`WIDE_PUNCTUATION`](crate::font::WIDE_PUNCTUATION)) a line never
+//! ends with `“` or starts with `”`, and `……` and `——` are never split.
 
 use crate::font::CellWidths;
 use crate::lang::text_width;
@@ -18,11 +21,29 @@ pub const NO_BREAK_SPACE: char = '\u{a0}';
 
 /// Characters a line never starts with: closing punctuation, the
 /// prolonged sound mark and the small kana.
-const NO_START: &str = "、。，．・：；？！）」』】〕ーぁぃぅぇぉっゃゅょァィゥェォッャュョ\
+const NO_START: &str = "、。，．・：；？！）》〉」』】〕ーぁぃぅぇぉっゃゅょァィゥェォッャュョ\
                         ,.:;?!)]}";
 
 /// Characters a line never ends with: opening brackets.
-const NO_END: &str = "（「『【〔([{";
+const NO_END: &str = "（《〈「『【〔([{";
+
+/// Closing quotes, the ellipsis and the dash, which a line never starts
+/// with where they are wide (Chinese): so `……` and `——` are never split.
+/// Narrow, they are English's, and break as they always have.
+const NO_START_WIDE: &str = "\u{201D}\u{2019}\u{2026}\u{2014}";
+
+/// Opening quotes, which a line never ends with where they are wide.
+const NO_END_WIDE: &str = "\u{201C}\u{2018}";
+
+/// Whether a line may not start with `c`.
+fn no_start(c: char, widths: &CellWidths) -> bool {
+    NO_START.contains(c) || (NO_START_WIDE.contains(c) && widths.is_wide(c))
+}
+
+/// Whether a line may not end with `c`.
+fn no_end(c: char, widths: &CellWidths) -> bool {
+    NO_END.contains(c) || (NO_END_WIDE.contains(c) && widths.is_wide(c))
+}
 
 /// Whether text may break at `c`, dropping it: whitespace, but not a
 /// no-break space.
@@ -51,8 +72,8 @@ fn may_break(a: char, b: char, widths: &CellWidths) -> bool {
     (breaks_around(a, widths) || breaks_around(b, widths))
         && a != NO_BREAK_SPACE
         && b != NO_BREAK_SPACE
-        && !NO_START.contains(b)
-        && !NO_END.contains(a)
+        && !no_start(b, widths)
+        && !no_end(a, widths)
 }
 
 /// The pieces of `word` (text without a space to break at) that a line
@@ -126,7 +147,9 @@ impl Lines<'_> {
 /// of spaces count as one break. Text without spaces (Japanese) breaks
 /// between any two characters with a wide or Japanese one among them,
 /// except before closing punctuation or a small kana (`。`, `、`, `」`,
-/// `っ`) and after an opening bracket (`「`); a run of Latin letters or
+/// `っ`, `，`, `》`) and after an opening bracket (`「`, `《`); where `widths`
+/// has them wide, also before `” ’ … —` (so `……` and `——` stay whole)
+/// and after `“ ‘`. A run of Latin letters or
 /// digits inside it is kept whole, as is anything joined by a
 /// [`NO_BREAK_SPACE`]. Where those rules leave no break that fits, the
 /// text is cut anyway: a line never runs past `width`, unless `width` is
@@ -334,6 +357,86 @@ mod tests {
         );
     }
 
+    /// Chinese sentences with speech in `“”`, a doubled `……` and `——`.
+    const CHINESE: &str = "他说：“今天天气很好，我们去公园散步吧。”她回答：“好啊……不过我有点累\
+                           ——我们明天去，好吗？”《西游记》是一本书（很有名）。";
+
+    /// Widths where every character of [`CHINESE`] but the punctuation is
+    /// wide, and the punctuation as a Chinese pack has it.
+    fn chinese() -> CellWidths {
+        let hanzi = CHINESE
+            .chars()
+            .filter(|c| !crate::font::is_wide_punctuation(*c));
+        CellWidths::wide(hanzi).in_lang(Some("zh"), true)
+    }
+
+    #[test]
+    fn a_chinese_paragraph_wraps_within_the_width_by_its_rules() {
+        let widths = chinese();
+        assert_eq!(
+            word_wrap(CHINESE, 16, &widths),
+            [
+                "他说：“今天天气",
+                "很好，我们去公园",
+                "散步吧。”她回",
+                "答：“好啊……不",
+                "过我有点累——我",
+                "们明天去，好",
+                "吗？”《西游记》",
+                "是一本书（很有",
+                "名）。",
+            ]
+        );
+        // From 6, every piece the rules keep whole (`啊……`, `吗？”`) fits a
+        // line; narrower, such a piece is cut anyway.
+        for width in 6..40 {
+            let lines = word_wrap(CHINESE, width, &widths);
+            assert_eq!(lines.concat(), CHINESE, "at {width}");
+            for (i, line) in lines.iter().enumerate() {
+                assert!(text_width(line, &widths) <= width, "{lines:?}");
+                assert!(
+                    !line.starts_with(['，', '。', '”', '》', '）']),
+                    "{lines:?}"
+                );
+                assert!(!line.ends_with(['“', '《', '（']), "{lines:?}");
+                // `……` and `——` stay whole: a line never starts with the
+                // second half of either.
+                let next = lines.get(i + 1);
+                for pair in ['…', '—'] {
+                    let split = line.ends_with(pair) && next.is_some_and(|n| n.starts_with(pair));
+                    assert!(!split, "{pair} split at {width}: {lines:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn chinese_punctuation_never_starts_or_ends_a_line() {
+        let widths = chinese();
+        // `，` would start the second line: `好` goes down with it.
+        assert_eq!(word_wrap("很好，我们", 4, &widths), ["很", "好，", "我们"]);
+        // `“` would end the first line: it goes down with what it opens.
+        assert_eq!(word_wrap("他说“好”", 6, &widths), ["他说", "“好”"]);
+        // `……` is never split, even where half of it fits.
+        assert_eq!(word_wrap("好啊……", 6, &widths), ["好", "啊……"]);
+        assert_eq!(word_wrap("累——我", 6, &widths), ["累——", "我"]);
+        // `《` would end the first line, `》` start the last.
+        assert_eq!(
+            word_wrap("他是《西游记》", 6, &widths),
+            ["他是", "《西游", "记》"]
+        );
+    }
+
+    #[test]
+    fn narrow_quotes_and_dashes_wrap_as_english_does() {
+        // Narrow, `“`, `…` and `—` are English's: the rules for them in
+        // Chinese don't apply, and English wraps as it always has.
+        let text = "she said “wait… no—go” and left";
+        let lines = wrap(text, 10);
+        assert_eq!(lines, ["she said", "“wait…", "no—go” and", "left"]);
+        assert_eq!(lines, word_wrap(text, 10, &chinese().in_lang(None, false)));
+    }
+
     fn words(max_len: usize) -> impl Strategy<Value = Vec<String>> {
         prop::collection::vec(
             prop::string::string_regex(&format!("[a-zA-Z.,!?']{{1,{max_len}}}")).unwrap(),
@@ -401,6 +504,25 @@ mod tests {
             width in 2usize..30,
         ) {
             let widths = japanese();
+            let lines = word_wrap(&text, width, &widths);
+            for line in &lines {
+                let cells = text_width(line, &widths);
+                prop_assert!(cells <= width, "{line:?} is {cells} cells > {width}");
+                prop_assert!(!line.is_empty());
+            }
+            prop_assert_eq!(lines.concat(), text);
+        }
+
+        #[test]
+        fn chinese_lines_fit_and_join_back_to_the_text_with_wide_punctuation(
+            parts in prop::collection::vec(
+                prop::string::string_regex("[他说好我们，。“”‘’…—《》ab]{1,4}").unwrap(),
+                0..30,
+            ),
+            width in 2usize..30,
+        ) {
+            let text = parts.concat();
+            let widths = chinese();
             let lines = word_wrap(&text, width, &widths);
             for line in &lines {
                 let cells = text_width(line, &widths);

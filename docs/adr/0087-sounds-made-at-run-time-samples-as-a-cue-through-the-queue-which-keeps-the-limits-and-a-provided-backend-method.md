@@ -1,4 +1,4 @@
-# ADR-0086: Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method
+# ADR-0087: Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method
 
 - **Status:** Accepted; extends ADR-0063 (the shared player's `Backend`)
 - **Date:** 2026-11-05

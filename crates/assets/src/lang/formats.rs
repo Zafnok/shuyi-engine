@@ -32,7 +32,9 @@ const NOT_A_LANGUAGE_FILE: &str = "not a file a language has";
 /// [`pack_from_files`](super::pack_from_files) says, with the game's
 /// rules, its limits counting a character of the font atlas's wide glyphs
 /// as two cells when the game gives the atlas
-/// ([`LangPackRon::widths_of`]).
+/// ([`LangPackRon::widths_of`]), as the pack has them
+/// ([`LangInfo::widths`](super::LangInfo::widths)); with the atlas, the
+/// wide set its `wide_font` names must be one the atlas has.
 pub struct LangPackRon {
     data_problem: fn(&str, &str) -> Option<String>,
     tokens: &'static (dyn Tokens + Sync),
@@ -40,6 +42,8 @@ pub struct LangPackRon {
     /// The characters that take two cells ([`CellWidths`], which can't be
     /// shared between threads, is made of them as a pack is read).
     wide: BTreeSet<char>,
+    /// The atlas's named wide sets, when the game gives the atlas.
+    sets: Option<BTreeSet<String>>,
     variants: &'static [&'static str],
     data: Option<SourceText>,
     source: SourceLang,
@@ -55,6 +59,7 @@ impl LangPackRon {
             tokens,
             limits,
             wide: BTreeSet::new(),
+            sets: None,
             variants: &[],
             data: None,
             source: SourceLang::default(),
@@ -69,11 +74,13 @@ impl LangPackRon {
     }
 
     /// These packs, their limits counting a character with a wide glyph in
-    /// `atlas` as two cells ([`CellWidths::of`]), as the screen prints it.
+    /// `atlas` as two cells ([`CellWidths::of`]), as the screen prints it,
+    /// and their `wide_font` naming one of its wide sets.
     #[must_use]
     pub fn widths_of(self, atlas: &FontAtlasDef) -> Self {
         Self {
-            wide: atlas.wide.keys().copied().collect(),
+            wide: atlas.wide_chars(),
+            sets: Some(atlas.wide_sets.keys().cloned().collect()),
             ..self
         }
     }
@@ -111,6 +118,7 @@ impl core::fmt::Debug for LangPackRon {
         f.debug_struct("LangPackRon")
             .field("limits", &self.limits)
             .field("wide", &self.wide)
+            .field("sets", &self.sets)
             .field("variants", &self.variants)
             .field("data", &self.data.is_some())
             .field("source", &self.source.code.as_str())
@@ -201,7 +209,23 @@ impl Format for LangPackRon {
             widths: &widths,
             variants: self.variants,
         };
-        match pack_from_files_in(source, &sources, &english, self.data.as_ref(), &rules) {
+        let pack = pack_from_files_in(source, &sources, &english, self.data.as_ref(), &rules);
+        if let (Ok(pack), Some(sets)) = (&pack, &self.sets)
+            && let Some(set) = pack.info.wide_font.as_deref()
+            && !sets.contains(set)
+        {
+            let message = format!(
+                "wide_font names {set:?}, a wide set the font atlas doesn't have: it has {}",
+                if sets.is_empty() {
+                    "none".to_owned()
+                } else {
+                    let names: Vec<String> = sets.iter().map(|s| format!("{s:?}")).collect();
+                    names.join(", ")
+                }
+            );
+            errors.push(ContentError::new(file.shown(), message));
+        }
+        match pack {
             Ok(pack) if errors.is_empty() => Ok(pack),
             Ok(_) => Err(errors),
             Err(e) => {

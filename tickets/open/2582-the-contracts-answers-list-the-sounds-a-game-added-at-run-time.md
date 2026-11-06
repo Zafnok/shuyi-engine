@@ -17,7 +17,7 @@ completed:
 
 Ticket 2249 (done) let a game make a sound at run time from samples:
 `AudioQueue::add_sound(cue, samples)` makes them a cue, and
-`remove_sound(cue)` frees it ([ADR-0086](../../docs/adr/0086-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md)).
+`remove_sound(cue)` frees it ([ADR-0087](../../docs/adr/0087-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md)).
 The headless `Speaker` keeps them, and the Harness reads them
 (`Harness::sounds_added`, `Harness::added_plays`).
 

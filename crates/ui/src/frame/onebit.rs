@@ -258,10 +258,7 @@ impl<'a> Font<'a> {
             return Err("the one-bit font has cells at most 8 pixels wide");
         }
         let rows = atlas.cell_h as usize;
-        let narrow = atlas.glyphs.values().map(|&i| i as usize + 1);
-        let wide = atlas.wide.values().map(|&i| i as usize + 2);
-        let needed = narrow.chain(wide).map(|cells| cells * rows);
-        if needed.max().unwrap_or(0) > bits.len() {
+        if atlas.cell_end() as usize * rows > bits.len() {
             // check-text: not player text (a build problem for the log)
             return Err("the one-bit atlas is shorter than its glyph map");
         }
@@ -287,10 +284,11 @@ impl<'a> Font<'a> {
     }
 
     /// The pixel rows of half `half` (0 the left, 1 the right) of wide
-    /// glyph `glyph`, or `None` if the font has no wide glyph `glyph`.
-    fn wide_rows(&self, glyph: char, half: usize) -> Option<&'a [u8]> {
+    /// glyph `glyph`, from the wide set `set` first
+    /// ([`FontAtlasDef::wide_cell`]), or `None` if no set has `glyph`.
+    fn wide_rows(&self, glyph: char, half: usize, set: Option<&str>) -> Option<&'a [u8]> {
         let rows = self.atlas.cell_h as usize;
-        let start = (*self.atlas.wide.get(&glyph)? as usize + half) * rows;
+        let start = (self.atlas.wide_cell(set, glyph)? as usize + half) * rows;
         self.bits.get(start..start + rows)
     }
 
@@ -303,13 +301,16 @@ impl<'a> Font<'a> {
         let cell = buf.get(x, y)?;
         if cell.is_continuation() {
             let first = buf.get(x.checked_sub(1)?, y)?;
-            return self.wide_rows(first.glyph, 1);
+            return self.wide_rows(first.glyph, 1, buf.widths().wide_font());
         }
         if cell.glyph == ' ' {
             return None;
         }
         let wide = buf.get(x + 1, y).is_some_and(Cell::is_continuation);
-        match self.wide_rows(cell.glyph, 0).filter(|_| wide) {
+        match self
+            .wide_rows(cell.glyph, 0, buf.widths().wide_font())
+            .filter(|_| wide)
+        {
             Some(rows) => Some(rows),
             None => self.rows(cell.glyph),
         }

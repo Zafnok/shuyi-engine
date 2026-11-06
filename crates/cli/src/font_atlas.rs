@@ -1,4 +1,4 @@
-//! `font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>`: turns a BDF
+//! `font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... <font.bdf>... <out-dir>`: turns a BDF
 //! bitmap font into a
 //! font atlas (`atlas.png` + `atlas.ron`, read as
 //! [`shuyi_assets::font::FontAtlasDef`]) and its one-bit copy for a one-bit
@@ -18,13 +18,23 @@
 //! `wide_glyphs`, each over two cells after the narrow glyphs. A BDF font
 //! in JIS X 0208 (`CHARSET_REGISTRY "JISX0208..."`) is read as Unicode,
 //! with the crate's `jis` feature (without it, such a font is refused).
+//!
+//! `--wide <set>=<wide.bdf>` makes a named wide set instead, and may be
+//! given once per set ([`WideFont`]): the set keeps the wide characters of
+//! the languages whose pack names it (`lang.ron`'s `wide_font`), their
+//! wide punctuation if their pack has it wide, and the project's
+//! `wide_set_glyphs` for it. An unnamed `--wide` keeps those of the
+//! languages that name no set. The sets are laid out one after another,
+//! in the order given, after the narrow glyphs.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use shuyi_assets::font::{FontAtlasDef, describe, is_combining_mark};
+use shuyi_assets::font::{
+    AtlasRect, FontAtlasDef, WideSet, describe, is_combining_mark, is_wide_punctuation,
+};
 use shuyi_assets::lang::Lang;
 
 use crate::codec::encode_png;
@@ -51,15 +61,24 @@ pub const COLUMNS: u32 = 32;
 /// The characters an atlas keeps, of those its font has: every one of
 /// [`ATLAS_RANGES`], every character the game's text uses, and the glyphs
 /// the project requires; never a combining mark or a control character.
-/// [`AtlasChars::default`] is the ranges alone.
+/// Its wide sets keep the characters of the languages that draw from them
+/// ([`wants_wide`](Self::wants_wide)). [`AtlasChars::default`] is the
+/// ranges alone.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AtlasChars {
     /// The characters the text uses.
     used: BTreeSet<char>,
     /// The glyphs the project requires.
     required: BTreeSet<char>,
-    /// The wide glyphs the project names, whatever the text uses.
-    wide: BTreeSet<char>,
+    /// The characters the text uses, by the wide set its language draws
+    /// from (`None`: it names none).
+    used_by_set: BTreeMap<Option<String>, BTreeSet<char>>,
+    /// The punctuation the text uses that its language has wide
+    /// ([`is_wide_punctuation`]), by the wide set it draws from.
+    punctuation_by_set: BTreeMap<Option<String>, BTreeSet<char>>,
+    /// The wide glyphs the project names for each set, whatever the text
+    /// uses (`None`: the unnamed set).
+    wide: BTreeMap<Option<String>, BTreeSet<char>>,
 }
 
 /// Whether an atlas may keep `c` at all: it isn't a control character or a
@@ -72,34 +91,57 @@ impl AtlasChars {
     /// The ranges, every character of `lang`'s text ([`Lang::texts`]) and
     /// the glyphs of `required`.
     pub fn of_lang(lang: &Lang, required: &str) -> Self {
-        let used = lang
-            .texts()
-            .iter()
-            .flat_map(|(_, text)| text.chars())
-            .filter(|&c| keepable(c))
-            .collect();
-        Self {
-            used,
+        let mut chars = Self {
             required: required.chars().filter(|&c| keepable(c)).collect(),
-            wide: BTreeSet::new(),
+            ..Self::default()
+        };
+        for (at, text) in lang.texts() {
+            let info = at.lang.and_then(|code| lang.pack(code)).map(|p| &p.info);
+            let set = info.and_then(|info| info.wide_font.clone());
+            let punctuation = info.is_some_and(|info| info.wide_punctuation);
+            for c in text.chars().filter(|&c| keepable(c)) {
+                chars.used.insert(c);
+                chars.used_by_set.entry(set.clone()).or_default().insert(c);
+                if punctuation && is_wide_punctuation(c) {
+                    let by_set = chars.punctuation_by_set.entry(set.clone());
+                    by_set.or_default().insert(c);
+                }
+            }
         }
+        chars
     }
 
-    /// The same characters, and the glyphs of `wide` kept from a wide
-    /// font whatever the text uses (a name entry's letters).
+    /// The same characters, and the glyphs of `wide` kept from the
+    /// unnamed wide font whatever the text uses (a name entry's letters).
     #[must_use]
-    pub fn with_wide(mut self, wide: &str) -> Self {
-        self.wide = wide.chars().filter(|&c| keepable(c)).collect();
+    pub fn with_wide(self, wide: &str) -> Self {
+        self.with_wide_set(None, wide)
+    }
+
+    /// The same characters, and the glyphs of `wide` kept from the wide
+    /// font of set `set` (`None`: the unnamed one) whatever the text uses.
+    #[must_use]
+    pub fn with_wide_set(mut self, set: Option<&str>, wide: &str) -> Self {
+        let wide = wide.chars().filter(|&c| keepable(c)).collect();
+        self.wide.insert(set.map(str::to_owned), wide);
         self
     }
 
-    /// Whether the atlas keeps `c` from a wide font, if it has it and the
-    /// narrow fonts don't (`narrow`): a character the text uses or one of
-    /// the project's wide glyphs.
-    pub fn wants_wide(&self, c: char, narrow: &BitmapFont) -> bool {
+    /// Whether the atlas keeps `c` in the wide set `set` (`None`: the
+    /// unnamed one), if its font has it: a character the text of the
+    /// languages drawing from that set uses, or one of the project's wide
+    /// glyphs for it, that the narrow fonts (`narrow`) don't have; or
+    /// punctuation those languages have wide.
+    pub fn wants_wide(&self, c: char, narrow: &BitmapFont, set: Option<&str>) -> bool {
+        let of = |by_set: &BTreeMap<Option<String>, BTreeSet<char>>| {
+            by_set
+                .get(&set.map(str::to_owned))
+                .is_some_and(|chars| chars.contains(&c))
+        };
         keepable(c)
-            && !(narrow.glyphs.contains_key(&c) && self.wants(c))
-            && (self.used.contains(&c) || self.wide.contains(&c))
+            && (of(&self.punctuation_by_set)
+                || (!(narrow.glyphs.contains_key(&c) && self.wants(c))
+                    && (of(&self.used_by_set) || of(&self.wide))))
     }
 
     /// Whether the atlas keeps `c`, if its font has it.
@@ -371,45 +413,76 @@ pub fn build_atlas(font: &BitmapFont, chars: &AtlasChars) -> Atlas {
 
 /// [`build_atlas`], and after the narrow glyphs the glyphs of `wide` that
 /// `chars` wants wide ([`AtlasChars::wants_wide`]), in codepoint order,
-/// each over two cells of one row. `wide`'s cells must be twice as wide as
-/// `font`'s and as tall ([`check_wide`]).
+/// each over two cells of one row: the unnamed wide set.
+/// [`build_atlas_with_sets`] says more.
 pub fn build_wide_atlas(font: &BitmapFont, wide: Option<&BitmapFont>, chars: &AtlasChars) -> Atlas {
+    let wide: Vec<(Option<&str>, &BitmapFont)> =
+        wide.map(|wide| (None, wide)).into_iter().collect();
+    build_atlas_with_sets(font, &wide, chars)
+}
+
+/// [`build_atlas`], and after the narrow glyphs each wide set of `wides`
+/// (`None`: the unnamed one) in turn: the glyphs of its font that `chars`
+/// wants in it ([`AtlasChars::wants_wide`]), in codepoint order, each over
+/// two cells of one row. A wide font's cells must be twice as wide as
+/// `font`'s and as tall ([`check_wide`]).
+pub fn build_atlas_with_sets(
+    font: &BitmapFont,
+    wides: &[(Option<&str>, &BitmapFont)],
+    chars: &AtlasChars,
+) -> Atlas {
     let chosen: Vec<(&char, &Vec<bool>)> = font
         .glyphs
         .iter()
         .filter(|&(&c, _)| chars.wants(c))
         .collect();
-    let chosen_wide: Vec<(&char, &Vec<bool>)> = wide
-        .iter()
-        .flat_map(|wide| &wide.glyphs)
-        .filter(|&(&c, _)| chars.wants_wide(c, font))
-        .collect();
     let mut next = u32::try_from(chosen.len()).unwrap_or(u32::MAX);
-    let mut wide_cells = BTreeMap::new();
-    for &(&c, _) in &chosen_wide {
-        if next % COLUMNS == COLUMNS - 1 {
-            next += 1; // Never split across a row's end.
-        }
-        wide_cells.insert(c, next);
-        next += 2;
-    }
-    let rows = next.div_ceil(COLUMNS).max(1);
-    let def = FontAtlasDef {
+    let mut def = FontAtlasDef {
         cell_w: font.cell_w,
         cell_h: font.cell_h,
         columns: COLUMNS,
         glyphs: chosen.iter().map(|&(&c, _)| c).zip(0..).collect(),
-        wide: wide_cells,
+        ..FontAtlasDef::default()
     };
+    let mut placed_wide: Vec<(u32, &Vec<bool>)> = Vec::new();
+    for &(set, wide) in wides {
+        let mut cells = WideSet::new();
+        let wanted = wide
+            .glyphs
+            .iter()
+            .filter(|&(&c, _)| chars.wants_wide(c, font, set));
+        for (&c, pixels) in wanted {
+            if next % COLUMNS == COLUMNS - 1 {
+                next += 1; // Never split across a row's end.
+            }
+            cells.insert(c, next);
+            placed_wide.push((next, pixels));
+            next += 2;
+        }
+        match set {
+            None => def.wide = cells,
+            Some(name) => {
+                def.wide_sets.insert(name.to_owned(), cells);
+            }
+        }
+    }
+    let rows = next.div_ceil(COLUMNS).max(1);
     let (width, height) = (COLUMNS * font.cell_w, rows * font.cell_h);
     let mut rgba = vec![0u8; to_usize(i64::from(width) * i64::from(height) * 4)];
+    let wide_rect = |index: u32| {
+        let rect = def.cell_rect(index);
+        AtlasRect {
+            w: rect.w * 2,
+            ..rect
+        }
+    };
     let placed = chosen
         .iter()
         .map(|&(&c, pixels)| (def.glyph_rect(c), pixels))
         .chain(
-            chosen_wide
+            placed_wide
                 .iter()
-                .map(|&(&c, pixels)| (def.wide_rect(c), pixels)),
+                .map(|&(i, pixels)| (Some(wide_rect(i)), pixels)),
         );
     for (rect, pixels) in placed {
         let Some(rect) = rect else {
@@ -457,11 +530,7 @@ pub fn one_bit(def: &FontAtlasDef, width: u32, rgba: &[u8]) -> Result<Vec<u8>, S
             def.cell_w
         ));
     }
-    let narrow = def.glyphs.values().map(|&i| i + 1);
-    let count = narrow
-        .chain(def.wide.values().map(|&i| i + 2))
-        .max()
-        .unwrap_or(0);
+    let count = def.cell_end();
     let mut out = Vec::with_capacity(to_usize(i64::from(count) * i64::from(def.cell_h)));
     for index in 0..count {
         let cell = def.cell_rect(index);
@@ -478,8 +547,9 @@ pub fn one_bit(def: &FontAtlasDef, width: u32, rgba: &[u8]) -> Result<Vec<u8>, S
     Ok(out)
 }
 
-/// What `atlas.ron` holds: a [`FontAtlasDef`], without its `wide` when
-/// there are none, so an atlas without wide glyphs is written as before.
+/// What `atlas.ron` holds: a [`FontAtlasDef`], without its `wide` or its
+/// `wide_sets` when there are none, so an atlas without them is written as
+/// before.
 #[derive(Serialize)]
 struct AtlasRonBody<'a> {
     cell_w: u32,
@@ -487,7 +557,9 @@ struct AtlasRonBody<'a> {
     columns: u32,
     glyphs: &'a BTreeMap<char, u32>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    wide: &'a BTreeMap<char, u32>,
+    wide: &'a WideSet,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    wide_sets: &'a BTreeMap<String, WideSet>,
 }
 
 /// The `atlas.ron` text for `def`, with a generated-file header naming
@@ -506,6 +578,7 @@ pub fn atlas_ron(
         columns: def.columns,
         glyphs: &def.glyphs,
         wide: &def.wide,
+        wide_sets: &def.wide_sets,
     };
     let body = ron::ser::to_string_pretty(&body, config).map_err(|e| e.to_string())?;
     let first = format!("// Generated by `{command} font-atlas` from {source_name}. Do not edit");
@@ -522,16 +595,44 @@ pub fn read_font(path: &Path) -> Result<BitmapFont, String> {
     parse_bdf(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// A wide font `font-atlas` reads: the set it makes and its BDF file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WideFont {
+    /// The wide set's name, the atlas's own word that a pack's `wide_font`
+    /// names; `None` for the unnamed set.
+    pub set: Option<String>,
+    /// The BDF file.
+    pub path: PathBuf,
+}
+
+impl WideFont {
+    /// The wide font `--wide` names: `<set>=<font.bdf>`, or `<font.bdf>`
+    /// for the unnamed set. A set's name holds no `/` or `\`, so a path
+    /// with an `=` in a folder's name is still a path.
+    pub fn parse(arg: &str) -> Self {
+        match arg.split_once('=') {
+            Some((set, path)) if !set.is_empty() && !set.contains(['/', '\\']) => Self {
+                set: Some(set.to_owned()),
+                path: PathBuf::from(path),
+            },
+            _ => Self {
+                set: None,
+                path: PathBuf::from(arg),
+            },
+        }
+    }
+}
+
 /// The line of [`run`]'s summary naming the characters the text uses that
-/// `font` and the wide font `wide` lack, the first [`LACKED_SHOWN`] by
+/// `font` and the wide fonts `wides` lack, the first [`LACKED_SHOWN`] by
 /// name; `None` if they have them all.
-fn lacked(font: &BitmapFont, wide: Option<&BitmapFont>, chars: &AtlasChars) -> Option<String> {
+fn lacked(font: &BitmapFont, wides: &[BitmapFont], chars: &AtlasChars) -> Option<String> {
     let lacked: Vec<char> = chars
         .used()
         .iter()
         .copied()
         .filter(|c| !font.glyphs.contains_key(c))
-        .filter(|c| !wide.is_some_and(|wide| wide.glyphs.contains_key(c)))
+        .filter(|c| !wides.iter().any(|wide| wide.glyphs.contains_key(c)))
         .collect();
     if lacked.is_empty() {
         return None;
@@ -552,17 +653,17 @@ fn lacked(font: &BitmapFont, wide: Option<&BitmapFont>, chars: &AtlasChars) -> O
 }
 
 /// Runs the command: reads the fonts at `font_paths` (the first is the
-/// font; the rest add glyphs to it) and the wide font at `wide_path`, if
-/// any, and writes the glyphs `chars` wants to `atlas.png`, `atlas.ron`
-/// and `atlas_1bit.bin` in `out_dir`. Fails if the result lacks a glyph
-/// `rules` require; a character the text uses that the fonts lack is named
-/// in the summary, not a failure. `command` is what `atlas.ron`'s header
-/// calls the tool.
+/// font; the rest add glyphs to it) and the wide fonts `wides`, each its
+/// own set (one set once), and writes the glyphs `chars` wants to
+/// `atlas.png`, `atlas.ron` and `atlas_1bit.bin` in `out_dir`. Fails if
+/// the result lacks a glyph `rules` require; a character the text uses
+/// that the fonts lack is named in the summary, not a failure. `command`
+/// is what `atlas.ron`'s header calls the tool.
 pub fn run(
     rules: &FontAtlas,
     command: &str,
     font_paths: &[PathBuf],
-    wide_path: Option<&Path>,
+    wides: &[WideFont],
     out_dir: &Path,
     chars: &AtlasChars,
 ) -> Result<String, String> {
@@ -573,15 +674,26 @@ pub fn run(
         font.add(extra)
             .map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    let wide = match wide_path {
-        Some(path) => {
-            let wide = read_font(path)?;
-            check_wide(&font, &wide).map_err(|e| format!("{}: {e}", path.display()))?;
-            Some(wide)
+    let mut sets = BTreeSet::new();
+    let mut wide_fonts = Vec::new();
+    for wide in wides {
+        if !sets.insert(wide.set.as_deref()) {
+            return Err(match &wide.set {
+                Some(set) => format!("two wide fonts for the set {set:?}"),
+                None => "two wide fonts for the unnamed set".to_owned(),
+            });
         }
-        None => None,
-    };
-    let atlas = build_wide_atlas(&font, wide.as_ref(), chars);
+        let path = &wide.path;
+        let read = read_font(path)?;
+        check_wide(&font, &read).map_err(|e| format!("{}: {e}", path.display()))?;
+        wide_fonts.push(read);
+    }
+    let by_set: Vec<(Option<&str>, &BitmapFont)> = wides
+        .iter()
+        .map(|wide| wide.set.as_deref())
+        .zip(&wide_fonts)
+        .collect();
+    let atlas = build_atlas_with_sets(&font, &by_set, chars);
     let problems = atlas.def.problems(&rules.required_glyphs);
     if !problems.is_empty() {
         return Err(format!(
@@ -592,8 +704,7 @@ pub fn run(
     }
     let names: Vec<String> = font_paths
         .iter()
-        .map(PathBuf::as_path)
-        .chain(wide_path)
+        .chain(wides.iter().map(|wide| &wide.path))
         .filter_map(|p| p.file_name())
         .map(|n| n.to_string_lossy().into_owned())
         .collect();
@@ -614,10 +725,7 @@ pub fn run(
         let path = out_dir.join(file);
         fs::write(&path, bytes).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
-    let wide_count = match wide_path {
-        Some(_) => format!(" and {} wide", atlas.def.wide.len()),
-        None => String::new(),
-    };
+    let wide_count = wide_count(&atlas.def, wides);
     let mut summary = format!(
         "font-atlas: {} glyphs{wide_count}, {}×{} px → {}",
         atlas.def.glyphs.len(),
@@ -625,11 +733,32 @@ pub fn run(
         atlas.height,
         out_dir.display()
     );
-    if let Some(lacked) = lacked(&font, wide.as_ref(), chars) {
+    if let Some(lacked) = lacked(&font, &wide_fonts, chars) {
         summary.push('\n');
         summary.push_str(&lacked);
     }
     Ok(summary)
+}
+
+/// What [`run`]'s summary says of the wide glyphs: ` and 3 wide` for the
+/// unnamed set alone, ` and wide sets ja 2, zh-Hans 3` with named ones,
+/// nothing without a wide font.
+fn wide_count(def: &FontAtlasDef, wides: &[WideFont]) -> String {
+    let count = |set: Option<&str>| def.wide_set(set).map_or(0, BTreeMap::len);
+    match wides {
+        [] => String::new(),
+        [WideFont { set: None, .. }] => format!(" and {} wide", def.wide.len()),
+        _ => {
+            let sets: Vec<String> = wides
+                .iter()
+                .map(|wide| {
+                    let name = wide.set.as_deref().unwrap_or("unnamed");
+                    format!("{name} {}", count(wide.set.as_deref()))
+                })
+                .collect();
+            format!(" and wide sets {}", sets.join(", "))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -757,7 +886,7 @@ mod tests {
         let bdf = dir.join("tiny.bdf");
         fs::write(&bdf, TINY).unwrap();
         let run = |fonts: &[PathBuf], out: &Path| {
-            run(&rules(), "shuyi", fonts, None, out, &AtlasChars::default())
+            run(&rules(), "shuyi", fonts, &[], out, &AtlasChars::default())
         };
         let err = run(std::slice::from_ref(&bdf), &dir.join("out")).unwrap_err();
         assert!(err.contains("missing required glyphs"), "{err}");
@@ -788,7 +917,7 @@ mod tests {
             &rules(),
             "shuyi",
             std::slice::from_ref(&bdf),
-            None,
+            &[],
             &out,
             &AtlasChars::default(),
         )
@@ -891,7 +1020,7 @@ mod tests {
             &rules(),
             "shuyi",
             std::slice::from_ref(&bdf),
-            None,
+            &[],
             &out,
             &chars,
         )
@@ -914,7 +1043,7 @@ mod tests {
             &rules(),
             "shuyi",
             std::slice::from_ref(&bdf),
-            None,
+            &[],
             &out,
             &chars,
         )
@@ -981,6 +1110,14 @@ mod tests {
             "wide-16.bdf"
         };
         read_font(&fixtures().join(name)).unwrap()
+    }
+
+    /// The unnamed wide font at `path`.
+    fn unnamed(path: &Path) -> WideFont {
+        WideFont {
+            set: None,
+            path: path.to_owned(),
+        }
     }
 
     /// The fixture fonts' folder.
@@ -1079,7 +1216,7 @@ mod tests {
         let wide = fixtures().join("wide-16-jis.bdf");
         let chars = AtlasChars::of_lang(&text("日本"), "");
         let fonts = std::slice::from_ref(&bdf);
-        let said = run(&rules(), "shuyi", fonts, Some(&wide), &out, &chars).unwrap();
+        let said = run(&rules(), "shuyi", fonts, &[unnamed(&wide)], &out, &chars).unwrap();
         assert_eq!(
             said,
             format!(
@@ -1103,11 +1240,202 @@ mod tests {
         assert!(!text.contains("wide"), "{text}");
         assert_eq!(ron::from_str::<FontAtlasDef>(&text).unwrap(), plain);
         // A wide font not twice as wide is refused.
-        let err = run(&rules(), "shuyi", fonts, Some(&bdf), &out, &chars).unwrap_err();
+        let err = run(&rules(), "shuyi", fonts, &[unnamed(&bdf)], &out, &chars).unwrap_err();
         assert!(
             err.ends_with("a wide font's cells are twice as wide as the font's: 16×16, not 8×16"),
             "{err}"
         );
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// English's `menu.title`, and a pack per `(code, lang.ron's extra
+    /// fields, its text)`.
+    fn packs(list: &[(&str, &str, &str)]) -> Lang {
+        use shuyi_assets::lang::{LangCode, PackRules, pack_from_sources};
+        let english: BTreeMap<String, String> =
+            [("menu.title".to_owned(), "Start".to_owned())].into();
+        let rules = PackRules {
+            data_problem: |_, _| None,
+            tokens: &shuyi_assets::dialogue::NoTokens,
+            limits: shuyi_assets::dialogue::DialogueLimits {
+                box_width: 40,
+                box_lines: 3,
+                max_text: 200,
+                max_option: 30,
+                min_options: 2,
+                max_options: 4,
+                max_reaction_texts: 3,
+            },
+            widths: &shuyi_assets::font::CellWidths::NARROW,
+            variants: &[],
+        };
+        let packs = list
+            .iter()
+            .map(|&(code, extra, text)| {
+                let info = format!(r#"(name: "{code}", made_by: Machine{extra})"#);
+                let ui = format!(r#"[(key: "menu.title", source: "Start", text: "{text}")]"#);
+                let pack =
+                    pack_from_sources(("lang.ron", &info), ("ui.ron", &ui), &english, &rules);
+                (LangCode::new(code).unwrap(), pack.unwrap())
+            })
+            .collect();
+        Lang::new(english, packs)
+    }
+
+    #[test]
+    fn a_wide_font_names_its_set_before_an_equals_sign() {
+        let parsed = |arg: &str| {
+            let wide = WideFont::parse(arg);
+            (wide.set, wide.path)
+        };
+        let path = |p: &str| PathBuf::from(p);
+        assert_eq!(
+            parsed("ja=fonts/ja.bdf"),
+            (Some("ja".to_owned()), path("fonts/ja.bdf"))
+        );
+        assert_eq!(
+            parsed("zh-Hans=zh.bdf"),
+            (Some("zh-Hans".to_owned()), path("zh.bdf"))
+        );
+        assert_eq!(parsed("fonts/ja.bdf"), (None, path("fonts/ja.bdf")));
+        // An `=` in a folder's name, or with no set before it, is a path's.
+        assert_eq!(parsed("a=b/c.bdf"), (Some("a".to_owned()), path("b/c.bdf")));
+        assert_eq!(parsed("fonts/a=b.bdf"), (None, path("fonts/a=b.bdf")));
+        assert_eq!(parsed("fonts\\a=b.bdf"), (None, path("fonts\\a=b.bdf")));
+        assert_eq!(parsed("=b.bdf"), (None, path("=b.bdf")));
+    }
+
+    #[test]
+    fn each_set_keeps_the_characters_of_the_languages_that_draw_from_it() {
+        let narrow = narrow_8_by_16();
+        let (ja, zh) = (
+            read_font(&fixtures().join("wide-16-ja.bdf")).unwrap(),
+            read_font(&fixtures().join("wide-16-zh.bdf")).unwrap(),
+        );
+        let lang = packs(&[
+            ("ja", r#", wide_font: Some("ja")"#, "直日"),
+            ("ko", "", "田"),
+            (
+                "zh-Hans",
+                r#", wide_font: Some("zh-Hans"), wide_punctuation: true"#,
+                "“直简”…",
+            ),
+        ]);
+        let chars = AtlasChars::of_lang(&lang, "").with_wide_set(Some("ja"), "一");
+        // Wide punctuation goes in the set of the language that has it
+        // wide, even where the narrow font has it too.
+        let mut with_ellipsis = narrow.clone();
+        with_ellipsis.glyphs.insert('…', Vec::new());
+        assert!(chars.wants_wide('…', &with_ellipsis, Some("zh-Hans")));
+        assert!(!chars.wants_wide('…', &with_ellipsis, Some("ja")));
+        assert!(!chars.wants_wide('…', &with_ellipsis, None));
+        assert!(chars.wants_wide('一', &narrow, Some("ja")));
+        assert!(!chars.wants_wide('一', &narrow, Some("zh-Hans")));
+        let wides = [
+            (Some("ja"), &ja),
+            (Some("zh-Hans"), &zh),
+            (None, &wide_fixture(false)),
+        ];
+        let atlas = build_atlas_with_sets(&narrow, &wides, &chars);
+        let def = &atlas.def;
+        let keys = |set: Option<&str>| def.wide_set(set).unwrap().keys().collect::<String>();
+        // The ja font has no 一: the set keeps what it has.
+        assert_eq!(keys(Some("ja")), "日直");
+        assert_eq!(keys(Some("zh-Hans")), "“”…直简");
+        // The unnamed set keeps the text of the languages that name none.
+        assert_eq!(keys(None), "田");
+        // One after another, in the order given, after the narrow glyphs.
+        assert_eq!(def.glyphs.keys().collect::<String>(), "Ab");
+        assert_eq!(
+            (
+                def.wide_cell(Some("ja"), '日'),
+                def.wide_cell(Some("ja"), '直')
+            ),
+            (Some(2), Some(4))
+        );
+        assert_eq!(def.wide_cell(Some("zh-Hans"), '直'), Some(12));
+        assert_eq!(def.wide_cell(None, '田'), Some(16));
+        assert_eq!(def.problems(""), Vec::<String>::new());
+        assert_eq!(
+            def.image_problems(atlas.width, atlas.height),
+            Vec::<String>::new()
+        );
+        // Every wide character is drawn from its language's set; only the
+        // narrow letters the tiny narrow font lacks are left.
+        let undrawn = shuyi_assets::font::undrawn(def, &lang);
+        for c in "日直简“”…田".chars() {
+            let said = describe(c);
+            assert!(
+                undrawn.iter().all(|e| !e.message.starts_with(&said)),
+                "{undrawn:?}"
+            );
+        }
+        // `atlas.ron` keeps the sets, and reads back the same.
+        let ron = atlas_ron(def, "a", "shuyi", None).unwrap();
+        assert!(ron.contains("wide_sets"), "{ron}");
+        assert_eq!(ron::from_str::<FontAtlasDef>(&ron).unwrap(), *def);
+        let bits = one_bit(def, atlas.width, &atlas.rgba).unwrap();
+        assert_eq!(bits.len(), to_usize(i64::from(18 * 16)));
+    }
+
+    #[test]
+    fn run_writes_named_sets_and_refuses_two_fonts_for_one() {
+        let dir = std::env::temp_dir().join(format!("shuyi-font-sets-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let bdf = dir.join("narrow.bdf");
+        let question = "STARTCHAR q\nENCODING 63\nBBX 1 1 0 0\nBITMAP\n80\nENDCHAR\n";
+        let narrow = TINY
+            .replace("FONTBOUNDINGBOX 4 4 0 -1", "FONTBOUNDINGBOX 8 16 0 -2")
+            .replace("ENDFONT", question);
+        fs::write(&bdf, narrow).unwrap();
+        let out = dir.join("out");
+        let set = |set: &str, file: &str| WideFont {
+            set: Some(set.to_owned()),
+            path: fixtures().join(file),
+        };
+        let lang = packs(&[
+            ("ja", r#", wide_font: Some("ja")"#, "直"),
+            ("zh-Hans", r#", wide_font: Some("zh-Hans")"#, "直简"),
+        ]);
+        let chars = AtlasChars::of_lang(&lang, "");
+        let fonts = std::slice::from_ref(&bdf);
+        let wides = [
+            set("ja", "wide-16-ja.bdf"),
+            set("zh-Hans", "wide-16-zh.bdf"),
+        ];
+        let said = run(&rules(), "shuyi", fonts, &wides, &out, &chars).unwrap();
+        assert!(
+            said.starts_with("font-atlas: 3 glyphs and wide sets ja 1, zh-Hans 2, 256×16 px"),
+            "{said}"
+        );
+        let ron = fs::read_to_string(out.join("atlas.ron")).unwrap();
+        assert!(
+            ron.starts_with(
+                "// Generated by `shuyi font-atlas` from narrow.bdf + wide-16-ja.bdf + \
+                 wide-16-zh.bdf."
+            ),
+            "{ron}"
+        );
+        let def: FontAtlasDef = ron::from_str(&ron).unwrap();
+        assert!(def.wide.is_empty());
+        assert_eq!(def.wide_cell(Some("zh-Hans"), '简'), Some(7));
+        // The unnamed set beside a named one is named so in the summary.
+        let both = [
+            set("ja", "wide-16-ja.bdf"),
+            unnamed(&fixtures().join("wide-16.bdf")),
+        ];
+        let said = run(&rules(), "shuyi", fonts, &both, &out, &chars).unwrap();
+        assert!(said.contains(" and wide sets ja 1, unnamed 0,"), "{said}");
+        // One font a set.
+        let twice = [set("ja", "wide-16-ja.bdf"), set("ja", "wide-16-zh.bdf")];
+        let err = run(&rules(), "shuyi", fonts, &twice, &out, &chars).unwrap_err();
+        assert_eq!(err, "two wide fonts for the set \"ja\"");
+        let twice = [
+            unnamed(&fixtures().join("wide-16.bdf")),
+            unnamed(&fixtures().join("wide-16.bdf")),
+        ];
+        let err = run(&rules(), "shuyi", fonts, &twice, &out, &chars).unwrap_err();
+        assert_eq!(err, "two wide fonts for the unnamed set");
         fs::remove_dir_all(&dir).unwrap();
     }
 

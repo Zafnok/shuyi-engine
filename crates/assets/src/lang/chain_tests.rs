@@ -66,6 +66,8 @@ fn pack(
         info: LangInfo {
             name: name.to_owned(),
             made_by: MadeBy::Machine,
+            wide_font: None,
+            wide_punctuation: false,
         },
         ui: entries(ui),
         data: entries(data),

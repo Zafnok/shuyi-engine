@@ -1096,6 +1096,35 @@ fn a_language_packs_data_and_dialogue_are_read_against_the_games_data_text() {
 }
 
 #[test]
+fn a_packs_wide_font_must_name_a_set_the_font_atlas_has() {
+    let info_path = "lang/xx/lang.ron";
+    let with_set = |set: &str| {
+        let mut files: Vec<_> = pack_files().into();
+        let info = format!(r#"(name: "Xx", made_by: Machine, wide_font: Some({set:?}))"#);
+        files[1].1 = info.into_bytes();
+        bundle(files)
+    };
+    let atlas = crate::font::FontAtlasDef {
+        wide_sets: [("zh".to_owned(), [('あ', 0)].into())].into(),
+        ..crate::font::FontAtlasDef::default()
+    };
+    let measured = lang_pack().widths_of(&atlas);
+    assert!(bundled(&measured, with_set("zh"), info_path).is_ok());
+    assert_eq!(
+        shown(bundled(&measured, with_set("ja"), info_path)),
+        [
+            "base/lang/xx/lang.ron: wide_font names \"ja\", a wide set the font atlas doesn't have: \
+             it has \"zh\""
+        ]
+    );
+    let none = lang_pack().widths_of(&crate::font::FontAtlasDef::default());
+    let said = shown(bundled(&none, with_set("ja"), info_path));
+    assert!(said[0].ends_with("it has none"), "{said:?}");
+    // Without the atlas, the set isn't checked here (`font::undrawn` is).
+    assert!(bundled(&lang_pack(), with_set("ja"), info_path).is_ok());
+}
+
+#[test]
 fn ron_reads_any_kind_serde_reads() {
     let read = alone(&Ron::<Table>::new(), "t.ron", TABLE.as_bytes());
     assert_eq!(read, Ok(Table { rows: vec![1, 2] }));
@@ -1161,7 +1190,7 @@ fn the_formats_of_a_games_types_show_what_they_are() {
     assert_eq!(
         format!("{:?}", lang_pack().variants(&["a"])),
         format!(
-            "LangPackRon {{ limits: {LIMITS:?}, wide: {{}}, variants: [\"a\"], data: false, source: \"en\", .. }}"
+            "LangPackRon {{ limits: {LIMITS:?}, wide: {{}}, sets: None, variants: [\"a\"], data: false, source: \"en\", .. }}"
         )
     );
     let with_data = lang_pack().with_data(SourceText::default());

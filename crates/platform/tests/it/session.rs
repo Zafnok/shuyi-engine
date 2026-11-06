@@ -30,6 +30,7 @@ static FONT: FontAtlasDef = FontAtlasDef {
     columns: 0,
     glyphs: BTreeMap::new(),
     wide: BTreeMap::new(),
+    wide_sets: BTreeMap::new(),
 };
 static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 

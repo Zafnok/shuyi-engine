@@ -645,26 +645,29 @@ impl<G: GameData> Game<G> {
     }
 
     /// Prints the characters `widths` has wide in two cells, as the font
-    /// atlas the frame is drawn with has them ([`CellWidths::of`]): the
-    /// frame's ([`GlyphBuffer::widths`]) and the context's
-    /// ([`Ctx::widths`]). The frame is drawn again with them. The platform
-    /// calls it once the game has loaded, with its look's atlas.
+    /// atlas the frame is drawn with has them ([`CellWidths::of`]), in the
+    /// language text is shown in ([`Ctx::widths`], which the frame's
+    /// [`GlyphBuffer::widths`] follow). The frame is drawn again if that
+    /// changed them. The platform calls it once the game has loaded, with
+    /// its look's atlas, and again after its files change.
     ///
     /// [`CellWidths::of`]: shuyi_assets::font::CellWidths::of
     pub fn set_widths(&mut self, widths: CellWidths) {
-        if *self.ctx.widths() == widths {
-            return;
-        }
-        self.buffer.set_widths(widths.clone());
         self.ctx.set_widths(widths);
-        self.redraw();
+        if self.buffer.widths() != self.ctx.widths() {
+            self.redraw();
+        }
     }
 
     /// Clears the buffer and draws the stack into it, then the modules
     /// over it, then, with debug tools on, the debug view's gizmos over
     /// everything: after a change made from outside the frame loop (a test
-    /// changing the context).
+    /// changing the context). The buffer takes the widths of the language
+    /// text is shown in first ([`Ctx::widths`]).
     pub fn redraw(&mut self) {
+        if self.buffer.widths() != self.ctx.widths() {
+            self.buffer.set_widths(self.ctx.widths().clone());
+        }
         let blank = self.ctx.game.blank_cell(&self.ctx.palette);
         self.buffer.fill_rect(self.buffer.bounds(), blank);
         self.stack.draw(&self.ctx, &mut self.buffer);
