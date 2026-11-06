@@ -1048,6 +1048,14 @@ fn the_voice_sounding_plays_back_from_the_record() {
     let file = shuyi_assets::voice::clip_file(&line, toy::Voice::Only);
     assert_eq!(changes[0], file, "its file");
     assert_eq!(changes[1], "");
+    let said = Some(line.to_string());
+    let reports: Vec<_> = seen.borrow().iter().map(|s| s.voice.clone()).collect();
+    assert!(
+        reports.iter().all(|r| r.is_none() || *r == said),
+        "{reports:?}"
+    );
+    assert_eq!(reports.first(), Some(&None), "before it is asked for");
+    assert_eq!(reports.last(), Some(&None), "after it ended");
     let voiced = seen.borrow().iter().filter(|s| s.voice.is_some()).count();
     assert!(voiced >= 3, "sounds for 0.05 s: {voiced} frames");
 

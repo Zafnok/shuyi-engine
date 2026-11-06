@@ -97,6 +97,38 @@ fn the_platforms_speaker_is_the_one_it_plays_on() {
     assert_eq!(p.speaker().music_playing(Millis(750)), None);
 }
 
+/// A voice clip sounds from its request until its length has passed, or
+/// until it is stopped; with no length, until it is stopped.
+#[test]
+fn the_speaker_hears_a_voice_until_its_length_or_a_stop() {
+    let mut s = Speaker::default();
+    let mut hear = |s: &mut Speaker, requests: &[SoundRequest], now: u64| {
+        let frame = AudioFrame {
+            requests,
+            music: &[],
+            music_volume: 1.0,
+            sound_volume: 1.0,
+            voice_volume: 1.0,
+        };
+        s.play(&frame, Millis(now));
+    };
+    let say = SoundRequest::Voice {
+        clip: "a.ogg".into(),
+    };
+    hear(&mut s, &[say.clone()], 1000);
+    assert_eq!(
+        s.voice_playing(Millis(1_000_000)),
+        Some("a.ogg"),
+        "no length"
+    );
+    hear(&mut s, &[SoundRequest::StopVoice], 2000);
+    assert_eq!(s.voice_playing(Millis(2000)), None, "stopped");
+    s.set_voice_length(0.5);
+    hear(&mut s, &[say], 3000);
+    assert_eq!(s.voice_playing(Millis(3499)), Some("a.ogg"));
+    assert_eq!(s.voice_playing(Millis(3500)), None, "its length has passed");
+}
+
 #[test]
 fn the_speaker_holds_the_sounds_started_until_they_stop() {
     let mut queue = shuyi_ui::audio::AudioQueue::<shuyi_ui::toy::Voice>::default();

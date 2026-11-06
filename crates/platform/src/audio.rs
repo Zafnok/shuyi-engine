@@ -365,5 +365,6 @@ mod tests {
         silent.resume();
         silent.stop_all();
         assert_eq!(silent.music_playing(Millis(0)), None);
+        assert_eq!(silent.voice_playing(Millis(0)), None, "it plays no voices");
     }
 }

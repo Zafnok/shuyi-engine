@@ -2013,6 +2013,18 @@ mod tests {
         };
         device.play(&frame, Millis(1000));
         assert_eq!(device.music_playing(Millis(2000)), Some(("title", 1.0)));
+        assert_eq!(device.voice_playing(Millis(2000)), None);
+        let say = [SoundRequest::Voice {
+            clip: "a.ogg".into(),
+        }];
+        device.play(
+            &AudioFrame {
+                requests: &say,
+                ..frame
+            },
+            Millis(2000),
+        );
+        assert_eq!(device.voice_playing(Millis(2000)), Some("a.ogg"));
         device.backend_mut().calls();
         device.suspend();
         let said = device.backend_mut().calls();

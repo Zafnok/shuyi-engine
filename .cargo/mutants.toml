@@ -37,6 +37,9 @@ exclude_globs = [
 timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
+    # The default `Audio::voice_playing` is `None`, its only viable mutant
+    # of that kind (a device with no voices).
+    "replace Audio::voice_playing -> Option<&str> with None",
     # The Playdate's `Sdk` keeps four calls additive with default bodies,
     # `false`, `None` and nothing; the fake and the device both answer them,
     # so no test runs the defaults.

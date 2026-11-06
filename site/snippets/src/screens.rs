@@ -427,6 +427,10 @@ mod tests {
             !wait.over(h.ctx(), &line, 0.016)
         });
         assert_eq!(frames.count(), 31, "a game with no voices waits 0.5 s");
+        let mut wait = super::VoiceWait::default();
+        assert!(!wait.over(h.ctx(), &line, 0.25));
+        assert!(!wait.over(h.ctx(), &line, 0.25), "half a second: waiting");
+        assert!(wait.over(h.ctx(), &line, 0.25), "past it: over");
     }
 
     #[test]
