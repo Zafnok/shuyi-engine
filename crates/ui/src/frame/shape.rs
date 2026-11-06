@@ -56,7 +56,7 @@ pub fn line_runs(from: (i32, i32), to: (i32, i32), clip: PxRect, mut f: impl FnM
     let (x0, y0) = (i64::from(from.0), i64::from(from.1));
     let (x1, y1) = (i64::from(to.0), i64::from(to.1));
     let (dx, dy) = ((x1 - x0).abs(), (y1 - y0).abs());
-    let (sx, sy) = (if x1 < x0 { -1 } else { 1 }, if y1 < y0 { -1 } else { 1 });
+    let (sx, sy) = ((x1 - x0).signum(), (y1 - y0).signum());
     let x_major = dx >= dy;
     let ((major0, major_step, major_len), (minor0, minor_step, minor_len)) = if x_major {
         ((x0, sx, dx), (y0, sy, dy))
@@ -69,24 +69,29 @@ pub fn line_runs(from: (i32, i32), to: (i32, i32), clip: PxRect, mut f: impl FnM
     } else {
         (rows, columns)
     };
-    // The steps whose major coordinate is inside the clip.
-    let (lo, hi) = if major_step > 0 {
-        (major_span.0 - major0, major_span.1 - major0)
-    } else {
-        (major0 - major_span.1 + 1, major0 - major_span.0 + 1)
-    };
-    let (first, end) = (lo.max(0), hi.min(major_len + 1));
+    // Nothing is inside an empty clip; and a line of one pixel (a step of
+    // 0) has the one step 0, inside the clip or not.
+    if clip.is_empty() || major_len == 0 && !(major_span.0..major_span.1).contains(&major0) {
+        return;
+    }
+    // The steps whose major coordinate is inside the clip, the step's sign
+    // either way: from `near` to `far`, both in.
+    let (near, far) = (
+        major_step * (major_span.0 - major0),
+        major_step * (major_span.1 - 1 - major0),
+    );
+    let (first, end) = (near.min(far).max(0), (near.max(far) + 1).min(major_len + 1));
     // The run being gathered on one row (x-major lines only): its row and
     // its first and last pixel.
     let mut run: Option<(i64, i64, i64)> = None;
     for k in first..end {
         let major = major0 + major_step * k;
         let minor = minor0 + minor_step * minor_offset(k, major_len, minor_len);
-        if minor < minor_span.0 || minor >= minor_span.1 {
+        if !(minor_span.0..minor_span.1).contains(&minor) {
             continue;
         }
         if !x_major {
-            clip_run(clip, major, minor, minor + 1, &mut f);
+            emit(major, minor, minor + 1, &mut f);
             continue;
         }
         let (column, line) = (major, minor);
@@ -97,14 +102,21 @@ pub fn line_runs(from: (i32, i32), to: (i32, i32), clip: PxRect, mut f: impl FnM
                 Some((row, first.min(column), last.max(column)))
             }
             Some((row, first, last)) => {
-                clip_run(clip, row, first, last + 1, &mut f);
+                emit(row, first, last + 1, &mut f);
                 Some((line, column, column))
             }
             None => Some((line, column, column)),
         };
     }
     if let Some((row, first, last)) = run {
-        clip_run(clip, row, first, last + 1, &mut f);
+        emit(row, first, last + 1, &mut f);
+    }
+}
+
+/// Calls `f(y, x0, x1)` with a run already inside the clip (so in `i32`).
+fn emit(y: i64, x0: i64, x1: i64, f: &mut impl FnMut(i32, i32, i32)) {
+    if let (Ok(y), Ok(x0), Ok(x1)) = (i32::try_from(y), i32::try_from(x0), i32::try_from(x1)) {
+        f(y, x0, x1);
     }
 }
 
@@ -134,7 +146,12 @@ pub fn circle_outline_runs(
     let (mut x, mut y) = (i64::from(radius), 0_i64);
     let mut d = 1 - x;
     let mut dot = |px: i64, py: i64| clip_run(clip, py, px, px + 1, &mut f);
-    while x >= y {
+    // The walk ends once `x < y`, within `radius / √2 + 1` steps: the bound
+    // only keeps a broken walk from running for ever.
+    for _ in 0..=radius {
+        if x < y {
+            break;
+        }
         for (px, py) in [
             (x, y),
             (y, x),
@@ -267,6 +284,104 @@ mod tests {
         assert_eq!(far, near);
         let flat = line((i32::MIN, 3), (i32::MAX, 3), clip);
         assert_eq!(flat, (0..16).map(|x| (x, 3)).collect());
+    }
+
+    #[test]
+    fn a_line_of_one_pixel_is_drawn_only_inside_its_clip() {
+        let clip = Rect::new(0, 0, 4, 4);
+        assert_eq!(line((2, 3), (2, 3), clip), BTreeSet::from([(2, 3)]));
+        for out in [(4, 3), (-1, 3), (2, 4), (2, -1)] {
+            assert!(line(out, out, clip).is_empty(), "{out:?}");
+        }
+        // A line from outside the clip across it starts at its edge.
+        assert_eq!(
+            line((-5, 1), (9, 1), clip),
+            (0..4).map(|x| (x, 1)).collect()
+        );
+        assert_eq!(
+            line((1, 9), (1, -5), clip),
+            (0..4).map(|y| (1, y)).collect()
+        );
+    }
+
+    /// Each step of the octant the midpoint walk takes for `radius`.
+    fn octant(radius: u16) -> Vec<(i32, i32)> {
+        let mut steps = Vec::new();
+        circle_outline_runs((0, 0), radius, WIDE, |y, x, _| {
+            if x >= y && y >= 0 {
+                steps.push((x, y));
+            }
+        });
+        steps.dedup();
+        steps
+    }
+
+    #[test]
+    fn the_midpoint_walk_takes_the_textbooks_steps_in_its_order() {
+        // Each step's eight pixels in turn, one a run.
+        let mut runs = Vec::new();
+        circle_outline_runs((10, 20), 3, WIDE, |y, x0, x1| runs.push((x0, y, x1 - x0)));
+        let points: Vec<(i32, i32)> = runs.iter().map(|&(x, y, _)| (x, y)).collect();
+        assert!(runs.iter().all(|r| r.2 == 1));
+        assert_eq!(
+            points,
+            [
+                (13, 20),
+                (10, 23),
+                (10, 23),
+                (7, 20),
+                (7, 20),
+                (10, 17),
+                (10, 17),
+                (13, 20),
+                (13, 21),
+                (11, 23),
+                (9, 23),
+                (7, 21),
+                (7, 19),
+                (9, 17),
+                (11, 17),
+                (13, 19),
+                (12, 22),
+                (12, 22),
+                (8, 22),
+                (8, 22),
+                (8, 18),
+                (8, 18),
+                (12, 18),
+                (12, 18),
+            ]
+        );
+        assert_eq!(octant(5), [(5, 0), (5, 1), (5, 2), (4, 3)]);
+        assert_eq!(
+            octant(10),
+            [
+                (10, 0),
+                (10, 1),
+                (10, 2),
+                (10, 3),
+                (9, 4),
+                (9, 5),
+                (8, 6),
+                (7, 7)
+            ]
+        );
+        let seventeen = [
+            (17, 0),
+            (17, 1),
+            (17, 2),
+            (17, 3),
+            (17, 4),
+            (16, 5),
+            (16, 6),
+            (15, 7),
+            (15, 8),
+            (14, 9),
+            (14, 10),
+            (13, 11),
+            (12, 12),
+        ];
+        assert_eq!(octant(17), seventeen);
     }
 
     #[test]

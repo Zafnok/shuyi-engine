@@ -346,9 +346,12 @@ fn a_debug_step_turns_channels_on_in_the_harness_and_plays_no_frame() {
     assert_eq!(error, "step 1: debug: not over the live link yet");
     let mut h: Harness<Toy> = Harness::new(toy::game());
     h.ctx_mut().debug_tools = false;
-    Script::new(vec![debug("grid,net"), debug("all")]).play(&mut h);
+    Script::new(vec![debug("grid,net")]).play(&mut h);
     assert_eq!(h.frame_count(), 0);
     let view = &h.ctx().debug_view;
     assert!(h.ctx().debug_tools && view.is_on("grid") && view.is_on("net"));
-    assert!(view.is_on("anything"));
+    assert!(!view.is_on("anything") && !view.is_on("all"));
+    Script::new(vec![debug("all")]).play(&mut h);
+    let view = &h.ctx().debug_view;
+    assert!(view.is_on("anything") && !view.on().any(|id| id == "all"));
 }

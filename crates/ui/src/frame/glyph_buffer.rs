@@ -1058,6 +1058,8 @@ impl GlyphBuffer {
 #[cfg(test)]
 mod backdrop_tests;
 #[cfg(test)]
+mod gizmo_tests;
+#[cfg(test)]
 mod sprite_tests;
 
 #[cfg(test)]

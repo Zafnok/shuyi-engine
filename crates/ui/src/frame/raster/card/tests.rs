@@ -151,6 +151,34 @@ fn its_cells_take_every_setting() {
 }
 
 #[test]
+fn its_gizmos_take_every_colour_and_their_labels_their_cells() {
+    let card = build();
+    let gizmos = card.buffer.gizmos();
+    let lines = gizmos
+        .iter()
+        .filter(|g| matches!(g.shape, GizmoShape::Line { .. }));
+    let colours: BTreeSet<_> = lines.map(|g| g.color).collect();
+    assert_eq!(colours.len(), 5, "{colours:?}");
+    let labels: Vec<_> = gizmos
+        .iter()
+        .filter_map(|g| match g.shape {
+            GizmoShape::Label { at, .. } => Some((at, g.clip)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            ((192, 180), Rect::new(192, 176, 16, 16)),
+            ((232, 180), Rect::new(232, 176, 16, 16))
+        ]
+    );
+    // Each label's glyphs are in those cells.
+    assert_eq!(card.buffer.get(24, 11).map(|c| c.glyph), Some('#'));
+    assert_eq!(card.buffer.get(30, 11).map(|c| c.glyph), Some('|'));
+}
+
+#[test]
 fn its_backdrop_is_zoomed_and_offset_by_half_a_scene_pixel() {
     let card = build();
     let backdrop = card.buffer.backdrop().unwrap();

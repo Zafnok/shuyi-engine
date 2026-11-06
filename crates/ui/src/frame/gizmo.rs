@@ -381,6 +381,54 @@ mod tests {
         assert_eq!(label.clip, Rect::new(8, 16, 1, 1));
     }
 
+    /// The runs of `shape` drawn in a clip far wider than it, in order.
+    fn runs(shape: GizmoShape) -> Vec<(i32, i32, i32)> {
+        let wide = GizmoItem {
+            clip: Rect::new(-100, -100, 200, 200),
+            ..item(shape)
+        };
+        let mut out = Vec::new();
+        wide.for_each_run(|y, x0, x1| out.push((y, x0, x1)));
+        out
+    }
+
+    #[test]
+    fn each_shape_gives_its_own_runs_and_no_more() {
+        let rect = |x, y, w, h| GizmoShape::Rect {
+            rect: Rect::new(x, y, w, h),
+        };
+        // Top, bottom, then each side's pixel on the rows between.
+        assert_eq!(
+            runs(rect(2, 3, 4, 4)),
+            [
+                (3, 2, 6),
+                (6, 2, 6),
+                (4, 2, 3),
+                (4, 5, 6),
+                (5, 2, 3),
+                (5, 5, 6)
+            ]
+        );
+        // One row high: one run; one column wide: a pixel a row.
+        assert_eq!(runs(rect(-2, 5, 3, 1)), [(5, -2, 1)]);
+        assert_eq!(runs(rect(4, -1, 1, 3)), [(-1, 4, 5), (1, 4, 5), (0, 4, 5)]);
+        // A cross: its bar, then its post above and below the bar.
+        assert_eq!(
+            runs(GizmoShape::Cross {
+                at: (5, 5),
+                size: 2
+            }),
+            [(5, 3, 8), (3, 5, 6), (4, 5, 6), (6, 5, 6), (7, 5, 6)]
+        );
+        assert_eq!(
+            runs(GizmoShape::Cross {
+                at: (-3, 4),
+                size: 1
+            }),
+            [(4, -4, -1), (3, -3, -2), (5, -3, -2)]
+        );
+    }
+
     #[test]
     fn a_clip_cuts_every_shape() {
         let clip = Rect::new(0, 0, 4, 4);

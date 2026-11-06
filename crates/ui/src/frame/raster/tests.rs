@@ -663,3 +663,29 @@ fn every_kind_of_painted_picture_draws_its_rgba() {
     let Rgb { r, g, b } = MISSING_COLOR;
     assert_eq!(painter.render(&buf, 2).pixel(0, 0), Some([r, g, b, 255]));
 }
+
+#[test]
+fn a_gizmo_is_its_runs_of_whole_console_pixels() {
+    use crate::frame::gizmo::{GizmoItem, GizmoRole, GizmoShape};
+    let (painter, _) = painter(false);
+    let mut buf = GlyphBuffer::new(2, 1, Cell::new(' ', CLEAR, CLEAR));
+    let green = Rgb::new(0, 255, 0);
+    let line = GizmoShape::Line {
+        from: (3, 2),
+        to: (6, 2),
+    };
+    buf.add_gizmo(GizmoItem::new("t", GizmoRole::Note, line, green));
+    let image = painter.render(&buf, 2);
+    // Console pixels 3 to 6 of row 2, each 2 × 2; none past them.
+    for x in 0..16 {
+        let want = if (6..14).contains(&x) {
+            [0, 255, 0, 255]
+        } else {
+            [16, 16, 16, 255]
+        };
+        assert_eq!(image.pixel(x, 4), Some(want), "x {x}");
+        assert_eq!(image.pixel(x, 5), Some(want), "x {x}");
+    }
+    assert_eq!(image.pixel(8, 3), Some([16, 16, 16, 255]));
+    assert_eq!(image.pixel(8, 6), Some([16, 16, 16, 255]));
+}

@@ -226,6 +226,46 @@ mod tests {
     }
     // ANCHOR_END: test_gizmos
 
+    #[test]
+    fn the_plots_gizmos_sit_on_the_plots_the_skin_drew() {
+        let mut h = game().harness();
+        h.keys("Enter Right");
+        // The garden screen hands them in once the channel is on.
+        assert_eq!(h.game().buffer().gizmos().len(), 0);
+        h.ctx_mut().debug_view.set("plots", true);
+        h.wait(0.1);
+        let shapes: Vec<Gizmo> = {
+            let garden = h.screen::<GardenScreen>().unwrap();
+            let mut on = Gizmos::with_on(["plots"]);
+            plot_gizmos(&garden.view(h.ctx()), h.ctx(), &mut on);
+            on.drawn().iter().map(|d| d.gizmo.clone()).collect()
+        };
+        assert_eq!(h.game().buffer().gizmos().len(), shapes.len());
+        // Six plots four cells apart from column 13, on row 10, each cell
+        // 8 × 16 pixels; the cross in the middle of the second.
+        let boxed = |column: i32| Gizmo::Rect {
+            rect: Rect::new(column * 8, 160, 8, 16),
+        };
+        let cross = Gizmo::Cross {
+            at: (140, 168),
+            size: 3,
+        };
+        let want = [
+            boxed(13),
+            boxed(17),
+            cross,
+            boxed(21),
+            boxed(25),
+            boxed(29),
+            boxed(33),
+        ];
+        assert_eq!(shapes, want);
+        // The skin's plots are in those cells.
+        let frame = h.snapshot();
+        let row: Vec<char> = frame.lines().nth(10).unwrap().chars().collect();
+        assert_eq!((row[13], row[33]), ('·', '·'));
+    }
+
     // ANCHOR: test_plasma
     #[test]
     fn the_plasma_moves_with_the_steps() {

@@ -229,6 +229,40 @@ mod tests {
     }
 
     #[test]
+    fn a_frame_that_cuts_the_view_on_a_cells_edge_draws_that_line_once() {
+        let s = scene((10, 8), AREA, Pos::new(0, 0), &[], Pos::new(0, 0));
+        let grid = GridSkin::<Piece>::grid(&GLYPH, &s, AREA);
+        // Tiles of 16 × 16 from (0, 0); the frame's last pixel column is
+        // 32, a column's first, and its last row 48, a row's first.
+        let mut out = Gizmos::with_on(["grid"]).within(Rect::new(0, 0, 33, 49));
+        layout_gizmos(&s, &grid, &mut out);
+        let lines = |across: bool| {
+            out.drawn()
+                .iter()
+                .filter_map(|d| match d.gizmo {
+                    Gizmo::Line { from, to }
+                        if d.role == GizmoRole::Bounds && (from.1 == to.1) == across =>
+                    {
+                        Some(if across { from.1 } else { from.0 })
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(lines(false), [0, 16, 32]);
+        assert_eq!(lines(true), [0, 16, 32, 48]);
+    }
+
+    #[test]
+    fn the_union_holds_both_rectangles_whichever_comes_first() {
+        let (a, b) = (Rect::new(10, 20, 5, 6), Rect::new(-3, 2, 4, 30));
+        let both = Rect::new(-3, 2, 18, 30);
+        assert_eq!(union(a, b), both);
+        assert_eq!(union(b, a), both);
+        assert_eq!(union(a, a), a);
+    }
+
+    #[test]
     fn edges_are_drawn_only_on_the_sides_the_map_goes_on_past() {
         // A 60 × 50 map, seen from its top-left corner: more right and down.
         let s = scene((60, 50), AREA, Pos::new(0, 0), &[], Pos::new(0, 0));

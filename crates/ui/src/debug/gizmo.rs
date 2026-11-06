@@ -376,6 +376,12 @@ mod tests {
         assert!(!none.channel_on(B));
         assert!(none.is_empty());
         assert_eq!(none.offered(), [B]);
+        // A list not told its frame takes nearly all of `i32`; told, it
+        // keeps the frame.
+        let reach = Rect::new(-(1 << 30), -(1 << 30), i32::MAX, i32::MAX);
+        assert_eq!(none.frame(), reach);
+        let frame = Rect::new(0, 0, 320, 240);
+        assert_eq!(Gizmos::new().within(frame).frame(), frame);
         let mut all = Gizmos::all_on();
         assert!(all.channel_on(A) && all.channel_on(B));
         assert_eq!((A.id(), A.label()), ("a", "Channel A"));
