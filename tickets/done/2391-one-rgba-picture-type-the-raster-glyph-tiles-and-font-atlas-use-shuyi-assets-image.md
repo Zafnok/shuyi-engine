@@ -241,6 +241,11 @@ Deviations:
   `Some(…)` and the two outside the picture with `None`, as the ticket's
   step 4 says.
 
+`shuyi-app`'s `capture::Report::add`, `cut_out` and `read_window`, and
+`shuyi-cli`'s `picture`, `Shot` and `decode_image`, now print their
+picture as `shuyi_assets::image::Image` in the API listing: the same
+type as before, reached by its own path, so no break.
+
 Docs: the raster's module docs say its pictures are
 `shuyi_assets::image::Image`; the rest is rustdoc on the changed items.
 No page of `docs/` or the book names the changed items.
