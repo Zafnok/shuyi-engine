@@ -63,11 +63,11 @@ fn a_project_is_found_from_a_folder_below_it() {
     fs::create_dir_all(dir.join("a/b")).unwrap();
     let output = shuyi(&dir.join("a/b"), &[]);
     assert_eq!(output.status.code(), Some(2));
-    assert!(
-        stdout(&output).starts_with("usage: tools <command>\n"),
-        "{}",
-        stdout(&output)
-    );
+    let usage = stdout(&output);
+    assert!(usage.starts_with("usage: tools <command>\n"), "{usage}");
+    // The game's bots play through `playtest`; `bots` is gone.
+    assert!(usage.contains("\n  playtest [--stage ID]"), "{usage}");
+    assert!(!usage.contains("\n  bots "), "{usage}");
     let output = shuyi(&dir, &["bogus"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(stderr(&output).starts_with("tools: error[SH0001]: unknown command: bogus\n"));
@@ -274,7 +274,7 @@ fn new_doctor_explain_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 51);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 49);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -376,7 +376,7 @@ fn import_outside_a_project_reads_the_engines_standard_kinds() {
 fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
     let dir = scratch("no-game-ops");
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
-    for op in ["check", "run", "scene", "replay", "bots", "bake"] {
+    for op in ["check", "run", "scene", "replay", "playtest", "bake"] {
         let output = shuyi(&dir, &[op, "--json"]);
         assert_eq!(output.status.code(), Some(3), "{op}");
         let answer = json(&output);

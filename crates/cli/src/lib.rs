@@ -1,5 +1,5 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
+//! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`,
 //! `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]),
 //! the exporters `export` runs ([`export`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
@@ -112,10 +112,10 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   replay <record> [<other>] [--any-stamp]
                                      a state hash per step; where two runs part; a
                                      record made by another build: refused, or run
-  bots <games>                       the game's bots play: outcomes and measures
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the
-                                     game's bands, and what they were the last run
+                                     game's bands (or none), and what they were the last
+                                     run; --json: each try's commands and record
   autobalance [--stage ID] [--budget N] [--time SECONDS] [--apply]
                                      change the stage until each named bot is in its band:
                                      the changes, before and after; --apply writes it

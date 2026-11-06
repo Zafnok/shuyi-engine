@@ -18,7 +18,7 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
+    Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay, run, schemas,
 };
 use crate::game::GameTools;
@@ -291,7 +291,6 @@ pub fn runs_the_game(name: &str) -> bool {
             | "run"
             | "scene"
             | "replay"
-            | "bots"
             | "playtest"
             | "autobalance"
             | "import"
@@ -354,10 +353,6 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
                 replay::text,
             )
         }
-        "bots" => match bots::parse_args(&args, options) {
-            Ok(input) => print(json, &bots::bots(game, &input), bots::text),
-            Err(e) => wrong(json, Op::Bots, &e, &bots::usage(command, options)),
-        },
         "playtest" => match playtest::parse_args(&args, options) {
             Ok(parsed) => {
                 let answer = playtest::kept(game, &project.root, &parsed.input);
@@ -473,7 +468,6 @@ mod tests {
             "run",
             "scene",
             "replay",
-            "bots",
             "playtest",
             "autobalance",
             "import",
@@ -517,8 +511,6 @@ mod tests {
         assert_eq!(code(&["replay"]), 2);
         assert_eq!(code(&["replay", "a", "b", "c"]), 2);
         assert_eq!(code(&["replay", "missing.ron"]), 1);
-        assert_eq!(code(&["bots", "3"]), 0);
-        assert_eq!(code(&["bots"]), 2);
         assert_eq!(code(&["playtest", "--tries", "3"]), 0);
         assert_eq!(code(&["playtest", "3"]), 2);
         assert_eq!(code(&["playtest", "--tries", "3", "--report", "r.json"]), 0);
@@ -689,7 +681,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 51);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 49);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

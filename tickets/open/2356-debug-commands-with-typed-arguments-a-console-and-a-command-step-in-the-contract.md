@@ -43,7 +43,7 @@ What Shuyi has today:
 - `GameTools::frame_options` (`crates/cli/src/game.rs`) lets a game
   declare start options, such as Hello, Grid's `--stage` and `--seed N`
   (`examples/hello-grid/src/tools.rs`). They reach `frame-png`, `run`,
-  `scene` and `bots` (ADR-0022 §2), but only at the start.
+  `scene` and `playtest` (ADR-0022 §2), but only at the start.
 - `frame_png::Step` (`crates/cli/src/frame_png.rs`) is `Keys`, `Pad`
   or `Wait`. A script changes state partway through a run only by input.
 - `TurnRules::legal_commands` (`crates/core/src/turn.rs`) lists the
@@ -372,9 +372,9 @@ None.
       changes nothing.
 - [ ] With debug tools off (`Game::with_debug_screens(false)`),
       `Game::command` refuses, and the state hash is unchanged.
-- [ ] `Place` is never among `legal_commands`, and the `bots` tests in
-      `examples/hello-grid/tests/it/bots.rs` and `contract.rs` pass
-      unchanged.
+- [ ] `Place` is never among `legal_commands`, and the bots' tests in
+      `examples/hello-grid/tests/it/bots.rs` and the playtest's in
+      `contract.rs` pass unchanged.
 - [ ] Either the console is in: typing a line on the toy and pressing
       the text-box Done key runs it and shows the reply, also on a
       paused game, and its insta snapshots (with and without a

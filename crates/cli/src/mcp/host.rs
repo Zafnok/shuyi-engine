@@ -28,7 +28,7 @@ use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
+    Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
@@ -195,7 +195,6 @@ pub fn one_off(
         Op::Replay => {
             needs(&|game, p| answered(op, input.clone(), |i| replay::replay(game, &p.root, &i)))
         }
-        Op::Bots => needs(&|game, _| answered(op, input.clone(), |i| bots::bots(game, &i))),
         Op::Playtest => {
             needs(&|game, p| answered(op, input.clone(), |i| playtest::kept(game, &p.root, &i)))
         }

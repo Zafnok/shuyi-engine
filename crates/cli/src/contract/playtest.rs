@@ -11,6 +11,11 @@
 //! Each entrant's line carries the plan's summary items ([`Summary`]),
 //! and [`kept`] keeps every run in a history and says what the last run
 //! of the same stage, entrants and options found.
+//!
+//! Each try keeps its commands and its record for `replay`, if the game
+//! gives one ([`TryKept`]), and each entrant its outcomes counted and the
+//! spread of its turns and measures. A plan with no checks is a plain bot
+//! run: nothing is judged, and it passes when every try played.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -19,9 +24,10 @@ use std::time::Duration;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_core::bots::playtest::{Check, Found, PlaytestReport, Tried, Tries, judge};
+use shuyi_core::bots::playtest::{
+    Check, Found, PlayedTry, PlaytestReport, Tried, Tries, UNFINISHED, judge,
+};
 
-use super::bots::{MAX_GAMES, options_text};
 use super::codes::Code;
 use super::{Answer, Op, codes};
 use crate::game::{
@@ -41,6 +47,9 @@ pub const DEFAULT_HISTORY: &str = "target/playtest-history";
 /// The tries when neither the input nor the game says: 100 from seed 0,
 /// each stopped at turn 200.
 pub const DEFAULT_TRIES: Tries = Tries::new(100, 0, 200);
+
+/// The most tries of each entrant one `playtest` plays.
+pub const MAX_TRIES: u32 = 10_000;
 
 /// What `playtest` plays. A number left out is the game's default
 /// ([`GameTools::playtest_defaults`]).
@@ -108,6 +117,66 @@ pub struct Played {
     /// summary item, `was won 63/100`.
     #[serde(default)]
     pub was: Option<String>,
+    /// How many of its tries ended each way, by the outcome's name (its
+    /// `Debug` up to its fields: `Won` for `Won { turn: 12 }`), and
+    /// [`UNFINISHED`] for those the turn limit stopped.
+    #[serde(default)]
+    pub outcomes: BTreeMap<String, u32>,
+    /// How many turns its tries took.
+    #[serde(default)]
+    pub turns: Option<Spread>,
+    /// The game's measures over its tries, by name.
+    #[serde(default)]
+    pub measures: BTreeMap<String, Spread>,
+    /// Each try's commands and record, in seed order.
+    #[serde(default)]
+    pub tries: Vec<TryKept>,
+}
+
+/// What the answer keeps of one try besides the report's line: how many
+/// commands were applied, and its record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct TryKept {
+    /// Its seed.
+    pub seed: u64,
+    /// The commands applied.
+    pub commands: u32,
+    /// Its record, in the game's record format, for `replay`; left out if
+    /// the game's plan keeps none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub record: Option<String>,
+}
+
+/// How a number spread over an entrant's tries.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Spread {
+    /// The smallest.
+    pub min: i64,
+    /// The largest.
+    pub max: i64,
+    /// The sum.
+    pub total: i64,
+    /// The mean (the sum over the tries that have it).
+    pub mean: f64,
+}
+
+impl Spread {
+    /// The spread of `values`, if there are any.
+    pub fn of(values: &[i64]) -> Option<Self> {
+        let (&min, &max) = (values.iter().min()?, values.iter().max()?);
+        let total: i64 = values.iter().sum();
+        #[allow(clippy::cast_precision_loss)] // a report, not a simulation
+        let mean = total as f64 / values.len() as f64;
+        Some(Self {
+            min,
+            max,
+            total,
+            mean,
+        })
+    }
 }
 
 /// The last run before this one, from the history.
@@ -271,7 +340,7 @@ pub fn kept(
             entrants: names,
             options: options.clone(),
             made: made.clone(),
-            output: output.clone(),
+            output: without_tries(output),
         };
         if let Err(e) = history::append(&file, &record) {
             unwritten.get_or_insert(format!("history {}: {e}", file.display()));
@@ -283,6 +352,16 @@ pub fn kept(
         answer = answer.with_code(codes::FILE);
     }
     answer
+}
+
+/// `output` as the history keeps it: without each try's commands and
+/// record, which the next run never compares.
+fn without_tries(output: &PlaytestOutput) -> PlaytestOutput {
+    let mut kept = output.clone();
+    for played in &mut kept.entrants {
+        played.tries.clear();
+    }
+    kept
 }
 
 /// `output` against the `last` run kept: its date and commit, and each
@@ -328,11 +407,11 @@ fn was(now: &PlaytestOutput, previous: &PlaytestOutput, name: &str) -> Option<St
     played.summary.first().map(|item| format!("was {item}"))
 }
 
-/// Whether `tries` can be played: 1 to [`MAX_GAMES`] of them, each seed
+/// Whether `tries` can be played: 1 to [`MAX_TRIES`] of them, each seed
 /// a `u64`.
 pub(crate) fn check_tries(tries: &Tries) -> Result<(), String> {
-    if tries.count == 0 || tries.count > MAX_GAMES {
-        return Err(format!("tries: 1 to {MAX_GAMES}, not {}", tries.count));
+    if tries.count == 0 || tries.count > MAX_TRIES {
+        return Err(format!("tries: 1 to {MAX_TRIES}, not {}", tries.count));
     }
     if tries.seed.checked_add(u64::from(tries.count)).is_none() {
         return Err("seed: too big for that many tries".to_owned());
@@ -427,11 +506,11 @@ pub(crate) fn choose(
     Ok(chosen.into_iter().collect())
 }
 
-/// One stage's report and speeds.
+/// One stage's report, and each entrant's speed, tally and tries kept.
 pub(crate) struct StagePlayed {
     /// The tries, judged.
     pub(crate) report: PlaytestReport,
-    /// Each entrant's speed.
+    /// Each entrant's speed, tally and tries kept.
     pub(crate) entrants: Vec<Played>,
 }
 
@@ -474,7 +553,7 @@ pub(crate) fn played(
     checks: &[Check],
     tries: &Tries,
     threads: usize,
-    play: &(dyn Fn(usize, u64, u32) -> Result<Tried, String> + Sync),
+    play: &(dyn Fn(usize, u64, u32) -> Result<PlayedTry, String> + Sync),
 ) -> Result<StagePlayed, String> {
     let work: Vec<(usize, u64)> = chosen
         .iter()
@@ -490,24 +569,67 @@ pub(crate) fn played(
         .map(|&e| (entrants[e].0.clone(), Vec::new()))
         .collect();
     let mut took = vec![Duration::ZERO; chosen.len()];
-    for ((e, _), (tried, elapsed)) in work.iter().zip(done) {
+    let mut kept: Vec<Vec<TryKept>> = vec![Vec::new(); chosen.len()];
+    for ((e, _), (one, elapsed)) in work.iter().zip(done) {
         let at = chosen.iter().position(|c| c == e).unwrap_or_default();
-        parts[at].1.push(tried);
+        kept[at].push(TryKept {
+            seed: one.tried.seed,
+            commands: one.commands,
+            record: one.record,
+        });
+        parts[at].1.push(one.tried);
         took[at] += elapsed;
     }
     let report = judge(parts, checks).map_err(|e| format!("the game's checks: {e}"))?;
     let entrants = chosen
         .iter()
         .zip(took)
-        .map(|(&e, took)| Played {
-            name: entrants[e].0.clone(),
-            label: entrants[e].1.clone(),
-            seconds_per_try: took.as_secs_f64() / f64::from(tries.count),
-            summary: Vec::new(),
-            was: None,
+        .zip(kept)
+        .zip(&report.entrants)
+        .map(|(((&e, took), kept), judged)| {
+            let mut played = Played {
+                name: entrants[e].0.clone(),
+                label: entrants[e].1.clone(),
+                seconds_per_try: took.as_secs_f64() / f64::from(tries.count),
+                summary: Vec::new(),
+                was: None,
+                outcomes: BTreeMap::new(),
+                turns: None,
+                measures: BTreeMap::new(),
+                tries: kept,
+            };
+            tally(&mut played, &judged.tries);
+            played
         })
         .collect();
     Ok(StagePlayed { report, entrants })
+}
+
+/// The name an outcome is counted by: its `Debug` up to its fields
+/// (`Won` for `Won { turn: 12 }`), or [`UNFINISHED`].
+fn outcome_name(outcome: Option<&str>) -> &str {
+    outcome.map_or(UNFINISHED, |o| {
+        o.split([' ', '{', '(']).next().unwrap_or_default()
+    })
+}
+
+/// `tries` counted by outcome into `played`, and the spread of their turns
+/// and of each measure.
+fn tally(played: &mut Played, tries: &[Tried]) {
+    let mut measures: BTreeMap<&str, Vec<i64>> = BTreeMap::new();
+    for t in tries {
+        let name = outcome_name(t.outcome.as_deref()).to_owned();
+        *played.outcomes.entry(name).or_insert(0) += 1;
+        for (name, &value) in &t.measures {
+            measures.entry(name).or_default().push(value);
+        }
+    }
+    let turns: Vec<i64> = tries.iter().map(|t| i64::from(t.turns)).collect();
+    played.turns = Spread::of(&turns);
+    played.measures = measures
+        .into_iter()
+        .filter_map(|(name, values)| Some((name.to_owned(), Spread::of(&values)?)))
+        .collect();
 }
 
 /// `playtest`'s own options, for its usage.
@@ -569,6 +691,24 @@ const OWN: [GameOption; 11] = [
     },
 ];
 
+/// The game's start `options`, a line each, for a usage.
+pub fn options_text(options: &[GameOption]) -> String {
+    let mut out = String::new();
+    for option in options {
+        let name = match option.value {
+            Some(value) => format!("{} {value}", option.flag),
+            None => option.flag.to_owned(),
+        };
+        // Writing to a `String` can't fail.
+        let _ = writeln!(
+            out,
+            "  {name:<20} {}",
+            option.help.lines().next().unwrap_or_default()
+        );
+    }
+    out
+}
+
 /// `playtest`'s usage, with the game's start `options`.
 pub fn usage(command: &str, options: &[GameOption]) -> String {
     let mut out = format!(
@@ -578,9 +718,12 @@ pub fn usage(command: &str, options: &[GameOption]) -> String {
          Each of the game's bots (its entrants) plays --tries tries, seeded N, N + 1, …,\n\
          each stopped at turn --turns, and the game's checks judge them. A number not\n\
          given is the game's: {} tries from seed {} to turn {} unless it says. It fails\n\
-         only when a bot succeeds less often than a check's floor. Each run is kept in\n\
-         the history, a file per stage, entrants and options, and each bot's line says\n\
-         what the last run there found (was …).\n\n",
+         only when a bot succeeds less often than a check's floor; with no checks, a\n\
+         plain bot run, it judges nothing and passes when every try played. Each run is\n\
+         kept in the history, a file per stage, entrants and options, and each bot's line\n\
+         says what the last run there found (was …). The JSON answer has each try's\n\
+         commands and record for replay, if the game keeps one, and each bot's outcomes\n\
+         counted and the spread of its turns and measures.\n\n",
         DEFAULT_TRIES.count, DEFAULT_TRIES.seed, DEFAULT_TRIES.turns
     );
     out.push_str(&options_text(&OWN));
@@ -651,7 +794,9 @@ const LINE: usize = 100;
 /// What `playtest` found, for people: for each stage, the plan's title,
 /// the report's table, then a line per entrant with its label, its
 /// summary, its speed and what it was in the last run, and that run's
-/// date and commit.
+/// date and commit. A stage with no checks, a plain bot run, then has
+/// each entrant's outcomes counted and the spread of its turns and
+/// measures.
 pub fn text(outputs: &[PlaytestOutput]) -> String {
     render(outputs, false)
 }
@@ -686,6 +831,13 @@ fn render(outputs: &[PlaytestOutput], brief: bool) -> String {
             for played in &output.entrants {
                 out.push_str(&entrant_line(played, width));
             }
+            if output.report.checks.is_empty() {
+                let several = output.entrants.len() > 1;
+                for played in &output.entrants {
+                    let name = several.then_some((played.name.as_str(), width));
+                    out.push_str(&tally_lines(played, name));
+                }
+            }
             if let Some(previous) = &output.previous {
                 let _ = writeln!(
                     out,
@@ -697,6 +849,32 @@ fn render(outputs: &[PlaytestOutput], brief: bool) -> String {
         })
         .collect();
     stages.join("\n")
+}
+
+/// `played`'s outcomes counted, then the spread of its turns and of each
+/// measure, a line each; each line starts with its name padded to the
+/// width given, if one is.
+fn tally_lines(played: &Played, name: Option<(&str, usize)>) -> String {
+    let spread = |s: &Spread| format!("{}–{}, mean {:.2}", s.min, s.max, s.mean);
+    let outcomes: Vec<String> = played
+        .outcomes
+        .iter()
+        .map(|(outcome, n)| format!("{outcome} {n}"))
+        .collect();
+    let mut lines = vec![format!("outcomes: {}", outcomes.join(", "))];
+    if let Some(turns) = &played.turns {
+        lines.push(format!("turns: {}", spread(turns)));
+    }
+    for (measure, s) in &played.measures {
+        lines.push(format!("{measure}: {}, total {}", spread(s), s.total));
+    }
+    let head = name.map(|(name, width)| format!("{name:<width$} · "));
+    let mut out = String::new();
+    for line in &lines {
+        // Writing to a `String` can't fail.
+        let _ = writeln!(out, "{}{line}", head.as_deref().unwrap_or_default());
+    }
+    out
 }
 
 /// `played`'s line, its name padded to `width`: its label, its summary

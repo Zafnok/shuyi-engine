@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2532", "2533"]
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2544 — One operation plays a game's bots: `bots` folded into `playtest`
@@ -190,15 +190,15 @@ its answer and its tests unchanged.
 
 ## Acceptance criteria
 
-- [ ] `shuyi bots` is gone: the binary's usage has no `bots`, and
+- [x] `shuyi bots` is gone: the binary's usage has no `bots`, and
       `crates/cli/schemas/` has no `bots.*.json`.
-- [ ] `cargo shuyi playtest --tries 20 --json` in a game made from the
+- [x] `cargo shuyi playtest --tries 20 --json` in a game made from the
       grid template answers 20 tries, each with `commands` and a
       `record` that `replay` plays to its outcome.
-- [ ] Hello, Grid counts the foe's trips in one place.
-- [ ] `grep -rn '`bots`' tickets/open` finds no ticket that means the
+- [x] Hello, Grid counts the foe's trips in one place.
+- [x] `grep -rn '`bots`' tickets/open` finds no ticket that means the
       operation.
-- [ ] All gates in the `run-gates` skill pass, the `templates` job too.
+- [x] All gates in the `run-gates` skill pass, the `templates` job too.
 
 ## Tests required
 
@@ -211,5 +211,123 @@ its answer and its tests unchanged.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **Core** (`shuyi_core::bots::playtest`): `play_try(stage, entrant,
+  seed, turns)` plays one seed as `play_tries` does and gives a
+  `PlayedTry { tried, commands, record }`; the record comes from the new
+  provided method `Entrant::record(seed, commands)` (default `None`).
+  `UNFINISHED` names a turn-limit stop, in the try line and the counts.
+  Additions only; `Tried` and the judging are unchanged.
+- **`playtest`** (`crates/cli/src/contract/playtest.rs`): a plan's try
+  (`PlayTry`, and `autobalance`'s `StagePlay` and `Evaluate`) returns a
+  `PlayedTry`. Each entrant's `Played` gains `outcomes` (counted by the
+  outcome's name, its `Debug` up to its fields), `turns` and `measures`
+  (`Spread`, moved from `bots`), and `tries` (`TryKept`: `seed`,
+  `commands`, `record`, left out of the JSON when the plan keeps none).
+  A plan with no checks judges nothing and passes when every try
+  played; its text adds the counts and spreads after the try lines, as
+  `bots` printed them. The history keeps no try's commands or record.
+  `MAX_TRIES` and `options_text` moved here.
+- **`bots` is gone:** `Op::Bots`, `contract/bots.rs`,
+  `GameTools::bots`, its schemas, subcommand, usage line and MCP tool.
+  Contract version 38.
+- **The grid template** plays its bot through `playtest`: one entrant,
+  `random`, no checks, each try recorded (`playtest_plan`, re-exported
+  from the stage's module). Its record test calls `playtest` and replays
+  the first try to its outcome; its playtest workflow no longer passes
+  `allow-no-plan`, since a grid game now has a plan. The blank
+  template's test checks `playtest_plan` is unsupported.
+- **Hello, Grid** drops `bots` and `bot_play`; its heroes play through
+  `play_try` and keep a `StageRecord` each (`Hero::record`), and
+  `StageMeasure` is the one count of the foe's trips. A new test replays
+  each playtest try to its outcome. Its golden record is the `random`
+  hero's try of seed 11, the same play `bots 1 --seed 11` made.
+- **The tutorial** (`site/tutorial/*`): steps 09 and 10 give a
+  `playtest_plan` (one bot, `line`, each try recorded) in place of
+  `bots`; every step's test, `shuyi.ron` and `.cargo/config.toml`
+  comment follows; the tutorial page and the book's *Testing* and
+  *Tools for agents* chapters say `playtest`.
+- The docs (`docs/contract.md`, `README.md`, Hello, Grid's README, the
+  templates' `AGENTS.md`, the problem codes' pages SH0001, SH3001,
+  SH3002 and SH3007, the reusable playtest workflow's input text), the
+  shipped skills `shuyi-balance-bots`, `shuyi-debug-replay`,
+  `shuyi-stage-grid` and `shuyi-test` and their worked examples, and 20
+  open tickets that named the operation.
+- [ADR-0088](../../docs/adr/0088-one-operation-plays-a-games-bots-playtest-keeps-the-commands-and-record-of-each-try-and-the-entrant-gives-the-record.md)
+  records the choices (0087 is taken by an open PR).
+
+Checked: `cargo shuyi playtest --tries 20 --json` in a game fresh from
+the grid template answered 20 tries (18 caught, 1 won, 1 unfinished),
+each with `commands` and a `record` that `cargo shuyi replay` played to
+the try's outcome, with the same number of steps.
+
+Deviations:
+
+- The record hook is on the entrant (`Entrant::record`), with the
+  core's `play_try` keeping the commands, rather than on the plan: the
+  CLI never sees a game's command type, and with it the game drops its
+  copy of `play_tries`' loop (game#1240).
+- Outcomes are counted by name (`Won` for `Won { turn: 12 }`), so a
+  game whose outcome carries its turn doesn't count each turn apart.
+- The tutorial's ten steps and the book weren't named by the ticket;
+  they used `bots` and had to move with it.
+- The either-order clauses: 2557, 2133, 2524 and 2527 are open, so their
+  "if not" branches hold; each ticket's text now says what holds (2524
+  and 2527 read `playtest`, 2133 names the template's `random`
+  entrant, 2557 the no-checks text's try lines).
+
+Follow-ups: none new. The game's move onto a plan is game#1240, which
+will move the pin past this change (no game PR exists yet).
+
+Breaking: shuyi-cli: GameTools::bots, contract::bots (BotsInput, BotsOutput, Play, Spread, tally, UNFINISHED, MAX_GAMES, parse_args, usage, text, game_arg, options_text) and the `bots` operation and MCP tool: gone; a game gives its bot run as a `PlaytestPlan` with one entrant and no checks (`GameTools::playtest_plan`), and reads each try's `commands` and `record` from `playtest`'s answer.
+
+```migration
+since: 0.1.0
+what: The bots operation is folded into playtest; a game's bot run is a playtest plan with one entrant and no checks.
+old: "GameTools::bots(&self, input: &BotsInput) -> Result<BotsOutput, String>"
+new: "GameTools::playtest_plan(&self, stage: Option<&str>, input: &PlaytestInput) -> Result<PlaytestPlan, String>"
+before: |
+  fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
+      let plays = (input.seed..input.seed + u64::from(input.games))
+          .map(|seed| bot_play(&map, seed, input.turns))
+          .collect::<Result<_, _>>()?;
+      Ok(tally(plays))
+  }
+after: |
+  fn playtest_plan(&self, _: Option<&str>, _: &PlaytestInput) -> Result<PlaytestPlan, String> {
+      let map = self.map()?;
+      Ok(PlaytestPlan::new(
+          "the stage, played by a random bot",
+          vec![("random".to_owned(), None)],
+          Box::new(|_| Vec::new()),
+          Box::new(move |_, seed, turns| bot_try(&map, seed, turns)),
+      ))
+  }
+find: ["fn bots(", "BotsInput", "tally("]
+```
+
+Breaking: shuyi-cli: PlayTry, StagePlay, Evaluate: a plan's one try returns `shuyi_core::bots::playtest::PlayedTry` (the try, the commands applied, its record), not `Tried`; most simply `play_try` in place of `play_tries` over one seed.
+
+```migration
+since: 0.1.0
+what: A plan's one try gives the commands applied and its record besides the try.
+old: Box<dyn Fn(usize, u64, u32) -> Result<Tried, String>>
+new: Box<dyn Fn(usize, u64, u32) -> Result<PlayedTry, String>>
+before: |
+  Box::new(move |entrant, seed, turns| {
+      let mut tries = play_tries(&stage, &ENTRANTS[entrant], seed..seed + 1, turns)
+          .map_err(|e| e.to_string())?;
+      tries.pop().ok_or_else(|| "no try".to_owned())
+  })
+after: |
+  Box::new(move |entrant, seed, turns| {
+      play_try(&stage, &ENTRANTS[entrant], seed, turns).map_err(|e| e.to_string())
+  })
+find: ["play_tries(", "seed..seed + 1"]
+```
+
+No version bump or `CHANGELOG.md` line: the first crates.io release
+(2005) waits for this ticket.
+
+Nick input: none.

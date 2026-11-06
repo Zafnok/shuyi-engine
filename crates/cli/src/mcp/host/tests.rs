@@ -264,7 +264,6 @@ fn the_one_off_operations_answer_as_the_cli_does() {
         (Op::Check, json!({}), true),
         (Op::Run, json!({ "frames": 2 }), true),
         (Op::Replay, json!({ "record": "a.ron" }), true),
-        (Op::Bots, json!({ "games": 2 }), true),
         (Op::Playtest, json!({}), true),
         (Op::Import, json!({ "file": "a.ron" }), false),
         (Op::Explain, json!({ "code": "SH0002" }), true),
@@ -276,12 +275,12 @@ fn the_one_off_operations_answer_as_the_cli_does() {
             assert_eq!(answer["ok"], true, "{op:?}: {answer}");
         }
     }
-    let answer = ask(&mut host, Op::Bots, json!({ "games": 0 }));
+    let answer = ask(&mut host, Op::Playtest, json!({ "tries": 0 }));
     assert_eq!(
         (answer["ok"].as_bool(), answer["code"].as_str()),
         (Some(false), Some("SH0001"))
     );
-    assert_eq!(answer["error"], "games: 1 to 10000, not 0");
+    assert_eq!(answer["error"], "tries: 1 to 10000, not 0");
     let answer = ask(&mut host, Op::Bake, json!({ "nope": true }));
     assert_eq!(answer["code"], "SH0001");
     assert!(answer["error"].as_str().unwrap().starts_with("input: "));
@@ -298,7 +297,6 @@ fn without_the_games_tools_or_a_project_an_operation_says_what_it_lacks() {
         Op::Run,
         Op::Scene,
         Op::Replay,
-        Op::Bots,
         Op::Playtest,
         Op::Bake,
     ] {

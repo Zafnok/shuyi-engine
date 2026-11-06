@@ -1,19 +1,19 @@
 // The worked example of shuyi-balance-bots, a script of contract
 // commands run on a game made with `shuyi new <dir> --template grid`: the
-// engine's random bot plays it with `bots`; `playtest` isn't offered until
-// the stage's tools give a plan; then two named bots, a random one and a
-// rollout bot, play it 20 times each, judged by the bands of a data file.
+// engine's random bot plays it with `playtest`, the stage's plain bot run
+// with no checks; then two named bots, a random one and a rollout bot,
+// play it 20 times each, judged by the bands of a data file.
 Example(
     template: "grid",
     steps: [
-        // A plain bot run: 5 games, how each ended, and a record of each.
-        Shuyi(args: ["bots", "5"], expect: [
-            Is("/result/games", "5"),
-            Has("/result/outcomes"),
-            Has("/result/plays/4/record"),
+        // A plain bot run: 5 tries, how each ended, and a record of each.
+        // A new game's plan has one bot and no checks, so nothing is judged.
+        Shuyi(args: ["playtest", "--tries", "5"], expect: [
+            Is("/result/0/entrants/0/name", "random"),
+            Has("/result/0/entrants/0/outcomes"),
+            Has("/result/0/entrants/0/tries/4/record"),
+            Is("/result/0/report/checks", "[]"),
         ]),
-        // A new game's tools give no playtest plan yet.
-        Shuyi(args: ["playtest"], ok: false, expect: [Is("/code", "SH3001")]),
         // The rules make a copy of the stage as your piece knows it: the
         // luck to come redrawn, which a bot that plans plays on.
         Edit(
@@ -35,10 +35,16 @@ Example(
             find: "#[cfg(feature = \"tools\")]\nmod tools;",
             replace: "#[cfg(feature = \"tools\")]\nmod bots;\n#[cfg(feature = \"tools\")]\nmod tools;",
         ),
+        // The stage's plan is now theirs, in place of its bot run.
         Edit(
             file: "crates/game/src/stages/top_down_grid/tools.rs",
-            find: "    fn importers(&self) -> Importers {",
-            replace: "    /// `playtest`: the stage's two bots, judged by `playtest.ron`.\n    fn playtest_plan(\n        &self,\n        _: Option<&str>,\n        _: &shuyi_cli::contract::playtest::PlaytestInput,\n    ) -> Result<shuyi_cli::PlaytestPlan, String> {\n        super::bots::plan(&self.map()?)\n    }\n\n    fn importers(&self) -> Importers {",
+            find: "    /// The stage's bot run ([`playtest_plan`]); the game's options don't\n    /// change it.",
+            replace: "    /// `playtest`: the stage's two bots, judged by `playtest.ron`.",
+        ),
+        Edit(
+            file: "crates/game/src/stages/top_down_grid/tools.rs",
+            find: "        Ok(playtest_plan(self.map()?))",
+            replace: "        super::bots::plan(&self.map()?)",
         ),
         // Tool code isn't a screen's: check-text skips it.
         Edit(

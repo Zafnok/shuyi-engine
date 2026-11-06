@@ -308,6 +308,46 @@ fn a_try_stopped_by_the_limit_has_no_outcome() {
     assert!(report.blocked);
 }
 
+/// [`STEPPER`], keeping a record of each try: its seed and its commands.
+struct Recorder;
+
+impl Entrant<(), DiceRace> for Recorder {
+    fn name(&self) -> &str {
+        STEPPER.name()
+    }
+
+    fn start(&self, stage: &(), seed: u64) -> DiceRace {
+        STEPPER.start(stage, seed)
+    }
+
+    fn bots(&self, seed: u64) -> Vec<(usize, Box<dyn Bot<DiceRace>>)> {
+        STEPPER.bots(seed)
+    }
+
+    fn measure(&self) -> Box<dyn Measure<DiceRace>> {
+        STEPPER.measure()
+    }
+
+    fn record(&self, seed: u64, commands: &[Race]) -> Option<String> {
+        Some(format!("{seed}: {}", commands.len()))
+    }
+}
+
+#[test]
+fn a_try_keeps_its_commands_and_the_entrants_record() {
+    let played = play_try(&(), &Recorder, 7, 100).unwrap();
+    let tries = play_tries(&(), &STEPPER, 7..8, 100).unwrap();
+    assert_eq!(played.tried, tries[0]);
+    // Both sides step until the first is home on turn 10: 19 moves.
+    assert_eq!(played.commands, 19);
+    assert_eq!(played.record.as_deref(), Some("7: 19"));
+    // An entrant that keeps no record.
+    let plain = play_try(&(), &STEPPER, 7, 100).unwrap();
+    assert_eq!(plain, PlayedTry::new(tries[0].clone(), 19));
+    let stopped = play_try(&(), &STEPPER, 7, 3).unwrap();
+    assert_eq!((stopped.tried.outcome, stopped.commands), (None, 6));
+}
+
 #[test]
 fn judging_seed_ranges_in_any_order_gives_the_report_of_a_run() {
     let ranges = [34..50, 17..34, 0..17];

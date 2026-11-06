@@ -34,8 +34,8 @@
     ),
 
     // The game's tool program, for the commands that run the game:
-    // frame-png, lang-status, font-atlas, check, run, scene, replay, bots,
-    // import.
+    // frame-png, lang-status, font-atlas, check, run, scene, replay,
+    // playtest, import.
     game: (package: "{{crate_name}}", example: "tools", features: ["tools"]),
 
     // The folder of the game's files, which `cargo shuyi run --watch` lays

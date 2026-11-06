@@ -45,8 +45,8 @@ pub fn area(console: ConsoleSpec) -> Rect {
 }
 
 /// A record of a stage: its seed and the commands sent to its rules, and
-/// what made it. The game's record format for `replay`; `bots` writes one
-/// of each play, and a crash report holds the open stage's.
+/// what made it. The game's record format for `replay`; `playtest` keeps
+/// one of each try, and a crash report holds the open stage's.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StageRecord {

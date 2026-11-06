@@ -42,16 +42,17 @@ Shuyi today:
 - `crates/core/src/history.rs`: `History`, a game's first state and its
   commands, saved as `(initial: …, commands: [ … ])`. A refused command
   replays as nothing.
-- `crates/cli/src/contract/bots.rs` and `replay.rs` (1129, done):
-  `shuyi bots` plays seeded random games and returns a record of each;
-  `shuyi replay` runs one record twice and reports the first step whose
-  hashes differ. The built-in template's grid stage
+- `crates/cli/src/contract/playtest.rs` and `replay.rs` (1129 and
+  2544, done): `shuyi playtest` plays seeded tries of a game's bots (its
+  playtest plan) and returns a record of each try; `shuyi replay` runs
+  one record twice and reports the first step whose hashes differ. The
+  built-in template's grid stage
   (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`)
   and `examples/hello-grid/src/tools.rs` wire both.
 
 What none of it catches is state that the serde form leaves out.
 `state_hash` hashes the serde form, so it never sees a `#[serde(skip)]`
-field or a cache. `bots` and `replay` rebuild the state by replaying
+field or a cache. `playtest` and `replay` rebuild the state by replaying
 commands, so they never see it either. The bug shows only when play goes
 on from a reloaded copy and is compared with a copy that was never
 reloaded. Agent-written rules code is likely to have it. It breaks
@@ -75,8 +76,8 @@ Why it matters:
   only runs.
 
 It is cheap because it reuses `RandomBot`, `History`, `state_hash` and
-the `bots` input. Nick placed this group after the MVP, not parked, on
-2026-10-20 (`docs/decisions.md`, *a second comparison*).
+the `playtest` input. Nick placed this group after the MVP, not parked,
+on 2026-10-20 (`docs/decisions.md`, *a second comparison*).
 
 ## Nick input
 
@@ -189,19 +190,16 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
 
 **The contract op `soak`** (`crates/cli/src/contract/soak.rs`):
 
-- `SoakInput`: `games`, `seed`, `turns` and `start`, with the same
-  defaults and limits as `BotsInput` (`MAX_GAMES`, the seed check), and
-  `save: Option<String>`, a folder under the project's root.
-  **Either order with 2544:** if 2544 is done, `bots` is folded into
-  `playtest`: name the count `tries` and take the defaults and limits
-  from `PlaytestInput`, and read "`bots`" in this ticket as
-  `playtest`; if not, use `BotsInput`'s as written, and 2544 renames
-  them.
+- `SoakInput`: `tries`, `seed`, `turns` and `start`, with the same
+  defaults and limits as `PlaytestInput` (a number left out is the
+  game's `playtest_defaults`; `MAX_TRIES` and `check_tries`' seed
+  check), and `save: Option<String>`, a folder under the project's
+  root.
   **From 2568 (done):** call
   `game::check_start(game.frame_options(), &input.start)` at the top of
   the `soak` operation beside its other checks, failing with
   `codes::WRONG_ARGUMENTS`.
-- `SoakOutput { games: u32, steps: u64, unfinished: u32, failures:
+- `SoakOutput { tries: u32, steps: u64, unfinished: u32, failures:
   Vec<SoakFailure> }`. `SoakFailure { seed: u64, check: String, step:
   u32, detail: String, played: u32, shrunk: u32, complete: bool, record:
   Option<String> }`: the shrunk failure, the play's length before and
@@ -213,16 +211,18 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   invariants: fn(&R) -> Vec<String>, record: impl Fn(u64, &[R::Command])
   -> Result<String, String>) -> Result<SoakOutput, String>`: for each
   seed, `start(seed)` played by one `RandomBot::new(seed)` for every side
-  (the seed rule of the template's `bots`), a failure shrunk with
-  `SHRINK_RUNS` (500) candidates, and its record written by `record`. An
-  error from `record` leaves the failure's `record` empty, as `bots`
-  leaves a play's. It is to `soak` what `replay::turns` is to `replay`.
-- `soak(game, root, input) -> Answer<SoakOutput>`: refuses `games` and
-  `seed` as `bots` does, asks the game, and passes when there is no
-  failure. With `save`, it makes the folder if it is missing and writes
-  each failure's record to `<save>/soak-<seed>.record`, which `shuyi
-  replay` reads. A record is a run's log, not an asset kind, so it gets
-  no `Format` (as 2706 says of its records). Limits:
+  (the seed rule of the template's playtest entrant `random`), a
+  failure shrunk with `SHRINK_RUNS` (500) candidates, and its record
+  written by `record`. An error from `record` leaves the failure's
+  `record` empty, as `playtest` leaves out a try's when the game keeps
+  none. It is to `soak` what `replay::turns` is to `replay`.
+- `soak(game, root, input) -> Answer<SoakOutput>`: refuses `tries` and
+  `seed` with `check_tries`, as `playtest` does, asks the game, and
+  passes when there is no failure. With `save`, it makes the folder if
+  it is missing and writes each failure's record to
+  `<save>/soak-<seed>.record`, which `shuyi replay` reads. A record is a
+  run's log, not an asset kind, so it gets no `Format` (as 2706 says of
+  its records). Limits:
   - the plays the turn limit stopped;
   - a shrink that ran out of runs: "the record may not be the
     shortest";
@@ -231,36 +231,40 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   - always: "commands a game leaves out of `legal_commands` are never
     tried".
 - `GameTools::soak(&self, input: &SoakInput) -> Result<SoakOutput,
-  String>` (`crates/cli/src/game.rs`, after `bots`), defaulting to
-  `unsupported("soak", "soak")`. `Fake` (`contract/fake.rs`) gets a
-  `soak` field.
+  String>` (`crates/cli/src/game.rs`, after `playtest_defaults`),
+  defaulting to `unsupported("soak", "soak")`. `Fake`
+  (`contract/fake.rs`) gets a `soak` field.
 - `Op::Soak` (`soak`): in `Op::ALL` (`crates/cli/src/contract.rs`),
   `Op::name`, `schemas()` (`soak.input.json`, `soak.output.json`),
   `cli::runs_the_game` and `cli::with_game` (`contract/cli.rs`, and the
   list of ops in its test of `runs_the_game`), the usage in
-  `crates/cli/src/lib.rs` (beside `bots`), and
+  `crates/cli/src/lib.rs` (beside `playtest`), and
   `docs/contract.md`'s two tables. `contract::VERSION` goes up by one,
   with its line in `crates/cli/schemas/versions.json`.
 - The other places that list the ops gain `soak`: the table in
   `contract.rs`'s module docs, `lib.rs`'s module docs, the
   `description` in `crates/cli/Cargo.toml`, the two rows of `README.md`
   that list them, `examples/hello-grid/README.md` (its tools row and a
-  line under `cargo shuyi bots 30`), and the line of the template's
-  shared `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`, "`scene`,
-  `replay` and `bots` need a stage and rules") that every game gets.
-- The command line: `shuyi soak <games> [--seed N] [--turns N] [--save
-  DIR] [options] [--json]`. `parse_args` takes `--save DIR` out first and
-  passes the rest to `bots::parse_args`. `usage` reads like
-  `bots::usage`, with `--save`.
+  line under its `cargo shuyi playtest` lines), and the line of the
+  template's shared `AGENTS.md`
+  (`templates/shuyi-default/base/AGENTS.md`, "`scene`, `replay` and
+  `playtest` need a stage and rules") that every game gets.
+- The command line: `shuyi soak [--tries N] [--seed N] [--turns N]
+  [--save DIR] [options] [--json]`. `parse_args` takes `--save DIR` out
+  first and passes the rest to `playtest::parse_args`, keeping its
+  `tries`, `seed`, `turns` and `start` and refusing its other flags.
+  `usage` reads like `playtest::usage`, with `--save`, and lists the
+  game's options with `playtest::options_text`.
 - `text`: one line for the soak, then for each failure the seed, the
   check, the step, the lengths before and after, the detail, and the
   record.
 
-**Why an op and not a flag on `bots`.** `GameTools::bots` is the game's
-own loop, with its own bot per side (Hello, Grid plays the foe with
-`Chase`), so a `--soak` flag would need every game's `bots` to honour
-it. A separate method with a default says plainly what a game offers.
-Its input keeps `bots`' fields and limits.
+**Why an op and not a flag on `playtest`.** A game's playtest plan
+(`GameTools::playtest_plan`) is its own bots, with its own bot per side
+(Hello, Grid plays the foe with `Chase`), not random legal play, so a
+`--soak` flag would need every game's plan to honour it. A separate
+method with a default says plainly what a game offers. Its input keeps
+`playtest`'s fields and limits.
 
 **The grid stage of the built-in template**
 (`templates/shuyi-default/stages/top-down-grid`, the part
@@ -283,19 +287,20 @@ every game, the blank one too, and the soak never goes in them:
   imported there as `turns`, so name the module).
 - **Its CI is a workflow of the stage's own,** `.github/workflows/soak.yml`
   beside the stage's `playtest.yml`, written only into grid games. It
-  runs `cargo shuyi soak 20 --turns 100` on pull requests and pushes to
-  `main`, with the same `permissions: contents: read`, concurrency group
-  and comment style as `playtest.yml`, and the toolchain and cache steps
-  of the base's `ci.yml`. The base's `ci.yml` doesn't change.
+  runs `cargo shuyi soak --tries 20 --turns 100` on pull requests and
+  pushes to `main`, with the same `permissions: contents: read`,
+  concurrency group and comment style as `playtest.yml`, and the
+  toolchain and cache steps of the base's `ci.yml`. The base's `ci.yml`
+  doesn't change.
 - **This repository's `templates` job** (`.github/workflows/ci.yml`) is
   a matrix over `grid` and `blank`, and the blank game offers no `soak`.
   So the soak there is a step of its own after "Run its gates", with
   `if: matrix.template == 'grid'`, in the same working directory.
-- **Its docs:** a row `cargo shuyi soak 20 --turns 100` in the tools
-  table of the stage's `crates/rules/AGENTS.md` (the table with
-  `cargo shuyi bots 20`), and a line under it saying the stage's
-  `soak.yml` runs it in CI. The base's `AGENTS.md` gets only the word
-  `soak` in its "need a stage and rules" line, above.
+- **Its docs:** a row `cargo shuyi soak --tries 20 --turns 100` in the
+  tools table of the stage's `crates/rules/AGENTS.md` (the table with
+  `cargo shuyi playtest --tries 20`), and a line under it saying the
+  stage's `soak.yml` runs it in CI. The base's `AGENTS.md` gets only the
+  word `soak` in its "need a stage and rules" line, above.
 - **Either order with 2033:** if 2033 is done, a test in
   `crates/cli/src/template/tests.rs` compares each made game's
   `AGENTS.md` gates with its own `ci.yml`, and the engine's copies (the
@@ -312,8 +317,8 @@ every game, the blank one too, and the soak never goes in them:
 same two invariants (its hero and its foe on open tiles, the turn at
 least 1), and `HelloTools::soak` is wired the same way
 (`docs/contract.md` says its tools write every op). `tests/it/contract.rs`
-soaks 20 seeds through `soak::soak`, as its other tests call `bots` and
-`replay`.
+soaks 20 seeds through `soak::soak`, as its other tests call `playtest`
+and `replay`.
 
 **From 1134 (done):** `skills/shuyi-test/SKILL.md` gets a short section
 (soak in CI; a shrunk record turned into a regression test with
@@ -332,14 +337,14 @@ do: 2755 adds the example's soak when it lands.
 
 **Problem codes (2509):** `soak`'s refused arguments take `SH0001`,
 the game's errors `SH3001` or `SH3002` through the same helpers as
-`bots`, and a record `--save` can't write `SH3004`. A failure the soak
-finds is a verdict (`ok: false`), not an error, and gets no code.
+`playtest`, and a record `--save` can't write `SH3004`. A failure the
+soak finds is a verdict (`ok: false`), not an error, and gets no code.
 
 **The public API.** `Op` gains a variant, and `Op::ALL` grows by one
-(`[Op; 15]` today, `crates/cli/src/contract.rs`; count again when this
-lands, since other ops may land first and 2544 removes `bots`). `Op` is
-exhaustive, so CI's `api` job (2010) reports a break, as it did for
-2003's `Modules` and `Add`: the PR has its `Breaking:` line. A new
+(`[Op; 16]` today, `crates/cli/src/contract.rs`; count again when this
+lands, since other ops may land first). `Op` is exhaustive, so CI's
+`api` job (2010) reports a break, as it did for 2003's `Modules` and
+`Add`: the PR has its `Breaking:` line. A new
 `GameTools` method with a default breaks no
 game's tools. Follow ADR-0039 for every new public type: `SoakInput` as an
 input with a `Default`, `Check` and `Verdict` as enums that may grow,
@@ -370,8 +375,8 @@ and `Checks`, `Failure` and `Shrunk`.
 ## Implementation steps
 
 1. Read `turn.rs`, `bots.rs`, `history.rs` and `hash.rs` in the core,
-   and `replay.rs` and `bots.rs` in `crates/cli/src/contract/`, for the
-   house style, and `crates/core/src/search.rs` if it exists.
+   and `replay.rs` and `playtest.rs` in `crates/cli/src/contract/`, for
+   the house style, and `crates/core/src/search.rs` if it exists.
 2. Write `soak.rs`: `Codec`, `Checks`, `Check`, `Failure`, `Verdict`,
    `Shrunk`, and one private `Run` holding A, B, the hashes so far and
    the previous legal list, with `step(command)` and `finish()`. Then
@@ -388,9 +393,9 @@ and `Checks`, `Failure` and `Shrunk`.
    workspace, so `cargo fmt --all` doesn't format it: run the template's
    gates by hand (`cargo run -p shuyi-cli -- new grid <dir>
    --engine-path <repo>`, then fmt, clippy, the tests, `cargo shuyi
-   check` and `cargo shuyi soak 20 --turns 100` in `<dir>`), as CI's
-   `templates` job does. Make a blank game the same way and check its
-   gates still pass.
+   check` and `cargo shuyi soak --tries 20 --turns 100` in `<dir>`), as
+   CI's `templates` job does. Make a blank game the same way and check
+   its gates still pass.
 6. Add the CI lines, do the either-order parts that apply, and run the
    gates.
 
@@ -404,9 +409,9 @@ games, shrinking and `no_std`). Write a follow-up ticket in this PR for
 steps 4 to 6, with the other acceptance criteria, the **MCP** and
 **Problem codes** paragraphs above (1133 and 2509 are done, so they are
 plain scope there), the skills' part (from 1134), and the either-order
-parts with 2544 and 2755. In the same PR, point the tickets that name
-2527 for the op at the follow-up: 2544's lines on the soak, and the
-`shuyi soak` lines of 2735, 2736, 2737 and 2755.
+part with 2755. In the same PR, point the tickets that name 2527 for
+the op at the follow-up: the `shuyi soak` lines of 2735, 2736, 2737 and
+2755.
 
 ## Acceptance criteria
 
@@ -424,8 +429,8 @@ parts with 2544 and 2755. In the same PR, point the tickets that name
       `runs` 0 a failure of one command or more comes back whole with
       `complete: false`.
 - [ ] Hello, Grid's `tests/it/contract.rs` soaks 20 seeds and passes, and
-      CI's `templates (grid)` job runs `cargo shuyi soak 20 --turns 100`
-      in a game made from the grid template, green. The
+      CI's `templates (grid)` job runs `cargo shuyi soak --tries 20
+      --turns 100` in a game made from the grid template, green. The
       `templates (blank)` job doesn't run it.
 - [ ] In a game made from the template, `#[serde(skip)]` on `Stage`'s
       `turn` makes the soak fail at step 0 with `invariant` on the

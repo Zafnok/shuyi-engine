@@ -121,8 +121,8 @@ None.
   since it has a `cargo shuyi check` line. Make its lines match if they
   don't; if not, nothing to do (2374 writes the step to match).
 - **Either order with 2527:** if 2527 is done, the soak (`cargo shuyi
-  soak 20 --turns 100`) is a check of grid games only, in files only the
-  grid stage writes: its own workflow
+  soak --tries 20 --turns 100`) is a check of grid games only, in files
+  only the grid stage writes: its own workflow
   (`stages/top-down-grid/.github/workflows/soak.yml`) and its
   `crates/rules/AGENTS.md`. None of the six rules reads those, the
   base's `ci.yml` and `AGENTS.md` gates don't hold it, and the root job

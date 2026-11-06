@@ -250,8 +250,9 @@ None.
   - `replay`: a `RunRecord { seed, commands }` read with `ron`, re-run
     through `shuyi_cli::contract::replay::turns`, as hello-grid's
     `StageRecord`;
-  - `bots`: a `RandomBot` hero against `Intents`, summed by `tally`, as
-    hello-grid's `bots`.
+  - `playtest_plan`: one entrant, a `RandomBot` hero against
+    `Intents`, and no checks, each try recorded, as the grid
+    template's.
 - **Search bots, either order with 2113:** if it is done, `Run`
   implements `Determinize`. Whatever the side, the copy keeps
   everything but the draw pile's order and the streams: the draw pile
@@ -273,16 +274,16 @@ None.
   of this when it lands.
 - **Golden table, from 2116 (done):** the example gets a golden table
   as Hello, Grid's (`tests/golden/card-battle.ron`, a record
-  `tests/records/seed-11.ron` from `cargo shuyi bots 1 --seed 11 --json`,
-  checked by `tests/golden.rs`), its window behind a default `window`
-  feature, and its own `cargo test --target wasm32-wasip1 -p card-battle
-  --no-default-features --test golden` step in the `determinism` job,
-  as 2116 says a new example does.
+  `tests/records/seed-11.ron` from `cargo shuyi playtest --tries 1
+  --seed 11 --json`, checked by `tests/golden.rs`), its window behind a
+  default `window` feature, and its own `cargo test --target
+  wasm32-wasip1 -p card-battle --no-default-features --test golden`
+  step in the `determinism` job, as 2116 says a new example does.
 - **Soak, either order with 2527:** if it is done, the tools implement
   `soak` through `shuyi_cli::contract::soak::turns` with `RonCodec` and
   `Run::invariants` (the deck whole while a fight is on, energy and
-  health in range), and `cargo shuyi soak 20` passes in the example's
-  folder. If not, nothing.
+  health in range), and `cargo shuyi soak --tries 20` passes in the
+  example's folder. If not, nothing.
 - **CI and Pages,** either order with the other examples (2735, 2736,
   2738, 2739 and 2740):
   - if the `wasm` job of `.github/workflows/ci.yml` and
@@ -387,7 +388,7 @@ the PR. The run then has one fight.
       rules error, each run ending within 400 turns.
 - [ ] A run's commands replay to the same events and `state_hash`
       twice, and `cargo shuyi replay` passes on a record from
-      `cargo shuyi bots 1 --json`.
+      `cargo shuyi playtest --tries 1 --json`.
 - [ ] While a fight is on, at every step of random legal play, the draw
       pile, the hand and the discard pile together hold the deck
       (property test).

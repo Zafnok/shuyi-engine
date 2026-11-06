@@ -371,14 +371,13 @@ fn description(op: Op, session: bool) -> &'static str {
             "Re-run a record (a file in the game's folder) by the game's rules: a state hash per \
              step; with `other`, the first step where two runs differ."
         }
-        (Op::Bots, _) => {
-            "The game's bots play `games` games: how each ended, how long it took, the game's \
-             measures."
-        }
         (Op::Playtest, _) => {
             "Each of the game's named bots (its `entrants`, or the game's choice) plays `tries` \
              tries of a `stage` (or `every_stage`) on every core; the game's checks say per bot \
-             whether it succeeded as often as its band wants, and each bot's time per try."
+             whether it succeeded as often as its band wants (with no checks, a plain bot run, \
+             nothing is judged), and each bot's time per try, outcomes counted and the spread \
+             of its turns and measures. Each try has its commands and, if the game keeps one, \
+             its `record` for `replay`."
         }
         (Op::Autobalance, _) => {
             "Change a `stage` with the game's knobs, never its bots, until each of its named \

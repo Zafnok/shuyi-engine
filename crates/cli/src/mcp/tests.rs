@@ -29,7 +29,8 @@ fn every_operation_and_session_tool_is_a_tool_once() {
         );
     }
     assert_eq!(super::tool("scene"), Some((Op::Scene, true)));
-    assert_eq!(super::tool("bots"), Some((Op::Bots, false)));
+    assert_eq!(super::tool("bots"), None);
+    assert_eq!(super::tool("playtest"), Some((Op::Playtest, false)));
     assert_eq!(super::tool("fly"), None);
 }
 
@@ -64,7 +65,6 @@ fn the_tools_that_run_the_game_or_read_its_files_take_a_project() {
             "run",
             "scene",
             "replay",
-            "bots",
             "playtest",
             "autobalance",
             "import",
