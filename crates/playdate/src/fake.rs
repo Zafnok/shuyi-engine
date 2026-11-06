@@ -76,8 +76,12 @@ struct State {
     rename: Rename,
     /// Operations of the medium left before the power goes, if it is going.
     ops_left: Option<u32>,
-    /// The sounds in the `.pdx`, by path, with whether each was loaded.
+    /// The sounds in the `.pdx`, by path, with whether each was loaded; a
+    /// sound made from samples is `made` here.
     samples: Vec<(String, bool)>,
+    /// The sounds made from samples and not freed: their rate, whether
+    /// stereo, and their samples.
+    made: BTreeMap<usize, (u32, bool, Vec<i16>)>,
     sample_players: Vec<FakeSamplePlayer>,
     /// The tracks in the `.pdx`, by path, with their lengths.
     tracks: BTreeMap<String, f32>,
@@ -113,6 +117,7 @@ impl Default for State {
             rename: Rename::default(),
             ops_left: None,
             samples: Vec::new(),
+            made: BTreeMap::new(),
             sample_players: Vec::new(),
             tracks: BTreeMap::new(),
             file_players: Vec::new(),
@@ -287,6 +292,22 @@ impl FakeSdk {
         sounding
             .map(|p| (state.samples[p.sample].0.clone(), p.volume))
             .collect()
+    }
+
+    /// The sound `sample` made from samples, while it isn't freed: its rate,
+    /// whether stereo, and its samples.
+    pub fn made_sample(&self, sample: usize) -> Option<(u32, bool, Vec<i16>)> {
+        self.0.borrow().made.get(&sample).cloned()
+    }
+
+    /// The sample each sample player sounding plays.
+    pub fn sounding_sample_ids(&self) -> Vec<usize> {
+        let state = self.0.borrow();
+        let sounding = state
+            .sample_players
+            .iter()
+            .filter(|p| p.playing && !p.paused);
+        sounding.map(|p| p.sample).collect()
     }
 
     /// How many sample players are paused.
@@ -571,6 +592,30 @@ impl Sdk for FakeSdk {
 
     fn sample_length(&self, _sample: usize) -> f32 {
         0.25
+    }
+
+    fn sample_from_data(&self, samples: &[i16], rate: u32, stereo: bool) -> Option<usize> {
+        if samples.is_empty() {
+            return None;
+        }
+        let mut state = self.0.borrow_mut();
+        state.samples.push(("made".to_owned(), true));
+        let at = state.samples.len() - 1;
+        state.made.insert(at, (rate, stereo, samples.to_vec()));
+        Some(at)
+    }
+
+    fn sample_free(&self, sample: usize) {
+        let mut state = self.0.borrow_mut();
+        assert!(
+            state.made.remove(&sample).is_some(),
+            "freed twice, or not made"
+        );
+        let playing = state
+            .sample_players
+            .iter()
+            .any(|p| p.playing && p.sample == sample);
+        assert!(!playing, "freed while a player plays it");
     }
 
     fn sample_player_new(&self) -> Option<usize> {

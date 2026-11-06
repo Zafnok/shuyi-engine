@@ -4,6 +4,7 @@
 // against the installed SDK's pd_api.h, so the C compiler checks every call
 // against the real API. The SDK's headers are never copied into the repository.
 #include <stdint.h>
+#include <string.h>
 
 #include "pd_api.h"
 
@@ -148,6 +149,23 @@ int pd_file_rename(const char* from, const char* to) { return pd->file->rename(f
 // A sound from the `.pdx`, loaded into memory; NULL if there is none.
 void* pd_sample_load(const char* path) { return pd->sound->sample->load(path); }
 float pd_sample_length(void* sample) { return pd->sound->sample->getLength((AudioSample*)sample); }
+// A sound of `count` 16-bit samples, interleaved, at `rate`, mono or `stereo`:
+// copied into memory of the SDK's own, which `pd_sample_free` frees with it.
+// NULL if there is no memory, or no samples.
+void* pd_sample_from_data(const int16_t* samples, int count, uint32_t rate, int stereo)
+{
+	int bytes = count * (int)sizeof(int16_t);
+	if (bytes <= 0) return NULL;
+	uint8_t* data = pd->system->realloc(NULL, (size_t)bytes);
+	if (data == NULL) return NULL;
+	memcpy(data, samples, (size_t)bytes);
+	SoundFormat format = stereo ? kSound16bitStereo : kSound16bitMono;
+	AudioSample* sample = pd->sound->sample->newSampleFromData(data, format, rate, bytes, 1);
+	if (sample == NULL) pd->system->realloc(data, 0);
+	return sample;
+}
+// Frees a sample `pd_sample_from_data` made, and its samples.
+void pd_sample_free(void* sample) { pd->sound->sample->freeSample((AudioSample*)sample); }
 void* pd_sampleplayer_new(void) { return pd->sound->sampleplayer->newPlayer(); }
 // Plays `sample` from its start on `player`, stopping what it played. The
 // SDK's `repeat`: 1 is once, 0 loops until it is stopped.

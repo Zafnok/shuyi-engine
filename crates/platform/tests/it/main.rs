@@ -4,6 +4,7 @@
 //! of only the methods every backend must have (`bare`). The Harness's
 //! scripts are tested in `shuyi-ui`'s `tests/it`, over the toy's screens.
 
+mod added_sounds;
 mod bare;
 #[cfg(feature = "std")]
 mod reload;
