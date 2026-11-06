@@ -88,10 +88,13 @@ None. This is technical.
   10. **The description of a game's types** (2907): `bevy_ecs` 0.20
       turns on `bevy_reflect` among its default features. The ECS is
       opt-in and the arena stays the default, so the ECS's reflection
-      can't be the only description of a game's types. **Either order
-      with 2907:** if 2907 is done, say for each candidate how it fits
-      2907's ADR (component names, the dump through serde, paths); if
-      not, 2907's ADR weighs this research's candidates.
+      can't be the only description of a game's types. ADR-0084
+      (2907's) makes serde the description and a name given at
+      registration a type's name. Say for each candidate how it fits
+      (component names, the dump through serde, paths), starting from
+      *How the ECS candidates of 2904 fit* in
+      `docs/research/2907-game-types.md`, and measure `bevy_ecs` with
+      its `bevy_reflect` feature off, as ADR-0084 would use it.
 - **The candidates:**
   - `bevy_ecs` alone, without the rest of Bevy (check its `no_std`
     support and what its `bevy_platform` and `bevy_tasks` pull into

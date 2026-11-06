@@ -18,6 +18,7 @@ fn full() -> CrashReport {
     report.top_screen = Some("stage".into());
     report.log = vec!["f41 info game: moved".into()];
     report.record = Some("(seed: 7, commands: [])".into());
+    report.fatal = false;
     report
 }
 
@@ -88,6 +89,44 @@ fn an_older_report_without_the_optional_fields_still_reads() {
     assert_eq!((report.when, report.frame), (0, 0));
     assert!(report.location.is_none() && report.record.is_none() && report.log.is_empty());
     assert!(CrashReport::parse("(version: 1)").is_err());
+}
+
+#[test]
+fn an_older_report_without_fatal_reads_as_fatal() {
+    let report = CrashReport::parse("(version: 1, when: 3, message: \"boom\")").unwrap();
+    assert!(report.fatal);
+    let mut survived = CrashReport::new(3, "boom");
+    survived.fatal = false;
+    assert!(survived.to_text().contains("fatal: false,"));
+    assert!(!CrashReport::parse(&survived.to_text()).unwrap().fatal);
+}
+
+#[test]
+fn a_report_that_is_not_fatal_is_kept_but_not_offered() {
+    let mut storage = with_reports(&[5]);
+    let mut survived = CrashReport::new(9, "Can't open PCM device");
+    survived.fatal = false;
+    storage.write(&crash_key(9), &survived.to_text()).unwrap();
+    let last = offer_last_crash(&mut storage).unwrap();
+    assert_eq!((last.when, last.key.as_str()), (5, "crash-5"));
+    assert_eq!(offer_last_crash(&mut storage), None);
+    assert_eq!(report_keys(&storage), ["crash-9", "crash-5"]);
+    // Only reports the game survived: none offered, and none again.
+    survived.when = 10;
+    storage.write(&crash_key(10), &survived.to_text()).unwrap();
+    assert_eq!(offer_last_crash(&mut storage), None);
+    let marked = storage.read(OFFERED_KEY).unwrap();
+    assert_eq!(marked.as_deref(), Some("\"crash-10\""));
+}
+
+#[test]
+fn an_offered_report_is_not_offered_again_behind_a_newer_one() {
+    let mut storage = with_reports(&[5]);
+    assert_eq!(offer_last_crash(&mut storage).map(|l| l.when), Some(5));
+    let mut survived = CrashReport::new(9, "a thread");
+    survived.fatal = false;
+    storage.write(&crash_key(9), &survived.to_text()).unwrap();
+    assert_eq!(offer_last_crash(&mut storage), None);
 }
 
 #[test]

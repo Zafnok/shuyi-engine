@@ -98,8 +98,8 @@ comments on how it feels and looks.
   The schema of each file comes from the format that reads it, as
   `shuyi kinds` gives it (2515 and its ADR: `schemars` behind
   `shuyi-assets`' `schema` feature). A field's path and an enum's
-  variants for the drop-downs come from 2907's ADR (one description of
-  a game's types). 2506 adds only what the inspector needs beyond them.
+  variants for the drop-downs come from ADR-0084 (2907's: a JSON
+  Pointer, and the type's schema in serialize mode). 2506 adds only what the inspector needs beyond them.
 - **Undo and redo** within a session, per **[2506]**.
 - A **README** section on `shuyi edit`.
 - **The skill pack. From 1134 (done):** its `shuyi-test` skill
@@ -116,7 +116,7 @@ comments on how it feels and looks.
 
 ## Implementation steps
 
-1. Read the ADRs of 2506, 2515, 2907, 2904 (what the tools read, if
+1. Read the ADRs of 2506, 2515, 2907 (ADR-0084), 2904 (what the tools read, if
    2904 is done) and 2521; the code of 2521, 2315 and 2316; 1129's
    contract and 2220's hot reload.
 2. Add the contract operations 2506 named, with their JSON and CLI

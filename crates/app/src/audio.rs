@@ -116,10 +116,13 @@ pub(crate) mod device {
         fn effect(&mut self, bytes: &[u8]) -> Result<Clip, String> {
             use std::panic::{AssertUnwindSafe, catch_unwind};
             let ctx = self.effects.get_or_insert_with(AudioContext::new);
-            // quad-snd `unwrap`s the decode, at once on native.
-            catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
-                .map(Clip::Effect)
-                .map_err(|_| "not a readable OGG or WAV file".to_owned())
+            // quad-snd `unwrap`s the decode, at once on native: a panic
+            // caught on purpose, not a crash.
+            crate::crash::quiet(|| {
+                catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
+            })
+            .map(Clip::Effect)
+            .map_err(|_| "not a readable OGG or WAV file".to_owned())
         }
 
         /// A sound effect of a file's `bytes`, in the effects' context, at once:

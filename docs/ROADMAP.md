@@ -60,7 +60,11 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 ([`decisions.md`](decisions.md)). On 2026-11-03 he folded the tutorial
 into the book, read at the reader's level, and put all of it but the
 version view before going public, with the playground's chain (3069,
-2814, 2820) and the exercises ([`decisions.md`](decisions.md)). These
+2814, 2820) and the exercises ([`decisions.md`](decisions.md)). On
+2026-11-05 he made the first release (2005) the public launch: it comes
+after every other ticket of this phase but the blog (2805) and sponsors
+(2806), and after the breaks already planned (2544, 2391, 2388 and
+2389), which joined the phase ([`decisions.md`](decisions.md)). These
 tickets, in order:
 
 | Ticket | What |
@@ -135,6 +139,13 @@ tickets, in order:
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
 | 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
 | 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |
+| 2577 | The bake's fastest-run test holds on a busy machine |
+| 2250 | A voice cast a voice tool can use |
+| 2251 | Plan a language's voice clips (after 2250) |
+| 2544 | One operation plays a game's bots: `bots` folded into `playtest`, before the release |
+| 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
+| 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
+| 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388) |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -272,7 +283,8 @@ volume), and 2226, 2253 and 2349 (game#0825, the language option).
 | 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
 | 2906 | Research: asset memory, lifetimes, groups and loading in steps |
-| 2907 | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
+| 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
+| 2581 | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
 **Debugging, and agents:**
 

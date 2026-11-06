@@ -93,16 +93,36 @@ fn the_hook_writes_reports_and_calls_the_one_before() {
         Some("f1 info game: line 1")
     );
     assert_eq!(report.record, None);
+    // On the thread that installed the hook, `run`'s: it ended the game.
+    assert!(report.fatal);
 
-    // The record goes into the same report.
+    // The record goes into the same report, still fatal.
     crash::add_record(Some("(seed: 1)".into()));
     assert_eq!(storage.keys().len(), 1);
-    assert_eq!(storage.newest().record.as_deref(), Some("(seed: 1)"));
+    let report = storage.newest();
+    assert_eq!(report.record.as_deref(), Some("(seed: 1)"));
+    assert!(report.fatal);
+
+    // A panic on another thread, which the game survives, is kept and
+    // isn't fatal; the game is offered the one before it.
+    let worker = std::thread::Builder::new()
+        .name("sound".into())
+        .spawn(|| panic!("Can't open PCM device"));
+    let joined = worker.unwrap_or_else(|e| panic!("{e}")).join();
+    assert!(joined.is_err());
+    assert_eq!(storage.keys().len(), 2);
+    let report = storage.newest();
+    assert_eq!(report.message, "Can't open PCM device");
+    assert_eq!(report.thread.as_deref(), Some("sound"));
+    assert!(!report.fatal);
+    let offered = shuyi_platform::crash::offer_last_crash(&mut storage.clone());
+    assert_eq!(offered.map(|last| last.message), Some("boom".to_owned()));
 
     // One too long is left out, and the log says why.
     panic_with("again");
     crash::add_record(Some("r".repeat(RECORD_BYTES + 1)));
     let report = storage.newest();
+    assert!(report.fatal);
     assert_eq!((report.message.as_str(), report.record), ("again", None));
     let why = report.log.last().unwrap();
     assert!(why.contains("record was left out"), "{why}");
@@ -111,15 +131,14 @@ fn the_hook_writes_reports_and_calls_the_one_before() {
     // hears it.
     let before = BEFORE.load(Ordering::SeqCst);
     crash::quiet(|| panic_with("on purpose"));
-    assert_eq!(storage.keys().len(), 2);
+    assert_eq!(storage.keys().len(), 3);
     assert_eq!(BEFORE.load(Ordering::SeqCst), before + 1);
 
     // Panics in one millisecond each get a key of their own; five are
     // kept, the newest.
     panic_with("burst 0");
-    panic_with("burst 1");
     assert_eq!(storage.keys().len(), 4);
-    for i in 2..6 {
+    for i in 1..6 {
         panic_with(&format!("burst {i}"));
     }
     assert_eq!(storage.keys().len(), 5);

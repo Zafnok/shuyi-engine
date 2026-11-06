@@ -34,9 +34,11 @@ What there is once the blockers are done:
   files beside its game, reusing 2814's `playground.js`.
 - 2827: a quick check's shortcode, its script and its expansion in the
   twins.
-- 2823's ADR sketches where an exercise's check lives: outside the code
-  a step's page asks the reader to type, so the reader's project stays as
-  the page says.
+- 2823's ADR names where an exercise sits in a page (beside the step's
+  quick check), and nothing more: on 2026-11-05 the exercises' design
+  moved here from 2823 (`docs/decisions.md`, *the first release waits
+  for everything before going public*), to be made once the playground
+  they are done in exists.
 
 The playground edits data files, not Rust (decision of 2026-10-28), so an
 exercise's task is a change to a data file.
@@ -48,6 +50,12 @@ None.
 ## Scope
 
 **In:**
+- **The design, in an ADR** (the `write-adr` skill), first: where a
+  check lives (outside the code a step's page asks the reader to type,
+  so the reader's project stays as the page says), how the game reports
+  it to the page, and how the exercise's shortcode sits with 2823's
+  audience marks and 2827's quick check. Where it changes what the
+  points below say, it wins, and the completion notes say so.
 - **The page asks for a check:** `playground.js` writes the exercise's
   name to `sessionStorage` under `shuyi-page-check` before it runs the
   game, and clears it after.
@@ -85,18 +93,21 @@ None.
 1. Read 2823's ADR, 3069's, 2820's and 2827's completion notes,
    `crates/app/src/page.rs`, `crates/cli/web/page-files.js` and its
    version test, `site/static/playground.js`, and the steps' web starts.
-2. Write `page_check`, `CheckReport` and `report_check`, and the JS, with
+2. Write the ADR, trying the check's path from the playground to the
+   game and back on one step first.
+3. Write `page_check`, `CheckReport` and `report_check`, and the JS, with
    their tests.
-3. Write each step's checks with their tests, and run them from the
+4. Write each step's checks with their tests, and run them from the
    step's web start.
-4. Write the exercise shortcode, its script in `playground.js`, its
+5. Write the exercise shortcode, its script in `playground.js`, its
    styles and its twin, then the exercises.
-5. Try three exercises in the built-in browser: done right, done wrong,
+6. Try three exercises in the built-in browser: done right, done wrong,
    and with a broken file.
-6. Run the `document` skill, then the gates.
+7. Run the `document` skill, then the gates.
 
 ## Acceptance criteria
 
+- [ ] The exercises' ADR is in `docs/adr/`.
 - [ ] Every project step with data files has one or two exercises.
 - [ ] *Check my work* on a correct edit says it passed; on a wrong one it
       says why not; on a broken file it shows the file's problems
@@ -116,7 +127,7 @@ None.
   native; `CheckReport`'s constructor.
 - Unit, per step: each check, with and without its edit.
 - `shuyi-cli`: the plugin version test.
-- By hand: step 5, in the notes.
+- By hand: step 6, in the notes.
 
 ## Completion notes
 

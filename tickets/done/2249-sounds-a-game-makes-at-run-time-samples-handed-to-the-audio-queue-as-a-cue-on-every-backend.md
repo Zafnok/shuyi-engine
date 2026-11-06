@@ -115,7 +115,7 @@ None.
 
 **Done.** A game makes a sound at run time with
 `ctx.audio.add_sound(cue, samples)` and frees it with `remove_sound(cue)`
-([ADR-0083](../../docs/adr/0083-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md)).
+([ADR-0085](../../docs/adr/0085-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md)).
 
 - `shuyi-ui`: `audio::Samples` (16-bit, mono or stereo, any rate to
   192,000) with `new`, `from_u8` (`(b − 128) × 256`), `to_wav`, `frames`,

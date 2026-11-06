@@ -320,11 +320,8 @@ None.
   a `file` property read into a `Ref<K>` is checked by `shuyi check`
   under the map's file. If not, write a ticket for it, blocked by 2516
   (`write-ticket`): 2516's Out leaves it to this ticket.
-- **Either order with 2907:** if 2907 is done and its ADR picked
-  another description of a game's types than `schemars`, follow it for
-  the export and say so in this ticket's ADR. If not, use `schemars`,
-  and 2907's ADR says whether `map-types` moves onto its choice (its
-  clause on this ticket).
+- **From 2907 (done):** ADR-0084 picked serde and `schemars`, so the
+  export uses `schemars` as planned, and nothing moves.
 - **From 1134 (done):** the skill that makes a new game
   (`skills/shuyi-new-game/SKILL.md`) says to run `map-types` after
   changing the things enum; `check-skills` passes.
@@ -384,8 +381,8 @@ game's next pin bump needs no change. If `Op` is already
    `Fx` and its serde, ADR-0004 §2, ADR-0019 §5, ADR-0022, 2013's ADR,
    `grid_map.rs` (`MapFeature`), `format.rs` (`claims`, `load`,
    `load_each`), `bundle.rs` (`files_under`, `file`), `game.rs`,
-   `contract.rs` and `contract/fake.rs`. If 2515, 2516 or 2907 are
-   done, read them.
+   `contract.rs` and `contract/fake.rs`, and ADR-0084 (2907's). If
+   2515 or 2516 are done, read them.
 2. Write the ADR.
 3. Write `things::de`, the deserializer, with a unit test per property
    kind, and one showing that a float through `deserialize_any` is an

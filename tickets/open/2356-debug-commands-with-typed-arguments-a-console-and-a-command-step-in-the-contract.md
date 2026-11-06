@@ -236,10 +236,10 @@ None.
   answers its reply; a test finds a command sent over the link on the
   record; raise `link::VERSION` by one. `shuyi attach` gains
   `--command <line>` if the contract's other operations take one.
-- **Types, in either order with 2907:** if 2907's ADR is done and
-  names a description that `ArgKind` should use, follow it. If not,
-  2907's ADR covers `ArgKind` among its consumers, and its PR writes
-  the ticket that moves it if it should.
+- **Types (2907, done):** ADR-0084 §7 keeps `ArgKind` the console's
+  own: it says how one typed word parses and how the help names it. An
+  argument of a game's own type, if this ticket adds one, is read back
+  through its `Deserialize`, not given a kind of its own.
 - **For the game:** additive. `Screen` gains defaulted methods, and
   with the console `Ctx` gains a field (it has private fields, so no
   game builds it field by field). A game that matches `frame_png::Step` or
@@ -326,8 +326,7 @@ None.
    `contract/session.rs` and `contract/fake.rs`. Then read Hello,
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
-   ADR-0022 §3, ADR-0047, and the `shuyi-input` skill. Check whether
-   2907 is done.
+   ADR-0022 §3, ADR-0047, ADR-0084 §7, and the `shuyi-input` skill.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,

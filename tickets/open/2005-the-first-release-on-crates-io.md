@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812"]
+blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389"]
 nick_input: sign-off
 completed:
 ---
@@ -35,6 +35,28 @@ Rust), 2013 (public types that can grow), 2509
 read). On 2026-11-01 Nick parked 2016 (governance) and 1132 (community
 files), and kept three small parts here: `main`'s required checks,
 private vulnerability reporting and a short `SECURITY.md`.
+
+Nick, 2026-11-05 (`docs/decisions.md`, *the first release waits for
+everything before going public*): the list above held the protections
+only, so 2005 read as ready while the MVP was still open. Its
+`blocked_by` now holds every ticket the release waits for, in three
+groups:
+
+- **The MVP's open tickets:** 2041 (the API gate sees every feature),
+  3085 (an export never ships the live link), 2577 (a gate that holds on
+  a busy Windows machine), 2250 and 2251 (the voice cast and plan the
+  game moves onto).
+- **Everything before going public.** The release is the public launch:
+  crates.io, docs.rs and `cargo install shuyi-cli` in the quick start.
+  It also freezes a copy of the site and `llms-full.txt` at its version,
+  which 2829 compares later ones with, so the book has its final shape
+  first. That is the one book (2823–2828), the playground (3069, 2814,
+  2820), the tutorial's acceptance and tries (2817, 2822), new games on
+  the web (2777) and 2576. Not the blog (2805) or sponsors (2806), which
+  the release doesn't touch.
+- **The breaks already planned,** cheaper before anyone installs: 2544
+  (the `bots` operation and MCP tool go), 2391 (one picture type), and
+  2389 with 2388 before it (the inks go).
 
 ## Nick input
 
@@ -249,7 +271,8 @@ The sign-off also:
   release without the file is skipped with a notice.
 - **The book after the release (2802, done):** the quick start's
   install line (`site/content/learn/book/quick-start.md`) becomes `cargo
-  install --locked shuyi-cli` from crates.io (the `--git` form goes),
+  install --locked shuyi-cli` from crates.io (the `--git` form goes;
+  2824 may have moved the page into the book's first part),
   and Learn adds each crate's docs.rs link beside its `/api/` link
   (`site/templates/learn.html`, over `site/data/api.toml`).
 - **Either order with 3050** (release a game from a tag): if 3050 is
@@ -259,10 +282,9 @@ The sign-off also:
   already checked the tag). It attaches the packages, a `SHA256SUMS`
   and attestations (`actions/attest`; the repository is public) to the
   engine's GitHub Release. If not, 3050 adds this job when it lands.
-- **Either order with 2544** (`bots` folded into `playtest`, which
-  removes the `bots` operation and `GameTools::bots`): if 2544 is done,
-  nothing to do: its break came before the first release. If not,
-  nothing to do here: 2544 takes the version bump the policy asks for.
+- **2544 comes first** (`bots` folded into `playtest`, which removes
+  the `bots` operation and `GameTools::bots`; in `blocked_by`): its
+  break lands before the first release, so nothing is left here.
 - **Either order with 2906** (research on asset memory): if 2906 is
   done, nothing to do: a build ticket of its ADR that changes the
   `&'static` reads (`Bundle`, `DecodeCx`, `ImageId`) carries its own
