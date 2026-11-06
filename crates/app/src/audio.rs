@@ -126,9 +126,9 @@ pub(crate) mod device {
         /// the browser decodes it in the background, and a play before it has is
         /// silence.
         #[cfg(target_arch = "wasm32")]
-        fn effect(&mut self, bytes: &[u8]) -> Result<Clip, String> {
+        fn effect(&mut self, bytes: &[u8]) -> Clip {
             let ctx = self.effects.get_or_insert_with(AudioContext::new);
-            Ok(Clip::Effect(quad_snd::Sound::load(ctx, bytes)))
+            Clip::Effect(quad_snd::Sound::load(ctx, bytes))
         }
     }
 
@@ -260,7 +260,10 @@ pub(crate) mod device {
         /// The samples as an in-memory WAV, which quad-snd decodes, and
         /// resamples to its own rate, as it does a file.
         fn add_sound(&mut self, samples: &SharedSamples) -> Result<Clip, String> {
-            self.effect(&samples.to_wav())
+            let effect = self.effect(&samples.to_wav());
+            #[cfg(target_arch = "wasm32")]
+            let effect = Ok(effect);
+            effect
         }
 
         fn remove_sound(&mut self, sound: Clip) {
