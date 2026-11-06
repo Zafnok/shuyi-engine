@@ -70,7 +70,7 @@ flate2 = { version = "1", default-features = false, features = ["rust_backend"] 
 crc32fast = { version = "1", default-features = false, features = ["std"] }
 # `export playdate`: a game's OGG and WAV files read at build time, to bake
 # them to ADPCM. Readers, on the developer's machine (`tools/layers.ron`).
-lewton = "0.9"
+lewton = "0.10"
 hound = "3.5"
 # `font-atlas`, with `jis`: a Japanese BDF font's JIS X 0208 code points
 # read as Unicode, through the EUC-JP decoder's table.

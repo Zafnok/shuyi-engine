@@ -45,7 +45,7 @@ dependencies = [
  "dasp_frame",
  "dasp_sample",
  "hound",
- "lewton",
+ "lewton 0.9.4",
 ]
 
 [[package]]
@@ -784,8 +784,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d542c1a317036c45c2aa1cf10cc9d403ca91eb2d333ef1a4917e5cb10628bd0"
 dependencies = [
  "byteorder",
- "ogg",
+ "ogg 0.7.1",
  "smallvec",
+]
+
+[[package]]
+name = "lewton"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "777b48df9aaab155475a83a7df3070395ea1ac6902f5cd062b8f2b028075c030"
+dependencies = [
+ "byteorder",
+ "ogg 0.8.0",
+ "tinyvec",
 ]
 
 [[package]]
@@ -1143,6 +1154,15 @@ name = "ogg"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13e571c3517af9e1729d4c63571a27edd660ade0667973bfc74a67c660c2b651"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
+name = "ogg"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6951b4e8bf21c8193da321bcce9c9dd2e13c858fe078bf9054a288b419ae5d6e"
 dependencies = [
  "byteorder",
 ]
@@ -1632,7 +1652,7 @@ dependencies = [
  "hound",
  "include_dir",
  "insta",
- "lewton",
+ "lewton 0.10.2",
  "png 0.18.1",
  "proptest",
  "ron",
@@ -1694,7 +1714,7 @@ name = "shuyi-sound"
 version = "0.1.0"
 dependencies = [
  "hound",
- "lewton",
+ "lewton 0.10.2",
  "proptest",
  "shuyi-alloc-count",
  "shuyi-assets",
@@ -1845,6 +1865,12 @@ dependencies = [
  "quote",
  "syn 3.0.6",
 ]
+
+[[package]]
+name = "tinyvec"
+version = "1.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
 
 [[package]]
 name = "toml"

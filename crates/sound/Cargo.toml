@@ -24,7 +24,7 @@ thiserror.workspace = true
 hound = { version = "3.5", optional = true }
 # The `ogg` feature is its Ogg container reader; 0.9 is the version the old
 # backend's and the Playdate exporter's paths already build.
-lewton = { version = "0.9", optional = true, default-features = false, features = ["ogg"] }
+lewton = { version = "0.10", optional = true, default-features = false, features = ["ogg"] }
 
 [dev-dependencies]
 proptest.workspace = true
