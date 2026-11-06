@@ -2,7 +2,7 @@
 id: "2544"
 title: "One operation plays a game's bots: `bots` folded into `playtest`, which answers each try's commands and record for `replay`"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
@@ -110,10 +110,9 @@ None.
   `contract::bots::game_arg` to the `Breaking:` line). `check_start` runs
   at the top of `playtest` and `autobalance`; `bots::bots` goes with the
   file.
-- **Either order with 2005** (the first crates.io release): if 2005 is
-  done, the break also takes what its version policy asks of a break
-  after the release (a version bump and a `CHANGELOG.md` line,
-  `work-ticket` §3); if not, the `Breaking:` line is enough.
+- **Before the first crates.io release:** 2005 waits for this ticket
+  (Nick, 2026-11-05: planned breaks land before anyone installs), so the
+  `Breaking:` line is enough; no version bump or `CHANGELOG.md` line.
 - **The grid template plays its bot through `playtest`**
   (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`):
   one entrant, its stage's plan, no checks. Its test
