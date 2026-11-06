@@ -534,10 +534,14 @@ storage it hands the game
 `shuyi_platform::crash::CrashReport` at `crash_key(when)`, its text from
 `to_text`, the newest few kept with `keep_newest`. Its frame is the one about to
 run (`App::frame_number() + 1`), its top screen `Game::top_screen`, and its log
-the last lines `App::take_new_log` gave. A backend that can catch the game's
-frame adds the game's record (`App::crash_record`) and ends the process without
-calling the game's system hook. `App::load` offers the newest report to the game
-once (`Setup::last_crash`): a backend does nothing for that.
+the last lines `App::take_new_log` gave. Its `fatal` is whether the panic ended
+the game: `true` on the thread that runs the game, `false` on one the game
+survives (a sound library's), which is kept and never offered
+([ADR-0083](adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md)).
+A backend that can catch the game's frame adds the game's record
+(`App::crash_record`) and ends the process without calling the game's system
+hook. `App::load` offers the newest fatal report to the
+game once (`Setup::last_crash`): a backend does nothing for that.
 
 `shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is
 [`crash-reports.md`](crash-reports.md).

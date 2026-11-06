@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3046"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 3095 — A panic the game survives is not offered as a crash
@@ -66,15 +66,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A storage holding a fatal report and a newer report that isn't
+- [x] A storage holding a fatal report and a newer report that isn't
       offers the fatal one, once.
-- [ ] `crates/app/tests/crash_hook.rs`: a panic on another thread writes
+- [x] `crates/app/tests/crash_hook.rs`: a panic on another thread writes
       a report with `fatal: false`; the panic `run` catches is `fatal:
       true` (through `add_record` or its sibling).
-- [ ] CI's `render` step checks `fatal: true` in the report of the panic
+- [x] CI's `render` step checks `fatal: true` in the report of the panic
       on purpose.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -84,5 +84,32 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_platform::crash::CrashReport` has `fatal: bool`, read as `true`
+  from a report without it. `offer_last_crash` offers the newest fatal
+  report newer than `crash-offered`'s, skips the rest (not fatal, or
+  unreadable), and marks the newest report as offered either way.
+- `shuyi_app::crash::install` remembers its thread, the game's: the hook
+  writes `fatal: true` for a panic there and `false` on any other thread.
+  ADR-0083 extends ADR-0079 §6.
+- CI's `render` step checks `fatal: true` in the report of the panic on
+  purpose, and that every other report there (quad-snd's threads) isn't.
+- Docs: `docs/crash-reports.md`, `docs/platform-backends.md` (*Panics*),
+  and the book's *When a player's game crashes*.
+
+Deviations:
+- The fatal flag comes from the thread, not from `add_record`'s rewrite:
+  on the game's thread a panic not in `quiet` always ends the game (the
+  frame's catch exits 101, one outside it ends the process, the web
+  aborts), so one rule covers all three. `add_record` keeps the hook's
+  `true`; the test checks it after the rewrite.
+- `audio.rs`'s sound-effect decode caught quad-snd's panic on the game's
+  thread without `crash::quiet`, so a broken effect wrote a report; under
+  the new rule it would have been offered as a crash. It now runs in
+  `quiet`, as the music's decode already did.
+- 3076 (the Playdate's report) got a **From 3095** line: only fatal
+  reports are offered, and `CrashReport::new` sets it.
+
+No follow-up tickets.
+
+No break: `CrashReport` is `#[non_exhaustive]`, so the new field is an
+addition.

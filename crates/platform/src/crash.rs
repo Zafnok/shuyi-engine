@@ -61,6 +61,12 @@ pub struct CrashReport {
     pub when: u64,
     /// The panic's message, cut at [`MESSAGE_BYTES`].
     pub message: String,
+    /// Whether the panic ended the game: one on the thread that runs it.
+    /// A panic on another thread (a sound library's, with no sound device)
+    /// is kept, and never offered ([`offer_last_crash`]). A report without
+    /// the field, older than it, reads as `true`.
+    #[serde(default = "ended_the_game")]
+    pub fatal: bool,
     /// Where it panicked: `file:line:column`.
     #[serde(default)]
     pub location: Option<String>,
@@ -107,6 +113,7 @@ impl CrashReport {
             version: REPORT_VERSION,
             when,
             message,
+            fatal: true,
             location: None,
             thread: None,
             backtrace: String::new(),
@@ -170,6 +177,12 @@ impl CrashReport {
     }
 }
 
+/// What a report without [`CrashReport::fatal`] reads as: every report
+/// written before it was offered as a crash.
+const fn ended_the_game() -> bool {
+    true
+}
+
 /// `text` cut at `bytes` bytes, at the last whole character that fits.
 fn cut(text: &mut String, bytes: usize) {
     // At or past its end, the boundary is its end: nothing is cut.
@@ -229,30 +242,33 @@ pub struct LastCrash {
     pub key: String,
 }
 
-/// The newest report in `storage` newer than the one [`OFFERED_KEY`]
-/// names, which from then on names it: each report is offered once. A
-/// report that doesn't read is marked offered, and gives `None`.
+/// The newest [`fatal`](CrashReport::fatal) report in `storage` newer than
+/// the one [`OFFERED_KEY`] names; from then on it names the newest report,
+/// so each is offered or skipped once. A report that isn't fatal, or
+/// doesn't read, is skipped.
 pub fn offer_last_crash(storage: &mut dyn Storage) -> Option<LastCrash> {
-    let newest = report_keys(storage).into_iter().next()?;
-    let when = report_when(&newest)?;
     let offered = storage
         .read(OFFERED_KEY)
         .ok()
         .flatten()
         .and_then(|text| ron::from_str::<String>(&text).ok())
         .and_then(|key| report_when(&key));
-    if offered.is_some_and(|offered| offered >= when) {
-        return None;
-    }
-    let marked = ron::to_string(&newest).unwrap_or_default();
+    let newer: Vec<String> = report_keys(storage)
+        .into_iter()
+        .filter(|key| report_when(key) > offered)
+        .collect();
+    let newest = newer.first()?;
+    let marked = ron::to_string(newest).unwrap_or_default();
     // A storage that can't write offers it again next time: no harm.
     let _ = storage.write(OFFERED_KEY, &marked);
-    let report = CrashReport::parse(&storage.read(&newest).ok()??).ok()?;
-    Some(LastCrash {
-        when: report.when,
-        message: report.message,
-        location: report.location,
-        key: newest,
+    newer.into_iter().find_map(|key| {
+        let report = CrashReport::parse(&storage.read(&key).ok()??).ok()?;
+        report.fatal.then_some(LastCrash {
+            when: report.when,
+            message: report.message,
+            location: report.location,
+            key,
+        })
     })
 }
 
