@@ -335,6 +335,11 @@ handled sounds, fades and the music clock are
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
   as recorded). The first `Unsupported` of each is one warning;
+- **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
+  `add_sound`, which readies the samples as a sound, says the backend can't by
+  default, and the cue then plays nothing, with a warning; `remove_sound` stops
+  one and drops it by default, and a device that frees it says so there. Every
+  backend of the engine's has both;
 - **provided, with a default that works:** `load_sound_file`, for a device that
   loads a sound from its own path, `hold_output`, for a device whose whole output
   can stop while the system suspends the game, and `warn`, which says the player's

@@ -41,11 +41,15 @@ impl<V> AudioQueue<V> {
     }
 
     /// [`start_sound`](Self::start_sound) at `volume` (0–1, clamped) times
-    /// the cue's own volume.
+    /// the cue's own volume. A cue [`remove_sound`](Self::remove_sound)
+    /// removed plays nothing: its id was never live.
     pub fn start_sound_at(&mut self, cue: &str, volume: f32) -> SoundId {
         // Skips 0 if it ever wraps: an id is never 0.
         self.last_id = self.last_id.wrapping_add(1).max(1);
         let id = SoundId(self.last_id);
+        if self.added.silences(cue) {
+            return id;
+        }
         let volume = clamp_volume(volume);
         let handle = Handle {
             owner: self.owner,

@@ -10,6 +10,7 @@ use shuyi::assets::lang::Lang;
 use shuyi::assets::palette::PaletteDef;
 use shuyi::core::TurnRules;
 use shuyi::prelude::*;
+use shuyi::ui::audio::Samples;
 use shuyi::ui::debug::Gizmos;
 
 use crate::Data;
@@ -210,6 +211,23 @@ pub fn fade_out_the_garden(ctx: &mut Ctx<Data>) {
 }
 // ANCHOR_END: music
 
+// ANCHOR: chime
+/// A chime the game makes while it runs: a tenth of a second of a square
+/// wave, written as 8-bit samples, made the cue `chime` and played. A cue
+/// of the manifest's can't be made this way, and the log says why.
+pub fn ring_a_made_chime(ctx: &mut Ctx<Data>) {
+    let bytes: Vec<u8> = (0..1102)
+        .map(|i| if i % 25 < 12 { 96 } else { 160 })
+        .collect();
+    let made = Samples::from_u8(11_025, 1, &bytes);
+    if let Ok(chime) = made
+        && ctx.audio.add_sound("chime", chime).is_ok()
+    {
+        ctx.audio.play_sound("chime");
+    }
+}
+// ANCHOR_END: chime
+
 // ANCHOR: game_data
 /// A game's data written by hand, for a game whose data outgrows
 /// `BasicData`: its own sounds, voices, themes or settings. Each method
@@ -350,6 +368,23 @@ mod tests {
             asked,
             [shuyi::ui::audio::AudioRequest::stop_music_with(3000)]
         );
+    }
+
+    #[test]
+    fn a_chime_made_while_the_game_runs_is_heard_as_its_samples() {
+        let mut h = game().harness();
+        super::ring_a_made_chime(h.ctx_mut());
+        h.wait(0.1);
+        assert_eq!(h.sounds_added(), ["chime"]);
+        let plays = h.added_plays();
+        assert_eq!(plays.len(), 1);
+        assert_eq!(plays[0].samples.millis(), 99);
+        // Twelve samples low, thirteen high, and round again.
+        let (low, high) = (-8192, 8192);
+        let wave = plays[0].samples.samples();
+        assert_eq!(wave[..13], [[low; 12].as_slice(), &[high]].concat());
+        assert_eq!(wave[24..26], [high, low]);
+        assert_eq!(wave.len(), 1102);
     }
 
     // ANCHOR: as_target
