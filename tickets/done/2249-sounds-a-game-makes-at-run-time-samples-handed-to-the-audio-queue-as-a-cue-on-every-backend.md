@@ -155,7 +155,7 @@ None.
   does (`Harness::sounds_added`), and the contract's `sounds` lists each
   play of an added cue as any cue's, but no answer of the contract lists
   the sounds added yet: that is a contract version and its schemas, so it
-  is ticket 2581. `docs/contract.md` is unchanged.
+  is ticket 2582. `docs/contract.md` is unchanged.
 - **The Playdate Simulator wasn't run.** The Simulator gives nothing back
   on Windows, and no game here adds a sound yet. The speaker is tested on
   the SDK's fake (the samples the SDK is handed, the free on removal and
@@ -170,7 +170,7 @@ None.
   `audrey` reads WAV with) as the same samples, in the in-house tests.
 - A removal of a cue that was never added is a problem in the log too.
 
-**Follow-up tickets:** 2581 (the contract's answers list the sounds
+**Follow-up tickets:** 2582 (the contract's answers list the sounds
 added).
 
 No break: the requests' enums are non-exhaustive, the new backend and
