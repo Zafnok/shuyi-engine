@@ -168,6 +168,13 @@ exclude_re = [
     # `LangCode::default()`: its `Default::default()` mutant is the same
     # function.
     'replace LangCode::english -> Self with Default::default\(\)',
+    # The default `Screen::debug_draw` hands in nothing: its only mutant,
+    # `()`, is the same function.
+    'screen\.rs:\d+:\d+: replace Screen::debug_draw with \(\)',
+    # A line one pixel wide picks its major axis by `dx >= dy`. At `dx ==
+    # dy` (a diagonal, or one pixel) both axes take the same steps and give
+    # one pixel a row, so `>` draws the same runs in the same order.
+    'shape\.rs:\d+:\d+: replace >= with > in line_runs',
     # A Vorbis source's `read` asks `next_packet` until the file ends: the mutant
     # that decodes nothing never ends, so it costs a shard its whole timeout and
     # fails it as one, though every test that reads a file would hang on it.

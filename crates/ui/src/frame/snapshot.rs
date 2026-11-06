@@ -42,6 +42,19 @@
 //! ` src=x,y wxh` (not the whole picture), ` bright=N` and ` clip=x,y wxh`,
 //! only when they aren't the default.
 //!
+//! A gizmo of the debug view (ADR-0085) is `over  gizmo channel role` and
+//! its shape: `rect x,y wxh`, `line x,y x,y` (from, to), `cross x,y n`
+//! (centre, arm), `circle x,y r` (centre, radius) or `label x,y "text"`
+//! (the pixel it was placed at, and its text). After that comes
+//! ` clip=x,y wxh` when not all of the shape is drawn (never for a label,
+//! whose glyphs are in the cells):
+//!
+//! ```text
+//! over  gizmo grid bounds line 0,0 0,159
+//! over  gizmo grid note rect 32,48 16x16
+//! over  gizmo grid note label 32,48 "0"
+//! ```
+//!
 //! A see-through cell (game ADR-0048) gets a key of its own, whose legend line
 //! says `bg:see-through`: in the colour rows a hole can't be taken for a
 //! blank cell. When the buffer has a backdrop, a line
@@ -54,6 +67,7 @@ use alloc::collections::BTreeMap;
 use core::fmt::Write as _;
 
 use crate::frame::color::{Palette, Rgb};
+use crate::frame::gizmo::{GizmoItem, GizmoShape};
 use crate::frame::glyph_buffer::Cell;
 use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Paint, PxRect, Sprite};
 use crate::frame::painted::{PaintedSprite, PaintedTable};
@@ -133,6 +147,9 @@ impl GlyphBuffer {
                 Item::Painted(p) => {
                     let _ = writeln!(out, "{layer:<5} {}", painted_line(p, pictures));
                 }
+                Item::Gizmo(g) => {
+                    let _ = writeln!(out, "{layer:<5} {}", gizmo_line(g));
+                }
             }
         }
         if let Some(backdrop) = self.backdrop() {
@@ -165,6 +182,24 @@ fn tenths(v: f32) -> String {
 /// `x,y wxh`.
 fn px(r: PxRect) -> String {
     format!("{},{} {}x{}", r.x, r.y, r.w, r.h)
+}
+
+/// A gizmo's snapshot line, after the layer.
+pub(crate) fn gizmo_line(g: &GizmoItem) -> String {
+    let point = |(x, y): (i32, i32)| format!("{x},{y}");
+    let shape = match g.shape {
+        GizmoShape::Rect { rect } => format!("rect {}", px(rect)),
+        GizmoShape::Line { from, to } => format!("line {} {}", point(from), point(to)),
+        GizmoShape::Cross { at, size } => format!("cross {} {size}", point(at)),
+        GizmoShape::Circle { center, radius } => format!("circle {} {radius}", point(center)),
+        GizmoShape::Label { at, text } => format!("label {} {:?}", point(at), text.as_str()),
+    };
+    let mut line = format!("gizmo {} {} {shape}", g.channel, g.role.name());
+    let label = matches!(g.shape, GizmoShape::Label { .. });
+    if !label && g.clip != g.shape.bounds() {
+        let _ = write!(line, " clip={}", px(g.clip));
+    }
+    line
 }
 
 /// A sprite's snapshot line, after the layer; `name` names a colour.

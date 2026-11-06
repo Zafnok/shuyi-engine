@@ -48,7 +48,7 @@ use shuyi_assets::ink::Ink;
 pub use shuyi_assets::onebit::{Base, Pattern, PatternMapDef, RolePatterns, Rows};
 
 use crate::frame::color::Rgb;
-use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Rect, Sprite};
 use crate::frame::painted::{Painted, PaintedKind, PaintedSprite, PaintedTable};
 
 mod roles;
@@ -1111,6 +1111,12 @@ fn draw_items<I: Images, S: Shades>(
             }
             Item::Sprite(s) => draw_sprite(target, s, at, look),
             Item::Painted(p) => draw_painted(target, p, at, look),
+            Item::Gizmo(g) => {
+                let pen = Pen::Paint(look.shades.shape(g.color));
+                g.for_each_run(|y, x0, x1| {
+                    target.fill(at.screen(Rect::new(x0, y, x1 - x0, 1)), pen);
+                });
+            }
         }
     }
 }

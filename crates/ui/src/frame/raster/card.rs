@@ -19,7 +19,10 @@
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
-//!   a painted picture of its own.
+//!   a painted picture of its own;
+//! - the debug view's gizmos (ADR-0085) over everything: lines into all
+//!   eight octants, rectangles' outlines (one cut by a `clip`), crosses,
+//!   circles' outlines (one of radius 0) and labels in the cells.
 //!
 //! Its pictures are made in code: the [test card](super::test_card) and a
 //! small font atlas of boxes and bars, and a wide glyph, and the painted
@@ -37,6 +40,7 @@ use shuyi_assets::lighting::Light;
 
 use super::{Image, Painter, test_card};
 use crate::frame::color::Rgb;
+use crate::frame::gizmo::{GizmoItem, GizmoRole, GizmoShape, LabelText};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, Paint, Rect, Sprite};
 use crate::frame::painted::{Painted, PaintedId, PaintedSprite};
 
@@ -220,6 +224,7 @@ fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
     sprites(&mut buf, card, missing);
     painted(&mut buf);
     backdrop(&mut buf, card);
+    gizmos(&mut buf);
     buf
 }
 
@@ -498,6 +503,61 @@ fn backdrop(buf: &mut GlyphBuffer, card: ImageId) {
     buf.set(24, 4, Cell::new('#', FOREGROUNDS[2], CLEAR));
     buf.set(27, 8, Cell::new(' ', FOREGROUNDS[0], BACKGROUNDS[3]));
     buf.set_backdrop(Rc::new(scene), clip, (0.5, 0.5), 2);
+}
+
+/// The gizmos, last, over everything: eight lines from (208, 96) into
+/// each octant, over the backdrop; two rectangles' outlines, the second
+/// cut by a `clip`; two crosses and three circles' outlines below and
+/// above it, one of radius 0; and two labels in row 11's cells.
+fn gizmos(buf: &mut GlyphBuffer) {
+    let ends = [
+        (238, 104),
+        (216, 126),
+        (200, 126),
+        (178, 104),
+        (178, 88),
+        (200, 66),
+        (216, 66),
+        (238, 88),
+    ];
+    let mut add = |role, shape, color| buf.add_gizmo(GizmoItem::new("card", role, shape, color));
+    for (i, to) in ends.into_iter().enumerate() {
+        let line = GizmoShape::Line {
+            from: (208, 96),
+            to,
+        };
+        add(GizmoRole::Path, line, FOREGROUNDS[i % FOREGROUNDS.len()]);
+    }
+    let rect = |x, y, w, h| GizmoShape::Rect {
+        rect: Rect::new(x, y, w, h),
+    };
+    add(GizmoRole::Bounds, rect(170, 36, 24, 14), FOREGROUNDS[0]);
+    let circle = |center, radius| GizmoShape::Circle { center, radius };
+    add(GizmoRole::Trigger, circle((226, 150), 10), FOREGROUNDS[2]);
+    add(GizmoRole::Bone, circle((250, 20), 3), FOREGROUNDS[3]);
+    add(GizmoRole::Bone, circle((164, 186), 0), FOREGROUNDS[4]);
+    let cross = |at, size| GizmoShape::Cross { at, size };
+    add(GizmoRole::Note, cross((186, 150), 4), FOREGROUNDS[1]);
+    add(GizmoRole::Note, cross((200, 150), 1), FOREGROUNDS[0]);
+    let mut cut = GizmoItem::new(
+        "card",
+        GizmoRole::Solid,
+        rect(226, 40, 18, 10),
+        FOREGROUNDS[1],
+    );
+    cut.clip = Rect::new(230, 38, 20, 6);
+    buf.add_gizmo(cut);
+    // A label's glyphs are in the cells, and its item draws nothing.
+    for (column, text) in [(24, "#o"), (29, "-|")] {
+        buf.print_fg(column, 11, text, FOREGROUNDS[2]);
+        let label = GizmoShape::Label {
+            at: (column * 8, 180),
+            text: LabelText::new(text),
+        };
+        let mut item = GizmoItem::new("card", GizmoRole::Note, label, FOREGROUNDS[2]);
+        item.clip = Rect::new(column * 8, 176, 16, 16);
+        buf.add_gizmo(item);
+    }
 }
 
 /// `v` as an index into a list of colours or glyphs (0 if negative).

@@ -747,13 +747,16 @@ fn perf_read(ring: &PerfRing, since: u64, max: u32) -> PerfAnswer {
 
 /// Whether a play's `steps` can be played: each step
 /// ([`Step::check`](script::Step::check)), waits of at most [`MAX_WAIT`]
-/// seconds, and no crank; an error names the step. An action's name is
+/// seconds, and no crank or debug step; an error names the step. An action's name is
 /// looked up when the play starts.
 pub fn check_play(steps: &[Step]) -> Result<(), String> {
     for (i, step) in steps.iter().enumerate() {
         step.check().map_err(|e| format!("step {}: {e}", i + 1))?;
         if matches!(step, Step::Crank(_)) {
             return Err(format!("step {}: crank: not over the live link yet", i + 1));
+        }
+        if matches!(step, Step::Debug(_)) {
+            return Err(format!("step {}: debug: not over the live link yet", i + 1));
         }
     }
     script::check_waits(steps, MAX_WAIT)

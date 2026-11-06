@@ -21,7 +21,7 @@ completed:
   `LangInfo::widths` makes the language's width table from the atlas's
   (`CellWidths::in_lang`), which `Ctx::widths`, the glyph buffer, the
   pack's limits and `font::undrawn` all use
-  ([ADR-0085](../../docs/adr/0085-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md)).
+  ([ADR-0086](../../docs/adr/0086-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md)).
 - **The gap:** the source language has no `lang.ron`. A game declares it
   in code (`SourceLang::new(code, name)`, `Lang::with_source_lang`), so
   a game written in Chinese, or in Japanese beside a Chinese pack, has

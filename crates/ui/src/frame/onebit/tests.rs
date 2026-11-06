@@ -899,3 +899,21 @@ fn pictures_behind_a_borrow_are_the_same_pictures() {
         Some(image)
     );
 }
+
+#[test]
+fn a_gizmo_draws_its_runs_in_both_renderers() {
+    use crate::frame::gizmo::{GizmoItem, GizmoRole, GizmoShape};
+    let mut b = buf(1, 1);
+    let line = GizmoShape::Line {
+        from: (1, 1),
+        to: (3, 1),
+    };
+    b.add_gizmo(GizmoItem::new("t", GizmoRole::Note, line, c(Ink::Black)));
+    let want = ["......", ".###..", "......"];
+    assert_eq!(text(&draw(&b), 0, 0, 6, 3), want);
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut slow = Box::new([0u8; FRAME_BYTES]);
+    reference::render(&b, &font, &(), &mut slow);
+    assert_eq!(text(&slow, 0, 0, 6, 3), want);
+}

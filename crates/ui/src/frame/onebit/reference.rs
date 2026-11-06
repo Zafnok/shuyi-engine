@@ -13,7 +13,7 @@ use super::{
     Font, Frame, HEIGHT, Image, Images, InkShades, Phase, Placed, ROW_BYTES, Shade, Shades, WIDTH,
     alpha_drawn, darken,
 };
-use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Rect, Sprite};
 use crate::frame::painted::{PaintedKind, PaintedSprite, PaintedTable};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
@@ -318,6 +318,12 @@ fn draw_items<I: Images, S: Shades>(
             }
             Item::Sprite(s) => draw_sprite(target, s, at, look),
             Item::Painted(p) => draw_painted(target, p, at, look),
+            Item::Gizmo(g) => {
+                let pen = Pen::Paint(look.2.shape(g.color));
+                g.for_each_run(|y, x0, x1| {
+                    target.fill(at.screen(Rect::new(x0, y, x1 - x0, 1)), pen);
+                });
+            }
         }
     }
 }

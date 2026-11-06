@@ -180,7 +180,7 @@ PR follows this one (game#0239).
 - Fixture fonts of ours, `wide-16-ja.bdf` and `wide-16-zh.bdf` (`直` in
   two shapes, `简`, the wide punctuation), and two committed frame
   pictures, `wide-set-ja.png` and `wide-set-zh.png`.
-- [ADR-0085](../../docs/adr/0085-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md);
+- [ADR-0086](../../docs/adr/0086-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md);
   docs in `docs/formats.md`, the book's chapter 5, and the
   `shuyi-import-art` and `shuyi-screen` skills.
 
@@ -189,7 +189,7 @@ PR follows this one (game#0239).
 - The look-up lives on `FontAtlasDef` in `shuyi-assets`, not in
   `shuyi-ui` (step 4): the tool, the check and every renderer hold the
   atlas, and the language reaches the renderers in the buffer's
-  `CellWidths` (ADR-0085 §3, §4).
+  `CellWidths` (ADR-0086 §3, §4).
 - The unnamed set keeps the characters of the languages that name no
   set (all of them, for a game of one wide font, as before).
 - A punctuation mark only wide in the atlas (2301's) stays wide in
