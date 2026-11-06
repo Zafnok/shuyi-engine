@@ -5,7 +5,8 @@
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
-//! thin wrapper here; the engine's modules as `modules` and `add` read them
+//! thin wrapper here; `bench`, which plays the game's benchmark scenarios
+//! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
 //! and `check-skills` checks ([`skills`]); the notices a package carries
@@ -25,6 +26,7 @@
 
 pub mod app_info;
 pub mod basic;
+mod bench;
 pub mod catalog;
 pub mod check_keys;
 pub mod check_text;
@@ -69,7 +71,7 @@ pub use shuyi_ui::frame::raster::test_card;
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
 /// ([`skills::check`]).
-pub const COMMANDS: [&str; 13] = [
+pub const COMMANDS: [&str; 15] = [
     "schema",
     "mcp",
     "mcp-host",
@@ -83,6 +85,8 @@ pub const COMMANDS: [&str; 13] = [
     "frame-png",
     "web",
     "private-assets",
+    "bench",
+    "bench-play",
 ];
 
 /// The usage text, with `command` as the tool's name.
@@ -150,9 +154,14 @@ commands:
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
   frame-png <out.png> [steps]        render a scripted game frame to a PNG (frame-png --help)
+  bench [--target <id>] [--scenario <name>] [--out <dir>] [--no-instructions]
+                                     play the game's *.bench.ron scenarios headless and gate
+                                     instructions per frame (Valgrind), the heap's peak and
+                                     the package's size against its targets' budgets
   web [--release] [--<feature>...]   build and package the web (WASM) build
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
+  bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
 {file} (new, doctor, explain, attach, schema, check-skills and mcp need none). An error has a problem
@@ -315,6 +324,12 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         "glyph-tiles" => glyph_tiles(project, args),
         "frame-png" => match game {
             Some(game) => Ok(frame_png(project, args, game)),
+            None => Ok(game::run_in_game_program(project, name, args)),
+        },
+        // Builds the game's tool program and runs it: from either program.
+        "bench" => Ok(bench::main(project, args)),
+        "bench-play" => match game {
+            Some(game) => Ok(bench::play_main(project, args, game)),
             None => Ok(game::run_in_game_program(project, name, args)),
         },
         "web" => web(project, args),

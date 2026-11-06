@@ -127,7 +127,8 @@ change.
   and `shuyi export nds` can call the installed tool and need nothing
   from Nintendo in this repository.
 - **The write-ups**, `docs/targets/gba.md` and `docs/targets/nds.md`
-  (start them if 3008 hasn't; extend them if it has): every fact above
+  (new pages beside the other targets' in `docs/targets/`, whose
+  `README.md` 3008 wrote): every fact above
   with its source and date, the chosen tools and versions, how to
   install them on Windows with the GNU toolchain, and a plain section
   *Selling* that says these systems are not licensed by Nintendo any

@@ -128,3 +128,29 @@ A game made with `shuyi new` has `scripts/setup-linux.sh`, which
 installs Rust and the libraries; the package lands in
 `dist/export/linux/` on the host. The engine's CI pins the same image
 by its digest (`.github/workflows/ci.yml`, the `export` job).
+
+## Budgets
+
+Its row of ADR-0008 §6's table; *prov.* marks a starting guess. What the
+budgets are and how `shuyi bench` checks them is in
+[`README.md`](README.md).
+
+| Target | Frame time on device | `frame_instructions` | `peak_heap_bytes` | `package_bytes` | `startup_ms` | Also |
+| ------ | -------------------- | -------------------- | ----------------- | --------------- | ------------ | ---- |
+| `desktop` | p99 ≤ 16.7 ms | 20 M (prov.) | 512 MB | — | 2 000 | — |
+
+Not yet measured on a device: no ticket covers the desktop yet.
+
+## Hello, Grid's numbers
+
+From CI's `bench` job on 2026-11-05 (ticket 3008's pull request): the
+heaviest of Hello, Grid's eight scenarios
+([`examples/hello-grid/bench/`](../../examples/hello-grid/bench/)), on an
+x86-64 Linux runner. They are proxies, not a device's frame times, and
+the budgets above stay as they are until a device is measured.
+
+| Measure | Hello, Grid | Budget |
+| ------- | ----------- | ------ |
+| Instructions in its heaviest frame | 394,501 (`idle-map-tiles`, the map drawn with its tileset) | 20,000,000 |
+| Instructions per frame, mean, its heaviest scenario | 377,524 (`idle-map-tiles`) | — |
+| Heap's peak | 158.5 KB (`idle-map-tiles`) | 512 MB |

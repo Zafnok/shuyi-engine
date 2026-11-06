@@ -85,12 +85,10 @@ None.
      steps, on one named machine (CPU, OS, toolchain). Wall time is fine
      here: this is research, not a gate (ADR-0008 §6).
   2. **Instructions per step:**
-     - if 3008 is done, as a `.bench.ron` scenario through `shuyi bench`;
-     - if not, with `iai-callgrind` (check its current name, version and
-       license on the day) in a CI job or WSL, because valgrind doesn't
-       run on Windows;
-     - if neither is possible, a counted proxy: counters in the workload
-       for field reads, field writes and neighbour checks. The report
+     - as a `.bench.ron` scenario through `shuyi bench` (3008, done);
+     - if a scenario can't drive the workload, a counted proxy:
+       counters in the workload for field reads, field writes and
+       neighbour checks. The report
        says which method was used.
   3. **WASM size added:** a release `cdylib` per contender for
      `wasm32-unknown-unknown` with the web build's profile, minus an

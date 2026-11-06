@@ -1,0 +1,10 @@
+// The walk's animation alone: the frames after the walk is sent (frame
+// 11) until the piece stands on its tile. Hello, Grid has no attack; this
+// is its animation of a move.
+(
+    format_version: 1,
+    about: "the walk's animation",
+    start: [(flag: "--stage")],
+    script: (steps: [keys("z Up Right Right Right z"), wait(1.0)]),
+    measure: Frames(first: 12, last: 70),
+)

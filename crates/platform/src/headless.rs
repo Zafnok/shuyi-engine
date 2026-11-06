@@ -457,6 +457,23 @@ pub struct HeadlessPlatform {
     changes: Vec<(Layer, String, Vec<u8>)>,
     /// How many times `App` asked what changed.
     changed_asks: u32,
+    /// What runs on each frame presented, if a tool set it.
+    present_hook: Option<Hook>,
+}
+
+/// What runs on each frame a [`HeadlessPlatform`] is presented, in its
+/// [`present`](Platform::present): the work a device's backend does there,
+/// such as a one-bit display's conversion, so a frame measured headless
+/// counts it ([`HeadlessPlatform::set_present_hook`]).
+pub type PresentHook = Box<dyn FnMut(&Frame<'_>)>;
+
+/// A [`PresentHook`], which has no `Debug` of its own.
+struct Hook(PresentHook);
+
+impl core::fmt::Debug for Hook {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("PresentHook")
+    }
 }
 
 impl Default for HeadlessPlatform {
@@ -493,6 +510,7 @@ impl HeadlessPlatform {
             #[cfg(feature = "std")]
             changes: Vec::new(),
             changed_asks: 0,
+            present_hook: None,
         }
     }
 
@@ -606,6 +624,12 @@ impl HeadlessPlatform {
         self.snapshots = snapshot;
     }
 
+    /// Runs `hook` on each frame presented from now on, after the backend
+    /// keeps it, or runs none (`None`).
+    pub fn set_present_hook(&mut self, hook: Option<PresentHook>) {
+        self.present_hook = hook.map(Hook);
+    }
+
     /// Whether it reads the heap: a fake, or a counter set.
     pub fn has_memory(&self) -> bool {
         !matches!(self.memory, Memory::None)
@@ -706,6 +730,9 @@ impl Platform for HeadlessPlatform {
         self.reload_errors.clear();
         self.reload_errors.extend_from_slice(frame.reload_errors);
         Presented::keep(&mut self.last, frame);
+        if let Some(Hook(hook)) = &mut self.present_hook {
+            hook(frame);
+        }
     }
 
     fn poll_input(&mut self, out: &mut Vec<RawInputEvent>) {

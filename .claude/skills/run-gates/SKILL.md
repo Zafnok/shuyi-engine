@@ -162,6 +162,22 @@ cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --l
 
 Running `check.py` by hand: `crates/cli/web/README.md`, *Checked in CI*.
 
+## The performance budgets (CI's `bench` job, CI only)
+
+The `bench` job (ticket 3008) runs `shuyi bench` on Hello, Grid twice and
+fails on a number over a target's budget, or a frame whose instruction
+count differs between the runs; then it checks the toy's fixtures
+(`crates/cli/toy/bench/`). Counting instructions needs Valgrind, which
+runs on Linux only, so it isn't a local gate on Windows. Locally, the
+rest of it (the heap's peak and the packages) runs without Valgrind:
+
+```bash
+cd examples/hello-grid && cargo shuyi bench --no-instructions
+```
+
+In WSL with Valgrind and Rust, `cargo shuyi bench` counts them too. The
+budgets, the proxies and the scenarios: [`docs/targets/README.md`](../../../docs/targets/README.md).
+
 ## The sound parity gates (CI's `sound-parity` job, CI only)
 
 On a pull request or a push that changes a sound path, the `sound-parity` job

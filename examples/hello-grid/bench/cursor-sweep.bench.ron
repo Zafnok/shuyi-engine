@@ -1,0 +1,8 @@
+// The cursor sweeping the map: up, right, down and left round a square.
+(
+    format_version: 1,
+    about: "the cursor sweeping the map",
+    start: [(flag: "--stage")],
+    script: (steps: [keys("Up Up Up Right Right Right Down Down Down Left Left Left")]),
+    frames: 10,
+)

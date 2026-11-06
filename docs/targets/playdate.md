@@ -208,6 +208,32 @@ The export runs on a developer's machine and not in CI: the SDK's license
 doesn't let it be handed on. CI builds the backend and the example's library
 for the device (its `no-std` job), without linking.
 
+## Budgets
+
+Its row of ADR-0008 §6's table; *prov.* marks a starting guess. What the
+budgets are and how `shuyi bench` checks them is in
+[`README.md`](README.md).
+
+| Target | Frame time on device | `frame_instructions` | `peak_heap_bytes` | `package_bytes` | `startup_ms` | Also |
+| ------ | -------------------- | -------------------- | ----------------- | --------------- | ------------ | ---- |
+| `playdate` | 30 fps held: p99 ≤ 33.3 ms, no frame over 50 ms, on Rev A and Rev B | 2 M (prov.: half of 168 MHz ÷ 30, leaving the rest to the SDK, the display and audio) | 10 MB (prov., of 16) | 40 MB (prov.) | 5 000 | while a bot thinks, frames still hold 30 fps; each enemy decision ≤ 1 s; only changed rows are sent to the display |
+
+Not yet measured on a device: ticket 3011 measures it.
+
+## Hello, Grid's numbers
+
+From CI's `bench` job on 2026-11-05 (ticket 3008's pull request): the
+heaviest of Hello, Grid's eight scenarios
+([`examples/hello-grid/bench/`](../../examples/hello-grid/bench/)), on an
+x86-64 Linux runner. They are proxies, not a device's frame times, and
+the budgets above stay as they are until a device is measured.
+
+| Measure | Hello, Grid | Budget |
+| ------- | ----------- | ------ |
+| Instructions in its heaviest frame, converted to one bit | 907,519 (`dialogue`, frame 71) | 2,000,000 |
+| Heap's peak | 137.9 KB (`idle-map-tiles`) | 10 MB |
+| Package | not measured: CI has no Playdate SDK | 40 MB |
+
 ## What doesn't work yet
 
 - **Voice clips** aren't baked: a voice plays as silence, with a warning.

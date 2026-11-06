@@ -57,9 +57,9 @@ whether it is what you meant by MIDI sound.
   macroquad's audio plays whole sounds, so check its API on the day; if
   it can't take a stream, render the next second ahead into a buffer and
   queue it, and record the delay this adds.
-- **Budgets:** measure the synth's cost with `shuyi bench` (3008) if it
-  is done, and record it in the README's cost section. If 3008 isn't
-  done, measure with a plain timing test and say so.
+- **Budgets:** **From 3008 (done):** measure the synth's cost with
+  `shuyi bench` (a `.bench.ron` scenario, `docs/targets/README.md`), and
+  record it in the README's cost section.
   Measure the memory of the largest fixture bank plus the synth too.
   If `crates/midi`'s `needs` hold a provisional `ram_bytes` (2205
   writes one, provisional until this ticket measures it), replace it

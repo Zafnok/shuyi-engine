@@ -1089,6 +1089,79 @@ jobs:
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 
+  # The performance budgets (ticket 3008, ADR-0008 §6, ADR-0081): `shuyi
+  # bench` plays Hello, Grid's scenarios under Valgrind's Callgrind and
+  # gates each frame's instructions, the heap's peak and the web package
+  # (the `export` job's) against every target it ships on. Wall time is
+  # never a gate. It runs twice, and every frame's count must be the same
+  # both times. The table goes in the job's summary. Then the toy's
+  # fixtures: a frame that burns instructions fails on the Playdate naming
+  # that frame, and 11 MB held fails on the Playdate and passes on the
+  # desktop.
+  bench:
+    name: bench
+    needs: [changes, export]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends valgrind
+          valgrind --version
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: bench
+      - name: The web package the export job made
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: hello-grid-export-web
+          path: examples/hello-grid/dist/export/web
+      - name: Bench Hello, Grid
+        working-directory: examples/hello-grid
+        run: cargo shuyi bench --out dist/bench/run-1
+      - name: Post the table
+        if: always()
+        run: |
+          table=examples/hello-grid/dist/bench/run-1/bench-report.md
+          if [ -f "$table" ]; then cat "$table" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Bench again and compare every frame's count
+        working-directory: examples/hello-grid
+        run: |
+          cargo shuyi bench --out dist/bench/run-2
+          counts='[.runs[] | {scenario, on, frames: [.frames[] | [.frame, .instructions]]}]'
+          jq -e 'all(.runs[].frames[]; .instructions != null)' dist/bench/run-1/bench-report.json
+          diff <(jq -c "$counts" dist/bench/run-1/bench-report.json) <(jq -c "$counts" dist/bench/run-2/bench-report.json)
+      - name: The toy's fixtures fail where they must
+        working-directory: crates/cli/toy
+        run: |
+          expect() {
+            local code=$1 scenario=$2 target=$3 says=$4
+            set +e
+            cargo run -q -p shuyi-cli -- bench --scenario "$scenario" --target "$target" --out "dist/bench/$scenario-$target" > out.txt 2>&1
+            local got=$?
+            set -e
+            cat out.txt
+            if [ "$got" != "$code" ]; then echo "::error::$scenario on $target: exit $got, not $code"; exit 1; fi
+            if [ -n "$says" ] && ! grep -qF -- "$says" out.txt; then echo "::error::$scenario on $target: no \"$says\""; exit 1; fi
+          }
+          expect 1 burns-in-frame-5 playdate "burns-in-frame-5 on playdate: frame 5 took"
+          expect 0 burns-in-frame-5 desktop ""
+          expect 1 holds-11-mb playdate "holds-11-mb on playdate: the heap's peak reached"
+          expect 0 holds-11-mb desktop ""
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bench-report
+          path: |
+            examples/hello-grid/dist/bench/run-*/bench-report.*
+          retention-days: 7
+
   # The crates' layers as tools/layers.ron writes them (ticket 2015,
   # ADR-0032): which engine crate depends on which, the outside crates of
   # the pure ones, no device crate below any crate but the backend's, and
@@ -1392,7 +1465,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity-windows, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity-windows, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, playtest, skills, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

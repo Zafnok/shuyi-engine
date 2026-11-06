@@ -1,0 +1,7 @@
+// The options: its full menu opened from the title, and its rows walked
+// down and up.
+(
+    format_version: 1,
+    about: "the options menu",
+    script: (steps: [keys("Down Enter"), wait(0.3), keys("Down Down Down Up Up Up"), wait(0.3)]),
+)

@@ -521,6 +521,20 @@ pub trait GameTools {
         Err(unsupported("run and scene", "session"))
     }
 
+    /// `bench` on a one-bit target: the game started headless as `options`
+    /// say on target `target` (its console and its buttons), each frame
+    /// converted as the device converts it, most simply a
+    /// [`Headless`](crate::contract::session::Headless) over its Harness on
+    /// that target with a
+    /// [`set_present_hook`](shuyi_platform::harness::Harness::set_present_hook)
+    /// that runs [`to_one_bit`](shuyi_ui::frame::onebit::to_one_bit) on the
+    /// frame. Left at its default, `bench` measures [`session`](Self::session)
+    /// there and says the frames weren't converted.
+    fn session_on(&self, target: &str, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let _ = (target, options);
+        Err(unsupported("bench on a one-bit target", "session_on"))
+    }
+
     /// `run --session` and `scene --session`: the game's real start, made
     /// ready to play `record`, most simply a
     /// [`Headless`](crate::contract::session::Headless) over
@@ -752,6 +766,11 @@ mod tests {
         assert_eq!(
             session,
             "the game's tools don't offer run and scene (GameTools::session)"
+        );
+        let on = Plain.session_on("playdate", &[]).err().unwrap();
+        assert_eq!(
+            on,
+            "the game's tools don't offer bench on a one-bit target (GameTools::session_on)"
         );
         let record = Record {
             file: "a.ron".to_owned(),

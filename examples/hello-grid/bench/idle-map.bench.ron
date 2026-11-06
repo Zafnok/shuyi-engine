@@ -1,0 +1,11 @@
+// `cargo shuyi bench`'s scenarios (ADR-0008 §6, docs/targets/README.md):
+// each is played headless, its frames' instructions, its heap's peak and
+// the package gated against every target `shuyi.ron` lists.
+//
+// The stage open with no input: the map drawn each frame.
+(
+    format_version: 1,
+    about: "the stage's map, idle",
+    start: [(flag: "--stage")],
+    frames: 60,
+)

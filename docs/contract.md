@@ -558,6 +558,7 @@ doesn't offer it:
 | `check` | `check` | its loader's errors (`ContentError`s) |
 | `font_atlas` | `check` | its loaded font atlas (`FontAtlasDef`), which `check` checks its text against |
 | `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
+| `session_on` | `bench` on a one-bit target | its `Harness` on the target's console, with `set_present_hook` running `to_one_bit` on each frame presented, as the device's backend converts it; left out, `bench` measures `session` there and says so |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)`, its `made` set to the record's stamp |
 | `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its `bots` writes carry it |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |

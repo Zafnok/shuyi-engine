@@ -248,10 +248,11 @@ None.
   without the files report. This ticket adds its `unread` and `largest`
   to it, taken from a plain `shuyi check` run (`check --target`, which
   export runs first, makes no files report), with a test.
-- **Either order with 3008:** if 3008 is done, a package over budget in
-  `shuyi bench` names the files report's `largest` and `unread` files,
-  taken from `check`'s answer, not counted again. If not, nothing to do
-  (3008 does it, its own clause says so).
+- **From 3008 (done):** a package over budget in `shuyi bench` names
+  the files report's `largest` and `unread` files, taken from `check`'s
+  answer, not counted again. Today its line names the package alone
+  (`Over::text` for `What::Package` in `crates/cli/src/bench/report.rs`;
+  the packages are read in `crates/cli/src/bench.rs`'s `packages`).
 - **Public types (ADR-0039):** the new public types follow it.
 - **Docs:**
   - `docs/formats.md` gets a section "References": `Ref<K>`, what is

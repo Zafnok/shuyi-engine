@@ -3,7 +3,7 @@ name: shuyi-perf
 description: Find what makes a game on Shuyi Engine slow or heavy, from the times of its frames and of the spans it marks around its own code, and from the heap, its counts and its snapshots by memory tag (what holds it and what grew), read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, a bot's turn takes too long, the heap grows as the game plays, or a stage or a target runs out of memory. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Find what makes a game slow
@@ -210,6 +210,43 @@ A running build's trace file (`SHUYI_PERF`) has a snapshot on its first
 frame and every 600 frames after, each followed by its diff from the
 one before: play, then read the `diff` lines.
 
+## Hold it to the targets' budgets
+
+A time is this machine's, so it is never a test. `bench` gates numbers
+that are the same on every run instead, against the `budgets` of each
+target `shuyi.ron` lists: each frame's instructions, the heap's peak,
+and the package's size. Write a scenario for each heavy moment, a file
+named `<name>.bench.ron` anywhere in the game's folder:
+
+```ron
+(
+    format_version: 1,
+    about: "the biggest battle, the foe's turn",
+    start: [(flag: "--stage"), (flag: "--seed", value: "3")],
+    script: (steps: [keys("Enter"), wait(1.0)]),
+    frames: 60,
+    measure: Frames(first: 30, last: 120),
+)
+```
+
+`start` and `script` are `run`'s; `measure` is `Every` by default, and
+the first frame is 1. Then, on Linux with Valgrind:
+
+```bash
+cargo shuyi bench
+```
+
+It prints a table and writes `dist/bench/bench-report.json` (every
+frame's numbers) and `bench-report.md`. Over a budget, it fails naming
+the scenario, the frame, the target and both numbers: find that frame's
+cost with step 1 and spans. `--target <id>` gates one target,
+`--scenario <name>` plays one, and `--no-instructions` measures the heap
+and the packages without Valgrind (on Windows). A package is read from
+the `export-report.json` that `cargo shuyi export <target>` left in
+`dist/export`. On a one-bit target the game's tools convert each frame
+as the device does (`GameTools::session_on`); without it, the report
+says the frames weren't converted.
+
 ## A game with its own allocator
 
 Every debug build counts the heap with a global allocator the engine
@@ -223,6 +260,8 @@ rustflags = ["--cfg", "shuyi_no_heap_count"]
 ```
 
 Its frames then have no `heap`, and the times are still measured.
+`bench` can't count its instructions either (it tells frames apart by
+their heap reading): run it with `--no-instructions`.
 
 ## When it fails
 
@@ -243,6 +282,8 @@ Its frames then have no `heap`, and the times are still measured.
 - **"the trace keeps the last 600 frames"**: the run was longer, and its
   first frames are gone. Run fewer frames, or read a session as a
   stream.
+- **`bench` exits 3, "valgrind doesn't run here":** install Valgrind
+  (Linux), or measure without it: `--no-instructions`.
 - **`SH3004`:** the trace file can't be written: its folder is a file,
   or not yours. A relative path is from the project's folder.
 - **`SH1006` from `attach`:** the build speaks another link version: it

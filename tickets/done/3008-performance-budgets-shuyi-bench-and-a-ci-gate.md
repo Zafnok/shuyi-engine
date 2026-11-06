@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3001", "3003"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 3008 — Performance budgets and `shuyi bench`
@@ -180,16 +180,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Two runs of `shuyi bench` on the same commit give the same
+- [x] Two runs of `shuyi bench` on the same commit give the same
       instruction counts (CI checks two runs).
-- [ ] A fixture scenario that allocates 11 MB fails on `playdate`
+- [x] A fixture scenario that allocates 11 MB fails on `playdate`
       (budget 10 MB) and passes on `desktop`.
-- [ ] A fixture that burns instructions in a loop fails on `playdate`,
+- [x] A fixture that burns instructions in a loop fails on `playdate`,
       naming the frame.
-- [ ] The CI job posts the table and fails on an over-budget scenario.
-- [ ] `docs/targets/` exists with one file per profile.
-- [ ] The game ticket exists and is linked.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The CI job posts the table and fails on an over-budget scenario.
+- [x] `docs/targets/` exists with one file per profile.
+- [x] The game ticket exists and is linked.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -202,5 +202,82 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi bench [--target <id>] [--scenario <name>] [--out <dir>]
+  [--no-instructions]` (`crates/cli/src/bench.rs`, private to the tool),
+  with its inner half `bench-play`, run in the game's tool program.
+  `Scenario` is read with serde from `*.bench.ron` (`format_version` 1,
+  `about`, `start`, `script`, `frames`, `measure`), never a `Format`; an
+  error names the file, the line and the column.
+- **Instructions:** Callgrind (Valgrind's, beside Cachegrind), one
+  process per scenario, with `--dump-before` on the frame's heap reading
+  (`contract::session::process_heap`, now `#[inline(never)]`): one dump
+  per frame. Neither client requests nor one process per measured range,
+  as step 2 offered: a client request is `unsafe` or C in the CLI, and a
+  process per frame costs the whole start each time. ADR-0081.
+- **Peak heap:** the bench reads 3064's global counter
+  (`shuyi_alloc_count::global::reading()`, through `Session::set_perf`,
+  so it is `run --perf`'s `peak_bytes`). It declares no `CountingAlloc`
+  of its own: it builds the tool program in a cargo profile of its own,
+  `shuyi-bench` (the release profile with `debug-assertions` on and its
+  symbols kept, given with `--config`), where `global::COUNTING` is true.
+  A game built with `shuyi_no_heap_count` can't have its instructions
+  counted (no frame marker); `--no-instructions` measures the rest.
+- **One-bit targets:** `HeadlessPlatform::set_present_hook` and
+  `Harness::set_present_hook` run a `PresentHook` on each frame
+  presented, and `GameTools::session_on(target, options)` starts the game
+  on a target's console. Hello, Grid's and the toy's convert each frame
+  to one bit there (`to_one_bit`, `onebit::render`).
+- **Package size** from each `dist/export/*/export-report.json` whose
+  `profile` has a `package_bytes` budget, with a test.
+- **Budgets:** each `Supported` target the game's `shuyi.ron` lists (or
+  `--target` alone). ADR-0008 §6's "every `supported` profile" predates
+  3001's `targets` table, so a game is gated only where it ships.
+  Hello, Grid now lists the Playdate too (3010), so it is gated there
+  (2 M instructions, 10 MB heap).
+- `bench-report.json` (every frame's numbers) and `bench-report.md`.
+- **CI:** the `bench` job (after `export`, with its web package): Hello,
+  Grid twice, every frame's count compared, the table in the summary,
+  then the toy's fixtures (`crates/cli/toy/bench/`: `--burn-frame` and
+  `--hold-mb`, new toy start options).
+- **Docs:** `docs/targets/README.md`, a page per profile (new: `web`,
+  `steam-deck`, `switch`, `android`, `ios`; a *Budgets* section added to
+  `desktop` and `playdate`), the targets' comments, ADR-0081, the docs
+  map, `contract.md`'s `GameTools` table, the book's *Size and speed*,
+  the `shuyi-perf` skill (1.4) and the `run-gates` skill.
+
+- **The examples' numbers** (CI's first `bench` run, 2026-11-05), beside
+  the budgets in `docs/targets/desktop.md`, `web.md` and `playdate.md`,
+  the budgets unchanged: Hello, Grid's heaviest frame takes 394,501
+  instructions on the colour targets (20 M budget) and 907,519 on the
+  Playdate with its one-bit conversion (2 M); its heap peaks at 158.5 KB;
+  its web zip is 993.4 KB (25 MB). Both runs counted every frame the same.
+
+**Deviations.**
+
+- Hello, Grid has no attack and no portraits: its scenarios are
+  `idle-map`, `idle-map-tiles`, `cursor-sweep`, `unit-move`,
+  `walk-animation` (the move's animation, standing in for the attack's),
+  `foe-turns` (the bot's turns; two units is its most), `options-menu`
+  and `dialogue` (the opening scene, without a portrait).
+- 2360 isn't done: its scenario is its own (its clause now says so).
+- 2566 merged while this was open: a scenario's `script` is its
+  `shuyi_platform::script::Script` (`frame_png`'s re-export), read in its
+  serde form (`act` among the steps) and played with `Session::play`,
+  then `Session::idle`, as its clause says.
+- 2516 isn't done: a package over budget names the package only; 2516
+  adds its largest and unread files (its clause now says so).
+- 2906's `asset_memory.rs` doesn't exist yet: nothing to add there.
+
+**Follow-ups.** The game's ticket: Zafnok/visions-of-shuyi#553 writes
+game ticket 1244 (benchmark scenarios for its heaviest battle, menus and
+dialogue), blocked by this one; its PR moves the pin.
+
+**For Nick.** CI now fails a pull request that makes a frame too heavy
+for a target the example ships on, by numbers that are the same on
+every run; the real devices calibrate them later (3011, 3013).
+
+No break. The public API grows: `shuyi_platform::headless::PresentHook`,
+`HeadlessPlatform::set_present_hook`, `Harness::set_present_hook` and
+`GameTools::session_on` (a method with a default).
