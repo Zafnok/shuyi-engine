@@ -106,10 +106,9 @@ None.
   `RigView::from(&Rig, &Pose, skin, origin, facing)` → one sprite item
   per slot with its angle (2335), on a world layer (1120), in slot
   order; `facing` flips the rig left and right.
-- **The debug view:** if 2315 is done, a helper
+- **The debug view (from 2315, done; ADR-0085):** a helper
   `shuyi_bones::debug::bone_gizmos` drawing each bone as a `Bone` line
-  from its position along its length, on a `bones` channel. If not,
-  leave it: 2315 adds it when it lands (its scope says so).
+  from its position along its length, on a `bones` channel.
 - **Fixtures:** a three-bone arm and a small walk clip (ours, CC0).
 
 **Out (do not do):**

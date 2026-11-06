@@ -97,5 +97,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0082](0082-one-input-script-the-steps-and-their-frames-in-shuyi-platform-for-the-harness-the-contract-the-live-link-and-capture-plans.md) | One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans | Accepted; amends ADR-0047 §7 and ADR-0052 |
 | [0083](0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md) | A crash report says whether the panic ended the game, and only those are offered | Accepted; extends ADR-0079 §6 |
 | [0084](0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md) | One description of a game's types: serde for values, `schemars` for shapes in the tools, names given at registration, and views as the game's own types | Accepted; extends ADR-0005 §1, ADR-0009 §8 and ADR-0022 §5 |
+| [0085](0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md) | The debug view: gizmos as data from screens, in channels turned on from the debug menu | Accepted; amends ADR-0082 (a `debug` step) |
 
 Template: [`0000-template.md`](0000-template.md).

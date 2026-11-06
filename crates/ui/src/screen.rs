@@ -37,6 +37,7 @@ use core::fmt;
 use shuyi_core::StateHash;
 
 use crate::ctx::{Ctx, GameData};
+use crate::debug::gizmo::Gizmos;
 use crate::frame::glyph_buffer::GlyphBuffer;
 
 pub use crate::input::frame::FrameInput;
@@ -52,6 +53,18 @@ pub trait Screen<G: GameData> {
 
     /// Paints the screen. An opaque screen must cover the whole buffer.
     fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer);
+
+    /// Hands in what the debug view shows of this screen (ADR-0085): its
+    /// gizmos, each in its channel, in console pixels, built from `self`
+    /// and `ctx` alone, so looking changes nothing. A channel's helper
+    /// (the grid kit's [`layout_gizmos`](crate::grid::debug::layout_gizmos))
+    /// does the work. Called after [`draw`](Self::draw) on every screen
+    /// drawn, bottom up, only while debug tools are on
+    /// ([`Ctx::debug_tools`]). Does nothing unless the screen has
+    /// something to show.
+    fn debug_draw(&self, ctx: &Ctx<G>, out: &mut Gizmos) {
+        let _ = (ctx, out);
+    }
 
     /// Whether the screen below shows through (drawn first, then this one).
     fn is_overlay(&self) -> bool {
@@ -415,14 +428,29 @@ impl<G: GameData> ScreenStack<G> {
     /// Draws the top-most opaque screen and every overlay above it, bottom
     /// up. If every screen is an overlay, all are drawn.
     pub fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer) {
+        for screen in self.drawn() {
+            screen.draw(ctx, buf);
+        }
+    }
+
+    /// Asks every screen [`draw`](Self::draw) draws for its debug view's
+    /// gizmos ([`Screen::debug_draw`]), bottom up, so an overlay's come
+    /// after those of the screen under it.
+    pub fn debug_draw(&self, ctx: &Ctx<G>, out: &mut Gizmos) {
+        for screen in self.drawn() {
+            screen.debug_draw(ctx, out);
+        }
+    }
+
+    /// The screens drawn: the top-most opaque one and every overlay above
+    /// it (all of them if every one is an overlay).
+    fn drawn(&self) -> &[Box<dyn Screen<G>>] {
         let base = self
             .screens
             .iter()
             .rposition(|s| !s.is_overlay())
             .unwrap_or(0);
-        for screen in &self.screens[base..] {
-            screen.draw(ctx, buf);
-        }
+        &self.screens[base..]
     }
 }
 

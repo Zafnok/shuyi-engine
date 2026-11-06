@@ -550,7 +550,8 @@ fn a_failing_storage_leaves_the_defaults_and_a_warning_for_each() {
         [
             "profiles: can't be read: storage error: down",
             "keybindings: can't be read, using the default keys: storage error: down",
-            "settings: can't be read: storage error: down, using the defaults"
+            "settings: can't be read: storage error: down, using the defaults",
+            "debug_view: can't be read: storage error: down"
         ]
     );
     assert_eq!(*c.settings(), Settings::default());
@@ -953,6 +954,7 @@ fn saved_data_that_cant_be_read_is_logged_by_what_it_is_about() {
         [
             (LogLevel::Warn, LogCategory::Storage),
             (LogLevel::Warn, LogCategory::Input),
+            (LogLevel::Warn, LogCategory::Storage),
             (LogLevel::Warn, LogCategory::Storage),
             (LogLevel::Warn, LogCategory::Audio),
         ]

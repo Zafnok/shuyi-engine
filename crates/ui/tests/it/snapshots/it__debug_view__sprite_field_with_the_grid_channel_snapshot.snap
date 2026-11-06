@@ -1,0 +1,183 @@
+---
+source: crates/ui/tests/it/debug_view.rs
+expression: field(true).snapshot()
+---
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+            0                           
+                                        
+               1                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:text bg:panel
+b = fg:highlight bg:panel
+--- overlays ---
+under sprite 28,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,52 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,76 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,100 24x24  grid_tiles.png 48,0 24x24
+under sprite 172,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,124 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,148 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,172 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,196 24x24  grid_tiles.png 72,0 24x24
+under sprite 76,196 24x24  grid_tiles.png 72,0 24x24
+under sprite 100,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,196 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,220 24x24  grid_tiles.png 72,0 24x24
+under sprite 100,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,220 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,220 24x24  grid_tiles.png 0,0 24x24
+under 76,124 24x24  piece
+under 100,148 24x24  piece
+over  sprite 80,128 16x16  card.png 0,0 16x16
+over  sprite 104,152 16x16  card.png 0,0 16x16
+over  76,124 6x4  background
+over  76,124 4x6  background
+over  94,124 6x4  background
+over  96,124 4x6  background
+over  76,144 6x4  background
+over  76,142 4x6  background
+over  94,144 6x4  background
+over  96,142 4x6  background
+over  77,125 4x2  cursor
+over  77,125 2x4  cursor
+over  95,125 4x2  cursor
+over  97,125 2x4  cursor
+over  77,145 4x2  cursor
+over  77,143 2x4  cursor
+over  95,145 4x2  cursor
+over  97,143 2x4  cursor
+over  gizmo grid bounds line 4,4 4,315
+over  gizmo grid bounds line 28,4 28,315
+over  gizmo grid bounds line 52,4 52,315
+over  gizmo grid bounds line 76,4 76,315
+over  gizmo grid bounds line 100,4 100,315
+over  gizmo grid bounds line 124,4 124,315
+over  gizmo grid bounds line 148,4 148,315
+over  gizmo grid bounds line 172,4 172,315
+over  gizmo grid bounds line 196,4 196,315
+over  gizmo grid bounds line 220,4 220,315
+over  gizmo grid bounds line 244,4 244,315
+over  gizmo grid bounds line 268,4 268,315
+over  gizmo grid bounds line 292,4 292,315
+over  gizmo grid bounds line 315,4 315,315
+over  gizmo grid bounds line 4,4 315,4
+over  gizmo grid bounds line 4,28 315,28
+over  gizmo grid bounds line 4,52 315,52
+over  gizmo grid bounds line 4,76 315,76
+over  gizmo grid bounds line 4,100 315,100
+over  gizmo grid bounds line 4,124 315,124
+over  gizmo grid bounds line 4,148 315,148
+over  gizmo grid bounds line 4,172 315,172
+over  gizmo grid bounds line 4,196 315,196
+over  gizmo grid bounds line 4,220 315,220
+over  gizmo grid bounds line 4,244 315,244
+over  gizmo grid bounds line 4,268 315,268
+over  gizmo grid bounds line 4,292 315,292
+over  gizmo grid bounds line 4,315 315,315
+over  gizmo grid bounds rect 28,52 240x192
+over  gizmo grid note rect 76,124 24x24
+over  gizmo grid note rect 76,124 24x24
+over  gizmo grid note label 99,124 "0"
+over  gizmo grid note rect 100,148 24x24
+over  gizmo grid note label 123,148 "1"

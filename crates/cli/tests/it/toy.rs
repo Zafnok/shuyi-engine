@@ -67,6 +67,29 @@ fn frame_png_renders_the_toy() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The toy's grid field with the debug view's `grid` channel on
+/// (ADR-0085): the cell lines, the map's bounds, the cursor's cell and the
+/// pieces' over it, a golden picture (the `.png` beside the `.snap`).
+#[test]
+fn frame_png_draws_the_grid_channel_over_the_field() {
+    let dir = scratch("toy-debug");
+    let project = toy_project(&dir);
+    let png = |out: &str, extra: &[&str]| {
+        let mut all = vec!["frame-png", out, "--field", "--scale", "1"];
+        all.extend_from_slice(extra);
+        assert_eq!(run(&project, &args(&all), Some(&ToyTools)), 0, "{extra:?}");
+        fs::read(dir.join(out)).unwrap()
+    };
+    let plain = png("field.png", &[]);
+    let grid = png("grid.png", &["--debug", "grid"]);
+    assert_ne!(grid, plain);
+    // A channel no screen offers draws nothing.
+    assert_eq!(png("none.png", &["--debug", "collision"]), plain);
+    assert_eq!(png("all.png", &["--debug", "all"]), grid);
+    insta::assert_binary_snapshot!("field_debug_grid.png", grid);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 /// The plasma stage's pictures a skin paints at run time (ADR-0078), as
 /// `frame-png` paints them for the desktop and for the Playdate, black and
 /// white: golden pictures (the `.png` beside each `.snap`).

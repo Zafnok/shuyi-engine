@@ -4,15 +4,22 @@ use insta::assert_snapshot;
 
 use super::*;
 use crate::frame::color::tests::engine_palette;
+use crate::frame::gizmo::GizmoShape;
 use crate::frame::glyph_buffer::Item;
 use crate::frame::painted::{PaintedKind, PaintedTable};
 use crate::frame::raster::MISSING_COLOR;
 
 /// Every kind of thing a frame draws, as [`kinds`] names them.
-const ALL: [&str; 13] = [
+const ALL: [&str; 19] = [
     "Item::Rect",
     "Item::Sprite",
     "Item::Painted",
+    "Item::Gizmo",
+    "GizmoShape::Rect",
+    "GizmoShape::Line",
+    "GizmoShape::Cross",
+    "GizmoShape::Circle",
+    "GizmoShape::Label",
     "PaintedKind::Rgba",
     "PaintedKind::Indexed",
     "PaintedKind::OneBit",
@@ -54,6 +61,16 @@ fn kinds(item: &Item, pictures: &PaintedTable) -> Vec<&'static str> {
             };
             vec!["Item::Painted", layer, kind]
         }
+        Item::Gizmo(gizmo) => {
+            let shape = match gizmo.shape {
+                GizmoShape::Rect { .. } => "GizmoShape::Rect",
+                GizmoShape::Line { .. } => "GizmoShape::Line",
+                GizmoShape::Cross { .. } => "GizmoShape::Cross",
+                GizmoShape::Circle { .. } => "GizmoShape::Circle",
+                GizmoShape::Label { .. } => "GizmoShape::Label",
+            };
+            vec!["Item::Gizmo", layer, shape]
+        }
     }
 }
 
@@ -70,7 +87,7 @@ fn items(card: &RenderCard) -> Vec<Item> {
 fn sprites(card: &RenderCard) -> Vec<Sprite> {
     let sprite = |item: Item| match item {
         Item::Sprite(sprite) => Some(sprite),
-        Item::Rect(_) | Item::Painted(_) => None,
+        Item::Rect(_) | Item::Painted(_) | Item::Gizmo(_) => None,
     };
     items(card).into_iter().filter_map(sprite).collect()
 }
@@ -131,6 +148,34 @@ fn its_cells_take_every_setting() {
     assert!(glyphs().any(|c| card.atlas.glyph_rect(c.glyph).is_none()));
     assert!(cells.iter().any(|c| c.see_through && c.glyph != ' '));
     assert!(solid().any(|c| c.bg == card.clear && c.glyph != ' '));
+}
+
+#[test]
+fn its_gizmos_take_every_colour_and_their_labels_their_cells() {
+    let card = build();
+    let gizmos = card.buffer.gizmos();
+    let lines = gizmos
+        .iter()
+        .filter(|g| matches!(g.shape, GizmoShape::Line { .. }));
+    let colours: BTreeSet<_> = lines.map(|g| g.color).collect();
+    assert_eq!(colours.len(), 5, "{colours:?}");
+    let labels: Vec<_> = gizmos
+        .iter()
+        .filter_map(|g| match g.shape {
+            GizmoShape::Label { at, .. } => Some((at, g.clip)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            ((192, 180), Rect::new(192, 176, 16, 16)),
+            ((232, 180), Rect::new(232, 176, 16, 16))
+        ]
+    );
+    // Each label's glyphs are in those cells.
+    assert_eq!(card.buffer.get(24, 11).map(|c| c.glyph), Some('#'));
+    assert_eq!(card.buffer.get(30, 11).map(|c| c.glyph), Some('|'));
 }
 
 #[test]
