@@ -118,6 +118,16 @@ own: the tileset is the font's glyphs on the palette's colors (and in
 black and white in `files@playdate/`), and the sounds are sine blips the
 game makes when it starts.
 
+## Files from the page
+
+The web build plays the files its page hands it in place of its own: a file
+the page's `sessionStorage` holds under `shuyi-page-file:files/stage.map`,
+set before the page loads (or before a reload), is the stage it plays. When
+its data doesn't load with them, every problem goes to the page's parent
+frame, or to the console when there is none (`files/stage.map:11:6: 'X' is
+not in the legend`), and it plays its own files. The web shell's
+[README](../../crates/cli/web/README.md) says how.
+
 ## Debug tools
 
 In a debug build `F2` opens the debug menu, whose "Save session" keeps the

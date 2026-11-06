@@ -8,7 +8,9 @@
 use hello_grid::app_info::APP;
 use hello_grid::{FONT_PNG, TITLE, sound};
 use macroquad::window::Conf;
+use shuyi::app::page::{self, PageLimits};
 use shuyi::app::{AppConfig, CrashReports, Window};
+use shuyi::assets::bundle::Layer;
 
 /// The window, titled with the game's name: the console at twice its
 /// size, and a small margin, with the game's icon (none yet).
@@ -34,8 +36,30 @@ fn window_conf() -> Conf {
     shuyi::app::window_conf(&WINDOW)
 }
 
+/// The files the page holds, laid over the game's on the web (the site's
+/// playground): when the game's data loads with them. Else the page hears
+/// every problem, and the game plays its own files. Off the web the page
+/// holds none.
+fn page_over() -> Option<Layer> {
+    let page = match page::page_layer("files", PageLimits::default()) {
+        Ok(page) => page?,
+        Err(error) => {
+            page::report(&error.to_string());
+            return None;
+        }
+    };
+    if let Some(problems) = hello_grid::problems_over(page) {
+        page::report(&problems);
+        return None;
+    }
+    page::report("");
+    hello_grid::lay_over_files(page);
+    Some(page)
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    let start = hello_grid::start_over(shuyi::app::watched_layer());
+    let over = shuyi::app::watched_layer().or_else(page_over);
+    let start = hello_grid::start_over(over);
     shuyi::app::run(config(), start).await;
 }

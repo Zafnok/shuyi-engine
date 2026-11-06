@@ -450,6 +450,21 @@ of the changed paths, shows a picture's decode error beside those, and reads
 `AppConfig::files` through the folder `watched_layer` read. A device with no
 files to watch leaves the default, which adds nothing.
 
+## Files handed in at run time (optional)
+
+A backend may read files from outside the game into a bundle layer
+(`Layer::owned`, ADR-0004 §1) that the game lays over its own: the game
+says where they come from and asks; the backend only reads. `shuyi-app`
+reads a folder on disk on desktop (`read_folder`), and on the web the text
+files the page holds (`shuyi_app::page::page_layer`), sending the page the
+game's problems with them (`page::report`). The web has no API of its own
+for either without `wasm-bindgen`, so it reaches the browser through a
+miniquad JS plugin of the engine's, beside the page: `page-files.js` here,
+as `gamepad.js` reaches the Gamepad API and `download.js` offers a file
+([`crates/cli/web/README.md`](../crates/cli/web/README.md) lists them and
+what each needs). Off the web, `page_layer` is always `None`. A device
+with nothing to hand in offers neither.
+
 ## The live link (optional)
 
 A backend may offer the live link

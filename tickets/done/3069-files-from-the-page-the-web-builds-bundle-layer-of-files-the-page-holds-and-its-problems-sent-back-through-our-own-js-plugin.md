@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 3069 — Files from the page
@@ -136,22 +136,22 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `layer_from` makes a layer whose files the bundle reads over the
+- [x] `layer_from` makes a layer whose files the bundle reads over the
       game's, and refuses a file over the limit, files over the limit
       in all, and a bad path, each naming it (unit tests).
-- [ ] On native, `page_layer` is `Ok(None)` and `report` does nothing
+- [x] On native, `page_layer` is `Ok(None)` and `report` does nothing
       (unit test).
-- [ ] The plugin's version test covers `page-files.js`, and every web
+- [x] The plugin's version test covers `page-files.js`, and every web
       build's `dist` holds it with its notice.
-- [ ] Hello, Grid's web build, with no page files, plays as before.
-- [ ] With a changed `files/stage.map` in `sessionStorage`, the reloaded
+- [x] Hello, Grid's web build, with no page files, plays as before.
+- [x] With a changed `files/stage.map` in `sessionStorage`, the reloaded
       web build plays that map (checked by hand in the browser; say so
       in the completion notes).
-- [ ] With a broken one, the problem's text, with its file and line,
+- [x] With a broken one, the problem's text, with its file and line,
       reaches the console, and the game plays its own map.
-- [ ] The book's chapter is updated (2802), or the completion notes say
+- [x] The book's chapter is updated (2802), or the completion notes say
       why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -166,5 +166,62 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `crates/cli/web/page-files.js`, the `shuyi_page_files` plugin: the four
+  functions the scope names, over `sessionStorage` and `postMessage`. It
+  is in `SHELL` and `SHELL_NOTICES` (`Origin::Engine`), so every web
+  build's `dist` holds it with its notice; `index.html` loads it after
+  `sapp_jsutils.js`, whose objects carry its strings. Text crosses
+  through `TextEncoder`/`TextDecoder` first, so a lone surrogate in
+  storage reaches Rust as U+FFFD, never as bytes that aren't UTF-8.
+- `shuyi_app::page`: `page_layer`, `report`, `PageLimits` and
+  `PageError` (`TooBig`, `TooMuch`, `Layer`), and `layer_from`, which
+  every target compiles and tests. `shuyi-app` takes `sapp-jsutils` on
+  `wasm32` (already in the tree under `quad-storage`; MIT or Apache-2.0).
+- `shuyi-cli`'s tests: the functions and the version of `page-files.js`
+  against `page.rs`, its place in `index.html`, and `dist`'s files.
+- Hello, Grid: `main.rs` lays `page_layer("files", …)` first when the
+  data loads with it, and reports its problems or the empty text;
+  `problems_over` (the check) and `lay_over_files` (what `file(path)`
+  reads first) are in `lib.rs`. Its test `tests/it/page.rs`: a changed
+  map is the one played, a broken one gives `files/stage.map:<line>:…`.
+- Docs: the web shell's README (its files and a section of its own),
+  `docs/platform-backends.md` (*Files handed in at run time*), the
+  book's *Layers* in chapter 5, `shuyi-app`'s crate docs, and Hello,
+  Grid's README.
+- The sound replacement's give-up footprint
+  (`tools/sound-parity/footprint.ron`) and `tools/export-check/web.txt`
+  follow the shell's new file.
+
+Checked by hand in the built-in browser, on `cargo shuyi web` of Hello,
+Grid served on localhost: with no keys it plays as before; with a
+changed `files/stage.map` (the inner walls gone) and a reload, that map
+showed on the stage and the console got the empty text; with an `X` in
+it, the console showed `files/stage.map:11:6: 'X' is not in the legend`
+and the game played its own map. In a same-origin parent frame, the
+parent got `{ kind: "shuyi-report", text }` from the page's origin.
+
+Deviations:
+
+- `name` is also the folder: `page_layer("files", …)` takes the page's
+  keys under `files/`, at the path after it, and the layer is named
+  `files`, so problems show `files/stage.map` as `cargo shuyi check`
+  does. Keys elsewhere are ignored; `""` takes every key. The scope's
+  key (`files/stage.map`) is a project path while the game reads
+  `stage.map`, and this joins the two.
+- `layer_from` returns `Result<Option<Layer>, PageError>`: `None` for no
+  file, which is what `page_layer` returns.
+- With no file of the page, Hello, Grid reports nothing, not the empty
+  text: a plain web build would log an empty line on every start. 2814
+  has this in a **From 3069 (done)** note.
+- `report` and the page's files run on `wasm32` only, so the checks of
+  the browser side are by hand, as the acceptance criteria say; CI's
+  `web-render` boots the build with no keys.
+
+No break: `shuyi-app` gains the `page` module, and nothing changes.
+
+Follow-ups: none new. 2814 builds the playground on this; 2828 moves the
+plugin's version on for its check.
+
+Nick input: none.
