@@ -6,14 +6,30 @@
 //! the game's ([`SceneCameraScreen`]), and the hint that names the Debug
 //! key ([`hint`]). Debug tools are in English only.
 //!
+//! **The debug view** (ADR-0084) draws what a running game's logic sees
+//! over it, as Godot's "Visible Collision Shapes" does: each screen hands
+//! in [`gizmo::Gizmo`]s from
+//! [`Screen::debug_draw`], each in a
+//! [`gizmo::Channel`] with a [`gizmo::GizmoRole`], and the channels on
+//! ([`Ctx::debug_view`]) are drawn over the frame in the debug tools'
+//! colours ([`glyph::paint_gizmos`]). The menu's "Debug view" entry
+//! ([`DebugViewScreen`]) turns them on and off. The grid kit's layout is
+//! the `grid` channel ([`crate::grid::debug`]).
+//!
 //! **The look is a skin**: the menu says what it shows as a
 //! [`DebugMenuView`] and [`glyph::paint`] draws it; the scene camera's
-//! [`SceneCameraView`](camera::SceneCameraView), [`glyph::paint_camera`].
+//! [`SceneCameraView`](camera::SceneCameraView), [`glyph::paint_camera`];
+//! the debug view's screen's [`DebugViewView`](view::DebugViewView),
+//! [`glyph::paint_view`].
 
 pub mod camera;
+pub mod gizmo;
 pub mod glyph;
+pub mod view;
 
 pub use camera::{CameraLayout, SceneCameraScreen};
+pub use gizmo::{Channel, DebugView, Gizmo, GizmoRole, Gizmos};
+pub use view::DebugViewScreen;
 
 use crate::prelude::*;
 use core::fmt;
@@ -108,9 +124,10 @@ pub struct DebugMenuView {
 
 /// The debug menu the Debug key opens: the game's tools, in its order,
 /// then each installed module's ([`Install::debug_entry`](crate::module::Install::debug_entry)),
-/// in install order, then, while the platform records the run or plays a
-/// record ([`Ctx::session_recording`]), the engine's "Save session"; Cancel closes it. A tool that opens nothing leaves the menu on it, its
-/// names read again.
+/// in install order, then the engine's: while the platform records the
+/// run or plays a record ([`Ctx::session_recording`]), "Save session",
+/// and "Debug view" ([`DebugViewScreen`]). Cancel closes it. A tool that opens nothing leaves the menu on it, its names read
+/// again.
 pub struct DebugMenuScreen<G: GameData> {
     /// Each item stands for its entry's index in `entries`.
     menu: Menu<usize>,
@@ -142,6 +159,10 @@ impl<G: GameData> DebugMenuScreen<G> {
                 Transition::None
             }));
         }
+        // check-text: not player text (debug tools are English only)
+        entries.push(DebugEntry::new("Debug view", |ctx| {
+            Transition::Push(Box::new(DebugViewScreen::new(ctx)))
+        }));
         let menu = Self::menu_of(ctx, &entries);
         Self { menu, entries }
     }

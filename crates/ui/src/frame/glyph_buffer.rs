@@ -5,8 +5,10 @@
 //!
 //! Besides cells, a buffer holds [`Item`]s, placed in console pixels:
 //! [`Overlay`]s, coloured rectangles for what whole cells can't draw (HP
-//! bars, the path line; game ADR-0018), and [`Sprite`]s, pictures from image
-//! files (game ADR-0038). Within a layer, items are drawn in the order they were
+//! bars, the path line; game ADR-0018), [`Sprite`]s, pictures from image
+//! files (game ADR-0038), pictures a skin painted
+//! ([`PaintedSprite`], ADR-0078) and the debug
+//! view's [`GizmoItem`]s (ADR-0084), over everything. Within a layer, items are drawn in the order they were
 //! added. They belong to the cells they were drawn with: replacing cells
 //! ([`GlyphBuffer::fill_rect`], [`GlyphBuffer::blit`]) removes the parts of
 //! items over them.
@@ -37,6 +39,7 @@ use shuyi_assets::text::NO_BREAK_SPACE;
 
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
+use crate::frame::gizmo::{GizmoItem, GizmoShape};
 use crate::frame::painted::{PaintedSprite, PaintedTable};
 
 /// One console cell: a glyph with foreground and background colours.
@@ -337,6 +340,8 @@ pub enum Item {
     /// A picture a skin painted at run time (ADR-0078), from the frame's
     /// [`PaintedTable`].
     Painted(PaintedSprite),
+    /// A shape of the debug view (ADR-0084), always over the glyphs.
+    Gizmo(GizmoItem),
 }
 
 impl Item {
@@ -346,16 +351,18 @@ impl Item {
             Item::Rect(o) => o.layer,
             Item::Sprite(s) => s.layer,
             Item::Painted(p) => p.layer,
+            Item::Gizmo(_) => Layer::Over,
         }
     }
 
     /// The console pixels the item is drawn in: a rectangle's `rect`, a
-    /// sprite's or a painted picture's `clip`.
+    /// sprite's, a painted picture's or a gizmo's `clip`.
     pub const fn visible(&self) -> PxRect {
         match self {
             Item::Rect(o) => o.rect,
             Item::Sprite(s) => s.clip,
             Item::Painted(p) => p.clip,
+            Item::Gizmo(g) => g.clip,
         }
     }
 
@@ -363,7 +370,7 @@ impl Item {
     /// `hole` are replaced: a sprite's [`overhang`](Sprite::overhang).
     fn overhang(&self, hole: PxRect) -> Option<PxRect> {
         match self {
-            Item::Rect(_) | Item::Painted(_) => None,
+            Item::Rect(_) | Item::Painted(_) | Item::Gizmo(_) => None,
             Item::Sprite(s) => s.overhang(hole),
         }
     }
@@ -374,6 +381,7 @@ impl Item {
             Item::Rect(o) => Item::Rect(Overlay { rect: visible, ..o }),
             Item::Sprite(s) => Item::Sprite(Sprite { clip: visible, ..s }),
             Item::Painted(p) => Item::Painted(PaintedSprite { clip: visible, ..p }),
+            Item::Gizmo(g) => Item::Gizmo(GizmoItem { clip: visible, ..g }),
         }
     }
 }
@@ -657,6 +665,29 @@ impl GlyphBuffer {
         if let Some(clip) = clip {
             self.items
                 .push(Item::Painted(PaintedSprite { clip, ..painted }));
+        }
+    }
+
+    /// The debug view's gizmos, in drawing order.
+    pub fn gizmos(&self) -> Vec<GizmoItem> {
+        let gizmo = |item: &Item| match item {
+            Item::Gizmo(g) => Some(*g),
+            _ => None,
+        };
+        self.items.iter().filter_map(gizmo).collect()
+    }
+
+    /// Adds `gizmo` over everything drawn so far, its `clip` clipped to its
+    /// shape's [`bounds`](GizmoShape::bounds) (but a label's, which is the
+    /// cells it was printed in) and to the buffer; one with nothing to show
+    /// is dropped.
+    pub fn add_gizmo(&mut self, gizmo: GizmoItem) {
+        let reach = match gizmo.shape {
+            GizmoShape::Label { .. } => Some(gizmo.clip),
+            shape => gizmo.clip.intersect(&shape.bounds()),
+        };
+        if let Some(clip) = reach.and_then(|clip| clip.intersect(&self.pixel_bounds())) {
+            self.items.push(Item::Gizmo(GizmoItem { clip, ..gizmo }));
         }
     }
 
@@ -949,7 +980,9 @@ impl GlyphBuffer {
         self.dim(self.bounds(), brightness);
         for item in &mut self.items {
             match item {
-                Item::Rect(o) => o.color = o.color.scale(brightness),
+                Item::Rect(Overlay { color, .. }) | Item::Gizmo(GizmoItem { color, .. }) => {
+                    *color = color.scale(brightness);
+                }
                 Item::Sprite(Sprite { brightness: b, .. })
                 | Item::Painted(PaintedSprite { brightness: b, .. }) => {
                     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255
@@ -1008,6 +1041,12 @@ impl GlyphBuffer {
                     if let Some(dest) = offset(p.dest, dx, dy) {
                         let moved = PaintedSprite { dest, ..p };
                         self.items.push(Item::Painted(moved).with_visible(visible));
+                    }
+                }
+                Item::Gizmo(g) => {
+                    if let Some(shape) = g.shape.moved(dx, dy) {
+                        let moved = GizmoItem { shape, ..g };
+                        self.items.push(Item::Gizmo(moved).with_visible(visible));
                     }
                 }
             }

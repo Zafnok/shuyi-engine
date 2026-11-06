@@ -181,6 +181,19 @@
           "required": [
             "crank"
           ]
+        },
+        {
+          "description": "Debug tools and the debug view's channels of these comma-separated\nids turned on from here on (`\"grid,collision\"`; `\"all\"` turns on\nevery channel, offered or not), and the frame drawn again: no frame\npasses (ADR-0084). Played by the Harness only.",
+          "type": "object",
+          "properties": {
+            "debug": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "debug"
+          ]
         }
       ]
     }

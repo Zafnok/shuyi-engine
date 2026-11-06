@@ -1,6 +1,6 @@
 //! Input scripts: the steps of a player's input a tool plays (keys,
-//! controller buttons, an action by name, waits in seconds, the crank) and
-//! the one plan that turns them into frames of raw input events
+//! controller buttons, an action by name, waits in seconds, the crank, and
+//! the debug view's channels turned on) and the one plan that turns them into frames of raw input events
 //! ([`frames`]). The Harness plays a [`Script`] (`Script::play`, the
 //! `harness` feature), the live link's server plays a `Play` request's
 //! steps, and a capture plan's input steps are these (ticket 2566): a key
@@ -8,7 +8,8 @@
 //!
 //! A step's form is the same in JSON and in RON: `{"keys": "Enter Up"}`,
 //! `{"pad": "South+East"}`, `{"act": "Confirm"}`, `{"wait": 0.5}`,
-//! `{"crank": 30}`; `keys("Enter Up")` and so on in a plan's RON.
+//! `{"crank": 30}`, `{"debug": "grid"}`; `keys("Enter Up")` and so on in
+//! a plan's RON.
 //!
 //! Every frame is [`FRAME_DT`] long, and a wait is played as
 //! [`wait_frames`] of them. How long one wait may be is the player's to
@@ -48,6 +49,20 @@ pub enum Step {
     /// The crank wound that many degrees in one frame (backwards is
     /// negative), as a Playdate front end reports it.
     Crank(f32),
+    /// Debug tools and the debug view's channels of these comma-separated
+    /// ids turned on from here on (`"grid,collision"`; `"all"` turns on
+    /// every channel, offered or not), and the frame drawn again: no frame
+    /// passes (ADR-0084). Played by the Harness only.
+    Debug(String),
+}
+
+/// Whether `id` can name a debug view channel in a [`Step::Debug`]: not
+/// empty, and only `a`-`z`, `0`-`9` and `_`.
+fn is_channel_id(id: &str) -> bool {
+    !id.is_empty()
+        && id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
 impl Step {
@@ -85,6 +100,17 @@ impl Step {
                     return Err(format!("crank: {degrees} is not a number of degrees"));
                 }
             }
+            Step::Debug(channels) => {
+                if let Some(bad) = channels
+                    .split(',')
+                    .map(str::trim)
+                    .find(|id| !is_channel_id(id))
+                {
+                    return Err(format!(
+                        "debug: {bad:?} is not a channel's id (a-z, 0-9 and _, comma-separated)"
+                    ));
+                }
+            }
         }
         Ok(())
     }
@@ -99,6 +125,7 @@ impl fmt::Display for Step {
             Step::Act(name) => write!(f, "act({name:?})"),
             Step::Wait(seconds) => write!(f, "wait({seconds})"),
             Step::Crank(degrees) => write!(f, "crank({degrees})"),
+            Step::Debug(channels) => write!(f, "debug({channels:?})"),
         }
     }
 }
@@ -144,6 +171,10 @@ impl Script {
             let planned = match step {
                 Step::Crank(degrees) => step.check().map(|()| {
                     h.crank(*degrees);
+                    Vec::new()
+                }),
+                Step::Debug(channels) => step.check().map(|()| {
+                    h.show_debug(channels);
                     Vec::new()
                 }),
                 // Only an action needs the game: keys play while it loads.
@@ -302,6 +333,7 @@ fn plain_frames(step: &Step, pad: PadKind) -> Result<Vec<Planned>, String> {
         },
         Step::Act(_) => return Err("act: pressed with the game's keymap".to_owned()),
         Step::Crank(_) => return Err("crank: not over the live link yet".to_owned()),
+        Step::Debug(_) => return Err("debug: not over the live link yet".to_owned()),
     })
 }
 

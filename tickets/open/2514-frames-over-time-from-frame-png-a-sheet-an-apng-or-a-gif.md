@@ -199,9 +199,10 @@ None.
   `skills/shuyi-ship/SKILL.md` says how to make an APNG (`--apng`), and
   a GIF (`--gif`) if this PR adds it, for a README or a store page.
   `check-skills` passes.
-- **Either order with 2315:** if 2315 is done, `--debug` draws its
-  channels on every captured frame (a test with a two-frame sheet). If
-  not, 2315 does that.
+- **From 2315 (done; ADR-0084 §11):** `--debug <channels>` is a
+  `Step::Debug` that `frame_png::parse_args` puts first in the script,
+  so the channels are on from the first frame. Draw them on every
+  captured frame, with a test of a two-frame sheet.
 - **From 2566 (done):** `frame_png::Script` is a re-export of
   `shuyi_platform::script::Script`, which can't take an inherent method
   in this crate: write `then_frames` as the free function

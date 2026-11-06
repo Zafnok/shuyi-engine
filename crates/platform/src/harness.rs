@@ -474,6 +474,29 @@ impl<G: GameData> Harness<G> {
         self.frame(&[], FRAME_DT)
     }
 
+    /// Turns debug tools on, and the debug view's channels of the
+    /// comma-separated ids `channels` (`"all"`: every channel, offered or
+    /// not; ADR-0084), and draws the frame again with them: no frame
+    /// passes. A script's [`Step::Debug`](crate::script::Step::Debug).
+    pub fn show_debug(&mut self, channels: &str) -> &mut Self {
+        let game = self.game_mut();
+        let ctx = game.ctx_mut();
+        ctx.debug_tools = true;
+        for id in channels
+            .split(',')
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+        {
+            if id == "all" {
+                ctx.debug_view.show_all();
+            } else {
+                ctx.debug_view.set(id, true);
+            }
+        }
+        game.redraw();
+        self
+    }
+
     /// The system tells the game `event` (a suspend, a resume, a lost
     /// focus), in a frame of [`FRAME_DT`] with no input.
     pub fn system(&mut self, event: SystemEvent) -> &mut Self {

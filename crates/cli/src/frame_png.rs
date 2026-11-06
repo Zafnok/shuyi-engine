@@ -10,7 +10,9 @@
 //! the one-bit renderer and [`one_bit_picture`]. With `--target <id>`, a
 //! target whose display is black and white gets the picture its device
 //! shows ([`GameTools::frame_one_bit`]: the frame drawn in its roles'
-//! patterns, ADR-0008 §4).
+//! patterns, ADR-0008 §4). With `--debug <channels>`, the debug view's
+//! channels are on from the start (a [`Step::Debug`] first in the script,
+//! ADR-0084): the picture shows what a person sees with the view on.
 //!
 //! [`Painter`] decodes a game's font atlas and images from PNG and paints
 //! with the raster, `shuyi_ui::frame::raster`: the reference picture of a
@@ -60,6 +62,9 @@ options:
   --scale N            whole-number scale, 1 to {MAX_SCALE} (the game says what by default)
   --target ID          as target ID's display shows it: on a one-bit one (the
                        Playdate), black and white in the skin's patterns
+  --debug CHANNELS     the debug view's channels on from the start, by id,
+                       comma-separated (grid,collision; all: every channel),
+                       with debug tools on
 "
     );
     for option in options {
@@ -152,6 +157,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
         game: Vec::new(),
     };
     let steps = &mut parsed.script.steps;
+    let mut debug = Vec::new();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         let mut value = || {
@@ -178,6 +184,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                 );
             }
             "--target" => parsed.target = Some(value()?),
+            "--debug" => debug.push(value()?),
             flag if flag.starts_with("--") => {
                 parsed.game.push(game_arg(flag, options, value)?);
             }
@@ -186,6 +193,12 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
         }
     }
     parsed.out = out.ok_or("missing <out.png>")?;
+    // The channels are on from the first frame, wherever the flag is.
+    if !debug.is_empty() {
+        let step = Step::Debug(debug.join(","));
+        step.check().map_err(|e| format!("--{e}"))?;
+        parsed.script.steps.insert(0, step);
+    }
     check(&parsed.script)?;
     Ok(parsed)
 }

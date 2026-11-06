@@ -201,6 +201,33 @@ A test reads the motion at any moment, and asks when it ended:
 before and this one's, it is true once, so the screen plays its sound or moves on
 without keeping a flag.
 
+## Seeing what the game sees
+
+A debug build can draw what your logic works with over the running game: where the map's
+cells are, which part of it is in view, where a box collides. This is the **debug view**.
+Each thing it can show is a **channel**, turned on and off from the debug menu's **Debug
+view**, which lists every channel the screens running offer; the choice is kept for the
+next launch. A build for players draws none of it and asks no screen for it.
+
+A screen offers a channel in `debug_draw`, a method of `Screen` that does nothing unless
+you write it. It hands in **gizmos**: rectangles, lines, crosses, circles and labels, in
+console pixels, each with a **role** that says what it shows (bounds, solid, trigger,
+path, bone, note). The engine picks their colors from the role, so a gizmo never names a
+color, and `debug_draw` only reads the screen (`&self`), so looking never changes the
+game. The garden's own channel boxes each plot:
+
+{{ snippet(file="src/frame.rs", anchor="gizmos") }}
+
+The grid kit offers its own channel, `grid`: a map screen calls
+`shuyi::ui::grid::debug::layout_gizmos` from its `debug_draw`, and the cell lines, the
+map's edges, the cursor's cell and each unit's appear. A test reads the gizmos as it
+reads a view, never their pixels:
+
+{{ snippet(file="src/frame.rs", anchor="test_gizmos") }}
+
+To see the same as a picture, `cargo shuyi frame-png out.png --debug plots` turns the
+channels on from the first frame (`--debug all` turns on every one).
+
 ## When it goes wrong
 
 **A glyph the font doesn't have.** The font is a picture of the characters it knows, in

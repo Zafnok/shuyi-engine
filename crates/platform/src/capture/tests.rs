@@ -128,6 +128,10 @@ fn an_unknown_key_or_button_is_refused_naming_the_step() {
         "crank(30)",
         "step 1 (crank(30)): crank: not in a capture plan yet",
     );
+    refused(
+        r#"debug("grid")"#,
+        r#"step 1 (debug("grid")): debug: not in a capture plan yet"#,
+    );
 }
 
 #[test]

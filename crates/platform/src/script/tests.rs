@@ -327,3 +327,28 @@ fn the_harness_panics_on_a_wait_longer_than_its_longest() {
     let mut h: Harness<Toy> = Harness::new(toy::game());
     Script::new(vec![Step::Wait(crate::harness::MAX_WAIT + 1.0)]).play(&mut h);
 }
+
+#[test]
+fn a_debug_step_turns_channels_on_in_the_harness_and_plays_no_frame() {
+    let debug = |ids: &str| Step::Debug(ids.to_owned());
+    for ok in ["grid", "grid,collision", "all", " grid , net_2 "] {
+        assert_eq!(debug(ok).check(), Ok(()), "{ok}");
+    }
+    for bad in ["", "Grid", "grid,,net", "grid net", "é"] {
+        let error = debug(bad).check().unwrap_err();
+        assert!(error.starts_with("debug: "), "{bad}: {error}");
+    }
+    assert_eq!(debug("grid,net").to_string(), r#"debug("grid,net")"#);
+    let json = serde_json::to_string(&debug("grid")).unwrap();
+    assert_eq!(json, r#"{"debug":"grid"}"#);
+    // Not over the live link, as a plan of frames.
+    let error = frames(&[debug("grid")], &keymap(), PadKind::default()).unwrap_err();
+    assert_eq!(error, "step 1: debug: not over the live link yet");
+    let mut h: Harness<Toy> = Harness::new(toy::game());
+    h.ctx_mut().debug_tools = false;
+    Script::new(vec![debug("grid,net"), debug("all")]).play(&mut h);
+    assert_eq!(h.frame_count(), 0);
+    let view = &h.ctx().debug_view;
+    assert!(h.ctx().debug_tools && view.is_on("grid") && view.is_on("net"));
+    assert!(view.is_on("anything"));
+}

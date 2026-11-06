@@ -4,15 +4,22 @@ use insta::assert_snapshot;
 
 use super::*;
 use crate::frame::color::tests::engine_palette;
+use crate::frame::gizmo::GizmoShape;
 use crate::frame::glyph_buffer::Item;
 use crate::frame::painted::{PaintedKind, PaintedTable};
 use crate::frame::raster::MISSING_COLOR;
 
 /// Every kind of thing a frame draws, as [`kinds`] names them.
-const ALL: [&str; 13] = [
+const ALL: [&str; 19] = [
     "Item::Rect",
     "Item::Sprite",
     "Item::Painted",
+    "Item::Gizmo",
+    "GizmoShape::Rect",
+    "GizmoShape::Line",
+    "GizmoShape::Cross",
+    "GizmoShape::Circle",
+    "GizmoShape::Label",
     "PaintedKind::Rgba",
     "PaintedKind::Indexed",
     "PaintedKind::OneBit",
@@ -54,6 +61,16 @@ fn kinds(item: &Item, pictures: &PaintedTable) -> Vec<&'static str> {
             };
             vec!["Item::Painted", layer, kind]
         }
+        Item::Gizmo(gizmo) => {
+            let shape = match gizmo.shape {
+                GizmoShape::Rect { .. } => "GizmoShape::Rect",
+                GizmoShape::Line { .. } => "GizmoShape::Line",
+                GizmoShape::Cross { .. } => "GizmoShape::Cross",
+                GizmoShape::Circle { .. } => "GizmoShape::Circle",
+                GizmoShape::Label { .. } => "GizmoShape::Label",
+            };
+            vec!["Item::Gizmo", layer, shape]
+        }
     }
 }
 
@@ -70,7 +87,7 @@ fn items(card: &RenderCard) -> Vec<Item> {
 fn sprites(card: &RenderCard) -> Vec<Sprite> {
     let sprite = |item: Item| match item {
         Item::Sprite(sprite) => Some(sprite),
-        Item::Rect(_) | Item::Painted(_) => None,
+        Item::Rect(_) | Item::Painted(_) | Item::Gizmo(_) => None,
     };
     items(card).into_iter().filter_map(sprite).collect()
 }

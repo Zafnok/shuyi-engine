@@ -1,0 +1,112 @@
+---
+source: crates/ui/tests/it/debug_view.rs
+expression: field(false).snapshot()
+---
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+          .,.,.,.,.,~~.,.,.,.,          
+          .,.,.,.,.,~~.,.,.,.,          
+          .,.,.,.,.,==.,.,.,.,          
+          .,.,y0.,.,~~.,.,.,.,          
+          .,.,.,f1.,~~.,.,.,.,          
+          .,.,.,.,.,~~.,.,.,.,          
+          .,:.:..,.,~~.,.,.,.,          
+          .,.,:..,.,~~.,.,.,.,          
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaabbbbbbbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbbbbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbbbbbbbddbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbefbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbbbefbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbbbbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbggggbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaabbbbggbbbbccbbbbbbbbaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:text bg:panel
+b = fg:grass_fg bg:grass_bg
+c = fg:water_fg bg:water_bg
+d = fg:bridge_fg bg:bridge_bg
+e = fg:piece bg:grass_bg
+f = fg:highlight bg:grass_bg
+g = fg:text bg:background
+--- overlays ---
+over  113,158 14x2  piece
+over  129,174 14x2  piece
+over  111,144 3x1  cursor
+over  111,144 1x3  cursor
+over  125,144 3x1  cursor
+over  127,144 1x3  cursor
+over  111,157 3x1  cursor
+over  111,155 1x3  cursor
+over  125,157 3x1  cursor
+over  127,155 1x3  cursor
+over  gizmo grid bounds line 0,0 0,319
+over  gizmo grid bounds line 16,0 16,319
+over  gizmo grid bounds line 32,0 32,319
+over  gizmo grid bounds line 48,0 48,319
+over  gizmo grid bounds line 64,0 64,319
+over  gizmo grid bounds line 80,0 80,319
+over  gizmo grid bounds line 96,0 96,319
+over  gizmo grid bounds line 112,0 112,319
+over  gizmo grid bounds line 128,0 128,319
+over  gizmo grid bounds line 144,0 144,319
+over  gizmo grid bounds line 160,0 160,319
+over  gizmo grid bounds line 176,0 176,319
+over  gizmo grid bounds line 192,0 192,319
+over  gizmo grid bounds line 208,0 208,319
+over  gizmo grid bounds line 224,0 224,319
+over  gizmo grid bounds line 240,0 240,319
+over  gizmo grid bounds line 256,0 256,319
+over  gizmo grid bounds line 272,0 272,319
+over  gizmo grid bounds line 288,0 288,319
+over  gizmo grid bounds line 304,0 304,319
+over  gizmo grid bounds line 319,0 319,319
+over  gizmo grid bounds line 0,0 319,0
+over  gizmo grid bounds line 0,16 319,16
+over  gizmo grid bounds line 0,32 319,32
+over  gizmo grid bounds line 0,48 319,48
+over  gizmo grid bounds line 0,64 319,64
+over  gizmo grid bounds line 0,80 319,80
+over  gizmo grid bounds line 0,96 319,96
+over  gizmo grid bounds line 0,112 319,112
+over  gizmo grid bounds line 0,128 319,128
+over  gizmo grid bounds line 0,144 319,144
+over  gizmo grid bounds line 0,160 319,160
+over  gizmo grid bounds line 0,176 319,176
+over  gizmo grid bounds line 0,192 319,192
+over  gizmo grid bounds line 0,208 319,208
+over  gizmo grid bounds line 0,224 319,224
+over  gizmo grid bounds line 0,240 319,240
+over  gizmo grid bounds line 0,256 319,256
+over  gizmo grid bounds line 0,272 319,272
+over  gizmo grid bounds line 0,288 319,288
+over  gizmo grid bounds line 0,304 319,304
+over  gizmo grid bounds line 0,319 319,319
+over  gizmo grid bounds rect 80,96 160x128
+over  gizmo grid note rect 112,144 16x16
+over  gizmo grid note rect 112,144 16x16
+over  gizmo grid note label 127,144 "0"
+over  gizmo grid note rect 128,160 16x16
+over  gizmo grid note label 143,160 "1"

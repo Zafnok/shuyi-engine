@@ -725,6 +725,10 @@ fn the_limits_are_the_adrs_and_hold_to_the_byte_and_the_frame() {
     // A wait of the most seconds is played; a longer one is refused.
     assert_eq!(check_play(&[Step::Wait(MAX_WAIT)]), Ok(()));
     assert!(check_play(&[Step::Wait(MAX_WAIT + 1.0)]).is_err());
+    assert_eq!(
+        check_play(&[Step::Debug("grid".to_owned())]),
+        Err("step 1: debug: not over the live link yet".to_owned())
+    );
     assert_eq!(script::wait_frames(MAX_WAIT), 108_000);
     // A hello of exactly the longest line is heard; one byte more closes.
     let app = App::running(toy::game());

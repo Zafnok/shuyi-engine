@@ -102,9 +102,10 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
         let items = m.menu().items();
         items.iter().map(|i| i.label.clone()).collect::<Vec<_>>()
     };
+    // The engine's own tool comes last.
     assert_eq!(
         labels(&m),
-        ["Gallery", "Count: 0"].map(crate::text::Label::from)
+        ["Gallery", "Count: 0", "Debug view"].map(crate::text::Label::from)
     );
     let outcome = |m: &mut DebugMenuScreen<Toy>, c: &mut ToyCtx, a: &[Action]| {
         format!("{:?}", m.update(c, &frame(a)))
@@ -119,7 +120,7 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
     assert_eq!(runs.get(), 2);
     assert_eq!(
         labels(&m),
-        ["Gallery", "Count: 2"].map(crate::text::Label::from)
+        ["Gallery", "Count: 2", "Debug view"].map(crate::text::Label::from)
     );
     assert_eq!(m.menu().focus(), 1);
     let cues: Vec<_> = c
@@ -131,7 +132,7 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
     assert_eq!(cues[cues.len() - 2..], ["ui_select", "click"]);
     assert_eq!(outcome(&mut m, &mut c, &[Cancel, Confirm]), "Pop");
     assert_eq!(runs.get(), 2);
-    assert!(format!("{m:?}").contains("entries: 2"));
+    assert!(format!("{m:?}").contains("entries: 3"));
     assert!(
         format!("{:?}", DebugEntry::<Toy>::new("x", |_| Transition::None)).contains("DebugEntry")
     );
@@ -173,12 +174,15 @@ fn the_modules_tools_come_after_the_games_and_run_when_chosen() {
     let plain = ctx();
     assert_eq!(
         labels(&plain, &menu(&plain, &runs)),
-        ["Gallery", "Count: 0"]
+        ["Gallery", "Count: 0", "Debug view"]
     );
     let game = crate::toy::game().with_module(Tally).unwrap();
     let mut c = game.into_ctx();
     let mut m = menu(&c, &runs);
-    assert_eq!(labels(&c, &m), ["Gallery", "Count: 0", "Tally"]);
+    assert_eq!(
+        labels(&c, &m),
+        ["Gallery", "Count: 0", "Tally", "Debug view"]
+    );
     let chosen = m.update(&mut c, &frame(&[CursorDown, CursorDown, Confirm]));
     assert!(matches!(chosen, Transition::None));
     assert_eq!(c.module_state::<Ran>().map(|r| r.0), Some(1));
@@ -206,13 +210,72 @@ fn the_view_is_the_title_the_tools_and_the_help() {
     m.draw(&c, &mut drawn);
     assert_eq!(row(&drawn, 9).trim(), "Debug tools");
     assert!(
-        row(&drawn, 12).contains("│ Gallery  │"),
+        row(&drawn, 12).contains("│ Gallery    │"),
         "{}",
         row(&drawn, 12)
     );
     assert_eq!(row(&drawn, 19).trim(), view.help);
     let got = row(&drawn, 0);
     assert!(got.trim().is_empty(), "{got:?}");
+}
+
+#[test]
+fn the_debug_view_with_no_channel_offered_says_so_and_closes_on_cancel() {
+    use Action::{Cancel, Confirm, CursorDown, CursorUp};
+    let mut c = ctx();
+    let mut s = DebugViewScreen::new(&c);
+    assert_eq!(Screen::<Toy>::name(&s), "debug_view");
+    assert_eq!(
+        Screen::<Toy>::actions(&s),
+        Some(vec![CursorDown, CursorUp, Confirm, Cancel])
+    );
+    let view = s.view(&c);
+    assert_eq!(view.title, "Debug view");
+    assert_eq!(
+        view.empty.as_deref(),
+        Some("No screen offers a channel yet")
+    );
+    assert_eq!(view.help, "arrows move · f on/off · d back");
+    let black = c.palette.engine(EngineColor::Background);
+    let spec = crate::frame::console::ConsoleSpec::text(40, 20);
+    let mut drawn = GlyphBuffer::with_spec(spec, Cell::new('x', black, black));
+    s.draw(&c, &mut drawn);
+    assert_eq!(row(&drawn, 11).trim(), "No screen offers a channel yet");
+    assert!(matches!(
+        s.update(&mut c, &frame(&[Confirm])),
+        Transition::None
+    ));
+    assert!(matches!(
+        s.update(&mut c, &frame(&[Cancel])),
+        Transition::Pop
+    ));
+    assert!(format!("{s:?}").contains("DebugViewScreen"));
+}
+
+#[test]
+fn the_debug_view_turns_the_focused_channel_on_and_off() {
+    use Action::{Confirm, CursorDown};
+    let (a, b) = (Channel::new("a", "Alpha"), Channel::new("b", "Beta"));
+    let mut c = ctx();
+    c.debug_view.offer(&[a, b]);
+    let mut s = DebugViewScreen::new(&c);
+    let states = |s: &DebugViewScreen, c: &ToyCtx| {
+        let state = |i: &crate::widgets::MenuItemView| {
+            let suffix = i.suffix.as_ref().map_or("", |(text, _)| text.as_str());
+            format!("{}{suffix}", c.label(&i.label))
+        };
+        s.view(c).menu.items.iter().map(state).collect::<Vec<_>>()
+    };
+    assert_eq!(states(&s, &c), ["Alpha  off", "Beta  off"]);
+    let _ = s.update(&mut c, &frame(&[CursorDown, Confirm]));
+    assert_eq!(states(&s, &c), ["Alpha  off", "Beta  on"]);
+    assert_eq!(s.menu().focus(), 1);
+    assert!(c.debug_view.is_on("b") && !c.debug_view.is_on("a"));
+    let _ = s.update(&mut c, &frame(&[Confirm]));
+    assert!(!c.debug_view.any_on());
+    // Saved in the computer's storage each time.
+    let saved = c.storage.computer().read(crate::ctx::DEBUG_VIEW_KEY);
+    assert_eq!(saved.unwrap().as_deref(), Some("(on:[])"));
 }
 
 /// A sample panel: a row of `#`s from `top`.

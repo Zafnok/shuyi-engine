@@ -1,0 +1,6 @@
+---
+source: crates/cli/tests/it/toy.rs
+expression: grid
+extension: png
+snapshot_kind: binary
+---

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 2315 — The debug view: gizmos, channels, the grid kit's layout
@@ -204,20 +204,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An ADR records the design.
-- [ ] With debug tools off, `Screen::debug_draw` is never called (a
+- [x] An ADR records the design.
+- [x] With debug tools off, `Screen::debug_draw` is never called (a
       test screen counts its calls).
-- [ ] With the `grid` channel on, the toy's grid game shows its cell
+- [x] With the `grid` channel on, the toy's grid game shows its cell
       lines, its bounds, the cursor's cell and each unit's cell, and
       the snapshot lists them in that order.
-- [ ] A Harness replay of the toy's grid game has the same state hash
+- [x] A Harness replay of the toy's grid game has the same state hash
       with every channel on as with none.
-- [ ] Toggling a channel from the "Debug view" screen turns it on and
+- [x] Toggling a channel from the "Debug view" screen turns it on and
       off, and the choice comes back after a restart in a debug build.
-- [ ] `cargo shuyi frame-png --debug grid` on the toy draws the gizmos.
+- [x] `cargo shuyi frame-png --debug grid` on the toy draws the gizmos.
       The PNG is reviewed, and its snapshot is committed.
-- [ ] No key is named in code (`check-keys` passes).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] No key is named in code (`check-keys` passes).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -236,4 +236,72 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done: [ADR-0084](../../docs/adr/0084-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md)
+records the design, linked from `shuyi_ui::debug`'s module docs.
+
+- **The data:** `shuyi_ui::debug::gizmo` (`Gizmo`, `GizmoRole`,
+  `Channel`, `Gizmos`, `DebugView`, and `Drawn`, one gizmo handed in).
+  The frame's side is `shuyi_ui::frame::gizmo`: `Item::Gizmo(GizmoItem)`,
+  its `GizmoShape`, and `LabelText` (a label's text kept in 24 bytes so
+  `Item` stays `Copy`). `GizmoRole` lives there and `debug::gizmo`
+  re-exports it, so the frame doesn't reach up into `debug`.
+- **The pixel rules:** 2336 isn't done, so `shuyi_ui::frame::shape` has
+  the width-1 line (Bresenham from `dx + dy`, in closed form so a long
+  line takes only the clip's steps, property-tested against the walk in
+  all eight octants) and the midpoint circle from `1 - r`.
+  `GizmoItem::for_each_run` gives runs; the raster, `shuyi-app` (one
+  `draw_rectangle` a run), the one-bit renderer and its reference fill
+  them. The render card shows every shape, so CI's `render` job holds the
+  window to the raster for them.
+- **The hook and the switch:** `Screen::debug_draw` (defaulted),
+  `ScreenStack::debug_draw` (bottom up), `Ctx::debug_view` and
+  `Ctx::set_debug_channel`, saved under `debug_view` in the computer's
+  storage and read in `Ctx::with_storage`, both only with debug tools
+  on. `Game::redraw` paints them after the modules' `draw_over` and the
+  crank hint.
+- **The menu:** "Debug view" on `DebugMenuScreen`, after "Save session"
+  when that shows: `DebugViewScreen` (`debug::view`), painted by
+  `debug::glyph::paint_view`.
+- **The grid channel:** `grid::debug::layout_gizmos` and `GRID`; the
+  toy's `Field` calls it, and gained a `state_hash` for the replay test.
+- **`frame-png --debug`:** a `debug` step of the input script
+  (`Step::Debug`, ADR-0082's script), which the Harness plays with
+  `Harness::show_debug`; `frame-png` puts it first. The live link and
+  capture plans refuse it for now. The toy's tools gained `--field`, to
+  picture its grid field. The contract's version is 37.
+- **The book:** chapter 4, *Seeing what the game sees*, with the
+  garden's own `plots` channel in `site/snippets`.
+
+Deviations:
+
+- **Asked every frame, not only when a channel is on.** With debug tools
+  on, `Game` asks the screens drawn each frame even with every channel
+  off: otherwise no channel could be offered before one is on, and the
+  menu (which hides the screens) would list nothing. A screen's helper
+  pays a call and `channel_on`. ADR-0084 §6.
+- **`layout_gizmos(&MapScene, &Grid, &mut Gizmos)`** takes no `Camera`:
+  the grid's origin is the camera's, and nothing else of it is needed.
+  To keep every gizmo on the buffer, `Gizmos` knows the frame's pixels
+  (`Gizmos::within`, `Gizmos::frame`), which `Game` sets; the helper
+  clips to the view and that.
+- **Saved beside the engine's settings, not inside them:** a key of its
+  own in the computer's storage, so no game's `GameSettings::to_ron`
+  has to carry it (ADR-0084 §4).
+- **Labels go in a unit's tile's top-right cell**, so the unit's own
+  glyph stays readable.
+- **`--debug` turns debug tools on** in the Harness too: a release build
+  of a game's tools has them off.
+
+Either-order clauses: 2336 not done (its rules written here, and 2336's
+clause now says so); 2514 not done (2514 draws `--debug` on every frame
+it captures); 2105 and 2122 parked (each adds its own helper). Their
+clauses and 1140's and 2106's now say what holds.
+
+Follow-up: 3209, Hello, Grid and the grid template's stage offer the
+`grid` channel (they don't yet: only the toy does).
+
+For the game: its debug menu gains "Debug view" as its last entry, so a
+snapshot of that menu moves at the next pin bump. Nothing else changes
+for it; the API is only added to.
+
+No break.

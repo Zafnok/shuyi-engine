@@ -1,14 +1,18 @@
 //! The glyph look of the debug screens: the debug menu ([`paint`]), the
-//! glyph sampler ([`sampler`]), the scene camera ([`paint_camera`]) and the
-//! Debug key's hint ([`paint_hint`]).
+//! glyph sampler ([`sampler`]), the scene camera ([`paint_camera`]), the
+//! Debug key's hint ([`paint_hint`]), the debug view's screen
+//! ([`paint_view`]) and its gizmos over the frame ([`paint_gizmos`]).
 
 use alloc::rc::Rc;
 
 use super::camera::SceneCameraView;
+use super::gizmo::{Gizmo, Gizmos};
+use super::view::DebugViewView;
 use super::{DebugMenuView, SamplePanels};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
+use crate::frame::gizmo::{GizmoItem, GizmoShape, LabelText};
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::{centre_x, print_centred};
@@ -30,6 +34,81 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &DebugMenuView, buf: &mut GlyphBuf
     menu::glyph::paint(ctx, &view.menu, buf, x, MENU_TITLE_ROW + 2);
     let bottom = i32::from(buf.height()) - 1;
     print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
+}
+
+/// Paints the "Debug view" screen's `view` over the whole of `buf`, as
+/// the debug menu is painted: the title, the channels centred under it (or
+/// the line saying there are none) and the help line at the bottom.
+pub fn paint_view<G: GameData>(ctx: &Ctx<G>, view: &DebugViewView, buf: &mut GlyphBuffer) {
+    let c = |e| ctx.palette.engine(e);
+    let black = c(EngineColor::Background);
+    buf.fill_rect(buf.bounds(), Cell::new(' ', c(EngineColor::Text), black));
+    let hi = c(EngineColor::Highlight);
+    print_centred(buf, MENU_TITLE_ROW, &view.title, hi, black);
+    if let Some(empty) = &view.empty {
+        print_centred(
+            buf,
+            MENU_TITLE_ROW + 2,
+            empty,
+            c(EngineColor::TextDim),
+            black,
+        );
+    } else {
+        let (w, _) = menu::glyph::size(ctx, &view.menu);
+        let x = centre_x(buf, usize::try_from(w).unwrap_or(0));
+        menu::glyph::paint(ctx, &view.menu, buf, x, MENU_TITLE_ROW + 2);
+    }
+    let bottom = i32::from(buf.height()) - 1;
+    print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
+}
+
+/// Adds the debug view's `gizmos` to `buf` (ADR-0084), in the order
+/// handed in, over everything drawn so far: each as an
+/// [`Item::Gizmo`](crate::frame::Item::Gizmo) in its role's engine colour
+/// from `palette` ([`GizmoRole::color`](super::GizmoRole::color)), never
+/// the game's own. A label prints its text into the cells from the one
+/// holding its pixel, keeping their backgrounds, and its item's clip is
+/// those cells.
+pub fn paint_gizmos(palette: &Palette, gizmos: &Gizmos, buf: &mut GlyphBuffer) {
+    let (cell_w, cell_h) = (
+        i32::from(buf.spec().cell_w).max(1),
+        i32::from(buf.spec().cell_h).max(1),
+    );
+    for drawn in gizmos.drawn() {
+        let color = palette.engine(drawn.role.color());
+        let shape = match &drawn.gizmo {
+            Gizmo::Rect { rect } => GizmoShape::Rect { rect: *rect },
+            Gizmo::Line { from, to } => GizmoShape::Line {
+                from: *from,
+                to: *to,
+            },
+            Gizmo::Cross { at, size } => GizmoShape::Cross {
+                at: *at,
+                size: *size,
+            },
+            Gizmo::Circle { center, radius } => GizmoShape::Circle {
+                center: *center,
+                radius: *radius,
+            },
+            Gizmo::Label { at, text } => GizmoShape::Label {
+                at: *at,
+                text: LabelText::new(text),
+            },
+        };
+        let mut item = GizmoItem::new(drawn.channel.id(), drawn.role, shape, color);
+        if let GizmoShape::Label { at, text } = shape {
+            let (cx, cy) = (at.0.div_euclid(cell_w), at.1.div_euclid(cell_h));
+            let len = buf.text_cells(text.as_str());
+            buf.print_fg(cx, cy, text.as_str(), color);
+            item.clip = Rect::new(
+                cx.saturating_mul(cell_w),
+                cy.saturating_mul(cell_h),
+                len.saturating_mul(cell_w),
+                cell_h,
+            );
+        }
+        buf.add_gizmo(item);
+    }
 }
 
 /// Left column of the scene camera's title and the lines under it.

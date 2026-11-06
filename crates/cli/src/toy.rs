@@ -5,6 +5,8 @@
 //! The toy has no font, so its pictures draw every letter as a box, and
 //! its images (sizes only) as the missing colour. `--plasma` starts it on
 //! its plasma stage, whose skin paints pictures at run time (ADR-0078);
+//! `--field` on its grid field, whose layout the debug view's `grid`
+//! channel shows (`--debug grid`, ADR-0084);
 //! `--target playdate` draws the frame on the Playdate's console, black
 //! and white. Its session (`run`)
 //! measures every frame with a fake clock ([`PerfClock::fake`]) and reads a
@@ -41,11 +43,16 @@ use crate::frame_png::{Painter, Script, Shot, one_bit_picture};
 use crate::game::{GameArg, GameLang, GameOption, GameTools};
 
 /// The toy's own `frame-png` options.
-const OPTIONS: [GameOption; 4] = [
+const OPTIONS: [GameOption; 5] = [
     GameOption {
         flag: "--lobby",
         value: None,
         help: "start in the lobby of the engine's screens, not on the home screen",
+    },
+    GameOption {
+        flag: "--field",
+        value: None,
+        help: "start on the grid field, under the glyph skin",
     },
     GameOption {
         flag: "--plasma",
@@ -115,6 +122,8 @@ fn game_on(ctx: ToyCtx, options: &[GameArg]) -> Game<Toy> {
     let has = |flag: &str| options.iter().any(|option| option.flag == flag);
     if has("--plasma") {
         toy::plasma::game_on(ctx)
+    } else if has("--field") {
+        Game::new(ctx, Box::new(toy::grid::Field::glyphs()), toy::hooks())
     } else if has("--lobby") {
         Game::new(ctx, Box::new(toy::Lobby::new()), toy::hooks())
     } else {

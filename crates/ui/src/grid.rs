@@ -20,10 +20,15 @@
 //! over ([`MapPicture`]). Anything new shown on a map goes in the scene
 //! and is painted by every skin; it is never drawn straight into the
 //! buffer by a screen.
+//!
+//! The debug view's `grid` channel shows a scene's layout over it: the
+//! cell lines, the map's bounds, the cursor's cell and each unit's
+//! ([`debug::layout_gizmos`], ADR-0084).
 
 pub mod camera;
 pub mod corners;
 pub mod cursor;
+pub mod debug;
 pub mod glyph;
 pub mod layout;
 pub mod path;

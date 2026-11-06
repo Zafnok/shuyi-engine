@@ -321,6 +321,18 @@ impl Renderer {
                 Item::Rect(rect) => draw_rectangle(x, y, size.x, size.y, color(rect.color)),
                 Item::Sprite(sprite) => self.draw_sprite(sprite, x, y, size),
                 Item::Painted(painted) => self.draw_painted(painted, pictures, x, y, size),
+                // One rectangle a run of whole console pixels, by
+                // `frame::shape`'s rules, so the window equals `frame-png`.
+                #[allow(clippy::cast_precision_loss)] // console pixels < 2^21
+                Item::Gizmo(gizmo) => gizmo.for_each_run(|row, x0, x1| {
+                    draw_rectangle(
+                        origin.0 + x0 as f32 * scale,
+                        origin.1 + row as f32 * scale,
+                        (x1 - x0) as f32 * scale,
+                        scale,
+                        color(gizmo.color),
+                    );
+                }),
                 // A kind of item this backend doesn't know yet draws nothing.
                 _ => {}
             }

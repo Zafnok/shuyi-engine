@@ -96,8 +96,9 @@ None (technical). Scheduling: see above.
   `debug` feature (an optional `shuyi-ui`). It shows each peer's round
   trip, loss and bytes a second per channel from `stats()`, the
   lockstep turn, whether the peers' hashes agree, and a desync banner
-  (a `Note` label). **Either order with 2315:** if 2315 is done, add
-  the channel here; if not, write a parked follow-up ticket for it.
+  (a `Note` label). **From 2315 (done):** add the channel here, with a
+  `Channel` constant and a helper the game's screens call from
+  `Screen::debug_draw` (ADR-0084 §10).
 - **From 1134 (done):** drop 1140 from the `waits_for` of
   `skills/shuyi-net/SKILL.md` (`check-skills` fails on an id no longer
   in `tickets/open/`), and make the skill teach what this ticket built:
@@ -142,8 +143,7 @@ None (technical). Scheduling: see above.
 3. Write commit-reveal, with tests including the forfeit.
 4. Write the messages' fuzz driver, target and kept inputs, or, if 2020
    isn't done, the property test and the follow-up ticket.
-5. Add the `net` debug channel if 2315 is done, or write its parked
-   follow-up ticket.
+5. Add the `net` debug channel (ADR-0084).
 6. Add a docs page in `docs/net.md`. Lockstep between peers is
    for friends (ADR-0006 §4).
 7. Update `skills/shuyi-net` (Scope).
@@ -158,8 +158,7 @@ None (technical). Scheduling: see above.
       test`, and `fuzz.yml` has the `net_messages` leg; or 2020 isn't
       done, the property test over random bytes passes, and the
       follow-up ticket is in `tickets/open/`.
-- [ ] Either the debug view has the `net` channel, or 2315 isn't done
-      and its parked follow-up ticket is in `tickets/open/`.
+- [ ] The debug view has the `net` channel.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

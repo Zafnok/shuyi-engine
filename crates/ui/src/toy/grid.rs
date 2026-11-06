@@ -14,12 +14,13 @@ use shuyi_assets::lighting::{Light, Lighting};
 use shuyi_assets::tileset::{
     CornerLayer, Layer as TileLayerKind, Look, MIXES, TerrainTiles, TileLayer,
 };
-use shuyi_core::{Dir, Grid as Map, Pos, Reach, TerrainId, reachable};
+use shuyi_core::{Dir, Grid as Map, Pos, Reach, StateHash, TerrainId, reachable};
 
 use super::{Action, Toy, ToyCtx};
-use crate::debug::{CameraLayout, SceneCameraScreen};
+use crate::debug::{CameraLayout, Gizmos, SceneCameraScreen};
 use crate::frame::color::{EngineColor, Palette, Rgb};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, PxRect, Rect, Sprite};
+use crate::grid::debug::{GRID, layout_gizmos};
 use crate::grid::glyph::{
     self, CursorLook, FlashLook, GlyphSkin, GlyphStyle, RangeLook, ThreatLook,
 };
@@ -695,6 +696,27 @@ impl Screen<Toy> for Field {
         };
         self.skin
             .paint(&looks, &self.scene(), AREA, self.painter.as_ref(), buf);
+    }
+
+    /// The grid kit's `grid` channel: the field's layout as its skin lays
+    /// it out.
+    fn debug_draw(&self, _: &ToyCtx, out: &mut Gizmos) {
+        if !out.channel_on(GRID) {
+            return;
+        }
+        let scene = self.scene();
+        let grid = self.skin.grid(&scene, AREA);
+        layout_gizmos(&scene, &grid, out);
+    }
+
+    /// The pieces, the cursor, the camera, the path picked and the walk
+    /// under way, and the clock.
+    fn state_hash(&self) -> Option<StateHash> {
+        let pieces: Vec<(u32, Pos)> = self.pieces.iter().map(|p| (p.id, p.pos)).collect();
+        let path = self.selected.as_ref().map(|(_, path)| path);
+        let walk = self.walking.as_ref().map(|w| (w.piece, &w.path));
+        let state = (pieces, self.cursor.pos, self.camera.origin, path, walk);
+        shuyi_core::state_hash(&(state, self.clock_ms)).ok()
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
