@@ -70,10 +70,13 @@ None (technical).
     bundle's display path);
   - the game's read-only view types, and the plain values read back
     (numbers, booleans, strings, lists and maps of them), are described
-    as 2907's ADR says: one description of a game's types, by default
-    serde, handed to the runtime through its serde bridge
-    (`rhai::serde::to_dynamic` and `from_dynamic` for Rhai). No registry
-    of the module's own;
+    as ADR-0084 (2907's) says: by their serde derives, handed to the
+    runtime through its serde bridge (`rhai::serde::to_dynamic` and
+    `from_dynamic` for Rhai), with their shapes from `schemars` in the
+    tools only. No registry of the module's own. A script reads the
+    game's view types, never its state, which holds the luck to come
+    (ADR-0084 §4). Where the runtime names a type, the name is the one
+    the game gives it (§3);
   - running a script that errors or hits a limit gives an error value
     and never panics; the caller decides what that means.
 - The WASM build and `cargo deny check` pass with the module built.
@@ -112,7 +115,7 @@ None (technical).
 ## Implementation steps
 
 1. Read ADR-0002 (layers, determinism, licenses), ADR-0005 §5 and
-   ADR-0009 §4, and 2907's ADR (how a game's types are described).
+   ADR-0009 §4, and ADR-0084 (how a game's types are described).
 2. Spike the two strongest candidates for size and determinism; write the
    ADR and its index row.
 3. Add `crates/script` with the chosen runtime's features cut to what the
