@@ -85,9 +85,9 @@ with their pages and template, and its copied files keep their paths; if
 not, nothing to do (2820 builds it on the steps' pages where this ticket
 puts them).
 
-**Either order with 2817:** if 2817 is done, nothing to do; if not, nothing
-to do here either (2817 plays each step from its page in the book, and the
-old addresses redirect there).
+**From 2817, through 2823:** 2817 comes before 2823, so every step has been
+played at its `/learn/tutorial/` address before this ticket moves it.
+Nothing is left here but the redirects this ticket adds anyway.
 
 ## Implementation steps
 
