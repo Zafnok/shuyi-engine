@@ -463,6 +463,15 @@ impl Toy {
         Self::with_debug_info(r#"(name: "Debug", made_by: Machine)"#)
     }
 
+    /// The toy game, written in `source`.
+    #[cfg(test)]
+    pub(crate) fn with_source_lang(self, source: shuyi_assets::lang::SourceLang) -> Self {
+        Self {
+            lang: self.lang.with_source_lang(source),
+            ..self
+        }
+    }
+
     /// The toy game, its debug language's `lang.ron` written `info`.
     pub(crate) fn with_debug_info(info: &str) -> Self {
         let mut english: BTreeMap<String, String> =

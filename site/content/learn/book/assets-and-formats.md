@@ -157,7 +157,12 @@ its quotes, ellipsis and dash (`“ ” ‘ ’ … —`) are wide, as Chinese w
 (name: "简体中文", made_by: Machine, wide_font: Some("zh-Hans"), wide_punctuation: true)
 ```
 
-A set keeps the characters of the packs that name it, and those `font_atlas.wide_set_glyphs`
+The source language has no `lang.ron`: a game written in Chinese says the same in its
+code, where it declares the source:
+
+{{ snippet(file="src/assets.rs", anchor="source_lang") }}
+
+A set keeps the characters of the languages that name it, and those `font_atlas.wide_set_glyphs`
 names for it (`{"ja": "..."}`). A wide character is drawn from the language's own set
 first, then from any other, so a pack's own name shows in its shapes whatever language is
 on; `cargo shuyi check` fails on a pack character its set lacks. A font in JIS X 0208, as many Japanese bitmap fonts are,
@@ -167,7 +172,9 @@ two: `shuyi::assets::lang::text_width` does, with the widths of the frame
 The checks that keep text to a length count so too, once they have the atlas's widths
 (`CellWidths::of(&atlas)`): a language pack's rules (`PackRules::widths`, or
 `LangPackRon::widths_of`), a tip's (`TipRules::widths`) and a dialogue's
-(`SceneRules::widths`). So load the font atlas before the text.
+(`SceneRules::widths`). So load the font atlas before the text. The source's own text is
+measured in its language: `source.widths(&CellWidths::of(&atlas))`, or
+`lang.widths(code, &base)` for any language.
 
 ## Layers
 

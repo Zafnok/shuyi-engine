@@ -204,7 +204,13 @@ What each one reads:
   has), and `wide_punctuation`, `true` for `“ ” ‘ ’ … —` wide and drawn
   from that set, as Chinese writes them (`false` by default:
   `LangInfo::widths`). Its wide characters must be in its set:
-  `font::undrawn` fails `check` on one that isn't. Its text is drawn as the font atlas's cells draw
+  `font::undrawn` fails `check` on one that isn't. The source language
+  has no `lang.ron`; the game says the same of it in code, where it
+  declares it: `SourceLang::with_wide_font` and
+  `SourceLang::with_wide_punctuation` (`SourceLang::widths`; neither by
+  default). `Lang::widths` gives any language's table, a pack's or the
+  source's, and the screen, `undrawn` and `font-atlas` use it, so the
+  source's text is drawn, checked and kept in its own set as a pack's is. Its text is drawn as the font atlas's cells draw
   text (above): left to right, a character a cell or two for a wide one,
   so a pack in a language the atlas has no glyphs for, or in a script
   that joins or reorders its letters, fails `check` or shows wrongly.

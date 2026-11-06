@@ -21,8 +21,9 @@
 //!
 //! `--wide <set>=<wide.bdf>` makes a named wide set instead, and may be
 //! given once per set ([`WideFont`]): the set keeps the wide characters of
-//! the languages whose pack names it (`lang.ron`'s `wide_font`), their
-//! wide punctuation if their pack has it wide, and the project's
+//! the languages that name it (a pack's `lang.ron`'s `wide_font`, the
+//! source's `SourceLang::wide_font`), their wide punctuation if they have
+//! it wide, and the project's
 //! `wide_set_glyphs` for it. An unnamed `--wide` keeps those of the
 //! languages that name no set. The sets are laid out one after another,
 //! in the order given, after the narrow glyphs.
@@ -33,7 +34,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use shuyi_assets::font::{
-    AtlasRect, FontAtlasDef, WideSet, describe, is_combining_mark, is_wide_punctuation,
+    AtlasRect, CellWidths, FontAtlasDef, WideSet, describe, is_combining_mark, is_wide_punctuation,
 };
 use shuyi_assets::lang::Lang;
 
@@ -95,10 +96,13 @@ impl AtlasChars {
             required: required.chars().filter(|&c| keepable(c)).collect(),
             ..Self::default()
         };
+        let source = &lang.source_lang().code;
         for (at, text) in lang.texts() {
-            let info = at.lang.and_then(|code| lang.pack(code)).map(|p| &p.info);
-            let set = info.and_then(|info| info.wide_font.clone());
-            let punctuation = info.is_some_and(|info| info.wide_punctuation);
+            // Only the language's set and punctuation matter here, not the
+            // atlas's own wide glyphs.
+            let widths = lang.widths(at.lang.unwrap_or(source), &CellWidths::NARROW);
+            let set = widths.wide_font().map(str::to_owned);
+            let punctuation = widths.wide_punctuation();
             for c in text.chars().filter(|&c| keepable(c)) {
                 chars.used.insert(c);
                 chars.used_by_set.entry(set.clone()).or_default().insert(c);
@@ -1376,6 +1380,30 @@ mod tests {
         assert_eq!(ron::from_str::<FontAtlasDef>(&ron).unwrap(), *def);
         let bits = one_bit(def, atlas.width, &atlas.rgba).unwrap();
         assert_eq!(bits.len(), to_usize(i64::from(18 * 16)));
+    }
+
+    #[test]
+    fn the_source_keeps_its_characters_in_the_set_it_names() {
+        use shuyi_assets::lang::{LangCode, SourceLang};
+        let source = SourceLang::new(LangCode::new("zh-Hans").unwrap(), "中文")
+            .with_wide_font("zh-Hans")
+            .with_wide_punctuation(true);
+        let ui: BTreeMap<String, String> = [("menu.title".to_owned(), "“直简”".to_owned())].into();
+        let lang = Lang::new(ui.clone(), BTreeMap::new()).with_source_lang(source);
+        let chars = AtlasChars::of_lang(&lang, "");
+        let mut narrow = narrow_8_by_16();
+        narrow.glyphs.insert('“', Vec::new());
+        // Its characters and its wide punctuation go in its set, and no other.
+        for c in "直简“".chars() {
+            assert!(chars.wants_wide(c, &narrow, Some("zh-Hans")), "{c}");
+            assert!(!chars.wants_wide(c, &narrow, None), "{c}");
+        }
+        // Without the fields, the unnamed set keeps them, the quotes narrow.
+        let plain = Lang::new(ui, BTreeMap::new());
+        let chars = AtlasChars::of_lang(&plain, "");
+        assert!(chars.wants_wide('直', &narrow, None));
+        assert!(!chars.wants_wide('“', &narrow, None));
+        assert!(!chars.wants_wide('直', &narrow, Some("zh-Hans")));
     }
 
     #[test]

@@ -594,11 +594,11 @@ impl<'a> LangFont<'a> {
 
 /// Every character of `lang`'s text ([`Lang::texts`]) that `atlas` can't
 /// draw in its language: a check across assets, after both load. A
-/// language's wide characters (as its pack's widths have them,
-/// [`LangInfo::widths`](crate::lang::LangInfo::widths)) must be in the wide
-/// set its pack names, or in any set if it names none; the rest narrow. A
-/// pack that names a set the atlas lacks is one error, on its `lang.ron`,
-/// and its wide characters aren't checked. One error per language and
+/// language's wide characters (as its widths have them, [`Lang::widths`]:
+/// a pack's or the source's) must be in the wide set it names, or in any
+/// set if it names none; the rest narrow. A pack that names a set the atlas
+/// lacks is one error, on its `lang.ron` (the source, on its folder), and
+/// its wide characters aren't checked. One error per language and
 /// character, in the order of their first use, on the file of that use
 /// ([`TextAt::path`]), naming its key and how many more keys of that
 /// language use it. Control characters (a `\n`) are never errors; a
@@ -612,20 +612,26 @@ pub fn undrawn(atlas: &FontAtlasDef, lang: &Lang) -> Vec<ContentError> {
     let mut index: BTreeMap<(Option<&LangCode>, char), usize> = BTreeMap::new();
     for (at, text) in lang.texts() {
         let font = fonts.entry(at.lang).or_insert_with(|| {
-            let info = at.lang.and_then(|code| lang.pack(code)).map(|p| &p.info);
-            let widths = info.map_or_else(|| base.clone(), |info| info.widths(&base));
-            let set = match info.and_then(|info| info.wide_font.as_deref()) {
+            let source = &lang.source_lang().code;
+            let widths = lang.widths(at.lang.unwrap_or(source), &base);
+            let set = match widths.wide_font() {
                 None => SetOf::Any,
                 Some(name) => {
-                    if let Some(glyphs) = atlas.wide_sets.get(name) {
+                    if let Some((name, glyphs)) = atlas.wide_sets.get_key_value(name) {
                         SetOf::Named(name, glyphs)
                     } else {
-                        let code = at.lang.map(LangCode::as_str).unwrap_or_default();
+                        // A pack names it in its lang.ron; the source, in
+                        // the game's code (`SourceLang::with_wide_font`).
+                        let (path, whose) = match at.lang {
+                            Some(code) => (format!("{code}/{}", crate::lang::INFO_FILE), ""),
+                            None => (source.to_string(), "the source language's "),
+                        };
                         errors.push(ContentError::new(
-                            format!("{code}/{}", crate::lang::INFO_FILE),
+                            path,
                             format!(
-                                "wide_font names {name:?}, a wide set the font atlas doesn't \
-                                 have; remake the atlas with font-atlas --wide {name}=<font.bdf>"
+                                "{whose}wide_font names {name:?}, a wide set the font atlas \
+                                 doesn't have; remake the atlas with font-atlas --wide \
+                                 {name}=<font.bdf>"
                             ),
                         ));
                         SetOf::Missing
@@ -1220,6 +1226,49 @@ mod tests {
             );
             assert_eq!(found.len(), 2, "{found:?}");
             assert!(found[1].starts_with("ko/ui.ron: 'Ж' (U+0416) isn't in the font atlas ("));
+        }
+
+        #[test]
+        fn the_sources_wide_characters_must_be_in_the_set_it_names() {
+            use crate::lang::SourceLang;
+            let source = |set: &str| {
+                let code = LangCode::new("zh-Hans").unwrap();
+                SourceLang::new(code, "中文")
+                    .with_wide_font(set)
+                    .with_wide_punctuation(true)
+            };
+            let written = |text: &str, set: &str| {
+                lang(&[("menu.title", text)], &[]).with_source_lang(source(set))
+            };
+            assert_eq!(
+                errors(&two_sets(), &written("“直简”", "zh-Hans")),
+                Vec::<String>::new()
+            );
+            // 简 is wide in the atlas, but not in the set it names.
+            assert_eq!(
+                errors(&two_sets(), &written("直简", "ja")),
+                [
+                    "zh-Hans: '简' (U+7B80) isn't in the font atlas's wide set \"ja\", which the \
+                     language draws from (menu.title); remake the atlas with font-atlas --wide \
+                     ja=<font.bdf> from a font that has it"
+                ]
+            );
+            // Its punctuation is wide, so it must be in its set too.
+            let mut no_quotes = two_sets();
+            no_quotes.wide_sets.get_mut("zh-Hans").unwrap().remove(&'“');
+            let found = errors(&no_quotes, &written("“直”", "zh-Hans"));
+            assert_eq!(found.len(), 1, "{found:?}");
+            assert!(
+                found[0].starts_with("zh-Hans: '“' (U+201C) isn't in the font atlas's wide set")
+            );
+            // A set the atlas lacks is said once, on the source's folder.
+            assert_eq!(
+                errors(&two_sets(), &written("直", "ko")),
+                [
+                    "zh-Hans: the source language's wide_font names \"ko\", a wide set the font \
+                     atlas doesn't have; remake the atlas with font-atlas --wide ko=<font.bdf>"
+                ]
+            );
         }
 
         #[test]
