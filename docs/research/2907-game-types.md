@@ -2,7 +2,7 @@
 
 Research for ticket 2907, measured **2026-11-05** on Nick's machine
 (Windows 11, the GNU host, Rust 1.99.1) at engine commit `e2697683`.
-[ADR-0083](../adr/0083-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+[ADR-0084](../adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
 records the decision.
 
 **serde is the description, and `schemars` gives its shapes in the
@@ -250,7 +250,7 @@ step, and its own schema writer. So it isn't built.
 
 2904 is open. `bevy_ecs` 0.20 turns `bevy_reflect` on among its default
 features, and the ECS is opt-in (ADR-0003 §4, 2107), so a game on the
-arena must be described as well. Under ADR-0083:
+arena must be described as well. Under ADR-0084:
 
 - **`bevy_ecs`:** with `default-features = false` and `bevy_reflect`
   off, components derive serde (and `JsonSchema` in the tools) like any

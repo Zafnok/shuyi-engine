@@ -32,6 +32,7 @@ A report is RON (`shuyi_platform::crash::CrashReport`):
 | `version` | The report's version: 1 |
 | `when` | Milliseconds since 1970 |
 | `message` | The panic's message, up to 4 KiB |
+| `fatal` | Whether the panic ended the game: `true` on the thread that runs it, `false` on another (below). A report without it reads as `true` |
 | `location` | Where it panicked: `file:line:column` |
 | `thread` | The thread's name: `main`, or the music's worker |
 | `backtrace` | The standard library's backtrace, up to 32 KiB. A release build is stripped, so its frames are `<unknown>` |
@@ -63,8 +64,9 @@ sends the newest `crash-*.ron` there.
 
 ## Telling the player
 
-The game's load gets `Setup::last_crash`: the newest report it hasn't been
-offered, once (the key `crash-offered` remembers which). It holds `when`,
+The game's load gets `Setup::last_crash`: the newest report of a panic that ended
+the game (`fatal: true`) it hasn't been offered, once (the key `crash-offered`
+remembers which). It holds `when`,
 `message`, `location` and the report's `key`. What the player sees is the
 game's: a line on its title screen, a screen of its own, or nothing. A line in
 the game's own words might read: *The game closed unexpectedly last time. A
@@ -116,12 +118,15 @@ Stack overflows, aborts, running out of memory and faults in native code end
 the game without a panic, and write nothing. A panic the engine catches on
 purpose (a music file that fails to decode) is not a crash.
 
-A panic the game survives still writes a report. On a Linux machine with no
-sound card the sound library's own threads panic as the game starts, and the
-game runs on without sound; their reports say why, and the next start offers the
-newest of them as the last crash. A game that shows a notice may read the report
-at `last_crash.key` from its storage (`CrashReport::parse`) and check its
-`thread` first.
+A panic the game survives still writes a report, but it isn't offered as a
+crash. On a Linux machine with no sound card the sound library's own threads
+panic as the game starts, and the game runs on without sound: their reports,
+`fatal: false` and naming their `thread`, say why, and the next start's
+`last_crash` skips them
+([ADR-0083](adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md)).
+A panic on the thread that runs the game ends it, so its report is fatal. A game
+that catches a panic of its own on purpose runs it in `shuyi_app::crash::quiet`,
+which writes no report.
 
 ## Trying it
 
@@ -133,4 +138,4 @@ SHUYI_PANIC_AT_FRAME=3 cargo run -p hello-grid
 ```
 
 It exits with 101 and writes a report whose message is `a panic on purpose
-(SHUYI_PANIC_AT_FRAME)`.
+(SHUYI_PANIC_AT_FRAME)`, with `fatal: true`.

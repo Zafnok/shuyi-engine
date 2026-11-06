@@ -320,7 +320,7 @@ None.
   a `file` property read into a `Ref<K>` is checked by `shuyi check`
   under the map's file. If not, write a ticket for it, blocked by 2516
   (`write-ticket`): 2516's Out leaves it to this ticket.
-- **From 2907 (done):** ADR-0083 picked serde and `schemars`, so the
+- **From 2907 (done):** ADR-0084 picked serde and `schemars`, so the
   export uses `schemars` as planned, and nothing moves.
 - **From 1134 (done):** the skill that makes a new game
   (`skills/shuyi-new-game/SKILL.md`) says to run `map-types` after
@@ -381,7 +381,7 @@ game's next pin bump needs no change. If `Op` is already
    `Fx` and its serde, ADR-0004 §2, ADR-0019 §5, ADR-0022, 2013's ADR,
    `grid_map.rs` (`MapFeature`), `format.rs` (`claims`, `load`,
    `load_each`), `bundle.rs` (`files_under`, `file`), `game.rs`,
-   `contract.rs` and `contract/fake.rs`, and ADR-0083 (2907's). If
+   `contract.rs` and `contract/fake.rs`, and ADR-0084 (2907's). If
    2515 or 2516 are done, read them.
 2. Write the ADR.
 3. Write `things::de`, the deserializer, with a unit test per property

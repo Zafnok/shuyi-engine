@@ -35,6 +35,9 @@ None.
   and no record) through the backend's storage before it stops, without
   allocating where the heap is what ran out.
 - The next start offers it as `Setup::last_crash`.
+  **From 3095 (done):** only a report with `fatal: true` is offered
+  ([ADR-0083](../../docs/adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md));
+  `CrashReport::new` sets it, and every panic there ends the game.
 - A test on the fake SDK.
 
 **Out (do not do):**

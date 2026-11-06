@@ -210,7 +210,7 @@ None.
 - learned agents;
 - the soak bot (2527), which plays random commands on purpose;
 - one description of a game's types and how a view differs from the
-  state (2907, done: ADR-0083). Its §4 keeps `Determinize` as it is: a
+  state (2907, done: ADR-0084). Its §4 keeps `Determinize` as it is: a
   bot searches a determinized copy of the state, never a view, and a
   view is what `determinize` keeps (ADR-0027 §8);
 - the game's own enemy AI, and moving it onto these bots (game

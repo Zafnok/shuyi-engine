@@ -56,7 +56,7 @@ None.
   - a text dump (`World::dump()`, RON) of every serializable component
     by entity, and `World::load` from it, for tests, agents and saves
     (scenes use it, 2221). Components are dumped and read back from
-    text as ADR-0083 (2907's) says: through their serde derives, by the
+    text as ADR-0084 (2907's) says: through their serde derives, by the
     name given at registration (its §3, never `core::any::type_name`),
     with no reflection and no registry of the module's own;
   - no floats in the module's own code (`AGENTS.md` rule 5); a game's

@@ -1,4 +1,4 @@
-# ADR-0083: One description of a game's types: serde for values, `schemars` for shapes in the tools, names given at registration, and views as the game's own types
+# ADR-0084: One description of a game's types: serde for values, `schemars` for shapes in the tools, names given at registration, and views as the game's own types
 
 - **Status:** Accepted; extends ADR-0005 §1 (the `scene` dump), ADR-0009
   §8 (named in types) and ADR-0022 §5 (schemas with `schemars`)

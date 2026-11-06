@@ -236,7 +236,7 @@ None.
   answers its reply; a test finds a command sent over the link on the
   record; raise `link::VERSION` by one. `shuyi attach` gains
   `--command <line>` if the contract's other operations take one.
-- **Types (2907, done):** ADR-0083 §7 keeps `ArgKind` the console's
+- **Types (2907, done):** ADR-0084 §7 keeps `ArgKind` the console's
   own: it says how one typed word parses and how the help names it. An
   argument of a game's own type, if this ticket adds one, is read back
   through its `Deserialize`, not given a kind of its own.
@@ -326,7 +326,7 @@ None.
    `contract/session.rs` and `contract/fake.rs`. Then read Hello,
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
-   ADR-0022 §3, ADR-0047, ADR-0083 §7, and the `shuyi-input` skill.
+   ADR-0022 §3, ADR-0047, ADR-0084 §7, and the `shuyi-input` skill.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,

@@ -48,7 +48,7 @@ None.
   Tests show a client never receives hidden cells and that a forged
   command is refused.
 - A Docker image and docs.
-- **From 2907 (done):** `PlayerView` follows ADR-0083 §4. `type View`
+- **From 2907 (done):** `PlayerView` follows ADR-0084 §4. `type View`
   is a type of the game's own, `Serialize` (and `JsonSchema` in the
   tools), and what a player can't see is left out of it, never hidden
   with serde attributes on the state, which would change its hash.

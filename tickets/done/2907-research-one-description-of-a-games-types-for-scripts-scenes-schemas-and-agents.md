@@ -329,7 +329,7 @@ Done 2026-11-05.
   license and the commands.
 - **The spike** is on the local branch `spike/2907`, one commit per
   candidate, never pushed. This branch's `Cargo.lock` is unchanged.
-- **The ADR:** [ADR-0083](../../docs/adr/0083-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md).
+- **The ADR:** [ADR-0084](../../docs/adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md).
   serde is the description, and `schemars` gives shapes in the tools
   only. A shipped schema cost 165 KB; a shipped value tree cost 22 KB;
   in the tools only, 0. Names are given at registration: `schemars`
@@ -346,12 +346,12 @@ Done 2026-11-05.
   types deriving `JsonSchema`. It carries the moves of the two done
   consumers, 1129's `scene` and 1133's MCP tool. No other done consumer
   moves, and the ADR picks no derive, so there are no build tickets.
-- **Tickets edited:** 2101, 2221, 2506, 2507 and 1135 name ADR-0083
+- **Tickets edited:** 2101, 2221, 2506, 2507 and 1135 name ADR-0084
   and its choice in their scope. So do 2107, 2113, 2356, 2515, 2524 and
   2904; 2524 also gets the other side of 2581's clause. 1146's
   `PlayerView` clause is settled to §4, and 2232's to `schemars` as
   planned. The kits' planned dumps (1119, 2701, 2721, 2727) need no
-  change: each is a snapshot text, which ADR-0083 §6 keeps hand-written.
+  change: each is a snapshot text, which ADR-0084 §6 keeps hand-written.
   `docs/ROADMAP.md` marks 2907 done and adds 2581 after it.
 - **2904 and 2515 are open:** the ADR says how each of 2904's
   candidates fits, and 2904's clause now says to measure `bevy_ecs`

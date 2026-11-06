@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0083](../../docs/adr/0083-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+[ADR-0084](../../docs/adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
 (ticket 2907) decides that a game's types are described by their serde
 derives, with `schemars::JsonSchema` for their shapes in the tools
 (§1–§2), and that a path to one value is a JSON Pointer (§5). Its §8
@@ -72,12 +72,12 @@ None.
   to `serde_json::to_value(value)`, and keeps the shape of `T` in
   serialize mode
   (`SchemaSettings::default().for_serialize().into_generator().into_root_schema_for::<T>()`,
-  ADR-0083 §2), in a field that isn't part of the answer unless asked
+  ADR-0084 §2), in a field that isn't part of the answer unless asked
   for. `Scene` stays `#[non_exhaustive]` (ADR-0039), and the change is
   additive.
 - **`scene --path <pointer>` and `scene --shape`:** options of the
   `scene` operation and its input type, not operations of their own
-  (ADR-0083 §8):
+  (ADR-0084 §8):
   - `--path` answers the value at that JSON Pointer (RFC 6901) in
     `scene.data`, through `serde_json::Value::pointer`. A pointer that
     names nothing is a failed answer with a problem code of its own
@@ -90,7 +90,7 @@ None.
   - both work with `--json` and with the other options of `scene`.
 - **MCP:** the session's `scene` tool takes optional `path` and `shape`
   arguments and answers the same. A one-off read stays `run`'s whole
-  scene (ADR-0083 §8).
+  scene (ADR-0084 §8).
 - **The contract's version:** raise `contract::VERSION`
   (`crates/cli/src/contract.rs`), regenerate `crates/cli/schemas/`, and
   add the version's line to `crates/cli/schemas/versions.json`, as the
@@ -118,7 +118,7 @@ None.
   - Hello, Grid's `to_move` becomes the state's own `side`.
 
   The template's `seed` lives on its screen, so the screen's struct
-  keeps it. The whole state is in the data, as ADR-0083 §4 allows a
+  keeps it. The whole state is in the data, as ADR-0084 §4 allows a
   tool build (`map` and `rng` included). Update every worked example,
   test, snapshot and doc that reads a key whose form changed.
 - **Either order with 2524:** if 2524 is done, run its tasks' `Scene`
@@ -137,18 +137,18 @@ None.
 
 **Out (do not do):**
 - the derive of a view type and the property between a view and
-  `Determinize` (ADR-0083 §4): games with hidden information write them
+  `Determinize` (ADR-0084 §4): games with hidden information write them
   (2101, 1146);
 - a registry of types by name (2221's `SceneRegistry`, 2101);
 - writing values at run time, and debug commands (2356);
 - a path option on `run`, which answers the whole scene;
 - `MapScene::to_text` and the other text dumps, which stay hand-written
-  (ADR-0083 §6);
+  (ADR-0084 §6);
 - the editor's tree and inspector (2506, 2507, parked).
 
 ## Implementation steps
 
-1. Read ADR-0083, ADR-0022 §5, ADR-0028, ADR-0039, ADR-0031 (MCP), the
+1. Read ADR-0084, ADR-0022 §5, ADR-0028, ADR-0039, ADR-0031 (MCP), the
    2907 research note, `crates/cli/src/contract/session.rs`, `run.rs`,
    `crates/cli/src/contract.rs` and `crates/cli/src/mcp.rs`, and both
    `tools.rs` above.

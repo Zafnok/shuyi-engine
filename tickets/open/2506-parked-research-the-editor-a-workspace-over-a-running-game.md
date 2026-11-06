@@ -55,7 +55,7 @@ What is already decided, and the editor must keep:
 - **The debug view is shared** (2315, 2316). The editor's live view
   turns on the same channels and uses the same pause and step. It does
   not have its own gizmos.
-- **One description of a game's types** (ADR-0083, 2907's: serde for
+- **One description of a game's types** (ADR-0084, 2907's: serde for
   values, JSON Pointer for paths, `schemars` for shapes). The tree and
   the inspector read a running game's values, paths and shapes through
   it.
@@ -154,7 +154,7 @@ Nick comments on the scope and the look, not on the code.
 
 ## Implementation steps
 
-1. Read ADR-0002, ADR-0005, ADR-0007, ADR-0009 §4, ADR-0083, 2315's
+1. Read ADR-0002, ADR-0005, ADR-0007, ADR-0009 §4, ADR-0084, 2315's
    ADR, 2521's ADR and `shuyi_platform::link`, 1129's contract and 1135
    (and its ADR, if it is done).
 2. Look at how Godot's editor, Unreal's editor, LDtk and Bevy's editor
