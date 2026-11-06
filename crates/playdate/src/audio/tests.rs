@@ -636,3 +636,29 @@ fn an_empty_sound_is_no_sample_and_a_warning() {
     assert_eq!(warnings.len(), 1, "{warnings:?}");
     assert!(warnings[0].contains("no samples"), "{warnings:?}");
 }
+
+#[test]
+fn removing_a_made_sound_leaves_the_other_players_alone() {
+    let mut rig = Rig::new();
+    let add = SoundRequest::add("made", made(&[1, 2], false));
+    rig.frame(&[add, sound("click", 1.0), sound("made", 1.0)], &[], 0.0);
+    rig.frame(&[SoundRequest::Remove { cue: "made".into() }], &[], 0.1);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [("audio/sfx/click".to_owned(), 0.5)]
+    );
+    // The click's player still knows its sample: its volume reaches it.
+    let files = shuyi_assets::audio::Files::new(
+        &|_| None,
+        &super::shown,
+        &|_| false,
+        shuyi_assets::audio::BAKED_MUSIC_DIR,
+    );
+    let click = super::ready_now(rig.speaker.load_sound_file("sfx/click.wav", &files));
+    let click = click.unwrap_or_else(|e| panic!("{e}"));
+    rig.speaker.set_volume(&click, 0.25);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [("audio/sfx/click".to_owned(), 0.25)]
+    );
+}

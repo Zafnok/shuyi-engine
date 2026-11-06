@@ -135,6 +135,24 @@ fn the_limits_refuse_a_sound_too_long_and_samples_too_many() {
 }
 
 #[test]
+fn samples_of_exactly_the_limit_are_allowed() {
+    let mut q = AudioQueue::default();
+    // 8,388,608 frames at 192 kHz, mono: 16 MiB in 43.7 seconds. Two are the limit.
+    let half = || silence(192_000, 1, 8_388_608);
+    assert_eq!(q.add_sound("a", half()), Ok(()));
+    assert_eq!(q.add_sound("b", half()), Ok(()));
+    assert_eq!(q.added_bytes(), ADDED_BYTES_MAX);
+    let more = q.add_sound("c", silence(192_000, 1, 1));
+    assert_eq!(
+        more,
+        Err(AddSoundError::TooMuch {
+            cue: "c".into(),
+            bytes: ADDED_BYTES_MAX + 2
+        })
+    );
+}
+
+#[test]
 fn a_removed_cue_plays_nothing_and_is_logged_once() {
     let mut q = AudioQueue::default();
     assert_eq!(q.add_sound("tone", silence(8_000, 1, 8)), Ok(()));

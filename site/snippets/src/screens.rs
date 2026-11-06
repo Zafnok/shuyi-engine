@@ -373,6 +373,12 @@ mod tests {
         let plays = h.added_plays();
         assert_eq!(plays.len(), 1);
         assert_eq!(plays[0].samples.millis(), 99);
+        // Twelve samples low, thirteen high, and round again.
+        let (low, high) = (-8192, 8192);
+        let wave = plays[0].samples.samples();
+        assert_eq!(wave[..13], [[low; 12].as_slice(), &[high]].concat());
+        assert_eq!(wave[24..26], [high, low]);
+        assert_eq!(wave.len(), 1102);
     }
 
     // ANCHOR: as_target

@@ -77,7 +77,7 @@ impl Samples {
     /// them, interleaved, at `rate` with `channels`: each becomes
     /// `(b − 128) × 256`.
     pub fn from_u8(rate: u32, channels: u32, bytes: &[u8]) -> Result<Self, SamplesError> {
-        let samples = bytes.iter().map(|&b| (i16::from(b) - 128) << 8).collect();
+        let samples = bytes.iter().map(|&b| (i16::from(b) - 128) * 256).collect();
         Self::new(rate, channels, samples)
     }
 
@@ -126,9 +126,7 @@ impl Samples {
     /// for a device that loads a sound from a file's bytes.
     pub fn to_wav(&self) -> Vec<u8> {
         let block = self.channels * 2;
-        // A WAV's sizes are 32 bits: the whole frames that fit are written.
-        let room = (u32::MAX - 36) / u32::from(block) * u32::from(block);
-        let data_len = u32::try_from(self.data.len() * 2).map_or(room, |len| len.min(room));
+        let data_len = wav_data_bytes(self.data.len(), block);
         let written = usize::try_from(data_len / 2).unwrap_or(0);
         let mut out = Vec::with_capacity(44 + written * 2);
         out.extend_from_slice(b"RIFF");
@@ -144,11 +142,18 @@ impl Samples {
         out.extend_from_slice(&16u16.to_le_bytes());
         out.extend_from_slice(b"data");
         out.extend_from_slice(&data_len.to_le_bytes());
-        for sample in self.data.iter().take(written) {
+        for sample in &self.data[..written] {
             out.extend_from_slice(&sample.to_le_bytes());
         }
         out
     }
+}
+
+/// The bytes of samples a WAV of `samples` samples, `block` bytes a frame,
+/// holds: all of them, or the whole frames its 32-bit sizes can say.
+fn wav_data_bytes(samples: usize, block: u16) -> u32 {
+    let room = (u32::MAX - 36) / u32::from(block) * u32::from(block);
+    u32::try_from(samples.saturating_mul(2)).map_or(room, |bytes| bytes.min(room))
 }
 
 #[cfg(test)]
@@ -162,7 +167,8 @@ mod tests {
         assert_eq!(made.samples(), [0, 0x7F00, i16::MIN, 256, -256]);
         assert_eq!((made.rate(), made.channels()), (11_025, 1));
         let stereo = Samples::from_u8(8_000, 2, &[0, 255]);
-        assert_eq!(stereo.map(|s| s.frames()), Ok(1));
+        let stereo = stereo.unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!((stereo.channels(), stereo.frames()), (2, 1));
         assert_eq!(
             Samples::from_u8(8_000, 2, &[1, 2, 3]),
             Err(SamplesError::PartialFrame {
@@ -219,6 +225,32 @@ mod tests {
         assert_eq!(&wav[36..40], b"data");
         assert_eq!(wav[40..44], 8u32.to_le_bytes());
         assert_eq!(wav[44..], [1, 0, 0xFE, 0xFF, 0xFF, 0x7F, 0, 0x80]);
+    }
+
+    #[test]
+    fn a_mono_wav_has_two_bytes_a_frame() {
+        let made = Samples::new(8_000, 1, vec![5, -5, 7]).unwrap_or_else(|e| panic!("{e}"));
+        let wav = made.to_wav();
+        assert_eq!(wav.len(), 44 + 6);
+        assert_eq!(wav[4..8], 42u32.to_le_bytes());
+        assert_eq!(wav[22..24], 1u16.to_le_bytes());
+        assert_eq!(wav[28..32], 16_000u32.to_le_bytes());
+        assert_eq!(wav[32..34], 2u16.to_le_bytes());
+        assert_eq!(wav[40..44], 6u32.to_le_bytes());
+        assert_eq!(wav[44..], [5, 0, 0xFB, 0xFF, 7, 0]);
+    }
+
+    #[test]
+    fn a_wav_says_all_its_samples_or_the_whole_frames_32_bits_can() {
+        // Room for 4,294,967,259 bytes after the header, in whole frames.
+        assert_eq!(wav_data_bytes(0, 2), 0);
+        assert_eq!(wav_data_bytes(3, 2), 6);
+        assert_eq!(wav_data_bytes(2_147_483_629, 2), 4_294_967_258);
+        assert_eq!(wav_data_bytes(2_147_483_630, 2), 4_294_967_258);
+        assert_eq!(wav_data_bytes(2_147_483_628, 4), 4_294_967_256);
+        assert_eq!(wav_data_bytes(2_147_483_630, 4), 4_294_967_256);
+        assert_eq!(wav_data_bytes(usize::MAX, 2), 4_294_967_258);
+        assert_eq!(wav_data_bytes(usize::MAX, 4), 4_294_967_256);
     }
 
     proptest::proptest! {
