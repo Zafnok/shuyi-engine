@@ -183,6 +183,21 @@ fn an_app_shows_its_card_then_its_first_screen() {
 }
 
 #[test]
+fn its_crash_record_reaches_the_app() {
+    let mut app = App::new(demo(GOOD).start());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    assert_eq!(app.crash_record(), None, "none until said");
+    let game = demo(GOOD).crash_record(|game| game.top_screen().map(|name| format!("on {name}")));
+    let mut app = App::new(game.start());
+    let _ = app.frame(&mut p, Millis(32));
+    assert_eq!(app.crash_record(), None, "loading");
+    let _ = app.frame(&mut p, Millis(48));
+    assert_eq!(app.crash_record().as_deref(), Some("on hello"));
+}
+
+#[test]
 fn broken_files_give_every_problem_to_ctx_and_to_the_load() {
     let game = demo(BROKEN);
     let errors = game.ctx().err().unwrap_or_default();

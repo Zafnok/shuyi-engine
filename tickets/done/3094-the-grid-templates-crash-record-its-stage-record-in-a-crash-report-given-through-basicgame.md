@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3046"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 3094 — The grid template's crash record
@@ -93,14 +93,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `BasicGame::crash_record` reaches `App::crash_record` (a unit test
+- [x] `BasicGame::crash_record` reaches `App::crash_record` (a unit test
       through the headless backend).
-- [ ] In a game made from the template with the stage, a stage with two
+- [x] In a game made from the template with the stage, a stage with two
       commands taken and a third pending gives a record of the three,
       which its tools' `replay` reads; with no stage open, `None`.
-- [ ] `StageRecord` still names the record type for the tools and tests.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `StageRecord` still names the record type for the tools and tests.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -110,5 +110,41 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi-platform`: `BasicGame::crash_record(hook)`, a builder beside
+  `screens` and `modules`, kept in a new private field; `BasicGame::start`
+  hands it to `Start::crash_record`. Unit test
+  `its_crash_record_reaches_the_app` reads it through `App::crash_record`
+  on the headless backend (none until said, none while loading, the
+  game's record once it runs).
+- The grid stage (`top_down_grid.rs`): `StageRecord` moved out of
+  `tools.rs`, so the shipped binary has it; `StageScreen::pending` holds
+  the command the rules are applying until they return;
+  `StageScreen::record` is the seed, the commands taken and the pending
+  one, stamped with `crate::made()`; `crash_record(&Game<Data>)` writes
+  the open stage's as RON, `None` with no stage open. `StageScreen`
+  answers `as_any_mut`, for the test.
+- How the base wires it without knowing whether a stage is in: the
+  generated `stages.rs` (`shuyi new`'s `stages_rs`) gains
+  `crash_record() -> Option<CrashRecord<Data>>`, `Some(<stage>::crash_record)`
+  with a stage and `None` without, and the base's `game()` adds
+  `.crash_record(hook)` only when it is `Some`. So the blank game adds
+  nothing, as the ticket asks; a stage module now gives `crash_record`
+  besides `own`, `first`, `screens` and `Tools` (docs/templates.md, the
+  base's AGENTS.md).
+- A `stages.rs` written by hand now names `crash_record()` too, since the
+  base's `game()` calls it: the `shuyi-dialogue` and `shuyi-cinematic`
+  skills' worked examples give `None`. A game already made keeps its own
+  `lib.rs`, so it is not affected.
+- Integration test in the template's `tests/stage.rs`: two commands
+  taken and a third pending give a record of the three, which the tools'
+  `replay` runs (four steps); at the title, `None`.
+- Made a grid and a blank game with `shuyi new --engine-path` and ran
+  their gates (fmt, clippy, tests, `cargo shuyi check`, `lint`).
+- 2512 isn't done, so `template-lines` doesn't exist yet: nothing to run.
+  Its either-order clause now says this ticket is done.
+- Docs: `docs/crash-reports.md` (*The game's record*), `docs/templates.md`
+  (*Stages*), the base's `AGENTS.md`, the `shuyi-debug-replay` skill, and
+  the book's *When a player's game crashes*
+  (`site/content/learn/book/targets-and-export.md`).
+- No break: `BasicGame` grows a builder method and a private field
+  (ADR-0039).

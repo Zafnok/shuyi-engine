@@ -11,8 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use rules::{Command, Feature, Outcome, Player, Stage};
-use serde::{Deserialize, Serialize};
+use rules::{Feature, Outcome, Player, Stage};
 use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::core::{Bot, Made, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
@@ -28,7 +27,7 @@ use shuyi_cli::frame_png::{Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools};
 
-use super::{Own, StageScreen, Terrain};
+use super::{Own, StageRecord, StageScreen, Terrain};
 use crate::Data;
 
 /// The game's own options, for `frame-png`, `run` and `scene`.
@@ -50,21 +49,6 @@ pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
         }
     }
     Ok(seed)
-}
-
-/// A record of a stage: its seed and the commands sent to its rules, and
-/// what made it. The game's record format for `replay`; `bots` writes one
-/// of each play.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StageRecord {
-    /// The stage's seed.
-    pub seed: u64,
-    /// The commands, in order.
-    pub commands: Vec<Command>,
-    /// What made it ([`crate::made`]); a record without one still reads.
-    #[serde(default)]
-    pub made: Option<Made>,
 }
 
 /// The stage's scene in `h`: its map and the rules' state.

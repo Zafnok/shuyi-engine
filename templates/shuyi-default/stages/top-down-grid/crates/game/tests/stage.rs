@@ -5,7 +5,7 @@
 use std::fs;
 use std::path::Path;
 
-use game::stages::top_down_grid::{StageRecord, StageScreen, Tools};
+use game::stages::top_down_grid::{StageRecord, StageScreen, Tools, crash_record};
 use rules::{Command, Outcome, Stage};
 use shuyi::core::{Dir, Pos, TurnRules};
 use shuyi::platform::harness::Harness;
@@ -142,6 +142,38 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
         stage.outcome().map(|o: Outcome| format!("{o:?}"))
     );
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_crash_record_holds_the_commands_taken_and_the_pending_one_and_replays() {
+    let title = tools().harness(0).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(crash_record(title.game()), None, "no stage is open");
+    assert!(game::stages::crash_record().is_some());
+    let mut h = on_stage(3);
+    for _ in 0..2 {
+        let Command::Step(dir) = stage(&h).stage.legal_commands()[0];
+        h.keys(key(dir));
+    }
+    let third = stage(&h).stage.legal_commands()[0];
+    let screen = h.screen_mut::<StageScreen>().unwrap();
+    screen.pending = Some(third);
+    let taken = screen.commands.clone();
+    assert_eq!(taken.len(), 2);
+    let text = crash_record(h.game()).unwrap_or_else(|| panic!("no record"));
+    let parsed: StageRecord = ron::from_str(&text).unwrap();
+    let mut all = taken;
+    all.push(third);
+    assert_eq!(parsed.seed, 3);
+    assert_eq!(parsed.commands, all);
+    assert_eq!(parsed.made, Some(game::made()));
+    // The tools' replay reads it.
+    let dir = std::env::temp_dir().join(format!("game-crash-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("crash.ron"), &text).unwrap();
+    let answer = replay(&tools(), &dir, &ReplayInput::new("crash.ron"));
+    fs::remove_dir_all(&dir).unwrap();
+    assert!(answer.ok, "{answer:?}");
+    assert_eq!(answer.result.unwrap().runs[0].steps.len(), 4);
 }
 
 #[test]

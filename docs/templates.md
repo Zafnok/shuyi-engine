@@ -201,13 +201,16 @@ gives:
   and `own(&Bundle)`, which reads it from the game's files;
 - `first(ctx)`, the screen the title starts, and `screens(ctx)`, every
   screen it can show;
+- `crash_record(game)`, its record of play for a crash report, or
+  `None` when it isn't open (docs/crash-reports.md);
 - `Tools`, with `Tools::new(game)`: the game's `GameTools`, which add
   the stage's and call `BasicTools` for the rest.
 
 `stages.rs` declares the module and names these for the base part:
 `stages::Own`, `stages::own`, `stages::first`, `stages::screens`,
-`stages::tools` and `stages::names`. With no stage, they are `()`, none,
-and `BasicTools`. A game has one stage for now; a second part with a
+`stages::crash_record`, `stages::tools` and `stages::names`. With no
+stage, they are `()`, none, and `BasicTools`; the base's `game()` gives
+`BasicGame::crash_record` the stage's hook when there is one. A game has one stage for now; a second part with a
 stage fails.
 
 ## The skills

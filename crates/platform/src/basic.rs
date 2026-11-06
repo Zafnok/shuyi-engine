@@ -1,8 +1,9 @@
 //! [`BasicGame`]: a game on the short path (ADR-0036), described once for
 //! its binary, its tools and its tests. It holds what the engine can't
 //! read from the game's files: who it is ([`AppInfo`]), its files,
-//! its first screen and, if it has them, its console, its own part and
-//! every screen it can show, and the modules it installs. From it come
+//! its first screen and, if it has them, its console, its own part,
+//! every screen it can show, the modules it installs and its record of
+//! its play for a crash report. From it come
 //! its data ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
 //! [`Game`] and how a backend starts it ([`BasicGame::start`]).
 
@@ -19,7 +20,7 @@ use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
 
-use crate::app::{Card, Start};
+use crate::app::{Card, CrashRecord, Start};
 use crate::app_info::AppInfo;
 use crate::platform::Look;
 
@@ -49,6 +50,7 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     console: ConsoleSpec,
     screens: Option<Screens<A, T>>,
     modules: Option<Modules<A, T>>,
+    crash_record: Option<CrashRecord<BasicData<A, T>>>,
 }
 
 /// What a game on the short path is painted with: its font and pictures.
@@ -78,6 +80,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             console: BASIC_CONSOLE,
             screens: None,
             modules: None,
+            crash_record: None,
         }
     }
 
@@ -101,6 +104,14 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     #[must_use]
     pub fn modules(mut self, modules: Modules<A, T>) -> Self {
         self.modules = Some(modules);
+        self
+    }
+
+    /// The same game, with `hook` its record of its play in a crash
+    /// report ([`Start::crash_record`]; none until said).
+    #[must_use]
+    pub fn crash_record(mut self, hook: CrashRecord<BasicData<A, T>>) -> Self {
+        self.crash_record = Some(hook);
         self
     }
 
@@ -196,15 +207,21 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     /// module that can't be installed, is the load's error, which the
     /// platform shows in place of the game. A session record of it carries
     /// its [`made`](Self::made), and each frame's hash the state hash of its
-    /// screens ([`Screen::state_hash`]).
+    /// screens ([`Screen::state_hash`]). A crash report carries its
+    /// [`crash_record`](Self::crash_record), if it has one.
     pub fn start(self) -> Start<BasicData<A, T>> {
         let made = self.made();
-        Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
+        let crash_record = self.crash_record;
+        let start = Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
             let ctx = self.ctx()?;
             self.game(setup.ctx(ctx)).map_err(|e| e.to_string())
         })
         .made(made)
-        .state_hash(Game::state_hash)
+        .state_hash(Game::state_hash);
+        match crash_record {
+            Some(hook) => start.crash_record(hook),
+            None => start,
+        }
     }
 
     /// The game in the test Harness, at its first screen.

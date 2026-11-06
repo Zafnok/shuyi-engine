@@ -127,6 +127,8 @@ that gives:
   files (a map, a table of rules), or `()` and `Ok(())`;
 - `first`, the screen the title starts, and `screens`, every screen it
   can show;
+- `crash_record`, its record of play (the record its `replay` reads) for
+  a crash report, or `None` while it isn't open;
 - `Tools`, made with `Tools::new(game())`: its `GameTools`, which adds
   what the stage has (a scene, records, bots) and calls `BasicTools` for
   the rest.

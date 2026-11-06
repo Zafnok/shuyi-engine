@@ -33,6 +33,12 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
     talk::screens(ctx)
 }
 
+/// The game's record of its play for a crash report: none, as a talk has
+/// no rules to replay.
+pub fn crash_record() -> Option<shuyi::platform::CrashRecord<Data>> {
+    None
+}
+
 /// The game's tools: the engine's, for a game on the short path.
 #[cfg(feature = "tools")]
 pub fn tools() -> shuyi_cli::BasicTools<UiAction, Own> {

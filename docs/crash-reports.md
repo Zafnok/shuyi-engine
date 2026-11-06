@@ -94,9 +94,15 @@ pub fn crash_record(game: &Game<MyGame>) -> Option<String> {
 let start = Start::new(card, look, load).crash_record(crash_record);
 ```
 
+A game on the short path (ADR-0036) has no `Start` of its own: it gives the
+same function to its `BasicGame` (`.crash_record(crash_record)`), which passes
+it on in `BasicGame::start`. A game made with `shuyi new --template grid` does,
+through its generated `stages::crash_record` and its stage's
+`top_down_grid::crash_record`; the blank template gives none.
+
 It returns `None` when there is nothing to record (no stage open). A turn game
 that keeps the command its rules are applying until they return (hello-grid's
-`StageScreen::pending`) has it in the record, so a panic inside its rules is
+and the grid template's `StageScreen::pending`) has it in the record, so a panic inside its rules is
 replayed to the panic. Keep what the player typed (a name) out of the record.
 
 On desktop the engine catches the panic, asks for the record, adds it to the

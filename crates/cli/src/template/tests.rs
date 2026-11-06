@@ -697,6 +697,7 @@ fn a_stage_joins_the_generated_list_of_stages() {
         "&[\"side-view\"]",
         "pub type Own = side_view::Own;",
         "Some(side_view::first(ctx))",
+        "Some(side_view::crash_record)",
         "pub fn tools() -> side_view::Tools {",
     ] {
         assert!(list.contains(line), "{line}: {list}");
