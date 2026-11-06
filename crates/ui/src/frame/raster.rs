@@ -4,7 +4,9 @@
 //! comparison every backend's pixels go through. `frame-png`, the tool
 //! contract and a game's PNG snapshots paint with it; a game may too, at
 //! run time (a save's thumbnail, a photo mode). It takes decoded pictures:
-//! decoding a file is the caller's (`shuyi-cli` decodes PNG).
+//! decoding a file is the caller's (`shuyi-cli` decodes PNG). Its
+//! pictures are [`shuyi_assets::image::Image`], what the image formats
+//! decode, so a decoded picture is painted as it is.
 //!
 //! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
 //! pixel at whole scales: the clear colour, cell backgrounds, `Under`
@@ -58,97 +60,72 @@ pub fn one_bit_picture(frame: &Frame, scale: u32) -> Image {
                 .zip(at(y))
                 .is_some_and(|(x, y)| onebit::is_white(frame, x, y))
             {
-                image.blend(x, y, [1.0; 3], 1.0);
+                blend(&mut image, x, y, [1.0; 3], 1.0);
             }
         }
     }
     image
 }
 
-/// An RGBA8 picture, row-major.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Image {
-    /// Width in pixels.
-    pub width: u32,
-    /// Height in pixels.
-    pub height: u32,
-    /// Four bytes per pixel.
-    pub rgba: Vec<u8>,
+/// A picture of four bytes a pixel: the image formats' (`shuyi-assets`),
+/// so a picture a [`Formats`](shuyi_assets::format::Formats) registry
+/// decodes paints as it is.
+pub use shuyi_assets::image::Image;
+
+/// `picture`'s pixels as RGBA ([`Painted::rgba_into`]).
+pub fn of_painted(picture: &Painted) -> Image {
+    let (width, height) = picture.size();
+    let mut rgba = Vec::new();
+    picture.rgba_into(&mut rgba);
+    Image {
+        width: u32::from(width),
+        height: u32::from(height),
+        rgba,
+    }
 }
 
-impl Image {
-    /// A `width` × `height` picture of `color`, solid.
-    pub fn filled(width: u32, height: u32, color: Rgb) -> Self {
-        let mut image = Self {
-            width,
-            height,
-            rgba: vec![0; width as usize * height as usize * 4],
-        };
-        image.fill((0, 0, i64::from(width), i64::from(height)), color);
-        image
+/// The pixel of `image` at `(x, y)`, clamped to the picture (an empty
+/// picture is transparent).
+fn texel(image: &Image, x: i64, y: i64) -> [u8; 4] {
+    if image.width == 0 || image.height == 0 {
+        return [0; 4];
     }
+    let clamp = |v: i64, size: u32| usize::try_from(v.clamp(0, i64::from(size) - 1)).unwrap_or(0);
+    let i = (clamp(y, image.height) * image.width as usize + clamp(x, image.width)) * 4;
+    [
+        image.rgba[i],
+        image.rgba[i + 1],
+        image.rgba[i + 2],
+        image.rgba[i + 3],
+    ]
+}
 
-    /// The pixel at `(x, y)`, clamped to the picture (an empty picture is
-    /// transparent).
-    fn texel(&self, x: i64, y: i64) -> [u8; 4] {
-        if self.width == 0 || self.height == 0 {
-            return [0; 4];
-        }
-        let clamp =
-            |v: i64, size: u32| usize::try_from(v.clamp(0, i64::from(size) - 1)).unwrap_or(0);
-        let i = (clamp(y, self.height) * self.width as usize + clamp(x, self.width)) * 4;
-        [
-            self.rgba[i],
-            self.rgba[i + 1],
-            self.rgba[i + 2],
-            self.rgba[i + 3],
-        ]
+/// Blends `color` with alpha `alpha` (0 to 1) over the pixel of `image`
+/// at `(x, y)`, as the GPU does: in floats, rounded once. Off the picture
+/// it does nothing.
+fn blend(image: &mut Image, x: i64, y: i64, color: [f32; 3], alpha: f32) {
+    let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else {
+        return;
+    };
+    if x >= image.width || y >= image.height {
+        return;
     }
-
-    /// `picture`'s pixels as RGBA ([`Painted::rgba_into`]).
-    pub fn of_painted(picture: &Painted) -> Self {
-        let (width, height) = picture.size();
-        let mut rgba = Vec::new();
-        picture.rgba_into(&mut rgba);
-        Self {
-            width: u32::from(width),
-            height: u32::from(height),
-            rgba,
-        }
+    let i = (y as usize * image.width as usize + x as usize) * 4;
+    for (c, &src) in color.iter().enumerate() {
+        let dst = f32::from(image.rgba[i + c]) / 255.0;
+        let out = src * alpha + dst * (1.0 - alpha);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255
+        let byte = (out * 255.0).round().clamp(0.0, 255.0) as u8;
+        image.rgba[i + c] = byte;
     }
+    image.rgba[i + 3] = 255;
+}
 
-    /// The pixel at `(x, y)`, or `None` outside the picture.
-    pub fn pixel(&self, x: u32, y: u32) -> Option<[u8; 4]> {
-        (x < self.width && y < self.height).then(|| self.texel(i64::from(x), i64::from(y)))
-    }
-
-    /// Blends `color` with alpha `alpha` (0 to 1) over the pixel at
-    /// `(x, y)`, as the GPU does: in floats, rounded once. Off the picture
-    /// it does nothing.
-    fn blend(&mut self, x: i64, y: i64, color: [f32; 3], alpha: f32) {
-        let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else {
-            return;
-        };
-        if x >= self.width || y >= self.height {
-            return;
-        }
-        let i = (y as usize * self.width as usize + x as usize) * 4;
-        for (c, &src) in color.iter().enumerate() {
-            let dst = f32::from(self.rgba[i + c]) / 255.0;
-            let out = src * alpha + dst * (1.0 - alpha);
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255
-            let byte = (out * 255.0).round().clamp(0.0, 255.0) as u8;
-            self.rgba[i + c] = byte;
-        }
-        self.rgba[i + 3] = 255;
-    }
-
-    /// Fills `(x, y, w, h)` with `color`, solid.
-    fn fill(&mut self, (x, y, w, h): (i64, i64, i64, i64), color: Rgb) {
-        for py in y..y + h {
-            for px in x..x + w {
-                self.blend(px, py, unit(color), 1.0);
-            }
+/// Fills `(x, y, w, h)` of `image` with `color`, solid.
+fn fill(image: &mut Image, (x, y, w, h): (i64, i64, i64, i64), color: Rgb) {
+    for py in y..y + h {
+        for px in x..x + w {
+            blend(image, px, py, unit(color), 1.0);
         }
     }
 }
@@ -236,8 +213,8 @@ impl Painter {
         let (left, top) = (i64::from(clip.x) * s, i64::from(clip.y) * s);
         for y in 0..i64::from(window.height) {
             for x in 0..i64::from(window.width) {
-                let [r, g, b, _] = window.texel(x, y);
-                out.blend(left + x, top + y, unit(Rgb::new(r, g, b)), 1.0);
+                let [r, g, b, _] = texel(&window, x, y);
+                blend(out, left + x, top + y, unit(Rgb::new(r, g, b)), 1.0);
             }
         }
     }
@@ -271,7 +248,7 @@ impl Painter {
         };
         for ((x, y), cell) in cells() {
             if !cell.see_through && (all_fills || cell.bg != self.clear) {
-                out.fill((x, y, cell_w, cell_h), cell.bg);
+                fill(out, (x, y, cell_w, cell_h), cell.bg);
             }
         }
         self.draw_items(out, (buf, pictures), Layer::Under, corner, px);
@@ -320,12 +297,12 @@ impl Painter {
                 )
             };
             match item {
-                Item::Rect(rect) => out.fill(to_px(rect.rect), rect.color),
+                Item::Rect(rect) => fill(out, to_px(rect.rect), rect.color),
                 Item::Sprite(sprite) => self.draw_sprite(out, sprite, to_px(sprite.clip)),
                 Item::Painted(painted) => draw_painted(out, painted, pictures, to_px(painted.clip)),
                 // In whole console pixels, by `frame::shape`'s rules.
                 Item::Gizmo(gizmo) => gizmo.for_each_run(|y, x0, x1| {
-                    out.fill(to_px(Rect::new(x0, y, x1 - x0, 1)), gizmo.color);
+                    fill(out, to_px(Rect::new(x0, y, x1 - x0, 1)), gizmo.color);
                 }),
             }
         }
@@ -335,7 +312,7 @@ impl Painter {
     /// of its image, or a `MISSING_COLOR` rectangle.
     fn draw_sprite(&self, out: &mut Image, sprite: &Sprite, dest: (i64, i64, i64, i64)) {
         let Some(image) = self.images.get(&sprite.image) else {
-            out.fill(dest, MISSING_COLOR);
+            fill(out, dest, MISSING_COLOR);
             return;
         };
         let opacity = f32::from(sprite.opacity) / 255.0;
@@ -385,13 +362,13 @@ fn draw_painted(
     dest: (i64, i64, i64, i64),
 ) {
     let Some(picture) = pictures.get(painted.picture) else {
-        out.fill(dest, MISSING_COLOR);
+        fill(out, dest, MISSING_COLOR);
         return;
     };
     let bright = f32::from(painted.brightness) / 255.0;
     blit(
         out,
-        &Image::of_painted(picture),
+        &of_painted(picture),
         painted.clipped_src(),
         dest,
         false,
@@ -426,11 +403,11 @@ fn blit(
                 src_x + src_w * across
             };
             #[allow(clippy::cast_possible_truncation)] // floored image coordinates
-            let texel = image.texel(tex_x.floor() as i64, tex_y.floor() as i64);
+            let texel = texel(image, tex_x.floor() as i64, tex_y.floor() as i64);
             let [red, green, blue] = unit(paint.apply(Rgb::new(texel[0], texel[1], texel[2])));
             let color = [red * tint[0], green * tint[1], blue * tint[2]];
             let alpha = f32::from(texel[3]) / 255.0;
-            out.blend(left + dx, top + dy, color, alpha * tint[3]);
+            blend(out, left + dx, top + dy, color, alpha * tint[3]);
         }
     }
 }

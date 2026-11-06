@@ -50,8 +50,8 @@ fn the_font_atlas_is_what_font_atlas_makes_of_the_bdf() {
     let chars = AtlasChars::of_lang(game.lang(), &rules.required_glyphs);
     let atlas = build_atlas(&font, &chars);
     let (width, height, rgba) = decode_png(embedded(FONT_PNG)).unwrap();
-    assert_eq!((width, height), (atlas.width, atlas.height));
-    assert!(rgba == atlas.rgba, "files/font/atlas.png is stale");
+    assert_eq!((width, height), (atlas.image.width, atlas.image.height));
+    assert!(rgba == atlas.image.rgba, "files/font/atlas.png is stale");
     let ron = atlas_ron(
         &atlas.def,
         "ter-u16n.bdf",

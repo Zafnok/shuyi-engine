@@ -124,11 +124,10 @@ None.
     `shuyi-assets` and `frame-png` reaches them through `decode_image`;
     if not, a PNG goes to `codec::decode_png` as today, and 2565 moves
     that branch to `png_pixels`.
-  - **Either order with 2391:** if 2391 is done, the raster's `Image` is
+  - **From 2391 (done):** the raster's `Image` is
     `shuyi_assets::image::Image`, the type the registry decodes: hand
     the decoded picture to the painter as it is, without copying its
-    fields; if not, copy its fields into `raster::Image { width, height,
-    rgba }` as above, and 2391 drops the copy.
+    fields.
 
 - **Sounds in `shuyi_assets::audio`** (`crates/assets/src/audio.rs`).
   The functions are always compiled, also without `std`; only their

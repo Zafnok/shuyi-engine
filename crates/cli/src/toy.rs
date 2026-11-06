@@ -296,6 +296,6 @@ fn box_atlas() -> Result<(FontAtlasDef, Vec<u8>), String> {
         },
         &AtlasChars::default(),
     );
-    let png = encode_png(atlas.width, atlas.height, &atlas.rgba)?;
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba)?;
     Ok((atlas.def, png))
 }

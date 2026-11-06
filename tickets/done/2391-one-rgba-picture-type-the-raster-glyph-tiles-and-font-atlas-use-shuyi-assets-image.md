@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2391 — One RGBA picture type
@@ -169,21 +169,21 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "pub rgba: Vec<u8>" crates` finds only
-      `crates/assets/src/image.rs`.
-- [ ] `grep -rn "pub struct Tileset\|pub struct Image {" crates` finds
+- [x] `grep -rn "pub rgba: Vec<u8>" crates` finds only
+      `crates/assets/src/image.rs` (and `app_info::Icon`, a square of one side from 3113: see the notes).
+- [x] `grep -rn "pub struct Tileset\|pub struct Image {" crates` finds
       only `crates/assets/src/image.rs`.
-- [ ] `shuyi_ui::frame::raster::Image` and
+- [x] `shuyi_ui::frame::raster::Image` and
       `shuyi_cli::frame_png::Image` are `shuyi_assets::image::Image` (a
       raster test builds a `shuyi_assets::image::Image`, hands it to
       `raster::Painter::new` as an image, and reads it back painted).
-- [ ] Every existing test of the raster, `frame-png`, `glyph-tiles`,
+- [x] Every existing test of the raster, `frame-png`, `glyph-tiles`,
       `font-atlas` and Hello, Grid's files passes; only the lines that
       name `Tileset`, `atlas.width`, `atlas.height` or `atlas.rgba`
       change.
-- [ ] The completion notes have a `Breaking:` line for each break the
+- [x] The completion notes have a `Breaking:` line for each break the
       `api` job reports.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -201,5 +201,112 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`shuyi_assets::image::Image` is now the one RGBA picture:
+
+- It gains `filled(width, height, impl Into<[u8; 4]>)` and
+  `pixel(x, y) -> Option<[u8; 4]>`, with unit tests (0 × 0, 3 × 2,
+  inside, the last pixel, one past each side, bytes short of the size).
+- `shuyi_ui::frame::color` has `impl From<Rgb> for [u8; 4]` (opaque).
+- The raster re-exports it as `raster::Image` (so `frame_png::Image` is
+  it too); `texel`, `blend` and `fill` are private functions taking the
+  picture first, with the same bodies. A new raster test builds a
+  `shuyi_assets::image::Image` by that path, hands it to `Painter::new`
+  and reads it back painted.
+- `glyph_tiles::Tileset` is gone: `render` and `render_files` return an
+  `Image`, `render` takes `atlas_image: &Image`, and `index`, `set` and
+  `stamp` are private functions over `&mut Image`. The atlas's cover is
+  read with `Image::pixel`.
+- `font_atlas::Atlas` is `{ def, image }` and `one_bit(def, &Image)`;
+  `run`, its tests, `toy.rs`, `frame_png`'s tests and Hello, Grid's
+  `files.rs` read `atlas.image.…`.
+
+Either-order clauses: 2565, 2234 and 2224 are not done, so the *if
+not* branches held: `decode_image` and `render_files` still decode with
+`codec::decode_png` and build the `Image` from its result; nothing for
+2234 or 2224. Their clauses now read as what holds (**From 2391
+(done)**). 2392's card builds and its tests pass unchanged. 2580 already
+says it makes `stamp` public over `Image`.
+
+Deviations:
+
+- `raster::Image::of_painted` was a public method not named in the
+  ticket. It can't stay an inherent method of a type from another
+  crate, so it is the free function `raster::of_painted(&Painted) ->
+  Image`.
+- The first acceptance grep also finds `crates/cli/src/app_info.rs`'s
+  `Icon { side, rgba }` (3113, after the ticket was written). It is a
+  checked square of one side, not one of the four this ticket names, so
+  it stays; no ticket written.
+- The glyph-tiles tests' `tiles.pixel(…)` checks compare with
+  `Some(…)` and the two outside the picture with `None`, as the ticket's
+  step 4 says.
+
+Docs: the raster's module docs say its pictures are
+`shuyi_assets::image::Image`; the rest is rustdoc on the changed items.
+No page of `docs/` or the book names the changed items.
+
+Breaking: shuyi-cli: glyph_tiles::Tileset: gone; `glyph_tiles::render` and `render_files` return `shuyi_assets::image::Image`, whose `pixel` gives an `Option`.
+
+```migration
+since: 0.2.0
+what: A glyph tileset is a plain Image, and its pixel outside the picture is None.
+old: glyph_tiles::Tileset, Tileset::pixel(x, y) -> [u8; 4]
+new: shuyi_assets::image::Image, Image::pixel(x, y) -> Option<[u8; 4]>
+before: |
+  let tiles: Tileset = glyph_tiles::render_files(&rules, root)?;
+  let p = tiles.pixel(x, y);
+after: |
+  let tiles: Image = glyph_tiles::render_files(&rules, root)?;
+  let p = tiles.pixel(x, y).unwrap_or([0; 4]);
+find: ["Tileset"]
+```
+
+Breaking: shuyi-cli: glyph_tiles::render: takes the atlas picture as `&Image`, not a `(width, &rgba)` pair.
+
+```migration
+since: 0.2.0
+what: glyph_tiles::render takes the font atlas's picture as an Image.
+old: render(rules, &def, (width, &rgba), &palette)
+new: render(rules, &def, &atlas_image, &palette)
+before: |
+  glyph_tiles::render(&rules, &atlas.def, (atlas.width, &atlas.rgba), &palette)
+after: |
+  glyph_tiles::render(&rules, &atlas.def, &atlas.image, &palette)
+find: ["(atlas.width, &atlas.rgba)"]
+```
+
+Breaking: shuyi-cli: font_atlas::Atlas, font_atlas::one_bit: the atlas's picture is its `image` field, an `Image`, and `one_bit` takes it as `&Image`.
+
+```migration
+since: 0.2.0
+what: A font atlas keeps its picture as one Image field.
+old: atlas.width, atlas.height, atlas.rgba; one_bit(&def, width, &rgba)
+new: atlas.image.width, atlas.image.height, atlas.image.rgba; one_bit(&def, &image)
+before: |
+  let png = encode_png(atlas.width, atlas.height, &atlas.rgba)?;
+  let bits = one_bit(&atlas.def, atlas.width, &atlas.rgba)?;
+after: |
+  let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba)?;
+  let bits = one_bit(&atlas.def, &atlas.image)?;
+find: ["atlas.rgba", "atlas.width", "atlas.height"]
+```
+
+Breaking: shuyi-ui, shuyi-cli: frame::raster::Image::of_painted: a free function, `raster::of_painted`, since `Image` is now `shuyi_assets::image::Image`.
+
+```migration
+since: 0.2.0
+what: The raster's picture of a painted picture is a free function.
+old: raster::Image::of_painted(&picture)
+new: raster::of_painted(&picture)
+before: |
+  let image = raster::Image::of_painted(&picture);
+after: |
+  let image = raster::of_painted(&picture);
+find: ["Image::of_painted"]
+```
+
+Book: none, the changed items are tools' (`glyph-tiles`, `font-atlas`) and the raster's picture type, which the book doesn't name; `raster::Image` keeps its path, fields, `filled` and `pixel`.
+
+Nick input: none. The game's PR that moves the pin follows this one: its
+staleness tests of the atlas and the tileset read `atlas.image` and an
+`Image`, as Hello, Grid's do.
