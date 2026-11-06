@@ -10,6 +10,13 @@
 //! statics, so a panic on another thread (the music's worker) gets them too.
 //! A panic caught on purpose runs in [`quiet`] and writes nothing.
 //!
+//! A report is [`fatal`](CrashReport::fatal) when the panic is on the
+//! thread that runs the game, the one `run` installs the hook from: on
+//! native `run` catches it and ends the process, or it is outside that
+//! catch and ends it itself; on the web every panic aborts. A panic on
+//! another thread (quad-snd's own, on a machine with no sound device) is
+//! kept, and not offered to the game as a crash.
+//!
 //! On native, `run` catches a panic of the game's frame: it stops the sound,
 //! adds the game's record of its play to the report ([`add_record`]) and
 //! ends the process with exit code 101, as an uncaught panic does, without
@@ -25,6 +32,7 @@ use std::collections::VecDeque;
 use std::panic::PanicHookInfo;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
+use std::thread::ThreadId;
 
 use shuyi_platform::crash::{CrashReport, LOG_LINES, crash_key, keep_newest};
 use shuyi_ui::storage::Storage;
@@ -78,6 +86,8 @@ type StorageMaker = Arc<dyn Fn() -> Box<dyn Storage> + Send + Sync>;
 struct Installed {
     reports: CrashReports,
     storage: StorageMaker,
+    /// The thread [`install`] ran on: the one that runs the game.
+    game_thread: ThreadId,
 }
 
 /// The report the hook wrote last, and its key, for [`add_record`].
@@ -122,8 +132,10 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 /// Writes reports of every panic from now on, as `reports` says, each
 /// through a new storage from `storage`, then calls the hook that was there
-/// before. Installs nothing if `reports` keeps none. Called again, it
-/// changes what the hook does, and installs no second hook.
+/// before. The thread it is called on is the game's: a panic there is
+/// [`fatal`](CrashReport::fatal), and one on any other thread isn't.
+/// Installs nothing if `reports` keeps none. Called again, it changes what
+/// the hook does, and installs no second hook.
 pub fn install(
     reports: CrashReports,
     storage: impl Fn() -> Box<dyn Storage> + Send + Sync + 'static,
@@ -135,6 +147,7 @@ pub fn install(
     *lock(&INSTALLED) = Some(Installed {
         reports,
         storage: Arc::new(storage),
+        game_thread: std::thread::current().id(),
     });
     if HOOKED.swap(true, Ordering::SeqCst) {
         return;
@@ -236,9 +249,11 @@ fn message(info: &PanicHookInfo<'_>) -> String {
     }
 }
 
-/// The report of the panic `info` describes, as of now.
-fn build(info: &PanicHookInfo<'_>, reports: CrashReports) -> CrashReport {
+/// The report of the panic `info` describes, as of now, on the game's
+/// thread or not.
+fn build(info: &PanicHookInfo<'_>, reports: CrashReports, on_game_thread: bool) -> CrashReport {
     let mut report = CrashReport::new(now_ms(), message(info));
+    report.fatal = on_game_thread;
     report.location = info
         .location()
         .map(|at| format!("{}:{}:{}", at.file(), at.line(), at.column()));
@@ -267,12 +282,14 @@ fn build(info: &PanicHookInfo<'_>, reports: CrashReports) -> CrashReport {
 /// `crash-<when>` from its time, and keeps the newest. A write that fails
 /// is dropped.
 fn report(info: &PanicHookInfo<'_>) {
-    let Some((reports, storage)) =
-        try_lock(&INSTALLED).and_then(|i| i.as_ref().map(|i| (i.reports, Arc::clone(&i.storage))))
-    else {
+    let Some((reports, storage, game_thread)) = try_lock(&INSTALLED).and_then(|i| {
+        i.as_ref()
+            .map(|i| (i.reports, Arc::clone(&i.storage), i.game_thread))
+    }) else {
         return;
     };
-    let mut report = build(info, reports);
+    let on_game_thread = std::thread::current().id() == game_thread;
+    let mut report = build(info, reports, on_game_thread);
     let mut storage = storage();
     while matches!(storage.read(&crash_key(report.when)), Ok(Some(_))) {
         report.when = report.when.saturating_add(1);

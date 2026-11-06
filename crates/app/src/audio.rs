@@ -126,10 +126,13 @@ pub(crate) mod device {
         ) -> impl std::future::Future<Output = Result<Clip, String>> {
             use std::panic::{AssertUnwindSafe, catch_unwind};
             let ctx = self.effects.get_or_insert_with(AudioContext::new);
-            // quad-snd `unwrap`s the decode, at once on native.
-            let loaded = catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
-                .map(Clip::Effect)
-                .map_err(|_| "not a readable OGG or WAV file".to_owned());
+            // quad-snd `unwrap`s the decode, at once on native: a panic
+            // caught on purpose, not a crash.
+            let loaded = crate::crash::quiet(|| {
+                catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
+            })
+            .map(Clip::Effect)
+            .map_err(|_| "not a readable OGG or WAV file".to_owned());
             std::future::ready(loaded)
         }
 

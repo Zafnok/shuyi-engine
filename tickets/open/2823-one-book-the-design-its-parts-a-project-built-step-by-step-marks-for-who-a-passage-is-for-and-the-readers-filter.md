@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: []
+blocked_by: ["2817"]
 nick_input: sign-off
 completed:
 ---
@@ -53,11 +53,17 @@ What there is today (`site/README.md`, *What is where*):
 - **Released versions keep a frozen copy** of the site, which `llms.txt`
   lists (`llms.rs`, *Released versions*).
 - **Open tickets on these pages:** 2814 (the playground page), 2817
-  (playing each step from its page), 2820 (the steps in the playground),
+  (playing each step from its page, in `blocked_by`), 2820 (the steps in the playground),
   2822 (`tutorial-tries` on Windows) and 2004 (the guides the book
   publishes).
 
 This ticket decides the shapes, so that 2824–2829 are built to one plan.
+
+Nick, 2026-11-05 (`docs/decisions.md`, *the first release waits for
+everything before going public*): the tutorial is finished before it is
+redesigned, so 2817, which plays every step in the browser at its
+current address, comes first. The exercises' design moved to 2828,
+which comes after the playground (2820) they are done in.
 
 ## Nick input
 
@@ -112,9 +118,9 @@ engine would each know where to start.
    version it arrived or changed in, and how a ticket's `migration` block
    (`tickets/README.md`, *Breaking changes*) names the book's page it
    changes.
-8. **The interactive parts**, sketched for 2827 and 2828: a quick check
-   (a question, its answers and why, in the page) and an exercise (a task
-   done in the playground and checked by the game).
+8. **The quick checks**, sketched for 2827: a question, its answers and
+   why, in the page. Only where an exercise sits in a page is named (beside
+   the step's quick check); its design is 2828's.
 - **The table of contents** and **the welcome page's text**, written out
   in the ADR, for Nick's sign-off.
 - **Each later ticket checked against the ADR:** 2824–2829, and the open
@@ -125,6 +131,8 @@ engine would each know where to start.
 - moving or changing any page (2824), marking passages (2825), any
   script or template (2826–2828);
 - the code pad (2916);
+- the exercises' design: where a check lives and how the game reports it
+  (2828, once the playground exists);
 - the guides (2004): the ADR says only where in the book they go.
 
 ## Implementation steps
