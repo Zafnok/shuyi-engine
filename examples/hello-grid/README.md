@@ -124,3 +124,6 @@ In a debug build `F2` opens the debug menu, whose "Save session" keeps the
 session so far: a file in `sessions/` under the game's data folder, or a download
 in the web build. Quitting keeps it too. `cargo shuyi run --session <file>` plays
 one. `tests/sessions/stage.session.ron` is kept as a test (`tests/golden.rs`).
+Its "Debug view" shows the stage's grid layout (the cells, the map's
+bounds, the cursor and each piece's cell), and `cargo shuyi frame-png
+out.png --debug grid` pictures it.

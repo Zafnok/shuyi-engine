@@ -220,7 +220,8 @@ game. The garden's own channel boxes each plot:
 
 The grid kit offers its own channel, `grid`: a map screen calls
 `shuyi::ui::grid::debug::layout_gizmos` from its `debug_draw`, and the cell lines, the
-map's edges, the cursor's cell and each unit's appear. A test reads the gizmos as it
+map's edges, the cursor's cell and each unit's appear. Hello, Grid's stage and the stage
+of a `shuyi new --template grid` game offer it already. A test reads the gizmos as it
 reads a view, never their pixels:
 
 {{ snippet(file="src/frame.rs", anchor="test_gizmos") }}
