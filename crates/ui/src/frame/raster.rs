@@ -11,7 +11,7 @@
 //! items in order (a painted picture, ADR-0078, from the frame's table,
 //! as a sprite of the same pixels), glyphs tinted with their fg (a wide one over its two
 //! cells, a wide one without its continuation as the fallback), `Over`
-//! items in order (a gizmo, ADR-0084, as the runs of whole console pixels
+//! items in order (a gizmo, ADR-0085, as the runs of whole console pixels
 //! [`GizmoItem::for_each_run`](crate::frame::GizmoItem::for_each_run)
 //! gives);
 //! and before all that, a backdrop's scene in its window. Textures are

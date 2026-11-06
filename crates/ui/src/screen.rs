@@ -54,7 +54,7 @@ pub trait Screen<G: GameData> {
     /// Paints the screen. An opaque screen must cover the whole buffer.
     fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer);
 
-    /// Hands in what the debug view shows of this screen (ADR-0084): its
+    /// Hands in what the debug view shows of this screen (ADR-0085): its
     /// gizmos, each in its channel, in console pixels, built from `self`
     /// and `ctx` alone, so looking changes nothing. A channel's helper
     /// (the grid kit's [`layout_gizmos`](crate::grid::debug::layout_gizmos))

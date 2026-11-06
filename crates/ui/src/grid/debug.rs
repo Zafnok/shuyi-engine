@@ -1,4 +1,4 @@
-//! The grid kit's channel of the debug view (ADR-0084): [`GRID`], the
+//! The grid kit's channel of the debug view (ADR-0085): [`GRID`], the
 //! layout of a [`MapScene`] as its skin laid it out ([`Grid`]). A game's
 //! map screen offers it by calling [`layout_gizmos`] from its
 //! [`debug_draw`](crate::screen::Screen::debug_draw):

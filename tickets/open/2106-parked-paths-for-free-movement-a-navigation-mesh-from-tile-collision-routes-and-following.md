@@ -88,7 +88,7 @@ None.
     distance, and nothing stops) doesn't do that.
 - **Changes to the map:** rebuild the mesh. Document the cost
   (measured on a 256 × 256 map in a test), and nothing incremental.
-- **The debug view (from 2315, done; ADR-0084):** a `nav` channel
+- **The debug view (from 2315, done; ADR-0085):** a `nav` channel
   helper, `shuyi_ui::debug::nav::gizmos(&NavMesh, Option<&Path>, to_px,
   &mut Gizmos)`: rectangles (`Bounds`), portals and the path (`Path`).
   If 2317 is done, use its `to_px` and `debug::collide::px`; if not,

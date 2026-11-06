@@ -20,7 +20,7 @@
 //!   the frame's table lacks;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
 //!   a painted picture of its own;
-//! - the debug view's gizmos (ADR-0084) over everything: lines into all
+//! - the debug view's gizmos (ADR-0085) over everything: lines into all
 //!   eight octants, rectangles' outlines (one cut by a `clip`), crosses,
 //!   circles' outlines (one of radius 0) and labels in the cells.
 //!

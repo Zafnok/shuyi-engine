@@ -204,7 +204,7 @@ not parked.
     `Pen::Paint(look.shades.shape(color))`, as they fill a rectangle.
     A colour whose shade `flips` draws in its pattern: only a
     rectangle flips.
-- **From 2315 (done; ADR-0084 §8):** `frame::shape` already holds the
+- **From 2315 (done; ADR-0085 §8):** `frame::shape` already holds the
   width-1 line, `line_runs` (Bresenham from `dx + dy`, in closed form,
   taking only the steps inside `clip`, property-tested against the
   walk), and the circle outline, `circle_outline_runs` (the midpoint

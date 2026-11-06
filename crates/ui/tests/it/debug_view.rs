@@ -1,4 +1,4 @@
-//! The debug view (ADR-0084) through the Harness: screens hand their
+//! The debug view (ADR-0085) through the Harness: screens hand their
 //! gizmos in only with debug tools on, bottom up; the game paints them
 //! over everything, the modules' drawing too; the toy's grid field offers
 //! the grid kit's `grid` channel, which the debug menu's "Debug view"

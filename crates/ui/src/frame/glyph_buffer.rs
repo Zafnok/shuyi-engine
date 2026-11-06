@@ -8,7 +8,7 @@
 //! bars, the path line; game ADR-0018), [`Sprite`]s, pictures from image
 //! files (game ADR-0038), pictures a skin painted
 //! ([`PaintedSprite`], ADR-0078) and the debug
-//! view's [`GizmoItem`]s (ADR-0084), over everything. Within a layer, items are drawn in the order they were
+//! view's [`GizmoItem`]s (ADR-0085), over everything. Within a layer, items are drawn in the order they were
 //! added. They belong to the cells they were drawn with: replacing cells
 //! ([`GlyphBuffer::fill_rect`], [`GlyphBuffer::blit`]) removes the parts of
 //! items over them.
@@ -340,7 +340,7 @@ pub enum Item {
     /// A picture a skin painted at run time (ADR-0078), from the frame's
     /// [`PaintedTable`].
     Painted(PaintedSprite),
-    /// A shape of the debug view (ADR-0084), always over the glyphs.
+    /// A shape of the debug view (ADR-0085), always over the glyphs.
     Gizmo(GizmoItem),
 }
 

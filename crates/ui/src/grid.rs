@@ -23,7 +23,7 @@
 //!
 //! The debug view's `grid` channel shows a scene's layout over it: the
 //! cell lines, the map's bounds, the cursor's cell and each unit's
-//! ([`debug::layout_gizmos`], ADR-0084).
+//! ([`debug::layout_gizmos`], ADR-0085).
 
 pub mod camera;
 pub mod corners;

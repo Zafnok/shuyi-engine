@@ -1,4 +1,4 @@
-//! The debug view's shapes as the frame holds them (ADR-0084): a
+//! The debug view's shapes as the frame holds them (ADR-0085): a
 //! [`GizmoItem`] is [`Item::Gizmo`](super::Item::Gizmo), drawn over
 //! everything else, in a colour the debug skin picked from its
 //! [`GizmoRole`]. Screens never make these: they hand

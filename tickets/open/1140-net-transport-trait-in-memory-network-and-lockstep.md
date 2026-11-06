@@ -98,7 +98,7 @@ None (technical). Scheduling: see above.
   lockstep turn, whether the peers' hashes agree, and a desync banner
   (a `Note` label). **From 2315 (done):** add the channel here, with a
   `Channel` constant and a helper the game's screens call from
-  `Screen::debug_draw` (ADR-0084 §10).
+  `Screen::debug_draw` (ADR-0085 §10).
 - **From 1134 (done):** drop 1140 from the `waits_for` of
   `skills/shuyi-net/SKILL.md` (`check-skills` fails on an id no longer
   in `tickets/open/`), and make the skill teach what this ticket built:
@@ -143,7 +143,7 @@ None (technical). Scheduling: see above.
 3. Write commit-reveal, with tests including the forfeit.
 4. Write the messages' fuzz driver, target and kept inputs, or, if 2020
    isn't done, the property test and the follow-up ticket.
-5. Add the `net` debug channel (ADR-0084).
+5. Add the `net` debug channel (ADR-0085).
 6. Add a docs page in `docs/net.md`. Lockstep between peers is
    for friends (ADR-0006 §4).
 7. Update `skills/shuyi-net` (Scope).

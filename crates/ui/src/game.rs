@@ -671,7 +671,7 @@ impl<G: GameData> Game<G> {
     }
 
     /// With debug tools on, asks the screens drawn for the debug view's
-    /// gizmos ([`Screen::debug_draw`], ADR-0084), keeps the channels they
+    /// gizmos ([`Screen::debug_draw`], ADR-0085), keeps the channels they
     /// offer for the debug menu, and paints those of the channels on over
     /// everything. It asks with no channel on too: that is how a channel
     /// is offered. With debug tools off, nothing is asked.

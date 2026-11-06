@@ -1,4 +1,4 @@
-//! The "Debug view" screen of the debug menu (ADR-0084): every channel the
+//! The "Debug view" screen of the debug menu (ADR-0085): every channel the
 //! running screens have offered, each on or off, toggled with Confirm.
 //! The choice is saved ([`Ctx::set_debug_channel`]); the game shows the
 //! channels on over its screens once the menu is closed.

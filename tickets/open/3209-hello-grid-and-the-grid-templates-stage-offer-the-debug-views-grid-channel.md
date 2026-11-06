@@ -16,7 +16,7 @@ completed:
 ## Context
 
 2315 (done) built the debug view
-([ADR-0084](../../docs/adr/0084-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md)):
+([ADR-0085](../../docs/adr/0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md)):
 a screen hands in gizmos from `Screen::debug_draw`, and the debug menu's
 "Debug view" turns each channel on. Its first channel is the grid kit's
 `grid` (`shuyi_ui::grid::debug::layout_gizmos`, the `GRID` channel): the
@@ -69,7 +69,7 @@ None.
 
 ## Implementation steps
 
-1. Read ADR-0084, `crates/ui/src/grid/debug.rs` and the toy's
+1. Read ADR-0085, `crates/ui/src/grid/debug.rs` and the toy's
    `Field::debug_draw` in `crates/ui/src/toy/grid.rs`.
 2. Add `debug_draw` to Hello, Grid's `StageScreen` and its test.
 3. Add it to the template's `StageScreen` and its test; make a `grid`

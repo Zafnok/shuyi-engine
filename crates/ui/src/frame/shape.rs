@@ -1,5 +1,5 @@
 //! Shapes in whole console pixels, by one integer rule every renderer
-//! follows (ADR-0084 §8): each gives its pixels as runs, and a renderer
+//! follows (ADR-0085 §8): each gives its pixels as runs, and a renderer
 //! fills each run as a rectangle one console pixel high. So `shuyi-app`,
 //! the raster and the one-bit renderers draw the same pixels by
 //! construction.

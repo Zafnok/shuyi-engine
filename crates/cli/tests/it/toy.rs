@@ -68,7 +68,7 @@ fn frame_png_renders_the_toy() {
 }
 
 /// The toy's grid field with the debug view's `grid` channel on
-/// (ADR-0084): the cell lines, the map's bounds, the cursor's cell and the
+/// (ADR-0085): the cell lines, the map's bounds, the cursor's cell and the
 /// pieces' over it, a golden picture (the `.png` beside the `.snap`).
 #[test]
 fn frame_png_draws_the_grid_channel_over_the_field() {

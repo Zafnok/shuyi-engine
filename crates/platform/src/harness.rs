@@ -476,7 +476,7 @@ impl<G: GameData> Harness<G> {
 
     /// Turns debug tools on, and the debug view's channels of the
     /// comma-separated ids `channels` (`"all"`: every channel, offered or
-    /// not; ADR-0084), and draws the frame again with them: no frame
+    /// not; ADR-0085), and draws the frame again with them: no frame
     /// passes. A script's [`Step::Debug`](crate::script::Step::Debug).
     pub fn show_debug(&mut self, channels: &str) -> &mut Self {
         let game = self.game_mut();

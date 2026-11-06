@@ -55,12 +55,10 @@ None.
     that opts in (`#[derive(Component, Hash)]`);
   - a text dump (`World::dump()`, RON) of every serializable component
     by entity, and `World::load` from it, for tests, agents and saves
-    (scenes use it, 2221). **Either order with 2907:** if 2907 is done,
-    components are named and read back from text as its ADR says, with
-    no registry of the module's own; if not, as 2904's ADR says, with a
-    name per component that never comes from `core::any::type_name`,
-    and 2907's ADR says whether the dump moves onto its description
-    (2907 writes the ticket that moves it);
+    (scenes use it, 2221). Components are dumped and read back from
+    text as ADR-0084 (2907's) says: through their serde derives, by the
+    name given at registration (its §3, never `core::any::type_name`),
+    with no reflection and no registry of the module's own;
   - no floats in the module's own code (`AGENTS.md` rule 5); a game's
     components may hold `Fx` (1119) or integers. Hold it as 2015 holds
     `shuyi-core`: put

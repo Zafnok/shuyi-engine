@@ -43,9 +43,11 @@ None.
   )
   ```
   Components by registered name (a `SceneRegistry` the game fills with
-  `register::<T>("Pos")`, built on 2907's ADR: a component's name, shape
-  and reading from text come from that one description of a game's
-  types, not from a model of the registry's own); an unknown name is an
+  `register::<T>("Pos")`, built on ADR-0084 (2907's): the name is the
+  one given at registration (its §3), a component is written and read
+  back through its serde derives, its shape is its `JsonSchema` in the
+  tools, and a path into it is a JSON Pointer (§5), with no model of the
+  registry's own); an unknown name is an
   error naming the file, the entity and the name.
 
   **The file names nothing of the ECS**, so a later scene of 1119's
@@ -99,7 +101,7 @@ None.
 
 1. Read 2904's ADR (where the scene file and its remap live, and whether
    the arena gets a side later), 2107's dump and load, 2220's `Hot`,
-   ADR-0023 and 2907's ADR.
+   ADR-0023 and ADR-0084.
 2. Write `SceneRegistry`, the format and its errors.
 3. Write saving, loading with ids, and instancing with remapping.
 4. Add reload and the pack test.

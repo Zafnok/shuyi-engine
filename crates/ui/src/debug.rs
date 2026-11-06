@@ -6,7 +6,7 @@
 //! the game's ([`SceneCameraScreen`]), and the hint that names the Debug
 //! key ([`hint`]). Debug tools are in English only.
 //!
-//! **The debug view** (ADR-0084) draws what a running game's logic sees
+//! **The debug view** (ADR-0085) draws what a running game's logic sees
 //! over it, as Godot's "Visible Collision Shapes" does: each screen hands
 //! in [`gizmo::Gizmo`]s from
 //! [`Screen::debug_draw`], each in a

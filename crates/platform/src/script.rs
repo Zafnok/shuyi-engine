@@ -52,7 +52,7 @@ pub enum Step {
     /// Debug tools and the debug view's channels of these comma-separated
     /// ids turned on from here on (`"grid,collision"`; `"all"` turns on
     /// every channel, offered or not), and the frame drawn again: no frame
-    /// passes (ADR-0084). Played by the Harness only.
+    /// passes (ADR-0085). Played by the Harness only.
     Debug(String),
 }
 

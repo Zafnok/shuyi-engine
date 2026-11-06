@@ -42,7 +42,7 @@
 //! ` src=x,y wxh` (not the whole picture), ` bright=N` and ` clip=x,y wxh`,
 //! only when they aren't the default.
 //!
-//! A gizmo of the debug view (ADR-0084) is `over  gizmo channel role` and
+//! A gizmo of the debug view (ADR-0085) is `over  gizmo channel role` and
 //! its shape: `rect x,y wxh`, `line x,y x,y` (from, to), `cross x,y n`
 //! (centre, arm), `circle x,y r` (centre, radius) or `label x,y "text"`
 //! (the pixel it was placed at, and its text). After that comes

@@ -12,7 +12,7 @@
 //! shows ([`GameTools::frame_one_bit`]: the frame drawn in its roles'
 //! patterns, ADR-0008 §4). With `--debug <channels>`, the debug view's
 //! channels are on from the start (a [`Step::Debug`] first in the script,
-//! ADR-0084): the picture shows what a person sees with the view on.
+//! ADR-0085): the picture shows what a person sees with the view on.
 //!
 //! [`Painter`] decodes a game's font atlas and images from PNG and paints
 //! with the raster, `shuyi_ui::frame::raster`: the reference picture of a

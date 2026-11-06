@@ -5,7 +5,7 @@
 //! ([`snapshot`]); fitting the console to a window ([`console`]), a shot
 //! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]);
 //! pictures a skin paints at run time ([`painted`], ADR-0078); the debug
-//! view's shapes ([`gizmo`], ADR-0084), drawn by the integer pixel rules
+//! view's shapes ([`gizmo`], ADR-0085), drawn by the integer pixel rules
 //! of [`shape`]; and
 //! the one-bit renderer ([`onebit`]); with the `raster` feature, the
 //! software painter whose picture every backend must match

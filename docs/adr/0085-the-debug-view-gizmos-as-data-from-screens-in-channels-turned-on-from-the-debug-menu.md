@@ -1,4 +1,4 @@
-# ADR-0084: The debug view: gizmos as data from screens, in channels turned on from the debug menu
+# ADR-0085: The debug view: gizmos as data from screens, in channels turned on from the debug menu
 
 - **Status:** Accepted
 - **Date:** 2026-11-05

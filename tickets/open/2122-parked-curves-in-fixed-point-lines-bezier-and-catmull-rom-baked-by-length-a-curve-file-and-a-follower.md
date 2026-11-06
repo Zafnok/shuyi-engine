@@ -266,7 +266,7 @@ None.
   polygon into `Curve::lines(points, true)`, tested on its fixture made
   in Tiled. If not, nothing to do: 1124 adds it (its clause with this
   ticket says so).
-- **The debug view (from 2315, done; ADR-0084):**
+- **The debug view (from 2315, done; ADR-0085):**
   `shuyi_ui::debug::curve::gizmos(&Curve, Option<&CurveFollower>,
   to_px, &mut Gizmos)` pushes, on a channel `curve`:
   - a `Line` per baked piece (`GizmoRole::Path`);

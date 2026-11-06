@@ -1,4 +1,4 @@
-//! The debug view's data (ADR-0084): what a screen hands in to be drawn
+//! The debug view's data (ADR-0085): what a screen hands in to be drawn
 //! over the running game ([`Gizmo`]s, each in a [`Channel`] with a
 //! [`GizmoRole`]), one frame's list of them ([`Gizmos`]), and which
 //! channels are on ([`DebugView`], on [`Ctx::debug_view`]).

@@ -304,7 +304,7 @@ pub struct Ctx<G: GameData> {
     /// The platform's session record, as the debug tools see it.
     session: SessionState,
     /// Which channels of the debug view are on (none at first), and which
-    /// the running screens have offered (ADR-0084): read from the
+    /// the running screens have offered (ADR-0085): read from the
     /// computer's storage by [`with_storage`](Self::with_storage) with
     /// debug tools on. Turn one on with
     /// [`set_debug_channel`](Self::set_debug_channel), which saves it; a
@@ -1129,7 +1129,7 @@ impl<G: GameData> Ctx<G> {
         }
     }
 
-    /// Turns the debug view's channel `id` on or off (ADR-0084) and, with
+    /// Turns the debug view's channel `id` on or off (ADR-0085) and, with
     /// debug tools on, saves the channels on under [`DEBUG_VIEW_KEY`] in
     /// the computer's storage, for the next launch. The change applies
     /// even if saving fails. With debug tools off nothing is saved (and

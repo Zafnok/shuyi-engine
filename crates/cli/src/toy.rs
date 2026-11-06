@@ -6,7 +6,7 @@
 //! its images (sizes only) as the missing colour. `--plasma` starts it on
 //! its plasma stage, whose skin paints pictures at run time (ADR-0078);
 //! `--field` on its grid field, whose layout the debug view's `grid`
-//! channel shows (`--debug grid`, ADR-0084);
+//! channel shows (`--debug grid`, ADR-0085);
 //! `--target playdate` draws the frame on the Playdate's console, black
 //! and white. Its session (`run`)
 //! measures every frame with a fake clock ([`PerfClock::fake`]) and reads a

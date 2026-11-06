@@ -236,7 +236,7 @@ None.
 
 ## Completion notes
 
-Done: [ADR-0084](../../docs/adr/0084-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md)
+Done: [ADR-0085](../../docs/adr/0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md)
 records the design, linked from `shuyi_ui::debug`'s module docs.
 
 - **The data:** `shuyi_ui::debug::gizmo` (`Gizmo`, `GizmoRole`,
@@ -278,7 +278,7 @@ Deviations:
   on, `Game` asks the screens drawn each frame even with every channel
   off: otherwise no channel could be offered before one is on, and the
   menu (which hides the screens) would list nothing. A screen's helper
-  pays a call and `channel_on`. ADR-0084 §6.
+  pays a call and `channel_on`. ADR-0085 §6.
 - **`layout_gizmos(&MapScene, &Grid, &mut Gizmos)`** takes no `Camera`:
   the grid's origin is the camera's, and nothing else of it is needed.
   To keep every gizmo on the buffer, `Gizmos` knows the frame's pixels
@@ -286,7 +286,7 @@ Deviations:
   clips to the view and that.
 - **Saved beside the engine's settings, not inside them:** a key of its
   own in the computer's storage, so no game's `GameSettings::to_ron`
-  has to carry it (ADR-0084 §4).
+  has to carry it (ADR-0085 §4).
 - **Labels go in a unit's tile's top-right cell**, so the unit's own
   glyph stays readable.
 - **`--debug` turns debug tools on** in the Harness too: a release build

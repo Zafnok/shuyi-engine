@@ -62,7 +62,7 @@ pub fn paint_view<G: GameData>(ctx: &Ctx<G>, view: &DebugViewView, buf: &mut Gly
     print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
 }
 
-/// Adds the debug view's `gizmos` to `buf` (ADR-0084), in the order
+/// Adds the debug view's `gizmos` to `buf` (ADR-0085), in the order
 /// handed in, over everything drawn so far: each as an
 /// [`Item::Gizmo`](crate::frame::Item::Gizmo) in its role's engine colour
 /// from `palette` ([`GizmoRole::color`](super::GizmoRole::color)), never

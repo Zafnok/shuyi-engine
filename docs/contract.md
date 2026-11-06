@@ -46,7 +46,7 @@ reads the same ones, and in JSON they are `{"keys": "Enter Up"}`,
 `{"crank": -30}`. One more step plays no frame: `{"debug": "grid"}` turns
 debug tools on, and the debug view's channels of those comma-separated
 ids (`"all"`: every channel), from there on, and draws the frame again
-(headless only, as the crank; ADR-0084). `frame-png --debug grid` puts it
+(headless only, as the crank; ADR-0085). `frame-png --debug grid` puts it
 first, so the picture shows the channels a person would see. Key and button names are the Harness's test-script
 names. An action the game has no key or button for is refused before
 anything plays (`SH0001`), and the error lists the game's actions; one
