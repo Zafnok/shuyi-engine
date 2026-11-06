@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use hello_grid::{bundle_over, ctx_from, file, problems_over};
+use hello_grid::{bundle_over, ctx_from, file, lay_over_files, problems_over};
 use shuyi::assets::bundle::Layer;
 use shuyi::core::Pos;
 
@@ -37,6 +37,18 @@ fn a_changed_file_of_the_page_is_the_one_the_game_plays() {
     // The game's own map has its hero elsewhere.
     let own = ctx_from(&bundle_over(None, "web"), "web", 0);
     assert!(!own.game.stage_map.features.contains_key(&Pos::new(2, 8)));
+}
+
+#[test]
+fn files_laid_over_the_games_are_read_first_by_file() {
+    // A path the game has no file at, so the other tests, which read the
+    // game's own files through `file` in this same program, see no change.
+    let files = BTreeMap::from([("from-the-page.txt".to_owned(), b"page".to_vec())]);
+    let over = Layer::owned("files".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(file("from-the-page.txt"), None);
+    lay_over_files(over);
+    assert_eq!(file("from-the-page.txt"), Some(&b"page"[..]));
+    assert!(file("stage.map").is_some_and(|map| map.starts_with(b"//")));
 }
 
 #[test]
