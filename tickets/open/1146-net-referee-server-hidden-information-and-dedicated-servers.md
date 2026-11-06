@@ -48,10 +48,10 @@ None.
   Tests show a client never receives hidden cells and that a forged
   command is refused.
 - A Docker image and docs.
-- **Either order with 2907:** if 2907 is done, `PlayerView` follows its
-  ADR's rule for state and view (its point 4), which may change what
-  `View` is. If not, nothing to do: 2907's ADR says how its rule fits
-  `PlayerView` as written here.
+- **From 2907 (done):** `PlayerView` follows ADR-0083 §4. `type View`
+  is a type of the game's own, `Serialize` (and `JsonSchema` in the
+  tools), and what a player can't see is left out of it, never hidden
+  with serde attributes on the state, which would change its hash.
 
 **Out (do not do):**
 - accounts and ratings (1148);

@@ -5,10 +5,10 @@ type: research
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 2907 — Research: one description of a game's types
@@ -294,24 +294,24 @@ hands the game.
 
 ## Acceptance criteria
 
-- [ ] `docs/research/game-types.md` lists the eight needs and, for each
+- [x] `docs/research/game-types.md` lists the eight needs and, for each
       candidate, the `no_std` result, the `.wasm` bytes it adds (shipped
       and tools only), the rebuild time, the needs it meets, its
       license and the commands that measured it.
-- [ ] The ADR decides the eight points, lists the candidates not chosen
+- [x] The ADR decides the eight points, lists the candidates not chosen
       with their numbers, and `docs/adr/README.md` lists it and marks
       ADR-0005, ADR-0009 and ADR-0022 as extended by it.
-- [ ] 2101, 2221, 2506, 2507 and 1135 name the ADR by number in their
+- [x] 2101, 2221, 2506, 2507 and 1135 name the ADR by number in their
       scope; 2107, 2113, 2356, 2515, 2524 and 2904 do too, or the
       completion notes say why not.
-- [ ] The follow-up ticket is in `tickets/open/`, After MVP, with no
+- [x] The follow-up ticket is in `tickets/open/`, After MVP, with no
       parked ticket in its `blocked_by`.
-- [ ] A derive of our own, if the ADR picks one, has a ticket in
+- [x] A derive of our own, if the ADR picks one, has a ticket in
       `tickets/open/`. So does each done consumer that point 7 moves
       onto the description, named on its line, unless its move is in
       the follow-up's scope.
-- [ ] `Cargo.lock` is unchanged (the spike isn't committed).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `Cargo.lock` is unchanged (the spike isn't committed).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -319,4 +319,49 @@ None (research). The ticket lint covers the new and edited tickets.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done 2026-11-05.
+
+- **The note:** [`docs/research/2907-game-types.md`](../../docs/research/2907-game-types.md),
+  not `docs/research/game-types.md`. Every report in that folder starts
+  with its ticket's number. It lists the eight needs, and for each
+  candidate the `no_std` result, the `.wasm` bytes (shipped, built and
+  called, and tools only), the rebuild times, the needs met, the
+  license and the commands.
+- **The spike** is on the local branch `spike/2907`, one commit per
+  candidate, never pushed. This branch's `Cargo.lock` is unchanged.
+- **The ADR:** [ADR-0083](../../docs/adr/0083-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md).
+  serde is the description, and `schemars` gives shapes in the tools
+  only. A shipped schema cost 165 KB; a shipped value tree cost 22 KB;
+  in the tools only, 0. Names are given at registration: `schemars`
+  calls both `Grid<TerrainId>` and `Grid<u8>` plain `Grid`. A view is a
+  type of the game's own, since a serde `skip` on the state also takes
+  the field out of its hash. Paths are JSON Pointer. Text dumps stay
+  hand-written. `scene --path` and `scene --shape` are options of
+  `scene`, not operations. `bevy_reflect` (+675 KB shipped, 31 build
+  units, a second serialized form) and `serde-reflection` (couldn't
+  trace `Stage`, `std` only) lost. No derive of our own.
+- **Tickets written:** 2581, the follow-up for point 8: `Scene.data`
+  derived in Hello, Grid and the template, `scene --path` and
+  `--shape`, MCP's session `scene` taking both, and the core's grid
+  types deriving `JsonSchema`. It carries the moves of the two done
+  consumers, 1129's `scene` and 1133's MCP tool. No other done consumer
+  moves, and the ADR picks no derive, so there are no build tickets.
+- **Tickets edited:** 2101, 2221, 2506, 2507 and 1135 name ADR-0083
+  and its choice in their scope. So do 2107, 2113, 2356, 2515, 2524 and
+  2904; 2524 also gets the other side of 2581's clause. 1146's
+  `PlayerView` clause is settled to §4, and 2232's to `schemars` as
+  planned. The kits' planned dumps (1119, 2701, 2721, 2727) need no
+  change: each is a snapshot text, which ADR-0083 §6 keeps hand-written.
+  `docs/ROADMAP.md` marks 2907 done and adds 2581 after it.
+- **2904 and 2515 are open:** the ADR says how each of 2904's
+  candidates fits, and 2904's clause now says to measure `bevy_ecs`
+  with `bevy_reflect` off. 2515 follows the ADR: `schemars` in
+  deserialize mode for files, and serialize mode for state and views.
+- **Docs:** the note and the ADR are the docs. Nothing public changed,
+  so the `document` skill has nothing else to update.
+- **For the game:** nothing changes until 2101, which hands the game
+  views through serde.
+
+No break.
+
+Nick input: none.

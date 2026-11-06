@@ -55,8 +55,9 @@ What is planned: 2506 and 2507 (parked) already take a settings file's
 shape from `shuyi kinds`, and 2507 is blocked by this ticket. 1133
 makes each contract operation an MCP tool. 1134 wrote the skills
 (`skills/`).
-2907 researches one description of a game's types for scripts,
-scenes, schemas and agents.
+2907 (done) decided one description of a game's types for scripts,
+scenes, schemas and agents: serde, with `schemars` for shapes
+(ADR-0083).
 2230 adds JSON and CSV tables; 2516 adds typed references between
 assets. 2116 and 2020 walk the format registry too, and 2509 gives the
 contract's errors codes.
@@ -91,9 +92,10 @@ None.
   - `shuyi kinds` is the one place agents, MCP (1133), the skills (1134)
     and a later inspector (2507) read shapes from.
 
-  **Either order with 2907:** if 2907 is done and its ADR picked another
-  source for schemas, follow it and say so in this ADR. If not, this ADR
-  decides, and 2907 starts from it.
+  **From 2907 (done):** ADR-0083 picked `schemars` on serde's types
+  too, so this ADR follows it and says so. A format's schema is in
+  deserialize mode, the shape of what is read; ADR-0083 §2 adds
+  serialize mode for a game's state and views.
 - **`Formats::kinds()`** in `crates/assets/src/format.rs`:
   `Vec<KindFormats>`, every kind with a format in the order it was first
   registered. `KindFormats { name: &'static str, formats:
@@ -234,8 +236,8 @@ None.
 - **2507's text** (parked; only its text changes): its schema line
   already takes a file's shape from `shuyi kinds` ("2515 and its ADR:
   `schemars` behind `shuyi-assets`' `schema` feature"). Put this ADR's
-  number in it, and check the line agrees with this ADR (2907 may have
-  changed it).
+  number in it, and check the line agrees with this ADR and ADR-0083
+  (2907's).
 - **Either order with 2230:** if 2230 is done, `Json<T>` implements
   `TextSchema` for `T: JsonSchema` (exact for a JSON file), and
   `Csv<T, R>` for `R: JsonSchema` (the schema of one row; the
@@ -277,7 +279,8 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
   doesn't cover): a follow-up when a game asks;
 - checking files against schemas in `shuyi check` (the formats already
   check them; schemas are for writing them);
-- the inspector (2507) and a reflection system (2907's research);
+- the inspector (2507), and the description of a game's own types
+  (ADR-0083; its contract part is 2581);
 - references between assets (2516), past the either-order line above;
 - the sections of import settings files (2229 leaves them out too), and
   a curve file's schema (2122, parked, adds it when it lands).
@@ -287,7 +290,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
 1. Read ADR-0019, ADR-0022, `crates/assets/src/format.rs`,
    `crates/assets/src/ron.rs`, `crates/cli/src/contract/import.rs`,
    `contract.rs` and `contract/cli.rs`, and the standard RON formats'
-   parsers named above. Read 2907's ADR if it is done, and check which
+   parsers named above. Read ADR-0083 (2907's), and check which
    of 2020, 2230 and 2516 are done.
 2. Write the ADR.
 3. Add `Formats::kinds()` with its tests. Move 2116's guard onto it;

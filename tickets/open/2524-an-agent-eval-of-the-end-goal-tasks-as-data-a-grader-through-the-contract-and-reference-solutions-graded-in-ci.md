@@ -167,7 +167,11 @@ None. Spending money on agent runs is 2525's question.
     and each `(pointer, equals)` in `has` holds in `result.scene.data`:
     a value exists at that JSON pointer, and equals `equals` when one is
     given (a string compared without its quotes, anything else as JSON
-    text).
+    text). Pointers are ADR-0083 §5's. **Either order with 2581:** if
+    2581 is done, write the checks against the derived data (`outcome`
+    in serde's form, `{"Won":{"turn":3}}`, and Hello, Grid's `side`); if
+    not, nothing to do: 2581 changes any pointer of these tasks whose
+    key changed form.
 
   A check reads only the contract's answers and what the prompt asks the
   game to expose: its action names and its scene data. Never a
