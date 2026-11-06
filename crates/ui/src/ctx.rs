@@ -13,6 +13,7 @@
 //! [`install`](crate::module::Module::install) and listed.
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use core::any::Any;
 use core::fmt::{Debug, Display};
 
@@ -232,10 +233,15 @@ pub struct Ctx<G: GameData> {
     /// [`Game`](crate::Game) starts.
     pub console: ConsoleSpec,
     /// Which characters take two cells of the console: those the font
-    /// atlas has wide. Nothing is wide here; the platform sets the
-    /// atlas's when the game has loaded
+    /// atlas has wide, where no language says more. Nothing is wide here;
+    /// the platform sets the atlas's when the game has loaded
     /// ([`Game::set_widths`](crate::Game::set_widths)).
     widths: CellWidths,
+    /// [`widths`](Self::widths) in each pack's language: its wide set and
+    /// its punctuation's width ([`LangInfo::widths`]).
+    ///
+    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+    lang_widths: BTreeMap<LangCode, CellWidths>,
     /// The active key bindings, for help text that names keys: the chosen
     /// layout's with the player's changes, or the layout picker's
     /// ([`Keymap::layout_picker`]) until one is chosen. Change it with
@@ -377,6 +383,7 @@ impl<G: GameData> Ctx<G> {
         Ok(Self {
             console: game.console(),
             widths: CellWidths::NARROW,
+            lang_widths: lang_widths(game.lang(), &CellWidths::NARROW),
             game,
             palette,
             keymap,
@@ -412,15 +419,26 @@ impl<G: GameData> Ctx<G> {
 
     /// Which characters take two cells of the console, for a screen that
     /// measures text before it has the frame to draw it in
-    /// ([`text_width`](shuyi_assets::lang::text_width)): the same as the
-    /// frame's ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)).
+    /// ([`text_width`](shuyi_assets::lang::text_width)): the font atlas's
+    /// in the language text is shown in ([`effective_lang`]), as its pack
+    /// has them ([`LangInfo::widths`]: its wide set, and its punctuation
+    /// wide or not). The frame's
+    /// ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)) follow
+    /// them at each drawing.
+    ///
+    /// [`effective_lang`]: Self::effective_lang
+    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
     pub fn widths(&self) -> &CellWidths {
-        &self.widths
+        self.lang_widths
+            .get(self.effective_lang())
+            .unwrap_or(&self.widths)
     }
 
-    /// Sets [`widths`](Self::widths): only with the frame's, by
+    /// Sets the font atlas's widths, which [`widths`](Self::widths) are
+    /// made of in each language: only with the frame's, by
     /// [`Game::set_widths`](crate::Game::set_widths).
     pub(crate) fn set_widths(&mut self, widths: CellWidths) {
+        self.lang_widths = lang_widths(self.game.lang(), &widths);
         self.widths = widths;
     }
 
@@ -1169,6 +1187,19 @@ impl<G: GameData> Ctx<G> {
         self.profiles = changed;
         Ok(())
     }
+}
+
+/// `base`, a font atlas's widths, in the language of each of `lang`'s
+/// packs ([`LangInfo::widths`]).
+///
+/// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+fn lang_widths(lang: &Lang, base: &CellWidths) -> BTreeMap<LangCode, CellWidths> {
+    lang.codes()
+        .filter_map(|code| {
+            let pack = lang.pack(code)?;
+            Some((code.clone(), pack.info.widths(base)))
+        })
+        .collect()
 }
 
 /// The name of the profile numbered `n` when the player hasn't named it

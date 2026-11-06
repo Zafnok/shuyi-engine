@@ -155,10 +155,29 @@ What each one reads:
   there are none): a Japanese or Chinese character drawn over two cells
   side by side, in one row of the picture, `wide` giving the left one.
   `font-atlas --wide <font.bdf>` makes them from a font twice as wide
-  (16 × 16 beside 8 × 16). A character is narrow or wide, never both.
+  (16 × 16 beside 8 × 16). A character is narrow or wide, never both,
+  but for the six marks below.
+  **Wide sets.** Japanese and Chinese share a character's code point but
+  not its shape (直, 骨, 角), so the wide glyphs come in sets: `wide`, the
+  unnamed one, and `wide_sets`, the named ones (`{"ja": {...}, "zh-Hans":
+  {...}}`, left out when there are none), each laid out as `wide` is. A
+  set's name is the atlas's own word; a character may be in several
+  sets. `font-atlas --wide ja=<font.bdf> --wide zh-Hans=<font.bdf>`
+  makes them, one `--wide` a set, laid out one after another after the
+  narrow glyphs: a set keeps the wide characters of the packs that name
+  it and `shuyi.ron`'s `font_atlas.wide_set_glyphs` for it, an unnamed
+  `--wide` those of the languages that name none. A wide glyph is looked
+  up in the set of the language the text is in first, then in the
+  unnamed set, then in the other sets by name (`FontAtlasDef::wide_cell`,
+  which every renderer uses), so a pack's name for itself shows in its
+  own shapes in any language.
+  **Six marks narrow or wide.** `“ ” ‘ ’ … —` are narrow in English and
+  wide in Chinese, with the same code points
+  (`font::WIDE_PUNCTUATION`): an atlas may have each both narrow and in
+  a set, and the language's pack says which it is (below).
   **What the cells draw:** text left to right, one character to a cell
-  and two to a wide one (`font::CellWidths` says which, and
-  `lang::text_width` counts with it). A cell holds one character: no
+  and two to a wide one (`font::CellWidths` says which, in the language
+  the text is in, and `lang::text_width` counts with it). A cell holds one character: no
   combining marks (write `é` as one character, U+00E9), no joining and
   no reordering. Right-to-left and shaped scripts (Arabic, Hebrew, Thai,
   Devanagari) aren't drawn.
@@ -179,21 +198,31 @@ What each one reads:
   (below), which are skipped; the source's folder holds its `ui.ron`
   only. A key a pack lacks, or has stale, shows from the pack of the
   next shorter tag the game has (`pt-BR`, then `pt`), then from the
-  source (`Lang::chain`). Its text is drawn as the font atlas's cells draw
+  source (`Lang::chain`). Its `lang.ron` holds its `name`, `made_by`, and
+  two fields for wide text, both optional: `wide_font`, the font atlas's
+  wide set it draws from (`Some("zh-Hans")`; with the atlas, one it
+  has), and `wide_punctuation`, `true` for `“ ” ‘ ’ … —` wide and drawn
+  from that set, as Chinese writes them (`false` by default:
+  `LangInfo::widths`). Its wide characters must be in its set:
+  `font::undrawn` fails `check` on one that isn't. Its text is drawn as the font atlas's cells draw
   text (above): left to right, a character a cell or two for a wide one,
   so a pack in a language the atlas has no glyphs for, or in a script
   that joins or reorders its letters, fails `check` or shows wrongly.
   Its limits (a line's length, a reply's, a name's) count cells too: a
   wide character is two once the format has the atlas
   (`LangPackRon::widths_of`), or the rules have its widths
-  (`PackRules::widths`, `CellWidths::of(&atlas)`), so a game loads its
+  (`PackRules::widths`, `CellWidths::of(&atlas)`), and its punctuation as
+  its `lang.ron` has it, so a game loads its
   atlas before its text. Without them every character is one cell. A
   dialogue's limits (`SceneRules::widths`) and a tip's
   (`TipRules::widths`) count the same way. Text is wrapped in cells too
   (`text::word_wrap`): Latin text at spaces, text without spaces
   (Japanese) between any two characters, but never before closing
-  punctuation or a small kana (`。`, `、`, `」`, `っ`) nor after an
-  opening bracket (`「`), and never at a no-break space
+  punctuation or a small kana (`。`, `、`, `」`, `っ`, `，`, `》`) nor after
+  an opening bracket (`「`, `《`); where the language has its quotes,
+  ellipsis and dash wide, also never before `” ’ … —` nor after `“ ‘`, so
+  `……` and `——` are never split (narrow, they wrap as English always
+  has); and never at a no-break space
   (`text::NO_BREAK_SPACE`, which joins the words of a key's name filled
   into a text).
 - **The source language's screen text** (`lang/en/ui.ron`, English

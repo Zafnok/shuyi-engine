@@ -28,6 +28,7 @@ fn test_font() -> (FontAtlasDef, Vec<u8>) {
         columns: 32,
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4)].into(),
         wide: alloc::collections::BTreeMap::default(),
+        wide_sets: alloc::collections::BTreeMap::new(),
     };
     let mut bits = vec![0u8; 5 * 16];
     bits[6] = 0b0001_1000;
@@ -274,6 +275,34 @@ fn a_wide_glyph_draws_a_half_in_each_of_its_cells() {
     assert_eq!(text(&frame, 0, 0, 8, 1), ["#......#"]);
     // A one-bit atlas shorter than the wide glyph's halves is refused.
     assert!(Font::new(&atlas, &bits[..6 * 16]).is_err());
+}
+
+#[test]
+fn a_wide_glyph_draws_from_the_set_its_language_names_first() {
+    use shuyi_assets::font::CellWidths;
+    // A second `田` in the set `zh`, cells 9 and 10: its left half's
+    // first row the outer pixels, its right half's the leftmost.
+    let (mut atlas, mut bits) = wide_font();
+    atlas.wide_sets.insert("zh".to_owned(), [('田', 9)].into());
+    bits.resize(11 * 16, 0);
+    bits[9 * 16] = 0b1000_0001;
+    bits[10 * 16] = 0b1000_0000;
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    let mut slow = Box::new([0u8; FRAME_BYTES]);
+    for (set, row) in [
+        (Some("zh"), "#......##......."),
+        (None, "####..........##"),
+        (Some("ja"), "####..........##"),
+    ] {
+        let widths = CellWidths::wide(['田']).in_lang(set, false);
+        let mut b = buf(4, 1).with_widths(widths);
+        b.print(0, 0, "田", c(Ink::Black), c(Ink::White));
+        render(&b, &font, &(), &mut frame);
+        assert_eq!(text(&frame, 0, 0, 16, 1), [row], "{set:?}");
+        super::reference::render(&b, &font, &(), &mut slow);
+        assert_eq!(*frame, *slow, "{set:?}");
+    }
 }
 
 /// A buffer of `w` cells 6 pixels wide, its wide glyphs `田` and `い`, with

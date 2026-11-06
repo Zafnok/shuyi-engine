@@ -208,10 +208,8 @@ About 550 changed lines, the packs and the snapshots aside.
 - Translating a game's own text.
 - A language picker or the player's saved language (2349).
 - Languages that need tags with a region or script (2226) or wide
-  glyphs (2301, done, and 2303). 2226 is done. **Either order with
-  2303:** if it is done, Nick may pick such a language (question 2); if not,
-  it is left out, and nothing is left to them (an engine pack in it
-  later is a ticket of its own, if Nick asks). Right-to-left and
+  glyphs (2301 and 2303, done). 2226 is done. 2303 is done: Nick may
+  pick such a language (question 2). Right-to-left and
   shaped scripts (2908).
 - Translation by people, or community packs: question 4 asks Nick
   only whether people may correct these packs; more is a ticket of

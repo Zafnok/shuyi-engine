@@ -112,9 +112,9 @@ fn rows<'a>(font: &Font<'a>, glyph: char) -> Option<&'a [u8]> {
 }
 
 /// The pixel rows of half `half` of wide glyph `glyph`, looked up in the
-/// wide glyph map.
-fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize) -> Option<&'a [u8]> {
-    let index = font.atlas.wide.get(&glyph)?;
+/// wide sets, `set` first.
+fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize, set: Option<&str>) -> Option<&'a [u8]> {
+    let index = &font.atlas.wide_cell(set, glyph)?;
     let rows = font.atlas.cell_h as usize;
     let start = (*index as usize + half) * rows;
     font.bits.get(start..start + rows)
@@ -126,14 +126,14 @@ fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize) -> Option<&'a [u8]> 
 fn cell_rows<'a>(font: &Font<'a>, buf: &GlyphBuffer, x: i32, y: i32) -> Option<&'a [u8]> {
     let cell = buf.get(x, y)?;
     if cell.is_continuation() {
-        return wide_rows(font, buf.get(x - 1, y)?.glyph, 1);
+        return wide_rows(font, buf.get(x - 1, y)?.glyph, 1, buf.widths().wide_font());
     }
     if cell.glyph == ' ' {
         return None;
     }
     let next = buf.get(x + 1, y);
     if next.is_some_and(Cell::is_continuation)
-        && let Some(rows) = wide_rows(font, cell.glyph, 0)
+        && let Some(rows) = wide_rows(font, cell.glyph, 0, buf.widths().wide_font())
     {
         return Some(rows);
     }

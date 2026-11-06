@@ -180,6 +180,39 @@ fn new_widths_go_to_the_frame_and_the_context_and_the_frame_is_drawn_again() {
     assert_eq!(game.buffer().get(5, 5).map(|c| c.bg), Some(panel));
 }
 
+#[test]
+fn the_widths_follow_the_language_text_is_shown_in() {
+    use shuyi_assets::font::CellWidths;
+    let info =
+        r#"(name: "Debug", made_by: Machine, wide_font: Some("zh"), wide_punctuation: true)"#;
+    let mut ctx = Ctx::new(Toy::with_debug_info(info)).unwrap();
+    ctx.debug_tools = true;
+    let mut game = home(ctx);
+    // Before an atlas, the source's widths are narrow; the debug pack's
+    // have its punctuation wide and name its set.
+    assert_eq!(*game.ctx().widths(), CellWidths::NARROW);
+    let wide = CellWidths::wide(['直']);
+    game.set_widths(wide.clone());
+    assert_eq!(*game.buffer().widths(), wide);
+    game.ctx_mut().lang = shuyi_assets::lang::LangCode::new(crate::toy::DEBUG_LANG).unwrap();
+    let chinese = wide.clone().in_lang(Some("zh"), true);
+    assert_eq!(*game.ctx().widths(), chinese);
+    assert!(game.ctx().widths().is_wide('…') && game.ctx().widths().is_wide('直'));
+    // The frame takes them at its next drawing.
+    assert_eq!(*game.buffer().widths(), wide);
+    game.redraw();
+    assert_eq!(*game.buffer().widths(), chinese);
+    assert_eq!(game.buffer().widths().wide_font(), Some("zh"));
+    // New atlas widths reach the language's too.
+    let wider = CellWidths::wide(['直', '简']);
+    game.set_widths(wider.clone());
+    assert_eq!(*game.buffer().widths(), wider.in_lang(Some("zh"), true));
+    // Back in the source language, the atlas's own.
+    game.ctx_mut().lang = shuyi_assets::lang::LangCode::default();
+    game.redraw();
+    assert!(!game.buffer().widths().is_wide('…'));
+}
+
 /// What a [`Spy`] saw, frame by frame.
 type Seen = Rc<RefCell<Vec<FrameInput<Action>>>>;
 

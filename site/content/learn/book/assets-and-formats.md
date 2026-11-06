@@ -140,7 +140,27 @@ cargo shuyi font-atlas --wide files-src/my-16x16.bdf files-src/ter-u16n.bdf crat
 
 The atlas then keeps the wide font's glyphs of every character the text uses that the
 narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` names
-(a name entry's letters, say). A font in JIS X 0208, as many Japanese bitmap fonts are,
+(a name entry's letters, say).
+
+Japanese and Chinese write many of the same characters with one code point but each in
+its own shape (直, 骨, 角). A game in both gives a wide font for each, as a named
+**set**:
+
+```text
+cargo shuyi font-atlas --wide ja=files-src/ja-16.bdf --wide zh-Hans=files-src/zh-16.bdf files-src/ter-u16n.bdf crates/game/files/font
+```
+
+Each language pack names the set it draws from in its `lang.ron`, and a Chinese one says
+its quotes, ellipsis and dash (`“ ” ‘ ’ … —`) are wide, as Chinese writes them:
+
+```ron
+(name: "简体中文", made_by: Machine, wide_font: Some("zh-Hans"), wide_punctuation: true)
+```
+
+A set keeps the characters of the packs that name it, and those `font_atlas.wide_set_glyphs`
+names for it (`{"ja": "..."}`). A wide character is drawn from the language's own set
+first, then from any other, so a pack's own name shows in its shapes whatever language is
+on; `cargo shuyi check` fails on a pack character its set lacks. A font in JIS X 0208, as many Japanese bitmap fonts are,
 needs `shuyi-cli`'s `jis` feature in the game's `tools`. Text measured for a layout counts a wide character as
 two: `shuyi::assets::lang::text_width` does, with the widths of the frame
 (`buf.widths()`), and `buf.text_cells(text)` gives the same as a column count.

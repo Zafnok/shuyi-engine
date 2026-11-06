@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2301", "2302", "2226"]
 nick_input: none
-completed:
+completed: 2026-11-05
 ---
 
 # 2303 — Wide glyph sets per language, widths by language, Chinese line breaking
@@ -117,19 +117,19 @@ PR follows this one (game#0239).
 
 ## Acceptance criteria
 
-- [ ] The same character (直) draws from one set with a pack that names
+- [x] The same character (直) draws from one set with a pack that names
       it and from another set with a pack that names the other (a frame
       PNG test against two committed references, with fixture fonts).
-- [ ] With `wide_punctuation`, `“好”` is six cells wide and `……` is
+- [x] With `wide_punctuation`, `“好”` is six cells wide and `……` is
       four; without it, `“ok”` is four cells (unit tests).
-- [ ] A Chinese paragraph wraps within the width with no line starting
+- [x] A Chinese paragraph wraps within the width with no line starting
       with `，` or `。`, none ending with `“`, and `……` never split (unit
       tests with real sentences).
-- [ ] A pack that uses a wide character its set lacks fails 2350's
+- [x] A pack that uses a wide character its set lacks fails 2350's
       check in `shuyi check` (test).
-- [ ] Every existing snapshot, the narrow atlas cells and an atlas with
+- [x] Every existing snapshot, the narrow atlas cells and an atlas with
       one wide set are unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -142,5 +142,119 @@ PR follows this one (game#0239).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- **The atlas** (`shuyi_assets::font`): `FontAtlasDef::wide` stays the
+  unnamed set; `wide_sets` holds the named ones (`WideSet`), both left
+  out of `atlas.ron` when empty. Validation covers every set (shared
+  cells, a row's end, an empty name); a character may be in several
+  sets, and `font::WIDE_PUNCTUATION` (`“ ” ‘ ’ … —`) may be narrow and
+  wide at once. `draws`, `drawn` and the new `wide_chars`, `has_wide`
+  and `cell_end` take every set.
+- **The look-up**: `FontAtlasDef::wide_cell(set, c)` (and
+  `wide_rect_in`): the language's set, the unnamed set, then the named
+  ones by name. `shuyi-app`'s renderer, the raster (`frame-png`), the
+  one-bit renderer and its reference all call it with the buffer's
+  `widths().wide_font()`.
+- **Widths by language**: `CellWidths` carries the language's set name
+  and whether its punctuation is wide (`in_lang`, `wide_font`,
+  `wide_punctuation`); `LangInfo::widths(base)` makes a pack's.
+  `Ctx` keeps a table per pack and `Ctx::widths()` returns the effective
+  language's; `Game::redraw` hands it to the buffer first.
+  `pack_from_files` and `Lang::overflow` measure a pack with its own.
+- **The pack**: `lang.ron` gains `wide_font` and `wide_punctuation`
+  (both optional). An empty `wide_font` is refused; with the atlas,
+  `LangPackRon::widths_of` refuses a set the atlas lacks.
+  `font::undrawn` checks a pack's wide characters against its own set
+  (any set when it names none), and a missing set once on its
+  `lang.ron`.
+- **The tool**: `font-atlas --wide [<set>=]<font.bdf>`, once a set
+  (`font_atlas::WideFont`); a set keeps the wide characters of the
+  packs naming it, their wide punctuation, and
+  `shuyi.ron`'s `font_atlas.wide_set_glyphs` for it; sets are laid out
+  one after another in the order given (`build_atlas_with_sets`).
+- **Wrapping** (`text::word_wrap`): `，》〉` never start a line, `《〈`
+  never end one; `” ’ … —` never start and `“ ‘` never end one where
+  they are wide, which keeps `……` and `——` whole. English is
+  unchanged.
+- Fixture fonts of ours, `wide-16-ja.bdf` and `wide-16-zh.bdf` (`直` in
+  two shapes, `简`, the wide punctuation), and two committed frame
+  pictures, `wide-set-ja.png` and `wide-set-zh.png`.
+- [ADR-0083](../../docs/adr/0083-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md);
+  docs in `docs/formats.md`, the book's chapter 5, and the
+  `shuyi-import-art` and `shuyi-screen` skills.
+
+**Deviations.**
+
+- The look-up lives on `FontAtlasDef` in `shuyi-assets`, not in
+  `shuyi-ui` (step 4): the tool, the check and every renderer hold the
+  atlas, and the language reaches the renderers in the buffer's
+  `CellWidths` (ADR-0083 §3, §4).
+- The unnamed set keeps the characters of the languages that name no
+  set (all of them, for a game of one wide font, as before).
+- A punctuation mark only wide in the atlas (2301's) stays wide in
+  every language; the language's flag decides only the marks the atlas
+  has both narrow and wide.
+
+**For the game:** an atlas with one unnamed set (2301's) keeps working
+as it is; nothing regenerates it. The pack format is version 9, so the
+game bakes again. game#0239 moves the pin to this change and adds its
+`zh-Hans` pack and fonts.
+
+**Follow-up:** 2254 (a source language names its wide set and its
+punctuation's width; the source has no `lang.ron`).
+
+Breaking: shuyi-assets: `font::FontAtlasDef`: a struct literal adds `wide_sets`.
+
+```migration
+since: 0.1.0
+what: A font atlas has named wide sets beside its unnamed one.
+old: "FontAtlasDef { cell_w, cell_h, columns, glyphs, wide }"
+new: "FontAtlasDef { cell_w, cell_h, columns, glyphs, wide, wide_sets }"
+before: |
+  FontAtlasDef { cell_w: 8, cell_h: 16, columns: 32, glyphs, wide: BTreeMap::new() }
+after: |
+  FontAtlasDef { cell_w: 8, cell_h: 16, columns: 32, glyphs, wide: BTreeMap::new(), wide_sets: BTreeMap::new() }
+find: ["wide: BTreeMap::new() }"]
+```
+
+Breaking: shuyi-assets: `lang::LangInfo`: a struct literal adds `wide_font` and `wide_punctuation`.
+
+```migration
+since: 0.1.0
+what: A pack's lang.ron may name its wide set and make its punctuation wide.
+old: "LangInfo { name, made_by }"
+new: "LangInfo { name, made_by, wide_font, wide_punctuation }"
+before: |
+  LangInfo { name, made_by: MadeBy::Machine }
+after: |
+  LangInfo { name, made_by: MadeBy::Machine, wide_font: None, wide_punctuation: false }
+find: ["made_by: MadeBy::Machine }"]
+```
+
+Breaking: shuyi-assets: `pack::VERSION`, `formats.ron` "font atlas: font-atlas" and "language pack: lang-pack", and hello-grid's "asset font/atlas.ron": a font atlas's and a pack's info's binary forms have the new fields, and a baked pack is of version 9; every game bakes again.
+
+```migration
+since: 0.1.0
+what: A pack baked before this engine is refused; bake it again.
+old: pack::VERSION 8
+new: pack::VERSION 9
+before: |
+  cargo shuyi bake
+after: |
+  cargo shuyi bake
+```
+
+Breaking: shuyi-cli: `font_atlas::run` takes the wide fonts as `&[WideFont]`, `AtlasChars::wants_wide` takes the set, and `project::FontAtlas` has `wide_set_glyphs`.
+
+```migration
+since: 0.1.0
+what: font-atlas takes several wide fonts, each a set.
+old: "font_atlas::run(rules, command, fonts, Option<&Path>, out, chars)"
+new: "font_atlas::run(rules, command, fonts, &[WideFont], out, chars)"
+before: |
+  font_atlas::run(rules, "shuyi", &fonts, Some(&wide), &out, &chars)
+after: |
+  font_atlas::run(rules, "shuyi", &fonts, &[WideFont::parse(wide)], &out, &chars)
+find: ["Some(&wide), &out"]
+```

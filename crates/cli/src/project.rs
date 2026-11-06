@@ -361,6 +361,9 @@ pub struct FontAtlas {
     /// the text uses (a name entry's letters), in any order: empty by
     /// default.
     pub wide_glyphs: String,
+    /// The glyphs `font-atlas --wide <set>=<font.bdf>` keeps in each named
+    /// wide set whatever the text uses, by set name: empty by default.
+    pub wide_set_glyphs: BTreeMap<String, String>,
 }
 
 /// `glyph-tiles`: a tileset of glyphs on colored squares

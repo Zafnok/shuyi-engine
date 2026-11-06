@@ -460,6 +460,11 @@ impl Toy {
     ///
     /// If its own data doesn't load.
     pub fn new() -> Self {
+        Self::with_debug_info(r#"(name: "Debug", made_by: Machine)"#)
+    }
+
+    /// The toy game, its debug language's `lang.ron` written `info`.
+    pub(crate) fn with_debug_info(info: &str) -> Self {
         let mut english: BTreeMap<String, String> =
             ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
         english.extend(ENGLISH.iter().map(|&(k, v)| (k.to_owned(), v.to_owned())));
@@ -478,7 +483,6 @@ impl Toy {
             widths: &shuyi_assets::font::CellWidths::NARROW,
             variants: &[],
         };
-        let info = r#"(name: "Debug", made_by: Machine)"#;
         let pack = pack_from_sources(
             ("dbg/lang.ron", info),
             ("dbg/ui.ron", DEBUG_UI),
