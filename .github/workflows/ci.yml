@@ -312,6 +312,15 @@ jobs:
           grep -q 'thread: Some("main"),' "${reports[0]}"
           grep -q 'top_screen: Some("title"),' "${reports[0]}"
           grep -q 'record: None,' "${reports[0]}"
+          grep -q 'fatal: true,' "${reports[0]}"
+          # quad-snd's threads' reports are kept, and none is fatal (3095).
+          survived=$(grep -L 'message: "a panic on purpose (SHUYI_PANIC_AT_FRAME)"' "$data"/shuyi-hello-grid/crash-*.ron || true)
+          for report in $survived; do
+            if grep -q 'fatal: true,' "$report"; then
+              echo "::error::$report, of a panic the game survived, is fatal"
+              exit 1
+            fi
+          done
       - name: The captures in the summary
         if: always()
         run: |
