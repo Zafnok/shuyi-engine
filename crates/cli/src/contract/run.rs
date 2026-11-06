@@ -23,8 +23,8 @@ use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES};
 
 use super::perf::{self, PerfSummary};
 use super::session::{
-    Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed, Sound, from_record,
-    measured_start,
+    AddedSound, Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed, Sound,
+    from_record, measured_start,
 };
 use super::{Answer, Op, codes};
 use crate::frame_png::{self, Script, Step};
@@ -81,6 +81,10 @@ pub struct RunOutput {
     pub events: Vec<Event>,
     /// The sound cues asked for, in order.
     pub sounds: Vec<Sound>,
+    /// The sounds the game added at run time and hadn't removed at the
+    /// end of the run, in cue order; left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sounds_added: Vec<AddedSound>,
     /// The game's log, oldest first: its last lines.
     pub log: Vec<LogEntry>,
     /// The modules installed in the game, in install order, with the
@@ -299,6 +303,7 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         frame: session.snapshot(),
         events: session.events(),
         sounds: session.sounds(),
+        sounds_added: session.sounds_added(),
         log: session.log(),
         modules: session.modules(),
         perf: None,
@@ -644,6 +649,19 @@ pub fn text(output: &RunOutput) -> String {
             .map(|s| format!("{} (frame {})", s.cue, s.frame))
             .collect();
         let _ = writeln!(out, "sounds: {}", sounds.join(", "));
+    }
+    if !output.sounds_added.is_empty() {
+        let added: Vec<String> = output
+            .sounds_added
+            .iter()
+            .map(|s| {
+                format!(
+                    "{} ({} samples a second, {} channel(s), {} frames, {} milliseconds)",
+                    s.cue, s.rate, s.channels, s.frames, s.millis
+                )
+            })
+            .collect();
+        let _ = writeln!(out, "sounds added: {}", added.join(", "));
     }
     if let Some(summary) = &output.perf {
         out.push_str(&perf::text(summary));
