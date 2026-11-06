@@ -215,7 +215,7 @@ mod tests {
         // Off: nothing is built, but the channel is offered.
         let mut off = Gizmos::new();
         plot_gizmos(&view, h.ctx(), &mut off);
-        assert!(off.drawn().is_empty());
+        assert_eq!(off.len(), 0);
         assert_eq!(off.offered(), [PLOTS]);
         // On: six boxes, and a cross after the second.
         let mut on = Gizmos::with_on(["plots"]);
