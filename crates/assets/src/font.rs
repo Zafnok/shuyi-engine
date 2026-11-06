@@ -1186,6 +1186,15 @@ mod tests {
                      --wide ja=<font.bdf> from a font that has it"
                 ]
             );
+            // A narrow character it lacks is the atlas's, not its set's.
+            let narrow_missing = lang_with_info(&[("ja", ja, "直Ж")]);
+            assert_eq!(
+                errors(&two_sets(), &narrow_missing),
+                [
+                    "ja/ui.ron: 'Ж' (U+0416) isn't in the font atlas (menu.title); remake the \
+                     atlas with font-atlas from a font that has it"
+                ]
+            );
             // Its wide punctuation must be in its set too; narrow, `“` is.
             let mut no_quotes = two_sets();
             no_quotes.wide_sets.get_mut("zh-Hans").unwrap().remove(&'“');
