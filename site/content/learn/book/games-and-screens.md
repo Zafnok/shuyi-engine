@@ -177,6 +177,19 @@ together; past that, or under the name of a cue the manifest has, it is refused 
 log says why. `ctx.audio.remove_sound(cue)` frees it, and a play of it after that plays
 nothing. In a test, `h.added_plays()` gives each play's samples.
 
+A line of dialogue may have a voice: `ctx.play_voice(line)` says it, if the game has a clip
+for it. A screen that moves on by itself once the line is said, as a visual novel's auto
+mode does, asks `ctx.voice_playing()`, which names the line whose clip is sounding, or
+`None`. The platform reports it before each frame, so a screen sees its own `play_voice`
+from the next frame on: `None` is "over" only once the line has been heard. A clip whose
+file is missing, or that loads too late, never sounds, so the wait also ends when the line
+hasn't started half a second after it was asked for:
+
+{{ snippet(file="src/screens.rs", anchor="voice") }}
+
+In a test, `h.voice_length(seconds)` gives every clip that length, and `h.wait` steps past
+its end.
+
 ## Text by key
 
 No screen writes its text in its code. If it did, translating the game would mean

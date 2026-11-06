@@ -5,6 +5,7 @@
 use core::any::Any;
 
 use shuyi::assets::audio::AudioManifest;
+use shuyi::assets::dialogue::LineId;
 use shuyi::assets::keymap::KeymapDef;
 use shuyi::assets::lang::Lang;
 use shuyi::assets::palette::PaletteDef;
@@ -228,6 +229,34 @@ pub fn ring_a_made_chime(ctx: &mut Ctx<Data>) {
 }
 // ANCHOR_END: chime
 
+// ANCHOR: voice
+/// How long a line's voice may take to start before a screen stops
+/// waiting for it: a clip that hasn't loaded by then is never played.
+pub const VOICE_WAIT_SECS: f32 = 0.5;
+
+/// Waits for a line's voice to end, so the screen can move on by itself.
+/// The platform reports the clip from the frame after `play_voice`, so
+/// `None` means "over" only once the line has been heard, or once it has
+/// had time to start and didn't.
+#[derive(Debug, Default)]
+pub struct VoiceWait {
+    heard: bool,
+    waited: f32,
+}
+
+impl VoiceWait {
+    /// Whether `line`'s voice is over, given the frame's `dt`.
+    pub fn over(&mut self, ctx: &Ctx<Data>, line: &LineId, dt: f32) -> bool {
+        if ctx.voice_playing() == Some(line) {
+            self.heard = true;
+            return false;
+        }
+        self.waited += dt;
+        self.heard || self.waited > VOICE_WAIT_SECS
+    }
+}
+// ANCHOR_END: voice
+
 // ANCHOR: game_data
 /// A game's data written by hand, for a game whose data outgrows
 /// `BasicData`: its own sounds, voices, themes or settings. Each method
@@ -385,6 +414,34 @@ mod tests {
         assert_eq!(wave[..13], [[low; 12].as_slice(), &[high]].concat());
         assert_eq!(wave[24..26], [high, low]);
         assert_eq!(wave.len(), 1102);
+    }
+
+    #[test]
+    fn a_voice_that_never_sounds_stops_the_wait_after_half_a_second() {
+        let mut h = game().harness();
+        let line = LineId::new("garden_0");
+        h.ctx_mut().play_voice(&line);
+        let mut wait = super::VoiceWait::default();
+        let frames = (0..40).take_while(|_| {
+            h.wait(0.016);
+            !wait.over(h.ctx(), &line, 0.016)
+        });
+        assert_eq!(frames.count(), 31, "a game with no voices waits 0.5 s");
+    }
+
+    #[test]
+    fn a_voice_heard_is_over_once_it_stops_sounding() {
+        let mut h = game().harness();
+        let line = LineId::new("garden_0");
+        let mut wait = super::VoiceWait::default();
+        let report = |h: &mut shuyi::platform::harness::Harness<Data>, line| {
+            let game = h.app_mut().game_mut().unwrap();
+            game.set_voice_playing(line);
+        };
+        report(&mut h, Some(&line));
+        assert!(!wait.over(h.ctx(), &line, 0.016), "sounding");
+        report(&mut h, None);
+        assert!(wait.over(h.ctx(), &line, 0.016), "heard, then over");
     }
 
     // ANCHOR: as_target

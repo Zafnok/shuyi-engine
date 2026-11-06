@@ -323,6 +323,17 @@ impl<G: GameData> Harness<G> {
         self
     }
 
+    /// Makes every voice clip last `seconds`: [`Ctx::voice_playing`] names
+    /// its line from the frame after it was asked for until that long has
+    /// passed. Until this is called a clip sounds until it is stopped or
+    /// replaced. Negative or NaN counts as 0.
+    pub fn voice_length(&mut self, seconds: f32) -> &mut Self {
+        self.platform
+            .speaker_mut()
+            .set_voice_length(f64::from(seconds));
+        self
+    }
+
     /// Makes no music ever sound, as when the music files are missing:
     /// [`Ctx::music_clock`] stays `None`.
     pub fn without_music(&mut self) -> &mut Self {

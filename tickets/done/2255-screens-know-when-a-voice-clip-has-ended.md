@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2255 — Screens know when a voice clip has ended
@@ -81,13 +81,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Harness test: after `play_voice`, `voice_playing()` names the line from the next frame until its length has passed, then is `None`.
-- [ ] Stopped, replaced, skipped as late and failed clips report `None` (unit tests on the voice player).
-- [ ] A clip paused with the backend still reports as sounding.
-- [ ] A record replays with the same reports.
-- [ ] The API change is additive (CI's `api` job).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A Harness test: after `play_voice`, `voice_playing()` names the line from the next frame until its length has passed, then is `None`.
+- [x] Stopped, replaced, skipped as late and failed clips report `None` (unit tests on the voice player).
+- [x] A clip paused with the backend still reports as sounding.
+- [x] A record replays with the same reports.
+- [x] The API change is additive (CI's `api` job).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -97,5 +97,34 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- The sound device reports the voice clip sounding by its file:
+  `Audio::voice_playing(now) -> Option<&str>`, a provided method that
+  answers `None` (so a backend with no voices needs nothing).
+  `PlayerDevice` answers from the voice player (`Player::voice_playing`,
+  `Voices::sounding`): the clip asked for and not yet late, or playing
+  and not past its end; a clip held by a backend's pause still sounds.
+- `App`'s frame loop reads it after `music_playing`, maps the file back
+  to the line it last asked for (`Lists::voice`, filled from the frame's
+  `PlayVoice` requests), and calls `Game::set_voice_playing(Option<&LineId>)`.
+  Screens read `Ctx::voice_playing() -> Option<&LineId>`; its rustdoc
+  says a screen sees its own `play_voice` from the next frame and when to
+  take `None` as the end.
+- The headless `Speaker` keeps the voice asked for and gives clips a
+  fixed length a test sets (`Speaker::set_voice_length`,
+  `Harness::voice_length`); with none set a clip sounds until stopped or
+  replaced. It mutes rather than pauses, as for the music.
+- Session records write `voice` (the clip's file, when it changes; empty
+  for none) like `track`; playback answers from it. An optional field,
+  so the format's version stays 1.
+- Deviation: step 1 named `Voices::playing_line` returning the line and
+  variant; the voice player knows only files, so it reports the file and
+  `App` maps it back to the line. `Ctx` keeps the line alone: no screen
+  needs the variant yet.
+- Book: `games-and-screens.md` has a paragraph and a snippet
+  (`VoiceWait`) on waiting for a voice; `docs/platform-backends.md` lists
+  `voice_playing` and its place in the frame.
+- No break: every change is an addition (a provided trait method, new
+  methods, an optional record field, a field on the non-exhaustive
+  `FrameRecord`).
+- The game: `game#0863` removes the 0.08 s-a-character workaround and
+  moves the pin to this change.

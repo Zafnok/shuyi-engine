@@ -133,7 +133,10 @@ pub struct AddedPlay {
 /// that plays once too: it knows no lengths). Like `shuyi-app`, it mutes
 /// rather than pauses: while [`suspended`](Self::suspended) its music
 /// clock runs on. It keeps the sounds the game added at run time, and
-/// hears every play of them ([`added_plays`](Self::added_plays)).
+/// hears every play of them ([`added_plays`](Self::added_plays)). A voice
+/// clip sounds from its request until it is stopped or replaced, or until
+/// the length a test gave clips has passed
+/// ([`set_voice_length`](Self::set_voice_length)).
 #[derive(Debug, Clone, Default)]
 pub struct Speaker {
     /// Seconds a track takes to load: it sounds that long after its
@@ -143,6 +146,11 @@ pub struct Speaker {
     silent: bool,
     /// The track started last, and when.
     started: Option<(String, Millis)>,
+    /// How long every voice clip lasts, in seconds; `None` until it is
+    /// stopped.
+    voice_length: Option<f64>,
+    /// The voice clip asked for last and not stopped, and when.
+    voice: Option<(String, Millis)>,
     /// The last frame's sound and voice requests.
     requests: Vec<SoundRequest>,
     /// The last frame's music commands.
@@ -171,6 +179,9 @@ struct RecordedMusic {
     track: String,
     /// Its position this frame; `None` in silence.
     position: Option<f64>,
+    /// The file of the voice clip sounding, written only when it changes;
+    /// empty for none.
+    voice: String,
 }
 
 impl Speaker {
@@ -179,6 +190,13 @@ impl Speaker {
     /// 0.
     pub fn set_load_delay(&mut self, seconds: f64) {
         self.load_delay = seconds.max(0.0);
+    }
+
+    /// Makes every voice clip last `seconds`: it stops sounding that long
+    /// after it was asked for. Until this is called a clip sounds until it
+    /// is stopped or replaced. Negative or NaN counts as 0.
+    pub fn set_voice_length(&mut self, seconds: f64) {
+        self.voice_length = Some(seconds.max(0.0));
     }
 
     /// Makes no music ever sound, as when the music files are missing.
@@ -241,21 +259,26 @@ impl Speaker {
         }
     }
 
-    /// One frame of a session record: the track if it changed, and its
-    /// position.
-    fn play_recorded(&mut self, track: Option<&str>, position: Option<f64>) {
+    /// One frame of a session record: the track if it changed, its
+    /// position, and the voice clip if it changed.
+    fn play_recorded(&mut self, frame: &FrameRecord) {
         let recorded = self.recorded.get_or_insert_default();
-        if let Some(track) = track {
+        if let Some(track) = &frame.track {
             track.clone_into(&mut recorded.track);
         }
-        recorded.position = position;
+        recorded.position = frame.music;
+        if let Some(voice) = &frame.voice {
+            voice.clone_into(&mut recorded.voice);
+        }
     }
 
     /// Follows one sound request: a start adds a sound playing (or
     /// replaces the one of its id, as a new game's queue counts from 1
     /// again), a stop takes it away.
-    fn hear(&mut self, request: &SoundRequest) {
+    fn hear(&mut self, request: &SoundRequest, now: Millis) {
         match request {
+            SoundRequest::Voice { clip } => self.voice = Some((clip.clone(), now)),
+            SoundRequest::StopVoice => self.voice = None,
             SoundRequest::Sound { cue, volume } => self.hear_added(cue, *volume, None),
             SoundRequest::Start {
                 id, cue, volume, ..
@@ -309,12 +332,23 @@ impl Audio for Speaker {
         (elapsed >= 0.0).then_some((cue.as_str(), elapsed))
     }
 
+    fn voice_playing(&self, now: Millis) -> Option<&str> {
+        if let Some(recorded) = &self.recorded {
+            return Some(recorded.voice.as_str()).filter(|voice| !voice.is_empty());
+        }
+        let (clip, at) = self.voice.as_ref()?;
+        let on = self
+            .voice_length
+            .is_none_or(|length| now.since(*at).as_secs_f64() < length);
+        on.then_some(clip.as_str())
+    }
+
     fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) {
         self.volumes = Some((frame.music_volume, frame.sound_volume, frame.voice_volume));
         self.requests.clear();
         self.requests.extend_from_slice(frame.requests);
         for request in frame.requests {
-            self.hear(request);
+            self.hear(request, now);
         }
         self.music.clear();
         self.music.extend_from_slice(frame.music);
@@ -325,6 +359,7 @@ impl Audio for Speaker {
 
     fn stop_all(&mut self) {
         self.started = None;
+        self.voice = None;
         self.playing.clear();
         self.stopped = true;
     }
@@ -588,8 +623,7 @@ impl HeadlessPlatform {
     pub fn push_frame(&mut self, frame: &FrameRecord) {
         self.system.extend_from_slice(&frame.system);
         self.push_input(&frame.input);
-        self.speaker
-            .play_recorded(frame.track.as_deref(), frame.music);
+        self.speaker.play_recorded(frame);
         self.recorded_keyboard
             .get_or_insert_default()
             .play(frame.keyboard.as_ref());

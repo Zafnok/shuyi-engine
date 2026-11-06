@@ -195,6 +195,11 @@ pub struct FrameRecord {
     /// silence.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub track: Option<String>,
+    /// The file of the voice clip
+    /// [`Audio::voice_playing`](crate::Audio::voice_playing) answered, when
+    /// it changes: an empty file for none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
     /// The pacing the game was handed, when it changes
     /// ([`App::set_pacing`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -401,6 +406,7 @@ pub(crate) struct Recorder {
     now: u64,
     present: bool,
     track: String,
+    voice: String,
     pacing: Option<Pacing>,
     hash: Option<u64>,
 }
@@ -416,6 +422,7 @@ impl Recorder {
             now: 0,
             present: false,
             track: String::new(),
+            voice: String::new(),
             pacing: None,
             hash: None,
         }
@@ -523,6 +530,15 @@ impl Recorder {
             self.frame.track = Some(cue.to_owned());
         }
         self.frame.music = playing.map(|(_, position)| position);
+    }
+
+    /// The voice clip the sound device said is sounding.
+    pub(crate) fn voice(&mut self, playing: Option<&str>) {
+        let file = playing.unwrap_or("");
+        if self.on && file != self.voice {
+            file.clone_into(&mut self.voice);
+            self.frame.voice = Some(file.to_owned());
+        }
     }
 
     /// The frame ends: its poll of the input, and its hash.
