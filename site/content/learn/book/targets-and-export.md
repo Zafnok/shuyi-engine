@@ -261,7 +261,8 @@ settings or saves, and it stays on the player's machine. The player sends it to 
 version in it is `shuyi.ron`'s `app.version`.
 
 At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
-anything, and in what words, is up to the game. A game that gives `Start::crash_record` a function
+anything, and in what words, is up to the game. A panic the game survived, like a sound library's on a
+machine with no sound card, keeps its report but isn't offered as a crash. A game that gives `Start::crash_record` a function
 writing its record of play (the record its `replay` reads) gets that in the report too, on a computer,
 so a crash can be replayed to the panic; a game on the short path gives it to `BasicGame::crash_record`.
 A game made with `shuyi new --template grid` already does: its report holds the open stage's record,

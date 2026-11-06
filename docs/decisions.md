@@ -1553,3 +1553,38 @@ public. Asked what a first-time visitor sees, he wrote his own:
 - **The code pad's research is unparked** (2916). Renting a build server
   still waits for Nick's answer to what it reports, and the playground
   keeps editing data files until then.
+
+## 2026-11-05: the first release waits for everything before going public
+
+Source: Nick, in a session of this repository, reading 2823 and 2005:
+
+> "imo [2823] and [2005] shouldn't be unblocked yet I think we have a lot
+> of extra stuff before either. Granted, for book, it might be worth
+> completing the consolidation sooner than later. But [2005] is def not
+> ready yet imo. Let's be more honest about blockers and lay them out."
+
+Claude found that 2005's `blocked_by` held only the protections of
+2026-10-20, all done, while five MVP tickets were still open; and that
+2823, a design with no code, had one real blocker. It proposed the lists
+below. Nick:
+
+> "Yes, update both"
+
+**Rules:**
+
+- **A ticket's `blocked_by` names everything it waits for,** not only the
+  tickets a decision named at the time. "Waits for the MVP" means the
+  MVP's open tickets are in the list.
+- **The first release (2005) is the public launch,** so it waits for the
+  MVP's open tickets (2041, 3085, 2577, 2250, 2251) and for everything
+  that comes before going public: the one book (2823–2828), the
+  playground (3069, 2814, 2820), 2817, 2822, 2777 and 2576. The blog
+  (2805) and sponsors (2806) don't hold it up.
+- **Breaks already planned land before the release:** 2544 (the `bots`
+  operation), 2391 (one picture type) and 2389 with 2388 (the inks).
+  They join the MVP.
+- **The tutorial is finished before it is redesigned:** 2817 comes
+  before 2823. The exercises' design moves from 2823 to 2828, which
+  comes after the playground they are done in.
+- This sharpens "no real version before the engine is stable"
+  (2026-10-21): stable means the tickets above are done.

@@ -1,4 +1,4 @@
-# ADR-0083: Wide glyph sets: named sets beside the unnamed one, and the language's set and widths carried in `CellWidths`
+# ADR-0084: Wide glyph sets: named sets beside the unnamed one, and the language's set and widths carried in `CellWidths`
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
