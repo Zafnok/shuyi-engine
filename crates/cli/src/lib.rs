@@ -538,19 +538,21 @@ fn from_the_root(project: &Project, args: &[String]) -> Vec<String> {
 
 /// `font-atlas`: with the game's tools, the atlas keeps the characters its
 /// text uses too; without them (or with `--no-text`), the ranges and the
-/// required glyphs only. `--wide <font>` adds a wide font.
+/// required glyphs only. `--wide [<set>=]<font>` adds a wide font, once
+/// per set.
 fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> Outcome {
     let rules = project.part(&project.config.font_atlas, "font_atlas")?;
     let command = project.config.command();
     let no_text = args.iter().any(|a| a == NO_TEXT);
     let mut rest: Vec<&String> = Vec::new();
-    let mut wide: Option<PathBuf> = None;
+    let mut wides: Vec<font_atlas::WideFont> = Vec::new();
     let mut words = args.iter().filter(|a| *a != NO_TEXT);
     let mut usage = false;
     while let Some(word) = words.next() {
         if word == WIDE {
-            match words.next() {
-                Some(path) if wide.is_none() => wide = Some(PathBuf::from(path)),
+            let wide = words.next().map(|arg| font_atlas::WideFont::parse(arg));
+            match wide {
+                Some(wide) if !wides.iter().any(|w| w.set == wide.set) => wides.push(wide),
                 _ => usage = true,
             }
         } else {
@@ -559,7 +561,8 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
     }
     let Some((out_dir, fonts @ [_, ..])) = rest.split_last().filter(|_| !usage) else {
         eprintln!(
-            "usage: {command} font-atlas [{NO_TEXT}] [{WIDE} <wide.bdf>] <font.bdf>... <out-dir>"
+            "usage: {command} font-atlas [{NO_TEXT}] [{WIDE} [<set>=]<wide.bdf>]... <font.bdf>... \
+             <out-dir> (one {WIDE} a set)"
         );
         return Ok(2);
     };
@@ -586,10 +589,13 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
         let none = shuyi_assets::lang::Lang::default();
         font_atlas::AtlasChars::of_lang(&none, &rules.required_glyphs)
     };
-    let chars = chars.with_wide(&rules.wide_glyphs);
+    let mut chars = chars.with_wide(&rules.wide_glyphs);
+    for (set, glyphs) in &rules.wide_set_glyphs {
+        chars = chars.with_wide_set(Some(set), glyphs);
+    }
     let out_dir = Path::new(out_dir);
     Ok(
-        match font_atlas::run(rules, command, &fonts, wide.as_deref(), out_dir, &chars) {
+        match font_atlas::run(rules, command, &fonts, &wides, out_dir, &chars) {
             Ok(summary) => {
                 println!("{summary}");
                 0
@@ -782,11 +788,12 @@ mod tests {
             ..Fake::default()
         };
         assert_eq!(font_atlas(&project, &args, Some(&broken)), Ok(1));
-        // `--wide` names one font, never two, and never none.
+        // `--wide` names one font a set, never two, and never none.
         let words = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
         let twice = [words(&[WIDE, "w.bdf", WIDE, "v.bdf"]), args.to_vec()].concat();
+        let set_twice = [words(&[WIDE, "ja=w.bdf", WIDE, "ja=v.bdf"]), args.to_vec()].concat();
         let none = [args.to_vec(), words(&[WIDE])].concat();
-        for wrong in [twice, none] {
+        for wrong in [twice, set_twice, none] {
             assert_eq!(
                 font_atlas(&project, &wrong, Some(&game)),
                 Ok(2),

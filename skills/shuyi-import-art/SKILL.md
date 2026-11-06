@@ -39,7 +39,7 @@ unless the person who asked for the game wants one.
 | ---- | ----- |
 | a picture | `.png` (its size for the image table; the platform draws its pixels) |
 | a palette | the palette file, `files/palette.ron`: colours by name |
-| a font atlas | `files/font/atlas.ron` and its `.png`, made from BDF fonts by `cargo shuyi font-atlas`, with every character the game's text uses that the font has; `--wide <font.bdf>` adds Japanese or Chinese ones, two cells wide, from a font twice as wide; `cargo shuyi check` names one the atlas lacks |
+| a font atlas | `files/font/atlas.ron` and its `.png`, made from BDF fonts by `cargo shuyi font-atlas`, with every character the game's text uses that the font has; `--wide <font.bdf>` adds Japanese or Chinese ones, two cells wide, from a font twice as wide, and `--wide <set>=<font.bdf>` a named set a pack's `lang.ron` draws from (`wide_font`), one a language; `cargo shuyi check` names one the atlas lacks |
 | a grid map | the `.map` text format: a RON header, a `---` line, one character a tile (a stage's own format, registered by its tools) |
 | sounds and music | `.wav` and `.ogg`, and the audio manifest |
 | text and talk | the language files, `.dlg` scenes (`shuyi-dialogue`) |

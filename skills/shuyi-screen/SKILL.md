@@ -228,7 +228,7 @@ Before writing one, look for it in the engine:
   `ListCursor` (a list's focus), `Ask` (a question over the screen),
   `NameEntry` (a name typed or spelled on a letter grid) and
   `word_wrap` (in cells, with `ctx.widths()`: Japanese breaks between
-  characters, never before `。` or after `「`). Each says what it shows
+  characters, never before `。` or after `「`; Chinese never splits `……`). Each says what it shows
   as a view, and a skin paints it.
 - The engine's screens react to `UiAction`s. A game with its own actions
   declares them for an engine screen with `ui_actions`

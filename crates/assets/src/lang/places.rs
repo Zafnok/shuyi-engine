@@ -129,11 +129,13 @@ impl Lang {
     }
 
     /// The screen-text entries of `code`'s pack wider than their key's
-    /// [`max_cells`](Self::max_cells), measured with `widths`, in key
-    /// order. Every entry is measured, stale ones too, as its text is
-    /// written (placeholders unfilled). `None` for a code with no pack.
+    /// [`max_cells`](Self::max_cells), measured with `widths` (the atlas's)
+    /// as the pack has them ([`LangInfo::widths`](super::LangInfo::widths)),
+    /// in key order. Every entry is measured, stale ones too, as its text
+    /// is written (placeholders unfilled). `None` for a code with no pack.
     pub fn overflow(&self, code: &LangCode, widths: &CellWidths) -> Option<Vec<Overflow>> {
         let pack = self.packs.get(code)?;
+        let widths = &pack.info.widths(widths);
         let too_wide = |(key, entry): (&String, &super::Entry)| {
             let max_cells = self.max_cells(key)?;
             let width = text_width(&entry.text, widths);

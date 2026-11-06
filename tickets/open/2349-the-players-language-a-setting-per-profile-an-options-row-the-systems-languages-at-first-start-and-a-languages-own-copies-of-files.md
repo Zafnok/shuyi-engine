@@ -302,7 +302,11 @@ engine gives the pieces and a default, and the game chooses.
 - A command-line language switch: a ticket of its own when a game asks.
 - The engine's screens in other languages (2352, parked).
 - Drawing a language's own name in a script the font lacks (`日本語`
-  on the row): 2303's wide glyph sets.
+  on the row): 2303's wide glyph sets. **From 2303 (done):** a wide
+  glyph is drawn from the language's set first, then from any other
+  (`FontAtlasDef::wide_cell`), and `font-atlas` keeps a pack's name in
+  the set its `lang.ron` names, so the row shows each name in its own
+  shapes with nothing to do here.
 - Choice rows built from an enum setting: 2314.
 - The pseudo-language itself: 2353.
 

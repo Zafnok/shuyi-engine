@@ -202,6 +202,7 @@ fn atlas() -> (FontAtlasDef, Image) {
         columns,
         glyphs,
         wide: BTreeMap::from([(WIDE_GLYPH, narrow)]),
+        wide_sets: BTreeMap::new(),
     };
     (
         def,

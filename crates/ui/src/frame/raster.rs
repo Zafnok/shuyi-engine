@@ -279,7 +279,8 @@ impl Painter {
             if cell.glyph == ' ' {
                 continue;
             }
-            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide) else {
+            let set = buf.widths().wide_font();
+            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide, set) else {
                 continue;
             };
             let fg = unit(fg);
@@ -354,10 +355,17 @@ impl Painter {
 
     /// Where to find `glyph` in the atlas, what colour to tint it and how
     /// many cells it covers: `fg` over both cells for a wide glyph whose
-    /// continuation follows it (`wide`), over one for a narrow glyph, or
+    /// continuation follows it (`wide`), from the language's wide set `set`
+    /// first ([`FontAtlasDef::wide_cell`]), over one for a narrow glyph, or
     /// the fallback glyph in `MISSING_COLOR` over one.
-    fn atlas_cell(&self, glyph: char, fg: Rgb, wide: bool) -> Option<(AtlasRect, Rgb, i64)> {
-        if let Some(rect) = self.atlas.wide_rect(glyph).filter(|_| wide) {
+    fn atlas_cell(
+        &self,
+        glyph: char,
+        fg: Rgb,
+        wide: bool,
+        set: Option<&str>,
+    ) -> Option<(AtlasRect, Rgb, i64)> {
+        if let Some(rect) = self.atlas.wide_rect_in(set, glyph).filter(|_| wide) {
             return Some((rect, fg, 2));
         }
         if let Some(rect) = self.atlas.glyph_rect(glyph) {

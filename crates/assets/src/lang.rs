@@ -75,7 +75,7 @@ pub const ENGLISH: &str = tag::DEFAULT_SOURCE;
 const UI_FILE: &str = "ui.ron";
 
 /// File name of a pack's description.
-const INFO_FILE: &str = "lang.ron";
+pub(crate) const INFO_FILE: &str = "lang.ron";
 
 /// File name of a pack's data text: names, tips, titles and notes.
 const DATA_FILE: &str = "data.ron";
@@ -140,6 +140,28 @@ pub struct LangInfo {
     pub name: String,
     /// Who made the text.
     pub made_by: MadeBy,
+    /// The font atlas's wide set the language draws from first (its own
+    /// word, as `font-atlas --wide <set>=<font.bdf>` names it), so a
+    /// character Japanese and Chinese share has this language's shape:
+    /// `None` for none of its own. Its wide characters must be in that set
+    /// ([`undrawn`](crate::font::undrawn)).
+    #[serde(default)]
+    pub wide_font: Option<String>,
+    /// Whether [`WIDE_PUNCTUATION`](crate::font::WIDE_PUNCTUATION)
+    /// (`“ ” ‘ ’ … —`) is wide in this language and drawn from its wide
+    /// set, as Chinese writes it; narrow (`false`) by default.
+    #[serde(default)]
+    pub wide_punctuation: bool,
+}
+
+impl LangInfo {
+    /// The width table of this language over `base`, the atlas's
+    /// ([`CellWidths::of`]): its wide set and its punctuation's width
+    /// ([`CellWidths::in_lang`]).
+    pub fn widths(&self, base: &CellWidths) -> CellWidths {
+        base.clone()
+            .in_lang(self.wide_font.as_deref(), self.wide_punctuation)
+    }
 }
 
 /// One piece of a pack's text.
@@ -603,6 +625,24 @@ fn pack_from_files_in(
     if info.as_ref().is_some_and(|i| i.name.trim().is_empty()) {
         errors.push(ContentError::new(info_file, "the name must not be empty"));
     }
+    if info
+        .as_ref()
+        .and_then(|i| i.wide_font.as_deref())
+        .is_some_and(|set| set.trim().is_empty())
+    {
+        errors.push(ContentError::new(
+            info_file,
+            "wide_font must not be empty: leave it out for no wide set of its own",
+        ));
+    }
+    // The pack's limits count with its own widths (its punctuation's).
+    let widths = info
+        .as_ref()
+        .map_or_else(|| rules.widths.clone(), |i| i.widths(rules.widths));
+    let rules = &PackRules {
+        widths: &widths,
+        ..*rules
+    };
     let problem = rules.data_problem;
     let no_key = format!("no such key in the source language ({source})");
     let ui = entries(sources.ui, english, &no_key, problem, &mut errors);

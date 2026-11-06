@@ -422,6 +422,7 @@ them.
 | 2252 | The text checks measure with the font atlas's wide glyphs, and a reloaded atlas changes the frame's widths | 2301 |
 | 2302 | Line breaking for text without spaces, and a report of translated text too long for its place | game#0237 |
 | 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
+| 2254 | A source language names its wide set and its punctuation's width, as a pack's `lang.ron` does | 2303 |
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
 | 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |

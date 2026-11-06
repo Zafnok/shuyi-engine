@@ -177,6 +177,8 @@ mod tests {
             info: LangInfo {
                 name: "Русский".to_owned(),
                 made_by: MadeBy::Machine,
+                wide_font: None,
+                wide_punctuation: false,
             },
             ui: [entry("menu.title", "Жa")].into(),
             data: [entry("names.king", "Осгар")].into(),
