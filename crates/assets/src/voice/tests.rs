@@ -346,28 +346,152 @@ fn clips_that_cannot_say_their_line_are_stale() {
     assert_eq!(some.playable(&d, spoken).len(), 1);
 }
 
-#[test]
-fn a_cast_maps_speakers_to_voices() {
-    let source = "(voices: {\n\"guide\": \"guide_a\",\n\">\": \"narrator\",\n})";
-    let cast = cast_from_source("cast.ron", source, |s| s == "guide").unwrap();
-    assert_eq!(cast.voices["guide"], "guide_a");
-    assert_eq!(cast.voices[NARRATION_SPEAKER], "narrator");
-    let bad = "(voices: {\n\"nobody\": \"x\",\n\"guide\": \" \",\n\">\": \"n\",\n})";
-    let errors: Vec<String> = cast_from_source("cast.ron", bad, |s| s == "guide")
+/// The tests' voice tool: which of two programs reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+enum Reader {
+    Kokoro,
+    Piper,
+}
+
+/// The tests' voice tool's settings.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Tool {
+    reader: Reader,
+}
+
+/// A cast source with one entry per line, `"key": (voice: .., settings:
+/// (reader: ..))`.
+fn cast_source(entries: &[(&str, &str, &str)]) -> String {
+    let lines: Vec<String> = entries
+        .iter()
+        .map(|(key, voice, reader)| {
+            format!("{key:?}: (voice: {voice:?}, settings: (reader: {reader})),")
+        })
+        .collect();
+    format!("(voices: {{\n{}\n}})", lines.join("\n"))
+}
+
+fn cast_errors(entries: &[(&str, &str, &str)]) -> Vec<String> {
+    cast_from_source::<Tool, Weather>("cast.ron", &cast_source(entries), |s| s == "guide")
         .err()
         .unwrap_or_default()
         .iter()
         .map(ToString::to_string)
-        .collect();
+        .collect()
+}
+
+#[test]
+fn a_cast_gives_each_speaker_and_variant_a_voice() {
+    let source = cast_source(&[
+        ("guide", "guide_a", "Kokoro"),
+        ("guide.rain", "guide_wet", "Piper"),
+        (">", "narrator", "Kokoro"),
+    ]);
+    let cast: Cast<Tool> =
+        cast_from_source::<_, Weather>("cast.ron", &source, |s| s == "guide").unwrap();
+    let rain = cast.voice_for("guide", Weather::Rain).unwrap();
     assert_eq!(
-        errors,
+        rain,
+        &CastVoice::new(
+            "guide_wet",
+            Tool {
+                reader: Reader::Piper
+            }
+        )
+    );
+    let sun = cast.voice_for("guide", Weather::Sun).unwrap();
+    assert_eq!(sun.voice, "guide_a");
+    assert_eq!(sun.settings.reader, Reader::Kokoro);
+    assert_eq!(
+        cast.voice_for("guide", Weather::Any).unwrap().voice,
+        "guide_a"
+    );
+    let narrator = cast.voice_for(NARRATION_SPEAKER, Weather::Rain).unwrap();
+    assert_eq!(narrator.voice, "narrator");
+    assert_eq!(cast.voice_for("nobody", Weather::Rain), None);
+    assert_eq!(Cast::<Tool>::default().voices.len(), 0);
+    assert_eq!(Cast::new(cast.voices.clone()), cast);
+}
+
+#[test]
+fn a_tool_without_settings_writes_unit() {
+    let source = "(voices: {\"guide\": (voice: \"guide_a\", settings: ())})";
+    let cast: Cast<()> = cast_from_source::<_, ()>("cast.ron", source, |_| true).unwrap();
+    assert_eq!(cast.voice_for("guide", ()).unwrap().voice, "guide_a");
+}
+
+#[test]
+fn every_problem_with_a_cast_entry_is_reported() {
+    assert_eq!(
+        cast_errors(&[("guide", " ", "Kokoro")]),
+        ["cast.ron:2: \"guide\" has no voice"]
+    );
+    assert_eq!(
+        cast_errors(&[("nobody", "x", "Kokoro")]),
+        ["cast.ron:2: \"nobody\" is not a character that speaks"]
+    );
+    assert_eq!(
+        cast_errors(&[("guide.snow", "x", "Kokoro")]),
+        [
+            "cast.ron:2: \"guide.snow\": \".snow\" is not a variant's suffix (those are: \".sun\", \".rain\")"
+        ]
+    );
+    assert_eq!(
+        cast_errors(&[("nobody.rain", "x", "Kokoro")]),
+        ["cast.ron:2: \"nobody.rain\": \"nobody\" is not a character that speaks"]
+    );
+    // Narration may have variants too.
+    assert_eq!(cast_errors(&[(">.sun", "x", "Kokoro")]), [""; 0]);
+    // Every entry's problems, in key order.
+    assert_eq!(
+        cast_errors(&[("nobody", "x", "Kokoro"), ("guide", "", "Piper")]),
         [
             "cast.ron:3: \"guide\" has no voice",
             "cast.ron:2: \"nobody\" is not a character that speaks",
         ]
     );
-    assert!(cast_from_source("cast.ron", "(", |_| true).is_err());
-    assert_eq!(Cast::default().voices.len(), 0);
+    // Settings the tool rejects, and a cast that isn't RON.
+    let unknown = cast_errors(&[("guide", "x", "Espeak")]);
+    assert_eq!(unknown.len(), 1);
+    assert!(unknown[0].starts_with("cast.ron:2"), "{unknown:?}");
+    assert!(cast_from_source::<Tool, Weather>("cast.ron", "(", |_| true).is_err());
+}
+
+#[test]
+fn the_variants_are_the_default_and_the_split_ones() {
+    assert_eq!(
+        Weather::variants(),
+        [Weather::Any, Weather::Sun, Weather::Rain]
+    );
+    assert_eq!(<()>::variants(), [()]);
+}
+
+proptest::proptest! {
+    /// `voice_for` finds a voice only in the speaker's own entry or the one
+    /// for its variant, and prefers the variant's.
+    #[test]
+    fn voice_for_reads_only_the_speakers_entries(
+        keys in proptest::collection::btree_set(
+            (0..3_usize, 0..3_usize),
+            0..9,
+        ),
+        speaker in 0..3_usize,
+        variant in 0..3_usize,
+    ) {
+        let speakers = ["guide", "hero", "nobody"];
+        let all = Weather::variants();
+        let key = |s: usize, v: usize| format!("{}{}", speakers[s], all[v].suffix());
+        let voices = keys
+            .iter()
+            .map(|&(s, v)| (key(s, v), CastVoice::new(key(s, v), ())))
+            .collect();
+        let cast = Cast::new(voices);
+        let found = cast.voice_for(speakers[speaker], all[variant]);
+        let own = cast.voices.get(&key(speaker, variant));
+        let plain = cast.voices.get(speakers[speaker]);
+        proptest::prop_assert_eq!(found, own.or(plain));
+    }
 }
 
 #[test]

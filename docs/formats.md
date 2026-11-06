@@ -279,7 +279,8 @@ assets loaded, with the functions that were there before the registry:
 - a cinematic against the music and the game's shots:
   `cinematic::check`, with the file's stem (`AssetPath::stem`);
 - a voice manifest against the dialogue (`voice::from_source`), a cast
-  against who speaks (`voice::cast_from_source`), tips against the
+  against who speaks and the game's clip variants
+  (`voice::cast_from_source`, with the voice tool's own settings type), tips against the
   game's placeholders and faces (`tip::from_source`), a pattern map
   against its palette (`onebit::check`, [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)), a one-bit palette
   against the base one (`PaletteDef::from_ink_source`), a theme against
