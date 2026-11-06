@@ -55,6 +55,13 @@ unsafe extern "C" {
     fn pd_file_rename(from: *const c_char, to: *const c_char) -> c_int;
     fn pd_sample_load(path: *const c_char) -> *mut c_void;
     fn pd_sample_length(sample: *mut c_void) -> c_float;
+    fn pd_sample_from_data(
+        samples: *const i16,
+        count: c_int,
+        rate: u32,
+        stereo: c_int,
+    ) -> *mut c_void;
+    fn pd_sample_free(sample: *mut c_void);
     fn pd_sampleplayer_new() -> *mut c_void;
     fn pd_sampleplayer_play(
         player: *mut c_void,
@@ -285,6 +292,17 @@ impl Sdk for Device {
 
     fn sample_length(&self, sample: *mut c_void) -> f32 {
         unsafe { pd_sample_length(sample) }
+    }
+
+    fn sample_from_data(&self, samples: &[i16], rate: u32, stereo: bool) -> Option<*mut c_void> {
+        let count = c_int::try_from(samples.len()).ok()?;
+        // SAFETY: the shim copies the `count` samples before it returns.
+        non_null(unsafe { pd_sample_from_data(samples.as_ptr(), count, rate, c_int::from(stereo)) })
+    }
+
+    fn sample_free(&self, sample: *mut c_void) {
+        // SAFETY: a sample `sample_from_data` made, freed once, no player on it.
+        unsafe { pd_sample_free(sample) };
     }
 
     fn sample_player_new(&self) -> Option<*mut c_void> {

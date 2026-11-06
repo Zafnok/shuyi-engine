@@ -371,7 +371,8 @@ impl<G: GameData> Ctx<G> {
         let palette = Palette::new::<G::Colors>(game.palette_def())?;
         let keymap = Keymap::layout_picker(game.keymap_def());
         let settings = Settings::default();
-        let audio = AudioQueue::new(game.audio_config());
+        let mut audio = AudioQueue::new(game.audio_config());
+        audio.set_manifest(game.audio_manifest());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         let lang = game.lang().source_lang().code.clone();
         Ok(Self {

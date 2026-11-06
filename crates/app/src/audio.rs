@@ -82,6 +82,7 @@ pub(crate) mod device {
     #[cfg(not(target_arch = "wasm32"))]
     use quad_snd::PlaySoundParams;
     use quad_snd::{AudioContext, Playback};
+    use shuyi_ui::audio::SharedSamples;
 
     #[cfg(not(target_arch = "wasm32"))]
     use super::native_music::{Contexts, Music, Pending};
@@ -109,6 +110,28 @@ pub(crate) mod device {
         Music(Music),
     }
 
+    impl Macroquad {
+        /// A sound effect of a file's `bytes`, in the effects' context.
+        #[cfg(not(target_arch = "wasm32"))]
+        fn effect(&mut self, bytes: &[u8]) -> Result<Clip, String> {
+            use std::panic::{AssertUnwindSafe, catch_unwind};
+            let ctx = self.effects.get_or_insert_with(AudioContext::new);
+            // quad-snd `unwrap`s the decode, at once on native.
+            catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
+                .map(Clip::Effect)
+                .map_err(|_| "not a readable OGG or WAV file".to_owned())
+        }
+
+        /// A sound effect of a file's `bytes`, in the effects' context, at once:
+        /// the browser decodes it in the background, and a play before it has is
+        /// silence.
+        #[cfg(target_arch = "wasm32")]
+        fn effect(&mut self, bytes: &[u8]) -> Result<Clip, String> {
+            let ctx = self.effects.get_or_insert_with(AudioContext::new);
+            Ok(Clip::Effect(quad_snd::Sound::load(ctx, bytes)))
+        }
+    }
+
     impl shuyi_platform::audio::player::Backend for Macroquad {
         type Sound = Clip;
         #[cfg(target_arch = "wasm32")]
@@ -124,13 +147,7 @@ pub(crate) mod device {
             &mut self,
             bytes: &[u8],
         ) -> impl std::future::Future<Output = Result<Clip, String>> {
-            use std::panic::{AssertUnwindSafe, catch_unwind};
-            let ctx = self.effects.get_or_insert_with(AudioContext::new);
-            // quad-snd `unwrap`s the decode, at once on native.
-            let loaded = catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
-                .map(Clip::Effect)
-                .map_err(|_| "not a readable OGG or WAV file".to_owned());
-            std::future::ready(loaded)
+            std::future::ready(self.effect(bytes))
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -237,6 +254,19 @@ pub(crate) mod device {
         fn stop_playing(&mut self, playing: Option<Playback>) {
             if let (Some(playback), Some(ctx)) = (playing, &self.effects) {
                 playback.stop(ctx);
+            }
+        }
+
+        /// The samples as an in-memory WAV, which quad-snd decodes, and
+        /// resamples to its own rate, as it does a file.
+        fn add_sound(&mut self, samples: &SharedSamples) -> Result<Clip, String> {
+            self.effect(&samples.to_wav())
+        }
+
+        fn remove_sound(&mut self, sound: Clip) {
+            self.stop(&sound);
+            if let (Clip::Effect(s), Some(ctx)) = (&sound, &self.effects) {
+                s.delete(ctx);
             }
         }
 

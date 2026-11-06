@@ -32,7 +32,7 @@ use core::fmt;
 use core::future::Future;
 
 use shuyi_assets::audio::{AudioManifest, Files};
-use shuyi_ui::audio::{MusicCommand, SoundId};
+use shuyi_ui::audio::{MusicCommand, SharedSamples, SoundId};
 
 use self::voice::Voices;
 use super::{Audio, AudioFrame, SoundRequest};
@@ -128,6 +128,21 @@ pub trait Backend {
         Err(Unsupported)
     }
 
+    /// Readies `samples`, samples a game made at run time, as a sound to play
+    /// like one loaded from a file. By default it can't, and the cue plays
+    /// nothing, with a warning in the log.
+    fn add_sound(&mut self, samples: &SharedSamples) -> Result<Self::Sound, String> {
+        let _ = samples;
+        Err(Unsupported.to_string())
+    }
+
+    /// Lets go of `sound`, which [`add_sound`](Self::add_sound) made: it
+    /// stops wherever it plays and its memory is freed. By default it is
+    /// stopped and dropped.
+    fn remove_sound(&mut self, sound: Self::Sound) {
+        self.stop(&sound);
+    }
+
     /// The system suspends the game (`on`) or has resumed it: a backend whose output
     /// can stop stops it here, after the player has held what sounds.
     fn hold_output(&mut self, on: bool) {
@@ -209,6 +224,8 @@ pub struct Player<B: Backend> {
     manifest: AudioManifest,
     /// Every sound cue's decoded variants.
     sounds: BTreeMap<String, Vec<B::Sound>>,
+    /// The sounds the game added at run time, by cue.
+    added: BTreeMap<String, B::Sound>,
     /// Music tracks loading or loaded, by cue.
     tracks: BTreeMap<String, Track<B>>,
     /// Loads stopped before they finished: polled until they do, then
@@ -318,6 +335,7 @@ impl<B: Backend> Player<B> {
         Self {
             manifest,
             sounds,
+            added: BTreeMap::new(),
             tracks: BTreeMap::new(),
             abandoned: Vec::new(),
             music_dir,
@@ -511,7 +529,28 @@ impl<B: Backend> Player<B> {
             }
             SoundRequest::PauseSounds => self.pause_handled(backend, true),
             SoundRequest::ResumeSounds => self.pause_handled(backend, false),
+            SoundRequest::Add { cue, samples, .. } => self.add_sound(backend, cue, samples),
+            SoundRequest::Remove { cue } => {
+                if let Some(sound) = self.added.remove(cue) {
+                    backend.remove_sound(sound);
+                }
+            }
             _ => {}
+        }
+    }
+
+    /// Makes `samples` the sound cue `cue`, in place of one added before.
+    fn add_sound(&mut self, backend: &mut B, cue: &str, samples: &SharedSamples) {
+        if let Some(old) = self.added.remove(cue) {
+            backend.remove_sound(old);
+        }
+        match backend.add_sound(samples) {
+            Ok(sound) => {
+                self.added.insert(cue.to_owned(), sound);
+            }
+            Err(e) => self
+                .warnings
+                .push(format!("sound \"{cue}\": can't be added: {e}")),
         }
     }
 
@@ -525,16 +564,21 @@ impl<B: Backend> Player<B> {
         volume: f32,
         looped: bool,
     ) -> Option<B::Playing> {
-        let (Some(def), Some(variants)) = (self.manifest.sounds.get(cue), self.sounds.get(cue))
-        else {
-            self.warnings.push(format!("unknown sound cue \"{cue}\""));
-            return None;
+        let manifest = self.manifest.sounds.get(cue);
+        let (variants, own) = match (manifest, self.sounds.get(cue), self.added.get(cue)) {
+            (Some(def), Some(variants), _) => (variants.as_slice(), percent(def.volume)),
+            // A sound added plays at its own volume, full.
+            (None, _, Some(added)) => (core::slice::from_ref(added), 1.0),
+            _ => {
+                self.warnings.push(format!("unknown sound cue \"{cue}\""));
+                return None;
+            }
         };
         if variants.is_empty() {
             return None; // Its files failed to load (warned then).
         }
         let sound = &variants[self.rng.below(variants.len())];
-        let volume = percent(def.volume) * volume * self.sound_volume;
+        let volume = own * volume * self.sound_volume;
         Some(backend.play(sound, volume, looped))
     }
 
@@ -1015,6 +1059,12 @@ mod tests {
             self.log.borrow_mut().push(format!("stop #{playing}"));
         }
 
+        fn add_sound(&mut self, samples: &SharedSamples) -> Result<String, String> {
+            let sound = format!("pcm{}", samples.frames());
+            self.log.borrow_mut().push(format!("add {sound}"));
+            Ok(sound)
+        }
+
         fn warn(&mut self, line: &str) {
             self.log.borrow_mut().push(format!("warn {line}"));
         }
@@ -1237,6 +1287,58 @@ mod tests {
         audio.hear(&mut fake, &queue.take(), &[], 3.0);
         assert_eq!(fake.calls(), ["volume #1 0.50", "volume #2 0.50"]);
         assert!(queue.sound_is_live(below) && queue.sound_is_live(other));
+    }
+
+    /// `frames` frames of 8-bit silence, mono, at 11,025 a second.
+    fn added(frames: usize) -> shuyi_ui::audio::Samples {
+        let samples = shuyi_ui::audio::Samples::from_u8(11_025, 1, &vec![128; frames]);
+        samples.unwrap_or_else(|e| panic!("{e}"))
+    }
+
+    #[test]
+    fn an_added_sound_plays_as_a_cue_at_its_own_volume_until_it_is_removed() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        fake.calls();
+        let mut queue = shuyi_ui::audio::AudioQueue::<Take>::default();
+        assert_eq!(queue.add_sound("tone", added(1102)), Ok(()));
+        queue.play_sound_at("tone", 0.5);
+        let id = queue.start_sound("tone");
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            ["add pcm1102", "play pcm1102 0.50", "play pcm1102 1.00"]
+        );
+        // The player's sound volume scales it as any cue's.
+        audio.set_volumes(&mut fake, 1.0, 0.5);
+        fake.calls();
+        queue.play_sound("tone");
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(fake.calls(), ["play pcm1102 0.50"]);
+        // Added again, it replaces the one before; removed, it stops.
+        assert_eq!(queue.add_sound("tone", added(551)), Ok(()));
+        queue.play_sound("tone");
+        queue.remove_sound("tone");
+        queue.stop_sound(id, 0);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            [
+                "stop pcm1102",
+                "add pcm551",
+                "play pcm551 0.50",
+                "stop pcm551",
+                "stop #2"
+            ]
+        );
+        let found = audio.take_warnings();
+        assert!(found.is_empty(), "{found:?}");
+        // A request for it after its removal is a cue the player doesn't know.
+        audio.hear(&mut fake, &[sound("tone", 1.0)], &[], 0.0);
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
+        assert_eq!(audio.take_warnings(), ["unknown sound cue \"tone\""]);
     }
 
     #[test]
@@ -1799,6 +1901,26 @@ mod tests {
         assert_eq!(
             block_on(backend.load_sound_file("nope", &files())),
             Err("not in the asset bundle".to_owned())
+        );
+        let samples = SharedSamples::new(added(4));
+        assert_eq!(backend.add_sound(&samples), Err(Unsupported.to_string()));
+        backend.remove_sound(0);
+    }
+
+    #[test]
+    fn a_backend_that_cant_add_a_sound_warns_and_plays_nothing() {
+        let (mut backend, mut player) = required();
+        let mut queue = shuyi_ui::audio::AudioQueue::<Take>::default();
+        assert_eq!(queue.add_sound("tone", added(4)), Ok(()));
+        queue.play_sound("tone");
+        player.hear(&mut backend, &queue.take(), &[], 0.0);
+        assert_eq!(backend.plays, 0);
+        assert_eq!(
+            player.take_warnings(),
+            [
+                "sound \"tone\": can't be added: this backend doesn't have this feature",
+                "unknown sound cue \"tone\""
+            ]
         );
     }
 

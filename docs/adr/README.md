@@ -95,5 +95,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0080](0080-easing-and-tweens-integer-curves-in-shuyi-core-drawn-from-the-time-alone.md) | Easing and tweens: integer curves in `shuyi-core`, drawn from the time alone | Accepted; supersedes ADR-0004 §3's sentence on easing |
 | [0081](0081-the-bench-callgrind-dumps-at-each-frames-end-a-profile-of-its-own-and-scenarios-as-test-inputs.md) | The bench: Callgrind dumps at each frame's end, a profile of its own, and scenarios as test inputs | Accepted; extends ADR-0008 §6 |
 | [0082](0082-one-input-script-the-steps-and-their-frames-in-shuyi-platform-for-the-harness-the-contract-the-live-link-and-capture-plans.md) | One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans | Accepted; amends ADR-0047 §7 and ADR-0052 |
+| [0083](0083-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md) | Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method | Accepted; extends ADR-0063 |
 
 Template: [`0000-template.md`](0000-template.md).

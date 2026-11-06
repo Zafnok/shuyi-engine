@@ -81,7 +81,10 @@ How DOOM fits the engine's rules (ADR-0002, ADR-0003 §2):
   tall for every 5 (as DOOM looked on a CRT; a setting turns it off).
 - **Sound** through 2249: the port reads each `DS*` lump (DMX: a
   header, then 8-bit unsigned samples) when the game starts, adds it
-  as a cue named after the lump, and plays DOOM's `S_StartSound` calls
+  as a cue named after the lump (**from 2249 (done):**
+  `shuyi_ui::audio::Samples::from_u8` reads the samples, and
+  `ctx.audio.add_sound` refuses a lump past 60 seconds or 32 MiB in
+  all, in the log), and plays DOOM's `S_StartSound` calls
   as `PlaySound` with DOOM's volume, centered: DOOM's stereo
   separation needs a pan per play, which the engine's requests don't
   have (a follow-up in the port's repository if it's missed).

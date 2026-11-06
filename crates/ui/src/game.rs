@@ -26,6 +26,7 @@ use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
+use crate::log::{LogCategory, LogLevel};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
@@ -478,11 +479,17 @@ impl<G: GameData> Game<G> {
     fn collect_audio(&mut self, dt: f32) {
         self.ctx.audio.advance(dt);
         self.audio_out = self.ctx.audio.take();
+        for problem in self.ctx.audio.take_problems() {
+            self.ctx.log(LogLevel::Warn, LogCategory::Audio, problem);
+        }
         for request in &self.audio_out {
             let manifest = self.ctx.game.audio_manifest();
             debug_assert!(
                 is_known(manifest, request)
-                    || is_widget_cue(&self.ctx.game.audio_config(), request),
+                    || is_widget_cue(&self.ctx.game.audio_config(), request)
+                    || request
+                        .cue()
+                        .is_some_and(|cue| self.ctx.audio.knows_added(cue)),
                 "audio request for a cue not in the audio manifest: {request:?}"
             );
             debug_assert!(
@@ -802,7 +809,9 @@ fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
         | AudioRequest::StopMusicWith { .. }
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice
-        | AudioRequest::PreloadVoices { .. } => true,
+        | AudioRequest::PreloadVoices { .. }
+        | AudioRequest::AddSound { .. }
+        | AudioRequest::RemoveSound { .. } => true,
     }
 }
 

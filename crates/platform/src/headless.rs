@@ -11,12 +11,12 @@
 //! (`docs/platform-backends.md`).
 
 use crate::alloc_prelude::*;
-use alloc::collections::VecDeque;
+use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec;
 
 #[cfg(feature = "std")]
 use shuyi_assets::bundle::Layer;
-use shuyi_ui::audio::{MusicCommand, SoundId};
+use shuyi_ui::audio::{MusicCommand, SharedSamples, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
@@ -112,12 +112,28 @@ pub struct PlayingSound {
     pub paused: bool,
 }
 
+/// A play of a sound the game added at run time, as the [`Speaker`] heard
+/// it: the samples it played. Only the `Speaker` builds one (ADR-0039).
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct AddedPlay {
+    /// The sound cue.
+    pub cue: String,
+    /// The samples it played.
+    pub samples: SharedSamples,
+    /// The volume asked for, 0–1: a multiplier on the sound's own, full.
+    pub volume: f32,
+    /// The handle it was started with, if it was.
+    pub id: Option<SoundId>,
+}
+
 /// The headless backend's sound device: it records what the last frame
 /// played, works out which music "sounds" from the music commands and the
 /// clock, and keeps the sounds started with a handle until they stop (one
 /// that plays once too: it knows no lengths). Like `shuyi-app`, it mutes
 /// rather than pauses: while [`suspended`](Self::suspended) its music
-/// clock runs on.
+/// clock runs on. It keeps the sounds the game added at run time, and
+/// hears every play of them ([`added_plays`](Self::added_plays)).
 #[derive(Debug, Clone, Default)]
 pub struct Speaker {
     /// Seconds a track takes to load: it sounds that long after its
@@ -142,6 +158,10 @@ pub struct Speaker {
     /// What a session record says is sounding, while one plays: the
     /// answer to `music_playing` in place of the speaker's own.
     recorded: Option<RecordedMusic>,
+    /// The sounds added and not removed, by cue.
+    added: BTreeMap<String, SharedSamples>,
+    /// Every play of a sound added, in order.
+    added_plays: Vec<AddedPlay>,
 }
 
 /// What a session record says is sounding.
@@ -198,6 +218,29 @@ impl Speaker {
         self.suspended
     }
 
+    /// The sounds the game added at run time and hasn't removed, by cue.
+    pub fn added_sounds(&self) -> &BTreeMap<String, SharedSamples> {
+        &self.added
+    }
+
+    /// Every play and start of a sound the game added, in order, since the
+    /// speaker was made: what each played.
+    pub fn added_plays(&self) -> &[AddedPlay] {
+        &self.added_plays
+    }
+
+    /// Hears a play of `cue`, if it is a sound added.
+    fn hear_added(&mut self, cue: &str, volume: f32, id: Option<SoundId>) {
+        if let Some(samples) = self.added.get(cue) {
+            self.added_plays.push(AddedPlay {
+                cue: cue.to_owned(),
+                samples: samples.clone(),
+                volume,
+                id,
+            });
+        }
+    }
+
     /// One frame of a session record: the track if it changed, and its
     /// position.
     fn play_recorded(&mut self, track: Option<&str>, position: Option<f64>) {
@@ -213,7 +256,11 @@ impl Speaker {
     /// again), a stop takes it away.
     fn hear(&mut self, request: &SoundRequest) {
         match request {
-            SoundRequest::Start { id, cue, .. } => {
+            SoundRequest::Sound { cue, volume } => self.hear_added(cue, *volume, None),
+            SoundRequest::Start {
+                id, cue, volume, ..
+            } => {
+                self.hear_added(cue, *volume, Some(*id));
                 let sound = PlayingSound {
                     id: *id,
                     cue: cue.clone(),
@@ -227,6 +274,12 @@ impl Speaker {
             SoundRequest::Stop { id } => self.playing.retain(|p| p.id != *id),
             SoundRequest::PauseSounds => self.playing.iter_mut().for_each(|p| p.paused = true),
             SoundRequest::ResumeSounds => self.playing.iter_mut().for_each(|p| p.paused = false),
+            SoundRequest::Add { cue, samples, .. } => {
+                self.added.insert(cue.clone(), samples.clone());
+            }
+            SoundRequest::Remove { cue } if self.added.remove(cue).is_some() => {
+                self.playing.retain(|p| p.cue != *cue);
+            }
             _ => {}
         }
     }
