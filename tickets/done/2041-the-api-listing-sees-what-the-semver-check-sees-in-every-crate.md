@@ -66,7 +66,10 @@ None.
       remains.
 - [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [x] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass. Run locally: those this
+      change reaches (`xtask`'s fmt, clippy, tests and docs; the ticket
+      lint, links, docs map, typos, layers, modules, toolchain, machete,
+      skill sync, sound-parity give-up). The workspace-wide builds are CI's.
 
 ## Tests required
 
