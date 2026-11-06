@@ -11,10 +11,11 @@ use shuyi::assets::palette::PaletteDef;
 use shuyi::core::TurnRules;
 use shuyi::prelude::*;
 use shuyi::ui::audio::Samples;
+use shuyi::ui::debug::Gizmos;
 
 use crate::Data;
 use crate::assets::Plan;
-use crate::frame::paint_garden;
+use crate::frame::{paint_garden, plot_gizmos};
 use crate::rules::{Command, Garden};
 
 /// The seed of the garden's luck. A game takes one from its start
@@ -142,6 +143,11 @@ impl Screen<Data> for GardenScreen {
 
     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
         paint_garden(&self.view(ctx), ctx, buf);
+    }
+
+    /// What the debug view shows of it: where each plot is.
+    fn debug_draw(&self, ctx: &Ctx<Data>, out: &mut Gizmos) {
+        plot_gizmos(&self.view(ctx), ctx, out);
     }
 
     /// So a test finds it on the stack.

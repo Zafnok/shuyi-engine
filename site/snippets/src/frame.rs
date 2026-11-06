@@ -2,10 +2,12 @@
 //! (its view), and the skin that paints that view in glyphs. The rules
 //! and the view never name a color or a glyph; only the skin does. And a
 //! skin that paints a picture's pixels itself, a plasma moving with the
-//! steps.
+//! steps. And the garden's own channel of the debug view: where each plot
+//! is, drawn over the running game.
 
 use shuyi::core::{Ease, Family, TurnRules, Tween};
 use shuyi::prelude::*;
+use shuyi::ui::debug::gizmo::{Channel, Gizmo, GizmoRole, Gizmos};
 use shuyi::ui::frame::{Layer, Painted, PaintedId, PaintedSprite};
 
 use crate::Data;
@@ -126,6 +128,31 @@ pub fn paint_plasma(step: u32, (x, y): (i32, i32), buf: &mut GlyphBuffer) {
 }
 // ANCHOR_END: plasma
 
+// ANCHOR: gizmos
+/// The garden's channel of the debug view.
+pub const PLOTS: Channel = Channel::new("plots", "Garden plots");
+
+/// Hands in a box round each plot's cell, and a cross on the one the
+/// player stands at, in console pixels: where the skin put them. The
+/// garden screen's `debug_draw` calls it with its view.
+pub fn plot_gizmos(view: &GardenView, ctx: &Ctx<Data>, out: &mut Gizmos) {
+    if !out.channel_on(PLOTS) {
+        return;
+    }
+    let (cell_w, cell_h) = (i32::from(ctx.console.cell_w), i32::from(ctx.console.cell_h));
+    let count = i32::try_from(view.plots.len()).unwrap_or(0);
+    let left = (i32::from(ctx.console.cols) - count * 4) / 2;
+    for (i, x) in (0..view.plots.len()).zip((left + 1..).step_by(4)) {
+        let rect = Rect::new(x * cell_w, 10 * cell_h, cell_w, cell_h);
+        out.push(PLOTS, GizmoRole::Bounds, Gizmo::Rect { rect });
+        if i == view.at {
+            let at = (rect.x + cell_w / 2, rect.y + cell_h / 2);
+            out.push(PLOTS, GizmoRole::Note, Gizmo::Cross { at, size: 3 });
+        }
+    }
+}
+// ANCHOR_END: gizmos
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,6 +204,67 @@ mod tests {
         assert_eq!(landed, 1);
     }
     // ANCHOR_END: test_tween
+
+    // ANCHOR: test_gizmos
+    #[test]
+    fn the_plots_channel_boxes_each_plot_and_marks_the_players() {
+        let mut h = game().harness();
+        h.keys("Enter Right");
+        let garden = h.screen::<GardenScreen>().unwrap();
+        let view = garden.view(h.ctx());
+        // Off: nothing is built, but the channel is offered.
+        let mut off = Gizmos::new();
+        plot_gizmos(&view, h.ctx(), &mut off);
+        assert_eq!(off.len(), 0);
+        assert_eq!(off.offered(), [PLOTS]);
+        // On: six boxes, and a cross after the second.
+        let mut on = Gizmos::with_on(["plots"]);
+        plot_gizmos(&view, h.ctx(), &mut on);
+        let roles: Vec<GizmoRole> = on.drawn().iter().map(|d| d.role).collect();
+        assert_eq!(roles.len(), 7);
+        assert_eq!(roles[2], GizmoRole::Note);
+    }
+    // ANCHOR_END: test_gizmos
+
+    #[test]
+    fn the_plots_gizmos_sit_on_the_plots_the_skin_drew() {
+        let mut h = game().harness();
+        h.keys("Enter Right");
+        // The garden screen hands them in once the channel is on.
+        assert_eq!(h.game().buffer().gizmos().len(), 0);
+        h.ctx_mut().debug_view.set("plots", true);
+        h.wait(0.1);
+        let shapes: Vec<Gizmo> = {
+            let garden = h.screen::<GardenScreen>().unwrap();
+            let mut on = Gizmos::with_on(["plots"]);
+            plot_gizmos(&garden.view(h.ctx()), h.ctx(), &mut on);
+            on.drawn().iter().map(|d| d.gizmo.clone()).collect()
+        };
+        assert_eq!(h.game().buffer().gizmos().len(), shapes.len());
+        // Six plots four cells apart from column 13, on row 10, each cell
+        // 8 × 16 pixels; the cross in the middle of the second.
+        let boxed = |column: i32| Gizmo::Rect {
+            rect: Rect::new(column * 8, 160, 8, 16),
+        };
+        let cross = Gizmo::Cross {
+            at: (140, 168),
+            size: 3,
+        };
+        let want = [
+            boxed(13),
+            boxed(17),
+            cross,
+            boxed(21),
+            boxed(25),
+            boxed(29),
+            boxed(33),
+        ];
+        assert_eq!(shapes, want);
+        // The skin's plots are in those cells.
+        let frame = h.snapshot();
+        let row: Vec<char> = frame.lines().nth(10).unwrap().chars().collect();
+        assert_eq!((row[13], row[33]), ('·', '·'));
+    }
 
     // ANCHOR: test_plasma
     #[test]

@@ -266,7 +266,7 @@ None.
   polygon into `Curve::lines(points, true)`, tested on its fixture made
   in Tiled. If not, nothing to do: 1124 adds it (its clause with this
   ticket says so).
-- **The debug view, if 2315 is done:**
+- **The debug view (from 2315, done; ADR-0085):**
   `shuyi_ui::debug::curve::gizmos(&Curve, Option<&CurveFollower>,
   to_px, &mut Gizmos)` pushes, on a channel `curve`:
   - a `Line` per baked piece (`GizmoRole::Path`);
@@ -274,8 +274,7 @@ None.
   - a `Cross` where the follower is (`Note`).
 
   If 2318 is done, it pushes through `Gizmos::push_world`. If not, the
-  caller gives an offset, as 2317 does. If 2315 isn't done, write a
-  follow-up ticket (parked with real time) for the helper.
+  caller gives an offset, as 2317 does.
 - **The example:** in 1119's tick example (a dot moved by input; the
   dot's room if 1122 is done), a second dot patrols a `CatmullRom`
   curve with `PingPong`. The curve comes from a `.curve.ron` fixture
@@ -337,8 +336,8 @@ with real time) and say so in the Completion notes.
    fixtures, the random-bytes test, the pack pin, the importer's
    summary and the rows in `docs/formats.md`. Add 2116's golden row,
    and do the 2515 part if it is done.
-6. Add the example, the debug helper if 2315 is done, and the 1124
-   function if 1124 is done.
+6. Add the example, the debug helper, and the 1124 function if 1124 is
+   done.
 7. Change 2106's, 2701's and 2515's texts, or write the
    follow-up tickets, as the either-order clauses above say.
 8. Run the gates, including the `no_std` builds.
@@ -397,7 +396,7 @@ with real time) and say so in the Completion notes.
   table.
 - Snapshot / integration: the patrol's places; the `sample` table on
   native and `wasm32`; the pack's pinned binary form; the importer's
-  summary; the debug helper's gizmo list, if 2315 is done.
+  summary; the debug helper's gizmo list.
 
 ## Completion notes
 

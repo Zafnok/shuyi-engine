@@ -26,6 +26,7 @@ use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{ClipVariant, Playable};
 
 use crate::audio::{AudioConfig, AudioQueue, MusicClock, pick_from_pool};
+use crate::debug::gizmo::DebugView;
 use crate::frame::color::{ColorSet, EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
@@ -46,6 +47,11 @@ use crate::system_keyboard::SystemKeyboard;
 /// [`Storage`] key under which the player's key and controller-button
 /// bindings are saved ([`PlayerKeys::to_ron`]).
 pub const KEYBINDINGS_KEY: &str = "keybindings";
+
+/// Key in the computer's [`Storage`] (not a profile's) under which the
+/// debug view's channels that are on are saved ([`DebugView::to_ron`]),
+/// only with debug tools on.
+pub const DEBUG_VIEW_KEY: &str = "debug_view";
 
 /// The text key of what help text shows for an action with no key.
 pub const NOT_MAPPED_TEXT: &str = "keys.not_mapped";
@@ -297,6 +303,13 @@ pub struct Ctx<G: GameData> {
     pub debug_tools: bool,
     /// The platform's session record, as the debug tools see it.
     session: SessionState,
+    /// Which channels of the debug view are on (none at first), and which
+    /// the running screens have offered (ADR-0085): read from the
+    /// computer's storage by [`with_storage`](Self::with_storage) with
+    /// debug tools on. Turn one on with
+    /// [`set_debug_channel`](Self::set_debug_channel), which saves it; a
+    /// change made here directly isn't saved.
+    pub debug_view: DebugView,
     /// Whether screens show their idle motion. Off here, so a screen left
     /// alone in a test looks the same a moment later; the platform turns
     /// it on.
@@ -394,6 +407,7 @@ impl<G: GameData> Ctx<G> {
             pacing: None,
             debug_tools: crate::DEBUG_TOOLS,
             session: SessionState::default(),
+            debug_view: DebugView::default(),
             idle_motion: IdleMotion::Off,
             audio,
             music_clock: None,
@@ -1094,7 +1108,41 @@ impl<G: GameData> Ctx<G> {
         self.profiles = profiles;
         self.load_player_keys();
         self.load_settings();
+        if self.debug_tools {
+            self.load_debug_view();
+        }
         self
+    }
+
+    /// Reads the debug view's channels that are on from the computer's
+    /// storage; a value that can't be read leaves them off, with a
+    /// warning.
+    fn load_debug_view(&mut self) {
+        let read = match self.storage.computer().read(DEBUG_VIEW_KEY) {
+            Ok(Some(text)) => self.debug_view.read_ron(&text),
+            Ok(None) => Ok(()),
+            // check-text: not player text (a warning for the log)
+            Err(e) => Err(format!("can't be read: {e}")),
+        };
+        if let Err(why) = read {
+            let (level, category) = (LogLevel::Warn, LogCategory::Storage);
+            self.log(level, category, format!("{DEBUG_VIEW_KEY}: {why}"));
+        }
+    }
+
+    /// Turns the debug view's channel `id` on or off (ADR-0085) and, with
+    /// debug tools on, saves the channels on under [`DEBUG_VIEW_KEY`] in
+    /// the computer's storage, for the next launch. The change applies
+    /// even if saving fails. With debug tools off nothing is saved (and
+    /// nothing is drawn).
+    pub fn set_debug_channel(&mut self, id: &str, on: bool) -> Result<(), StorageError> {
+        self.debug_view.set(id, on);
+        if !self.debug_tools {
+            return Ok(());
+        }
+        self.storage
+            .computer_mut()
+            .write(DEBUG_VIEW_KEY, &self.debug_view.to_ron())
     }
 
     /// The player profiles and the one in use.

@@ -204,13 +204,15 @@ not parked.
     `Pen::Paint(look.shades.shape(color))`, as they fill a rectangle.
     A colour whose shade `flips` draws in its pattern: only a
     rectangle flips.
-- **Either order with 2315:** if 2315 is done, `frame::shape` already
-  holds the width-1 line and circle-outline rules (2315 wrote them as
-  this scope says, for its gizmos). Build the rest of the module around
-  them, and add what this scope asks that they lack (such as starting
-  a long line's walk inside `clip`), with 2315's snapshots and pictures
-  unchanged. If not, write the rules here; 2315's gizmos then draw
-  through them (its clause on this ticket says so).
+- **From 2315 (done; ADR-0085 §8):** `frame::shape` already holds the
+  width-1 line, `line_runs` (Bresenham from `dx + dy`, in closed form,
+  taking only the steps inside `clip`, property-tested against the
+  walk), and the circle outline, `circle_outline_runs` (the midpoint
+  circle from `1 - r`), each calling `f(y, x0, x1)` for its runs inside
+  a clip; `GizmoItem::for_each_run` (`frame/gizmo.rs`) draws the debug
+  view's gizmos through them. Build the rest of the module around them,
+  and add what this scope asks that they lack, with 2315's snapshots and
+  pictures (the render card's gizmos among them) unchanged.
 - **1-bit (3006 is done, ADR-0026):** a shape's colour goes through the
   one-bit renderer's `Shades` (the game's inks, or a `PatternMap`) as a
   rectangle's does, in `shuyi_ui::frame::onebit`'s fast renderer and its
@@ -278,7 +280,8 @@ not parked.
    `frame_png.rs` (`Painter::draw_items`, `Image::fill`), `onebit.rs`
    and `onebit/reference.rs` (`draw_items`, `Place::screen`,
    `Target::fill`), and `crates/app/src/render.rs`
-   (`Renderer::draw_items`). If 2315 is done, read its gizmo drawing.
+   (`Renderer::draw_items`), and 2315's gizmo drawing in each
+   (`Item::Gizmo`, `GizmoItem::for_each_run`).
 2. Write `frame/shape.rs`: the types, the constructors, `bounds`, and
    `for_each_run` for each kind. In `frame/shape/tests.rs`, write a
    plain per-pixel version of each rule (the full Bresenham walk, the

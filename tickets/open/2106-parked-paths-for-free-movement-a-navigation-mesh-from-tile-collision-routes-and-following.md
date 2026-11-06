@@ -88,13 +88,12 @@ None.
     distance, and nothing stops) doesn't do that.
 - **Changes to the map:** rebuild the mesh. Document the cost
   (measured on a 256 × 256 map in a test), and nothing incremental.
-- **The debug view:** if 2315 is done, a `nav` channel helper,
-  `shuyi_ui::debug::nav::gizmos(&NavMesh, Option<&Path>, to_px,
+- **The debug view (from 2315, done; ADR-0085):** a `nav` channel
+  helper, `shuyi_ui::debug::nav::gizmos(&NavMesh, Option<&Path>, to_px,
   &mut Gizmos)`: rectangles (`Bounds`), portals and the path (`Path`).
   If 2317 is done, use its `to_px` and `debug::collide::px`; if not,
   take the caller's offset, as 2317 does, and 2317 moves the helper
-  onto `px`. If 2315 isn't done, write a follow-up ticket for the
-  helper, blocked by 2315.
+  onto `px`.
 - **The example:** in 1119's tick example (the dot's room), a second
   dot follows the first round a wall.
 
@@ -119,8 +118,7 @@ None.
 2. Write the rectangle merge and portals, with tests on hand-drawn maps.
 3. Write `route` with clearance and the funnel.
 4. Write `Path::follow`.
-5. Add the debug helper if 2315 is done, or write its follow-up ticket
-   if not, and add the example.
+5. Add the debug helper and the example.
 6. Run the gates.
 
 ## Acceptance criteria
@@ -142,8 +140,8 @@ None.
   start inside a wall; a goal in a closed room.
 - Property: cover and no overlap; clearance; determinism; `follow`
   never overshoots the last point.
-- Snapshot / integration: the example, and the `nav` channel's snapshot
-  if 2315 is done.
+- Snapshot / integration: the example, and the `nav` channel's
+  snapshot.
 
 ## Completion notes
 

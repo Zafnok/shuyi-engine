@@ -19,6 +19,7 @@ use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
 use crate::audio::{AudioConfig, AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
+use crate::debug;
 use crate::frame::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 use crate::frame_cap::{FrameCap, Pacing};
@@ -660,7 +661,8 @@ impl<G: GameData> Game<G> {
     }
 
     /// Clears the buffer and draws the stack into it, then the modules
-    /// over it: after a change made from outside the frame loop (a test
+    /// over it, then, with debug tools on, the debug view's gizmos over
+    /// everything: after a change made from outside the frame loop (a test
     /// changing the context).
     pub fn redraw(&mut self) {
         let blank = self.ctx.game.blank_cell(&self.ctx.palette);
@@ -672,6 +674,28 @@ impl<G: GameData> Game<G> {
             }
         }
         self.draw_crank_hint();
+        self.draw_gizmos();
+    }
+
+    /// With debug tools on, asks the screens drawn for the debug view's
+    /// gizmos ([`Screen::debug_draw`], ADR-0085), keeps the channels they
+    /// offer for the debug menu, and paints those of the channels on over
+    /// everything. It asks with no channel on too: that is how a channel
+    /// is offered. With debug tools off, nothing is asked.
+    fn draw_gizmos(&mut self) {
+        if !self.ctx.debug_tools {
+            return;
+        }
+        let mut gizmos = self
+            .ctx
+            .debug_view
+            .gizmos()
+            .within(self.buffer.pixel_bounds());
+        self.stack.debug_draw(&self.ctx, &mut gizmos);
+        self.ctx.debug_view.offer(gizmos.offered());
+        if !gizmos.is_empty() {
+            debug::glyph::paint_gizmos(&self.ctx.palette, &gizmos, &mut self.buffer);
+        }
     }
 
     /// The hint to unfold the crank, on the last row, while it is docked

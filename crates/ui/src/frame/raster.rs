@@ -11,7 +11,9 @@
 //! items in order (a painted picture, ADR-0078, from the frame's table,
 //! as a sprite of the same pixels), glyphs tinted with their fg (a wide one over its two
 //! cells, a wide one without its continuation as the fallback), `Over`
-//! items in order;
+//! items in order (a gizmo, ADR-0085, as the runs of whole console pixels
+//! [`GizmoItem::for_each_run`](crate::frame::GizmoItem::for_each_run)
+//! gives);
 //! and before all that, a backdrop's scene in its window. Textures are
 //! sampled at the nearest pixel and blended over what is beneath with
 //! their alpha, as the GPU does. [`one_bit_picture`] paints a one-bit
@@ -32,7 +34,7 @@ use shuyi_assets::image::ImageId;
 use crate::prelude::*;
 
 use crate::frame::color::Rgb;
-use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Rect, Sprite};
 use crate::frame::onebit::{self, Frame};
 use crate::frame::painted::{Painted, PaintedSprite, PaintedTable};
 
@@ -320,6 +322,10 @@ impl Painter {
                 Item::Rect(rect) => out.fill(to_px(rect.rect), rect.color),
                 Item::Sprite(sprite) => self.draw_sprite(out, sprite, to_px(sprite.clip)),
                 Item::Painted(painted) => draw_painted(out, painted, pictures, to_px(painted.clip)),
+                // In whole console pixels, by `frame::shape`'s rules.
+                Item::Gizmo(gizmo) => gizmo.for_each_run(|y, x0, x1| {
+                    out.fill(to_px(Rect::new(x0, y, x1 - x0, 1)), gizmo.color);
+                }),
             }
         }
     }

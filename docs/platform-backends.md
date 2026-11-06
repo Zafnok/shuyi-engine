@@ -335,7 +335,7 @@ handled sounds, fades and the music clock are
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
   as recorded). The first `Unsupported` of each is one warning;
-- **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0085):
+- **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0086):
   `add_sound`, which readies the samples as a sound, says the backend can't by
   default, and the cue then plays nothing, with a warning; `remove_sound` stops
   one and drops it by default, and a device that frees it says so there. Every

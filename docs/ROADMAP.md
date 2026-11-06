@@ -554,12 +554,13 @@ collision bounds and skeletons in real time, in debug mode. The debug
 view draws gizmos (outlines, lines, crosses, labels) over the running
 game, by channel, from the debug menu. A gizmo is plain data, built
 read-only, so a replay with the view on has the same hash as one with
-it off. These two come after the MVP and need nothing parked:
+it off. These come after the MVP and need nothing parked:
 
 | Ticket | What |
 | ------ | ---- |
 | 2315 | Gizmos over the frame, channels on the debug menu, `frame-png --debug`, and the grid kit's layout as the first channel |
 | 2316 | In real time: pause, step one frame, slow motion, and a readout of the top screen |
+| 3209 | Hello, Grid and the grid template's stage offer the `grid` channel |
 
 The channels for collision (2317), level layouts (2318), skeletons
 (2319) and 3D (2320) follow the parked work they draw, and are parked

@@ -43,7 +43,11 @@ many degrees in one frame, backwards negative; `frame-png`, `run` and
 `scene` only, the live link refuses it). Every operation that plays steps
 reads the same ones, and in JSON they are `{"keys": "Enter Up"}`,
 `{"pad": "South"}`, `{"act": "Confirm"}`, `{"wait": 0.5}` and
-`{"crank": -30}`. Key and button names are the Harness's test-script
+`{"crank": -30}`. One more step plays no frame: `{"debug": "grid"}` turns
+debug tools on, and the debug view's channels of those comma-separated
+ids (`"all"`: every channel), from there on, and draws the frame again
+(headless only, as the crank; ADR-0085). `frame-png --debug grid` puts it
+first, so the picture shows the channels a person would see. Key and button names are the Harness's test-script
 names. An action the game has no key or button for is refused before
 anything plays (`SH0001`), and the error lists the game's actions; one
 wait is at most 33.3 seconds headless (the Harness's 2000 frames) and
@@ -63,7 +67,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 36,
+  "contract": 37,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },

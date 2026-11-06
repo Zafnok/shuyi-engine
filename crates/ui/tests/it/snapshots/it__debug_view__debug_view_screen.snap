@@ -1,0 +1,51 @@
+---
+source: crates/ui/tests/it/debug_view.rs
+expression: h.snapshot()
+---
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+               Debug view               
+                                        
+         ┌───────────────────┐          
+         │ Grid layout   off │          
+         └───────────────────┘          
+                                        
+                                        
+                                        
+                                        
+                                        
+    arrows move · f on/off · d back     
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaabbbbbbbbbbaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaacccccccccccccccccccccaaaaaaaaaa
+aaaaaaaaacdddddddddddddddddddcaaaaaaaaaa
+aaaaaaaaacccccccccccccccccccccaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeaaaaa
+--- legend ---
+a = fg:text bg:background
+b = fg:highlight bg:background
+c = fg:border bg:panel
+d = fg:panel bg:focus
+e = fg:text_dim bg:background

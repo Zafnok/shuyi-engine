@@ -13,7 +13,7 @@ Zo-Z#oZ|#Z-|Zo-Z#oZ|#Z-|Zo-Z#oZ|
                       -  o  #   
                      -  o  #  | 
                        o  #  |  
-o o o o Z 田#田田o田| 田         
+o o o o Z 田#田田o田| 田 #o   -| 
 --- colours ---
 abcdefghijklmnopbcdqfghrjklsnopt
 uvwxyuvwxyuvwxyuvwxyuvwxyuvwxyuv
@@ -26,7 +26,7 @@ AzAzAzAzAzAzAzAzAzAzuCDEBCDEBCDu
 zAzAzAzAzAzAzAzAzAzAuDEBCDEpCDEu
 AzAzAzAzAzAzAzAzAzAzuEBCDEBCDEBu
 zAzAzAzAzAzAzAzAzAzAuBCDEBCDEBCu
-EEEEEEEEDuvvvvvvvvddduwuuuuuuuuu
+EEEEEEEEDuvvvvvvvvddduwuwwuuuwwu
 --- legend ---
 a = fg:bright bg:#283c78
 b = fg:#fac83c bg:#283c78
@@ -99,6 +99,23 @@ over  painted 92,140 16x16  card/masked 8x8 one-bit r2 c20cd8efcf7608a3
 under painted 114,140 16x16  card/one-bit 16x8 one-bit r1 12fcaa45906de8f8 src=0,0 8x8
 over  painted 136,140 16x16  card/painted-missing missing src=0,0 8x8
 under painted 4,158 16x16  card/painted-missing missing src=0,0 8x8
+over  gizmo card path line 208,96 238,104
+over  gizmo card path line 208,96 216,126
+over  gizmo card path line 208,96 200,126
+over  gizmo card path line 208,96 178,104
+over  gizmo card path line 208,96 178,88
+over  gizmo card path line 208,96 200,66
+over  gizmo card path line 208,96 216,66
+over  gizmo card path line 208,96 238,88
+over  gizmo card bounds rect 170,36 24x14
+over  gizmo card trigger circle 226,150 10
+over  gizmo card bone circle 250,20 3
+over  gizmo card bone circle 164,186 0
+over  gizmo card note cross 186,150 4
+over  gizmo card note cross 200,150 1
+over  gizmo card solid rect 226,40 18x10 clip=230,40 14x4
+over  gizmo card note label 192,180 "#o"
+over  gizmo card note label 232,180 "-|"
 --- backdrop: clip 21,2 10x9  origin 0.5,0.5  zoom 2 ---
 # -   
 - # - 

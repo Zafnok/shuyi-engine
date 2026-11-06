@@ -234,6 +234,37 @@ fn parses_steps_in_order_and_the_games_options() {
 }
 
 #[test]
+fn the_debug_channels_are_on_from_the_first_step() {
+    let parsed = parse_args(
+        &args(&[
+            "a.png",
+            "--keys",
+            "f",
+            "--debug",
+            "grid",
+            "--debug",
+            "boxes,net",
+        ]),
+        &GAME,
+    )
+    .unwrap();
+    assert_eq!(
+        parsed.script.steps,
+        [Step::Debug("grid,boxes,net".into()), Step::Keys("f".into())]
+    );
+    let all = parse_args(&args(&["a.png", "--debug", "all"]), &GAME).unwrap();
+    assert_eq!(all.script.steps, [Step::Debug("all".into())]);
+    for bad in [
+        &["a.png", "--debug"][..],
+        &["a.png", "--debug", "Grid"],
+        &["a.png", "--debug", "a,,b"],
+    ] {
+        assert!(parse_args(&args(bad), &GAME).is_err(), "{bad:?}");
+    }
+    assert!(usage("tools", &GAME, "").contains("  --debug CHANNELS     the debug view's channels"));
+}
+
+#[test]
 fn rejects_bad_arguments() {
     for bad in [
         &[][..],

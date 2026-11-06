@@ -293,7 +293,7 @@ None.
   a game asks.
 - The `net` channel drawn in the debug view (round trip, loss, bytes
   per channel, the lockstep turn, hash agreement). It comes with the
-  networking module, over 2315 (edit requested in 1140 and 2315).
+  networking module, over 2315's debug view (1140 adds it).
 - Several windows at once, or a local relay for them. 1145's
   in-process test covers loopback; windows on a running game are the
   editor's (2506) and `shuyi attach`'s (2521).
