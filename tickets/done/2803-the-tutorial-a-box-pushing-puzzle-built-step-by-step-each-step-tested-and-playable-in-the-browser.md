@@ -169,6 +169,13 @@ revision, with one evidence row per step; this note does not claim those
 checks have run. The implementation and its merged completion date stay
 as recorded.
 
+**Evidence, 2026-11-07 (2817):** all ten steps were then played in a
+browser from their pages, at `8afc8b76` and, for steps 08–10 after 2576
+fixed their Key bindings help line, at `f6af4b51`. The rows are in
+[2817's completion notes](2817-play-every-tutorial-step-in-the-browser-and-record-the-evidence.md#completion-notes).
+The note above stays as written: at this ticket's merge, only step 10
+had been played.
+
 **Deviations:**
 
 - **An engine fix this ticket needed.** A screen on the short path that

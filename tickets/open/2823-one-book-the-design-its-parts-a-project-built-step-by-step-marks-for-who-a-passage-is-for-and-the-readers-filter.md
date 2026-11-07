@@ -52,8 +52,9 @@ What there is today (`site/README.md`, *What is where*):
   people).
 - **Released versions keep a frozen copy** of the site, which `llms.txt`
   lists (`llms.rs`, *Released versions*).
-- **Open tickets on these pages:** 2814 (the playground page), 2817
-  (playing each step from its page, in `blocked_by`), 2820 (the steps in the playground),
+- **Done:** 2817 played each step from its page; its evidence rows are
+  in its completion notes.
+- **Open tickets on these pages:** 2814 (the playground page), 2820 (the steps in the playground),
   2822 (`tutorial-tries` on Windows) and 2004 (the guides the book
   publishes).
 
