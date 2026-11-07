@@ -23,6 +23,9 @@
 //!     "hero.light": (voice: "hero_light", settings: (reader: Piper)),
 //! })
 //! ```
+//!
+//! A voice tool plans its work with [`plan`]: which clips to make, record
+//! again or remove, and each voice's recording script.
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -34,6 +37,8 @@ use serde::de::DeserializeOwned;
 use crate::dialogue::{DialogueTable, LineId, NARRATION_SPEAKER, Scene};
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
+
+pub mod plan;
 
 /// Which recording of a line a clip is: the game's type, with its default
 /// for a line's only clip.

@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["2250"]
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2251 — Plan a language's voice clips
@@ -90,15 +90,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Each `Why`, a recorded clip to record again, a removed clip (line
+- [x] Each `Why`, a recorded clip to record again, a removed clip (line
       gone; variants changed), an uncast line and a reply line with no
       clip each have a test.
-- [ ] A clip in a scene that isn't voiced is never removed while its line
+- [x] A clip in a scene that isn't voiced is never removed while its line
       exists.
-- [ ] `recording_script` lists one voice's clips in script order, with the
+- [x] `recording_script` lists one voice's clips in script order, with the
       line before each.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -109,5 +109,54 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_assets::voice::plan` (`crates/assets/src/voice/plan.rs`):
+  `plan(dialogue, voiced scenes, cast, clips, variants, spoken,
+  voice_changed) -> VoicePlan<V>`, with `WantedClip<V>` (line, variant,
+  speaker, cast key, words, direction, the line before it; `file()`),
+  `Why`, `Uncast<V>` and `recording_script(&plan, key)`. All
+  `#[non_exhaustive]` (ADR-0039); `VoicePlan` is `Default`. Pure: no
+  file, no clock; it builds without `std`.
+- The logic is the game's `crates/xtask/src/voice/plan.rs` (0721) without
+  its names: a clip is wanted per variant the `variants` hook names whose
+  words the `spoken` hook gives; the cast key is the speaker and the
+  variant's suffix if the cast has it, else the speaker (as
+  `Cast::voice_for` picks). A wanted clip with no manifest clip is
+  `Missing`; else old words (`Words`) or direction (`Direction`) send a
+  generated clip to `make` and a recorded one to `record`. A generated
+  clip whose `voice` is not the cast's is `Recast`, and one whose voice
+  the tool's hook says changed is `Voice(reason)`. A clip is removed when
+  its line is gone, or its line is in a voiced scene and doesn't need its
+  variant; a clip of an unvoiced scene stays while its line exists, and
+  an uncast line's clips stay.
+- The line before a clip is shown in the first variant that has words
+  (the default, then the split ones), else as written.
+- Tests: `crates/assets/src/voice/plan/tests.rs`, a two-scene script (one
+  voiced, with a reply and an uncast speaker), a cast with the
+  speaker-and-variant key `guide.rain`, and the voice tests' `Weather`
+  variant (now `pub(super)` in `voice/tests.rs` so both test modules use
+  it); a property test that a manifest made as planned leaves nothing to
+  make again, record or remove.
+
+Deviations:
+
+- `Why` has a variant of its own for the engine's comparison of the
+  clip's voice with the cast's (`Recast`), beside the tool's `Voice`
+  with its reason, so a report can tell them apart.
+- Words and direction are compared with the wanted clip (the same test as
+  `VoiceManifest::is_stale` and `needs_remake`) rather than by calling
+  those, which rebuild the line table for each clip.
+- `recording_script` takes a cast key, as the ticket says; the game's
+  `script --character` also matched a speaker whose clips are under
+  variant keys (`lead` for `lead.m` and `lead.f`). A tool that wants
+  that filters `plan.wanted` by `speaker` itself.
+- The game's `Wanted::sent` (the words respelled for the reader) is the
+  tool's: its `voice_changed` hook respells the clip's `spoken`, which is
+  the wanted words by the time it is asked.
+
+Game: `game#1242` moves the game's voice tool onto this; the pin bump
+needs no code.
+
+No break: additive only.
+
+Book: chapter 5 (Assets and formats) gains *Voices*: the manifest, the
+cast and how a voice tool plans with `voice::plan`.

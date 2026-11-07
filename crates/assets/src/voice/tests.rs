@@ -8,7 +8,7 @@ use crate::dialogue::{NoDirective, Present, parse_dlg};
 
 /// The tests' clip variants: the line's only clip, or one per weather.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Deserialize)]
-enum Weather {
+pub(super) enum Weather {
     #[default]
     Any,
     Sun,
