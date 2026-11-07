@@ -18,7 +18,7 @@ use shuyi_ui::perf::HeapSnapshot;
 use super::server::{Launch, Link};
 use super::{
     EventsOutput, FramePngInput, FramePngOutput, KEPT_SNAPSHOTS, NoInput, PerfInput, PerfOutput,
-    StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
+    SceneInput, StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
 use crate::contract::attach::Failed;
@@ -259,9 +259,8 @@ impl<'a> Host<'a> {
                 answered(op, input, |i: StepInput| step(game, &i))
             }),
             Op::Scene => self.with_game(op, |game| {
-                answered(op, input, |NoInput {}| {
-                    let (output, limits) = run::scene_output(game);
-                    Answer::new(op, output.scene.is_some(), output, limits)
+                answered(op, input, |i: SceneInput| {
+                    run::scene_answer(op, game, i.ask(), None, false)
                 })
             }),
             Op::Events => self.with_game(op, |game| {

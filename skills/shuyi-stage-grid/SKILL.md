@@ -65,10 +65,12 @@ so tests, bots and replays all rest on the rules alone.
    the events and the state, never from the screen's own sums.
 
 4. **Look at it.** `scene` answers with the map as text and the stage's
-   data; `frame-png` draws it:
+   data; `--path` reads one value of the data by JSON Pointer, `--shape`
+   its JSON Schema; `frame-png` draws it:
 
    ```bash
    cargo shuyi scene --script "Enter Right" --json
+   cargo shuyi scene --script "Enter Right" --path /hero/x
    cargo shuyi frame-png stage.png --keys "Enter Right"
    ```
 
@@ -178,10 +180,21 @@ unless they test a look.
 ## The stage's scene in the tools
 
 The stage's `Tools` (`top_down_grid/tools.rs`) give the contract its
-scene: `Scene::new(screen, "grid map", scene.to_text(&Terrain))`, with
-`data` set to the state as JSON (the turn, the pieces, the outcome).
-`scene --json` answers with it at `/result/scene`, and `run --json` too.
-Add a field there when a test or an agent needs to read it.
+scene: `Scene::new(screen, "grid map", scene.to_text(&Terrain))
+.with_data(&data)`, where `data` is `StageData`: the rules' whole
+`Stage` (`#[serde(flatten)]`), its `seed` and its `commands`. Its keys
+are serde's: `turn`, `hero` (`x`, `y`), `wanderer`, `goal`, `outcome`
+(`null`, or `{"Won":{"turn":3}}`), `map`, `rng`. `scene --json` answers
+with it at `/result/scene/data`, and `run --json` too; `scene --path
+/hero/x` answers one value, at `/result/value`, and `scene --shape` its
+JSON Schema, at `/result/shape`.
+
+A field added to `Stage` shows there with no other change. `Stage` and
+the types it holds derive `JsonSchema` under the rules' `schema` feature
+(`#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]`), which
+the game's `tools` turns on: a type of the rules' own that `Stage` holds
+needs that line too, or the tools don't build. What lives on the screen
+and not in the state goes in `StageData`.
 
 ## When it fails
 
@@ -199,6 +212,8 @@ Branch on the `code`, and read its page with `cargo shuyi explain
 - `SH3001`: the game's tools don't offer the operation: a game with no
   stage's `Tools` has no `bots` or `replay`. A `scene` with no scene to
   give isn't an error: its `limits` say why.
+- `SH0005` from `scene --path`: the pointer names nothing; the message
+  lists the keys there are (`scene --shape` lists them all).
 
 ## Worked example
 

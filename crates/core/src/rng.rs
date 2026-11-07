@@ -40,6 +40,7 @@ const MAX_REDRAWS: u32 = 16;
 
 /// The seeded simulation RNG, kept in the game's state.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct SimRng {
     state: u64,
     inc: u64,

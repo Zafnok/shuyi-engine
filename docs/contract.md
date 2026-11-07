@@ -20,7 +20,7 @@ is another way to reach them.
 | `modules` | The catalog of the engine the game builds with ([`modules.md`](modules.md)), by concern: each answer, who gives it (`default` or a module's crate), its status and its tickets; every module the engine builds, with its feature of `shuyi` and its metadata (what it answers, serves and sits beside); and the modules the game has on, from its `Cargo.toml` | the game's `Cargo.toml` and its engine |
 | `add <module>` | Turns a module of the engine on (`physics` or `shuyi-physics`): its feature of `shuyi` in the game's `Cargo.toml`, its layout kept; its skill copied into `.claude/skills/` if the game keeps one; its README's first paragraph. It warns of an alternative already on, with the README's section on using both; gives the line to add if the game's code never installs `shuyi::enabled_modules`, and the line for its `formats()` if the module adds formats. A second run changes nothing (`changed: false`); a name that isn't built fails with `SH0003` and the names that are | the game's `Cargo.toml` and its engine |
 | `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>] [--session <file> [--any-stamp]]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the sounds the game added at run time and hadn't removed at the end (`sounds_added`, in cue order: each one's cue, rate, channels, frames and milliseconds, never its samples; left out when there are none), the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `--session` starts from a session record instead of the game's start options ([Session records](#session-records)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
-| `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
+| `scene [steps] [--path <pointer>] [--shape]` | The same, answering with the scene or stage on screen and the log. `--path` answers one value of the scene's data instead, `--shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) | the game |
 | `replay <record> [<other>] [--any-stamp]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ. A record stamped with what made it (`made`: the engine's version, the game's word for its build, the fingerprint of its content) by another build is refused with `SH3007`, naming each part that differs, before anything is compared; `--any-stamp` runs it anyway, with a limit that a difference may come from the stamp. A record with no stamp, or a game whose tools give none, runs with a limit saying so. The text shows each record's stamp | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
 | `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>] [--history <dir> \| --no-history] [--brief]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. Each entrant's line carries the plan's summary items (`won 83/100 · turns median 12`, its `summary`). Every run is kept as a JSON line in a history file per stage, entrants and game options (`<stage>-<entrants joined by +>[-<options>].jsonl` in `target/playtest-history/` under the project, or `--history`'s folder; `--no-history` keeps none, and a folder that can't be written fails the answer with `SH3004`), and the next run says what the last one found: after each entrant's line `· was 47/100 succeed` (its first rate check, else its first summary item; `was` in JSON) and a line `previous <date> · commit <hash>` (`previous`). `--brief` leaves out the line per try. It fails only when a bot falls under a check's floor | the game |
@@ -67,7 +67,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 38,
+  "contract": 39,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
@@ -120,6 +120,50 @@ manifest it refused, a game's own lines), oldest first. Each line is:
 The log keeps the last 500 lines. When it dropped older ones, `limits`
 says how many. For people, `shuyi run` and `shuyi scene` print the
 warnings and errors.
+
+## The scene's data
+
+`run` and `scene` answer the scene on screen, `scene`: its `screen`, its
+`kind` (`grid map`), its `text` (a grid map's tiles, units and cursor,
+for people and snapshots) and its `data`, the value the game names as
+serde writes it, by default its stage's whole state
+([ADR-0084](adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+§8). Hello, Grid's, after `--script "Enter"`:
+
+```json
+{
+  "map": { "width": 12, "height": 10, "cells": [1, 1, 1, "…"] },
+  "goal": { "x": 10, "y": 1 }, "hero": { "x": 1, "y": 8 }, "foe": { "x": 9, "y": 7 },
+  "side": "Hero", "turn": 1, "rng": { "state": 11161317672047027862, "inc": 109 },
+  "outcome": null, "commands": 0
+}
+```
+
+An enum is written as serde writes it: `"side": "Hero"`, and an ended
+stage's `"outcome": { "Won": { "turn": 3 } }`.
+
+- `scene --path <pointer>` answers only the value at that JSON Pointer
+  (RFC 6901) in the data, `value`: `--path /hero/x` answers `1`, and
+  `/outcome/Won/turn` the turn a won stage ended on. The answer leaves
+  the scene out. A pointer that names nothing fails with `SH0005`, and
+  its message names the pointer and the keys of the deepest object it
+  reached (``no value at `/hero/z`: /hero has the keys x, y``).
+- `scene --shape` answers the data's JSON Schema, `shape`, in serialize
+  mode, as the game derived it (`schemars::JsonSchema`): every key the
+  data may hold, and each enum's variants. A game that builds its data
+  without `Scene::with_data` answers no shape, and the limits say so.
+
+Both work with the other options of `scene` and with `--json`, and
+MCP's session `scene` takes them as `path` and `shape`. `run` takes
+neither: it answers the whole scene.
+
+A game names its data with `Scene::new(screen, kind, text).with_data(&value)`,
+where `value` is `Serialize` and `JsonSchema`. To add what lives on its
+screen and not in its state, it names a small struct of its own that
+holds the state with `#[serde(flatten)]` beside them (Hello, Grid's
+`StageData` adds `commands`). Its types derive `JsonSchema` under its
+`tools` feature, which turns on `shuyi/schema`, so a shipped game builds
+no schema.
 
 ## Perf traces
 
@@ -444,7 +488,7 @@ A **session** keeps one game running headless between calls:
 | ---- | ----- | ---- |
 | `start` | `project`, `start` (the game's start options), or `session` (`file`, `any_stamp`) in their place | builds the game's tool program and starts its game; the answer lists the options it offers. From a [session record](#session-records), the game is on the frame it stopped on, and `reset` plays the record again. A game already running is stopped |
 | `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start. A script naming an action the game can't press is refused (`SH0001`), and the game keeps running |
-| `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
+| `scene` | `path` (a JSON Pointer), `shape` (false) | the scene on screen now, and the log, as `scene` answers; `path` answers one value of its data instead, and `shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
 | `events` | nothing | what happened since the start, the sounds, and the sounds the game added and hasn't removed (`sounds_added`, as `run`'s) |
 | `perf` | `since` (0), `max` (120, 1 to 600), `snapshot` (false), `diff_from` | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered; with `snapshot`, a heap snapshot taken now, `snapshot`; with `diff_from`, a kept snapshot's frame, the `diff` from it; and `kept`, the frames of the snapshots the session keeps ([Perf traces](#perf-traces)) |
@@ -561,7 +605,7 @@ doesn't offer it:
 | ------ | --- | ------------------ |
 | `check` | `check` | its loader's errors (`ContentError`s) |
 | `font_atlas` | `check` | its loaded font atlas (`FontAtlasDef`), which `check` checks its text against |
-| `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
+| `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text, and its state by `Scene::with_data`), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
 | `session_on` | `bench` on a one-bit target | its `Harness` on the target's console, with `set_present_hook` running `to_one_bit` on each frame presented, as the device's backend converts it; left out, `bench` measures `session` there and says so |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)`, its `made` set to the record's stamp |
 | `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its `bots` writes carry it |

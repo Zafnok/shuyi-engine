@@ -8,3 +8,5 @@ shuyi-assets = "{{engine.assets}}"
 # The stage's records, and the rules' commands in them.
 serde = { version = "1", features = ["derive"] }
 ron = "0.12"
+# The shapes of the rules' types, for the game's tools (`scene --shape`).
+schemars = { version = "1", default-features = false, features = ["derive"] }

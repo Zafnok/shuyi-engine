@@ -25,7 +25,8 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
-use schemars::JsonSchema;
+use schemars::generate::SchemaSettings;
+use schemars::{JsonSchema, Schema};
 use serde::{Deserialize, Serialize};
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
@@ -58,13 +59,19 @@ pub struct Scene {
     /// The scene as text: for a grid map, its tiles, units and cursor in
     /// the scene's text form (`MapScene::to_text`).
     pub text: String,
-    /// What the game says of it as data: its stage's state.
+    /// What the game says of it as data: serde's tree of the value the game
+    /// names ([`with_data`](Self::with_data)), by default its stage's state.
     pub data: serde_json::Value,
+    /// The JSON Schema of [`data`](Self::data), in serialize mode, if the
+    /// game gave it with [`with_data`](Self::with_data): answered only when
+    /// asked for (`scene --shape`).
+    #[serde(skip)]
+    pub shape: Option<Schema>,
 }
 
 impl Scene {
     /// The scene of kind `kind` on the screen `screen`, as the text `text`,
-    /// with no data (`null`; assign [`data`](Self::data)).
+    /// with no data (`null`; give it with [`with_data`](Self::with_data)).
     pub fn new(
         screen: impl Into<String>,
         kind: impl Into<String>,
@@ -75,7 +82,79 @@ impl Scene {
             kind: kind.into(),
             text: text.into(),
             data: serde_json::Value::Null,
+            shape: None,
         }
+    }
+
+    /// This scene, its data `value`'s serde tree and its shape the JSON
+    /// Schema of `T` in serialize mode (ADR-0084 §2, §8); or why `value`
+    /// doesn't serialize (a map with keys that aren't strings).
+    pub fn with_data<T: Serialize + JsonSchema>(mut self, value: &T) -> Result<Self, String> {
+        self.data = serde_json::to_value(value).map_err(|e| format!("the scene's data: {e}"))?;
+        let generator = SchemaSettings::default().for_serialize().into_generator();
+        self.shape = Some(generator.into_root_schema_for::<T>());
+        Ok(self)
+    }
+}
+
+/// The value at JSON Pointer `pointer` (RFC 6901) in `data`; or, if it
+/// names nothing, why: the pointer, and the keys of the deepest object it
+/// reached.
+pub fn at_pointer<'a>(
+    data: &'a serde_json::Value,
+    pointer: &str,
+) -> Result<&'a serde_json::Value, String> {
+    if let Some(value) = data.pointer(pointer) {
+        return Ok(value);
+    }
+    if !pointer.is_empty() && !pointer.starts_with('/') {
+        return Err(format!(
+            "`{pointer}` is no JSON Pointer: one is empty, or starts with `/` (`/hero/x`)"
+        ));
+    }
+    // Walk it as far as it goes, keeping the deepest object reached.
+    let (mut here, mut reached, mut object) = (data, String::new(), None);
+    for token in pointer.split('/').skip(1) {
+        if let serde_json::Value::Object(map) = here {
+            object = Some((reached.clone(), map));
+        }
+        let key = token.replace("~1", "/").replace("~0", "~");
+        let next = match here {
+            serde_json::Value::Object(map) => map.get(&key),
+            serde_json::Value::Array(items) => key.parse::<usize>().ok().and_then(|i| items.get(i)),
+            _ => None,
+        };
+        let Some(next) = next else {
+            break;
+        };
+        here = next;
+        reached.push('/');
+        reached.push_str(token);
+    }
+    let keys = match object {
+        Some((at, map)) => {
+            let at = if at.is_empty() { "the data" } else { &at };
+            let keys: Vec<&str> = map.keys().map(String::as_str).collect();
+            if keys.is_empty() {
+                format!("{at} has no keys")
+            } else {
+                format!("{at} has the keys {}", keys.join(", "))
+            }
+        }
+        None => format!("the data is {}", kind_of(data)),
+    };
+    Err(format!("no value at `{pointer}`: {keys}"))
+}
+
+/// What kind of JSON value `value` is, in a few words.
+fn kind_of(value: &serde_json::Value) -> &'static str {
+    match value {
+        serde_json::Value::Null => "null (the game gives no data)",
+        serde_json::Value::Bool(_) => "a boolean",
+        serde_json::Value::Number(_) => "a number",
+        serde_json::Value::String(_) => "a string",
+        serde_json::Value::Array(_) => "an array",
+        serde_json::Value::Object(_) => "an object",
     }
 }
 

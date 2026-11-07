@@ -1,8 +1,15 @@
 # The grid stage's part of the game crate's Cargo.toml: `shuyi new` merges
 # it into the base's.
+[features]
+# The stage's state describes its shape for `scene --shape`, in the tools
+# alone.
+tools = ["rules/schema", "shuyi/schema", "dep:schemars"]
+
 [dependencies]
 # The stage's rules: pure and deterministic, over the engine's TurnRules.
 rules = { package = "{{crate_name}}-rules", path = "../rules" }
 # The stage's records, for `replay` and `bots`.
 serde.workspace = true
 ron.workspace = true
+# The shape of the scene's data, for the tools (`tools`).
+schemars = { workspace = true, optional = true }

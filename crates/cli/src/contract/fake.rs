@@ -73,6 +73,7 @@ impl FakeSession {
                 kind: "grid map".to_owned(),
                 text: text.to_owned(),
                 data: serde_json::json!({ "turn": 1 }),
+                shape: None,
             }),
             log: Vec::new(),
             log_dropped: 0,

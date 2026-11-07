@@ -33,10 +33,7 @@ use shuyi::assets::target::Color;
 use shuyi::core::bots::playtest::{
     self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
 };
-use shuyi::core::{
-    Bot, Determinize, Knob, Made, Pos, RandomBot, Report, Sides, TerrainId, TurnRules,
-    play_observed,
-};
+use shuyi::core::{Bot, Determinize, Knob, Made, RandomBot, Report, TerrainId, play_observed};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::headless::PresentHook;
 use shuyi::platform::session::{SessionRecord, Stamps};
@@ -52,7 +49,6 @@ use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::contract::target::engine_profiles;
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
-use shuyi_cli::serde_json::json;
 use shuyi_cli::{
     AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
     PlaytestPlan, Tunable,
@@ -417,26 +413,29 @@ fn lines(errors: &[ContentError]) -> String {
     errors.join("\n")
 }
 
+/// The data of the stage's scene: the rules' whole state, and what lives
+/// on its screen.
+#[derive(Serialize, schemars::JsonSchema)]
+pub struct StageData<'a> {
+    /// The rules' state, its keys at the top (`turn`, `hero`, `outcome`).
+    #[serde(flatten)]
+    pub stage: &'a Stage,
+    /// How many commands the stage has taken.
+    pub commands: usize,
+}
+
 /// The stage's scene in `h`: its map as the skin of the player's
-/// settings fits it, and the rules' state.
+/// settings fits it, and the rules' state ([`StageData`]).
 pub fn scene(h: &Harness<Hello>) -> Result<Scene, String> {
     let screen = h
         .screen::<StageScreen>()
         .ok_or_else(|| format!("no stage is open (the top screen is `{}`)", h.top_screen()))?;
     let map = screen.scene(StageScreen::view_tiles(h.ctx()));
-    let state = &screen.stage;
-    let at = |p: Pos| json!({ "x": p.x, "y": p.y });
-    let mut scene = Scene::new("stage", "grid map", map.to_text(&Terrain));
-    scene.data = json!({
-        "turn": state.turn(),
-        "to_move": format!("{:?}", state.side_to_move()),
-        "hero": at(state.hero()),
-        "foe": at(state.foe()),
-        "goal": at(state.goal()),
-        "outcome": state.outcome().map(|o| format!("{o:?}")),
-        "commands": screen.commands.len(),
-    });
-    Ok(scene)
+    let data = StageData {
+        stage: &screen.stage,
+        commands: screen.commands.len(),
+    };
+    Scene::new("stage", "grid map", map.to_text(&Terrain)).with_data(&data)
 }
 
 /// What happened in the rules of the stage in `h`, if one is open.

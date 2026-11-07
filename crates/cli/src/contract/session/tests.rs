@@ -180,6 +180,7 @@ mod toy {
                 kind: "toy".into(),
                 text: "H".into(),
                 data: serde_json::Value::Null,
+                shape: None,
             })
         });
         assert_eq!(s.scene().unwrap().screen, "home");
@@ -250,6 +251,7 @@ fn a_new_scene_has_no_data() {
         kind: "grid map".to_owned(),
         text: "@ (1,1)".to_owned(),
         data: serde_json::Value::Null,
+        shape: None,
     };
     assert_eq!(Scene::new("stage", "grid map", "@ (1,1)"), literal);
 }
@@ -555,4 +557,110 @@ mod added {
         let read: RunOutput = serde_json::from_value(json).unwrap();
         assert_eq!(read, result);
     }
+}
+
+/// A small state: a position, an outcome serde tags by variant, and a
+/// field it skips.
+#[derive(Serialize, JsonSchema)]
+struct Small {
+    at: At,
+    outcome: Option<Ending>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notes: Vec<String>,
+    #[serde(skip)]
+    secret: u32,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct At {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Serialize, JsonSchema)]
+enum Ending {
+    Won { turn: u32 },
+    Lost,
+}
+
+fn small() -> Small {
+    Small {
+        at: At { x: 2, y: 5 },
+        outcome: Some(Ending::Won { turn: 3 }),
+        notes: Vec::new(),
+        secret: 7,
+    }
+}
+
+#[test]
+fn with_data_keeps_the_values_serde_tree_and_its_shape_in_serialize_mode() {
+    let scene = Scene::new("stage", "grid map", "")
+        .with_data(&small())
+        .unwrap();
+    assert_eq!(
+        scene.data,
+        serde_json::json!({ "at": { "x": 2, "y": 5 }, "outcome": { "Won": { "turn": 3 } } })
+    );
+    let shape = scene.shape.unwrap().to_value();
+    let properties = &shape["properties"];
+    assert!(properties.get("at").is_some() && properties.get("outcome").is_some());
+    assert!(properties.get("secret").is_none(), "{shape}");
+    // Serialize mode: a field serde may leave out isn't required.
+    let required = shape["required"].as_array().unwrap();
+    assert!(!required.contains(&serde_json::json!("notes")), "{shape}");
+    assert!(required.contains(&serde_json::json!("at")), "{shape}");
+    let text = shape.to_string();
+    assert!(
+        text.contains("\"Won\"") && text.contains("\"Lost\""),
+        "{text}"
+    );
+    // The skipped field is held, but neither in the data nor its shape.
+    assert_eq!(small().secret, 7);
+    assert_eq!(serde_json::to_value(Ending::Lost).unwrap(), "Lost");
+}
+
+#[test]
+fn the_shape_is_never_in_the_scenes_answer() {
+    let scene = Scene::new("stage", "grid map", "")
+        .with_data(&small())
+        .unwrap();
+    let json = serde_json::to_value(&scene).unwrap();
+    assert!(json.get("shape").is_none(), "{json}");
+    let back: Scene = serde_json::from_value(json).unwrap();
+    assert_eq!(back.shape, None);
+    assert_eq!(back.data, scene.data);
+}
+
+#[test]
+fn a_pointer_reads_one_value_of_the_data() {
+    let data = serde_json::to_value(small()).unwrap();
+    assert_eq!(at_pointer(&data, "/at/x").unwrap(), 2);
+    assert_eq!(at_pointer(&data, "/outcome/Won/turn").unwrap(), 3);
+    assert_eq!(at_pointer(&data, "").unwrap(), &data);
+}
+
+#[test]
+fn a_pointer_that_names_nothing_says_the_keys_of_the_deepest_object_it_reached() {
+    let data = serde_json::to_value(small()).unwrap();
+    assert_eq!(
+        at_pointer(&data, "/at/z").unwrap_err(),
+        "no value at `/at/z`: /at has the keys x, y"
+    );
+    assert_eq!(
+        at_pointer(&data, "/hero").unwrap_err(),
+        "no value at `/hero`: the data has the keys at, outcome"
+    );
+    assert_eq!(
+        at_pointer(&data, "/at/x/deeper").unwrap_err(),
+        "no value at `/at/x/deeper`: /at has the keys x, y"
+    );
+    assert_eq!(
+        at_pointer(&serde_json::Value::Null, "/turn").unwrap_err(),
+        "no value at `/turn`: the data is null (the game gives no data)"
+    );
+    assert!(
+        at_pointer(&data, "at")
+            .unwrap_err()
+            .contains("is no JSON Pointer")
+    );
 }

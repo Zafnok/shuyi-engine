@@ -11,6 +11,14 @@
       "default": 0,
       "minimum": 0
     },
+    "path": {
+      "description": "Answer only the value at this JSON Pointer (RFC 6901) in the\nscene's data, `/hero/x` (`scene` only).",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "perf": {
       "description": "Measure each frame, and answer a summary of the times (`run` only).",
       "type": "boolean",
@@ -42,6 +50,11 @@
         }
       ],
       "default": null
+    },
+    "shape": {
+      "description": "Answer the JSON Schema of the scene's data, as the game derived it\n(`scene` only).",
+      "type": "boolean",
+      "default": false
     },
     "start": {
       "description": "The game's own start options (`frame-png --help` lists them), in\nthe order given.",

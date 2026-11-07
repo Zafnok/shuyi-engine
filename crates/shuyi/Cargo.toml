@@ -22,6 +22,10 @@ workspace = true
 default = ["std", "app"]
 std = ["shuyi-core/std", "shuyi-assets/std", "shuyi-ui/std", "shuyi-platform/std"]
 app = ["std", "dep:shuyi-app"]
+# `schema`: the engine's types describe their shapes with `schemars`
+# (ADR-0084 §2), for a game's tools: a game's `tools` feature turns it on,
+# and a shipped game builds no schema.
+schema = ["shuyi-core/schema", "shuyi-ui/schema", "shuyi-platform/schema"]
 
 [dependencies]
 shuyi-core = { path = "../core", default-features = false }

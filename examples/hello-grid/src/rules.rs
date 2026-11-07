@@ -48,6 +48,7 @@ pub const TRIP_PERCENT: u8 = 25;
 /// How a stage is tuned: the knobs of an autobalance search turn these
 /// (`tools::knobs`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tools", derive(schemars::JsonSchema))]
 pub struct Tuning {
     /// The chance, in percent, that the foe trips on a step.
     pub trip_percent: u8,
@@ -94,6 +95,7 @@ pub fn parse_map(file: &str, source: &str) -> Result<GridMap<TerrainId, Feature>
 
 /// Who moves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tools", derive(schemars::JsonSchema))]
 pub enum Side {
     /// You.
     Hero,
@@ -166,6 +168,7 @@ impl fmt::Display for Error {
 
 /// How the stage ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tools", derive(schemars::JsonSchema))]
 pub enum Outcome {
     /// Your piece reached the goal on this turn.
     Won {
@@ -185,6 +188,7 @@ pub enum Outcome {
 /// which a replay compares step by step; the tuning only when it isn't the
 /// default, so a stage of [`Stage::new`] hashes as it always has.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "tools", derive(schemars::JsonSchema))]
 pub struct Stage {
     map: Grid<TerrainId>,
     goal: Pos,
