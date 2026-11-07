@@ -373,11 +373,13 @@ cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main
 
 `API_CRATES` in `crates/xtask/src/api.rs` is the catalog: a new engine
 crate left out of it fails the check, naming the crate. Each crate is
-checked once, on the host, in a debug build. `shuyi-alloc-count` is
-checked with `global`, and `shuyi-playdate` without the SDK, so its
-`device` module and the arms of `main!` are not. The others take each
-tool's default: the listing has their default features, and the semver
-check the features its heuristic turns on. That file's docs say the same.
+checked once, on the host, in a debug build, with every feature it has,
+the same in both tools, but where an entry says why it leaves one out.
+`shuyi-playdate` is checked without the SDK, so its `device` module
+and the arms of `main!` are not. A feature added to an engine crate goes
+in its entry, or in the test's `LEFT_OUT` with the reason in the entry:
+a test fails on one in neither. A side whose manifest lacks the feature
+yet builds without it. That file's docs say the same.
 
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).

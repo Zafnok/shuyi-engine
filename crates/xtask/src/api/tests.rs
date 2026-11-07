@@ -62,10 +62,36 @@ fn catalog_names() -> Vec<&'static str> {
     API_CRATES.iter().map(|krate| krate.name).collect()
 }
 
+/// `cargo metadata`'s JSON of a workspace of `packages`, each with the
+/// features its entry in [`API_CRATES`] chooses.
 fn metadata_json(packages: &[&str]) -> String {
+    metadata_json_without(packages, &[])
+}
+
+/// [`metadata_json`], but `missing` (a crate and a feature) not in that
+/// crate's manifest.
+fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String {
     let list: Vec<String> = packages
         .iter()
-        .map(|name| format!("{{\"name\":\"{name}\"}}"))
+        .map(|name| {
+            let chosen =
+                API_CRATES
+                    .iter()
+                    .find(|krate| krate.name == *name)
+                    .map_or(&[][..], |krate| {
+                        let Features::Only(chosen) = krate.features;
+                        chosen
+                    });
+            let features: Vec<String> = chosen
+                .iter()
+                .filter(|feature| !missing.contains(&(*name, **feature)))
+                .map(|feature| format!("\"{feature}\":[]"))
+                .collect();
+            format!(
+                "{{\"name\":\"{name}\",\"features\":{{{}}}}}",
+                features.join(",")
+            )
+        })
         .collect();
     format!("{{\"packages\":[{}]}}", list.join(","))
 }
@@ -985,16 +1011,18 @@ fn a_run_compares_every_crate_and_removes_the_base() {
     let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
         "head: cargo semver-checks check-release -p shuyi-core --baseline-root {base_root} \
-         --release-type minor --color never"
+         --release-type minor --color never{CORE_SEMVER}"
     )));
     let target = root.join("target").to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
-        "head: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {target}"
+        "head: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified{UI_LISTING} \
+         --target-dir {target}"
     )));
     // The base builds apart, so it never builds on the head's crates.
     let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
-        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {base_target}"
+        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified{UI_LISTING} \
+         --target-dir {base_target}"
     )));
     // `shuyi-cli` is new: listed in the head only, and never checked.
     assert!(
@@ -1325,7 +1353,7 @@ fn members(names: &[&str]) -> HashSet<String> {
 #[test]
 fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let real = packages(&root, &System).unwrap();
+    let real = packages(&root, &System).unwrap().into_keys().collect();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
     assert_eq!(API_CRATES.len(), 11);
 }
@@ -1383,24 +1411,81 @@ fn a_run_on_an_engine_member_left_out_fails_before_any_listing() {
 
 #[test]
 fn features_become_each_tools_flags() {
-    assert_eq!(Features::ToolDefaults.listing_args(), Vec::<&str>::new());
-    assert_eq!(Features::ToolDefaults.semver_args(), Vec::<&str>::new());
+    let global = members(&["global", "std"]);
+    let none = HashSet::new();
     assert_eq!(
-        Features::Only(&[]).listing_args(),
+        Features::Only(&[]).listing_args(&global),
         ["--no-default-features"]
     );
     assert_eq!(
-        Features::Only(&[]).semver_args(),
+        Features::Only(&[]).semver_args(&global, &global),
         ["--only-explicit-features"]
     );
     assert_eq!(
-        Features::Only(&["global"]).listing_args(),
+        Features::Only(&["global"]).listing_args(&global),
         ["--no-default-features", "--features", "global"]
     );
     assert_eq!(
-        Features::Only(&["global"]).semver_args(),
+        Features::Only(&["global"]).semver_args(&global, &global),
         ["--only-explicit-features", "--features", "global"]
     );
+    // A side without the feature builds without it, and the semver check
+    // takes it only when both sides have it.
+    assert_eq!(
+        Features::Only(&["global"]).listing_args(&none),
+        ["--no-default-features"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).semver_args(&global, &none),
+        ["--only-explicit-features"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).semver_args(&none, &global),
+        ["--only-explicit-features"]
+    );
+}
+
+#[test]
+fn a_feature_new_in_the_head_is_listed_there_and_its_items_are_added() {
+    let root = temp_root("new-feature");
+    let fake = Fake::new(&root)
+        .with_tools()
+        .with_base("abc123")
+        .answer(
+            "base: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_without(
+                &catalog_names(),
+                &[("shuyi-core", "toy")],
+            ))),
+        )
+        .with_listing("head", "shuyi-core", "pub fn shuyi_core::toy::run()\n");
+    let outcome = run(&root, &Options::default(), &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert_eq!(outcome.label, Some(Label::Added));
+    let ran = fake.ran();
+    let target = root.join("target").to_string_lossy().into_owned();
+    let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
+    let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
+    for command in [
+        format!(
+            "head: cargo +{NIGHTLY} public-api -p shuyi-core --simplified \
+             --no-default-features --features std --features schema --features toy \
+             --target-dir {target}"
+        ),
+        format!(
+            "base: cargo +{NIGHTLY} public-api -p shuyi-core --simplified \
+             --no-default-features --features std --features schema \
+             --target-dir {base_target}"
+        ),
+        format!(
+            "head: cargo semver-checks check-release -p shuyi-core --baseline-root {base_root} \
+             --release-type minor --color never --only-explicit-features --features std \
+             --features schema"
+        ),
+    ] {
+        assert!(ran.contains(&command), "no `{command}` in {ran:#?}");
+    }
+    let _ = fs::remove_dir_all(&root);
 }
 
 // -- the two crates checked in a configuration of their own --
@@ -1446,8 +1531,49 @@ const ADDED_CRATES: [(&str, &str, &str, &str); 2] = [
     ),
 ];
 
+/// `shuyi-core`'s semver flags, and `shuyi-ui`'s listing flags.
+const CORE_SEMVER: &str =
+    " --only-explicit-features --features std --features schema --features toy";
+const UI_LISTING: &str = " --no-default-features --features std --features debug-tools \
+     --features storage-conformance --features onebit-reference --features raster \
+     --features toy --features schema";
+
+/// Each crate of the catalog and the features it is checked with (ticket
+/// 2041), spelled out here rather than read from [`API_CRATES`].
+const CONFIGURATIONS: &[(&str, &[&str])] = &[
+    ("shuyi-core", &["std", "schema", "toy"]),
+    ("shuyi-assets", &["std", "png", "sample-actions", "golden"]),
+    (
+        "shuyi-ui",
+        &[
+            "std",
+            "debug-tools",
+            "storage-conformance",
+            "onebit-reference",
+            "raster",
+            "toy",
+            "schema",
+        ],
+    ),
+    (
+        "shuyi-platform",
+        &["std", "harness", "link", "heap", "capture", "schema"],
+    ),
+    ("shuyi-app", &["link", "capture", "sound-probe"]),
+    ("shuyi-cli", &["toy", "jis"]),
+    ("shuyi", &["std", "app"]),
+    ("shuyi-sound", &["std", "wav", "vorbis"]),
+    ("shuyi-sound-out", &[]),
+    ("shuyi-playdate", &[]),
+    ("shuyi-alloc-count", &["global"]),
+];
+
+/// The features a crate's manifest has that its check leaves out, each for
+/// the reason `API_CRATES` gives.
+const LEFT_OUT: [(&str, &str); 1] = [("shuyi-app", "in-house-sound")];
+
 #[test]
-fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
+fn every_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
     let root = temp_root("configuration");
     let fake = Fake::new(&root)
         .with_tools()
@@ -1459,7 +1585,14 @@ fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
     let target = root.join("target").to_string_lossy().into_owned();
     let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
     let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
-    for (krate, _, listing, semver) in ADDED_CRATES {
+    assert_eq!(CONFIGURATIONS.len(), API_CRATES.len());
+    for &(krate, features) in CONFIGURATIONS {
+        let flags = features.iter().fold(String::new(), |mut flags, f| {
+            let _ = write!(flags, " --features {f}");
+            flags
+        });
+        let listing = format!(" --no-default-features{flags}");
+        let semver = format!(" --only-explicit-features{flags}");
         for command in [
             format!(
                 "head: cargo +{NIGHTLY} public-api -p {krate} --simplified{listing} \
@@ -1478,6 +1611,58 @@ fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
         }
     }
     let _ = fs::remove_dir_all(&root);
+}
+
+/// Each crate's chosen and left-out features are, together, every feature
+/// its manifest has but `default`: a feature added later is chosen or left
+/// out on purpose, never skipped by one tool and turned on by the other.
+#[test]
+fn every_feature_of_each_crates_manifest_is_chosen_or_left_out() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut manifests = std::collections::HashMap::new();
+    for entry in fs::read_dir(&crates).unwrap() {
+        let path = entry.unwrap().path().join("Cargo.toml");
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let manifest: toml::Table = toml::from_str(&text).unwrap();
+        let name = manifest["package"]["name"].as_str().unwrap().to_string();
+        manifests.insert(name, manifest);
+    }
+    for krate in API_CRATES {
+        let empty = toml::Table::new();
+        let table = manifests[krate.name]
+            .get("features")
+            .and_then(toml::Value::as_table)
+            .unwrap_or(&empty);
+        let mut declared: Vec<&str> = table
+            .keys()
+            .map(String::as_str)
+            .filter(|name| *name != "default")
+            .collect();
+        declared.sort_unstable();
+        let Features::Only(chosen) = krate.features;
+        // A chosen feature, what it turns on of this crate's, and so on.
+        let mut covered: Vec<&str> = chosen.to_vec();
+        let mut next = 0;
+        while let Some(feature) = covered.get(next).copied() {
+            next += 1;
+            let turned_on = table[feature].as_array().unwrap();
+            for name in turned_on.iter().filter_map(toml::Value::as_str) {
+                if table.contains_key(name) && !covered.contains(&name) {
+                    covered.push(name);
+                }
+            }
+        }
+        covered.extend(
+            LEFT_OUT
+                .iter()
+                .filter(|(name, _)| *name == krate.name)
+                .map(|(_, feature)| *feature),
+        );
+        covered.sort_unstable();
+        assert_eq!(covered, declared, "{}", krate.name);
+    }
 }
 
 #[test]
