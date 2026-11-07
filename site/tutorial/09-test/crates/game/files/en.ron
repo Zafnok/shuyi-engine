@@ -85,7 +85,7 @@
     "key_bindings.help_restore": "{Confirm} yes · {Cancel} no",
     "key_bindings.help_capture_back": "{key} back",
     "key_bindings.help_choice": "{Cursor} move · {Confirm} select · {Cancel} back",
-    "key_bindings.help_switch": "{CursorLeft}/{CursorRight} keyboard or controller · {Cursor} move · {Cancel} back",
+    "key_bindings.help_switch": "{Left}/{Right} keyboard or controller · {Cursor} move · {Cancel} back",
     "key_bindings.help_slot_pad": "{Cursor} move · {Confirm} change · {Cancel} back",
     "key_bindings.action.up": "Up",
     "key_bindings.action.down": "Down",

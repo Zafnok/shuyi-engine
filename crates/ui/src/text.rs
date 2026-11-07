@@ -4,8 +4,14 @@
 //! [`Ctx::text_with`](crate::Ctx::text_with)).
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
+use shuyi_assets::ContentError;
+use shuyi_assets::bundle::Bundle;
+use shuyi_assets::error::codes;
 use shuyi_assets::keymap::ActionSet;
+use shuyi_assets::palette::line_of_key;
 use shuyi_assets::text::NO_BREAK_SPACE;
+use shuyi_assets::tip::placeholders;
 
 use crate::input::help_keys::{HelpKeys, cursor_keys_name, key_name};
 
@@ -24,6 +30,51 @@ pub fn key_text<A: ActionSet>(name: &str, keys: HelpKeys<'_, A>) -> Option<Strin
     }
 }
 use core::fmt::Display;
+
+/// Checks that every placeholder of screen text `text`, read from `path`
+/// in `bundle`, can be filled: a capitalized `{Name}` names a key, so it
+/// must be [`{Cursor}`](CURSOR) or an action of `A`, as [`key_text`]
+/// fills them. A lowercase `{name}` is a value a screen passes
+/// ([`Ctx::text_with`](crate::Ctx::text_with)'s `args`), which no file
+/// can know, and passes. Each error names the file, the key's line and
+/// the known actions, with code `SH2008` (`unknown-name`).
+///
+/// # Errors
+///
+/// Every placeholder that names no key, each its own error.
+pub fn check_key_placeholders<A: ActionSet>(
+    bundle: &Bundle,
+    path: &str,
+    text: &BTreeMap<String, String>,
+) -> Result<(), Vec<ContentError>> {
+    let source = bundle.file(path).unwrap_or_default();
+    let file = bundle.display_path(path);
+    let mut errors = Vec::new();
+    for (key, value) in text {
+        for name in placeholders(value) {
+            let names_a_key = name.chars().next().is_some_and(char::is_uppercase);
+            if !names_a_key || name == CURSOR || A::from_name(name).is_some() {
+                continue;
+            }
+            let known: Vec<&str> = A::ALL.iter().map(|a| a.name()).collect();
+            let message = format!(
+                "\"{key}\": unknown action \"{{{name}}}\"; known actions: {}, and {{{CURSOR}}} \
+                 for the cursor keys",
+                known.join(", ")
+            );
+            let mut error = ContentError::new(&file, message).with_code(codes::UNKNOWN_NAME);
+            if let Some(line) = line_of_key(source, key) {
+                error = error.at(line, None);
+            }
+            errors.push(error);
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
 
 /// `text` with each `{name}` that `args` names replaced by its value, and
 /// nothing else: for text built where there are no keys to name (a line of
@@ -174,6 +225,35 @@ mod tests {
                 "{width}: {lines:?}"
             );
         }
+    }
+
+    /// `check_key_placeholders` on `en.ron` written `source`, in `files/`.
+    fn checked(source: &'static str) -> Result<(), Vec<ContentError>> {
+        use shuyi_assets::bundle::Layer;
+        use shuyi_assets::keymap::UiAction;
+        let files: &'static [(&str, &[u8])] = Box::leak(Box::new([("en.ron", source.as_bytes())]));
+        let bundle = Bundle::new(vec![Layer::table("files", files)]);
+        let text: shuyi_assets::lang::English = ron::from_str(source).unwrap();
+        check_key_placeholders::<UiAction>(&bundle, "en.ron", &text.0)
+    }
+
+    #[test]
+    fn actions_the_cursor_and_values_a_screen_passes_are_placeholders() {
+        let good = "{\n  \"a\": \"{Confirm} plant {seeds} {Cursor} move\",\n  \"b\": \"{} {\",\n}";
+        assert_eq!(checked(good), Ok(()));
+    }
+
+    #[test]
+    fn a_misspelled_action_fails_with_its_file_line_and_the_known_actions() {
+        let bad = "{\n  \"a\": \"{Confirm} ok\",\n  \"title.help\": \"{Confirn} plant\",\n}";
+        let errors = checked(bad).unwrap_err();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].code, Some(codes::UNKNOWN_NAME));
+        assert_eq!(
+            errors[0].to_string(),
+            "files/en.ron:3: \"title.help\": unknown action \"{Confirn}\"; known actions: \
+             Up, Down, Left, Right, Confirm, Cancel, and {Cursor} for the cursor keys"
+        );
     }
 
     #[test]

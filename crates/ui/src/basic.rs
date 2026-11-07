@@ -24,6 +24,7 @@ use shuyi_assets::ron::Ron;
 
 use crate::ctx::GameData;
 use crate::frame::{ConsoleSpec, EngineColor};
+use crate::text::check_key_placeholders;
 
 /// The English screen text by key, in the bundle.
 pub const ENGLISH_RON: &str = "en.ron";
@@ -95,7 +96,14 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
     ) -> Result<Self, Vec<ContentError>> {
         let formats = Self::formats();
         let mut errors = Vec::new();
-        let english = gather(&mut errors, formats.load::<English>(&bundle, ENGLISH_RON));
+        let english = gather(
+            &mut errors,
+            formats
+                .load::<English>(&bundle, ENGLISH_RON)
+                .and_then(|english| {
+                    check_key_placeholders::<A>(&bundle, ENGLISH_RON, &english.0).map(|()| english)
+                }),
+        );
         let keymap = gather(
             &mut errors,
             formats.load::<KeymapDef<A>>(&bundle, KEYMAP_RON),
