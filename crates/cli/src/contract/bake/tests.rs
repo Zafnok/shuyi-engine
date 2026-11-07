@@ -267,13 +267,20 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
 fn times_are_whole_microseconds_and_the_fastest_run_counts() {
     assert_eq!(micros(Duration::from_micros(1_234)), 1_234);
     assert_eq!(micros(Duration::from_nanos(999)), 0);
+    // Measured runs of 20, 7, 3, 9 and 4 milliseconds, the slowest first.
+    let measured = [20_000, 7_000, 3_000, 9_000, 4_000];
     let mut runs = 0;
-    let slowest_first = fastest(|| {
+    let slowest_first = fastest_of(|| {
+        let took = Duration::from_micros(measured[runs]);
         runs += 1;
-        std::thread::sleep(Duration::from_millis(if runs == 1 { 20 } else { 2 }));
+        took
     });
-    assert_eq!(runs, LOAD_RUNS);
-    assert!((2_000..20_000).contains(&slowest_first), "{slowest_first}");
+    assert_eq!(u32::try_from(runs), Ok(LOAD_RUNS));
+    assert_eq!(slowest_first, 3_000);
+    // A real run through the clock is measured as many times.
+    let mut timed = 0;
+    fastest(|| timed += 1);
+    assert_eq!(timed, LOAD_RUNS);
 }
 
 #[test]

@@ -145,12 +145,18 @@ fn micros(duration: Duration) -> u64 {
 
 /// The fastest of [`LOAD_RUNS`] runs of `run`.
 fn fastest(mut run: impl FnMut()) -> u64 {
+    fastest_of(|| {
+        let start = Instant::now();
+        run();
+        start.elapsed()
+    })
+}
+
+/// The smallest of [`LOAD_RUNS`] durations `measure` gives, in whole
+/// microseconds.
+fn fastest_of(mut measure: impl FnMut() -> Duration) -> u64 {
     (0..LOAD_RUNS)
-        .map(|_| {
-            let start = Instant::now();
-            run();
-            micros(start.elapsed())
-        })
+        .map(|_| micros(measure()))
         .min()
         .unwrap_or_default()
 }
