@@ -82,6 +82,7 @@ use shuyi::ui::debug::DebugMenuScreen;
 use shuyi::ui::frame::onebit::{Font, PatternMap};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
+use shuyi::ui::text::check_key_placeholders;
 use shuyi::ui::{Ctx, Game, GameData, GameHooks, ScreenHook};
 
 pub use action::Action;
@@ -379,7 +380,11 @@ impl Hello {
     /// problem found.
     pub fn load_from(bundle: &Bundle, formats: &Formats) -> Result<Self, Vec<ContentError>> {
         let mut errors = Vec::new();
-        let english = gather(&mut errors, || formats.load::<English>(bundle, "en.ron"));
+        let english = gather(&mut errors, || {
+            let english = formats.load::<English>(bundle, "en.ron")?;
+            check_key_placeholders::<Action>(bundle, "en.ron", &english.0)?;
+            Ok(english)
+        });
         let keymap = gather(&mut errors, || {
             formats.load::<KeymapDef<Action>>(bundle, "keymap.ron")
         });

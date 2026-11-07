@@ -3,7 +3,7 @@
  made: Some((
   engine: "0.1.0",
   game: "hello-grid 0.1.0",
-  content: "7c7401a57a7e77ac",
+  content: "44d33403aa9a9161",
  )),
  display: (
   width: 1280,
