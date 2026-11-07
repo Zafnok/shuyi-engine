@@ -221,7 +221,10 @@ Deviations:
 
 No break: `shuyi-app` gains the `page` module, and nothing changes.
 
-Follow-ups: none new. 2814 builds the playground on this; 2828 moves the
+Follow-ups: 2048. This PR's edit of `tools/sound-parity/footprint.ron`
+ran the sound gate, which failed on quad-snd's recordings with no sound
+changed: on one attempt a Windows level 1.06 dB off, on the next an ALSA
+underrun natively. 2814 builds the playground on this; 2828 moves the
 plugin's version on for its check.
 
 Nick input: none.
