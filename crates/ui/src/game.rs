@@ -15,6 +15,7 @@ use core::fmt;
 use shuyi_core::StateHash;
 
 use shuyi_assets::audio::AudioManifest;
+use shuyi_assets::dialogue::LineId;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
 use crate::audio::{AudioConfig, AudioRequest, MusicClock, MusicCommand, MusicState};
@@ -355,6 +356,17 @@ impl<G: GameData> Game<G> {
         self.ctx.music_clock =
             playing.and_then(|(cue, elapsed)| MusicClock::from_elapsed(manifest, cue, elapsed));
         self.music.heard(self.ctx.music_clock.as_ref());
+    }
+
+    /// Tells the game which line's voice clip is sounding, for
+    /// [`Ctx::voice_playing`], or `None` in silence. The platform knows
+    /// (a clip sounds once its file has loaded, and until it ends) and
+    /// calls this before every [`frame`](Self::frame), as it does
+    /// [`set_music_playing`](Self::set_music_playing).
+    pub fn set_voice_playing(&mut self, line: Option<&LineId>) {
+        if self.ctx.voice_playing.as_ref() != line {
+            self.ctx.voice_playing = line.cloned();
+        }
     }
 
     /// Tells the game how the platform paces its frames: the frame cap it

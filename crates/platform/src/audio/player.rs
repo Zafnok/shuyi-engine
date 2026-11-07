@@ -501,6 +501,15 @@ impl<B: Backend> Player<B> {
             .map(|(cue, started_at, held_at)| (cue, (held_at.unwrap_or(now) - started_at).max(0.0)))
     }
 
+    /// The file of the voice clip sounding at `now` (on
+    /// [`play`](Self::play)'s clock), or asked for and still loading and
+    /// not yet late (0.3 s after it was asked for). `None` once it has ended, or was
+    /// stopped, failed or given up on. A paused clip still sounds; a clip
+    /// whose length the backend doesn't know sounds until it is stopped.
+    pub fn voice_playing(&self, now: f64) -> Option<&str> {
+        self.voices.sounding(now)
+    }
+
     /// Applies one sound request (the voice's are [`Voices`]').
     fn sound(&mut self, backend: &mut B, request: &SoundRequest) {
         match request {
@@ -804,6 +813,10 @@ impl<B: Backend> fmt::Debug for PlayerDevice<B> {
 impl<B: Backend> Audio for PlayerDevice<B> {
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)> {
         self.player.as_ref()?.music_playing(now.as_secs_f64())
+    }
+
+    fn voice_playing(&self, now: Millis) -> Option<&str> {
+        self.player.as_ref()?.voice_playing(now.as_secs_f64())
     }
 
     fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) {
@@ -2000,6 +2013,18 @@ mod tests {
         };
         device.play(&frame, Millis(1000));
         assert_eq!(device.music_playing(Millis(2000)), Some(("title", 1.0)));
+        assert_eq!(device.voice_playing(Millis(2000)), None);
+        let say = [SoundRequest::Voice {
+            clip: "a.ogg".into(),
+        }];
+        device.play(
+            &AudioFrame {
+                requests: &say,
+                ..frame
+            },
+            Millis(2000),
+        );
+        assert_eq!(device.voice_playing(Millis(2000)), Some("a.ogg"));
         device.backend_mut().calls();
         device.suspend();
         let said = device.backend_mut().calls();

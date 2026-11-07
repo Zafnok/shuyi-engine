@@ -238,6 +238,19 @@ impl<B: Backend> Voices<B> {
         }
     }
 
+    /// The file of the clip sounding at `now`, or asked for and still
+    /// loading and not yet late. A clip held with the backend still sounds;
+    /// one that has ended, was stopped, failed or was given up on as late
+    /// doesn't.
+    pub(crate) fn sounding(&self, now: f64) -> Option<&str> {
+        if let Some(speaking) = &self.playing {
+            let on = speaking.held_at.is_some() || speaking.ends.is_none_or(|ends| ends > now);
+            return on.then_some(speaking.file.as_str());
+        }
+        let (file, at) = self.asked.as_ref()?;
+        (now - at <= LATE_SECS).then_some(file.as_str())
+    }
+
     /// Stops the voice and frees every clip (the game quit).
     pub(crate) fn stop_all(&mut self, backend: &mut B, abandoned: &mut Vec<B::Loading>) {
         self.stop(backend);
@@ -567,14 +580,63 @@ mod tests {
         if let Some(speaking) = &mut voices.playing {
             speaking.held_at = Some(0.5);
         }
+        assert_eq!(voices.sounding(9.0), Some("test/a.ogg"), "paused: sounding");
         voices.poll(&mut fake, 9.0, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), ["test/a.ogg"], "held: not at its end");
         voices.release_clock(9.0);
         voices.poll(&mut fake, 9.4, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), ["test/a.ogg"]);
+        assert_eq!(voices.sounding(9.4), Some("test/a.ogg"));
+        assert_eq!(voices.sounding(9.5), None, "ended, before the poll too");
         voices.poll(&mut fake, 9.5, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), [] as [&str; 0]);
+        assert_eq!(voices.sounding(9.5), None);
         let _ = (Provided::default(), fake.length(&String::new()));
+    }
+
+    /// The clip sounding is reported while it is asked for and while it
+    /// plays; not once it has ended, been stopped or replaced, given up on
+    /// as late or failed.
+    #[test]
+    fn the_clip_sounding_is_reported_until_it_ends_stops_or_fails() {
+        let mut fake = Fake {
+            length: Some(1.0),
+            ..Fake::default()
+        };
+        fake.broken.push(path(4));
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        let file = |i: usize| format!("test/{}.ogg", LINES[i]);
+        assert_eq!(audio.voice_playing(0.0), None, "nothing asked for");
+        // Asked for and loading: it sounds, until it is late.
+        audio.hear(&mut fake, &[play(0)], &[], 10.0);
+        assert_eq!(audio.voice_playing(10.0), Some(file(0).as_str()));
+        assert_eq!(audio.voice_playing(10.0 + LATE_SECS + 0.01), None);
+        // Loaded in time, it sounds for its length.
+        fake.ready.extend([path(0), path(1), path(2)]);
+        audio.play(&mut fake, &[], &[], 10.25);
+        assert_eq!(audio.voice_playing(11.0), Some(file(0).as_str()));
+        assert_eq!(audio.voice_playing(11.5), None, "ended");
+        audio.play(&mut fake, &[], &[], 11.5);
+        assert_eq!(audio.voice_playing(11.5), None);
+        // Replaced, then stopped.
+        audio.hear(&mut fake, &[play(1)], &[], 20.0);
+        assert_eq!(audio.voice_playing(20.0), Some(file(1).as_str()));
+        audio.hear(&mut fake, &[play(2)], &[], 20.5);
+        assert_eq!(audio.voice_playing(20.5), Some(file(2).as_str()));
+        audio.hear(&mut fake, &[Request::StopVoice], &[], 20.6);
+        assert_eq!(audio.voice_playing(20.6), None, "stopped");
+        // Given up on as late: not even once it has loaded.
+        audio.hear(&mut fake, &[play(3)], &[], 30.0);
+        audio.play(&mut fake, &[], &[], 30.31);
+        assert_eq!(audio.voice_playing(30.31), None, "late");
+        fake.ready.push(path(3));
+        audio.play(&mut fake, &[], &[], 30.4);
+        assert_eq!(audio.voice_playing(30.4), None);
+        // Its file failed.
+        audio.hear(&mut fake, &[play(4)], &[], 40.0);
+        assert_eq!(audio.voice_playing(40.0), None, "failed");
+        assert_eq!(audio.take_warnings().len(), 1);
     }
 
     /// A frame of ordinary audio warns of nothing about voices.

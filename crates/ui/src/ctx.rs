@@ -333,6 +333,9 @@ pub struct Ctx<G: GameData> {
     /// The voice clips that may be played: none until the platform hands
     /// over a manifest ([`set_voice_manifest`](Self::set_voice_manifest)).
     voices: Playable<G::Voice>,
+    /// The line whose voice clip the platform last said is sounding
+    /// ([`voice_playing`](Self::voice_playing)).
+    pub(crate) voice_playing: Option<LineId>,
     /// Seeds random music picks (e.g. a track from a pool), kept apart
     /// from any simulation's randomness. A fixed [`DEFAULT_MUSIC_SEED`]
     /// here, so tests are repeatable; the platform sets it from the clock
@@ -417,6 +420,7 @@ impl<G: GameData> Ctx<G> {
             audio,
             music_clock: None,
             voices: Playable::default(),
+            voice_playing: None,
             music_seed: DEFAULT_MUSIC_SEED,
             music_picks: 0,
             clock_s: 0.0,
@@ -603,6 +607,24 @@ impl<G: GameData> Ctx<G> {
         if let Some(variant) = self.voice_for(line) {
             self.audio.play_voice(line, variant);
         }
+    }
+
+    /// The line whose voice clip is sounding, or asked for and still
+    /// loading; `None` in silence. The platform reports it each frame
+    /// through [`Game::set_voice_playing`](crate::Game::set_voice_playing),
+    /// before the screens run: a clip that ended, was stopped or replaced,
+    /// whose file failed or that loaded too late to be played is `None`. A
+    /// clip paused with the game still sounds.
+    ///
+    /// A screen sees its own [`play_voice`](Self::play_voice) from the next
+    /// frame, once the platform has read the request: in the frame it asks,
+    /// and on a platform with no voices, this is still `None`. So a screen
+    /// that waits for a voice to end waits for its line to sound first,
+    /// and takes `None` after that as the end. A clip that never sounds
+    /// (its file missing or slow) gives up within half a second: a screen
+    /// that hasn't seen its line by then may move on.
+    pub fn voice_playing(&self) -> Option<&LineId> {
+        self.voice_playing.as_ref()
     }
 
     /// Stops the voice that is playing, if any.

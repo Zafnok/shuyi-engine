@@ -191,6 +191,17 @@ pub trait Audio {
     /// new one has loaded.
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)>;
 
+    /// The voice clip sounding at `now`, by its file
+    /// ([`SoundRequest::Voice`]), or asked for and still loading: `None`
+    /// once it has ended, and for a clip stopped, replaced, whose file
+    /// failed or that loaded too late to be played. A clip held by
+    /// [`suspend`](Self::suspend) still sounds. `None` by default, for a
+    /// device that plays no voices.
+    fn voice_playing(&self, now: Millis) -> Option<&str> {
+        let _ = now;
+        None
+    }
+
     /// Plays one frame's `frame` of audio at `now`: the volumes first, then
     /// the requests and the music commands in order. It also checks on
     /// what is still loading, so it is called every frame, with nothing to
@@ -354,5 +365,6 @@ mod tests {
         silent.resume();
         silent.stop_all();
         assert_eq!(silent.music_playing(Millis(0)), None);
+        assert_eq!(silent.voice_playing(Millis(0)), None, "it plays no voices");
     }
 }

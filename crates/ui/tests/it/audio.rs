@@ -124,6 +124,36 @@ fn records_the_voices_asked_for_by_line() {
     assert_eq!(h.voices(), ids);
 }
 
+/// Acceptance (2255): after `play_voice`, `voice_playing` names the line
+/// from the next frame until the clip's length has passed, then is `None`;
+/// a voice stopped is `None` from the next frame.
+#[test]
+fn a_voice_sounds_from_the_next_frame_until_its_length_has_passed() {
+    let mut h = beeper();
+    h.voice_length(1.0);
+    let lines = h.ctx().game.lines();
+    let manifest = h.ctx().game.manifest(&[(0, "Only"), (1, "Only")]);
+    h.ctx_mut().set_voice_manifest(&manifest);
+    h.ctx_mut().play_voice(&lines[0]);
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), None, "the platform hasn't read it");
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[0]));
+    h.wait(0.9);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[0]), "still sounding");
+    h.wait(0.2);
+    assert_eq!(h.ctx().voice_playing(), None, "ended");
+    // Stopped: `None` from the next frame.
+    h.ctx_mut().play_voice(&lines[1]);
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[1]));
+    h.ctx_mut().stop_voice();
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[1]), "a frame behind");
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), None, "stopped");
+}
+
 #[test]
 fn the_volumes_and_fullscreen_are_what_the_last_frame_said() {
     let mut h = beeper();
