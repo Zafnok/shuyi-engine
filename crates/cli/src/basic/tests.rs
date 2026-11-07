@@ -38,6 +38,19 @@ static BROKEN: &[(&str, &[u8])] = &[
     ("palette.ron", b"{ nope"),
 ];
 
+/// Its files with an action misspelled in the text.
+static MISSPELLED: &[(&str, &[u8])] = &[
+    (
+        "en.ron",
+        b"{\n    \"title.name\": \"Demo\",\n    \"title.subtitle\": \"{seeds} seeds, {Cursor} \
+          moves\",\n    \"title.help\": \"{Confirn} plant\",\n}\n",
+    ),
+    ("font/atlas.png", ATLAS_PNG),
+    ("font/atlas.ron", ATLAS_RON),
+    ("keymap.ron", KEYMAP),
+    ("palette.ron", PALETTE),
+];
+
 type Data = BasicData<UiAction>;
 
 /// A screen that prints its text's subtitle and quits on Cancel.
@@ -112,6 +125,26 @@ fn the_text_and_check_come_from_the_files() {
             .is_err_and(|e| e.starts_with("files/palette.ron"))
     );
     assert!(tools(BROKEN).frame(&[], &Script::default(), None).is_err());
+}
+
+#[test]
+fn check_fails_on_an_action_misspelled_in_the_text() {
+    use crate::contract::check::{CheckInput, check};
+    let answer = check(&tools(MISSPELLED), &CheckInput::default());
+    assert!(!answer.ok);
+    let errors = &answer.result.unwrap().errors;
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    let error = &errors[0];
+    assert_eq!(
+        (error.file.as_str(), error.line, error.code.as_deref()),
+        ("files/en.ron", Some(4), Some("SH2008"))
+    );
+    assert_eq!(
+        error.message,
+        "\"title.help\": unknown action \"{Confirn}\"; known actions: Up, Down, Left, Right, \
+         Confirm, Cancel, and {Cursor} for the cursor keys"
+    );
+    assert!(check(&tools(GOOD), &CheckInput::default()).ok);
 }
 
 #[test]

@@ -78,6 +78,10 @@ a key with `key_name`, and passes it in as an argument:
 > lends a list of pairs, each a **tuple**, values side by side: here the placeholder's
 > name, and what to put there.
 
+So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
+action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
+passes. `cargo shuyi check` fails on a capitalized name that is no action.
+
 Both follow the device the player pressed last: keys on the keyboard, the pad's own
 button names on a controller. An optional action may have no key; the text then shows the
 language's `keys.not_mapped` words.
@@ -140,7 +144,8 @@ new key.
 
 ## When it goes wrong
 
-`cargo shuyi check` reads the keymap, and these are its real answers.
+`cargo shuyi check` reads the keymap and the language file, and these are its real
+answers.
 
 A misspelled action. It says what it knows, and that the real one is now missing:
 
@@ -163,6 +168,15 @@ A key the rebinding screen keeps:
   files/keymap.ron:18: layout "Arrows": action "Cancel": "Escape" can't be bound here: Esc and Delete are fixed, see controls.md
 ```
 
+An action misspelled in the language file. `check` lists the actions and
+`{Cursor}`, as the names a capitalized placeholder may use:
+
+```text
+check: 1 error(s)
+  files/en.ron:15: error[SH2008]: "title.help": unknown action "{Confirn}"; known actions: Up, Down, Left, Right, Confirm, Cancel, and {Cursor} for the cursor keys
+help[SH2008]: use one of the names the message lists, or fix the spelling
+```
+
 `cargo shuyi lint` reads your code and your text, and finds a key named in either:
 
 ```text
@@ -171,7 +185,7 @@ lint: 1 finding(s)
 help[SH2101]: react to an action instead, and name a key in text through the player's keymap
 ```
 
-Two more reach neither:
+One more reaches neither:
 
 **A screen reads an action it didn't declare.** Take `UiAction::Left` off the garden's
 `actions`, keep reading it in `update`, and in a test the Harness holds it back, so Left
@@ -184,6 +198,3 @@ assertion `left == right` failed
 ```
 
 If a key does nothing in a test, look at the screen's `actions` first.
-
-**An action's name misspelled in text.** `{Confirn}` isn't an error: the player reads
-`{Confirn}` on the screen. Look at the line you changed.

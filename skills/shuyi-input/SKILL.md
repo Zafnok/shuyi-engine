@@ -189,8 +189,9 @@ Branch on the `code`, never the message (`cargo shuyi explain <code>`):
 - `SH2101`: code or text names a key. React to an action, or put an
   `{Action}` placeholder in the text.
 - `SH2001`, `SH2008` (from `check`): the keymap file doesn't read, or
-  names an action, key or button that isn't one; the error gives its
-  line.
+  names an action, key or button that isn't one, or the language file
+  has a capitalized `{Name}` that is no action nor `{Cursor}` (a value a
+  screen passes is lowercase); the error gives its line.
 - `SH3003`: no such target, or the target profiles don't load.
 - A `check --target` problem names the screen, the action and the
   target's inputs: bind the action to a button the target has, or

@@ -302,9 +302,19 @@ when something that should never happen did. It names the key:
 text key not in the English text: "title.name"
 ```
 
-So run the screens you change, or better, test them. And a misspelled action in the
-text, like `{Confirn}`, isn't an error at all: the player sees `{Confirn}` on the
-screen, so look at the line you changed.
+So run the screens you change, or better, test them.
+
+**An action's name is misspelled in the text.** `{Confirn}` names no action, and
+`cargo shuyi check` fails on it, with its line:
+
+```text
+check: 1 error(s)
+  files/en.ron:15: error[SH2008]: "title.help": unknown action "{Confirn}"; known actions: Up, Down, Left, Right, Confirm, Cancel, and {Cursor} for the cursor keys
+help[SH2008]: use one of the names the message lists, or fix the spelling
+```
+
+A capitalized name in braces is a key, and lowercase is a value the screen passes
+([chapter 3](@/learn/book/actions.md#naming-a-key-in-text)).
 
 ## When a game outgrows the short path
 
