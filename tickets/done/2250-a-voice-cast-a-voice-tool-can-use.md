@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2250 — A voice cast a voice tool can use
@@ -96,15 +96,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A cast with tool settings and a speaker-and-variant key parses, and
+- [x] A cast with tool settings and a speaker-and-variant key parses, and
       `voice_for` returns the variant's voice for that variant and the
       speaker's for another.
-- [ ] Every error has its own test: an empty `voice`, a speaker who can't
+- [x] Every error has its own test: an empty `voice`, a speaker who can't
       speak, an unknown suffix, a suffix on a speaker who can't speak, and
       settings the tool's `S` rejects.
-- [ ] The completion notes have a `Breaking:` line for each changed item.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The completion notes have a `Breaking:` line for each changed item.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -115,5 +115,60 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_assets::voice::Cast<S>` holds `CastVoice<S>` entries (`voice`,
+  `settings`) by key; both are `#[non_exhaustive]` with a `new`
+  (ADR-0039 kind 2), and `Cast<S>` has a `Default` for any `S`.
+  `Cast::voice_for(speaker, variant)` reads the speaker-and-suffix entry,
+  else the speaker's.
+- The RON shape is nested, not flattened:
+  `"hero.light": (voice: "hero_light", settings: (reader: Piper))`. A tool
+  with no settings uses `S = ()` and writes `settings: ()`: serde can't
+  default a missing field without `S: Default`, and the ticket asks for
+  `S: DeserializeOwned` only. The module doc shows the shape.
+- `cast_from_source::<S, V>` keeps the old checks and adds the variant
+  keys. A key that is itself a speaker is the speaker's, whatever it ends
+  with. Otherwise a key ending in a variant's suffix names that speaker,
+  which must speak. A key with a speaking prefix and no known suffix gets
+  its own message listing the suffixes. Narration may have variants too
+  (`">.sun"`).
+- `ClipVariant::variants()`: a new provided method (the default plus the
+  split ones), so no implementor changes. A game with variants outside
+  both overrides it.
+- `docs/formats.md`'s *Checks after loading* line names the variants and
+  the tool's settings.
+- No follow-up tickets. 2251 already builds on `Cast<S>`. The game moves
+  its voice tool onto this in `game#1242`. The game doesn't call `Cast`
+  or `cast_from_source` today (`game#0760`), so the pin bump past this PR
+  needs no game code.
+
+Breaking: shuyi-assets: voice::Cast: it takes the tool's settings type, `Cast<S>`; `voices` holds `CastVoice<S>` (`.voice` is the old string), and it is `#[non_exhaustive]`, built with `Cast::new` or `default()`.
+
+```migration
+since: 0.1.0
+what: A cast's voices carry the voice tool's settings, so Cast takes the settings' type and each voice is a CastVoice.
+old: "Cast { voices: BTreeMap<String, String> }"
+new: "Cast<S> { voices: BTreeMap<String, CastVoice<S>> }"
+before: |
+  let voice: &String = &cast.voices["guide"];
+after: |
+  let voice: &String = &cast.voice_for("guide", variant).unwrap().voice;
+find: ["cast.voices["]
+```
+
+Breaking: shuyi-assets: voice::cast_from_source: it is generic over the tool's settings `S` and the game's `ClipVariant` `V`, and each entry in the file is `(voice: "..", settings: ..)` instead of a bare string.
+
+```migration
+since: 0.1.0
+what: A cast file gives each speaker a voice and the tool's settings, and its keys may name a clip variant.
+old: "cast_from_source(file, source, can_speak) -> Result<Cast, _>"
+new: "cast_from_source::<S, V>(file, source, can_speak) -> Result<Cast<S>, _>"
+before: |
+  let cast = voice::cast_from_source("cast.ron", &text, can_speak)?;
+  // cast.ron: (voices: { "guide": "guide_a" })
+after: |
+  let cast: Cast<()> = voice::cast_from_source::<(), Voice>("cast.ron", &text, can_speak)?;
+  // cast.ron: (voices: { "guide": (voice: "guide_a", settings: ()) })
+find: ["cast_from_source(\""]
+```
+
+Book: none, the book shows no voice cast; the cast is read by a game's own voice tool, not by a game's code the book teaches.
