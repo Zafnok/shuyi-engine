@@ -39,16 +39,15 @@ None.
 ## Scope
 
 **In:** the rise is `h - (height - PANEL.y - BELOW_PANEL)`, clamped as
-now; the test's table corrected (23 lines at row 3, 24 at row 2, 25 at
-row 1). No API change; the game's next pin move updates its snapshots.
+now; the test's table corrected. No API change; the game's next pin move updates its snapshots.
 
 **Out (do not do):** anything else of the layout.
 
 ## Implementation steps
 
 1. Fix the rise in `panel()`; leave the `PANEL.h.min(room)` cap as it is.
-2. Fix `a_taller_panel_rises_so_the_message_fits`'s table and add 26 lines
-   (row 1, the message on row 30).
+2. Fix `a_taller_panel_rises_so_the_message_fits`'s table (22 and 23
+   lines at row 3, 24 at row 2, 25 at row 1, the message on row 30).
 
 ## Acceptance criteria
 
