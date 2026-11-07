@@ -53,6 +53,15 @@ skill): "the Playdate build draws with a pattern map instead of inks",
 with the pattern map below. It adds that ticket to 2389's `blocked_by`
 as `game#NNNN`.
 
+The game's device build waits for this ticket:
+[game#1170](https://github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/1170-the-playdate-front-end-on-the-engines-backend.md)
+moves it onto `shuyi-playdate`, whose display paints with a
+`PatternMap` only (`OneBitLook::map`), so the inks' dots, edges and
+inverted rectangles would be lost there. 1170 hands the backend the
+map below for its device build. The game's ticket this PR writes moves
+what still calls `render` after that: its tool pictures (`frame-png`'s
+one-bit frames) and its tests.
+
 ## Nick input
 
 None.
