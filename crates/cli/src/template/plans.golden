@@ -57,11 +57,11 @@ f23feaa7846d2643 crates/game/src/app_info.rs
 ec141cdf47b056af crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 ede38b9c29b9d280 crates/game/src/stages/top_down_grid/tools.rs
-1761154653b27156 crates/game/src/stages/top_down_grid.rs
+5a555bab83db97f0 crates/game/src/stages/top_down_grid.rs
 990e9c3f7a8a2ef1 crates/game/src/stages.rs
 fbc4754f1d90d0da crates/game/src/title.rs
 f45543bff1fc41d2 crates/game/tests/it/main.rs
-5043461c4a09895c crates/game/tests/stage.rs
+fcbbf2325204db57 crates/game/tests/stage.rs
 dd2774be3effd43f crates/rules/AGENTS.md
 7d39342f9c953a2a crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml
