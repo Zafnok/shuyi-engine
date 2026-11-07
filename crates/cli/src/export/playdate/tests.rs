@@ -217,6 +217,26 @@ fn the_exporter_is_found_by_its_target_and_checks_its_profile() {
 }
 
 #[test]
+fn the_build_turns_on_playdate_then_the_features_turned_on() {
+    let mut cx = cx(true);
+    cx.package = "jumper-playdate".to_owned();
+    cx.turned_on = vec!["demo".to_owned(), FEATURE.to_owned(), "bench".to_owned()];
+    for (args, triple) in PLAYDATE.cargo_args(&cx).iter().zip([DEVICE, SIMULATOR]) {
+        assert_eq!(
+            args.join(" "),
+            format!(
+                "rustc -p jumper-playdate --lib --crate-type staticlib --no-default-features \
+                 --features playdate,demo,bench --target {triple} --release"
+            )
+        );
+    }
+    assert_eq!(
+        rust_lib(&cx, DEVICE),
+        PathBuf::from("/game/target/thumbv7em-none-eabihf/release/libjumper_playdate.a")
+    );
+}
+
+#[test]
 fn a_package_with_no_playdate_feature_is_told_what_to_add() {
     let mut cx = cx(false);
     cx.features.clear();

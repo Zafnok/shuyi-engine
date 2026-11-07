@@ -16,8 +16,11 @@
 //!
 //! `shuyi.ron`'s `export` part names the features a build turns on, never the
 //! debug build's live link (`link`), and the files and folders copied into
-//! the package ([`ExportCx::copy_beside`]). A game with no such part gets a
-//! build with no feature and a package with nothing else in it.
+//! the package ([`ExportCx::copy_beside`]); its `targets` give one target a
+//! package and features of its own, the only part of it the Playdate reads.
+//! `--with` turns on one more feature the package has for one build. A game
+//! with no such part gets a build with no feature and a package with nothing
+//! else in it.
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part if it has one ([`disclosure`]).
@@ -190,7 +193,8 @@ pub struct ExportCx {
     pub shown: String,
     /// Whether it is a release build.
     pub release: bool,
-    /// The game's package.
+    /// The game's package: the target's own in the `export` part, else the
+    /// `export` part's, the `game` part's or the web build's.
     pub package: String,
     /// The program it builds.
     pub bin: String,
@@ -207,7 +211,8 @@ pub struct ExportCx {
     pub app: Option<AppPart>,
     /// The cargo features of the game's package.
     pub features: Vec<String>,
-    /// The features its build turns on.
+    /// The features its build turns on: the target's list or the `export`
+    /// part's, less `--without`, plus `--with`.
     pub turned_on: Vec<String>,
     /// What ships beside the program.
     pub beside: Vec<Beside>,
@@ -268,16 +273,20 @@ impl ExportCx {
             .export
             .as_ref()
             .filter(|_| exporter.takes_export_part());
+        let choice = Choice::of(config.export.as_ref(), exporter)?;
         let named = part.and_then(|part| part.package.as_deref());
-        let package =
-            package_of(exporter.id(), named, config.game.as_ref(), web).ok_or_else(|| {
+        let package = choice
+            .package
+            .clone()
+            .or_else(|| package_of(exporter.id(), named, config.game.as_ref(), web))
+            .ok_or_else(|| {
                 ExportError::Setup(format!(
                     "{} names no package to build: its `game` part names the game's",
                     crate::project::FILE
                 ))
             })?;
         let (package_version, bins, features) = metadata(root, &package)?;
-        let features = features.into_keys().collect();
+        let features: Vec<String> = features.into_keys().collect();
         let version = version(config.app.as_ref(), package_version);
         let bin = match web {
             Some(web) if exporter.id() == "web" => web.bin.clone(),
@@ -295,7 +304,7 @@ impl ExportCx {
             Some(texts) => notices::game_texts(root, texts).map_err(ExportError::Setup)?,
             None => Vec::new(),
         };
-        let turned_on = turned_on(part, &input.without)?;
+        let turned_on = choice.turned_on(&input.without, &input.with, &package, &features)?;
         let mut beside = present(root, part)?;
         if let Some(web) = web.filter(|_| exporter.id() == "web") {
             beside.retain(|item| !in_web_build(item, web));
@@ -546,21 +555,90 @@ pub(crate) fn package_and_program(
     Ok((package, bin))
 }
 
-/// The features a build turns on: what `part` lists but `without`. Leaving
-/// out one it doesn't list is refused.
-fn turned_on(part: Option<&ExportPart>, without: &[String]) -> Result<Vec<String>, ExportError> {
-    let listed = part.map_or(&[][..], |part| &part.features);
-    if let Some(unknown) = without.iter().find(|name| !listed.contains(name)) {
-        return Err(ExportError::Setup(format!(
-            "--without {unknown}: `export.features` in {} doesn't list it",
-            crate::project::FILE
-        )));
+/// What `shuyi.ron`'s `export` part says one target builds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Choice<'a> {
+    /// The package its own entry names, in place of the one
+    /// [`package_of`] picks.
+    package: Option<String>,
+    /// The features it turns on.
+    features: &'a [String],
+    /// Where they are listed, for a refusal: `export.features` or
+    /// `export.targets.<id>.features`.
+    listed_in: String,
+}
+
+impl<'a> Choice<'a> {
+    /// What `part` says `exporter`'s target builds: its own entry's package
+    /// and features, each when the entry names it, else the part's features
+    /// if the target takes the part. An entry of a target with no exporter is
+    /// refused.
+    fn of(part: Option<&'a ExportPart>, exporter: &dyn Exporter) -> Result<Self, ExportError> {
+        let id = exporter.id();
+        let targets = part.map(|part| &part.targets);
+        if let Some(unknown) = targets
+            .into_iter()
+            .flat_map(BTreeMap::keys)
+            .find(|name| find(name).is_none())
+        {
+            return Err(ExportError::Setup(format!(
+                "`export.targets` in {} names `{unknown}`, which has no exporter (the exporters: \
+                 {})",
+                crate::project::FILE,
+                ids().join(", ")
+            )));
+        }
+        let own = targets.and_then(|targets| targets.get(id));
+        let (features, listed_in) = match (own.and_then(|own| own.features.as_deref()), part) {
+            (Some(features), _) => (features, format!("`export.targets.{id}.features`")),
+            (None, Some(part)) if exporter.takes_export_part() => {
+                (&part.features[..], "`export.features`".to_owned())
+            }
+            _ => (&[][..], "`export.features`".to_owned()),
+        };
+        Ok(Self {
+            package: own.and_then(|own| own.package.clone()),
+            features,
+            listed_in,
+        })
     }
-    Ok(listed
-        .iter()
-        .filter(|name| !without.contains(name))
-        .cloned()
-        .collect())
+
+    /// The features a build of `package`, whose features are `features`,
+    /// turns on: what the choice lists but `without`, then `with`. Leaving
+    /// out one it doesn't list is refused, as is turning on one `package`
+    /// lacks.
+    fn turned_on(
+        &self,
+        without: &[String],
+        with: &[String],
+        package: &str,
+        features: &[String],
+    ) -> Result<Vec<String>, ExportError> {
+        if let Some(unknown) = without.iter().find(|name| !self.features.contains(name)) {
+            return Err(ExportError::Setup(format!(
+                "--without {unknown}: {} in {} doesn't list it",
+                self.listed_in,
+                crate::project::FILE
+            )));
+        }
+        if let Some(unknown) = with.iter().find(|name| !features.contains(name)) {
+            return Err(ExportError::Setup(format!(
+                "--with {unknown}: the package `{package}` has no such feature"
+            )));
+        }
+        let mut on: Vec<String> = self
+            .features
+            .iter()
+            .filter(|name| !without.contains(name))
+            .cloned()
+            .collect();
+        for name in with {
+            if !on.contains(name) {
+                on.push(name.clone());
+            }
+        }
+        Ok(on)
+    }
 }
 
 /// What `part` ships that is there: one that isn't refuses the export,

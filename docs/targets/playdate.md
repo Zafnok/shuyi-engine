@@ -43,6 +43,25 @@ The device has no standard library, so the game's library builds without
 [`examples/hello-grid`](../../examples/hello-grid/README.md) does all of it
 (`src/playdate.rs`).
 
+The export builds the `game` part's package. A game whose Playdate library is
+a package of its own, beside its desktop program and its tools, names it in
+the `export` part's `targets`, with the features its build turns on:
+
+```ron
+export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+    },
+),
+```
+
+The build turns on `playdate`, then those features (none without a list:
+the Playdate takes nothing else of the `export` part). `--without <feature>`
+leaves one of them off, and `--with <feature>` turns on another the package
+has for one build, a measuring build say: `shuyi export playdate --with
+bench`. `check --target playdate` and `bake` still run the game's tools.
+
 The crank's notch is `crank: (notch_degrees: 45)` in the keymap file, 45
 unless it says. An optional action bound to `SystemMenu0` to `SystemMenu2`
 becomes an item of the system menu, titled by the text key

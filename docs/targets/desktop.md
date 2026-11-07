@@ -87,7 +87,13 @@ export: (
 - **`features`** go to the build's `--features`, on every desktop target and
   the web, and to `NOTICES.txt`. `link`, the live link, is refused.
   `--without <feature>` leaves one off a build, as a build with no access to
-  a feature's files needs.
+  a feature's files needs, and `--with <feature>` turns on another the
+  package has, for that build only.
+- **`targets`** gives one target, by its id, a `package` and `features` of
+  its own, each replacing the part's for that target: `targets: {
+  "linux": (package: "jumper-linux") }`. The Playdate reads its entry here
+  too, and nothing else of the part ([playdate.md](playdate.md)). An id with
+  no exporter is refused.
 - **`beside`** copies each file or folder under its own name, or `name`. A
   path that isn't there refuses the export, naming it, unless it is
   `optional`; a name the package already holds is refused too.

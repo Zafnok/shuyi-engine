@@ -1,5 +1,5 @@
-//! `export <target> [--out <dir>] [--release] [--run] [--without <feature>]`:
-//! the game checked
+//! `export <target> [--out <dir>] [--release] [--run] [--without <feature>]
+//! [--with <feature>]`: the game checked
 //! against the target (`check --target` with the target's profile: the
 //! `desktop` one for `windows`, `linux` and `macos`), refused on any
 //! error, then built and packaged by the target's exporter
@@ -51,10 +51,15 @@ pub struct ExportInput {
     /// Whether to run the package after writing it.
     #[serde(default)]
     pub run: bool,
-    /// Features of `shuyi.ron`'s `export.features` to leave off this build
-    /// (a build without the files a feature needs, say).
+    /// Features of `shuyi.ron`'s `export.features` (or the target's own
+    /// list, `export.targets.<target>.features`) to leave off this build (a
+    /// build without the files a feature needs, say).
     #[serde(default)]
     pub without: Vec<String>,
+    /// Features of the game's package to turn on for this build only (a
+    /// measuring build, say): each one the package has.
+    #[serde(default)]
+    pub with: Vec<String>,
 }
 
 /// How a package is signed.
@@ -217,7 +222,7 @@ fn failed(error: &ExportError) -> Answer<ExportOutput> {
 
 /// `export`'s arguments (`--json` taken out): the target, then
 /// `--out <dir>`, `--release` and `--run` in any order, each once, and
-/// `--without <feature>`, any number of times.
+/// `--without <feature>` and `--with <feature>`, any number of times.
 pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
     let mut input = ExportInput::default();
     let mut rest = args.iter();
@@ -242,6 +247,10 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
                 let feature = rest.next().ok_or("--without needs a feature")?;
                 input.without.push(feature.clone());
             }
+            "--with" => {
+                let feature = rest.next().ok_or("--with needs a feature")?;
+                input.with.push(feature.clone());
+            }
             flag if flag.starts_with("--") => return Err(format!("unknown option {flag}")),
             _ if target.is_none() => target = Some(arg.clone()),
             _ => return Err("one target".to_owned()),
@@ -255,7 +264,7 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} export <windows | linux | macos | web | playdate> [--out <dir>] [--release] \
-         [--run] [--without <feature>] [--json]"
+         [--run] [--without <feature>] [--with <feature>] [--json]"
     )
 }
 
