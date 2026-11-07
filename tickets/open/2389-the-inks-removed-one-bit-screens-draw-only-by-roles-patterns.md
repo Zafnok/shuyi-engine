@@ -6,7 +6,7 @@ milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2388"]
+blocked_by: ["2388", "game#1251"]
 nick_input: none
 completed:
 ---
@@ -39,12 +39,13 @@ wouldn't change. Keeping both costs:
   uses (the move range's dots, the attack range's diagonals, the
   danger zone's dashes), which `AGENTS.md` rule 4 keeps out.
 
-2388 gives roles what only the inks could do (a `Dots` pattern, glyphs
-edged in white, rectangles that invert) and proves a pattern map draws
-every ink-coloured frame exactly as the inks do. Its PR writes the
-game's ticket that moves the Playdate build onto a pattern map, and adds
-it to this ticket's `blocked_by`. Once both are done, nothing uses the
-inks.
+**From 2388 (done):** roles have what only the inks could do (a `Dots`
+pattern, a role's `edge` and `invert`, ADR-0089), and a pattern map
+draws every ink-coloured frame exactly as the inks do (the proof,
+`INKS_AS_ROLES` in `crates/ui/src/frame/onebit/tests.rs`; the `dashes`
+ink is `Checker2`, not `Inverted(Checker2)`). The game moves its
+Playdate build onto a pattern map in game#1251. Once both are done,
+nothing uses the inks.
 
 ## Nick input
 
@@ -99,8 +100,8 @@ None.
     `Shades::shape`'s `flips`. If not, nothing to do (2340 flashes in
     a role with `invert`, its clause says so).
 - **Tests:** every test that drew with `InkShades` draws with a
-  `PatternMap` of 2388's proof (move that map into a test helper both
-  use), and the fast-equals-reference proptests run with pattern maps
+  `PatternMap` of 2388's proof (`INKS_AS_ROLES` and `inks_as_roles` in
+  `onebit/tests.rs`; move them into a test helper both use), and the fast-equals-reference proptests run with pattern maps
   only.
 - **Docs** through the `document` skill: `docs/carve.md` (one-bit inks
   no longer in the engine), `docs/platform-backends.md` if it names an
@@ -108,7 +109,7 @@ None.
 - **For the game:** an API break, which CI's `api` job reports, with
   `Breaking:` lines (ADR-0038 §6): the `ink` module and the ink-only
   renderer functions are gone, and `render`, `render_marked` and
-  `render_changed` take a `Shades`. The game's ticket from 2388 has
+  `render_changed` take a `Shades`. The game's ticket game#1251 has
   already moved its Playdate build onto a pattern map; its PR that moves
   the pin past this one deletes its own `content::ink` re-export.
 
@@ -121,7 +122,7 @@ None.
 
 ## Implementation steps
 
-1. Check `blocked_by`: 2388 done, and the game's ticket it added done
+1. Check `blocked_by`: 2388 done, and game#1251 done
    (the game draws its Playdate build with a pattern map).
 2. Delete `crates/assets/src/ink.rs` and its module line.
 3. In `crates/ui/src/frame/onebit.rs` and `onebit/reference.rs`: delete

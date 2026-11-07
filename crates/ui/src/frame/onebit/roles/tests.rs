@@ -43,10 +43,7 @@ fn def() -> PatternMapDef {
         ),
         (
             "team.player",
-            RolePatterns {
-                fg: pattern(Base::HLines).inverted(),
-                bg: None,
-            },
+            RolePatterns::of(pattern(Base::HLines).inverted()),
         ),
         ("text", RolePatterns::new(Pattern::BLACK, Pattern::WHITE)),
     ];
@@ -126,7 +123,7 @@ fn a_colour_is_drawn_in_its_roles_patterns_or_else_by_its_luminance() {
     assert_eq!(map.shape(Rgb::new(255, 255, 255)), shade(Pattern::WHITE));
     let quarter = Rgb::new(191, 191, 191);
     assert_eq!(map.shape(quarter), shade(pattern(Base::Dither25)));
-    // Nothing here is edged or flips: those are the game's inks.
+    // Nothing here is edged or flips: no role says `edge` or `invert`.
     assert!(!map.glyph(INK).edged && !map.shape(CURSOR).flips);
     // An empty map: every colour by luminance.
     let empty = PatternMap::new(palette(), &PatternMapDef::default());
@@ -186,6 +183,107 @@ fn cells_rectangles_and_glyphs_are_drawn_in_their_roles_patterns() {
             assert_eq!(frame.is_white(x, y), white(lines, x, y), "rect ({x}, {y})");
         }
         assert!(frame.is_white(79, y) && frame.is_white(93, y));
+    }
+}
+
+const EDGED: Rgb = Rgb::new(10, 10, 10);
+const FLIP: Rgb = Rgb::new(200, 0, 200);
+
+/// [`def`] with a role whose glyphs are edged and one whose rectangles
+/// flip, read from a map as a game writes it, and [`palette`] with them.
+fn map_with_edge_and_invert() -> PatternMap {
+    let source = r#"(
+        roles: {
+            "cursor": (fg: Black, bg: Black),
+            "paper": (fg: White),
+            "text": (fg: Black, bg: White),
+            "edged": (fg: Black, edge: true),
+            "flip": (fg: Dither50, bg: Black, invert: true),
+        },
+    )"#;
+    let def = PatternMapDef::from_source("palette@onebit.ron", source).unwrap();
+    let mut palette = palette();
+    palette.extend([("edged", EDGED), ("flip", FLIP)]);
+    PatternMap::new(palette, &def)
+}
+
+#[test]
+fn edge_marks_a_roles_glyphs_and_invert_its_rectangles_only() {
+    let map = map_with_edge_and_invert();
+    let black = Shade::from(Pattern::BLACK);
+    assert_eq!(
+        map.glyph(EDGED),
+        Shade {
+            edged: true,
+            ..black
+        }
+    );
+    assert_eq!(map.shape(EDGED), black);
+    assert_eq!(map.ground(EDGED), black);
+    let dither = Shade::from(pattern(Base::Dither50));
+    assert_eq!(
+        map.shape(FLIP),
+        Shade {
+            flips: true,
+            ..dither
+        }
+    );
+    assert_eq!(map.glyph(FLIP), dither);
+    assert_eq!(map.ground(FLIP), black);
+    // The other roles do neither.
+    assert_eq!(map.glyph(INK), black);
+    assert_eq!(map.shape(CURSOR), black);
+}
+
+#[test]
+fn an_edged_role_draws_a_white_edge_round_its_glyphs() {
+    let draw = |fg| {
+        let mut buf = screen();
+        buf.fill_rect(PxRect::new(0, 0, 6, 4), Cell::new(' ', INK, CURSOR));
+        // `|` is the cell's left column: pixels (16, 16..32).
+        buf.set(2, 1, Cell::new('|', fg, CURSOR));
+        drawn(&buf, &map_with_edge_and_invert())
+    };
+    let (edged, plain) = (draw(EDGED), draw(INK));
+    for y in 16..32 {
+        assert!(
+            !edged.is_white(16, y) && !plain.is_white(16, y),
+            "glyph at {y}"
+        );
+        assert!(
+            edged.is_white(15, y) && edged.is_white(17, y),
+            "edge at {y}"
+        );
+        assert!(
+            !plain.is_white(15, y) && !plain.is_white(17, y),
+            "none at {y}"
+        );
+    }
+    assert!(edged.is_white(16, 15) && edged.is_white(16, 32));
+    assert!(!edged.is_white(19, 20));
+}
+
+#[test]
+fn an_inverting_role_flips_what_its_rectangles_cover() {
+    let mut buf = screen();
+    // Black cells on the left, paper on the right, a cell of each in the
+    // rectangle.
+    buf.fill_rect(PxRect::new(0, 0, 2, 4), Cell::new(' ', INK, CURSOR));
+    buf.add_overlay(Overlay::new(PxRect::new(4, 20, 20, 8), FLIP, Layer::Under));
+    let frame = drawn(&buf, &map_with_edge_and_invert());
+    for y in 20..28 {
+        assert!(
+            (4..16).all(|x| frame.is_white(x, y)),
+            "flipped black at {y}"
+        );
+        assert!(
+            (16..24).all(|x| !frame.is_white(x, y)),
+            "flipped paper at {y}"
+        );
+        assert!(
+            !frame.is_white(3, y) && frame.is_white(24, y),
+            "outside at {y}"
+        );
     }
 }
 
