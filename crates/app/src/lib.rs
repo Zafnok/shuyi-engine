@@ -7,7 +7,8 @@
 //!
 //! On desktop, `read_folder` reads a folder on disk (a player's mod) into
 //! a bundle layer the game lays over its own files. The web has no
-//! folders, so it isn't there. In a build with debug tools the folders it
+//! folders, so it isn't there: there [`page::page_layer`] reads the files
+//! the page holds into one instead. In a build with debug tools the folders it
 //! reads are watched, and `watched_layer` gives the one `cargo shuyi run
 //! --watch` names (ADR-0071).
 //!
@@ -111,7 +112,7 @@
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
 //! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `download.js`'s,
-//! `quad-storage`'s) are
+//! `page-files.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
 //! (`crates/cli/web/README.md` shows how).
@@ -138,6 +139,7 @@ pub mod keys;
 mod link;
 mod pacing;
 pub mod pads;
+pub mod page;
 mod painted;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;

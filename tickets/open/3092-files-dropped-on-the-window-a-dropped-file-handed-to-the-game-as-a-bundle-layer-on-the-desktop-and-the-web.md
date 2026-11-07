@@ -30,7 +30,7 @@ What there is:
   `Layer::owned(name, files)` takes files handed in at run time, and a
   game lays it over its own. On native, `shuyi_app::read_folder`
   (`crates/app/src/folder.rs`) reads a folder into one;
-- **3069** (open) lays files the page holds in `sessionStorage` over a
+- **3069** (done) lays files the page holds in `sessionStorage` over a
   web build's own. A browser keeps about 5 MB there, too little for a
   WAD; a dropped file has no such limit;
 - **miniquad 0.4.11** (in `Cargo.lock`) has drops already, on Windows,

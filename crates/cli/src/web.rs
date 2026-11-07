@@ -3,8 +3,9 @@
 //! with the web shell into the project's `web.dist` folder: the page
 //! (`web/index.html`, with the game's title and binary written in), the
 //! vendored JS loaders (`web/mq_js_bundle.js`, and `web/sapp_jsutils.js`
-//! with `web/quad-storage.js` for `localStorage`) and the engine's controller
-//! plugin (`web/gamepad.js`). The shell is built into this tool; see
+//! with `web/quad-storage.js` for `localStorage`) and the engine's own
+//! plugins (`web/gamepad.js` for controllers, `web/page-files.js` for the
+//! files the page hands the game, and the rest). The shell is built into this tool; see
 //! `web/README.md`, which also says how a game's binary gets the link
 //! argument these plugins need. Each `--<feature>` turns on a feature of
 //! the game's package that `web.features` lists (a debug build's tools,
@@ -35,7 +36,7 @@ use crate::project::Web;
 
 /// The shell's files: name and contents. `index.html` has `%TITLE%` and
 /// `%WASM%` in it, for the game's title and binary.
-const SHELL: [(&str, &str); 7] = [
+const SHELL: [(&str, &str); 8] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
@@ -43,6 +44,7 @@ const SHELL: [(&str, &str); 7] = [
     ("gamepad.js", include_str!("../web/gamepad.js")),
     ("sound.js", include_str!("../web/sound.js")),
     ("download.js", include_str!("../web/download.js")),
+    ("page-files.js", include_str!("../web/page-files.js")),
 ];
 
 /// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
@@ -55,7 +57,7 @@ enum Origin {
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
-const SHELL_NOTICES: [(&str, Origin); 7] = [
+const SHELL_NOTICES: [(&str, Origin); 8] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
@@ -63,6 +65,7 @@ const SHELL_NOTICES: [(&str, Origin); 7] = [
     ("gamepad.js", Origin::Engine),
     ("sound.js", Origin::Engine),
     ("download.js", Origin::Engine),
+    ("page-files.js", Origin::Engine),
 ];
 
 /// The row of [`notices::FILES`] of the shell's file `name`.
@@ -611,6 +614,9 @@ mod tests {
     /// The Rust side of `web/download.js`: the engine's web downloads.
     const SESSIONS_WEB: &str = include_str!("../../app/src/sessions/web.rs");
 
+    /// The Rust side of `web/page-files.js`: the files from the page.
+    const PAGE: &str = include_str!("../../app/src/page.rs");
+
     struct FakeWasmOpt<F>(F);
 
     impl<F: Fn(&Path, &Path) -> Result<bool, String>> WasmOpt for FakeWasmOpt<F> {
@@ -834,6 +840,7 @@ mod tests {
             ("gamepad.js", ""),
             ("sound.js", ""),
             ("download.js", ""),
+            ("page-files.js", ""),
         ] {
             assert_eq!(
                 fs::read_to_string(dist.join(name)).unwrap(),
@@ -1451,6 +1458,57 @@ version = "1.2.3"
         let download = at(r#"<script src="download.js">"#);
         let load = at(r#"load("%WASM%")"#);
         assert!(bundle < download && download < load);
+    }
+
+    #[test]
+    fn page_files_js_provides_exactly_the_functions_the_app_imports() {
+        // A function missing on either side only shows up in the browser,
+        // as a warning and a game that never sees the page's files.
+        let js = shell("page-files.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_page_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(PAGE, "safe fn shuyi_page_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
+        assert_eq!(
+            imported,
+            [
+                "shuyi_page_file_count",
+                "shuyi_page_file_path",
+                "shuyi_page_file_text",
+                "shuyi_page_report"
+            ]
+        );
+        assert_eq!(provided, imported);
+    }
+
+    #[test]
+    fn page_files_js_version_matches_the_app() {
+        let js = shell("page-files.js");
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(PAGE, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_page_files""#));
+        assert!(PAGE.contains("fn shuyi_page_files_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn index_html_loads_page_files_js_after_sapp_jsutils_and_before_the_game() {
+        // Its strings are `sapp_jsutils.js`'s objects.
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let jsutils = at(r#"<script src="sapp_jsutils.js">"#);
+        let page = at(r#"<script src="page-files.js">"#);
+        let load = at(r#"load("%WASM%")"#);
+        assert!(jsutils < page && page < load);
     }
 
     #[test]

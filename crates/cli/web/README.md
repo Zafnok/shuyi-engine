@@ -34,6 +34,10 @@ itself, so a game needs no copy of its own.
   code, not vendored. See below.
 - `download.js`: offers the browser a file, for the debug menu's "Save
   session". The engine's own code, not vendored. See below.
+- `page-files.js`: files from the page, a miniquad JS plugin over
+  `sessionStorage` and `postMessage`: the text files a page hands the
+  game, which it lays over its own, and the game's problems with them
+  sent back. The engine's own code, not vendored. See below.
 
 In `dist`, each vendored script starts with one line naming its work
 and pointing at the notices, then the committed file:
@@ -158,6 +162,35 @@ Dependabot's `backend` group too.
   fail otherwise.
 - Only a build with debug tools calls it, when the debug menu asks. The web
   never quits, so nothing saves by itself.
+
+## The engine's own `page-files.js`
+
+- It and `crates/app/src/page.rs` list the same `shuyi_page_*` functions
+  and the same plugin version: `shuyi-cli`'s tests fail otherwise. Strings
+  cross as `sapp_jsutils.js`'s objects, so `index.html` loads it after
+  that file, and before `load(...)`.
+- **What a page writes:** each file in `sessionStorage` under
+  `shuyi-page-file:<path>`, `<path>` the file's path in the game's
+  project (`files/stage.map`), its text the file's. Only a page of the
+  same origin can write it; it lasts as long as the tab and survives a
+  reload, and a read is synchronous, so the game has the files before its
+  first frame. To run the game on new files, write them and reload the
+  game's page (or its frame). The files are text: a picture or a sound
+  can't come this way.
+- **What the game does with them:** `shuyi_app::page::page_layer("files",
+  limits)` reads those under `files/` into a layer, at the path after it,
+  shown as `files/stage.map` in problems, as `cargo shuyi check` shows the
+  game's own. A file over `PageLimits::per_file` (256 KiB unless the game
+  says), the files over `in_all` (1 MiB) together, or a bad path, and the
+  game gets an error naming it. A page with storage turned off holds no
+  files. Hello, Grid lays the layer over its own files when its data loads
+  with it, and plays its own files otherwise.
+- **What comes back:** `page::report(text)`, the game's problems with the
+  files, one a line (`files/stage.map:11:6: 'X' is not in the legend`),
+  or the empty text when they load. In a frame whose parent has the page's
+  origin, the parent gets `{ kind: "shuyi-report", text }` by
+  `postMessage`, at that origin only; with no such parent, the console
+  gets `text` with `console.info`.
 
 ## The engine's own `gamepad.js`
 
