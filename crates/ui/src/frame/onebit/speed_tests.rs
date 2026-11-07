@@ -20,7 +20,7 @@ mod timing;
 /// A font of 8 × 16 cells: `X` a block, `?` (the fallback) two corners,
 /// `[` and `]` a column at either side, `"` two dots, `#` every pixel, and
 /// a wide `田`, its left half's left column and its right half's top row.
-fn test_font() -> (FontAtlasDef, Vec<u8>) {
+pub(super) fn test_font() -> (FontAtlasDef, Vec<u8>) {
     let atlas = FontAtlasDef {
         cell_w: 8,
         cell_h: 16,
@@ -49,8 +49,8 @@ const GLYPHS: [char; 11] = [' ', ' ', 'X', '?', '[', ']', '"', '#', 'Z', '田', 
 
 /// The glyphs of [`GLYPHS`] a buffer prints in two cells.
 const WIDE_GLYPHS: [char; 2] = ['田', 'あ'];
-/// Every ink's code, and colours white or black by brightness, one each
-/// side of the half.
+/// Every ink's code (the first [`INKS`], in [`Ink::ALL`]'s order), and
+/// colours white or black by brightness, one each side of the half.
 fn colors() -> Vec<Rgb> {
     let mut colors: Vec<Rgb> = Ink::ALL.iter().map(|ink| Rgb::from(ink.code())).collect();
     colors.extend([
@@ -61,6 +61,9 @@ fn colors() -> Vec<Rgb> {
     ]);
     colors
 }
+
+/// How many of [`colors`] are the inks' codes.
+const INKS: usize = Ink::ALL.len();
 
 /// A test picture 8 × 4, its mask see-through in its middle.
 const PICTURE: [u8; 4] = [0b1010_0110, 0b0101_1001, 0b1111_0000, 0b0000_1111];
@@ -155,7 +158,7 @@ fn picture_id(big: bool) -> ImageId {
     picture_of(usize::from(big))
 }
 
-struct TestImages;
+pub(super) struct TestImages;
 
 impl Images for TestImages {
     fn image(&self, id: ImageId) -> Option<Image<'_>> {
@@ -178,13 +181,12 @@ impl Images for TestImages {
 /// A cell: a glyph, fg and bg (indices into [`GLYPHS`] and
 /// [`colors`]) and whether it is see-through.
 fn cell() -> impl Strategy<Value = Cell> {
-    cell_see_through(0.2)
+    cell_see_through(0.2, colors().len())
 }
 
-/// [`cell`], see-through that often.
-fn cell_see_through(odds: f64) -> impl Strategy<Value = Cell> {
+/// [`cell`], see-through that often, in the first `n` of [`colors`].
+fn cell_see_through(odds: f64, n: usize) -> impl Strategy<Value = Cell> {
     let colors = colors();
-    let n = colors.len();
     (0..GLYPHS.len(), 0..n, 0..n, prop::bool::weighted(odds)).prop_map(
         move |(glyph, fg, bg, see_through)| Cell {
             glyph: GLYPHS[glyph],
@@ -314,17 +316,20 @@ fn src_and_dest(picture: usize) -> impl Strategy<Value = (Rect, Rect)> {
 }
 
 fn thing() -> impl Strategy<Value = Thing> {
-    let n = colors().len();
+    thing_in(colors().len())
+}
+
+/// A thing in the first `n` of [`colors`] (a painted picture has its own).
+fn thing_in(n: usize) -> impl Strategy<Value = Thing> {
     prop_oneof![
         (px_rect(420, 260), 0..n, any::<bool>()).prop_map(|(r, c, l)| Thing::Rect(r, c, l)),
-        sprite(),
+        sprite(n),
         painted(),
     ]
 }
 
-/// A [`Thing::Sprite`].
-fn sprite() -> impl Strategy<Value = Thing> {
-    let n = colors().len();
+/// A [`Thing::Sprite`], a solid paint in the first `n` of [`colors`].
+fn sprite(n: usize) -> impl Strategy<Value = Thing> {
     (0..PICTURES.len())
         .prop_flat_map(move |picture| {
             (
@@ -386,16 +391,16 @@ const CELL_SIZES: [(u16, u16); 3] = [(8, 16), (6, 8), (8, 12)];
 
 /// A buffer of up to `max_w × max_h` cells of one of [`CELL_SIZES`],
 /// sometimes past the screen, with its cells (see-through that often) and
-/// things.
-fn plain_buffer(max_w: u16, max_h: u16, odds: f64) -> impl Strategy<Value = GlyphBuffer> {
+/// things, in the first `n` of [`colors`].
+fn plain_buffer(max_w: u16, max_h: u16, odds: f64, n: usize) -> impl Strategy<Value = GlyphBuffer> {
     (1..=max_w, 1..=max_h, 0..CELL_SIZES.len())
         .prop_flat_map(move |(w, h, size)| {
-            let n = usize::from(w) * usize::from(h);
-            let cells = prop::collection::vec(cell_see_through(odds), n);
+            let cells = usize::from(w) * usize::from(h);
+            let cells = prop::collection::vec(cell_see_through(odds, n), cells);
             (
                 Just((w, h, size)),
                 cells,
-                prop::collection::vec(thing(), 0..6),
+                prop::collection::vec(thing_in(n), 0..6),
             )
         })
         .prop_map(|((w, h, size), cells, things)| {
@@ -429,8 +434,13 @@ fn plain_buffer(max_w: u16, max_h: u16, odds: f64) -> impl Strategy<Value = Glyp
 type Backdrop = (GlyphBuffer, Rect, (f32, f32), u8);
 
 fn backdrop() -> impl Strategy<Value = Backdrop> {
+    backdrop_in(colors().len())
+}
+
+/// A backdrop in the first `n` of [`colors`].
+fn backdrop_in(n: usize) -> impl Strategy<Value = Backdrop> {
     (
-        plain_buffer(24, 8, 0.2),
+        plain_buffer(24, 8, 0.2, n),
         (0..52, 0..16, 1..30, 1..10).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h)),
         (-80.0f32..80.0, -40.0f32..40.0),
         1..=4u8,
@@ -446,9 +456,20 @@ fn with_backdrop(mut buf: GlyphBuffer, backdrop: Option<Backdrop>) -> GlyphBuffe
 
 /// Any buffer: a plain one, or one mostly see-through over a backdrop.
 fn buffer() -> impl Strategy<Value = GlyphBuffer> {
+    buffer_in(colors().len())
+}
+
+/// [`buffer`] drawn in the inks' codes only: no colour of [`colors`] past
+/// the inks (a painted picture has its own, which no [`Shades`] draws).
+pub(super) fn ink_buffer() -> impl Strategy<Value = GlyphBuffer> {
+    buffer_in(INKS)
+}
+
+/// [`buffer`] in the first `n` of [`colors`].
+fn buffer_in(n: usize) -> impl Strategy<Value = GlyphBuffer> {
     prop_oneof![
-        plain_buffer(52, 16, 0.2),
-        (plain_buffer(52, 16, 0.8), backdrop())
+        plain_buffer(52, 16, 0.2, n),
+        (plain_buffer(52, 16, 0.8, n), backdrop_in(n))
             .prop_map(|(buf, backdrop)| with_backdrop(buf, Some(backdrop))),
     ]
 }
@@ -1068,7 +1089,7 @@ fn a_fight_draws_as_the_reference() {
 /// A buffer of grey cells and only sprites, half the time see-through
 /// over a backdrop's scene of sprites, at any zoom.
 fn sprites_buffer() -> impl Strategy<Value = GlyphBuffer> {
-    let things = || prop::collection::vec(sprite(), 1..10);
+    let things = || prop::collection::vec(sprite(colors().len()), 1..10);
     let window = (0..52, 0..16, 1..52, 1..16).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h));
     let backdrop = (things(), window, (-80.0f32..80.0, -40.0f32..40.0), 1..=4u8);
     (things(), prop::option::of(backdrop)).prop_map(|(things, backdrop)| {

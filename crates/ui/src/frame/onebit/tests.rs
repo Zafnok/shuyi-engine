@@ -917,3 +917,76 @@ fn a_gizmo_draws_its_runs_in_both_renderers() {
     reference::render(&b, &font, &(), &mut slow);
     assert_eq!(text(&slow, 0, 0, 6, 3), want);
 }
+
+#[test]
+fn the_dots_pattern_has_the_dots_inks_pixels() {
+    let dots = Shade::from(Pattern::new(Base::Dots));
+    for y in 0..8 {
+        for x in 0..8 {
+            assert_eq!(
+                dots.is_white(x, y),
+                ink_is_white(Ink::Dots, x, y),
+                "({x}, {y})"
+            );
+        }
+    }
+    let inverted = Shade::from(Pattern::new(Base::Dots).inverted());
+    assert!(inverted.is_white(0, 0) && !inverted.is_white(1, 0) && !inverted.is_white(0, 1));
+}
+
+/// The pattern map that draws everything the inks draw (ticket 2388).
+const INKS_AS_ROLES: &str = r#"(
+    roles: {
+        "white": (fg: White),
+        "black": (fg: Black),
+        "black_edged": (fg: Black, edge: true),
+        "grey": (fg: Dither50),
+        "dots": (fg: Dots),
+        "diagonals": (fg: DiagonalDown),
+        "dashes": (fg: Checker2),
+        "invert": (fg: Black, invert: true),
+    },
+)"#;
+
+/// [`INKS_AS_ROLES`] over a palette of the inks' codes, named by ink.
+fn inks_as_roles() -> PatternMap {
+    let def = PatternMapDef::from_source("inks@onebit.ron", INKS_AS_ROLES).unwrap();
+    let palette = Ink::ALL.map(|ink| (ink.name(), Rgb::from(ink.code())));
+    PatternMap::new(palette, &def)
+}
+
+#[test]
+fn each_ink_is_a_role_of_the_same_shades() {
+    let map = inks_as_roles();
+    for ink in Ink::ALL {
+        let rgb = Rgb::from(ink.code());
+        assert_eq!(map.role_of(rgb), Some(ink.name()));
+        let shade = Shade::of_ink(ink);
+        assert_eq!(map.glyph(rgb).rows, shade.rows, "{ink:?}");
+        assert_eq!(map.glyph(rgb).edged, shade.edged, "{ink:?}");
+        assert_eq!(map.shape(rgb).flips, shade.flips, "{ink:?}");
+    }
+}
+
+proptest::proptest! {
+    /// A pattern map draws everything the inks draw, pixel for pixel, for
+    /// any buffer drawn in the inks' colours.
+    #[test]
+    fn the_inks_pattern_map_draws_as_the_inks_do(
+        buf in super::speed_tests::ink_buffer(),
+    ) {
+        let (atlas, bits) = super::speed_tests::test_font();
+        let font = Font::new(&atlas, &bits).unwrap();
+        let images = super::speed_tests::TestImages;
+        let mut inks = Box::new([0u8; FRAME_BYTES]);
+        render(&buf, &font, &images, &mut inks);
+        let mut roles = Box::new([0u8; FRAME_BYTES]);
+        render_with(&buf, &font, &images, &inks_as_roles(), &mut roles);
+        let first = inks.iter().zip(roles.iter()).position(|(a, b)| a != b);
+        proptest::prop_assert!(
+            first.is_none(),
+            "first differs at byte {:?}",
+            first
+        );
+    }
+}

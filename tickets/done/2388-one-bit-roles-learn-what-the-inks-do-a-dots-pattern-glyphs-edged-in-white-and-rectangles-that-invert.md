@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2388 — One-bit roles learn what the inks do
@@ -143,18 +143,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Dots` has the ink's pixels exactly (test over all 64).
-- [ ] A pattern map with `edge: true` draws a glyph with a white edge,
+- [x] `Dots` has the ink's pixels exactly (test over all 64).
+- [x] A pattern map with `edge: true` draws a glyph with a white edge,
       and one with `invert: true` flips what a rectangle covers (tests
       through `to_one_bit`).
-- [ ] The proof test passes: the map above draws every random ink-only
+- [x] The proof test passes: the map above draws every random ink-only
       buffer exactly as `InkShades` does.
-- [ ] `check` refuses a text role with `invert`, naming the role.
-- [ ] Old pattern maps read the same (`edge` and `invert` default to
+- [x] `check` refuses a text role with `invert`, naming the role.
+- [x] Old pattern maps read the same (`edge` and `invert` default to
       `false`; an existing map's test still passes).
-- [ ] The game's ticket exists in the game repository, and 2389's
+- [x] The game's ticket exists in the game repository, and 2389's
       `blocked_by` names it.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -166,5 +166,95 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`Base::Dots` joins the patterns (black where `y` is even and
+`x % 4 == y % 4`, the ink's pixels: a test over all 64 against
+`ink_is_white(Ink::Dots, …)`). `RolePatterns` gains `edge` and `invert`
+(both `#[serde(default)]`), becomes `#[non_exhaustive]`, and gets
+`with_edge`, `with_invert` and `of(fg)` beside `new`. `PatternMap` sets
+`edged` on a role's glyph shade and `flips` on its shape shade; its
+ground has neither. `check` makes a text role with `invert` an error
+(`Rule::Text`, naming the role). The proof
+(`the_inks_pattern_map_draws_as_the_inks_do`, in
+`crates/ui/src/frame/onebit/tests.rs`) draws random ink-only buffers
+with `render` and with `render_with` the map, byte for byte equal; the
+speed tests' generators take a count of colours for it (`ink_buffer`).
+ADR-0089 amends ADR-0026; the pattern map's fields are in
+`shuyi_assets::onebit`'s module docs.
+
+Deviations:
+
+- **`dashes` is `Checker2`, not `Inverted(Checker2)`.** The ticket's
+  table was wrong: the `Dashes` ink is black where `x / 2 % 2 == y / 2 %
+  2`, which is `Checker2` exactly; its inverse is the same pattern moved
+  two pixels. The proof's map, the game's ticket and 2389 say
+  `Checker2`.
+- **`edged` and `flips` are not set on a ground.** The renderer reads
+  `edged` only off a glyph's shade and `flips` only off a rectangle's,
+  and the proof passes without them.
+- **No new `Rule` for an inverting text role:** it is `Rule::Text` with
+  `Severity::Error`, so the check's API doesn't break a second time.
+- **Roles of one colour must also agree on `edge` and `invert`**
+  (`Rule::SharedColour`), as they must on their patterns: the frame
+  can't tell them apart, so the renderer would draw both as the first.
+- **`RolePatterns::of(fg)`** added beside the ticket's builders: a map
+  with no `bg` couldn't be built outside the crate once the struct is
+  `#[non_exhaustive]`, and the game builds one (below).
+- **The game does build `RolePatterns`**, which the ticket said it
+  didn't: `crates/xtask/src/game_tools/one_bit.rs` writes
+  `RolePatterns { fg, bg: None }`. Its pin bump changes that to
+  `RolePatterns::of(fg)` (game#1251, step 1).
+
+The game's ticket is **game#1251** ("The Playdate build draws with a
+pattern map instead of inks", Zafnok/visions-of-shuyi#567), in 2389's
+`blocked_by`. Its PR moves the pin to this change.
+
+Breaking: shuyi-assets, shuyi-ui: onebit::RolePatterns: `#[non_exhaustive]` with two new fields, `edge` and `invert`; build one with `RolePatterns::new(fg, bg)` or `RolePatterns::of(fg)`.
+
+```migration
+since: 0.2.0
+what: A role's patterns are built by a constructor, since they gained edge and invert.
+old: RolePatterns { fg, bg }
+new: RolePatterns::new(fg, bg), RolePatterns::of(fg), .with_edge(bool), .with_invert(bool)
+before: |
+  let patterns = RolePatterns { fg, bg: None };
+after: |
+  let patterns = RolePatterns::of(fg);
+find: ["RolePatterns { fg"]
+```
+
+Breaking: shuyi-assets, shuyi-ui: onebit::Base: a new variant, `Dots`, and `Base::ALL` holds 11; a `match` on `Base` adds an arm.
+
+```migration
+since: 0.2.0
+what: The patterns gain Dots, one pixel in eight.
+old: "Base::ALL: [Base; 10]"
+new: "Base::ALL: [Base; 11], Base::Dots"
+before: |
+  let name = match base {
+      Base::Checker2 => "checker",
+      _ => "other",
+  };
+after: |
+  let name = match base {
+      Base::Checker2 => "checker",
+      Base::Dots => "dots",
+      _ => "other",
+  };
+```
+
+Breaking: shuyi-assets: formats.ron "pattern map: pattern-map": a pattern map's state hash moves, as it holds `edge` and `invert`; nothing for a game to change.
+
+Breaking: shuyi-assets: pack::VERSION: 10, as a pattern map's binary form gains `edge` and `invert` and `Dots`; a game bakes its pack again.
+
+```migration
+since: 0.2.0
+what: Packs are format version 10, so a pack baked before is refused.
+old: pack::VERSION 9
+new: pack::VERSION 10
+before: |
+  cargo shuyi bake
+after: |
+  cargo shuyi bake
+```
+
+Book: none, the book's chapter 4 names the one-bit map in one sentence and teaches none of its fields; they are in the API docs of `shuyi_assets::onebit`.
