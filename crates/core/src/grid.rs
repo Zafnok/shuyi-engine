@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Pos {
     /// Column.
     pub x: i32,
@@ -26,6 +27,7 @@ pub struct Pos {
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct TerrainId(pub u16);
 
 impl Pos {
@@ -49,6 +51,7 @@ impl Pos {
 
 /// One of the four grid directions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum Dir {
     /// `+x`.
     Right,
@@ -78,6 +81,7 @@ impl Dir {
 /// A `width × height` rectangle of cells, stored row-major. The cell count
 /// always equals `width * height`; deserialising checks it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(try_from = "RawGrid<T>")]
 pub struct Grid<T> {
     width: u16,
@@ -167,6 +171,7 @@ impl<T> Grid<T> {
 
 /// A [`Grid`] as written in a save, before its cell count is checked.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct RawGrid<T> {
     width: u16,
     height: u16,

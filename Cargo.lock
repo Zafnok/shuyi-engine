@@ -595,6 +595,7 @@ dependencies = [
  "insta",
  "macroquad",
  "ron",
+ "schemars",
  "serde",
  "shuyi",
  "shuyi-app",

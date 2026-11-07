@@ -1561,7 +1561,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ),
     ("shuyi-app", &["link", "capture", "sound-probe"]),
     ("shuyi-cli", &["toy", "jis"]),
-    ("shuyi", &["std", "app"]),
+    ("shuyi", &["std", "app", "schema"]),
     ("shuyi-sound", &["std", "wav", "vorbis"]),
     ("shuyi-sound-out", &[]),
     ("shuyi-playdate", &[]),

@@ -3,6 +3,8 @@
 use super::*;
 use crate::contract::fake::{Fake, FakeSession, OPTIONS, stamp};
 use crate::game::GameArg;
+use schemars::JsonSchema;
+use serde::Serialize;
 use shuyi_core::ContentHash;
 use shuyi_platform::session::SessionRecord;
 use shuyi_ui::perf::{HeapCounts, PerfLine, TagClass, TagRow};
@@ -317,9 +319,12 @@ fn what_run_and_scene_saw_reads_for_people() {
             kind: "grid map".into(),
             text: "map\n".into(),
             data: serde_json::Value::Null,
+            shape: None,
         }),
         log: Vec::new(),
         session: None,
+        value: None,
+        shape: None,
     };
     assert_eq!(
         scene_output_text(&shown),
@@ -743,4 +748,103 @@ fn session_and_any_stamp_read_from_the_command_line() {
     );
     assert!(parse_args(&args(&["--session"]), &[]).is_err());
     assert!(usage("shuyi", Op::Scene, &[]).contains("--session <file>"));
+}
+
+/// A game whose scene's data is a hero at (2, 1) on turn 1, its shape
+/// given or not.
+fn with_data(shape: bool) -> Fake {
+    #[derive(Serialize, JsonSchema)]
+    struct Hero {
+        x: i32,
+        y: i32,
+    }
+    #[derive(Serialize, JsonSchema)]
+    struct Data {
+        turn: u32,
+        hero: Hero,
+    }
+    let mut session = FakeSession::on("stage", "map");
+    let data = Data {
+        turn: 1,
+        hero: Hero { x: 2, y: 1 },
+    };
+    let mut scene = Scene::new("stage", "grid map", "map")
+        .with_data(&data)
+        .unwrap();
+    if !shape {
+        scene.shape = None;
+    }
+    session.scene = Ok(scene);
+    Fake {
+        session: Ok(session),
+        ..Fake::default()
+    }
+}
+
+#[test]
+fn scene_with_a_path_answers_that_value_in_place_of_the_scene() {
+    let input = RunInput {
+        path: Some("/hero/x".to_owned()),
+        ..RunInput::default()
+    };
+    let answer = scene(&with_data(true), &input);
+    assert!(answer.ok);
+    let out = answer.result.unwrap();
+    assert_eq!(out.value, Some(serde_json::json!(2)));
+    assert!(out.scene.is_none() && out.shape.is_none());
+    assert_eq!(
+        scene_output_text(&out),
+        "scene: after 0 frame(s), top screen stage\nvalue: 2\n"
+    );
+}
+
+#[test]
+fn scene_with_a_path_that_names_nothing_fails_with_its_code() {
+    let input = RunInput {
+        path: Some("/hero/z".to_owned()),
+        ..RunInput::default()
+    };
+    let answer = scene(&with_data(true), &input);
+    assert!(!answer.ok);
+    assert_eq!(answer.code.as_deref(), Some(codes::NO_VALUE.0));
+    assert_eq!(
+        answer.error.as_deref(),
+        Some("no value at `/hero/z`: /hero has the keys x, y")
+    );
+    assert_eq!(answer.exit_code(), 2);
+}
+
+#[test]
+fn scene_with_shape_answers_the_schema_of_its_data_or_says_why_not() {
+    let input = RunInput {
+        shape: true,
+        ..RunInput::default()
+    };
+    let answer = scene(&with_data(true), &input);
+    assert!(answer.ok);
+    let shape = answer.result.unwrap().shape.unwrap();
+    assert!(shape["properties"]["hero"].is_object(), "{shape}");
+    let answer = scene(&with_data(false), &input);
+    assert!(answer.ok);
+    assert!(answer.result.unwrap().shape.is_none());
+    assert_eq!(answer.limits, [NO_SHAPE]);
+}
+
+#[test]
+fn run_takes_no_path_and_no_shape() {
+    let input = RunInput {
+        shape: true,
+        ..RunInput::default()
+    };
+    let answer = run(&with_data(true), &input);
+    assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+}
+
+#[test]
+fn path_and_shape_read_from_the_command_line() {
+    let input = parse_args(&args(&["--path", "/hero/x", "--shape"]), &OPTIONS).unwrap();
+    assert_eq!(input.path.as_deref(), Some("/hero/x"));
+    assert!(input.shape);
+    assert!(usage("shuyi", Op::Scene, &[]).contains("--path <pointer>"));
+    assert!(!usage("shuyi", Op::Run, &[]).contains("--path"));
 }

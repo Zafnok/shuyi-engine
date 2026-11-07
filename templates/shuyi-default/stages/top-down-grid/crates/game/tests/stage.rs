@@ -115,6 +115,27 @@ fn run_and_scene_show_the_stage_after_a_script() {
 }
 
 #[test]
+fn scene_reads_one_value_by_pointer_and_the_shape_of_its_data() {
+    let mut input = RunInput::default();
+    input.script = keys("Enter Right");
+    input.path = Some("/hero/x".to_owned());
+    let answer = scene(&tools(), &input);
+    assert!(answer.ok, "{answer:?}");
+    assert_eq!(answer.result.unwrap().value, Some(2.into()));
+    input.path = Some("/hero/z".to_owned());
+    assert_eq!(scene(&tools(), &input).code.as_deref(), Some("SH0005"));
+    input.path = None;
+    input.shape = true;
+    let shape = scene(&tools(), &input).result.unwrap().shape.unwrap();
+    for key in ["turn", "hero", "wanderer", "outcome", "seed", "commands"] {
+        assert!(
+            shape["properties"].get(key).is_some(),
+            "no {key} in {shape}"
+        );
+    }
+}
+
+#[test]
 fn the_bots_play_to_an_end_and_their_records_replay() {
     let mut input = PlaytestInput::default();
     input.tries = Some(20);

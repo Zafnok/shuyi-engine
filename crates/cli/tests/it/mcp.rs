@@ -180,14 +180,7 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
     );
     assert!(result["log"].is_array());
 
-    // Read the scene: the stage's map and state, and the log.
-    let scene = client.call("scene", &json!({}));
-    assert_eq!(scene["isError"], false, "{scene}");
-    let result = &scene["structuredContent"]["result"];
-    assert_eq!(result["scene"]["screen"], "stage");
-    assert_eq!(result["scene"]["kind"], "grid map");
-    assert_eq!(result["scene"]["data"]["turn"], 1);
-    assert!(result["log"].is_array());
+    read_the_scene(&mut client);
 
     // Render the frame: an image, the size the answer says.
     let frame = client.call("frame_png", &json!({ "scale": 1 }));
@@ -236,6 +229,33 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
     client.stdin = None;
     let status = client.server.wait().unwrap();
     assert!(status.success(), "{status}");
+}
+
+/// Reads the scene: the stage's map and state, and the log; then one
+/// value of its data by pointer, one that names nothing, and the data's
+/// shape.
+fn read_the_scene(client: &mut Client) {
+    let scene = client.call("scene", &json!({}));
+    assert_eq!(scene["isError"], false, "{scene}");
+    let result = &scene["structuredContent"]["result"];
+    assert_eq!(result["scene"]["screen"], "stage");
+    assert_eq!(result["scene"]["kind"], "grid map");
+    assert_eq!(result["scene"]["data"]["turn"], 1);
+    assert!(result["log"].is_array());
+    let x = client.call("scene", &json!({ "path": "/hero/x" }));
+    assert_eq!(x["isError"], false, "{x}");
+    let result = &x["structuredContent"]["result"];
+    assert!(result["value"].is_i64(), "{result}");
+    assert_eq!(result["scene"], Value::Null, "{result}");
+    let missing = client.call("scene", &json!({ "path": "/hero/z" }));
+    assert_eq!(missing["isError"], true, "{missing}");
+    assert_eq!(missing["structuredContent"]["code"], "SH0005");
+    let shape = client.call("scene", &json!({ "shape": true }));
+    assert_eq!(shape["isError"], false, "{shape}");
+    let properties = &shape["structuredContent"]["result"]["shape"]["properties"];
+    for key in ["turn", "hero", "commands"] {
+        assert!(properties.get(key).is_some(), "no {key} in {properties}");
+    }
 }
 
 /// Starts Hello, Grid from its golden session, reads the scene, steps on

@@ -284,7 +284,7 @@ volume), and 2226, 2253 and 2349 (game#0825, the language option).
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
 | 2906 | Research: asset memory, lifetimes, groups and loading in steps |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
-| 2581 | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
+| 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
 **Debugging, and agents:**
 
