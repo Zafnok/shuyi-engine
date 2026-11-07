@@ -2,9 +2,9 @@
 //! frame, painted with the game's own font and tileset), `lang-status`,
 //! `font-atlas` (the characters its text uses kept, through [`GameTools::lang`]),
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
-//! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
-//! against the foe's mind), `playtest` (a random hero and a walker,
-//! [`ENTRANTS`], judged by `playtest.ron`), `autobalance` (the knobs it
+//! scene and state), `replay` (a [`StageRecord`]), `playtest` (a random
+//! hero and a walker against the foe's mind, [`ENTRANTS`], judged by
+//! `playtest.ron`, each try's record kept), `autobalance` (the knobs it
 //! turns, [`Trip`] and [`HeadStart`], on the stage `balance.ron` tunes,
 //! [`autobalance_plan`]), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
@@ -17,7 +17,6 @@
 //! ([`GameTools::session_on`]). `examples/tools.rs` is the tool program
 //! that runs them; the tests use them too.
 
-use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
@@ -31,9 +30,9 @@ use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::palette::PaletteDef;
 use shuyi::assets::target::Color;
 use shuyi::core::bots::playtest::{
-    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
+    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_try,
 };
-use shuyi::core::{Bot, Determinize, Knob, Made, RandomBot, Report, TerrainId, play_observed};
+use shuyi::core::{Bot, Determinize, Knob, Made, RandomBot, Report, TerrainId};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::headless::PresentHook;
 use shuyi::platform::session::{SessionRecord, Stamps};
@@ -42,7 +41,6 @@ use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi::ui::{Game, GameData, GameHooks};
 use shuyi_cli::contract::autobalance::AutobalanceInput;
-use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::playtest::{PlaytestInput, Summary};
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
@@ -283,14 +281,6 @@ impl GameTools for HelloTools {
         Some(crate::made())
     }
 
-    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
-        let map = loaded()?.stage_map;
-        let plays = (input.seed..input.seed + u64::from(input.games))
-            .map(|seed| bot_play(&map, seed, input.turns))
-            .collect::<Result<_, _>>()?;
-        Ok(tally(plays))
-    }
-
     /// [`ENTRANTS`] on the stage, judged by `playtest.ron`
     /// ([`playtest_plan`]).
     fn playtest_plan(
@@ -445,37 +435,6 @@ pub fn events(h: &Harness<Hello>) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// A play of the stage of `map` seeded `seed`, to its end or turn
-/// `limit`: a random bot of the same seed moves your piece, the foe's
-/// mind the foe. Its measure is how often the foe tripped.
-fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<Play, String> {
-    let mut stage = Stage::new(map, seed)?;
-    let mut hero = RandomBot::new(seed);
-    let mut foe = Chase;
-    let mut bots: [(Side, &mut dyn Bot<Stage>); 2] =
-        [(Side::Hero, &mut hero), (Side::Foe, &mut foe)];
-    let mut trips: i64 = 0;
-    let report = play_observed(&mut stage, &mut bots, limit, |_, _, events| {
-        trips += i64::from(events.contains(&Event::Tripped));
-    })
-    .map_err(|e| format!("seed {seed}: {e}"))?;
-    let outcome = match report.outcome {
-        Some(Outcome::Won { .. }) => "won",
-        Some(Outcome::Caught { .. }) => "caught",
-        None => UNFINISHED,
-    };
-    let record = StageRecord {
-        seed,
-        commands: report.commands.clone(),
-        made: Some(crate::made()),
-    };
-    let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
-    let mut play = Play::new(seed, outcome, report.turns, commands);
-    play.measures = BTreeMap::from([("foe trips".to_owned(), trips)]);
-    play.record = ron::to_string(&record).ok();
-    Ok(play)
-}
-
 /// How a playtest measures a try of the stage: `won` (1 if your piece
 /// reached the goal, else 0), `turns` (the turn it stopped on) and `foe
 /// trips` (how often the foe tripped).
@@ -527,6 +486,18 @@ impl Entrant<Stage, Stage> for Hero {
     fn measure(&self) -> Box<dyn Measure<Stage>> {
         Box::new(StageMeasure::default())
     }
+
+    /// A [`StageRecord`] of the try, stamped with this build: the stage of
+    /// a seed is the stage its luck was redrawn with, so `replay` plays it
+    /// to the try's outcome.
+    fn record(&self, seed: u64, commands: &[Command]) -> Option<String> {
+        let record = StageRecord {
+            seed,
+            commands: commands.to_vec(),
+            made: Some(crate::made()),
+        };
+        ron::to_string(&record).ok()
+    }
 }
 
 /// The playtest's heroes: `random` (a random bot of the try's seed) and
@@ -550,7 +521,7 @@ pub fn playtest_checks() -> Result<Vec<Check>, String> {
 }
 
 /// The playtest's plan: [`ENTRANTS`] on the one stage, each try played
-/// by [`play_tries`] from its seed alone, and those of
+/// by [`play_try`] from its seed alone and recorded, and those of
 /// [`playtest_checks`] whose entrants all play. Each hero's line sums
 /// its wins and gives its median turns.
 pub fn playtest_plan() -> Result<PlaytestPlan, String> {
@@ -567,9 +538,7 @@ pub fn playtest_plan() -> Result<PlaytestPlan, String> {
                 .collect()
         }),
         Box::new(move |entrant, seed, turns| {
-            let mut tries = play_tries(&stage, &ENTRANTS[entrant], seed..seed + 1, turns)
-                .map_err(|e| e.to_string())?;
-            tries.pop().ok_or_else(|| "no try".to_owned())
+            play_try(&stage, &ENTRANTS[entrant], seed, turns).map_err(|e| e.to_string())
         }),
     );
     let summary = vec![Summary::sum("won"), Summary::median("turns")];
@@ -753,7 +722,7 @@ pub fn balance_text(balance: &Balance) -> Result<String, String> {
 /// The autobalance's plan: [`ENTRANTS`] on `files/stage.map` tuned as
 /// `balance.ron` says, judged by those of [`playtest_checks`] and of its
 /// `checks` whose entrants all play, changed by [`knobs`], each try played
-/// by [`play_tries`] from its seed alone. The stage found is written to
+/// by [`play_try`] from its seed alone. The stage found is written to
 /// `path` with its new tuning.
 pub fn autobalance_plan(path: PathBuf) -> Result<AutobalancePlan, String> {
     let file = balance()?;
@@ -775,9 +744,7 @@ pub fn autobalance_plan(path: PathBuf) -> Result<AutobalancePlan, String> {
             stage,
             vec![Box::new(trip), Box::new(head_start)],
             Box::new(|stage, entrant, seed, turns| {
-                let mut tries = play_tries(stage, &ENTRANTS[entrant], seed..seed + 1, turns)
-                    .map_err(|e| e.to_string())?;
-                tries.pop().ok_or_else(|| "no try".to_owned())
+                play_try(stage, &ENTRANTS[entrant], seed, turns).map_err(|e| e.to_string())
             }),
             Box::new(move |stage: &Stage| {
                 let text = balance_text(&Balance {

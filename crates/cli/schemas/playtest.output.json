@@ -372,9 +372,27 @@
             "null"
           ]
         },
+        "measures": {
+          "description": "The game's measures over its tries, by name.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Spread"
+          },
+          "default": {}
+        },
         "name": {
           "description": "Its name.",
           "type": "string"
+        },
+        "outcomes": {
+          "description": "How many of its tries ended each way, by the outcome's name (its\n`Debug` up to its fields: `Won` for `Won { turn: 12 }`), and\n[`UNFINISHED`] for those the turn limit stopped.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          },
+          "default": {}
         },
         "seconds_per_try": {
           "description": "The wall time of a try, on average, in seconds: the one number\nthat changes with the machine and the thread count.",
@@ -388,6 +406,26 @@
           "items": {
             "type": "string"
           }
+        },
+        "tries": {
+          "description": "Each try's commands and record, in seed order.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TryKept"
+          }
+        },
+        "turns": {
+          "description": "How many turns its tries took.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Spread"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "was": {
           "description": "Its headline number in the last run, if it played there:\n`was 47/100 succeed` from its first rate check, else its first\nsummary item, `was won 63/100`.",
@@ -519,6 +557,39 @@
         }
       ]
     },
+    "Spread": {
+      "description": "How a number spread over an entrant's tries.",
+      "type": "object",
+      "properties": {
+        "max": {
+          "description": "The largest.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "mean": {
+          "description": "The mean (the sum over the tries that have it).",
+          "type": "number",
+          "format": "double"
+        },
+        "min": {
+          "description": "The smallest.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "description": "The sum.",
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max",
+        "total",
+        "mean"
+      ]
+    },
     "Tried": {
       "description": "One try of one entrant.",
       "type": "object",
@@ -556,6 +627,36 @@
         "seed",
         "turns",
         "measures"
+      ]
+    },
+    "TryKept": {
+      "description": "What the answer keeps of one try besides the report's line: how many\ncommands were applied, and its record.",
+      "type": "object",
+      "properties": {
+        "commands": {
+          "description": "The commands applied.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "record": {
+          "description": "Its record, in the game's record format, for `replay`; left out if\nthe game's plan keeps none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seed": {
+          "description": "Its seed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "commands"
       ]
     },
     "Want": {

@@ -4,11 +4,11 @@
 # files in .claude/skills/ are left out: a test checks they are the pack's.
 
 [blank] base
-d4b465b5e5a1bbb5 .cargo/config.toml
+83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 7c5927e20c0fc49a .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-21f65a3f5070acff AGENTS.md
+4f27544702d1c3f3 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 48c829936feb042d README.md
@@ -26,25 +26,25 @@ ec141cdf47b056af crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 052d1cd0d321414b crates/game/src/stages.rs
 fbc4754f1d90d0da crates/game/src/title.rs
-f45543bff1fc41d2 crates/game/tests/it/main.rs
+a8fe621a136f7156 crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-80955a0e44b8738b shuyi.ron
+dda7e6f8c79fe81b shuyi.ron
 
 [grid] base, stage-top-down-grid
-d4b465b5e5a1bbb5 .cargo/config.toml
+83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 7c5927e20c0fc49a .github/workflows/ci.yml
-4ee8995e0c00e734 .github/workflows/playtest.yml
+22df07bba87102cc .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-21f65a3f5070acff AGENTS.md
+4f27544702d1c3f3 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 53d946a8036df89c Cargo.toml
 48c829936feb042d README.md
 b7bf83dcce2fb717 clippy.toml
-87b96b9d3c9d0f7a crates/game/Cargo.toml
+ab99cf3be7fe2cd2 crates/game/Cargo.toml
 d9d0d34f89554d0a crates/game/examples/tools.rs
 ac3f7f6edb84c1ec crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
@@ -56,13 +56,13 @@ ba791d69f803381d crates/game/files/keymap.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
 ec141cdf47b056af crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
-25c8b1217b2b8ba2 crates/game/src/stages/top_down_grid/tools.rs
-5a555bab83db97f0 crates/game/src/stages/top_down_grid.rs
+fa7e84f7a03ab9eb crates/game/src/stages/top_down_grid/tools.rs
+f24779f1441dfab7 crates/game/src/stages/top_down_grid.rs
 990e9c3f7a8a2ef1 crates/game/src/stages.rs
 fbc4754f1d90d0da crates/game/src/title.rs
-f45543bff1fc41d2 crates/game/tests/it/main.rs
-b3f4b39dcc6ab560 crates/game/tests/stage.rs
-5145c93ee142fc52 crates/rules/AGENTS.md
+a8fe621a136f7156 crates/game/tests/it/main.rs
+fac0584ce6198983 crates/game/tests/stage.rs
+39ce7b8f894fff11 crates/rules/AGENTS.md
 b7aa8f2f58462c41 crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml
 df741fbc5c3d017e crates/rules/src/lib.rs
@@ -71,4 +71,4 @@ df741fbc5c3d017e crates/rules/src/lib.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-e9139c9c54854ed4 shuyi.ron
+d82096a5c515ff24 shuyi.ron

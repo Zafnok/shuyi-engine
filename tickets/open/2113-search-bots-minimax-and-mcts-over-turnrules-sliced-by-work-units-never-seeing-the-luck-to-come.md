@@ -31,7 +31,8 @@ Shuyi today:
   commands sees the rolls kept in the state's `SimRng`.
 - `examples/hello-grid/src/rules.rs`: `Chase`, the foe's mind, one
   greedy step by design. The hero is played by `RandomBot` in
-  `tests/it/bots.rs` and in `bots` (`src/tools.rs`). Hello-grid's
+  `tests/it/bots.rs` and by the playtest's `random` entrant
+  (`ENTRANTS`, `src/tools.rs`). Hello-grid's
   `Stage` keeps its luck in a `SimRng` (the foe may trip), so a naive
   search would know whether the foe trips.
 - 2112: `shuyi_core::search` (`crates/core/src/search.rs`) and its
@@ -178,8 +179,8 @@ None.
     doesn't change when only the stage's seed does;
   - `README.md`: the sentence 2125 added after the tools block also
     says `tests/it/bots.rs` plays a minimax hero against the foe;
-  - the stage screen's foe stays `Chase`, and `bots`' hero stays
-    `RandomBot`, so records and snapshots don't change.
+  - the stage screen's foe stays `Chase`, and the playtest's `random`
+    entrant stays `RandomBot`, so records and snapshots don't change.
 - **From 1134 (done):** add a short section on the search bots
   (minimax and MCTS) and `Determinize` to
   `skills/shuyi-balance-bots/SKILL.md`; `check-skills` passes.

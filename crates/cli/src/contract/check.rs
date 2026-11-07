@@ -492,6 +492,7 @@ mod tests {
                 text_lines: 1,
                 line_chars: 10,
                 title_chars: 6,
+                how_lines: 0,
             },
             widths: &widths,
             placeholder: &|_| true,

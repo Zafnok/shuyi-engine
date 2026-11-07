@@ -210,7 +210,7 @@ Branch on the `code`, and read its page with `cargo shuyi explain
 - `SH2103`, `SH2104` from `lint`: the rules broke their fence
   (`shuyi-gates`).
 - `SH3001`: the game's tools don't offer the operation: a game with no
-  stage's `Tools` has no `bots` or `replay`. A `scene` with no scene to
+  stage's `Tools` has no `playtest` or `replay`. A `scene` with no scene to
   give isn't an error: its `limits` say why.
 - `SH0005` from `scene --path`: the pointer names nothing; the message
   lists the keys there are (`scene --shape` lists them all).

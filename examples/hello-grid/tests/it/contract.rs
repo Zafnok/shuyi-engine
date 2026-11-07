@@ -14,11 +14,11 @@ use shuyi::platform::session::SessionRecord;
 use shuyi::ui::RawInputEvent;
 use shuyi::ui::debug::DebugMenuScreen;
 use shuyi_cli::GameTools;
-use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check};
 use shuyi_cli::contract::doctor::{DoctorInput, ThisMachine, doctor};
 use shuyi_cli::contract::import::{ImportInput, import};
 use shuyi_cli::contract::new::{Engine, NewInput, new};
+use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, run_at, scene, scene_at};
 use shuyi_cli::contract::session::{Event, SessionInput};
@@ -277,45 +277,62 @@ fn scene_at_title() -> contract::Answer<contract::run::SceneOutput> {
     scene(&HelloTools, &RunInput::default())
 }
 
-#[test]
-fn bots_play_the_stage_and_measure_it() {
-    let mut input = BotsInput::default();
-    input.games = 30;
-    input.seed = 0;
-    input.turns = 200;
-    let answer = bots(&HelloTools, &input);
+/// The random hero's `tries` tries from seed 0, through `playtest`.
+fn random_hero(tries: u32) -> PlaytestOutput {
+    let mut input = PlaytestInput::default();
+    input.entrants = vec!["random".to_owned()];
+    input.tries = Some(tries);
+    let answer = playtest(&HelloTools, &input);
     assert!(answer.ok, "{answer:?}");
-    let out = answer.result.unwrap();
-    assert_eq!(out.games, 30);
-    assert_eq!(out.outcomes.values().sum::<u32>(), 30);
-    assert!(out.outcomes.contains_key("won") && out.outcomes.contains_key("caught"));
-    let trips = &out.measures["foe trips"];
+    answer
+        .result
+        .unwrap_or_else(|| panic!("no answer"))
+        .remove(0)
+}
+
+/// The record of each of the random hero's `tries` tries from seed 0.
+fn records(tries: u32) -> Vec<String> {
+    random_hero(tries).entrants[0]
+        .tries
+        .iter()
+        .map(|t| {
+            t.record
+                .clone()
+                .unwrap_or_else(|| panic!("try {}: no record", t.seed))
+        })
+        .collect()
+}
+
+#[test]
+fn the_bots_play_the_stage_and_measure_it() {
+    let out = random_hero(30);
+    let hero = &out.entrants[0];
+    assert_eq!(hero.outcomes.values().sum::<u32>(), 30);
+    assert!(hero.outcomes.contains_key("Won") && hero.outcomes.contains_key("Caught"));
+    let trips = &hero.measures["foe trips"];
     assert!(trips.total > 0 && trips.min >= 0);
-    let turns = out.turns.as_ref().unwrap();
+    let turns = hero.turns.as_ref().unwrap();
     assert!(turns.min >= 1 && turns.max <= 200);
-    assert_eq!(out.plays[3].seed, 3);
+    assert_eq!(hero.tries[3].seed, 3);
+    // Each try applied a command for each side's move, and kept a record.
+    for (kept, tried) in hero.tries.iter().zip(&out.report.entrants[0].tries) {
+        assert!(kept.commands >= 2 * tried.turns - 2, "{kept:?}");
+        let record: StageRecord = ron::from_str(kept.record.as_deref().unwrap()).unwrap();
+        assert_eq!(record.seed, kept.seed);
+        assert_eq!(record.commands.len(), kept.commands as usize);
+    }
     // The same seeds play the same games.
-    assert_eq!(bots(&HelloTools, &input).result.unwrap(), out);
-    let mut none = input;
-    none.games = 0;
-    assert!(
-        bots(&HelloTools, &none)
-            .error
-            .unwrap()
-            .starts_with("games: ")
-    );
+    let again = random_hero(30);
+    assert_eq!(again.report, out.report);
+    assert_eq!(again.entrants[0].tries, hero.tries);
+    assert_eq!(again.entrants[0].outcomes, hero.outcomes);
 }
 
 #[test]
 fn replay_hashes_every_step_and_finds_where_two_records_part() {
     let dir = scratch("replay");
-    let mut two_games = BotsInput::default();
-    two_games.games = 2;
-    let plays = bots(&HelloTools, &two_games).result.unwrap().plays;
-    let (a, b) = (
-        plays[0].record.clone().unwrap(),
-        plays[1].record.clone().unwrap(),
-    );
+    let records = records(2);
+    let (a, b) = (records[0].clone(), records[1].clone());
     fs::write(dir.join("a.ron"), &a).unwrap();
     fs::write(dir.join("b.ron"), &b).unwrap();
     let once = replay_of("a.ron", None);
@@ -325,7 +342,7 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
     let record: StageRecord = ron::from_str(&a).unwrap();
     assert_eq!(out.runs[0].steps.len(), record.commands.len() + 1);
     assert_eq!(out.runs[0], out.runs[1]);
-    // The bots' play ended, and its replay ends the same way.
+    // The bot's try ended, and its replay ends the same way.
     let outcome = out.runs[0].outcome.as_deref().unwrap();
     assert!(
         outcome.starts_with("Won") || outcome.starts_with("Caught"),
@@ -361,12 +378,7 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
 #[test]
 fn a_record_made_with_other_content_is_refused_unless_any_stamp() {
     let dir = scratch("stamps");
-    let mut one_game = BotsInput::default();
-    one_game.games = 1;
-    let text = bots(&HelloTools, &one_game).result.unwrap().plays[0]
-        .record
-        .clone()
-        .unwrap();
+    let text = records(1).remove(0);
     // The bots stamp their records with this build, which replays them.
     let mut record: StageRecord = ron::from_str(&text).unwrap();
     let now = hello_grid::made();

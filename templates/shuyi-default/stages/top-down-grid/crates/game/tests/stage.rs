@@ -15,9 +15,9 @@ use shuyi::ui::frame::GizmoShape;
 use shuyi::ui::grid::GridSkin;
 use shuyi::ui::grid::debug::GRID;
 use shuyi_cli::GameTools;
-use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::import::{ImportInput, import};
+use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, scene};
 use shuyi_cli::contract::target::engine_profiles;
@@ -137,22 +137,26 @@ fn scene_reads_one_value_by_pointer_and_the_shape_of_its_data() {
 
 #[test]
 fn the_bots_play_to_an_end_and_their_records_replay() {
-    let mut input = BotsInput::default();
-    input.games = 20;
-    let answer = bots(&tools(), &input);
+    let mut input = PlaytestInput::default();
+    input.tries = Some(20);
+    let answer = playtest(&tools(), &input);
     assert!(answer.ok, "{answer:?}");
-    let out = answer.result.unwrap();
-    assert_eq!(out.games, 20);
-    assert_eq!(out.outcomes.values().sum::<u32>(), 20);
+    let out = answer.result.unwrap().remove(0);
+    let bot = &out.entrants[0];
+    assert_eq!(bot.tries.len(), 20);
+    assert_eq!(bot.outcomes.values().sum::<u32>(), 20);
+    // A plain bot run: no checks, nothing judged.
+    assert_eq!(out.report.checks, Vec::new());
     let dir = std::env::temp_dir().join(format!("game-replay-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
-    let record = out.plays[0].record.clone().unwrap();
+    let record = bot.tries[0].record.clone().unwrap();
     fs::write(dir.join("play.ron"), &record).unwrap();
     let input = ReplayInput::new("play.ron");
     let answer = replay(&tools(), &dir, &input);
     assert!(answer.ok, "{answer:?}");
     let run = &answer.result.unwrap().runs[0];
     let parsed: StageRecord = ron::from_str(&record).unwrap();
+    assert_eq!(parsed.commands.len(), bot.tries[0].commands as usize);
     // The bots stamp their records with this build, and replay runs them.
     assert_eq!(parsed.made, Some(game::made()));
     assert_eq!(run.made, parsed.made);
@@ -167,6 +171,7 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
         run.outcome,
         stage.outcome().map(|o: Outcome| format!("{o:?}"))
     );
+    assert_eq!(run.outcome, out.report.entrants[0].tries[0].outcome);
     fs::remove_dir_all(&dir).unwrap();
 }
 

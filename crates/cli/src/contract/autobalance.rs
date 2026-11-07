@@ -18,11 +18,11 @@ use std::time::{Duration, Instant};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_core::bots::balance::{Change, distance};
-use shuyi_core::bots::playtest::{PlaytestReport, Tried, Tries};
+use shuyi_core::bots::playtest::{PlayedTry, PlaytestReport, Tries};
 use shuyi_core::{BalanceSettings, Balanced, Stop};
 
-use super::bots::options_text;
 use super::codes::Code;
+use super::playtest::options_text;
 use super::playtest::{DEFAULT_TRIES, check_tries, checks_of, choose, played, seconds, threads};
 use super::{Answer, Op, codes};
 use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
@@ -173,7 +173,7 @@ pub fn autobalance(game: &dyn GameTools, input: &AutobalanceInput) -> Answer<Aut
     let started = Instant::now();
     let limit = input.time.map(Duration::from_secs);
     let mut should_stop = || limit.is_some_and(|limit| started.elapsed() >= limit);
-    let mut evaluate = |one: &(dyn Fn(usize, u64, u32) -> Result<Tried, String> + Sync),
+    let mut evaluate = |one: &(dyn Fn(usize, u64, u32) -> Result<PlayedTry, String> + Sync),
                         tries: &Tries| {
         played(&plan.entrants, &chosen, &checks, tries, threads, one).map(|p| p.report)
     };

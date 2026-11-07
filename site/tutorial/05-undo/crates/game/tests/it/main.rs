@@ -6,8 +6,8 @@ use std::path::Path;
 
 use game::action::Action;
 use game::title::Title;
-use shuyi_cli::contract::bots::BotsInput;
 use shuyi_cli::contract::check::{CheckInput, check, targets};
+use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::run::{RunInput, keys, run};
 use shuyi_cli::contract::session::Event;
 use shuyi_cli::contract::target::engine_profiles;
@@ -79,7 +79,11 @@ fn run_says_the_game_quit_and_the_title_has_no_scene() {
     assert!(out.events.contains(&Event::Quit { frame: 1 }));
     assert!(out.scene.is_none());
     assert!(answer.limits.iter().any(|l| l.starts_with("no scene")));
-    assert!(tools().bots(&BotsInput::default()).is_err());
+    assert!(
+        tools()
+            .playtest_plan(None, &PlaytestInput::default())
+            .is_err()
+    );
 }
 
 #[test]

@@ -39,11 +39,12 @@ unseen.
 What the engine has (checked 2026-10-21):
 
 - **The tool contract** (`crates/cli/src/contract.rs`, `VERSION` 4):
-  `new`, `check`, `check --target`, `run`, `scene`, `replay`, `bots`,
-  `import`, `bake` and `doctor`, each with `--json` answering an
-  `Answer { contract, op, ok, result, error, limits }`, their schemas in
-  `crates/cli/schemas/`. `cargo shuyi web` (`crates/cli/src/web.rs`)
-  builds the folder that `shuyi.ron`'s `web` entry names (`web.dist`).
+  `new`, `check`, `check --target`, `run`, `scene`, `replay`,
+  `playtest`, `import`, `bake` and `doctor`, each with `--json`
+  answering an `Answer { contract, op, ok, result, error, limits }`,
+  their schemas in `crates/cli/schemas/`. `cargo shuyi web`
+  (`crates/cli/src/web.rs`) builds the folder that `shuyi.ron`'s `web`
+  entry names (`web.dist`).
   In a game made by `shuyi new`, `cargo shuyi` is an alias for the
   game's own tool program, which calls `shuyi_cli`.
 - **Scripts press keys, not actions.** `run` and `scene` play a
@@ -60,8 +61,9 @@ What the engine has (checked 2026-10-21):
   and `attach`, and `{"act": "Confirm"}` in MCP's `step`.
 - **The grid template** (`templates/grid`): a turn game whose tools
   (`crates/game/src/tools.rs`) give a session with a scene, `replay`,
-  `bots` and the controls. Its actions are `Up`, `Down`, `Left`,
-  `Right`, `Confirm` and `Cancel`. Its scene data already has a `turn`
+  a playtest plan (one entrant, a random bot, and no checks) and the
+  controls. Its actions are `Up`, `Down`, `Left`, `Right`, `Confirm`
+  and `Cancel`. Its scene data already has a `turn`
   (a number). Its `shuyi.ron` lists the `desktop` and `web` targets but
   has no `web` entry, its game crate has no `build.rs` with the link
   argument the web shell needs (`crates/cli/web/README.md`), and its
@@ -153,16 +155,13 @@ None. Spending money on agent runs is 2525's question.
     its `frame` or its `scene` differs from a `run --frames <n> --json`
     with no input, where `n` is the first answer's `frames`. A panic in
     the game's tool program fails it, with the panic's message;
-  - `Replay`: `bots 1 --json` answers a play with a `record`; the grader
-    writes it to a file in a temporary folder of its own and runs
-    `replay <that file's absolute path> --json`, which passes when the
-    record run twice gives equal hashes (ADR-0022). `replay` joins the
-    path to the project's root, so an absolute path is read as it is.
-    **Either order with 2544:** if 2544 is done, `bots` is folded into
-    `playtest`: run `playtest --tries 1 --json`, read its first try's
-    `record`, and read the `bots` operation in this ticket (the
-    prompt's too) as `playtest`; if not, use `bots` as written, and
-    2544 moves the eval onto `playtest` when it lands;
+  - `Replay`: `playtest --tries 1 --json` (2544 folded `bots` into it)
+    answers a try with a `record` (its first try's, at
+    `/result/0/entrants/0/tries/0/record`); the grader writes it to a
+    file in a temporary folder of its own and runs `replay <that file's
+    absolute path> --json`, which passes when the record run twice gives
+    equal hashes (ADR-0022). `replay` joins the path to the project's
+    root, so an absolute path is read as it is;
   - `Scene { steps, has }`: `scene --json` after the steps has a scene,
     and each `(pointer, equals)` in `has` holds in `result.scene.data`:
     a value exists at that JSON pointer, and equals `equals` when one is
@@ -199,10 +198,10 @@ None. Spending money on agent runs is 2525's question.
     waits);
   - reads the answers as `serde_json::Value` (`ok`, `error`,
     `result.frames`, `result.frame`, `result.scene.data`,
-    `result.plays[0].record`), so `xtask` doesn't depend on `shuyi-cli`
-    and the `tickets` job stays fast. A test checks those paths against
-    `crates/cli/schemas/`, so a contract change that moves one fails
-    here.
+    `result[0].entrants[0].tries[0].record`), so `xtask` doesn't
+    depend on `shuyi-cli` and the `tickets` job stays fast. A test
+    checks those paths against `crates/cli/schemas/`, so a contract
+    change that moves one fails here.
 - **References:** `cargo xtask eval-reference (<id> | --all) [--out
   <dir>] [--template-only]` (`crates/xtask/src/eval/reference.rs`):
   - makes two games with `cargo run -q -p shuyi-cli --locked -- new
@@ -289,13 +288,14 @@ None. Spending money on agent runs is 2525's question.
   > (`"x"` or `"o"`) and `winner` (`""` until the game ends, then `"x"`,
   > `"o"` or `"draw"`). Done means: the gates in `AGENTS.md` pass,
   > `cargo shuyi check --target all` passes, `cargo shuyi web --release`
-  > builds, and `cargo shuyi bots 5` plays it, with records that
-  > `cargo shuyi replay` replays.
+  > builds, and `cargo shuyi playtest --tries 5` plays it, with records
+  > that `cargo shuyi replay` replays.
 - **The tic-tac-toe reference**, `evals/references/tic-tac-toe/`: only
   the files that differ from `shuyi new grid --name Tic-tac-toe`. The
-  rules over `TurnRules` in `crates/rules/src/lib.rs` (so `bots` and
-  `replay` work as the template's do), the stage screen and its scene
-  data, the tools' bot, the template's tests changed to fit,
+  rules over `TurnRules` in `crates/rules/src/lib.rs` (so `playtest`
+  and `replay` work as the template's do), the stage screen and its
+  scene data, the tools' playtest plan (one entrant, its bot, and no
+  checks, as the template's), the template's tests changed to fit,
   `shuyi.ron` with a `web` entry, `crates/game/build.rs`, and
   `rust-toolchain.toml` with the `wasm32-unknown-unknown` target.
   Written as an agent should write it: the least change to the template

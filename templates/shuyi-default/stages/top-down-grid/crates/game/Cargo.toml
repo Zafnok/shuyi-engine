@@ -8,7 +8,7 @@ tools = ["rules/schema", "shuyi/schema", "dep:schemars"]
 [dependencies]
 # The stage's rules: pure and deterministic, over the engine's TurnRules.
 rules = { package = "{{crate_name}}-rules", path = "../rules" }
-# The stage's records, for `replay` and `bots`.
+# The stage's records, for `replay` and `playtest`.
 serde.workspace = true
 ron.workspace = true
 # The shape of the scene's data, for the tools (`tools`).

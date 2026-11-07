@@ -22,8 +22,7 @@ is another way to reach them.
 | `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>] [--session <file> [--any-stamp]]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the sounds the game added at run time and hadn't removed at the end (`sounds_added`, in cue order: each one's cue, rate, channels, frames and milliseconds, never its samples; left out when there are none), the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `--session` starts from a session record instead of the game's start options ([Session records](#session-records)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
 | `scene [steps] [--path <pointer>] [--shape]` | The same, answering with the scene or stage on screen and the log. `--path` answers one value of the scene's data instead, `--shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) | the game |
 | `replay <record> [<other>] [--any-stamp]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ. A record stamped with what made it (`made`: the engine's version, the game's word for its build, the fingerprint of its content) by another build is refused with `SH3007`, naming each part that differs, before anything is compared; `--any-stamp` runs it anyway, with a limit that a difference may come from the stamp. A record with no stamp, or a game whose tools give none, runs with a limit saying so. The text shows each record's stamp | the game |
-| `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
-| `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>] [--history <dir> \| --no-history] [--brief]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. Each entrant's line carries the plan's summary items (`won 83/100 · turns median 12`, its `summary`). Every run is kept as a JSON line in a history file per stage, entrants and game options (`<stage>-<entrants joined by +>[-<options>].jsonl` in `target/playtest-history/` under the project, or `--history`'s folder; `--no-history` keeps none, and a folder that can't be written fails the answer with `SH3004`), and the next run says what the last one found: after each entrant's line `· was 47/100 succeed` (its first rate check, else its first summary item; `was` in JSON) and a line `previous <date> · commit <hash>` (`previous`). `--brief` leaves out the line per try. It fails only when a bot falls under a check's floor | the game |
+| `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>] [--history <dir> \| --no-history] [--brief]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. Each entrant's line carries the plan's summary items (`won 83/100 · turns median 12`, its `summary`). Every run is kept as a JSON line in a history file per stage, entrants and game options (`<stage>-<entrants joined by +>[-<options>].jsonl` in `target/playtest-history/` under the project, or `--history`'s folder; `--no-history` keeps none, and a folder that can't be written fails the answer with `SH3004`), and the next run says what the last one found: after each entrant's line `· was 47/100 succeed` (its first rate check, else its first summary item; `was` in JSON) and a line `previous <date> · commit <hash>` (`previous`). `--brief` leaves out the line per try. It fails only when a bot falls under a check's floor. A plan with no checks is a plain bot run (the grid template's, one bot): it judges nothing, passes when every try played, and its text adds each bot's outcomes counted and the spread of its turns and measures after the line per try. In JSON each entrant has `outcomes` (its tries counted by the outcome's name, its `Debug` up to its fields, `unfinished` for those the turn limit stopped), `turns` and `measures` (each a `min`, `max`, `total` and `mean`), and `tries`: each try's `seed`, `commands` (how many were applied) and `record`, in the game's record format for `replay`, left out when the game's plan keeps none. The history keeps no try's `commands` or `record` | the game |
 | `autobalance [--stage <id>] [--entrant <name>]... [--tries N] [--quick N] [--budget N] [--time <seconds>] [--seed N] [--turns N] [--threads N] [--apply]` | The game's knobs change one of its stages, never its bots, until each of its entrants succeeds as often as its checks' bands want (`shuyi_core::autobalance_by`): the smallest change the search finds, each in the knob's own words, why it stopped, and the reports before and after. The stage as authored and the one found play `--tries` tries; the search's own runs play `--quick` (a fifth of them). Each setting's tries run on every core and are judged once in seed order, so what it finds never depends on `--threads`. It stops at `--budget` evaluations (100) or, with `--time`, after that many seconds, with the best setting seen: a limit says so, since that depends on the machine. `--apply` has the game write the changed stage to its files, and the answer lists them. It fails while a rate is outside its band | the game |
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
 | `bake [--target <id>] [--out <file>] [--sheet <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors. For a one-bit target, the pictures it dithered (`dithered`, for an artist to check) and those the target's own files replaced (`replaced`); `--sheet` writes a PNG of each dithered picture beside its source | the game |
@@ -52,7 +51,7 @@ names. An action the game has no key or button for is refused before
 anything plays (`SH0001`), and the error lists the game's actions; one
 wait is at most 33.3 seconds headless (the Harness's 2000 frames) and
 half an hour over the live link. The game's own start options (`frame-png --help` lists them, such
-as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
+as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`,
 `playtest` and `autobalance` too.
 An option the game doesn't offer, one missing its value and one given a value it
 doesn't take are refused with `SH0001` on every path, MCP's `start` among them.
@@ -67,7 +66,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 39,
+  "contract": 40,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
@@ -84,7 +83,7 @@ Every operation answers with the same shape, `Answer<T>`:
   ran.
 - `result` is what the operation found or made. It is absent when the
   operation could not run, and `error` says why ("the game's tools don't
-  offer bots (GameTools::bots)").
+  offer playtest (GameTools::playtest_plan)").
 - `code` is the error's problem code (`SH3001`), and `help` how to fix
   it ([Problem codes](#problem-codes)). An answer that ran and failed on
   the setup has them too (`doctor` with a failed check: `SH1003`). A
@@ -608,10 +607,9 @@ doesn't offer it:
 | `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text, and its state by `Scene::with_data`), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
 | `session_on` | `bench` on a one-bit target | its `Harness` on the target's console, with `set_present_hook` running `to_one_bit` on each frame presented, as the device's backend converts it; left out, `bench` measures `session` there and says so |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)`, its `made` set to the record's stamp |
-| `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its `bots` writes carry it |
-| `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
-| `playtest_plan`, `playtest_stages`, `playtest_defaults` | `playtest` | a `PlaytestPlan` for a stage: a title, its entrants by name (each with a label, a mode, if it has one), named groups of them (`"all"`), the default ones, its checks over the entrants that play (a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's, keeping those whose `Check::entrants` all play), a `Sync` function playing one try of one entrant from one seed, most simply `playtest::play_tries` over that seed, and each entrant's `summary` items (`Sum`, `Spread`, `Most`, `Median`, `Max` over its measures, serde so they may live in a data file); its stages' ids, if it has several; and its own default tries, seed and turn limit, if not the engine's |
-| `autobalance_plan` | `autobalance` | an `AutobalancePlan` for a stage: a title, its entrants, groups, default entrants and checks as its `PlaytestPlan` has them, and the stage it may change, a boxed `Tunable` over the game's own stage type `S`: the stage as authored, its knobs (`shuyi_core::Knob<S>`, in the order the search tries them), a `Sync` function playing one try of one entrant from one seed on a given stage (most simply `playtest::play_tries` over that seed), and one writing a changed stage to the game's files, giving the files it wrote. Its stages and tries are `playtest`'s |
+| `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its playtest's tries keep carry it |
+| `playtest_plan`, `playtest_stages`, `playtest_defaults` | `playtest` | a `PlaytestPlan` for a stage: a title, its entrants by name (each with a label, a mode, if it has one), named groups of them (`"all"`), the default ones, its checks over the entrants that play (a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's, keeping those whose `Check::entrants` all play), a `Sync` function playing one try of one entrant from one seed and giving a `PlayedTry` (the try, the commands applied and its record for `replay`, if it keeps one), most simply `playtest::play_try`, whose entrant gives the record from the try's seed and commands (`Entrant::record`), and each entrant's `summary` items (`Sum`, `Spread`, `Most`, `Median`, `Max` over its measures, serde so they may live in a data file); its stages' ids, if it has several; and its own default tries, seed and turn limit, if not the engine's. A game's bot run is a plan with one entrant and no checks |
+| `autobalance_plan` | `autobalance` | an `AutobalancePlan` for a stage: a title, its entrants, groups, default entrants and checks as its `PlaytestPlan` has them, and the stage it may change, a boxed `Tunable` over the game's own stage type `S`: the stage as authored, its knobs (`shuyi_core::Knob<S>`, in the order the search tries them), a `Sync` function playing one try of one entrant from one seed on a given stage (most simply `playtest::play_try`), and one writing a changed stage to the game's files, giving the files it wrote. Its stages and tries are `playtest`'s |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
@@ -619,7 +617,7 @@ A game on the short path (a `shuyi_platform::BasicGame`) gives
 `shuyi_cli::BasicTools::new(game)`: `frame` and `frame-png`, `lang`,
 `check` (its files' errors), `font_atlas` (its loaded atlas), `session` (`Headless` over its Harness, with
 no scene) and `controls` (its keymap and every screen it can show). A
-game that adds a scene, a record, bots, importers or a bake writes its
+game that adds a scene, a record, a playtest, importers or a bake writes its
 own `GameTools` and calls `BasicTools`' methods for the rest.
 
 Hello, Grid's `src/tools.rs` writes every one. A game made with `shuyi
@@ -627,7 +625,8 @@ new --template grid` writes every one but `bake`, which a new game
 leaves out until it chooses a pack, and `autobalance_plan`, which needs
 knobs of its own stage: its stage's `Tools`
 (`crates/game/src/stages/top_down_grid/tools.rs`) adds a scene, records,
-bots and the map's importer, and calls `BasicTools` for the rest.
+a playtest plan that is a plain bot run (one bot, no checks) and the
+map's importer, and calls `BasicTools` for the rest.
 
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.
@@ -665,7 +664,7 @@ jobs:
 | `system-packages` | the macroquad libraries the templates' CI installs | The apt packages the game builds with, space-separated |
 | `build` | none | A command run before the playtest, to build what it runs (a release build of the tool program) |
 | `command` | `cargo shuyi playtest --every-stage --brief` | The playtest; the workflow adds `--report <file>` and reads the file to say why it failed |
-| `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`). The grid template's game sets it, since it has no plan until it writes one (the `shuyi-balance-bots` skill); drop it then, so a plan that stops working fails |
+| `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`): for a game whose tools don't give one yet. Drop it once they do, so a plan that stops working fails. The grid template's game has a plan, its bot run, so it doesn't set it |
 | `timeout-minutes` | 120 | The playtest job's timeout |
 
 The changed files are a pull request's (its merge commit against the
@@ -709,8 +708,9 @@ which `add` copies), CI with the gates (`fmt`, `clippy`, the tests, `check`, `ch
 `check-keys` and `lint`), and the `cargo shuyi` alias. The grid game also
 has `.github/workflows/playtest.yml`, which calls the engine's playtest
 workflow ([The playtest in CI](#the-playtest-in-ci)) at the engine's
-commit it builds with: a 40-digit `--engine-rev`, else `main`. It has
-no playtest plan yet, so it passes `allow-no-plan` until it writes one.
+commit it builds with: a 40-digit `--engine-rev`, else `main`. Its
+playtest plan is its bot run, with no checks, until it writes a
+`playtest.ron` (the `shuyi-balance-bots` skill).
 Who the game is, its name and its id `com.example.<crate>`, is
 `shuyi.ron`'s `app`, and `crates/game/src/app_info.rs` is the file
 `cargo shuyi app-info` writes from it: its saves are kept under the id,

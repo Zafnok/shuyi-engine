@@ -4,28 +4,28 @@
 //! its text is checked against, and the controls
 //! `check --target` checks), with a `--seed` for the first stage, and the
 //! stage's own: `run` and `scene` with its map scene and state, `replay`
-//! (a [`StageRecord`], stamped with what made it: [`crate::made`]), `bots`
-//! (the engine's random bot) and `import` (the stage's `.map` besides the
+//! (a [`StageRecord`], stamped with what made it: [`crate::made`]),
+//! `playtest` (the engine's random bot, each try recorded:
+//! [`playtest_plan`]) and `import` (the stage's `.map` besides the
 //! engine's kinds). `examples/tools.rs` is the
 //! tool program that runs them; the tests use them too.
 
-use std::collections::BTreeMap;
-
-use rules::{Feature, Outcome, Player, Stage};
+use rules::{Feature, Player, Stage};
 use serde::Serialize;
 use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
+use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
 use shuyi::core::{Bot, Made, Pos, RandomBot, TerrainId, play};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
-use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
+use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Script, Shot};
-use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools};
+use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools, PlaytestPlan};
 
 use super::{Own, StageRecord, StageScreen, Terrain};
 use crate::Data;
@@ -85,29 +85,44 @@ pub fn events(h: &Harness<Data>) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// A play of the stage of `map` seeded `seed` by a random bot of the same
-/// seed, to its end or turn `limit`.
-fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<Play, String> {
+/// The stage's bot run for `playtest` (`cargo shuyi playtest --tries 20`):
+/// one entrant, `random`, on the stage of `map`, and no checks, so it
+/// judges nothing and passes when every try played. Each try is
+/// [`bot_try`]'s. Add checks (a `playtest.ron`) when the game knows how
+/// often a bot should win.
+pub fn playtest_plan(map: GridMap<TerrainId, Feature>) -> PlaytestPlan {
+    PlaytestPlan::new(
+        "the stage, played by a random bot",
+        vec![("random".to_owned(), None)],
+        Box::new(|_| Vec::new()),
+        Box::new(move |_, seed, turns| bot_try(&map, seed, turns)),
+    )
+}
+
+/// A try of the stage of `map` seeded `seed` by a random bot of the same
+/// seed, to its end or turn `limit`: how far your piece ended from the
+/// goal, and its record, stamped with this build.
+fn bot_try(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<PlayedTry, String> {
     let mut stage = Stage::new(map, seed)?;
     let mut bot = RandomBot::new(seed);
     let mut bots: [(Player, &mut dyn Bot<Stage>); 1] = [(Player, &mut bot)];
     let report = play(&mut stage, &mut bots, limit).map_err(|e| format!("seed {seed}: {e}"))?;
-    let outcome = match report.outcome {
-        Some(Outcome::Won { .. }) => "won",
-        Some(Outcome::Caught { .. }) => "caught",
-        None => UNFINISHED,
+    let distance = Pos::manhattan(stage.hero(), stage.goal());
+    let tried = Tried {
+        seed,
+        outcome: report.outcome.map(|o| format!("{o:?}")),
+        turns: report.turns,
+        measures: Measures::from([("tiles from the goal".to_owned(), i64::from(distance))]),
     };
+    let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
     let record = StageRecord {
         seed,
-        commands: report.commands.clone(),
+        commands: report.commands,
         made: Some(crate::made()),
     };
-    let distance = Pos::manhattan(stage.hero(), stage.goal());
-    let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
-    let mut play = Play::new(seed, outcome, report.turns, commands);
-    play.measures = BTreeMap::from([("tiles from the goal".to_owned(), i64::from(distance))]);
-    play.record = ron::to_string(&record).ok();
-    Ok(play)
+    let mut one = PlayedTry::new(tried, commands);
+    one.record = ron::to_string(&record).ok();
+    Ok(one)
 }
 
 /// A session of `harness`, with the stage's scene and events and the game's
@@ -211,12 +226,14 @@ impl GameTools for Tools {
         Some(crate::made())
     }
 
-    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
-        let map = self.map()?;
-        let plays = (input.seed..input.seed + u64::from(input.games))
-            .map(|seed| bot_play(&map, seed, input.turns))
-            .collect::<Result<_, _>>()?;
-        Ok(tally(plays))
+    /// The stage's bot run ([`playtest_plan`]); the game's options don't
+    /// change it.
+    fn playtest_plan(
+        &self,
+        _stage: Option<&str>,
+        _input: &PlaytestInput,
+    ) -> Result<PlaytestPlan, String> {
+        Ok(playtest_plan(self.map()?))
     }
 
     fn importers(&self) -> Importers {

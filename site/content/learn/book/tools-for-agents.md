@@ -41,7 +41,7 @@ That isn't an error. It's the tool being plain that there was something it could
 common text format for data, for a program, whose **exit code**, the number a program hands back
 when it stops, says its class: 0 when `ok`, 1 when it ran and found something, 2 for a wrong
 command, 3 for a setup to fix. The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
-`scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
+`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
 `attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
 
 {{ snippet(file="src/tools.rs", anchor="contract") }}
@@ -58,7 +58,7 @@ document's shape that a program can read: `cargo shuyi schema run.output` prints
 
 A game gives the tools what they need of it in its tool program
 ([chapter 1](@/learn/book/quick-start.md#what-it-is-made-of)). On the short path that is `BasicTools`:
-its frame, its text, its files' errors and its controls. A game with a scene, records, bots or
+its frame, its text, its files' errors and its controls. A game with a scene, records, a playtest or
 importers writes its own `GameTools`, adds those, and calls `BasicTools` for the rest; a `grid` game's
 stage has one to read.
 

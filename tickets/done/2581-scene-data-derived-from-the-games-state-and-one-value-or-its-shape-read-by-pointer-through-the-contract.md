@@ -225,7 +225,7 @@ What was done:
 - **MCP:** the session's `scene` takes `SceneInput { path, shape }`
   (the headless host and the session attached over the live link, whose
   frame scene has no data).
-- **`contract::VERSION` 39**, the schemas regenerated, its line in
+- **`contract::VERSION` 40** (main took 39 meanwhile), the schemas regenerated, its line in
   `versions.json`.
 - **Hello, Grid** names `tools::StageData { #[serde(flatten)] stage,
   commands }`; `Stage`, `Outcome`, `Side` and `Tuning` derive
