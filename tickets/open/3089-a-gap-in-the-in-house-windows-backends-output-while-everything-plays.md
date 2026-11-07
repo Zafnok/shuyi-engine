@@ -29,6 +29,16 @@ while everything played`. The other 19 had none, and quad-snd on the same
 runners (`windows`) had none in 20. One in 20 is rare, but a player hears it,
 and it fails a pull request.
 
+**From 2048 (done):** two of its twenty `sound-parity` jobs (CI run 42389680314,
+branch `t2048-calibration`) failed on `windows-in-house` scenarios. In job 6,
+`windows-in-house/run-0/wav_48k.pcm` has 794 frames of digital zero ending 1,245.2
+ms after the onset, in the middle of the tone (`repeat:wav_48k`, 1.939 dB). In job 1,
+`scenario:stream_gapless` failed with `loop.wav differs by 11756 at frame 45844 of
+66150, over 2 (pass 3)`. Their artifacts (`sound-parity-run-6`, `sound-parity-run-1`
+and the matching `sound-parity-windows-N`) are more of this ticket's evidence, while
+they last. 2049 looks at the same kind of hole in quad-snd's Windows recordings, and
+whether the loopback flags it silent; what it finds says which side such a hole is.
+
 ## Nick input
 
 None.
