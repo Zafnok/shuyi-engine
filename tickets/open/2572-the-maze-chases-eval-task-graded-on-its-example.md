@@ -47,8 +47,8 @@ None.
   - `checks`: `Gates`, `Check`, `Targets`, `Web`, and `Responds` with
     `Act("Left")` and a wait. `Replay` too if 2524's grader can get a
     tick game's record by then; snake's task leaves it out because a
-    tick game has no `bots` (2739's *The eval*), and this task follows
-    whatever snake's does on the day;
+    tick game has no `playtest` (2739's *The eval*), and this task
+    follows whatever snake's does on the day;
   - `Scene` checks, through scene data the prompt names, as snake's task
     has (2739): the score goes up when the player eats a pellet, and a
     life goes when a chaser catches it;

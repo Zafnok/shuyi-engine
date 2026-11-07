@@ -173,6 +173,9 @@ exclude_re = [
     # `LangCode::default()`: its `Default::default()` mutant is the same
     # function.
     'replace LangCode::english -> Self with Default::default\(\)',
+    # The default `Entrant::record` keeps no record, `None`: its `None`
+    # mutant is the same function.
+    'replace Entrant::record -> Option<String> with None',
     # The default `Screen::debug_draw` hands in nothing: its only mutant,
     # `()`, is the same function.
     'screen\.rs:\d+:\d+: replace Screen::debug_draw with \(\)',

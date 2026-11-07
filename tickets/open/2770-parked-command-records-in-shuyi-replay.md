@@ -118,8 +118,9 @@ None.
 - a replay of tick records, `replay::ticks` (2739's);
 - lockstep and its desync reports (2720);
 - the RTS module and its commands (2707);
-- `bots` over a command sim, and a soak of one: 2772 (parked) checks a
-  `CommandRecord` in `shuyi_core::soak::command`, with no operation;
+- `playtest` over a command sim, and a soak of one: 2772 (parked)
+  checks a `CommandRecord` in `shuyi_core::soak::command`, with no
+  operation;
 - a shorter answer for long runs: every step is listed, as a tick
   replay lists every tick;
 - a new operation, or a new field in an answer.

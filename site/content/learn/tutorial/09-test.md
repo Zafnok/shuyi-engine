@@ -97,14 +97,14 @@ Why does this matter? Here's the test:
 It plays each level's line, and checks it wins. **So every level is proven winnable, every time you run your tests.** Edit a
 level so it can't be won, and this test fails, and says which one. For a puzzle game, that's the most valuable test there is.
 
-To run the bots by hand:
+To run the bot by hand:
 
 ```bash
-cargo shuyi bots 20
+cargo shuyi playtest --tries 20
 ```
 
-The tools know how to do that because of `bots`, in `tools.rs`, which plays them through the engine's `play`. Look it up
-in this step's copy.
+The tools know how to do that because of `playtest_plan`, in `tools.rs`: one bot, `line`, with no checks to judge it,
+each try played through the engine's `play` and kept as a record you can replay. Look it up in this step's copy.
 
 ## A replay
 

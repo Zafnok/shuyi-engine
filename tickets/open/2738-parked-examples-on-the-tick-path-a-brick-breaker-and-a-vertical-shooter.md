@@ -153,7 +153,7 @@ None. When it unparks is his call (above).
     `BasicTools`' methods for the rest, with `session` (a `Headless`
     with a scene, `Headless::with_scene`, holding `score`, `lives`,
     `bricks_left`, `step` and `outcome`) and `replay` through
-    `contract::replay::ticks`. `bots` stays unsupported (Out).
+    `contract::replay::ticks`. `playtest` stays unsupported (Out).
   - **sound:** if 2225 is done, a bounce, a break and a lost-life sound
     from its presets. If not, none, the README says so, and 2225's PR
     adds them (its item on the gallery examples says so).
@@ -221,10 +221,10 @@ None. When it unparks is his call (above).
   `blank`, targets `desktop` and `web`, reference
   `Project("examples/bricks")`, and the checks `Check`, `Targets`,
   `Web`, `Responds` and `Scene` (on the facts its prompt asks the game
-  to expose: `/lives` and `/score`). No `Replay` check: it asks `bots`,
-  which this example doesn't offer. `cargo xtask eval-reference bricks`
-  passes. If 2524 isn't done, add the task to 2524's first tasks in its
-  ticket, in this PR.
+  to expose: `/lives` and `/score`). No `Replay` check: it asks
+  `playtest`, which this example doesn't offer. `cargo xtask
+  eval-reference bricks` passes. If 2524 isn't done, add the task to
+  2524's first tasks in its ticket, in this PR.
 - **The shooter's ticket** (the `write-ticket` skill, the next free
   `27xx` id): `examples/shooter`, a vertical shoot-'em-up in the
   bricks' form, with the scope below and what the bricks taught. It has
@@ -282,7 +282,7 @@ None. When it unparks is his call (above).
 - a scrolling field and parallax (1120);
 - game speed and hit-stop (2123), and drawing between steps (2361);
 - the mouse or an analog paddle (1121);
-- a bot trait for tick games, and `shuyi bots` on these examples
+- a bot trait for tick games, and `shuyi playtest` on these examples
   (2739's Out);
 - high-score tables (3054) and two players (2406);
 - a `kind` answer in `docs/modules.ron` (2003), a guide (2004) or a

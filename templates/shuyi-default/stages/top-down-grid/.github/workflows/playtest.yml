@@ -7,9 +7,9 @@ name: Playtest
 # (playtest.ron) or the playtest breaks. The engine's reusable workflow
 # does it; its inputs are in the engine's docs/contract.md (`playtest`).
 #
-# Until the game gives a playtest plan (its tools' `playtest_plan` and a
-# playtest.ron: the shuyi-balance-bots skill), the job says so and passes;
-# then drop `allow-no-plan`, so a plan that stops working fails.
+# The stage's plan is a plain bot run (its tools' `playtest_plan`): it
+# judges nothing, and fails only when a try breaks, until the game gives
+# it checks (a playtest.ron: the shuyi-balance-bots skill).
 #
 # The pin is the engine's commit the game builds with: move it with the
 # engine's `rev` in Cargo.toml.
@@ -33,5 +33,3 @@ jobs:
   playtest:
     name: playtest
     uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@{{engine_ref}} # the engine's commit
-    with:
-      allow-no-plan: true

@@ -180,7 +180,7 @@ None.
   - replay determinism, through 2116: a golden table
     `examples/roguelike/tests/golden/roguelike.ron` checked by
     `tests/golden.rs`, with a record `tests/records/seed-<n>.ron` made
-    by `cargo shuyi bots`, in the form 2116 gives hello-grid's
+    by `cargo shuyi playtest`, in the form 2116 gives hello-grid's
     (`step NNN` rows and `outcome`). Add a step to the `determinism`
     job of `.github/workflows/ci.yml` that runs it on wasm32, as
     hello-grid's does;

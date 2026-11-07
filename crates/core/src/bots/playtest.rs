@@ -7,6 +7,9 @@
 //! [`run`] does it all. It is two halves, [`play_tries`] and [`judge`], so
 //! a caller with threads can play seed ranges on threads of its own and
 //! judge them once: the report never depends on how the seeds were split.
+//! [`play_try`] plays one seed and keeps what a tool shows of a try
+//! besides: how many commands were applied, and the entrant's record of it
+//! for `replay` ([`Entrant::record`]).
 //!
 //! Every number is an integer, so a report is the same on every machine:
 //! a band compares `successes * 100` with `min * count`, and the median
@@ -78,7 +81,19 @@ pub trait Entrant<S, R: Sides> {
 
     /// A fresh measure for a try.
     fn measure(&self) -> Box<dyn Measure<R>>;
+
+    /// The try of `seed` as a record in the game's own format, for
+    /// `replay`, from the commands applied in order ([`play_try`]); `None`,
+    /// the default, if it keeps none.
+    fn record(&self, seed: u64, commands: &[R::Command]) -> Option<String> {
+        let _ = (seed, commands);
+        None
+    }
 }
+
+/// How a try the turn limit stopped is written where an outcome would
+/// be.
+pub const UNFINISHED: &str = "unfinished";
 
 /// K tries from seeds `seed` to `seed + count - 1` (those that fit in a
 /// `u64`), each stopped at turn `turns` if it hasn't ended. Every entrant
@@ -122,6 +137,32 @@ pub struct Tried {
     pub turns: u32,
     /// The game's measures of it.
     pub measures: Measures,
+}
+
+/// One try as [`play_try`] played it: what the checks read, how many
+/// commands were applied, and the entrant's record of it, if it keeps one
+/// ([`Entrant::record`]). Build it with [`PlayedTry::new`] (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PlayedTry {
+    /// What the checks read.
+    pub tried: Tried,
+    /// The commands applied.
+    pub commands: u32,
+    /// Its record, in the game's record format, for `replay`.
+    pub record: Option<String>,
+}
+
+impl PlayedTry {
+    /// `tried`, after `commands` commands, with no record.
+    #[must_use]
+    pub fn new(tried: Tried, commands: u32) -> Self {
+        Self {
+            tried,
+            commands,
+            record: None,
+        }
+    }
 }
 
 /// A measure within bounds, both ends inclusive. A try missing the
@@ -518,25 +559,59 @@ where
     R::Outcome: fmt::Debug,
 {
     seeds
-        .map(|seed| {
-            let mut rules = entrant.start(stage, seed);
-            let mut bots = entrant.bots(seed);
-            let mut by_side: Vec<(R::Side, &mut dyn Bot<R>)> = bots
-                .iter_mut()
-                .map(|(side, bot)| (*side, bot.as_mut() as &mut dyn Bot<R>))
-                .collect();
-            let mut measure = entrant.measure();
-            let report = play_observed(&mut rules, &mut by_side, turns, |r, c, e| {
-                measure.observe(r, c, e);
-            })?;
-            Ok(Tried {
-                seed,
-                outcome: report.outcome.as_ref().map(|o| format!("{o:?}")),
-                turns: report.turns,
-                measures: measure.finish(&report, &rules),
-            })
-        })
+        .map(|seed| tried(stage, entrant, seed, turns).map(|(tried, _)| tried))
         .collect()
+}
+
+/// `entrant` plays `stage` once from `seed`, stopped at turn `turns`: the
+/// try, the commands applied, and the entrant's record of it
+/// ([`Entrant::record`]).
+pub fn play_try<S, R: Sides>(
+    stage: &S,
+    entrant: &dyn Entrant<S, R>,
+    seed: u64,
+    turns: u32,
+) -> Result<PlayedTry, PlayError<R>>
+where
+    R::Command: Clone,
+    R::Outcome: fmt::Debug,
+{
+    let (tried, report) = tried(stage, entrant, seed, turns)?;
+    Ok(PlayedTry {
+        tried,
+        commands: u32::try_from(report.commands.len()).unwrap_or(u32::MAX),
+        record: entrant.record(seed, &report.commands),
+    })
+}
+
+/// `entrant`'s try of `seed` on `stage`, and the play's report.
+fn tried<S, R: Sides>(
+    stage: &S,
+    entrant: &dyn Entrant<S, R>,
+    seed: u64,
+    turns: u32,
+) -> Result<(Tried, Report<R>), PlayError<R>>
+where
+    R::Command: Clone,
+    R::Outcome: fmt::Debug,
+{
+    let mut rules = entrant.start(stage, seed);
+    let mut bots = entrant.bots(seed);
+    let mut by_side: Vec<(R::Side, &mut dyn Bot<R>)> = bots
+        .iter_mut()
+        .map(|(side, bot)| (*side, bot.as_mut() as &mut dyn Bot<R>))
+        .collect();
+    let mut measure = entrant.measure();
+    let report = play_observed(&mut rules, &mut by_side, turns, |r, c, e| {
+        measure.observe(r, c, e);
+    })?;
+    let tried = Tried {
+        seed,
+        outcome: report.outcome.as_ref().map(|o| format!("{o:?}")),
+        turns: report.turns,
+        measures: measure.finish(&report, &rules),
+    };
+    Ok((tried, report))
 }
 
 /// The median of `values`: the lower middle one of an even count.
@@ -810,7 +885,7 @@ impl PlaytestReport {
                     "try {} · {} · {} · turns {}",
                     t.seed,
                     entrant.name,
-                    t.outcome.as_deref().unwrap_or("unfinished"),
+                    t.outcome.as_deref().unwrap_or(UNFINISHED),
                     t.turns
                 )?;
                 for (name, value) in &t.measures {

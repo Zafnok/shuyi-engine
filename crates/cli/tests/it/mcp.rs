@@ -143,7 +143,7 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         "perf",
         "reset",
         "stop",
-        "bots",
+        "playtest",
     ] {
         assert!(names.contains(&name), "{name} in {names:?}");
     }
@@ -206,10 +206,10 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         "something is drawn"
     );
 
-    // A call that fails: bots with 0 games, an error result with its code.
+    // A call that fails: playtest with 0 tries, an error result with its code.
     let failed = client.call(
-        "bots",
-        &json!({ "games": 0, "project": "examples/hello-grid" }),
+        "playtest",
+        &json!({ "tries": 0, "project": "examples/hello-grid" }),
     );
     assert_eq!(failed["isError"], true, "{failed}");
     let answer = &failed["structuredContent"];

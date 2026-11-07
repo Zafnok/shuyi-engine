@@ -7,10 +7,11 @@
 //! 32-bit LZ4 (ADR-0023): so a record made on one replays the same on the
 //! others, and a pack baked on one reads the same everywhere.
 //!
-//! The record, `tests/records/seed-11.ron`, is seed 11's play from `cargo
-//! shuyi bots 1 --seed 11 --json`, without its stamp, so a change to the
-//! game's files shows as rows moving rather than a refusal. It and the
-//! table are read with `include_str!`.
+//! The record, `tests/records/seed-11.ron`, is the random hero's try of
+//! seed 11 from `cargo shuyi playtest --entrant random --tries 1 --seed 11
+//! --json`, without its stamp, so a change to the game's files shows as
+//! rows moving rather than a refusal. It and the table are read with
+//! `include_str!`.
 //!
 //! Beside them, the golden session, `tests/sessions/stage.session.ron`: a
 //! session record of the game from its real start, through the options to a

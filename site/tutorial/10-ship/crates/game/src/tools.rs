@@ -3,17 +3,18 @@
 //! `examples/tools.rs` runs them, and the tests use them too.
 
 use serde::{Deserialize, Serialize};
+use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
 use shuyi::core::bots::{Bot, play};
 use shuyi::core::{Dir, Made, TurnRules};
 use shuyi::platform::harness::Harness;
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
-use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
+use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Script, Shot};
 use shuyi_cli::serde_json::json;
-use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools};
+use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools, PlaytestPlan};
 
 use crate::action::Action;
 use crate::board::{Board, Terrain};
@@ -160,26 +161,41 @@ impl GameTools for Tools {
     }
 
     // ANCHOR: bots
-    /// Each play is level 1's line: the same every time, as the rules have
-    /// no luck.
-    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
-        let bundle = self.game.bundle();
-        let plays = (input.seed..input.seed + u64::from(input.games))
-            .map(|seed| {
-                let mut puzzle = self.puzzle(0)?;
-                let mut bot = LineBot::new(&bundle, 0)?;
-                let report = play(&mut puzzle, &mut [((), &mut bot)], input.turns)
-                    .map_err(|e| e.to_string())?;
-                let outcome = if report.outcome.is_some() {
-                    "won"
-                } else {
-                    UNFINISHED
+    /// The bots' run: one bot, `line`, playing level 1's line, the same
+    /// every try as the rules have no luck, and no checks to judge it.
+    /// Each try keeps its record, for `replay`.
+    fn playtest_plan(
+        &self,
+        _stage: Option<&str>,
+        _input: &PlaytestInput,
+    ) -> Result<PlaytestPlan, String> {
+        let puzzle = self.puzzle(0)?;
+        let bot = LineBot::new(&self.game.bundle(), 0)?;
+        Ok(PlaytestPlan::new(
+            "level 1, played by its line",
+            vec![("line".to_owned(), None)],
+            Box::new(|_| Vec::new()),
+            Box::new(move |_, seed, turns| {
+                let (mut puzzle, mut bot) = (puzzle.clone(), bot.clone());
+                let report =
+                    play(&mut puzzle, &mut [((), &mut bot)], turns).map_err(|e| e.to_string())?;
+                let tried = Tried {
+                    seed,
+                    outcome: report.outcome.map(|o| format!("{o:?}")),
+                    turns: report.turns,
+                    measures: Measures::new(),
                 };
                 let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
-                Ok(Play::new(seed, outcome, report.turns, commands))
-            })
-            .collect::<Result<_, String>>()?;
-        Ok(tally(plays))
+                let record = LevelRecord {
+                    level: 0,
+                    commands: report.commands,
+                    made: Some(made()),
+                };
+                let mut one = PlayedTry::new(tried, commands);
+                one.record = ron::to_string(&record).ok();
+                Ok(one)
+            }),
+        ))
     }
     // ANCHOR_END: bots
 

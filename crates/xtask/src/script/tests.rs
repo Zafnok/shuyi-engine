@@ -218,19 +218,19 @@ fn a_saved_value_is_written_to_the_game() {
     let fake = Fake::new(|_| {
         ran(
             0,
-            r#"{"ok": true, "result": {"plays": [{"record": "(seed: 3, commands: [])", "turns": 4}]}}"#,
+            r#"{"ok": true, "result": [{"entrants": [{"tries": [{"record": "(seed: 3, commands: [])", "commands": 4}]}]}]}"#,
         )
     });
     let step = |pointer: &str, file: &str| Step::Shuyi {
-        args: vec!["bots".to_owned(), "1".to_owned()],
+        args: vec!["playtest".to_owned(), "--tries".to_owned(), "1".to_owned()],
         ok: true,
         expect: Vec::new(),
         save: Some((pointer.to_owned(), file.to_owned())),
     };
     let verdicts = run(
         &[
-            step("/result/plays/0/record", "records/one.ron"),
-            step("/result/plays/0/turns", "turns.txt"),
+            step("/result/0/entrants/0/tries/0/record", "records/one.ron"),
+            step("/result/0/entrants/0/tries/0/commands", "commands.txt"),
             step("/result/nope", "nope.txt"),
         ],
         &game,
@@ -242,7 +242,7 @@ fn a_saved_value_is_written_to_the_game() {
         fs::read_to_string(game.join("records/one.ron")).unwrap(),
         "(seed: 3, commands: [])"
     );
-    assert_eq!(fs::read_to_string(game.join("turns.txt")).unwrap(), "4");
+    assert_eq!(fs::read_to_string(game.join("commands.txt")).unwrap(), "4");
     assert_eq!(
         verdicts[2].detail.as_deref(),
         Some("save: no value at /result/nope")

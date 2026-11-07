@@ -10,7 +10,7 @@ use game::rules::{Command, Puzzle};
 use game::tools::{LevelRecord, LineBot};
 use shuyi::core::Dir;
 use shuyi::core::bots::play;
-use shuyi_cli::contract::bots::{BotsInput, bots};
+use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, scene};
 
@@ -27,13 +27,13 @@ fn every_levels_line_wins_it() {
 }
 
 #[test]
-fn the_bots_tool_wins_level_one() {
-    let mut input = BotsInput::default();
-    input.games = 3;
-    let answer = bots(&game::stages::tools(), &input);
+fn the_playtest_tool_wins_level_one() {
+    let mut input = PlaytestInput::default();
+    input.tries = Some(3);
+    let answer = playtest(&game::stages::tools(), &input);
     assert!(answer.ok, "{answer:?}");
-    let out = answer.result.as_ref().unwrap();
-    assert_eq!(out.outcomes.get("won"), Some(&3), "{out:?}");
+    let line = &answer.result.as_ref().unwrap()[0].entrants[0];
+    assert_eq!(line.outcomes.get("Won"), Some(&3), "{line:?}");
 }
 // ANCHOR_END: test_bot
 

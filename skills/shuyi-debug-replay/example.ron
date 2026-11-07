@@ -6,11 +6,11 @@
 Example(
     template: "grid",
     steps: [
-        // The bots' plays carry their records: keep the first.
+        // The bot's tries carry their records: keep the first.
         Shuyi(
-            args: ["bots", "2"],
-            expect: [Is("/result/games", "2"), Has("/result/plays/0/record")],
-            save: Some(("/result/plays/0/record", "records/bot.ron")),
+            args: ["playtest", "--tries", "2"],
+            expect: [Has("/result/0/entrants/0/outcomes"), Has("/result/0/entrants/0/tries/0/record")],
+            save: Some(("/result/0/entrants/0/tries/0/record", "records/bot.ron")),
         ),
         // One record, run twice: the same hashes, so no difference. The
         // bots stamped it with this build, so it runs with its stamp.

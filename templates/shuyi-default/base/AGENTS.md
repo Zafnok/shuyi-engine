@@ -79,7 +79,7 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one. The dev container runs it for you when it is created |
 
-`scene`, `replay` and `bots` need a stage and rules: a stage's own
+`scene`, `replay` and `playtest` need a stage and rules: a stage's own
 `GameTools` gives them (a game made with `shuyi new --template grid`
 has one).
 
@@ -130,7 +130,7 @@ that gives:
 - `crash_record`, its record of play (the record its `replay` reads) for
   a crash report, or `None` while it isn't open;
 - `Tools`, made with `Tools::new(game())`: its `GameTools`, which adds
-  what the stage has (a scene, records, bots) and calls `BasicTools` for
+  what the stage has (a scene, records, a bot run) and calls `BasicTools` for
   the rest.
 
 `stages.rs` names them: change it by hand to add or take out a stage.
@@ -144,7 +144,7 @@ Grow it by adding a part, not by rewriting the start:
   names in `files/keymap.ron`.
 - **A part of its own:** a stage's `Own`, read by its `own` function
   from the files (a stage, a table of rules): it is `BasicData::own`.
-- **Its own tools:** a stage's `GameTools` (a scene, records, bots),
+- **Its own tools:** a stage's `GameTools` (a scene, records, a bot run),
   which calls `BasicTools`' methods for the rest. `shuyi new --template
   grid` shows one.
 - **The long form:** its own `GameData` (sounds, voices, themes,

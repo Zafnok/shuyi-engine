@@ -144,9 +144,10 @@ that plan on copies of the game. A test then holds the game to how often a bot s
 > them. `(10..50).contains(&wins)` asks whether `wins` is in that range. In the text `"{wins}
 > wins in 50"`, `{wins}` is filled in with its value, printed if the test fails.
 
-In a game whose tools give bots (a `grid` game's do), `cargo shuyi bots 20` plays them, and
-`cargo shuyi playtest` plays each named bot many times on every core and says whether each
-wins as often as the game wants.
+In a game whose tools give a playtest (a `grid` game's do), `cargo shuyi playtest --tries 20`
+plays each of its named bots 20 times on every core: how each try ended, a record of each
+with `--json` for `replay`, and, when the game gives checks, whether each bot wins as often
+as the game wants. A `grid` game starts with one bot and no checks, a plain bot run.
 
 ## Records and replays
 
