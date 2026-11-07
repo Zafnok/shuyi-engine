@@ -592,7 +592,7 @@ fn a_line_of_wide_and_narrow_glyphs_matches_its_reference() {
     let wide = read_font(&root.join("tests/fixtures/fonts/wide-16.bdf")).unwrap();
     let chars = AtlasChars::default().with_wide("口田日一");
     let atlas = build_wide_atlas(&narrow, Some(&wide), &chars);
-    let png = encode_png(atlas.width, atlas.height, &atlas.rgba).unwrap();
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
     let widths = CellWidths::of(&atlas.def);
     let table = ImageTable::new(BTreeMap::new());
     let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
@@ -696,7 +696,7 @@ fn a_character_draws_from_the_set_its_language_names() {
         &chars,
     );
     assert_eq!(shuyi_assets::font::undrawn(&atlas.def, &lang), Vec::new());
-    let png = encode_png(atlas.width, atlas.height, &atlas.rgba).unwrap();
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
     let base = CellWidths::of(&atlas.def);
     let table = ImageTable::new(BTreeMap::new());
     let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();

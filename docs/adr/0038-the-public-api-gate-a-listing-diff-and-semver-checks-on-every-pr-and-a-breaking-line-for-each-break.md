@@ -176,6 +176,15 @@ Added after acceptance; it widens §1's list and leaves the rest as it was.
   tool's default.
 - `api.rs`'s module docs say what that leaves unchecked.
 
+Ticket 2041 then gave every other crate the same: each is checked with
+every feature its manifest has, in both tools, so a public item behind a
+feature that is off by default is listed as well as judged. `shuyi-app`
+alone leaves one out (`in-house-sound`, ADR-0075). No entry keeps a tool's
+default, and a test fails on a manifest's feature that its entry neither
+chooses nor leaves out. A side whose manifest lacks a chosen feature (a PR
+that adds or removes one) is built without it, and the semver check takes
+only the features both sides have, so the change shows in the listing.
+
 ## Consequences
 
 - A break is named by a tool on every PR, and written down by the agent

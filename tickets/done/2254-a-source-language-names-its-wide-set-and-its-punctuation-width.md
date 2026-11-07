@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 2254 — A source language names its wide set and its punctuation's width
@@ -69,17 +69,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A game whose source names set `zh-Hans` with wide punctuation:
+- [x] A game whose source names set `zh-Hans` with wide punctuation:
       `Ctx::widths()` in the source has `“` wide and names `zh-Hans`
       (unit test).
-- [ ] `font::undrawn` fails the source's wide character its set lacks
+- [x] `font::undrawn` fails the source's wide character its set lacks
       (unit test).
-- [ ] `font-atlas` keeps the source's wide characters in its set
+- [x] `font-atlas` keeps the source's wide characters in its set
       (unit test).
-- [ ] A source with neither field behaves as before (every existing test
+- [x] A source with neither field behaves as before (every existing test
       unchanged).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -89,5 +89,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `SourceLang` has `wide_font` and `wide_punctuation`, set with
+  `with_wide_font` / `with_wide_punctuation` (neither by default), and
+  `SourceLang::widths(base)` as `LangInfo::widths`.
+- `Lang::widths(code, base)`: a pack's table, the source's, else `base`.
+  `Ctx`'s `lang_widths` now holds the source's table too, so
+  `Ctx::widths()` and the glyph buffer follow it in the source.
+  `font::undrawn` checks the source's text against its set (a set the
+  atlas lacks is one error on the source's folder, as `TextAt::path`
+  names it), and `font-atlas`'s `AtlasChars::of_lang` keeps the source's
+  characters and wide punctuation in its set. Both read the set and the
+  punctuation through the helper's `CellWidths`.
+- Tests: `Lang::widths` and the builders (`shuyi-assets`), `undrawn`
+  with a source set, `Ctx::widths()` in a source naming `zh-Hans` (via a
+  test-only `Toy::with_source_lang`), `font-atlas`'s per-set characters,
+  and the book's snippet.
+- Deviation, step 3: no engine code measures the source's own text
+  against limits with the atlas's widths; a game does, through the
+  widths it hands its tip and dialogue rules. The book and
+  `docs/formats.md` say to hand them `source.widths(&CellWidths::of(&atlas))`.
+  `Lang::overflow` stays a pack's, as before.
+- Docs: `docs/formats.md` (the pack's `lang.ron` paragraph) and the
+  book's chapter 5, with a compiled snippet (`site/snippets/src/assets.rs`,
+  anchor `source_lang`).
+- No break: `SourceLang` is `#[non_exhaustive]`; the fields and methods
+  are additions.

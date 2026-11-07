@@ -8,7 +8,9 @@
 //! ship there is silence, with the player's warning.
 //!
 //! The SDK can pause both kinds of player and set their rates, so this keeps
-//! no default of [`Backend`]'s.
+//! no default of [`Backend`]'s. A sound the game makes at run time is a
+//! sample the SDK makes from a copy of its samples, freed when it is
+//! removed.
 
 use alloc::borrow::ToOwned;
 use alloc::collections::BTreeMap;
@@ -24,6 +26,7 @@ use shuyi_assets::audio::{
     AudioManifest, BAKED_MUSIC_DIR, BAKED_SOUND_DIR, Files, without_extension,
 };
 use shuyi_platform::audio::player::{Backend, Player, RATE_ONE, Unsupported};
+use shuyi_ui::audio::SharedSamples;
 
 use crate::sdk::Sdk;
 
@@ -63,6 +66,8 @@ pub struct Speaker<S: Sdk> {
     slots: Vec<Slot<S>>,
     /// The samples loaded, by path: cues that share a file share its memory.
     loaded: BTreeMap<String, S::Sample>,
+    /// The samples made from a game's own samples, freed when removed.
+    made: Vec<S::Sample>,
     /// The serial of the last playback.
     serial: u32,
     /// The slot a sound takes when all play: they are taken in turn.
@@ -140,6 +145,7 @@ impl<S: Sdk> Speaker<S> {
             sdk,
             slots,
             loaded: BTreeMap::new(),
+            made: Vec::new(),
             serial: 0,
             oldest: 0,
         }
@@ -364,6 +370,42 @@ impl<S: Sdk> Backend for Speaker<S> {
             Clip::File(file) => file.rate.set(rate),
         }
         Ok(())
+    }
+
+    /// A sample the SDK makes from a copy of the samples, at their own rate.
+    fn add_sound(&mut self, samples: &SharedSamples) -> Result<Clip<S>, String> {
+        let stereo = samples.channels() == 2;
+        let Some(sample) = self
+            .sdk
+            .sample_from_data(samples.samples(), samples.rate(), stereo)
+        else {
+            // check-text: not player text (for the log)
+            return Err("the SDK made no sample of it: no memory, or no samples".to_owned());
+        };
+        self.made.push(sample);
+        Ok(Clip::Sample {
+            sample,
+            rate: Cell::new(RATE_ONE),
+        })
+    }
+
+    /// Stops the sample players on it, lets go of it, and frees it.
+    fn remove_sound(&mut self, sound: Clip<S>) {
+        self.stop(&sound);
+        let Clip::Sample { sample, .. } = sound else {
+            return;
+        };
+        let Some(at) = self.made.iter().position(|made| *made == sample) else {
+            return;
+        };
+        self.made.swap_remove(at);
+        for slot in &mut self.slots {
+            if slot.sample == Some(sample) {
+                slot.sample = None;
+                slot.paused = false;
+            }
+        }
+        self.sdk.sample_free(sample);
     }
 
     fn warn(&mut self, line: &str) {

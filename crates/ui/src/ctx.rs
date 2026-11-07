@@ -243,10 +243,8 @@ pub struct Ctx<G: GameData> {
     /// the platform sets the atlas's when the game has loaded
     /// ([`Game::set_widths`](crate::Game::set_widths)).
     widths: CellWidths,
-    /// [`widths`](Self::widths) in each pack's language: its wide set and
-    /// its punctuation's width ([`LangInfo::widths`]).
-    ///
-    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+    /// [`widths`](Self::widths) in each language, the source's and each
+    /// pack's: its wide set and its punctuation's width ([`Lang::widths`]).
     lang_widths: BTreeMap<LangCode, CellWidths>,
     /// The active key bindings, for help text that names keys: the chosen
     /// layout's with the player's changes, or the layout picker's
@@ -335,6 +333,9 @@ pub struct Ctx<G: GameData> {
     /// The voice clips that may be played: none until the platform hands
     /// over a manifest ([`set_voice_manifest`](Self::set_voice_manifest)).
     voices: Playable<G::Voice>,
+    /// The line whose voice clip the platform last said is sounding
+    /// ([`voice_playing`](Self::voice_playing)).
+    pub(crate) voice_playing: Option<LineId>,
     /// Seeds random music picks (e.g. a track from a pool), kept apart
     /// from any simulation's randomness. A fixed [`DEFAULT_MUSIC_SEED`]
     /// here, so tests are repeatable; the platform sets it from the clock
@@ -390,7 +391,8 @@ impl<G: GameData> Ctx<G> {
         let palette = Palette::new::<G::Colors>(game.palette_def())?;
         let keymap = Keymap::layout_picker(game.keymap_def());
         let settings = Settings::default();
-        let audio = AudioQueue::new(game.audio_config());
+        let mut audio = AudioQueue::new(game.audio_config());
+        audio.set_manifest(game.audio_manifest());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         let lang = game.lang().source_lang().code.clone();
         Ok(Self {
@@ -418,6 +420,7 @@ impl<G: GameData> Ctx<G> {
             audio,
             music_clock: None,
             voices: Playable::default(),
+            voice_playing: None,
             music_seed: DEFAULT_MUSIC_SEED,
             music_picks: 0,
             clock_s: 0.0,
@@ -434,14 +437,13 @@ impl<G: GameData> Ctx<G> {
     /// Which characters take two cells of the console, for a screen that
     /// measures text before it has the frame to draw it in
     /// ([`text_width`](shuyi_assets::lang::text_width)): the font atlas's
-    /// in the language text is shown in ([`effective_lang`]), as its pack
-    /// has them ([`LangInfo::widths`]: its wide set, and its punctuation
-    /// wide or not). The frame's
+    /// in the language text is shown in ([`effective_lang`]), as that
+    /// language has them ([`Lang::widths`]: its wide set, and its
+    /// punctuation wide or not, a pack's or the source's). The frame's
     /// ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)) follow
     /// them at each drawing.
     ///
     /// [`effective_lang`]: Self::effective_lang
-    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
     pub fn widths(&self) -> &CellWidths {
         self.lang_widths
             .get(self.effective_lang())
@@ -605,6 +607,24 @@ impl<G: GameData> Ctx<G> {
         if let Some(variant) = self.voice_for(line) {
             self.audio.play_voice(line, variant);
         }
+    }
+
+    /// The line whose voice clip is sounding, or asked for and still
+    /// loading; `None` in silence. The platform reports it each frame
+    /// through [`Game::set_voice_playing`](crate::Game::set_voice_playing),
+    /// before the screens run: a clip that ended, was stopped or replaced,
+    /// whose file failed or that loaded too late to be played is `None`. A
+    /// clip paused with the game still sounds.
+    ///
+    /// A screen sees its own [`play_voice`](Self::play_voice) from the next
+    /// frame, once the platform has read the request: in the frame it asks,
+    /// and on a platform with no voices, this is still `None`. So a screen
+    /// that waits for a voice to end waits for its line to sound first,
+    /// and takes `None` after that as the end. A clip that never sounds
+    /// (its file missing or slow) gives up within half a second: a screen
+    /// that hasn't seen its line by then may move on.
+    pub fn voice_playing(&self) -> Option<&LineId> {
+        self.voice_playing.as_ref()
     }
 
     /// Stops the voice that is playing, if any.
@@ -1237,16 +1257,13 @@ impl<G: GameData> Ctx<G> {
     }
 }
 
-/// `base`, a font atlas's widths, in the language of each of `lang`'s
-/// packs ([`LangInfo::widths`]).
-///
-/// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+/// `base`, a font atlas's widths, in each of `lang`'s languages, the
+/// source's and each pack's ([`Lang::widths`]).
 fn lang_widths(lang: &Lang, base: &CellWidths) -> BTreeMap<LangCode, CellWidths> {
-    lang.codes()
-        .filter_map(|code| {
-            let pack = lang.pack(code)?;
-            Some((code.clone(), pack.info.widths(base)))
-        })
+    let source = &lang.source_lang().code;
+    core::iter::once(source)
+        .chain(lang.codes())
+        .map(|code| (code.clone(), lang.widths(code, base)))
         .collect()
 }
 

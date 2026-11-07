@@ -234,3 +234,115 @@ fn volumes_become_the_mixers_units_held_to_what_a_voice_can_take() {
     assert_eq!(level(4.0), UNITY);
     assert_eq!(level(f32::NAN), 0);
 }
+
+/// `frames` frames as [`wav`]'s, made as samples rather than read from a file.
+fn samples(frames: i16) -> SharedSamples {
+    let samples = (1..=frames).flat_map(|frame| [frame, -frame]).collect();
+    let samples = Samples::new(RATE, 2, samples);
+    SharedSamples::new(samples.unwrap_or_else(|e| panic!("{e}")))
+}
+
+/// What `future` gives: every load here is done when it returns.
+fn block_on<F: std::future::Future>(future: F) -> F::Output {
+    let mut future = std::pin::pin!(future);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    loop {
+        if let std::task::Poll::Ready(value) = future.as_mut().poll(&mut cx) {
+            return value;
+        }
+    }
+}
+
+#[test]
+fn an_added_sound_mixes_as_the_same_samples_as_a_cue_of_the_manifest() {
+    use shuyi_assets::audio::{AudioManifest, CreditRef, Files, SoundCue};
+    use shuyi_platform::audio::SoundRequest;
+    use shuyi_platform::audio::player::Player;
+    let bytes = wav(50);
+    let mut manifest = AudioManifest::default();
+    let cue = SoundCue::new(vec!["filed.wav".to_owned()], 100, CreditRef::Own);
+    manifest.sounds.insert("filed".to_owned(), cue);
+    let read = |file: &str| (file == "filed.wav").then(|| std::borrow::Cow::Owned(bytes.clone()));
+    let files = Files::new(
+        &read,
+        &|file: &str| file.to_owned(),
+        &|_: &str| false,
+        "music",
+    );
+    let play = |cue: &str| SoundRequest::Sound {
+        cue: cue.to_owned(),
+        volume: 0.5,
+    };
+    let mut heard = Vec::new();
+    for requests in [
+        vec![play("filed")],
+        vec![SoundRequest::add("made", samples(50)), play("made")],
+    ] {
+        let (mut backend, mut side) = backend();
+        let (music, voice) = ("music".to_owned(), "voice".to_owned());
+        let load = Player::load(&mut backend, manifest.clone(), &files, music, voice, 1);
+        let mut player = block_on(load);
+        player.play(&mut backend, &requests, &[], 0.0);
+        let found = player.take_warnings();
+        assert!(found.is_empty(), "{found:?}");
+        let mut out = vec![0; 60 * 2];
+        side.fill(&mut out);
+        heard.push(out);
+        assert!(backend.said.is_empty(), "{:?}", backend.said);
+    }
+    assert_eq!(heard[0], heard[1]);
+    // At half volume, rounded to the nearest, both channels, then silence after
+    // its 50 frames.
+    assert_eq!(heard[0][..4], [1, 0, 1, -1]);
+    assert_eq!(heard[0][98..100], [25, -25]);
+    assert_eq!(heard[0][100..], [0; 20]);
+}
+
+#[test]
+fn a_sound_removed_stops_and_gives_its_place_back() {
+    let (mut backend, mut side) = backend();
+    // The mixer moves to the callback with the first play.
+    let first = effect(&mut backend, &wav(1));
+    backend.play(&first, 1.0, false);
+    left(&mut side, 2);
+    let clip = backend
+        .add_sound(&samples(100))
+        .unwrap_or_else(|e| panic!("{e}"));
+    backend.play(&clip, 1.0, false);
+    assert_eq!(left(&mut side, 2), [1, 2]);
+    backend.remove_sound(clip);
+    assert_eq!(left(&mut side, 2), [0, 0]);
+    let engine = backend.engine();
+    engine.collect();
+    assert_eq!(engine.away, 0, "the bank's sound came back to be freed");
+    // Its place in the bank is free for the next.
+    let again = backend
+        .add_sound(&samples(3))
+        .unwrap_or_else(|e| panic!("{e}"));
+    backend.play(&again, 1.0, false);
+    assert_eq!(left(&mut side, 4), [1, 2, 3, 0]);
+    assert!(backend.said.is_empty(), "{:?}", backend.said);
+}
+
+#[test]
+fn samples_written_as_a_wav_read_back_the_same() {
+    // Samples a game made, written as a WAV for a device that reads files
+    // (quad-snd's path), read back by the WAV adapter as the same samples.
+    let every: Vec<i16> = (i16::MIN..=i16::MAX).step_by(97).collect();
+    for (rate, channels) in [(1, 1), (8_000, 2), (11_025, 1), (44_100, 2), (192_000, 1)] {
+        for written in [Vec::new(), vec![i16::MIN, i16::MAX], every.clone()] {
+            let Ok(made) = Samples::new(rate, channels, written.clone()) else {
+                continue;
+            };
+            let limits = Limits::default();
+            let back = WavSource::new(made.to_wav().as_slice(), &limits)
+                .and_then(|mut source| read_all(&mut source, &limits))
+                .unwrap_or_else(|e| panic!("{e}"));
+            assert_eq!(back.samples(), written.as_slice());
+            assert_eq!(back.format().rate, rate);
+            assert_eq!(u32::from(back.format().channels.count()), channels);
+            let pcm = pcm_of(&made).unwrap_or_else(|e| panic!("{e}"));
+            assert_eq!(*pcm, back);
+        }
+    }
+}

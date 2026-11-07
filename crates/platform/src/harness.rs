@@ -48,7 +48,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, Start, SystemHook};
-use crate::headless::{HeadlessPlatform, PlayingSound, PresentHook, Presented};
+use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
 use crate::script::{self, Planned};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
@@ -320,6 +320,17 @@ impl<G: GameData> Harness<G> {
         self.platform
             .speaker_mut()
             .set_load_delay(f64::from(seconds));
+        self
+    }
+
+    /// Makes every voice clip last `seconds`: [`Ctx::voice_playing`] names
+    /// its line from the frame after it was asked for until that long has
+    /// passed. Until this is called a clip sounds until it is stopped or
+    /// replaced. Negative or NaN counts as 0.
+    pub fn voice_length(&mut self, seconds: f32) -> &mut Self {
+        self.platform
+            .speaker_mut()
+            .set_voice_length(f64::from(seconds));
         self
     }
 
@@ -666,6 +677,21 @@ impl<G: GameData> Harness<G> {
     /// in id order.
     pub fn sounds_playing(&self) -> &[PlayingSound] {
         self.platform.speaker().sounds_playing()
+    }
+
+    /// The cues of the sounds the game added at run time
+    /// ([`AudioQueue::add_sound`](shuyi_ui::audio::AudioQueue::add_sound))
+    /// and hasn't removed, as the headless backend's speaker holds them, in
+    /// order.
+    pub fn sounds_added(&self) -> Vec<&str> {
+        let added = self.platform.speaker().added_sounds();
+        added.keys().map(String::as_str).collect()
+    }
+
+    /// Every play and start of a sound the game added, in order, with the
+    /// samples it played, as the headless backend's speaker heard them.
+    pub fn added_plays(&self) -> &[AddedPlay] {
+        self.platform.speaker().added_plays()
     }
 
     /// The lines whose voice clip was asked for so far, in order, as line

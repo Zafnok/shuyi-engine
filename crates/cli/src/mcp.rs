@@ -59,7 +59,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use crate::contract::perf::PerfSummary;
-use crate::contract::session::{Event, SessionInput, SessionPlayed, Sound};
+use crate::contract::session::{AddedSound, Event, SessionInput, SessionPlayed, Sound};
 use crate::contract::{Op, VERSION, op_schemas};
 use crate::frame_png::Script;
 use crate::game::{GameArg, GameOption};
@@ -199,6 +199,10 @@ pub struct EventsOutput {
     pub events: Vec<Event>,
     /// The sound cues asked for since the start, in order.
     pub sounds: Vec<Sound>,
+    /// The sounds the game added at run time and hasn't removed, in cue
+    /// order; left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sounds_added: Vec<AddedSound>,
 }
 
 /// How many records `perf` answers when its input doesn't say.

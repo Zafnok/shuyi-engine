@@ -29,6 +29,12 @@ What there is:
 - 2399 dithers an indexed picture to one bit through `onebit::BAYER`,
   in integers, at paint time;
 - 2249 plays sounds a game adds at run time, on the Playdate too;
+  **from 2249 (done):** the Playdate's speaker has the SDK make each one a
+  sample from a copy of its samples (16-bit, as `Samples` holds them), so an
+  8-bit lump costs twice its size in the SDK's memory, and the queue's
+  32 MiB limit is above the device's 16 MB: the port adds only the sounds it
+  plays, or adds them when first heard, and its completion notes give the
+  memory they took;
 - the budgets for the Playdate are provisional (3011 measures them on
   a device).
 

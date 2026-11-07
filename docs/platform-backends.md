@@ -147,7 +147,8 @@ confirmed. A backend that never reports leaves every request pending.
 6. `text_input`: whether there is a system keyboard, and its answer if a
    screen's ask waits for one;
 7. `audio().music_playing(now)`, for the screens that keep time with the
-   music;
+   music, then `audio().voice_playing(now)`, for the screens that wait
+   for a voice to end;
 8. the game's update (`shuyi_ui::Game::frame`);
 9. `audio().play(&frame, now)` with that frame's audio, every frame (its
    volumes at 0 while the game is muted without focus);
@@ -296,6 +297,10 @@ The sound device:
 - `music_playing(now)`: the music cue sounding and the seconds since it
   really started (once its file loaded), or `None`; of two tracks
   sounding (a crossfade), the newest;
+- `voice_playing(now)`: the file of the voice clip sounding, or asked for
+  and still loading, or `None` once it has ended or was stopped,
+  replaced, failed or given up on as late; a clip held by `suspend`
+  still sounds. `None` by default; `PlayerDevice` answers it;
 - `play(&frame, now)`: one frame's audio. Set the volumes first
   (`music_volume`, `sound_volume` and `voice_volume` reach what is
   already playing), then play the `SoundRequest`s in order (a sound cue
@@ -335,6 +340,11 @@ handled sounds, fades and the music clock are
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
   as recorded). The first `Unsupported` of each is one warning;
+- **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
+  `add_sound`, which readies the samples as a sound, says the backend can't by
+  default, and the cue then plays nothing, with a warning; `remove_sound` stops
+  one and drops it by default, and a device that frees it says so there. Every
+  backend of the engine's has both;
 - **provided, with a default that works:** `load_sound_file`, for a device that
   loads a sound from its own path, `hold_output`, for a device whose whole output
   can stop while the system suspends the game, and `warn`, which says the player's

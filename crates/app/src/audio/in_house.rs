@@ -34,8 +34,9 @@ use shuyi_sound::mix::{
 };
 use shuyi_sound::vorbis::VorbisSource;
 use shuyi_sound::wav::WavSource;
-use shuyi_sound::{Channels, Error, Limits, Source, read_all};
+use shuyi_sound::{Channels, Error, Limits, Pcm, PcmFormat, Source, read_all};
 use shuyi_sound_out::{HandOut, HandTo, Output, OutputConfig, handover};
+use shuyi_ui::audio::{Samples, SharedSamples};
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::native_music::Pending;
@@ -87,6 +88,14 @@ fn decode(bytes: &[u8]) -> Result<SharedPcm, String> {
         Kind::Wav => WavSource::new(bytes, &limits).and_then(|mut s| read_all(&mut s, &limits)),
         Kind::Ogg => VorbisSource::new(bytes, &limits).and_then(|mut s| read_all(&mut s, &limits)),
     };
+    pcm.map(SharedPcm::new).map_err(|e| e.to_string())
+}
+
+/// `samples` a game made, as the bank holds them: copied as they are.
+fn pcm_of(samples: &Samples) -> Result<SharedPcm, String> {
+    let limits = Limits::default();
+    let format = PcmFormat::new(samples.rate(), u32::from(samples.channels()), &limits);
+    let pcm = format.and_then(|format| Pcm::new(format, samples.samples().to_vec(), &limits));
     pcm.map(SharedPcm::new).map_err(|e| e.to_string())
 }
 
@@ -186,6 +195,9 @@ enum Job {
     Stream(StreamId, Option<Box<dyn Source + Send>>),
     /// Takes a stream out of its slot: back it comes.
     Take(StreamId, Option<Box<dyn Source + Send>>),
+    /// Takes a sound out of its place in the bank, stopping what plays it: back it
+    /// comes.
+    Unsound(SoundId, Option<SharedPcm>),
 }
 
 impl Job {
@@ -204,6 +216,7 @@ impl Job {
                 }
             }
             Self::Take(id, source) => *source = mixer.take_stream(*id),
+            Self::Unsound(id, pcm) => *pcm = mixer.remove_sound(*id),
         }
     }
 }
@@ -430,6 +443,7 @@ impl Engine {
     fn give(&mut self, mut job: Job) -> bool {
         if let Some(here) = &mut self.here {
             job.run(&mut here.0);
+            self.done(&job);
             return true;
         }
         self.collect();
@@ -449,9 +463,16 @@ impl Engine {
     fn collect(&mut self) {
         while let Some(job) = self.back.take() {
             self.away = self.away.saturating_sub(1);
-            if let Job::Take(stream, _) = *job {
-                self.remote.release_stream(stream);
-            }
+            self.done(&job);
+        }
+    }
+
+    /// Frees the place a job emptied, now that the mixer has.
+    fn done(&mut self, job: &Job) {
+        match *job {
+            Job::Take(stream, _) => self.remote.release_stream(stream),
+            Job::Unsound(sound, _) => self.remote.release_sound(sound),
+            Job::Start(_) | Job::Sound(..) | Job::Stream(..) => {}
         }
     }
 
@@ -530,7 +551,11 @@ impl InHouse {
 
     /// Puts `bytes`, decoded, in the bank.
     fn load_effect(&mut self, bytes: &[u8]) -> Result<Clip, String> {
-        let pcm = decode(bytes)?;
+        self.effect(decode(bytes)?)
+    }
+
+    /// `pcm` in the bank, as a sound to play.
+    fn effect(&mut self, pcm: SharedPcm) -> Result<Clip, String> {
         let engine = self.engine();
         let id = engine
             .remote
@@ -804,6 +829,19 @@ impl Backend for InHouse {
             } else {
                 output.resume();
             }
+        }
+    }
+
+    fn add_sound(&mut self, samples: &SharedSamples) -> Result<Clip, String> {
+        self.effect(pcm_of(samples)?)
+    }
+
+    fn remove_sound(&mut self, sound: Clip) {
+        self.stop(&sound);
+        if let Clip::Effect { id, .. } = sound
+            && !self.engine().give(Job::Unsound(id, None))
+        {
+            self.say("the sound queue is full: a sound removed stays in memory");
         }
     }
 

@@ -118,18 +118,58 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "//! - `shuyi-app` with the features it had before `in-house-sound`, as that one\n//!   brings CPAL, which needs the root's patch (ADR-0075), and the semver check builds\n//!   a crate outside this workspace.\n//! - The other eight with each tool's own default",
-            with: "//! - The other seven with each tool's own default",
-        ),
-        Replace(
-            file: "crates/xtask/src/api.rs",
-            find: "    defaults(\"shuyi-sound\"),\n    defaults(\"shuyi-sound-out\"),\n",
+            find: r##"//! - `shuyi-app` without `in-house-sound`, as that one brings CPAL, which
+//!   needs the root's patch (ADR-0075), and the semver check builds a crate
+//!   outside this workspace. `shuyi`'s `app` builds it without it too.
+"##,
             with: "",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "    // Its `in-house-sound` can't be built outside this workspace (ADR-0075): the rest,\n    // which is what the semver check's own choice comes to without it.\n    ApiCrate {\n        name: \"shuyi-app\",\n        features: Features::Only(&[\"link\", \"capture\", \"sound-probe\"]),\n    },\n",
-            with: "    defaults(\"shuyi-app\"),\n",
+            find: r##"    ApiCrate {
+        name: "shuyi-sound",
+        features: Features::Only(&["std", "wav", "vorbis"]),
+    },
+    ApiCrate {
+        name: "shuyi-sound-out",
+        features: Features::Only(&[]),
+    },
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/xtask/src/api.rs",
+            find: r##"    // Its `in-house-sound` can't be built outside this workspace (ADR-0075): the rest,
+    // which is what the semver check's own choice comes to without it.
+    ApiCrate {
+        name: "shuyi-app",
+        features: Features::Only(&["link", "capture", "sound-probe"]),
+    },
+"##,
+            with: r##"    ApiCrate {
+        name: "shuyi-app",
+        features: Features::Only(&["link", "capture"]),
+    },
+"##,
+        ),
+        Replace(
+            file: "crates/xtask/src/api/tests.rs",
+            find: r##"    ("shuyi-app", &["link", "capture", "sound-probe"]),
+"##,
+            with: r##"    ("shuyi-app", &["link", "capture"]),
+"##,
+        ),
+        Replace(
+            file: "crates/xtask/src/api/tests.rs",
+            find: r##"    ("shuyi-sound", &["std", "wav", "vorbis"]),
+    ("shuyi-sound-out", &[]),
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/xtask/src/api/tests.rs",
+            find: r##"const LEFT_OUT: [(&str, &str); 1] = [("shuyi-app", "in-house-sound")];"##,
+            with: r##"const LEFT_OUT: [(&str, &str); 0] = [];"##,
         ),
         Replace(
             file: "crates/xtask/src/modules.rs",

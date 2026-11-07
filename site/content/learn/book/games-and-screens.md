@@ -164,6 +164,32 @@ fade names its own, for that switch or stop only:
 A quiet moment before the next track is the screen's to time: it asks for the next
 track when the moment is over.
 
+A game can also make a sound while it runs, from samples rather than a file: a synth, a
+mod's sounds, sounds read from a file the player gives it. `ctx.audio.add_sound(cue,
+samples)` makes the samples a cue, and from then on it plays as a cue of the manifest
+does. `Samples::new` takes 16-bit samples, and `Samples::from_u8` 8-bit ones, which old
+formats keep:
+
+{{ snippet(file="src/screens.rs", anchor="chime") }}
+
+A sound made this way plays a minute at most, and those made hold 32 MiB at most,
+together; past that, or under the name of a cue the manifest has, it is refused and the
+log says why. `ctx.audio.remove_sound(cue)` frees it, and a play of it after that plays
+nothing. In a test, `h.added_plays()` gives each play's samples.
+
+A line of dialogue may have a voice: `ctx.play_voice(line)` says it, if the game has a clip
+for it. A screen that moves on by itself once the line is said, as a visual novel's auto
+mode does, asks `ctx.voice_playing()`, which names the line whose clip is sounding, or
+`None`. The platform reports it before each frame, so a screen sees its own `play_voice`
+from the next frame on: `None` is "over" only once the line has been heard. A clip whose
+file is missing, or that loads too late, never sounds, so the wait also ends when the line
+hasn't started half a second after it was asked for:
+
+{{ snippet(file="src/screens.rs", anchor="voice") }}
+
+In a test, `h.voice_length(seconds)` gives every clip that length, and `h.wait` steps past
+its end.
+
 ## Text by key
 
 No screen writes its text in its code. If it did, translating the game would mean

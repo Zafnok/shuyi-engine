@@ -424,7 +424,7 @@ fn empty_pictures_and_pixels_off_the_picture_are_harmless() {
             height,
             rgba: Vec::new(),
         };
-        assert_eq!(empty.texel(1, 1), [0; 4]);
+        assert_eq!(texel(&empty, 1, 1), [0; 4]);
     }
     let mut image = Image {
         width: 2,
@@ -432,14 +432,36 @@ fn empty_pictures_and_pixels_off_the_picture_are_harmless() {
         rgba: vec![7; 16],
     };
     for (x, y) in [(-1, 0), (0, -1), (2, 0), (0, 2)] {
-        image.blend(x, y, [1.0; 3], 1.0);
+        blend(&mut image, x, y, [1.0; 3], 1.0);
     }
     assert_eq!(image.rgba, vec![7; 16]);
     // Texels clamp to the picture's edge.
-    image.blend(1, 1, [1.0; 3], 1.0);
-    assert_eq!(image.texel(5, 5), [255, 255, 255, 255]);
-    assert_eq!(image.texel(-5, -5), [7; 4]);
+    blend(&mut image, 1, 1, [1.0; 3], 1.0);
+    assert_eq!(texel(&image, 5, 5), [255, 255, 255, 255]);
+    assert_eq!(texel(&image, -5, -5), [7; 4]);
     assert_eq!(image.pixel(2, 0), None);
+}
+
+#[test]
+fn the_image_formats_picture_is_a_painter_image() {
+    // Built by its own path, as a `Formats` registry decodes it.
+    let mut decoded = shuyi_assets::image::Image::filled(2, 1, [10, 20, 30, 255]);
+    decoded.rgba[4..8].copy_from_slice(&[40, 50, 60, 255]);
+    let table = ImageTable::new([("decoded.png", decoded.info())].into());
+    let id = table.id("decoded.png").unwrap();
+    let (atlas, atlas_image) = tiny_atlas();
+    let painter = Painter::new(atlas, atlas_image, BTreeMap::from([(id, decoded)]), CLEAR);
+    let frame = frame_with(|buf| {
+        buf.add_sprite(Sprite::new(
+            id,
+            Rect::new(0, 0, 2, 1),
+            Rect::new(0, 0, 2, 1),
+            Layer::Under,
+        ));
+    });
+    let picture: shuyi_assets::image::Image = painter.render(&frame, 1);
+    assert_eq!(picture.pixel(0, 0), Some([10, 20, 30, 255]));
+    assert_eq!(picture.pixel(1, 0), Some([40, 50, 60, 255]));
 }
 
 /// A 3 × 2 picture of a few colours, with alpha 255.
@@ -610,7 +632,7 @@ proptest! {
         let id = PaintedId::new("noise");
         let mut picture = Painted::rgba(w, h);
         picture.pixels_mut().copy_from_slice(&noise(usize::from(w) * usize::from(h) * 4, seed));
-        let image = Image::of_painted(&picture);
+        let image = of_painted(&picture);
         prop_assert_eq!(&image.rgba, picture.pixels());
         let table = ImageTable::new([("noise.png", ImageInfo::new(w.into(), h.into()))].into());
         let image_id = table.id("noise.png").unwrap();

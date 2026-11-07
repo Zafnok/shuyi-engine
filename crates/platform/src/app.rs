@@ -45,7 +45,9 @@ use alloc::format;
 use core::time::Duration;
 
 use serde::Serialize;
+use shuyi_assets::dialogue::LineId;
 use shuyi_assets::font::CellWidths;
+use shuyi_assets::voice::clip_file;
 use shuyi_core::made::Made;
 use shuyi_core::{StateHash, state_hash};
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
@@ -489,6 +491,9 @@ struct Lists<V> {
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
     changed: Vec<String>,
+    /// The voice clip asked for last: its line, and its file as the sound
+    /// device names it.
+    voice: Option<(LineId, String)>,
 }
 
 /// The frames' hashes.
@@ -599,6 +604,7 @@ impl<G: GameData> App<G> {
                 audio: Vec::new(),
                 music: Vec::new(),
                 changed: Vec::new(),
+                voice: None,
             },
             frames: 0,
             log: LogRing::new(LOG_LINES),
@@ -1334,9 +1340,21 @@ fn step<G: GameData>(
         recorder.music(playing);
     }
     game.set_music_playing(playing);
+    let voice = platform.audio().voice_playing(elapsed.now);
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.voice(voice);
+    }
+    let asked = lists.voice.as_ref();
+    let line = asked.filter(|(_, file)| voice == Some(file.as_str()));
+    game.set_voice_playing(line.map(|(line, _)| line));
     game.set_ticks(elapsed.ticks);
     let out = game.frame(&lists.input, elapsed.dt);
     lists.audio.extend_from_slice(out.audio);
+    for request in out.audio {
+        if let AudioRequest::PlayVoice { line, variant } = request {
+            lists.voice = Some((line.clone(), clip_file(line, *variant)));
+        }
+    }
     lists.music.extend_from_slice(out.music);
     let (music_volume, sound_volume, voice_volume) =
         (out.music_volume, out.sound_volume, out.voice_volume);

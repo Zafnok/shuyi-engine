@@ -21,6 +21,11 @@
 //! sounds stop, so a loop can't outlive it. A loop meant to outlive a
 //! screen is started by the screen below it, or is music.
 //!
+//! A game can make a sound at run time, from samples ([`Samples`]) rather than
+//! a file: [`AudioQueue::add_sound`] makes them a cue, played from then on
+//! as a cue of the manifest is, within [`ADDED_SECONDS_MAX`] and
+//! [`ADDED_BYTES_MAX`], and [`AudioQueue::remove_sound`] frees it.
+//!
 //! ```
 //! # use shuyi_ui::audio::{AudioQueue, AudioRequest};
 //! let mut audio = AudioQueue::<()>::default();
@@ -41,9 +46,14 @@ use crate::GameData;
 use crate::input::frame_seconds;
 use alloc::collections::{BTreeMap, BTreeSet};
 
+mod added;
 mod handles;
+mod samples;
 
+use added::Added;
+pub use added::{ADDED_BYTES_MAX, ADDED_SECONDS_MAX, AddSoundError};
 use handles::Handle;
+pub use samples::{Samples, SamplesError, SharedSamples};
 
 /// The sounds the engine's widgets and screens play: the same cue means
 /// the same thing on every screen.
@@ -198,6 +208,24 @@ pub enum AudioRequest<V> {
         /// The clips, in the order they are expected.
         lines: Vec<(LineId, V)>,
     },
+    /// Make `samples` the sound cue `cue` from now on, as a cue of the manifest
+    /// is: [`PlaySound`](Self::PlaySound) and
+    /// [`StartSound`](Self::StartSound) play it at its own volume, full, once.
+    /// A cue added before is replaced. Only [`AudioQueue::add_sound`] makes
+    /// one, within its limits.
+    #[non_exhaustive]
+    AddSound {
+        /// The sound cue.
+        cue: String,
+        /// Its samples, shared with whatever plays them.
+        samples: SharedSamples,
+    },
+    /// Forget the sound cue `cue` that [`AddSound`](Self::AddSound) made,
+    /// stopping what plays it.
+    RemoveSound {
+        /// The sound cue.
+        cue: String,
+    },
 }
 
 impl<V> AudioRequest<V> {
@@ -216,14 +244,16 @@ impl<V> AudioRequest<V> {
         Self::StopMusicWith { fade_ms }
     }
 
-    /// The cue this request names, if any: a sound played or started, or
-    /// a track.
+    /// The cue this request plays, if any: a sound played or started, or
+    /// a track. A sound added or removed is played by none.
     pub fn cue(&self) -> Option<&str> {
         match self {
             Self::PlaySound { cue, .. }
             | Self::StartSound { cue, .. }
             | Self::PlayMusic { cue, .. } => Some(cue),
-            Self::StopSound { .. }
+            Self::AddSound { .. }
+            | Self::RemoveSound { .. }
+            | Self::StopSound { .. }
             | Self::SoundVolume { .. }
             | Self::PauseSounds
             | Self::ResumeSounds
@@ -253,6 +283,8 @@ pub struct AudioQueue<V> {
     /// The owners pausing the sounds now: the depths of screens, and
     /// the owner outside the stack that no pop releases.
     pauses: BTreeSet<usize>,
+    /// The sounds added at run time, and what was refused.
+    added: Added,
 }
 
 impl<V> Default for AudioQueue<V> {
@@ -271,6 +303,7 @@ impl<V> AudioQueue<V> {
             handles: BTreeMap::new(),
             owner: 0,
             pauses: BTreeSet::new(),
+            added: Added::default(),
         }
     }
 
@@ -295,8 +328,12 @@ impl<V> AudioQueue<V> {
     }
 
     /// Plays sound `cue` once at `volume` (0–1, clamped) times its own
-    /// volume.
+    /// volume. A cue [`remove_sound`](Self::remove_sound) removed plays
+    /// nothing.
     pub fn play_sound_at(&mut self, cue: &str, volume: f32) {
+        if self.added.silences(cue) {
+            return;
+        }
         self.requests.push(AudioRequest::PlaySound {
             cue: cue.to_owned(),
             volume: clamp_volume(volume),
@@ -731,7 +768,9 @@ impl MusicState {
             | AudioRequest::ResumeSounds
             | AudioRequest::PlayVoice { .. }
             | AudioRequest::StopVoice
-            | AudioRequest::PreloadVoices { .. } => {}
+            | AudioRequest::PreloadVoices { .. }
+            | AudioRequest::AddSound { .. }
+            | AudioRequest::RemoveSound { .. } => {}
             AudioRequest::PlayMusic { cue, switch } => {
                 self.play(cue, switch.unwrap_or(self.default), out);
             }

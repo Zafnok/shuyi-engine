@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2315"]
 nick_input: none
-completed:
+completed: 2026-11-06
 ---
 
 # 3209 — Hello, Grid and the grid template's stage offer the `grid` channel
@@ -80,13 +80,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Hello, Grid's stage offers `grid`, and with it on draws the
+- [x] Hello, Grid's stage offers `grid`, and with it on draws the
       layout over the map (a test reads the gizmos).
-- [ ] A new `grid` game does the same, and its own gates pass.
-- [ ] `cargo shuyi frame-png out.png --debug grid` in `examples/hello-grid`
+- [x] A new `grid` game does the same, and its own gates pass.
+- [x] `cargo shuyi frame-png out.png --debug grid` in `examples/hello-grid`
       draws the gizmos; the picture is looked at.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -94,5 +94,30 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `StageScreen::debug_draw` in Hello, Grid
+  (`examples/hello-grid/src/screens/stage.rs`) and in the grid template's
+  stage: return unless `grid` is on, then `layout_gizmos` over the scene
+  as the skin lays it out in the area `draw` paints. Hello, Grid asks the
+  player's skin (glyphs or tiles), as `draw` does.
+- Tests: `examples/hello-grid/tests/it/debug_view.rs` (both looks, on and
+  off, the channel set before the `Game` starts) and
+  `the_stage_offers_the_grid_channel_and_draws_its_layout_with_it_on` in
+  the template's `crates/game/tests/stage.rs`.
+- A `grid` game made with `shuyi new` passes its own gates (fmt, clippy,
+  tests, `check`, `check --target all`, `check-keys`, `lint`).
+- `cargo shuyi frame-png out.png --stage --debug grid` (and `--tiles`) on
+  Hello, Grid was looked at: the cell lines, the map's bounds, the
+  cursor's cell, each piece's cell and index.
+
+Deviations:
+- The template's stage has no cursor (a direction steps your piece), so
+  its test finds your piece's cell where the ticket said the cursor's.
+- The template's `README.md` is the base part's file, and a second part
+  can't write a file the base writes (`docs/templates.md`, *Merged
+  files*), so the grid stage's line is in its module's doc
+  (`stages/top_down_grid.rs`), the stage part's own file.
+
+No break: no public API changed (example and template code only).
+
+Book: the debug view's section of `frame-and-skins.md` says Hello,
+Grid's stage and a `grid` game's offer the channel.
