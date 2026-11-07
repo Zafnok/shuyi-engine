@@ -120,6 +120,7 @@ impl Attached {
                     frames: attach::status(&mut self.link)?.frames,
                     events: Vec::new(),
                     sounds: Vec::new(),
+                    sounds_added: Vec::new(),
                 };
                 let limits = vec![NO_EVENTS.to_owned()];
                 Ok((to_json(&Answer::new(op, true, output, limits)), None))
@@ -186,6 +187,7 @@ impl Attached {
             frame,
             events: Vec::new(),
             sounds: Vec::new(),
+            sounds_added: Vec::new(),
             log: log.lines.into_iter().map(log_entry).collect(),
             modules: Vec::new(),
             perf: None,

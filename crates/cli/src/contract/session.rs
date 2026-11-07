@@ -137,6 +137,26 @@ pub struct Sound {
     pub cue: String,
 }
 
+/// A sound the game made at run time
+/// ([`AudioQueue::add_sound`](shuyi_ui::audio::AudioQueue::add_sound)) and
+/// hasn't removed: its cue and the shape of its samples, never the samples.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct AddedSound {
+    /// The cue it plays as.
+    pub cue: String,
+    /// Its rate, in samples a second.
+    pub rate: u32,
+    /// Its channels: 1 or 2.
+    pub channels: u16,
+    /// How many frames it holds (a sample of each channel).
+    pub frames: u64,
+    /// How long it plays, in milliseconds, rounded down.
+    pub millis: u64,
+}
+
 /// A line of the game's log.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -351,6 +371,12 @@ pub trait Session {
 
     /// The sound cues asked for, in order.
     fn sounds(&self) -> Vec<Sound>;
+
+    /// The sounds the game added at run time and hasn't removed, in cue
+    /// order (none by default).
+    fn sounds_added(&self) -> Vec<AddedSound> {
+        Vec::new()
+    }
 
     /// The scene on screen, or why there is none.
     fn scene(&self) -> Result<Scene, String>;
@@ -729,6 +755,21 @@ impl<G: GameData> Session for Headless<G> {
                     })
                 }
                 _ => None,
+            })
+            .collect()
+    }
+
+    fn sounds_added(&self) -> Vec<AddedSound> {
+        let speaker = self.harness.platform().speaker();
+        speaker
+            .added_sounds()
+            .iter()
+            .map(|(cue, samples)| AddedSound {
+                cue: cue.clone(),
+                rate: samples.rate(),
+                channels: samples.channels(),
+                frames: samples.frames(),
+                millis: samples.millis(),
             })
             .collect()
     }
