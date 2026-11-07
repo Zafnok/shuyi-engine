@@ -295,10 +295,22 @@ The rest of the folder:
 
 ## In the browser
 
-[Hello, Grid](@/examples/hello-grid.md), the engine's example, plays in your browser
-on this site. A new game has no web build yet:
-[chapter 9](@/learn/book/targets-and-export.md#the-web-build) gives it one, in two
-short files, and then `cargo shuyi web` builds the page.
+Your game builds for the browser too:
+
+```bash
+cargo shuyi web
+```
+
+writes its page and the game, built for the web, to `dist/web/`. A browser won't load
+a game from a file on the disk, so serve that folder over HTTP: with Python,
+
+```bash
+python -m http.server --directory dist/web
+```
+
+and open `http://localhost:8000`. [Chapter 9](@/learn/book/targets-and-export.md#the-web-build)
+says how it works and how to hand it out. [Hello, Grid](@/examples/hello-grid.md), the
+engine's example, plays in your browser on this site.
 
 ## Next
 

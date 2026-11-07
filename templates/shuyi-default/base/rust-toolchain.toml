@@ -1,4 +1,6 @@
-# The Rust the engine builds with; move it when the engine does.
+# The Rust the engine builds with; move it when the engine does. The web
+# target is for `cargo shuyi web`.
 [toolchain]
 channel = "1.99.1"
 components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

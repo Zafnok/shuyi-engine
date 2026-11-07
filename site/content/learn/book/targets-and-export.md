@@ -112,13 +112,16 @@ one.
 The web is the easiest way to hand someone your game: a link, and nothing to install. `cargo shuyi
 web` builds the game's binary for the browser (`wasm32-unknown-unknown`, the name of that target to
 Rust, which `cargo shuyi doctor` checks rustup has) and writes it with the page it runs in to a
-folder. A game that has a web build says so in `shuyi.ron`:
+folder. A game made with `shuyi new` has what it needs already. Its `rust-toolchain.toml` lists
+that target, so rustup fetches it with the pinned Rust, and its `shuyi.ron` has a `web` part, which
+says what to build and where:
 
 {{ snippet(file="project/shuyi.ron", anchor="web", language="ron") }}
 
-and its binary links with `--allow-undefined` on the web, so the page's own scripts (the player's
+Its binary links with `--allow-undefined` on the web, so the page's own scripts (the player's
 storage, controllers) are found when it loads. A link argument reaches a binary only from its own
-**build script**, a small Rust program Cargo runs before compiling, `crates/game/build.rs`:
+**build script**, a small Rust program Cargo runs before compiling, and the new game has one,
+`crates/game/build.rs`:
 
 {{ snippet(file="build.rs", anchor="build") }}
 

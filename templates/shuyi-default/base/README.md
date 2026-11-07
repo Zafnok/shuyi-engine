@@ -8,6 +8,7 @@ has any, and every gate and tool wired, ready for the rest.
 cargo run -p {{crate_name}}       # run it
 cargo test --workspace       # its tests
 cargo shuyi                  # the engine's tools on it (AGENTS.md)
+cargo shuyi web              # its web page, in dist/web/ (serve it over HTTP)
 ```
 
 ## Layout
@@ -16,6 +17,7 @@ cargo shuyi                  # the engine's tools on it (AGENTS.md)
 | ---- | ---- |
 | `crates/game/src/lib.rs` | The game: its name, its files, its data type and its screens |
 | `crates/game/src/main.rs` | Runs it in a window |
+| `crates/game/build.rs` | Links the binary for the web: the page's JS plugins are left as imports (`cargo shuyi web`) |
 | `crates/game/src/title.rs` | The title, the first screen: Confirm starts the first stage |
 | `crates/game/src/stages.rs` | The stages, in order, and each one's part of the data (`stages/`) |
 | `crates/game/examples/tools.rs` | The program `cargo shuyi` runs the game's tools in |

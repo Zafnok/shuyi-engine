@@ -1,6 +1,6 @@
 ---
 name: shuyi-ship
-description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (what a new game lacks for it, then `cargo shuyi web --release`); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
+description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -8,9 +8,9 @@ metadata:
 
 # Ship a game
 
-A game made with `shuyi new` builds for the desktop as it is. Its
-`files/` folder is embedded in the binary, so a release build is one
-program. The web build and each other target need a few lines more.
+A game made with `shuyi new` builds for the desktop and the web as it
+is. Its `files/` folder is embedded in the binary, so a release build is
+one program. Each other target needs a few lines more.
 Ship only what `check --target` passes.
 
 ## When to use it
@@ -84,7 +84,8 @@ Ship only what `check --target` passes.
 
    A release build on Windows opens no console window.
 
-3. **The web build.** A new game lacks three things for it:
+3. **The web build.** A new game has the three things it needs (keep
+   them, or add them to a game that lacks them):
    - a `web` entry in `shuyi.ron`: the game's package and binary (its
      crate's name), the page's title and the folder it goes in:
 
@@ -106,7 +107,9 @@ Ship only what `check --target` passes.
 
      ```rust
      fn main() {
-         if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
+         let arch = std::env::var("CARGO_CFG_TARGET_ARCH");
+         let os = std::env::var("CARGO_CFG_TARGET_OS");
+         if arch.as_deref() == Ok("wasm32") && os.as_deref() == Ok("unknown") {
              println!("cargo:rustc-link-arg=--allow-undefined");
          }
      }
@@ -250,6 +253,6 @@ with `cargo shuyi explain <code>`:
 [`example.ron`](example.ron) runs on a new `grid` game: its own id and
 `app-info`, then `check --target all` passes; the Steam Deck added to its targets fails it, with the
 controls' problem; a button table in the keymap fixes it. Then the web
-entry, `build.rs` and the web target, `cargo shuyi web --release`, the
+build as the game has it, `cargo shuyi web --release`, the
 page and the binary in `dist/web/`, a credits file that `import` reads,
 and the gates still passing.

@@ -840,6 +840,19 @@ jobs:
           cargo shuyi check-keys
           cargo shuyi lint
           cargo shuyi doctor
+      # Ticket 2777: a new game builds for the web as it is, with the
+      # `web` part, `build.rs` and the web target the template gives it.
+      - name: Build it for the web
+        run: |
+          cd "$RUNNER_TEMP/demo"
+          cargo shuyi web
+          test -f dist/web/index.html
+          test -f dist/web/NOTICES.txt
+          if [ "$(find dist/web -maxdepth 1 -name '*.wasm' | wc -l)" != 1 ]; then
+            ls dist/web
+            echo "::error::dist/web/ doesn't hold one .wasm"
+            exit 1
+          fi
       # Ticket 2548: a long name lays out the same, so the game's own fmt
       # gate passes whatever it is called. It uses the older form, `new
       # <template> <dir>`, which keeps working (ticket 2501).

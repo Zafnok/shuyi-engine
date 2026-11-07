@@ -40,19 +40,10 @@ Example(
             Is("/result/targets/1/target", "steam-deck"),
             Is("/result/targets/1/problems", "[]"),
         ]),
-        // The web build: a `web` entry, a build script for the link
-        // argument, and the web target in the toolchain file.
-        Edit(
-            file: "shuyi.ron",
-            find: "    // `cargo shuyi check-keys`: no key named in the game's code or text.\n",
-            replace: "    // `cargo shuyi web --release`: the web build, in `dist/web/`.\n    web: (\n        package: \"shuyi-ship\",\n        bin: \"shuyi-ship\",\n        title: \"shuyi-ship\",\n        dist: \"dist/web\",\n    ),\n\n    // `cargo shuyi check-keys`: no key named in the game's code or text.\n",
-        ),
-        Write(to: "crates/game/build.rs", from: "example/build.rs"),
-        Edit(
-            file: "rust-toolchain.toml",
-            find: "components = [\"rustfmt\", \"clippy\"]\n",
-            replace: "components = [\"rustfmt\", \"clippy\"]\ntargets = [\"wasm32-unknown-unknown\"]\n",
-        ),
+        // The web build: a new game has its `web` entry, the build script
+        // for its link argument and the web target in its toolchain file.
+        Holds(file: "shuyi.ron", text: "dist: \"dist/web\""),
+        Holds(file: "crates/game/build.rs", text: "--allow-undefined"),
         Cargo(args: ["shuyi", "web", "--release"]),
         Holds(file: "dist/web/index.html", text: "shuyi-ship.wasm"),
         Holds(file: "dist/web/shuyi-ship.wasm"),

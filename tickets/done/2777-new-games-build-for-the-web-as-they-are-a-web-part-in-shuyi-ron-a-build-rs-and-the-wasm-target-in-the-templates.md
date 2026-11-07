@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-07
 ---
 
 # 2777 — New games build for the web as they are
@@ -109,14 +109,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] In a game fresh from `shuyi new --template blank` and from
+- [x] In a game fresh from `shuyi new --template blank` and from
       `--template grid`, `cargo shuyi web` exits 0 and writes
       `dist/web/index.html`, the game's `.wasm` and `NOTICES.txt`.
-- [ ] CI's `templates` job builds each template's game for the web.
-- [ ] The quick start tells a reader to run `cargo shuyi web` on their
+- [x] CI's `templates` job builds each template's game for the web.
+- [x] The quick start tells a reader to run `cargo shuyi web` on their
       new game.
-- [ ] The book's chapter is updated (2802), or the completion notes say why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes say why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -125,4 +125,35 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- The base part of `templates/shuyi-default` now has a `web` part in
+  `shuyi.ron`, `crates/game/build.rs` (Hello, Grid's, `--allow-undefined`
+  on `wasm32-unknown-unknown` only) and `targets =
+  ["wasm32-unknown-unknown"]` in `rust-toolchain.toml`; the grid game gets
+  them through the base. `cargo xtask check-toolchain` passes with the
+  `targets` line. The plans golden is blessed.
+- Games fresh from `--template blank` and `--template grid` (with
+  `--engine-path` at this checkout, Windows, GNU toolchain): `cargo shuyi
+  web` exits 0 and writes `index.html`, the game's `.wasm` and
+  `NOTICES.txt` in `dist/web/`; their fmt, clippy and tests pass.
+- CI's `templates` job builds each template's game for the web and checks
+  those three files.
+- The game's README (its command block and layout table),
+  `docs/templates.md`, the book's quick start (*In the browser*: `cargo
+  shuyi web`, then `python -m http.server --directory dist/web`, and
+  Hello, Grid's link kept), chapter 9 (*The web build*: a new game has
+  them, the snippets stay) and the tutorial's step 1 (*Make it play in the
+  browser*: no more hand-made files or `rustup target add`).
+- **Deviation:** the skill pack's `shuyi-ship` taught adding the three by
+  hand, and its worked example added them, which would now write a second
+  `web` part and a second `targets` line. The skill says a new game has
+  them (and shows what they are, for a game that lacks them), and its
+  example checks they are there instead; `skills/shuyi-ship/example/build.rs`
+  is gone. The skill's `build.rs` snippet is now the template's (the
+  `os == "unknown"` test included).
+- 2524 is not done: its clause is rewritten as what now holds (its
+  reference carries none of the three). 2528 is not done: its clause now
+  says the quick start's step to turn into `--serve --open`.
+- D: was full on this machine (other worktrees' `target/` folders), so the
+  local builds used a target folder on C:.
+
+No break: the template's files changed, no engine crate's API.
