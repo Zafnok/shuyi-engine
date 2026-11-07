@@ -211,9 +211,9 @@ Deviations:
 - **The game does build `RolePatterns`**, which the ticket said it
   didn't: `crates/xtask/src/game_tools/one_bit.rs` writes
   `RolePatterns { fg, bg: None }`. Its pin bump changes that to
-  `RolePatterns::of(fg)` (game#1251, step 1).
+  `RolePatterns::of(fg)` (game#1253, step 1).
 
-The game's ticket is **game#1251** ("The Playdate build draws with a
+The game's ticket is **game#1253** ("The Playdate build draws with a
 pattern map instead of inks", Zafnok/visions-of-shuyi#578), in 2389's
 `blocked_by`. Its PR moves the pin to this change.
 

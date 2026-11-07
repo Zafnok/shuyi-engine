@@ -6,7 +6,7 @@ milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2388", "game#1251"]
+blocked_by: ["2388", "game#1253"]
 nick_input: none
 completed:
 ---
@@ -44,7 +44,7 @@ pattern, a role's `edge` and `invert`, ADR-0089), and a pattern map
 draws every ink-coloured frame exactly as the inks do (the proof,
 `INKS_AS_ROLES` in `crates/ui/src/frame/onebit/tests.rs`; the `dashes`
 ink is `Checker2`, not `Inverted(Checker2)`). The game moves its
-Playdate build onto a pattern map in game#1251. Once both are done,
+Playdate build onto a pattern map in game#1253. Once both are done,
 nothing uses the inks.
 
 ## Nick input
@@ -109,7 +109,7 @@ None.
 - **For the game:** an API break, which CI's `api` job reports, with
   `Breaking:` lines (ADR-0038 §6): the `ink` module and the ink-only
   renderer functions are gone, and `render`, `render_marked` and
-  `render_changed` take a `Shades`. The game's ticket game#1251 has
+  `render_changed` take a `Shades`. The game's ticket game#1253 has
   already moved its Playdate build onto a pattern map; its PR that moves
   the pin past this one deletes its own `content::ink` re-export.
 
@@ -122,7 +122,7 @@ None.
 
 ## Implementation steps
 
-1. Check `blocked_by`: 2388 done, and game#1251 done
+1. Check `blocked_by`: 2388 done, and game#1253 done
    (the game draws its Playdate build with a pattern map).
 2. Delete `crates/assets/src/ink.rs` and its module line.
 3. In `crates/ui/src/frame/onebit.rs` and `onebit/reference.rs`: delete

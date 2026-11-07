@@ -145,7 +145,7 @@ tickets, in order:
 | 2544 | One operation plays a game's bots: `bots` folded into `playtest`, before the release |
 | 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
 | 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
-| 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1251) |
+| 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1253) |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
