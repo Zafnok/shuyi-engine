@@ -17,7 +17,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
 | `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
 | `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
-| `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from |
+| `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from, or a scenario quad-snd underran in |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
@@ -40,6 +40,12 @@ cargo build -p shuyi-app --example sound_probe --features sound-probe --release 
 ```bash
 python3 tools/sound-parity/capture.py native --dir target/sound-parity --probe target/release/examples/sound_probe --revision "$(git rev-parse HEAD)"
 ```
+
+A scenario quad-snd's own output underran in is never judged either: ALSA ran dry,
+so the sink got a hole, not the sound. quad-snd prints `Underrun occured` (its
+spelling) on its stdout when it does, and `capture.py` plays that scenario again, up
+to three times, and fails the step if each underruns (ticket 2048), as on Windows
+below. A timing isn't played again: the gaps it records are its `underruns` count.
 
 ```bash
 cargo xtask sound-parity gate --dir target/sound-parity --revision "$(git rev-parse HEAD)"

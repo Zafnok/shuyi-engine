@@ -596,6 +596,9 @@ jobs:
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
           sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' crates/cli/web/index.html > "$page/index.html"
+      # A scenario quad-snd underran in is refused and made again (ticket 2048).
+      - name: Which recordings are made again
+        run: python3 tools/sound-parity/capture_test.py
       - name: Record the native backend
         env:
           REVISION: ${{ github.sha }}

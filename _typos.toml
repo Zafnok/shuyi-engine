@@ -20,6 +20,9 @@ caf = "caf"
 # DOOM's own name for its per-tic sync check, misspelled in its source
 # (`consistancy` in `g_game.c`, ticket 2781).
 consistancy = "consistancy"
+# quad-snd's ALSA output's underrun line, "Underrun occured", misspelled in its
+# source, which the sound gate's recorder matches (ticket 2048).
+occured = "occured"
 
 [files]
 extend-exclude = [
