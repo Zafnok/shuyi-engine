@@ -214,7 +214,7 @@ Deviations:
   `RolePatterns::of(fg)` (game#1251, step 1).
 
 The game's ticket is **game#1251** ("The Playdate build draws with a
-pattern map instead of inks", Zafnok/visions-of-shuyi#567), in 2389's
+pattern map instead of inks", Zafnok/visions-of-shuyi#578), in 2389's
 `blocked_by`. Its PR moves the pin to this change.
 
 Breaking: shuyi-assets, shuyi-ui: onebit::RolePatterns: `#[non_exhaustive]` with two new fields, `edge` and `invert`; build one with `RolePatterns::new(fg, bg)` or `RolePatterns::of(fg)`.
