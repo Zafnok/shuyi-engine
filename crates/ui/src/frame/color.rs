@@ -91,6 +91,14 @@ impl From<[u8; 3]> for Rgb {
     }
 }
 
+/// The colour opaque, as an RGBA pixel: what
+/// [`Image::filled`](shuyi_assets::image::Image::filled) takes.
+impl From<Rgb> for [u8; 4] {
+    fn from(c: Rgb) -> Self {
+        [c.r, c.g, c.b, 255]
+    }
+}
+
 /// How far a [dimmed](Rgb::dimmed) colour goes to its own grey (`0` = not
 /// at all, `1` = grey). *Tunable.*
 pub const DIM_GREY: f32 = 0.75;
@@ -384,6 +392,11 @@ pub(crate) mod tests {
             ("accent", [12, 12, 12]),
             ("bright", [13, 13, 13]),
         ])
+    }
+
+    #[test]
+    fn a_colour_is_an_opaque_rgba_pixel() {
+        assert_eq!(<[u8; 4]>::from(Rgb::new(1, 2, 3)), [1, 2, 3, 255]);
     }
 
     #[test]

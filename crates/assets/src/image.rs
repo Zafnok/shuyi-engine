@@ -81,6 +81,26 @@ pub struct Image {
 }
 
 impl Image {
+    /// A `width × height` picture of `color` (red, green, blue, alpha)
+    /// in every pixel. An empty size gives no bytes.
+    pub fn filled(width: u32, height: u32, color: impl Into<[u8; 4]>) -> Self {
+        let color = color.into();
+        Self {
+            width,
+            height,
+            rgba: color.repeat(width as usize * height as usize),
+        }
+    }
+
+    /// The pixel at `(x, y)`, or `None` outside the picture.
+    pub fn pixel(&self, x: u32, y: u32) -> Option<[u8; 4]> {
+        if x >= self.width || y >= self.height {
+            return None;
+        }
+        let i = (y as usize * self.width as usize + x as usize) * 4;
+        self.rgba.get(i..i + 4)?.try_into().ok()
+    }
+
     /// Its size.
     pub fn info(&self) -> ImageInfo {
         ImageInfo {
@@ -551,6 +571,36 @@ mod tests {
             messages(ImageTable::load(&self::bundle(broken), &[])),
             ["base/images/bad.png: not a valid PNG file"]
         );
+    }
+
+    #[test]
+    fn filled_gives_the_colour_in_every_pixel() {
+        assert_eq!(Image::filled(0, 0, [1, 2, 3, 4]), Image::default());
+        let image = Image::filled(3, 2, [1, 2, 3, 4]);
+        assert_eq!((image.width, image.height), (3, 2));
+        assert_eq!(image.rgba, [1, 2, 3, 4].repeat(6));
+        // A picture with no rows has no bytes, however wide.
+        assert_eq!(Image::filled(5, 0, [9; 4]).rgba, Vec::<u8>::new());
+    }
+
+    #[test]
+    fn pixel_reads_inside_and_nothing_outside() {
+        let mut image = Image::filled(3, 2, [0; 4]);
+        image.rgba[4..8].copy_from_slice(&[1, 2, 3, 4]);
+        image.rgba[20..24].copy_from_slice(&[5, 6, 7, 8]);
+        assert_eq!(image.pixel(1, 0), Some([1, 2, 3, 4]));
+        assert_eq!(image.pixel(0, 0), Some([0; 4]));
+        // The last pixel.
+        assert_eq!(image.pixel(2, 1), Some([5, 6, 7, 8]));
+        // One past the right and the bottom side.
+        assert_eq!(image.pixel(3, 0), None);
+        assert_eq!(image.pixel(0, 2), None);
+        // One past the left and top sides wraps to the far end of a `u32`.
+        assert_eq!(image.pixel(u32::MAX, 0), None);
+        assert_eq!(image.pixel(0, u32::MAX), None);
+        // Bytes short of the size read as nothing, never a panic.
+        image.rgba.truncate(20);
+        assert_eq!(image.pixel(2, 1), None);
     }
 
     /// A size and a table as games build theirs, in `const` items.

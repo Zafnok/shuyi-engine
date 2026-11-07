@@ -36,6 +36,7 @@ use serde::Serialize;
 use shuyi_assets::font::{
     AtlasRect, CellWidths, FontAtlasDef, WideSet, describe, is_combining_mark, is_wide_punctuation,
 };
+use shuyi_assets::image::Image;
 use shuyi_assets::lang::Lang;
 
 use crate::codec::encode_png;
@@ -395,18 +396,14 @@ fn to_usize(v: i64) -> usize {
     usize::try_from(v).unwrap_or(0)
 }
 
-/// The atlas: the glyph map, plus RGBA pixels (white where the glyph is
-/// set, transparent elsewhere) of size `width × height`.
+/// The atlas: the glyph map, plus its picture (white where the glyph is
+/// set, transparent elsewhere).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Atlas {
     /// Layout and glyph map.
     pub def: FontAtlasDef,
-    /// Image width in pixels.
-    pub width: u32,
-    /// Image height in pixels.
-    pub height: u32,
-    /// RGBA8 pixels, row-major.
-    pub rgba: Vec<u8>,
+    /// The picture.
+    pub image: Image,
 }
 
 /// Lays out every glyph of `font` that `chars` wants, in codepoint order,
@@ -501,9 +498,11 @@ pub fn build_atlas_with_sets(
     }
     Atlas {
         def,
-        width,
-        height,
-        rgba,
+        image: Image {
+            width,
+            height,
+            rgba,
+        },
     }
 }
 
@@ -522,12 +521,12 @@ pub fn check_wide(font: &BitmapFont, wide: &BitmapFont) -> Result<(), String> {
 }
 
 /// The one-bit atlas ([`ONE_BIT_FILE`]) of the atlas
-/// picture `rgba` (`width` pixels wide) laid out as `def`: each glyph in
+/// picture `image` laid out as `def`: each glyph in
 /// cell index order, one byte per pixel row, the highest bit the left
 /// pixel, set where the picture isn't see-through; a wide glyph's two
 /// halves are two cells like any other. Fails for cells wider than 8
 /// pixels.
-pub fn one_bit(def: &FontAtlasDef, width: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
+pub fn one_bit(def: &FontAtlasDef, image: &Image) -> Result<Vec<u8>, String> {
     if def.cell_w > 8 {
         return Err(format!(
             "the one-bit atlas holds cells up to 8 pixels wide, not {}",
@@ -541,8 +540,9 @@ pub fn one_bit(def: &FontAtlasDef, width: u32, rgba: &[u8]) -> Result<Vec<u8>, S
         for y in cell.y..cell.y + cell.h {
             let mut row = 0u8;
             for x in cell.x..cell.x + cell.w {
-                let alpha = to_usize((i64::from(y) * i64::from(width) + i64::from(x)) * 4 + 3);
-                let lit = rgba.get(alpha).is_some_and(|&a| a > 0);
+                let alpha =
+                    to_usize((i64::from(y) * i64::from(image.width) + i64::from(x)) * 4 + 3);
+                let lit = image.rgba.get(alpha).is_some_and(|&a| a > 0);
                 row |= u8::from(lit) << (7 - (x - cell.x));
             }
             out.push(row);
@@ -718,8 +718,8 @@ pub fn run(
         command,
         rules.readme.as_deref(),
     )?;
-    let png = encode_png(atlas.width, atlas.height, &atlas.rgba)?;
-    let bits = one_bit(&atlas.def, atlas.width, &atlas.rgba)?;
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba)?;
+    let bits = one_bit(&atlas.def, &atlas.image)?;
     fs::create_dir_all(out_dir).map_err(|e| format!("creating {}: {e}", out_dir.display()))?;
     for (file, bytes) in [
         ("atlas.png", png.as_slice()),
@@ -733,8 +733,8 @@ pub fn run(
     let mut summary = format!(
         "font-atlas: {} glyphs{wide_count}, {}×{} px → {}",
         atlas.def.glyphs.len(),
-        atlas.width,
-        atlas.height,
+        atlas.image.width,
+        atlas.image.height,
         out_dir.display()
     );
     if let Some(lacked) = lacked(&font, &wide_fonts, chars) {
@@ -854,15 +854,27 @@ mod tests {
         let atlas = build_atlas(&parse_bdf(TINY).unwrap(), &AtlasChars::default());
         assert_eq!(atlas.def.columns, COLUMNS);
         assert_eq!(atlas.def.glyphs, [('A', 0), ('b', 1)].into());
-        assert_eq!((atlas.width, atlas.height), (COLUMNS * 4, 4));
-        let lit =
-            |x: u32, y: u32| atlas.rgba[to_usize(i64::from((y * atlas.width + x) * 4 + 3))] == 255;
+        assert_eq!((atlas.image.width, atlas.image.height), (COLUMNS * 4, 4));
+        let lit = |x: u32, y: u32| {
+            atlas.image.rgba[to_usize(i64::from((y * atlas.image.width + x) * 4 + 3))] == 255
+        };
         assert!(lit(0, 1) && lit(1, 1) && lit(0, 2));
         assert!(!lit(1, 2) && !lit(0, 0));
         assert!(lit(4 + 2, 3));
-        let lit_count = atlas.rgba.chunks(4).filter(|p| p == &[255; 4]).count();
+        let lit_count = atlas
+            .image
+            .rgba
+            .chunks(4)
+            .filter(|p| p == &[255; 4])
+            .count();
         assert_eq!(lit_count, 4);
-        assert!(atlas.rgba.chunks(4).all(|p| p == [255; 4] || p == [0; 4]));
+        assert!(
+            atlas
+                .image
+                .rgba
+                .chunks(4)
+                .all(|p| p == [255; 4] || p == [0; 4])
+        );
     }
 
     #[test]
@@ -1072,8 +1084,11 @@ mod tests {
         let committed = base.join("crates/game/files/font");
         let png = fs::read(committed.join("atlas.png")).unwrap();
         let (width, height, rgba) = decode_png(&png).unwrap();
-        assert_eq!((width, height), (atlas.width, atlas.height));
-        assert!(rgba == atlas.rgba, "the template's atlas.png is stale");
+        assert_eq!((width, height), (atlas.image.width, atlas.image.height));
+        assert!(
+            rgba == atlas.image.rgba,
+            "the template's atlas.png is stale"
+        );
         let command = config.command.as_deref().unwrap_or("shuyi");
         let ron = atlas_ron(&atlas.def, "ter-u16n.bdf", command, rules.readme.as_deref()).unwrap();
         let written = fs::read_to_string(committed.join("atlas.ron")).unwrap();
@@ -1164,11 +1179,15 @@ mod tests {
         assert_eq!(atlas.def.wide[&'日'], 4);
         assert_eq!(atlas.def.problems(""), Vec::<String>::new());
         assert_eq!(
-            atlas.def.image_problems(atlas.width, atlas.height),
+            atlas
+                .def
+                .image_problems(atlas.image.width, atlas.image.height),
             Vec::<String>::new()
         );
         // The pixels of 一 (its bar on rows 7 and 8), over its two cells.
-        let lit = |x: u32, y: u32| atlas.rgba[to_usize(i64::from((y * atlas.width + x) * 4 + 3))];
+        let lit = |x: u32, y: u32| {
+            atlas.image.rgba[to_usize(i64::from((y * atlas.image.width + x) * 4 + 3))]
+        };
         let rect = atlas.def.wide_rect('一').unwrap();
         assert_eq!((rect.x, rect.w), (16, 16));
         assert!((rect.x + 1..rect.x + 15).all(|x| lit(x, 7) == 255 && lit(x, 8) == 255));
@@ -1200,7 +1219,7 @@ mod tests {
         assert_eq!(atlas.def.problems(""), Vec::<String>::new());
         // The one-bit copy holds every cell up to the last wide glyph's
         // right half, each half an ordinary cell.
-        let bits = one_bit(&atlas.def, atlas.width, &atlas.rgba).unwrap();
+        let bits = one_bit(&atlas.def, &atlas.image).unwrap();
         assert_eq!(bits.len(), to_usize(i64::from(COLUMNS + 4) * 16));
         let right_half_of_one = to_usize(i64::from(COLUMNS + 1) * 16);
         assert_eq!(bits[right_half_of_one + 7], 0b1111_1110);
@@ -1361,7 +1380,7 @@ mod tests {
         assert_eq!(def.wide_cell(None, '田'), Some(16));
         assert_eq!(def.problems(""), Vec::<String>::new());
         assert_eq!(
-            def.image_problems(atlas.width, atlas.height),
+            def.image_problems(atlas.image.width, atlas.image.height),
             Vec::<String>::new()
         );
         // Every wide character is drawn from its language's set; only the
@@ -1378,7 +1397,7 @@ mod tests {
         let ron = atlas_ron(def, "a", "shuyi", None).unwrap();
         assert!(ron.contains("wide_sets"), "{ron}");
         assert_eq!(ron::from_str::<FontAtlasDef>(&ron).unwrap(), *def);
-        let bits = one_bit(def, atlas.width, &atlas.rgba).unwrap();
+        let bits = one_bit(def, &atlas.image).unwrap();
         assert_eq!(bits.len(), to_usize(i64::from(18 * 16)));
     }
 
@@ -1470,7 +1489,7 @@ mod tests {
     #[test]
     fn the_one_bit_atlas_packs_rows_left_pixel_highest() {
         let atlas = build_atlas(&parse_bdf(TINY).unwrap(), &AtlasChars::default());
-        let bits = one_bit(&atlas.def, atlas.width, &atlas.rgba).unwrap();
+        let bits = one_bit(&atlas.def, &atlas.image).unwrap();
         // 'A' (index 0) then 'b' (index 1), four rows each.
         assert_eq!(bits, [0, 0b1100_0000, 0b1000_0000, 0, 0, 0, 0, 0b0010_0000]);
         let wide = FontAtlasDef {
@@ -1478,11 +1497,11 @@ mod tests {
             ..atlas.def
         };
         assert_eq!(
-            one_bit(&wide, atlas.width, &atlas.rgba).unwrap_err(),
+            one_bit(&wide, &atlas.image).unwrap_err(),
             "the one-bit atlas holds cells up to 8 pixels wide, not 9"
         );
         let empty = FontAtlasDef::default();
-        let found = one_bit(&empty, 0, &[]).unwrap();
+        let found = one_bit(&empty, &Image::default()).unwrap();
         assert!(found.is_empty(), "{found:?}");
     }
 }
