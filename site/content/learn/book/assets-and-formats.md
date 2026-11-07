@@ -176,6 +176,23 @@ The checks that keep text to a length count so too, once they have the atlas's w
 measured in its language: `source.widths(&CellWidths::of(&atlas))`, or
 `lang.widths(code, &base)` for any language.
 
+## Voices
+
+A language's voice clips sit in its voice folder, one per dialogue line, listed in its
+manifest (`voice::from_source`), and its cast says which voice says each speaker's lines
+(`voice::cast_from_source`). Whatever makes the clips, a speech program or an actor in a
+booth, is the game's own tool, and the engine tells that tool what to do:
+`voice::plan::plan` takes the dialogue, the scenes to voice, the cast and the manifest's
+clips, with three answers only the game knows: which clips a line needs (one, one per
+variant, or none for a reply nobody says aloud), the words a clip says, and whether a
+generated clip's voice changed (its sample was redone, say). It gives back every clip
+wanted, with the line before it, and which to make and why (`Why::Missing`, `Words`,
+`Direction`, `Recast`, or the tool's own reason), which a person must record again, which
+to delete, and which lines no voice is cast to say. A clip of a scene that isn't voiced is
+kept while its line is there. `voice::plan::recording_script(&plan, "guide")` lists one
+voice's lines in script order, for a recording session. It reads and writes no file, so
+the tool loads the files, plans, and does the work.
+
 ## Layers
 
 A bundle is **layers** read in order: a file comes from the first layer that has it. So
