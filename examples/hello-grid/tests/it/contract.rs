@@ -22,7 +22,7 @@ use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, run_at, scene, scene_at};
 use shuyi_cli::contract::session::{Event, SessionInput};
-use shuyi_cli::{GameArg, contract};
+use shuyi_cli::{GameArg, contract, serde_json};
 
 /// The game's folder, its project's root.
 fn root() -> &'static Path {
@@ -174,11 +174,54 @@ fn scene_dumps_the_stage_and_its_state() {
     assert!(scene.text.contains("@ (1,8)"), "{}", scene.text);
     assert!(scene.text.contains("path (1,8) (2,8)"), "{}", scene.text);
     assert_eq!(scene.data["hero"]["x"], 1);
-    assert_eq!(scene.data["to_move"], "Hero");
+    assert_eq!(scene.data["side"], "Hero");
+    assert_eq!(scene.data["turn"], 1);
+    assert_eq!(scene.data["commands"], 0);
+    assert_eq!(scene.data["outcome"], serde_json::Value::Null);
     // At the title there is none, and it fails.
     let title = scene_at_title();
     assert!(!title.ok);
     assert!(title.limits[0].starts_with("no scene: no stage is open"));
+}
+
+/// `scene`'s answer to the command line `args`, as `cargo shuyi scene`
+/// reads it.
+fn scene_of(args: &[&str]) -> contract::Answer<contract::run::SceneOutput> {
+    let args: Vec<String> = args.iter().map(|a| (*a).to_owned()).collect();
+    let input = contract::run::parse_args(&args, HelloTools.frame_options())
+        .unwrap_or_else(|e| panic!("{e}"));
+    scene(&HelloTools, &input)
+}
+
+#[test]
+fn scene_reads_one_value_of_the_state_by_pointer() {
+    let answer = scene_of(&["--script", "Enter Right", "--path", "/hero/x"]);
+    assert!(answer.ok, "{answer:?}");
+    let out = answer.result.unwrap();
+    assert_eq!(out.value, Some(serde_json::json!(1)));
+    assert!(out.scene.is_none());
+    let missing = scene_of(&["--script", "Enter Right", "--path", "/hero/z"]);
+    assert_eq!(missing.code.as_deref(), Some("SH0005"), "{missing:?}");
+    assert_eq!(
+        missing.error.as_deref(),
+        Some("no value at `/hero/z`: /hero has the keys x, y")
+    );
+}
+
+#[test]
+fn scene_answers_the_shape_of_the_stages_data() {
+    let answer = scene_of(&["--script", "Enter", "--shape"]);
+    assert!(answer.ok, "{answer:?}");
+    let shape = answer.result.unwrap().shape.unwrap();
+    let properties = &shape["properties"];
+    for key in ["turn", "hero", "goal", "foe", "side", "outcome", "commands"] {
+        assert!(properties.get(key).is_some(), "no {key} in {shape}");
+    }
+    let outcome = shape["$defs"]["Outcome"].to_string();
+    assert!(
+        outcome.contains("\"Won\"") && outcome.contains("\"Caught\""),
+        "{outcome}"
+    );
 }
 
 /// `replay`'s input: the record `record`, beside `other` if given.

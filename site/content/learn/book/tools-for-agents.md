@@ -62,6 +62,33 @@ its frame, its text, its files' errors and its controls. A game with a scene, re
 importers writes its own `GameTools`, adds those, and calls `BasicTools` for the rest; a `grid` game's
 stage has one to read.
 
+## One value of the game
+
+A stage's scene carries its **data**: the stage's whole state, written by serde, the same derive that
+writes its state hash, so your game writes no code to show it. `scene --path` reads one value of it by a
+**JSON Pointer**, a path of keys from the top, and `scene --shape` answers its **JSON Schema**, every key
+it may hold:
+
+```bash
+cargo shuyi scene --script "Enter Right" --path /hero/x
+cargo shuyi scene --script "Enter" --shape
+```
+
+The first answers your piece's column. A pointer that names nothing fails with `SH0005`, and its message
+lists the keys there are. An enum is written as serde writes it, its variant a key:
+`/outcome/Won/turn` is the turn a won stage ended on.
+
+The stage's tools name the value with `Scene::with_data`. To show what lives on the screen and not in the
+state, such as the number of commands taken, a `grid` game's stage names a small struct of its own,
+`StageData` in its `tools.rs`: the stage's state, then its `seed` and its `commands`.
+
+> **Rust:** `#[serde(flatten)]` on `StageData`'s `stage` field writes the state's own keys at the top,
+> beside `seed` and `commands`, instead of under a `stage` key.
+
+The rules' types derive `JsonSchema`, which describes their shape, under a `schema` feature that the
+game's `tools` feature turns on, so the game you ship builds no schema. A type of your own that the
+stage holds needs the same line, `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]`.
+
 ## The MCP server
 
 **MCP**, the Model Context Protocol, is a common way for an agent to call tools. `shuyi mcp` serves the
@@ -84,7 +111,7 @@ look, and press another, as you would:
 | ---- | ---- |
 | `start` | builds the game's tool program and starts the game, with its start options |
 | `step` | plays a script of keys, buttons, actions by name and waits, then idle frames, and answers as `run` does |
-| `scene` | the scene on screen now, and the log |
+| `scene` | the scene on screen now, and the log; with `path`, one value of its data, with `shape`, its data's shape |
 | `frame_png` | a picture of the frame now |
 | `events` | what happened since the start, the sounds, and the sounds the game made at run time |
 | `perf` | the frames' times and memory |

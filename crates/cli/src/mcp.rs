@@ -17,7 +17,7 @@
 //! | ---- | ---- | ---------- |
 //! | `start` | builds the game's tool program and starts its game as its options say | [`StartOutput`] |
 //! | `step` | plays a script, then runs idle frames | `run`'s answer |
-//! | `scene` | the scene on screen now | `scene`'s answer |
+//! | `scene` | the scene on screen now; with `path` one value of its data, with `shape` its shape | `scene`'s answer |
 //! | `frame_png` | a picture of the frame now, as an image | [`FramePngOutput`] and the PNG |
 //! | `events` | what happened since the start | [`EventsOutput`] |
 //! | `perf` | the frames' records since a number, and their summary; a heap snapshot and a diff between two | [`PerfOutput`] |
@@ -70,6 +70,31 @@ use shuyi_ui::perf::{FrameRecord, HeapDiff, HeapSnapshot, PERF_FRAMES};
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NoInput {}
+
+/// What the session's `scene` answers beyond the scene: one value of its
+/// data, or its data's shape, either in place of the scene.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
+pub struct SceneInput {
+    /// Answer only the value at this JSON Pointer (RFC 6901) in the
+    /// scene's data, `/hero/x`.
+    pub path: Option<String>,
+    /// Answer the JSON Schema of the scene's data, as the game derived it.
+    pub shape: bool,
+}
+
+impl SceneInput {
+    /// What it asks of `scene`.
+    pub(crate) fn ask(&self) -> crate::contract::run::SceneAsk<'_> {
+        crate::contract::run::SceneAsk {
+            path: self.path.as_deref(),
+            shape: self.shape,
+        }
+    }
+}
 
 /// What `start` starts.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -369,7 +394,8 @@ fn description(op: Op, session: bool) -> &'static str {
         (Op::Scene, false) => "The scene on screen after a one-off run.",
         (Op::Scene, true) => {
             "The scene on screen in the session now (a stage's map and state), and the log. Not \
-             ok when no stage is open."
+             ok when no stage is open. `path` (a JSON Pointer, `/hero/x`) answers one value of \
+             its data instead, and `shape` its data's JSON Schema."
         }
         (Op::Replay, _) => {
             "Re-run a record (a file in the game's folder) by the game's rules: a state hash per \

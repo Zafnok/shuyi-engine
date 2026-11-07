@@ -13,9 +13,17 @@ name = "rules"
 [lints]
 workspace = true
 
+[features]
+# `schema`: the rules' types describe their shapes, for the game's tools
+# (`scene --shape`). The game crate's `tools` turns it on; the game
+# itself builds without it.
+schema = ["dep:schemars", "shuyi-core/schema"]
+
 [dependencies]
 # The grid, the turn rules, the seeded luck.
 shuyi-core.workspace = true
 # The stage's `.map` format (bytes in, no I/O).
 shuyi-assets.workspace = true
+# The shapes, with `schema`.
+schemars = { workspace = true, optional = true }
 serde.workspace = true

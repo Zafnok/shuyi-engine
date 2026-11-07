@@ -135,7 +135,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi",
-        features: Features::Only(&["std", "app"]),
+        features: Features::Only(&["std", "app", "schema"]),
     },
     ApiCrate {
         name: "shuyi-sound",

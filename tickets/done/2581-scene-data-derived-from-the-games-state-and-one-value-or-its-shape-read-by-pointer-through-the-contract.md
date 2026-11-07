@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-07
 ---
 
 # 2581 — Scene data derived from the game's state, and one value or its shape read by pointer
@@ -165,27 +165,27 @@ None.
 
 ## Acceptance criteria
 
-- [ ] No `json!` builds a scene's data in Hello, Grid or the template.
-- [ ] `cargo shuyi scene --script "Enter Right" --path /hero/x --json`
+- [x] No `json!` builds a scene's data in Hello, Grid or the template.
+- [x] `cargo shuyi scene --script "Enter Right" --path /hero/x --json`
       in `examples/hello-grid` answers the piece's column, and in a game
       made from the template too (a test in each).
-- [ ] `scene --shape` answers a JSON Schema whose properties include
+- [x] `scene --shape` answers a JSON Schema whose properties include
       `turn`, `hero` and `commands`, and whose `outcome` names `Won` and
       `Caught` (a test).
-- [ ] A pointer that names nothing gives a failed answer with the new
+- [x] A pointer that names nothing gives a failed answer with the new
       problem code, and `shuyi explain` shows its page.
-- [ ] MCP's session `scene` takes `path` and `shape` (a test in
+- [x] MCP's session `scene` takes `path` and `shape` (a test in
       `crates/cli/tests/`).
-- [ ] `contract::VERSION` is raised, and the schema test passes with the
+- [x] `contract::VERSION` is raised, and the schema test passes with the
       new line in `versions.json`.
-- [ ] `cargo build -p shuyi-core -p shuyi-ui --no-default-features
+- [x] `cargo build -p shuyi-core -p shuyi-ui --no-default-features
       --features shuyi-core/schema,shuyi-ui/schema --target
       thumbv7em-none-eabihf` passes.
-- [ ] Hello, Grid's `.wasm` from `cargo shuyi web --release` is no
+- [x] Hello, Grid's `.wasm` from `cargo shuyi web --release` is no
       larger than before (the description stays in `tools`).
-- [ ] The skill pack's worked examples pass (`cargo shuyi check-skills skills`).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The skill pack's worked examples pass (`cargo shuyi check-skills skills`).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -200,5 +200,89 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **The engine's types.** `Pos`, `Dir`, `TerrainId`, `Grid` (and its
+  private `RawGrid`) and `SimRng` derive `JsonSchema` behind
+  `shuyi-core`'s `schema` feature. The facade `shuyi` gains `schema`
+  (`cargo xtask check-modules` counts it with `std` and `app` as an
+  engine feature, not a module; the API check's catalog builds it).
+  The `no-std` job's builds and `check-no-std` pass with it on.
+- **`Scene::with_data`** keeps the value's serde tree in `data` and the
+  JSON Schema of `T` in serialize mode in `Scene::shape`, which serde
+  skips: it is never in an answer unless asked for. `session::at_pointer`
+  reads a value by JSON Pointer and, when it names nothing, says the
+  keys of the deepest object reached.
+- **`scene --path <pointer>` and `scene --shape`** are fields of
+  `RunInput` (`path`, `shape`); `run` refuses them (`SH0001`: it answers
+  the whole scene). The answer, `SceneOutput`, gains `value` and
+  `shape`, left out when not asked; with either, the answer leaves the
+  scene out, as it answers what was asked instead. A pointer that names
+  nothing fails with the new `SH0005` (`no-value`, usage class, exit 2),
+  its page in `crates/cli/errors/SH0005.md`. A malformed pointer (not
+  empty and not starting with `/`) gets the same code. A scene with no
+  shape answers `ok` with the limit `NO_SHAPE`.
+- **MCP:** the session's `scene` takes `SceneInput { path, shape }`
+  (the headless host and the session attached over the live link, whose
+  frame scene has no data).
+- **`contract::VERSION` 40** (main took 39 meanwhile), the schemas regenerated, its line in
+  `versions.json`.
+- **Hello, Grid** names `tools::StageData { #[serde(flatten)] stage,
+  commands }`; `Stage`, `Outcome`, `Side` and `Tuning` derive
+  `JsonSchema` under `tools`, which turns on `shuyi/schema` and
+  `schemars` (added to the root's `[workspace.dependencies]`, so
+  `check-pins` holds the template to it).
+- **The template:** its rules crate gains `schema`
+  (`dep:schemars`, `shuyi-core/schema`) on `Stage` and `Outcome`; the
+  stage's part of the game crate's `Cargo.toml` adds to `tools`
+  (`rules/schema`, `shuyi/schema`, `dep:schemars`), which `shuyi new`
+  merges into the base's. Its `StageData` keeps `seed` and `commands`.
+  `plans.golden` re-blessed.
+- **Keys:** `turn`, `hero`, `goal`, `foe` / `wanderer`, `outcome` and
+  `commands` stay; `outcome` is serde's form, Hello, Grid's `to_move` is
+  `side`, and `map`, `rng` (and Hello, Grid's `tuning`, when not the
+  default) are new. No worked example, test or doc read a key whose form
+  changed but Hello, Grid's contract test, now on `side`.
+- **2524** is still open: its clause now says to write its checks
+  against the derived data.
+- **Docs:** `docs/contract.md` (the `scene` row, a section *The scene's
+  data*, the session table, the example answer's version), the book's
+  chapter 10, `shuyi-stage-grid` and `shuyi-test`, the template rules'
+  `AGENTS.md`, and the module docs of `contract` and `mcp`.
+
+Checked: `cargo shuyi scene --script "Enter Right" --path /hero/x
+--json` in `examples/hello-grid` answers `value: 1`, `--path /hero/z`
+exits 2 with `SH0005`, and `--shape` lists the keys and `Outcome`'s
+`Won` and `Caught`. Hello, Grid's `dist/web` from `cargo shuyi web
+--release` is 3,115,476 bytes on `main` and on this branch: `schemars`
+isn't in the shipped build's tree. A game made from the `grid` template
+passes `fmt`, clippy and its tests, the new one among them.
+
+Deviations: with `path` or `shape`, `scene`'s answer leaves the scene
+out (the ticket said only that it "answers the value"). A shape asked of
+a scene with none is `ok` with a limit, as the ticket says.
+
+Follow-ups: none.
+
+For the game: additive but for `SceneOutput` (below). The game's own
+`json!` scene keeps working; its pin bump may move to `with_data`.
+
+Breaking: shuyi-cli: contract::run::SceneOutput: it is `#[non_exhaustive]` and has two more fields, `value` and `shape`; a game reads it from `scene_output` or an answer instead of building it with a struct literal
+
+```migration
+since: 0.1.0
+what: SceneOutput can't be built with a struct literal outside shuyi-cli any more; it grew value and shape.
+old: SceneOutput { frames, top_screen, scene, log, session }
+new: run::scene_output(session)
+before: |
+  let output = SceneOutput { frames, top_screen, scene, log, session: None };
+after: |
+  let (output, limits) = shuyi_cli::contract::run::scene_output(&*session);
+find: ["SceneOutput {"]
+```
+
+Book: chapter 10 (`tools-for-agents.md`) gains *One value of the game*
+(`scene --path`, `--shape`, `Scene::with_data` and `StageData`) and the
+session's `scene` row.
+
+Nick input: none.

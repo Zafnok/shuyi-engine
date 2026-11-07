@@ -1,7 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NoInput",
-  "description": "A session tool's input that takes nothing.",
+  "title": "SceneInput",
+  "description": "What the session's `scene` answers beyond the scene: one value of its\ndata, or its data's shape, either in place of the scene.",
   "type": "object",
+  "properties": {
+    "path": {
+      "description": "Answer only the value at this JSON Pointer (RFC 6901) in the\nscene's data, `/hero/x`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "shape": {
+      "description": "Answer the JSON Schema of the scene's data, as the game derived it.",
+      "type": "boolean",
+      "default": false
+    }
+  },
   "additionalProperties": false
 }

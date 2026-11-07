@@ -11,10 +11,11 @@
 //! tool program that runs them; the tests use them too.
 
 use rules::{Feature, Player, Stage};
+use serde::Serialize;
 use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
-use shuyi::core::{Bot, Made, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
+use shuyi::core::{Bot, Made, Pos, RandomBot, TerrainId, play};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::prelude::*;
@@ -24,7 +25,6 @@ use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Script, Shot};
-use shuyi_cli::serde_json::json;
 use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools, PlaytestPlan};
 
 use super::{Own, StageRecord, StageScreen, Terrain};
@@ -51,25 +51,31 @@ pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
     Ok(seed)
 }
 
-/// The stage's scene in `h`: its map and the rules' state.
+/// The data of the stage's scene: the rules' whole state, and what lives
+/// on its screen.
+#[derive(Serialize, schemars::JsonSchema)]
+pub struct StageData<'a> {
+    /// The rules' state, its keys at the top (`turn`, `hero`, `outcome`).
+    #[serde(flatten)]
+    pub stage: &'a Stage,
+    /// The seed the stage's luck started from.
+    pub seed: u64,
+    /// How many commands the stage has taken.
+    pub commands: usize,
+}
+
+/// The stage's scene in `h`: its map and the rules' state ([`StageData`]).
 pub fn scene(h: &Harness<Data>) -> Result<Scene, String> {
     let screen = h
         .screen::<StageScreen>()
         .ok_or_else(|| format!("no stage is open (the top screen is `{}`)", h.top_screen()))?;
     let map = screen.scene(StageScreen::view_tiles());
-    let stage = &screen.stage;
-    let at = |p: Pos| json!({ "x": p.x, "y": p.y });
-    let mut scene = Scene::new("stage", "grid map", map.to_text(&Terrain));
-    scene.data = json!({
-        "seed": screen.seed,
-        "turn": stage.turn(),
-        "hero": at(stage.hero()),
-        "wanderer": at(stage.wanderer()),
-        "goal": at(stage.goal()),
-        "outcome": stage.outcome().map(|o| format!("{o:?}")),
-        "commands": screen.commands.len(),
-    });
-    Ok(scene)
+    let data = StageData {
+        stage: &screen.stage,
+        seed: screen.seed,
+        commands: screen.commands.len(),
+    };
+    Scene::new("stage", "grid map", map.to_text(&Terrain)).with_data(&data)
 }
 
 /// What happened in the rules of the stage in `h`.

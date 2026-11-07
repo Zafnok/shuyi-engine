@@ -16,13 +16,13 @@ use shuyi_ui::perf::HeapSnapshot;
 
 use super::host::{PerfTaken, failed, perf_answer, read, to_json};
 use super::{
-    EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartLink,
-    StartOutput, StepInput, StopOutput,
+    EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, SceneInput,
+    StartLink, StartOutput, StepInput, StopOutput,
 };
 use crate::contract::attach::{self, AttachInput, Connection, Failed, Seen};
 use crate::contract::codes;
 use crate::contract::perf::PerfRead;
-use crate::contract::run::{RunOutput, SceneOutput};
+use crate::contract::run::{self, RunOutput, SceneOutput};
 use crate::contract::session::{LogEntry, Scene};
 use crate::contract::{Answer, Op};
 use crate::frame_png::Step;
@@ -111,8 +111,8 @@ impl Attached {
             Op::FramePng => read(input)
                 .map_err(wrong)
                 .and_then(|input| self.frame_png(&input)),
-            Op::Scene => read(input).map_err(wrong).and_then(|NoInput {}| {
-                let output = self.scene()?;
+            Op::Scene => read(input).map_err(wrong).and_then(|input: SceneInput| {
+                let output = self.scene(&input)?;
                 Ok((output, None))
             }),
             Op::Events => read(input).map_err(wrong).and_then(|NoInput {}| {
@@ -196,8 +196,9 @@ impl Attached {
         Ok((to_json(&Answer::new(Op::Step, true, output, limits)), None))
     }
 
-    /// `scene`: the frame's text in place of a scene, and the log.
-    fn scene(&mut self) -> Result<Value, Failed> {
+    /// `scene`: the frame's text in place of a scene, and the log; asked
+    /// for a path or a shape, a frame's scene has no data to read them in.
+    fn scene(&mut self, input: &SceneInput) -> Result<Value, Failed> {
         let asked = self.input(Vec::new(), 0);
         let seen = attach::played(&mut self.link, &asked)?;
         let mut limits = attach::limits_of(&asked, &seen);
@@ -207,14 +208,17 @@ impl Attached {
         } = seen;
         let scene = (status.phase != Phase::Loading && !frame.is_empty())
             .then(|| Scene::new(status.top_screen.clone(), "frame", frame));
-        let output = SceneOutput {
+        let mut output = SceneOutput {
             frames: status.frames,
             top_screen: status.top_screen,
             scene,
             log: log.lines.into_iter().map(log_entry).collect(),
             session: None,
+            value: None,
+            shape: None,
         };
         let ok = output.scene.is_some();
+        run::ask_scene(&mut output, &mut limits, input.ask())?;
         Ok(to_json(&Answer::new(Op::Scene, ok, output, limits)))
     }
 
