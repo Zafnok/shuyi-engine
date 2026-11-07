@@ -88,7 +88,7 @@ colours or the frame's text.
 4. **The contract in tests.** The template's tests call the operations
    as library functions with the game's tools: `check(&tools,
    &CheckInput::default())`, `run(&tools, &input)` with `input.script =
-   keys("Enter Right")`, `bots`, `replay` and `import`, each answer's
+   keys("Enter Right")`, `playtest`, `replay` and `import`, each answer's
    `ok`, `result` and `limits`. `crates/game/tests/` in a new game shows
    them.
 
@@ -164,8 +164,8 @@ A test panics with its message. The contract's commands answer with a
 - `SH0001`: the command is wrong, such as a key name the Harness
   doesn't know (`--keys: unknown key chord`); the answer's `help` lists
   the steps it takes.
-- `SH3001`: the game's tools don't offer the operation (bots or a
-  replay for a game with no rules).
+- `SH3001`: the game's tools don't offer the operation (a playtest or
+  a replay for a game with no rules).
 - `SH3005`: the game's tool program didn't build: the answer ends with
   the compiler's output.
 - `SH1005`: `attach` found no build listening: start it with the link

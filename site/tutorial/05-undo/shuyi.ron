@@ -34,7 +34,7 @@
     ),
 
     // The game's tool program, for the commands that run the game:
-    // frame-png, lang-status, check, run, scene, replay, bots, import.
+    // frame-png, lang-status, check, run, scene, replay, playtest, import.
     game: (package: "box-pusher", example: "tools", features: ["tools"]),
 
     // `cargo shuyi check --target all`: the targets the game ships on (the

@@ -15,6 +15,7 @@ const LIMITS: TipLimits = TipLimits {
     text_lines: 2,
     line_chars: 10,
     title_chars: 6,
+    how_lines: 1,
 };
 
 fn rules_with<'a>(
@@ -152,6 +153,36 @@ fn a_wide_character_is_two_cells_of_the_title_and_the_lines() {
         [
             "tip \"a\": the title must be 1 to 6 characters",
             "tip \"a\": a text line is over 10 characters: \"あいうえおか\"",
+        ]
+    );
+}
+
+/// Game ticket 0475: a tip's instructions apart from its text, kept to
+/// the box like the text, its placeholders checked.
+#[test]
+fn a_tips_how_is_checked_like_its_text() {
+    let source =
+        r#"(tips: [(id: "a", trigger: Jumped, title: "T", text: "Up you go", how: "Up: {Jump}")])"#;
+    assert_eq!(errors(source), [] as [&str; 0]);
+    let yes = |_: &str| true;
+    let none = |_: &str| None;
+    let table = from_source::<Trigger>("t.ron", source, &rules_with(&yes, &none)).unwrap();
+    assert_eq!(table.tips[0].how.as_deref(), Some("Up: {Jump}"));
+    let none_given = r#"(tips: [(id: "a", trigger: Jumped, title: "T", text: "x")])"#;
+    let table = from_source::<Trigger>("t.ron", none_given, &rules_with(&yes, &none)).unwrap();
+    assert_eq!(table.tips[0].how, None);
+    let bad = r#"(tips: [
+        (id: "a", trigger: Jumped, title: "T", text: "x", how: "Run: {Run}\nb"),
+        (id: "b", trigger: Fell, title: "T", text: "x", how: ""),
+        (id: "c", trigger: Swam, title: "T", text: "x", how: "much too long"),
+    ])"#;
+    assert_eq!(
+        errors(bad),
+        [
+            "tip \"a\": the how must have 1 to 1 lines",
+            "tip \"a\": unknown placeholder {Run}",
+            "tip \"b\": the how must have 1 to 1 lines",
+            "tip \"c\": a text line is over 10 characters: \"much too long\"",
         ]
     );
 }

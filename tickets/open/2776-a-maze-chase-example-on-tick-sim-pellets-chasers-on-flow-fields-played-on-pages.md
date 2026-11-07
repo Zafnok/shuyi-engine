@@ -116,7 +116,7 @@ None. When it unparks is his call (above).
 **Out (do not do):**
 - The eval task, `evals/tasks/maze-chase.ron`: 2572.
 - The Bevy side and the comparison: 2562.
-- Bots for the maze chase: `bots` stays unsupported, as snake's.
+- Bots for the maze chase: `playtest` stays unsupported, as snake's.
 - Sound: the A/B (2562) measures the game without it. A follow-up
   ticket may add it once the example lands.
 - Any engine API the example finds missing: write it as a ticket

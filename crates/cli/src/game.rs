@@ -6,7 +6,7 @@
 //! it with `cargo run` for the commands that run the game: `frame-png`,
 //! `lang-status`, `font-atlas` (which keeps the characters the game's text
 //! uses; `--no-text` runs it without the game), and the contract's
-//! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
+//! `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`,
 //! `import` and `bake`.
 
 use std::collections::BTreeMap;
@@ -25,12 +25,11 @@ use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
-use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries};
+use shuyi_core::bots::playtest::{Check, PlayedTry, PlaytestReport, Tries};
 use shuyi_core::{BalanceSettings, Balanced, Knob, Made, autobalance_by};
 use shuyi_platform::session::{SessionRecord, Stamps};
 
 use crate::contract::autobalance::AutobalanceInput;
-use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
 use crate::contract::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
@@ -246,13 +245,16 @@ pub struct PlaytestPlan {
     /// if empty).
     pub default_entrants: Vec<String>,
     /// The checks over the entrants that play, given their names: a
-    /// check naming an entrant who doesn't play is left out.
+    /// check naming an entrant who doesn't play is left out. None at all
+    /// is a plain bot run: nothing is judged, and it passes when every
+    /// try played.
     pub checks: PlaytestChecks,
     /// One try: of the entrant at that index of
     /// [`entrants`](Self::entrants), from that seed, stopped at that turn
-    /// if it hasn't ended. Tries run on several threads at once, in any
-    /// order; most simply [`play_tries`](shuyi_core::bots::playtest::play_tries)
-    /// over the one seed.
+    /// if it hasn't ended, with the commands applied and its record for
+    /// `replay`, if the game keeps one. Tries run on several threads at
+    /// once, in any order; most simply
+    /// [`play_try`](shuyi_core::bots::playtest::play_try).
     pub play: PlayTry,
     /// Each entrant's summary items, in [`entrants`](Self::entrants)
     /// order, printed on its line: `won 83/100 · turns median 12`. An
@@ -290,7 +292,7 @@ pub type PlaytestChecks = Box<dyn Fn(&[&str]) -> Vec<Check> + Send + Sync>;
 
 /// A plan's one try ([`PlaytestPlan::play`]): entrant index, seed, the
 /// turn it stops at.
-pub type PlayTry = Box<dyn Fn(usize, u64, u32) -> Result<Tried, String> + Send + Sync>;
+pub type PlayTry = Box<dyn Fn(usize, u64, u32) -> Result<PlayedTry, String> + Send + Sync>;
 
 /// What `autobalance` searches on one of the game's stages
 /// ([`GameTools::autobalance_plan`]): who plays it and how they are judged,
@@ -353,8 +355,8 @@ pub struct Tunable<S> {
     /// One try on a stage: the stage (as authored, or changed by the
     /// knobs), the entrant at that index of the plan's entrants, the seed,
     /// the turn it stops at. Tries run on several threads at once, in any
-    /// order; most simply [`play_tries`](shuyi_core::bots::playtest::play_tries)
-    /// over the one seed.
+    /// order; most simply
+    /// [`play_try`](shuyi_core::bots::playtest::play_try).
     pub play: StagePlay<S>,
     /// Writes a changed stage back to the game's files (`--apply`): the
     /// files written, as the game shows them.
@@ -381,7 +383,7 @@ impl<S> Tunable<S> {
 
 /// A [`Tunable`]'s one try: the stage, entrant index, seed, the turn it
 /// stops at.
-pub type StagePlay<S> = Box<dyn Fn(&S, usize, u64, u32) -> Result<Tried, String> + Send + Sync>;
+pub type StagePlay<S> = Box<dyn Fn(&S, usize, u64, u32) -> Result<PlayedTry, String> + Send + Sync>;
 
 /// A [`Tunable`]'s writer: the files it wrote of a changed stage.
 pub type StageWrite<S> = Box<dyn Fn(&S) -> Result<Vec<String>, String>>;
@@ -390,7 +392,7 @@ pub type StageWrite<S> = Box<dyn Fn(&S) -> Result<Vec<String>, String>>;
 /// that setting (entrant index, seed, the turn it stops at) and the tries
 /// to play, their report, judged. `autobalance` plays them on its threads.
 pub type Evaluate<'a> = dyn FnMut(
-        &(dyn Fn(usize, u64, u32) -> Result<Tried, String> + Sync),
+        &(dyn Fn(usize, u64, u32) -> Result<PlayedTry, String> + Sync),
         &Tries,
     ) -> Result<PlaytestReport, String>
     + 'a;
@@ -467,7 +469,7 @@ impl<S: Clone + Sync> TunableStage for Tunable<S> {
 /// game leaves out answers that the game's tools don't offer it.
 pub trait GameTools {
     /// The options the game adds to `frame-png`, which also start its
-    /// game for `run`, `scene` and `bots` (none: `&[]`).
+    /// game for `run`, `scene` and `playtest` (none: `&[]`).
     fn frame_options(&self) -> &[GameOption];
 
     /// What else `frame-png --help` says about the game's pictures.
@@ -569,13 +571,6 @@ pub trait GameTools {
         None
     }
 
-    /// `bots`: the games `input` asks for, played by the game's bots and
-    /// summed up ([`tally`](crate::contract::bots::tally)).
-    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
-        let _ = input;
-        Err(unsupported("bots", "bots"))
-    }
-
     /// `playtest --stage`: the ids of the game's playtest stages, in the
     /// order `--every-stage` plays them. Empty, the default: one unnamed
     /// stage.
@@ -586,7 +581,8 @@ pub trait GameTools {
     /// `playtest`: the plan of `stage` (one of
     /// [`playtest_stages`](Self::playtest_stages), `None` if there are
     /// none), started as `input`'s game options say. Its numbers are those
-    /// the tries are played with, the game's defaults filled in.
+    /// the tries are played with, the game's defaults filled in. A game's
+    /// bot run is a plan too: one entrant and no checks.
     fn playtest_plan(
         &self,
         stage: Option<&str>,
@@ -782,8 +778,6 @@ mod tests {
                 .unwrap_err()
                 .contains("GameTools::replay")
         );
-        let bots = Plain.bots(&BotsInput::default()).unwrap_err();
-        assert!(bots.contains("GameTools::bots"));
         let playtest = Plain
             .playtest_plan(None, &PlaytestInput::default())
             .err()
@@ -820,7 +814,10 @@ mod tests {
 
     #[test]
     fn a_method_left_at_its_default_is_told_from_the_games_own_errors() {
-        let error = Plain.bots(&BotsInput::default()).unwrap_err();
+        let error = Plain
+            .playtest_plan(None, &PlaytestInput::default())
+            .err()
+            .unwrap();
         assert!(is_unsupported(&error));
         assert_eq!(code_of(&error), codes::NOT_OFFERED);
         assert!(!is_unsupported("records/a.ron: no turn 4"));

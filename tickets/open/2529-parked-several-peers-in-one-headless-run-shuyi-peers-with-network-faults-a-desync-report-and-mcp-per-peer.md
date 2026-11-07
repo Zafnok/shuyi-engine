@@ -191,7 +191,7 @@ None.
   same names as in JSON. `peers::parse_args`, `peers::usage` and
   `peers::text` follow `run`'s (`crates/cli/src/contract/run.rs`).
 - **Problem codes** (2509 is an MVP ticket, so it is done first): the
-  codes `run`'s and `bots`' sites have. A refused input
+  codes `run`'s and `playtest`'s sites have. A refused input
   (`PeersInput::check`, `parse_args`, a bad `--net`) is `SH0001`;
   `GameTools::peers` left at its default is `SH3001`; any other error
   of the game's is `SH3002`. A desync is a verdict (`ok: false`), not

@@ -50,17 +50,14 @@ None.
 - The report's tests: a try with a `turns` measure equal to its turns
   reads `… · turns 21 · won 1`, and one with a different `turns` measure
   keeps both.
-- **Either order with 2544** (`bots` folded into `playtest`): it
-  rewrites `playtest`'s text for a plan with no checks. If 2544 is
-  done, apply this rule to every place that writes a try's line, with
-  the same tests; if not, nothing to do (2544 keeps the rule in each
-  try line it writes).
+- `playtest`'s text for a plan with no checks, a plain bot run (2544
+  folded `bots` into `playtest`), writes its try lines through the
+  same `PlaytestReport::write_table`, so the rule holds there too, with
+  the same tests.
 
 **Out (do not do):**
 - renaming the try's own `turns`, or the JSON's fields (the contract's
-  schemas don't change);
-- `bots`' text (`crates/cli/src/contract/bots.rs`), which prints no
-  per-try line.
+  schemas don't change).
 
 ## Implementation steps
 

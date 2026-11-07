@@ -133,8 +133,8 @@ fn playtest_checks_the_tries_the_seeds_and_the_threads_then_asks_the_game() {
     assert!(answer.ok, "{:?}", answer.error);
     assert_eq!(answer.op, Op::Playtest);
     assert!(answer.limits.is_empty(), "{:?}", answer.limits);
-    assert!(playtest(&game, &input(MAX_GAMES, |_| {})).ok);
-    for tries in [0, MAX_GAMES + 1] {
+    assert!(playtest(&game, &input(MAX_TRIES, |_| {})).ok);
+    for tries in [0, MAX_TRIES + 1] {
         let answer = playtest(&game, &input(tries, |_| {}));
         assert_eq!(answer.exit_code(), 2);
         let error = answer.error.unwrap();
@@ -444,6 +444,116 @@ fn what_the_playtest_found_reads_for_people() {
     );
 }
 
+#[test]
+fn each_try_keeps_its_commands_and_its_record_if_the_game_keeps_one() {
+    let answer = playtest(&Fake::default(), &input(2, |i| i.seed = Some(5)));
+    let output = answer.result.unwrap().remove(0);
+    let [walk, run] = &output.entrants[..] else {
+        panic!("{:?}", output.entrants);
+    };
+    // Two commands a turn; `walk` keeps a record of each try, `run` none.
+    let want = |seed: u64, turns: u32, record: Option<String>| TryKept {
+        seed,
+        commands: turns * 2,
+        record,
+    };
+    assert_eq!(
+        walk.tries,
+        [
+            want(5, 200, Some("(seed: 5)".to_owned())),
+            want(6, 200, Some("(seed: 6)".to_owned()))
+        ]
+    );
+    assert_eq!(run.tries, [want(5, 199, None), want(6, 199, None)]);
+    // A record the game doesn't keep is left out of the JSON.
+    let json = serde_json::to_value(&output).unwrap();
+    assert_eq!(json["entrants"][0]["tries"][0]["record"], "(seed: 5)");
+    let kept = json["entrants"][1]["tries"][0].as_object().unwrap();
+    assert!(!kept.contains_key("record"), "{kept:?}");
+}
+
+#[test]
+fn each_entrant_counts_its_outcomes_and_spreads_its_numbers() {
+    let answer = playtest(&Fake::default(), &input(3, |_| {}));
+    let walk = &answer.result.unwrap()[0].entrants[0];
+    assert_eq!(walk.outcomes, BTreeMap::from([("Won".to_owned(), 3)]));
+    let turns = walk.turns.clone().unwrap();
+    assert_eq!((turns.min, turns.max, turns.total), (200, 200, 600));
+    assert!((turns.mean - 200.0).abs() < f64::EPSILON);
+    assert_eq!(walk.measures["won"].total, 3);
+    let unfinished = fake(FakePlaytest {
+        outcome: None,
+        ..FakePlaytest::default()
+    });
+    let answer = playtest(&unfinished, &input(2, |_| {}));
+    let walk = &answer.result.unwrap()[0].entrants[0];
+    assert_eq!(walk.outcomes, BTreeMap::from([(UNFINISHED.to_owned(), 2)]));
+    // An outcome is counted by its name, without its fields.
+    for (outcome, name) in [
+        (Some("Won { turn: 12 }"), "Won"),
+        (Some("Caught(3)"), "Caught"),
+        (Some("Draw"), "Draw"),
+        (None, UNFINISHED),
+    ] {
+        assert_eq!(outcome_name(outcome), name);
+    }
+    let three = Spread::of(&[3, 5, 7]).unwrap();
+    assert_eq!((three.min, three.max, three.total), (3, 7, 15));
+    assert!((three.mean - 5.0).abs() < f64::EPSILON);
+    assert!(Spread::of(&[]).is_none());
+}
+
+#[test]
+fn a_plan_with_no_checks_judges_nothing_and_passes_when_every_try_played() {
+    let unchecked = FakePlaytest {
+        unchecked: true,
+        ..FakePlaytest::default()
+    };
+    let answer = playtest(
+        &fake(unchecked.clone()),
+        &input(2, |i| {
+            i.entrants = vec!["walk".to_owned()];
+        }),
+    );
+    assert!(answer.ok, "{:?}", answer.error);
+    let mut outputs = answer.result.unwrap();
+    assert_eq!(outputs[0].report.checks, Vec::new());
+    assert!(!outputs[0].report.blocked);
+    outputs[0].entrants[0].seconds_per_try = 0.5;
+    // The line per try, the entrant's line, then its tally, as `bots` had.
+    assert_eq!(
+        text(&outputs),
+        format!(
+            "the fake on its stage\n\n{}\nwalk · won 2/2 · turns median 200 · 0.50 s per try\n\
+             outcomes: Won 2\nturns: 200–200, mean 200.00\n\
+             turns: 200–200, mean 200.00, total 400\nwon: 1–1, mean 1.00, total 2\n",
+            outputs[0].report
+        )
+    );
+    assert!(
+        outputs[0]
+            .report
+            .to_string()
+            .contains("\ntry 0 · walk · Won")
+    );
+    // Several entrants: each tally line names its entrant.
+    let answer = playtest(&fake(unchecked.clone()), &input(1, |_| {}));
+    let text = text(&answer.result.unwrap());
+    assert!(text.contains("\nwalk · outcomes: Won 1\n"), "{text}");
+    assert!(
+        text.contains("\nrun  · turns: 199–199, mean 199.00\n"),
+        "{text}"
+    );
+    // A try that fails still fails it.
+    let failing = fake(FakePlaytest {
+        fail: Some(0),
+        ..unchecked
+    });
+    let answer = playtest(&failing, &input(1, |_| {}));
+    assert!(!answer.ok);
+    assert_eq!(answer.code.as_deref(), Some("SH3002"));
+}
+
 /// A try of seed `seed` with `measures`.
 fn tried(seed: u64, measures: &[(&str, i64)]) -> Tried {
     Tried {
@@ -581,6 +691,10 @@ fn played(name: &str, summary: &[&str]) -> Played {
         seconds_per_try: 0.5,
         summary: summary.iter().map(|s| (*s).to_owned()).collect(),
         was: None,
+        outcomes: BTreeMap::new(),
+        turns: None,
+        measures: BTreeMap::new(),
+        tries: Vec::new(),
     }
 }
 
@@ -710,6 +824,10 @@ fn the_history_keeps_every_run_and_the_next_says_what_it_was() {
     assert_eq!(last.output.previous.as_ref(), Some(&previous));
     assert_eq!(last.entrants, ["walk", "run"]);
     assert_eq!(last.title, "the fake on its stage");
+    // The history keeps no try's commands or record, only the tally.
+    assert!(last.output.entrants.iter().all(|p| p.tries.is_empty()));
+    assert_eq!(last.output.entrants[0].outcomes["Won"], 2);
+    assert!(first[0].entrants.iter().all(|p| p.tries.len() == 2));
     assert!(previous.date.ends_with(" UTC"), "{}", previous.date);
     // Each has a rate check: its successes then.
     let was: Vec<Option<&str>> = second[0]

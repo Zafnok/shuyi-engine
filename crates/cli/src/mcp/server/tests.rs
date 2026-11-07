@@ -245,15 +245,19 @@ fn the_operations_are_tools_and_a_failed_one_is_an_error_result_with_its_code() 
     fs::write(dir.join("a.ron"), "h0\nh1").unwrap();
     let game = Fake::default();
     let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
-    let result = called(&mut server, "bots", &json!({ "games": 0 }));
+    let result = called(&mut server, "playtest", &json!({ "tries": 0 }));
     assert_eq!(result["isError"], true);
     let answer = &result["structuredContent"];
     assert_eq!(
         (answer["op"].as_str(), answer["code"].as_str()),
-        (Some("bots"), Some("SH0001"))
+        (Some("playtest"), Some("SH0001"))
     );
     assert!(answer["help"].is_string());
-    let result = called(&mut server, "bots", &json!({ "games": 2, "project": "." }));
+    let result = called(
+        &mut server,
+        "playtest",
+        &json!({ "tries": 2, "project": "." }),
+    );
     assert_eq!(result["isError"], false, "{result}");
     let result = called(&mut server, "replay", &json!({ "record": "a.ron" }));
     assert_eq!(result["structuredContent"]["ok"], true);
@@ -348,7 +352,7 @@ fn a_host_that_stops_ends_the_session_with_its_output() {
         "SH3005"
     );
     assert_eq!(
-        called(&mut server, "bots", &json!({}))["structuredContent"]["code"],
+        called(&mut server, "playtest", &json!({}))["structuredContent"]["code"],
         "SH3005"
     );
     let mut server = Server::new(dir.clone(), launches(1, true));
@@ -365,7 +369,7 @@ fn a_host_that_stops_ends_the_session_with_its_output() {
 
 #[test]
 fn a_host_that_answers_nothing_is_a_game_program_error() {
-    let (answer, png) = answer_of(Op::Bots, Reply::default(), "shuyi");
+    let (answer, png) = answer_of(Op::Playtest, Reply::default(), "shuyi");
     assert_eq!(answer["code"], "SH3005");
     assert!(png.is_none());
     let refused = Reply {
@@ -441,7 +445,7 @@ fn a_server_older_than_the_games_engine_says_so() {
     for (name, arguments) in [
         ("start", json!({})),
         ("step", json!({})),
-        ("bots", json!({})),
+        ("playtest", json!({})),
     ] {
         let result = called(&mut server, name, &arguments);
         let limits = &result["structuredContent"]["limits"];
@@ -455,7 +459,7 @@ fn a_server_older_than_the_games_engine_says_so() {
         );
     }
     let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: VERSION }));
-    for name in ["start", "step", "bots"] {
+    for name in ["start", "step", "playtest"] {
         let result = called(&mut server, name, &json!({}));
         assert_eq!(result["structuredContent"]["limits"], json!([]), "{name}");
     }
@@ -677,7 +681,7 @@ fn a_relative_project_is_from_the_first_root() {
     initialized(&mut server, true);
     rooted(&mut server, &spaced);
     assert_eq!(called(&mut server, "start", &json!({}))["isError"], false);
-    let result = called(&mut server, "bots", &json!({ "games": 2 }));
+    let result = called(&mut server, "playtest", &json!({ "tries": 2 }));
     assert_eq!(result["isError"], false, "{result}");
     fs::remove_dir_all(&cwd).unwrap();
     fs::remove_dir_all(&root).unwrap();
@@ -724,12 +728,15 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     let response = handled(
         &mut server,
         &json!({ "jsonrpc": "2.0", "id": "c1", "method": "tools/call",
-                 "params": { "name": "bots", "arguments": { "project": "other", "games": 2 } } }),
+                 "params": { "name": "playtest", "arguments": { "project": "other", "tries": 2 } } }),
     );
     assert_eq!(response["id"], "c1", "under the client's id");
     assert_eq!(response["result"]["structuredContent"]["by"], "forwarded");
     let (name, arguments) = last();
-    assert_eq!((name.as_str(), &arguments["games"]), ("bots", &json!(2)));
+    assert_eq!(
+        (name.as_str(), &arguments["tries"]),
+        ("playtest", &json!(2))
+    );
     assert_eq!(
         Path::new(arguments["project"].as_str().unwrap()),
         theirs.join("other"),
@@ -752,8 +759,8 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     let before = asked.called.borrow().len();
     let result = called(
         &mut server,
-        "bots",
-        &json!({ "project": own.display().to_string(), "games": 2 }),
+        "playtest",
+        &json!({ "project": own.display().to_string(), "tries": 2 }),
     );
     assert_eq!(result["isError"], false, "{result}");
     assert!(result["structuredContent"]["by"].is_null());
@@ -945,7 +952,7 @@ fn a_forwarded_server_that_doesnt_build_is_an_error_result_with_its_output() {
     let asked = Rc::clone(&workspaces.asked);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
     assert!(written.is_empty(), "{written:?}");
-    for name in ["start", "bots"] {
+    for name in ["start", "playtest"] {
         let result = called(&mut server, name, &json!({}));
         assert_eq!(result["isError"], true);
         let answer = &result["structuredContent"];
@@ -988,7 +995,7 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
         [("cargo shuyi mcp".to_owned(), dir.clone())]
     );
     assert!(server.has_game());
-    for name in ["step", "bots"] {
+    for name in ["step", "playtest"] {
         let result = called(&mut server, name, &json!({}));
         assert_eq!(result["structuredContent"]["by"], "forwarded", "{name}");
     }
@@ -998,7 +1005,7 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
         .iter()
         .map(|(name, _)| name.clone())
         .collect();
-    assert_eq!(names, ["start", "step", "bots"]);
+    assert_eq!(names, ["start", "step", "playtest"]);
 
     // If the fresh one doesn't start, the limit names both contracts and
     // why, without the advice to reconnect.
@@ -1006,7 +1013,7 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
     workspaces.fail.set(true);
     let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: newer }))
         .forwarding(Box::new(workspaces));
-    let result = called(&mut server, "bots", &json!({}));
+    let result = called(&mut server, "playtest", &json!({}));
     let limits = result["structuredContent"]["limits"]
         .as_array()
         .unwrap()
@@ -1067,7 +1074,7 @@ fn a_restart_keeps_the_session_that_runs_and_the_list_the_server_follows() {
     assert!(got.is_empty(), "{got:?}");
     // The engine moves: a one-off call goes to a fresh server.
     contract.set(VERSION + 1);
-    let result = called(&mut server, "bots", &own_project);
+    let result = called(&mut server, "playtest", &own_project);
     assert_eq!(result["structuredContent"]["by"], "forwarded", "{result}");
     // The session's game runs on where it ran.
     let result = called(&mut server, "step", &json!({}));

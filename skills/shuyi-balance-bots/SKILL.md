@@ -1,6 +1,6 @@
 ---
 name: shuyi-balance-bots
-description: Bots that play a turn-based Shuyi Engine game and report on it, from a plain bot run (`shuyi bots`) to named bots judged by bands in a data file (`shuyi playtest`) and the autobalance search whose knobs change a stage until each bot lands in its band (`shuyi autobalance`). Use when a game needs to know how hard a stage is, whether it can be won, whether a change made it easier, or which setting of a stage puts the bots where the designer wants. Not for writing a game's rules (shuyi-stage-grid), for tests of exact outcomes (shuyi-test), or for a record that replays differently (shuyi-debug-replay).
+description: Bots that play a turn-based Shuyi Engine game and report on it, from a plain bot run (`shuyi playtest` with no checks) to named bots judged by bands in a data file (`shuyi playtest`) and the autobalance search whose knobs change a stage until each bot lands in its band (`shuyi autobalance`). Use when a game needs to know how hard a stage is, whether it can be won, whether a change made it easier, or which setting of a stage puts the bots where the designer wants. Not for writing a game's rules (shuyi-stage-grid), for tests of exact outcomes (shuyi-test), or for a record that replays differently (shuyi-debug-replay).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -30,13 +30,16 @@ same report on every machine and every thread count.
 
 ## Steps
 
-1. **A plain run.** `cargo shuyi bots 20` plays 20 games with the
-   game's bot, from seeds 0 to 19: how each ended, its turns, the game's
-   measures, and a record of each (`/result/plays/<n>/record`) that
-   `cargo shuyi replay` replays. A game made with `shuyi new --template
-   grid` gives one, the engine's `RandomBot` (its `GameTools::bots`:
-   each game by `shuyi_core::play`, summed up by `tally` from
-   `shuyi_cli::contract::bots`).
+1. **A plain run.** `cargo shuyi playtest --tries 20` plays 20 tries
+   with the game's bot, from seeds 0 to 19: how each ended, its turns,
+   the game's measures, the outcomes counted and the spread of the turns
+   and measures, and with `--json` a record of each
+   (`/result/0/entrants/0/tries/<n>/record`) that `cargo shuyi replay`
+   replays. A game made with `shuyi new --template grid` gives one, the
+   engine's `RandomBot`: its stage's `GameTools::playtest_plan` is a plan
+   with one entrant and no checks, so it judges nothing and passes when
+   every try played. Each try is played by `shuyi_core::play` and given
+   as a `PlayedTry`: the try, the commands applied and its record.
 
 2. **Name the bots.** A playtest's entrants are bots with names. Each is
    an `Entrant<S, R>` (`shuyi_core::bots::playtest`): its `name`, the
@@ -82,8 +85,10 @@ same report on every machine and every thread count.
    `PlaytestPlan::new(title, entrants, checks, play)`: the entrants by
    name (and a label each, if any), a function from the names that play
    to the checks that name only them, and one try of one entrant from
-   one seed, most simply `play_tries(&stage, &entrant, seed..seed + 1,
-   turns)`. `groups` names sets of entrants, and `default_entrants` the
+   one seed, most simply `play_try(&stage, &entrant, seed, turns)`: the
+   try, the commands applied, and the entrant's record of it for
+   `replay`, if it gives one (`Entrant::record`, from the seed and the
+   commands). `groups` names sets of entrants, and `default_entrants` the
    ones that play when none is asked for. A game with several stages
    lists their ids in `playtest_stages`, and changes the defaults (100
    tries from seed 0, to turn 200) in `playtest_defaults`. Its `summary`
@@ -130,9 +135,10 @@ same report on every machine and every thread count.
    script of the game's that reads the changed paths and prints
    `play=true` or `play=false`; `working-directory`, `system-packages`,
    `build`, `command`, `allow-no-plan` and `timeout-minutes`. It fails
-   only on a floor or a broken playtest. A new `grid` game passes
-   `allow-no-plan: true`, since it has no plan: drop it once the plan is
-   written. Give the caller the `concurrency` that never
+   only on a floor or a broken playtest. A new `grid` game's plan is its
+   bot run, so it doesn't pass `allow-no-plan: true`; a game whose tools
+   give no plan yet passes it, and drops it once the plan is written.
+   Give the caller the `concurrency` that never
    cancels a push (`group: playtest-${{ github.event_name == 'push' &&
    github.sha || github.ref }}`, `cancel-in-progress: ${{
    github.event_name != 'push' }}`), or a push's lever goes unplayed.
@@ -239,7 +245,7 @@ is worth stay the game's, in `classify`.
 Branch on the answer's `code`, never its message:
 
 - `SH3001`: the game's tools don't offer it: give the stage's
-  `GameTools` a `bots`, `playtest_plan` or `autobalance_plan`.
+  `GameTools` a `playtest_plan` or an `autobalance_plan`.
 - `SH3002`: the game's tools failed: a checks file that doesn't read, a
   check naming an entrant the game doesn't have, a stage that doesn't
   build. The answer's `error` says which.

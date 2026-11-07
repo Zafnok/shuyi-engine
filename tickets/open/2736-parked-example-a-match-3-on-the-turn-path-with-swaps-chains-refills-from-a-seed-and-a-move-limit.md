@@ -235,14 +235,15 @@ each part is one PR.
   `moves_left` and `outcome` in the scene's data), `replay` (a record
   of the level, the seed and the commands, through
   `shuyi_cli::contract::replay::turns`, as hello-grid's `StageRecord`)
-  and `bots` (`Greedy`). If 2527 is done, its soak method too.
+  and a playtest plan (one entrant, `Greedy`, and no checks). If 2527
+  is done, its soak method too.
 - **Tests:** a Harness playthrough from seed 0 through actions only
   (`Harness::act`): each move walks the cursor to the first legal
   swap's gem, picks it and swaps, until the level ends, and the panel
   shows the rules' score; a refused swap asks for the `Denied` cue
   (`Harness::audio_requests`); `cargo shuyi replay` on a record from
-  `cargo shuyi bots 1 --json`; `frame-png` pictures of level 1 at the
-  start, with a gem picked, and at a level's end
+  `cargo shuyi playtest --tries 1 --json`; `frame-png` pictures of
+  level 1 at the start, with a gem picked, and at a level's end
   (`insta::assert_binary_snapshot!`, as hello-grid's
   `tests/it/snapshot.rs`); `cargo shuyi check`, `check --target all`
   and `check-keys`. **From 2116 (done):** a golden table of one

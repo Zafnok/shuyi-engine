@@ -100,6 +100,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0085](0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md) | The debug view: gizmos as data from screens, in channels turned on from the debug menu | Accepted; amends ADR-0082 (a `debug` step) |
 | [0086](0086-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md) | Wide glyph sets: named sets beside the unnamed one, and the language's set and widths carried in `CellWidths` | Accepted; extends 2301's wide glyphs |
 | [0087](0087-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md) | Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method | Accepted; extends ADR-0063 |
+| [0088](0088-one-operation-plays-a-games-bots-playtest-keeps-the-commands-and-record-of-each-try-and-the-entrant-gives-the-record.md) | One operation plays a game's bots: `playtest` keeps each try's commands and record, and the entrant gives the record | Accepted; `bots` (ticket 1129) folded into `playtest` |
 | [0089](0089-one-bit-roles-draw-everything-the-inks-do-a-dots-pattern-and-a-roles-edge-and-invert.md) | One-bit roles draw everything the inks do: a `Dots` pattern, and a role's `edge` and `invert` | Accepted; amends ADR-0026 |
 
 Template: [`0000-template.md`](0000-template.md).

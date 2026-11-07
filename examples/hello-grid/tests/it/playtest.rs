@@ -12,11 +12,11 @@ use shuyi::core::bots::playtest::{
     judge, play_tries,
 };
 use shuyi::core::{PlayError, Pos};
-use shuyi_cli::GameArg;
 use shuyi_cli::contract::Answer;
-use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::playtest::{self, PlaytestInput, PlaytestOutput, playtest};
+use shuyi_cli::contract::replay::Record;
 use shuyi_cli::serde_json;
+use shuyi_cli::{GameArg, GameTools};
 
 const FIFTY: Tries = Tries::new(50, 0, 200);
 
@@ -228,22 +228,29 @@ fn the_command_keeps_a_history_and_the_second_run_says_what_the_first_was() {
 }
 
 #[test]
-fn the_random_hero_trips_the_foe_as_often_as_in_bots() {
-    // `bots` plays the same games: a random hero of the seed, the chaser.
-    let mut fifty_games = BotsInput::default();
-    fifty_games.games = 50;
-    let plays = bots(&HelloTools, &fifty_games).result.unwrap().plays;
-    let report = fifty();
-    let random = &report.entrants[0];
-    assert_eq!(random.name, "random");
-    let trips: Vec<i64> = random
+fn each_try_of_the_playtest_replays_to_its_outcome() {
+    let mut input = PlaytestInput::default();
+    input.tries = Some(10);
+    let answer = playtest(&HelloTools, &input);
+    let output = answer.result.unwrap().remove(0);
+    for (played, entrant) in output.entrants.iter().zip(&output.report.entrants) {
+        for (kept, tried) in played.tries.iter().zip(&entrant.tries) {
+            let record = Record {
+                file: format!("{} {}.ron", entrant.name, kept.seed),
+                text: kept.record.clone().unwrap(),
+            };
+            let run = HelloTools.replay(&record).unwrap_or_else(|e| panic!("{e}"));
+            assert_eq!(run.outcome, tried.outcome, "{}", record.file);
+            assert_eq!(run.steps.len(), kept.commands as usize + 1);
+        }
+    }
+    // The foe's trips are counted once, by the playtest's measure.
+    let trips: Vec<i64> = output.report.entrants[0]
         .tries
         .iter()
         .map(|t| t.measures["foe trips"])
         .collect();
-    let counted: Vec<i64> = plays.iter().map(|p| p.measures["foe trips"]).collect();
-    assert_eq!(trips, counted);
-    assert!(trips.iter().any(|&n| n > 1), "{trips:?}");
+    assert!(trips.iter().any(|&n| n > 0), "{trips:?}");
 }
 
 #[test]

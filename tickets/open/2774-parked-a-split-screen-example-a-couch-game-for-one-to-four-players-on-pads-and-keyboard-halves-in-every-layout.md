@@ -88,9 +88,10 @@ None. Unparking is Nick's call, as for every parked ticket.
     equals placed);
   - `frame-png` pictures at two players in both layouts, three in
     `Grid` and four in `Grid`, checked in;
-  - a bot (the contract's `bots`, as `hello-grid` has one) that steers
-    each seat to its nearest gem, and a `playtest` round with four bots
-    that ends with every gem picked or the clock run out.
+  - a bot that steers each seat to its nearest gem, and a playtest
+    plan (the contract's `playtest`, as `hello-grid` has one) whose
+    round with four bots ends with every gem picked or the clock run
+    out.
 - **Docs**: the examples list in `docs/` (what the `document` skill
   says), and the `shuyi-stage-field` skill's split-screen section
   (2386) points at this example.

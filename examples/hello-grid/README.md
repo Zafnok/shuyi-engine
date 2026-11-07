@@ -28,7 +28,7 @@ cargo test -p hello-grid             # the tests
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
 | `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
-| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
+| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
 | `files-src/` | Not embedded: the font the atlas is made from |
@@ -61,12 +61,12 @@ cargo shuyi check                                  # every error in files/
 cargo shuyi check --target all                     # it fits each target shuyi.ron lists
 cargo shuyi run --stage --script "z Right z" --frames 60
 cargo shuyi scene --stage                          # the stage's map and state
-cargo shuyi bots 30                                # a random walker against the foe
+cargo shuyi playtest --entrant random --tries 30   # a random walker against the foe
 cargo shuyi playtest --tries 50                    # each hero against playtest.ron's bands
 cargo shuyi playtest --entrant walk --threads 1    # the walker alone, on one thread
 cargo shuyi autobalance                            # tune balance.ron's stage into its bands
 cargo shuyi autobalance --time 60 --apply          # at most a minute, then write the tuning found
-cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
+cargo shuyi replay play.ron                        # a bot's record (playtest --json), step by step
 cargo shuyi import files/stage.map
 cargo shuyi bake --target playdate --sheet sheet.png  # every picture one-bit
 ```
