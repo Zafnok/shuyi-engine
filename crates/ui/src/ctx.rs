@@ -243,10 +243,8 @@ pub struct Ctx<G: GameData> {
     /// the platform sets the atlas's when the game has loaded
     /// ([`Game::set_widths`](crate::Game::set_widths)).
     widths: CellWidths,
-    /// [`widths`](Self::widths) in each pack's language: its wide set and
-    /// its punctuation's width ([`LangInfo::widths`]).
-    ///
-    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+    /// [`widths`](Self::widths) in each language, the source's and each
+    /// pack's: its wide set and its punctuation's width ([`Lang::widths`]).
     lang_widths: BTreeMap<LangCode, CellWidths>,
     /// The active key bindings, for help text that names keys: the chosen
     /// layout's with the player's changes, or the layout picker's
@@ -435,14 +433,13 @@ impl<G: GameData> Ctx<G> {
     /// Which characters take two cells of the console, for a screen that
     /// measures text before it has the frame to draw it in
     /// ([`text_width`](shuyi_assets::lang::text_width)): the font atlas's
-    /// in the language text is shown in ([`effective_lang`]), as its pack
-    /// has them ([`LangInfo::widths`]: its wide set, and its punctuation
-    /// wide or not). The frame's
+    /// in the language text is shown in ([`effective_lang`]), as that
+    /// language has them ([`Lang::widths`]: its wide set, and its
+    /// punctuation wide or not, a pack's or the source's). The frame's
     /// ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)) follow
     /// them at each drawing.
     ///
     /// [`effective_lang`]: Self::effective_lang
-    /// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
     pub fn widths(&self) -> &CellWidths {
         self.lang_widths
             .get(self.effective_lang())
@@ -1238,16 +1235,13 @@ impl<G: GameData> Ctx<G> {
     }
 }
 
-/// `base`, a font atlas's widths, in the language of each of `lang`'s
-/// packs ([`LangInfo::widths`]).
-///
-/// [`LangInfo::widths`]: shuyi_assets::lang::LangInfo::widths
+/// `base`, a font atlas's widths, in each of `lang`'s languages, the
+/// source's and each pack's ([`Lang::widths`]).
 fn lang_widths(lang: &Lang, base: &CellWidths) -> BTreeMap<LangCode, CellWidths> {
-    lang.codes()
-        .filter_map(|code| {
-            let pack = lang.pack(code)?;
-            Some((code.clone(), pack.info.widths(base)))
-        })
+    let source = &lang.source_lang().code;
+    core::iter::once(source)
+        .chain(lang.codes())
+        .map(|code| (code.clone(), lang.widths(code, base)))
         .collect()
 }
 

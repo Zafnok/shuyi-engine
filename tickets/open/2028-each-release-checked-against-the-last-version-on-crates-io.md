@@ -29,6 +29,15 @@ release command consumes that catalog and those configurations
 (`Features::semver_args`) rather than keeping another list or reverting to
 default-only checks.
 
+**From 2041 (done):** every entry is now `Features::Only`, with every
+feature of the crate's manifest but `shuyi-app`'s `in-house-sound`, and
+`ToolDefaults` is gone. A test holds each entry to its manifest. The
+semver check's `--features` holds for the baseline too, so
+`Features::semver_args` takes both sides' declared features and passes
+only those both have (`cargo metadata`'s `features`). For a crates.io
+baseline, this command reads the published version's features the same
+way, from its manifest.
+
 2005 publishes the first release and writes the version policy as an
 ADR: one version for `shuyi` and every `shuyi-*` crate, 0.x while the
 API moves, and the `Breaking:` lines since the last tag decide the

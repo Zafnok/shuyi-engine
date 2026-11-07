@@ -269,6 +269,7 @@ impl<'a> Host<'a> {
                         frames: game.frame_count(),
                         events: game.events(),
                         sounds: game.sounds(),
+                        sounds_added: game.sounds_added(),
                     };
                     Answer::new(op, true, output, Vec::new())
                 })

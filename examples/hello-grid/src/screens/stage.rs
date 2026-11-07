@@ -24,8 +24,10 @@ use shuyi::ui::Game;
 
 use shuyi::core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
 use shuyi::ui::audio::MenuSound;
+use shuyi::ui::debug::gizmo::Gizmos;
 use shuyi::ui::frame::ConsoleSpec;
 use shuyi::ui::frame::glyph_buffer::{GlyphBuffer, Rect};
+use shuyi::ui::grid::debug::{GRID, layout_gizmos};
 use shuyi::ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
 use shuyi::ui::{FrameInput, Screen, ScreenResult, Transition};
 
@@ -390,6 +392,19 @@ impl Screen<Hello> for StageScreen {
             let scene = self.scene(skin.view_tiles(area));
             skin::paint_stage(&ctx.palette, &self.view(ctx), buf);
             skin.paint(&looks, &scene, area, painter, buf);
+        });
+    }
+
+    /// The grid kit's `grid` channel: the map's layout as the skin
+    /// painted it.
+    fn debug_draw(&self, ctx: &HelloCtx, out: &mut Gizmos) {
+        if !out.channel_on(GRID) {
+            return;
+        }
+        Self::with_skin(ctx, |skin, _| {
+            let area = area(ctx.console);
+            let scene = self.scene(skin.view_tiles(area));
+            layout_gizmos(&scene, &skin.grid(&scene, area), out);
         });
     }
 

@@ -245,7 +245,7 @@ is worth stay the game's, in `classify`.
 Branch on the answer's `code`, never its message:
 
 - `SH3001`: the game's tools don't offer it: give the stage's
-  `GameTools` a `bots`, `playtest_plan` or `autobalance_plan`.
+  `GameTools` a `playtest_plan` or an `autobalance_plan`.
 - `SH3002`: the game's tools failed: a checks file that doesn't read, a
   check naming an entrant the game doesn't have, a stage that doesn't
   build. The answer's `error` says which.

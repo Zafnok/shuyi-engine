@@ -5,10 +5,15 @@
 use std::fs;
 use std::path::Path;
 
-use game::stages::top_down_grid::{StageRecord, StageScreen, Tools, crash_record};
+use game::stages::top_down_grid::{
+    AREA, GLYPHS, Piece, StageRecord, StageScreen, Tools, crash_record,
+};
 use rules::{Command, Outcome, Stage};
 use shuyi::core::{Dir, Pos, TurnRules};
 use shuyi::platform::harness::Harness;
+use shuyi::ui::frame::GizmoShape;
+use shuyi::ui::grid::GridSkin;
+use shuyi::ui::grid::debug::GRID;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::import::{ImportInput, import};
@@ -215,4 +220,35 @@ fn the_title_and_the_stage_declare_their_actions_and_they_fit_every_target() {
     input.target = Some("all".to_owned());
     let answer = targets(&project.config, &project.root, &input, Some(&tools()));
     assert!(answer.ok, "{answer:?}");
+}
+
+/// The game in the Harness, on its first stage, with the debug view's
+/// `grid` channel on or off from the start.
+fn on_stage_with_grid(on: bool) -> Harness<game::Data> {
+    let game = game::game();
+    let mut ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
+    ctx.debug_tools = true;
+    ctx.debug_view.set(GRID.id(), on);
+    let mut h = Harness::new(game.game(ctx).unwrap_or_else(|e| panic!("{e}")));
+    h.keys("Enter");
+    h
+}
+
+#[test]
+fn the_stage_offers_the_grid_channel_and_draws_its_layout_with_it_on() {
+    let h = on_stage_with_grid(true);
+    let drawn = h.game().buffer().gizmos();
+    assert!(drawn.iter().all(|g| g.channel == GRID.id()));
+    let scene = stage(&h).scene(StageScreen::view_tiles());
+    let grid = GridSkin::<Piece>::grid(&GLYPHS, &scene, AREA);
+    // The stage has no cursor: your piece's cell is outlined instead.
+    let hero = GizmoShape::Rect {
+        rect: grid.rect(stage(&h).stage.hero()).unwrap(),
+    };
+    assert!(drawn.iter().any(|g| g.shape == hero), "{drawn:?}");
+    assert!(h.ctx().debug_view.offered().contains(&GRID));
+
+    let off = on_stage_with_grid(false);
+    assert_eq!(off.game().buffer().gizmos(), []);
+    assert!(off.ctx().debug_view.offered().contains(&GRID));
 }

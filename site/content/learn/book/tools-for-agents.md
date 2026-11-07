@@ -86,7 +86,7 @@ look, and press another, as you would:
 | `step` | plays a script of keys, buttons, actions by name and waits, then idle frames, and answers as `run` does |
 | `scene` | the scene on screen now, and the log |
 | `frame_png` | a picture of the frame now |
-| `events` | what happened since the start, and the sounds |
+| `events` | what happened since the start, the sounds, and the sounds the game made at run time |
 | `perf` | the frames' times and memory |
 | `reset` | starts the game again as `start` did |
 | `stop` | stops it |

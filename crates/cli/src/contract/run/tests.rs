@@ -299,6 +299,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         frame: "XY".into(),
         events: Vec::new(),
         sounds: Vec::new(),
+        sounds_added: Vec::new(),
         log: Vec::new(),
         modules: Vec::new(),
         perf: None,

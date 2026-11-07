@@ -104,15 +104,52 @@ pub struct SourceLang {
     pub code: LangCode,
     /// Its own name for itself, which a language menu shows.
     pub name: String,
+    /// The font atlas's wide set it draws from first, as a pack's
+    /// [`LangInfo::wide_font`] names one: `None` for none of its own.
+    pub wide_font: Option<String>,
+    /// Whether [`WIDE_PUNCTUATION`](crate::font::WIDE_PUNCTUATION) is wide
+    /// in it, as a pack's [`LangInfo::wide_punctuation`] says; narrow
+    /// (`false`) by default.
+    pub wide_punctuation: bool,
 }
 
 impl SourceLang {
-    /// The source language `code`, named `name` in itself.
+    /// The source language `code`, named `name` in itself, with no wide set
+    /// of its own and its punctuation narrow.
     pub fn new(code: LangCode, name: impl Into<String>) -> Self {
         Self {
             code,
             name: name.into(),
+            wide_font: None,
+            wide_punctuation: false,
         }
+    }
+
+    /// This language, drawing from the font atlas's wide set `set` first
+    /// ([`wide_font`](Self::wide_font)).
+    #[must_use]
+    pub fn with_wide_font(self, set: impl Into<String>) -> Self {
+        Self {
+            wide_font: Some(set.into()),
+            ..self
+        }
+    }
+
+    /// This language, its punctuation wide (`on`) or narrow
+    /// ([`wide_punctuation`](Self::wide_punctuation)).
+    #[must_use]
+    pub fn with_wide_punctuation(self, on: bool) -> Self {
+        Self {
+            wide_punctuation: on,
+            ..self
+        }
+    }
+
+    /// The width table of this language over `base`, the atlas's
+    /// ([`CellWidths::of`]), as [`LangInfo::widths`] makes a pack's.
+    pub fn widths(&self, base: &CellWidths) -> CellWidths {
+        base.clone()
+            .in_lang(self.wide_font.as_deref(), self.wide_punctuation)
     }
 }
 
@@ -306,6 +343,19 @@ impl Lang {
     /// The pack for `code`; `None` for the source or an unknown tag.
     pub fn pack(&self, code: &LangCode) -> Option<&LangPack> {
         self.packs.get(code)
+    }
+
+    /// The width table of language `code` over `base`, the atlas's
+    /// ([`CellWidths::of`]): its pack's ([`LangInfo::widths`]), the
+    /// source's ([`SourceLang::widths`]), else `base` itself.
+    pub fn widths(&self, code: &LangCode, base: &CellWidths) -> CellWidths {
+        if let Some(pack) = self.pack(code) {
+            pack.info.widths(base)
+        } else if *code == self.written_in.code {
+            self.written_in.widths(base)
+        } else {
+            base.clone()
+        }
     }
 
     /// The tags of the packs, in order (the source isn't one).
@@ -900,6 +950,27 @@ mod tests {
         ]"#;
         let packs = BTreeMap::from([(code("xx"), pack(ui).unwrap())]);
         Lang::new(english(), packs)
+    }
+
+    #[test]
+    fn each_language_has_its_own_widths_the_source_too() {
+        let base = CellWidths::wide(['直']);
+        let lang = lang();
+        // Neither field: the source's are the atlas's, as before.
+        assert_eq!(SourceLang::default().widths(&base), base);
+        assert_eq!(lang.widths(&LangCode::default(), &base), base);
+        let source = SourceLang::new(code("zh-Hans"), "中文")
+            .with_wide_font("zh-Hans")
+            .with_wide_punctuation(true);
+        assert_eq!(source.wide_font.as_deref(), Some("zh-Hans"));
+        assert!(source.wide_punctuation);
+        let lang = lang.with_source_lang(source);
+        let chinese = lang.widths(&code("zh-Hans"), &base);
+        assert_eq!(chinese, base.clone().in_lang(Some("zh-Hans"), true));
+        assert!(chinese.is_wide('“') && chinese.is_wide('直'));
+        // A pack's are its lang.ron's; an unknown tag's the atlas's.
+        assert_eq!(lang.widths(&code("xx"), &base), base);
+        assert_eq!(lang.widths(&code("en"), &base), base);
     }
 
     #[test]

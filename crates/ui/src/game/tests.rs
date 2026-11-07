@@ -213,6 +213,26 @@ fn the_widths_follow_the_language_text_is_shown_in() {
     assert!(!game.buffer().widths().is_wide('…'));
 }
 
+#[test]
+fn the_source_language_has_the_wide_set_and_punctuation_it_names() {
+    use shuyi_assets::font::CellWidths;
+    use shuyi_assets::lang::{LangCode, SourceLang};
+    let zh = LangCode::new("zh-Hans").unwrap();
+    let source = SourceLang::new(zh.clone(), "中文")
+        .with_wide_font("zh-Hans")
+        .with_wide_punctuation(true);
+    let mut ctx = Ctx::new(Toy::new().with_source_lang(source)).unwrap();
+    ctx.lang = zh;
+    let mut game = home(ctx);
+    let wide = CellWidths::wide(['直']);
+    game.set_widths(wide.clone());
+    let chinese = wide.in_lang(Some("zh-Hans"), true);
+    assert_eq!(*game.ctx().widths(), chinese);
+    assert!(game.ctx().widths().is_wide('“'));
+    assert_eq!(game.ctx().widths().wide_font(), Some("zh-Hans"));
+    assert_eq!(*game.buffer().widths(), chinese);
+}
+
 /// What a [`Spy`] saw, frame by frame.
 type Seen = Rc<RefCell<Vec<FrameInput<Action>>>>;
 
