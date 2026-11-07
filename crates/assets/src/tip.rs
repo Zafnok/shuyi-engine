@@ -2,6 +2,9 @@
 //! game's own type names its triggers; its screens decide when one has
 //! happened and remember which tips were seen. A tip's text names keys with
 //! placeholders (`{Confirm}`), filled in with the player's keys when shown.
+//! A tip may keep its instructions apart from its text (`how`): a game whose
+//! tips are spoken by a recorded voice keeps the keys there, since a clip
+//! made ahead of time can't say a key the player rebound.
 use crate::prelude::*;
 
 use alloc::collections::BTreeSet;
@@ -24,6 +27,8 @@ pub struct TipLimits {
     pub line_chars: usize,
     /// Longest tip title.
     pub title_chars: usize,
+    /// Most lines of a tip's `how`; 0 if the game's tips have none.
+    pub how_lines: usize,
 }
 
 /// One tip; `T` is the game's triggers.
@@ -40,6 +45,11 @@ pub struct Tip<T> {
     /// The body: lines separated by `\n`, with `{Action}` placeholders
     /// for key names.
     pub text: String,
+    /// What to do, apart from the text: plain instructions, lines
+    /// separated by `\n`, with `{Action}` placeholders. Written `how:
+    /// "..."`; `None` if the tip has none.
+    #[serde(default, deserialize_with = "some_name")]
+    pub how: Option<String>,
     /// The expression of whoever speaks the tip while it shows, if it
     /// names one. Written `face: "sad"`.
     #[serde(default, deserialize_with = "some_name")]
@@ -115,6 +125,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
         text_lines,
         line_chars,
         title_chars,
+        how_lines,
     } = rules.limits;
     let raw: RawFile<T> = parse_ron(file, source).map_err(|e| vec![e])?;
     let mut errors = Vec::new();
@@ -148,16 +159,25 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
         if lines.is_empty() || lines.len() > text_lines {
             err(format!("the text must have 1 to {text_lines} lines"));
         }
-        for line in lines {
+        let how: Vec<&str> = tip
+            .how
+            .as_deref()
+            .map_or(Vec::new(), |h| h.lines().collect());
+        if tip.how.is_some() && (how.is_empty() || how.len() > how_lines) {
+            err(format!("the how must have 1 to {how_lines} lines"));
+        }
+        for line in lines.into_iter().chain(how) {
             if text_width(line, rules.widths) > line_chars {
                 err(format!(
                     "a text line is over {line_chars} characters: {line:?}"
                 ));
             }
         }
-        for name in placeholders(&tip.text) {
-            if !(rules.placeholder)(name) {
-                err(format!("unknown placeholder {{{name}}}"));
+        for text in core::iter::once(&tip.text).chain(&tip.how) {
+            for name in placeholders(text) {
+                if !(rules.placeholder)(name) {
+                    err(format!("unknown placeholder {{{name}}}"));
+                }
             }
         }
         if let Some(problem) = (rules.face_problem)(tip.face_or(rules.default_face)) {
