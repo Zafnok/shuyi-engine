@@ -1591,6 +1591,7 @@ dependencies = [
  "quad-snd",
  "quad-storage",
  "ron",
+ "sapp-jsutils",
  "serde",
  "serde_json",
  "shuyi-alloc-count",

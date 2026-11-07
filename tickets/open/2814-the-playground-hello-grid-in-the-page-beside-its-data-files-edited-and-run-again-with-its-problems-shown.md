@@ -45,6 +45,17 @@ Nick, 2026-11-03 (*one book, read at the reader's level*): the book and
 the tutorial fold into one book (2824), and its interactive parts come
 before the engine goes public, so this ticket does too.
 
+**From 3069 (done):** a key's `<path>` is the file's path in Hello,
+Grid's project (`shuyi-page-file:files/stage.map`); Hello, Grid reads
+the keys under `files/` and ignores the rest. Its problems are one a
+line as `cargo shuyi check` prints them (`files/stage.map:11:6: 'X' is
+not in the legend`). When the page holds no file under `files/` the
+game reports nothing at all, not the empty text: a reset that clears
+the keys clears the page's problems itself. A file over 256 KiB, or
+over 1 MiB in all, is reported as one line naming it, and the game
+plays its own files. Checked by hand in the built-in browser, with the
+page in a same-origin frame: the parent got the message at its origin.
+
 **Either order with 2824:** if 2824 is done, the Learn landing page and
 the book's landing page are as it left them: link the playground from
 both, and from the top menu; if not, link it from Learn's landing page

@@ -455,7 +455,7 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 }
 
 /// What a web build of [`web_build`]'s game makes.
-const WEB_FILES: [&str; 10] = [
+const WEB_FILES: [&str; 11] = [
     "NOTICES.txt",
     "download.js",
     "gamepad.js",
@@ -463,6 +463,7 @@ const WEB_FILES: [&str; 10] = [
     "index.html",
     "mq_js_bundle.js",
     "music/a.ogg",
+    "page-files.js",
     "quad-storage.js",
     "sapp_jsutils.js",
     "sound.js",
