@@ -196,7 +196,7 @@ Nothing is left here but the redirects this ticket adds anyway.
 - [x] `zola check`, `check-build.sh` and `cargo xtask check-links` pass,
       and `cargo xtask llms` writes a twin of every page, with
       `llms-full.txt` as the ADR says.
-- [x] `git log --follow` on a moved page shows its history.
+- [x] `git log --follow` on a moved page shows its history (the glossary's with `-M20%`, see the notes).
 - [x] The book's chapter is updated (2802): this ticket is that change.
 - [x] All gates in the `run-gates` skill pass.
 
@@ -293,6 +293,10 @@ step 1's web build copied to its `play/`):
 - `/learn/tutorial/04-push/#winning`, `/learn/tutorial/`,
   `/learn/tutorial/00-start/` and `/learn/tutorial/01-new/play/` each
   landed on the new page, the anchor kept.
+
+`git log --follow` shows the history of each moved page but the glossary:
+every row of it changed (each link's path, and its new chapter link), so
+git finds that rename only with `git log --follow -M20%`.
 
 `cargo xtask llms` over the build: a twin for every page at its new
 address, none under `learn/tutorial/`, `llms-full.txt` 237 028 bytes of
