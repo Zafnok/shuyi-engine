@@ -316,7 +316,7 @@ A slow rebuild is never fixed by raising the budget: find what grew
 They run on every PR, docs-only ones too:
 
 ```bash
-cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
+cargo xtask ticket-lint --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # the title the PR will have, as CI does; without them on main
 cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses (ticket 2804)
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
@@ -324,6 +324,11 @@ cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-v
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
+
+The PR's ticket comes from the title first (`tickets/README.md`, *Pull
+requests*): `[NNNN] …` must be in `done/`; `Ticket NNNN: …` changes only
+tickets, read against where the branch left `origin/main` (or `--base
+<rev>`). A title naming no ticket on a branch naming none fails.
 
 The ticket lint checks `game#NNNN` ids in `blocked_by` against the game
 repository's tickets with `gh api`, or against a local checkout with
@@ -360,15 +365,15 @@ beside it; never loosen the checks to pass.
 
 Not a local gate: it needs a nightly and two tools. CI runs it on every
 PR that changes a crate (ADR-0038): it shows what merging adds to the
-public API of every engine crate, and fails a break that the branch's
-ticket has no `Breaking:` line for (the `work-ticket` skill, §5). It also
+public API of every engine crate, and fails a break that the PR's
+ticket (its title's, else its branch's) has no `Breaking:` line for (the `work-ticket` skill, §5). It also
 fails a change to the public API that changes no file of the book
 (`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
 `Book:` line saying why (ticket 2815). Before pushing a change you think
 breaks, run it from the repository root:
 
 ```bash
-cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main`; without --pr-branch, no rule
+cargo xtask api --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # against `git merge-base HEAD main`; without --pr-branch, no rule
 ```
 
 `API_CRATES` in `crates/xtask/src/api.rs` is the catalog: a new engine

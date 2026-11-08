@@ -1,0 +1,50 @@
+name: PR title
+
+# A PR's title names its ticket (ticket 2051, ADR-0091), and ci.yml's
+# `tickets` and `api` jobs read it as it is when they run. A retitle
+# starts no ci.yml run (an `edited` trigger there would re-run every job
+# on any edit of the body), so this re-runs them: the failed jobs of the
+# PR's latest CI run once it has finished, or its `tickets` job if none
+# failed. A re-run job re-runs `ci-result`, which needs it.
+#
+# No checkout: the token that re-runs jobs never meets the PR's code. A
+# fork's PR gets a read-only token, so its CI is re-run by hand.
+
+on:
+  pull_request:
+    types: [edited]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  rerun:
+    name: rerun
+    if: github.event.changes.title != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run CI's ticket checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=$(gh run list --workflow ci.yml --event pull_request --commit "$HEAD_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "::notice::No CI run for $HEAD_SHA yet; it will read the new title."
+            exit 0
+          fi
+          gh run watch "$run" --interval 60 > /dev/null || true
+          conclusion=$(gh run view "$run" --json conclusion --jq .conclusion)
+          if [ "$conclusion" = "success" ]; then
+            job=$(gh run view "$run" --json jobs --jq '.jobs[] | select(.name == "tickets") | .databaseId')
+            gh run rerun --job "$job" || echo "::warning::Could not re-run CI's tickets job; re-run it by hand."
+          else
+            gh run rerun "$run" --failed || echo "::warning::Could not re-run CI's failed jobs; re-run them by hand."
+          fi

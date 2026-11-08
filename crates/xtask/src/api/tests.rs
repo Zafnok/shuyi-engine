@@ -224,6 +224,8 @@ fn options_read_each_flag() {
         "HEAD^1",
         "--pr-branch",
         "t2010-api",
+        "--pr-title",
+        "[2010] The API",
         "--summary",
         "out.md",
         "--verdict",
@@ -234,6 +236,7 @@ fn options_read_each_flag() {
         Some(Options {
             base: Some("HEAD^1".to_string()),
             pr_branch: Some("t2010-api".to_string()),
+            pr_title: Some("[2010] The API".to_string()),
             summary: Some(PathBuf::from("out.md")),
             verdict: Some(PathBuf::from("verdict.txt")),
         })
@@ -431,6 +434,96 @@ fn no_ticket(_: &str) -> Option<String> {
     None
 }
 
+/// A PR on `branch`, with no title (a local run).
+fn pr(branch: &str) -> Pr<'_> {
+    Pr {
+        branch,
+        title: None,
+    }
+}
+
+/// A PR on a desktop worktree's branch, titled `title`.
+fn titled(title: &str) -> Pr<'_> {
+    Pr {
+        branch: "claude/x-1a2b3c",
+        title: Some(title),
+    }
+}
+
+#[test]
+fn a_break_reads_the_ticket_from_the_title() {
+    let verdict = rule(&breaking_core(), &titled("[2100] A"), &|id| {
+        (id == "2100").then(|| TICKET_2100.to_string())
+    });
+    assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
+    let Verdict::Fail(why) = rule(&breaking_core(), &titled("[2100] A"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100 is not in tickets/done/"),
+        "{why}"
+    );
+}
+
+#[test]
+fn a_book_line_is_read_from_the_titles_ticket() {
+    let Verdict::Fail(why) = book_rule(&added_ui(), &titled("[2100] A"), &[], &done_with("Done."))
+    else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100's `## Completion notes`"),
+        "{why}"
+    );
+    let verdict = book_rule(
+        &added_ui(),
+        &titled("[2100] A"),
+        &[],
+        &done_with("Book: none, a test helper."),
+    );
+    assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
+}
+
+#[test]
+fn a_break_on_a_titled_ticket_only_pr_fails() {
+    let Verdict::Fail(why) = rule(&breaking_core(), &titled("Ticket 2100: A"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("names no ticket's work"), "{why}");
+    assert!(why.contains("`[NNNN] …`"), "{why}");
+}
+
+#[test]
+fn a_title_and_branch_that_disagree_fail_a_break() {
+    let pr = Pr {
+        branch: "t2101-b",
+        title: Some("[2100] A"),
+    };
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr, &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("names ticket 2101"), "{why}");
+}
+
+#[test]
+fn a_game_small_change_adds_no_public_item() {
+    let Verdict::Fail(why) = rule(&added_ui(), &titled("Game 0859: a hook"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("game ticket 0859's small change"), "{why}");
+    let listing = lines(&["pub fn a()"]);
+    let same = [CrateApi::new(
+        "shuyi-ui",
+        Some(&listing),
+        &listing,
+        Vec::new(),
+    )];
+    assert!(matches!(
+        rule(&same, &titled("Game 0859: a fix"), &no_ticket),
+        Verdict::Pass(_)
+    ));
+}
+
 #[test]
 fn no_break_on_a_ticket_branch_passes() {
     let crates = vec![CrateApi::new(
@@ -440,14 +533,14 @@ fn no_break_on_a_ticket_branch_passes() {
         Vec::new(),
     )];
     assert!(matches!(
-        rule(&crates, "t2100-a", &no_ticket),
+        rule(&crates, &pr("t2100-a"), &no_ticket),
         Verdict::Pass(_)
     ));
 }
 
 #[test]
 fn a_break_with_a_line_naming_the_crate_passes() {
-    let verdict = rule(&breaking_core(), "t2100-a", &|id| {
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|id| {
         (id == "2100").then(|| TICKET_2100.to_string())
     });
     assert_eq!(
@@ -459,15 +552,18 @@ fn a_break_with_a_line_naming_the_crate_passes() {
 #[test]
 fn a_line_may_name_several_crates_in_backticks() {
     let ticket = "## Completion notes\n\n- Breaking: `shuyi-ui`, `shuyi-core`: `x`: y.\n";
-    let verdict = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()));
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    });
     assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
 }
 
 #[test]
 fn a_line_naming_another_crate_fails() {
     let ticket = "## Completion notes\n\nBreaking: shuyi-ui: `x`: y.\n";
-    let Verdict::Fail(why) = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()))
-    else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    }) else {
         panic!("passed");
     };
     assert!(
@@ -487,13 +583,15 @@ fn a_line_naming_another_crate_fails() {
 #[test]
 fn a_line_outside_the_completion_notes_fails() {
     let ticket = "## Scope\n\nBreaking: shuyi-core: `x`: y.\n\n## Completion notes\n\nDone.\n";
-    let verdict = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()));
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    });
     assert!(matches!(verdict, Verdict::Fail(_)), "{verdict:?}");
 }
 
 #[test]
 fn a_ticket_not_in_done_fails() {
-    let Verdict::Fail(why) = rule(&breaking_core(), "t2100-a", &no_ticket) else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("t2100-a"), &no_ticket) else {
         panic!("passed");
     };
     assert!(
@@ -504,7 +602,7 @@ fn a_ticket_not_in_done_fails() {
 
 #[test]
 fn a_break_on_a_sonar_branch_fails() {
-    let Verdict::Fail(why) = rule(&breaking_core(), "sonar/312-lifetimes", &no_ticket) else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("sonar/312-lifetimes"), &no_ticket) else {
         panic!("passed");
     };
     assert!(why.contains("names no ticket"), "{why}");
@@ -521,7 +619,7 @@ fn no_break_on_a_sonar_branch_passes() {
         Vec::new(),
     )];
     assert!(matches!(
-        rule(&crates, "sonar/312-lifetimes", &no_ticket),
+        rule(&crates, &pr("sonar/312-lifetimes"), &no_ticket),
         Verdict::Pass(_)
     ));
 }
@@ -548,7 +646,7 @@ fn done_with(notes: &'static str) -> impl Fn(&str) -> Option<String> {
 #[test]
 fn an_api_change_without_the_book_or_a_line_fails() {
     let changed = lines(&["crates/ui/src/lib.rs", "site/content/news/x.md"]);
-    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."))
+    let Verdict::Fail(why) = book_rule(&added_ui(), &pr("t2100-a"), &changed, &done_with("Done."))
     else {
         panic!("passed");
     };
@@ -566,7 +664,7 @@ fn an_api_change_without_the_book_or_a_line_fails() {
 fn an_api_change_with_a_book_line_passes_and_quotes_it() {
     let verdict = book_rule(
         &added_ui(),
-        "t2100-a",
+        &pr("t2100-a"),
         &[],
         &done_with("- Book: none, a helper the tests call made public."),
     );
@@ -585,7 +683,7 @@ fn an_api_change_with_the_book_changed_passes() {
         "site/snippets/src/rules.rs",
     ] {
         let changed = lines(&["crates/ui/src/lib.rs", file]);
-        let verdict = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."));
+        let verdict = book_rule(&added_ui(), &pr("t2100-a"), &changed, &done_with("Done."));
         assert!(
             matches!(&verdict, Verdict::Pass(why) if why.starts_with("the book changed")),
             "{verdict:?}"
@@ -600,7 +698,7 @@ fn a_branch_with_no_ticket_is_skipped() {
         "sonar/312-lifetimes",
         "game-1203-x",
     ] {
-        let verdict = book_rule(&added_ui(), branch, &[], &no_ticket);
+        let verdict = book_rule(&added_ui(), &pr(branch), &[], &no_ticket);
         assert!(
             matches!(&verdict, Verdict::Pass(why) if why.contains("names no ticket")),
             "{verdict:?}"
@@ -618,14 +716,14 @@ fn no_api_change_asks_nothing_of_the_book() {
         Vec::new(),
     )];
     assert!(matches!(
-        book_rule(&crates, "t2100-a", &[], &no_ticket),
+        book_rule(&crates, &pr("t2100-a"), &[], &no_ticket),
         Verdict::Pass(_)
     ));
 }
 
 #[test]
 fn an_api_change_on_a_ticket_not_done_fails() {
-    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &[], &no_ticket) else {
+    let Verdict::Fail(why) = book_rule(&added_ui(), &pr("t2100-a"), &[], &no_ticket) else {
         panic!("passed");
     };
     assert!(

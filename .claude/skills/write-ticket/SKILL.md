@@ -86,8 +86,19 @@ message), made and merged by the same game session, uses the game's
 ticket as its ticket: branch `game-NNNN-<slug>`, PR title `Game NNNN:
 <what it does>`, and the PR body says the game ticket and that the
 game's PR moving the pin follows it. Such a change never breaks the
-API: the `api` job fails a break on a branch with no ticket of this
-repository.
+API nor adds to it: the `api` job fails either under a `Game NNNN:`
+title.
+
+## A ticket-only PR
+
+A PR that only writes or edits tickets (new tickets, a retro's batch, a
+ticket's scope rewritten) is titled `Ticket NNNN: <what>`, or `Tickets
+NNNN, MMMM and KKKK: <what>` (a range `NNNN-MMMM` too), on any branch,
+`t<NNNN>-<slug>` included. It changes only `tickets/`, `docs/ROADMAP.md`
+and `docs/decisions.md`, and each ticket it names stays in `open/`: the
+lint fails it otherwise (`tickets/README.md`, *Pull requests*). Never
+title it `[NNNN] …`: that is the ticket's work, which moves it to
+`done/`.
 
 ## Check the dependency chain
 
