@@ -102,5 +102,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0087](0087-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md) | Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method | Accepted; extends ADR-0063 |
 | [0088](0088-one-operation-plays-a-games-bots-playtest-keeps-the-commands-and-record-of-each-try-and-the-entrant-gives-the-record.md) | One operation plays a game's bots: `playtest` keeps each try's commands and record, and the entrant gives the record | Accepted; `bots` (ticket 1129) folded into `playtest` |
 | [0089](0089-one-bit-roles-draw-everything-the-inks-do-a-dots-pattern-and-a-roles-edge-and-invert.md) | One-bit roles draw everything the inks do: a `Dots` pattern, and a role's `edge` and `invert` | Accepted; amends ADR-0026 |
+| [0090](0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) | One book: the project folded into the chapters, a `newcomer` mark around a passage, and the reader's filter kept in the browser | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

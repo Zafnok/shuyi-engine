@@ -34,11 +34,12 @@ What there is once the blockers are done:
   files beside its game, reusing 2814's `playground.js`.
 - 2827: a quick check's shortcode, its script and its expansion in the
   twins.
-- 2823's ADR names where an exercise sits in a page (beside the step's
-  quick check), and nothing more: on 2026-11-05 the exercises' design
-  moved here from 2823 (`docs/decisions.md`, *the first release waits
-  for everything before going public*), to be made once the playground
-  they are done in exists.
+- **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §8 says only where an exercise sits:
+  in the step's `## Check yourself` section, after its quick checks. On
+  2026-11-05 the exercises' design moved here (`docs/decisions.md`, *the
+  first release waits for everything before going public*), to be made
+  once the playground they are done in exists. An exercise takes an
+  audience as a quick check does: ADR-0090 §5's `to`, optional.
 
 The playground edits data files, not Rust (decision of 2026-10-28), so an
 exercise's task is a change to a data file.
@@ -53,8 +54,8 @@ None.
 - **The design, in an ADR** (the `write-adr` skill), first: where a
   check lives (outside the code a step's page asks the reader to type,
   so the reader's project stays as the page says), how the game reports
-  it to the page, and how the exercise's shortcode sits with 2823's
-  audience marks and 2827's quick check. Where it changes what the
+  it to the page, and how the exercise's shortcode sits with ADR-0090's
+  `newcomer` marks and 2827's quick check. Where it changes what the
   points below say, it wins, and the completion notes say so.
 - **The page asks for a check:** `playground.js` writes the exercise's
   name to `sessionStorage` under `shuyi-page-check` before it runs the
@@ -90,7 +91,7 @@ None.
 
 ## Implementation steps
 
-1. Read 2823's ADR, 3069's, 2820's and 2827's completion notes,
+1. Read ADR-0090, 3069's, 2820's and 2827's completion notes,
    `crates/app/src/page.rs`, `crates/cli/web/page-files.js` and its
    version test, `site/static/playground.js`, and the steps' web starts.
 2. Write the ADR, trying the check's path from the playground to the

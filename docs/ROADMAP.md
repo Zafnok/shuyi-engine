@@ -126,9 +126,9 @@ tickets, in order:
 | 2822 | `tutorial-tries` on Windows can draw a try with another step's program |
 | 2821 | Code on the site that stands out: inline code with its own color and background, and code blocks with syntax colors of our own |
 | 2823 | One book, the design: its parts, the tutorial as its first project, marks for who a passage is for, and the reader's filter, in an ADR |
-| 2824 | One book: the tutorial's pages become the book's project, with one glossary and the old addresses sending readers on |
-| 2825 | Every passage says who it is for: new to programming, new to Rust or new to Shuyi, checked in CI |
-| 2826 | The reader's filter: a welcome page with three questions and a skip, a bar on every page, and skipping ahead |
+| 2824 | One book: the tutorial's steps fold into the chapters, each after the chapter it uses, with one glossary and the old addresses sending readers on |
+| 2825 | Every passage says who it is for: new to programming, to making games, to Rust or to Shuyi, checked in CI |
+| 2826 | The reader's filter: a popup with three questions and a skip on a first visit, a bar on every page, and skipping ahead |
 | 2827 | Quick checks in the book: a question, its answers and why, at the end of each step and chapter |
 | 3069 | Files from the page: a web build lays the files its page holds over its own |
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
@@ -754,6 +754,7 @@ going public, with the one book (2823–2828).
 | 2813 | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
+| 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
 | 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
 
 ### Public demo defenses
