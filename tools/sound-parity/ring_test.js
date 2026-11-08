@@ -1,6 +1,7 @@
 // The web sound plugin under node, with nothing of a browser but fakes: `sound.js`
-// itself. The ring it hands to its worklet, its indices wrapping (ticket 3031), and
-// what of the mix reaches the worklet as the context starts (ticket 3088).
+// itself. The ring it hands to its worklet, its indices wrapping (ticket 3031), what
+// of the mix reaches the worklet as the context starts (ticket 3088), and the lead that
+// carries it over a late page as the device starts (ticket 2050).
 // `node ring_test.js`.
 "use strict";
 
@@ -240,6 +241,90 @@ function heard_from(state, first) {
     state.pass(40);
     state.runs();
     heard_from(state, asked);
+}
+
+// sound.js's leads: at least, while it starts, and once it has settled.
+const START_LEAD = 8;
+const FEWEST_LEAD = 4;
+
+// The device as CI's Chromium drives it (ticket 2050's trace): 512 frames a callback,
+// about every 11.6 ms, four quanta of 128 at once, the worklet saying what it played
+// each block. The page answers after each callback, unless it is busy then (`busy`,
+// from and for how long, in milliseconds). What the worklet played as silence, and how
+// far ahead the page is left. The worklet's counters run on from call to call.
+function device(state, { ms, busy = [0, 0] }) {
+    const QUANTUM = 128;
+    const CALLBACK = 512;
+    const worklet = state.worklet || (state.worklet = { taken: 0, silent: 0, since: 0 });
+    const before = worklet.silent;
+    const words = [];
+    for (let at = 0; at < ms; at += (CALLBACK * 1000) / RATE) {
+        for (let quantum = 0; quantum < CALLBACK / QUANTUM; quantum++) {
+            const real = Math.min(QUANTUM, state.posted.length * BLOCK - worklet.taken);
+            worklet.taken += real;
+            worklet.silent += QUANTUM - real;
+            worklet.since += QUANTUM;
+            if (worklet.since >= BLOCK) {
+                worklet.since = 0;
+                words.push({ played: worklet.taken, silent: worklet.silent });
+            }
+        }
+        if (at < busy[0] || at >= busy[0] + busy[1]) {
+            words.splice(0).forEach((data) => state.node.port.onmessage({ data }));
+        }
+    }
+    return { silent: worklet.silent - before, ahead: state.posted.length * BLOCK - worklet.taken };
+}
+
+// The context running, as the device starts.
+function starts(state) {
+    state.context.state = "running";
+    state.context.changes.forEach((change) => change());
+}
+
+// The worklet is the start's lead ahead before the gesture, so a sound asked for on it
+// waits as long as the next ones do.
+{
+    const state = page();
+    state.pass(100);
+    assert.strictEqual(state.posted.length, START_LEAD, "ahead from the first moment");
+}
+
+// A page busy for 35 ms just after the device starts, as CI's was for 25 around the
+// click's release: the worklet never runs dry. With the old lead of 4 blocks it did.
+{
+    const state = page();
+    state.pass(100);
+    state.gesture();
+    starts(state);
+    const { silent } = device(state, { ms: 1000, busy: [100, 35] });
+    assert.strictEqual(silent, 0, "the worklet ran dry while the page was busy");
+}
+
+// Once the context has played a second, the lead comes back down, and the latency of
+// a sound with it.
+{
+    const state = page();
+    state.gesture();
+    starts(state);
+    const settling = device(state, { ms: 900 });
+    assert.strictEqual(settling.ahead, START_LEAD * BLOCK, "the start's lead while it settles");
+    const settled = device(state, { ms: 1200 });
+    assert.strictEqual(settled.silent, 0, "nothing ran dry as the lead came down");
+    assert.strictEqual(settled.ahead, FEWEST_LEAD * BLOCK, "the lead came down");
+}
+
+// A hold let go starts the device again, with the start's lead again.
+{
+    const state = page();
+    state.gesture();
+    starts(state);
+    device(state, { ms: 1500 });
+    state.hold(true);
+    state.hold(false);
+    starts(state);
+    const again = device(state, { ms: 200 });
+    assert.strictEqual(again.ahead, START_LEAD * BLOCK, "the start's lead after a hold");
 }
 
 console.log("the sound ring holds, and the context's start loses nothing");
