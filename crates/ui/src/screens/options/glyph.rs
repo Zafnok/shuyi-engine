@@ -57,11 +57,14 @@ pub fn volume_text(level: u8, max: u8) -> String {
 fn panel(view: &OptionsView, buf: &GlyphBuffer) -> Rect {
     let width = i32::from(buf.width());
     let w = PANEL.w.min(width);
-    let room = i32::from(buf.height()) - PANEL.y - BELOW_PANEL - 1;
+    // Rows from PANEL's top to the message's blank row: a panel that tall
+    // still fits its message without rising.
+    let fits = i32::from(buf.height()) - PANEL.y - BELOW_PANEL;
+    let room = fits - 1;
     let gaps = view.rows.iter().filter(|r| r.starts_group).count();
     let lines = i32::try_from(view.rows.len() + gaps).unwrap_or(i32::MAX);
     let h = PANEL.h.min(room).max(lines.saturating_add(PANEL_FRAME_H));
-    let y = PANEL.y - (h - room).clamp(0, PANEL.y - TOP_MIN);
+    let y = PANEL.y - (h - fits).clamp(0, PANEL.y - TOP_MIN);
     Rect::new((width - w) / 2, y, w, h)
 }
 
@@ -341,12 +344,13 @@ mod tests {
         assert_eq!(painted_row(&c, &v, 31), "help");
     }
 
-    /// Rows that would push the message onto the help line raise the
-    /// panel instead, a row at a time, up to row 1.
+    /// A panel whose message fits under it stays at its row; rows that
+    /// would push the message onto the help line raise the panel instead,
+    /// a row at a time, up to row 1.
     #[test]
     fn a_taller_panel_rises_so_the_message_fits() {
         let c = ctx();
-        for (count, top) in [(22, PANEL.y), (23, PANEL.y - 1), (24, 1), (25, 1)] {
+        for (count, top) in [(22, PANEL.y), (23, PANEL.y), (24, 2), (25, 1)] {
             let rows: Vec<RowView> = (0..count)
                 .map(|i| row(&format!("Row {i}"), ValueView::None, false))
                 .collect();
@@ -358,6 +362,13 @@ mod tests {
             assert_eq!(painted_row(&c, &v, bottom + 1), "Defaults restored");
             assert_eq!(painted_row(&c, &v, 31), "help", "{count}");
         }
+        // Taller still, the panel rises no higher than row 1.
+        let rows: Vec<RowView> = (0..26)
+            .map(|i| row(&format!("Row {i}"), ValueView::None, false))
+            .collect();
+        let v = view(rows);
+        assert!(painted_row(&c, &v, 1).starts_with('┌'));
+        assert!(!painted_row(&c, &v, 0).starts_with('┌'));
     }
 
     #[test]

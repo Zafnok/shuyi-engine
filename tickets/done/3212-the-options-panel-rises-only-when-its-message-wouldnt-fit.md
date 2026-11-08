@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-07
 ---
 
 # 3212 — The options panel rises only when its message wouldn't fit
@@ -51,10 +51,10 @@ now; the test's table corrected. No API change; the game's next pin move updates
 
 ## Acceptance criteria
 
-- [ ] A panel whose message fits at `PANEL.y` isn't moved (unit test).
-- [ ] Taller panels rise one row a line, to row 1 (unit test).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A panel whose message fits at `PANEL.y` isn't moved (unit test).
+- [x] Taller panels rise one row a line, to row 1 (unit test).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -62,4 +62,13 @@ now; the test's table corrected. No API change; the game's next pin move updates
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `panel()` raises the panel by `h - fits`, where `fits = height - PANEL.y -
+  BELOW_PANEL`; the `PANEL.h.min(room)` cap keeps `room = fits - 1`.
+- `a_taller_panel_rises_so_the_message_fits` now expects 22 and 23 lines at
+  row 3, 24 at row 2 and 25 at row 1, the message on row 30 for 23 to 25.
+- The game's next pin move (game#0859's follow-up) updates its options
+  snapshots of a 23-line panel, now one row lower.
+
+No break.
+
+Book: none, no public item changed and the book doesn't describe where the options panel sits.
