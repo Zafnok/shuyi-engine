@@ -2,9 +2,11 @@
 title = "Levels and a menu"
 description = "A level list as a file, a menu screen, and a result handed back to it when a level is won."
 weight = 60
+aliases = ["learn/tutorial/06-levels/", "learn/tutorial/06-levels/play/"]
 
 [extra]
 step = 6
+follows = "games-and-screens"
 +++
 
 One level isn't a game. This step adds four more, a list of them, and a menu to choose from:
@@ -218,5 +220,5 @@ level 2. `h.screen::<LevelMenu>()` is why screens need `as_any`.
 - **Shuyi:** the engine's `Menu`, items carrying values, `AssetKind` and `Ron`, and results between
   screens.
 
-[Chapter 2](@/learn/book/games-and-screens.md) explains screens and their results. Next: the game should
+[Chapter 6](@/learn/book/games-and-screens.md) explains screens and their results. Next: the game should
 remember how far you got.

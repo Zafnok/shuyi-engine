@@ -4,6 +4,7 @@ description = "Install the tools, make a game with shuyi new, run it in a window
 weight = 10
 
 [extra]
+part = "chapters"
 chapter = 1
 +++
 
@@ -20,8 +21,8 @@ seeds run out you lose. It looks like this:
 A few words first, in case they are new. **Rust** is the programming language a
 Shuyi game is written in. **Cargo** is the program that comes with Rust and turns
 your code into a program you can run, a job called **compiling**. And a **crate**
-is Rust's word for one package of code. The tutorial's [Before you
-start](@/learn/tutorial/00-start.md) says more about each, and about what a
+is Rust's word for one package of code. [Before you
+start](@/learn/book/before-you-start.md) says more about each, and about what a
 terminal is, if you have never opened one.
 
 ## Try it with nothing installed
@@ -92,7 +93,7 @@ cd moon-garden
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
 it. A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
-records. [Chapter 6](@/learn/book/rules-as-commands.md) explains the rules.
+records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
 The game depends on the engine's repository at its latest commit, and `shuyi new`
 says so: a **commit** is one saved version of the repository's code, and `--engine-rev
@@ -192,7 +193,7 @@ like this, a player gets one program:
 > which tells it this isn't text a player sees. `static` makes a value that
 > lasts as long as the program, `Dir<'static>` is its type, and `'static` is that
 > lifetime written down. `include_dir!` is a
-> [macro](@/learn/tutorial/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
+> [macro](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
 > and writes more code while compiling: here, code that holds your whole folder.
 
 The game's **data** is what every screen shares. On the short path, it's the
@@ -207,7 +208,7 @@ nothing.
 
 > **Rust:** `type` gives another name to a type, so the rest of the code can say
 > `Data`. A **type** is what kind of thing a value is. The `<...>` are
-> [generics](@/learn/tutorial/01-new.md#what-the-game-is-lib-rs), blanks in a type to
+> [generics](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), blanks in a type to
 > fill in: `BasicData` is written for any actions and any own part, and this fills in
 > which. `pub` means other files may use this.
 
@@ -239,10 +240,10 @@ or a menu):
 > function gives back. Each `.name(...)` after it is a method, a function called on
 > that value, and here each gives back the game with one more thing set.
 >
-> `|_| Box::new(Title)` is a [closure](@/learn/tutorial/01-new.md#what-the-game-is-lib-rs),
+> `|_| Box::new(Title)` is a [closure](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs),
 > a small function with no name, and the `_` means it ignores what it's given. It
 > makes the first screen. `Box<dyn Screen<Data>>` means "[some type that is a
-> screen](@/learn/tutorial/02-board.md#joining-it-up), kept in a box". The list holds
+> screen](@/learn/book/box-pusher/02-board.md#joining-it-up), kept in a box". The list holds
 > three different types, which only fit side by side once each is in a box. `vec![...]`
 > makes a list, a `Vec`. `&mut Ctx<Data>` lends the function the
 > [context](@/learn/book/games-and-screens.md#the-context), and `&mut` means it may
@@ -261,7 +262,7 @@ game on the short path:
 
 > **Rust:** `std::env::args().skip(1)` is the words after the program's name on the
 > command line. `Some(&tools)` is an
-> [`Option`](@/learn/tutorial/01-new.md#what-it-shows), a value that may be there
+> [`Option`](@/learn/book/box-pusher/01-new.md#what-it-shows), a value that may be there
 > (`Some`) or not (`None`). This one is there, and `&` lends it without giving it
 > away. `ExitCode` is the number a program hands back when it stops, where 0 means
 > all went well.
@@ -270,7 +271,7 @@ The rest of the folder:
 
 | Path | What |
 | ---- | ---- |
-| `crates/game/src/title.rs` | The title, the first screen ([chapter 2](@/learn/book/games-and-screens.md)) |
+| `crates/game/src/title.rs` | The title, the first screen ([chapter 6](@/learn/book/games-and-screens.md)) |
 | `crates/game/src/app_info.rs` | Who the game is, written by `cargo shuyi app-info` from `shuyi.ron` |
 | `crates/game/files/` | The English text (`en.ron`), the keys (`keymap.ron`), the colors (`palette.ron`) and the font. **RON** is a simple text format for data |
 | `crates/game/tests/` | The game played without a window, and through its tools ([chapter 8](@/learn/book/testing.md)) |
@@ -316,4 +317,5 @@ engine's example, plays in your browser on this site.
 
 A rebuild after a one-line change takes about a second: [Fast
 compiles](@/learn/book/fast-compiles.md) has the numbers and the setup behind it.
-[Chapter 2](@/learn/book/games-and-screens.md) writes the garden's screens.
+[Chapter 2](@/learn/book/frame-and-skins.md) says how a screen shows the garden: as plain
+data, which a skin paints.

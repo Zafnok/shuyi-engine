@@ -214,7 +214,7 @@ None.
   - **2010** (done, public API diffs): the completion notes and the PR
     body have the `Breaking:` line its check asks for, for
     `Part::Engine`.
-  - **From 2802 (done):** the book's chapter 2
+  - **From 2802 (done):** the book's chapter 6
     (`site/content/learn/book/games-and-screens.md`, *Text by key*) gets
     a paragraph on the engine's words beneath the game's and on
     overriding one. It says today that the keys the engine names

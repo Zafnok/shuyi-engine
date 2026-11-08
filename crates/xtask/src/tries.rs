@@ -31,7 +31,10 @@ const STEPS: &str = "site/tutorial";
 /// The pictures, from the repository's root.
 const PICTURES: &str = "site/static/tutorial-tries";
 /// The pages that show them, from the repository's root.
-const PAGES: [&str; 2] = ["site/content/learn/tutorial", "site/content/learn/book"];
+const PAGES: [&str; 2] = [
+    "site/content/learn/book",
+    "site/content/learn/book/box-pusher",
+];
 /// Where the copies are built: three folders down, like a step, so a step's
 /// path dependencies on the engine's crates still resolve.
 const COPIES: &str = "target/tutorial-tries";

@@ -2,9 +2,11 @@
 title = "A level on the board"
 description = "A level as a text file, read through the format registry, held as the rules' state and drawn by the grid skin."
 weight = 20
+aliases = ["learn/tutorial/02-board/", "learn/tutorial/02-board/play/"]
 
 [extra]
 step = 2
+follows = "assets-and-formats"
 +++
 
 By the end of this step, pressing Confirm on the title opens a real level:
@@ -378,5 +380,5 @@ read the state. So you could repaint the entire game, and this test would never 
 - **Shuyi:** `.map` files, the format registry and the bundle, `Own`, the grid kit, scenes and
   skins, and cameras.
 
-For another take on the same ideas, [chapter 5](@/learn/book/assets-and-formats.md) explains the
-registry, and [chapter 4](@/learn/book/frame-and-skins.md) the skins. Next, you'll walk.
+For another take on the same ideas, [chapter 3](@/learn/book/assets-and-formats.md) explains the
+registry, and [chapter 2](@/learn/book/frame-and-skins.md) the skins. Next, you'll walk.

@@ -35,10 +35,11 @@ becomes the book's project (2824), its interactive parts come before
 the engine goes public, and the book's exercises (2828) run in this
 ticket's playground.
 
-**Either order with 2824:** if 2824 is done, the steps' pages are in the
-book's project part, with the template its completion notes name: build
-the playground there; if not, build it in `tutorial-step.html` as
-written, and 2824 moves it with the pages.
+**From 2824 (done):** the steps' pages are the book's project,
+`site/content/learn/book/box-pusher/`, rendered by
+`site/templates/chapter.html`. Build the playground in its step block
+(under `page.extra.step`, beside *Play this step*), and copy each step's
+files to `/learn/book/box-pusher/<step>/`, where its `play/` is.
 
 ## Nick input
 
@@ -65,7 +66,7 @@ None.
 
 ## Implementation steps
 
-1. Read 2814's and 3069's completion notes, `site/templates/tutorial-step.html`,
+1. Read 2814's and 3069's completion notes, `site/templates/chapter.html`,
    the `try_it` shortcode and `tries.toml`.
 2. Give the steps' web builds the file layer, and copy each step's files
    for the page as 2814's `copy-playground.sh` does.

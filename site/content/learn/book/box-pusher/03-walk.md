@@ -2,9 +2,11 @@
 title = "Walking"
 description = "Commands and rules: the state changes only one way. Actions become commands, and walls refuse them."
 weight = 30
+aliases = ["learn/tutorial/03-walk/", "learn/tutorial/03-walk/play/"]
 
 [extra]
 step = 3
+follows = "rules-as-commands"
 +++
 
 By the end of this step, the arrow keys walk the player around the room, and walls stop
@@ -164,7 +166,7 @@ they don't move. This test presses real keys through the whole game, and reads t
 `use shuyi::core::Pos;` with the others at the top.
 
 Since the rules are their own thing, they can be tested with no screen too. Have a look at how
-[chapter 6](@/learn/book/rules-as-commands.md#turnrules) does that, if you're curious.
+[chapter 5](@/learn/book/rules-as-commands.md#turnrules) does that, if you're curious.
 
 ## What you learned
 
@@ -173,5 +175,5 @@ Since the rules are their own thing, they can be tested with no screen too. Have
 - **Shuyi:** `TurnRules` (`check`, `apply`, `legal_commands`, `outcome`), and the chain from
   key to action to command to state.
 
-[Chapter 3](@/learn/book/actions.md) explains actions in more detail, and
-[chapter 6](@/learn/book/rules-as-commands.md) the rules. Next, it becomes a game.
+[Chapter 4](@/learn/book/actions.md) explains actions in more detail, and
+[chapter 5](@/learn/book/rules-as-commands.md) the rules. Next, it becomes a game.

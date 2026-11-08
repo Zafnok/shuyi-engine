@@ -268,7 +268,7 @@ None.
     **From 2777 (done):** the quick start's `cargo shuyi web` step on a
     new game (*In the browser*, served with `python -m http.server`)
     becomes `cargo shuyi web --serve --open` too;
-  - **From 2803 (done):** `site/content/learn/tutorial/10-ship.md`, *Build
+  - **From 2803 (done):** `site/content/learn/book/box-pusher/10-ship.md`, *Build
     it*, serves the folder with `python -m http.server`: it tries the build
     with `cargo shuyi web --serve --open` instead.
 - **Docs:**

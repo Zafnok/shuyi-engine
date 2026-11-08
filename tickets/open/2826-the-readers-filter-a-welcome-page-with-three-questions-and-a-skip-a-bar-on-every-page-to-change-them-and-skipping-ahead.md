@@ -68,6 +68,11 @@ page, and that nothing else repeat where to start.
   `book-macros.html` writes into each page: each page's URL, title and
   page-level mark. The bar and the popup go in `book-macros.html` too,
   so `chapter.html`, `project.html` and `book.html` share them.
+  **From 2824 (done):** `book-macros.html`'s `order()` writes the book's
+  order as one content path a line, and `pager(current)` and `where(p)`
+  read it; write the JSON block from `order()`. The book's front page
+  already says what the bar does (Nick's text in ADR-0090), so the bar
+  makes that sentence true.
 - **A link to an anchor** inside a hidden passage opens the passage.
 
 ## Nick input

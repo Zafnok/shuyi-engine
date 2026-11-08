@@ -4,6 +4,7 @@ description = "The Harness plays a game with no window, bots play its rules, rec
 weight = 80
 
 [extra]
+part = "chapters"
 chapter = 8
 +++
 
@@ -35,7 +36,7 @@ Which test to write depends on what changed:
 ## The rules
 
 A rule's test builds a state, applies commands and reads what happened
-([chapter 6](@/learn/book/rules-as-commands.md#turnrules)). The same seed and the same
+([chapter 5](@/learn/book/rules-as-commands.md#turnrules)). The same seed and the same
 commands always give the same state, so such a test never **flakes**, passing one run and
 failing the next.
 
@@ -68,8 +69,8 @@ in frames of 1/60 of a second. A test drives it and reads it:
   for, `quit_requested()` whether the game asked to quit, and `snapshot()` the frame as
   text.
 
-[Chapter 2](@/learn/book/games-and-screens.md#a-test-of-it) has a test of the flow, and
-[chapter 4](@/learn/book/frame-and-skins.md#why-tests-read-the-view) one that reads a view.
+[Chapter 6](@/learn/book/games-and-screens.md#a-test-of-it) has a test of the flow, and
+[chapter 2](@/learn/book/frame-and-skins.md#why-tests-read-the-view) one that reads a view.
 
 ## A look
 
@@ -327,11 +328,11 @@ bad chord in test script: unknown key chord "Entr"; expected a key such as "h", 
 
 **`called Option::unwrap() on a None value`** on `h.screen::<GardenScreen>()`. Either that
 screen isn't on the stack, so print `h.screens()`, or it has no `as_any` to be found by
-([chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below)).
+([chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below)).
 
 **A key that does nothing.** `game().harness()` hands a screen only the actions it declares, so
-look at its `actions` ([chapter 3](@/learn/book/actions.md#when-it-goes-wrong)).
+look at its `actions` ([chapter 4](@/learn/book/actions.md#when-it-goes-wrong)).
 
 **A test that passes one run and fails the next.** In a game like this one, that isn't bad
 luck: something outside the state got in, such as a clock or a hash map's order
-([chapter 6](@/learn/book/rules-as-commands.md#when-it-goes-wrong)).
+([chapter 5](@/learn/book/rules-as-commands.md#when-it-goes-wrong)).
