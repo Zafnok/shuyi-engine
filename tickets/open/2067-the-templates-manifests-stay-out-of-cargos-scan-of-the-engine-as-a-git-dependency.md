@@ -23,11 +23,12 @@ manifests are not valid as they stand: for example
 found that this prints misleading `{{crate_name}}` errors in the game's
 CI logs. A reader takes them for real failures, and real warnings can
 hide among them. Seen again on 2026-11-08 building the game's `xtask`
-at pin `c1ba9ec`. The build succeeds, but prints three of these:
+at the game's current pin (engine #302's merge). The build succeeds,
+but prints three of these:
 
 ```text
 error: invalid character `{` in package name: `{{crate_name}}`, …
- --> …\.cargo\git\checkouts\shuyi-engine-…\c1ba9ec\templates\shuyi-default\base\crates\game\Cargo.toml:2:8
+ --> …\.cargo\git\checkouts\shuyi-engine-…\<rev>\templates\shuyi-default\base\crates\game\Cargo.toml:2:8
 ```
 
 ## Nick input
