@@ -433,7 +433,7 @@ pub struct Notices {
 
 /// What `export` builds and ships for the desktop and web targets, on top of
 /// the program and its notes. The Playdate's package, a `.pdx`, takes none of
-/// it.
+/// it but its own entry in `targets`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 #[non_exhaustive]
@@ -446,6 +446,29 @@ pub struct ExportPart {
     pub features: Vec<String>,
     /// The files and folders copied into the package.
     pub beside: Vec<Beside>,
+    /// What one target builds instead, by its id (`playdate`): a game whose
+    /// Playdate library is a package of its own, say.
+    pub targets: BTreeMap<String, TargetExport>,
+}
+
+/// What one target's export builds, in place of the `export` part's.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct TargetExport {
+    /// The package it builds, in place of the one it would.
+    pub package: Option<String>,
+    /// The features of that package it turns on, in place of
+    /// `export.features`.
+    pub features: Option<Vec<String>>,
+}
+
+impl TargetExport {
+    /// A target's export that builds `package` with `features`, each `None`
+    /// to keep what the target would build.
+    pub fn new(package: Option<String>, features: Option<Vec<String>>) -> Self {
+        Self { package, features }
+    }
 }
 
 /// A file or folder of the game that ships in its package.
@@ -653,6 +676,33 @@ mod tests {
         );
         assert!(Config::parse("(export: (beside: [(optional: true)]))").is_err());
         assert!(Config::parse("(export: (files: []))").is_err());
+        assert!(part.targets.is_empty());
+    }
+
+    #[test]
+    fn the_export_part_names_a_targets_own_package_and_features() {
+        let text = r#"(export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+        "web": (features: []),
+        "linux": (),
+    },
+))"#;
+        let part = Config::parse(text).unwrap().export.unwrap();
+        assert_eq!(
+            part.targets["playdate"],
+            TargetExport::new(
+                Some("jumper-playdate".to_owned()),
+                Some(vec!["demo".to_owned()])
+            )
+        );
+        assert_eq!(
+            part.targets["web"],
+            TargetExport::new(None, Some(Vec::new()))
+        );
+        assert_eq!(part.targets["linux"], TargetExport::default());
+        assert!(Config::parse(r#"(export: (targets: {"playdate": (beside: [])}))"#).is_err());
     }
 
     #[test]

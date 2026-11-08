@@ -114,7 +114,13 @@ fn a_build_turns_on_the_export_parts_features_but_those_left_off() {
         .unwrap()
         .export
         .unwrap();
-    cx.turned_on = turned_on(Some(&part), &[]).unwrap();
+    let choice = Choice::of(Some(&part), &desktop::WINDOWS).unwrap();
+    let on = |without: &[&str], with: &[&str]| {
+        let owned = |names: &[&str]| names.iter().map(|&n| n.to_owned()).collect::<Vec<_>>();
+        let package = owned(&["a", "b", "bench"]);
+        choice.turned_on(&owned(without), &owned(with), "game", &package)
+    };
+    cx.turned_on = on(&[], &[]).unwrap();
     for exporter in [
         &desktop::WINDOWS as &dyn Exporter,
         &desktop::MACOS,
@@ -129,12 +135,80 @@ fn a_build_turns_on_the_export_parts_features_but_those_left_off() {
             assert_eq!(on, ["a", "b"], "{args:?}");
         }
     }
-    assert_eq!(turned_on(Some(&part), &["a".to_owned()]).unwrap(), ["b"]);
-    assert_eq!(turned_on(None, &[]).unwrap(), Vec::<String>::new());
-    let unknown = turned_on(Some(&part), &["c".to_owned()]).unwrap_err();
-    assert!(unknown.message().starts_with("--without c:"), "{unknown:?}");
+    assert_eq!(on(&["a"], &[]).unwrap(), ["b"]);
+    assert_eq!(on(&["a"], &["bench", "b"]).unwrap(), ["b", "bench"]);
+    let none = Choice::of(None, &desktop::WINDOWS).unwrap();
+    assert_eq!(
+        none.turned_on(&[], &[], "game", &[]).unwrap(),
+        Vec::<String>::new()
+    );
+    let unknown = on(&["c"], &[]).unwrap_err();
+    assert_eq!(
+        unknown.message(),
+        "--without c: `export.features` in shuyi.ron doesn't list it"
+    );
+    let unknown = on(&[], &["c"]).unwrap_err();
+    assert_eq!(
+        unknown.message(),
+        "--with c: the package `game` has no such feature"
+    );
+    assert_eq!(unknown.code(), codes::PROJECT_FILE);
     assert!(!playdate::PLAYDATE.takes_export_part());
     fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn a_targets_own_entry_names_its_package_and_features() {
+    let part = |text: &str| crate::project::Config::parse(text).unwrap().export.unwrap();
+    let owned = |names: &[&str]| names.iter().map(|&n| n.to_owned()).collect::<Vec<_>>();
+    // No entry: the Playdate takes nothing of the part, a desktop its
+    // features.
+    let plain = part(r#"(export: (package: "jumper-app", features: ["art"]))"#);
+    let playdate = Choice::of(Some(&plain), &playdate::PLAYDATE).unwrap();
+    assert_eq!(playdate.package, None);
+    assert_eq!(playdate.features, Vec::<String>::new());
+    let windows = Choice::of(Some(&plain), &desktop::WINDOWS).unwrap();
+    assert_eq!(
+        (windows.package, windows.features),
+        (None, &owned(&["art"])[..])
+    );
+    // An entry replaces the package and the features.
+    let split = part(
+        r#"(export: (package: "jumper-app", features: ["art"], targets: {
+            "playdate": (package: "jumper-playdate", features: ["demo", "art"]),
+            "linux": (package: "jumper-linux"),
+        }))"#,
+    );
+    let playdate = Choice::of(Some(&split), &playdate::PLAYDATE).unwrap();
+    assert_eq!(playdate.package.as_deref(), Some("jumper-playdate"));
+    assert_eq!(playdate.features, owned(&["demo", "art"]));
+    let package = owned(&["playdate", "demo", "art", "bench"]);
+    let on = playdate
+        .turned_on(
+            &owned(&["art"]),
+            &owned(&["bench"]),
+            "jumper-playdate",
+            &package,
+        )
+        .unwrap();
+    assert_eq!(on, ["demo", "bench"]);
+    let refused = playdate
+        .turned_on(&owned(&["sound"]), &[], "jumper-playdate", &package)
+        .unwrap_err();
+    assert_eq!(
+        refused.message(),
+        "--without sound: `export.targets.playdate.features` in shuyi.ron doesn't list it"
+    );
+    // An entry with no features keeps the part's.
+    let linux = Choice::of(Some(&split), &desktop::LINUX).unwrap();
+    assert_eq!(linux.package.as_deref(), Some("jumper-linux"));
+    assert_eq!(linux.features, owned(&["art"]));
+    let windows = Choice::of(Some(&split), &desktop::WINDOWS).unwrap();
+    assert_eq!(windows.package, None);
+    // A target with no exporter is refused by name.
+    let typo = part(r#"(export: (targets: {"playdat": ()}))"#);
+    let refused = Choice::of(Some(&typo), &desktop::WINDOWS).unwrap_err();
+    assert!(refused.message().contains("names `playdat`"), "{refused:?}");
 }
 
 #[test]

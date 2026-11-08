@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-07
 ---
 
 # 3096 — `shuyi export playdate` builds the game's Playdate package, with its features
@@ -100,18 +100,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With `export.targets.playdate.package` set, every Playdate step
+- [x] With `export.targets.playdate.package` set, every Playdate step
       (`cargo rustc`, the static library's path, `NOTICES.txt`) builds
       that package; without it, the package is today's (Hello, Grid's
       export plan is unchanged).
-- [ ] The Playdate build's `--features` is `playdate` plus the target's
+- [x] The Playdate build's `--features` is `playdate` plus the target's
       features, less `--without`, plus `--with`.
-- [ ] `--with` of a feature the package lacks is refused, naming it;
+- [x] `--with` of a feature the package lacks is refused, naming it;
       `--without` of one the target's list lacks is refused, as today.
-- [ ] The desktop exports read `export.features` as before when the
+- [x] The desktop exports read `export.features` as before when the
       target has no entry.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -123,5 +123,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi.ron`'s `export` part has `targets`, a table by target id of
+  `TargetExport { package, features }` (both optional, `#[non_exhaustive]`,
+  `TargetExport::new`). For that target its `package` replaces the one
+  `package_of` picks and its `features` replace `export.features`; the
+  Playdate reads its entry and nothing else of the part. `Choice::of` in
+  `crates/cli/src/export.rs` picks them, before `cargo metadata`.
+- The Playdate's `cargo rustc` turns on `playdate,<turned on>`, and
+  `NOTICES.txt`'s crates are that build's. `prepare`'s `playdate` check
+  reads the chosen package's features (unchanged code: `cx.features` is
+  that package's now).
+- `--with <feature>` (CLI, `ExportInput::with`, so the MCP tool's schema):
+  one the package lacks is refused naming it; for every exporter. The
+  `--without` refusal names the list it read
+  (`export.targets.playdate.features` or `export.features`).
+- Beyond the steps: an `export.targets` id with no exporter (`"playdat"`)
+  is refused by name, rather than ignored.
+- The contract's version is 41 (`export.input.json` gained `with`).
+- Docs: `docs/targets/playdate.md` (*What a game adds*),
+  `docs/targets/desktop.md` (the part's fields), `docs/contract.md`, the
+  book's *Targets and export*.
+- The game's side: game#1170 names `trpg-playdate` and its features in its
+  `shuyi.ron` after the pin moves to this change.
+
+No break: `ExportPart` and `ExportInput` are `#[non_exhaustive]`, and each
+gained a field.

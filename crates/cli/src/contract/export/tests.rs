@@ -40,6 +40,17 @@ fn the_arguments_are_a_target_then_out_release_and_run_once_each() {
 }
 
 #[test]
+fn with_takes_a_feature_each_time() {
+    let input = parse_args(&args(&["playdate", "--with", "bench", "--with", "demo"])).unwrap();
+    assert_eq!(input.with, ["bench", "demo"]);
+    assert_eq!(input.without, Vec::<String>::new());
+    assert_eq!(
+        parse_args(&args(&["playdate", "--with"])).unwrap_err(),
+        "--with needs a feature"
+    );
+}
+
+#[test]
 fn without_takes_a_feature_each_time() {
     let input = parse_args(&args(&["web", "--without", "a", "--without", "b"])).unwrap();
     assert_eq!(input.without, ["a", "b"]);

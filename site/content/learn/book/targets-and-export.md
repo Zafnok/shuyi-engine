@@ -193,7 +193,20 @@ Each desktop and web build turns the features on, and each package holds those f
 under their own names (`name` gives another). In a `.app`, a folder goes in `Contents/Resources`,
 where the engine's music and voices look for it, and a file goes beside the `.app`. A path that isn't
 there refuses the export, unless it is `optional`. `--without <feature>` leaves a feature off one
-build.
+build, and `--with <feature>` turns on one more that the package has, for a measuring build say.
+
+A game split into packages gives a target its own package and features in `targets`, each replacing
+the part's for that target. The Playdate builds the `game` part's package and takes nothing else of
+the `export` part, so a game whose Playdate library is a package of its own names it there:
+
+```ron
+export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+    },
+),
+```
 
 ## What a package gives away
 

@@ -294,7 +294,7 @@ fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
         "staticlib",
         "--no-default-features",
         "--features",
-        FEATURE,
+        &features(cx).join(","),
         "--target",
         triple,
     ]
@@ -304,6 +304,13 @@ fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
         args.push("--release".to_owned());
     }
     args
+}
+
+/// The features of the build: [`FEATURE`], then those `cx` turns on.
+fn features(cx: &ExportCx) -> Vec<String> {
+    let mut on = vec![FEATURE.to_owned()];
+    on.extend(cx.turned_on.iter().filter(|name| *name != FEATURE).cloned());
+    on
 }
 
 /// Cargo's profile settings for the build, by variable, over the game's own
@@ -868,7 +875,7 @@ impl Exporter for PlaydateExporter {
         fs::rename(&baked, dirs.source.join(playdate_pack()))
             .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", baked.display())))?;
         let has_audio = place_audio(cx, &dirs)?;
-        let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &[FEATURE.to_owned()])
+        let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &features(cx))
             .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
         works.push(setup_c_notice(&tools.sdk)?);

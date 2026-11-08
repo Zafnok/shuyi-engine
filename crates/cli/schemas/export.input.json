@@ -26,8 +26,16 @@
       "description": "The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
       "type": "string"
     },
+    "with": {
+      "description": "Features of the game's package to turn on for this build only (a\nmeasuring build, say): each one the package has.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
     "without": {
-      "description": "Features of `shuyi.ron`'s `export.features` to leave off this build\n(a build without the files a feature needs, say).",
+      "description": "Features of `shuyi.ron`'s `export.features` (or the target's own\nlist, `export.targets.<target>.features`) to leave off this build (a\nbuild without the files a feature needs, say).",
       "type": "array",
       "default": [],
       "items": {
