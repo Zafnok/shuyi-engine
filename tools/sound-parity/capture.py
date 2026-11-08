@@ -72,6 +72,9 @@ LEAD_FRAMES = RATE // 5
 QUIET = 8
 # A run of quiet this long while everything plays is an underrun, in frames.
 GAP_FRAMES = RATE // 200
+# A run of exact zeros inside a quad-snd sound on Windows shorter than this is a hole
+# (ticket 2049): its scenarios' own silences there are 200 ms and more.
+HOLE_FRAMES = RATE // 10
 
 
 # How quad-snd's ALSA output starts the line it prints when it underruns, spelt its way.
@@ -173,12 +176,52 @@ class Recorder:
         self.process.wait(10)
 
 
-class LoopbackRecorder:
-    """The same on Windows: the default render endpoint, through WASAPI loopback."""
+def zero_holes(pcm: bytes) -> list[tuple[int, int]]:
+    """Each run of exact zeros on both channels between a recording's first sound and
+    its last, at least `GAP_FRAMES` and shorter than `HOLE_FRAMES`, as (first frame,
+    frames): on Windows, a packet the endpoint got none of quad-snd's sound for."""
+    samples = array.array("h")
+    samples.frombytes(pcm[: len(pcm) // 4 * 4])
+    if sys.byteorder == "big":
+        samples.byteswap()
+    # Two channels' samples as one 32-bit word: zero only when both are.
+    frames = array.array("i", samples.tobytes())
+    sounding = [i for i, frame in enumerate(frames) if frame]
+    holes = []
+    run = None
+    for i in range(sounding[0], sounding[-1] + 1) if sounding else ():
+        if not frames[i]:
+            run = i if run is None else run
+        elif run is not None:
+            if GAP_FRAMES <= i - run < HOLE_FRAMES:
+                holes.append((run, i - run))
+            run = None
+    return holes
 
-    def __init__(self, path: Path) -> None:
+
+def spans(packets: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Packets as (first frame, frames), those that follow each other joined."""
+    joined: list[tuple[int, int]] = []
+    for at, frames in packets:
+        if joined and sum(joined[-1]) == at:
+            joined[-1] = (joined[-1][0], joined[-1][1] + frames)
+        else:
+            joined.append((at, frames))
+    return joined
+
+
+def overlaps(hole: tuple[int, int], silences: list[tuple[int, int]]) -> bool:
+    return any(at < hole[0] + hole[1] and hole[0] < at + frames for at, frames in silences)
+
+
+class LoopbackRecorder:
+    """The same on Windows: the default render endpoint, through WASAPI loopback.
+    With `refuse_holes`, a recording with a hole of zeros in its sound is refused too."""
+
+    def __init__(self, path: Path, refuse_holes: bool = False) -> None:
         import wasapi
 
+        self.refuse_holes = refuse_holes
         self.loopback = wasapi.Loopback(path)
         form = self.loopback.form
         if form.rate != RATE or form.channels != 2:
@@ -199,6 +242,10 @@ class LoopbackRecorder:
 
     def stop(self) -> None:
         self.loopback.stop()
+        silences = spans(self.loopback.silences)
+        if silences:
+            where = ", ".join(f"{frames} frames at {at}" for at, frames in silences)
+            print(f"{self.loopback.path.name}: the loopback flagged silent {where}", file=sys.stderr, flush=True)
         # The system dropped frames while this was reading: not a recording of it all.
         if losses := self.loopback.losses:
             where = "; ".join(str(loss) for loss in losses)
@@ -206,6 +253,12 @@ class LoopbackRecorder:
                 f"the loopback lost frames {len(losses)} times ({where}; "
                 f"the reader's longest wait {self.loopback.longest_ms:.0f} ms)"
             )
+        if self.refuse_holes and (holes := zero_holes(self.loopback.path.read_bytes())):
+            where = "; ".join(
+                f"{frames} frames at {at}, {'flagged' if overlaps((at, frames), silences) else 'not flagged'} silent"
+                for at, frames in holes
+            )
+            raise LostFrames(f"the sound has {len(holes)} holes of zeros ({where})")
 
 
 class LostFrames(Exception):
@@ -348,20 +401,26 @@ class Windows:
     """Plays with the native probe on Windows: the recorder is the loopback, and the
     process's CPU and memory are read from here, as the browser's are, since the
     probe has no way to read them on this system. `cpu_ms` counts millions of cycles:
-    only its ratios are held, and a runner's clock isn't a fixed number."""
+    only its ratios are held, and a runner's clock isn't a fixed number.
+
+    `holes` is quad-snd's: a scenario recorded with a hole of zeros in its sound is
+    made again, as natively one it underran in is (ticket 2049). A timing's gaps are
+    what it counts, and the in-house backend's holes are its own to find (3089)."""
 
     probe: Path
     stage: Path
+    holes: bool = False
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
-        return whole(lambda: self.play_once(order, record, perf))
+        refuse_holes = self.holes and order.startswith("scenario ")
+        return whole(lambda: self.play_once(order, record, perf, refuse_holes))
 
-    def play_once(self, order: str, record: Path, perf: dict[str, float] | None) -> list[str]:
+    def play_once(self, order: str, record: Path, perf: dict[str, float] | None, refuse_holes: bool = False) -> list[str]:
         # Nothing of a refused recording's run is kept.
         if perf is not None:
             perf.clear()
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
-        recorder = LoopbackRecorder(record)
+        recorder = LoopbackRecorder(record, refuse_holes)
         recorder.flowing()
         process = subprocess.Popen([str(self.probe)], cwd=self.stage, stderr=subprocess.PIPE, text=True)
         timer = threading.Timer(TIMEOUT, process.kill)
@@ -719,7 +778,7 @@ def windows(args: argparse.Namespace) -> int:
         wasapi.set_endpoint_rate(RATE)
     keeper = wasapi.Endpoint()
     try:
-        old = Windows(args.probe.resolve(), args.dir.resolve())
+        old = Windows(args.probe.resolve(), args.dir.resolve(), holes=True)
         new = Windows(args.new_probe.resolve(), args.dir.resolve()) if args.new_probe else None
         if args.only in (None, "windows"):
             base = args.dir / "windows"

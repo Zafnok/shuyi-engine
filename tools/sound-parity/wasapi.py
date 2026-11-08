@@ -263,13 +263,16 @@ class Loopback:
     `frames` counts what has come; `start` is the wall clock of frame 0, the earliest
     arrival less the frames before it, as `capture.py`'s recorder has it. `losses`
     holds each place the system says frames were dropped, and `longest_ms` the
-    longest the reader went between two looks."""
+    longest the reader went between two looks. `silences` holds each packet the
+    system flagged silent, as (first frame, frames): it is written as zeros, and a
+    hole of zeros in a sound says whose it is by being among them or not (ticket 2049)."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
         self.frames = 0
         self.start = float("inf")
         self.losses: list[Loss] = []
+        self.silences: list[tuple[int, int]] = []
         self.longest_ms = 0.0
         # How long the reader hadn't looked, at its latest look.
         self.waited_ms = 0.0
@@ -331,6 +334,7 @@ class Loopback:
         size = frames.value * self.form.frame_bytes
         if flags.value & BUFFER_SILENT:
             self.chunks.append(bytes(size))
+            self.silences.append((self.frames, frames.value))
         else:
             self.chunks.append(ctypes.string_at(data, size))
         # The first packet after a start says so, and means nothing was lost.

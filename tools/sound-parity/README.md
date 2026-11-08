@@ -17,7 +17,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
 | `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
 | `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
-| `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from, or a scenario quad-snd underran in |
+| `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from, a scenario quad-snd underran in, or one with a hole of zeros in quad-snd's sound on Windows |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
@@ -78,7 +78,18 @@ that needed. A recording the loopback lost frames from is never judged, so `capt
 again, up to three times, and fails the step if each loses frames (ticket 2047).
 Each refusal is a warning in the job's log, with how many frames went, where, and
 how long the reader hadn't looked: as long as the half-second buffer, the recorder
-was late; much less, the system dropped them. To see only the timings of a recording:
+was late; much less, the system dropped them.
+
+A quad-snd scenario with a hole of exact zeros in its sound, on both channels, from
+5 ms up to 100 ms long, is recorded again the same way (ticket 2049). The endpoint
+then got none of quad-snd's sound for a packet, and the silent stream that keeps it
+running mixed to zeros; the device's position doesn't skip, so nothing above sees
+it. A scenario's own silences there are the marker's 500 ms gap, pauses and stops of
+200 ms and more, and the lead and the end, which lie outside the sound. A hole that
+joins one of those can't be told from it. The in-house backend's holes are its own
+to find (3089), and a timing's are its `underruns` count. Every packet the loopback
+flags silent is a line in the log, and a refusal says whether the hole was flagged.
+To see only the timings of a recording:
 
 ```bash
 cargo xtask sound-parity perf windows --dir target/sound-parity
