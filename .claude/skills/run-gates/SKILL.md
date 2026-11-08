@@ -321,7 +321,7 @@ cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
-cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md
+cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
 
@@ -364,7 +364,8 @@ public API of every engine crate, and fails a break that the branch's
 ticket has no `Breaking:` line for (the `work-ticket` skill, §5). It also
 fails a change to the public API that changes no file of the book
 (`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
-`Book:` line saying why (ticket 2815). Before pushing a change you think
+`Book:` line saying why (ticket 2815), and a change to the contract's
+`VERSION` other than one over the base's (ticket 2052). Before pushing a change you think
 breaks, run it from the repository root:
 
 ```bash
