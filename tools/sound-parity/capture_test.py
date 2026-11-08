@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""`capture.py`'s choice to record a play again (ticket 2047), run in CI's job."""
+"""`capture.py`'s choice to record a play again (tickets 2047 and 2048), run in CI's jobs."""
 
 from __future__ import annotations
 
 import contextlib
 import io
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
-from capture import LoopbackRecorder, LostFrames, whole
+from capture import PREFIX, LoopbackRecorder, LostFrames, Native, whole
 
 
 def plays(*outcomes: object):
@@ -52,6 +54,51 @@ class Whole(unittest.TestCase):
         with self.assertRaises(SystemExit):
             whole(play)
         self.assertEqual(len(played), 1)
+
+
+class NativeUnderrun(unittest.TestCase):
+    """quad-snd prints its ALSA underruns on stdout; a scenario played through one is made again."""
+
+    def player(self, *stdouts: str) -> tuple[Native, list[None]]:
+        left = list(stdouts)
+        ran = []
+
+        def run(*_args: object, **_kwargs: object) -> SimpleNamespace:
+            ran.append(None)
+            return SimpleNamespace(returncode=0, stdout=left.pop(0), stderr=f"{PREFIX}{{\"event\":\"step\"}}\n")
+
+        recorder = SimpleNamespace(flowing=lambda: None, stop=lambda: None, start=1.0)
+        self.enterContext(mock.patch("capture.subprocess.run", run))
+        self.enterContext(mock.patch("capture.Recorder", lambda *_: recorder))
+        self.enterContext(mock.patch("capture.time.sleep", lambda _: None))
+        stage = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        return Native(Path("probe"), stage, SimpleNamespace(env={})), ran
+
+    UNDERRAN = "Underrun occured: -EPIPE, attempting recover\n"
+
+    def test_a_scenario_quad_snd_underran_in_is_recorded_again_and_only_the_whole_one_answers(self):
+        native, ran = self.player(self.UNDERRAN, "")
+        perf: dict[str, float] = {}
+        with contextlib.redirect_stderr(io.StringIO()) as said:
+            lines = native.play("scenario wav_48k\n", Path("wav_48k.pcm"), perf)
+        self.assertEqual(len(ran), 2)
+        self.assertEqual(lines, ['{"event":"step"}'])
+        self.assertEqual(perf, {"_start": 1.0})
+        self.assertIn("::warning::quad-snd underran 1 times (Underrun occured: -EPIPE", said.getvalue())
+
+    def test_three_scenarios_in_a_row_underrunning_fail_the_step(self):
+        native, ran = self.player(self.UNDERRAN, self.UNDERRAN, self.UNDERRAN)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failed:
+            native.play("scenario wav_48k\n", Path("wav_48k.pcm"), {})
+        self.assertEqual(len(ran), 3)
+        self.assertIn("in each of 3 recordings", str(failed.exception))
+
+    def test_a_timing_counts_its_own_gaps_and_isnt_played_again(self):
+        native, ran = self.player(self.UNDERRAN)
+        with contextlib.redirect_stdout(io.StringIO()) as echoed:
+            native.play("perf 0\n", Path("perf-a.pcm"), {})
+        self.assertEqual(len(ran), 1)
+        self.assertEqual(echoed.getvalue(), self.UNDERRAN)
 
 
 class Stop(unittest.TestCase):
