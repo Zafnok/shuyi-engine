@@ -362,6 +362,13 @@ mod tests {
             assert_eq!(painted_row(&c, &v, bottom + 1), "Defaults restored");
             assert_eq!(painted_row(&c, &v, 31), "help", "{count}");
         }
+        // Taller still, the panel rises no higher than row 1.
+        let rows: Vec<RowView> = (0..26)
+            .map(|i| row(&format!("Row {i}"), ValueView::None, false))
+            .collect();
+        let v = view(rows);
+        assert!(painted_row(&c, &v, 1).starts_with('┌'));
+        assert!(!painted_row(&c, &v, 0).starts_with('┌'));
     }
 
     #[test]
