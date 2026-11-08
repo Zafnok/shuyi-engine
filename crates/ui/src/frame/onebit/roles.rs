@@ -23,11 +23,14 @@ pub const fn luminance(rgb: Rgb) -> u8 {
     ((77 * rgb.r as u32 + 150 * rgb.g as u32 + 29 * rgb.b as u32) >> 8) as u8
 }
 
-/// A role's patterns, as the renderer draws them.
+/// A role's patterns, as the renderer draws them: a glyph in `glyph`
+/// (edged if the role says), a rectangle in `shape` (flipping if it
+/// says), a cell's background in `bg`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Role {
     name: String,
-    fg: Shade,
+    glyph: Shade,
+    shape: Shade,
     bg: Shade,
 }
 
@@ -54,9 +57,17 @@ impl PatternMap {
         let mut roles = BTreeMap::new();
         for (name, rgb) in palette {
             if let Some(patterns) = map.get(name) {
+                let fg = Shade::from(patterns.fg);
                 roles.entry(rgb).or_insert_with(|| Role {
                     name: name.to_owned(),
-                    fg: patterns.fg.into(),
+                    glyph: Shade {
+                        edged: patterns.edge,
+                        ..fg
+                    },
+                    shape: Shade {
+                        flips: patterns.invert,
+                        ..fg
+                    },
                     bg: patterns.background().into(),
                 });
             }
@@ -83,23 +94,24 @@ impl Shades for PatternMap {
             .map_or_else(|| Self::dithered(rgb), |role| role.bg)
     }
 
-    /// The role's foreground, or solid white or black by the colour's
-    /// luminance.
+    /// The role's foreground, edged if the role has `edge`, or solid white
+    /// or black by the colour's luminance.
     fn glyph(&self, rgb: Rgb) -> Shade {
         self.roles.get(&rgb).map_or_else(
             || {
                 let solid = if luminance(rgb) >= 128 { u8::MAX } else { 0 };
                 Shade::rows([solid; 8])
             },
-            |role| role.fg,
+            |role| role.glyph,
         )
     }
 
-    /// The role's foreground, or the colour dithered.
+    /// The role's foreground, flipping if the role has `invert`, or the
+    /// colour dithered.
     fn shape(&self, rgb: Rgb) -> Shade {
         self.roles
             .get(&rgb)
-            .map_or_else(|| Self::dithered(rgb), |role| role.fg)
+            .map_or_else(|| Self::dithered(rgb), |role| role.shape)
     }
 }
 

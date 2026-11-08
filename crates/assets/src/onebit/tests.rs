@@ -26,6 +26,7 @@ fn each_patterns_black_pixels_match_its_density() {
         (Base::HLines, 16),
         (Base::VLines, 16),
         (Base::Checker2, 32),
+        (Base::Dots, 8),
     ];
     for (base, n) in densities {
         assert_eq!(base.black_pixels(), n, "{}", base.name());
@@ -110,7 +111,7 @@ fn patterns_look_alike_when_one_is_the_other_moved() {
     assert!(!p(Base::Dither25).looks_like(p(Base::Dither25).inverted()));
     assert!(!p(Base::Dither50).looks_like(p(Base::Checker2)));
     assert!(!Pattern::BLACK.looks_like(Pattern::WHITE));
-    // Of the 20 patterns, only these pairs look alike: a solid and the
+    // Of the 22 patterns, only these pairs look alike: a solid and the
     // other inverted, a dither and the opposite one inverted (Bayer's
     // order is the same upside down, moved), and the two checkers
     // inverted.
@@ -161,7 +162,8 @@ fn a_pattern_is_spelled_as_its_base_or_inverted() {
     assert!(ron::from_str::<Pattern>("Grey").is_err());
 }
 
-/// The example map of the module's doc.
+/// The example map of the module's doc, but its `text.on_pattern` and
+/// `cursor`.
 const MAP: &str = r#"(
     roles: {
         "text": (fg: Black, bg: White),
@@ -366,4 +368,101 @@ fn text_is_black_on_white_or_white_on_black_or_a_warning() {
             )
         );
     }
+}
+
+#[test]
+fn a_text_role_that_inverts_is_an_error_naming_it() {
+    let source = MAP.replace(
+        "(fg: Black, bg: White)",
+        "(fg: Black, bg: White, invert: true)",
+    );
+    let problems = check(&teams(), &map(&source));
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0].severity, Severity::Error);
+    assert_eq!(problems[0].rule, Rule::Text);
+    assert_eq!(problems[0].roles, ["text"]);
+    assert_eq!(
+        problems[0].message,
+        "text role \"text\" can't invert: its glyphs would flip"
+    );
+    // Edged text is fine, and so is a role that inverts but isn't text.
+    let edged = MAP.replace(
+        "(fg: Black, bg: White)",
+        "(fg: Black, bg: White, edge: true)",
+    );
+    assert_eq!(check(&teams(), &map(&edged)), []);
+    let other = MAP.replace("(fg: Dither50)", "(fg: Dither50, invert: true)");
+    assert_eq!(check(&teams(), &map(&other)), []);
+}
+
+#[test]
+fn roles_of_one_colour_must_share_edge_and_invert_too() {
+    let mut palette = teams();
+    palette.colors.insert("team.ally".into(), [255, 0, 0]);
+    for extra in ["edge: true", "invert: true"] {
+        let source = MAP.replace(
+            "(fg: Inverted(DiagonalUp))",
+            &format!("(fg: Dither50, {extra})"),
+        );
+        let mut read = map(&source);
+        read.distinct.clear();
+        let problems = check(&palette, &read);
+        assert_eq!(problems.len(), 1, "{extra}: {problems:?}");
+        assert_eq!(problems[0].rule, Rule::SharedColour);
+    }
+}
+
+#[test]
+fn edge_and_invert_are_read_and_default_to_false() {
+    let read = map(r#"(roles: {
+            "a": (fg: Black),
+            "b": (fg: Black, edge: true),
+            "c": (fg: Black, bg: White, invert: true),
+            "d": (fg: Dots, edge: false, invert: false),
+        })"#);
+    let black = RolePatterns::new(Pattern::BLACK, Pattern::BLACK);
+    let a = read.get("a").unwrap();
+    assert!(!a.edge && !a.invert);
+    assert_eq!(a.background(), Pattern::BLACK);
+    let b = read.get("b").unwrap();
+    assert!(b.edge && !b.invert);
+    assert_eq!((b.fg, b.bg), (Pattern::BLACK, None));
+    assert_eq!(*b, RolePatterns::of(Pattern::BLACK).with_edge(true));
+    assert_eq!(
+        read.get("c"),
+        Some(&RolePatterns::new(Pattern::BLACK, Pattern::WHITE).with_invert(true))
+    );
+    assert!(!read.get("d").unwrap().edge);
+    assert_eq!(read.get("d").unwrap().fg, Pattern::new(Base::Dots));
+    // The builders set one each and keep the rest.
+    let both = black.with_edge(true).with_invert(true);
+    assert!(both.edge && both.invert);
+    assert_eq!((both.fg, both.bg), (black.fg, black.bg));
+    assert_eq!(both.with_edge(false).with_invert(false), black);
+    // Written back, the map reads the same.
+    let written = ron::to_string(&read).unwrap();
+    assert_eq!(map(&written), read);
+}
+
+#[test]
+fn dots_are_one_pixel_in_eight_rows_staggered() {
+    assert_eq!(
+        Base::Dots.rows(),
+        [0x77, 0xff, 0xdd, 0xff, 0x77, 0xff, 0xdd, 0xff]
+    );
+    assert_eq!(Base::Dots.black_pixels(), 8);
+    let inverted = Pattern::new(Base::Dots).inverted();
+    assert_eq!(inverted.rows(), Base::Dots.rows().map(|row| !row));
+    assert_eq!(inverted.black_pixels(), 56);
+    let read: Pattern = ron::from_str("Inverted(Dots)").unwrap();
+    assert_eq!(read, inverted);
+    assert_eq!(Pattern::new(Base::Dots).to_string(), "Dots");
+    // Dots look like no other pattern, and not like themselves inverted.
+    for other in every_pattern() {
+        if other.base() != Base::Dots {
+            assert!(!Pattern::new(Base::Dots).looks_like(other), "{other}");
+            assert!(!inverted.looks_like(other), "{other}");
+        }
+    }
+    assert!(!inverted.looks_like(Pattern::new(Base::Dots)));
 }
