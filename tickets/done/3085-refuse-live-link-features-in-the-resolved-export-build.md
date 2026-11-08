@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3004", "3075"]
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 3085 — Refuse live-link features in the resolved export build
@@ -97,26 +97,26 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Direct `link`, `default = ["link"]`, and one- and two-level
+- [x] Direct `link`, `default = ["link"]`, and one- and two-level
       requested aliases that enable `link` are refused, naming the
       activated package and feature.
-- [ ] A normal dependency enabling an engine live-link feature is
+- [x] A normal dependency enabling an engine live-link feature is
       refused, including dependency renaming and feature forwarding.
-- [ ] `--without devtools` passes only if the resolved build has no
+- [x] `--without devtools` passes only if the resolved build has no
       other path enabling the link; a default path still causes refusal.
-- [ ] A harmless feature named `linked`, link in a dev-dependency or
+- [x] A harmless feature named `linked`, link in a dev-dependency or
       unrelated workspace member, and a link dependency excluded by the
       selected target all pass the guard.
-- [ ] The guard runs before preparation/build/package work for desktop,
+- [x] The guard runs before preparation/build/package work for desktop,
       web and Playdate exporter plans; a refusal cannot produce a new
       distributable or invoke `--run`.
-- [ ] A feature-resolution failure is an export error with its cause,
+- [x] A feature-resolution failure is an export error with its cause,
       and never a successful or unverified package.
-- [ ] Existing Hello, Grid exports pass with their normal feature sets;
+- [x] Existing Hello, Grid exports pass with their normal feature sets;
       no test disables engine dev-dependencies to hide false positives.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -129,5 +129,41 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `export::live_link::refuse` resolves every build an exporter plans
+  (`Exporter::cargo_args`: the desktop slices, the web build, the
+  Playdate's device and Simulator libraries) with `cargo tree`, from the
+  build's own arguments (`live_link::tree_args`: `-p`, `--target`,
+  `--features`/`-F`, `--no-default-features`, `--all-features` kept; an
+  unknown flag refuses), edges `normal,build`, before anything is
+  prepared or built. It refuses the package's own `link` and
+  `shuyi-app/link` or `shuyi-platform/link`, naming each and the packages
+  it was reached through. A failing or unreadable resolution refuses the
+  export with its cause.
+- The common path, `contract::export::export`, calls it after
+  `ExportCx::of` and before `prepare` and `export` (a new private `build`
+  step); the literal `no_live_link` stays first and in the exporters.
+- A new defaulted method, `Exporter::rustflags(triple)`, gives the Rust
+  flags an exporter adds; the Playdate's (`--cfg=shuyi_playdate_sdk` and
+  the device's) now come from it for the build and the check alike, so a
+  `cfg` dependency resolves the same in both. The check sets
+  `CARGO_ENCODED_RUSTFLAGS` exactly when the build does.
+- Tests (`export/live_link/tests.rs`): the flags handed to the tree for
+  every exporter; reading `cargo tree`; the diagnostics; small fixture
+  workspaces resolved by the real Cargo, with stand-ins for the engine's
+  two packages: default, one- and two-level aliases, a helper's
+  defaults, renamed and forwarded dependencies, `shuyi-platform` alone,
+  `linked`, a dev-dependency, another member, a `wasm32`-only and a
+  `cfg(shuyi_playdate_sdk)`-only dependency, `--without` through
+  `ExportCx::of`, an unresolvable build; the `export` contract refusing
+  windows, web and playdate before preparing or building anything (no
+  file, no `target` folder); Hello, Grid's exports passing while
+  `shuyi-app`'s dev-dependency turns its link on. By hand: `shuyi export
+  windows` and `web` on Hello, Grid pass.
+- ADR-0092 records the decision; it amends ADR-0058 §2. ADR-0091 is
+  taken by the open PR 318, so this one is 0092.
+- 3082 is not done: its either-order clause now says edition flags go in
+  the exporter plan, which this check resolves, and that a new build flag
+  must be taught to `tree_args`.
+- No break: the trait method has a default, and the rest are additions.
+  The book's export chapter (`targets-and-export.md`) and
+  `docs/contract.md` say the rule.

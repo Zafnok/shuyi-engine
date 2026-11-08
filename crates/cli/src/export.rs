@@ -14,13 +14,18 @@
 //! them with `objcopy --strip-debug` (which moves no code, so a crash's
 //! offsets name the same lines).
 //!
-//! `shuyi.ron`'s `export` part names the features a build turns on, never the
-//! debug build's live link (`link`), and the files and folders copied into
-//! the package ([`ExportCx::copy_beside`]); its `targets` give one target a
-//! package and features of its own, the only part of it the Playdate reads.
-//! `--with` turns on one more feature the package has for one build. A game
-//! with no such part gets a build with no feature and a package with nothing
-//! else in it.
+//! `shuyi.ron`'s `export` part names the features a build turns on and the
+//! files and folders copied into the package ([`ExportCx::copy_beside`]);
+//! its `targets` give one target a package and features of its own, the
+//! only part of it the Playdate reads. `--with` turns on one more feature
+//! the package has for one build. A game with no such part gets a build with
+//! no feature and a package with nothing else in it.
+//!
+//! No build turns on the debug build's live link (`link`), however Cargo
+//! would reach it: by the arguments, the package's `default` list, a
+//! feature that lists it, or a dependency asking for the engine's. Each
+//! build is resolved by Cargo and refused before anything is prepared or
+//! built ([`live_link`]).
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part if it has one ([`disclosure`]).
@@ -28,6 +33,7 @@
 pub mod archive;
 mod desktop;
 pub mod disclosure;
+pub mod live_link;
 pub mod paths;
 pub mod playdate;
 mod web;
@@ -66,6 +72,12 @@ pub trait Exporter: Sync {
 
     /// The `cargo` arguments of each build it runs.
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>>;
+
+    /// The Rust flags its build for `triple` adds to the machine's, which
+    /// can choose a target's dependencies by a `cfg`: by default none.
+    fn rustflags(&self, _triple: &str) -> &'static [&'static str] {
+        &[]
+    }
 
     /// Whether `shuyi.ron`'s `export` part applies to it.
     fn takes_export_part(&self) -> bool {
@@ -741,7 +753,8 @@ fn program(package: &str, bins: &[String]) -> Result<String, ExportError> {
 }
 
 /// Refuses a build whose `args` turn on a feature named `link`, the debug
-/// build's live link (ADR-0035).
+/// build's live link (ADR-0047), by its arguments alone: what the build
+/// turns on as Cargo resolves it is [`live_link::refuse`]'s.
 pub fn no_live_link(args: &[String]) -> Result<(), ExportError> {
     let features = args
         .windows(2)

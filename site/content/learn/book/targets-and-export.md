@@ -195,6 +195,17 @@ where the engine's music and voices look for it, and a file goes beside the `.ap
 there refuses the export, unless it is `optional`. `--without <feature>` leaves a feature off one
 build, and `--with <feature>` turns on one more that the package has, for a measuring build say.
 
+No export ever turns on the debug build's live link, the `link` feature `cargo shuyi attach` talks
+to. Naming it isn't the only way to turn it on: a `default = ["link"]`, a `devtools = ["link"]` the
+export lists, or a dependency that asks for `shuyi-app/link` under any name turn it on too. So before
+it prepares or builds anything, the export asks Cargo what each of its builds turns on, for that
+build's target and with its own features, and refuses one that has the game's `link`,
+`shuyi-app/link` or `shuyi-platform/link` on, naming the feature and the packages it was reached
+through. A dev-dependency doesn't count, nor a dependency only for another target, since neither is
+in the program shipped. `--without devtools` passes only when nothing else turns the link on: take
+it out of `default` or the dependency's `features` instead. When Cargo can't answer, the export
+stops with its error rather than guess.
+
 A game split into packages gives a target its own package and features in `targets`, each replacing
 the part's for that target. The Playdate builds the `game` part's package and takes nothing else of
 the `export` part, so a game whose Playdate library is a package of its own names it there:
