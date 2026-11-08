@@ -141,7 +141,8 @@ to `t2050-trace`. The branch tracked `origin/main`, `push.default` is `upstream`
 and the owner's token bypassed the ruleset. It changed only the traced `sound.js`, a
 scratch workflow and `trace.py`. The game's engine watcher ran on it and only
 updated its `engine-pin` issue. Zafnok/shuyi-engine#319 reverts it exactly, back to
-26ae83bb. This branch starts from 26ae83bb.
+26ae83bb. This branch carries that same revert commit (32ce6172), so it merges
+whichever of the two lands first.
 
 **Follow-ups:** 2068 (above).
 
