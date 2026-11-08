@@ -24,7 +24,22 @@ question at the end of a step or a chapter, answered in the page, with
 why each answer is right or wrong. The Rust book's quizzes and Exercism's
 concept checks do the same.
 
-2823's ADR sketches the check's shape. 2825 marked every passage with its
+**From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §8 sketches the check.
+
+- **Where:** a step or a concept chapter ends with a `## Check yourself`
+  section holding its checks. A step's exercises (2828) follow them there.
+  A chapter with project steps after it ends with its checks, then the
+  line naming its steps (ADR-0090 §2).
+- **The shape:** a body shortcode, `{% check(to="rust") %}` …
+  `{% end %}`. Its first paragraph is the question. Then comes a list,
+  one item per answer: `- [x]` marks a right answer and `- [ ]` a wrong
+  one, and ` — ` comes before why. `to` is optional.
+- **Not yet tried:** parsing that list in Tera is this ticket's to try.
+  If it can't be done cleanly, the checks go in a TOML file the
+  shortcode names, as the tries do. The ADR lists that as the
+  alternative, and this ticket's notes say which was chosen.
+
+2825 marked every passage with its
 audience, and 2826's filter hides what a reader knows; a check carries an
 audience too, so the filter hides a check on Rust from a reader who knows
 Rust.
@@ -49,8 +64,9 @@ None.
   the answers, and which is right and why, as text.
 - **The check of the checks:** a check with no right answer, an answer
   with no reason, or an unknown audience fails the build checks.
-- **The checks themselves:** two or three at the end of each project step
-  and each concept chapter, on what that page taught, each answer's reason
+- **The checks themselves:** two or three in the `## Check yourself`
+  section at the end of each project step and each concept chapter, on
+  what that page taught, each answer's reason
   pointing back at the passage that explains it. A check of code asks what
   a line does, never to recall a name.
 
@@ -61,7 +77,7 @@ None.
 
 ## Implementation steps
 
-1. Read 2823's ADR, 2825's mark and its `llms.rs` expansion, 2826's
+1. Read ADR-0090, 2825's mark and its `llms.rs` expansion, 2826's
    script, and the pages.
 2. Write the shortcode, its styles, its script (beside 2826's
    `book-filter.js`), its expansion and the check of the checks.

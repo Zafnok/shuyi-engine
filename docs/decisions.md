@@ -1588,3 +1588,41 @@ below. Nick:
   comes after the playground they are done in.
 - This sharpens "no real version before the engine is stable"
   (2026-10-21): stable means the tickets above are done.
+
+## 2026-11-08: the book's project folds into its chapters, and a fourth kind of reader
+
+Source: Nick, in a session of this repository, reading a mock of 2823's
+welcome page and contents in the browser:
+
+> "we have 3 sections devoted to where to start now. The starting
+> questions, the where to start, and start here. This is entirely
+> redundant. The onboarding questions should be a modal popup on first
+> visit, with the skip option on the modal. Additionally, we have no
+> question currently for the Coming from Godot, Unity... etc on the
+> questions onboarding section so should add that. That would affect
+> stuff like Game Design sections like if they don't know about game
+> loops or ECS or sprites. Additionally, I am not a fan of the current
+> folding of book and tutorial, it looks like you appended when it
+> should be a fold. For instance, many tutorial books for lets say Rust
+> Book will have an end of chapter project or something or a keystone
+> project or followup project after finishing the whole book. This is
+> what I'm envisioning when I say fold tutorial and book."
+
+Asked how the project folds in, he chose **"Both"**: each chapter ends
+with the project's step that uses its idea, and a second, bigger
+follow-up project comes after the whole book. Asked how to ask about
+making games, he chose **"One game question"**: "Have you made a game
+before?", answered No, Yes in another engine, or Yes with Shuyi. Shown
+the revised mock, he signed it off: **"Yes, signed off"**.
+
+**Rules:**
+
+- **The project is folded into the chapters.** The chapters go in the
+  project's order, and each ends with the steps that use its idea. A
+  follow-up project, a new game, comes after the whole book (2830).
+- **Four kinds of reader:** new to programming, new to making games, new
+  to Rust, new to Shuyi. Game loops, sprites and ECS are notes for a
+  reader new to making games (2825).
+- **The questions open as a popup on a first visit,** with the skip in
+  the popup. Nothing else on the page says where to start (2826).
+- ADR-0090 holds the design.

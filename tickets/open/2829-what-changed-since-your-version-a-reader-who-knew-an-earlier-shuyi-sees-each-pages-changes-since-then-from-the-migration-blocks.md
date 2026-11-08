@@ -33,11 +33,20 @@ What there is:
   API that changes no file of the book and has no `Book:` line.
 - **Released versions keep a frozen copy** of the site, which `llms.txt`
   lists (`crates/xtask/src/llms.rs`, *Released versions*).
-- **The reader's filter** (2826): the welcome page and the bar, with the
-  answers in `localStorage`. "Have you made a game with Shuyi?" is one of
-  its questions.
-- 2823's ADR sketches the version marks and how a migration block names
-  the book's page it changes.
+- **The reader's filter** (2826): the popup on a first visit and the bar,
+  with the answers in `localStorage`. "Have you made a game before?",
+  answered "Yes, with Shuyi", is how a reader says they know Shuyi.
+- **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §7 sketches the version marks.
+  - A passage is wrapped in `{% since(version="0.4.0") %}` …
+    `{% end %}`. The version is as Cargo writes it, and the compare
+    link goes to its `x.y` frozen copy.
+  - A `since` may hold `newcomer` marks, and none of its own kind.
+  - It is block-level, as the `newcomer` mark is.
+  - A whole page new in a version has `[extra] since = "0.4.0"`.
+  - A migration block's optional `book` field is an `@/` path with an
+    optional anchor.
+  - The reader's version is a `"version"` field added to the filter's
+    `localStorage` entry, `shuyi-book` (§6).
 
 ## Nick input
 
@@ -57,7 +66,7 @@ None.
 - **The page data:** `cargo xtask changelog` (or a sibling command)
   writes, for each book page, the migration blocks that name it with
   their versions, for the site's build (`site/data/`, never committed).
-- **The reader's version:** the bar and the welcome page take "the version
+- **The reader's version:** the bar and the popup take "the version
   I knew", from the released versions. Each book page then shows a
   **Changed since X** box at its top, listing each migration block that
   names it from after X (its `what`, its `before` and `after`), and marks
@@ -77,13 +86,13 @@ None.
 
 ## Implementation steps
 
-1. Read 2823's ADR, 2826's completion notes, `changelog.rs` and its
+1. Read ADR-0090, 2826's completion notes, `changelog.rs` and its
    migration parser, the `Book:` check, and `llms.rs`'s *Released
    versions*.
 2. Add `book` to the migration block, with its checks and tests, and the
    page data.
 3. Write the version mark's check, and add the reader's version to the
-   bar, the welcome page and the script.
+   bar, the popup and the script.
 4. Write the *Changed since X* box, the passage marks and the compare
    link, and the twins' change lists.
 5. Try it on a built site with two fixture releases (the tests' tags or a

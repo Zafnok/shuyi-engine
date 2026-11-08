@@ -95,13 +95,22 @@ say whether a new developer would know where to start.
   - every guide links only to modules and tickets that exist;
   - a guide marked planned names at least one open ticket.
 - **The book. From 2802 (done):** it publishes `docs/guides/` with the
-  catalog, as a part after its chapters
-  (`site/content/learn/book/`, numbered by `extra.chapter`; a page with
-  none lists after them, `site/templates/book.html`): give the guides
-  their own heading on the book's contents and in Learn
+  catalog. Give the guides a heading in Learn
   (`site/templates/learn.html`).
+  **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §1–§2 make the guides a part of the
+  book, *Guides*, after the chapters and before the follow-up project
+  (2830) and the appendices. It is a
+  section, `site/content/learn/book/guides/`: an `_index.md` holding the
+  catalog's lines, and the copied guides as its pages.
+  **Either order with 2824:**
+  - if 2824 is done, the book's contents and its pager come from the
+    book's `[extra] parts`: add `{ section = "guides" }` there, after
+    the `chapters` entry;
+  - if not, give the guides' section its own heading in `book.html`
+    after the chapters, and 2824 turns it into that entry.
+
   **From 2808 (done):** the guides reach Learn as Markdown files
-  copied into `site/content/learn/` before Zola runs, in `pages.yml`
+  copied into `site/content/learn/book/guides/` before Zola runs, in `pages.yml`
   and in `ci.yml`'s `site` job alike (before its `cargo xtask llms`
   too), each with front matter (`title`, `description`, `weight`) and a
   name in slug form. `cargo xtask llms` twins them and puts them in

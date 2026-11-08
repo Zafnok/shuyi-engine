@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2817"]
 nick_input: sign-off
-completed:
+completed: 2026-11-08
 ---
 
 # 2823 — One book, the design
@@ -158,17 +158,17 @@ engine would each know where to start.
 
 ## Acceptance criteria
 
-- [ ] The ADR decides points 1–8 above, each with what was tried in step 3
+- [x] The ADR decides points 1–8 above, each with what was tried in step 3
       where it applies.
-- [ ] The table of contents names every existing book and tutorial page
+- [x] The table of contents names every existing book and tutorial page
       in its new place, and nothing is left out.
-- [ ] Every old `/learn/tutorial/…` address has a planned new address.
-- [ ] 2824–2829 match the ADR, and the open tickets it changes are
+- [x] Every old `/learn/tutorial/…` address has a planned new address.
+- [x] 2824–2829 match the ADR, and the open tickets it changes are
       updated in this PR.
-- [ ] Nick's sign-off is in the completion notes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a
+- [x] Nick's sign-off is in the completion notes.
+- [x] The book's chapter is updated (2802), or the completion notes have a
       `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -177,5 +177,103 @@ engine would each know where to start.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)
+decides points 1–8, with the table of contents (every book and tutorial
+page, its new address and its old one) and the front page's and the
+popup's text. Its *What was tried* records the step 3 trial on a scratch
+worktree with Zola 0.21.0:
+
+- a nested project section;
+- a pager through the whole book, built from `extra.parts` and each
+  step's `follows`;
+- a body shortcode around Markdown and a `snippet`;
+- `aliases` on pages and on a section, keeping the `#anchor`;
+- `cargo xtask llms` over the result: one twin for each moved page, and
+  the budget finding below.
+
+The research lines (the Rust book, Rust by Example, MDN, Godot's docs)
+are in its *Context*.
+
+**Nick's sign-off (2026-11-08)**, recorded in `docs/decisions.md`, *the
+book's project folds into its chapters, and a fourth kind of reader*.
+He read the design as working mocks in the desktop app's browser, not in
+a question box, as he asked.
+
+- The first mock had a welcome page with the questions, a "where to
+  start" list and a *Start here* part. The project was a part between the
+  start and the chapters. He rejected it:
+  - the three said where to start three times;
+  - the questions belong in a popup on a first visit, with the skip in
+    it;
+  - there was no question for a reader from another engine, or new to
+    making games;
+  - the project "looks like you appended when it should be a fold".
+- He chose **"Both"** for the fold: a step after the chapter it uses,
+  and a follow-up project after the whole book.
+- He chose **"One game question"**: "Have you made a game before?", with
+  No, Yes in another engine, or Yes with Shuyi.
+- On the second mock, which had the popup, four audiences and the folded
+  contents, he answered **"Yes, signed off"**.
+
+**Deviations from the ticket's text, all from Nick's answers:**
+
+- **Four audiences, not three:** `games` joins `programming`, `rust` and
+  `shuyi`. `> **Game idea:**` becomes `games`, not `programming`.
+- **No *Start here* part, and no welcome page:** the questions are a
+  popup on the first visit to any book page. The front page is the
+  intro and the contents, which carry *Start here* and *You can skip
+  this* tags once the reader has answered.
+- **The project is folded into the chapters, not its own part between
+  them.** The chapters are renumbered into the project's order:
+  - screens moves from chapter 2 to 6;
+  - actions moves from 3 to 4;
+  - the frame and skins moves from 4 to 2;
+  - assets and formats moves from 5 to 3;
+  - rules moves from 6 to 5.
+
+  2824 rewrites every "chapter N" (66 lines on 2026-11-08).
+- **A follow-up project after the whole book** is a new ticket,
+  [2830](../open/2830-the-books-follow-up-project-a-second-bigger-game-after-the-whole-book-its-plan-and-room-for-a-second-project.md).
+
+**Other findings:**
+
+- *Coming from another engine* had `chapter = 11`, not no number as the
+  *Context* said. It becomes appendix A.
+- The callouts on 2026-11-08 number 75 `Rust`, 21 `Shuyi` and 8 `Game
+  idea`.
+- `llms-full.txt` would hold 386 728 of its 400 000 bytes if it took the
+  project. It keeps leaving the projects out, as Nick ruled on
+  2026-11-01. It now also leaves out the `programming`, `games` and
+  `rust` passages.
+- The pager's nested loop took the trial build from 6.6 s to 10.3 s,
+  noted in the ADR's *Consequences*.
+- An `xtask` built in another worktree with the same `CARGO_TARGET_DIR`
+  keeps that worktree's root until it rebuilds. Touch
+  `crates/xtask/src/main.rs` after sharing a target folder.
+
+**Tickets changed to match the ADR:**
+
+- 2824: the fold, `follows`, the renumbering and the front page;
+- 2825: four audiences, the mark's shape, and `llms-full.txt`;
+- 2826: the popup, the tags, the four toggles and the storage entry;
+- 2827: the *Check yourself* section and the check's shape;
+- 2828: where an exercise sits;
+- 2829: the `since` mark, and the popup in place of the welcome page;
+- 2004: the guides as a section after the chapters;
+- `docs/ROADMAP.md`: the rows of 2824–2826 and 2830.
+
+2814 (the playground stays its own page), 2820 (its playground goes in
+`chapter.html`'s step block, which 2824's "either order" already moves)
+and 2822 (`site/tutorial/` keeps its path) needed no change.
+
+**Follow-up tickets:** 2830.
+
+**Docs:** the ADR, its index row, `docs/decisions.md` and the tickets.
+No site page, rule or docs home changed, so `site/README.md` and the docs
+map wait for 2824–2826.
+
+Book: none, a design with no change to the public API or to the book's
+pages; 2824–2827 change the book.
+
+**For Nick:** nothing more is needed now. 2830 asks you which game the
+follow-up project builds.
