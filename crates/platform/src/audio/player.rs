@@ -8,9 +8,13 @@
 //! plays the voice clips (game ADR-0046). [`PlayerDevice`] is the whole of a
 //! backend's [`Audio`] over it.
 //!
+//! Every sound, track and voice clip plays at its own volume times its
+//! gain: the frame's [`Gains`] (ADR-0091), one gain
+//! per cue, which a change of the player's volumes moves while it plays.
+//!
 //! A sound started with a handle (`SoundRequest::Start`) is one playback
 //! the player keeps by its id, so that one copy stops alone and its volume
-//! follows the requests and the player's sound volume.
+//! follows the requests and its cue's gain.
 //!
 //! **Holding a sound** (ADR-0056). A sound paused under a menu
 //! (`SoundRequest::PauseSounds`), and everything sounding while the system
@@ -32,7 +36,7 @@ use core::fmt;
 use core::future::Future;
 
 use shuyi_assets::audio::{AudioManifest, Files};
-use shuyi_ui::audio::{MusicCommand, SharedSamples, SoundId};
+use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SharedSamples, SoundGroups, SoundId};
 
 use self::voice::Voices;
 use super::{Audio, AudioFrame, SoundRequest};
@@ -238,14 +242,11 @@ pub struct Player<B: Backend> {
     rng: VariantRng,
     /// Problems to log (missing files, decode errors).
     warnings: Vec<String>,
-    /// The player's music and sound volumes (the Options screen's), 0–1:
-    /// multipliers on every cue's own volume.
-    music_volume: f32,
-    sound_volume: f32,
+    /// The last frame's gains (ADR-0091), kept while suspended: every
+    /// sound, track and voice clip plays at its own volume times its gain.
+    gains: KeptGains,
     /// The sounds started with a handle and not stopped.
     handled: BTreeMap<SoundId, Handled<B>>,
-    /// The voice volume asked for, 0–1, kept while suspended.
-    voice_volume: f32,
     /// Whether the system suspended the game: everything is held.
     suspended: bool,
     /// What the backend's provided methods have said.
@@ -258,25 +259,70 @@ pub struct Player<B: Backend> {
 /// made of.
 struct Handled<B: Backend> {
     playing: B::Playing,
+    /// Its sound cue.
+    cue: String,
     /// The cue's own volume, 0–1.
     cue_volume: f32,
     /// The volume its requests gave, 0–1.
     volume: f32,
+    /// Its cue's gain, as the last frame gave it.
+    gain: Gain,
     /// Whether `PauseSounds` paused it, until `ResumeSounds`.
     paused: bool,
 }
 
 impl<B: Backend> Handled<B> {
-    /// What it plays at, with the player's sound volume `sound`: nothing
-    /// while the game is `suspended`, or while it is paused on a backend
-    /// that `mutes`.
-    fn level(&self, sound: f32, suspended: bool, mutes: bool) -> f32 {
+    /// What it plays at: nothing while the game is `suspended`, or while it
+    /// is paused on a backend that `mutes`.
+    fn level(&self, suspended: bool, mutes: bool) -> f32 {
         if suspended || (self.paused && mutes) {
             0.0
         } else {
-            self.cue_volume * self.volume * sound
+            self.cue_volume * self.volume * factor(self.gain)
         }
     }
+}
+
+/// The gains a frame gave, kept from one frame to the next: full until the
+/// first.
+struct KeptGains {
+    groups: SoundGroups,
+    gains: GroupGains,
+    muted: bool,
+}
+
+impl KeptGains {
+    /// Every group at full gain.
+    fn full() -> Self {
+        let groups = SoundGroups::default();
+        let gains = GroupGains::full(&groups);
+        Self {
+            groups,
+            gains,
+            muted: false,
+        }
+    }
+
+    /// The gains kept.
+    fn view(&self) -> Gains<'_> {
+        let view = Gains::new(&self.groups, &self.gains);
+        if self.muted { view.muted() } else { view }
+    }
+
+    /// Keeps `gains` in place of the gains kept.
+    fn keep(&mut self, gains: Gains<'_>) {
+        if self.groups != *gains.sound_groups() {
+            self.groups.clone_from(gains.sound_groups());
+        }
+        self.gains.clone_from(gains.group_gains());
+        self.muted = gains.is_muted();
+    }
+}
+
+/// `gain` as the 0–1 volume a [`Backend`] takes: where a gain becomes a
+/// float.
+fn factor(gain: Gain) -> f32 {
+    f32::from(gain.get()) / f32::from(Gain::UNIT)
 }
 
 struct Track<B: Backend> {
@@ -295,7 +341,21 @@ struct Track<B: Backend> {
     gain: f32,
     /// The cue's own volume, 0–1.
     volume: f32,
+    /// Its cue's gain, as the last frame gave it.
+    group_gain: Gain,
     looped: bool,
+}
+
+impl<B: Backend> Track<B> {
+    /// What it plays at: its volume times its fade gain and its cue's
+    /// gain, and nothing while the game is `suspended`.
+    fn level(&self, suspended: bool) -> f32 {
+        if suspended {
+            0.0
+        } else {
+            self.volume * self.gain * factor(self.group_gain)
+        }
+    }
 }
 
 enum TrackState<B: Backend> {
@@ -342,55 +402,59 @@ impl<B: Backend> Player<B> {
             voices: Voices::new(voice_dir),
             rng: VariantRng::new(seed),
             warnings,
-            music_volume: 1.0,
-            sound_volume: 1.0,
+            gains: KeptGains::full(),
             handled: BTreeMap::new(),
-            voice_volume: 1.0,
             suspended: false,
             provided: Provided::default(),
             now: None,
         }
     }
 
-    /// Sets the player's volumes (the Options screen's, 0–1): every sound
-    /// and track plays at its own volume times these. A change reaches the
-    /// tracks and the sounds started with a handle already playing.
-    pub fn set_volumes(&mut self, backend: &mut B, music: f32, sound: f32) {
-        if (sound - self.sound_volume).abs() > f32::EPSILON {
-            self.sound_volume = sound;
-            self.set_handled_volumes(backend);
-        }
-        if (music - self.music_volume).abs() <= f32::EPSILON {
+    /// Plays at `gains` from now on (the frame's, ADR-0091): every sound
+    /// and track at its own volume times its cue's gain, and the voice at
+    /// the voice's. A change reaches what plays already: each track and
+    /// sound started with a handle whose gain changed, and the voice.
+    pub fn set_gains(&mut self, backend: &mut B, gains: Gains<'_>) {
+        if self.gains.view() == gains {
             return;
         }
-        self.music_volume = music;
-        self.set_track_volumes(backend);
-    }
-
-    /// The player's music volume as the tracks hear it: nothing while
-    /// suspended.
-    fn music_level(&self) -> f32 {
-        if self.suspended {
-            0.0
-        } else {
-            self.music_volume
+        self.gains.keep(gains);
+        let view = self.gains.view();
+        let (suspended, mutes) = (self.suspended, self.provided.mutes);
+        for handled in self.handled.values_mut() {
+            let gain = view.sound(&handled.cue);
+            if gain != handled.gain {
+                handled.gain = gain;
+                let level = handled.level(suspended, mutes);
+                backend.set_playing_volume(&handled.playing, level);
+            }
+        }
+        for (cue, track) in &mut self.tracks {
+            let gain = view.music(cue);
+            if gain != track.group_gain {
+                track.group_gain = gain;
+                if let (true, TrackState::Ready(sound)) = (track.playing, &track.state) {
+                    backend.set_volume(sound, track.level(suspended));
+                }
+            }
+        }
+        if !suspended {
+            self.voices.set_volume(backend, factor(view.voice()));
         }
     }
 
-    /// Sets every track playing to its volume times its gain and the
-    /// music level.
+    /// Sets every track playing to its level.
     fn set_track_volumes(&self, backend: &mut B) {
-        let music = self.music_level();
         for track in self.tracks.values() {
             if let (true, TrackState::Ready(sound)) = (track.playing, &track.state) {
-                backend.set_volume(sound, track.volume * track.gain * music);
+                backend.set_volume(sound, track.level(self.suspended));
             }
         }
     }
 
     /// The level of `handled`, as things are.
     fn level_of(&self, handled: &Handled<B>) -> f32 {
-        handled.level(self.sound_volume, self.suspended, self.provided.mutes)
+        handled.level(self.suspended, self.provided.mutes)
     }
 
     /// Sets every sound started with a handle to its level.
@@ -447,7 +511,8 @@ impl<B: Backend> Player<B> {
         self.hold_all(backend, false);
         self.set_handled_volumes(backend);
         self.set_track_volumes(backend);
-        self.voices.set_volume(backend, self.voice_volume);
+        let voice = factor(self.gains.view().voice());
+        self.voices.set_volume(backend, voice);
     }
 
     /// Plays one frame's sound and voice `requests`, applies the `music`
@@ -531,8 +596,7 @@ impl<B: Backend> Player<B> {
             SoundRequest::Volume { id, volume } => {
                 if let Some(handled) = self.handled.get_mut(id) {
                     handled.volume = *volume;
-                    let (sound, suspended) = (self.sound_volume, self.suspended);
-                    let level = handled.level(sound, suspended, self.provided.mutes);
+                    let level = handled.level(self.suspended, self.provided.mutes);
                     backend.set_playing_volume(&handled.playing, level);
                 }
             }
@@ -563,9 +627,9 @@ impl<B: Backend> Player<B> {
         }
     }
 
-    /// Plays a variant of sound `cue` at `volume` times its own and the
-    /// player's sound volume, looped or not: the playback, unless the cue
-    /// is unknown or none of its files loaded.
+    /// Plays a variant of sound `cue` at `volume` times its own and its
+    /// gain, looped or not: the playback, unless the cue is unknown or none
+    /// of its files loaded.
     fn play_sound(
         &mut self,
         backend: &mut B,
@@ -587,14 +651,14 @@ impl<B: Backend> Player<B> {
             return None; // Its files failed to load (warned then).
         }
         let sound = &variants[self.rng.below(variants.len())];
-        let volume = own * volume * self.sound_volume;
+        let volume = own * volume * factor(self.gains.view().sound(cue));
         Some(backend.play(sound, volume, looped))
     }
 
     /// Pauses every sound started with a handle, or resumes the ones paused.
     /// While suspended they are held already, and stay so until the resume.
     fn pause_handled(&mut self, backend: &mut B, paused: bool) {
-        let (sound, suspended) = (self.sound_volume, self.suspended);
+        let suspended = self.suspended;
         let (provided, warnings) = (&mut self.provided, &mut self.warnings);
         for handled in self.handled.values_mut() {
             if handled.paused != paused {
@@ -603,7 +667,7 @@ impl<B: Backend> Player<B> {
                     provided.hold(backend, &handled.playing, paused, warnings);
                 }
                 if provided.mutes {
-                    let level = handled.level(sound, suspended, true);
+                    let level = handled.level(suspended, true);
                     backend.set_playing_volume(&handled.playing, level);
                 }
             }
@@ -617,8 +681,10 @@ impl<B: Backend> Player<B> {
         if let Some(playing) = self.play_sound(backend, cue, volume, looped) {
             let handled = Handled {
                 playing,
+                cue: cue.to_owned(),
                 cue_volume,
                 volume,
+                gain: self.gains.view().sound(cue),
                 paused: false,
             };
             if self.suspended {
@@ -647,17 +713,18 @@ impl<B: Backend> Player<B> {
                     held_at: None,
                     gain: 1.0,
                     volume: percent(def.volume),
+                    group_gain: self.gains.view().music(cue),
                     looped: def.looped,
                 };
                 self.tracks.insert(cue.clone(), track);
             }
             MusicCommand::Start { cue, gain, .. } => {
-                let music = self.music_level();
+                let suspended = self.suspended;
                 if let Some(track) = self.tracks.get_mut(cue) {
                     track.playing = true;
                     track.gain = *gain;
                     if let TrackState::Ready(sound) = &track.state {
-                        let volume = track.volume * track.gain * music;
+                        let volume = track.level(suspended);
                         track.playback = Some(backend.play(sound, volume, track.looped));
                         track.started_at = Some(now);
                         track.held_at = None;
@@ -665,12 +732,11 @@ impl<B: Backend> Player<B> {
                 }
             }
             MusicCommand::Gain { cue, gain } => {
-                let music = self.music_level();
+                let suspended = self.suspended;
                 if let Some(track) = self.tracks.get_mut(cue) {
                     track.gain = *gain;
                     if let (true, TrackState::Ready(sound)) = (track.playing, &track.state) {
-                        let volume = track.volume * track.gain * music;
-                        backend.set_volume(sound, volume);
+                        backend.set_volume(sound, track.level(suspended));
                     }
                 }
             }
@@ -703,15 +769,6 @@ impl<B: Backend> Player<B> {
         self.voices.stop_all(backend, &mut self.abandoned);
     }
 
-    /// Sets how loud voice clips play (0–1; `FrameOutput::voice_volume`),
-    /// the one playing included.
-    pub fn set_voice_volume(&mut self, backend: &mut B, volume: f32) {
-        self.voice_volume = volume;
-        if !self.suspended {
-            self.voices.set_volume(backend, volume);
-        }
-    }
-
     /// Sets how fast sound `cue` plays from its next play, in 16.16 fixed
     /// point ([`RATE_ONE`] as recorded). On a backend without a rate it plays
     /// as recorded, and the log says so once.
@@ -725,7 +782,7 @@ impl<B: Backend> Player<B> {
 
     /// Finishes loads: a track asked to play starts now.
     fn poll(&mut self, backend: &mut B, now: f64) {
-        let music = self.music_level();
+        let suspended = self.suspended;
         for (cue, track) in &mut self.tracks {
             let TrackState::Loading(loading) = &mut track.state else {
                 continue;
@@ -734,7 +791,7 @@ impl<B: Backend> Player<B> {
                 None => {}
                 Some(Ok(sound)) => {
                     if track.playing {
-                        let volume = track.volume * track.gain * music;
+                        let volume = track.level(suspended);
                         track.playback = Some(backend.play(&sound, volume, track.looped));
                         track.started_at = Some(now);
                     }
@@ -824,8 +881,7 @@ impl<B: Backend> Audio for PlayerDevice<B> {
             return;
         };
         let backend = &mut self.backend;
-        player.set_volumes(backend, frame.music_volume, frame.sound_volume);
-        player.set_voice_volume(backend, frame.voice_volume);
+        player.set_gains(backend, frame.gains);
         player.play(backend, frame.requests, frame.music, now.as_secs_f64());
         self.log_warnings();
     }
@@ -928,6 +984,36 @@ mod tests {
 
     /// The audio requests of the tests.
     pub(crate) type Request = AudioRequest<Take>;
+
+    /// Gains a test can name: the music's, the sounds' (the menus' too) and
+    /// the voice's, in percent of full, under a full master.
+    pub(crate) struct Levels {
+        groups: SoundGroups,
+        gains: GroupGains,
+    }
+
+    impl Levels {
+        /// The frame's gains, as the player takes them.
+        pub(crate) fn view(&self) -> Gains<'_> {
+            Gains::new(&self.groups, &self.gains)
+        }
+    }
+
+    /// [`Levels`] of `music`, `sound` and `voice` percent.
+    pub(crate) fn levels(music: u16, sound: u16, voice: u16) -> Levels {
+        use shuyi_ui::audio::groups::{MUSIC, SFX, UI, VOICE};
+        let groups = SoundGroups::default();
+        let at = |percent: u16| {
+            let units = u32::from(percent) * u32::from(Gain::UNIT) / 100;
+            Gain::new(u16::try_from(units).unwrap_or(Gain::UNIT))
+        };
+        let gains = GroupGains::full(&groups)
+            .with(&groups, MUSIC, at(music))
+            .with(&groups, SFX, at(sound))
+            .with(&groups, UI, at(sound))
+            .with(&groups, VOICE, at(voice));
+        Levels { groups, gains }
+    }
 
     impl<B: Backend> Audio<B> {
         /// [`play`](Audio::play) with the screens' own requests, as `App`
@@ -1186,7 +1272,7 @@ mod tests {
     }
 
     #[test]
-    fn a_started_sound_is_one_playback_its_requests_and_the_sound_volume_reach() {
+    fn a_started_sound_is_one_playback_its_requests_and_its_gain_reach() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         audio.take_warnings();
@@ -1205,8 +1291,8 @@ mod tests {
         queue.set_sound_volume(first, 0.5);
         audio.hear(&mut fake, &queue.take(), &[], 0.0);
         assert_eq!(fake.calls(), ["volume #1 0.25"]);
-        // The player's sound volume reaches every playback, at its own.
-        audio.set_volumes(&mut fake, 1.0, 0.4);
+        // The sounds' gain reaches every playback, at its own volume.
+        audio.set_gains(&mut fake, levels(100, 40, 100).view());
         assert_eq!(
             fake.calls(),
             ["volume #1 0.10", "volume #2 0.20", "volume #3 0.20"]
@@ -1247,7 +1333,7 @@ mod tests {
         // A paused sound keeps the volumes it is given, silently.
         queue.set_sound_volume(below, 0.5);
         audio.hear(&mut fake, &queue.take(), &[], 0.0);
-        audio.set_volumes(&mut fake, 1.0, 0.5);
+        audio.set_gains(&mut fake, levels(100, 50, 100).view());
         assert_eq!(
             fake.calls(),
             ["volume #1 0.00", "volume #1 0.00", "volume #2 0.12"]
@@ -1323,8 +1409,8 @@ mod tests {
             fake.calls(),
             ["add pcm1102", "play pcm1102 0.50", "play pcm1102 1.00"]
         );
-        // The player's sound volume scales it as any cue's.
-        audio.set_volumes(&mut fake, 1.0, 0.5);
+        // The sounds' gain scales it as any cue's.
+        audio.set_gains(&mut fake, levels(100, 50, 100).view());
         fake.calls();
         queue.play_sound("tone");
         audio.hear(&mut fake, &queue.take(), &[], 0.0);
@@ -1450,15 +1536,16 @@ mod tests {
         assert!(audio.tracks.is_empty());
     }
 
-    /// Ticket 0805: the player's volumes multiply every cue's own.
+    /// Ticket 0805, and 2342: the gains multiply every cue's own volume,
+    /// each cue its group's.
     #[test]
-    fn the_players_volumes_scale_sounds_and_music() {
+    fn the_gains_scale_sounds_and_music() {
         let mut fake = Fake::default();
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.set_volumes(&mut fake, 0.5, 0.2);
+        audio.set_gains(&mut fake, levels(50, 20, 100).view());
         assert!(fake.calls().is_empty(), "nothing is playing yet");
-        // Sounds: the cue's 50 %, the request's volume, the player's 20 %.
+        // Sounds: the cue's 50 %, the request's volume, the sounds' 20 %.
         audio.hear(
             &mut fake,
             &[sound("beep", 1.0), sound("beep", 0.5)],
@@ -1466,42 +1553,42 @@ mod tests {
             0.0,
         );
         assert_eq!(fake.calls(), ["play wav100 0.10", "play wav100 0.05"]);
-        // Music starts at the cue's 80 % times the player's 50 %.
+        // Music starts at the cue's 80 % times the music's 50 %.
         let begin = [cmd(load, "title"), cmd(start, "title")];
         audio.play(&mut fake, &[], &begin, 0.0);
         assert_eq!(
             fake.calls(),
             ["load music/title.ogg", "play music/title.ogg 0.40 looped"]
         );
-        // The same volumes again change nothing; a new music volume
-        // reaches the track playing, and a fade multiplies with it.
-        audio.set_volumes(&mut fake, 0.5, 0.2);
+        // The same gains again change nothing; a new music gain reaches
+        // the track playing, and a fade multiplies with it.
+        audio.set_gains(&mut fake, levels(50, 20, 100).view());
         let got = fake.calls();
         assert!(got.is_empty(), "{got:?}");
-        audio.set_volumes(&mut fake, 1.0, 0.2);
+        audio.set_gains(&mut fake, levels(100, 20, 100).view());
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.80"]);
         audio.play(&mut fake, &[], &[gain("title", 0.5)], 0.0);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.40"]);
-        audio.set_volumes(&mut fake, 0.5, 0.2);
+        audio.set_gains(&mut fake, levels(50, 20, 100).view());
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.20"]);
         // Silent: sounds and music at 0.
-        audio.set_volumes(&mut fake, 0.0, 0.0);
+        audio.set_gains(&mut fake, levels(0, 0, 100).view());
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.00"]);
         audio.hear(&mut fake, &[sound("beep", 1.0)], &[], 0.0);
         assert_eq!(fake.calls(), ["play wav100 0.00"]);
     }
 
     /// A track already loaded and started later, or still loading when the
-    /// volume is set, starts at the player's volume.
+    /// gains are set, starts at the music's gain.
     #[test]
-    fn a_track_that_starts_later_uses_the_players_volume() {
+    fn a_track_that_starts_later_uses_the_musics_gain() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         let begin = [cmd(load, "title"), cmd(start, "title")];
         audio.play(&mut fake, &[], &begin, 0.0);
         fake.calls();
         // Still loading: nothing to change yet.
-        audio.set_volumes(&mut fake, 0.25, 1.0);
+        audio.set_gains(&mut fake, levels(25, 100, 100).view());
         let got = fake.calls();
         assert!(got.is_empty(), "{got:?}");
         fake.ready.push("music/title.ogg".into());
@@ -1984,12 +2071,11 @@ mod tests {
             cue: "nope".to_owned(),
             volume: 1.0,
         }];
+        let half = levels(50, 50, 50);
         let frame = AudioFrame {
             requests: &requests,
             music: &[],
-            music_volume: 0.5,
-            sound_volume: 0.5,
-            voice_volume: 0.5,
+            gains: half.view(),
         };
         device.play(&frame, Millis(0));
         device.suspend();
@@ -2040,29 +2126,52 @@ mod tests {
         assert_eq!(device.music_playing(Millis(2000)), None);
     }
 
-    /// A frame sends the volumes every time: the same ones, to within a
-    /// rounding, touch nothing playing.
+    /// A frame sends the gains every time: the same ones touch nothing
+    /// playing, and a change of another group's leaves a sound alone.
     #[test]
-    fn the_same_sound_volume_again_leaves_a_started_sound_alone() {
+    fn the_same_gain_again_leaves_a_started_sound_alone() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         let start_rain = SoundRequest::start(handle(), "rain", 1.0);
         audio.play(&mut fake, &[start_rain], &[], 0.0);
         fake.calls();
-        audio.set_volumes(&mut fake, 1.0, 1.0);
+        audio.set_gains(&mut fake, levels(100, 100, 100).view());
         assert_eq!(fake.calls(), [] as [String; 0]);
-        audio.set_volumes(&mut fake, 1.0, 1.0 - f32::EPSILON);
+        audio.set_gains(&mut fake, levels(50, 100, 50).view());
         assert_eq!(fake.calls(), [] as [String; 0]);
     }
 
-    /// A loaded track starts at its cue's volume times its gain and the music
-    /// volume, and a fade multiplies with all of them.
+    /// The menus' sounds play in `ui`, under the sounds' group; another
+    /// sound in `sfx`.
     #[test]
-    fn a_ready_track_starts_at_its_gain_and_a_fade_keeps_the_music_volume() {
+    fn a_menus_sound_plays_at_the_ui_groups_gain() {
+        use shuyi_ui::audio::groups::UI;
+        let mut fake = Fake::default();
+        let mut m = manifest();
+        let beep = m.sounds.get("beep").cloned();
+        m.sounds.extend(beep.map(|b| ("ui_move".to_owned(), b)));
+        let dirs = ("music".into(), "voice/en".into());
+        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1, 1));
+        let quiet = levels(100, 50, 100);
+        let gains = quiet.gains.clone().with(&quiet.groups, UI, Gain::new(1024));
+        audio.set_gains(&mut fake, Gains::new(&quiet.groups, &gains));
+        audio.hear(
+            &mut fake,
+            &[sound("ui_move", 1.0), sound("beep", 1.0)],
+            &[],
+            0.0,
+        );
+        assert_eq!(fake.calls(), ["play wav100 0.12", "play wav100 0.25"]);
+    }
+
+    /// A loaded track starts at its cue's volume times its fade gain and the
+    /// music's gain, and a fade multiplies with all of them.
+    #[test]
+    fn a_ready_track_starts_at_its_gain_and_a_fade_keeps_the_musics_gain() {
         let mut fake = Fake::default();
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.set_volumes(&mut fake, 0.5, 1.0);
+        audio.set_gains(&mut fake, levels(50, 100, 100).view());
         audio.play(&mut fake, &[], &[cmd(load, "title")], 0.0);
         fake.calls();
         let start_half = MusicCommand::start("title", 0.5);

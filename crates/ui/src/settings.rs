@@ -1,6 +1,7 @@
 //! The player's settings: the engine's (how fast dialogue text is
 //! revealed, whether the game fills the screen, the color theme, the
-//! music and sound volumes, the frame cap and the layout picked) and the
+//! volume of each sound group ([`Volumes`]), the frame cap and the layout
+//! picked) and the
 //! game's own
 //! ([`Settings::game`], a [`GameSettings`]). [`Ctx`](crate::Ctx) loads
 //! them with its storage, from one record under [`SETTINGS_KEY`] in the
@@ -10,10 +11,12 @@
 //! are saved apart.
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use core::fmt::Debug;
 
 use shuyi_assets::keymap::Layout;
 
+use crate::audio::groups::{MUSIC, SFX, VOICE};
 use crate::frame_cap::{self, FrameCap};
 
 /// [`Storage`](crate::storage::Storage) key under which the settings are
@@ -23,8 +26,84 @@ pub const SETTINGS_KEY: &str = "settings";
 /// The loudest volume setting; 0 is silent.
 pub const MAX_VOLUME: u8 = 100;
 
-/// The volume settings' default. *Tunable.*
-pub const DEFAULT_VOLUME: u8 = 80;
+/// The volumes the player set, by sound group
+/// ([`groups`](crate::audio::groups)): each a position on the loudness
+/// curve, 0 (silent) to [`MAX_VOLUME`]. A group not in it is at its
+/// default ([`SoundGroups::default_volume`](crate::audio::SoundGroups::default_volume)),
+/// and a group the game no longer has is kept and plays nothing. Change it
+/// through [`Ctx::preview_volume`](crate::Ctx::preview_volume), which
+/// takes a group set back to its default out of it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct Volumes(BTreeMap<String, u8>);
+
+impl Volumes {
+    /// The volume the player set for `group`, if they set one.
+    pub fn get(&self, group: &str) -> Option<u8> {
+        self.0.get(group).copied()
+    }
+
+    /// Sets `group`'s volume (above [`MAX_VOLUME`] counts as it).
+    pub fn set(&mut self, group: &str, volume: u8) {
+        self.0.insert(group.to_owned(), volume.min(MAX_VOLUME));
+    }
+
+    /// Takes `group` out, so it is at its default again: the volume it
+    /// had, if any.
+    pub fn remove(&mut self, group: &str) -> Option<u8> {
+        self.0.remove(group)
+    }
+
+    /// Sets `group` where an old linear volume of `percent` (0–100) sounds
+    /// the same on the loudness curve
+    /// ([`position_of_linear`](crate::audio::loudness::position_of_linear)):
+    /// for a saved form that reads the volumes it wrote before the curve.
+    pub fn set_from_linear(&mut self, group: &str, percent: u8) {
+        self.set(group, crate::audio::loudness::position_of_linear(percent));
+    }
+
+    /// Every group the player set, with its volume, by id.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, u8)> {
+        self.0
+            .iter()
+            .map(|(group, &volume)| (group.as_str(), volume))
+    }
+
+    /// Whether the player set none: every group is at its default.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Keeps only the groups `keep` says to.
+    pub(crate) fn retain(&mut self, mut keep: impl FnMut(&str, u8) -> bool) {
+        self.0.retain(|group, volume| keep(group, *volume));
+    }
+}
+
+/// Reads a volume a saved form wrote before the loudness curve, a bare
+/// number, as `Some`: for an `Option<u8>` field that is read and never
+/// written, `#[serde(deserialize_with = "…::old_volume", skip_serializing)]`
+/// in a record with `#[serde(default)]`, so a save without it reads `None`.
+pub fn old_volume<'de, D: serde::Deserializer<'de>>(volume: D) -> Result<Option<u8>, D::Error> {
+    <u8 as serde::Deserialize>::deserialize(volume).map(Some)
+}
+
+/// Reads the volumes a saved form wrote before the loudness curve, each
+/// linear (0–100) and `None` where the save has none, into `volumes`
+/// where they sound the same ([`Volumes::set_from_linear`]): `music`,
+/// `sfx` and `voice`.
+pub fn read_old_volumes(
+    volumes: &mut Volumes,
+    music: Option<u8>,
+    sound: Option<u8>,
+    voice: Option<u8>,
+) {
+    for (group, percent) in [(MUSIC, music), (SFX, sound), (VOICE, voice)] {
+        if let Some(percent) = percent {
+            volumes.set_from_linear(group, percent);
+        }
+    }
+}
 
 /// How fast dialogue text is revealed.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -161,18 +240,24 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
 
 /// The saved form of the settings of a game with none of its own
 /// ([`GameSettings`] for `()`): the engine's, and the layout picked by its
-/// name. What isn't there reads as its default.
+/// name. What isn't there reads as its default. The linear volumes it
+/// wrote before the loudness curve (`music_volume`, `sound_volume`,
+/// `voice_volume`) are read ([`read_old_volumes`]) and never written.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default, rename = "Settings")]
 struct EngineOnly {
     text_speed: TextSpeed,
     fullscreen: bool,
-    music_volume: u8,
-    sound_volume: u8,
+    volumes: Volumes,
     voices: bool,
-    voice_volume: u8,
     frame_cap: FrameCap,
     layout: Option<String>,
+    #[serde(skip_serializing, deserialize_with = "old_volume")]
+    music_volume: Option<u8>,
+    #[serde(skip_serializing, deserialize_with = "old_volume")]
+    sound_volume: Option<u8>,
+    #[serde(skip_serializing, deserialize_with = "old_volume")]
+    voice_volume: Option<u8>,
 }
 
 impl Default for EngineOnly {
@@ -186,12 +271,13 @@ impl EngineOnly {
         Self {
             text_speed: s.text_speed,
             fullscreen: s.fullscreen,
-            music_volume: s.music_volume,
-            sound_volume: s.sound_volume,
+            volumes: s.volumes.clone(),
             voices: s.voices,
-            voice_volume: s.voice_volume,
             frame_cap: s.frame_cap,
             layout: s.layout.map(|l| l.name().to_owned()),
+            music_volume: None,
+            sound_volume: None,
+            voice_volume: None,
         }
     }
 }
@@ -207,13 +293,14 @@ impl GameSettings for () {
 
     fn from_ron(text: &str) -> Result<Settings<Self>, String> {
         let file: EngineOnly = ron::from_str(text).map_err(|e| format!("unreadable: {e}"))?;
+        let mut volumes = file.volumes;
+        let old = (file.music_volume, file.sound_volume, file.voice_volume);
+        read_old_volumes(&mut volumes, old.0, old.1, old.2);
         Ok(Settings {
             text_speed: file.text_speed,
             fullscreen: file.fullscreen,
-            music_volume: file.music_volume,
-            sound_volume: file.sound_volume,
+            volumes,
             voices: file.voices,
-            voice_volume: file.voice_volume,
             frame_cap: file.frame_cap,
             layout: file.layout.as_deref().and_then(Layout::from_name),
             ..Settings::default()
@@ -231,16 +318,13 @@ pub struct Settings<S: GameSettings> {
     pub fullscreen: bool,
     /// The color theme: the palette the game draws with.
     pub theme: S::Theme,
-    /// Music volume, 0 (silent) to [`MAX_VOLUME`].
-    pub music_volume: u8,
-    /// Sound volume, 0 (silent) to [`MAX_VOLUME`].
-    pub sound_volume: u8,
+    /// The volume of each sound group the player set; the others are at
+    /// their defaults. Read one with [`Ctx::volume`](crate::Ctx::volume).
+    pub volumes: Volumes,
     /// Whether voice clips play
     /// ([`Ctx::play_voice`](crate::Ctx::play_voice)). Turning it off stops
     /// the one playing.
     pub voices: bool,
-    /// Voice volume, 0 (silent) to [`MAX_VOLUME`].
-    pub voice_volume: u8,
     /// The most frames a second the platform shows: the game's
     /// [`GameSettings::DEFAULT_FRAME_CAP`] until the player picks another.
     /// Every change of it takes the next serial, which the platform reports
@@ -261,21 +345,13 @@ impl<S: GameSettings> Default for Settings<S> {
             text_speed: TextSpeed::default(),
             fullscreen: false,
             theme: S::Theme::default(),
-            music_volume: DEFAULT_VOLUME,
-            sound_volume: DEFAULT_VOLUME,
+            volumes: Volumes::default(),
             voices: true,
-            voice_volume: DEFAULT_VOLUME,
             frame_cap: S::DEFAULT_FRAME_CAP,
             layout: None,
             game: S::default(),
         }
     }
-}
-
-/// A volume setting as the multiplier the platform applies to every cue's
-/// own volume: 0 at 0, 1 at [`MAX_VOLUME`].
-fn volume_factor(volume: u8) -> f32 {
-    f32::from(volume.min(MAX_VOLUME)) / f32::from(MAX_VOLUME)
 }
 
 impl<S: GameSettings> Settings<S> {
@@ -309,21 +385,6 @@ impl<S: GameSettings> Settings<S> {
         }
     }
 
-    /// The multiplier on the music's volume, 0–1.
-    pub fn music_factor(&self) -> f32 {
-        volume_factor(self.music_volume)
-    }
-
-    /// The multiplier on every sound's volume, 0–1.
-    pub fn sound_factor(&self) -> f32 {
-        volume_factor(self.sound_volume)
-    }
-
-    /// The multiplier on every voice clip's volume, 0–1.
-    pub fn voice_factor(&self) -> f32 {
-        volume_factor(self.voice_volume)
-    }
-
     /// The saved form ([`GameSettings::to_ron`]).
     pub fn to_ron(&self) -> String {
         S::to_ron(self)
@@ -339,6 +400,7 @@ impl<S: GameSettings> Settings<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio::groups::{MUSIC, SFX, VOICE};
     use crate::input::sample::LEFT_HANDED;
     use crate::toy::{Prefs, Theme};
 
@@ -351,8 +413,8 @@ mod tests {
         assert_eq!(s.text_speed.chars_per_s(), Some(60.0));
         assert!(!s.fullscreen);
         assert_eq!(s.theme, Theme::default());
-        assert_eq!((s.music_volume, s.sound_volume), (80, 80));
-        assert_eq!((s.voices, s.voice_volume), (true, 80));
+        assert!(s.volumes.is_empty(), "every group at its default");
+        assert!(s.voices);
         assert_eq!(s.frame_cap, FrameCap::Fps(60));
         assert_eq!(s.layout(), None);
         assert_eq!(s.game, Prefs::default());
@@ -364,10 +426,10 @@ mod tests {
         s.text_speed = TextSpeed::Fast;
         s.fullscreen = true;
         s.theme = Theme::Night;
-        s.music_volume = 3;
-        s.sound_volume = 4;
+        s.volumes.set(MUSIC, 3);
+        s.volumes.set(SFX, 4);
         s.voices = false;
-        s.voice_volume = 5;
+        s.volumes.set(VOICE, 5);
         s.frame_cap = FrameCap::Off;
         s.game.speed = 9;
         assert_eq!(s.layout(), Some(LEFT_HANDED));
@@ -400,11 +462,17 @@ mod tests {
     fn a_game_with_no_settings_of_its_own_saves_the_engines() {
         let mut s = super::Settings::<()>::default().with_layout(LEFT_HANDED);
         s.text_speed = TextSpeed::Instant;
-        s.sound_volume = 12;
+        s.volumes.set(SFX, 12);
         s.voices = false;
-        s.voice_volume = 30;
+        s.volumes.set("ambience", 30);
         s.frame_cap = FrameCap::Fps(144);
-        assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
+        let text = s.to_ron();
+        assert!(
+            text.contains("volumes:{\"ambience\":30,\"sfx\":12}"),
+            "{text}"
+        );
+        assert!(!text.contains("_volume"), "no old field is written: {text}");
+        assert_eq!(super::Settings::from_ron(&text), Ok(s));
         let s = super::Settings::<()>::default();
         assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
     }
@@ -414,13 +482,13 @@ mod tests {
         // What `shuyi new blank`'s `Prefs::to_ron` wrote before its game
         // took `()` for its settings.
         let saved = "(text_speed:Fast,fullscreen:true,music_volume:3,sound_volume:7)";
-        let s = super::Settings::<()> {
+        let mut s = super::Settings::<()> {
             text_speed: TextSpeed::Fast,
             fullscreen: true,
-            music_volume: 3,
-            sound_volume: 7,
             ..super::Settings::default()
         };
+        s.volumes.set_from_linear(MUSIC, 3);
+        s.volumes.set_from_linear(SFX, 7);
         assert_eq!(super::Settings::from_ron(saved), Ok(s));
         assert_eq!(
             super::Settings::from_ron("Settings()"),
@@ -494,6 +562,21 @@ mod tests {
     }
 
     #[test]
+    fn an_old_toy_save_reads_its_linear_volumes_where_they_sound_the_same() {
+        let old = "Toy(speed: 2, music_volume: 35, sound_volume: 80)";
+        let s = Settings::from_ron(old).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            (s.volumes.get(MUSIC), s.volumes.get(SFX)),
+            (Some(85), Some(97))
+        );
+        assert_eq!(s.game.speed, 2);
+        let text = s.to_ron();
+        assert!(text.contains("volumes:{\"music\":85,\"sfx\":97}"), "{text}");
+        assert!(!text.contains("_volume"), "no old field is written: {text}");
+        assert_eq!(Settings::from_ron(&text), Ok(s));
+    }
+
+    #[test]
     fn engine_settings_saved_without_a_frame_cap_read_the_default() {
         let read = |text| super::Settings::<()>::from_ron(text).map(|s| s.frame_cap);
         assert_eq!(read("(text_speed:Fast)"), Ok(FrameCap::Fps(60)));
@@ -502,25 +585,37 @@ mod tests {
     }
 
     #[test]
-    fn volumes_are_factors_from_silent_to_full() {
+    fn volumes_are_set_taken_back_to_the_default_and_restored() {
         let mut s = Settings::default();
-        assert!((s.music_factor() - 0.8).abs() < 1e-6);
-        assert!((s.sound_factor() - 0.8).abs() < 1e-6);
-        s.music_volume = 0;
-        s.sound_volume = 100;
-        assert!(s.music_factor().abs() < f32::EPSILON);
-        s.music_volume = 37;
-        assert!((s.music_factor() - 0.37).abs() < 1e-6);
-        s.music_volume = 0;
-        assert!((s.sound_factor() - 1.0).abs() < f32::EPSILON);
-        // Out of range (set in code) is still at most full volume.
-        s.sound_volume = 200;
-        assert!((s.sound_factor() - 1.0).abs() < f32::EPSILON);
-        assert!((s.voice_factor() - 0.8).abs() < 1e-6);
-        s.voice_volume = 0;
-        assert!(s.voice_factor().abs() < f32::EPSILON);
-        s.voice_volume = 30;
-        assert!((s.voice_factor() - 0.3).abs() < 1e-6);
+        s.volumes.set(MUSIC, 40);
+        s.volumes.set(SFX, 200);
+        assert_eq!(
+            (s.volumes.get(MUSIC), s.volumes.get(SFX)),
+            (Some(40), Some(100))
+        );
+        assert_eq!(s.volumes.get(VOICE), None);
+        assert_eq!(s.volumes.remove(MUSIC), Some(40));
+        assert_eq!(s.volumes.remove(MUSIC), None);
+        let set: Vec<_> = s.volumes.iter().collect();
+        assert_eq!(set, [(SFX, 100)]);
+        assert!(s.restored().volumes.is_empty());
+        s.volumes.set_from_linear(VOICE, 80);
+        assert_eq!(s.volumes.get(VOICE), Some(97));
+    }
+
+    #[test]
+    fn an_old_engine_save_reads_its_linear_volumes_where_they_sound_the_same() {
+        let old = "(music_volume: 35, sound_volume: 80, voice_volume: 100)";
+        let s = super::Settings::<()>::from_ron(old).unwrap_or_else(|e| panic!("{e}"));
+        let read = [MUSIC, SFX, VOICE].map(|g| s.volumes.get(g));
+        assert_eq!(read, [Some(85), Some(97), Some(100)]);
+        let text = s.to_ron();
+        assert!(text.contains("volumes:{"), "{text}");
+        assert!(
+            !text.contains("music_volume") && !text.contains("sound_volume"),
+            "{text}"
+        );
+        assert_eq!(super::Settings::from_ron(&text), Ok(s));
     }
 
     #[test]

@@ -2,6 +2,8 @@
 //! keeps, its scripted input, storage, keyboard and clock. Games run on it
 //! are tested in `tests/it/`.
 
+use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
+use shuyi_ui::audio::{Gains, GroupGains, SoundGroups};
 use shuyi_ui::frame::glyph_buffer::Cell;
 use shuyi_ui::input::{Chord, Key};
 
@@ -24,14 +26,29 @@ fn stop(cue: String) -> MusicCommand {
     MusicCommand::Stop { cue }
 }
 
+/// The sound groups, each at the gain a test gives it: full unless it
+/// says.
+struct Full(SoundGroups, GroupGains);
+
+impl Full {
+    fn new() -> Self {
+        let groups = SoundGroups::default();
+        let gains = GroupGains::full(&groups);
+        Self(groups, gains)
+    }
+
+    fn view(&self) -> Gains<'_> {
+        Gains::new(&self.0, &self.1)
+    }
+}
+
 /// `speaker` given one frame of `music` at `now`.
 fn play(speaker: &mut Speaker, music: &[MusicCommand], now: u64) {
+    let full = Full::new();
     let frame = AudioFrame {
         requests: &[],
         music,
-        music_volume: 1.0,
-        sound_volume: 1.0,
-        voice_volume: 1.0,
+        gains: full.view(),
     };
     speaker.play(&frame, Millis(now));
 }
@@ -102,13 +119,12 @@ fn the_platforms_speaker_is_the_one_it_plays_on() {
 #[test]
 fn the_speaker_hears_a_voice_until_its_length_or_a_stop() {
     let mut s = Speaker::default();
+    let full = Full::new();
     let hear = |s: &mut Speaker, requests: &[SoundRequest], now: u64| {
         let frame = AudioFrame {
             requests,
             music: &[],
-            music_volume: 1.0,
-            sound_volume: 1.0,
-            voice_volume: 1.0,
+            gains: full.view(),
         };
         s.play(&frame, Millis(now));
     };
@@ -135,13 +151,12 @@ fn the_speaker_holds_the_sounds_started_until_they_stop() {
     let [hum, buzz] = [queue.start_sound("hum"), queue.start_sound("buzz")];
     queue.stop_sound(hum, 0);
     let mut s = Speaker::default();
+    let full = Full::new();
     let mut hear = |requests: &[SoundRequest]| {
         let frame = AudioFrame {
             requests,
             music: &[],
-            music_volume: 1.0,
-            sound_volume: 1.0,
-            voice_volume: 1.0,
+            gains: full.view(),
         };
         s.play(&frame, Millis(0));
         s.sounds_playing()
@@ -178,13 +193,12 @@ fn the_speaker_pauses_what_plays_and_mutes_on_suspend_with_its_clock_running() {
     let mut queue = shuyi_ui::audio::AudioQueue::<shuyi_ui::toy::Voice>::default();
     let [first, second] = [queue.start_sound("hum"), queue.start_sound("hum")];
     let mut s = Speaker::default();
+    let full = Full::new();
     let mut hear = |requests: &[SoundRequest], music: &[MusicCommand]| {
         let frame = AudioFrame {
             requests,
             music,
-            music_volume: 1.0,
-            sound_volume: 1.0,
-            voice_volume: 1.0,
+            gains: full.view(),
         };
         s.play(&frame, Millis(0));
         s.sounds_playing()
@@ -219,24 +233,39 @@ fn the_speaker_pauses_what_plays_and_mutes_on_suspend_with_its_clock_running() {
 #[test]
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
-    assert_eq!(s.volumes(), (1.0, 1.0, 1.0));
+    assert!(s.gains().is_empty(), "none before a frame");
     let click = SoundRequest::Sound {
         cue: "click".into(),
         volume: 1.0,
     };
     let requests = [click];
     let music = [command("a", start)];
+    let Full(groups, full) = Full::new();
+    let gains = full
+        .with(&groups, MUSIC, Gain::new(2048))
+        .with(&groups, SFX, Gain::new(1024))
+        .with(&groups, VOICE, Gain::new(3072));
     let frame = AudioFrame {
         requests: &requests,
         music: &music,
-        music_volume: 0.5,
-        sound_volume: 0.25,
-        voice_volume: 0.75,
+        gains: Gains::new(&groups, &gains),
     };
     s.play(&frame, Millis(0));
     assert_eq!(s.requests(), requests);
     assert_eq!(s.music(), music);
-    assert_eq!(s.volumes(), (0.5, 0.25, 0.75));
+    let heard: Vec<_> = s
+        .gains()
+        .iter()
+        .map(|(g, &gain)| (g.as_str(), gain.get()))
+        .collect();
+    let want = [
+        (MASTER, 4096),
+        (MUSIC, 2048),
+        (SFX, 1024),
+        (UI, 4096),
+        (VOICE, 3072),
+    ];
+    assert_eq!(heard, want);
     play(&mut s, &[], 10);
     let found = s.requests();
     assert!(found.is_empty(), "{found:?}");

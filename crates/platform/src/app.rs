@@ -50,7 +50,7 @@ use shuyi_assets::font::CellWidths;
 use shuyi_assets::voice::clip_file;
 use shuyi_core::made::Made;
 use shuyi_core::{StateHash, state_hash};
-use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame_cap::Pacing;
 use shuyi_ui::input::frame_seconds;
@@ -945,7 +945,9 @@ impl<G: GameData> App<G> {
                 // and in silence if it is muted too.
                 drain(platform, &mut self.lists.input);
                 if muted {
-                    platform.audio().play(&silent(&[], &[]), elapsed.now);
+                    platform
+                        .audio()
+                        .play(&silent(&[], &[], game.gains()), elapsed.now);
                 }
                 present_tagged(platform, game, self.look);
             }
@@ -1295,14 +1297,17 @@ fn tell_changed<G: GameData>(
     told
 }
 
-/// `requests` and `music` at volume 0: a muted frame's audio.
-fn silent<'a>(requests: &'a [SoundRequest], music: &'a [MusicCommand]) -> AudioFrame<'a> {
+/// `requests` and `music` with every gain at 0 ([`Gains::muted`]): a muted
+/// frame's audio.
+fn silent<'a>(
+    requests: &'a [SoundRequest],
+    music: &'a [MusicCommand],
+    gains: Gains<'a>,
+) -> AudioFrame<'a> {
     AudioFrame {
         requests,
         music,
-        music_volume: 0.0,
-        sound_volume: 0.0,
-        voice_volume: 0.0,
+        gains: gains.muted(),
     }
 }
 
@@ -1356,20 +1361,17 @@ fn step<G: GameData>(
         }
     }
     lists.music.extend_from_slice(out.music);
-    let (music_volume, sound_volume, voice_volume) =
-        (out.music_volume, out.sound_volume, out.voice_volume);
+    let gains = out.gains;
     lists.sounds.clear();
     let sounds = lists.audio.iter().filter_map(SoundRequest::from_request);
     lists.sounds.extend(sounds);
     let audio = if muted {
-        silent(&lists.sounds, &lists.music)
+        silent(&lists.sounds, &lists.music, gains)
     } else {
         AudioFrame {
             requests: &lists.sounds,
             music: &lists.music,
-            music_volume,
-            sound_volume,
-            voice_volume,
+            gains,
         }
     };
     platform.audio().play(&audio, elapsed.now);

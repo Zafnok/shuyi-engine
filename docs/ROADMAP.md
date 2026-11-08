@@ -261,8 +261,9 @@ launches.
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 (game#0250, key names that stand out), 2228
-(game#1013, mod tables merged by id), 2342 (game#0826, the voices'
-volume), and 2226, 2253 and 2349 (game#0825, the language option).
+(game#1013, mod tables merged by id), and 2226, 2253 and 2349
+(game#0825, the language option). 2342 (game#0826, the voices' volume)
+is done.
 
 **Seeing what players see:**
 
@@ -292,6 +293,7 @@ volume), and 2226, 2253 and 2349 (game#0825, the language option).
 | Ticket | What |
 | ------ | ---- |
 | 2342 | Sound groups as data: a master volume and a volume per group on a loudness curve |
+| 2258 | A game's own sound groups in the audio manifest, and a group on a cue |
 | 2343 | Ducking: a group lowered while a voice plays |
 | 2344 | Looped sounds with handles, owned by the screen that started them |
 | 2394 | Sounds paused under a pause menu, and the audio held while the system suspends the game |

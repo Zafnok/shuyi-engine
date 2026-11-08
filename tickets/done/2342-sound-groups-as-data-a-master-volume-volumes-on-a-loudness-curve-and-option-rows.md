@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2511"]
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2342 — Sound groups and a master volume
@@ -363,38 +363,39 @@ After MVP, and this PR keeps only the five built-in groups.
 
 ## Acceptance criteria
 
-- [ ] A manifest with no `groups` and no cue `group` loads as before,
+- [x] ~~A manifest with no `groups` and no cue `group` loads as before,
       and the existing tests of `crates/assets/src/audio.rs` pass
-      unchanged.
-- [ ] Each manifest error above is reported at the line that names it
-      (a test each).
-- [ ] `loudness(0)` is 0 and `loudness(100)` is 4096, the table never
+      unchanged.~~ (not done: the manifest's groups moved to 2258, by
+      *Size*; the manifest is unchanged here and its tests pass)
+- [x] ~~Each manifest error above is reported at the line that names it
+      (a test each).~~ (not done: moved to 2258, by *Size*)
+- [x] `loudness(0)` is 0 and `loudness(100)` is 4096, the table never
       goes down, and a test works out every entry again from the
       formula (with `f64`, in the test only).
-- [ ] `position_of_linear(80)` is 97, whose gain (3329) is the nearest
+- [x] `position_of_linear(80)` is 97, whose gain (3329) is the nearest
       to today's 0.8 (3277); `position_of_linear(35)` is 85.
-- [ ] A group's gain is its `loudness` times its parent's gain, rounded,
+- [x] A group's gain is its `loudness` times its parent's gain, rounded,
       down from `master` (a unit test over three levels with known
       numbers); with `master` at 0 every gain is 0; `Gains::muted`
       answers 0 for every group and cue.
-- [ ] The menu sounds and the cursor's tick play in `ui` unless their
+- [x] The menu sounds and the cursor's tick play in `ui` unless their
       cue names a group; another sound in `sfx`; music in `music`;
       voices in `voice` (a unit test of `SoundGroups`).
-- [ ] An old save of each saved form (`music_volume: 35,
+- [x] An old save of each saved form (`music_volume: 35,
       sound_volume: 80`) reads as `music` at 85 and `sfx` at 97, and a
       new save writes `volumes` and no old field. Loaded through `Ctx`,
       that save has no `sfx` entry, since 97 is the default.
-- [ ] A change of the music volume reaches the track already playing in
+- [x] A change of the music volume reaches the track already playing in
       `shuyi-app`'s player (a test with its fake backend).
-- [ ] A Harness test: setting `master` to 0 makes every gain 0 on the
+- [x] A Harness test: setting `master` to 0 makes every gain 0 on the
       next frame, and Restore defaults brings back the defaults' gains.
-- [ ] `OptionRow::volumes()` gives the rows `options.row.master_volume`,
+- [x] `OptionRow::volumes()` gives the rows `options.row.master_volume`,
       `options.row.music_volume`, `options.row.sound_volume` and
       `options.row.voice_volume` in that order, and each moves its own
       group (a unit test).
-- [ ] `shuyi-assets`, `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-assets`, `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -419,5 +420,212 @@ After MVP, and this PR keeps only the five built-in groups.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done on 2026-11-08 (branch `t2342-sound-groups`).
+
+**What was done**
+
+- `shuyi_ui::audio::loudness`: `Gain(u16)` in units of 1/4096, `loudness` from a
+  table of 101 entries (0.6 dB a step, `STEP_DB_TENTHS`), a test that works
+  every entry out again in `f64`, and `position_of_linear` (80 → 97, 35 →
+  85).
+- The five built-in groups' ids, with their parents, in
+  `shuyi_assets::audio::groups` (`BUILT_IN`), re-exported by
+  `shuyi_ui::audio::groups`, whose `SoundGroups` is the tree (defaults:
+  `master` and `ui` 100, the others 97) and puts the menus' cues
+  (`AudioConfig`) in `ui`. `GroupGains` works the gains out down from
+  `master`; `Gains<'a>` answers `sound`, `music`, `voice`, `group`, `each`
+  and `muted`. `Ctx::new` and `Game::with_stack` build the groups;
+  `Ctx::sound_groups` reads them; `Game::gains` gives the last frame's.
+- `Settings::volumes` (`Volumes`, a map of group to position) replaces
+  `music_volume`, `sound_volume` and `voice_volume`; `Ctx::volume` and
+  `Ctx::preview_volume` (a volume set back to its default leaves the map);
+  `Ctx::load_settings` drops a loaded volume at its default. The factors
+  and `DEFAULT_VOLUME` are gone.
+- `FrameOutput::gains` and `AudioFrame::gains` replace the three `f32`s.
+  The shared player (`shuyi_platform::audio::player`, 3029) keeps the
+  last frame's gains, plays every sound, track and voice at its own volume
+  times its cue's gain, and moves a playing track, voice or handled sound
+  when its gain changes (`Player::set_gains` replaces `set_volumes` and
+  `set_voice_volume`). `App`'s muted frames send `Gains::muted`
+  (`silent`, also in the paused branch, from `Game::gains`). The headless
+  `Speaker::gains` and `Harness::gain(group)` replace the volumes.
+- Option rows: `OptionRow::master_volume`, `ui_volume` and `volumes()`
+  (master, music, sound, voice); every volume row reads and sets its
+  group. English for the new keys in the toy's `en.ron`. Not in
+  hello-grid's: it shows no volume rows, and a change to its `en.ron`
+  moves its golden table and its recorded session's fingerprint for
+  nothing a player sees.
+- Saved forms (the engine's `()`, the toy's, hello-grid's) save `volumes`
+  and read the old linear fields with `settings::old_volume` (a bare
+  number into `Option`; RON reads a plain `Option` field only as
+  `Some(..)`) and `settings::read_old_volumes`; each has an old-save test.
+- [ADR-0091](../../docs/adr/0091-sound-groups-the-players-volumes-as-a-tree-of-groups-on-a-loudness-curve-worked-out-before-any-backend.md),
+  with its row and "extended by ADR-0091" on ADR-0004's.
+  `docs/platform-backends.md` (the `audio` section and the frame's
+  steps), and the book's *Saves and settings* chapter with its snippet.
+
+**Deviations**
+
+- **Size.** The PR passed 600 lines well before the manifest work, so,
+  as *Size* says, the manifest's own `groups` list, its checks and the
+  cues' `group` field went to **2258** (After MVP), and the pack's version
+  doesn't change here. `SoundGroups` takes only the `AudioConfig` for now.
+- The code had moved since the ticket was written: the voice volume was
+  already a setting (`Settings::voice_volume`, 0–100), and the player is
+  the shared one in `shuyi-platform` (3029), not `crates/app/src/audio.rs`.
+  So the `Ctx::voice_*` items had nothing left to remove, `voice_volume`
+  joined `volumes` as the `voice` group, and the engine's `()` form reads
+  an old `voice_volume` too. `crates/app/src/backend.rs` needed no change:
+  it plays through `PlayerDevice`.
+- `Harness::gain` and `Gains::group` answer silence for a group they
+  don't have, and the headless `Speaker` has no gains before its first
+  frame.
+- A public free function, `settings::read_old_volumes`, saves each form
+  the same three lines; and `GroupGains::full` and `GroupGains::with` let a
+  device's test name the gains it wants.
+
+**Either order:** 3029, 2344, 2501 and 3093 were done and are followed
+above; 2110, 2218, 2345, 2351 and 2408 were not, and their clauses now say
+what holds (2218's and 2345's point at 2258 for the manifest's fields).
+3027 and 3061 (parked, not done) read the gains, as their clauses now say.
+
+**Follow-up tickets:** 2258 (a game's own sound groups in the audio
+manifest).
+
+**For the game.** Its PR that moves the pin follows this one. No game PR
+exists yet; the game ticket that will move it is game#0865 (the music
+dips under a voiced line, open), which waits on this ticket and then
+2343. game#0826 (done) put the voice volume in the game's settings; at
+the pin bump it becomes the `voice` group's. The game's PR:
+
+- `Settings.music_volume` and `sound_volume` become `Settings.volumes`;
+  its saved form reads its old fields with `settings::old_volume` and
+  `Volumes::set_from_linear` (or `read_old_volumes`), tested on its
+  old-save fixtures;
+- the voice volume is the `voice` group's;
+- its Playdate front end reads `FrameOutput::gains` where it read
+  `music_volume` and `sound_volume`;
+- its `options.row.music_volume` and `options.row.sound_volume` text
+  stays; a master row needs `options.row.master_volume`;
+- an unchanged volume shows 97 where it showed 80: the same loudness.
+
+Breaking: shuyi-ui: settings::Settings: `music_volume`, `sound_volume` and `voice_volume` are gone; the player's volumes are `volumes` (a position per sound group on the loudness curve), read with `Ctx::volume` and set with `Ctx::preview_volume` or `volumes.set`.
+
+```migration
+since: 0.1.0
+what: The player's volumes are one position per sound group, on a loudness curve.
+old: "settings.music_volume = 40"
+new: "settings.volumes.set(MUSIC, 40)"
+before: |
+  ctx.change_settings(|s| s.music_volume = 40)?;
+  let music = ctx.settings().music_volume;
+after: |
+  use shuyi_ui::audio::groups::MUSIC;
+  ctx.change_settings(|s| s.volumes.set(MUSIC, 40))?;
+  let music = ctx.volume(MUSIC);
+find: ["s.music_volume = 40"]
+```
+
+Breaking: shuyi-ui: settings::Settings::{music_factor, sound_factor, voice_factor}, settings::DEFAULT_VOLUME: gone; a frame's gains are `FrameOutput::gains`, and a group's default is `SoundGroups::default_volume`.
+
+```migration
+since: 0.1.0
+what: Volumes are no longer linear factors; the frame carries each group's gain.
+old: "settings.music_factor()"
+new: "out.gains.group(MUSIC)"
+before: |
+  let music = ctx.settings().music_factor();
+after: |
+  let music = game.gains().group(MUSIC);
+find: ["music_factor()"]
+```
+
+Breaking: shuyi-ui: GameSettings saved forms: a form that saved `music_volume` and `sound_volume` saves `volumes` and reads its old fields as linear, where they sound the same (the engine's `()` form does).
+
+```migration
+since: 0.1.0
+what: A saved form writes `volumes` and reads its old linear volumes into it.
+old: "music_volume: u8, sound_volume: u8"
+new: "volumes: Volumes, plus the old fields read through old_volume and never written"
+before: |
+  #[derive(Serialize, Deserialize)]
+  #[serde(default)]
+  struct File { music_volume: u8, sound_volume: u8 }
+  // to_ron: music_volume: s.music_volume, …   from_ron: s.music_volume = file.music_volume;
+after: |
+  #[derive(Serialize, Deserialize)]
+  #[serde(default)]
+  struct File {
+      volumes: Volumes,
+      #[serde(skip_serializing, deserialize_with = "shuyi_ui::settings::old_volume")]
+      music_volume: Option<u8>,
+      #[serde(skip_serializing, deserialize_with = "shuyi_ui::settings::old_volume")]
+      sound_volume: Option<u8>,
+  }
+  // to_ron: volumes: s.volumes.clone(), music_volume: None, sound_volume: None
+  // from_ron:
+  s.volumes = file.volumes;
+  read_old_volumes(&mut s.volumes, file.music_volume, file.sound_volume, None);
+find: ["music_volume: u8"]
+```
+
+Breaking: shuyi-ui: FrameOutput: `music_volume`, `sound_volume` and `voice_volume` are gone; `gains` says each cue's gain.
+
+```migration
+since: 0.1.0
+what: A frame hands the device one gain per cue, from the sound groups.
+old: "out.music_volume, out.sound_volume, out.voice_volume"
+new: "out.gains.music(cue), out.gains.sound(cue), out.gains.voice()"
+before: |
+  device.set_volumes(out.music_volume, out.sound_volume);
+after: |
+  let gains = out.gains; // a Gain in units of 1/4096 per cue
+  device.set_track_volume(f32::from(gains.music("theme").get()) / 4096.0);
+find: ["out.music_volume", "out.sound_volume"]
+```
+
+Breaking: shuyi-platform: AudioFrame: `music_volume`, `sound_volume` and `voice_volume` are gone; `gains: Gains<'a>` says each cue's gain, and a muted frame is `gains.muted()`.
+
+```migration
+since: 0.1.0
+what: The device's frame carries the gains, not three volumes.
+old: "AudioFrame { requests, music, music_volume, sound_volume, voice_volume }"
+new: "AudioFrame { requests, music, gains }"
+before: |
+  let frame = AudioFrame { requests: &r, music: &m, music_volume: 1.0, sound_volume: 1.0, voice_volume: 1.0 };
+after: |
+  let groups = SoundGroups::default();
+  let full = GroupGains::full(&groups);
+  let frame = AudioFrame { requests: &r, music: &m, gains: Gains::new(&groups, &full) };
+find: ["music_volume: 1.0"]
+```
+
+Breaking: shuyi-platform: audio::player::Player::{set_volumes, set_voice_volume}: gone; `set_gains` takes the frame's gains (`PlayerDevice` calls it).
+
+```migration
+since: 0.1.0
+what: The shared player takes the frame's gains in one call.
+old: "player.set_volumes(backend, music, sound); player.set_voice_volume(backend, voice)"
+new: "player.set_gains(backend, frame.gains)"
+before: |
+  player.set_volumes(&mut backend, frame.music_volume, frame.sound_volume);
+  player.set_voice_volume(&mut backend, frame.voice_volume);
+after: |
+  player.set_gains(&mut backend, frame.gains);
+find: ["set_volumes(", "set_voice_volume("]
+```
+
+Breaking: shuyi-platform: headless::Speaker::volumes, harness::Harness::{volumes, voice_volume}: gone; `Speaker::gains` and `Harness::gain(group)` say each group's gain.
+
+```migration
+since: 0.1.0
+what: A test reads the gain a group played at.
+old: "h.volumes(), h.voice_volume()"
+new: "h.gain(MUSIC), h.gain(VOICE)"
+before: |
+  assert_eq!(h.volumes(), (music, 0.0));
+after: |
+  use shuyi_ui::audio::groups::{MUSIC, SFX};
+  assert_eq!(h.gain(SFX), Gain::SILENT);
+find: ["h.volumes()"]
+```

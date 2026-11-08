@@ -9,6 +9,7 @@ use alloc::rc::Rc;
 use core::cell::RefCell;
 
 use shuyi_assets::target::TargetProfile;
+use shuyi_ui::audio::Gain;
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
@@ -732,7 +733,7 @@ fn by_default_a_game_without_focus_runs_on_with_its_sound() {
     assert_eq!(log.borrow().len(), 2);
     assert_eq!(app.ticks(), 1);
     assert_eq!(p.speaker().requests().len(), 1);
-    assert!(p.speaker().volumes().0 > 0.0, "{:?}", p.speaker().volumes());
+    assert!(sounding(&p), "{:?}", p.speaker().gains());
 }
 
 /// Paused without focus: no update and no steps, the last frame shown
@@ -762,7 +763,7 @@ fn paused_without_focus_the_game_runs_nothing_and_shows_its_last_frame() {
     assert_eq!(p.presented(), presented + 5);
     assert_eq!(p.last_frame().cloned(), shown);
     // Not muted: the device heard nothing from the paused frames.
-    assert!(p.speaker().volumes().0 > 0.0);
+    assert!(sounding(&p));
     // Ten minutes away, then the focus is back.
     now += 10 * 60 * 1000;
     p.push_system(SystemEvent::FocusGained);
@@ -791,8 +792,20 @@ fn quitting_while_paused_quits() {
     assert!(app.has_quit() && !app.is_paused());
 }
 
-/// Muted without focus: the audio still goes to the device, at volume 0,
-/// and the player's volumes come back with the focus.
+/// Whether every sound group the device heard of last has a gain.
+fn sounding(p: &HeadlessPlatform) -> bool {
+    let gains = p.speaker().gains();
+    !gains.is_empty() && gains.values().all(|&gain| gain > Gain::SILENT)
+}
+
+/// Whether every sound group the device heard of last is silent.
+fn silenced(p: &HeadlessPlatform) -> bool {
+    let gains = p.speaker().gains();
+    gains.len() == 5 && gains.values().all(|&gain| gain == Gain::SILENT)
+}
+
+/// Muted without focus: the audio still goes to the device, every gain at
+/// 0, and the player's volumes come back with the focus.
 #[test]
 fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
     let (game, log) = steps_game();
@@ -800,11 +813,8 @@ fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
     app.background = Background::KEEP_RUNNING.muted();
     let mut p = HeadlessPlatform::new();
     let _ = app.frame(&mut p, Millis(0));
-    let volumes = p.speaker().volumes();
-    assert!(
-        volumes.0 > 0.0 && volumes.1 > 0.0 && volumes.2 > 0.0,
-        "{volumes:?}"
-    );
+    let gains = p.speaker().gains().clone();
+    assert!(sounding(&p), "{gains:?}");
     p.push_system(SystemEvent::FocusLost);
     p.push_input(&press(Key::F));
     let _ = app.frame(&mut p, Millis(17));
@@ -815,14 +825,14 @@ fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
         volume: 1.0,
     };
     assert_eq!(p.speaker().requests(), [click]);
-    assert_eq!(p.speaker().volumes(), (0.0, 0.0, 0.0));
+    assert!(silenced(&p), "{:?}", p.speaker().gains());
     p.push_system(SystemEvent::FocusGained);
     let _ = app.frame(&mut p, Millis(34));
-    assert_eq!(p.speaker().volumes(), volumes);
+    assert_eq!(p.speaker().gains(), &gains);
 }
 
 /// Paused and muted: no update, and the device is still told each frame,
-/// with nothing to play, at volume 0.
+/// with nothing to play, every gain at 0.
 #[test]
 fn paused_and_muted_the_device_hears_silence_each_frame() {
     let (game, log) = steps_game();
@@ -832,7 +842,7 @@ fn paused_and_muted_the_device_hears_silence_each_frame() {
     p.push_input(&press(Key::F));
     let _ = app.frame(&mut p, Millis(0));
     assert_eq!(p.speaker().requests().len(), 1);
-    let volumes = p.speaker().volumes();
+    let gains = p.speaker().gains().clone();
     p.push_system(SystemEvent::FocusLost);
     p.push_input(&press(Key::F));
     let _ = app.frame(&mut p, Millis(17));
@@ -840,10 +850,10 @@ fn paused_and_muted_the_device_hears_silence_each_frame() {
     assert_eq!(log.borrow().len(), 1);
     let found = p.speaker().requests();
     assert!(found.is_empty(), "{found:?}");
-    assert_eq!(p.speaker().volumes(), (0.0, 0.0, 0.0));
+    assert!(silenced(&p), "{:?}", p.speaker().gains());
     p.push_system(SystemEvent::FocusGained);
     let _ = app.frame(&mut p, Millis(34));
-    assert_eq!(p.speaker().volumes(), volumes);
+    assert_eq!(p.speaker().gains(), &gains);
 }
 
 /// The frame cap goes to the backend with its serial; the backend's report

@@ -12,7 +12,7 @@ pub mod player;
 use crate::alloc_prelude::*;
 
 use shuyi_assets::voice::{ClipVariant, clip_file};
-use shuyi_ui::audio::{AudioRequest, MusicCommand, SharedSamples, SoundId};
+use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand, SharedSamples, SoundId};
 
 use crate::platform::Millis;
 
@@ -165,13 +165,10 @@ pub struct AudioFrame<'a> {
     pub requests: &'a [SoundRequest],
     /// What to do to the music, in order.
     pub music: &'a [MusicCommand],
-    /// The player's music volume, 0–1: it multiplies every track's own
-    /// volume, a track already playing too.
-    pub music_volume: f32,
-    /// The player's sound volume, 0–1: it multiplies every sound's own.
-    pub sound_volume: f32,
-    /// How loud voice clips play, 0–1, the one playing too.
-    pub voice_volume: f32,
+    /// What every sound, track and voice clip plays at (ADR-0091): each
+    /// cue's own volume times its gain ([`Gains::sound`],
+    /// [`Gains::music`], [`Gains::voice`]), one already playing too.
+    pub gains: Gains<'a>,
 }
 
 /// A backend's sound device.
@@ -202,7 +199,7 @@ pub trait Audio {
         None
     }
 
-    /// Plays one frame's `frame` of audio at `now`: the volumes first, then
+    /// Plays one frame's `frame` of audio at `now`: the gains first, then
     /// the requests and the music commands in order. It also checks on
     /// what is still loading, so it is called every frame, with nothing to
     /// play too.
@@ -353,12 +350,12 @@ mod tests {
     #[test]
     fn silence_plays_nothing() {
         let mut silent = Silent;
+        let groups = shuyi_ui::audio::SoundGroups::default();
+        let gains = shuyi_ui::audio::GroupGains::full(&groups);
         let frame = AudioFrame {
             requests: &[SoundRequest::StopVoice],
             music: &[],
-            music_volume: 1.0,
-            sound_volume: 1.0,
-            voice_volume: 1.0,
+            gains: Gains::new(&groups, &gains),
         };
         silent.play(&frame, Millis(0));
         silent.suspend();
