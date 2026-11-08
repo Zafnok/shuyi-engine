@@ -457,22 +457,21 @@ This, not a person looking, is how a Shuyi game knows it still works.
 
 ## Make it play in the browser
 
-Every step of this tutorial plays on its page, so give your game a web build now. It
-takes two small changes. In `shuyi.ron`, add this part, which says what to build:
+Every step of this tutorial plays on its page, and your game has a web build
+already: `shuyi new` gave it two small pieces. In `shuyi.ron`, this part says what to
+build:
 
 {{ snippet(step="01-new", file="shuyi.ron", anchor="web", language="ron") }}
 
-and make a new file, `crates/game/build.rs`. Cargo runs a file with this name before
-compiling, and this one tells the linker that the web page will provide a few
-functions when the game runs:
+and `crates/game/build.rs` is a file Cargo runs before compiling. This one tells the
+linker that the web page will provide a few functions when the game runs:
 
 {{ snippet(step="01-new", file="crates/game/build.rs", anchor="build") }}
 
-You don't need to follow that code. A browser needs its own build of Rust, so add it
-once, and then build the page:
+You don't need to follow that code. A browser needs its own build of Rust, which
+`rust-toolchain.toml` lists, so rustup fetched it with the rest. Build the page:
 
 ```bash
-rustup target add wasm32-unknown-unknown
 cargo shuyi web --release
 ```
 

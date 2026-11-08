@@ -11,9 +11,10 @@
 4f27544702d1c3f3 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-48c829936feb042d README.md
+cb022dc47a4266c6 README.md
 b7bf83dcce2fb717 clippy.toml
 1c2cc3d4ec1d413c crates/game/Cargo.toml
+7326154973d00b1b crates/game/build.rs
 d9d0d34f89554d0a crates/game/examples/tools.rs
 8a1505756a23ce0b crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
@@ -28,10 +29,10 @@ c2a32153feca5b36 crates/game/src/main.rs
 fbc4754f1d90d0da crates/game/src/title.rs
 a8fe621a136f7156 crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
-c7bc56040688f5d6 rust-toolchain.toml
+d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-dda7e6f8c79fe81b shuyi.ron
+cbc58fd7d1c621fe shuyi.ron
 
 [grid] base, stage-top-down-grid
 83704d78ca4c46ba .cargo/config.toml
@@ -42,9 +43,10 @@ dda7e6f8c79fe81b shuyi.ron
 4f27544702d1c3f3 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 53d946a8036df89c Cargo.toml
-48c829936feb042d README.md
+cb022dc47a4266c6 README.md
 b7bf83dcce2fb717 clippy.toml
 ab99cf3be7fe2cd2 crates/game/Cargo.toml
+7326154973d00b1b crates/game/build.rs
 d9d0d34f89554d0a crates/game/examples/tools.rs
 ac3f7f6edb84c1ec crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
@@ -68,7 +70,7 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 df741fbc5c3d017e crates/rules/src/lib.rs
 61400620a286df3d crates/rules/tests/layers.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
-c7bc56040688f5d6 rust-toolchain.toml
+d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-d82096a5c515ff24 shuyi.ron
+06b5ceb1c2b0e897 shuyi.ron

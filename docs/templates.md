@@ -229,8 +229,8 @@ whose folder a part already writes. `new`'s answer lists them in
 
 | Part | When | What it writes |
 | ---- | ---- | -------------- |
-| `base` | always | The game crate on the short path (`BasicGame`, `BasicData`, `run_game`, `BasicTools`), its title, its files, `shuyi.ron`, `AGENTS.md`, CI with the gates |
+| `base` | always | The game crate on the short path (`BasicGame`, `BasicData`, `run_game`, `BasicTools`), its title, its files, `shuyi.ron`, `AGENTS.md`, CI with the gates, and its web build (`shuyi.ron`'s `web`, `crates/game/build.rs` and the web target in `rust-toolchain.toml`) |
 | `stage-top-down-grid` | `perspective` is `top-down-grid` | A top-down grid stage: a rules crate over `TurnRules`, the stage's map, lights and seed as `BasicData`'s own part, and its tools (`--seed`, its scene, records, bots, its map's importer) |
 
 `--template blank` is `base` alone, and `--template grid` is both. CI
-makes a game with each short name and runs its gates.
+makes a game with each short name, runs its gates and builds it for the web.

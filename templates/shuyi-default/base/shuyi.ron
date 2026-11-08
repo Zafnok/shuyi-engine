@@ -61,6 +61,17 @@
         "web": (frame: (384, 384), scale: integer, text_px: 16),
     },
 
+    // `cargo shuyi web`: the web build, the page and the game's `.wasm` in
+    // `dist` (serve that folder over HTTP to play it; `--release` for
+    // players). `crates/game/build.rs` gives the binary the link argument
+    // the page's JS plugins need.
+    web: (
+        package: "{{crate_name}}",
+        bin: "{{crate_name}}",
+        title: "{{name}}",
+        dist: "dist/web",
+    ),
+
     // `cargo shuyi check-keys`: no key named in the game's code or text.
     check_keys: (
         rust: ["crates/game/src"],
