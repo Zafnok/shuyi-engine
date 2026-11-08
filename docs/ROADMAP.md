@@ -139,7 +139,7 @@ tickets, in order:
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
 | 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
 | 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |
-| 2577 | The bake's fastest-run test holds on a busy machine |
+| 2577 (done) | The bake's fastest-run test holds on a busy machine |
 | 2250 | A voice cast a voice tool can use |
 | 2251 | Plan a language's voice clips (after 2250) |
 | 2544 | One operation plays a game's bots: `bots` folded into `playtest`, before the release |

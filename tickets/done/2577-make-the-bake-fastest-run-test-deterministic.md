@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-07
 ---
 
 # 2577 — Make the bake fastest-run test deterministic
@@ -55,11 +55,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The test proves the fastest of `LOAD_RUNS` controlled measurements is
+- [x] The test proves the fastest of `LOAD_RUNS` controlled measurements is
   selected, including when the first run is slower.
-- [ ] The test no longer passes or fails according to OS scheduling delays.
-- [ ] Bake timing output and public API stay unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The test no longer passes or fails according to OS scheduling delays.
+- [x] Bake timing output and public API stay unchanged.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -70,5 +70,18 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `fastest` in `crates/cli/src/contract/bake.rs` now times each run with
+  `Instant` and hands the durations to a new private `fastest_of`, which
+  takes exactly `LOAD_RUNS` measurements and keeps the smallest in whole
+  microseconds. The bake's timing is measured and reported as before.
+- The test feeds `fastest_of` fixed durations (20, 7, 3, 9 and 4 ms, the
+  slowest first) and checks it picks 3,000 µs after exactly `LOAD_RUNS`
+  measurements. It also runs `fastest` itself on a closure and counts
+  `LOAD_RUNS` calls, so the real clock path stays covered, with no bound
+  on how long a run takes. The `micros` assertions are unchanged.
+- No deviations, no follow-up tickets, no public API change (both
+  functions are private). The docs need no change: nothing a game or an
+  engine developer reads changed.
+
+Nick: nothing to do; a test that could fail on a busy machine no longer
+can.
