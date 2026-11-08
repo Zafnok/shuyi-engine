@@ -69,6 +69,13 @@ None. Whether Visions of Shuyi lowers its music under voices is the
 game's choice (game#0238); a manifest with no rule changes nothing. If
 Nick wants it before the MVP, this ticket moves to the MVP with 2342.
 
+The game now asks for it: game#0865 (the music dips under a voiced
+line, from a playtest of the Act 1 build, 2026-11-08) is blocked on this
+ticket, and the game's Act 1 playtest runs through 0865. The retro of
+2026-11-08 found nobody had told this side. Whether that moves 2342 and
+2343 to the MVP is Nick's call (`ask-nick`); until he says, they stay
+After MVP and the game ships without the dip.
+
 ## Scope
 
 **In:**

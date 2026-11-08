@@ -150,6 +150,66 @@ tickets, in order:
 
 ## Phase 3: after the MVP
 
+### Guardrails from the retro of the last 60 PRs
+
+A retro of engine PRs #254–#313 and game PRs #513–#580 (2026-11-08)
+looked at how the sessions worked. What held:
+- precise tickets finished without questions;
+- deviations and evidence in the completion notes;
+- follow-ups written as tickets with both sides of the handoff;
+- `Breaking:` lines the game's pin review read;
+- CI's mutants and API gates catching real gaps.
+
+What slipped was mostly at the seams, where nothing checked:
+- a branch name the checks couldn't read (4 PRs closed and redone);
+- ticket and ADR numbers two parallel sessions both took (13 renumber
+  commits);
+- PRs over the size rule;
+- gates claimed but not run;
+- Dependabot PRs left red;
+- behaviour changes the game found at pin time.
+
+These tickets make the checks deterministic where they can be. None
+holds up the first release (2005), so they are not in the MVP. They come
+**ahead of** the MVP's remaining tickets all the same: each one saves
+redone PRs on the rest. 2051, 2052 and 2054 first. Whether they go into
+the release's `blocked_by` is Nick's call.
+
+| Ticket | What |
+| ------ | ---- |
+| 2051 | The ticket a PR is for comes from its title, and a branch the checks can't read fails; the ticket-only PR convention |
+| 2052 | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
+| 2054 | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
+| 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
+| 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
+| 2059 | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
+| 2066 | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
+| 2584 | The ticket skills check a ticket against the code before trusting it |
+| 2057 | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
+| 2064 | Flaky gates have a ledger, and a calibration run is one reusable workflow |
+| 2058 | A migration block's `since` is the workspace's version |
+| 2065 | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
+| 2060 | Nick decides how `main` is guarded: required checks, merges on green, and the `model` line |
+
+Bugs and follow-ups the retro found left in prose, now tickets:
+
+| Ticket | What |
+| ------ | ---- |
+| 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307) |
+| 2061 | `cargo xtask api` runs from a Windows worktree |
+| 2062 | The tutorial steps' lockfiles match what `cargo test` writes |
+| 2063 | The MCP server's forwarding tests pass under load |
+| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
+| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
+| 2257 | The text checks say cells where they count cells |
+| 2583 | The debug step plays over the live link and in a capture plan |
+| 3097 | A game's load runs over several update callbacks on the Playdate (game#1170) |
+
+The retro also set 2397, 3032 and 3082 to `todo` (every blocker done),
+added 2049 and 2050 to 3084's `blocked_by`, and noted on 2343 that
+game#0865 now waits on it. The game's own tickets from the retro are its
+0143–0151, 0911 and 1254–1258.
+
 ### Bevy's homepage
 
 Nick, 2026-10-20 ([`decisions.md`](decisions.md)): "every feature outlined

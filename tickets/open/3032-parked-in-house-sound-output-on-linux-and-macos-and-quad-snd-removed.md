@@ -5,7 +5,7 @@ type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: todo
 blocked_by: ["3031", "2513", "2573"]
 nick_input: sign-off
 completed:
