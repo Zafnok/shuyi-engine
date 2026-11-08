@@ -5,7 +5,7 @@ type: feature
 milestone: "Engine: audio"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: todo
 blocked_by: ["2902", "2573", "3031", "2013"]
 nick_input: none
 completed:
