@@ -349,6 +349,7 @@ mod tests {
         let view = Gains::new(&groups, &gains);
         assert!(view.each().all(|(_, gain)| gain == Gain::SILENT));
         let loud = GroupGains::full(&groups);
+        assert!(!Gains::new(&groups, &loud).is_muted());
         let muted = Gains::new(&groups, &loud).muted();
         assert!(muted.is_muted());
         assert_eq!(muted.each().count(), 5);

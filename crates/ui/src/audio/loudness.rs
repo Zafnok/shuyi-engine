@@ -72,13 +72,8 @@ const TABLE: [u16; 101] = [
 /// The gain a volume of `volume` (0 to [`MAX_VOLUME`]) plays at; above it
 /// counts as [`MAX_VOLUME`].
 #[must_use]
-pub const fn loudness(volume: u8) -> Gain {
-    let at = if volume > MAX_VOLUME {
-        MAX_VOLUME
-    } else {
-        volume
-    };
-    Gain(TABLE[at as usize])
+pub fn loudness(volume: u8) -> Gain {
+    Gain(TABLE[usize::from(volume.min(MAX_VOLUME))])
 }
 
 /// The volume whose gain is nearest `percent` of full (0 to 100; above it

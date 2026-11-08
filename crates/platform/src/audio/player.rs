@@ -2141,6 +2141,48 @@ mod tests {
         assert_eq!(fake.calls(), [] as [String; 0]);
     }
 
+    /// Gains over other groups (another game's menus' cues) are kept with
+    /// their groups: a cue plays in the group the frame says.
+    #[test]
+    fn gains_over_other_groups_bring_their_groups() {
+        use shuyi_ui::audio::AudioConfig;
+        use shuyi_ui::audio::groups::UI;
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        let config = AudioConfig {
+            cursor_cue: "beep",
+            ..AudioConfig::DEFAULT
+        };
+        let groups = SoundGroups::new(&config);
+        let gains = GroupGains::full(&groups).with(&groups, UI, Gain::new(1024));
+        audio.set_gains(&mut fake, Gains::new(&groups, &gains));
+        audio.hear(&mut fake, &[sound("beep", 1.0)], &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            ["play wav100 0.12"],
+            "beep is a menu's cue there"
+        );
+    }
+
+    /// A sound started with a handle and not paused comes back from a
+    /// suspend at its level.
+    #[test]
+    fn a_started_sound_comes_back_from_a_suspend_at_its_level() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        audio.set_gains(&mut fake, levels(100, 50, 100).view());
+        audio.play(
+            &mut fake,
+            &[SoundRequest::start(handle(), "rain", 1.0)],
+            &[],
+            0.0,
+        );
+        audio.suspend(&mut fake);
+        fake.calls();
+        audio.resume(&mut fake);
+        assert_eq!(fake.calls(), ["volume #1 0.25"]);
+    }
+
     /// The menus' sounds play in `ui`, under the sounds' group; another
     /// sound in `sfx`.
     #[test]

@@ -588,6 +588,7 @@ mod tests {
     fn volumes_are_set_taken_back_to_the_default_and_restored() {
         let mut s = Settings::default();
         s.volumes.set(MUSIC, 40);
+        assert!(!s.volumes.is_empty());
         s.volumes.set(SFX, 200);
         assert_eq!(
             (s.volumes.get(MUSIC), s.volumes.get(SFX)),

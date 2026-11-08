@@ -348,6 +348,19 @@ fn a_volume_set_back_to_its_default_is_no_change() {
     assert!(!c.preview_volume(UI, 100));
 }
 
+/// The context's groups are the game's: its menus' cues play in `ui`.
+#[test]
+fn the_sound_groups_are_the_games() {
+    let mut c = ctx();
+    assert_eq!(c.sound_groups().sound_group("ui_move"), UI);
+    let config = crate::audio::AudioConfig {
+        cursor_cue: "tick",
+        ..crate::audio::AudioConfig::DEFAULT
+    };
+    c.sound_groups = crate::audio::SoundGroups::new(&config);
+    assert_eq!(c.sound_groups().sound_group("tick"), UI);
+}
+
 /// A volume loaded at its group's default reads as none set: an old save
 /// at the old 80 reads as the defaults.
 #[test]
