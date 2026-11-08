@@ -414,6 +414,37 @@ fn a_boundary_is_only_left_out_of_the_repeat_and_checks_nothing() {
 }
 
 #[test]
+fn the_loops_repeat_leaves_out_quad_snds_gap_at_a_join() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let plan: Plan =
+        read_ron(&root.join(TOOL).join("scenarios.ron")).unwrap_or_else(|e| panic!("{e}"));
+    let mut scenario = plan
+        .scenarios
+        .into_iter()
+        .find(|s| s.name == "loop")
+        .unwrap_or_else(|| panic!("no loop"));
+    let passes = signal("loop.wav").repeat(3);
+    let whole = recording(10, &passes);
+    // Ticket 2048's evidence: one Windows run had 441 frames of zeros at the second join.
+    let mut gapped = passes;
+    let join = frame_index(1000);
+    gapped[join..join + 441 * 2].fill(0);
+    let runs = [whole, recording(10, &gapped)];
+    let status = |scenario: &Scenario| {
+        repeat_cell("windows", scenario, &runs, &tolerance())["status"].clone()
+    };
+    assert_eq!(status(&scenario), "passed");
+    scenario
+        .expect
+        .retain(|e| !matches!(e, Expect::Boundary { .. }));
+    assert_eq!(
+        status(&scenario),
+        "failed",
+        "the gap is what the boundaries leave out"
+    );
+}
+
+#[test]
 fn too_few_pairs_is_inconclusive() {
     let few = ratios(&[10.0; 8], &[10.0; 8]);
     assert_eq!(few.pairs, 8);
