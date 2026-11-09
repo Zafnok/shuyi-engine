@@ -8,10 +8,12 @@ part = "chapters"
 chapter = 8
 +++
 
+{% newcomer(to="programming", topic="what a test is") %}
 Once a game is more than a few screens, you can't check it all by playing it after every
 change. A **test** is a small program that plays part of your game and checks what
 happened, and you run hundreds of them in seconds, every time, with no effort. When you
 break something by accident, a test tells you right then, and names the line.
+{% end %}
 
 A game on Shuyi Engine is tested with no window and no sound card. Its rules are plain
 functions of their state. The game runs headless in the engine's **Harness**, frame by
@@ -28,10 +30,12 @@ Which test to write depends on what changed:
 | What the tools answer | a test calling the contract | the answer |
 | A look | a text snapshot of the frame, or a picture | the frame |
 
-> **Rust:** a test is a function with `#[test]` above it, which `cargo test` finds and
-> runs. A test passes if it reaches its end. `assert_eq!(a, b)` stops it, as failed, if `a`
-> and `b` differ, and `assert!(x)` does if `x` is false. Tests usually sit in a `mod tests`
-> at the end of a file, or in the game's `tests/` folder.
+{% newcomer(to="rust", topic="`#[test]` and `assert_eq!`") %}
+A test is a function with `#[test]` above it, which `cargo test` finds and
+runs. A test passes if it reaches its end. `assert_eq!(a, b)` stops it, as failed, if `a`
+and `b` differ, and `assert!(x)` does if `x` is false. Tests usually sit in a `mod tests`
+at the end of a file, or in the game's `tests/` folder.
+{% end %}
 
 ## The rules
 
@@ -47,13 +51,15 @@ the dev-dependencies (crates only the tests use):
 
 {{ snippet(file="src/testing.rs", anchor="property") }}
 
-> **Rust:** `proptest!` is a macro from that crate, so what's inside has its own form.
-> `seed in any::<u64>()` means any 64-bit number, and `commands in
-> prop::collection::vec(0..3_u8, 0..40)` means a list of up to 39 numbers, each 0, 1 or 2.
-> `0..3` is a **range**, including its start and not its end. `let run = || { ... };` keeps
-> a small nameless function that takes nothing, so the test can run the same play twice.
-> `&n` takes the number out of the reference the loop gives, and `[...][usize::from(n)]`
-> picks item `n` of a list, after turning `n` into the type used for counting.
+{% newcomer(to="rust", topic="`proptest!`, a range and a closure") %}
+`proptest!` is a macro from that crate, so what's inside has its own form.
+`seed in any::<u64>()` means any 64-bit number, and `commands in
+prop::collection::vec(0..3_u8, 0..40)` means a list of up to 39 numbers, each 0, 1 or 2.
+`0..3` is a **range**, including its start and not its end. `let run = || { ... };` keeps
+a small nameless function that takes nothing, so the test can run the same play twice.
+`&n` takes the number out of the reference the loop gives, and `[...][usize::from(n)]`
+picks item `n` of a list, after turning `n` into the type used for counting.
+{% end %}
 
 ## The Harness
 
@@ -119,31 +125,42 @@ this engine's own `render` job does.
 
 ## Bots
 
+{% newcomer(to="games", topic="a bot") %}
 A **bot** is a player made of code: it picks the next command from the state. Why would you
 want one? It can play your game a thousand times while you watch, finding the rule that
-never ends, or telling you how often a player can win. `shuyi_core::bots::play` lets bots
-play a game to its end, or to a turn limit:
+never ends, or telling you how often a player can win.
+{% end %}
+
+`shuyi_core::bots::play` lets bots play a game to its end, or to a turn limit:
 
 {{ snippet(file="src/testing.rs", anchor="bot") }}
 
-> **Rust:** `impl Bot<Garden> for Gardener` keeps the promise of the trait `Bot`, for the
-> garden's rules, with one function: `choose`. `check` is what the rules offer to say whether
-> a command would be allowed, without changing anything.
->
-> `&mut [((), bot)]` lends a list of who plays: each a **tuple** of a side and a bot. The
-> garden has one player, whose side is `()`, a value holding nothing. `&mut dyn Bot<Garden>`
-> means "lend me some type with this trait". `.unwrap_or_else(|e| panic!("{e}"))` opens a
-> `Result`, and on an error stops the program with its message. A **panic** like this is for
-> what should never happen, and here that's a game that can't even start.
+`check` is what the rules offer to say whether a command would be allowed, without changing
+anything.
+
+{% newcomer(to="rust", topic="implementing a trait") %}
+`impl Bot<Garden> for Gardener` keeps the promise of the trait `Bot`, for the
+garden's rules, with one function: `choose`.
+{% end %}
+
+{% newcomer(to="rust", topic="a tuple, `dyn` and a panic") %}
+`&mut [((), bot)]` lends a list of who plays: each a **tuple** of a side and a bot. The
+garden has one player, whose side is `()`, a value holding nothing. `&mut dyn Bot<Garden>`
+means "lend me some type with this trait". `.unwrap_or_else(|e| panic!("{e}"))` opens a
+`Result`, and on an error stops the program with its message. A **panic** like this is for
+what should never happen, and here that's a game that can't even start.
+{% end %}
 
 `RandomBot` picks one of the legal commands from a seed of its own, and the core has bots
 that plan on copies of the game. A test then holds the game to how often a bot should win:
 
 {{ snippet(file="src/testing.rs", anchor="test_bot") }}
 
-> **Rust:** `(0..50).map(...).filter(...).count()` plays 50 seeds, keeps the wins, and counts
-> them. `(10..50).contains(&wins)` asks whether `wins` is in that range. In the text `"{wins}
-> wins in 50"`, `{wins}` is filled in with its value, printed if the test fails.
+{% newcomer(to="rust", topic="an iterator chain") %}
+`(0..50).map(...).filter(...).count()` plays 50 seeds, keeps the wins, and counts
+them. `(10..50).contains(&wins)` asks whether `wins` is in that range. In the text `"{wins}
+wins in 50"`, `{wins}` is filled in with its value, printed if the test fails.
+{% end %}
 
 In a game whose tools give a playtest (a `grid` game's do), `cargo shuyi playtest --tries 20`
 plays each of its named bots 20 times on every core: how each try ended, a record of each
@@ -180,11 +197,15 @@ loading card and then running its load, and records from the very first frame.
 
 {{ snippet(file="src/testing.rs", anchor="session") }}
 
-> **Rust:** `.unwrap()` opens a `Result` or an `Option`, and stops the test if there's an
-> error or nothing inside, which is fine in a test: a game that can't start should fail it.
-> `first.session()` gives the record so far as an `Option`, because a Harness that isn't
-> recording has none. `None` in `assert_eq!(played.first_difference, None)` is that same
-> nothing: no frame differed.
+`first.session()` gives the record so far as an `Option`, because a Harness that isn't
+recording has none.
+
+{% newcomer(to="rust", topic="`.unwrap()` and `None`") %}
+`.unwrap()` opens a `Result` or an `Option`, and stops the test if there's an
+error or nothing inside, which is fine in a test: a game that can't start should fail it.
+`None` in `assert_eq!(played.first_difference, None)` is that same
+nothing: no frame differed.
+{% end %}
 
 Each frame of a record also holds a hash of what happened in it: the screens open, the sounds
 and music asked for, and whether the game quit. It never covers the picture, so a new color

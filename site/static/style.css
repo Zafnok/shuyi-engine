@@ -22,6 +22,7 @@
   --code-comment: #4f6f52;
   --code-deleted: #b3261e;
   --code-inserted: #1a7a37;
+  --newcomer: #2f6f8f;
   --radius: 10px;
   --wrap: 68rem;
   color-scheme: light dark;
@@ -49,6 +50,7 @@
     --code-comment: #8fb08a;
     --code-deleted: #ff8a80;
     --code-inserted: #7ee29a;
+    --newcomer: #7fbcd9;
   }
 }
 
@@ -415,6 +417,30 @@ h3 {
   margin-top: 0.4rem;
   padding-left: 1rem;
   list-style: none;
+}
+
+/* A passage only a newcomer needs (ADR-0090 §5): a rule at its side and a
+   label naming who it is for and what it explains. */
+.newcomer {
+  margin: 1.25rem 0;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 3px solid var(--newcomer);
+}
+
+.newcomer-label {
+  margin: 0 0 0.5rem;
+  color: var(--newcomer);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.newcomer-label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.newcomer > :last-child {
+  margin-bottom: 0;
 }
 
 .pager {

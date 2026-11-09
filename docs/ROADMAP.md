@@ -777,6 +777,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
 | 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
 | 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
 | 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099) |
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone |

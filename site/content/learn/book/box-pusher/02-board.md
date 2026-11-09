@@ -35,9 +35,11 @@ Your project should end up like
 
 ## The level's file
 
-> **Game idea:** keep a game's **data** apart from its **code**. If a level is a text
-> file, then changing one never means changing code, and a level designer needs no
-> programmer. It also means a player could make their own.
+{% newcomer(to="games", topic="data kept apart from code") %}
+Keep a game's **data** apart from its **code**. If a level is a text
+file, then changing one never means changing code, and a level designer needs no
+programmer. It also means a player could make their own.
+{% end %}
 
 Make the folder `crates/game/files/levels/`, and in it the file `1.map`:
 
@@ -63,7 +65,12 @@ give you an error, since nothing reads this file yet.
 ## Getting ready: `serde`
 
 The rules' state has to be able to turn into text and back, for saves and replays.
-Rust has a well-known library for that called **serde**. Add it to your game's
+
+{% newcomer(to="rust", topic="serde") %}
+Rust has a well-known library for that called **serde**.
+{% end %}
+
+Add **serde** to your game's
 dependencies. In the top `Cargo.toml`, under `[workspace.dependencies]`, add the
 line `serde = { version = "1", features = ["derive"] }`, and in
 `crates/game/Cargo.toml`, under `[dependencies]`, add `serde.workspace = true`.
@@ -81,24 +88,34 @@ Make `crates/game/src/level.rs`. It starts by saying what it uses:
 
 {{ snippet(step="02-board", file="crates/game/src/level.rs", anchor="uses") }}
 
-Those `{ }` in a `use` take several names from one place at once. Then, give each
+{% newcomer(to="rust", topic="`{ }` in a `use`") %}
+Those `{ }` in a `use` take several names from one place at once.
+{% end %}
+
+Then, give each
 kind of ground a name, and each kind of thing that stands on it:
 
 {{ snippet(step="02-board", file="crates/game/src/level.rs", anchor="terrains") }}
 
-> **Rust:** `const` makes a fixed value. `TerrainId(0)` is a **tuple struct**: a struct
-> whose fields have no names, here just wrapping a number, so that a terrain can never
-> be mixed up with some other number. `[&str; 3]` is an **array** of exactly three
-> pieces of text, and `&str` is borrowed text, as opposed to the owned `String`.
->
-> `pub fn terrain_named(name: &str) -> Option<TerrainId>` turns a word from the legend
-> into a terrain, or `None` if there's no such word. The `?` at the end of the
-> `position` line says: "if this is `None`, stop here and return `None`; if it's
-> `Some`, carry on with what's inside". `?` is how Rust passes a problem up to whoever
-> called, in a single character, and you'll use it constantly.
->
-> `enum Feature` lists all the things a tile may hold, `Start` or `Box`. Enums are how
-> you say "one of these, and nothing else", and you'll write a lot of them.
+{% newcomer(to="rust", topic="`const`, tuple structs and arrays") %}
+`const` makes a fixed value. `TerrainId(0)` is a **tuple struct**: a struct
+whose fields have no names, here just wrapping a number, so that a terrain can never
+be mixed up with some other number. `[&str; 3]` is an **array** of exactly three
+pieces of text, and `&str` is borrowed text, as opposed to the owned `String`.
+{% end %}
+
+{% newcomer(to="rust", topic="`Option` and `?`") %}
+`pub fn terrain_named(name: &str) -> Option<TerrainId>` turns a word from the legend
+into a terrain, or `None` if there's no such word. The `?` at the end of the
+`position` line says: "if this is `None`, stop here and return `None`; if it's
+`Some`, carry on with what's inside". `?` is how Rust passes a problem up to whoever
+called, in a single character, and you'll use it constantly.
+{% end %}
+
+{% newcomer(to="rust", topic="`enum`") %}
+`enum Feature` lists all the things a tile may hold, `Start` or `Box`. Enums are how
+you say "one of these, and nothing else", and you'll write a lot of them.
+{% end %}
 
 `impl MapFeature for Feature {}` promises the engine's `.map` format that `Feature` is
 a thing a tile can hold. The trait asks for no functions of its own, so the `{}` is
@@ -109,23 +126,31 @@ Next comes the reading itself:
 
 {{ snippet(step="02-board", file="crates/game/src/level.rs", anchor="read") }}
 
-> **Shuyi:** the **format registry**. Everything a game reads from a file goes through
-> three parts. A **kind** is what you want (here `Level`). A **format** knows how to read
-> one kind from one sort of file (`MapText` reads `.map`). And the registry, `Formats`,
-> holds all the formats, and finds the right one for a file. Your code just says "load
-> me a `Level` from this file", and never cares what's in the file. So a game could
-> switch to a different level editor later, and only the format changes.
->
-> The **bundle** is your game's files, the ones `include_dir!` put inside it.
+{% newcomer(to="shuyi", topic="the format registry") %}
+Everything a game reads from a file goes through
+three parts. A **kind** is what you want (here `Level`). A **format** knows how to read
+one kind from one sort of file (`MapText` reads `.map`). And the registry, `Formats`,
+holds all the formats, and finds the right one for a file. Your code just says "load
+me a `Level` from this file", and never cares what's in the file. So a game could
+switch to a different level editor later, and only the format changes.
+{% end %}
 
-> **Rust:** `Result<Level, Vec<ContentError>>` is the other type you'll see everywhere.
-> `Option` says "maybe a value". `Result` says "a value, or what went wrong": it's
-> either `Ok(value)` or `Err(problem)`. The `?` works on these too, passing an `Err` up
-> to the caller.
->
-> `load::<Level>` fills in a generic by hand, to say which kind you want, a form of
-> writing people call the "turbofish". `let _ = ...` means "I know this gives something
-> back, and I don't need it".
+{% newcomer(to="shuyi", topic="the bundle") %}
+The **bundle** is your game's files, the ones `include_dir!` put inside it.
+{% end %}
+
+{% newcomer(to="rust", topic="`Result`") %}
+`Result<Level, Vec<ContentError>>` is the other type you'll see everywhere.
+`Option` says "maybe a value". `Result` says "a value, or what went wrong": it's
+either `Ok(value)` or `Err(problem)`. The `?` works on these too, passing an `Err` up
+to the caller.
+{% end %}
+
+{% newcomer(to="rust", topic="the turbofish and `let _`") %}
+`load::<Level>` fills in a generic by hand, to say which kind you want, a form of
+writing people call the "turbofish". `let _ = ...` means "I know this gives something
+back, and I don't need it".
+{% end %}
 
 If a level makes no puzzle, say there's no start, `read` reports it as a problem with
 that file, along with every other problem, as the game loads. So you hear about a bad
@@ -140,44 +165,59 @@ Here's the most important file of your game. Make `crates/game/src/rules.rs`:
 
 {{ snippet(step="02-board", file="crates/game/src/rules.rs", anchor="state") }}
 
-> **Game idea:** the **state** is everything that's true right now, and could change.
-> In this puzzle, that's only where the player and the boxes are. The walls never move,
-> so the state just keeps a copy of the tiles. Whatever isn't in the state doesn't exist
-> as far as the rules are concerned.
+{% newcomer(to="games", topic="the state") %}
+The **state** is everything that's true right now, and could change.
+In this puzzle, that's only where the player and the boxes are. The walls never move,
+so the state just keeps a copy of the tiles. Whatever isn't in the state doesn't exist
+as far as the rules are concerned.
+{% end %}
 
 Look at the top of the file: it uses no screens, no keys, no colors. That's on purpose.
 In step 3, you'll see why this matters so much.
 
-> **Rust:** `Pos` is a position, an `x` and a `y`, and `Grid<TerrainId>` is the engine's
-> two-dimensional grid of terrains. `BTreeSet<Pos>` is a **set**: a collection with no
-> duplicates, which is just what boxes are, since no two share a tile.
->
-> Why `BTreeSet`, and not the better-known `HashSet`? A `BTreeSet` always keeps its
-> items in the same order, while a `HashSet`'s order differs from one run to the next.
-> Shuyi's rules must do exactly the same thing every time, on every computer. You'll see
-> what that buys you in step 5 and step 9. So in rules, always use `BTree`.
+`Pos` is a position, an `x` and a `y`, and `Grid<TerrainId>` is the engine's
+two-dimensional grid of terrains.
+
+{% newcomer(to="rust", topic="a set") %}
+`BTreeSet<Pos>` is a **set**: a collection with no
+duplicates, which is just what boxes are, since no two share a tile.
+{% end %}
+
+Why `BTreeSet`, and not the better-known `HashSet`? A `BTreeSet` always keeps its
+items in the same order, while a `HashSet`'s order differs from one run to the next.
+Shuyi's rules must do exactly the same thing every time, on every computer. You'll see
+what that buys you in step 5 and step 9. So in rules, always use `BTree`.
 
 Now to build a `Puzzle` from a level:
 
 {{ snippet(step="02-board", file="crates/game/src/rules.rs", anchor="new") }}
 
 This function goes through the level's features, and checks that they make a puzzle.
-Reading it will show you a lot of Rust at once:
 
-> **Rust:** `Self` means "the type this `impl` is for". `Puzzle::new` is the usual way of
-> writing a function that makes a new one: `new` isn't special, it's just a habit.
->
-> `for (&pos, feature) in &level.features` is a **loop**, running once for each feature,
-> and calling its parts `pos` and `feature` each time.
->
-> **`match`** is like an `if` for all the possibilities of a value. It tries each arm
-> from the top, and the compiler refuses to compile a `match` that misses a possibility.
-> This is one of the best things about Rust: add a new kind of `Feature` later, and the
-> compiler will take you to every `match` that needs to think about it.
-> `Feature::Start if player.is_some()` is an arm with an extra condition.
->
-> `let player = player.ok_or("no start")?;` turns the `Option` into a `Result`: a `None`
-> becomes the error "no start", which `?` returns.
+{% newcomer(to="rust", topic="`Self` and `new`") %}
+Reading it will show you a lot of Rust at once.
+
+`Self` means "the type this `impl` is for". `Puzzle::new` is the usual way of
+writing a function that makes a new one: `new` isn't special, it's just a habit.
+{% end %}
+
+{% newcomer(to="rust", topic="a `for` loop") %}
+`for (&pos, feature) in &level.features` is a **loop**, running once for each feature,
+and calling its parts `pos` and `feature` each time.
+{% end %}
+
+{% newcomer(to="rust", topic="`match`") %}
+**`match`** is like an `if` for all the possibilities of a value. It tries each arm
+from the top, and the compiler refuses to compile a `match` that misses a possibility.
+This is one of the best things about Rust: add a new kind of `Feature` later, and the
+compiler will take you to every `match` that needs to think about it.
+`Feature::Start if player.is_some()` is an arm with an extra condition.
+{% end %}
+
+{% newcomer(to="rust", topic="`ok_or` and `?`") %}
+`let player = player.ok_or("no start")?;` turns the `Option` into a `Result`: a `None`
+becomes the error "no start", which `?` returns.
+{% end %}
 
 And then a few small functions that let others read the state:
 
@@ -218,23 +258,33 @@ To paint the terrains, the engine asks about them through a trait:
 
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="terrains") }}
 
+{% newcomer(to="rust", topic="`.get`, `.0` and `usize`") %}
 `TERRAIN_LOOKS.get(...)` gives an `Option`, since there might be no such row, and `?`
 handles that. `usize::from(id.0)` takes the number from inside the `TerrainId` (`.0`
 means the first field of a tuple struct), and turns it into the kind of number used for
 counting positions in a list, `usize`.
+{% end %}
 
 ### The skin
 
-> **Shuyi:** the **grid kit** (`shuyi::ui::grid`) paints maps for you. You build a
-> **scene**, plain data saying which terrain and which pieces are where, and a **skin**
-> paints it. A `GlyphSkin` paints with characters, and a sprite skin paints with pictures.
-> They take the same scene. So your rules and your scene are already ready for art.
+{% newcomer(to="shuyi", topic="the grid kit, scenes and skins") %}
+The **grid kit** (`shuyi::ui::grid`) paints maps for you. You build a
+**scene**, plain data saying which terrain and which pieces are where, and a **skin**
+paints it. A `GlyphSkin` paints with characters, and a sprite skin paints with pictures.
+They take the same scene. So your rules and your scene are already ready for art.
+{% end %}
 
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="glyphs") }}
 
 This names the palette's colors the skin uses for things this game won't draw (a path, a
-cursor, a threat), and how fast a piece glides. `8.0` is a **float**, a number with a
-fractional part. Floats are fine here, as this is only how something looks. They are never
+cursor, a threat), and how fast a piece glides.
+
+{% newcomer(to="programming", topic="a float") %}
+`8.0` is a **float**, a number with a
+fractional part.
+{% end %}
+
+Floats are fine here, as this is only how something looks. They are never
 allowed in the rules: floats can round differently on different computers, and rules must
 be the same everywhere.
 
@@ -244,22 +294,31 @@ Now the things that stand on the tiles. Each is described as data:
 
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="piece") }}
 
-An enum's possibilities can hold data: `Who::Box(usize)` is a box with a number. And
-`MapUnit` is the trait that tells the kit what it needs to know about a piece. (`type Id =
-Who;` fills in a blank the trait left, like a generic.)
+`MapUnit` is the trait that tells the kit what it needs to know about a piece.
+
+{% newcomer(to="rust", topic="an enum holding data, and `type Id`") %}
+An enum's possibilities can hold data: `Who::Box(usize)` is a box with a number.
+`type Id = Who;` fills in a blank the trait left, like a generic.
+{% end %}
 
 Then the code that paints the pieces:
 
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="pieces") }}
 
 It takes each piece, picks its characters and its color, finds its cell with
-`glyph::cell_of`, and writes the characters there. `Cell { glyph, fg, ..cell }` makes a
+`glyph::cell_of`, and writes the characters there.
+
+{% newcomer(to="rust", topic="`..cell` in a struct") %}
+`Cell { glyph, fg, ..cell }` makes a
 new cell with this character and text color, and everything else, like its background,
 from the old one.
+{% end %}
 
-> **Rust:** the `'a` in `Pieces<'a>` is a **lifetime**. A struct that holds a borrow (the `&`)
-> has to say so, so the compiler can check the borrowed thing lives long enough. You'll seldom
-> need to write these yourself: when you do, the compiler tells you what to put.
+{% newcomer(to="rust", topic="a lifetime") %}
+The `'a` in `Pieces<'a>` is a **lifetime**. A struct that holds a borrow (the `&`)
+has to say so, so the compiler can check the borrowed thing lives long enough. You'll seldom
+need to write these yourself: when you do, the compiler tells you what to put.
+{% end %}
 
 So the player's character is one small piece of data:
 
@@ -276,9 +335,13 @@ The screen holds the state, and the name to show:
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="new") }}
 
 Starting it reads the level from the game's data, and builds the puzzle.
+
+{% newcomer(to="rust", topic="`panic!`") %}
 `unwrap_or_else(|e| panic!("{e}"))` says: if this is an error, **panic**, stop the
 program with that message. A panic is for things that can't happen if the game is right.
-It can't happen here, as `read` already checked this level when the game loaded. The comment
+{% end %}
+
+The panic can't happen here, as `read` already checked this level when the game loaded. The comment
 says so.
 
 Then it builds its scene:
@@ -321,15 +384,21 @@ file with this:
 
 {{ snippet(step="02-board", file="crates/game/src/stages.rs") }}
 
-> **Shuyi:** `Own` is the game's own part of its data, which `BasicData` carries for you
-> alongside the words and the keys, in `ctx.game.own`. And `game()` in `lib.rs` already
-> passes `stages::own` to `BasicGame::with_own`. That's why step 1 could say `Own = ()`,
-> a value that holds nothing, and you could change it here with no other change.
+{% newcomer(to="shuyi", topic="`Own`") %}
+`Own` is the game's own part of its data, which `BasicData` carries for you
+alongside the words and the keys, in `ctx.game.own`.
+{% end %}
 
-> **Rust:** `Box<dyn Screen<Data>>` means "a box holding some type that implements
-> `Screen`, and which type isn't known until the game runs". That is how a stack can hold
-> a title, a board and a menu all at once. You'll keep seeing it, and you can read it as
-> "any screen".
+`game()` in `lib.rs` already
+passes `stages::own` to `BasicGame::with_own`. That's why step 1 could say `Own = ()`,
+a value that holds nothing, and you could change it here with no other change.
+
+{% newcomer(to="rust", topic="`Box<dyn Screen>`") %}
+`Box<dyn Screen<Data>>` means "a box holding some type that implements
+`Screen`, and which type isn't known until the game runs". That is how a stack can hold
+a title, a board and a menu all at once. You'll keep seeing it, and you can read it as
+"any screen".
+{% end %}
 
 Now the words and the colors it asked for. In `files/en.ron`, add this before the last `}`:
 
@@ -345,8 +414,12 @@ and in `files/palette.ron` add the game's own colors:
 cargo run
 ```
 
+{% newcomer(to="programming", topic="reading the compiler's errors") %}
 If the compiler has complaints, read them from the **top** down, as one mistake can cause
-many later messages. Fix the first and run it again. Compare with
+many later messages. Fix the first and run it again.
+{% end %}
+
+Compare with
 [this step's copy](https://github.com/Zafnok/shuyi-engine/tree/main/site/tutorial/02-board)
 when you're stuck.
 
@@ -361,7 +434,11 @@ Colors work like they did before, for your own colors as much as the engine's:
 
 ## A test
 
-Make `crates/game/tests/board.rs`. Each file in `tests/` is a separate little program:
+Make `crates/game/tests/board.rs`.
+
+{% newcomer(to="rust", topic="the `tests/` folder") %}
+Each file in `tests/` is a separate little program.
+{% end %}
 
 {{ snippet(step="02-board", file="crates/game/tests/board.rs") }}
 
@@ -374,11 +451,17 @@ read the state. So you could repaint the entire game, and this test would never 
 
 ## What you learned
 
-- **Rust:** `const`, tuple structs and arrays, `Result`, the `?` operator, `match`, `for`,
-  `Self`, `panic!`, and lifetimes when you can't avoid them, `dyn`, and why `BTreeSet`.
-- **Game ideas:** tiles, state, and data apart from code.
-- **Shuyi:** `.map` files, the format registry and the bundle, `Own`, the grid kit, scenes and
-  skins, and cameras.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: `const`, tuple structs and arrays, `Result`, the `?` operator, `match`, `for`,
+`Self`, `panic!`, and lifetimes when you can't avoid them, `dyn`, and why `BTreeSet`.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: tiles, state, and data apart from code.
+{% end %}
+
+In Shuyi: `.map` files, the format registry and the bundle, `Own`, the grid kit, scenes and
+skins, and cameras.
 
 For another take on the same ideas, [chapter 3](@/learn/book/assets-and-formats.md) explains the
 registry, and [chapter 2](@/learn/book/frame-and-skins.md) the skins. Next, you'll walk.

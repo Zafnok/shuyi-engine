@@ -75,6 +75,21 @@ page, and that nothing else repeat where to start.
   makes that sentence true.
 - **A link to an anchor** inside a hidden passage opens the passage.
 
+**From 2825 (done):** what the filter folds.
+
+- **A passage:** `<aside class="newcomer" data-newcomer="rust">`, its
+  first child a `<p class="newcomer-label">` holding the label ("New to
+  Rust?") and the topic in a `<span>` (the shortcode
+  `site/templates/shortcodes/newcomer.md`). The stub's text is that
+  label and topic.
+- **A page marked whole:** `extra.newcomer`, which the top line already
+  reads ("For readers new to programming", `book-macros.html`'s
+  `where`). Only *Before you start* has one.
+- **The labels' colour** is `--newcomer` in `style.css`, light and dark.
+- *Before you start*'s note on the marks, and the book's front page, say
+  that the bar folds the notes a reader doesn't need, and leaves a line to
+  click: this ticket makes that true.
+
 ## Nick input
 
 **Sign-off:** open the book as a first-time visitor, answer the popup's

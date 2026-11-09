@@ -992,3 +992,82 @@ fn a_page_for_a_newcomer_to_programming_stays_out_of_the_full_file() {
     assert!(!full.contains("What a program is."), "{full}");
     assert!(full.contains("What a screen is."), "{full}");
 }
+
+/// The fixture with a page whose passages are marked for each newcomer, a
+/// snippet inside the `rust` one (ADR-0090 §5).
+fn with_marks(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/marked.md",
+        "+++\ntitle = \"Marked\"\n+++\n\nFor everyone.\n\n{% newcomer(to=\"programming\", topic=\"a file\") %}\nA file holds text.\n{% end %}\n\n{% newcomer(to=\"rust\", topic=\"`struct`\") %}\nA `struct` holds fields:\n\n{{ snippet(file=\"src/garden.rs\", anchor=\"rows\") }}\n{% end %}\n\n{% newcomer(to=\"games\", topic=\"a frame\") %}\nA game draws a frame many times a second.\n{% end %}\n\n{% newcomer(to=\"shuyi\", topic=\"a screen\") %}\nA screen draws the game.\n{% end %}\n\nThe end.\n",
+    );
+    put(&fixture.public, "learn/book/marked/index.html", "");
+    fixture
+}
+
+#[test]
+fn a_marked_passage_is_a_blockquote_under_its_label_in_the_twin() {
+    let fixture = with_marks("marks-twin");
+    fixture.passes();
+    let twin = fixture.read("learn/book/marked/index.md");
+    assert!(
+        twin.contains(
+            "For everyone.\n\n> **New to programming?** a file\n>\n> A file holds text.\n\n\
+             > **New to Rust?** `struct`\n>\n> A `struct` holds fields:\n>\n> ```rust\n>     pub rows: u8,\n> ```\n\n\
+             > **New to making games?** a frame\n>\n> A game draws a frame many times a second.\n\n\
+             > **New to Shuyi?** a screen\n>\n> A screen draws the game.\n\nThe end.\n"
+        ),
+        "{twin}"
+    );
+}
+
+#[test]
+fn the_full_file_leaves_out_the_programming_games_and_rust_passages() {
+    let fixture = with_marks("marks-full");
+    fixture.passes();
+    let full = fixture.read("llms-full.txt");
+    assert!(
+        full.contains(
+            "For everyone.\n\n> **New to Shuyi?** a screen\n>\n> A screen draws the game.\n\nThe end.\n"
+        ),
+        "{full}"
+    );
+    for gone in ["A file holds text.", "holds fields", "A game draws a frame"] {
+        assert!(!full.contains(gone), "{gone}: {full}");
+    }
+}
+
+#[test]
+fn a_page_marked_whole_has_its_label_under_its_source_line() {
+    let fixture = Fixture::new("whole");
+    put(
+        &fixture.root,
+        "site/content/learn/book/before.md",
+        "+++\ntitle = \"Before\"\n\n[extra]\nnewcomer = \"programming\"\n+++\n\nWhat a program is.\n",
+    );
+    put(&fixture.public, "learn/book/before/index.html", "");
+    fixture.passes();
+    let twin = fixture.read("learn/book/before/index.md");
+    assert!(
+        twin.contains("\n\n> **New to programming?** This whole page.\n\nWhat a program is.\n"),
+        "{twin}"
+    );
+}
+
+#[test]
+fn a_mark_that_doesn_t_close_fails_the_twin() {
+    let fixture = Fixture::new("unclosed");
+    put(
+        &fixture.root,
+        "site/content/learn/book/open.md",
+        "+++\ntitle = \"Open\"\n+++\n\n{% newcomer(to=\"rust\", topic=\"x\") %}\nText.\n",
+    );
+    put(&fixture.public, "learn/book/open/index.html", "");
+    let outcome = fixture.run();
+    assert!(
+        has(&outcome.errors, "open.md:5: a mark with no `{% end %}`"),
+        "{:?}",
+        outcome.errors
+    );
+}

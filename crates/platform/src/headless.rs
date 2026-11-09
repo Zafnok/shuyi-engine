@@ -28,7 +28,7 @@ use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
-use crate::platform::{DisplayInfo, Frame, Millis, Platform, Show, SystemEvent};
+use crate::platform::{DisplayInfo, Frame, LoadSlice, Millis, Platform, Show, SystemEvent};
 use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
@@ -530,6 +530,8 @@ pub struct HeadlessPlatform {
     facts: PlatformFacts,
     /// The clock it gives to measure frames with, if a test set one.
     clock: Option<PerfClock>,
+    /// The slice a frame runs a load in steps for, if a test set one.
+    load_slice: Option<LoadSlice>,
     /// Where its memory readings come from.
     memory: Memory,
     /// How many times `App` asked for the memory.
@@ -552,6 +554,8 @@ pub struct HeadlessPlatform {
     changes: Vec<(Layer, String, Vec<u8>)>,
     /// How many times `App` asked what changed.
     changed_asks: u32,
+    /// Whether it says a folder is watched in every build.
+    watches_files: bool,
     /// What runs on each frame presented, if a tool set it.
     present_hook: Option<Hook>,
 }
@@ -594,6 +598,7 @@ impl HeadlessPlatform {
             recorded_keyboard: None,
             facts: PlatformFacts::default(),
             clock: None,
+            load_slice: None,
             memory: Memory::None,
             memory_calls: 0,
             scopes: None,
@@ -605,6 +610,7 @@ impl HeadlessPlatform {
             #[cfg(feature = "std")]
             changes: Vec::new(),
             changed_asks: 0,
+            watches_files: false,
             present_hook: None,
         }
     }
@@ -679,6 +685,16 @@ impl HeadlessPlatform {
     #[must_use]
     pub fn with_clock(mut self, clock: PerfClock) -> Self {
         self.clock = Some(clock);
+        self
+    }
+
+    /// The same backend running a load in steps for `slice` a frame
+    /// ([`Platform::load_slice`]): with a fake clock, a test's steps fall
+    /// in the same frames on every run. Without it, all the steps run in
+    /// one frame.
+    #[must_use]
+    pub fn with_load_slice(mut self, slice: LoadSlice) -> Self {
+        self.load_slice = Some(slice);
         self
     }
 
@@ -767,6 +783,13 @@ impl HeadlessPlatform {
     #[cfg(feature = "std")]
     pub fn change_file(&mut self, layer: Layer, path: &str, bytes: Vec<u8>) {
         self.changes.push((layer, path.to_owned(), bytes));
+    }
+
+    /// Says from now on that a folder is watched in every build, or not
+    /// ([`Platform::watches_files`]): as a backend does once a game read
+    /// one to be.
+    pub fn set_watches_files(&mut self, on: bool) {
+        self.watches_files = on;
     }
 
     /// How many times `App` asked what changed
@@ -864,6 +887,10 @@ impl Platform for HeadlessPlatform {
         self.clock
     }
 
+    fn load_slice(&self) -> Option<LoadSlice> {
+        self.load_slice
+    }
+
     fn memory_scopes(&self) -> Option<MemoryScopes> {
         self.scopes
     }
@@ -883,6 +910,10 @@ impl Platform for HeadlessPlatform {
             Memory::Fake => Some(fake_snapshot(self.presented)),
             Memory::None | Memory::Real(_) => self.snapshots.map(|snapshot| snapshot()),
         }
+    }
+
+    fn watches_files(&self) -> bool {
+        self.watches_files
     }
 
     #[cfg(feature = "std")]

@@ -48,6 +48,13 @@ What there is:
   - The reader's version is a `"version"` field added to the filter's
     `localStorage` entry, `shuyi-book` (§6).
 
+**From 2825 (done):** `cargo xtask check-book` (`crates/xtask/src/book.rs`)
+reads `newcomer` marks only, takes every `{% end %}` as a mark's close, and
+fails marks that nest. A `since` holds `newcomer` marks (ADR-0090 §7), so
+the parser there learns a `since` around marks, with tests, and
+`llms.rs`'s `twin` (which splits a page with `book::parts`) writes its
+twin.
+
 ## Nick input
 
 None.

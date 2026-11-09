@@ -56,9 +56,11 @@ screen opens:
 
 {{ snippet(file="src/screens.rs", anchor="as_target") }}
 
-> **Rust:** `&profiles["web"].profile` looks up the `web` entry by its name, and lends its
-> `profile`. `.unwrap()` opens a `Result`, and stops the test on an error. `assert!(!x)` fails
-> unless `x` is false, as `!` means "not".
+{% newcomer(to="rust", topic="looking up by name, `.unwrap()` and `!`") %}
+`&profiles["web"].profile` looks up the `web` entry by its name, and lends its
+`profile`. `.unwrap()` opens a `Result`, and stops the test on an error. `assert!(!x)` fails
+unless `x` is false, as `!` means "not".
+{% end %}
 
 ## Who the game is
 
@@ -126,10 +128,12 @@ storage, controllers) are found when it loads. A link argument reaches a binary 
 
 {{ snippet(file="build.rs", anchor="build") }}
 
-> **Rust:** `std::env::var(...)` reads an environment variable, which Cargo sets here to the
-> machine being built for. It gives back a `Result`, and `.as_deref()` lets it be compared with
-> `Ok("wasm32")` as plain text. `println!` prints a line, and a build script's lines starting
-> `cargo:` are instructions to Cargo.
+{% newcomer(to="rust", topic="`std::env::var` and a build script's output") %}
+`std::env::var(...)` reads an environment variable, which Cargo sets here to the
+machine being built for. It gives back a `Result`, and `.as_deref()` lets it be compared with
+`Ok("wasm32")` as plain text. `println!` prints a line, and a build script's lines starting
+`cargo:` are instructions to Cargo.
+{% end %}
 
 Then:
 
@@ -285,6 +289,15 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
+
+A slow device loads slowly too. The Playdate reads a game's data hundreds of times slower than your
+computer, and its system ends a game whose frame runs for 10 seconds. A game whose load could take that
+long there starts with `Start::in_steps` instead of `Start::new`. You give it a function that takes the
+`Setup` and gives back a step, which the engine calls again and again. Each call does one small part (a
+file, a check) and gives `Progress::More`, until the last gives `Progress::done` with the game. On a PC or
+the web every step runs in one frame. On the Playdate a second's worth runs each frame, the loading card
+on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
+says how long each frame took.
 
 ## When a player's game crashes
 

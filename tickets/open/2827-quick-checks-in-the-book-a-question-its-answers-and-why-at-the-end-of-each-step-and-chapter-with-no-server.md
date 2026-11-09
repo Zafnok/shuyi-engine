@@ -44,6 +44,14 @@ audience, and 2826's filter hides what a reader knows; a check carries an
 audience too, so the filter hides a check on Rust from a reader who knows
 Rust.
 
+**From 2825 (done):** `cargo xtask check-book` (`crates/xtask/src/book.rs`,
+CI's `site` job) reads the body shortcodes: it takes every `{% end %}` as
+the close of a `newcomer` mark and fails one with no mark open. A `check`
+shortcode with a body adds its opener to `kind()` there, and its own
+rules (no `newcomer` inside a `check`, say) to `parts()`, with tests.
+`llms.rs`'s `twin` splits a page with `book::parts`, so a check's twin goes
+in the same place.
+
 ## Nick input
 
 None.

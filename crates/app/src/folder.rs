@@ -77,9 +77,33 @@ impl std::error::Error for FolderError {}
 /// A file over `max_file_bytes`, a file or folder that can't be read or
 /// whose name isn't UTF-8, each naming it, and a path the layer refuses.
 pub fn read_folder(path: &Path, name: &str, max_file_bytes: u64) -> Result<Layer, FolderError> {
+    read(path, name, max_file_bytes, false)
+}
+
+/// [`read_folder`], watched in every build, not only one with debug tools
+/// (ADR-0095): a program a game hands to someone who edits the files
+/// in this folder while it runs (a writer's dialogue preview), built
+/// optimized. A file that changes takes its new bytes in the layer, and
+/// the game's modules hear of it (`Module::reloaded`), with debug tools
+/// off too. Only this folder: the others a build without debug tools reads
+/// are still never looked at.
+///
+/// # Errors
+///
+/// As [`read_folder`]'s.
+pub fn read_watched_folder(
+    path: &Path,
+    name: &str,
+    max_file_bytes: u64,
+) -> Result<Layer, FolderError> {
+    read(path, name, max_file_bytes, true)
+}
+
+/// [`read_folder`], watched in every build if `always`.
+fn read(path: &Path, name: &str, max_file_bytes: u64, always: bool) -> Result<Layer, FolderError> {
     // Before the files are read: one that changes meanwhile is seen as
     // changed, and read again.
-    let seen = shuyi_ui::DEBUG_TOOLS.then(|| watch::scan(path));
+    let seen = (always || shuyi_ui::DEBUG_TOOLS).then(|| watch::scan(path));
     let mut files = BTreeMap::new();
     let mut pending = vec![(path.to_path_buf(), String::new())];
     while let Some((dir, prefix)) = pending.pop() {
@@ -112,7 +136,7 @@ pub fn read_folder(path: &Path, name: &str, max_file_bytes: u64) -> Result<Layer
     }
     let layer = Layer::owned(name.to_owned(), files).map_err(FolderError::Layer)?;
     if let Some(seen) = seen {
-        watch::note_folder(path, layer, max_file_bytes, seen);
+        watch::note_folder(path, layer, max_file_bytes, seen, always);
     }
     Ok(layer)
 }

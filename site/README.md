@@ -47,8 +47,8 @@ copies each example's web build there.
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order and the pager through it; `shortcodes/snippet.md` shows the book's code |
-| `static/style.css` | The one stylesheet: system fonts, light and dark. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order and the pager through it; `shortcodes/snippet.md` shows the book's code, and `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)) |
+| `static/style.css` | The one stylesheet: system fonts, light and dark, and the newcomer's mark (`.newcomer`). It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
@@ -86,8 +86,11 @@ copies each example's web build there.
   `web-render` job boots each.
 - The book is for a reader new to programming: each word of Rust or of the
   engine is explained the first time a page uses it, or links the page that
-  did, and its row goes in the one glossary, `book/glossary.md`, linking the
-  step that first uses it and the chapter that says more.
+  did, and its row goes in the one glossary, `book/glossary.md`, with the
+  newcomer who needs it (*New to*), linking the step that first uses it and
+  the chapter that says more.
+- A passage that only a newcomer needs is marked with who it is for
+  ([Marking a passage](#marking-a-passage)), a new one too.
 - Each chapter stands on its own: it says what an idea is for before its
   name, explains each word of Rust or of the engine its code uses, or links
   where a step does, and has a section *When it goes wrong* with real
@@ -109,6 +112,58 @@ copies each example's web build there.
   that a page adds to a step changes nothing else in the step.
 - A new engine crate gets its row in `data/api.toml`, or the build
   checks fail.
+
+## Marking a passage
+
+Every passage of the book says who it is for (ticket 2825,
+[ADR-0090](../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)
+§4 and §5). An unmarked passage is for everyone. A passage that only a
+newcomer needs is marked for one of four:
+
+| `to` | Its label | For a reader who | Such as |
+| ---- | --------- | ---------------- | ------- |
+| `programming` | New to programming? | has never programmed | what a program, a terminal, a file or a variable is |
+| `games` | New to making games? | has never made a game | how games are made whatever the engine: the game loop and frames, state, tiles, data kept apart from code |
+| `rust` | New to Rust? | programs, but not in Rust | a feature of the language, on the line that first uses it |
+| `shuyi` | New to Shuyi? | hasn't made a game with this engine | an idea of the engine the first time a reader meets it: the stack of screens, what `ctx` holds |
+
+Mark it with the `newcomer` shortcode, and a few words saying what it
+explains, which name the line a folded passage leaves (2826):
+
+```text
+{% newcomer(to="rust", topic="`match`") %}
+`match` compares a value with each pattern in turn…
+
+{{ snippet(step="05-undo", file="crates/game/src/game.rs", anchor="match") }}
+{% end %}
+```
+
+- The opener and `{% end %}` each stand on a line of their own, at its
+  start, with a blank line before and after. A mark holds whole blocks:
+  paragraphs, lists, code, `snippet`s, `try_it`s, headings with their
+  sections. Never inside a list, a table or a blockquote.
+- Marks don't nest. `topic` is required, and can't hold a `"`.
+- A sentence for a newcomer inside a paragraph everyone needs is split
+  into a paragraph of its own first. The part everyone needs stays
+  unmarked.
+- **Leave unmarked** what a reader who knows the audience still needs. A
+  `games` passage says how games are made, not how Shuyi makes them. A
+  `shuyi` passage only introduces an idea a Shuyi veteran already has: a
+  line to type, a rule the engine checks, a gotcha, or what an operation
+  does that the page relies on stays unmarked, and so does a chapter's own
+  text about its idea.
+- **Read the page once with each audience left out.** What is left must
+  read as whole sentences, and its code must still be explained for that
+  reader.
+- A page written whole for one newcomer says so in its front matter,
+  `[extra] newcomer = "programming"`, and its top line says "For readers
+  new to programming".
+
+With no JavaScript every passage shows, under its label and a rule at its
+side. `cargo xtask check-book` fails a mark of an audience not among the
+four, one with no `topic`, one not closed, one inside another or not on
+lines of its own, and a callout of the old hand-made form
+(`> **Rust:**`, `> **Shuyi:**`, `> **Game idea:**`).
 
 ## The book's order
 
@@ -169,7 +224,8 @@ the shape of <https://llmstxt.org/>:
 - a Markdown twin of each Learn page that isn't a draft, at its URL with
   `index.md` on the end (`/learn/book/quick-start/index.md`): its title,
   a `Source:` line, and its text, each `snippet` shortcode replaced by the
-  code it shows and each link made absolute (a `@/` link to a Learn page
+  code it shows, each passage marked for a newcomer a blockquote under its
+  label and topic (`` > **New to Rust?** `match` ``), and each link made absolute (a `@/` link to a Learn page
   goes to that page's twin). The page's HTML links its twin
   (`templates/base.html`);
 - `llms.txt`: [`llms-header.md`](llms-header.md), written by hand, the
@@ -179,8 +235,9 @@ the shape of <https://llmstxt.org/>:
 - `llms-full.txt`: every twin but a project's (a section whose `_index.md`
   has `extra.project = true`), which teaches people from nothing, and a page
   written whole for a newcomer to programming, to making games or to Rust
-  (`extra.newcomer`): an agent has the chapters, the API docs and the steps'
-  sources. It is one file, which fails above
+  (`extra.newcomer`), nor the passages marked for one: an agent has the
+  chapters, the API docs and the steps' sources. It keeps the passages for a
+  newcomer to Shuyi. It is one file, which fails above
   `FULL_BUDGET_BYTES` (400 000 bytes, about 100 000 tokens). Raising it is
   a change in a PR, on purpose;
 - the contract's schemas, `crates/cli/schemas/`, at
@@ -204,6 +261,7 @@ CI's `site` job, on every pull request:
 
 ```bash
 bash errors.sh
+cargo xtask check-book
 zola check --skip-external-links
 bash check-build.sh
 ```
@@ -213,7 +271,9 @@ shortcode left unexpanded, a broken `llms.txt` link or a full file over
 its budget fails before the merge. The API docs aren't built there, so
 their links are checked by `pages.yml`.
 
-`zola check` checks the `@/` links and their anchors. `check-build.sh`
+`cargo xtask check-book` checks the newcomers' marks ([Marking a
+passage](#marking-a-passage)). `zola check` checks the `@/` links and their
+anchors. `check-build.sh`
 fails on a fenced Rust block in the book, on a code block of a project's
 that isn't `bash`, and on an engine crate with no row in `data/api.toml`;
 then it builds the site with two base URLs, fails if either output names
