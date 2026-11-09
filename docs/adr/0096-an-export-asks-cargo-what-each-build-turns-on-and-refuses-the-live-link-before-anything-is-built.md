@@ -1,4 +1,4 @@
-# ADR-0092: An export asks Cargo what each build turns on, and refuses the live link before anything is built
+# ADR-0096: An export asks Cargo what each build turns on, and refuses the live link before anything is built
 
 - **Status:** Accepted; amends ADR-0058 §2
 - **Date:** 2026-11-08

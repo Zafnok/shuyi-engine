@@ -1,14 +1,15 @@
 //! `cargo xtask`: this repository's own tools, never shipped (ticket 2002).
 //!
-//! - `cargo xtask ticket-lint [--pr-branch <branch>] [--game-repo <path>]`
+//! - `cargo xtask ticket-lint [--pr-branch <branch>] [--pr-title <title>] [--base <rev>] [--game-repo <path>]`
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
+//! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
-//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]`
+//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
@@ -25,8 +26,10 @@
 mod api;
 mod changelog;
 mod compile_times;
+mod contract;
 mod docs;
 mod golden;
+mod ids;
 mod layers;
 mod links;
 mod llms;
@@ -47,15 +50,26 @@ use std::process::ExitCode;
 
 const USAGE: &str = "\
 usage:
-  cargo xtask ticket-lint [--pr-branch <branch>] [--game-repo <path>]
+  cargo xtask ticket-lint [--pr-branch <branch>] [--pr-title <title>] [--base <rev>] [--game-repo <path>]
       Check tickets/open and tickets/done (tickets/README.md). `game#NNNN` ids
       are checked against the game's checkout at <path>, or on GitHub with `gh`.
+      With --pr-branch, check the PR's ticket, read from <title> first
+      (`[NNNN] …` is in done/; `Ticket NNNN: …` changes only tickets, against
+      <rev>, by default where HEAD left origin/main); tickets/README.md,
+      *Pull requests*.
       Warns, without failing, on a clause in an open ticket that waits on a
       done one (\"if NNNN is done\"): settle it (the work-ticket skill, §5).
   cargo xtask check-links
       Check that every relative link in the Markdown files resolves.
   cargo xtask check-docs
-      Check that the docs map (docs/README.md) links every Markdown file.
+      Check that the docs map (docs/README.md) links every Markdown file, and
+      that no two ADRs, or two rows of docs/adr/README.md, share a number.
+  cargo xtask next-id ticket <block>
+  cargo xtask next-id adr
+      Print the next ticket id in <block> (its two digits, tickets/README.md)
+      or the next ADR number that neither origin/main, this checkout nor an
+      open PR (`gh pr list`) has taken. Without `gh`, warns that it read
+      origin/main and this checkout only.
   cargo xtask check-no-std
       Check that shuyi-core, shuyi-ui and shuyi-platform use no `std::` path
       outside `cfg(feature = \"std\")` (ADR-0008 §5).
@@ -76,14 +90,16 @@ usage:
       Check that the pinned Rust is the same everywhere (the bump-rust skill):
       the root's exact channel, the templates' channels, every workspace's
       rust-version, the members' inherited one and Dependabot's folders.
-  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]
+  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]
       Show the public API change of the engine's crates, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
-      With --pr-branch, a break needs a `Breaking:` line in the branch's
-      ticket (ADR-0038), and a change that changes no file under
-      site/content/learn/ or site/snippets/ a `Book:` line saying why the
-      book needs none (ticket 2815). With --verdict, write `none`, `added` or `breaking`
+      With --pr-branch, a break needs a `Breaking:` line in the PR's
+      ticket (ADR-0038), read from --pr-title first, and a change that
+      changes no file under site/content/learn/ or site/snippets/ a `Book:`
+      line saying why the book needs none (ticket 2815). A change to the
+      contract's VERSION (crates/cli/src/contract.rs) raises it by exactly
+      one over <rev>'s (ticket 2052). With --verdict, write `none`, `added` or `breaking`
       to <file>, for the PR's `api:` label.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
@@ -152,7 +168,12 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("ticket-lint") => ticket_lint(&root, &args[1..]),
         Some("check-links") if args.len() == 1 => report("check-links", &links::run(&root), &[]),
-        Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
+        Some("check-docs") if args.len() == 1 => {
+            let mut errors = docs::run(&root);
+            errors.extend(ids::duplicate_adrs(&root));
+            report("check-docs", &errors, &[])
+        }
+        Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
         Some("check-modules") if args.len() == 1 => {
@@ -190,11 +211,15 @@ fn repo_root() -> PathBuf {
 
 fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
     let mut pr_branch = None;
+    let mut pr_title = None;
+    let mut base = None;
     let mut game_repo = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match (arg.as_str(), rest.next()) {
             ("--pr-branch", Some(value)) => pr_branch = Some(value.as_str()),
+            ("--pr-title", Some(value)) => pr_title = Some(value.as_str()),
+            ("--base", Some(value)) => base = Some(value.as_str()),
             ("--game-repo", Some(value)) => game_repo = Some(PathBuf::from(value)),
             _ => {
                 eprintln!("{USAGE}");
@@ -206,8 +231,32 @@ fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
         Some(path) => tickets::GameSource::Checkout(path),
         None => tickets::GameSource::GitHub,
     };
-    let found = tickets::run(root, pr_branch, &game);
+    let pr = pr_branch.map(|branch| tickets::Pr {
+        branch,
+        title: pr_title,
+    });
+    let found = tickets::run(root, pr, base, &game);
     report("ticket-lint", &found.errors, &found.warnings)
+}
+
+fn next_id(root: &Path, args: &[String]) -> ExitCode {
+    let Some(kind) = ids::Kind::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    match ids::run(root, &kind) {
+        Ok((next, warnings)) => {
+            for warning in &warnings {
+                eprintln!("warning: {warning}");
+            }
+            if writeln!(std::io::stdout().lock(), "{next}").is_ok() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        Err(errors) => report("next-id", &errors, &[]),
+    }
 }
 
 fn api(root: &Path, args: &[String]) -> ExitCode {

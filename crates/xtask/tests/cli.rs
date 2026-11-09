@@ -130,6 +130,37 @@ fn ticket_lint_fails_on_a_branch_naming_an_unknown_ticket() {
 }
 
 #[test]
+fn ticket_lint_reads_the_ticket_from_the_title() {
+    let (ok, err) = xtask(&[
+        "ticket-lint",
+        "--pr-branch",
+        "claude/x-1a2b3c",
+        "--pr-title",
+        "[9999] A ghost",
+        "--game-repo",
+        &no_game(),
+    ]);
+    assert!(!ok);
+    assert!(err.contains("ticket `9999`"), "{err}");
+    assert!(err.contains("no ticket with that id exists"), "{err}");
+}
+
+#[test]
+fn ticket_lint_fails_a_pr_that_names_no_ticket() {
+    let (ok, err) = xtask(&[
+        "ticket-lint",
+        "--pr-branch",
+        "claude/x-1a2b3c",
+        "--pr-title",
+        "A thing",
+        "--game-repo",
+        &no_game(),
+    ]);
+    assert!(!ok);
+    assert!(err.contains("names a ticket"), "{err}");
+}
+
+#[test]
 fn ticket_lint_rejects_an_unknown_option() {
     for args in [
         &["ticket-lint", "--bogus", "x"][..],

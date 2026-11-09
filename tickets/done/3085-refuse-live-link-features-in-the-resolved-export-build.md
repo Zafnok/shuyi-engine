@@ -159,8 +159,9 @@ None.
   file, no `target` folder); Hello, Grid's exports passing while
   `shuyi-app`'s dev-dependency turns its link on. By hand: `shuyi export
   windows` and `web` on Hello, Grid pass.
-- ADR-0092 records the decision; it amends ADR-0058 §2. ADR-0091 is
-  taken by PR 318 (sound groups), so this one is 0092.
+- ADR-0096 records the decision; it amends ADR-0058 §2. It was written
+  as 0092 and renumbered when PR 323 merged its own 0092 first (0093 to
+  0095 were taken; `cargo xtask next-id adr` gave 0096).
 - 3082 is not done: its either-order clause now says edition flags go in
   the exporter plan, which this check resolves, and that a new build flag
   must be taught to `tree_args`.

@@ -5,11 +5,13 @@
 //! (the working tree) and of the base (a `git worktree` at the base
 //! revision) with `cargo-public-api`, diffs the two lists, and runs
 //! `cargo-semver-checks` against the base. With `--pr-branch`, a semver
-//! finding needs a `Breaking:` line in the branch's ticket. With
+//! finding needs a `Breaking:` line in the PR's ticket, which its
+//! `--pr-title` names first (ticket 2051, ADR-0092). With
 //! `--verdict`, it writes what the change did in one word (ticket 2030), for
 //! CI's `api:` label on the PR. With `--pr-branch` too, a change to the
 //! public API that changes no file of the book needs a `Book:` line in the
-//! branch's ticket (ticket 2815).
+//! PR's ticket (ticket 2815). A change to the contract's `VERSION`
+//! raises it by exactly one over the base's ([`contract`], ticket 2052).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -40,8 +42,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::contract;
 use crate::layers::is_engine;
-use crate::tickets::{book_lines, breaking_lines, ticket_id_from_branch};
+use crate::tickets::{Pr, PrKind, book_lines, breaking_lines};
 
 /// The features a crate's public API is checked with. There is no "each
 /// tool's own default": the listing's (the default features) and the semver
@@ -251,8 +254,10 @@ pub struct Options {
     /// `--base <rev>`: the revision to compare with, or `git merge-base HEAD
     /// main`.
     pub base: Option<String>,
-    /// `--pr-branch <branch>`: check the rule for this branch's ticket.
+    /// `--pr-branch <branch>`: check the rule for this PR's ticket.
     pub pr_branch: Option<String>,
+    /// `--pr-title <title>`: the PR's title, which names its ticket first.
+    pub pr_title: Option<String>,
     /// `--summary <file>`: append the summary's Markdown to this file.
     pub summary: Option<PathBuf>,
     /// `--verdict <file>`: write the [`Label`]'s word to this file.
@@ -268,6 +273,7 @@ impl Options {
             match (arg.as_str(), rest.next()) {
                 ("--base", Some(value)) => options.base = Some(value.clone()),
                 ("--pr-branch", Some(value)) => options.pr_branch = Some(value.clone()),
+                ("--pr-title", Some(value)) => options.pr_title = Some(value.clone()),
                 ("--summary", Some(value)) => options.summary = Some(PathBuf::from(value)),
                 ("--verdict", Some(value)) => options.verdict = Some(PathBuf::from(value)),
                 _ => return None,
@@ -400,9 +406,11 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             ..Outcome::default()
         };
     }
-    let compared = base_revision(root, options, runner)
-        .and_then(|base| compare(root, &base, runner).map(|crates| (base, crates)));
-    let (base, crates) = match compared {
+    let compared = base_revision(root, options, runner).and_then(|base| {
+        let contract = contract::check(root, &base, runner);
+        compare(root, &base, runner).map(|crates| (base, crates, contract))
+    });
+    let (base, crates, contract) = match compared {
         Ok(compared) => compared,
         Err(error) => {
             return Outcome {
@@ -412,22 +420,24 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
         }
     };
     let warnings = lost_lines(&crates);
-    let verdict = options
-        .pr_branch
-        .as_deref()
-        .map(|branch| rule(&crates, branch, &|id| done_ticket(root, id)));
-    let book = options.pr_branch.as_deref().map(|branch| {
+    let pr = options.pr_branch.as_deref().map(|branch| Pr {
+        branch,
+        title: options.pr_title.as_deref(),
+    });
+    let verdict = pr.map(|pr| rule(&crates, &pr, &|id| done_ticket(root, id)));
+    let book = pr.map(|pr| {
         changed_files(root, &base, runner).map_or_else(Verdict::Fail, |changed| {
-            book_rule(&crates, branch, &changed, &|id| done_ticket(root, id))
+            book_rule(&crates, &pr, &changed, &|id| done_ticket(root, id))
         })
     });
-    let errors = [&verdict, &book]
+    let mut errors: Vec<String> = [&verdict, &book]
         .into_iter()
         .filter_map(|verdict| match verdict {
             Some(Verdict::Fail(why)) => Some(why.clone()),
             _ => None,
         })
         .collect();
+    errors.extend(contract.err());
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),
         label: Some(self::verdict(&crates)),
@@ -760,25 +770,39 @@ pub fn lost_lines(crates: &[CrateApi]) -> Vec<String> {
 }
 
 /// The rule: a crate with a semver finding is a break, and a break needs a
-/// `Breaking:` line naming the crate in the done ticket of `branch`.
-/// `done_ticket` reads a ticket in `tickets/done/` by id.
-pub fn rule(
-    crates: &[CrateApi],
-    branch: &str,
-    done_ticket: &dyn Fn(&str) -> Option<String>,
-) -> Verdict {
+/// `Breaking:` line naming the crate in the done ticket of `pr` (its title's
+/// ticket, else its branch's). A game ticket's small change (`Game NNNN: …`)
+/// adds nothing to the public API either. `done_ticket` reads a ticket in
+/// `tickets/done/` by id.
+pub fn rule(crates: &[CrateApi], pr: &Pr, done_ticket: &dyn Fn(&str) -> Option<String>) -> Verdict {
+    let kind = pr.kind();
+    if let Ok(PrKind::GameSmall(game)) = &kind
+        && verdict(crates) == Label::Added
+    {
+        return Verdict::Fail(format!(
+            "the PR is game ticket {game}'s small change (`Game {game}: …`), which adds \
+             nothing to the public API. Write a ticket here for the addition (the \
+             `write-ticket` skill), and title the PR `[NNNN] …`."
+        ));
+    }
     let breaking: Vec<&CrateApi> = crates.iter().filter(|c| !c.findings.is_empty()).collect();
     if breaking.is_empty() {
         return Verdict::Pass("no semver finding: the public API doesn't break.".to_string());
     }
     let breaks = describe_breaks(&breaking);
-    let Some(id) = ticket_id_from_branch(branch) else {
-        return Verdict::Fail(format!(
-            "branch `{branch}` names no ticket, and a change with no ticket never breaks \
-             the public API (ADR-0038). Write a ticket for it (the `write-ticket` skill).\n\
-             {breaks}"
-        ));
+    let id = match kind {
+        Ok(PrKind::Work(id)) => id,
+        Ok(_) => {
+            return Verdict::Fail(format!(
+                "{} names no ticket's work, and a change with no ticket never breaks the \
+                 public API (ADR-0038). Write a ticket for it (the `write-ticket` skill), \
+                 and title the PR `[NNNN] …`.\n{breaks}",
+                describe(pr)
+            ));
+        }
+        Err(why) => return Verdict::Fail(format!("{why}\n{breaks}")),
     };
+    let id = id.as_str();
     let Some(body) = done_ticket(id) else {
         return Verdict::Fail(format!(
             "ticket {id} is not in tickets/done/, so it has no `Breaking:` line.\n{breaks}"
@@ -828,13 +852,13 @@ fn changed_files(root: &Path, base: &str, runner: &dyn Runner) -> Result<Vec<Str
 
 /// The book's rule (ticket 2815): a change to the public API (a listing
 /// diff or a semver finding) that changes no file under [`BOOK_DIRS`] needs
-/// a `Book:` line in the done ticket of `branch`, saying why the book needs
-/// no change. A branch with no ticket of this repository is skipped: a
-/// break there already fails [`rule`]. `changed` is the files the branch
-/// changed; `done_ticket` reads a ticket in `tickets/done/` by id.
+/// a `Book:` line in the done ticket of `pr`, saying why the book needs no
+/// change. A PR for no ticket's work of this repository is skipped: a break
+/// there already fails [`rule`]. `changed` is the files the PR changed;
+/// `done_ticket` reads a ticket in `tickets/done/` by id.
 pub fn book_rule(
     crates: &[CrateApi],
-    branch: &str,
+    pr: &Pr,
     changed: &[String],
     done_ticket: &dyn Fn(&str) -> Option<String>,
 ) -> Verdict {
@@ -851,11 +875,17 @@ pub fn book_rule(
             BOOK_DIRS.join(" or ")
         ));
     }
-    let Some(id) = ticket_id_from_branch(branch) else {
-        return Verdict::Pass(format!(
-            "branch `{branch}` names no ticket, so no `Book:` line is asked for."
-        ));
+    let id = match pr.kind() {
+        Ok(PrKind::Work(id)) => id,
+        Ok(_) => {
+            return Verdict::Pass(format!(
+                "{} names no ticket's work, so no `Book:` line is asked for.",
+                describe(pr)
+            ));
+        }
+        Err(why) => return Verdict::Fail(why),
     };
+    let id = id.as_str();
     let changed_crates: Vec<&str> = crates
         .iter()
         .filter(|c| !c.removed.is_empty() || !c.added.is_empty() || !c.findings.is_empty())
@@ -879,6 +909,14 @@ pub fn book_rule(
         None => Verdict::Fail(format!(
             "ticket {id}'s `## Completion notes` have no `Book:` line.\n{ways}"
         )),
+    }
+}
+
+/// The PR, for a message: its branch, and its title when it has one.
+fn describe(pr: &Pr) -> String {
+    match pr.title {
+        Some(title) => format!("the PR `{title}` (branch `{}`)", pr.branch),
+        None => format!("branch `{}`", pr.branch),
     }
 }
 

@@ -7,7 +7,7 @@
 //! exporter plans ([`Exporter::cargo_args`]) is resolved by Cargo itself
 //! (`cargo tree`, with that build's package, target and feature flags and
 //! the Rust flags its exporter adds), and refused if the live link is on
-//! in it ([`refuse`], ADR-0092).
+//! in it ([`refuse`], ADR-0096).
 //!
 //! Only what the built program is made of counts: the normal and build
 //! dependencies for that target. A dev-dependency (`shuyi-app` turns its

@@ -68,9 +68,9 @@ None.
    `blocked_by` checks. It reuses the game-id reading the lint already
    does for `game#` blockers.
 2. Add `check_prose_follow_ups(body)` over `## Completion notes`, run
-   only for tickets the PR moves to `done/` (with `--pr-branch` or
-   `--pr-title` from 2051 when present), so the old done tickets don't
-   all warn.
+   only for tickets the PR moves to `done/` (the PR's ticket as
+   `tickets::pr` reads it from `--pr-title` and `--pr-branch`), so the
+   old done tickets don't all warn.
 3. Add `check_game_adopter` for the same set.
 4. Update `work-ticket` §5 to say what each check wants, then run
    `pwsh -File scripts/sync-agent-skills.ps1`.
