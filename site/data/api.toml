@@ -40,6 +40,10 @@ name = "shuyi_alloc_count"
 text = "the heap counter of debug builds"
 
 [[crate]]
+name = "shuyi_script"
+text = "a module: rules written as Rhai scripts, run on a read-only view, integer only, with no clock, no luck and no files, inside limits"
+
+[[crate]]
 name = "shuyi_sound"
 text = "decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which only the backend of `shuyi-app`'s `in-house-sound` feature plays through yet"
 

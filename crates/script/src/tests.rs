@@ -484,3 +484,93 @@ proptest! {
         prop_assert_eq!(&out["turn"], &Value::Text(format!("turn {}", field.turn)));
     }
 }
+
+// What errors and values say.
+
+#[test]
+fn an_error_says_its_file_place_and_kind() {
+    let at = |kind| ScriptError {
+        script: "mods/rain.rhai".into(),
+        line: Some(3),
+        column: Some(7),
+        kind,
+    };
+    let cases = [
+        (ErrorKind::Compile("bad".into()), "doesn't compile: bad"),
+        (ErrorKind::Run("worse".into()), "failed: worse"),
+        (ErrorKind::View("no".into()), "the view doesn't convert: no"),
+        (
+            ErrorKind::Value("no".into()),
+            "what it gave doesn't read: no",
+        ),
+        (
+            ErrorKind::Limit(Limit::Operations),
+            "stopped at its limit of operations",
+        ),
+    ];
+    for (kind, says) in cases {
+        assert_eq!(at(kind).to_string(), format!("mods/rain.rhai:3:7: {says}"));
+    }
+    let nowhere = ScriptError {
+        line: None,
+        column: None,
+        ..at(ErrorKind::Run("x".into()))
+    };
+    assert_eq!(nowhere.to_string(), "mods/rain.rhai: failed: x");
+}
+
+#[test]
+fn each_limit_says_what_it_limits() {
+    let says: Vec<String> = [
+        Limit::Operations,
+        Limit::Text,
+        Limit::List,
+        Limit::Map,
+        Limit::Variables,
+        Limit::CallDepth,
+        Limit::ExpressionDepth,
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    assert_eq!(
+        says,
+        [
+            "operations",
+            "a string's bytes",
+            "a list's items",
+            "a map's entries",
+            "variables",
+            "call depth",
+            "expression depth",
+        ]
+    );
+}
+
+#[test]
+fn a_script_keeps_its_name() {
+    let runtime = Runtime::default();
+    let script = runtime
+        .compile("mods/crops/rain.rhai", "1")
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(script.name(), "mods/crops/rain.rhai");
+}
+
+#[test]
+fn a_runtime_debugs_without_its_insides() {
+    assert_eq!(format!("{:?}", Runtime::default()), "Runtime { .. }");
+}
+
+#[test]
+fn a_value_says_what_it_expected() {
+    use serde::de::value::{Error, F64Deserializer};
+    let error = Value::deserialize(F64Deserializer::<Error>::new(1.5))
+        .err()
+        .unwrap_or_else(|| panic!("a float read as a value"));
+    assert!(
+        error
+            .to_string()
+            .ends_with("expected a unit, a boolean, a whole number, a string, a list or a map"),
+        "{error}"
+    );
+}
