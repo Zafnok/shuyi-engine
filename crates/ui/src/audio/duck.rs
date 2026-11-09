@@ -37,7 +37,8 @@ impl Duck {
     /// over the attack going down and over the release coming back, so a
     /// turn halfway down is back in half the release.
     fn at(&self) -> Gain {
-        let going_down = self.target < self.from;
+        // It goes only to the floor or back to full.
+        let going_down = self.target != Gain::FULL;
         let length = if going_down {
             self.attack_ms
         } else {

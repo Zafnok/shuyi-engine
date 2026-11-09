@@ -1645,6 +1645,9 @@ mod tests {
         assert_eq!(errors(&under), Vec::<String>::new());
         let deep = with_ducks(&rule("voice", "ui", 0));
         assert_eq!(errors(&deep), Vec::<String>::new());
+        // 100 is the top of the curve: lowering by nothing is allowed.
+        let top = with_ducks(&rule("voice", "music", 100));
+        assert_eq!(errors(&top), Vec::<String>::new());
         let loud = with_ducks(&rule("voice", "music", 101));
         assert_eq!(
             errors(&loud),
