@@ -1626,3 +1626,28 @@ the revised mock, he signed it off: **"Yes, signed off"**.
 - **The questions open as a popup on a first visit,** with the skip in
   the popup. Nothing else on the page says where to start (2826).
 - ADR-0090 holds the design.
+
+## 2026-11-08: the export targets in tiers, and PICO-8 as tier 3
+
+Source: Nick, in a session of this repository:
+
+> "lets add PICO-8 support parked for after all tier 1 and tier 2
+> release targets PICO-8 can be a tier 3 release target"
+
+Asked which targets are tier 1 and which tier 2, he chose **"Desktop/web,
+then devices"**. Then:
+
+> "yes even tho I am working on playdate support concurrently it still
+> is tier 2 its just the first tier 2 consideration."
+
+**Rules:**
+
+- **Tier 1:** Windows, Linux, macOS and the web (3004).
+- **Tier 2:** the Steam Deck, the Playdate, the Switch, Android and iOS,
+  PlayStation and Xbox, the GBA and the DS. The Playdate is the first of
+  them being worked, alongside tier 1, and is still tier 2.
+- **Tier 3:** PICO-8. Its ticket (3098, a research ticket) is parked
+  until Nick unparks it, and not before every tier 1 and tier 2 target
+  is done.
+- A tier orders the targets; it doesn't unpark any. The parked tier 2
+  targets (2026-10-15 and 2026-10-17) stay parked until Nick says.

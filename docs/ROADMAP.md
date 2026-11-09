@@ -805,6 +805,13 @@ unparked:
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
   3025, 3026). DS 3D (3025) also needs 3103 and 3107.
 
+On 2026-11-08 Nick put the export targets in tiers
+([`decisions.md`](decisions.md)): tier 1 is Windows, Linux, macOS and
+the web; tier 2 is the Steam Deck, the Playdate (the first of them being
+worked), the Switch, Android and iOS, PlayStation and Xbox, the GBA and
+the DS; tier 3 is PICO-8. Its research ticket, 3098, waits for every
+tier 1 and tier 2 target as well as for Nick.
+
 On 2026-10-19 Nick asked for a visual editor like Godot's or Unreal's
 Blueprints, and for the debug view's channels
 ([`decisions.md`](decisions.md)). The editor follows the visual
