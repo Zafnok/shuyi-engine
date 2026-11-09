@@ -164,7 +164,7 @@ frame; frames after run the game. A load in steps (`Start::in_steps`) asks
 `load_slice` in each loading frame and runs as many steps as fit, so it may
 take several frames, each presenting the card again until the last
 presents the game
-([ADR-0095](adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
 A failed load presents its errors until the player quits.
 
 ## Each method
@@ -404,7 +404,7 @@ loop: a record's times are differences of its reads.
 
 How long one frame may run a game's load in steps for, and the clock that
 times it
-([ADR-0095](adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)):
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)):
 `LoadSlice::new(length_us, PerfClock::Real(now_us))`. A backend whose
 system ends a game whose frame runs too long gives one, from its target
 profile's `budgets.load_slice_ms`; `shuyi-playdate` gives a second of the

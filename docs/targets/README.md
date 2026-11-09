@@ -28,7 +28,7 @@ Each profile in [`targets/`](../../targets/) has `budgets`
 - `load_slice_ms`: how long one frame runs a game's load in steps for, on
   a device whose system ends a game whose frame runs too long. It is no
   limit `bench` checks: the backend reads it
-  ([ADR-0095](../adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+  ([ADR-0097](../adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
 
 A budget a profile leaves out isn't gated. A budget marked provisional
 is a starting guess until its device is measured. A budget changes only

@@ -45,7 +45,7 @@ The device has no standard library, so the game's library builds without
    could pass that starts with `Start::in_steps`: its steps run a second's
    worth a callback (the profile's `load_slice_ms`), the card on the
    screen
-   ([ADR-0095](../adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+   ([ADR-0097](../adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
    A step is the unit: one that alone takes 10 seconds still stalls, so
    make each a file or a part of a check. The run report's `Start, ms per
    update callback` line says how long each callback took.

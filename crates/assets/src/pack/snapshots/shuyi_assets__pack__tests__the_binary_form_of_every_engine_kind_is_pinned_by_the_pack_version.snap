@@ -2,7 +2,7 @@
 source: crates/assets/src/pack/tests.rs
 expression: out
 ---
-pack format version 12
+pack format version 13
 image:
     02 01
 image pixels:

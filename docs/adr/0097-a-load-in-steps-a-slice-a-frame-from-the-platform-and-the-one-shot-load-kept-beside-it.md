@@ -1,4 +1,4 @@
-# ADR-0095: A load in steps: a slice a frame from the platform, and the one-shot load kept beside it
+# ADR-0097: A load in steps: a slice a frame from the platform, and the one-shot load kept beside it
 
 - **Status:** Accepted
 - **Date:** 2026-11-09
@@ -81,7 +81,7 @@
   code that assigns or reads the field (`shuyi-app`'s own `start_as`). A
   game built with `Start::new` changes nothing.
 - A target profile's binary form gains the field, so `pack::VERSION` is
-  12 and a pack baked before is baked again.
+  13 and a pack baked before is baked again.
 - A load in steps owns what it hands from step to step: a step can't
   borrow from an earlier one.
 - The slice is checked between steps only. A single step that stalls for

@@ -104,7 +104,7 @@ None.
 
 ## Completion notes
 
-Done as scoped (ADR-0095):
+Done as scoped (ADR-0097):
 
 - **`shuyi-platform`:** `Start::in_steps(card, look, begin)` beside
   `Start::new`. `begin` takes the `Setup` and gives a `LoadStep<G>`, a
@@ -140,7 +140,7 @@ makes its own headless backend, which takes no slice, so a game's Harness
 loads in one frame as on a PC. A step is the unit, as the ticket's
 `FnMut(&mut Loading)` suggestion wasn't taken: the clock is read between
 steps, and a step loops over parts by returning `More` after each
-(ADR-0095, *Alternatives*).
+(ADR-0097, *Alternatives*).
 
 **The game's adopter note (game#1170):** its `Boot` becomes the steps.
 `Start::in_steps(card, look, |setup| { … })`: `begin` keeps the `Setup`
@@ -182,18 +182,22 @@ after: |
   Budgets { frame_instructions: None, peak_heap_bytes: None, package_bytes: None, startup_ms: Some(5_000), load_slice_ms: None }
 ```
 
-Breaking: shuyi-assets: pack::VERSION and the target profile's golden value: a pack is of version 12 (a target profile's binary form has `load_slice_ms`); a pack baked before is refused, bake it again with `shuyi bake`.
+Breaking: shuyi-assets: pack::VERSION and the target profile's golden value: a pack is of version 13 (a target profile's binary form has `load_slice_ms`); a pack baked before is refused, bake it again with `shuyi bake`.
 
 ```migration
 since: 0.1.0
-what: The pack format is version 12; packs baked before are refused.
+what: The pack format is version 13; packs baked before are refused.
 old: "pack::VERSION == 11"
-new: "pack::VERSION == 12"
+new: "pack::VERSION == 13"
 before: |
   shuyi bake
 after: |
   shuyi bake
 ```
+
+The pack version is 13, not 12: 12 is ticket 2343's, in its open PR
+(`Zafnok/shuyi-engine#332`). Whichever merges second takes main's plus
+one, and its `old` above follows.
 
 Docs: `docs/platform-backends.md` (the first frames, `load_slice`),
 `docs/targets/playdate.md` (*What a game adds* 6, the report's line),

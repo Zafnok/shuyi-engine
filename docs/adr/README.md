@@ -106,6 +106,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0091](0091-sound-groups-the-players-volumes-as-a-tree-of-groups-on-a-loudness-curve-worked-out-before-any-backend.md) | Sound groups: the player's volumes as a tree of groups on a loudness curve, worked out before any backend | Accepted; extends ADR-0004 §6 and ADR-0063 |
 | [0092](0092-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md) | The ticket a PR is for is read from its title, and a PR that names none fails | Accepted; amends ADR-0038 §5 |
 | [0093](0093-scripted-rules-rhai-integer-only-with-no-clock-no-luck-no-files-and-limits-views-in-and-values-out-by-serde.md) | Scripted rules: Rhai, integer only, with no clock, no luck, no files, and limits; views in and values out by serde | Accepted; extends ADR-0084 §7 and ADR-0009 |
-| [0095](0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md) | A load in steps: a slice a frame from the platform, and the one-shot load kept beside it | Accepted; extends ADR-0024 |
+| [0097](0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md) | A load in steps: a slice a frame from the platform, and the one-shot load kept beside it | Accepted; extends ADR-0024 |
 
 Template: [`0000-template.md`](0000-template.md).
