@@ -36,11 +36,11 @@ None.
   compilation, so edition builds are checked with no separate edition
   bypass. A build flag the guard doesn't know (`live_link::tree_args`)
   refuses the export: teach it the flag in the same PR.
-- **Either order with 2585** (the dialogue preview): if 2585 is done,
-  its book section says a preview program is built as an edition that
-  leaves the game's own scripts out; check that an edition can do that
-  (a content root without the scripts folder) and name it in the
-  section; if not, nothing to do (2585 adds the sentence if this lands
+- **Either order with 2586** (the dialogue preview screen): if 2586 is
+  done, its book section says a preview program is built as an edition
+  that leaves the game's own scripts out; check that an edition can do
+  that (a content root without the scripts folder) and name it in the
+  section; if not, nothing to do (2586 adds the sentence if this lands
   first).
 
 **Out (do not do):**

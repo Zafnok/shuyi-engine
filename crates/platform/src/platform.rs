@@ -390,9 +390,19 @@ pub trait Platform {
     /// backend has already put their new bytes in their layers
     /// ([`Layer::replace`](shuyi_assets::bundle::Layer::replace)). `App` asks
     /// once a frame while the game runs, only with
-    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on. By default it
-    /// adds nothing: a device with no files to watch.
+    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on, or while
+    /// [`watches_files`](Self::watches_files). By default it adds nothing:
+    /// a device with no files to watch.
     fn changed_files(&mut self, _out: &mut Vec<String>) {}
+
+    /// Whether the game asked for a folder to be watched in every build,
+    /// not only one with debug tools (ADR-0095): a writer's preview
+    /// program, built optimized, that plays the files they save. `App`
+    /// then asks for [`changed_files`](Self::changed_files) with debug
+    /// tools off too. `false` by default.
+    fn watches_files(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]
