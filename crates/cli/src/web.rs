@@ -608,6 +608,20 @@ pub(crate) const WASM_OPT_HELP: &str = "install Binaryen, which has it, and put 
                                         mingw-w64-x86_64-binaryen`, or a release from \
                                         github.com/WebAssembly/binaryen";
 
+/// The Wasm features the pinned Rust turns on for [`TARGET`]
+/// (`rustc --print cfg --target wasm32-unknown-unknown`), named as Binaryen
+/// names them. A stripped binary has no `target_features` section to read
+/// them from, so `wasm-opt` is told: without them it validates the binary as
+/// the first Wasm, and refuses it.
+pub(crate) const WASM_FEATURES: [&str; 6] = [
+    "bulk-memory",
+    "multivalue",
+    "mutable-globals",
+    "nontrapping-float-to-int",
+    "reference-types",
+    "sign-ext",
+];
+
 /// The custom sections a shipped Wasm binary never holds: the functions'
 /// names and the tools that made it.
 pub(crate) const NAMED_SECTIONS: [&str; 2] = ["name", "producers"];
@@ -623,7 +637,9 @@ impl WasmOpt for RealWasmOpt {
     /// the logic that consumes its result via a fake [`WasmOpt`] instead.
     fn optimize(&self, input: &Path, output: &Path) -> Result<bool, String> {
         Command::new("wasm-opt")
-            .args(["-Oz", "--strip-debug", "--strip-producers", "-o"])
+            .args(["-Oz", "--strip-debug", "--strip-producers"])
+            .args(WASM_FEATURES.map(|feature| format!("--enable-{feature}")))
+            .arg("-o")
             .arg(output)
             .arg(input)
             .status()
@@ -1246,6 +1262,24 @@ mod tests {
         // A type section with no types: not a custom one.
         bytes.extend([1, 1, 0]);
         bytes
+    }
+
+    #[test]
+    fn wasm_opt_is_told_the_features_the_pinned_rust_turns_on() {
+        let output = Command::new("rustc")
+            .args(["--print", "cfg", "--target", TARGET])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "rustc --print cfg");
+        let mut on: Vec<String> = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| line.strip_prefix("target_feature=\""))
+            .map(|feature| feature.trim_end_matches('"'))
+            // Binaryen's name for it.
+            .map(|feature| feature.replace("nontrapping-fptoint", "nontrapping-float-to-int"))
+            .collect();
+        on.sort();
+        assert_eq!(on, WASM_FEATURES);
     }
 
     #[test]

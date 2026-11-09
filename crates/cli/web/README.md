@@ -244,7 +244,10 @@ shuyi web [--release] [--<feature>...]
 Builds the game's binary for `wasm32-unknown-unknown` (each `--<feature>`
 turns on a feature `web.features` lists) and packages it with the shell. With
 `--release` it builds the binary stripped (`CARGO_PROFILE_RELEASE_STRIP=true`)
-and runs `wasm-opt -Oz --strip-debug --strip-producers` on it, then refuses a
+and runs `wasm-opt -Oz --strip-debug --strip-producers` on it, with an
+`--enable-<feature>` for each Wasm feature the pinned Rust turns on (a
+stripped binary has no `target_features` section to read them from; a test
+keeps the list equal to `rustc --print cfg`'s), then refuses a
 binary that still holds a `name` or `producers` section; without `wasm-opt` on
 `PATH` it prints a warning naming it and how to install it, and skips that
 step. A release `shuyi export web` fails there instead, unless `shuyi.ron`'s
