@@ -117,16 +117,18 @@ impl Check<'_> {
     }
 
     /// The parents from `id` back to itself (`a, b, a`), if it is its own
-    /// ancestor among the declared groups.
+    /// ancestor among the declared groups. A loop above it that it isn't
+    /// in is its parents' to report.
     fn loop_from(&self, id: &str) -> Option<String> {
         let mut chain = vec![id];
         let mut at = id;
         while let Some(parent) = self.manifest.groups.get(at)?.parent.as_deref() {
+            let seen = chain.contains(&parent);
             chain.push(parent);
             if parent == id {
                 return Some(chain.join(", "));
             }
-            if chain.len() > self.manifest.groups.len() + 1 {
+            if seen {
                 return None;
             }
             at = parent;
