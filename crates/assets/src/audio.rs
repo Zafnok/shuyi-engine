@@ -13,9 +13,23 @@
 //! ([`OggVorbisTrack`]), and the manifest is read by
 //! [`AudioManifestRon`].
 //!
-//! Every cue plays in a sound group (ADR-0091): a sound in `ui` if it is a
-//! menu's, else in `sfx`; a track in `music`; a voice clip in `voice`. The
-//! built-in groups' ids are in [`groups`].
+//! Every cue plays in a sound group (ADR-0091): the one its `group` names,
+//! else a sound in `ui` if it is a menu's and in `sfx` if not, and a track
+//! in `music`; a voice clip plays in `voice`. The built-in groups' ids are
+//! in [`groups`]. A game declares its own in the manifest's `groups` list,
+//! each under a parent (`master` if it names none) and with the volume a
+//! new player starts at, and sets a built-in group's starting volume there
+//! too:
+//!
+//! ```ron
+//! groups: [
+//!     (id: "ambience", parent: "sfx", volume: 80),
+//!     (id: "music", volume: 90),
+//! ],
+//! sounds: [
+//!     (id: "rain", files: ["sfx/rain.ogg"], volume: 60, credit: Own, group: "ambience"),
+//! ],
+//! ```
 use crate::prelude::*;
 
 mod formats;
@@ -26,11 +40,12 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ContentError, line_of};
-use crate::ron::parse_ron;
+use crate::ron::parse_ron_implicit_some;
 
 pub use formats::{
     AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
+pub use groups::GroupDef;
 
 /// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
@@ -46,7 +61,9 @@ pub const MAX_VOLUME: u8 = 100;
 pub const LENGTH_TOLERANCE_MS: u32 = 20;
 
 /// The validated audio manifest. Build it with `default()` and assign
-/// its fields (ADR-0039).
+/// its fields (ADR-0039). Its file may declare sound groups, as `groups:
+/// [(id: "ambience", parent: "sfx", volume: 80)]`, and a cue name one with
+/// `group: "ambience"` (the module's docs).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct AudioManifest {
@@ -69,6 +86,10 @@ pub struct AudioManifest {
     pub pools: BTreeMap<String, Vec<String>>,
     /// Credits by id.
     pub credits: BTreeMap<String, Credit>,
+    /// The sound groups the file declares, by id: a game's own, and the
+    /// built-in ones whose default it sets. The built-ins it doesn't name
+    /// aren't here ([`groups::BUILT_IN`]).
+    pub groups: BTreeMap<String, GroupDef>,
 }
 
 impl AudioManifest {
@@ -145,6 +166,9 @@ pub struct SoundCue {
     /// it plays once). A looped cue is started with a handle
     /// (`AudioQueue::start_sound` in `shuyi-ui`), which stops it.
     pub looped: bool,
+    /// The sound group it plays in: `None` is `ui` for a menu's cue and
+    /// `sfx` for the others.
+    pub group: Option<String>,
 }
 
 impl SoundCue {
@@ -157,6 +181,7 @@ impl SoundCue {
             volume,
             credit,
             looped: false,
+            group: None,
         }
     }
 
@@ -164,6 +189,13 @@ impl SoundCue {
     #[must_use]
     pub const fn with_looped(mut self, looped: bool) -> Self {
         self.looped = looped;
+        self
+    }
+
+    /// The same cue, played in sound group `group`.
+    #[must_use]
+    pub fn with_group(mut self, group: impl Into<String>) -> Self {
+        self.group = Some(group.into());
         self
     }
 }
@@ -184,6 +216,8 @@ pub struct MusicCue {
     pub length_ms: u32,
     /// Who made it.
     pub credit: CreditRef,
+    /// The sound group it plays in: `None` is `music`.
+    pub group: Option<String>,
 }
 
 fn yes() -> bool {
@@ -238,6 +272,8 @@ struct RawFile {
     music_fade_in_ms: u32,
     #[serde(default)]
     music_overlap: bool,
+    #[serde(default)]
+    groups: Vec<groups::RawGroup>,
     sounds: Vec<RawSound>,
     music: Vec<RawMusic>,
     pools: Vec<RawPool>,
@@ -253,6 +289,8 @@ struct RawSound {
     credit: CreditRef,
     #[serde(default)]
     looped: bool,
+    #[serde(default)]
+    group: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -265,6 +303,8 @@ struct RawMusic {
     looped: bool,
     length_ms: u32,
     credit: CreditRef,
+    #[serde(default)]
+    group: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -479,7 +519,7 @@ pub fn from_source(
     source: &str,
     files: &Files<'_>,
 ) -> Result<AudioManifest, Vec<ContentError>> {
-    let raw: RawFile = parse_ron(file, source).map_err(|e| vec![e])?;
+    let raw: RawFile = parse_ron_implicit_some(file, source).map_err(|e| vec![e])?;
     let mut check = Check {
         file,
         source,
@@ -493,6 +533,7 @@ pub fn from_source(
             ..AudioManifest::default()
         },
     };
+    check.groups(raw.groups);
     for c in raw.credits {
         check.credit(c);
     }
@@ -605,11 +646,13 @@ impl Check<'_> {
         }
         self.volume(&id, s.volume);
         self.credit_ref(&id, &s.credit);
+        self.cue_group("sound", &id, s.group.as_deref());
         let entry = SoundCue {
             files: s.files,
             volume: s.volume,
             credit: s.credit,
             looped: s.looped,
+            group: s.group,
         };
         self.manifest.sounds.insert(id, entry);
     }
@@ -639,12 +682,14 @@ impl Check<'_> {
         }
         self.volume(&id, m.volume);
         self.credit_ref(&id, &m.credit);
+        self.cue_group("music", &id, m.group.as_deref());
         let entry = MusicCue {
             file: m.file,
             volume: m.volume,
             looped: m.looped,
             length_ms: m.length_ms,
             credit: m.credit,
+            group: m.group,
         };
         self.manifest.music.insert(id, entry);
     }
@@ -1317,6 +1362,136 @@ mod tests {
         );
     }
 
+    /// [`FULL`] with a `groups` list in front of its sounds.
+    fn with_groups(groups: &str) -> String {
+        FULL.replacen(
+            "    sounds: [",
+            &format!("    groups: [\n{groups}\n    ],\n    sounds: ["),
+            1,
+        )
+    }
+
+    #[test]
+    fn a_manifest_declares_groups_and_a_cue_names_one() {
+        let source = with_groups(
+            r#"        (id: "ambience", parent: "sfx", volume: 80),
+        (id: "weather"),
+        (id: "music", volume: 90),"#,
+        )
+        .replace(
+            "credit: Credit(\"steps\")",
+            "credit: Credit(\"steps\"), group: \"ambience\"",
+        )
+        .replace(
+            "looped: false, length_ms: 2000, credit: Own",
+            "looped: false, length_ms: 2000, credit: Own, group: \"weather\"",
+        );
+        let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
+        let ambience = GroupDef {
+            parent: Some("sfx".into()),
+            volume: Some(80),
+        };
+        let music = GroupDef {
+            volume: Some(90),
+            ..GroupDef::default()
+        };
+        let declared: Vec<_> = m.groups.iter().map(|(id, g)| (id.as_str(), g)).collect();
+        assert_eq!(
+            declared,
+            [
+                ("ambience", &ambience),
+                ("music", &music),
+                ("weather", &GroupDef::default())
+            ]
+        );
+        assert_eq!(m.sounds["footfall"].group.as_deref(), Some("ambience"));
+        assert_eq!(m.sounds["ui_tick"].group, None);
+        assert_eq!(m.music["sting"].group.as_deref(), Some("weather"));
+        assert_eq!(m.music["title"].group, None);
+        // A manifest without groups declares none.
+        let full = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert!(full.groups.is_empty());
+        // A cue may name a built-in group, and a group a parent declared
+        // after it.
+        let built_in = FULL.replace(
+            "credit: Credit(\"steps\")",
+            "credit: Credit(\"steps\"), group: \"voice\"",
+        );
+        assert_eq!(errors(&built_in), Vec::<String>::new());
+        let later = with_groups(r#"        (id: "rain", parent: "weather"), (id: "weather"),"#);
+        assert_eq!(errors(&later), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_groups_errors_are_at_the_line_that_names_it() {
+        let dup = with_groups(
+            r#"        (id: "ambience"),
+        (id: "ambience", volume: 50),"#,
+        );
+        assert_eq!(errors(&dup), ["a.ron:4: duplicate group id \"ambience\""]);
+        let unknown = with_groups(
+            r#"        (id: "ambience"),
+        (id: "rain", parent: "weather"),"#,
+        );
+        assert_eq!(
+            errors(&unknown),
+            ["a.ron:5: group \"rain\" names unknown parent \"weather\""]
+        );
+        let built_in = with_groups(r#"        (id: "ui", parent: "master"),"#);
+        assert_eq!(
+            errors(&built_in),
+            ["a.ron:4: group \"ui\" is built in: it may set only its volume, not its parent"]
+        );
+        let loud = with_groups(r#"        (id: "ambience", volume: 101),"#);
+        assert_eq!(
+            errors(&loud),
+            ["a.ron:4: \"ambience\": volume 101 is over 100 (percent)"]
+        );
+        let empty = with_groups(r#"        (id: ""),"#);
+        assert_eq!(errors(&empty), ["a.ron:4: a group id is empty"]);
+    }
+
+    #[test]
+    fn a_loop_of_parents_is_refused() {
+        let looped = with_groups(
+            r#"        (id: "a", parent: "b"),
+        (id: "b", parent: "a"),
+        (id: "c", parent: "b"),"#,
+        );
+        assert_eq!(
+            errors(&looped),
+            [
+                "a.ron:4: group \"a\" is in a loop of parents: a, b, a",
+                "a.ron:5: group \"b\" is in a loop of parents: b, a, b",
+            ]
+        );
+        let own = with_groups(r#"        (id: "a", parent: "a"),"#);
+        assert_eq!(
+            errors(&own),
+            ["a.ron:4: group \"a\" is in a loop of parents: a, a"]
+        );
+    }
+
+    #[test]
+    fn a_cue_naming_an_unknown_group_is_refused() {
+        let sound = FULL.replace(
+            "credit: Credit(\"steps\")",
+            "credit: Credit(\"steps\"), group: \"rain\"",
+        );
+        assert_eq!(
+            errors(&sound),
+            ["a.ron:5: sound \"footfall\" names unknown group \"rain\""]
+        );
+        let music = FULL.replace(
+            "credit: Credit(\"sunrise\")",
+            "credit: Credit(\"sunrise\"), group: \"rain\"",
+        );
+        assert_eq!(
+            errors(&music),
+            ["a.ron:8: music \"title\" names unknown group \"rain\""]
+        );
+    }
+
     #[test]
     fn syntax_and_unknown_fields_are_refused() {
         assert_eq!(errors("(").len(), 1);
@@ -1348,12 +1523,20 @@ mod tests {
                 volume: 60,
                 credit: CreditRef::Own,
                 looped: false,
+                group: None,
             }
         );
         assert!(
             SoundCue::new(Vec::new(), 60, CreditRef::Own)
                 .with_looped(true)
                 .looped
+        );
+        assert_eq!(
+            SoundCue::new(Vec::new(), 60, CreditRef::Own)
+                .with_group("ambience")
+                .group
+                .as_deref(),
+            Some("ambience")
         );
         assert_eq!((FILES.music_dir, FILES.music.is_none()), ("music", true));
         assert_eq!((FILES.sound_shown)("x.wav"), "base/audio/x.wav");

@@ -174,6 +174,12 @@ the PR.
   input:` line.
 - If the game must change too (a pin bump, a call site), write or link
   the game ticket. Say in both PRs which merges first: the engine's.
+- **After the last merge of `main`** into the branch, re-read the PR
+  body and the completion notes for every ADR number, ticket id and
+  contract version (`contract::VERSION`) they name. A parallel PR may
+  have taken one first: renumber with `cargo xtask next-id` (and the
+  contract's to `main`'s plus one), fix the links to it, and edit the
+  PR body to match. The squash message is the PR body (ticket 2052).
 - Don't run mutation testing locally; CI runs it. Push, open the PR,
   and read CI once.
 - If a check fails, fix it on the branch. Never disable a gate, lower a

@@ -10,7 +10,8 @@
 //! `--verdict`, it writes what the change did in one word (ticket 2030), for
 //! CI's `api:` label on the PR. With `--pr-branch` too, a change to the
 //! public API that changes no file of the book needs a `Book:` line in the
-//! PR's ticket (ticket 2815).
+//! PR's ticket (ticket 2815). A change to the contract's `VERSION`
+//! raises it by exactly one over the base's ([`contract`], ticket 2052).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -41,6 +42,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::contract;
 use crate::layers::is_engine;
 use crate::tickets::{Pr, PrKind, book_lines, breaking_lines};
 
@@ -404,9 +406,11 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             ..Outcome::default()
         };
     }
-    let compared = base_revision(root, options, runner)
-        .and_then(|base| compare(root, &base, runner).map(|crates| (base, crates)));
-    let (base, crates) = match compared {
+    let compared = base_revision(root, options, runner).and_then(|base| {
+        let contract = contract::check(root, &base, runner);
+        compare(root, &base, runner).map(|crates| (base, crates, contract))
+    });
+    let (base, crates, contract) = match compared {
         Ok(compared) => compared,
         Err(error) => {
             return Outcome {
@@ -426,13 +430,14 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             book_rule(&crates, &pr, &changed, &|id| done_ticket(root, id))
         })
     });
-    let errors = [&verdict, &book]
+    let mut errors: Vec<String> = [&verdict, &book]
         .into_iter()
         .filter_map(|verdict| match verdict {
             Some(Verdict::Fail(why)) => Some(why.clone()),
             _ => None,
         })
         .collect();
+    errors.extend(contract.err());
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),
         label: Some(self::verdict(&crates)),

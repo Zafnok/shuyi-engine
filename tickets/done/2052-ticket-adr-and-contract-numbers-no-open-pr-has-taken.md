@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2052 — Ticket, ADR and contract numbers no open PR has taken
@@ -82,14 +82,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask next-id adr` prints 0090 on today's `main`, or a
+- [x] `cargo xtask next-id adr` prints 0090 on today's `main`, or a
       higher number when an open PR adds 0090.
-- [ ] `cargo xtask next-id ticket 20` skips an id that an open PR adds.
-- [ ] Two files `docs/adr/0090-a.md` and `docs/adr/0090-b.md` fail the
+- [x] `cargo xtask next-id ticket 20` skips an id that an open PR adds.
+- [x] Two files `docs/adr/0090-a.md` and `docs/adr/0090-b.md` fail the
       check, naming both.
-- [ ] A PR that raises `contract::VERSION` by two fails.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A PR that raises `contract::VERSION` by two fails.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -99,5 +99,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/xtask/src/ids.rs`: `cargo xtask next-id ticket <block>` and
+  `cargo xtask next-id adr` print one past the highest number found in
+  `origin/main`'s tree (`git ls-tree`), this checkout's files and every
+  open PR's files (`gh pr list --state open --json number,files`). A gap
+  is never filled. Without `gh` (or `origin/main`) it warns and reads
+  what it can. On 2026-11-08 `next-id adr` printed 0092, not 0090: 0090
+  merged in #316 and open PR #318 adds 0091. `next-id ticket 20` printed
+  2068, and `next-id ticket 25` printed 2585.
+- `ids::duplicate_adrs`, run by `cargo xtask check-docs`: two files of
+  `docs/adr/` with one number fail, naming both, and so does an index
+  row listed twice in `docs/adr/README.md`.
+- `crates/xtask/src/contract.rs`, run by `cargo xtask api` against its
+  base (`HEAD^1` on CI's merge ref): `contract::VERSION` stays the
+  base's or goes up by exactly one. +2 and a lowered version fail.
+- Skills: `write-ticket` step 2 and `write-adr` step 1 use `next-id`;
+  `work-ticket` §6 re-reads the PR body and notes for numbers a merge of
+  `main` moved; `run-gates` names the two new checks. `docs/contract.md`
+  says the raise is one over `main`'s. Loaders: `sync-agent-skills.ps1
+  -Check` is clean (no description changed).
+- Deviation: the branch is `t2052-next-free-numbers` (renamed from the
+  worktree's `claude/…` name so `ticket-lint --pr-branch` reads it).
+- No break: only `xtask`, which is not in the API catalog.
+
+Book: none, the change is repository tooling for engine contributors; no
+public item of an engine crate changed.

@@ -1070,6 +1070,37 @@ fn the_voice_rows_set_the_voices_and_their_volume() {
     assert!(OptionRow::<Toy>::voices().is_setting());
 }
 
+/// A game's own group, declared in its manifest, gets a row written with
+/// its id (as `OptionRow::music_volume`'s docs show), which starts at the
+/// manifest's default and moves that group alone.
+#[test]
+fn a_games_own_group_has_a_row_of_its_own() {
+    use Action::CursorLeft;
+    const AMBIENCE: &str = "ambience";
+    let mut toy = Toy::default();
+    let mut group = shuyi_assets::audio::GroupDef::default();
+    group.parent = Some(SFX.to_owned());
+    group.volume = Some(80);
+    toy.audio.groups.insert(AMBIENCE.to_owned(), group);
+    let mut c = Ctx::new(toy).unwrap_or_else(|missing| panic!("{missing:?}"));
+    c.use_layout(toy::RIGHT_HANDED);
+    assert_eq!(c.sound_groups().parent(AMBIENCE), Some(SFX));
+    assert_eq!(c.volume(AMBIENCE), 80);
+    let mut s = OptionsScreen::new(|_| {
+        vec![OptionRow::new(
+            "options.row.ambience_volume",
+            RowValue::volume(
+                |ctx| ctx.volume(AMBIENCE),
+                |ctx, v| ctx.preview_volume(AMBIENCE, v),
+            ),
+        )]
+    });
+    press(&mut s, &mut c, &[CursorLeft]);
+    assert_eq!(c.volume(AMBIENCE), 80 - VOLUME_STEP);
+    assert_eq!(c.volume(SFX), 97);
+    assert_eq!(c.settings().volumes.get(AMBIENCE), Some(80 - VOLUME_STEP));
+}
+
 /// Acceptance: the engine's volume rows, master, music, sound and voice in
 /// that order, each move their own group, and the menus' row moves `ui`.
 #[test]

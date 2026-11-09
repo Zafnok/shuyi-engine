@@ -3,6 +3,7 @@
 //! - `cargo xtask ticket-lint [--pr-branch <branch>] [--pr-title <title>] [--base <rev>] [--game-repo <path>]`
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
+//! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
 //! - `cargo xtask check-modules`
@@ -25,8 +26,10 @@
 mod api;
 mod changelog;
 mod compile_times;
+mod contract;
 mod docs;
 mod golden;
+mod ids;
 mod layers;
 mod links;
 mod llms;
@@ -59,7 +62,14 @@ usage:
   cargo xtask check-links
       Check that every relative link in the Markdown files resolves.
   cargo xtask check-docs
-      Check that the docs map (docs/README.md) links every Markdown file.
+      Check that the docs map (docs/README.md) links every Markdown file, and
+      that no two ADRs, or two rows of docs/adr/README.md, share a number.
+  cargo xtask next-id ticket <block>
+  cargo xtask next-id adr
+      Print the next ticket id in <block> (its two digits, tickets/README.md)
+      or the next ADR number that neither origin/main, this checkout nor an
+      open PR (`gh pr list`) has taken. Without `gh`, warns that it read
+      origin/main and this checkout only.
   cargo xtask check-no-std
       Check that shuyi-core, shuyi-ui and shuyi-platform use no `std::` path
       outside `cfg(feature = \"std\")` (ADR-0008 §5).
@@ -87,7 +97,9 @@ usage:
       With --pr-branch, a break needs a `Breaking:` line in the PR's
       ticket (ADR-0038), read from --pr-title first, and a change that
       changes no file under site/content/learn/ or site/snippets/ a `Book:`
-      line saying why the book needs none (ticket 2815). With --verdict, write `none`, `added` or `breaking`
+      line saying why the book needs none (ticket 2815). A change to the
+      contract's VERSION (crates/cli/src/contract.rs) raises it by exactly
+      one over <rev>'s (ticket 2052). With --verdict, write `none`, `added` or `breaking`
       to <file>, for the PR's `api:` label.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
@@ -156,7 +168,12 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("ticket-lint") => ticket_lint(&root, &args[1..]),
         Some("check-links") if args.len() == 1 => report("check-links", &links::run(&root), &[]),
-        Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
+        Some("check-docs") if args.len() == 1 => {
+            let mut errors = docs::run(&root);
+            errors.extend(ids::duplicate_adrs(&root));
+            report("check-docs", &errors, &[])
+        }
+        Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
         Some("check-modules") if args.len() == 1 => {
@@ -220,6 +237,26 @@ fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
     });
     let found = tickets::run(root, pr, base, &game);
     report("ticket-lint", &found.errors, &found.warnings)
+}
+
+fn next_id(root: &Path, args: &[String]) -> ExitCode {
+    let Some(kind) = ids::Kind::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    match ids::run(root, &kind) {
+        Ok((next, warnings)) => {
+            for warning in &warnings {
+                eprintln!("warning: {warning}");
+            }
+            if writeln!(std::io::stdout().lock(), "{next}").is_ok() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        Err(errors) => report("next-id", &errors, &[]),
+    }
 }
 
 fn api(root: &Path, args: &[String]) -> ExitCode {
