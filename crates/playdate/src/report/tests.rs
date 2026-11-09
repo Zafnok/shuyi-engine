@@ -248,3 +248,12 @@ fn the_watcher_is_set_once_and_another_set_first_is_refused() {
     assert!(watching.load(Ordering::Relaxed));
     assert!(watch_once(taken, &watching, noted).is_ok(), "its own");
 }
+
+#[test]
+fn the_callbacks_line_gives_each_ones_time_and_steps() {
+    let each = [(1_000_400, 10), (15_351_000, 1), (999_600, 1_200)];
+    assert_eq!(
+        callbacks_line(&each),
+        "Start, ms per update callback: 1,000 (10 steps), 15,351 (1 step), 1,000 (1,200 steps)"
+    );
+}

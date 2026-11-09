@@ -30,17 +30,23 @@ A box can now move, or be stuck, and a level can be over. So the rules need new 
 
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="event") }}
 
-> **Rust:** an enum's possibility can have named fields, like a struct. `Pushed { from, to }`
-> says plainly which is which, where `Pushed(Pos, Pos)` would leave you to remember.
+{% newcomer(to="rust", topic="an enum possibility with named fields") %}
+An enum's possibility can have named fields, like a struct. `Pushed { from, to }`
+says plainly which is which, where `Pushed(Pos, Pos)` would leave you to remember.
+{% end %}
 
 and `Refusal` swaps `Box` for two new reasons:
 
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="refusal") }}
 
-The `Display` code below it needs the same two reasons. Here the compiler helps you: as soon as
+The `Display` code below it needs the same two reasons.
+
+{% newcomer(to="rust", topic="following the compiler's errors") %}
+Here the compiler helps you: as soon as
 you remove `Box`, the `match` in `fmt` stops compiling, and tells you what to fix. This happens all
 the time in Rust. Change a type, and follow the errors. They lead you to every place that needs
 to change.
+{% end %}
 
 ## Pushing
 
@@ -50,15 +56,23 @@ box, in a line:
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="check") }}
 
 The new part is the middle: `to` is where the player would step, and `past` is one further. If
-there's a box at `to`, and `past` holds a wall or another box, the push is refused. `&&` is "and",
+there's a box at `to`, and `past` holds a wall or another box, the push is refused.
+
+{% newcomer(to="programming", topic="`&&` and `||`") %}
+`&&` is "and",
 `||` is "or", and the brackets group them as in arithmetic.
+{% end %}
 
 And `apply` moves the box first, then the player:
 
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="apply") }}
 
+{% newcomer(to="rust", topic="`remove` on a set") %}
 `self.boxes.remove(&to)` removes a box from the set at `to` if there is one, and answers whether
-it did. So that `if` reads: "if there was a box here, it's now one further along". Notice that
+it did. So that `if` reads: "if there was a box here, it's now one further along".
+{% end %}
+
+Notice that
 `apply` doesn't re-check anything. `check` has already said this is allowed, which is why it's the
 first thing `apply` calls.
 
@@ -68,11 +82,17 @@ Now run it, and push the box around. Here it is after one step right:
 
 ## Winning
 
-> **Game idea:** the game's outcome is a question you ask of the state, not something you have
-> to remember to record. No command has to remember to say "you won". There can't be a bug where
-> one forgets.
+{% newcomer(to="games", topic="the outcome as a question about the state") %}
+The game's outcome is a question you ask of the state, not something you have
+to remember to record. No command has to remember to say "you won". There can't be a bug where
+one forgets.
+{% end %}
 
-Add a type for how a level ends. `Won` holds no data: it's a struct with no fields, as the title was:
+Add a type for how a level ends. `Won` holds no data.
+
+{% newcomer(to="rust", topic="a struct with no fields") %}
+It's a struct with no fields, as the title was.
+{% end %}
 
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="won") }}
 
@@ -81,8 +101,12 @@ In `TurnRules`, change `type Outcome = ();` to `type Outcome = Won;`, and answer
 {{ snippet(step="04-push", file="crates/game/src/rules.rs", anchor="outcome") }}
 
 That's the entire win condition: the set of boxes is the same as the set of targets. A set was
-a good choice here, since two sets are equal however they were filled. `.then_some(Won)` turns true
+a good choice here, since two sets are equal however they were filled.
+
+{% newcomer(to="rust", topic="`.then_some`") %}
+`.then_some(Won)` turns true
 into `Some(Won)`, and false into `None`.
+{% end %}
 
 The start of `check` also refuses every move once the level is won, which is the `Refusal::Over`
 you added.
@@ -124,9 +148,15 @@ Level 1 is won in two moves. Try it.
 
 ## What you learned
 
-- **Rust:** enum possibilities with named fields, `||`, and letting the compiler's errors walk you
-  through a change.
-- **Game idea:** the outcome is a question about the state.
-- **Shuyi:** how little the screen has to do, once the rules own everything.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: enum possibilities with named fields, `||`, and letting the compiler's errors walk you
+through a change.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: the outcome is a question about the state.
+{% end %}
+
+In Shuyi: how little the screen has to do, once the rules own everything.
 
 Next: a puzzle needs an undo.

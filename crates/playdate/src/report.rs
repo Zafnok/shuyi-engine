@@ -4,10 +4,13 @@
 //! slow start or a stutter without a bench build.
 //!
 //! - **The start:** when the loading card and the game's first frame were
-//!   shown (milliseconds after `init`), how long the load took, the game
-//!   stack's deepest use after it, and the files the load read: how many,
-//!   which the bundle lacks, and the slowest. A loader names a step that
-//!   reads no file with [`mark`], so its time is its own.
+//!   shown (milliseconds after `init`), how long the load took, each update
+//!   callback that ran it (its time and its steps: a load in steps runs
+//!   over several), the game stack's deepest use after it, and the files
+//!   the load read: how many, which the bundle lacks, and the slowest. A
+//!   loader names a step that reads no file with [`mark`], so its time is
+//!   its own; the time between two callbacks is
+//!   `(between update callbacks)`.
 //! - **Each minute** (or [`RunReport::every_seconds`]): the top screen, the
 //!   frames a second, the times of `App::frame` and of the draw, the stack,
 //!   the music; and, with [`RunReport::phases`], each phase of the draw.
@@ -464,6 +467,23 @@ pub(crate) fn shown_line(what: &str, us: u64) -> String {
 pub(crate) fn load_line(us: u64) -> String {
     format!("Game data loaded in {} ms", ms(us))
 }
+
+/// The start's line of each update callback that ran the load: its time,
+/// and the steps it ran.
+pub(crate) fn callbacks_line(each: &[(u64, u32)]) -> String {
+    let each: Vec<String> = each
+        .iter()
+        .map(|&(us, steps)| {
+            let unit = if steps == 1 { "step" } else { "steps" };
+            format!("{} ({} {unit})", ms(us), grouped(u64::from(steps)))
+        })
+        .collect();
+    format!("Start, ms per update callback: {}", each.join(", "))
+}
+
+/// The step the reads name for the time between two update callbacks of a
+/// load in steps, so it isn't the last file's.
+pub(crate) const BETWEEN: &str = "between update callbacks";
 
 /// The line said when another watcher of the bundle was set first.
 // check-text: not player text (for the console)

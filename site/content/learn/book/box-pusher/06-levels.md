@@ -75,13 +75,19 @@ engine provides for any type. Add it to the **registry**, in `formats()`, below 
 
 {{ snippet(step="06-levels", file="crates/game/src/level.rs", anchor="register") }}
 
-> **Rust:** `Vec<String>` is a list of texts, and `pub struct LevelList(pub Vec<String>)` wraps it in
-> a type of its own. `#[serde(transparent)]` tells serde to read the file as just the list inside.
-> You get to it as `.0`, the first field.
+{% newcomer(to="rust", topic="a struct around a `Vec`") %}
+`Vec<String>` is a list of texts, and `pub struct LevelList(pub Vec<String>)` wraps it in
+a type of its own. `#[serde(transparent)]` tells serde to read the file as just the list inside.
+You get to it as `.0`, the first field.
+{% end %}
 
 `read_all` shows a good habit: it doesn't stop at the first bad level. It tries them all, gathering
 every problem into `errors`, so when you run `cargo shuyi check` you see everything that's wrong at
-once. `errors.extend(...)` adds a whole list to a list.
+once.
+
+{% newcomer(to="rust", topic="`extend`") %}
+`errors.extend(...)` adds a whole list to a list.
+{% end %}
 
 Now `Own` holds them all. In `stages.rs`, the `level` field becomes `levels`:
 
@@ -91,9 +97,11 @@ and the board takes which one:
 
 {{ snippet(step="06-levels", file="crates/game/src/board.rs", anchor="new") }}
 
-> **Rust:** `ctx.game.own.levels[level]` picks one item from a list by its position, counted from 0.
-> A position past the end panics, and the `# Panics` part of the comment warns of that. `usize` is the
-> kind of number used for positions.
+{% newcomer(to="rust", topic="indexing with `[]` and `usize`") %}
+`ctx.game.own.levels[level]` picks one item from a list by its position, counted from 0.
+A position past the end panics, and the `# Panics` part of the comment warns of that. `usize` is the
+kind of number used for positions.
+{% end %}
 
 Also add `pub level: usize,` to the top of `struct Board`.
 
@@ -102,9 +110,13 @@ Also add `pub level: usize,` to the top of `struct Board`.
 Make `crates/game/src/levels.rs` (with an `s`: `level.rs` is one level, and this is the screen that
 lists them).
 
-> **Shuyi:** before you write a screen, look for it in the engine. `shuyi::ui::widgets` has menus, lists
-> and question boxes. Your screen just wraps one. The `Menu` here handles moving the focus up and down,
-> wrapping round, and sounds.
+{% newcomer(to="shuyi", topic="the engine's widgets") %}
+Before you write a screen, look for it in the engine. `shuyi::ui::widgets` has menus, lists
+and question boxes.
+{% end %}
+
+Your screen just wraps the engine's `Menu`, which handles moving the focus up and down,
+wrapping round, and sounds.
 
 {{ snippet(step="06-levels", file="crates/game/src/levels.rs", anchor="uses") }}
 
@@ -113,8 +125,12 @@ know what was chosen. Say what those values can be:
 
 {{ snippet(step="06-levels", file="crates/game/src/levels.rs", anchor="choice") }}
 
-The screen remembers only which item has the focus. `Default` in the derive means a `LevelMenu` can be
-made with sensible starting values, and `focus` starts at 0:
+The screen remembers only which item has the focus.
+
+{% newcomer(to="rust", topic="`Default`") %}
+`Default` in the derive means a `LevelMenu` can be made with sensible starting values, and `focus`
+starts at 0.
+{% end %}
 
 {{ snippet(step="06-levels", file="crates/game/src/levels.rs", anchor="struct") }}
 
@@ -126,10 +142,17 @@ and `menu` makes the menu's items:
 
 {{ snippet(step="06-levels", file="crates/game/src/levels.rs", anchor="menu") }}
 
-> **Rust:** `0..levels` is a **range**: the numbers from 0 up to, but not including, `levels`. And
-> `.map(|n| ...)` makes something from each one. Here, a chain of builders makes a menu item: its text
-> key, then what to fill `{n}` with, then its value. `n + 1` is there since people count from 1 and
-> programs count from 0.
+{% newcomer(to="rust", topic="a range and `.map`") %}
+`0..levels` is a **range**: the numbers from 0 up to, but not including, `levels`. And
+`.map(|n| ...)` makes something from each one.
+{% end %}
+
+Here, a chain of builders makes a menu item: its text key, then what to fill `{n}` with, then its
+value.
+
+{% newcomer(to="programming", topic="counting from 0") %}
+`n + 1` is there since people count from 1 and programs count from 0.
+{% end %}
 
 The text comes from the key `levels.level`, so it's in `en.ron` as ever:
 
@@ -161,7 +184,9 @@ screens:
 
 {{ snippet(step="06-levels", file="crates/game/src/stages.rs", anchor="screens") }}
 
+{% newcomer(to="rust", topic="`let _ = ctx;`") %}
 `let _ = ctx;` only says that this function doesn't need its `ctx` yet. (It will in step 7.)
+{% end %}
 
 ## A result
 
@@ -169,9 +194,9 @@ Now the stack has three cards: title, menu, board. What should happen when a lev
 should move on to the next level. But the board doesn't know about the menu, and shouldn't: it's only
 a board. So how does the news get across?
 
-> **Shuyi:** a screen that finishes can hand a value to the one below it. It pops with a **result**,
-> and the one below hears it in `uncovered`. Neither has to know what the other is, beyond the type
-> of the value that they agree on.
+A screen that finishes can hand a value to the one below it. It pops with a **result**,
+and the one below hears it in `uncovered`. Neither has to know what the other is, beyond the type
+of the value that they agree on.
 
 So agree on a type, in `levels.rs`:
 
@@ -186,20 +211,28 @@ The board's help lines in `en.ron` should now say so, and that Cancel goes back 
 
 {{ snippet(step="06-levels", file="crates/game/files/en.ron", anchor="board", language="ron") }}
 
-> **Rust:** `Action::Confirm if ... =>` is a **match guard**, an arm that counts only if its condition is
-> true too. If it's false, `match` goes on to try the next arm, which here is the plain `Action::Confirm
-> => {}`. So a Confirm on a level not yet won does nothing.
+{% newcomer(to="rust", topic="a match guard") %}
+`Action::Confirm if ... =>` is a **match guard**, an arm that counts only if its condition is
+true too. If it's false, `match` goes on to try the next arm, which here is the plain `Action::Confirm
+=> {}`. So a Confirm on a level not yet won does nothing.
+{% end %}
 
 The menu hears it when it's uncovered, and moves on:
 
 {{ snippet(step="06-levels", file="crates/game/src/levels.rs", anchor="uncovered") }}
 
-> **Rust:** `result.and_then(ScreenResult::take::<LevelWon>)` asks "is there a result, and is it a
-> `LevelWon`?". The `if let Some(LevelWon(level)) = ...` then opens it up, two layers at once, and calls
-> the number inside `level`. Patterns like this can go as deep as you need.
->
-> `saturating_sub(1)` subtracts, but stops at 0 rather than going below. And `.min(last)` takes the
-> smaller of the two, so that winning the last level doesn't move the focus off the end.
+`result.and_then(ScreenResult::take::<LevelWon>)` asks "is there a result, and is it a
+`LevelWon`?".
+
+{% newcomer(to="rust", topic="`if let` and a pattern inside a pattern") %}
+The `if let Some(LevelWon(level)) = ...` then opens it up, two layers at once, and calls
+the number inside `level`. Patterns like this can go as deep as you need.
+{% end %}
+
+{% newcomer(to="rust", topic="`saturating_sub` and `min`") %}
+`saturating_sub(1)` subtracts, but stops at 0 rather than going below. And `.min(last)` takes the
+smaller of the two, so that winning the last level doesn't move the focus off the end.
+{% end %}
 
 ## The tests
 
@@ -216,9 +249,12 @@ level 2. `h.screen::<LevelMenu>()` is why screens need `as_any`.
 
 ## What you learned
 
-- **Rust:** `Vec`, ranges, match guards, patterns inside patterns, and indexing with `[]`.
-- **Shuyi:** the engine's `Menu`, items carrying values, `AssetKind` and `Ron`, and results between
-  screens.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: `Vec`, ranges, match guards, patterns inside patterns, and indexing with `[]`.
+{% end %}
+
+In Shuyi: the engine's `Menu`, items carrying values, `AssetKind` and `Ron`, and results between
+screens.
 
 [Chapter 6](@/learn/book/games-and-screens.md) explains screens and their results. Next: the game should
 remember how far you got.

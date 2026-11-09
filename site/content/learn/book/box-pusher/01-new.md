@@ -55,12 +55,15 @@ cargo shuyi run --frames 30
 ```
 
 That plays 30 frames, and prints what was on the screen, as text, into your
-terminal. And this runs the game's **tests**, small programs that play the game
-and check it did what it should:
+terminal. And this runs the game's **tests**:
 
 ```bash
 cargo test --workspace
 ```
+
+{% newcomer(to="programming", topic="a test") %}
+Tests are small programs that play the game and check it did what it should.
+{% end %}
 
 You should see several lines ending in `ok`, and `test result: ok`. You'll write
 tests of your own from step 3, and step 9 is all about them.
@@ -86,17 +89,22 @@ a `.github` folder that runs your tests on GitHub, and a `README.md`. You can
 leave those alone for now. (The book's own copies of each step leave them
 out, so don't worry that the "whole project" link doesn't show them.)
 
+{% newcomer(to="rust", topic="a crate and a workspace") %}
 Two ideas in that table need explaining. A **crate** is Rust's word for one
 package of code, either a program or a library. The engine is several crates, and
 your game is one, `crates/game`. And a **workspace** is a group of crates built
 together, which is what the `Cargo.toml` at the top describes.
+{% end %}
 
 ## The game's data: three files to play with
 
 We'll start with the files that aren't code, because you can change them straight
 away. They are in `crates/game/files/`, and they are written in **RON** (Rusty
-Object Notation), a simple text format for data. A `//` starts a **comment**, a
-note for people that the computer ignores.
+Object Notation), a simple text format for data.
+
+{% newcomer(to="programming", topic="a comment") %}
+A `//` starts a **comment**, a note for people that the computer ignores.
+{% end %}
 
 ### The words: `en.ron`
 
@@ -114,8 +122,8 @@ touching any code.
 cancel". On your screen, it came out as `Backspace`. There's more on why in a
 moment.
 
-> **Shuyi:** text by key. A screen asks for text with `ctx.text("title.name")`
-> and never writes words into code. `cargo shuyi lint` will tell you if you do.
+A screen asks for text with `ctx.text("title.name")` and never writes words into
+code. `cargo shuyi lint` will tell you if you do.
 
 Let's change it. Open `en.ron`, make this change, save, and `cargo run` again:
 
@@ -127,11 +135,14 @@ The box grew by itself: the code measures the name and draws a box to fit.
 
 {{ snippet(step="01-new", file="crates/game/files/palette.ron", language="ron") }}
 
-Each color has a name, and the code asks for colors by name, never by number. A
-color like `#ffd75a` is three pairs of digits, for how much red, green and blue it
-has, each from `00` (none) to `ff` (all of it). They count in base 16, which is
+Each color has a name, and the code asks for colors by name, never by number.
+
+{% newcomer(to="programming", topic="a hex color") %}
+A color like `#ffd75a` is three pairs of digits, for how much red, green and blue
+it has, each from `00` (none) to `ff` (all of it). They count in base 16, which is
 why there are letters: `a` to `f` are the digits after 9. Any web search for
 "color picker" will give you one of these codes for any color you like.
+{% end %}
 
 Now the blue you saw on the last page. `highlight` is what this screen draws the
 name in:
@@ -149,12 +160,15 @@ This file says which keys do what:
 The names on the left are **actions**: things a player can ask for, like Confirm
 or Cancel. The right side lists the keys that give each one.
 
-> **Shuyi:** actions. A game's code never asks "was Backspace pressed?". It asks
-> "was Cancel asked for?". Your code reacts to actions, and this file says which
-> keys they are. So every player can change their keys, a controller works the
-> same way, and the help line on screen can say the right key, because it asks the
-> keymap. That's what `{Cancel}` in `en.ron` was doing. It's a firm rule in Shuyi:
-> **never write a key into your code or your text.**
+{% newcomer(to="shuyi", topic="actions, not keys") %}
+A game's code never asks "was Backspace pressed?". It asks
+"was Cancel asked for?". Your code reacts to actions, and this file says which
+keys they are. So every player can change their keys, a controller works the
+same way, and the help line on screen can say the right key, because it asks the
+keymap. That's what `{Cancel}` in `en.ron` was doing.
+{% end %}
+
+It's a firm rule in Shuyi: **never write a key into your code or your text.**
 
 (The rest of that file gives the same actions for a controller's buttons, and says
 how quickly a held key repeats. You can read its comments later.)
@@ -166,6 +180,7 @@ shortest:
 
 {{ snippet(step="01-new", file="crates/game/src/main.rs") }}
 
+{% newcomer(to="rust", topic="comments, an attribute, `use`, `;` and `fn main`") %}
 There are only a few real lines here, so let's take every one.
 
 **`//!`** is a comment too, a special kind that describes the whole file. **`//`**
@@ -182,13 +197,14 @@ the `prelude` of `shuyi`". Code in Rust is organized in **modules**, like folder
 and `::` walks down them, as `/` does in a folder path. The `use` is a shortcut,
 so below you can write `run_game` and not the whole path.
 
-> **Rust:** every line that does something ends with `;`. A missing `;` is the
-> most common mistake there is, and the compiler will tell you just where it is.
+Every line that does something ends with `;`. A missing `;` is the
+most common mistake there is, and the compiler will tell you just where it is.
 
 **`fn main() { ... }`** defines a **function**: a named list of instructions.
 `fn` means "function", `main` is its name, the `()` holds what it is given
 (nothing, here), and the curly braces `{ }` hold what it does. Every Rust program
 starts by running the function called `main`.
+{% end %}
 
 **`run_game(game::game());`** **calls** two functions. `game::game()` calls the
 function `game` in your game's code, and it answers with a description of your
@@ -204,11 +220,13 @@ At the top, it says which other files are part of it:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="mods") }}
 
-> **Rust:** `mod title;` means "there is a module called `title`, in `title.rs`".
-> A file isn't part of your program until something says so with `mod`. When you
-> add a new file later and the compiler can't find what's in it, this is usually
-> why. `pub` means **public**: other files may use it. Things are private unless
-> they say `pub`, so a file can keep its details to itself.
+{% newcomer(to="rust", topic="`mod` and `pub`") %}
+`mod title;` means "there is a module called `title`, in `title.rs`".
+A file isn't part of your program until something says so with `mod`. When you
+add a new file later and the compiler can't find what's in it, this is usually
+why. `pub` means **public**: other files may use it. Things are private unless
+they say `pub`, so a file can keep its details to itself.
+{% end %}
 
 Then it gathers the data files:
 
@@ -216,9 +234,11 @@ Then it gathers the data files:
 
 `include_dir!` takes the whole `files` folder and puts it **inside** the program
 when it compiles. That is why your game needs no installer and works in a browser:
-it carries its files in itself. The `!` means it's a **macro**, a kind of function
-that runs while compiling and writes code for you. `println!` and `vec!`, which
-you'll meet, are macros too.
+it carries its files in itself.
+
+{% newcomer(to="rust", topic="a macro, `static` and a type") %}
+The `!` means it's a **macro**, a kind of function that runs while compiling and
+writes code for you. `println!` and `vec!`, which you'll meet, are macros too.
 
 `static` makes a value that exists for as long as the program runs. `FILES` is its
 name, and `: Dir<'static>` says what **type** it is. A type says what kind of
@@ -226,51 +246,67 @@ thing a value is: a number, some text, a list. Rust checks every type while
 compiling, which catches a whole family of mistakes, like handing a function text
 where it wants a number. (The `'static` you can ignore: it says this lasts for the
 whole program.)
+{% end %}
 
 Next, your game's data:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="data") }}
 
+{% newcomer(to="rust", topic="`type` and generics") %}
 `type` gives a long type a short name: from here on, `Data` means
 `BasicData<UiAction, stages::Own>`.
 
-> **Shuyi:** `BasicData` is everything the engine read from your files: the words,
-> the keys, the colors and the font. The short path, `shuyi new`'s way of starting,
-> means you name only what the engine can't work out by itself.
->
-> **Rust:** the `<...>` are **generics**. `BasicData` works for any game, so it
-> has blanks to fill in, and this fills them: this game's actions are `UiAction`,
-> the engine's six ready-made moves (Up, Down, Left, Right, Confirm and Cancel),
-> and its own extra data is `stages::Own`, which is nothing yet. It's like a form:
-> `BasicData<actions go here, your extra data goes here>`.
+The `<...>` are **generics**. `BasicData` works for any game, so it
+has blanks to fill in, and this fills them. It's like a form:
+`BasicData<actions go here, your extra data goes here>`.
+{% end %}
+
+`BasicData` is everything the engine read from your files: the words,
+the keys, the colors and the font. This game's actions are `UiAction`,
+the engine's six ready-made moves (Up, Down, Left, Right, Confirm and Cancel),
+and its own extra data is `stages::Own`, which is nothing yet.
+
+{% newcomer(to="shuyi", topic="the short path") %}
+The short path, `shuyi new`'s way of starting, means you name only what the engine
+can't work out by itself.
+{% end %}
 
 And finally the function `main.rs` called:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="game") }}
 
+{% newcomer(to="rust", topic="what a function returns, and `let`") %}
 `-> BasicGame<UiAction, stages::Own>` says what the function **returns**, gives
 back to whoever called it.
 
 `let files = ...;` makes a **variable**, a name for a value. `let` is how you make
 one.
+{% end %}
 
 `BasicGame::with_own(...)` makes the description of your game. It is given four
 things, separated by commas: who the game is, its files, how to read its own extra
 data, and what the first screen is. Then `.screens(screens)` and `.modules(...)`
-each add a little more to it. Calling one thing after another with `.` like this
-is called **chaining**, and you'll see it everywhere.
+each add a little more to it.
+
+{% newcomer(to="rust", topic="chaining, and the last value") %}
+Calling one thing after another with `.` like this is called **chaining**, and
+you'll see it everywhere.
 
 The end of the function has no `;` and no `return`. In Rust, **the last value in a
 function with no `;` is what it returns.** Here that is the whole chain, the
 finished `BasicGame`.
+{% end %}
 
-The first screen is the odd-looking `|_| { Box::new(title::Title) }`.
+The first screen is the odd-looking `|_| { Box::new(title::Title) }`. The engine
+calls it when it's ready for the first screen.
 
-> **Rust:** `|x| { ... }` is a **closure**, a small function with no name, written
-> right where it's needed. What's between the bars is what it is given; `_` means
-> "I'm given something, and I don't need it". The engine calls it when it's ready
-> for the first screen. `Box::new(...)` puts a value in a **box**, which here lets
-> a list hold different kinds of screen, as all boxes are the same shape.
+{% newcomer(to="rust", topic="a closure and a `Box`") %}
+`|x| { ... }` is a **closure**, a small function with no name, written
+right where it's needed. What's between the bars is what it is given; `_` means
+"I'm given something, and I don't need it". `Box::new(...)` puts a value in a
+**box**, which here lets a list hold different kinds of screen, as all boxes are
+the same shape.
+{% end %}
 
 The rest of `lib.rs`, `made()` and `screens()`, you can leave as they are. They
 help the tools tell one build of your game from another, and list every screen the
@@ -281,25 +317,31 @@ game can show.
 Here is where a game starts to appear. A **screen** is one thing the game can
 show: this title, a level, a menu.
 
-> **Shuyi:** the game is a **stack** of screens, one on top of another, like a
-> stack of cards. Only the top one hears the player's input. Opening a menu over
-> the level **pushes** a new card on the top, and closing it **pops** the card off,
-> so the level below is back as it was, with no code needed to remember it. Right
-> now, your stack is one card, the title.
+{% newcomer(to="shuyi", topic="the stack of screens") %}
+The game is a **stack** of screens, one on top of another, like a
+stack of cards. Only the top one hears the player's input. Opening a menu over
+the level **pushes** a new card on the top, and closing it **pops** the card off,
+so the level below is back as it was, with no code needed to remember it. Right
+now, your stack is one card, the title.
+{% end %}
 
 ### What it shows
 
 {{ snippet(step="01-new", file="crates/game/src/title.rs", anchor="view_struct") }}
 
-> **Rust:** a **struct** groups some values into one, each with a name and a type.
-> A `TitleView` holds four pieces of text. `String` is a piece of text. `Option<String>`
-> means "maybe a `String`": it is either `Some(text)` or `None`. Rust has no "null"
-> or "nothing here" that could surprise you: if something might be missing, its
-> type says so, and the compiler makes you deal with both cases.
->
-> `#[derive(...)]` asks the compiler to write some standard abilities for you.
-> `Debug` lets it be printed for a person, `Clone` lets it be copied, `PartialEq`
-> lets two be compared with `==`. You'll put a line like this above most things.
+{% newcomer(to="rust", topic="a struct and `Option`") %}
+A **struct** groups some values into one, each with a name and a type.
+A `TitleView` holds four pieces of text. `String` is a piece of text. `Option<String>`
+means "maybe a `String`": it is either `Some(text)` or `None`. Rust has no "null"
+or "nothing here" that could surprise you: if something might be missing, its
+type says so, and the compiler makes you deal with both cases.
+{% end %}
+
+{% newcomer(to="rust", topic="`derive`") %}
+`#[derive(...)]` asks the compiler to write some standard abilities for you.
+`Debug` lets it be printed for a person, `Clone` lets it be copied, `PartialEq`
+lets two be compared with `==`. You'll put a line like this above most things.
+{% end %}
 
 Then the screen itself. It holds nothing, so it's a struct with no fields, and
 ends with just `;`:
@@ -311,22 +353,28 @@ drawing. It first works out what it shows as plain data:
 
 {{ snippet(step="01-new", file="crates/game/src/title.rs", anchor="view_fn") }}
 
-> **Rust:** `impl Title { ... }` adds functions to `Title`. `ctx: &Ctx<Data>` means
-> this function is given the context, and the `&` means **borrowed**: it may look at
-> the context, not change it, and has to give it back. `&mut` means a borrow that may
-> change it. You'll see these two on nearly every function. They are how Rust knows
-> who's allowed to change what, which prevents a whole class of bugs.
->
-> `.to_owned()` makes a `String` of your own from text that's borrowed. The
-> `if ... { } else { }` here gives back a value: Rust's `if` can be used as one. In
-> the `play` line, `!` means "not", and `.then(|| ...)` turns a true into `Some` of
-> what the closure makes, and a false into `None`: "only if there is a stage".
+{% newcomer(to="rust", topic="`impl` and borrowing") %}
+`impl Title { ... }` adds functions to `Title`. `ctx: &Ctx<Data>` means
+this function is given the context, and the `&` means **borrowed**: it may look at
+the context, not change it, and has to give it back. `&mut` means a borrow that may
+change it. You'll see these two on nearly every function. They are how Rust knows
+who's allowed to change what, which prevents a whole class of bugs.
+{% end %}
 
-> **Shuyi:** `ctx`, the **context**, is what a screen is given to reach everything:
-> the text (`ctx.text`), the colors (`ctx.palette`), the player's saves
-> (`ctx.storage`), the game's data (`ctx.game`) and what kind of machine it's on
-> (`ctx.platform`). There are no global variables in a Shuyi game. Everything comes
-> through this one door, which is what lets a test hand the game a pretend one.
+{% newcomer(to="rust", topic="`to_owned`, `if` as a value, and `then`") %}
+`.to_owned()` makes a `String` of your own from text that's borrowed. The
+`if ... { } else { }` here gives back a value: Rust's `if` can be used as one. In
+the `play` line, `!` means "not", and `.then(|| ...)` turns a true into `Some` of
+what the closure makes, and a false into `None`: "only if there is a stage".
+{% end %}
+
+{% newcomer(to="shuyi", topic="the context, `ctx`") %}
+`ctx`, the **context**, is what a screen is given to reach everything:
+the text (`ctx.text`), the colors (`ctx.palette`), the player's saves
+(`ctx.storage`), the game's data (`ctx.game`) and what kind of machine it's on
+(`ctx.platform`). There are no global variables in a Shuyi game. Everything comes
+through this one door, which is what lets a test hand the game a pretend one.
+{% end %}
 
 `ctx.platform.can_quit()` is worth noticing. On the web, a game can't quit, as the
 player closes the tab. So there, the help line is empty, and the game doesn't
@@ -334,12 +382,16 @@ promise a key that does nothing.
 
 That function returns a **view**.
 
-> **Game idea, and a rule of Shuyi:** a view is what's on screen, as plain data with
-> no colors or positions: the title is "Box Pusher", the help is "Backspace leave".
-> Then, separately, a **skin** decides how that looks. This means you can repaint the
-> whole game without touching what it does, and a test can check what the screen says
-> without caring what it looks like. **Graphics are a skin.** You'll see it pay off
-> in step 2.
+A view is what's on screen, as plain data with no colors or positions: the title
+is "Box Pusher", the help is "Backspace leave". Then, separately, a **skin** decides
+how that looks.
+
+{% newcomer(to="games", topic="why the look is kept apart") %}
+This means you can repaint the whole game without touching what it does, and a test
+can check what the screen says without caring what it looks like.
+{% end %}
+
+**Graphics are a skin.** You'll see it pay off in step 2.
 
 ### The screen's jobs
 
@@ -347,11 +399,13 @@ A screen must do a few jobs that the engine asks of it. The rest of the file is 
 long block that starts `impl Screen<Data> for Title {`, and each job below is a
 function inside it.
 
-> **Rust:** that is a **trait**. A trait is a list of functions a type promises to
-> have. `Screen` is the engine's trait, saying what a screen must be able to do, and
-> `impl Screen<Data> for Title` is `Title` keeping that promise. Because every screen
-> does, the engine can run any screen, even ones written years from now, without
-> knowing a thing about them.
+{% newcomer(to="rust", topic="a trait") %}
+That is a **trait**. A trait is a list of functions a type promises to
+have. `Screen` is the engine's trait, saying what a screen must be able to do, and
+`impl Screen<Data> for Title` is `Title` keeping that promise. Because every screen
+does, the engine can run any screen, even ones written years from now, without
+knowing a thing about them.
+{% end %}
 
 The first two jobs just answer questions:
 
@@ -363,9 +417,13 @@ The first two jobs just answer questions:
 tells `cargo shuyi lint` that `"title"` is an id, not words a player reads.) `actions`
 declares which actions
 this screen listens to, so `cargo shuyi check --target` can check that those fit the
-buttons of each machine the game runs on. (A `vec![...]` is a **vector**, a list
-that can grow. `let mut` makes a variable that may change: without `mut`, Rust won't
-let you change it, so you can trust that most things stay as they were.)
+buttons of each machine the game runs on.
+
+{% newcomer(to="rust", topic="`vec!` and `let mut`") %}
+(A `vec![...]` is a **vector**, a list that can grow. `let mut` makes a variable
+that may change: without `mut`, Rust won't let you change it, so you can trust that
+most things stay as they were.)
+{% end %}
 
 The next job is the **update** of the game loop. It runs every frame while this
 screen is on top:
@@ -376,24 +434,26 @@ screen is on top:
 and the game can quit, it returns `Transition::Quit`. If not, and Confirm is there and
 there's a first stage, it pushes that stage on the stack. Otherwise, nothing happens.
 
-> **Rust:** `&&` means "and". `Transition` is an **enum**, a type with a fixed list of
-> possibilities, and `Transition::Quit` is one of them. `return` leaves the function
-> early with that value. `if let Some(stage) = ...` means "if this gives a `Some`,
-> call what's inside it `stage`, and carry on": it's how you open up an `Option`.
+{% newcomer(to="rust", topic="`&&`, an enum and `if let`") %}
+`&&` means "and". `Transition` is an **enum**, a type with a fixed list of
+possibilities, and `Transition::Quit` is one of them. `return` leaves the function
+early with that value. `if let Some(stage) = ...` means "if this gives a `Some`,
+call what's inside it `stage`, and carry on": it's how you open up an `Option`.
+{% end %}
 
-> **Shuyi:** a `Transition` is what `update` answers with: what the stack does next.
-> `None` stays, `Push(screen)` adds a screen on top, `Pop` closes this one, and `Quit`
-> leaves the game.
+A `Transition` is what `update` answers with: what the stack does next.
+`None` stays, `Push(screen)` adds a screen on top, `Pop` closes this one, and `Quit`
+leaves the game.
 
 The last job is the **draw** of the game loop, which paints the frame:
 
 {{ snippet(step="01-new", file="crates/game/src/title.rs", anchor="draw") }}
 
-> **Shuyi:** `buf`, the **glyph buffer**, is the frame: a grid of 48 **cells** across
-> by 24 down. Each cell holds a character, a text color and a background color. Cells
-> are 8 pixels wide and 16 tall, so the frame is 384 by 384 pixels. `x` counts cells
-> from the left, and `y` counts them **from the top, downward**, both starting at 0.
-> That last part surprises people: a bigger `y` is lower on the screen.
+`buf`, the **glyph buffer**, is the frame: a grid of 48 **cells** across
+by 24 down. Each cell holds a character, a text color and a background color. Cells
+are 8 pixels wide and 16 tall, so the frame is 384 by 384 pixels. `x` counts cells
+from the left, and `y` counts them **from the top, downward**, both starting at 0.
+That last part surprises people: a bigger `y` is lower on the screen.
 
 So this reads as: fill every cell with a space on the background color. Work out how
 wide the box must be, from the length of the name. Work out `x` so that it's centred.
@@ -403,9 +463,11 @@ The first line, `let c = |e| ctx.palette.engine(e);`, is a closure kept in a var
 to save typing: `c(EngineColor::Border)` asks the palette for the color it calls
 `border`.
 
+{% newcomer(to="rust", topic="kinds of number") %}
 (`i32::try_from(...).unwrap_or(0)` turns a count into the kind of number cells are
 counted in, and uses 0 if it can't. Rust won't mix kinds of number by itself, as a
 quiet mix-up is a bug waiting to happen.)
+{% end %}
 
 So let's move the box. Since `y` counts from the top, a smaller row is higher up.
 The box and the name have to move together, and the text under them stays put:
@@ -413,8 +475,11 @@ The box and the name have to move together, and the text under them stays put:
 {{ try_it(name="title-higher") }}
 
 This one is a change to the code, and `cargo run` compiled it again before running.
+
+{% newcomer(to="rust", topic="the compiler's errors") %}
 Try making a mistake on purpose too: delete the `,` after `3)`, and run it. Read what
 the compiler says. It points to the spot, and suggests the fix.
+{% end %}
 
 One more: `draw_box` takes a style, an enum with two possibilities:
 
@@ -432,25 +497,30 @@ from `shuyi.ron`. Never edit it by hand.
 **`examples/tools.rs`** is a tiny second program, the one `cargo shuyi` actually
 runs. It's how the engine's tools get to play your game.
 
+{% newcomer(to="rust", topic="`Cargo.toml` and dependencies") %}
 **`Cargo.toml`** (both of them) lists your **dependencies**, the code your game
 is built on. `crates/game/Cargo.toml` names `shuyi`, the engine. Adding a line
 there is how you add somebody else's code to your game.
+{% end %}
 
 **`shuyi.ron`** is the project file. Its comments explain each part. You'll change
 it twice: just below, and when you ship.
 
 ## A test
 
-Open `crates/game/tests/it/main.rs`. Tests are ordinary functions with `#[test]` above
-them. Here's one you were given:
+Open `crates/game/tests/it/main.rs`. Here's one you were given:
 
 {{ snippet(step="01-new", file="crates/game/tests/it/main.rs", anchor="test_title") }}
 
-> **Shuyi:** the **Harness** plays your game with no window. `game::game().harness()`
-> starts it, `h.keys("Backspace")` presses a key, and `h.screens()` says which screens
-> are on the stack. `assert!` and `assert_eq!` check that something is true, and fail
-> the test if not. Tests may name real keys, because they're pretending to be the
-> player.
+{% newcomer(to="rust", topic="`#[test]` and `assert!`") %}
+Tests are ordinary functions with `#[test]` above them. `assert!` and `assert_eq!`
+check that something is true, and fail the test if not.
+{% end %}
+
+The **Harness** plays your game with no window. `game::game().harness()`
+starts it, `h.keys("Backspace")` presses a key, and `h.screens()` says which screens
+are on the stack. Tests may name real keys, because they're pretending to be the
+player.
 
 To see it work, change the `Backspace` in that test to `Up` and run `cargo test
 --workspace`. The test now fails, and says which line. Put it back.
@@ -484,12 +554,18 @@ browser, this game now leaves its help line empty.
 
 ## What you learned
 
-- **Rust:** comments, `fn`, `use`, `mod`, `pub`, `let` and `let mut`, types, `struct`,
-  `enum`, `Option`, `&` and `&mut`, `impl`, traits, generics, closures, macros, and how
-  a function returns its last value. Nobody remembers all that on the first day. They
-  will come up again and again, each time on a real line.
-- **Game ideas:** a frame, and update and draw.
-- **Shuyi:** screens and the stack, `Ctx`, views and skins, text by key, actions and
-  the keymap, the palette, cells, and the Harness.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: comments, `fn`, `use`, `mod`, `pub`, `let` and `let mut`, types, `struct`,
+`enum`, `Option`, `&` and `&mut`, `impl`, traits, generics, closures, macros, and how
+a function returns its last value. Nobody remembers all that on the first day. They
+will come up again and again, each time on a real line.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: a frame, and update and draw.
+{% end %}
+
+In Shuyi: screens and the stack, `Ctx`, views and skins, text by key, actions and
+the keymap, the palette, cells, and the Harness.
 
 Next, you'll put a real level on the board.

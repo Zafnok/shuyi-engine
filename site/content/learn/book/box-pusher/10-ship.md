@@ -13,15 +13,19 @@ Your game is finished. Here it is, on its third level, with everything you've bu
 
 {{ try_it(name="finished") }}
 
-Now hand it out. A **target** is a kind of machine or place a game can run: a desktop computer, a web browser, a
-handheld. This step gets your game ready for the targets it lists, and puts it where people can play it.
+Now hand it out. This step gets your game ready for the targets it lists, and puts it where people can play it.
+
+{% newcomer(to="games", topic="a target") %}
+A **target** is a kind of machine or place a game can run: a desktop computer, a web browser, a
+handheld.
+{% end %}
 
 ## Who it is
 
-> **Shuyi:** a game's **id** says which game it is, written like a web address back to front:
-> `io.github.yourname.box-pusher`. The player's saves are kept under it. A new game's is a placeholder, and two games
-> with one id share their saves, so set your own before you hand out a build, **and never change it after**, as players
-> would lose their progress.
+A game's **id** says which game it is, written like a web address back to front:
+`io.github.yourname.box-pusher`. The player's saves are kept under it. A new game's is a placeholder, and two games
+with one id share their saves, so set your own before you hand out a build, **and never change it after**, as players
+would lose their progress.
 
 In `shuyi.ron`'s `app`, change the `id`. If you have a GitHub account, use your name there:
 
@@ -35,8 +39,11 @@ cargo shuyi app-info
 
 ## Check it
 
-> **Game idea:** a **gate** is a check that must pass before a change goes in. Run the gates before each release, and
-> ideally before each change. Shuyi has a command for each.
+{% newcomer(to="programming", topic="a gate") %}
+A **gate** is a check that must pass before a change goes in.
+{% end %}
+
+Run the gates before each release, and ideally before each change. Shuyi has a command for each.
 
 ```bash
 cargo shuyi check --target all
@@ -55,8 +62,10 @@ Each problem comes with a code, like `SH2101`. `cargo shuyi explain SH2101` says
 
 ## Build it
 
+{% newcomer(to="programming", topic="debug and release builds") %}
 Until now, you've built in **debug** mode, which compiles quickly and checks a lot as it runs. For players, you want **release**
 mode, which takes longer to compile, and runs faster and smaller.
+{% end %}
 
 ```bash
 cargo shuyi web --release
@@ -85,11 +94,17 @@ desktop.
 
 ## What you've learned
 
-Look back at what you know now. In Rust: functions and types, structs and enums, `match`, `Option` and `Result` and `?`, borrowing,
+Look back at what you know now.
+
+{% newcomer(to="rust", topic="the Rust you have learned") %}
+In Rust: functions and types, structs and enums, `match`, `Option` and `Result` and `?`, borrowing,
 ownership, traits, generics and closures. That's most of the language you'll use day to day. Rust has more, and you can learn the rest
 as you need it. [The Rust Book](https://doc.rust-lang.org/book/) is free, and very good.
+{% end %}
 
+{% newcomer(to="games", topic="the ideas of making games you have learned") %}
 In making games: the loop and its frames, state, commands, determinism, data apart from code, and testing by playing.
+{% end %}
 
 In Shuyi: screens on a stack, `Ctx`, views and skins, the grid kit, actions and the keymap, text by key, the palette, the format registry
 and the bundle, `TurnRules` and `History`, menus and results, storage, the options screens, the Harness, `GameTools`, bots and replays, and

@@ -8,6 +8,7 @@ part = "chapters"
 chapter = 6
 +++
 
+{% newcomer(to="shuyi", topic="the stack of screens") %}
 Think of what a game shows you: a title, then the game itself, then perhaps a pause
 menu on top of the game, then "Are you sure?" on top of the menu. When you back out,
 each goes away and the one below is there again, as you left it.
@@ -17,6 +18,7 @@ and the screens sit on a **stack**, one on another, like a pile of cards. Only t
 screen on top reads the player's input, and the screens below it wait. They all
 share one **context**, `Ctx`, which holds the game's data and everything the engine
 offers them.
+{% end %}
 
 Moon Garden has three screens. This is the second, the garden:
 
@@ -45,30 +47,38 @@ A screen has four jobs:
 - `draw` paints the screen into the frame. Here it paints the view, plain data built
   by `view`. [Chapter 2](@/learn/book/frame-and-skins.md) says why the two are apart.
 
-> **Rust:** a `struct` groups named values into one type, and `TitleView` has three
-> `String`s, pieces of text. `pub struct Title;` is a struct with nothing in it, as
-> the title has nothing to remember. `#[derive(...)]` asks the compiler to write some
-> standard abilities for you, such as `Clone` (make a copy) and `PartialEq` (compare
-> with `==`).
->
-> `impl Title { ... }` adds functions to a type. `impl Screen<Data> for Title` is
-> different: `Screen` is a **trait**, a list of functions a type promises to have, and
-> this keeps that promise. `self` is the value a function was called on. `&self` means
-> it only looks, and `&mut self` means it may change it, and the compiler holds you to
-> that: `draw` takes `&self` and `&Ctx`, so a screen can't change anything while it
-> draws. The project's [step 1](@/learn/book/box-pusher/01-new.md#the-screen-s-jobs) goes through a
-> screen like this one line by line.
->
-> `Option<Vec<UiAction>>` is maybe a list of actions, and `Some(...)` means here it is.
-> `&&` means "and also". `return` hands back an answer early. `&'static str` is a piece
-> of text that's built into the program. `let c = |color| ...` is a small
-> nameless function, kept in a name for the next few lines. `i32` is a whole number
-> that may be negative, and `i32::from` converts to it.
+{% newcomer(to="rust", topic="a `struct`, `impl` and a trait") %}
+A `struct` groups named values into one type, and `TitleView` has three
+`String`s, pieces of text. `pub struct Title;` is a struct with nothing in it, as
+the title has nothing to remember. `#[derive(...)]` asks the compiler to write some
+standard abilities for you, such as `Clone` (make a copy) and `PartialEq` (compare
+with `==`).
+
+`impl Title { ... }` adds functions to a type. `impl Screen<Data> for Title` is
+different: `Screen` is a **trait**, a list of functions a type promises to have, and
+this keeps that promise. `self` is the value a function was called on. `&self` means
+it only looks, and `&mut self` means it may change it, and the compiler holds you to
+that: `draw` takes `&self` and `&Ctx`, so a screen can't change anything while it
+draws. The project's [step 1](@/learn/book/box-pusher/01-new.md#the-screen-s-jobs) goes through a
+screen like this one line by line.
+{% end %}
+
+{% newcomer(to="rust", topic="`Option`, a closure and `i32`") %}
+`Option<Vec<UiAction>>` is maybe a list of actions, and `Some(...)` means here it is.
+`&&` means "and also". `return` hands back an answer early. `&'static str` is a piece
+of text that's built into the program. `let c = |color| ...` is a small
+nameless function, kept in a name for the next few lines. `i32` is a whole number
+that may be negative, and `i32::from` converts to it.
+{% end %}
 
 ## The stack
 
-`update` answers with what the stack does next. A `Transition` is an **enum**, a type
-that's exactly one of a fixed list of possibilities:
+`update` answers with what the stack does next, a `Transition`.
+
+{% newcomer(to="rust", topic="an `enum`") %}
+A `Transition` is an **enum**, a type that's exactly one of a fixed list of
+possibilities.
+{% end %}
 
 | `Transition` | Does |
 | ------------ | ---- |
@@ -79,8 +89,12 @@ that's exactly one of a fixed list of possibilities:
 | `Replace(screen)` | swaps this one for another |
 | `Quit` | leaves the game |
 
-`Push` holds the screen in a `Box`, written `Box::new(Title)`. Screens are different
-types with different sizes, and a box lets the stack hold any of them.
+`Push` holds the screen in a `Box`, written `Box::new(Title)`.
+
+{% newcomer(to="rust", topic="a `Box`") %}
+Screens are different types with different sizes, and a box lets the stack hold any
+of them.
+{% end %}
 
 A screen whose `is_overlay` is `true` lets the one below show through: the stack draws
 the one below first, then it. That's one word in the code, and you can see it:
@@ -96,40 +110,48 @@ question grows a mode. Instead, a question is a screen of its own. The garden pu
 
 {{ snippet(file="src/screens.rs", anchor="leave") }}
 
-> **Rust:** `for &action in &input.actions` runs once for each action this frame. A
-> `match` picks the arm that fits, and must handle every possibility, which is why
-> there's an arm of `_ => {}`: `_` is "anything else", and `{}` is doing nothing.
+{% newcomer(to="rust", topic="`for` and `match`") %}
+`for &action in &input.actions` runs once for each action this frame. A
+`match` picks the arm that fits, and must handle every possibility, which is why
+there's an arm of `_ => {}`: `_` is "anything else", and `{}` is doing nothing.
+{% end %}
 
 The question pops with the answer, and the stack hands it to the screen below in
-`uncovered`. The garden reads it as the type the two agree on, here a `bool`, which
-is true or false:
+`uncovered`. The garden reads it as the type the two agree on, here a `bool`.
+
+{% newcomer(to="programming", topic="a `bool`") %}
+A `bool` is true or false.
+{% end %}
 
 {{ snippet(file="src/screens.rs", anchor="garden") }}
 
 The transition `uncovered` returns applies at once, so a screen acts on the answer in
 the same frame. A screen also hears when one is pushed over it, in `covered`.
 
-> **Rust:** there's a lot here, so one at a time.
->
-> `Self` is the type this `impl` is for, and `Self { garden: ... }` makes one.
-> `pub(crate)` means only code in this crate may reach the field. `_` as a parameter's
-> name, as in `_: &mut Ctx<Data>`, means a function takes the value and doesn't use it.
->
-> `UiAction::Confirm if self.garden.outcome().is_some() => ...` is a match arm with a
-> **guard**: it only fits if the `if` is true too, and otherwise the next arm gets its
-> chance. `continue` skips to the next time round the loop.
->
-> `self.garden.apply(&command)` gives back a `Result`, either a value (`Ok`) or what
-> went wrong (`Err`). Rust warns if you ignore one, and `let _ =` says you mean to.
->
-> `result.and_then(ScreenResult::take::<bool>)` opens the `Option`, if it's there, and
-> takes a `bool` out of it, if that's what it holds. `::<bool>` names a blank in that
-> function, the type to look for. If the question had popped with some other type,
-> this would be `None`, and the garden would stay.
->
-> `as_any` lets a test find this screen on the stack, with its real type. `dyn Any` is
-> Rust's "a value of some type, to be asked which". Without it, a test's
-> `h.screen::<GardenScreen>()` gets a `None`.
+{% newcomer(to="rust", topic="`Self`, a match guard, `Result` and `dyn Any`") %}
+There's a lot here, so one at a time.
+
+`Self` is the type this `impl` is for, and `Self { garden: ... }` makes one.
+`pub(crate)` means only code in this crate may reach the field. `_` as a parameter's
+name, as in `_: &mut Ctx<Data>`, means a function takes the value and doesn't use it.
+
+`UiAction::Confirm if self.garden.outcome().is_some() => ...` is a match arm with a
+**guard**: it only fits if the `if` is true too, and otherwise the next arm gets its
+chance. `continue` skips to the next time round the loop.
+
+`self.garden.apply(&command)` gives back a `Result`, either a value (`Ok`) or what
+went wrong (`Err`). Rust warns if you ignore one, and `let _ =` says you mean to.
+
+`::<bool>` in `ScreenResult::take::<bool>` names a blank in that function, the type
+to look for. `dyn Any` is Rust's "a value of some type, to be asked which".
+{% end %}
+
+`result.and_then(ScreenResult::take::<bool>)` opens the `Option`, if it's there, and
+takes a `bool` out of it, if that's what it holds. If the question had popped with
+some other type, this would be `None`, and the garden would stay.
+
+`as_any` lets a test find this screen on the stack, with its real type. Without it, a
+test's `h.screen::<GardenScreen>()` gets a `None`.
 
 The garden's state isn't the screen's to change: it belongs to the rules, and the
 screen changes it only by sending commands.
@@ -137,10 +159,12 @@ screen changes it only by sending commands.
 
 ## The context
 
+{% newcomer(to="shuyi", topic="why one context and no globals") %}
 Every screen needs to reach things: the game's text, its colors, the player's saves.
 Many engines keep these in **globals**, values anyone can reach from anywhere, which
 makes it hard to tell what a piece of code depends on, and hard to run two games side
 by side in a test. Here they all come in one value, handed to you.
+{% end %}
 
 Every `update` gets the context `&mut`, so it may change it, and every `draw` gets it
 `&`, so it may only look. It is a plain struct, with no globals behind it:
@@ -193,9 +217,15 @@ its end.
 
 ## Text by key
 
-No screen writes its text in its code. If it did, translating the game would mean
-hunting through all of it, and fixing a typo would mean a rebuild. So the text is in
-the game's language file, `files/en.ron`, each line with a name, called its **key**:
+No screen writes its text in its code.
+
+{% newcomer(to="games", topic="why text is kept out of code") %}
+If it did, translating the game would mean hunting through all of it, and fixing a
+typo would mean a rebuild.
+{% end %}
+
+The text is in the game's language file, `files/en.ron`, each line with a name,
+called its **key**:
 
 {{ snippet(file="files/en.ron", anchor="title", language="ron") }}
 
@@ -206,9 +236,11 @@ action's name, as `{Confirm}`, with the player's own key for it. In a `grid` gam
 `check_text` yet, and `lint` says so). The keys `keys.not_mapped`, `keys.arrows`, `keys.chord_join`
 and `layout.arrows` are words the engine's own screens and help lines ask the game for.
 
-> **Rust:** `&[("seeds", &seeds)]` lends a list of pairs. `("seeds", &seeds)` is a
-> **tuple**, values side by side: the placeholder's name, and what to put there. `&[]`
-> lends an empty list, for a line with only actions to fill in.
+{% newcomer(to="rust", topic="a tuple and `&[]`") %}
+`&[("seeds", &seeds)]` lends a list of pairs. `("seeds", &seeds)` is a
+**tuple**, values side by side: the placeholder's name, and what to put there. `&[]`
+lends an empty list, for a line with only actions to fill in.
+{% end %}
 
 ## Every screen, on a list
 
@@ -220,9 +252,13 @@ and `layout.arrows` are words the engine's own screens and help lines ask the ga
 
 Before writing a screen, look for it in the engine. The options screen, key rebinding,
 the layout picker and player profiles are in `shuyi::ui::screens`, and a menu, a list's
-focus, a question box, name entry and word wrap are in `shuyi::ui::widgets`. A
-**widget** is a part of a screen, as a menu is. Each takes the game's rows or text, and
-says what it shows as a view.
+focus, a question box, name entry and word wrap are in `shuyi::ui::widgets`.
+
+{% newcomer(to="games", topic="a widget") %}
+A **widget** is a part of a screen, as a menu is.
+{% end %}
+
+Each takes the game's rows or text, and says what it shows as a view.
 
 Word wrap measures in cells of the screen, with `ctx.widths()`: a Japanese character
 takes two. English breaks at spaces. Japanese has none, so it breaks between any two
@@ -234,7 +270,12 @@ two lines.
 
 The default engine stays small, so a game doesn't pay for what it doesn't use.
 Everything else is a **module**: a crate of the engine that a game turns on as a
-**feature** of `shuyi`, an optional part of a crate, such as physics or online play.
+**feature** of `shuyi`, such as physics or online play.
+
+{% newcomer(to="rust", topic="a crate's features") %}
+A feature is an optional part of a crate.
+{% end %}
+
 `cargo shuyi modules` lists them by concern (perspective, bodies and motion, online
 play, kind of game, scripted rules), each with its status, and `cargo shuyi add <module>` turns one on
 in the game's `Cargo.toml` and copies its skill into `.claude/skills/`.
@@ -252,15 +293,20 @@ draw a random number, so a replay with scripted rules stays exact.
 
 ## A test of it
 
-A **test** is a small program that runs your code and checks what happened. A test of
-screens plays the game with no window through the engine's **Harness**, pressing the
-game's default keys by name, and reads the stack:
+{% newcomer(to="programming", topic="a test") %}
+A **test** is a small program that runs your code and checks what happened.
+{% end %}
+
+A test of screens plays the game with no window through the engine's **Harness**,
+pressing the game's default keys by name, and reads the stack:
 
 {{ snippet(file="src/screens.rs", anchor="harness") }}
 
-> **Rust:** `#[test]` marks a function for `cargo test` to run. `assert_eq!` stops the
-> test, as failed, if its two sides aren't equal. `h` needs `let mut`, as pressing keys
-> changes it: in Rust, a name can't change unless it says it may.
+{% newcomer(to="rust", topic="`#[test]`, `assert_eq!` and `let mut`") %}
+`#[test]` marks a function for `cargo test` to run. `assert_eq!` stops the
+test, as failed, if its two sides aren't equal. `h` needs `let mut`, as pressing keys
+changes it: in Rust, a name can't change unless it says it may.
+{% end %}
 
 [Chapter 8](@/learn/book/testing.md) has the rest of the Harness.
 
@@ -277,22 +323,29 @@ error[E0046]: not all trait items implemented, missing: `draw`
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `draw` in implementation
 ```
 
-**`update` doesn't answer.** The last line of a function is what it gives back. Leave
-out `Transition::None` at the end, and `update` ends on its loop, which gives back
-nothing, `()`:
+**`update` doesn't answer.** Leave out `Transition::None` at the end, and `update`
+ends on its loop, which gives back nothing, `()`:
 
 ```text
 error[E0308]: mismatched types
     | |_________^ expected `Transition<BasicData<UiAction, Plan>>`, found `()`
 ```
 
+{% newcomer(to="rust", topic="a function's last line") %}
+The last line of a function is what it gives back.
+{% end %}
+
 **A `match` misses a possibility.** Remove the `_ => continue` arm, and the compiler
-lists the actions you left out. It's one of Rust's most helpful errors, and it means
-that adding a new possibility to an enum shows you every place that must handle it:
+lists the actions you left out:
 
 ```text
 error[E0004]: non-exhaustive patterns: `shuyi::prelude::UiAction::Up`, `shuyi::prelude::UiAction::Down` and `shuyi::prelude::UiAction::Debug` not covered
 ```
+
+{% newcomer(to="rust", topic="why a missed possibility is an error") %}
+It's one of Rust's most helpful errors, and it means that adding a new possibility to
+an enum shows you every place that must handle it.
+{% end %}
 
 **A screen tries to change something while drawing.** Rust stops it, because `draw`
 only has `&self`:
@@ -302,12 +355,15 @@ error[E0596]: cannot borrow `self.garden` as mutable, as it is behind a `&` refe
 ```
 
 **A text key isn't in the file.** This one compiles, and `cargo shuyi check` passes.
-Running the game stops it in a debug build, with a **panic**, Rust's way of stopping
-when something that should never happen did. It names the key:
+Running the game stops it in a debug build, with a **panic** that names the key:
 
 ```text
 text key not in the English text: "title.name"
 ```
+
+{% newcomer(to="rust", topic="a panic") %}
+A panic is Rust's way of stopping when something that should never happen did.
+{% end %}
 
 So run the screens you change, or better, test them.
 
@@ -340,9 +396,11 @@ You can leave this section until you need it. A game whose data needs more than
 
 {{ snippet(file="src/screens.rs", anchor="game_data") }}
 
-> **Rust:** the `type` lines fill in blanks of the trait. `GameData` needs to know this
-> game's actions, colors, voices and settings, and `()`, a value holding nothing, says
-> this game has none of its own.
+{% newcomer(to="rust", topic="a trait's `type` lines") %}
+The `type` lines fill in blanks of the trait. `GameData` needs to know this
+game's actions, colors, voices and settings, and `()`, a value holding nothing, says
+this game has none of its own.
+{% end %}
 
 Such a game makes its context with `Ctx::new(data)`, its game with `Game::new(ctx,
 first_screen, GameHooks::default())`, and its binary calls `shuyi::app::run` with its

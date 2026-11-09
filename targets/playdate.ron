@@ -33,6 +33,9 @@
         // Provisional: 3011 measures it.
         package_bytes: 41_943_040, // 40 MB
         startup_ms: 5_000,
+        // The system ends a game whose update callback hasn't returned in
+        // 10 seconds: a load in steps runs a second's worth a callback.
+        load_slice_ms: 1_000,
     ),
     backend: "shuyi-playdate",
 )

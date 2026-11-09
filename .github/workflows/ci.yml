@@ -1494,6 +1494,9 @@ jobs:
       - name: Check the site's links
         working-directory: site
         run: zola check --skip-external-links
+      # Who each passage of the book is for (ticket 2825, ADR-0090 §5).
+      - name: Check the book's marks
+        run: cargo xtask check-book
       - name: Check the site's builds
         run: bash site/check-build.sh
       - name: Check the docs for agents

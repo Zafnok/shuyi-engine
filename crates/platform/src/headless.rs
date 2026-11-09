@@ -28,7 +28,7 @@ use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
-use crate::platform::{DisplayInfo, Frame, Millis, Platform, Show, SystemEvent};
+use crate::platform::{DisplayInfo, Frame, LoadSlice, Millis, Platform, Show, SystemEvent};
 use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
@@ -530,6 +530,8 @@ pub struct HeadlessPlatform {
     facts: PlatformFacts,
     /// The clock it gives to measure frames with, if a test set one.
     clock: Option<PerfClock>,
+    /// The slice a frame runs a load in steps for, if a test set one.
+    load_slice: Option<LoadSlice>,
     /// Where its memory readings come from.
     memory: Memory,
     /// How many times `App` asked for the memory.
@@ -594,6 +596,7 @@ impl HeadlessPlatform {
             recorded_keyboard: None,
             facts: PlatformFacts::default(),
             clock: None,
+            load_slice: None,
             memory: Memory::None,
             memory_calls: 0,
             scopes: None,
@@ -679,6 +682,16 @@ impl HeadlessPlatform {
     #[must_use]
     pub fn with_clock(mut self, clock: PerfClock) -> Self {
         self.clock = Some(clock);
+        self
+    }
+
+    /// The same backend running a load in steps for `slice` a frame
+    /// ([`Platform::load_slice`]): with a fake clock, a test's steps fall
+    /// in the same frames on every run. Without it, all the steps run in
+    /// one frame.
+    #[must_use]
+    pub fn with_load_slice(mut self, slice: LoadSlice) -> Self {
+        self.load_slice = Some(slice);
         self
     }
 
@@ -862,6 +875,10 @@ impl Platform for HeadlessPlatform {
 
     fn clock(&self) -> Option<PerfClock> {
         self.clock
+    }
+
+    fn load_slice(&self) -> Option<LoadSlice> {
+        self.load_slice
     }
 
     fn memory_scopes(&self) -> Option<MemoryScopes> {

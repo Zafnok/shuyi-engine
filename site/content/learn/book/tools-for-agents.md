@@ -15,8 +15,12 @@ agent can make, run, see, test and replay a game without a window and without gu
 
 You have been using this all along. Every `cargo shuyi` command in this book is one set of
 operations, the **tool contract**, offered three ways: the `shuyi` command line, an MCP server,
-and Agent Skills that teach an agent to use them. A **contract** here means a promise of what
+and Agent Skills that teach an agent to use them.
+
+{% newcomer(to="programming", topic="a contract") %}
+A **contract** here means a promise of what
 goes in and what comes out, which a program can rely on.
+{% end %}
 
 ## The tool contract
 
@@ -38,20 +42,28 @@ limits:
 
 That isn't an error. It's the tool being plain that there was something it couldn't tell you.
 
-`cargo shuyi <op>` prints the answer for people, and with `--json` as one JSON document, a
-common text format for data, for a program, whose **exit code**, the number a program hands back
-when it stops, says its class: 0 when `ok`, 1 when it ran and found something, 2 for a wrong
-command, 3 for a setup to fix. The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
+`cargo shuyi <op>` prints the answer for people, and with `--json` as one JSON document, for a
+program, whose **exit code** says its class: 0 when `ok`, 1 when it ran and found something, 2 for
+a wrong command, 3 for a setup to fix.
+
+{% newcomer(to="programming", topic="JSON and an exit code") %}
+JSON is a common text format for data. A program's exit code is the number it hands back when it
+stops.
+{% end %}
+
+The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
 `scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
 `attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
 
 {{ snippet(file="src/tools.rs", anchor="contract") }}
 
-> **Rust:** `CheckInput::default()` makes the input with every setting at its default, and `let mut`
-> lets the next line change one. `"{answer:?}"` prints the whole answer in its debug form, if the
-> test fails, as `Debug` was derived for it. `answer.result.as_ref().unwrap()` looks inside the
-> `Option` without taking it out of `answer`. `.iter().any(|e| matches!(e, Event::Quit { .. }))` asks
-> whether any event is a quit, whatever else it holds, which is what `..` means.
+{% newcomer(to="rust", topic="`default()`, debug printing and `matches!`") %}
+`CheckInput::default()` makes the input with every setting at its default, and `let mut`
+lets the next line change one. `"{answer:?}"` prints the whole answer in its debug form, if the
+test fails, as `Debug` was derived for it. `answer.result.as_ref().unwrap()` looks inside the
+`Option` without taking it out of `answer`. `.iter().any(|e| matches!(e, Event::Quit { .. }))` asks
+whether any event is a quit, whatever else it holds, which is what `..` means.
+{% end %}
 
 The [contract's page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/contract.md) says what
 each operation answers, and every input and answer has a **JSON schema**, a description of a
@@ -83,8 +95,10 @@ The stage's tools name the value with `Scene::with_data`. To show what lives on 
 state, such as the number of commands taken, a `grid` game's stage names a small struct of its own,
 `StageData` in its `tools.rs`: the stage's state, then its `seed` and its `commands`.
 
-> **Rust:** `#[serde(flatten)]` on `StageData`'s `stage` field writes the state's own keys at the top,
-> beside `seed` and `commands`, instead of under a `stage` key.
+{% newcomer(to="rust", topic="`#[serde(flatten)]`") %}
+`#[serde(flatten)]` on `StageData`'s `stage` field writes the state's own keys at the top,
+beside `seed` and `commands`, instead of under a `stage` key.
+{% end %}
 
 The rules' types derive `JsonSchema`, which describes their shape, under a `schema` feature that the
 game's `tools` feature turns on, so the game you ship builds no schema. A type of your own that the

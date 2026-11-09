@@ -288,7 +288,7 @@ and the game's PR that moves its pin follows this one.
   parents, a `to` over 100, and a second rule lowering the same group,
   each named `ducks[N] (lower: "<group>")` at the first line with that
   `lower`. A test covers a declared group lowered and one under `voice`.
-  `pack::VERSION` is 12; the format tests' manifest has one rule, and
+  `pack::VERSION` is 14 (3097 took 13 first); the format tests' manifest has one rule, and
   the pack snapshot and the audio manifest's golden value were accepted.
 - **`DuckState`** (`crates/ui/src/audio/duck.rs`, `no_std`, integers):
   per rule the multiplier now, where it set off from, where it goes and
@@ -328,13 +328,13 @@ and the game's PR that moves its pin follows this one.
   pin to this change and adds the rule to its manifest. Whether 2342 and
   2343 count for the MVP stays Nick's call; nothing here needs it.
 
-Breaking: shuyi-assets: pack::VERSION and the audio manifest's golden value: a pack is of version 12 (the manifest's binary form has `ducks`); a pack baked before is refused, bake it again with `shuyi bake`.
+Breaking: shuyi-assets: pack::VERSION and the audio manifest's golden value: a pack is of version 14 (the manifest's binary form has `ducks`); a pack baked before is refused, bake it again with `shuyi bake`.
 
 ```migration
 since: 0.1.0
-what: The pack format is version 12; packs baked before are refused.
-old: "pack::VERSION == 11"
-new: "pack::VERSION == 12"
+what: The pack format is version 14; packs baked before are refused.
+old: "pack::VERSION == 13"
+new: "pack::VERSION == 14"
 before: |
   shuyi bake
 after: |
