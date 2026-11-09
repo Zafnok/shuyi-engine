@@ -37,12 +37,16 @@ The garden's plan is a kind of the game's own, plain data with a name for messag
 
 {{ snippet(file="src/assets.rs", anchor="kind") }}
 
-> **Rust:** `u8` and `u32` are whole numbers that are never negative, 8 and 32 bits
-> long, so a `u8` goes up to 255. `Deserialize` comes from a crate called `serde`, and
-> deriving it writes the code that reads this type from a file.
-> `#[serde(deny_unknown_fields)]` says a field this type doesn't have is an error
-> rather than being ignored, which catches a typo in the file. `impl AssetKind for Plan`
-> keeps the one promise of that trait, a `const`, a fixed value: its name in messages.
+{% newcomer(to="rust", topic="`u8`, `serde` and `deny_unknown_fields`") %}
+`u8` and `u32` are whole numbers that are never negative, 8 and 32 bits
+long, so a `u8` goes up to 255. `Deserialize` comes from a crate called `serde`, and
+deriving it writes the code that reads this type from a file.
+`#[serde(deny_unknown_fields)]` says a field this type doesn't have is an error
+rather than being ignored, which catches a typo in the file.
+{% end %}
+
+`impl AssetKind for Plan` keeps the one promise of that trait, a `const`, a fixed
+value: its name in messages.
 
 in a RON file of the game's:
 
@@ -55,15 +59,22 @@ for the plan by its id, the file's path with or without its extension:
 
 {{ snippet(file="src/assets.rs", anchor="formats") }}
 
-> **Rust:** `Ron::<Plan>::new()` makes the format that reads a `Plan` from RON. `let mut`
-> gives a name to a value that may change, and `register` changes it.
->
-> `Result<Plan, Vec<ContentError>>` is either a `Plan`, or the list of what's wrong.
-> The `?` after `.load::<Plan>(bundle, "garden")` says: if this is an error, hand it
-> back now, and otherwise give me the value inside. `Err(vec![...])` is the same kind of
-> error, made by hand, and `Ok(plan)` is the good answer.
->
-> `&Bundle` means this function borrows the bundle, only to look.
+`Ron::<Plan>::new()` makes the format that reads a `Plan` from RON.
+
+{% newcomer(to="rust", topic="`let mut`") %}
+`let mut` gives a name to a value that may change, and `register` changes it.
+{% end %}
+
+{% newcomer(to="rust", topic="`Result` and `?`") %}
+`Result<Plan, Vec<ContentError>>` is either a `Plan`, or the list of what's wrong.
+The `?` after `.load::<Plan>(bundle, "garden")` says: if this is an error, hand it
+back now, and otherwise give me the value inside. `Err(vec![...])` is the same kind of
+error, made by hand, and `Ok(plan)` is the good answer.
+{% end %}
+
+{% newcomer(to="rust", topic="a borrow, `&`") %}
+`&Bundle` means this function borrows the bundle, only to look.
+{% end %}
 
 `read_plan` is the function `BasicGame::with_own` takes in
 [chapter 1](@/learn/book/quick-start.md#what-it-is-made-of): it reads the game's own
@@ -207,9 +218,11 @@ laid first, and lay it only if that works.
 
 {{ snippet(file="src/assets.rs", anchor="layers") }}
 
-> **Rust:** `BTreeMap` is a list of values looked up by a key. `b"..."` is text as raw
-> bytes, which is what a file holds, and `.to_vec()` makes it a list you own.
-> `.to_owned()` does the same for a `&str`.
+{% newcomer(to="rust", topic="`BTreeMap` and bytes") %}
+`BTreeMap` is a list of values looked up by a key. `b"..."` is text as raw
+bytes, which is what a file holds, and `.to_vec()` makes it a list you own.
+`.to_owned()` does the same for a `&str`.
+{% end %}
 
 A layer can also be private (files that may not be handed out, such as bought art: the
 tools say which files come from one), or hold only the tests' files, which a build that
@@ -250,10 +263,12 @@ the value. A small module of the game's keeps it, and refreshes it when files ch
 
 {{ snippet(file="src/assets.rs", anchor="hot") }}
 
-> **Rust:** `impl<G: GameData> Module<G> for HotPlan` says `HotPlan` is a module of any
-> game: `G` is a blank, and `G: GameData` says it must be a type with that trait. `Arc`
-> lets several owners share one value. `'_` lets the compiler work out how long a borrow
-> lasts.
+{% newcomer(to="rust", topic="a generic `impl`, `Arc` and `'_`") %}
+`impl<G: GameData> Module<G> for HotPlan` says `HotPlan` is a module of any
+game: `G` is a blank, and `G: GameData` says it must be a type with that trait. `Arc`
+lets several owners share one value. `'_` lets the compiler work out how long a borrow
+lasts.
+{% end %}
 
 A broken file never stops the game: the old value stays, and `note_reload` shows its
 error, with its file and line, at the top of the frame until the next good save. A

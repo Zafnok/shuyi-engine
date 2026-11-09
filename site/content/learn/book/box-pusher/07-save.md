@@ -32,19 +32,24 @@ Add `ron` as you added `serde`. In the top `Cargo.toml`, under `[workspace.depen
 
 ## Where saves go
 
-> **Shuyi:** a game never opens a file itself. It goes through **storage**, which the platform hands it:
-> a file on a computer, the browser's storage on the web, and only memory in a test. So the same code saves
-> on every machine the game runs on, and a test needs no disk. It's the same idea as actions, and
-> as `ctx` itself: the game asks for a thing, and doesn't care how it's done.
+A game never opens a file itself. It goes through **storage**, which the platform hands it:
+a file on a computer, the browser's storage on the web, and only memory in a test.
+
+{% newcomer(to="shuyi", topic="why a game goes through storage") %}
+So the same code saves on every machine the game runs on, and a test needs no disk. It's the same idea
+as actions, and as `ctx` itself: the game asks for a thing, and doesn't care how it's done.
+{% end %}
 
 Storage keeps small named texts, and that's all. `ctx.storage` has `read` and `write`, and a key names
 each text, just as a key names each line of your words.
 
 ## What is kept
 
-> **Game idea:** always write the **version** of your save's format into the save. Some day you'll change
-> what a save holds, and a player will still have an old one. A later build has to be able to tell what it's
-> reading, or it will read it wrong.
+{% newcomer(to="games", topic="a save's version") %}
+Always write the **version** of your save's format into the save. Some day you'll change
+what a save holds, and a player will still have an old one. A later build has to be able to tell what it's
+reading, or it will read it wrong.
+{% end %}
 
 Make `crates/game/src/progress.rs`:
 
@@ -59,23 +64,32 @@ it back. `SaveFormat` gives it a name and a version number, which you raise when
 
 `furthest` reads it. Its job is to never fail: if anything's wrong, the answer is level 0.
 
-> **Rust:** `storage: &dyn Storage` means "a borrow of anything that implements the `Storage` trait". This
-> function doesn't care whether that's a file or the browser. It's the same `dyn` as `Box<dyn Screen>`.
->
-> `let Ok(Some(text)) = storage.read(KEY) else { return 0; };` is **let-else**: "this must match, or else do
-> this". `read` returns a `Result` holding an `Option`: it could have failed, and if not, there might still
-> be nothing saved. This handles both, in one line, and from here on `text` is the saved text.
->
-> `header.is_current()` is checked in a match guard, like you saw in the last step, and `_ => 0` catches
-> everything else: a version it doesn't know, or text it can't read. `map_or(0, ...)` says "use 0 if this
-> failed, and otherwise get this from it".
+{% newcomer(to="rust", topic="`&dyn Storage`") %}
+`storage: &dyn Storage` means "a borrow of anything that implements the `Storage` trait". This
+function doesn't care whether that's a file or the browser. It's the same `dyn` as `Box<dyn Screen>`.
+{% end %}
 
-> **Shuyi:** a `SaveHeader` reads only the version of a save, even one whose other fields can't be read any
-> more. So a game can tell "this is from another version" apart from "this is damaged".
+{% newcomer(to="rust", topic="let-else") %}
+`let Ok(Some(text)) = storage.read(KEY) else { return 0; };` is **let-else**: "this must match, or else do
+this". `read` returns a `Result` holding an `Option`: it could have failed, and if not, there might still
+be nothing saved. This handles both, in one line, and from here on `text` is the saved text.
+{% end %}
+
+{% newcomer(to="rust", topic="a match guard and `map_or`") %}
+`header.is_current()` is checked in a match guard, like you saw in the last step, and `_ => 0` catches
+everything else: a version it doesn't know, or text it can't read. `map_or(0, ...)` says "use 0 if this
+failed, and otherwise get this from it".
+{% end %}
+
+A `SaveHeader` reads only the version of a save, even one whose other fields can't be read any
+more. So a game can tell "this is from another version" apart from "this is damaged".
 
 `reached` writes it, only if it's further than what's there. It returns a `Result`, as writing can fail,
-for instance on a full disk. `map_err` turns one kind of error into another, so `ron`'s error can be
-returned as a `StorageError`.
+for instance on a full disk.
+
+{% newcomer(to="rust", topic="`map_err`") %}
+`map_err` turns one kind of error into another, so `ron`'s error can be returned as a `StorageError`.
+{% end %}
 
 ## Using it
 
@@ -102,8 +116,11 @@ Then, when a level is won, keep the next one. In `uncovered`, after `self.focus`
 {{ snippet(step="07-save", file="crates/game/src/levels.rs", anchor="keep") }}
 
 `let _ =` is a decision here, not laziness, as the comment says: if saving fails, the player loses
-only their progress, and that's no reason to stop their game. `&mut ctx.storage` is the changing kind of
-borrow, as writing changes it.
+only their progress, and that's no reason to stop their game.
+
+{% newcomer(to="rust", topic="`&mut`") %}
+`&mut ctx.storage` is the changing kind of borrow, as writing changes it.
+{% end %}
 
 ## The test
 
@@ -116,16 +133,26 @@ bad saves are the sort of thing players really do have, it's worth testing that 
 
 {{ snippet(step="07-save", file="crates/game/tests/board.rs", anchor="test_damaged") }}
 
-This needs `use shuyi::ui::storage::Storage;` at the top, as you have to name a trait to call its functions.
+This needs `use shuyi::ui::storage::Storage;` at the top.
+
+{% newcomer(to="rust", topic="naming a trait to use it") %}
+You have to name a trait to call its functions.
+{% end %}
 
 Now play this step in your browser from the button at the top of this page. Win a level, reload the page, and
 the menu remembers. That save is in the browser's storage, and your code didn't need to know.
 
 ## What you learned
 
-- **Rust:** `let ... else`, `&dyn`, `map_err` and `map_or`, and that a trait must be named to use it.
-- **Game idea:** versions in saves, and treating a bad save as no save.
-- **Shuyi:** `Storage`, `SaveFormat` and `SaveHeader`.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: `let ... else`, `&dyn`, `map_err` and `map_or`, and that a trait must be named to use it.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: versions in saves, and treating a bad save as no save.
+{% end %}
+
+In Shuyi: `Storage`, `SaveFormat` and `SaveHeader`.
 
 [Chapter 7](@/learn/book/saves-and-settings.md) has more on saves. The game is now whole. Next: the things that
 make it pleasant.

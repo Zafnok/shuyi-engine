@@ -53,7 +53,7 @@ fn a_page_with_marks_passes_and_splits_at_them() {
 #[test]
 fn a_page_with_no_mark_is_one_plain_part() {
     let (parts, errors) = parts("a.md", "Plain.\n", 4);
-    assert!(errors.is_empty());
+    assert_eq!(errors, Vec::<String>::new());
     assert_eq!(parts.len(), 1);
     assert_eq!(parts[0].mark, None);
 }
@@ -139,7 +139,10 @@ fn a_mark_not_on_its_own_lines_fails() {
             "\n  {% newcomer(to=\"rust\", topic=\"x\") %}\n",
             "with no indent",
         ),
-        ("\nText. {% end %}\n", "a `{% end %}` stands on a line of its own"),
+        (
+            "\nText. {% end %}\n",
+            "a `{% end %}` stands on a line of its own",
+        ),
     ] {
         let errors = check("a.md", &page(body));
         assert!(has(&errors, wanted), "{body}: {errors:?}");
@@ -181,7 +184,10 @@ fn a_callout_of_the_old_form_fails() {
             "{old}: {errors:?}"
         );
     }
-    assert!(check("a.md", &page("\n> **Note:** Fine.\n")).is_empty());
+    assert_eq!(
+        check("a.md", &page("\n> **Note:** Fine.\n")),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
@@ -190,7 +196,10 @@ fn a_page_marked_whole_names_an_audience() {
     assert_eq!(check("a.md", ok), Vec::<String>::new());
     let errors = check("a.md", &ok.replace("programming", "beginners"));
     assert!(
-        has(&errors, "a.md:5: newcomer = \"beginners\" isn't an audience"),
+        has(
+            &errors,
+            "a.md:5: newcomer = \"beginners\" isn't an audience"
+        ),
         "{errors:?}"
     );
 }

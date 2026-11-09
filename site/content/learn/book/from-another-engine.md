@@ -14,7 +14,11 @@ words are called here. If you haven't, you can skip it: nothing else in the book
 Most of another engine's ideas have a counterpart here, under another name and often in a
 plainer shape. The engine has no **scene tree** (a hierarchy of objects, as in Godot) and
 no **entity system** (game objects as loose bundles of data, as in Bevy) by default, and a
-game's state is plain structs it owns. A **struct** is Rust's named group of values.
+game's state is plain structs it owns.
+
+{% newcomer(to="rust", topic="a struct") %}
+A **struct** is Rust's named group of values.
+{% end %}
 
 The table gives Shuyi's word first, with the chapter that explains it, then the words of
 five engines for it. A dash means that engine has no such word; "none yet" means Shuyi has

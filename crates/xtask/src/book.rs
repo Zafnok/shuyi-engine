@@ -243,9 +243,7 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
         at += raw.len();
     }
     if let Some((_, _, opened)) = open {
-        errors.push(format!(
-            "{shown}:{opened}: a mark with no `{{% end %}}`"
-        ));
+        errors.push(format!("{shown}:{opened}: a mark with no `{{% end %}}`"));
     }
     out.push(Part {
         mark: None,

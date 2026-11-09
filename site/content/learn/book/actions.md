@@ -8,13 +8,15 @@ part = "chapters"
 chapter = 4
 +++
 
+{% newcomer(to="shuyi", topic="why a game never names a key") %}
 The first thing you would write in a game is "if Enter was pressed, plant a seed". It
 works, and it is a bug waiting to happen. Players rebind every key and button, a
 controller has no Enter, and two keyboard layouts already use different keys. A key
 written into a game's code, or into text a player reads, stops working after a rebind,
 or it lies: the help line says "press Enter", and Enter does nothing.
+{% end %}
 
-So the code never asks about keys. A screen reacts to the game's **actions**, the things
+The code never asks about keys. A screen reacts to the game's **actions**, the things
 a player can ask for (Up, Confirm, Plant). The **keymap** file says which keys and
 buttons give them, and text names a key through the player's keymap. Then every player
 can change their keys, a controller just works, and the help line is always right:
@@ -38,9 +40,15 @@ into a command of its rules.
 
 Each screen declares the actions it reads, in `Screen::actions`. `cargo shuyi check
 --target all` checks that the required ones bind to distinct inputs of each target the
-game ships on (a **target** is a kind of machine a game runs on, and "distinct" means no
-two need the same button), and in tests the Harness hands a screen only the actions it
-declares. A screen that declares none (`None`) counts as reading every action, and the
+game ships on, and in tests the Harness hands a screen only the actions it
+declares.
+
+{% newcomer(to="shuyi", topic="a target") %}
+A **target** is a kind of machine a game runs on, and "distinct" means no
+two need the same button.
+{% end %}
+
+A screen that declares none (`None`) counts as reading every action, and the
 check warns about it.
 
 ## The keymap file
@@ -75,9 +83,11 @@ a key with `key_name`, and passes it in as an argument:
 
 {{ snippet(file="src/actions.rs", anchor="key_name") }}
 
-> **Rust:** `&Ctx<Data>` lends the function the context, to look at. `&[("key", &key)]`
-> lends a list of pairs, each a **tuple**, values side by side: here the placeholder's
-> name, and what to put there.
+{% newcomer(to="rust", topic="lending with `&`, and a tuple") %}
+`&Ctx<Data>` lends the function the context, to look at. `&[("key", &key)]`
+lends a list of pairs, each a **tuple**, values side by side: here the placeholder's
+name, and what to put there.
+{% end %}
 
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
 action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
@@ -104,8 +114,12 @@ You don't write any of this. It works since your code only ever asked for action
 
 The short path plays with `UiAction`'s six moves, which the engine's menus and screens
 react to too. A game that needs more (a watering can, a debug key) writes its own action
-**enum**, a type that is one of a fixed list, and implements `ActionSet` for it. A
-**trait** like `ActionSet` is a list of functions that a type promises to have:
+enum, and implements `ActionSet` for it.
+
+{% newcomer(to="rust", topic="an enum and a trait") %}
+An **enum** is a type that is one of a fixed list. A
+**trait** like `ActionSet` is a list of functions that a type promises to have.
+{% end %}
 
 {{ snippet(file="src/actions.rs", anchor="action_set") }}
 
@@ -118,15 +132,19 @@ react to too. A game that needs more (a watering can, a debug key) writes its ow
 - `fixed_keys` gives keys no player can move. `UiAction` has one, plain Escape for Cancel;
   this game has none.
 
-> **Rust:** `Self` is the type this `impl` is for, so `Self::Left` is `GardenAction::Left`.
-> `const ALL: &'static [Self]` is a fixed list, kept for as long as the program runs.
-> `self` with no `&` takes the value itself, which is cheap here, as `Copy` in the
-> `derive` line says a value this small is simply copied.
->
-> `match` handles every possibility. `matches!(self, Self::Left | Self::Right)` is a short
-> way to ask "is it one of these?". `type Group = ();` fills in one of the trait's blanks,
-> with `()`, a value holding nothing. So `fn group(self) {}` has nothing to give back, and
-> an empty body does it.
+{% newcomer(to="rust", topic="`Self`, `&'static` and `Copy`") %}
+`Self` is the type this `impl` is for, so `Self::Left` is `GardenAction::Left`.
+`const ALL: &'static [Self]` is a fixed list, kept for as long as the program runs.
+`self` with no `&` takes the value itself, which is cheap here, as `Copy` in the
+`derive` line says a value this small is simply copied.
+{% end %}
+
+{% newcomer(to="rust", topic="`matches!` and `type Group = ()`") %}
+`match` handles every possibility. `matches!(self, Self::Left | Self::Right)` is a short
+way to ask "is it one of these?". `type Group = ();` fills in one of the trait's blanks,
+with `()`, a value holding nothing. So `fn group(self) {}` has nothing to give back, and
+an empty body does it.
+{% end %}
 
 The game's data becomes `BasicData<GardenAction, Plan>` and its game `BasicGame<GardenAction,
 Plan>`, and its keymap file names every action of `ALL`:
