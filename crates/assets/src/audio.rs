@@ -30,6 +30,17 @@
 //!     (id: "rain", files: ["sfx/rain.ogg"], volume: 60, credit: Own, group: "ambience"),
 //! ],
 //! ```
+//!
+//! A `ducks` list lowers a group while a voice plays (ADR-0099), so the
+//! words are heard over the music: down to a position on the loudness
+//! curve over `attack_ms`, and back over `release_ms` once the voice ends
+//! ([`DuckRule`]). A manifest without it lowers nothing.
+//!
+//! ```ron
+//! ducks: [
+//!     (when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms: 500),
+//! ],
+//! ```
 use crate::prelude::*;
 
 mod formats;
@@ -45,7 +56,7 @@ use crate::ron::parse_ron_implicit_some;
 pub use formats::{
     AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
-pub use groups::GroupDef;
+pub use groups::{DuckRule, GroupDef};
 
 /// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
@@ -63,7 +74,9 @@ pub const LENGTH_TOLERANCE_MS: u32 = 20;
 /// The validated audio manifest. Build it with `default()` and assign
 /// its fields (ADR-0039). Its file may declare sound groups, as `groups:
 /// [(id: "ambience", parent: "sfx", volume: 80)]`, and a cue name one with
-/// `group: "ambience"` (the module's docs).
+/// `group: "ambience"`, and lower a group while a voice plays, as `ducks:
+/// [(when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms:
+/// 500)]` (the module's docs).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct AudioManifest {
@@ -90,6 +103,9 @@ pub struct AudioManifest {
     /// built-in ones whose default it sets. The built-ins it doesn't name
     /// aren't here ([`groups::BUILT_IN`]).
     pub groups: BTreeMap<String, GroupDef>,
+    /// The ducking rules (ADR-0099), in the file's order: a group lowered
+    /// while a voice plays. None by default, and nothing is lowered.
+    pub ducks: Vec<DuckRule>,
 }
 
 impl AudioManifest {
@@ -274,6 +290,8 @@ struct RawFile {
     music_overlap: bool,
     #[serde(default)]
     groups: Vec<groups::RawGroup>,
+    #[serde(default)]
+    ducks: Vec<groups::RawDuck>,
     sounds: Vec<RawSound>,
     music: Vec<RawMusic>,
     pools: Vec<RawPool>,
@@ -534,6 +552,7 @@ pub fn from_source(
         },
     };
     check.groups(raw.groups);
+    check.ducks(raw.ducks);
     for c in raw.credits {
         check.credit(c);
     }
@@ -1546,6 +1565,105 @@ mod tests {
             WITH_MUSIC
                 .music
                 .is_some_and(|music| music("a.ogg").is_none())
+        );
+    }
+
+    /// [`FULL`] with a `ducks` list, and a `groups` list declaring
+    /// `ambience` under `sfx` and `chatter` under `voice`, in front of its
+    /// sounds: the rules start at line 4.
+    fn with_ducks(ducks: &str) -> String {
+        FULL.replacen(
+            "    sounds: [",
+            &format!(
+                "    ducks: [\n{ducks}\n    ],\n    groups: [(id: \"ambience\", parent: \"sfx\"), \
+                 (id: \"chatter\", parent: \"voice\")],\n    sounds: ["
+            ),
+            1,
+        )
+    }
+
+    #[test]
+    fn a_manifest_lowers_a_group_while_a_voice_plays() {
+        let source = with_ducks(
+            r#"        (when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms: 500),
+        (when: "voice", lower: "ambience", to: 0, attack_ms: 0, release_ms: 0),"#,
+        );
+        let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
+        let music = DuckRule {
+            when: "voice".into(),
+            lower: "music".into(),
+            to: 80,
+            attack_ms: 100,
+            release_ms: 500,
+        };
+        let ambience = DuckRule {
+            lower: "ambience".into(),
+            to: 0,
+            attack_ms: 0,
+            release_ms: 0,
+            ..music.clone()
+        };
+        assert_eq!(m.ducks, [music, ambience], "a declared group too");
+        // A manifest without ducks lowers nothing.
+        let full = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(full.ducks, []);
+    }
+
+    #[test]
+    fn a_ducking_rules_errors_are_at_the_line_with_its_lower() {
+        let rule = |when: &str, lower: &str, to: u8| {
+            format!(
+                "        (when: \"{when}\", lower: \"{lower}\", to: {to}, attack_ms: 10, \
+                 release_ms: 10),"
+            )
+        };
+        let not_voice = with_ducks(&rule("sfx", "music", 80));
+        assert_eq!(
+            errors(&not_voice),
+            [
+                "a.ron:4: ducks[0] (lower: \"music\") lowers \"music\" when \"sfx\" plays: only \
+                 \"voice\" can, the one group a device says is playing"
+            ]
+        );
+        let unknown = with_ducks(&rule("voice", "rain", 80));
+        assert_eq!(
+            errors(&unknown),
+            ["a.ron:4: ducks[0] (lower: \"rain\") names unknown group \"rain\""]
+        );
+        for lower in ["voice", "master"] {
+            let own = with_ducks(&rule("voice", lower, 80));
+            assert_eq!(
+                errors(&own),
+                [format!(
+                    "a.ron:4: ducks[0] (lower: \"{lower}\") lowers \"{lower}\", which \"voice\" \
+                     plays under, so would lower it too"
+                )]
+            );
+        }
+        // A group under voice isn't voice's parent: lowering it is fine.
+        let under = with_ducks(&rule("voice", "chatter", 80));
+        assert_eq!(errors(&under), Vec::<String>::new());
+        let deep = with_ducks(&rule("voice", "ui", 0));
+        assert_eq!(errors(&deep), Vec::<String>::new());
+        // 100 is the top of the curve: lowering by nothing is allowed.
+        let top = with_ducks(&rule("voice", "music", 100));
+        assert_eq!(errors(&top), Vec::<String>::new());
+        let loud = with_ducks(&rule("voice", "music", 101));
+        assert_eq!(
+            errors(&loud),
+            [
+                "a.ron:4: ducks[0] (lower: \"music\") lowers to 101, over 100 on the loudness \
+                 curve"
+            ]
+        );
+        let twice = with_ducks(&format!(
+            "{}\n{}",
+            rule("voice", "sfx", 90),
+            rule("voice", "sfx", 80)
+        ));
+        assert_eq!(
+            errors(&twice),
+            ["a.ron:4: ducks[1] (lower: \"sfx\") lowers a group another rule lowers already"]
         );
     }
 }

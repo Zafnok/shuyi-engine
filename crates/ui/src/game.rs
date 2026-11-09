@@ -19,8 +19,10 @@ use shuyi_assets::dialogue::LineId;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
 use crate::audio::{
-    AudioConfig, AudioRequest, Gains, GroupGains, MusicClock, MusicCommand, MusicState, SoundGroups,
+    AudioConfig, AudioRequest, DuckState, Gain, Gains, GroupGains, MusicClock, MusicCommand,
+    MusicState, SoundGroups,
 };
+use crate::cinematic::millis;
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::debug;
 use crate::frame::EngineColor;
@@ -230,6 +232,8 @@ pub struct Game<G: GameData> {
     buffer: GlyphBuffer,
     quit: bool,
     music: MusicState,
+    /// The ducking rules' multipliers (ADR-0099), stepped every frame.
+    duck: DuckState,
     /// This frame's audio requests and music commands.
     audio_out: Vec<AudioRequest<G::Voice>>,
     music_out: Vec<MusicCommand>,
@@ -255,12 +259,14 @@ impl<G: GameData> Game<G> {
 
     /// A game showing the screens of `stack`, with the game's `hooks`,
     /// already drawn. Music switches as the audio manifest's default switch
-    /// says ([`AudioManifest::music_switch`]), and the sound groups are the
-    /// game's as it is now ([`Ctx::sound_groups`]).
+    /// says ([`AudioManifest::music_switch`]), the sound groups are the
+    /// game's as it is now ([`Ctx::sound_groups`]), and a voice lowers the
+    /// groups its ducking rules say ([`AudioManifest::ducks`]).
     pub fn with_stack(mut ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
         let input = InputState::new(ctx.keymap.clone()).starting_on(ctx.device);
         let blank = ctx.game.blank_cell(&ctx.palette);
         let switch = ctx.game.audio_manifest().music_switch();
+        let duck = DuckState::new(&ctx.game.audio_manifest().ducks);
         ctx.sound_groups = SoundGroups::new(&ctx.game.audio_config(), ctx.game.audio_manifest());
         let gains = GroupGains::of(&ctx.sound_groups, &ctx.settings().volumes);
         let mut game = Self {
@@ -271,6 +277,7 @@ impl<G: GameData> Game<G> {
             hooks,
             quit: false,
             music: MusicState::with_switch(switch),
+            duck,
             audio_out: Vec::new(),
             music_out: Vec::new(),
             gains,
@@ -470,8 +477,7 @@ impl<G: GameData> Game<G> {
             self.ctx.set_perf_frame_times(start, drawing, drawn);
             self.collect_audio(dt);
         }
-        self.gains
-            .update(&self.ctx.sound_groups, &self.ctx.settings().volumes);
+        self.update_gains();
         FrameOutput {
             buffer: &self.buffer,
             quit: self.quit,
@@ -492,7 +498,8 @@ impl<G: GameData> Game<G> {
     }
 
     /// Advances the sounds' fades, moves the screens' audio requests into
-    /// this frame's output and runs the music state machine. In debug
+    /// this frame's output, runs the music state machine and steps the
+    /// ducking (ADR-0099) while a voice sounds ([`Ctx::voice_playing`]). In debug
     /// builds, a cue the manifest lacks is a bug in the screen and panics,
     /// and so does a looped cue played without a handle, which nothing
     /// could stop (a release build plays it once). The engine's widgets
@@ -523,6 +530,19 @@ impl<G: GameData> Game<G> {
             self.music.request(request, &mut self.music_out);
         }
         self.music.update(dt, &mut self.music_out);
+        // A voice the player turned down to 0 lowers nothing. No rule
+        // lowers voice or its parents, so its gain never waits on the duck.
+        self.update_gains();
+        let voice = Gains::new(&self.ctx.sound_groups, &self.gains).voice();
+        let sounding = self.ctx.voice_playing.is_some() && voice > Gain::SILENT;
+        self.duck.update(millis(dt), sounding);
+    }
+
+    /// Works each sound group's gain out from the player's volumes, with
+    /// the groups the ducking rules lower as low as they are now.
+    fn update_gains(&mut self) {
+        let volumes = &self.ctx.settings().volumes;
+        (self.gains).update_ducked(&self.ctx.sound_groups, volumes, &self.duck);
     }
 
     /// One frame's update: `events` in order, `dt` seconds, and the fixed

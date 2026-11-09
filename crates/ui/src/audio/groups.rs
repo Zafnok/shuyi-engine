@@ -20,6 +20,7 @@ use shuyi_assets::audio::groups::{BUILT_IN, is_built_in};
 pub use shuyi_assets::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 
 use super::AudioConfig;
+use super::duck::DuckState;
 use super::loudness::{Gain, loudness};
 use crate::settings::Volumes;
 
@@ -200,11 +201,20 @@ impl GroupGains {
         gains
     }
 
-    /// Works the gains out again, in place: `Game` does every frame.
+    /// Works the gains out again, in place, with nothing lowered.
     pub fn update(&mut self, groups: &SoundGroups, volumes: &Volumes) {
+        self.update_ducked(groups, volumes, &DuckState::default());
+    }
+
+    /// Works the gains out again, in place, with each group a rule lowers
+    /// lowered (ADR-0099): its own gain times its multiplier in `ducks`,
+    /// before its children multiply by it, so they go down with it.
+    /// `Game` does every frame.
+    pub fn update_ducked(&mut self, groups: &SoundGroups, volumes: &Volumes, ducks: &DuckState) {
         self.0.clear();
         for group in &groups.groups {
-            let own = loudness(volumes.get(&group.id).unwrap_or(group.default));
+            let own = loudness(volumes.get(&group.id).unwrap_or(group.default))
+                .times(ducks.multiplier(&group.id));
             let gain = match group.parent {
                 Some(parent) => own.times(self.0[parent]),
                 None => own,
@@ -474,6 +484,31 @@ mod tests {
         assert_eq!(view.group(MASTER), Gain::FULL);
         assert_eq!(view.group(SFX), Gain::new(3329));
         assert_eq!(view.group(UI), Gain::new(3329));
+    }
+
+    #[test]
+    fn a_lowered_group_and_its_children_go_down_and_no_other() {
+        use shuyi_assets::audio::DuckRule;
+        let groups = SoundGroups::default();
+        let mut rule = DuckRule::default();
+        rule.when = VOICE.into();
+        rule.lower = SFX.into();
+        rule.to = 80;
+        let mut ducks = DuckState::new(&[rule]);
+        ducks.update(0, true);
+        let volumes = volumes(&[(SFX, 85), (UI, 50)]);
+        let plain = GroupGains::of(&groups, &volumes);
+        let mut ducked = GroupGains::default();
+        ducked.update_ducked(&groups, &volumes, &ducks);
+        let (plain, ducked) = (Gains::new(&groups, &plain), Gains::new(&groups, &ducked));
+        // sfx 85 → 1453, times loudness(80) = 1029: 365; ui 50 → 130 × 365
+        // / 4096 = 12.
+        assert_eq!(ducked.group(SFX), Gain::new(365));
+        assert_eq!(ducked.group(UI), Gain::new(12));
+        assert_eq!(plain.group(UI), Gain::new(46));
+        for group in [MASTER, MUSIC, VOICE] {
+            assert_eq!(ducked.group(group), plain.group(group), "{group}");
+        }
     }
 
     #[test]

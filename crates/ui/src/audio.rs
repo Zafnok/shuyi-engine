@@ -52,6 +52,7 @@ use crate::input::frame_seconds;
 use alloc::collections::{BTreeMap, BTreeSet};
 
 mod added;
+pub mod duck;
 pub mod groups;
 mod handles;
 pub mod loudness;
@@ -59,6 +60,7 @@ mod samples;
 
 use added::Added;
 pub use added::{ADDED_BYTES_MAX, ADDED_SECONDS_MAX, AddSoundError};
+pub use duck::DuckState;
 pub use groups::{Gains, GroupGains, SoundGroups};
 use handles::Handle;
 pub use loudness::Gain;

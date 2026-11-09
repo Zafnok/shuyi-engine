@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2342"]
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 2343 — Ducking the music under voices
@@ -240,33 +240,33 @@ and the game's PR that moves its pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] A manifest with no `ducks` loads as before, and with no rule the
+- [x] A manifest with no `ducks` loads as before, and with no rule the
       gains are 2342's, frame for frame.
-- [ ] Each rule error is reported at its line, a test each: `when` not
+- [x] Each rule error is reported at its line, a test each: `when` not
       `voice`, an unknown `lower`, a `lower` that is `when` or one of its
       parents, a `to` over 100, and a second rule lowering the same
       group.
-- [ ] `DuckState` with `to: 80`, `attack_ms: 100` and a voice playing
+- [x] `DuckState` with `to: 80`, `attack_ms: 100` and a voice playing
       is halfway down (to within one unit) at 50 ms, reaches exactly
       `loudness(80)` (1029) once 100 ms have passed in frames of 16 and
       17 ms, and never goes below it. With `attack_ms: 0` it is there
       on the first frame; with `to: 100` it stays at 4096.
-- [ ] A voice that stops halfway down is back at 4096 after half of
+- [x] A voice that stops halfway down is back at 4096 after half of
       `release_ms`.
-- [ ] `shuyi-app`'s voice player says a clip is playing from its start
+- [x] `shuyi-app`'s voice player says a clip is playing from its start
       until its length has passed, and not after a stop (a test with
       its fake backend).
-- [ ] The headless `Speaker` says a voice plays after a `Voice` request,
+- [x] The headless `Speaker` says a voice plays after a `Voice` request,
       and not after a `StopVoice`, `stop_all` or the length it was set.
-- [ ] A Harness test with the toy game and a rule lowering `music`: once
+- [x] A Harness test with the toy game and a rule lowering `music`: once
       a voice has played for `attack_ms`, `Harness::gain("music")` is
       the music gain before the voice times `loudness(to)`, rounded; the
       voice ends (`Harness::voice_length`) and the gain is back after
       `release_ms`; the `sfx` gain never changes; with the `voice`
       volume at 0 the music gain doesn't move.
-- [ ] `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -280,4 +280,63 @@ and the game's PR that moves its pin follows this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Manifest** (`crates/assets/src/audio.rs`, `audio/groups.rs`): an
+  optional `ducks` list, kept in `AudioManifest.ducks` as `DuckRule`s
+  (`when`, `lower`, `to`, `attack_ms`, `release_ms`; `#[non_exhaustive]`
+  with `Default`, ADR-0039). The checks run after the groups: `when` not
+  `voice`, an unknown `lower`, a `lower` that is `when` or one of its
+  parents, a `to` over 100, and a second rule lowering the same group,
+  each named `ducks[N] (lower: "<group>")` at the first line with that
+  `lower`. A test covers a declared group lowered and one under `voice`.
+  `pack::VERSION` is 14 (3097 took 13 first); the format tests' manifest has one rule, and
+  the pack snapshot and the audio manifest's golden value were accepted.
+- **`DuckState`** (`crates/ui/src/audio/duck.rs`, `no_std`, integers):
+  per rule the multiplier now, where it set off from, where it goes and
+  the whole milliseconds since; its value a pure function of those, so
+  frames of 33 ms and of 1 ms land on the same value (a test).
+  `update(dt_ms: u64, sounding)` takes `cinematic::millis`' `u64`.
+- **Into the gains:** `GroupGains::update_ducked(groups, volumes,
+  ducks)` multiplies a lowered group's own gain before its children's;
+  `update` is it with nothing lowered, so a manifest without rules gives
+  2342's gains. `Game` builds the state in `with_stack`, and in
+  `collect_audio` works the gains out, reads `voice`'s, and steps the
+  state with `sounding` = `Ctx::voice_playing` and `voice` above 0; the
+  frame's gains are worked out again with the stepped state.
+- **Deviation: the device side was already there.** Ticket 2255 (done)
+  added `Audio::voice_playing(now) -> Option<&str>` (provided, `None` by
+  default; `PlayerDevice`, the headless `Speaker` and `Harness::
+  voice_length` answer it) and `Game::set_voice_playing(Option<&LineId>)`,
+  called by `App` after `set_music_playing`. So this ticket adds no
+  trait method and no `bool` setter: `DuckState` reads
+  `Ctx::voice_playing`. The acceptance criteria on `shuyi-app`'s voice
+  player and the headless `Speaker` are met by 2255's tests
+  (`crates/platform/src/audio/player/voice.rs`,
+  `crates/platform/src/headless/tests.rs`, `audio::a_voice_sounds_from_
+  the_next_frame_until_its_length_has_passed`). ADR-0099 extends
+  ADR-0091 only; ADR-0024 is unchanged, and its row too.
+- **Tests:** the rules and each error; `DuckState` down, up, a change of
+  direction both ways, zero lengths, `to: 100` and `to: 0`, frame sizes;
+  a lowered group's child goes down and no other group; the Harness tests
+  `a_voice_lowers_the_music_as_the_manifests_rule_says` and
+  `a_voice_turned_down_to_0_lowers_nothing` (`crates/ui/tests/it/audio.rs`).
+- **Docs:** ADR-0099; the module, `AudioManifest` and `DuckRule` docs;
+  `docs/platform-backends.md` (step 7 and `voice_playing`); the book's
+  *Saves and settings* chapter shows a `ducks` entry.
+- **Settled:** 2206, 2218 and 2725 now say what holds (2218 writes
+  `ducks`; 2725 adds the clip's own group to `sounding`).
+- **The game:** game#0865 (the music dips under a voiced line) moves the
+  pin to this change and adds the rule to its manifest. Whether 2342 and
+  2343 count for the MVP stays Nick's call; nothing here needs it.
+
+Breaking: shuyi-assets: pack::VERSION and the audio manifest's golden value: a pack is of version 14 (the manifest's binary form has `ducks`); a pack baked before is refused, bake it again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 14; packs baked before are refused.
+old: "pack::VERSION == 13"
+new: "pack::VERSION == 14"
+before: |
+  shuyi bake
+after: |
+  shuyi bake
+```

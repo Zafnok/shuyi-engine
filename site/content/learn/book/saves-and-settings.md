@@ -110,6 +110,17 @@ sounds: [
 ],
 ```
 
+A `ducks` list lowers a group while a voice plays, so the words are heard over the
+music: down to a position on the same loudness curve (80 is 12 dB down) over `attack_ms`,
+and back over `release_ms` once the voice has ended. Only `voice` can lower another group
+for now, and a voice the player turned down to 0 lowers nothing:
+
+```ron
+ducks: [
+    (when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms: 500),
+],
+```
+
 The game's options screen shows the group's volume with a row of its own, named by its
 id: `ctx.volume("ambience")` reads it, and `ctx.preview_volume("ambience", v)` sets it.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in
