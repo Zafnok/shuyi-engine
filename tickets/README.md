@@ -124,6 +124,27 @@ there, in the PR that breaks:
    A ticket may have several blocks. A block that doesn't parse fails the
    changelog with its file and line.
 
+## Pull requests
+
+CI reads the ticket a PR is for from its **title** first, then its branch
+(ticket 2051, [ADR-0092](../docs/adr/0092-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md)):
+
+| Title | The PR | What CI checks |
+| ----- | ------ | -------------- |
+| `[NNNN] …` | ticket NNNN's work | NNNN is in `done/`; its `Breaking:` and `Book:` lines |
+| `Ticket NNNN: …`, `Tickets NNNN, MMMM and KKKK: …` (a range `NNNN-MMMM` too) | writes or edits tickets only | it changes only `tickets/`, `docs/ROADMAP.md` and `docs/decisions.md`, and each named ticket is in `open/` |
+| `Game NNNN: …` | a game ticket's small change (the `write-ticket` skill) | it neither breaks nor adds to the public API |
+| `sonar(…)`, `[advisory #N] …`, `engine-pin…`, a `dependabot/` branch | the bots' and the Sonar batches' | as before: a break fails |
+
+The branch may be anything: a desktop worktree's `claude/<slug>-<hex>`
+passes when the title names the ticket. A `t<NNNN>-<slug>` branch must
+name the title's ticket. A PR whose title names no ticket on a branch
+that names none fails, but for the kinds in the last row.
+
+Name the branch before the **first push**: renaming it after the PR opens
+closes the PR on GitHub. A retitle is safe, and re-runs CI's ticket
+checks (`pr-title.yml`).
+
 ## Parked tickets
 
 A ticket whose title starts with `Parked:` has `status: blocked` and a
