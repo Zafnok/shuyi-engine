@@ -27,7 +27,12 @@ the repository findings in the code. The draft is
 The draft's repository findings became tickets 3099 (release-build
 hygiene), 3300 (a shipped pack), 3301 (a store watch) and 3302 (a
 per-recipient overlay), and a step in 2816. Its web findings rest on
-search summaries, not primary reads, and each section says so. The docs
+search summaries, not primary reads, and each section says so. Ticket
+2918 (done 2026-11-09) already wrote the first two entries of the draft's
+"What changed on confirmation" section: the section 11 Needle In A
+Haystack row corrected at its sources, and 2914's ground restated as the
+behavioural oracle rather than its timing. Keep both entries and add to
+them. The docs
 map ([`docs/README.md`](../../docs/README.md)) keeps one research report
 per research ticket, so the draft needs a ticket, a pass over its
 sources, and a home for the plain statements it says the book owes:
