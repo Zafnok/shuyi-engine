@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["2823"]
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2824 — One book: the tutorial folds into the chapters
@@ -183,22 +183,22 @@ Nothing is left here but the redirects this ticket adds anyway.
 
 ## Acceptance criteria
 
-- [ ] Every page the ADR's table of contents names is at its new address,
+- [x] Every page the ADR's table of contents names is at its new address,
       and Learn has one way in, the book.
-- [ ] Every old `/learn/tutorial/…` address reaches its page's new address.
-- [ ] Previous and next run through the whole book in the ADR's order,
+- [x] Every old `/learn/tutorial/…` address reaches its page's new address.
+- [x] Previous and next run through the whole book in the ADR's order,
       each chapter followed by its steps, and the contents list each
       step under its chapter.
-- [ ] No line in the site, `docs/` or `tickets/open/` names a chapter by
+- [x] No line in the site, `docs/` or `tickets/open/` names a chapter by
       its old number.
-- [ ] Each step's page links its web build, and `web-render` boots each.
-- [ ] One glossary; no page links the old one.
-- [ ] `zola check`, `check-build.sh` and `cargo xtask check-links` pass,
+- [x] Each step's page links its web build, and `web-render` boots each.
+- [x] One glossary; no page links the old one.
+- [x] `zola check`, `check-build.sh` and `cargo xtask check-links` pass,
       and `cargo xtask llms` writes a twin of every page, with
       `llms-full.txt` as the ADR says.
-- [ ] `git log --follow` on a moved page shows its history.
-- [ ] The book's chapter is updated (2802): this ticket is that change.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `git log --follow` on a moved page shows its history (the glossary's with `-M20%`, see the notes).
+- [x] The book's chapter is updated (2802): this ticket is that change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -212,5 +212,122 @@ Nothing is left here but the redirects this ticket adds anyway.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** The pages are where ADR-0090 puts them, moved with
+`git mv` so their history follows:
+
+- `tutorial/00-start.md` is `book/before-you-start.md` (`part =
+  "start"`, `newcomer = "programming"`, the key only: 2825 gives it its
+  look); `tutorial/glossary.md` is `book/glossary.md`, appendix C; the
+  tutorial's `_index.md` and its ten steps are `book/box-pusher/`, the
+  project, with `project = true`, `code = "tutorial"`, and
+  `template = "project.html"`. Each step has `follows`, its chapter's
+  file, as the ADR's table gives it.
+- The chapters are renumbered and weighted 10–100 in the project's
+  order. *Coming from another engine* is appendix A, *Fast compiles* B.
+- Every moved page has its old address in `aliases`, and each step its
+  old `play/` too. The redirects keep the `#anchor`.
+- **One glossary:** it took a link to the chapter that says more for each
+  word a chapter explains, and rows for the words only the chapters
+  explain (seed, tween, property test, golden table, headless, export,
+  debug view and gizmos, widget, chord and layout, asset and bundle,
+  plugin, layers and mod, pack, profile, session, session record,
+  platform backend, tool contract, MCP, skill pack, problem code, RON,
+  build script, semver, linker). Each definition is the chapter's own
+  words.
+- **The landing pages:** the book's `_index.md` is Nick's front-page text
+  and the contents; Learn's has one way in, the book, beside the API docs
+  and the problem codes; the project's landing page keeps its text but for
+  the sentences naming the tutorial and the book as two things.
+- **The templates:** `book-macros.html` builds the book's order from
+  `extra.parts` (`order()`, a content path a line) and makes the pager
+  through the whole book, the top line ("The book · Chapter 5", "· Appendix
+  A", "· Project: a box-pushing puzzle · Step 4 of 10") and the line ending
+  a chapter with its steps ("Now use it in the project: step 3, *Walking*,
+  …"). `chapter.html` is every page's, with a step's *Play this step* and
+  *Its whole project* (from its project's `extra.code`). `book.html` lists
+  each chapter's steps under it, the appendices lettered, and links the
+  problem codes and the API docs last. `project.html` lists the steps, each
+  with the chapter it follows. `tutorial.html` and `tutorial-step.html`
+  are gone. The build takes about 1 s here, not the trial's 10 s.
+- **"Chapter N":** every line of `site/content/`, `site/snippets/`,
+  `docs/README.md` and `tickets/open/` naming a chapter by its old number
+  was rewritten in one pass (each number mapped at once, so none chained),
+  `from-another-engine.md`'s table of bare numbers too. 2108's planned
+  "chapter 12 after chapter 11" is now chapter 11 after chapter 10, and
+  its table is appendix A's. The quick start's *Next* now names chapter 2.
+  `docs/ROADMAP.md`'s and `docs/decisions.md`'s "Chapter 1" are the
+  game's, and stay.
+- **What read the old paths:** `pages.yml` copies each step's web build
+  to `/learn/book/box-pusher/<step>/play/`; `web-render` boots the builds
+  from `site/tutorial/` as before (only its comment changed);
+  `check-build.sh` finds the projects by `project = true` and fails a
+  non-`bash` block in one, a step that doesn't link its `play/` or follows
+  no chapter, an alias that doesn't redirect, and appendices not lettered
+  from A; `tries.rs` reads the pages of `book/` and `book/box-pusher/`;
+  `llms.rs` leaves out of `llms-full.txt` a project's pages and a page
+  written whole for `programming`, `games` or `rust`, and its first lines
+  and `llms.txt`'s say so.
+- **Docs:** `site/README.md` (*What is where*, *The rules*, a new *The
+  book's order*, *The docs for agents*, *The checks*) and the docs map's
+  two rows for the book and its project (the `document` skill;
+  `check-docs` and `check-links` pass). 2819's done notes had a link to
+  the old glossary, now the new one.
+
+**Tests.** `llms.rs`: the front matter's `project` and `newcomer`; a
+project keeps its twins and `llms.txt` lines and stays out of
+`llms-full.txt`; an aliased page gets one twin at its new address and
+none at the old one; a `programming` page stays out of `llms-full.txt`
+and a `shuyi` one stays in. The two snapshots changed by the new sentence.
+`check-build.sh` failed, tried once by hand, on a ```` ```ron ```` block
+added to `box-pusher/04-push.md` ("the project box-pusher has a code
+block of its own"), and passes the site.
+
+**By hand in the built-in browser** (the site built at a local base URL,
+step 1's web build copied to its `play/`):
+
+- the front page's contents, each step under its chapter;
+- next from *Before you start* through all 25 pages to the glossary, and
+  previous back, the exact reverse, in the ADR's order;
+- step 1's *Play this step*: the game's title screen at
+  `/learn/book/box-pusher/01-new/play/`;
+- `/learn/tutorial/04-push/#winning`, `/learn/tutorial/`,
+  `/learn/tutorial/00-start/` and `/learn/tutorial/01-new/play/` each
+  landed on the new page, the anchor kept.
+
+`git log --follow` shows the history of each moved page but the glossary:
+every row of it changed (each link's path, and its new chapter link), so
+git finds that rename only with `git log --follow -M20%`.
+
+`cargo xtask llms` over the build: a twin for every page at its new
+address, none under `learn/tutorial/`, `llms-full.txt` 237 028 bytes of
+400 000.
+
+**Gates run:** the skills' sync check, `cargo fmt --all --check`,
+`cargo clippy -p xtask -p book-snippets --all-targets -- -D warnings`,
+`cargo test -p xtask -p book-snippets`, `cargo xtask tutorial-tries
+--check`, `zola check`, `check-build.sh`, `check-links`, `check-docs`,
+`changelog`, `ticket-lint` and `typos`. No engine crate changed (only
+`xtask`, and comments in `book-snippets`), so the workspace-wide gates are
+CI's.
+
+**Deviations:**
+
+- The glossary links each word to the step and the chapter in one
+  *Where* column, rather than a column each.
+- `book.html` lists the problem codes and the API docs at the end of the
+  appendices' list.
+- The front page says what the bar does, as Nick signed it off; the bar
+  is 2826's, and its ticket now says so.
+
+**Handed over:** 2826 (the JSON order is to be written from
+`book-macros.html`'s `order()`); 2820 builds its playground in
+`chapter.html`'s step block; 2814 links the playground from Learn's list
+and the contents; 2004 adds `{ section = "guides" }` to `extra.parts`;
+2005's note about the quick start's place is gone. 2825 already says it
+gives *Before you start*'s mark its look.
+
+**Follow-up tickets:** none.
+
+No break: no public API, format or golden value changed.
+
+Book: this ticket is the book's change.

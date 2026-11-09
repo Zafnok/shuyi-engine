@@ -1,10 +1,12 @@
 //! The audio the Harness records and its stand-in for the music player
 //! (ticket 1111): the sounds, voices and music commands each frame asked
-//! for, the volumes it told the platform, and a music clock that counts
+//! for, the gains it told the platform, and a music clock that counts
 //! from when a track starts sounding.
 
 use shuyi_platform::harness::{FRAME_DT, Harness};
-use shuyi_ui::audio::{AudioRequest, MusicCommand, MusicSwitch};
+use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
+use shuyi_ui::audio::loudness::loudness;
+use shuyi_ui::audio::{AudioRequest, Gain, MusicCommand, MusicSwitch};
 use shuyi_ui::frame::GlyphBuffer;
 use shuyi_ui::settings::MAX_VOLUME;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx, Voice};
@@ -155,25 +157,46 @@ fn a_voice_sounds_from_the_next_frame_until_its_length_has_passed() {
 }
 
 #[test]
-fn the_volumes_and_fullscreen_are_what_the_last_frame_said() {
+fn the_gains_and_fullscreen_are_what_the_last_frame_said() {
     let mut h = beeper();
-    // Before any frame: as the platform starts.
-    assert_eq!(h.volumes(), (1.0, 1.0));
+    // Before any frame: no group heard of yet.
+    assert_eq!(h.gain(MUSIC), Gain::SILENT);
     assert!(!h.fullscreen());
+    h.ctx_mut().preview_volume(MUSIC, MAX_VOLUME / 2);
+    h.ctx_mut().preview_volume(SFX, 0);
     h.ctx_mut()
-        .change_settings(|s| {
-            s.music_volume = MAX_VOLUME / 2;
-            s.sound_volume = 0;
-            s.fullscreen = true;
-        })
+        .change_settings(|s| s.fullscreen = true)
         .unwrap_or_else(|e| panic!("{e}"));
     // Not told until a frame runs.
     assert!(!h.fullscreen());
     h.wait(0.0);
-    let music = h.ctx().settings().music_factor();
-    assert!(music > 0.0 && music < 1.0, "{music}");
-    assert_eq!(h.volumes(), (music, 0.0));
+    assert_eq!(h.gain(MUSIC), loudness(MAX_VOLUME / 2));
+    // The menus' sounds are under the sounds'.
+    assert_eq!((h.gain(SFX), h.gain(UI)), (Gain::SILENT, Gain::SILENT));
+    assert_eq!(h.gain(VOICE), loudness(97));
     assert!(h.fullscreen());
+}
+
+/// Acceptance: the master volume at 0 silences every group from the next
+/// frame, and Restore defaults brings back the defaults' gains.
+#[test]
+fn master_at_zero_silences_every_group_and_the_defaults_come_back() {
+    let mut h = beeper();
+    h.wait(0.0);
+    let groups = [MASTER, MUSIC, SFX, VOICE, UI];
+    let defaults = groups.map(|g| h.gain(g));
+    assert_eq!(defaults, [4096, 3329, 3329, 3329, 3329].map(Gain::new));
+    h.ctx_mut().preview_volume(MASTER, 0);
+    assert_eq!(
+        h.gain(MUSIC),
+        Gain::new(3329),
+        "not told until a frame runs"
+    );
+    h.wait(0.0);
+    assert_eq!(groups.map(|g| h.gain(g)), [Gain::SILENT; 5]);
+    h.ctx_mut().preview_settings(|s| *s = s.restored());
+    h.wait(0.0);
+    assert_eq!(groups.map(|g| h.gain(g)), defaults);
 }
 
 /// Whether `cue` sounds, `expected` seconds in (to 10 ms: frame times are

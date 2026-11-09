@@ -6,7 +6,7 @@
 //! revision) with `cargo-public-api`, diffs the two lists, and runs
 //! `cargo-semver-checks` against the base. With `--pr-branch`, a semver
 //! finding needs a `Breaking:` line in the PR's ticket, which its
-//! `--pr-title` names first (ticket 2051, ADR-0091). With
+//! `--pr-title` names first (ticket 2051, ADR-0092). With
 //! `--verdict`, it writes what the change did in one word (ticket 2030), for
 //! CI's `api:` label on the PR. With `--pr-branch` too, a change to the
 //! public API that changes no file of the book needs a `Book:` line in the

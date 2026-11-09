@@ -61,11 +61,12 @@ None.
   one with no card: add `site/content/examples/ecs-garden.md` (its
   title and two lines as its `description`), as `hello-grid.md` is.
 - **From 2802 (done):** add the book's chapter "An optional ECS"
-  (`site/content/learn/book/`, `extra.chapter = 12`, its `weight`
-  between chapter 11's and the appendices') after its chapter 11
+  (`site/content/learn/book/`, `extra.part = "chapters"`,
+  `extra.chapter = 11`, `weight = 110`, between chapter 10's and the
+  appendices') after its last chapter, *Tools for agents*
   (`shuyi-ecs`, `EcsRules`, the parallel schedule and `ecs-garden`),
   its code from `site/snippets/` through the `snippet` shortcode, and
-  add an entity of `shuyi-ecs` to the row of chapter 11's table
+  add an entity of `shuyi-ecs` to the row of appendix A's table
   (`from-another-engine.md`, *Coming from another engine*) that maps a
   node, a GameObject and a Bevy entity, linked to the new chapter.
 - **The catalog:** with the example passing CI, set `shuyi-ecs`'s

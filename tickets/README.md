@@ -126,7 +126,7 @@ there, in the PR that breaks:
 ## Pull requests
 
 CI reads the ticket a PR is for from its **title** first, then its branch
-(ticket 2051, [ADR-0091](../docs/adr/0091-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md)):
+(ticket 2051, [ADR-0092](../docs/adr/0092-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md)):
 
 | Title | The PR | What CI checks |
 | ----- | ------ | -------------- |

@@ -208,22 +208,30 @@ fn options_full_only_take_out_and_no_public() {
 
 #[test]
 fn the_front_matter_gives_each_key() {
-    let text = "+++\ntitle = \"A\"\ndescription = \"B\"\nweight = 30\ndraft = true\n\n[extra]\nchapter = 3\n+++\n\nBody\n";
+    let text = "+++\ntitle = \"A\"\ndescription = \"B\"\nweight = 30\ndraft = true\n\n[extra]\nchapter = 3\nproject = true\nnewcomer = \"rust\"\n+++\n\nBody\n";
     let front = front_matter("a.md", text).unwrap();
     assert_eq!(front.title, "A");
     assert_eq!(front.description.as_deref(), Some("B"));
     assert_eq!(front.weight, 30);
     assert!(front.draft);
+    assert!(front.project);
+    assert_eq!(front.newcomer.as_deref(), Some("rust"));
     assert_eq!(&text[front.body..], "\nBody\n");
-    assert_eq!(front.body_line, 10);
+    assert_eq!(front.body_line, 12);
 }
 
 #[test]
 fn the_front_matter_has_defaults_but_a_title() {
     let front = front_matter("a.md", "+++\ntitle = \"A\"\n+++\n").unwrap();
     assert_eq!(
-        (front.description, front.weight, front.draft),
-        (None, 0, false)
+        (
+            front.description,
+            front.weight,
+            front.draft,
+            front.project,
+            front.newcomer
+        ),
+        (None, 0, false, false, None)
     );
     let e = front_matter("a.md", "+++\nweight = 1\n+++\n").unwrap_err();
     assert!(e.starts_with("a.md:1: no `title`"), "{e}");
@@ -844,7 +852,7 @@ fn git_dates_a_commit_of_this_repository() {
     assert!(git_date(&root)("not-a-commit").is_err());
 }
 
-// -- the tutorial's pictures, and the file it stays out of (ticket 2818) --
+// -- the tutorial's pictures (ticket 2818) --
 
 /// A site with the list of tries, `tries`, and the pictures in `pictures`.
 fn tries_site(name: &str, tries: &str, pictures: &[&str]) -> PathBuf {
@@ -897,34 +905,90 @@ fn a_try_s_missing_picture_unknown_name_or_argument_fails() {
     assert!(argument.contains("no argument `color`"), "{argument}");
     fs::remove_dir_all(&root).unwrap();
 }
+// -- the book's projects, and the pages for newcomers (ADR-0090 §3, §5) --
+
+/// The fixture with a project of the book, `book/box-pusher/`, its landing
+/// page and a step that keeps its old address as an alias.
+fn with_project(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/box-pusher/_index.md",
+        "+++\ntitle = \"Project: a box-pushing puzzle\"\naliases = [\"learn/tutorial/\"]\n\n[extra]\nproject = true\ncode = \"tutorial\"\n+++\n\nFrom nothing.\n",
+    );
+    put(
+        &fixture.root,
+        "site/content/learn/book/box-pusher/01-new.md",
+        "+++\ntitle = \"A new game\"\nweight = 1\naliases = [\"learn/tutorial/01-new/\"]\n\n[extra]\nstep = 1\nfollows = \"start\"\n+++\n\nFirst steps.\n",
+    );
+    put(&fixture.public, "learn/book/box-pusher/index.html", "");
+    put(
+        &fixture.public,
+        "learn/book/box-pusher/01-new/index.html",
+        "",
+    );
+    fixture
+}
 
 #[test]
-fn the_tutorial_has_its_twin_and_its_line_but_stays_out_of_the_full_file() {
-    let fixture = Fixture::new("for-people");
-    put(
-        &fixture.root,
-        "site/content/learn/tutorial/_index.md",
-        "+++\ntitle = \"The tutorial\"\n+++\n\nFrom nothing.\n",
-    );
-    put(
-        &fixture.root,
-        "site/content/learn/tutorial/01-new.md",
-        "+++\ntitle = \"A new game\"\nweight = 1\n+++\n\nFirst steps.\n",
-    );
-    put(&fixture.public, "learn/tutorial/index.html", "");
-    put(&fixture.public, "learn/tutorial/01-new/index.html", "");
+fn a_project_has_its_twins_and_lines_but_stays_out_of_the_full_file() {
+    let fixture = with_project("project");
     fixture.passes();
+    let llms = fixture.read("llms.txt");
+    assert!(llms.contains("learn/book/box-pusher/index.md"), "{llms}");
     assert!(
-        fixture
-            .read("learn/tutorial/01-new/index.md")
-            .contains("First steps.")
-    );
-    assert!(
-        fixture
-            .read("llms.txt")
-            .contains("learn/tutorial/01-new/index.md")
+        llms.contains("learn/book/box-pusher/01-new/index.md"),
+        "{llms}"
     );
     let full = fixture.read("llms-full.txt");
     assert!(!full.contains("First steps."), "{full}");
     assert!(!full.contains("From nothing."), "{full}");
+    assert!(full.contains("leaves out the book's projects"), "{full}");
+}
+
+#[test]
+fn an_aliased_page_gets_one_twin_at_its_new_address() {
+    let fixture = with_project("aliased");
+    fixture.passes();
+    assert!(
+        fixture
+            .read("learn/book/box-pusher/01-new/index.md")
+            .contains("First steps.")
+    );
+    assert!(
+        !fixture
+            .public
+            .join("learn/tutorial/01-new/index.md")
+            .exists()
+    );
+    assert!(!fixture.public.join("learn/tutorial/index.md").exists());
+}
+
+#[test]
+fn a_page_for_a_newcomer_to_programming_stays_out_of_the_full_file() {
+    let fixture = Fixture::new("newcomer");
+    for (file, to, text) in [
+        ("before.md", "programming", "What a program is."),
+        ("engine.md", "shuyi", "What a screen is."),
+    ] {
+        put(
+            &fixture.root,
+            &format!("site/content/learn/book/{file}"),
+            &format!("+++\ntitle = \"{file}\"\n\n[extra]\nnewcomer = \"{to}\"\n+++\n\n{text}\n"),
+        );
+        put(
+            &fixture.public,
+            &format!("learn/book/{}/index.html", file.trim_end_matches(".md")),
+            "",
+        );
+    }
+    fixture.passes();
+    assert!(
+        fixture
+            .read("learn/book/before/index.md")
+            .contains("What a program is.")
+    );
+    let full = fixture.read("llms-full.txt");
+    assert!(!full.contains("What a program is."), "{full}");
+    assert!(full.contains("What a screen is."), "{full}");
 }

@@ -1,4 +1,4 @@
-//! The ticket a pull request is for (ticket 2051, ADR-0091): read from its
+//! The ticket a pull request is for (ticket 2051, ADR-0092): read from its
 //! title first, then its branch.
 //!
 //! A title says what kind of PR it is:

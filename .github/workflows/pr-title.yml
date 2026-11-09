@@ -1,6 +1,6 @@
 name: PR title
 
-# A PR's title names its ticket (ticket 2051, ADR-0091), and ci.yml's
+# A PR's title names its ticket (ticket 2051, ADR-0092), and ci.yml's
 # `tickets` and `api` jobs read it as it is when they run. A retitle
 # starts no ci.yml run (an `edited` trigger there would re-run every job
 # on any edit of the body), so this re-runs them: the failed jobs of the

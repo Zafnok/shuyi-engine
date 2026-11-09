@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prints the pull request's title as it is now (ticket 2051, ADR-0091). A
+# Prints the pull request's title as it is now (ticket 2051, ADR-0092). A
 # re-run of a job keeps the event that started the run, and with it the
 # title from before a retitle; GitHub's answer has the new one. Falls back
 # to the event's title when GitHub can't be asked.

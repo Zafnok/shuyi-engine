@@ -311,7 +311,7 @@ None.
   `things::read` and `check_under`. A new section of `docs/formats.md`,
   "Levels from Tiled and LDtk", shows a `Thing` enum, the loader, the
   line in `check`, and `map-types`. **From 2802 (done):** the book's
-  chapter 5 (`site/content/learn/book/assets-and-formats.md`) links to
+  chapter 3 (`site/content/learn/book/assets-and-formats.md`) links to
   that section.
 - **Problem codes:** the new errors and problems get codes from 2509's
   table.

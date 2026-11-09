@@ -250,7 +250,7 @@ None.
     pixel rectangles when it names one, the reveal still wrapped once,
     on the full text, as 2722 describes; if not, nothing to do (2722
     does it).
-  - **From 2802 (done):** the book's chapter 4
+  - **From 2802 (done):** the book's chapter 2
     (`site/content/learn/book/frame-and-skins.md`) gets a short section
     on text runs (`GlyphBuffer::add_text`, `TextStyle`, fonts by id),
     its code in `site/snippets/`.

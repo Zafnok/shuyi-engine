@@ -46,7 +46,7 @@ whether it is what you meant by MIDI sound.
   clock, no `unsafe`.
 - **Cues:** the cue manifest (ADR-0004 §6) gains a kind, `Sequence {
   sequence, bank }`, beside recorded files. Like a recorded music cue, a
-  sequence cue takes an optional `group` (2342), `music` by default, and
+  sequence cue takes an optional `group` (2258), `music` by default, and
   plays at its group's gain, ducking (2343) included. Logic starts and
   stops it by its `SoundId` (2344), and changes tempo and muting through
   cue commands, so logic stays deterministic. The Harness reports a

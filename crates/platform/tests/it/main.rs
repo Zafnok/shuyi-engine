@@ -15,6 +15,9 @@ mod steps;
 use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::headless::{HeadlessPlatform, Presented};
+use shuyi_ui::audio::Gain;
+use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, VOICE};
+use shuyi_ui::audio::loudness::loudness;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::input::{PadKind, state::Device};
@@ -138,9 +141,9 @@ fn the_harness_says_what_music_sounds_and_how_loud() {
     let mut h = Harness::new(game);
     h.ctx_mut()
         .change_settings(|s| {
-            s.music_volume = MAX_VOLUME / 2;
-            s.sound_volume = 0;
-            s.voice_volume = 30;
+            s.volumes.set(MUSIC, MAX_VOLUME / 2);
+            s.volumes.set(SFX, 0);
+            s.volumes.set(VOICE, 30);
         })
         .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(h.music_clock(), None);
@@ -148,14 +151,10 @@ fn the_harness_says_what_music_sounds_and_how_loud() {
     let clock = h.music_clock().unwrap_or_else(|| panic!("no music"));
     assert_eq!(clock.cue, "theme");
     assert!((clock.position - 0.5 + FRAME_DT).abs() < 0.01, "{clock:?}");
-    let music = h.ctx().settings().music_factor();
-    assert!(music > 0.0 && music < 1.0, "{music}");
-    assert_eq!(h.volumes(), (music, 0.0));
-    assert!(
-        (h.voice_volume() - 0.3).abs() < 1e-6,
-        "{}",
-        h.voice_volume()
-    );
+    assert_eq!(h.gain(MUSIC), loudness(MAX_VOLUME / 2));
+    assert_eq!(h.gain(SFX), Gain::SILENT);
+    assert_eq!(h.gain(VOICE), loudness(30));
+    assert_eq!(h.gain(MASTER), Gain::FULL);
 }
 
 /// A screen that declares Confirm alone, but pops on Cancel too, and

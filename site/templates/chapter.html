@@ -1,20 +1,23 @@
 {% extends "base.html" %}
+{% import "book-macros.html" as book %}
 
-{#- A page of the book: its chapter's number (`extra.chapter`), its text,
-    and the pages before and after it in the book's order (`weight`). -#}
+{#- Every page of the book, a project's steps too (ADR-0090 §2): where it
+    is, its text, and the pages before and after it in the book's order. A
+    step (`extra.step`) has the game as it stands at that step (pages.yml
+    puts its web build at `play/`) and its whole project, in its project's
+    `extra.code` folder. A chapter with steps after it ends with a line
+    naming them. -#}
 {% block content %}
 <article class="prose">
-  <p class="meta"><a href="{{ get_url(path='@/learn/book/_index.md') }}">The book</a>
-    {%- if page.extra.chapter %} · Chapter {{ page.extra.chapter }}{% else %} · Appendix{% endif %}</p>
+  {{ book::where(p=page) }}
   <h1>{{ page.title }}</h1>
-  {{ page.content | safe }}
-</article>
-<nav class="pager" aria-label="The book">
-  {%- if page.lower %}
-  <a rel="prev" href="{{ page.lower.permalink | safe }}">← {{ page.lower.title }}</a>
-  {%- else %}<span></span>{% endif %}
-  {%- if page.higher %}
-  <a rel="next" href="{{ page.higher.permalink | safe }}">{{ page.higher.title }} →</a>
+  {%- if page.extra.step %}
+  {%- set project = get_section(path=page.ancestors | last, metadata_only=true) %}
+  <p><a class="button" href="{{ page.permalink | safe }}play/">Play this step</a>
+    <a href="{{ config.extra.repo | safe }}/tree/main/site/{{ project.extra.code }}/{{ page.slug }}">Its whole project</a></p>
   {%- endif %}
-</nav>
+  {{ page.content | safe }}
+  {%- if page.extra.chapter %}{{ book::then_steps(p=page) }}{% endif %}
+</article>
+{{ book::pager(current=page.relative_path) }}
 {% endblock content %}

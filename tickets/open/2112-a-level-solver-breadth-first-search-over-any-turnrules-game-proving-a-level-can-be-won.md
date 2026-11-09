@@ -164,7 +164,7 @@ None.
   with `every_levels_line_wins_it` in `crates/game/tests/tools.rs`). Their
   bot gets level 1's line from `solve` instead, the lines go, a test proves
   the five levels winnable with `solve`, and the step's page
-  (`site/content/learn/tutorial/09-test.md`) shows the call.
+  (`site/content/learn/book/box-pusher/09-test.md`) shows the call.
 - **From 1134 (done):** add a short section to
   `skills/shuyi-test/SKILL.md`: proving a level winnable with `solve` in
   a game's `check`; `check-skills` passes.

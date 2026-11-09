@@ -139,8 +139,8 @@ confirmed. A backend that never reports leaves every request pending.
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
    nothing presented;
    while paused without focus (`App::is_paused`), `poll_input`
-   (dropped), `audio().play` with nothing at volume 0 if the game is
-   muted too, and `present` of the last frame: no update, no steps;
+   (dropped), `audio().play` with nothing and every gain at 0
+   (`Gains::muted`) if the game is muted too, and `present` of the last frame: no update, no steps;
 4. `changed_files`, with debug tools on: the paths go to the game's
    modules before its update (never in a build that ships);
 5. `poll_input`;
@@ -151,7 +151,7 @@ confirmed. A backend that never reports leaves every request pending.
    for a voice to end;
 8. the game's update (`shuyi_ui::Game::frame`);
 9. `audio().play(&frame, now)` with that frame's audio, every frame (its
-   volumes at 0 while the game is muted without focus);
+   gains at 0 while the game is muted without focus);
 10. `text_input().open(&ask)` if a screen asked for the system keyboard;
 11. `audio().stop_all()` if the game quit in that update;
 12. `present(&frame)` (timed, in a frame `App` measures, and the
@@ -301,10 +301,13 @@ The sound device:
   and still loading, or `None` once it has ended or was stopped,
   replaced, failed or given up on as late; a clip held by `suspend`
   still sounds. `None` by default; `PlayerDevice` answers it;
-- `play(&frame, now)`: one frame's audio. Set the volumes first
-  (`music_volume`, `sound_volume` and `voice_volume` reach what is
-  already playing), then play the `SoundRequest`s in order (a sound cue
-  at its manifest volume times its own and the sound volume; a sound
+- `play(&frame, now)`: one frame's audio. Take the frame's `gains` first
+  (ADR-0091): every sound, track and voice clip plays at its own volume
+  times its cue's gain (`gains.sound(cue)`, `gains.music(cue)`,
+  `gains.voice()`, each a `Gain` in units of 1/4096), and a change reaches what
+  is already playing. The sound groups behind them are worked out before
+  the backend; it never sees the tree. Then play the `SoundRequest`s in
+  order (a sound cue at its manifest volume times its own and its gain; a sound
   started with a handle, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the

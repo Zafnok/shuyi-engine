@@ -4,7 +4,7 @@ expression: "fixture.read(\"llms-full.txt\")"
 ---
 # Shuyi Engine 0.3.0: every page of Learn
 
-From commit 0123456789abcdef0123456789abcdef01234567 of 2026-10-28. The list of them, and the rest of the docs, are in https://docs.invalid/engine/llms.txt.
+From commit 0123456789abcdef0123456789abcdef01234567 of 2026-10-28. The list of them, and the rest of the docs, are in https://docs.invalid/engine/llms.txt. It leaves out the book's projects, which teach people from nothing, and the pages written whole for a newcomer to programming, to making games or to Rust: an agent has the chapters, the API docs and the projects' sources.
 
 ---
 

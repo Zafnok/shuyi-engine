@@ -1,4 +1,4 @@
-# ADR-0091: The ticket a PR is for is read from its title, and a PR that names none fails
+# ADR-0092: The ticket a PR is for is read from its title, and a PR that names none fails
 
 - **Status:** Accepted
 - **Date:** 2026-11-08

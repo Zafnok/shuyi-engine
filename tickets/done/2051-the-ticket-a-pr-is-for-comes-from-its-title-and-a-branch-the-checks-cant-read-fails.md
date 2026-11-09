@@ -142,7 +142,7 @@ None.
   and a `Game NNNN:` PR that adds to the public API fails.
 - CI's `tickets` and `api` jobs pass the title, read live from GitHub by
   `scripts/pr-title.sh` (the event's title if that fails), through `env:`.
-- [ADR-0091](../../docs/adr/0091-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md);
+- [ADR-0092](../../docs/adr/0092-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md);
   the convention in `tickets/README.md` (*Pull requests*), `write-ticket`
   (*A ticket-only PR*), `work-ticket` §2 and §6 and `run-gates`.
 
@@ -153,7 +153,7 @@ None.
   on a body edit would post a passing `ci-result` over a red one. A new
   `pr-title.yml` runs on a retitle instead: it waits for the PR's latest
   CI run and re-runs its failed jobs (or its `tickets` job if none
-  failed), which read the new title live. Why is in ADR-0091.
+  failed), which read the new title live. Why is in ADR-0092.
 - `pr_kind` returns `Result<PrKind, String>`: a branch that disagrees
   with the title is its error, so `check_pr` keeps the signature the
   ticket gives.
