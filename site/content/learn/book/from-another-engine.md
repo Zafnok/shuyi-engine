@@ -1,10 +1,11 @@
 +++
 title = "Coming from another engine"
 description = "The words of Godot, Unity, Bevy, GameMaker and PICO-8, and what each is in Shuyi Engine."
-weight = 110
+weight = 200
 
 [extra]
-chapter = 11
+part = "appendices"
+appendix = "A"
 +++
 
 This page is for you if you've used another engine, and you'd like to know what its
@@ -21,21 +22,21 @@ no counterpart today.
 
 | Shuyi Engine | Godot | Unity | Bevy | GameMaker | PICO-8 |
 | ------------ | ----- | ----- | ---- | --------- | ------ |
-| a `Screen` on the screen stack ([2](@/learn/book/games-and-screens.md)) | a scene | a scene | a state (`States`) | a room | the game's modes |
-| a `Transition`: `Push`, `Pop`, `Replace` ([2](@/learn/book/games-and-screens.md#the-stack)) | `change_scene_to_file` | `SceneManager.LoadScene` | `NextState` | `room_goto` | — |
-| a plain struct the game owns, in a screen or in the state its `TurnRules` change ([6](@/learn/book/rules-as-commands.md)) | a node | a GameObject | an entity | an instance | — |
-| `Screen::update`, which changes the state through commands ([2](@/learn/book/games-and-screens.md#a-screen), [6](@/learn/book/rules-as-commands.md)) | `_process` | `Update()` | a system | the Step event | `_update` |
-| `Screen::draw`, a skin painting a view ([4](@/learn/book/frame-and-skins.md)) | `_draw` | — | — | the Draw event | `_draw` |
-| a real-time game's fixed steps ([6](@/learn/book/rules-as-commands.md)) | `_physics_process` | `FixedUpdate()` | `FixedUpdate` | — | — |
-| `input.dt()`, the frame's seconds, for what a screen shows; rules count steps or turns ([6](@/learn/book/rules-as-commands.md)) | `delta` | `Time.deltaTime` | `Time` | `delta_time` | — |
-| the game's data, `ctx.game`, on the context every screen shares ([2](@/learn/book/games-and-screens.md#the-context)) | an autoload | a singleton | a resource (`Res`) | a global variable | a global |
-| an `ActionSet` and the player's keymap ([3](@/learn/book/actions.md)) | the input map's actions | the Input System's actions | `ButtonInput` (keys) | `keyboard_check` (keys) | `btn`, `btnp` |
-| a kind of asset and its formats, through the registry ([5](@/learn/book/assets-and-formats.md)) | a resource (`.tres`), an import | an asset, a ScriptableObject | an asset, the `AssetServer` | an included file | the cart's data |
-| the bundle's layers, and a baked pack ([5](@/learn/book/assets-and-formats.md#layers)) | a `.pck` file | an AssetBundle | — | — | the cart |
-| the `SimRng` kept in the rules' state ([6](@/learn/book/rules-as-commands.md#turnrules)) | `randi()` | `Random` | — | `random` | `rnd` |
-| a screen's answer (`Transition::pop_with`), or the rules' events ([2](@/learn/book/games-and-screens.md#asking-the-screen-below), [6](@/learn/book/rules-as-commands.md)) | a signal | an event | an event | a user event | — |
+| a `Screen` on the screen stack ([6](@/learn/book/games-and-screens.md)) | a scene | a scene | a state (`States`) | a room | the game's modes |
+| a `Transition`: `Push`, `Pop`, `Replace` ([6](@/learn/book/games-and-screens.md#the-stack)) | `change_scene_to_file` | `SceneManager.LoadScene` | `NextState` | `room_goto` | — |
+| a plain struct the game owns, in a screen or in the state its `TurnRules` change ([5](@/learn/book/rules-as-commands.md)) | a node | a GameObject | an entity | an instance | — |
+| `Screen::update`, which changes the state through commands ([6](@/learn/book/games-and-screens.md#a-screen), [5](@/learn/book/rules-as-commands.md)) | `_process` | `Update()` | a system | the Step event | `_update` |
+| `Screen::draw`, a skin painting a view ([2](@/learn/book/frame-and-skins.md)) | `_draw` | — | — | the Draw event | `_draw` |
+| a real-time game's fixed steps ([5](@/learn/book/rules-as-commands.md)) | `_physics_process` | `FixedUpdate()` | `FixedUpdate` | — | — |
+| `input.dt()`, the frame's seconds, for what a screen shows; rules count steps or turns ([5](@/learn/book/rules-as-commands.md)) | `delta` | `Time.deltaTime` | `Time` | `delta_time` | — |
+| the game's data, `ctx.game`, on the context every screen shares ([6](@/learn/book/games-and-screens.md#the-context)) | an autoload | a singleton | a resource (`Res`) | a global variable | a global |
+| an `ActionSet` and the player's keymap ([4](@/learn/book/actions.md)) | the input map's actions | the Input System's actions | `ButtonInput` (keys) | `keyboard_check` (keys) | `btn`, `btnp` |
+| a kind of asset and its formats, through the registry ([3](@/learn/book/assets-and-formats.md)) | a resource (`.tres`), an import | an asset, a ScriptableObject | an asset, the `AssetServer` | an included file | the cart's data |
+| the bundle's layers, and a baked pack ([3](@/learn/book/assets-and-formats.md#layers)) | a `.pck` file | an AssetBundle | — | — | the cart |
+| the `SimRng` kept in the rules' state ([5](@/learn/book/rules-as-commands.md#turnrules)) | `randi()` | `Random` | — | `random` | `rnd` |
+| a screen's answer (`Transition::pop_with`), or the rules' events ([6](@/learn/book/games-and-screens.md#asking-the-screen-below), [5](@/learn/book/rules-as-commands.md)) | a signal | an event | an event | a user event | — |
 | `Storage`, in the player's profile ([7](@/learn/book/saves-and-settings.md)) | `user://`, `ConfigFile` | `PlayerPrefs` | — | `ini_open` | `cartdata`, `dset` |
-| a module, turned on with `cargo shuyi add` ([2](@/learn/book/games-and-screens.md#modules)) | a plugin, an addon | a package | a `Plugin` | an extension | — |
+| a module, turned on with `cargo shuyi add` ([6](@/learn/book/games-and-screens.md#modules)) | a plugin, an addon | a package | a `Plugin` | an extension | — |
 | none yet: a game builds its pieces in code, from its data | a packed scene's instance | a prefab | a scene | — | — |
 | none yet | a tween | a coroutine | — | an animation curve | — |
 | `cargo test`, with the Harness ([8](@/learn/book/testing.md)) | unit tests (GUT) | the Test Runner | tests over an `App` | — | — |
@@ -48,11 +49,11 @@ that explain them are worth reading first:
 
 - **Determinism.** The same seed and commands give the same game on
   every machine, so a record of them is the whole play
-  ([6](@/learn/book/rules-as-commands.md), [8](@/learn/book/testing.md#records-and-replays)).
+  ([5](@/learn/book/rules-as-commands.md), [8](@/learn/book/testing.md#records-and-replays)).
 - **Headless first.** Every game runs, and is tested and pictured,
   without a window ([8](@/learn/book/testing.md)).
 - **A view between the rules and the look.** Tests read the view, so a
-  new look breaks no test ([4](@/learn/book/frame-and-skins.md)).
+  new look breaks no test ([2](@/learn/book/frame-and-skins.md)).
 - **One contract for people and agents.** The tools answer the same
   shape on the command line, over MCP and in tests
   ([10](@/learn/book/tools-for-agents.md)).

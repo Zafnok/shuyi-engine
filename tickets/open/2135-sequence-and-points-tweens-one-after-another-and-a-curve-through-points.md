@@ -208,7 +208,7 @@ None.
   writes) names `Sequence` and `Points`, with the title that drops in;
   `check-skills` passes.
 - **From 2802 (done):** the book's section on ease curves and tweens
-  (chapter 4, `site/content/learn/book/frame-and-skins.md`, which 2109
+  (chapter 2, `site/content/learn/book/frame-and-skins.md`, which 2109
   adds) shows them, with a snippet in `site/snippets/`.
 - **What changes for the game:** nothing. The API grows (CI's `api`
   job lists the additions), and no `Ease` or `Tween` value changes.

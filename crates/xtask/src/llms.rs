@@ -40,10 +40,14 @@ const REPO: &str = "Zafnok/shuyi-engine";
 const CONTENT: &str = "site/content";
 /// Learn's folder, from [`CONTENT`], as a section's folder is written.
 const LEARN: &str = "learn/";
-/// The URL of what `llms-full.txt` leaves out: the tutorial teaches people
-/// from nothing, and an agent has the book, the API docs and the steps'
-/// sources (ticket 2818). Its pages keep their twins and `llms.txt` lines.
-const FOR_PEOPLE: &str = "learn/tutorial/";
+/// The newcomers a page may be written whole for (`extra.newcomer`) whom
+/// `llms-full.txt` leaves out: an agent programs, knows how games are made
+/// and knows Rust (ADR-0090 §5). It is new to Shuyi, so `shuyi` stays in.
+/// A project's pages (a section with `extra.project = true`) are left out
+/// too: a project teaches people from nothing, and an agent has the
+/// chapters, the API docs and the steps' sources (ticket 2818). Both keep
+/// their twins and `llms.txt` lines.
+const NOT_FOR_AGENTS: [&str; 3] = ["programming", "games", "rust"];
 /// The book's code, which the `snippet` shortcode reads.
 const SNIPPETS: &str = "site/snippets";
 /// The start of `llms.txt`, written by hand.
@@ -183,10 +187,15 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
         texts.push(text);
     }
 
+    let projects: Vec<&str> = pages
+        .iter()
+        .filter(|page| page.is_section && page.project)
+        .map(|page| page.folder.as_str())
+        .collect();
     let in_full: Vec<String> = listed
         .iter()
         .zip(&texts)
-        .filter(|(page, _)| !page.url.starts_with(FOR_PEOPLE))
+        .filter(|(page, _)| for_agents(page, &projects))
         .map(|(_, text)| text.clone())
         .collect();
     let full = full_text(&facts, &in_full);
@@ -223,6 +232,20 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
         write_site(root, &options.dir, &written, &mut out);
     }
     out
+}
+
+/// Whether `page` goes in `llms-full.txt`: not when it is in one of the
+/// `projects`' folders (its landing page too), nor when it is written whole
+/// for a newcomer an agent isn't ([`NOT_FOR_AGENTS`]).
+fn for_agents(page: &Page, projects: &[&str]) -> bool {
+    let in_project = projects
+        .iter()
+        .any(|folder| page.folder.starts_with(folder));
+    let for_newcomer = page
+        .newcomer
+        .as_deref()
+        .is_some_and(|to| NOT_FOR_AGENTS.contains(&to));
+    !in_project && !for_newcomer
 }
 
 /// What [`run`] made, for [`write_site`].
@@ -355,6 +378,10 @@ struct Page {
     title: String,
     description: Option<String>,
     weight: i64,
+    /// A section's `extra.project`: it is one of the book's projects.
+    project: bool,
+    /// `extra.newcomer`: the newcomer the whole page is written for.
+    newcomer: Option<String>,
     /// The text after the front matter.
     body: String,
     /// The number of the body's first line in the file.
@@ -457,6 +484,8 @@ fn page(source: &str, shown: &str, text: &str) -> Result<Option<Page>, String> {
         title: front.title,
         description: front.description,
         weight: front.weight,
+        project: front.project,
+        newcomer: front.newcomer,
         body: text[front.body..].to_owned(),
         body_line: front.body_line,
     }))
@@ -486,6 +515,10 @@ struct Front {
     description: Option<String>,
     weight: i64,
     draft: bool,
+    /// `extra.project`.
+    project: bool,
+    /// `extra.newcomer`.
+    newcomer: Option<String>,
     /// Where its body starts, in bytes.
     body: usize,
     /// Its body's first line's number.
@@ -540,6 +573,7 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
         .get("title")
         .and_then(toml::Value::as_str)
         .ok_or_else(|| format!("{shown}:1: no `title` in its front matter"))?;
+    let extra = table.get("extra").and_then(toml::Value::as_table);
     Ok(Front {
         title: title.to_owned(),
         description: table
@@ -554,6 +588,14 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
             .get("draft")
             .and_then(toml::Value::as_bool)
             .unwrap_or(false),
+        project: extra
+            .and_then(|extra| extra.get("project"))
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false),
+        newcomer: extra
+            .and_then(|extra| extra.get("newcomer"))
+            .and_then(toml::Value::as_str)
+            .map(str::to_owned),
         body,
         body_line,
     })
@@ -1081,7 +1123,9 @@ fn left_shortcodes(shown: &str, text: &str) -> Vec<String> {
 fn full_text(facts: &Facts, twins: &[String]) -> String {
     let mut out = format!(
         "# Shuyi Engine {}: every page of Learn\n\nFrom commit {} of {}. The list of them, and the \
-         rest of the docs, are in {}llms.txt.\n",
+         rest of the docs, are in {}llms.txt. It leaves out the book's projects, which teach people \
+         from nothing, and the pages written whole for a newcomer to programming, to making games \
+         or to Rust: an agent has the chapters, the API docs and the projects' sources.\n",
         facts.version, facts.commit, facts.date, facts.base
     );
     for twin in twins {
@@ -1281,8 +1325,9 @@ fn llms_txt(listing: &Listing) -> String {
         "This copy documents Shuyi Engine {} at commit [`{short}`](https://github.com/{REPO}/commit/{}), \
          of {}. It follows the `main` branch and changes with each merge, so a game on a released \
          version reads its version's copy, under *Released versions*. Each page listed under \
-         Learn's sections, but the tutorial's, which teaches people from nothing, is also in one \
-         file, [llms-full.txt]({base}llms-full.txt): {} bytes, about {} tokens.",
+         Learn's sections, but a project's, which teaches people from nothing, and a page written \
+         whole for a newcomer to programming, to making games or to Rust, is also in one file, \
+         [llms-full.txt]({base}llms-full.txt): {} bytes, about {} tokens.",
         facts.version,
         facts.commit,
         facts.date,

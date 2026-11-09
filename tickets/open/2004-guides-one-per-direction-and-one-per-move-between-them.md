@@ -102,12 +102,11 @@ say whether a new developer would know where to start.
   (2830) and the appendices. It is a
   section, `site/content/learn/book/guides/`: an `_index.md` holding the
   catalog's lines, and the copied guides as its pages.
-  **Either order with 2824:**
-  - if 2824 is done, the book's contents and its pager come from the
-    book's `[extra] parts`: add `{ section = "guides" }` there, after
-    the `chapters` entry;
-  - if not, give the guides' section its own heading in `book.html`
-    after the chapters, and 2824 turns it into that entry.
+  **From 2824 (done):** the book's contents (`book.html`) and its pager
+  (`book-macros.html`) come from the book's `[extra] parts`
+  (`site/README.md`, *The book's order*): add `{ section = "guides" }`
+  there, after the `chapters` entry. A `section` entry already lists the
+  folder's landing page, then its pages by `weight`.
 
   **From 2808 (done):** the guides reach Learn as Markdown files
   copied into `site/content/learn/book/guides/` before Zola runs, in `pages.yml`

@@ -196,7 +196,7 @@ None.
     these helpers (`range`, `chance`, `pick`, `shuffle`,
     `pick_weighted`, `Bag`) and one stream per purpose
     (`SimRng::stream`, `fork`); `check-skills` passes;
-  - from 2802 (done): the book's chapter 6 (*Rules as commands*,
+  - from 2802 (done): the book's chapter 5 (*Rules as commands*,
     `site/content/learn/book/rules-as-commands.md`) gains a section on
     luck with a snippet in `site/snippets/`;
   - from 2116 (done): the golden values below stay as asserts in

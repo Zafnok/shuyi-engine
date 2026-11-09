@@ -1,10 +1,11 @@
 +++
 title = "A game and its screens"
 description = "Screens on a stack, the transitions between them, the context they share, and text by key."
-weight = 20
+weight = 60
 
 [extra]
-chapter = 2
+part = "chapters"
+chapter = 6
 +++
 
 Think of what a game shows you: a title, then the game itself, then perhaps a pause
@@ -36,13 +37,13 @@ A screen has four jobs:
 - `actions` declares every action the screen reads. An **action** is something a
   player can ask for, like Confirm. The tools check that they fit each target's
   buttons, and in tests a screen gets only the actions it declares
-  ([chapter 3](@/learn/book/actions.md)).
+  ([chapter 4](@/learn/book/actions.md)).
 - `update` runs once a frame while the screen is on top. It reads the frame's actions
   and answers with a `Transition`, what the stack should do next. Cancel quits only
   where `ctx.platform.can_quit()`: on the web, the player closes the tab instead
   ([chapter 9](@/learn/book/targets-and-export.md)).
 - `draw` paints the screen into the frame. Here it paints the view, plain data built
-  by `view`. [Chapter 4](@/learn/book/frame-and-skins.md) says why the two are apart.
+  by `view`. [Chapter 2](@/learn/book/frame-and-skins.md) says why the two are apart.
 
 > **Rust:** a `struct` groups named values into one type, and `TitleView` has three
 > `String`s, pieces of text. `pub struct Title;` is a struct with nothing in it, as
@@ -55,7 +56,7 @@ A screen has four jobs:
 > this keeps that promise. `self` is the value a function was called on. `&self` means
 > it only looks, and `&mut self` means it may change it, and the compiler holds you to
 > that: `draw` takes `&self` and `&Ctx`, so a screen can't change anything while it
-> draws. The [tutorial](@/learn/tutorial/01-new.md#the-screen-s-jobs) goes through a
+> draws. The project's [step 1](@/learn/book/box-pusher/01-new.md#the-screen-s-jobs) goes through a
 > screen like this one line by line.
 >
 > `Option<Vec<UiAction>>` is maybe a list of actions, and `Some(...)` means here it is.
@@ -132,7 +133,7 @@ the same frame. A screen also hears when one is pushed over it, in `covered`.
 
 The garden's state isn't the screen's to change: it belongs to the rules, and the
 screen changes it only by sending commands.
-[Chapter 6](@/learn/book/rules-as-commands.md) writes them.
+[Chapter 5](@/learn/book/rules-as-commands.md) writes them.
 
 ## The context
 
@@ -314,16 +315,16 @@ help[SH2008]: use one of the names the message lists, or fix the spelling
 ```
 
 A capitalized name in braces is a key, and lowercase is a value the screen passes
-([chapter 3](@/learn/book/actions.md#naming-a-key-in-text)).
+([chapter 4](@/learn/book/actions.md#naming-a-key-in-text)).
 
 ## When a game outgrows the short path
 
 The short path's parts grow one at a time, and the game's start stays as it is:
 
 - **actions of its own**: an action set of the game's in place of `UiAction`
-  ([chapter 3](@/learn/book/actions.md#actions-of-a-game-s-own));
+  ([chapter 4](@/learn/book/actions.md#actions-of-a-game-s-own));
 - **a part of its own**: a map, a table of rules, read by the function
-  `BasicGame::with_own` takes ([chapter 5](@/learn/book/assets-and-formats.md));
+  `BasicGame::with_own` takes ([chapter 3](@/learn/book/assets-and-formats.md));
 - **tools of its own**: a scene, records and bots, through a `GameTools` of its own
   ([chapter 10](@/learn/book/tools-for-agents.md)).
 

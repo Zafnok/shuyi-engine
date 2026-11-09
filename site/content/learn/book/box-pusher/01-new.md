@@ -2,16 +2,18 @@
 title = "A new game"
 description = "Make the project with shuyi new, run it, and read every file it wrote, line by line, as your first Rust."
 weight = 10
+aliases = ["learn/tutorial/01-new/", "learn/tutorial/01-new/play/"]
 
 [extra]
 step = 1
+follows = "quick-start"
 +++
 
 In this step you make the game, run it, and then read what you were given. By
 the end you will know what every file is for, you will have read your first Rust
 program, and you will have changed the game's name, its colors and its layout.
 
-You won't write much code here. It's the longest page of the tutorial because
+You won't write much code here. It's the longest page of the project because
 everything in it comes back in every later step.
 
 ## Make the game
@@ -24,7 +26,7 @@ cd box-pusher
 ```
 
 `shuyi new` writes a new game in a new folder called `box-pusher`, and `cd` moves
-you into it. Use this name: the rest of the tutorial expects it. `--template
+you into it. Use this name: the rest of the project expects it. `--template
 blank` asks for the smallest game there is, one screen with a title on it.
 
 Now open that folder in your editor, and leave your terminal open beside it.
@@ -81,7 +83,7 @@ of these below.
 
 `shuyi new` also writes `AGENTS.md` and a `.claude` folder for coding assistants,
 a `.github` folder that runs your tests on GitHub, and a `README.md`. You can
-leave those alone for now. (The tutorial's own copies of each step leave them
+leave those alone for now. (The book's own copies of each step leave them
 out, so don't worry that the "whole project" link doesn't show them.)
 
 Two ideas in that table need explaining. A **crate** is Rust's word for one
@@ -457,7 +459,7 @@ This, not a person looking, is how a Shuyi game knows it still works.
 
 ## Make it play in the browser
 
-Every step of this tutorial plays on its page, and your game has a web build
+Every step of this project plays on its page, and your game has a web build
 already: `shuyi new` gave it two small pieces. In `shuyi.ron`, this part says what to
 build:
 
@@ -475,7 +477,7 @@ You don't need to follow that code. A browser needs its own build of Rust, which
 cargo shuyi web --release
 ```
 
-That writes the page to `dist/web/`. [Step 10](@/learn/tutorial/10-ship.md) shows how
+That writes the page to `dist/web/`. [Step 10](@/learn/book/box-pusher/10-ship.md) shows how
 to open it and hand it out. Remember `can_quit()`? This is why it matters: in the
 browser, this game now leaves its help line empty.
 ([Chapter 9](@/learn/book/targets-and-export.md#the-web-build) has more.)

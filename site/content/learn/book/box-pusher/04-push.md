@@ -2,9 +2,11 @@
 title = "Pushing"
 description = "Push a box, win when every box is on a target, and test it through the Harness."
 weight = 40
+aliases = ["learn/tutorial/04-push/", "learn/tutorial/04-push/play/"]
 
 [extra]
 step = 4
+follows = "rules-as-commands"
 +++
 
 This is the step where it becomes a game. You'll push a box, and win:

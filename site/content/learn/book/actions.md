@@ -1,10 +1,11 @@
 +++
 title = "Actions, never keys"
 description = "Screens react to actions; the keymap file gives their keys and buttons; text names a key through the player's keymap."
-weight = 30
+weight = 40
 
 [extra]
-chapter = 3
+part = "chapters"
+chapter = 4
 +++
 
 The first thing you would write in a game is "if Enter was pressed, plant a seed". It
@@ -32,7 +33,7 @@ key presses itself. When the game comes back from a suspend (the device slept, o
 player switched apps), or its window loses focus, nothing is held any more: a key let go
 while it was away doesn't stay held, and one still down counts once it is pressed again.
 While the window has no focus the controllers do nothing. The garden's `update`, in
-[chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below), turns each action
+[chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below), turns each action
 into a command of its rules.
 
 Each screen declares the actions it reads, in `Screen::actions`. `cargo shuyi check

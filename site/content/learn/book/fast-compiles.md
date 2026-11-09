@@ -1,7 +1,11 @@
 +++
 title = "Fast compiles"
 description = "How long a new game takes to rebuild, and the setup in its Cargo.toml behind it."
-weight = 200
+weight = 210
+
+[extra]
+part = "appendices"
+appendix = "B"
 +++
 
 You change one line, you want to see it, and you wait. What you wait for is a

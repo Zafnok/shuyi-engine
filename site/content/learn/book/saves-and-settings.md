@@ -4,6 +4,7 @@ description = "Saves and settings go through the player's storage, in the profil
 weight = 70
 
 [extra]
+part = "chapters"
 chapter = 7
 +++
 
@@ -65,7 +66,7 @@ refuses another's with a message that says so, rather than reading it wrong:
 parse, so the refusal can say "another version" rather than "damaged". Raise `VERSION`
 whenever a saved type changes shape or meaning. What a save holds, and when the game
 writes it, are the game's: a turn game's rules state is plain data
-([chapter 6](@/learn/book/rules-as-commands.md)), so saving it is one line.
+([chapter 5](@/learn/book/rules-as-commands.md)), so saving it is one line.
 
 {{ snippet(file="src/saves.rs", anchor="test_save") }}
 
@@ -95,7 +96,7 @@ change before the player keeps it. The engine's options screen
 (`shuyi::ui::screens::options`) takes the game's rows, and the key bindings are saved
 apart, by the Key bindings screen. A game with settings of its own writes a
 `GameSettings` type and its own `GameData`
-([chapter 2](@/learn/book/games-and-screens.md#when-a-game-outgrows-the-short-path)).
+([chapter 6](@/learn/book/games-and-screens.md#when-a-game-outgrows-the-short-path)).
 
 What the game does while its window has no focus is the game's choice, not the player's:
 a constant of its `GameSettings`. By default it runs on with its sound. A game that
