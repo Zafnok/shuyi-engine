@@ -15,7 +15,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `wasapi.py` | Windows' recorder: WASAPI loopback, through the documented COM interfaces |
 | `install-endpoint.ps1` | CI's real render endpoint on a Windows runner, which has none: Scream, pinned by its hash |
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
-| `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
+| `ring_test.js` | The web sound plugin under node: its ring's indices, nothing lost as the context starts, and the start's lead over a busy page |
 | `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
 | `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from, or a scenario quad-snd underran in |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
