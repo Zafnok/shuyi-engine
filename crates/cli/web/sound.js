@@ -16,6 +16,11 @@
 // - The lead starts at FEWEST_LEAD_BLOCKS, which is what a sound waits to be heard, and
 //   grows a block each time the worklet runs dry while playing, up to MOST_LEAD_BLOCKS:
 //   a page that keeps up stays quick, and one whose frames stall gets the room it needs.
+// - Until the context has played SETTLE_MS after it starts, or after a hold lets go,
+//   the lead is at least START_LEAD_BLOCKS. A device takes its frames in callbacks of
+//   several blocks (512 frames in CI's Chromium), and a page is busiest as it starts:
+//   the gesture, its release, the first sounds. A page late there by a few callbacks
+//   would cut the first sound it plays, before the lead could grow.
 // - The worklet plays what it has and silence after that, and counts neither as lost:
 //   the mix is only asked for what will be heard, so a late page delays the sound.
 // - Nothing is shared but messages. So this needs a secure context, as AudioWorklet
@@ -41,6 +46,10 @@
     var FEWEST_LEAD_BLOCKS = 4;
     var MOST_LEAD_BLOCKS = 16;
     var RING_BLOCKS = 32;
+    // The least lead while the context starts, and for how long it plays, in
+    // milliseconds, before the lead comes back down.
+    var START_LEAD_BLOCKS = 8;
+    var SETTLE_MS = 1000;
     // How often the timer looks, in milliseconds, before the context runs.
     var IDLE_MS = 20;
     // How long the mix waits for a context that is starting, in milliseconds.
@@ -114,17 +123,6 @@
             process(inputs, outputs) {
                 var left = outputs[0][0];
                 var right = outputs[0][1] || new Float32Array(left.length);
-                // TRACE (scratch): each call's frame, wall time and what the ring held.
-                if (this.trace === undefined) {
-                    this.trace = [];
-                }
-                if (this.trace !== null) {
-                    this.trace.push([currentFrame, Date.now(), this.ring.held(), this.ring.taken]);
-                    if (this.trace.length >= 400) {
-                        this.port.postMessage({ trace: this.trace });
-                        this.trace = null;
-                    }
-                }
                 var real = this.ring.read(left, right);
                 this.played = (this.played + real) >>> 0;
                 this.silent = (this.silent + left.length - real) >>> 0;
@@ -154,6 +152,8 @@
     var timer = null;
     var gestured = false;
     var starting_since = -1;
+    var settling = true;
+    var settle_from = -1;
     var vets = [];
 
     // The next block of the mix, or null while Rust has no output open.
@@ -162,60 +162,29 @@
         return at === 0 ? null : new Int16Array(wasm_memory.buffer, at, block * 2);
     }
 
+    // How many blocks the worklet is kept ahead by now.
+    function lead() {
+        return settling ? Math.max(lead_blocks, START_LEAD_BLOCKS) : lead_blocks;
+    }
+
     // Keeps the worklet its lead ahead.
     function top_up() {
         if (held) {
             return;
         }
-        while (((sent - played) >>> 0) + block <= lead_blocks * block) {
+        while (((sent - played) >>> 0) + block <= lead() * block) {
             var frames = next_block();
             if (frames === null) {
                 return;
             }
             var buffer = spare.pop() || new ArrayBuffer(block * 4);
             new Int16Array(buffer).set(frames);
-            if (loud_at < 0) {
-                for (var i = 0; i < frames.length; i++) {
-                    if (frames[i] > 64 || frames[i] < -64) {
-                        loud_at = sent + (i >> 1);
-                        break;
-                    }
-                }
-            }
-            note(["send", wall(), sent]);
             node.port.postMessage(buffer, [buffer]);
             sent = (sent + block) >>> 0;
         }
     }
 
-    // TRACE (scratch): what the main thread saw, in wall-clock milliseconds.
-    var trace = [];
-    var loud_at = -1;
-    function wall() {
-        return performance.timeOrigin + performance.now();
-    }
-    function note(entry) {
-        if (trace !== null && trace.length < 600) {
-            trace.push(entry);
-        }
-    }
-
     function on_message(event) {
-        if (event.data.trace) {
-            console.log(
-                "shuyi-sound-probe: " +
-                    JSON.stringify({
-                        event: "trace",
-                        loud_at: loud_at,
-                        base: context.baseLatency,
-                        out: context.outputLatency,
-                        main: trace,
-                        worklet: event.data.trace,
-                    })
-            );
-            trace = null;
-            return;
-        }
         if (event.data.back) {
             spare.push(event.data.back);
         } else {
@@ -225,7 +194,12 @@
             }
             silent = event.data.silent;
             played = event.data.played;
-            note(["report", wall(), played, silent, lead_blocks]);
+            // Settled once it has played SETTLE_MS from its first word after a start.
+            if (settling && settle_from < 0) {
+                settle_from = played;
+            } else if (settling && ((played - settle_from) >>> 0) >= (rate * SETTLE_MS) / 1000) {
+                settling = false;
+            }
             top_up();
         }
     }
@@ -271,7 +245,6 @@
     }
 
     function connect() {
-        note(["connect", wall(), context.state]);
         node = new AudioWorkletNode(context, "shuyi-sound", {
             numberOfInputs: 0,
             numberOfOutputs: 1,
@@ -321,17 +294,6 @@
                 return 0;
             }
             context = opened;
-            note(["open", wall(), opened.state]);
-            opened.addEventListener("statechange", function () {
-                note(["state", wall(), opened.state]);
-            });
-            window.document.addEventListener(
-                "mousedown",
-                function () {
-                    note(["gesture", wall()]);
-                },
-                true
-            );
             if (!window.navigator.userActivation) {
                 // A browser that doesn't say whether the page has had its gesture.
                 ["keydown", "mousedown", "touchend"].forEach(function (type) {
@@ -354,11 +316,17 @@
         };
         // Holds the output, or lets it go on if `on` is 0.
         importObject.env.shuyi_sound_hold = function (on) {
+            var was = held;
             held = on !== 0;
             if (context) {
                 if (held) {
                     context.suspend();
                 } else {
+                    if (was) {
+                        // Letting go starts the device again, and with it the start's lead.
+                        settling = true;
+                        settle_from = -1;
+                    }
                     context.resume();
                 }
             }
