@@ -46,15 +46,22 @@ actions, keeping the same six names, so the keymap and the title still read the 
   actions: your `Confirm` is their `Confirm`, and `Undo` means nothing to them.
 - `fixed_keys` gives keys no player can move: Escape always cancels.
 
-> **Rust:** in an `impl`, `Self` is the type it's for, so `Self::Up` is `Action::Up`. `&'static
-> [Self]` is a borrowed list of `Action` that lasts for the whole program.
+{% newcomer(to="rust", topic="`Self` and `&'static`") %}
+In an `impl`, `Self` is the type it's for, so `Self::Up` is `Action::Up`. `&'static
+[Self]` is a borrowed list of `Action` that lasts for the whole program.
+{% end %}
 
-> **Shuyi:** the one file that may name a key by hand is this one, for that fixed Escape. In
-> `shuyi.ron`, tell the key check about it, with this line in `check_keys`:
-> `key_files: ["crates/game/src/action.rs"],`
+The one file that may name a key by hand is this one, for that fixed Escape. In
+`shuyi.ron`, tell the key check about it, with this line in `check_keys`:
+`key_files: ["crates/game/src/action.rs"],`
 
 Now, swap the type everywhere. Add `pub mod action;` to `lib.rs`, with
-`use crate::action::Action;` below its other `use` lines. (`crate` means "this crate's own code".)
+`use crate::action::Action;` below its other `use` lines.
+
+{% newcomer(to="rust", topic="`crate`") %}
+`crate` means "this crate's own code".
+{% end %}
+
 Then, replace `UiAction` with `Action` in `lib.rs`, `title.rs`, `stages.rs`, `board.rs`, and
 `tests/it/main.rs`. Your editor's find-and-replace is the tool for this. Each of those files also
 needs `use crate::action::Action;`, or in the test, `use game::action::Action;`. The compiler
@@ -85,25 +92,32 @@ Here's what never naming a key buys you. Change the key in the keymap, and the w
 How would you write undo? You could save a copy of the whole state on every move. In a small
 puzzle, that would work. There's a neater way.
 
-> **Shuyi:** a **`History`** is the state a level started in, and every command since. That's all
-> it holds, because that's all you need: since the rules always give the same result for the same
-> commands, you can get any earlier moment by starting again from the beginning and replaying.
-> This property has a name, **determinism**, and it's why rules may have no clock, no floats, and
-> no `HashSet`. It's also how replays, bug reports and online play work.
+A **`History`** is the state a level started in, and every command since. That's all
+it holds, because that's all you need: since the rules always give the same result for the same
+commands, you can get any earlier moment by starting again from the beginning and replaying.
+
+{% newcomer(to="shuyi", topic="determinism") %}
+This property has a name, **determinism**, and it's why rules may have no clock, no floats, and
+no `HashSet`. It's also how replays, bug reports and online play work.
+{% end %}
 
 The board keeps a history beside the puzzle:
 
 {{ snippet(step="05-undo", file="crates/game/src/board.rs", anchor="board") }}
 
 In `Board::new`, start it from the first state, with `history: History::new(puzzle.clone()),` before
-the `puzzle,` line. `.clone()` makes a copy: the history keeps its first state forever, while the
-puzzle goes on to change. You need `use shuyi::core::History;` at the top.
+the `puzzle,` line. You need `use shuyi::core::History;` at the top.
 
-> **Rust:** **ownership**. Each value in Rust has one owner, and handing a value to a function hands
-> over ownership: you can't use it again afterwards. So if `History::new` was given `puzzle` itself,
-> the next line couldn't use it. `clone` makes a second one. Here the compiler's error would tell you
-> "value used after being moved", and that's what it means. You'll meet that error sooner or later, so
-> now you know how to read it.
+{% newcomer(to="rust", topic="ownership and `.clone()`") %}
+`.clone()` makes a copy: the history keeps its first state forever, while the
+puzzle goes on to change.
+
+Each value in Rust has one owner, and handing a value to a function hands
+over ownership: you can't use it again afterwards. So if `History::new` was given `puzzle` itself,
+the next line couldn't use it. `clone` makes a second one. Here the compiler's error would tell you
+"value used after being moved", and that's what it means. You'll meet that error sooner or later, so
+now you know how to read it.
+{% end %}
 
 It records only the commands the rules accepted, so a walk into a wall is no move:
 
@@ -114,9 +128,13 @@ gives the same state:
 
 {{ snippet(step="05-undo", file="crates/game/src/board.rs", anchor="undo") }}
 
-> **Rust:** `checked_sub(1)` subtracts, and gives `None` if the answer would go below zero, as it
-> would here with no moves made. `if let ... && let ...` needs both to succeed, so the body runs only
-> if there's a move to take back, and the rewind worked. Pressing undo at the start just does nothing.
+{% newcomer(to="rust", topic="`checked_sub`, and `if let … && let …`") %}
+`checked_sub(1)` subtracts, and gives `None` if the answer would go below zero, as it
+would here with no moves made. `if let ... && let ...` needs both to succeed, so the body runs only
+if there's a move to take back, and the rewind worked.
+{% end %}
+
+Pressing undo at the start just does nothing.
 
 And the board's `update` calls it:
 
@@ -134,14 +152,26 @@ To see how the undo depends on that number, take back two moves at a time:
 {{ snippet(step="05-undo", file="crates/game/tests/board.rs", anchor="test_undo") }}
 
 This is a neat test: it keeps a copy of the first state, and after a push and an undo, the whole state
-must equal it, with `assert_eq!`. That's only possible since `Puzzle` derives `PartialEq`. The second
+must equal it, with `assert_eq!`.
+
+{% newcomer(to="rust", topic="`PartialEq`") %}
+That's only possible since `Puzzle` derives `PartialEq`.
+{% end %}
+
+The second
 `h.keys("u")` checks that undoing at the start is harmless.
 
 ## What you learned
 
-- **Rust:** ownership and `clone`, `crate::`, and `checked_sub`.
-- **Game idea:** determinism, and how replaying commands can rebuild any moment.
-- **Shuyi:** `ActionSet`, and `History`.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: ownership and `clone`, `crate::`, and `checked_sub`.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: determinism, and how replaying commands can rebuild any moment.
+{% end %}
+
+In Shuyi: `ActionSet`, and `History`.
 
 [Chapter 4](@/learn/book/actions.md#actions-of-a-game-s-own) has more on a game's own actions, and
 [chapter 5](@/learn/book/rules-as-commands.md#history-and-undo) on history. Next: one level isn't a

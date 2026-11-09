@@ -18,12 +18,14 @@ seeds run out you lose. It looks like this:
 
 {{ try_it(name="book-title") }}
 
+{% newcomer(to="rust", topic="Rust, Cargo and a crate") %}
 A few words first, in case they are new. **Rust** is the programming language a
 Shuyi game is written in. **Cargo** is the program that comes with Rust and turns
 your code into a program you can run, a job called **compiling**. And a **crate**
 is Rust's word for one package of code. [Before you
 start](@/learn/book/before-you-start.md) says more about each, and about what a
 terminal is, if you have never opened one.
+{% end %}
 
 ## Try it with nothing installed
 
@@ -45,9 +47,13 @@ Install Rust with [rustup](https://rustup.rs), Rust's installer. A game names th
 version of Rust it builds with, in a file called `rust-toolchain.toml`, and rustup
 fetches that version the first time you build.
 
+{% newcomer(to="programming", topic="a linker") %}
 Rust's compiler ends its work by calling a **linker**, the program that joins the
-compiled pieces into one file you can run. Most of what can go wrong while
-installing is the linker. On Linux and macOS, rustup says what you need.
+compiled pieces into one file you can run.
+{% end %}
+
+Most of what can go wrong while installing is the linker. On Linux and macOS,
+rustup says what you need.
 
 On Windows, either of Rust's toolchains works. With the MSVC one (rustup's
 default), install Visual Studio's C++ build tools as rustup says. With the GNU one,
@@ -96,8 +102,12 @@ it. A **template** is what the game starts from. `blank` is one screen, a title.
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
 The game depends on the engine's repository at its latest commit, and `shuyi new`
-says so: a **commit** is one saved version of the repository's code, and `--engine-rev
-<commit>` pins your game to one, so the engine can't change under you.
+says so. `--engine-rev <commit>` pins your game to one, so the engine can't change
+under you.
+
+{% newcomer(to="programming", topic="a commit") %}
+A **commit** is one saved version of the repository's code.
+{% end %}
 
 On Linux, run the setup script the game came with before its first build. It
 installs the C linker, `pkg-config`, the system libraries the window and sound
@@ -126,9 +136,13 @@ on your game. The first one builds it.
 cargo shuyi run --frames 30
 ```
 
+{% newcomer(to="games", topic="a frame") %}
 A **frame** is one trip round the game's loop, about 60 a second: read the input,
-update the game, draw it. `run` plays that many frames and answers in text, with
-the screen on top, and what that frame shows, cell by cell. For Moon Garden, with
+update the game, draw it.
+{% end %}
+
+`run` plays that many frames and answers in text, with the screen on top, and what
+that frame shows, cell by cell. For Moon Garden, with
 its empty rows left out here, the answer looks like this:
 
 ```text
@@ -153,12 +167,16 @@ cargo shuyi frame-png title.png
 
 Every command answers for people, or with `--json` for a program. Then the
 **gates**, the checks that must pass before a change counts, as the game's CI runs
-them (**CI** is a service that runs them on each change you push to GitHub):
+them:
 
 ```bash
 cargo test --workspace
 cargo shuyi check
 ```
+
+{% newcomer(to="programming", topic="CI") %}
+**CI** is a service that runs the gates on each change you push to GitHub.
+{% end %}
 
 `cargo test` runs the game's tests, and each ends in `ok` if it passed. `cargo shuyi
 check` reads every file the game reads, and says what's wrong with them. Both should
@@ -171,7 +189,10 @@ Your game's words are in a file, not in its code. Change one line and run it aga
 
 {{ try_it(name="book-title-name") }}
 
+{% newcomer(to="programming", topic="a diff") %}
 The diffs in this book show a line with `-` as it was, and with `+` as it becomes.
+{% end %}
+
 Moon Garden's files are in `files/` and its code in `src/`. A game made by `shuyi
 new` has the same files in `crates/game/files/` and `crates/game/src/`.
 
@@ -188,42 +209,53 @@ like this, a player gets one program:
 
 {{ snippet(file="src/quick_start.rs", anchor="files") }}
 
-> **Rust:** `///` is a comment for the thing below it, and `//` an ordinary one. The
-> computer ignores both, though the engine's text check reads this `// check-text`,
-> which tells it this isn't text a player sees. `static` makes a value that
-> lasts as long as the program, `Dir<'static>` is its type, and `'static` is that
-> lifetime written down. `include_dir!` is a
-> [macro](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
-> and writes more code while compiling: here, code that holds your whole folder.
+{% newcomer(to="rust", topic="comments, `static` and a macro") %}
+`///` is a comment for the thing below it, and `//` an ordinary one. The
+computer ignores both. `static` makes a value that
+lasts as long as the program, `Dir<'static>` is its type, and `'static` is that
+lifetime written down. `include_dir!` is a
+[macro](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
+and writes more code while compiling: here, code that holds your whole folder.
+{% end %}
+
+The engine's text check reads this `// check-text`, which tells it this isn't text
+a player sees.
 
 The game's **data** is what every screen shares. On the short path, it's the
 engine's `BasicData`: the English text, the keys, the palette and the font, read
 from those files, with the six moves of `UiAction` (`Up`, `Down`, `Left`, `Right`,
 `Confirm` and `Cancel`) as the game's **actions**, the things a player can ask for. A
 game's own part rides along. Here, that's the garden's plan, how many plots and how
-many seeds. A new `blank` game has none, which is written `()`, a value that holds
-nothing.
+many seeds. A new `blank` game has none, which is written `()`.
 
 {{ snippet(file="src/quick_start.rs", anchor="data") }}
 
-> **Rust:** `type` gives another name to a type, so the rest of the code can say
-> `Data`. A **type** is what kind of thing a value is. The `<...>` are
-> [generics](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), blanks in a type to
-> fill in: `BasicData` is written for any actions and any own part, and this fills in
-> which. `pub` means other files may use this.
+{% newcomer(to="rust", topic="`type`, generics and `pub`") %}
+`type` gives another name to a type, so the rest of the code can say
+`Data`. A **type** is what kind of thing a value is. The `<...>` are
+[generics](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), blanks in a type to
+fill in: `BasicData` is written for any actions and any own part, and this fills in
+which. `pub` means other files may use this. `()` is a value that holds nothing.
+{% end %}
 
 Who the game is, its name, its reverse-DNS id and its version, is written once, in
-`shuyi.ron`'s `app` ([chapter 9](@/learn/book/targets-and-export.md)). A
-**reverse-DNS** id is a web address backwards, `com.example.moon-garden`, which makes
-it unique to you. `cargo shuyi app-info` writes it as a constant in
+`shuyi.ron`'s `app` ([chapter 9](@/learn/book/targets-and-export.md)).
+`cargo shuyi app-info` writes it as a constant in
 `crates/game/src/app_info.rs`, which the window's title, the loading card and the
 storage read. Never edit that file by hand.
 
+{% newcomer(to="programming", topic="a reverse-DNS id") %}
+A **reverse-DNS** id is a web address backwards, `com.example.moon-garden`, which
+makes it unique to you.
+{% end %}
+
 {{ snippet(file="src/quick_start.rs", anchor="app") }}
 
-> **Rust:** `const` is a value fixed while compiling. `#[...]` is a note to the
-> compiler or its tools, and this one tells the code formatter to leave the line
-> alone.
+{% newcomer(to="rust", topic="`const` and an attribute") %}
+`const` is a value fixed while compiling. `#[...]` is a note to the
+compiler or its tools, and this one tells the code formatter to leave the line
+alone.
+{% end %}
 
 The player's settings are kept under the id. A new game's is a placeholder,
 `com.example.moon-garden`, which `check --target` warns of. Set your own before you
@@ -235,24 +267,31 @@ or a menu):
 
 {{ snippet(file="src/quick_start.rs", anchor="game") }}
 
-> **Rust:** `fn` starts a function, a named list of instructions, and `->` says what
-> it gives back. `let` gives a value a name. The last line, with no `;`, is what the
-> function gives back. Each `.name(...)` after it is a method, a function called on
-> that value, and here each gives back the game with one more thing set.
->
-> `|_| Box::new(Title)` is a [closure](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs),
-> a small function with no name, and the `_` means it ignores what it's given. It
-> makes the first screen. `Box<dyn Screen<Data>>` means "[some type that is a
-> screen](@/learn/book/box-pusher/02-board.md#joining-it-up), kept in a box". The list holds
-> three different types, which only fit side by side once each is in a box. `vec![...]`
-> makes a list, a `Vec`. `&mut Ctx<Data>` lends the function the
-> [context](@/learn/book/games-and-screens.md#the-context), and `&mut` means it may
-> change it.
+{% newcomer(to="rust", topic="a function, `let` and a method") %}
+`fn` starts a function, a named list of instructions, and `->` says what
+it gives back. `let` gives a value a name. The last line, with no `;`, is what the
+function gives back. Each `.name(...)` after it is a method, a function called on
+that value, and here each gives back the game with one more thing set.
+{% end %}
 
-`crates/game/src/main.rs` runs it in a window, with `run_game`. `main` is where every
-Rust program starts:
+{% newcomer(to="rust", topic="a closure, a `Box` and `&mut`") %}
+`|_| Box::new(Title)` is a [closure](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs),
+a small function with no name, and the `_` means it ignores what it's given. It
+makes the first screen. `Box<dyn Screen<Data>>` means "[some type that is a
+screen](@/learn/book/box-pusher/02-board.md#joining-it-up), kept in a box". The list holds
+three different types, which only fit side by side once each is in a box. `vec![...]`
+makes a list, a `Vec`. `&mut Ctx<Data>` lends the function the
+[context](@/learn/book/games-and-screens.md#the-context), and `&mut` means it may
+change it.
+{% end %}
+
+`crates/game/src/main.rs` runs it in a window, with `run_game`:
 
 {{ snippet(file="src/quick_start.rs", anchor="main") }}
+
+{% newcomer(to="rust", topic="`main`") %}
+`main` is where every Rust program starts.
+{% end %}
 
 `crates/game/examples/tools.rs` is the game's **tool program**. The engine's tools
 run your game inside this program, and `BasicTools` is what they need to know of a
@@ -260,12 +299,14 @@ game on the short path:
 
 {{ snippet(file="src/quick_start.rs", anchor="tools") }}
 
-> **Rust:** `std::env::args().skip(1)` is the words after the program's name on the
-> command line. `Some(&tools)` is an
-> [`Option`](@/learn/book/box-pusher/01-new.md#what-it-shows), a value that may be there
-> (`Some`) or not (`None`). This one is there, and `&` lends it without giving it
-> away. `ExitCode` is the number a program hands back when it stops, where 0 means
-> all went well.
+{% newcomer(to="rust", topic="`Option`, `&` and an exit code") %}
+`std::env::args().skip(1)` is the words after the program's name on the
+command line. `Some(&tools)` is an
+[`Option`](@/learn/book/box-pusher/01-new.md#what-it-shows), a value that may be there
+(`Some`) or not (`None`). This one is there, and `&` lends it without giving it
+away. `ExitCode` is the number a program hands back when it stops, where 0 means
+all went well.
+{% end %}
 
 The rest of the folder:
 

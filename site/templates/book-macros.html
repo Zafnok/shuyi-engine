@@ -71,7 +71,9 @@
 
 {#- The line at the top of a book page `p`, saying where it is: "The book ·
     Chapter 5", "The book · Appendix A", or for a project's step "The book ·
-    Project: … · Step 4 of 10". -#}
+    Project: … · Step 4 of 10". A page written whole for a newcomer
+    (`extra.newcomer`, ADR-0090 §5) adds who it is for: "· For readers new
+    to programming". -#}
 {% macro where(p) -%}
 <p class="meta"><a href="{{ get_url(path='@/learn/book/_index.md') }}">The book</a>
   {%- if p.extra.chapter %} · Chapter {{ p.extra.chapter }}
@@ -79,6 +81,13 @@
   {%- elif p.extra.step %}
   {%- set project = get_section(path=p.ancestors | last) %}
   {%- set steps = project.pages | filter(attribute="extra.step") %} · <a href="{{ project.permalink | safe }}">{{ project.title }}</a> · Step {{ p.extra.step }} of {{ steps | length }}
+  {%- endif %}
+  {%- if p.extra.newcomer is not defined %}
+  {%- elif p.extra.newcomer == "programming" %} · For readers new to programming
+  {%- elif p.extra.newcomer == "games" %} · For readers new to making games
+  {%- elif p.extra.newcomer == "rust" %} · For readers new to Rust
+  {%- elif p.extra.newcomer == "shuyi" %} · For readers new to Shuyi
+  {%- else %}{{ throw(message=p.relative_path ~ ': newcomer = "' ~ p.extra.newcomer ~ '" is not one of programming, games, rust or shuyi') }}
   {%- endif %}</p>
 {%- endmacro where %}
 

@@ -32,18 +32,24 @@ by playing it**, and the same play always gives the same result.
 about your rules: they have no idea what a move is. So the game now writes its own, `Tools`, which adds what's
 special to this game, and calls `BasicTools` for the rest.
 
-> **Shuyi:** `GameTools` is the trait for that. It's the bridge between your game and the engine's tools,
-> whether a person runs them from a terminal or a coding assistant calls them. Your `Tools` is
-> [in this step's `tools.rs`](https://github.com/Zafnok/shuyi-engine/blob/main/site/tutorial/09-test/crates/game/src/tools.rs).
-> Most of its functions just pass the call on to `self.basic()`. This page shows the parts that aren't that.
+{% newcomer(to="shuyi", topic="`GameTools`") %}
+`GameTools` is the trait for that. It's the bridge between your game and the engine's tools,
+whether a person runs them from a terminal or a coding assistant calls them.
+{% end %}
+
+Your `Tools` is
+[in this step's `tools.rs`](https://github.com/Zafnok/shuyi-engine/blob/main/site/tutorial/09-test/crates/game/src/tools.rs).
+Most of its functions just pass the call on to `self.basic()`. This page shows the parts that aren't that.
 
 In `lib.rs`, the module is only part of a build with the tools in it, so it never ends up in the game you ship:
 
 {{ snippet(step="09-test", file="crates/game/src/lib.rs", anchor="tools") }}
 
-> **Rust:** `#[cfg(feature = "tools")]` means "only include this if the `tools` feature is on". A **feature**
-> is an optional part of a crate, listed in its `Cargo.toml`. That's what `--features tools` was doing in the
-> `shuyi` alias, in your `.cargo/config.toml`, all along.
+{% newcomer(to="rust", topic="`#[cfg]` and a feature") %}
+`#[cfg(feature = "tools")]` means "only include this if the `tools` feature is on". A **feature**
+is an optional part of a crate, listed in its `Cargo.toml`. That's what `--features tools` was doing in the
+`shuyi` alias, in your `.cargo/config.toml`, all along.
+{% end %}
 
 And `stages::tools` returns it:
 
@@ -61,20 +67,33 @@ Try asking:
 cargo shuyi scene --json --script "Enter Enter Right Right"
 ```
 
-That plays those keys with no window, and answers with the map as text, plus your `moves` and `won`. `json!` writes
-**JSON**, the most common format for programs to exchange data. Here is how a test uses it:
+That plays those keys with no window, and answers with the map as text, plus your `moves` and `won`.
+
+{% newcomer(to="programming", topic="JSON") %}
+`json!` writes **JSON**, the most common format for programs to exchange data.
+{% end %}
+
+Here is how a test uses it:
 
 {{ snippet(step="09-test", file="crates/game/tests/tools.rs", anchor="test_scene") }}
 
 ## A bot
 
-> **Game idea:** a **bot** is a player made of code. It looks at the state, and picks the next command. Bots test a
-> game from outside it, playing whole games in the blink of an eye. In a game with opponents, they can also be the
-> opponents.
+{% newcomer(to="games", topic="a bot") %}
+A **bot** is a player made of code. It looks at the state, and picks the next command. Bots test a
+game from outside it, playing whole games in the blink of an eye. In a game with opponents, they can also be the
+opponents.
+{% end %}
 
 A bot needs to know who moves, for games with several players. The puzzle has one, so its side is `()`, a value with
 nothing in it. It also needs to know the turn, so the puzzle now counts them. In `rules.rs`, add `turn: u32` to the
-state, start it at `1`, and add 1 in `apply`. (`u32` is a whole number that can't go below zero.) Then:
+state, start it at `1`, and add 1 in `apply`.
+
+{% newcomer(to="rust", topic="`u32`") %}
+`u32` is a whole number that can't go below zero.
+{% end %}
+
+Then, in the same file:
 
 {{ snippet(step="09-test", file="crates/game/src/rules.rs", anchor="sides") }}
 
@@ -88,9 +107,13 @@ are the winning moves for each level, written by hand. Here's the bot that plays
 
 {{ snippet(step="09-test", file="crates/game/src/tools.rs", anchor="bot") }}
 
-> **Rust:** `Vec<Dir>` read straight from the file by `ron::from_str`, thanks to serde. `steps.reverse()` puts the last step
-> first, because `.pop()` takes from the end of a list, and that's quick. `.or_else(legal)` says "or, if that gave `None`, try
-> this". So when the line is used up, the bot makes any legal step, and the turn limit will end the play.
+{% newcomer(to="rust", topic="reading a file, `.pop()` and `.or_else`") %}
+`Vec<Dir>` read straight from the file by `ron::from_str`, thanks to serde. `steps.reverse()` puts the last step
+first, because `.pop()` takes from the end of a list, and that's quick. `.or_else(legal)` says "or, if that gave `None`, try
+this".
+{% end %}
+
+When the line is used up, the bot makes any legal step, and the turn limit will end the play.
 
 Why does this matter? Here's the test:
 
@@ -114,10 +137,14 @@ A **record** is a level and its commands, and nothing more. Since the rules are 
 
 {{ snippet(step="09-test", file="crates/game/src/tools.rs", anchor="record") }}
 
-> **Shuyi:** the `replay` tool plays a record **twice** and compares a hash of the state at every step. A **hash** is a short
-> number worked out from all of a value, so if any of it changes, the number will too. So anything that isn't deterministic
-> shows up at once, at the very step where it went wrong. If someone reports a bug, a record of what they did will reproduce
-> it exactly.
+The `replay` tool plays a record **twice** and compares a hash of the state at every step.
+
+{% newcomer(to="programming", topic="a hash") %}
+A **hash** is a short number worked out from all of a value, so if any of it changes, the number will too.
+{% end %}
+
+So anything that isn't deterministic shows up at once, at the very step where it went wrong. If someone reports a bug, a
+record of what they did will reproduce it exactly.
 
 {{ snippet(step="09-test", file="crates/game/tests/tools.rs", anchor="test_replay") }}
 
@@ -168,8 +195,14 @@ That is the feeling you want. You can change anything, because if it breaks, you
 
 ## What you learned
 
-- **Rust:** features and `#[cfg]`.
-- **Game ideas:** bots, records and replays, hashes, and when a test should read the picture.
-- **Shuyi:** `GameTools`, scenes for programs, `Bot` and `play`, `replay`, and `h.snapshot()`.
+{% newcomer(to="rust", topic="the Rust in this step") %}
+In Rust: features and `#[cfg]`.
+{% end %}
+
+{% newcomer(to="games", topic="the ideas of making games in this step") %}
+In making games: bots, records and replays, hashes, and when a test should read the picture.
+{% end %}
+
+In Shuyi: `GameTools`, scenes for programs, `Bot` and `play`, `replay`, and `h.snapshot()`.
 
 [Chapter 8](@/learn/book/testing.md) has more on testing, and [chapter 10](@/learn/book/tools-for-agents.md) on the tools. Next: hand it out.
