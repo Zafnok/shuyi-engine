@@ -39,6 +39,13 @@ Other flakes were re-run with no record:
 2049 and 2050 were also missing from 3084's `blocked_by` (the retro's PR
 added them), unlike 2044, 2046 and 2047.
 
+**From 2050 (done):** its cell (`browser-in-house`, a sound cut at its start)
+passed in all twenty runs of CI run 42507044770, so it needs no entry. That run's
+other failures are 3089's (`windows-in-house` gaps, jobs 6, 10 and 17) and 2068's
+(three timing cells: `browser-chromium perf:cpu_ms` and `perf:file_io_ms`,
+`windows-in-house old-new:cpu_ms`). They are the entries to list, under those two
+tickets.
+
 ## Nick input
 
 None.
@@ -86,8 +93,8 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `tools/flaky.ron` lists the sound-parity cells of 2049, 2050 and
-      3089.
+- [ ] `tools/flaky.ron` lists the sound-parity cells of 3089 and 2068 that are
+      still open (2049 and 2050 are done).
 - [ ] An entry whose ticket is in `done/` fails `ticket-lint`.
 - [ ] `calibrate.yml`, dispatched with a count of 5 on one job, produces
       one summary of 5 runs (link in the notes).

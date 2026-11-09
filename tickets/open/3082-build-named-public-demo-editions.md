@@ -34,6 +34,12 @@ None.
   resolved-build live-link guard before preparation or compilation; if
   not, retain those flags in the exporter plan so 3085 validates edition
   builds when it lands, with no separate edition bypass.
+- **Either order with 2585** (the dialogue preview): if 2585 is done,
+  its book section says a preview program is built as an edition that
+  leaves the game's own scripts out; check that an edition can do that
+  (a content root without the scripts folder) and name it in the
+  section; if not, nothing to do (2585 adds the sentence if this lands
+  first).
 
 **Out (do not do):**
 - Automatic guesses about which mechanic, story or art a game considers secret.

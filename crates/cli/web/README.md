@@ -222,8 +222,14 @@ Dependabot's `backend` group too.
   silently and says so once in the console.
 - **The queue:** the comment at its top is the contract, and `crates/sound-out/src/web.rs`
   says it from the Rust side. `tools/sound-parity/ring_test.js` tests it under node,
-  in CI's `sound-parity` job: its ring's indices wrapping, and that nothing mixed
-  after the gesture is lost while the context starts.
+  in CI's `sound-parity` job: its ring's indices wrapping, that nothing mixed
+  after the gesture is lost while the context starts, and that a page busy for
+  35 ms just after the device starts doesn't run the worklet dry.
+- **The lead:** the worklet is kept 4 blocks of 256 frames ahead (23 ms at 44.1 kHz),
+  more each time it runs dry. For the first second the context plays after it
+  starts, or after a hold lets go, it is kept 8 ahead: the device takes 512 frames a
+  callback in Chromium, and a page is busiest as it starts, so with 4 a page late by
+  25 ms there cut the first sound (ticket 2050).
 - The `AudioContext` starts on the first gesture, as a browser asks: `index.html`
   resumes every context on one. Until then the mix runs on a timer and is discarded,
   so what plays keeps its place on the player's clock. From the gesture the mix waits
