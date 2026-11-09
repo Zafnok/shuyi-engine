@@ -1271,13 +1271,20 @@ jobs:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
       - run: cargo install --locked cargo-public-api@0.52.0
+      # The PR's ticket is read from its title first (ticket 2051), as the
+      # title is now: a re-run after a retitle reads the new one.
       - name: Show the public API change
         env:
           HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
           # Warnings are the clippy and test jobs' gate: a lint only the
           # nightly has must not fail this job as a build error.
           RUSTFLAGS: ""
-        run: cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
+        run: |
+          title=$(bash scripts/pr-title.sh)
+          cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
       - name: Hand the verdict to api-label
         id: verdict
         run: echo "label=$(cat "$RUNNER_TEMP/api-verdict")" >> "$GITHUB_OUTPUT"
@@ -1415,22 +1422,30 @@ jobs:
     env:
       HEAD_REF: ${{ github.head_ref }}
       EVENT_NAME: ${{ github.event_name }}
-      # For `gh api` on the game's tickets (`game#NNNN` ids). Without access
-      # to the game repository the lint warns and skips those ids.
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      # For `gh api` on the game's tickets (`game#NNNN` ids), and the PR's
+      # title as it is now. Without access to the game repository the lint
+      # warns and skips those ids.
       GH_TOKEN: ${{ github.token }}
     steps:
+      # HEAD^1 is the base tip: a ticket-only PR's diff is read against it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check shared agent skill loaders
         shell: pwsh
         run: ./scripts/sync-agent-skills.ps1 -Check
+      # The PR's ticket is read from its title first (ticket 2051), as the
+      # title is now: pr-title.yml re-runs this job after a retitle.
       - name: Run ticket lint
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
-            cargo xtask ticket-lint --pr-branch "$HEAD_REF"
+            title=$(bash scripts/pr-title.sh)
+            cargo xtask ticket-lint --pr-branch "$HEAD_REF" --pr-title "$title" --base HEAD^1
           else
             cargo xtask ticket-lint
           fi

@@ -24,6 +24,9 @@ use std::process::Command;
 
 use serde_norway::Value;
 
+mod pr;
+pub use pr::{Pr, PrKind};
+
 const REQUIRED_KEYS: &[&str] = &[
     "id",
     "title",
@@ -128,10 +131,11 @@ pub struct Report {
     pub warnings: Vec<String>,
 }
 
-/// Runs every ticket-lint rule against `repo_root`. `pr_branch` is the
-/// `--pr-branch` value, if any. The game's ticket ids are read from `game`
-/// only when some ticket names one.
-pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Report {
+/// Runs every ticket-lint rule against `repo_root`. `pr` is the
+/// `--pr-branch` and `--pr-title` values, if any, and `base` the revision a
+/// ticket-only PR's diff is read against (`--base`). The game's ticket ids
+/// are read from `game` only when some ticket names one.
+pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSource) -> Report {
     let mut tickets = Vec::new();
     let mut report = Report::default();
 
@@ -172,8 +176,22 @@ pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Repo
     report.errors.extend(errors);
     report.warnings.extend(warnings);
 
-    if let Some(branch) = pr_branch {
-        report.errors.extend(check_pr_branch(&tickets, branch));
+    if let Some(pr) = pr {
+        match pr.kind() {
+            Ok(kind) => {
+                let changed = match &kind {
+                    PrKind::TicketsOnly(_) => changed_files(repo_root, base),
+                    _ => Ok(Vec::new()),
+                };
+                match changed {
+                    Ok(changed) => report
+                        .errors
+                        .extend(pr::check_pr(&tickets, &kind, &changed)),
+                    Err(e) => report.errors.push(e),
+                }
+            }
+            Err(e) => report.errors.push(e),
+        }
     }
 
     report.errors.extend(check_mirrors(&tickets));
@@ -953,26 +971,37 @@ fn ticket_ids_from_names(names: &[String]) -> HashSet<String> {
         .collect()
 }
 
-/// With `--pr-branch t<NNNN>-<slug>`, ticket `NNNN` must be in `tickets/done/`
-/// (that PR is expected to be the one archiving it). Branches that don't
-/// follow the `t<NNNN>-` convention (e.g. `main`, `dependabot/...`) are
-/// ignored.
-fn check_pr_branch(tickets: &[Ticket], branch: &str) -> Vec<String> {
-    let Some(id) = ticket_id_from_branch(branch) else {
-        return Vec::new();
+/// The files the head changed from `base` (or from where it left
+/// `origin/main`, else `main`), the working tree's included.
+fn changed_files(repo_root: &Path, base: Option<&str>) -> Result<Vec<String>, String> {
+    let git = |args: &[&str]| -> Result<String, String> {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(repo_root)
+            .output()
+            .map_err(|e| format!("git doesn't run: {e}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "`git {}` failed: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     };
-
-    let ticket = tickets.iter().find(|t| t.fields.id.as_deref() == Some(id));
-    match ticket {
-        None => vec![format!(
-            "branch `{branch}` names ticket `{id}`, but no ticket with that id exists"
-        )],
-        Some(t) if t.folder != Folder::Done => vec![format!(
-            "branch `{branch}` names ticket `{id}`, which is not in tickets/done/ \
-             (the PR for a ticket must move it to done/)"
-        )],
-        Some(_) => Vec::new(),
-    }
+    let base = match base {
+        Some(base) => base.to_string(),
+        None => git(&["merge-base", "HEAD", "origin/main"])
+            .or_else(|_| git(&["merge-base", "HEAD", "main"]))?
+            .trim()
+            .to_string(),
+    };
+    Ok(git(&["diff", "--name-only", &base])?
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string)
+        .collect())
 }
 
 /// The ticket a branch named `t<NNNN>-<slug>` is for, or `None` for any
@@ -1027,7 +1056,7 @@ fn notes_lines<'a>(body: &'a str, mark: &str) -> Vec<&'a str> {
 mod tests {
     use super::*;
 
-    fn ticket(id: &str, folder: Folder, status: &str, blocked_by: &[&str]) -> Ticket {
+    pub(super) fn ticket(id: &str, folder: Folder, status: &str, blocked_by: &[&str]) -> Ticket {
         Ticket {
             display_path: format!("tickets/{}/{id}-x.md", folder.dirname()),
             folder,
@@ -1498,41 +1527,7 @@ README.md
         ));
     }
 
-    // -- pr-branch --
-
-    #[test]
-    fn pr_branch_ok_when_ticket_is_done() {
-        let tickets = vec![ticket("2304", Folder::Done, "done", &[])];
-        let left = check_pr_branch(&tickets, "t2304-pathfinding");
-        assert!(left.is_empty(), "{left:?}");
-    }
-
-    #[test]
-    fn pr_branch_fails_when_ticket_still_open() {
-        let tickets = vec![ticket("2304", Folder::Open, "todo", &[])];
-        let errors = check_pr_branch(&tickets, "t2304-pathfinding");
-        assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("not in tickets/done/"));
-    }
-
-    #[test]
-    fn pr_branch_fails_when_ticket_unknown() {
-        let tickets: Vec<Ticket> = Vec::new();
-        let errors = check_pr_branch(&tickets, "t9999-ghost");
-        assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("no ticket with that id exists"));
-    }
-
-    #[test]
-    fn pr_branch_ignores_non_ticket_branches() {
-        let tickets: Vec<Ticket> = Vec::new();
-        let left = check_pr_branch(&tickets, "main");
-        assert!(left.is_empty(), "{left:?}");
-        let left = check_pr_branch(&tickets, "dependabot/cargo/foo-1.2.3");
-        assert!(left.is_empty(), "{left:?}");
-        let left = check_pr_branch(&tickets, "claude/some-work");
-        assert!(left.is_empty(), "{left:?}");
-    }
+    // -- the branch --
 
     #[test]
     fn ticket_id_from_branch_parses_prefix() {
@@ -1897,7 +1892,7 @@ README.md
             .replace("# body", "if 2106 is done");
         fs::write(root.join("tickets/done/2102-x.md"), done).unwrap();
 
-        let report = run(&root, None, &GameSource::Checkout(&root));
+        let report = run(&root, None, None, &GameSource::Checkout(&root));
         assert!(report.errors.is_empty(), "{:?}", report.errors);
         assert_eq!(
             report.warnings,
@@ -1950,7 +1945,7 @@ ticket 2001 adds y
         fs::write(root.join("docs/README.md"), clause).unwrap();
         fs::write(root.join("docs/adr/0001-x.md"), clause).unwrap();
         fs::write(root.join("docs/ROADMAP.md"), clause).unwrap();
-        let report = run(&root, None, &GameSource::Checkout(&root));
+        let report = run(&root, None, None, &GameSource::Checkout(&root));
         assert!(report.errors.is_empty(), "{:?}", report.errors);
         assert_eq!(
             report.warnings,
@@ -2130,7 +2125,7 @@ ticket 2001 adds y
         )
         .unwrap();
         fs::write(root.join("tickets/open/2107-x.md"), open("2107", "y")).unwrap();
-        let report = run(&root, None, &GameSource::Checkout(&root));
+        let report = run(&root, None, None, &GameSource::Checkout(&root));
         assert_eq!(report.errors.len(), 1, "{:?}", report.errors);
         assert!(
             report.errors[0].starts_with("tickets/open/2106-x.md:14: \"either order with 2107\""),
@@ -2143,7 +2138,7 @@ ticket 2001 adds y
             open("2107", "Either order with 2106: if 2106 is done, add x."),
         )
         .unwrap();
-        let report = run(&root, None, &GameSource::Checkout(&root));
+        let report = run(&root, None, None, &GameSource::Checkout(&root));
         assert!(report.errors.is_empty(), "{:?}", report.errors);
         let _ = fs::remove_dir_all(&root);
     }
@@ -2158,7 +2153,7 @@ ticket 2001 adds y
             .expect("xtask is at <repo>/crates/xtask");
         // Without the game: its ids are checked by `cargo xtask ticket-lint`.
         let no_game = repo_root.join("target/xtask-no-game");
-        let report = run(repo_root, None, &GameSource::Checkout(&no_game));
+        let report = run(repo_root, None, None, &GameSource::Checkout(&no_game));
         assert!(
             report.errors.is_empty(),
             "ticket-lint errors: {:#?}",
@@ -2207,7 +2202,7 @@ ticket 2001 adds y
         )
         .unwrap();
 
-        let report = run(&root, None, &GameSource::Checkout(&root));
+        let report = run(&root, None, None, &GameSource::Checkout(&root));
         let errors = report.errors;
 
         assert!(!errors.is_empty(), "{errors:?}");
@@ -2231,7 +2226,7 @@ ticket 2001 adds y
         fs::write(game_root.join("tickets/done/1131-x.md"), "").unwrap();
         let ticket = VALID_FRONTMATTER.replace("\"2102\", ", "");
         fs::write(root.join("tickets/open/2106-x.md"), &ticket).unwrap();
-        let ok = run(&root, None, &GameSource::Checkout(&game_root));
+        let ok = run(&root, None, None, &GameSource::Checkout(&game_root));
         assert!(
             ok.errors.is_empty() && ok.warnings.is_empty(),
             "{:?}",
@@ -2243,11 +2238,16 @@ ticket 2001 adds y
             ticket.replace("game#1131", "game#1132"),
         )
         .unwrap();
-        let bad = run(&root, None, &GameSource::Checkout(&game_root));
+        let bad = run(&root, None, None, &GameSource::Checkout(&game_root));
         assert_eq!(bad.errors.len(), 1, "{:?}", bad.errors);
         assert!(bad.errors[0].contains("unknown game ticket `game#1132`"));
 
-        let missing = run(&root, None, &GameSource::Checkout(&root.join("nowhere")));
+        let missing = run(
+            &root,
+            None,
+            None,
+            &GameSource::Checkout(&root.join("nowhere")),
+        );
         assert!(missing.errors.is_empty(), "{:?}", missing.errors);
         assert_eq!(missing.warnings.len(), 1);
         let _ = fs::remove_dir_all(&root);
