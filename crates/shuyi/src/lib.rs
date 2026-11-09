@@ -12,6 +12,8 @@
 //!   [`run_game`](prelude::run_game);
 //! - [`enabled_modules`]: the [`Module`] of each module turned on, which
 //!   the game installs once.
+//! - `script` (feature `script`): `shuyi-script`, rules from scripts,
+//!   which the game's rules call.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -21,6 +23,8 @@ pub use shuyi_app as app;
 pub use shuyi_assets as assets;
 pub use shuyi_core as core;
 pub use shuyi_platform as platform;
+#[cfg(feature = "script")]
+pub use shuyi_script as script;
 pub use shuyi_ui as ui;
 
 use alloc::boxed::Box;

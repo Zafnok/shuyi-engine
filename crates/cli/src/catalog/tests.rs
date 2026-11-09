@@ -53,7 +53,8 @@ fn the_engines_concerns_read_and_name_modules_or_the_default() {
             "bodies",
             "online",
             "world-drawing",
-            "kind"
+            "kind",
+            "scripting"
         ]
     );
     for concern in &catalog.concerns.concerns {

@@ -120,6 +120,10 @@ jobs:
       # render card's (ticket 2019).
       - name: Clippy on the web's code
         run: cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings
+      # The script runtime (ticket 2101) builds for the web; its example's
+      # web build (2102) is what shows the loader runs it.
+      - name: The script runtime for the web
+        run: cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings
       - name: Build Hello, Grid for the web
         working-directory: examples/hello-grid
         run: cargo shuyi web --release
@@ -1110,7 +1114,7 @@ jobs:
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
-        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 

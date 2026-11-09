@@ -484,7 +484,7 @@ them.
 | 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
 | 2254 | A source language names its wide set and its punctuation's width, as a pack's `lang.ron` does | 2303 |
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
-| 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
+| 2101 (done) | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |
 | 2125 | A rollout bot: `Determinize`, and flat Monte Carlo on copies that never see the luck to come (split out of 2113) | game#0506 |
 | 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |

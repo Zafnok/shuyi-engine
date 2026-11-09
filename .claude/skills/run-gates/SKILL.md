@@ -67,6 +67,12 @@ Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
 cd examples/hello-grid && cargo shuyi check --target all
 ```
 
+The script runtime builds for the web (CI's `wasm` job, ticket 2101):
+
+```bash
+cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings
+```
+
 The crates' layers (CI's `layers` job, ADR-0032): which engine crate
 depends on which, the outside crates of the pure ones, no device crate
 below any crate but the backend's, and the float ban in the simulations,
@@ -237,7 +243,7 @@ repository root):
 
 ```bash
 export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
-cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 ```
 

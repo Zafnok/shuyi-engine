@@ -235,13 +235,19 @@ The default engine stays small, so a game doesn't pay for what it doesn't use.
 Everything else is a **module**: a crate of the engine that a game turns on as a
 **feature** of `shuyi`, an optional part of a crate, such as physics or online play.
 `cargo shuyi modules` lists them by concern (perspective, bodies and motion, online
-play, kind of game), each with its status, and `cargo shuyi add <module>` turns one on
+play, kind of game, scripted rules), each with its status, and `cargo shuyi add <module>` turns one on
 in the game's `Cargo.toml` and copies its skill into `.claude/skills/`.
 
 A game installs the modules it turned on once, with `.modules(shuyi::enabled_modules)`
 on its `BasicGame`, so turning one on needs no change to its code. A module joins the
 running game with hooks of its own, functions the engine calls at set moments, and
 keeps its state on the context, where `ctx.module_state::<T>()` finds it.
+
+Some modules join nothing: they are libraries the game's rules call. `shuyi-script`
+(feature `script`) is one. It runs rules a game's modders write as text, in the
+language [Rhai](https://rhai.rs), on a view the rules hand it, and gives back plain
+values the rules turn into commands. A script can't change the game, read a clock or
+draw a random number, so a replay with scripted rules stays exact.
 
 ## A test of it
 
