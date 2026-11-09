@@ -2,9 +2,11 @@
 title = "Undo"
 description = "Actions of the game's own, and a History of commands that replays to take back a move."
 weight = 50
+aliases = ["learn/tutorial/05-undo/", "learn/tutorial/05-undo/play/"]
 
 [extra]
 step = 5
+follows = "rules-as-commands"
 +++
 
 A puzzle needs undo: one wrong push, and the level can't be won. This step adds it, in two
@@ -141,6 +143,6 @@ must equal it, with `assert_eq!`. That's only possible since `Puzzle` derives `P
 - **Game idea:** determinism, and how replaying commands can rebuild any moment.
 - **Shuyi:** `ActionSet`, and `History`.
 
-[Chapter 3](@/learn/book/actions.md#actions-of-a-game-s-own) has more on a game's own actions, and
-[chapter 6](@/learn/book/rules-as-commands.md#history-and-undo) on history. Next: one level isn't a
+[Chapter 4](@/learn/book/actions.md#actions-of-a-game-s-own) has more on a game's own actions, and
+[chapter 5](@/learn/book/rules-as-commands.md#history-and-undo) on history. Next: one level isn't a
 game.

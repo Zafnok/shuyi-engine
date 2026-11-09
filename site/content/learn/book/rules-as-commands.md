@@ -1,10 +1,11 @@
 +++
 title = "Rules as commands"
 description = "A game's rules are a state that changes only through commands, deterministic, with a history and a hash."
-weight = 60
+weight = 50
 
 [extra]
-chapter = 6
+part = "chapters"
+chapter = 5
 +++
 
 Most of what's hard about a game comes later: undo, saving a game in progress, a replay
@@ -19,8 +20,8 @@ and the same new state, on every machine, which is called being **deterministic*
 That is what replays, bug reports, bots, undo and online play all rest on.
 
 The chain is short, and worth learning by heart. A key press becomes an **action** (the
-keymap, [chapter 3](@/learn/book/actions.md)), an action becomes a **command** (the
-screen, [chapter 2](@/learn/book/games-and-screens.md)), and a command changes the
+keymap, [chapter 4](@/learn/book/actions.md)), an action becomes a **command** (the
+screen, [chapter 6](@/learn/book/games-and-screens.md)), and a command changes the
 **state** (the rules, this chapter), which the screen then shows.
 
 A turn game sends a command for each thing a player does. A real-time game sends its
@@ -81,7 +82,7 @@ Its contract:
 - Once `outcome` is `Some`, the game is over and `legal_commands` is empty.
 
 A screen sends the commands (the garden's `update`, in
-[chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below)) and shows the
+[chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below)) and shows the
 state; it never changes the state itself. To see that the rules decide everything,
 change one of them. Here, planting stops costing a seed:
 

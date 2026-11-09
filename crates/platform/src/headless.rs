@@ -16,7 +16,7 @@ use alloc::vec;
 
 #[cfg(feature = "std")]
 use shuyi_assets::bundle::Layer;
-use shuyi_ui::audio::{MusicCommand, SharedSamples, SoundId};
+use shuyi_ui::audio::{Gain, MusicCommand, SharedSamples, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
@@ -155,8 +155,8 @@ pub struct Speaker {
     requests: Vec<SoundRequest>,
     /// The last frame's music commands.
     music: Vec<MusicCommand>,
-    /// The last frame's volumes: music, sound and voice. Full until told.
-    volumes: Option<(f32, f32, f32)>,
+    /// The last frame's gain of each sound group; none before a frame.
+    gains: BTreeMap<String, Gain>,
     /// Whether everything was stopped (the game quit).
     stopped: bool,
     /// The sounds started with a handle and not stopped, in id order.
@@ -215,10 +215,10 @@ impl Speaker {
         &self.music
     }
 
-    /// The music, sound and voice volumes the last frame played at, 0–1;
-    /// full before any.
-    pub fn volumes(&self) -> (f32, f32, f32) {
-        self.volumes.unwrap_or((1.0, 1.0, 1.0))
+    /// The gain of each sound group the last frame played at, by group
+    /// ([`Gains::each`](shuyi_ui::audio::Gains::each)); empty before any.
+    pub fn gains(&self) -> &BTreeMap<String, Gain> {
+        &self.gains
     }
 
     /// Whether the game stopped all its audio (it quit).
@@ -344,7 +344,14 @@ impl Audio for Speaker {
     }
 
     fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) {
-        self.volumes = Some((frame.music_volume, frame.sound_volume, frame.voice_volume));
+        let same = (self.gains.iter())
+            .map(|(group, &gain)| (group.as_str(), gain))
+            .eq(frame.gains.each());
+        if !same {
+            self.gains.clear();
+            let each = frame.gains.each().map(|(g, gain)| (g.to_owned(), gain));
+            self.gains.extend(each);
+        }
         self.requests.clear();
         self.requests.extend_from_slice(frame.requests);
         for request in frame.requests {

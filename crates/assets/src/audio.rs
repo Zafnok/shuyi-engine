@@ -12,9 +12,14 @@
 //! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
 //! ([`OggVorbisTrack`]), and the manifest is read by
 //! [`AudioManifestRon`].
+//!
+//! Every cue plays in a sound group (ADR-0091): a sound in `ui` if it is a
+//! menu's, else in `sfx`; a track in `music`; a voice clip in `voice`. The
+//! built-in groups' ids are in [`groups`].
 use crate::prelude::*;
 
 mod formats;
+pub mod groups;
 
 use alloc::collections::{BTreeMap, BTreeSet};
 

@@ -1,4 +1,4 @@
-//! Chapter 2, a game and its screens: the title, the garden and the
+//! Chapter 6, a game and its screens: the title, the garden and the
 //! question asked over it, each a [`Screen`] on the stack, and the long
 //! form of a game's data for a game that outgrows the short path.
 

@@ -197,7 +197,7 @@ None.
   with no code of its own (its clause says so). If 3107 is done, its
   fixture stage's snapshots pass without edits, as 1120's do; if not,
   nothing to do.
-- **The book. From 2802 (done):** its chapter 4
+- **The book. From 2802 (done):** its chapter 2
   (`site/content/learn/book/frame-and-skins.md`) gets a section on the
   camera file (`camera.ron`).
 - **What changes for a game:** additive. 1120's follow call takes a

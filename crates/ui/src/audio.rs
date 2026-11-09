@@ -21,6 +21,11 @@
 //! sounds stop, so a loop can't outlive it. A loop meant to outlive a
 //! screen is started by the screen below it, or is music.
 //!
+//! Every sound, track and voice clip plays in a sound group ([`groups`]):
+//! the player sets a volume for each group, on a loudness curve
+//! ([`loudness`]), and one over all of them; the platform gets one
+//! [`Gain`] per cue ([`Gains`]).
+//!
 //! A game can make a sound at run time, from samples ([`Samples`]) rather than
 //! a file: [`AudioQueue::add_sound`] makes them a cue, played from then on
 //! as a cue of the manifest is, within [`ADDED_SECONDS_MAX`] and
@@ -47,12 +52,16 @@ use crate::input::frame_seconds;
 use alloc::collections::{BTreeMap, BTreeSet};
 
 mod added;
+pub mod groups;
 mod handles;
+pub mod loudness;
 mod samples;
 
 use added::Added;
 pub use added::{ADDED_BYTES_MAX, ADDED_SECONDS_MAX, AddSoundError};
+pub use groups::{Gains, GroupGains, SoundGroups};
 use handles::Handle;
+pub use loudness::Gain;
 pub use samples::{Samples, SamplesError, SharedSamples};
 
 /// The sounds the engine's widgets and screens play: the same cue means

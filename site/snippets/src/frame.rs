@@ -1,4 +1,4 @@
-//! Chapter 4, the frame and skins: what the garden shows as plain data
+//! Chapter 2, the frame and skins: what the garden shows as plain data
 //! (its view), and the skin that paints that view in glyphs. The rules
 //! and the view never name a color or a glyph; only the skin does. And a
 //! skin that paints a picture's pixels itself, a plasma moving with the

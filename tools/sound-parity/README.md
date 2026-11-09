@@ -15,7 +15,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `wasapi.py` | Windows' recorder: WASAPI loopback, through the documented COM interfaces |
 | `install-endpoint.ps1` | CI's real render endpoint on a Windows runner, which has none: Scream, pinned by its hash |
 | `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
-| `ring_test.js` | The web sound plugin under node: its ring's indices, and nothing lost as the context starts |
+| `ring_test.js` | The web sound plugin under node: its ring's indices, nothing lost as the context starts, and the start's lead over a busy page |
 | `retry.py`, `retry_test.py` | Which inconclusive platforms CI's gate measures again, and its test |
 | `capture_test.py` | Which recordings `capture.py` makes again: one the loopback lost frames from, or a scenario quad-snd underran in |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
@@ -78,7 +78,14 @@ that needed. A recording the loopback lost frames from is never judged, so `capt
 again, up to three times, and fails the step if each loses frames (ticket 2047).
 Each refusal is a warning in the job's log, with how many frames went, where, and
 how long the reader hadn't looked: as long as the half-second buffer, the recorder
-was late; much less, the system dropped them. To see only the timings of a recording:
+was late; much less, the system dropped them.
+
+Each run of packets the loopback flags silent is a line in the log too (ticket
+2049). A run of exact zeros in the sound of quad-snd's native `loop`, at a join, is
+quad-snd's own: on Windows it is none, 127 or 441 frames, as its mixing blocks fall.
+So it is never refused, and the scenario marks its joins as `Boundary`s.
+
+To see only the timings of a recording:
 
 ```bash
 cargo xtask sound-parity perf windows --dir target/sound-parity

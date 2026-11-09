@@ -1,0 +1,98 @@
+{#- The book's order (ADR-0090 §2), and what is made from it: the pager
+    through the whole book, the line at the top of a page, and the line
+    that ends a chapter with the project's steps after it.
+
+    The order is the book's `extra.parts`, in turn:
+    - `{ part = "…" }`: the book's flat pages whose `extra.part` names it,
+      by `weight`;
+    - `{ chapters = "<project>" }`: the chapters (`extra.part =
+      "chapters"`) by `weight`, each followed by that project's steps whose
+      `follows` names its file, and the project's landing page before its
+      first step;
+    - `{ section = "<folder>" }`: that section's landing page, then its
+      pages by `weight`.
+
+    `order` writes it as one content path a line (`learn/book/x.md`); a
+    template splits it. Zola's `lower` and `higher` stay inside a section,
+    so they can't run through the project. -#}
+
+{% macro order() -%}
+{%- set book = get_section(path="learn/book/_index.md") -%}
+{%- for entry in book.extra.parts -%}
+{%- if entry.part -%}
+{%- for p in book.pages %}{% if p.extra.part == entry.part %}{{ p.relative_path | safe }}
+{% endif %}{% endfor -%}
+{%- elif entry.chapters -%}
+{%- for p in book.pages %}{% if p.extra.part == "chapters" %}{{ p.relative_path | safe }}
+{{ self::after(chapter=p.slug, project=entry.chapters) }}{% endif %}{% endfor -%}
+{%- elif entry.section -%}
+{%- set folder = get_section(path="learn/book/" ~ entry.section ~ "/_index.md") -%}
+{{ folder.relative_path | safe }}
+{% for p in folder.pages %}{{ p.relative_path | safe }}
+{% endfor -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro order %}
+
+{#- The pages of `project` that come after the chapter whose file is
+    `chapter`, a content path a line: its steps that follow the chapter, and
+    the project's landing page before its first step. -#}
+{% macro after(chapter, project) -%}
+{%- set folder = get_section(path="learn/book/" ~ project ~ "/_index.md") -%}
+{%- set first = folder.pages | first -%}
+{%- for step in folder.pages %}{% if step.extra.follows == chapter -%}
+{%- if step.relative_path == first.relative_path %}{{ folder.relative_path | safe }}
+{% endif %}{{ step.relative_path | safe }}
+{% endif %}{% endfor -%}
+{%- endmacro after %}
+
+{#- The page or section at the content path `path`. -#}
+{% macro link(path, rel) -%}
+{%- if path is ending_with("_index.md") %}{% set p = get_section(path=path, metadata_only=true) %}{% else %}{% set p = get_page(path=path) %}{% endif -%}
+<a rel="{{ rel }}" href="{{ p.permalink | safe }}">{% if rel == "prev" %}← {% endif %}{{ p.title }}{% if rel == "next" %} →{% endif %}</a>
+{%- endmacro link %}
+
+{#- The pages before and after the one at the content path `current`, in
+    the book's order. -#}
+{% macro pager(current) -%}
+{%- set order = self::order() | trim | split(pat="
+") -%}
+{%- set_global at = -1 -%}
+{%- for path in order %}{% if path == current %}{% set_global at = loop.index0 %}{% endif %}{% endfor -%}
+<nav class="pager" aria-label="The book">
+  {%- if at > 0 %}
+  {{ self::link(path=order | nth(n=at - 1), rel="prev") }}
+  {%- else %}<span></span>{% endif %}
+  {%- if at >= 0 and at + 1 < order | length %}
+  {{ self::link(path=order | nth(n=at + 1), rel="next") }}
+  {%- endif %}
+</nav>
+{%- endmacro pager %}
+
+{#- The line at the top of a book page `p`, saying where it is: "The book ·
+    Chapter 5", "The book · Appendix A", or for a project's step "The book ·
+    Project: … · Step 4 of 10". -#}
+{% macro where(p) -%}
+<p class="meta"><a href="{{ get_url(path='@/learn/book/_index.md') }}">The book</a>
+  {%- if p.extra.chapter %} · Chapter {{ p.extra.chapter }}
+  {%- elif p.extra.appendix %} · Appendix {{ p.extra.appendix }}
+  {%- elif p.extra.step %}
+  {%- set project = get_section(path=p.ancestors | last) %}
+  {%- set steps = project.pages | filter(attribute="extra.step") %} · <a href="{{ project.permalink | safe }}">{{ project.title }}</a> · Step {{ p.extra.step }} of {{ steps | length }}
+  {%- endif %}</p>
+{%- endmacro where %}
+
+{#- The line that ends a chapter `p` with the steps of the book's folded
+    project that use its idea; nothing for a chapter with none. -#}
+{% macro then_steps(p) -%}
+{%- set book = get_section(path="learn/book/_index.md", metadata_only=true) -%}
+{%- for entry in book.extra.parts %}{% if entry.chapters -%}
+{%- set folder = get_section(path="learn/book/" ~ entry.chapters ~ "/_index.md") -%}
+{%- set steps = folder.pages | filter(attribute="extra.follows", value=p.slug) -%}
+{%- if steps | length > 0 %}
+<p class="then-steps">Now use it in the project:
+  {%- for step in steps %} {% if loop.last and not loop.first %}and {% endif %}<a href="{{ step.permalink | safe }}">step {{ step.extra.step }}, <em>{{ step.title }}</em></a>{% if not loop.last %}{% if steps | length > 2 %},{% endif %}{% else %}.{% endif %}
+  {%- endfor %}</p>
+{%- endif -%}
+{%- endif %}{% endfor -%}
+{%- endmacro then_steps %}

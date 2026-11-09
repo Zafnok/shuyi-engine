@@ -36,7 +36,7 @@ None. The audience is decided.
 - Rewrite each chapter of the book for the tutorial's reader: say what
   each idea is for before its name, explain each Rust feature the first
   time a chapter's code uses it (or link the tutorial's explanation and
-  its [glossary](../../site/content/learn/tutorial/glossary.md)), and say
+  its [glossary](../../site/content/learn/book/glossary.md)), and say
   what can go wrong and what the error looks like.
 - A chapter keeps its job: one concept, explained on its own, on Moon
   Garden. The tutorial stays the one that builds a game in order.

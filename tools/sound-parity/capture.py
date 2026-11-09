@@ -173,6 +173,17 @@ class Recorder:
         self.process.wait(10)
 
 
+def spans(packets: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Packets as (first frame, frames), those that follow each other joined."""
+    joined: list[tuple[int, int]] = []
+    for at, frames in packets:
+        if joined and sum(joined[-1]) == at:
+            joined[-1] = (joined[-1][0], joined[-1][1] + frames)
+        else:
+            joined.append((at, frames))
+    return joined
+
+
 class LoopbackRecorder:
     """The same on Windows: the default render endpoint, through WASAPI loopback."""
 
@@ -199,6 +210,10 @@ class LoopbackRecorder:
 
     def stop(self) -> None:
         self.loopback.stop()
+        silences = spans(self.loopback.silences)
+        if silences:
+            where = ", ".join(f"{frames} frames at {at}" for at, frames in silences)
+            print(f"{self.loopback.path.name}: the loopback flagged silent {where}", file=sys.stderr, flush=True)
         # The system dropped frames while this was reading: not a recording of it all.
         if losses := self.loopback.losses:
             where = "; ".join(str(loss) for loss in losses)

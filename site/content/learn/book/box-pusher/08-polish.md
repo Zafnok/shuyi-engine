@@ -2,9 +2,11 @@
 title = "Polish"
 description = "A moves counter from the history, and the engine's options and key-rebinding screens."
 weight = 80
+aliases = ["learn/tutorial/08-polish/", "learn/tutorial/08-polish/play/"]
 
 [extra]
 step = 8
+follows = "saves-and-settings"
 +++
 
 The game is whole. This step adds what makes it pleasant: a moves counter, and a way for players to change

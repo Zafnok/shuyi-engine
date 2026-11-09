@@ -67,6 +67,7 @@ pub fn load(storage: &dyn Storage) -> Result<Option<Garden>, LoadError> {
 
 #[cfg(test)]
 mod tests {
+    use shuyi::ui::audio::groups::MUSIC;
     use shuyi::ui::settings::SETTINGS_KEY;
 
     use super::*;
@@ -100,9 +101,9 @@ mod tests {
     #[test]
     fn a_changed_setting_is_kept_in_the_players_profile() {
         let mut ctx = game().ctx().unwrap();
-        ctx.change_settings(|settings| settings.music_volume = 40)
+        ctx.change_settings(|settings| settings.volumes.set(MUSIC, 40))
             .unwrap();
-        assert_eq!(ctx.settings().music_volume, 40);
+        assert_eq!(ctx.volume(MUSIC), 40);
         assert!(ctx.storage.read(SETTINGS_KEY).unwrap().is_some());
     }
     // ANCHOR_END: settings
