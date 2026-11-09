@@ -5,8 +5,12 @@ description: Record a technical/architecture decision as an ADR in docs/adr/. Us
 
 # Write an ADR
 
-1. Next number: highest `docs/adr/NNNN-*.md` + 1. Check open PRs for
-   numbers already taken (`gh pr list --state open`).
+1. **Next number:** `git fetch origin`, then `cargo xtask next-id adr`.
+   It prints one past the highest that `origin/main`, this checkout and
+   every open PR hold (ticket 2052). If it warns that `gh` couldn't list
+   the open PRs, check them by hand before taking it. `cargo xtask
+   check-docs` fails two ADRs with one number, so on the merge ref the
+   second PR to take it fails: renumber yours with `next-id` again.
 2. Copy `docs/adr/0000-template.md` to `docs/adr/NNNN-kebab-title.md`.
 3. Fill in four sections:
    - **Context**: the facts and forces, with sources;
