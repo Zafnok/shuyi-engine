@@ -13,11 +13,15 @@ them without asking questions.
 1. **Pick the block** (`tickets/README.md`). New tickets use `20xx`
    onward by area; the moved `1119`–`1150` keep their numbers. Bugs go
    in the block of the area they are in.
-2. **Pick the number:** the next unused number in that block, across
-   both `tickets/open/` and `tickets/done/`:
+2. **Pick the number** with `next-id`: the next one in that block that
+   neither `origin/main`, this checkout nor an open PR has taken (ticket
+   2052). Run `git fetch origin` first. It never fills a gap.
    ```bash
-   ls tickets/open tickets/done | grep -E '^22[0-9]{2}-' | sort | tail -1
+   cargo xtask next-id ticket 22   # the block's two digits
    ```
+   If it warns that `gh` couldn't list the open PRs, check them by hand
+   (`gh pr list --state open`) before taking the number. A ticket lint
+   on the merge ref fails two tickets with one id.
 3. Copy `tickets/TEMPLATE.md` to `tickets/open/NNNN-short-kebab-title.md`.
    Keep a bare `@word` out of the title.
 4. **Fill in every section:**

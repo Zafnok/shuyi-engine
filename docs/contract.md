@@ -456,7 +456,8 @@ fingerprint is not the one
 1. change the type;
 2. `cargo shuyi schema --out crates/cli/schemas` from the repository's
    root;
-3. raise `contract::VERSION` by one;
+3. raise `contract::VERSION` by one over `main`'s, after merging `main`
+   last (CI's `api` job fails a PR that raises it by more, ticket 2052);
 4. add the line the test asks for to `versions.json`.
 
 ## The MCP server
