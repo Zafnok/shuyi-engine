@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["2825"]
 nick_input: sign-off
-completed:
+completed: 2026-11-09
 ---
 
 # 2826 — The reader's filter
@@ -158,24 +158,24 @@ signed off for 2823 did.
 
 ## Acceptance criteria
 
-- [ ] A first visit to any book page opens the popup, and a later visit
+- [x] A first visit to any book page opens the popup, and a later visit
       doesn't; *Start over* opens it again.
-- [ ] For each of the four readers of step 3, the contents tag the page
+- [x] For each of the four readers of step 3, the contents tag the page
       the ADR says, and the reader sees no passage of an audience they
       know but its stub.
-- [ ] Nothing but the popup and the contents' tags says where to start.
-- [ ] Skip shows the whole book with nothing hidden.
-- [ ] The bar changes the answers on the page at once, and says how many
+- [x] Nothing but the popup and the contents' tags says where to start.
+- [x] Skip shows the whole book with nothing hidden.
+- [x] The bar changes the answers on the page at once, and says how many
       passages it hides.
-- [ ] A page the answers hide entirely is marked in the contents and links
+- [x] A page the answers hide entirely is marked in the contents and links
       the next page needed.
-- [ ] With storage blocked, and with JavaScript off, the book reads in
+- [x] With storage blocked, and with JavaScript off, the book reads in
       full (said in the notes).
-- [ ] The keyboard reaches every control, and every page works at 375 px.
-- [ ] The page loads nothing from another host (`check-build.sh` passes).
-- [ ] Nick's sign-off is in the completion notes.
-- [ ] The book's chapter is updated (2802): this ticket is that change.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The keyboard reaches every control, and every page works at 375 px.
+- [x] The page loads nothing from another host (`check-build.sh` passes).
+- [x] Nick's sign-off is in the completion notes.
+- [x] The book's chapter is updated (2802): this ticket is that change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -185,5 +185,123 @@ signed off for 2823 did.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- **The popup:** `book-macros.html`'s `filter()` writes a `<dialog>`
+  titled "Welcome to the book", with ADR-0090's words. The questions show
+  one at a time below the ones answered, each answer a button with
+  `aria-pressed`, so an earlier answer can be changed. "No" to
+  programming passes over Rust. "Yes, in another engine" shows the line
+  sending the reader to appendix A, then **Done**. **Skip: show me the
+  whole book** and Escape write `"knows": []`. The last answer closes it,
+  and the reader stays on the page. Focus goes to the first answer, stays
+  in the modal, moves to each new question, and goes back to what had it
+  (**Start over**) on closing.
+- **The answers:** `localStorage`, `shuyi-book`,
+  `{"v": 1, "knows": [...], "engine": …}`, every read and write in
+  `try`/`catch`.
+- **The bar,** on every book page: four toggles, "N notes hidden", **Show
+  all** (for this visit) and **Start over**.
+- **The contents' tags** on the front page: **Start here**, **You can
+  skip this** and **Read this first**, as ADR-0090 §6 says.
+- **Skipping ahead:** *Before you start*'s top says "You can skip this
+  page. Next for you: Quick start →" to a programmer, the pager passes over
+  it with "Skipped: *Before you start*", and the contents tag it.
+- **The script,** `site/static/book-filter.js`, plain JS loaded in the
+  `<head>`: it sets `data-book` and `data-book-fold` on `<html>` before the
+  page is drawn, so nothing flashes, and `style.css` folds by them. It
+  reads the book's order from a JSON block that `filter()` writes from
+  `order()`: each page's URL, title and page-level mark, and appendix A.
+  `base.html` has a new `head` block for it. The words are all in the
+  templates, but for the counts and the tags.
+- **The build checks** (`check-build.sh`) fail a built book page that
+  doesn't load `book-filter.js`, and a passage's mark that the script's
+  `AUDIENCES` or `style.css`'s fold rules don't have. Each was seen to
+  fail: with `project.html`'s script left out, and with `shuyi` taken out
+  of `AUDIENCES`.
+- **Docs:** `site/README.md` has a new section, *The reader's filter*,
+  and the filter in *What is where*, *The rules* and *The checks*. The docs
+  map's row for the book names the filter. The `document` skill holds no
+  copy of the map, so it needed no change.
+
+**Nick's sign-off (2026-11-09),** in the desktop app's browser, recorded
+in `docs/decisions.md`, *the reader's filter leaves out what a reader
+knows*. He read it twice before signing off:
+
+1. "notes should have both show and hide": an opened note had no way to
+   fold again. Every note shown now has " · hide" on its label.
+2. A folded note's line "still takes up a lot of space": a reader who
+   says they know an audience is trusted, and its notes are not drawn at
+   all. Show and hide are only for the notes a reader sees.
+3. Shown that, he answered **"Yes, signed off"**.
+
+**Deviations, both from Nick's answers:**
+
+- **A passage of an audience the reader knows leaves no stub.** The
+  ticket's *Scope* and ADR-0090 §6 said it leaves a one-line stub.
+  [ADR-0098](../../docs/adr/0098-the-readers-filter-leaves-a-known-audiences-notes-out-whole-and-show-and-hide-are-for-the-notes-a-reader-sees.md)
+  amends §6. The stub ("New to Rust? `match` · show") is left by a note
+  the reader hides. The bar's count and **Show all** stay, so nothing is
+  lost for good, and a change in the bar or **Start over** resets each
+  note's own state.
+- **The front page and *Before you start*** said "a folded note leaves a
+  line you can click to open it". They now say the bar leaves out the
+  notes you don't need, and a note you see can be hidden and shown again.
+  The front page's text was Nick's (ADR-0090); he read the new sentence
+  before signing off.
+
+**By hand in the built-in browser** (`zola serve`), in this order:
+
+| Reader | Answers | Contents' tags | A page with marks | Next |
+| ------ | ------- | -------------- | ----------------- | ---- |
+| new to programming | No · — · No | *Before you start*: Start here | *Before you start*: no notes hidden, no skip line; then the programming toggle off shows "You can skip this page. Next for you: Quick start →" | Quick start → |
+| a programmer new to Rust and to games | Yes · No · No | *Before you start*: You can skip this; Quick start: Start here | Quick start: 5 programming notes; a note opened, focus on it | Project → with "Skipped: *Before you start*"; the quick start's ← gone |
+| a Rust programmer from another engine | Yes · Yes · another engine, Done | the same, and appendix A: Read this first | Step 3: 12 of 13 notes left out (11 Rust, 1 games), the Shuyi one shown | ← Rules as commands, Pushing → |
+| knows Shuyi | Yes · Yes · with Shuyi, answered on step 4 first | — | Step 4 stays open after the popup: 9 notes hidden; step 3: 13 of 13 | — |
+
+- **Skip:** Escape on step 4's popup, after **Start over**: `"knows": []`,
+  no notes hidden.
+- **Start over** opens the popup, clears the answers, and gives focus
+  back to itself on closing.
+- **A step's page first:** with storage cleared, step 4 opened the popup.
+  A later visit to any page didn't.
+- **A link into a hidden passage:** `03-walk/#the-big-idea-commands`, in a
+  Shuyi note, for a reader who knows Shuyi, opened that note at the anchor.
+  A `hashchange` to it opened it too.
+- **The bar:** "New to Rust" off on the quick start: 12 notes hidden, and
+  `knows` written at once; **Show all**: none, and the button gone; on
+  again: 4. **Hide** on a shown note: its line with "show", focus on it,
+  the count unchanged; **show** brings it back.
+
+**Step 4's checks:**
+
+- **Storage blocked** (the page in a frame whose `localStorage` throws):
+  the popup opened, all 13 notes of step 3 showed, the answers folded the
+  page, and the bar worked, for that page only. The book reads in full.
+- **JavaScript off** (a sandboxed frame, no scripts): no popup, no bar,
+  13 of 13 notes shown under their labels, the pager as built.
+- **375 px:** every page of the book (25 and the front page), for a
+  programmer and for a reader new to everything, with every note hidden
+  to its line: none scrolls sideways. The popup fits at 375 px too.
+- **Keyboard:** Tab and Enter answered the popup, focus moved to each new
+  question, and a visible ring showed on every button.
+
+**Gates run:** `typos`; `cargo xtask check-book`, `check-docs`,
+`check-links`, `check-pins` and `ticket-lint`; `zola check`;
+`site/check-build.sh`; `cargo xtask llms` (the twins carry no popup,
+`llms-full.txt` 219 960 bytes); the engine's `cargo shuyi lint`. No Rust
+changed, so the workspace gates are CI's.
+
+**Handed over:**
+
+- 2827 has a "From 2826 (done)" note: what the filter leaves out, the
+  hide and the stub, and what a check needs to be treated the same.
+- 2829's note on the filter is now "From 2826 (done)": where the popup's
+  questions are, and that `read()` and `write()` must carry its
+  `"version"`.
+
+**Follow-up tickets:** none.
+
+No break: no public API, format or golden value changed.
+
+Book: this ticket is the book's change.

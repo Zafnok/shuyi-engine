@@ -1693,3 +1693,33 @@ speed of its own reflection glue), he chose **"Yes, Rhai
 - **The exception goes when Rhai drops `smartstring`** (its 2.0, or a
   release that makes it optional). Not legal advice: MPL-2.0's duties
   come with distributing its code, and no game does.
+
+## 2026-11-09: the reader's filter leaves out what a reader knows
+
+Source: Nick, signing off ticket 2826 in the desktop app's browser. He
+answered the popup, read a page, and opened a folded note:
+
+> "notes should have both show and hide, right now they only have show
+> button and not hide / collapse button."
+
+Shown hide on every note, he wrote:
+
+> "in onboarding / global toggles, the notes should then not even have
+> the notes hidden when the user selects they know something, since a
+> hidden note still takes up a lot of space. Instead if user selects for
+> instance they know Rust, we should trust them, and outright not render
+> even hidden Rust notes to them. Show/Hide should be only for notes user
+> is manually interacting with within their comfort level"
+
+Shown the filter built that way, he answered **"Yes, signed off"**.
+
+**Rules:**
+
+- **A note of an audience the reader knows is left out whole,** with no
+  line in its place. The popup's answers and the bar's toggles decide
+  which.
+- **Every note the reader sees has hide,** which folds it to a line, and
+  the line has show.
+- The bar still says how many notes it leaves out, and **Show all** shows
+  them for the visit.
+- ADR-0098 holds the design; it amends ADR-0090 §6.
