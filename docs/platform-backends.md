@@ -141,8 +141,9 @@ confirmed. A backend that never reports leaves every request pending.
    while paused without focus (`App::is_paused`), `poll_input`
    (dropped), `audio().play` with nothing and every gain at 0
    (`Gains::muted`) if the game is muted too, and `present` of the last frame: no update, no steps;
-4. `changed_files`, with debug tools on: the paths go to the game's
-   modules before its update (never in a build that ships);
+4. `changed_files`, with debug tools on or while `watches_files`: the
+   paths go to the game's modules before its update (in a build that
+   ships, only for a folder the game named to be watched);
 5. `poll_input`;
 6. `text_input`: whether there is a system keyboard, and its answer if a
    screen's ask waits for one;
@@ -473,7 +474,7 @@ default, `None`, and no snapshot is taken.
 The files that changed on disk since the last call, in debug builds
 (ADR-0071): their paths in the bundle, each with its new bytes already in its
 layer (`Layer::replace`). `App` asks once a frame the game runs, while debug
-tools are on, so a build that ships never asks. A backend with files to watch
+tools are on or while `watches_files` (below) says so, so a build that ships asks only for a folder the game named. A backend with files to watch
 looks at them only every so often: `shuyi-app` compares the modification times
 and sizes of the folders `read_folder` read, once a second, with no clock read
 and no folder scanned when it has none. Keep what a frame shows of
@@ -483,6 +484,17 @@ something from a file keeps it current itself: `shuyi-app` remakes the textures
 of the changed paths, shows a picture's decode error beside those, and reads
 `AppConfig::files` through the folder `watched_layer` read. A device with no
 files to watch leaves the default, which adds nothing.
+
+### `watches_files(&self) -> bool` (has a default)
+
+Whether the game asked for a folder to be watched in every build, not only
+one with debug tools (ADR-0095): a writer's preview program, built
+optimized, that plays the files they save. `App` then asks for
+`changed_files` with debug tools off too. `shuyi-app` answers whether a
+folder was read with `read_watched_folder`, and in a build without debug
+tools its poller looks at those folders only. The headless backend answers
+what `HeadlessPlatform::set_watches_files` set. A device with no files to
+watch leaves the default, `false`.
 
 ## Files handed in at run time (optional)
 

@@ -151,6 +151,19 @@ map) with a type that implements `Directive`: the parser hands it every
      is `narration`, and the `choices` while a choice is open.
    - `advance()` moves to the next text box; at a choice it waits for
      `choose(n)`. `is_choosing()` and `is_finished()` say where it is.
+   - `DialoguePlayer::from_text_box(&scene, hooks, &present, n,
+     &replies)` starts at text box `n` (0 is the first), everything
+     before it applied as if read and its last `@music` pending; at each
+     choice on the way it takes the next of `replies`, else the first.
+     `direction()` is how the line on screen is said (its `( … )`, or the
+     `@delivery` in force), which the player never sees: a writer's
+     preview or a voice tool shows it.
+   - For a preview: `scene.conditions()` lists who the `@if` blocks
+     test, a switch each; `parsed.text_boxes(&present, &replies)` lists
+     each text box's source line and step, and `parsed.text_box_at(line,
+     &present, &replies)` which one a typed line falls in. A preview
+     program reads its folder with `shuyi_app::read_watched_folder`, so
+     an optimized build plays each file the writer saves.
    - `TextBox::new(&text, width, lines, ctx.widths())` pages and types
      a line out, wrapped in cells (a wide character is two; Japanese
      breaks between characters, never before `。` or after `「`):

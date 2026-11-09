@@ -554,6 +554,8 @@ pub struct HeadlessPlatform {
     changes: Vec<(Layer, String, Vec<u8>)>,
     /// How many times `App` asked what changed.
     changed_asks: u32,
+    /// Whether it says a folder is watched in every build.
+    watches_files: bool,
     /// What runs on each frame presented, if a tool set it.
     present_hook: Option<Hook>,
 }
@@ -608,6 +610,7 @@ impl HeadlessPlatform {
             #[cfg(feature = "std")]
             changes: Vec::new(),
             changed_asks: 0,
+            watches_files: false,
             present_hook: None,
         }
     }
@@ -782,6 +785,13 @@ impl HeadlessPlatform {
         self.changes.push((layer, path.to_owned(), bytes));
     }
 
+    /// Says from now on that a folder is watched in every build, or not
+    /// ([`Platform::watches_files`]): as a backend does once a game read
+    /// one to be.
+    pub fn set_watches_files(&mut self, on: bool) {
+        self.watches_files = on;
+    }
+
     /// How many times `App` asked what changed
     /// ([`Platform::changed_files`]).
     pub fn changed_asks(&self) -> u32 {
@@ -900,6 +910,10 @@ impl Platform for HeadlessPlatform {
             Memory::Fake => Some(fake_snapshot(self.presented)),
             Memory::None | Memory::Real(_) => self.snapshots.map(|snapshot| snapshot()),
         }
+    }
+
+    fn watches_files(&self) -> bool {
+        self.watches_files
     }
 
     #[cfg(feature = "std")]

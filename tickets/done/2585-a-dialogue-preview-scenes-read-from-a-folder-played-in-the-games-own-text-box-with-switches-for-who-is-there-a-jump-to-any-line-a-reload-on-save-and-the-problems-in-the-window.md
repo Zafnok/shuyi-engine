@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 2585 — A dialogue preview
@@ -175,21 +175,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Scene::conditions` lists each tested character once, nested and
+- [x] `Scene::conditions` lists each tested character once, nested and
       in reactions included (unit tests).
-- [ ] A player started at text box 3 shows the same view (portraits,
+- [x] A player started at text box 3 shows the same view (portraits,
       caption, text) as one advanced twice from the start, and has the
       same pending music (property test over generated scenes).
-- [ ] On Hello, Grid's preview, with a character switched off, the
-      scene plays its `@else` line (Harness test reading the view).
-- [ ] A changed file, through the headless backend's script, is played
+- [x] ~~On Hello, Grid's preview, with a character switched off, the
+      scene plays its `@else` line (Harness test reading the view).~~
+      (not done: moved to 2586 with the screen, the split of step 2)
+- [x] ~~A changed file, through the headless backend's script, is played
       on the next frame from the same text box; a broken one keeps the
       last good scene and lists its problem with file and line (Harness
-      tests).
-- [ ] A build that opts in polls its folder with debug tools off; one
+      tests).~~ (not done: moved to 2586 with the screen; the headless
+      path it uses, `Harness::watch_files` and `change_file`, is tested
+      here)
+- [x] A build that opts in polls its folder with debug tools off; one
       that doesn't never polls (tests with the counting fake clock).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -200,5 +203,66 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Split (step 2).** The size estimate came to about 2,300 lines: the
+screen alone (logic, view, skin, the trait the game hands in, the reload
+module, actions, and their tests) is 1,000 or more, as the ready-made
+screens in `crates/ui/src/screens/` are. So this ticket did the pieces,
+and **2586** (blocked by this one) does the preview screen, Hello,
+Grid's preview, the `shuyi-dialogue` skill's section "A preview for your
+writer" and the book's section, with the two acceptance criteria above
+it took over. Ticket 3082's clause now names 2586.
+
+What was done:
+
+- `Scene::conditions` (`shuyi-assets`): each character an `@if` block
+  tests, in reactions and nested blocks too, once each, in order.
+- `ParsedScene::text_boxes(present, replies)` (with `TextBoxAt`, a plain
+  value: its line and step) and `ParsedScene::text_box_at(line, present,
+  replies)`: the text boxes as they play, and the one a source line falls
+  in (the last starting at or before it, so a line that goes on below
+  its first, or a portrait or music line after it, finds that box).
+- `DialoguePlayer::from_text_box(scene, hooks, present, text_box,
+  replies)` and `DialoguePlayer::direction()` (`shuyi-ui`). A choice
+  before text box 0 is answered too, so text box 0 is the first text box
+  even in a scene that opens on a choice. A reply past a menu's end takes
+  the first, in both the player and `text_boxes`.
+- The watch opt-in: `shuyi_app::read_watched_folder`, `Platform::watches_files`
+  (defaulted `false`), `HeadlessPlatform::set_watches_files` and
+  `Harness::watch_files`; `App` asks for changed files with debug tools
+  off while the platform says so; the `Poller`, off, takes and looks at
+  only the folders read to be watched in every build.
+- Tests: the conditions; the text boxes and the line lookup; the
+  direction; a player started at a text box (unit, and a property test
+  over generated scenes with blocks, choices and the game's own lines,
+  checked against reading up to it and against `text_boxes`); the poller
+  off with a folder for debug builds only (never reads the clock) and
+  with one watched in every build (does, once a second); the real
+  `read_watched_folder` handed to a poller that is off; a Harness test of
+  a changed file reaching the game with debug tools off.
+
+Deviations:
+
+- **ADR-0095, not a section of ADR-0071.** The ticket asked for a section
+  in ADR-0071, but an accepted ADR is never edited to change its meaning
+  (`docs/adr/README.md`), and this changes §1's "a build that ships never
+  asks". ADR-0095 amends ADR-0071 §1; the index says so.
+- **The opt-in is one call.** `read_watched_folder` both notes the folder
+  and makes the backend say `watches_files`, so a game can't do half of
+  it (ADR-0095, *Alternatives*).
+- The watch tests that take the folders read share a lock, since a
+  poller that is on takes every folder another test read.
+
+Seen, not done: `watch::tests::a_folder_read_is_taken_by_the_poller`
+fails in a release build (`cargo test --release`), on `main` too: it
+asserts a change is seen after finding no folder, as a build without
+debug tools finds none. CI runs the tests in debug builds only.
+
+Book: the reload section of chapter 3 (`assets-and-formats.md`) says a
+build that ships watches a folder read with `read_watched_folder`. The
+dialogue pieces get the book's section with the screen, in 2586.
+
+No break: every change to the public API is an addition (the new
+`Platform` method has a default).
+
+The game: game#0764 waits for 2586 too; the game's PR that moves the pin
+past both is game#0764's.
