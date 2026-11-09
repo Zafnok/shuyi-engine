@@ -95,5 +95,14 @@
                 (id: "action-rpg", name: "action RPG", by: "shuyi-action", status: parked, tickets: ["2756"]),
             ],
         ),
+        (
+            id: "scripting",
+            name: "Scripted rules",
+            alternatives: true,
+            answers: [
+                (id: "none", name: "none: rules in Rust", by: "default", status: ready, tickets: []),
+                (id: "rhai", name: "Rhai scripts", by: "shuyi-script", status: planned, tickets: ["2101", "2102"]),
+            ],
+        ),
     ],
 )

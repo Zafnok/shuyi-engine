@@ -104,5 +104,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0089](0089-one-bit-roles-draw-everything-the-inks-do-a-dots-pattern-and-a-roles-edge-and-invert.md) | One-bit roles draw everything the inks do: a `Dots` pattern, and a role's `edge` and `invert` | Accepted; amends ADR-0026 |
 | [0090](0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) | One book: the project folded into the chapters, a `newcomer` mark around a passage, and the reader's filter kept in the browser | Accepted |
 | [0091](0091-sound-groups-the-players-volumes-as-a-tree-of-groups-on-a-loudness-curve-worked-out-before-any-backend.md) | Sound groups: the player's volumes as a tree of groups on a loudness curve, worked out before any backend | Accepted; extends ADR-0004 §6 and ADR-0063 |
+| [0093](0093-scripted-rules-rhai-integer-only-with-no-clock-no-luck-no-files-and-limits-views-in-and-values-out-by-serde.md) | Scripted rules: Rhai, integer only, with no clock, no luck, no files, and limits; views in and values out by serde | Accepted; extends ADR-0084 §7 and ADR-0009 |
 
 Template: [`0000-template.md`](0000-template.md).
