@@ -365,6 +365,14 @@ impl<G: GameData> Harness<G> {
         self
     }
 
+    /// Has the headless backend say a folder is watched in every build, or
+    /// not ([`HeadlessPlatform::set_watches_files`]): the files changed
+    /// then reach the game with debug tools off too.
+    pub fn watch_files(&mut self, on: bool) -> &mut Self {
+        self.platform.set_watches_files(on);
+        self
+    }
+
     /// Presses and releases each whitespace-separated chord in turn, e.g.
     /// `"Down Down f"` or `"Shift+Space Enter"`: a frame with the press,
     /// then a frame with the release, each [`FRAME_DT`] long.

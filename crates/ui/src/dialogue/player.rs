@@ -236,6 +236,44 @@ impl<H: DialogueHooks> DialoguePlayer<H> {
         player
     }
 
+    /// Starts `scene` as [`new`](Self::new) does, then plays it on to its
+    /// text box `text_box` (0 is the first) as if each box before it were
+    /// read: every portrait, caption and game line before it applied, and
+    /// the last `@music` line reached waiting in
+    /// [`pending_music`](Self::pending_music), as after a skip. At the
+    /// `n`-th reply choice on the way it takes reply `replies[n]`, the
+    /// first when the list has no `n`-th or names no such reply: the text
+    /// boxes are those of
+    /// [`ParsedScene::text_boxes`](shuyi_assets::dialogue::ParsedScene::text_boxes)
+    /// with the same replies. A scene with fewer text boxes is finished.
+    pub fn from_text_box(
+        scene: &Scene<H::Directive>,
+        hooks: H,
+        present: &Present,
+        text_box: usize,
+        replies: &[usize],
+    ) -> Self {
+        let mut player = Self::new(scene, hooks, present);
+        let mut replies = replies.iter().copied();
+        // The text boxes shown so far, the one on screen among them.
+        let mut shown = usize::from(matches!(player.showing, Showing::Text(_)));
+        loop {
+            match player.showing {
+                Showing::Text(_) if shown > text_box => break,
+                Showing::Finished => break,
+                Showing::Choice(index, _) => {
+                    let count = player.options(index).len();
+                    player.choose(replies.next().filter(|&r| r < count).unwrap_or(0));
+                }
+                Showing::Text(_) => player.step_on(),
+            }
+            if matches!(player.showing, Showing::Text(_)) {
+                shown += 1;
+            }
+        }
+        player
+    }
+
     /// What fills the text and plays the game's lines.
     pub fn hooks(&self) -> &H {
         &self.hooks
@@ -282,6 +320,17 @@ impl<H: DialogueHooks> DialoguePlayer<H> {
         }
     }
 
+    /// The step of the text box on screen (while a choice is open, of the
+    /// line being answered).
+    fn text_step(&self) -> Option<&Step<H::Directive>> {
+        let at = match self.showing {
+            Showing::Text(at) => Some(at),
+            Showing::Choice(_, before) => before,
+            Showing::Finished => None,
+        };
+        at.and_then(|at| self.step(at))
+    }
+
     /// The options of the choice at scene step `index`.
     fn options(&self, index: usize) -> &[ChoiceOption<H::Directive>] {
         match self.scene.steps.get(index) {
@@ -321,13 +370,22 @@ impl<H: DialogueHooks> DialoguePlayer<H> {
     /// The id of the line in the text box (while a choice is open, of the
     /// line being answered); `None` once the scene is finished.
     pub fn line(&self) -> Option<&LineId> {
-        let at = match self.showing {
-            Showing::Text(at) => Some(at),
-            Showing::Choice(_, before) => before,
-            Showing::Finished => None,
-        };
-        match at.and_then(|at| self.step(at)) {
+        match self.text_step() {
             Some(Step::Say { line, .. } | Step::Narrate { line, .. }) => Some(line),
+            _ => None,
+        }
+    }
+
+    /// How the line in the text box is said (while a choice is open, the
+    /// line being answered): its own `( … )`, else the `@delivery` in force
+    /// where it was written. The player never sees it; a voice actor or a
+    /// writer's preview does. `None` for a line with neither, or once the
+    /// scene is finished.
+    pub fn direction(&self) -> Option<&str> {
+        match self.text_step() {
+            Some(Step::Say { direction, .. } | Step::Narrate { direction, .. }) => {
+                direction.as_deref()
+            }
             _ => None,
         }
     }

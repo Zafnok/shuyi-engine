@@ -1278,14 +1278,16 @@ fn use_look_widths<G: GameData>(game: &mut Game<G>, look: Option<LookOf<G>>) {
 }
 
 /// Hands the files the platform says changed to `game`'s modules: while
-/// debug tools are on, in a build with them. A build that ships never asks.
-/// Whether it named any.
+/// debug tools are on, in a build with them, or while the platform watches
+/// a folder the game asked for in every build (ADR-0095). A build
+/// that ships asks only then. Whether it named any.
 fn tell_changed<G: GameData>(
     platform: &mut impl Platform,
     game: &mut Game<G>,
     changed: &mut Vec<String>,
 ) -> bool {
-    if !(shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools) {
+    let debug = shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools;
+    if !(debug || platform.watches_files()) {
         return false;
     }
     changed.clear();

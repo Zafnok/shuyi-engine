@@ -438,6 +438,13 @@ impl Platform for Macroquad {
         heap_snapshot()
     }
 
+    /// Whether the game read a folder to be watched in every build
+    /// (`read_watched_folder`).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn watches_files(&self) -> bool {
+        crate::watch::watches_always()
+    }
+
     /// The files of the disk layers that changed, their new bytes in their
     /// layers: looked at once a second.
     #[cfg(not(target_arch = "wasm32"))]
