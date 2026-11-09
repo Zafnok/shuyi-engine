@@ -161,8 +161,8 @@ under a label saying who it is for and what it explains:
 - **New to Shuyi?** an idea of the engine, the first time you meet it.
 
 This whole page is one, for readers new to programming. The bar at the top of
-each page folds the notes you don't need, and a folded note leaves a line you
-can click to open it.
+each page leaves out the notes you don't need. A note you see can be hidden, and
+leaves a line you can click to show it again.
 
 You don't need to remember all of it. The [glossary](@/learn/book/glossary.md)
 has every word, with a link back to where it was explained.

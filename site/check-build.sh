@@ -158,6 +158,19 @@ expected="$(seq 1 "$(echo "$chapters" | wc -w)" | tr '\n' ' ')"
 appendices="$(sed -nE 's/^appendix = "([A-Z])"$/\1/p' "$book"/*.md | sort | tr -d '\n')"
 [ -z "$appendices" ] || [ "$appendices" = "$(echo ABCDEFGHIJKLMNOPQRSTUVWXYZ | cut -c "1-${#appendices}")" ] ||
   fail "the book's appendices are lettered $appendices rather than from A, none twice and none missing"
+# Every page of the book loads the reader's filter (ticket 2826), and every
+# passage's mark names an audience the filter knows: one in the script's
+# AUDIENCES, which the stylesheet folds.
+audiences=" $(sed -nE 's/^ *const AUDIENCES = \[(.*)\];$/\1/p' "$site_dir/static/book-filter.js" | tr -d '",') "
+[ "$audiences" != "  " ] || fail "site/static/book-filter.js has no AUDIENCES line"
+while IFS= read -r page; do
+  grep -qE '<script src="[^"]*/book-filter\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-filter.js"
+done < <(find "$out/one/learn/book" -name index.html)
+for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sort -u | sed -E 's/^data-newcomer="(.*)"$/\1/'); do
+  [[ "$audiences" == *" $audience "* ]] || fail "a passage is marked $audience, which book-filter.js's AUDIENCES doesn't have"
+  grep -qF "[data-book-fold~=\"$audience\"] .newcomer[data-newcomer=\"$audience\"]" "$site_dir/static/style.css" ||
+    fail "a passage is marked $audience, which style.css doesn't fold"
+done
 grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
   fail "/hello-grid/ doesn't redirect to /examples/hello-grid/"
 

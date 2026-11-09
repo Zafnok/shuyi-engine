@@ -52,6 +52,17 @@ rules (no `newcomer` inside a `check`, say) to `parts()`, with tests.
 `llms.rs`'s `twin` splits a page with `book::parts`, so a check's twin goes
 in the same place.
 
+**From 2826 (done):** the reader's filter, `site/static/book-filter.js`
+(`site/README.md`, *The reader's filter*), leaves out whole every
+`aside.newcomer[data-newcomer]` of an audience the reader knows, through
+`style.css`'s `[data-book-fold~="…"]` rules, with nothing in its place
+(ADR-0098). Every passage shown gets " · hide" on its `.newcomer-label`
+paragraph, which folds it to a stub made from that paragraph. A check
+behaves the same way if its HTML is such an aside with such a label.
+Otherwise `stubs()`, the bar's count and the fold rules learn the check's
+own element. The bar's count says "notes", so a check counted there may
+want its own word.
+
 ## Nick input
 
 None.

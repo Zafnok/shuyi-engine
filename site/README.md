@@ -47,8 +47,9 @@ copies each example's web build there.
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order and the pager through it; `shortcodes/snippet.md` shows the book's code, and `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)) |
-| `static/style.css` | The one stylesheet: system fonts, light and dark, and the newcomer's mark (`.newcomer`). It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, and the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)); `shortcodes/snippet.md` shows the book's code, and `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)) |
+| `static/book-filter.js` | The reader's filter, the site's one script: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
+| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
@@ -60,7 +61,8 @@ copies each example's web build there.
   in Markdown and `get_url` in templates, never with an address:
   changing `base_url` alone must move every link.
 - Load nothing from another host: no fonts, scripts, stylesheets or
-  images.
+  images. The one script is our own, `static/book-filter.js`, with no
+  framework and no build step, and every page reads in full without it.
 - A new example gets its page in `content/examples/`, or the Pages build
   fails.
 - The book's code comes from `snippets/`, never written in a page: CI
@@ -164,6 +166,37 @@ side. `cargo xtask check-book` fails a mark of an audience not among the
 four, one with no `topic`, one not closed, one inside another or not on
 lines of its own, and a callout of the old hand-made form
 (`> **Rust:**`, `> **Shuyi:**`, `> **Game idea:**`).
+
+## The reader's filter
+
+Every page of the book has a bar at its top, and a first visit to any of
+them opens a popup with three questions (ticket 2826, ADR-0090 §6). The
+answers leave out the passages of an audience the reader knows ([Marking a
+passage](#marking-a-passage)), with nothing in their place, and the bar
+changes them and shows them all for a visit
+([ADR-0098](../docs/adr/0098-the-readers-filter-leaves-a-known-audiences-notes-out-whole-and-show-and-hide-are-for-the-notes-a-reader-sees.md)).
+Every passage shown has **hide**, which folds it to a one-line stub that
+shows it again. A page marked whole for an audience the reader knows
+says at its top that it can be skipped, the pager passes over it, and the
+book's contents tag it.
+
+- `book-macros.html`'s `filter()` writes the bar, the popup and the
+  book's order as JSON (each page's URL, title and `extra.newcomer`);
+  `script()` loads `static/book-filter.js` in the `<head>`. `book.html`,
+  `chapter.html` and `project.html` call both. The words are in the
+  templates; the script writes only its counts, the stubs and the tags.
+- The script runs before the page is drawn: it sets `data-book` on
+  `<html>`, which shows the bar, and `data-book-fold` to the audiences the
+  reader knows, by which `style.css` leaves their passages out.
+- The answers stay in the reader's browser, in `localStorage` under
+  `shuyi-book`, as `{"v": 1, "knows": [...], "engine": true}`. When storage
+  throws, the popup opens on every page and the page still works.
+- With no JavaScript there is no bar and no popup, and every passage
+  shows.
+- An audience is in three places: the `newcomer` shortcode and `cargo xtask
+  check-book`, `book-filter.js`'s `AUDIENCES`, and `style.css`'s
+  `data-book-fold` rules. The build checks fail a page's mark that the
+  last two don't have.
 
 ## The book's order
 
@@ -280,7 +313,9 @@ then it builds the site with two base URLs, fails if either output names
 the other's or lacks a page, if a step's page doesn't link its `play/` or
 follows no chapter, if an old address (`aliases`) doesn't send the reader
 on, or if the chapters aren't numbered 1 to the last and the appendices
-lettered from A, and fails if
+lettered from A, if a page of the book doesn't load `book-filter.js`, or
+a passage is marked for an audience the filter's `AUDIENCES` or
+`style.css` doesn't have, and fails if
 a page loads anything from another host, if a code block's language is
 unknown, or if a page with a Rust block has no `z-keyword`, which is
 highlighting turned off. The `test` job builds and

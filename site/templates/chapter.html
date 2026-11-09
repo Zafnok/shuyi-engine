@@ -6,8 +6,11 @@
     step (`extra.step`) has the game as it stands at that step (pages.yml
     puts its web build at `play/`) and its whole project, in its project's
     `extra.code` folder. A chapter with steps after it ends with a line
-    naming them. -#}
+    naming them. The reader's filter (`book::filter`) goes above it all. -#}
+{% block head %}{{ book::script() }}{% endblock head %}
+
 {% block content %}
+{{ book::filter() }}
 <article class="prose">
   {{ book::where(p=page) }}
   <h1>{{ page.title }}</h1>

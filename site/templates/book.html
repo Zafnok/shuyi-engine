@@ -5,8 +5,12 @@
     order (`extra.parts`, ADR-0090 §2). A chapter is numbered by its
     `extra.chapter`, with the project's pages after it listed under it; an
     appendix is lettered by its `extra.appendix`. The problem codes and the
-    API docs are linked last, and aren't pages of the book. -#}
+    API docs are linked last, and aren't pages of the book. The reader's
+    filter (`book::filter`) tags the contents once the reader has answered. -#}
+{% block head %}{{ book::script() }}{% endblock head %}
+
 {% block content %}
+{{ book::filter() }}
 <article class="prose">
   <h1>{{ section.title }}</h1>
   {{ section.content | safe }}

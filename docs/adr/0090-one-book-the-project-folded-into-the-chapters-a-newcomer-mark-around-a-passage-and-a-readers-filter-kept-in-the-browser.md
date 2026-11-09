@@ -1,6 +1,6 @@
 # ADR-0090: One book: the project folded into the chapters, a `newcomer` mark around a passage, and the reader's filter kept in the browser
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0098 (§6: a known audience's passages left out whole, and hide on every passage shown)
 - **Date:** 2026-11-08
 - **Related tickets:** 2823 (this), 2824 (the move), 2825 (the marks),
   2826 (the filter), 2827 (quick checks), 2828 (exercises), 2829 (what

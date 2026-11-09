@@ -3,8 +3,11 @@
 
 {#- A project's landing page (ADR-0090 §2): its text, its steps in order,
     each with the chapter it comes after, and the pages before and after
-    it in the book's order. -#}
+    it in the book's order, under the reader's filter (`book::filter`). -#}
+{% block head %}{{ book::script() }}{% endblock head %}
+
 {% block content %}
+{{ book::filter() }}
 <article class="prose">
   {{ book::where(p=section) }}
   <h1>{{ section.title }}</h1>
