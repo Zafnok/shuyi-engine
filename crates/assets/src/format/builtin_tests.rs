@@ -239,13 +239,14 @@ const BAD_CREDITS: &str = r#"(credits: [
 pub(crate) const MANIFEST: &str = r#"(
     music_fade_ms: 500,
     sounds: [
-        (id: "tick", files: ["sfx/tick.wav"], volume: 100, credit: Own),
+        (id: "tick", files: ["sfx/tick.wav"], volume: 100, credit: Own, group: "ambience"),
         (id: "gone", files: ["sfx/gone.wav"], volume: 100, credit: Own),
         (id: "trim", files: ["sfx/trim.wav"], volume: 100, credit: Own),
     ],
     music: [(id: "title", file: "title.ogg", volume: 80, length_ms: 2000, credit: Own)],
     pools: [],
     credits: [],
+    groups: [(id: "ambience", parent: "sfx", volume: 80), (id: "music", volume: 90)],
 )"#;
 pub(crate) const SCRIPT: &str = "\
 @scene gate

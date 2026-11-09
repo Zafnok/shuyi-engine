@@ -49,7 +49,7 @@ What Shuyi has (checked 2026-10-20):
   `crates/ui/src/audio/groups.rs`, ADR-0091), which the shared player
   applies. The built-in groups' ids are in
   `crates/assets/src/audio/groups.rs` (`BUILT_IN`, with their parents);
-  the manifest's own groups are 2258's.
+  the manifest's own groups are `AudioManifest.groups` (2258, done).
 
 Why it matters:
 
@@ -97,9 +97,9 @@ After MVP and the game ships without the dip.
     error that says so;
   - `lower`: a known group, not `when` and not one of its parents
     (lowering `master` would lower the voice too). Known is one of
-    `BUILT_IN`; **either order with 2258** (a game's own groups): if it
-    is done, a group the manifest declares too, with a test; if not,
-    nothing more (2258 does it);
+    `BUILT_IN` or a group the manifest declares (`AudioManifest.groups`,
+    2258, done; checked before the cues, `Check::is_group` in
+    `crates/assets/src/audio/groups.rs`), with a test of a declared one;
   - `to`: a position on 2342's loudness curve, 0–100; over 100 is an
     error. While ducked, the lowered group's gain is multiplied by
     `loudness(to)`: 80 lowers it by 12 dB (1029 of 4096), and 100
@@ -188,7 +188,7 @@ After MVP and the game ships without the dip.
 - **2218** (writers of the engine's text formats): if it is done, its
   `AudioManifestRon` writer writes `ducks` and its round-trip test
   covers a rule; if not, nothing here.
-- **2258** (a game's own sound groups): see `lower` above.
+- **From 2258 (done):** a game's own sound groups; see `lower` above.
 - **2725** (parked: a sound group per voiced character, under
   `voice`): if it is done, `sounding` also needs the gain of the group
   the playing clip was asked in above 0, not only `voice`'s, so a

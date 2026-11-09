@@ -82,6 +82,23 @@ the game's own. The sound groups are `master` over everything, `music`, `sfx` an
 `voice` under it, and `ui`, the menus' sounds, under `sfx`; each volume goes from 0 to
 100 on a loudness curve, so every step sounds like the same change. `ctx.volume(MUSIC)`
 reads one.
+
+A game adds groups of its own in its audio manifest (`audio.ron`), each under a parent
+(`master` if it names none) and with the volume a new player starts at; an entry may set
+a built-in group's starting volume too. A cue plays in the group its `group` names:
+
+```ron
+groups: [
+    (id: "ambience", parent: "sfx", volume: 80),
+    (id: "music", volume: 90),
+],
+sounds: [
+    (id: "rain", files: ["sfx/rain.ogg"], volume: 60, credit: Own, group: "ambience"),
+],
+```
+
+The game's options screen shows the group's volume with a row of its own, named by its
+id: `ctx.volume("ambience")` reads it, and `ctx.preview_volume("ambience", v)` sets it.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in
 the profile:
 
