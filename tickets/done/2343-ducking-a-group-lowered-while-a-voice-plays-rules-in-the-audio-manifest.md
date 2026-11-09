@@ -312,14 +312,14 @@ and the game's PR that moves its pin follows this one.
   player and the headless `Speaker` are met by 2255's tests
   (`crates/platform/src/audio/player/voice.rs`,
   `crates/platform/src/headless/tests.rs`, `audio::a_voice_sounds_from_
-  the_next_frame_until_its_length_has_passed`). ADR-0094 extends
+  the_next_frame_until_its_length_has_passed`). ADR-0099 extends
   ADR-0091 only; ADR-0024 is unchanged, and its row too.
 - **Tests:** the rules and each error; `DuckState` down, up, a change of
   direction both ways, zero lengths, `to: 100` and `to: 0`, frame sizes;
   a lowered group's child goes down and no other group; the Harness tests
   `a_voice_lowers_the_music_as_the_manifests_rule_says` and
   `a_voice_turned_down_to_0_lowers_nothing` (`crates/ui/tests/it/audio.rs`).
-- **Docs:** ADR-0094; the module, `AudioManifest` and `DuckRule` docs;
+- **Docs:** ADR-0099; the module, `AudioManifest` and `DuckRule` docs;
   `docs/platform-backends.md` (step 7 and `voice_playing`); the book's
   *Saves and settings* chapter shows a `ducks` entry.
 - **Settled:** 2206, 2218 and 2725 now say what holds (2218 writes

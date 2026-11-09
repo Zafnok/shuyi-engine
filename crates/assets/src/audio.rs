@@ -31,7 +31,7 @@
 //! ],
 //! ```
 //!
-//! A `ducks` list lowers a group while a voice plays (ADR-0094), so the
+//! A `ducks` list lowers a group while a voice plays (ADR-0099), so the
 //! words are heard over the music: down to a position on the loudness
 //! curve over `attack_ms`, and back over `release_ms` once the voice ends
 //! ([`DuckRule`]). A manifest without it lowers nothing.
@@ -103,7 +103,7 @@ pub struct AudioManifest {
     /// built-in ones whose default it sets. The built-ins it doesn't name
     /// aren't here ([`groups::BUILT_IN`]).
     pub groups: BTreeMap<String, GroupDef>,
-    /// The ducking rules (ADR-0094), in the file's order: a group lowered
+    /// The ducking rules (ADR-0099), in the file's order: a group lowered
     /// while a voice plays. None by default, and nothing is lowered.
     pub ducks: Vec<DuckRule>,
 }

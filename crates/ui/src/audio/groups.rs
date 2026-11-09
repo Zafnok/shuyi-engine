@@ -207,7 +207,7 @@ impl GroupGains {
     }
 
     /// Works the gains out again, in place, with each group a rule lowers
-    /// lowered (ADR-0094): its own gain times its multiplier in `ducks`,
+    /// lowered (ADR-0099): its own gain times its multiplier in `ducks`,
     /// before its children multiply by it, so they go down with it.
     /// `Game` does every frame.
     pub fn update_ducked(&mut self, groups: &SoundGroups, volumes: &Volumes, ducks: &DuckState) {

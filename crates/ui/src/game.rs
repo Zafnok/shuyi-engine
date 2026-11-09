@@ -232,7 +232,7 @@ pub struct Game<G: GameData> {
     buffer: GlyphBuffer,
     quit: bool,
     music: MusicState,
-    /// The ducking rules' multipliers (ADR-0094), stepped every frame.
+    /// The ducking rules' multipliers (ADR-0099), stepped every frame.
     duck: DuckState,
     /// This frame's audio requests and music commands.
     audio_out: Vec<AudioRequest<G::Voice>>,
@@ -499,7 +499,7 @@ impl<G: GameData> Game<G> {
 
     /// Advances the sounds' fades, moves the screens' audio requests into
     /// this frame's output, runs the music state machine and steps the
-    /// ducking (ADR-0094) while a voice sounds ([`Ctx::voice_playing`]). In debug
+    /// ducking (ADR-0099) while a voice sounds ([`Ctx::voice_playing`]). In debug
     /// builds, a cue the manifest lacks is a bug in the screen and panics,
     /// and so does a looped cue played without a handle, which nothing
     /// could stop (a release build plays it once). The engine's widgets

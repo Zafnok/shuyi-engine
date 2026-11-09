@@ -125,7 +125,7 @@ None.
     `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
     plays it at that group's gain (`Gains::group`). The quick menu gets
     a row for `voice` and one for each character's group.
-  - **From 2343 (done):** ducking under a voice (ADR-0094). The
+  - **From 2343 (done):** ducking under a voice (ADR-0099). The
     `sounding` that `Game::collect_audio` hands `DuckState::update` is
     `Ctx::voice_playing` and `voice`'s gain above 0; this ticket makes
     it also need the gain of the playing clip's own group above 0, so a

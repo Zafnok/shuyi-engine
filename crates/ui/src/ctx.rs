@@ -764,7 +764,17 @@ impl<G: GameData> Ctx<G> {
     /// the platform takes it ([`take_log`](Self::take_log)) and stamps it
     /// with its frame. Past [`LOG_LINES`] waiting, the oldest is dropped
     /// and counted. English, never translated: no player reads it.
+    ///
+    /// A build without debug tools ([`crate::DEBUG_TOOLS`]: a release build
+    /// without the `debug-tools` feature) keeps warnings and errors only:
+    /// an [`Info`](LogLevel::Info) or [`Debug`](LogLevel::Debug) line is
+    /// dropped here, and its text is left out of the program where the
+    /// compiler can see it is never used.
+    #[inline]
     pub fn log(&mut self, level: LogLevel, category: LogCategory, text: impl Into<String>) {
+        if !crate::DEBUG_TOOLS && matches!(level, LogLevel::Info | LogLevel::Debug) {
+            return;
+        }
         self.log_lines.push(LogLine {
             frame: 0,
             level,

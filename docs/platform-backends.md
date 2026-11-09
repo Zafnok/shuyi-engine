@@ -149,7 +149,7 @@ confirmed. A backend that never reports leaves every request pending.
    screen's ask waits for one;
 7. `audio().music_playing(now)`, for the screens that keep time with the
    music, then `audio().voice_playing(now)`, for the screens that wait
-   for a voice to end and for the manifest's ducking rules (ADR-0094);
+   for a voice to end and for the manifest's ducking rules (ADR-0099);
 8. the game's update (`shuyi_ui::Game::frame`);
 9. `audio().play(&frame, now)` with that frame's audio, every frame (its
    gains at 0 while the game is muted without focus);
@@ -307,7 +307,7 @@ The sound device:
   replaced, failed or given up on as late; a clip held by `suspend`
   still sounds. `None` by default; `PlayerDevice` answers it. While it
   names a clip, the groups the audio manifest's `ducks` lower go down
-  (ADR-0094): a backend that answers `None` never ducks, and the gains of
+  (ADR-0099): a backend that answers `None` never ducks, and the gains of
   the next `play` carry the ducking, with nothing more to do;
 - `play(&frame, now)`: one frame's audio. Take the frame's `gains` first
   (ADR-0091): every sound, track and voice clip plays at its own volume
@@ -601,7 +601,11 @@ survives (a sound library's), which is kept and never offered
 ([ADR-0083](adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md)).
 A backend that can catch the game's frame adds the game's record
 (`App::crash_record`) and ends the process without calling the game's system
-hook. `App::load` offers the newest fatal report to the
+hook. It adds the record, and honours a panic asked for on purpose, only in a
+build with debug tools (`shuyi_ui::DEBUG_TOOLS`) or one whose game asked for
+its record in release; and without debug tools its log's lines in a report are
+warnings and errors only
+([ADR-0094](adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md)). `App::load` offers the newest fatal report to the
 game once (`Setup::last_crash`): a backend does nothing for that.
 
 `shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is

@@ -1,4 +1,4 @@
-//! Ducking (ADR-0094): a sound group lowered while a voice plays, as the
+//! Ducking (ADR-0099): a sound group lowered while a voice plays, as the
 //! audio manifest's `ducks` rules say ([`DuckRule`]), so the words are
 //! heard over the music. Each rule's multiplier moves in a straight line,
 //! in whole milliseconds and integers only, down to its rule's

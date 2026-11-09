@@ -24,8 +24,14 @@
 //! over a good save. On the web a panic aborts, so a web report has no
 //! record.
 //!
-//! `SHUYI_PANIC_AT_FRAME=<n>`, read once by `run` on native in any build,
-//! panics at frame `n` on purpose ([`PANIC_ON_PURPOSE`]), for the tests.
+//! `SHUYI_PANIC_AT_FRAME=<n>`, read once by `run` on native, panics at frame
+//! `n` on purpose ([`PANIC_ON_PURPOSE`]), for the tests.
+//!
+//! The record and `SHUYI_PANIC_AT_FRAME` are a build with debug tools'
+//! only, unless the game says [`CrashReports::with_record_in_release`]
+//! ([`CrashReports::records_play`]): together they write a shipped game's
+//! state on demand. Without debug tools the log's lines in a report are
+//! its warnings and errors.
 
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -47,16 +53,23 @@ pub struct CrashReports {
     pub game_version: &'static str,
     /// How many reports are kept, the newest: 0 installs no hook.
     pub keep: u32,
+    /// Whether a build without debug tools adds the game's record of its
+    /// play to a report and reads `SHUYI_PANIC_AT_FRAME` too
+    /// ([`with_record_in_release`](Self::with_record_in_release)). A build
+    /// with debug tools always does.
+    pub record_in_release: bool,
 }
 
 impl CrashReports {
     /// Reports naming `game_version`: the newest 5 kept on native, and 1 on
     /// the web, where `localStorage` holds about 5 MB for the whole site.
+    /// With the record of play in a build with debug tools only.
     #[must_use]
     pub const fn new(game_version: &'static str) -> Self {
         Self {
             game_version,
             keep: if cfg!(target_arch = "wasm32") { 1 } else { 5 },
+            record_in_release: false,
         }
     }
 
@@ -66,7 +79,26 @@ impl CrashReports {
         Self {
             game_version: "",
             keep: 0,
+            record_in_release: false,
         }
+    }
+
+    /// The same reports, with the game's record of its play in a build
+    /// without debug tools too, and `SHUYI_PANIC_AT_FRAME` read there. Off
+    /// until said: together they write the game's state on demand, which a
+    /// shipped game gives anyone who runs it.
+    #[must_use]
+    pub const fn with_record_in_release(mut self) -> Self {
+        self.record_in_release = true;
+        self
+    }
+
+    /// Whether this build adds the record of play and reads
+    /// `SHUYI_PANIC_AT_FRAME`: with debug tools, or when the game said
+    /// [`with_record_in_release`](Self::with_record_in_release).
+    #[must_use]
+    pub const fn records_play(&self) -> bool {
+        shuyi_ui::DEBUG_TOOLS || self.record_in_release
     }
 }
 
@@ -208,8 +240,12 @@ pub fn add_record(record: Option<String>) {
     let _ = storage().write(&key, &report.to_text());
 }
 
-/// The frame `SHUYI_PANIC_AT_FRAME` names, on native; never on the web.
-pub(crate) fn panic_at_frame() -> Option<u32> {
+/// The frame `SHUYI_PANIC_AT_FRAME` names, on native when `reports`
+/// [`records_play`](CrashReports::records_play); never on the web.
+pub(crate) fn panic_at_frame(reports: CrashReports) -> Option<u32> {
+    if !reports.records_play() {
+        return None;
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
         std::env::var("SHUYI_PANIC_AT_FRAME")

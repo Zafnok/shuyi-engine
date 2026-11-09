@@ -88,7 +88,7 @@ whether it is what you meant by MIDI sound.
 
 **From 2343 (done):** a rule that lowers `music` lowers a sequence cue
 in `music` too, through the gains it already plays at (2343 multiplies
-into them, ADR-0094): nothing to do here.
+into them, ADR-0099): nothing to do here.
 
 **Out (do not do):**
 - the Playdate's MIDI through its SDK's synth (3057, parked, which

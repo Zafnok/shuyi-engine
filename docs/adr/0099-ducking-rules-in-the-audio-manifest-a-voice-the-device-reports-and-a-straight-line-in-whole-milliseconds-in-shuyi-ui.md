@@ -1,4 +1,4 @@
-# ADR-0094: Ducking: rules in the audio manifest, a voice the device reports, and a straight line in whole milliseconds in shuyi-ui
+# ADR-0099: Ducking: rules in the audio manifest, a voice the device reports, and a straight line in whole milliseconds in shuyi-ui
 
 - **Status:** Accepted; extends ADR-0091 (ducking multiplies into its
   gains)

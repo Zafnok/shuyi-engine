@@ -51,6 +51,9 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     screens: Option<Screens<A, T>>,
     modules: Option<Modules<A, T>>,
     crash_record: Option<CrashRecord<BasicData<A, T>>>,
+    /// Whether a crash report holds its record in a build without debug
+    /// tools too.
+    record_in_release: bool,
 }
 
 /// What a game on the short path is painted with: its font and pictures.
@@ -81,6 +84,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             screens: None,
             modules: None,
             crash_record: None,
+            record_in_release: false,
         }
     }
 
@@ -113,6 +117,23 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     pub fn crash_record(mut self, hook: CrashRecord<BasicData<A, T>>) -> Self {
         self.crash_record = Some(hook);
         self
+    }
+
+    /// The same game, with its record of its play in a crash report in a
+    /// build without debug tools too, where the panic at a frame named by
+    /// `SHUYI_PANIC_AT_FRAME` is honoured as well. Until said, only a build
+    /// with debug tools adds the record: together they write the game's
+    /// state on demand, which a shipped game gives anyone who runs it.
+    #[must_use]
+    pub fn crash_record_in_release(mut self) -> Self {
+        self.record_in_release = true;
+        self
+    }
+
+    /// Whether its crash reports hold its record in a build without debug
+    /// tools too ([`crash_record_in_release`](Self::crash_record_in_release)).
+    pub fn records_play_in_release(&self) -> bool {
+        self.record_in_release
     }
 
     /// Who it is.

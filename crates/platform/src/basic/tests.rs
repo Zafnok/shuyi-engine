@@ -198,6 +198,16 @@ fn its_crash_record_reaches_the_app() {
 }
 
 #[test]
+fn its_record_is_in_a_release_builds_report_only_when_said() {
+    assert!(!demo(GOOD).records_play_in_release(), "off until said");
+    assert!(
+        demo(GOOD)
+            .crash_record_in_release()
+            .records_play_in_release()
+    );
+}
+
+#[test]
 fn broken_files_give_every_problem_to_ctx_and_to_the_load() {
     let game = demo(BROKEN);
     let errors = game.ctx().err().unwrap_or_default();

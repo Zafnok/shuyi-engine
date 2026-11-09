@@ -8,7 +8,7 @@
 //! A game declares its own groups in the manifest's `groups` list
 //! ([`GroupDef`]), and sets a built-in group's default there too, and
 //! lowers a group while a voice plays in its `ducks` list ([`DuckRule`],
-//! ADR-0094); this module checks them.
+//! ADR-0099); this module checks them.
 
 use crate::prelude::*;
 
@@ -72,7 +72,7 @@ pub(super) struct RawGroup {
     volume: Option<u8>,
 }
 
-/// A ducking rule (ADR-0094): while a sound of group `when` plays, group
+/// A ducking rule (ADR-0099): while a sound of group `when` plays, group
 /// `lower`'s gain goes down to `loudness(to)` of itself over `attack_ms`,
 /// and comes back over `release_ms` once it stops. Written in the
 /// manifest's `ducks` list as `(when: "voice", lower: "music", to: 80,
