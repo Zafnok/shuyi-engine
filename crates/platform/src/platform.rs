@@ -257,6 +257,25 @@ pub enum SystemEvent {
     CrankUndocked,
 }
 
+/// How long one frame may run a load in steps for
+/// ([`Platform::load_slice`]), and the clock that times it.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct LoadSlice {
+    /// The time a frame runs steps for, in microseconds: steps run until
+    /// it is used, and at least one runs each frame.
+    pub length_us: u64,
+    /// The clock the steps are timed by.
+    pub clock: PerfClock,
+}
+
+impl LoadSlice {
+    /// A slice of `length_us` microseconds, timed by `clock`.
+    pub const fn new(length_us: u64, clock: PerfClock) -> Self {
+        Self { length_us, clock }
+    }
+}
+
 /// What a backend gives the engine: a display to [`present`] frames on,
 /// the player's input, the system's events, storage, a sound device, the
 /// facts of where the game runs and, if the device has one, its own
@@ -322,6 +341,17 @@ pub trait Platform {
         None
     }
 
+    /// How long one frame may run a game's load in steps for
+    /// ([`Start::in_steps`](crate::Start::in_steps)), on a device whose
+    /// system ends a game whose frame runs too long (the Playdate's, after
+    /// 10 seconds): the steps go on in the next frame, the card on the
+    /// screen. Asked in every frame that runs steps, in every build. `None`
+    /// (the default): all the steps run in one frame, as on a PC or the
+    /// web, where a long frame only shows the card longer.
+    fn load_slice(&self) -> Option<LoadSlice> {
+        None
+    }
+
     /// The device's memory now, in debug builds (ADR-0046): the heap's
     /// live bytes, their peak and the allocations since the last call.
     /// `App` asks once a frame, at the end of a frame it keeps a record of
@@ -360,9 +390,19 @@ pub trait Platform {
     /// backend has already put their new bytes in their layers
     /// ([`Layer::replace`](shuyi_assets::bundle::Layer::replace)). `App` asks
     /// once a frame while the game runs, only with
-    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on. By default it
-    /// adds nothing: a device with no files to watch.
+    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on, or while
+    /// [`watches_files`](Self::watches_files). By default it adds nothing:
+    /// a device with no files to watch.
     fn changed_files(&mut self, _out: &mut Vec<String>) {}
+
+    /// Whether the game asked for a folder to be watched in every build,
+    /// not only one with debug tools (ADR-0095): a writer's preview
+    /// program, built optimized, that plays the files they save. `App`
+    /// then asks for [`changed_files`](Self::changed_files) with debug
+    /// tools off too. `false` by default.
+    fn watches_files(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

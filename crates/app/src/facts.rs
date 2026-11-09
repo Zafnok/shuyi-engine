@@ -6,7 +6,7 @@
 //! of that id, embedded from `targets/`, and never typed twice.
 
 use shuyi_assets::target::TargetProfile;
-use shuyi_platform::Start;
+use shuyi_platform::{Loader, Start};
 use shuyi_ui::{GameData, PlatformFacts};
 
 /// The engine's profiles of the targets this backend builds, by id.
@@ -62,7 +62,7 @@ pub(crate) fn start_as<G: GameData>(id: &str, mut start: Start<G>) -> (Start<G>,
     match facts_for(id) {
         Ok(facts) => (start, facts),
         Err(why) => {
-            start.load = Box::new(move |_| Err(why));
+            start.load = Loader::Once(Box::new(move |_| Err(why)));
             (start, PlatformFacts::default())
         }
     }

@@ -141,8 +141,9 @@ confirmed. A backend that never reports leaves every request pending.
    while paused without focus (`App::is_paused`), `poll_input`
    (dropped), `audio().play` with nothing and every gain at 0
    (`Gains::muted`) if the game is muted too, and `present` of the last frame: no update, no steps;
-4. `changed_files`, with debug tools on: the paths go to the game's
-   modules before its update (never in a build that ships);
+4. `changed_files`, with debug tools on or while `watches_files`: the
+   paths go to the game's modules before its update (in a build that
+   ships, only for a folder the game named to be watched);
 5. `poll_input`;
 6. `text_input`: whether there is a system keyboard, and its answer if a
    screen's ask waits for one;
@@ -160,8 +161,12 @@ confirmed. A backend that never reports leaves every request pending.
 The game's first frames are different: frame 1 presents the loading card;
 frame 2 calls `display`, `storage` and `facts` for the game's `Setup`, runs the
 game's load (seconds, on a slow device) and presents the game's first
-frame; frames after run the game. A failed load presents its errors until
-the player quits.
+frame; frames after run the game. A load in steps (`Start::in_steps`) asks
+`load_slice` in each loading frame and runs as many steps as fit, so it may
+take several frames, each presenting the card again until the last
+presents the game
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+A failed load presents its errors until the player quits.
 
 ## Each method
 
@@ -396,6 +401,20 @@ build never reads it. A backend without a clock leaves the default,
 `None`, and nothing is measured. Never reset the device's timer in the
 loop: a record's times are differences of its reads.
 
+### `load_slice(&self) -> Option<LoadSlice>` (has a default)
+
+How long one frame may run a game's load in steps for, and the clock that
+times it
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)):
+`LoadSlice::new(length_us, PerfClock::Real(now_us))`. A backend whose
+system ends a game whose frame runs too long gives one, from its target
+profile's `budgets.load_slice_ms`; `shuyi-playdate` gives a second of the
+SDK's timer, a tenth of the system's 10 seconds. `App` asks in every frame
+that runs steps, in every build, and runs steps until the slice is used,
+and at least one. A run being recorded or hashed takes no slice. The
+default, `None`, runs all the steps in one frame: right where a long frame
+only shows the card longer (a PC, the web).
+
 ### `memory(&mut self) -> Option<MemoryReading>` (has a default)
 
 The device's memory now, in debug builds (ADR-0046):
@@ -452,7 +471,7 @@ default, `None`, and no snapshot is taken.
 The files that changed on disk since the last call, in debug builds
 (ADR-0071): their paths in the bundle, each with its new bytes already in its
 layer (`Layer::replace`). `App` asks once a frame the game runs, while debug
-tools are on, so a build that ships never asks. A backend with files to watch
+tools are on or while `watches_files` (below) says so, so a build that ships asks only for a folder the game named. A backend with files to watch
 looks at them only every so often: `shuyi-app` compares the modification times
 and sizes of the folders `read_folder` read, once a second, with no clock read
 and no folder scanned when it has none. Keep what a frame shows of
@@ -462,6 +481,17 @@ something from a file keeps it current itself: `shuyi-app` remakes the textures
 of the changed paths, shows a picture's decode error beside those, and reads
 `AppConfig::files` through the folder `watched_layer` read. A device with no
 files to watch leaves the default, which adds nothing.
+
+### `watches_files(&self) -> bool` (has a default)
+
+Whether the game asked for a folder to be watched in every build, not only
+one with debug tools (ADR-0095): a writer's preview program, built
+optimized, that plays the files they save. `App` then asks for
+`changed_files` with debug tools off too. `shuyi-app` answers whether a
+folder was read with `read_watched_folder`, and in a build without debug
+tools its poller looks at those folders only. The headless backend answers
+what `HeadlessPlatform::set_watches_files` set. A device with no files to
+watch leaves the default, `false`.
 
 ## Files handed in at run time (optional)
 

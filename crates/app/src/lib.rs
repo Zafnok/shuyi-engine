@@ -10,7 +10,8 @@
 //! folders, so it isn't there: there [`page::page_layer`] reads the files
 //! the page holds into one instead. In a build with debug tools the folders it
 //! reads are watched, and `watched_layer` gives the one `cargo shuyi run
-//! --watch` names (ADR-0071).
+//! --watch` names (ADR-0071); `read_watched_folder` reads one watched in
+//! every build.
 //!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
@@ -173,7 +174,7 @@ pub use crate::crash::CrashReports;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use crate::folder::watched_file;
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::folder::{FolderError, read_folder, watched_layer};
+pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_layer};
 use crate::pacing::{Pacer, WebFrame};
 
 /// The web has no folders to watch.

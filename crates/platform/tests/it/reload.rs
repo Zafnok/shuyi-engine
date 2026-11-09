@@ -75,6 +75,27 @@ fn with_debug_tools_off_the_platform_is_never_asked_and_no_file_changes() {
 }
 
 #[test]
+fn with_debug_tools_off_a_folder_watched_in_every_build_still_reaches_the_game() {
+    let log = Log::default();
+    let game = toy::game()
+        .with_debug_screens(false)
+        .with_module(Noter(Rc::clone(&log)))
+        .unwrap();
+    let mut h = Harness::new(game);
+    h.watch_files(true);
+    let layer = disk();
+    h.change_file(layer, "scene.dlg", b"saved".to_vec());
+    h.wait(FRAME_DT);
+    assert_eq!(*log.borrow(), ["scene.dlg", "update"]);
+    assert_eq!(Bundle::new(vec![layer]).file("scene.dlg"), Some("saved"));
+    assert_eq!(h.platform().changed_asks(), 1);
+    // Watched no more: never asked again.
+    h.watch_files(false);
+    h.wait(FRAME_DT);
+    assert_eq!(h.platform().changed_asks(), 1);
+}
+
+#[test]
 fn a_reload_error_reaches_the_frame_until_it_clears() {
     use shuyi_assets::ContentError;
     use shuyi_assets::hot::Reload;

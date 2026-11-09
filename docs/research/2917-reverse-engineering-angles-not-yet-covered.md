@@ -177,7 +177,9 @@ Firmness: moderate; the catalogue is self-reported.
 - Why native falls fastest: matching decompilation gives the agent a
   byte-exact pass/fail signal. Wasm and custom bytecode lack that answer
   key. That is the agents' inference, consistent with 2914's result that
-  a VM bought nothing once the attacker had a *behavioural* oracle.
+  a VM bought nothing once the attacker had a *behavioural* oracle. The
+  oracle, not 2914's timing, is the reason to believe it; see "What
+  changed on confirmation" below.
 - GhidraMCP (Apache-2.0), ReVa, pyghidra-mcp and REA (MIT, July 2026)
   make the decompiler loop free; cost is model tokens only.
 - Valve announced no anti-clone measures on 2026-10-27 after the wave of
@@ -304,7 +306,7 @@ Firmness: moderate on incidents, low on timings and false-positive rates.
 | Case | Clone after | Gone after | Channel |
 | --- | --- | --- | --- |
 | Wordle, Jan 2022 | 0 days | about 2 days | Public backlash, then Apple's own rule |
-| Needle In A Haystack Simulator, 2026 | days after a viral reveal; 8 copycat titles before release | the code-copy clone within about 9 days of appearing | Developer's copyright notice to Valve with a file comparison; the original added "original" to its key art |
+| Needle In A Haystack Simulator, 2026 | days after a viral reveal; 8 copycat titles before release | none of the original's clones is reported removed; one clone *of a clone* left Steam around 2026-10-21, reason undisclosed (corrected 2026-11-09, see below) | The other cloner's code-copy accusation, not a notice from the original's developer; the original added "original" to its key art |
 | Allumeria (reverse case), Feb 2026 | n/a | removed and restored in 24 hours | DMCA, withdrawn |
 | Vampire Survivors mobile clones | months | not found | Poncle shipped its own mobile port |
 | Palworld | n/a | unresolved since Sept 2024 | Patent suit, not a takedown |
@@ -319,9 +321,12 @@ Poll `IStoreService/GetAppList` and itch.io daily, fuzzy-match new titles
 against the game's name and keywords, perceptual-hash new capsules and
 screenshots against the reveal kit's hashes, and emit a dated evidence
 bundle plus pre-filled notice templates. Advisory only: false-positive
-rates are unmeasured. With a daily watch, detection within a day and a
-well-evidenced Steam takedown within days is plausible; that is a smaller
-demo-to-clone window than any technical measure in this track has bought.
+rates are unmeasured. With a daily watch, detection within a day is
+plausible. A well-evidenced Steam takedown within days rests on the
+Allumeria and Wordle rows only, now that the Needle row is corrected; no
+case in this table shows an original developer's notice removing an AI
+clone. Detection is still a smaller demo-to-clone window than any
+technical measure in this track has bought.
 
 ## Ranked candidates, cheapest and surest first
 
@@ -349,6 +354,53 @@ encryption (section 3), anti-tamper and injection detection (section 5),
 art perturbation and image watermarks (section 10), launch-time
 honeytokens without a product decision (section 7), model-provider policy
 as a defence (section 9).
+
+## What changed on confirmation
+
+Ticket 2917 fills this section as it reads each source. Two entries so
+far, from a 2026-11-09 check of the track's own studies and of the
+section 11 sources.
+
+1. **Section 11, Needle In A Haystack Simulator: corrected.** The draft
+   said a code-copy clone was gone within about nine days after the
+   original developer's copyright notice with a file comparison. The
+   sources say the removed game was a clone *of a clone*: NoGlyph's
+   *Needle In A Haystack* accused Little Field Studios' *A Game About
+   Needle In A Haystack* of copying its code, including its error
+   messages, and that second clone left Steam around 2026-10-21 with no
+   reason disclosed. No removal of any clone of the original is reported,
+   and the original's developer is not the party that complained. The
+   accusation itself is unverified. The row and the section 11 candidate
+   text now say so. The remaining takedown evidence in the table is
+   Wordle (Apple's own rule) and Allumeria (a withdrawn DMCA against an
+   original), so "shortens the clone's life" in the ranked candidates is
+   an inference, not a measured case. Sources: GamesRadar, "dev who copied
+   a popular game on Steam complains another copycat stole our code"
+   (2026-11); Kotaku, "devs behind Needle In A Haystack clone complain
+   their clone has been cloned" (2026-11); GamesRadar on the eight
+   copycats and the "original" key art (2026-09).
+2. **Section 6 and the track summary, 2914: the reason, not the result,
+   is restated.** 2914's no-go stands, but its measured delay (−6 min 22 s
+   against the ordinary arm, +44 s against the layout control) is one
+   analyst per arm with unequal shell stalls, and the report says so. The
+   stronger ground is in the fixture: the protected kernel decides whether
+   gathers plus a hidden phase is divisible by three, the phase is one of
+   three values, and the trace emits a `BonusOre` event on every gather.
+   An analyst learns the phase from the first three gathers without
+   reading the bytecode, so no code-level defense could have scored in
+   that experiment. The lesson this report draws from 2914 is therefore
+   that a shipped deterministic game is its own oracle, which 2912's
+   ordinary baseline (both fixtures replaced in about 15 minutes with
+   about 900 queries) shows directly. 2914's attempt ledgers are not in
+   the repository (2913's and 2915's are), so its protocol and code were
+   checked, not its attempts.
+
+Also noted on the same day, from the Rotris case (Freya Holmér's
+rotating-board Tetris prototype, March 2026): a 50-second clip posted to
+Bluesky was followed within days by up to four store clones, one of
+which its maker says took a few prompts and about a day. That is 2913's
+description bypass in the wild: the viewer is the decoder, and no pixel
+treatment reaches them.
 
 ## Not researched, on purpose
 

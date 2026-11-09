@@ -320,6 +320,9 @@ static IMAGES: shuyi_assets::image::ImageTable =
 #[cfg(feature = "std")]
 mod reloaded_atlas;
 
+/// A load in steps, a slice a frame.
+mod steps;
+
 #[test]
 fn the_game_is_shown_with_its_look_and_its_background() {
     let start = Start::new(

@@ -284,6 +284,15 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
 
+A slow device loads slowly too. The Playdate reads a game's data hundreds of times slower than your
+computer, and its system ends a game whose frame runs for 10 seconds. A game whose load could take that
+long there starts with `Start::in_steps` instead of `Start::new`. You give it a function that takes the
+`Setup` and gives back a step, which the engine calls again and again. Each call does one small part (a
+file, a check) and gives `Progress::More`, until the last gives `Progress::done` with the game. On a PC or
+the web every step runs in one frame. On the Playdate a second's worth runs each frame, the loading card
+on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
+says how long each frame took.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
