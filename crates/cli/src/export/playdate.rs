@@ -243,10 +243,20 @@ fn tools_here(cx: &ExportCx) -> Result<Tools, ExportError> {
         arm_gcc,
         simulator: simulator_here(path_var.as_deref()),
         rustflags: (
-            with_flags(&flags, &DEVICE_RUSTFLAGS),
-            with_flags(&flags, &[CFG]),
+            with_flags(&flags, rustflags(DEVICE)),
+            with_flags(&flags, rustflags(SIMULATOR)),
         ),
     })
+}
+
+/// The Rust flags of the build for `triple`: the device's, else the
+/// Simulator's, which only says to link the SDK.
+fn rustflags(triple: &str) -> &'static [&'static str] {
+    if triple == DEVICE {
+        &DEVICE_RUSTFLAGS
+    } else {
+        &[CFG]
+    }
 }
 
 /// `encoded`, Cargo's flags variable, with `flags` after what it holds.
@@ -798,6 +808,10 @@ impl Exporter for PlaydateExporter {
             .iter()
             .map(|triple| cargo_args(cx, triple))
             .collect()
+    }
+
+    fn rustflags(&self, triple: &str) -> &'static [&'static str] {
+        rustflags(triple)
     }
 
     /// Bakes the game's pack for the target with its tools.

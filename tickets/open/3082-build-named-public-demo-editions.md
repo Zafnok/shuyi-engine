@@ -29,11 +29,13 @@ None.
 - Named distribution editions in shuyi.ron, independent of hardware targets.
 - An edition selects a game package or binary, explicit Cargo default-feature behavior and features, content root and allowed loose files before compilation and baking.
 - The exporter records the resolved edition and invokes the exposure gate on its final artifact.
-- **Either order with 3085:** if 3085 is done, pass the edition's selected
-  package and final default-feature/feature flags through its shared
-  resolved-build live-link guard before preparation or compilation; if
-  not, retain those flags in the exporter plan so 3085 validates edition
-  builds when it lands, with no separate edition bypass.
+- **From 3085 (done):** put the edition's selected package and final
+  default-feature/feature flags in the exporter plan
+  (`Exporter::cargo_args`). The common export path resolves every build
+  there with Cargo (`export::live_link::refuse`) before preparation or
+  compilation, so edition builds are checked with no separate edition
+  bypass. A build flag the guard doesn't know (`live_link::tree_args`)
+  refuses the export: teach it the flag in the same PR.
 - **Either order with 2586** (the dialogue preview screen): if 2586 is
   done, its book section says a preview program is built as an edition
   that leaves the game's own scripts out; check that an edition can do
