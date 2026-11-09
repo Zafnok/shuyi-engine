@@ -44,6 +44,18 @@ git switch main && git pull --ff-only
 git switch -c t<NNNN>-<slug>
 ```
 
+In a worktree made for you (a `claude/<slug>-<hex>` branch), rename it
+**before the first push**: a rename after the PR opens closes the PR on
+GitHub.
+
+```bash
+git branch -m t<NNNN>-<slug>
+```
+
+CI reads the ticket from the PR's title (`[NNNN] …`) first, so a branch
+left unrenamed still passes, but a `t<NNNN>-` branch must name the
+title's ticket (`tickets/README.md`, *Pull requests*).
+
 Set `status: in-progress` in the ticket's frontmatter.
 
 ## 3. Implement
@@ -153,8 +165,10 @@ the PR.
 ## 6. Commit and PR
 
 - Commit messages: `[NNNN] imperative summary`.
-- Title: `[NNNN] <ticket title>`. **No bare `@word`** in a title, body,
-  commit message or comment. Use backticks.
+- Title: `[NNNN] <ticket title>`: CI reads the ticket from it. A PR
+  that only writes or edits tickets is `Ticket NNNN: …` instead (the
+  `write-ticket` skill). **No bare `@word`** in a title, body, commit
+  message or comment. Use backticks.
 - Body: summary bullets, the acceptance criteria (checked), follow-up
   tickets, the ticket's `Breaking:` lines (or "No break"), and a `Nick
   input:` line.

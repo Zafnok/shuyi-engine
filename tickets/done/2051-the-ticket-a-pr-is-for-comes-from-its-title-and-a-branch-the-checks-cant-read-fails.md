@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2051 — The ticket a PR is for comes from its title, and a branch the checks can't read fails
@@ -105,18 +105,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A `claude/x-1a2b3c` branch titled `[2051] …` with 2051 still in
+- [x] A `claude/x-1a2b3c` branch titled `[2051] …` with 2051 still in
       `open/` fails, and passes once 2051 is in `done/`.
-- [ ] A `t2051-x` branch titled `Ticket 2051: …` that only adds
+- [x] A `t2051-x` branch titled `Ticket 2051: …` that only adds
       `tickets/open/2051-….md` passes.
-- [ ] A ticket-only title whose diff touches `crates/` fails, naming the
+- [x] A ticket-only title whose diff touches `crates/` fails, naming the
       first such file.
-- [ ] A `[2051]` title on a `t2052-…` branch fails.
-- [ ] The `api` job reads the ticket from a `claude/…` branch's title,
+- [x] A `[2051]` title on a `t2052-…` branch fails.
+- [x] The `api` job reads the ticket from a `claude/…` branch's title,
       checking both `Breaking:` and `Book:` lines.
-- [ ] Renaming a PR's title re-runs the `tickets` job.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Renaming a PR's title re-runs the `tickets` job.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -128,5 +128,40 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/xtask/src/tickets/pr.rs`: `Pr`, `PrKind` and `pr_kind(title,
+  branch)` read the PR's ticket from its title first (`[NNNN] …`,
+  `Ticket(s) NNNN…: …` with ranges, `Game NNNN: …`, `sonar(…)`,
+  `[advisory #N] …`, `engine-pin…`, a `dependabot/` branch), and check
+  a `t<NNNN>-` branch against it. `check_pr` replaces `check_pr_branch`:
+  `Work` must be in `done/`; `TicketsOnly` changes only `tickets/`,
+  `docs/ROADMAP.md` and `docs/decisions.md` (naming the first other file)
+  and names open tickets. `ticket_id_from_branch` stays the fallback.
+- `ticket-lint` and `api` take `--pr-title`; `ticket-lint` takes `--base`
+  for a ticket-only PR's diff (by default where HEAD left `origin/main`,
+  else `main`). `api`'s `Breaking:` and `Book:` rules read the PR's kind,
+  and a `Game NNNN:` PR that adds to the public API fails.
+- CI's `tickets` and `api` jobs pass the title, read live from GitHub by
+  `scripts/pr-title.sh` (the event's title if that fails), through `env:`.
+- [ADR-0092](../../docs/adr/0092-the-ticket-a-pr-is-for-is-read-from-its-title-and-a-pr-that-names-none-fails.md);
+  the convention in `tickets/README.md` (*Pull requests*), `write-ticket`
+  (*A ticket-only PR*), `work-ticket` §2 and §6 and `run-gates`.
+
+**Deviations:**
+
+- `edited` is **not** added to `ci.yml`'s triggers: any body edit would
+  re-run every job and cancel the run under way, and skipping the jobs
+  on a body edit would post a passing `ci-result` over a red one. A new
+  `pr-title.yml` runs on a retitle instead: it waits for the PR's latest
+  CI run and re-runs its failed jobs (or its `tickets` job if none
+  failed), which read the new title live. Why is in ADR-0092.
+- `pr_kind` returns `Result<PrKind, String>`: a branch that disagrees
+  with the title is its error, so `check_pr` keeps the signature the
+  ticket gives.
+- The retitle criterion is checked by the workflow's design and its run
+  on this PR; a fork's PR (read-only token) is re-run by hand.
+
+No break: `xtask` is not an engine crate of the public API.
+
+Book: none, the change is to the repository's own CI tooling, which the book doesn't cover.
+
+Nick: nothing to do.
