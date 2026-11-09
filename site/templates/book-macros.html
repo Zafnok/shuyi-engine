@@ -1,6 +1,7 @@
 {#- The book's order (ADR-0090 §2), and what is made from it: the pager
-    through the whole book, the line at the top of a page, and the line
-    that ends a chapter with the project's steps after it.
+    through the whole book, the line at the top of a page, the line that
+    ends a chapter with the project's steps after it, and the reader's
+    filter (ADR-0090 §6), which reads the order as JSON.
 
     The order is the book's `extra.parts`, in turn:
     - `{ part = "…" }`: the book's flat pages whose `extra.part` names it,
@@ -46,6 +47,82 @@
 {% endif %}{% endfor -%}
 {%- endmacro after %}
 
+{#- The page or section at the content path `path`, as one object of the
+    book's order for the reader's filter: its URL, its title, and its
+    page-level mark (`extra.newcomer`) or null. -#}
+{% macro entry(path) -%}
+{%- if path is ending_with("_index.md") %}{% set p = get_section(path=path, metadata_only=true) %}{% else %}{% set p = get_page(path=path) %}{% endif -%}
+{"url": {{ p.permalink | json_encode | safe }}, "title": {{ p.title | json_encode | replace(from="</", to="<\/") | safe }}, "newcomer": {% if p.extra.newcomer %}{{ p.extra.newcomer | json_encode | safe }}{% else %}null{% endif %}}
+{%- endmacro entry %}
+
+{#- The reader's filter's script, in the `<head>` of every page of the
+    book: it runs before the page is drawn, so a passage the reader knows
+    never shows before it folds. -#}
+{% macro script() -%}
+<script src="{{ get_url(path='book-filter.js', cachebust=true) }}"></script>
+{%- endmacro script %}
+
+{#- The reader's filter (ticket 2826, ADR-0090 §6), at the top of every
+    page of the book: the bar, the popup and the book's order as JSON, which
+    `static/book-filter.js` reads. With no JavaScript the bar stays hidden
+    (`style.css` shows it once the script has set `data-book` on `<html>`),
+    the popup never opens, and every passage shows. `engine` is the order's
+    object for appendix A, where the popup sends a reader from another
+    engine. -#}
+{% macro filter() -%}
+{%- set book = get_section(path="learn/book/_index.md") -%}
+{%- set engine = book.pages | filter(attribute="extra.appendix", value="A") | first -%}
+<div class="book-bar" role="region" aria-label="Your notes">
+  <span class="book-bar-toggles" role="group" aria-labelledby="book-bar-for">
+    <span id="book-bar-for">Notes for:</span>
+    <button type="button" class="book-toggle" data-audience="programming" aria-pressed="true">New to programming</button>
+    <button type="button" class="book-toggle" data-audience="games" aria-pressed="true">New to making games</button>
+    <button type="button" class="book-toggle" data-audience="rust" aria-pressed="true">New to Rust</button>
+    <button type="button" class="book-toggle" data-audience="shuyi" aria-pressed="true">New to Shuyi</button>
+  </span>
+  <span class="book-bar-actions">
+    <span class="book-bar-count" aria-live="polite"></span>
+    <button type="button" class="book-bar-button" data-book-show-all>Show all</button>
+    <button type="button" class="book-bar-button" data-book-start-over>Start over</button>
+  </span>
+</div>
+<dialog class="book-welcome" id="book-welcome" aria-labelledby="book-welcome-title">
+  <h2 id="book-welcome-title">Welcome to the book</h2>
+  <p>It's written for every reader at once. Three questions fold away what
+    you already know. You can change them at any time in the bar at the top
+    of each page.</p>
+  <div class="book-question" data-question="programming" role="group" aria-labelledby="book-q-programming">
+    <p id="book-q-programming"><strong>Have you programmed before?</strong></p>
+    <p class="book-answers"><button type="button" data-answer="no" aria-pressed="false">No, I'm new to it</button>
+      <button type="button" data-answer="yes" aria-pressed="false">Yes</button></p>
+  </div>
+  <div class="book-question" data-question="rust" role="group" aria-labelledby="book-q-rust" hidden>
+    <p id="book-q-rust"><strong>Have you written Rust?</strong></p>
+    <p class="book-answers"><button type="button" data-answer="no" aria-pressed="false">No, or not much</button>
+      <button type="button" data-answer="yes" aria-pressed="false">Yes</button></p>
+  </div>
+  <div class="book-question" data-question="games" role="group" aria-labelledby="book-q-games" hidden>
+    <p id="book-q-games"><strong>Have you made a game before?</strong></p>
+    <p class="book-answers"><button type="button" data-answer="no" aria-pressed="false">No</button>
+      <button type="button" data-answer="engine" aria-pressed="false">Yes, in another engine</button>
+      <button type="button" data-answer="shuyi" aria-pressed="false">Yes, with Shuyi</button></p>
+  </div>
+  <div class="book-question" data-question="engine" hidden>
+    <p><strong>Coming from another engine?</strong> Appendix {{ engine.extra.appendix }},
+      <a href="{{ engine.permalink | safe }}"><em>{{ engine.title }}</em></a>, puts the words of
+      Godot, Unity, Bevy, GameMaker and PICO-8 in Shuyi's.</p>
+    <p class="book-answers"><button type="button" data-answer="done">Done</button></p>
+  </div>
+  <p class="book-welcome-skip"><button type="button" data-book-skip>Skip: show me the whole book</button></p>
+</dialog>
+{%- set order = self::order() | trim | split(pat="
+") %}
+<script type="application/json" id="book-order">{"engine": {{ self::entry(path=engine.relative_path) }}, "pages": [
+{%- for path in order %}
+{{ self::entry(path=path) }}{% if not loop.last %},{% endif %}
+{%- endfor %}]}</script>
+{%- endmacro filter %}
+
 {#- The page or section at the content path `path`. -#}
 {% macro link(path, rel) -%}
 {%- if path is ending_with("_index.md") %}{% set p = get_section(path=path, metadata_only=true) %}{% else %}{% set p = get_page(path=path) %}{% endif -%}
@@ -73,7 +150,9 @@
     Chapter 5", "The book · Appendix A", or for a project's step "The book ·
     Project: … · Step 4 of 10". A page written whole for a newcomer
     (`extra.newcomer`, ADR-0090 §5) adds who it is for: "· For readers new
-    to programming". -#}
+    to programming", and a line the reader's filter shows when the reader
+    knows that audience: "You can skip this page", with the next page they
+    need. -#}
 {% macro where(p) -%}
 <p class="meta"><a href="{{ get_url(path='@/learn/book/_index.md') }}">The book</a>
   {%- if p.extra.chapter %} · Chapter {{ p.extra.chapter }}
@@ -89,6 +168,9 @@
   {%- elif p.extra.newcomer == "shuyi" %} · For readers new to Shuyi
   {%- else %}{{ throw(message=p.relative_path ~ ': newcomer = "' ~ p.extra.newcomer ~ '" is not one of programming, games, rust or shuyi') }}
   {%- endif %}</p>
+{%- if p.extra.newcomer is defined %}
+<p class="book-skip" hidden>You can skip this page. <span data-book-next>Next for you: <a href=""></a></span></p>
+{%- endif %}
 {%- endmacro where %}
 
 {#- The line that ends a chapter `p` with the steps of the book's folded

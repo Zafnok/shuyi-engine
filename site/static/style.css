@@ -443,14 +443,251 @@ h3 {
   margin-bottom: 0;
 }
 
+/* The reader's filter (ADR-0090 §6, `book-filter.js`). The script sets
+   `data-book` on `<html>`, which shows the bar, and `data-book-fold` to the
+   audiences the reader knows, whose passages it leaves out. With no
+   JavaScript neither is set: no bar, and every passage shows. */
+
+.book-bar,
+.newcomer-stub {
+  display: none;
+}
+
+[data-book] .book-bar {
+  display: flex;
+}
+
+[data-book-fold~="programming"] .newcomer[data-newcomer="programming"]:not(.is-open),
+[data-book-fold~="games"] .newcomer[data-newcomer="games"]:not(.is-open),
+[data-book-fold~="rust"] .newcomer[data-newcomer="rust"]:not(.is-open),
+[data-book-fold~="shuyi"] .newcomer[data-newcomer="shuyi"]:not(.is-open),
+.newcomer.is-shut {
+  display: none;
+}
+
+/* A passage the reader hid leaves its stub; one the bar folds leaves
+   nothing (Nick, 2026-11-09). */
+.newcomer-stub.is-shut {
+  display: block;
+}
+
+/* A shown passage's "hide", which the script adds to its label. */
+.newcomer-hide-wrap {
+  display: none;
+}
+
+[data-book] .newcomer-hide-wrap {
+  display: inline;
+}
+
+.newcomer-hide {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 400;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.newcomer-hide:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.book-bar button,
+.newcomer-stub,
+.book-welcome button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.book-bar button:focus-visible,
+.newcomer-stub:focus-visible,
+.book-welcome button:focus-visible,
+.newcomer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A passage the reader hid: its label and topic, and "show". */
+.newcomer-stub {
+  width: 100%;
+  margin: 1.25rem 0;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border: 0;
+  border-left: 3px dashed var(--newcomer);
+  background: none;
+  color: var(--newcomer);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.newcomer-stub span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.newcomer-stub .newcomer-stub-show {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* The bar: who the notes are for, how many are hidden, and Start over. */
+.book-bar {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  max-width: 44rem;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.book-bar-toggles,
+.book-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.book-toggle {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+/* A pressed toggle shows that audience's notes: filled, and ticked, so it
+   isn't told by its colour alone. */
+.book-toggle[aria-pressed="true"] {
+  border-color: var(--newcomer);
+  background: var(--newcomer);
+  color: var(--bg);
+}
+
+.book-toggle[aria-pressed="true"]::before {
+  content: "✓ ";
+}
+
+.book-bar-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.book-bar-button[hidden] {
+  display: none;
+}
+
+/* The contents' tags: Start here, You can skip this, Read this first. */
+.book-tag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--newcomer);
+  border-radius: 999px;
+  color: var(--newcomer);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.book-skip {
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--newcomer);
+  background: var(--bg-raised);
+}
+
+/* The popup a first visit opens. */
+.book-welcome {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.book-welcome::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.book-welcome h2 {
+  margin-top: 0;
+}
+
+.book-question {
+  margin-top: 1rem;
+}
+
+.book-question p {
+  margin: 0 0 0.5rem;
+}
+
+.book-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.book-answers button {
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.book-answers button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.book-welcome-skip {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.book-welcome-skip button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .pager {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
   max-width: 44rem;
   margin-top: 3rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--line);
+}
+
+/* The pages the reader's path passes over (`book-filter.js`). */
+.pager-skipped {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 /* The footer. */

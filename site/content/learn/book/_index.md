@@ -20,5 +20,6 @@ you build a step at a time, from an empty folder to a game anyone can play in th
 browser.
 
 A note that only a newcomer needs says who it is for: new to programming, to making
-games, to Rust or to Shuyi. The bar at the top of each page folds the notes you don't
-need, and a folded note leaves a line you can click to open it.
+games, to Rust or to Shuyi. The bar at the top of each page leaves out the notes you
+don't need. A note you see can be hidden, and leaves a line you can click to show it
+again.

@@ -33,9 +33,16 @@ What there is:
   API that changes no file of the book and has no `Book:` line.
 - **Released versions keep a frozen copy** of the site, which `llms.txt`
   lists (`crates/xtask/src/llms.rs`, *Released versions*).
-- **The reader's filter** (2826): the popup on a first visit and the bar,
-  with the answers in `localStorage`. "Have you made a game before?",
-  answered "Yes, with Shuyi", is how a reader says they know Shuyi.
+- **From 2826 (done):** the reader's filter, the popup on a first visit
+  and the bar (`site/README.md`, *The reader's filter*). "Have you made a
+  game before?", answered "Yes, with Shuyi", is how a reader says they
+  know Shuyi.
+  - The popup's and the bar's HTML is `filter()` in
+    `site/templates/book-macros.html`; the questions' logic is `answer()`
+    and `finish()` in `site/static/book-filter.js`.
+  - `read()` there keeps only `knows` and `engine`, and `write()` writes
+    `v`, `knows` and `engine` back. A `"version"` field must go through
+    both, or a bar toggle drops it.
 - **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §7 sketches the version marks.
   - A passage is wrapped in `{% since(version="0.4.0") %}` …
     `{% end %}`. The version is as Cargo writes it, and the compare
