@@ -71,7 +71,7 @@ None.
   done, give its `PoolGauge` and `SkillBar` a `Measure`, so a game
   lays the HUD out in rows and columns. If not, nothing to do (2762
   does it, its clause says so).
-- **From 2802 (done):** the book's chapter 4, *The frame and skins*
+- **From 2802 (done):** the book's chapter 2, *The frame and skins*
   (`site/content/learn/book/frame-and-skins.md`), gets a section on
   laying widgets out with `shuyi_ui::layout`, its code in
   `site/snippets/`.

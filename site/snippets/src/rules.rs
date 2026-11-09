@@ -1,4 +1,4 @@
-//! Chapter 6, rules as commands: the garden's rules, a state that takes
+//! Chapter 5, rules as commands: the garden's rules, a state that takes
 //! commands and answers with what happened ([`TurnRules`]), its luck
 //! from a seeded RNG kept in the state, its history, and the hash that
 //! says two runs played the same; and a bee over it in fixed steps

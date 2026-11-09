@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "book-macros.html" as book %}
+
+{#- A project's landing page (ADR-0090 §2): its text, its steps in order,
+    each with the chapter it comes after, and the pages before and after
+    it in the book's order. -#}
+{% block content %}
+<article class="prose">
+  {{ book::where(p=section) }}
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  <ol class="contents">
+    {%- for step in section.pages %}
+    {%- set chapter = get_page(path="learn/book/" ~ step.extra.follows ~ ".md") %}
+    <li value="{{ step.extra.step }}"><a href="{{ step.permalink | safe }}">{{ step.title }}</a>
+      {%- if step.description %}: {{ step.description }}{% endif %}
+      <span class="meta">After chapter {{ chapter.extra.chapter }}, <a href="{{ chapter.permalink | safe }}">{{ chapter.title }}</a>.</span></li>
+    {%- endfor %}
+  </ol>
+</article>
+{{ book::pager(current=section.relative_path) }}
+{% endblock content %}

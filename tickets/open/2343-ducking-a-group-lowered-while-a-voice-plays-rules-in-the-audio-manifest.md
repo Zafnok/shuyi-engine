@@ -44,8 +44,12 @@ What Shuyi has (checked 2026-10-20):
   its end is known unless its length can't be read (`ogg_length_ms`);
 - the headless `Speaker` (`crates/platform/src/headless.rs`) keeps the
   last frame's requests but no voice;
-- 2342 gives every cue a gain from its sound group, worked out in
-  `shuyi-ui` every frame (`GroupGains`), which every backend applies.
+- **From 2342 (done):** every cue has a gain from its sound group,
+  worked out in `shuyi-ui` every frame (`GroupGains`,
+  `crates/ui/src/audio/groups.rs`, ADR-0091), which the shared player
+  applies. The built-in groups' ids are in
+  `crates/assets/src/audio/groups.rs` (`BUILT_IN`, with their parents);
+  the manifest's own groups are 2258's.
 
 Why it matters:
 
@@ -81,7 +85,8 @@ After MVP and the game ships without the dip.
 **In:**
 
 - **Rules in the audio manifest** (`crates/assets/src/audio.rs`, with
-  the checks beside 2342's in `crates/assets/src/audio/groups.rs`):
+  the checks in `crates/assets/src/audio/groups.rs`, beside the built-in
+  ids):
   `AudioManifest.ducks: Vec<DuckRule>`, read from an optional `ducks`
   list on `RawFile` (`#[serde(default)]`), for example
   `(when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms: 500)`.
@@ -90,8 +95,11 @@ After MVP and the game ships without the dip.
   - `when`: the group whose playing lowers another. Only `voice` for
     now, since the device reports only voices; another group is an
     error that says so;
-  - `lower`: a known group (built in or declared), not `when` and not
-    one of its parents (lowering `master` would lower the voice too);
+  - `lower`: a known group, not `when` and not one of its parents
+    (lowering `master` would lower the voice too). Known is one of
+    `BUILT_IN`; **either order with 2258** (a game's own groups): if it
+    is done, a group the manifest declares too, with a test; if not,
+    nothing more (2258 does it);
   - `to`: a position on 2342's loudness curve, 0–100; over 100 is an
     error. While ducked, the lowered group's gain is multiplied by
     `loudness(to)`: 80 lowers it by 12 dB (1029 of 4096), and 100
@@ -180,6 +188,7 @@ After MVP and the game ships without the dip.
 - **2218** (writers of the engine's text formats): if it is done, its
   `AudioManifestRon` writer writes `ducks` and its round-trip test
   covers a rule; if not, nothing here.
+- **2258** (a game's own sound groups): see `lower` above.
 - **2725** (parked: a sound group per voiced character, under
   `voice`): if it is done, `sounding` also needs the gain of the group
   the playing clip was asked in above 0, not only `voice`'s, so a

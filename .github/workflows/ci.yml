@@ -407,7 +407,8 @@ jobs:
             "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "target/web/$name" \
               --out "target/web-check/boot-$name"
           done
-      # As pages.yml builds them: every step of the tutorial (ticket 2803).
+      # As pages.yml builds them: every step of the book's project (ticket
+      # 2803), its code in site/tutorial/.
       - name: Every tutorial step's web build boots
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target/tutorial

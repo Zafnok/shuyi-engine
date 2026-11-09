@@ -410,6 +410,13 @@ h3 {
   margin-bottom: 0.4rem;
 }
 
+/* A chapter's project steps, listed under it with their own arrow. */
+.contents .then {
+  margin-top: 0.4rem;
+  padding-left: 1rem;
+  list-style: none;
+}
+
 .pager {
   display: flex;
   justify-content: space-between;

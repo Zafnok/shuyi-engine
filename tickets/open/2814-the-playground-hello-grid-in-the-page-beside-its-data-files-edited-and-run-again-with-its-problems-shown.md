@@ -31,9 +31,9 @@ What there is once the blockers are done:
   its problems to its parent frame with `postMessage({ kind:
   "shuyi-report", text }, origin)`, an empty text when it loaded.
 - Hello, Grid's text files (`examples/hello-grid/files/`) are each a
-  concept of the book: `stage.map` (a map in a text format, chapter 5),
-  `palette.ron` (the skin's colours, chapter 4), `keymap.ron` (actions
-  and keys, chapter 3), `intro.dlg` (dialogue) and `en.ron` (the screen
+  concept of the book: `stage.map` (a map in a text format, chapter 3),
+  `palette.ron` (the skin's colours, chapter 2), `keymap.ron` (actions
+  and keys, chapter 4), `intro.dlg` (dialogue) and `en.ron` (the screen
   text).
 - 2808 makes a Markdown twin of every Learn page and lists Learn in
   `llms.txt`, so a playground under Learn is there for agents too, with
@@ -56,11 +56,12 @@ over 1 MiB in all, is reported as one line naming it, and the game
 plays its own files. Checked by hand in the built-in browser, with the
 page in a same-origin frame: the parent got the message at its origin.
 
-**Either order with 2824:** if 2824 is done, the Learn landing page and
-the book's landing page are as it left them: link the playground from
-both, and from the top menu; if not, link it from Learn's landing page
-and the top menu as they are, and 2824 keeps the links when it rewrites
-them.
+**From 2824 (done):** Learn's landing page (`site/content/learn/_index.md`)
+has one way in, the book, with a list beside it of the API docs and the
+problem codes; the book's front page is its intro and its contents
+(`site/templates/book.html`). Link the playground from both, in that list
+and under the contents' links to the problem codes and the API docs, and
+from the top menu.
 
 ## Nick input
 

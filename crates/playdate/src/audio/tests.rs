@@ -9,7 +9,8 @@ use alloc::vec::Vec;
 use shuyi_assets::audio::{AudioManifest, CreditRef, MusicCue, SoundCue};
 use shuyi_platform::audio::player::{Backend, Player};
 use shuyi_platform::{Audio, AudioFrame, Millis, SoundRequest};
-use shuyi_ui::audio::{MusicCommand, SoundId};
+use shuyi_ui::audio::groups::SFX;
+use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SoundGroups, SoundId};
 
 use super::{SAMPLE_PLAYERS, Speaker, player};
 use crate::fake::FakeSdk;
@@ -108,14 +109,17 @@ fn id(n: u32) -> SoundId {
 }
 
 #[test]
-fn a_cue_plays_at_its_volume_times_the_request_and_the_players() {
+fn a_cue_plays_at_its_volume_times_the_request_and_its_gain() {
     let mut rig = Rig::new();
     rig.frame(&[sound("click", 0.5)], &[], 0.0);
     assert_eq!(
         rig.sdk.sounding_samples(),
         [("audio/sfx/click".to_owned(), 0.25)]
     );
-    rig.player.set_volumes(&mut rig.speaker, 1.0, 0.5);
+    let groups = SoundGroups::default();
+    let half = GroupGains::full(&groups).with(&groups, SFX, Gain::new(2048));
+    let gains = Gains::new(&groups, &half);
+    rig.player.set_gains(&mut rig.speaker, gains);
     rig.frame(&[sound("click", 1.0)], &[], 0.0);
     assert_eq!(
         rig.sdk.sounding_samples(),
@@ -450,12 +454,12 @@ fn the_device_is_the_players_warnings_in_the_console() {
     let sdk = sdk();
     let mut device = shuyi_platform::audio::player::PlayerDevice::new(Speaker::new(sdk.clone()));
     let requests = [sound("nope", 1.0), sound("click", 1.0)];
+    let groups = SoundGroups::default();
+    let full = GroupGains::full(&groups);
     let frame = AudioFrame {
         requests: &requests,
         music: &[],
-        music_volume: 1.0,
-        sound_volume: 1.0,
-        voice_volume: 1.0,
+        gains: Gains::new(&groups, &full),
     };
     device.play(&frame, Millis(0));
     assert_eq!(

@@ -232,7 +232,7 @@ not parked.
   `shuyi_core::curve` say a skin draws a curve as lines over
   `pieces()`: name `Shape::line` there. If not, nothing to do (2122
   names it).
-- **From 2802 (done):** chapter 4 of the book, *The frame and skins*
+- **From 2802 (done):** chapter 2 of the book, *The frame and skins*
   (`site/content/learn/book/frame-and-skins.md`), gets a short section
   on drawn shapes (lines, circles and polygons), its code in
   `site/snippets/` through the `snippet` shortcode.

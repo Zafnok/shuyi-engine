@@ -5,8 +5,8 @@
 //! several ([`RowValue::Choice`]), a volume ([`RowValue::Volume`]), or
 //! something Confirm does ([`RowValue::Action`]). The engine's own
 //! settings come as rows ready made ([`OptionRow::text_speed`],
-//! [`OptionRow::fullscreen`], [`OptionRow::frame_cap`], the volumes,
-//! [`OptionRow::restore_defaults`]).
+//! [`OptionRow::fullscreen`], [`OptionRow::frame_cap`], a volume per sound
+//! group ([`OptionRow::volumes`]), [`OptionRow::restore_defaults`]).
 //!
 //! A change shows at once but is saved only when the player keeps it:
 //! leaving with anything changed asks whether to keep it, throw it away or
@@ -36,6 +36,7 @@ use shuyi_assets::keymap::{ActionSet, UiAction};
 
 use super::text_keys_help;
 use crate::audio::MenuSound;
+use crate::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed::{TextKey, text_key};
@@ -336,26 +337,77 @@ impl<G: GameData> OptionRow<G> {
         )
     }
 
-    /// How loud the music plays (in the settings).
-    pub fn music_volume() -> Self {
+    /// How loud everything plays: the [`MASTER`] group's volume (in the
+    /// settings).
+    pub fn master_volume() -> Self {
         Self::new(
-            "options.row.music_volume",
+            "options.row.master_volume",
             RowValue::Volume {
-                get: |ctx| ctx.settings().music_volume,
-                set: |ctx, v| ctx.preview_settings(|s| s.music_volume = v),
+                get: |ctx| ctx.volume(MASTER),
+                set: |ctx, v| ctx.preview_volume(MASTER, v),
             },
         )
     }
 
-    /// How loud the sounds play (in the settings).
+    /// How loud the music plays: the [`MUSIC`] group's volume (in the
+    /// settings). A game's own sound group gets its row the same way, with
+    /// its id, in the game's rows:
+    ///
+    /// ```
+    /// # use shuyi_ui::screens::options::{OptionRow, RowValue};
+    /// # use shuyi_ui::toy::Toy;
+    /// const AMBIENCE: &str = "ambience";
+    /// let row = OptionRow::<Toy>::new(
+    ///     "options.row.ambience_volume",
+    ///     RowValue::volume(|ctx| ctx.volume(AMBIENCE), |ctx, v| {
+    ///         ctx.preview_volume(AMBIENCE, v)
+    ///     }),
+    /// );
+    /// # let _ = row;
+    /// ```
+    pub fn music_volume() -> Self {
+        Self::new(
+            "options.row.music_volume",
+            RowValue::Volume {
+                get: |ctx| ctx.volume(MUSIC),
+                set: |ctx, v| ctx.preview_volume(MUSIC, v),
+            },
+        )
+    }
+
+    /// How loud the sounds play: the [`SFX`] group's volume (in the
+    /// settings), which the menus' sounds are under too.
     pub fn sound_volume() -> Self {
         Self::new(
             "options.row.sound_volume",
             RowValue::Volume {
-                get: |ctx| ctx.settings().sound_volume,
-                set: |ctx, v| ctx.preview_settings(|s| s.sound_volume = v),
+                get: |ctx| ctx.volume(SFX),
+                set: |ctx, v| ctx.preview_volume(SFX, v),
             },
         )
+    }
+
+    /// How loud the menus' sounds play: the [`UI`] group's volume (in the
+    /// settings), under the sound volume.
+    pub fn ui_volume() -> Self {
+        Self::new(
+            "options.row.ui_volume",
+            RowValue::Volume {
+                get: |ctx| ctx.volume(UI),
+                set: |ctx, v| ctx.preview_volume(UI, v),
+            },
+        )
+    }
+
+    /// The volume rows most games show, in order: master, music, sound and
+    /// voice.
+    pub fn volumes() -> Vec<Self> {
+        vec![
+            Self::master_volume(),
+            Self::music_volume(),
+            Self::sound_volume(),
+            Self::voice_volume(),
+        ]
     }
 
     /// Whether voice clips play (in the settings). Turning it off stops
@@ -370,13 +422,14 @@ impl<G: GameData> OptionRow<G> {
         )
     }
 
-    /// How loud voice clips play (in the settings).
+    /// How loud voice clips play: the [`VOICE`] group's volume (in the
+    /// settings).
     pub fn voice_volume() -> Self {
         Self::new(
             "options.row.voice_volume",
             RowValue::Volume {
-                get: |ctx| ctx.settings().voice_volume,
-                set: |ctx, v| ctx.preview_settings(|s| s.voice_volume = v),
+                get: |ctx| ctx.volume(VOICE),
+                set: |ctx, v| ctx.preview_volume(VOICE, v),
             },
         )
     }

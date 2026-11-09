@@ -2,9 +2,11 @@
 title = "Saving progress"
 description = "The furthest level reached, kept in the player's storage, with a version so a later build can read it."
 weight = 70
+aliases = ["learn/tutorial/07-save/", "learn/tutorial/07-save/play/"]
 
 [extra]
 step = 7
+follows = "saves-and-settings"
 +++
 
 The player shouldn't have to start again each time. In this step, the game remembers the furthest level

@@ -2,9 +2,11 @@
 title = "Shipping it"
 description = "Give the game its id, check it against its targets, build it for the web, and put it on Pages."
 weight = 100
+aliases = ["learn/tutorial/10-ship/", "learn/tutorial/10-ship/play/"]
 
 [extra]
 step = 10
+follows = "targets-and-export"
 +++
 
 Your game is finished. Here it is, on its third level, with everything you've built on screen:
@@ -91,14 +93,14 @@ In making games: the loop and its frames, state, commands, determinism, data apa
 
 In Shuyi: screens on a stack, `Ctx`, views and skins, the grid kit, actions and the keymap, text by key, the palette, the format registry
 and the bundle, `TurnRules` and `History`, menus and results, storage, the options screens, the Harness, `GameTools`, bots and replays, and
-targets. You'll find all of these in the [glossary](@/learn/tutorial/glossary.md).
+targets. You'll find all of these in the [glossary](@/learn/book/glossary.md).
 
 ## Where next
 
 The best next step is to change this game until it's yours. In order of difficulty:
 
 1. **A level of your own.** Add `levels/6.map`, put it in `levels.ron`, and add `lines/6.ron`. The test will tell you if it can be won.
-2. **A new look.** Change the palette, and the characters in `TERRAIN_LOOKS` and `Pieces`, until it doesn't look like this tutorial.
+2. **A new look.** Change the palette, and the characters in `TERRAIN_LOOKS` and `Pieces`, until it doesn't look like this project.
 3. **A new kind of tile.** Add ice, which keeps a box sliding, or a hole that a box fills in. You'll change `TERRAIN_NAMES`, `TERRAIN_LOOKS`, a
    level's legend and `apply`. The compiler will find the rest.
 4. **A new command.** Add a "reset the level" action, as you added Undo. Think about whether it's a command at all, or whether it

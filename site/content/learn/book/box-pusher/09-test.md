@@ -2,9 +2,11 @@
 title = "Bots, replays and a frame"
 description = "The game's own tools: a scene a program can read, a bot that plays, a replay that catches a change, and a frame kept as a test."
 weight = 90
+aliases = ["learn/tutorial/09-test/", "learn/tutorial/09-test/play/"]
 
 [extra]
 step = 9
+follows = "testing"
 +++
 
 The game plays and looks just as it did in the last step. So why is this a step of its own? Because of how

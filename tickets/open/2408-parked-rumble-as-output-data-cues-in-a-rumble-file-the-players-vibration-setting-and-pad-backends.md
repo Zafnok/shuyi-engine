@@ -330,9 +330,15 @@ if he wants rumble in the game.
   ADR-0007: rumble is output data like audio; the cue file is a standard
   kind; `Platform::motors` is a provided method; the rules live in
   `shuyi-platform`; rumble never carries information alone.
-- **Either order with 2340 and 2342:** each adds settings and rows to the
+- **From 2342 (done):** the volumes are `Settings::volumes`, a
+  position per sound group, set through `Ctx::preview_volume` and shown
+  by `RowValue::Volume` rows (`OptionRow::volumes`). `Settings::vibration`
+  is a field of its own and never a group in `Volumes`; its row is a
+  `RowValue::Volume` over it; `FrameOutput::vibration` goes beside
+  `gains`; and each saved form keeps saving `vibration` beside
+  `volumes`.
+- **Either order with 2340:** each adds settings and rows to the
   options screen. Whichever lands second follows the first's shape.
-  Vibration is never one of 2342's sound groups.
 - **Either order with 2351:** if the engine has built-in English for its
   own text keys, `options.row.vibration` goes there too.
 - **What changes for the game:** additive. `Settings` and `Ctx` gain

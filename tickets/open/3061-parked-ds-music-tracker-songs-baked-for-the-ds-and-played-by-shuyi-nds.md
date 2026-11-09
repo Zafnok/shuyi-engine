@@ -139,9 +139,8 @@ None.
   backend trait's methods for a track (`load_music`, `poll_music`, `play`,
   `set_volume`, `stop`), so the player keeps the cue volumes, the fades and
   the music clock, and fill in the provided methods the song player can
-  play (a pause, say). **Either order with 2342:** if 2342 is done, a song plays at the
-  frame's `gains.music(cue)`; if not, at its `music_volume`, and 2342
-  moves it onto the gains (its clause says so).
+  play (a pause, say). **From 2342 (done):** a song plays at the frame's
+  `gains.music(cue)` (ADR-0091), through the shared player.
 - **The profiles.** Check `targets/nds.ron`'s and `targets/dsi.ron`'s
   `audio` against the choice: `channels` and `music_channels` as
   above, `music` (`Mixed`, as 3017 wrote it, unless the choice streams

@@ -6,6 +6,7 @@
 
 use shuyi_assets::target::TargetProfile;
 use shuyi_platform::harness::Harness;
+use shuyi_ui::audio::groups::SFX;
 use shuyi_ui::screens::options::{FULLSCREEN_ROW, LeaveChoice, OptionsScreen, ValueView};
 use shuyi_ui::settings::{SETTINGS_KEY, TextSpeed};
 use shuyi_ui::storage::Storage;
@@ -110,11 +111,12 @@ fn a_volume_is_typed_in_and_a_discarded_change_is_put_back() {
     assert!(options(&h).typing().is_some());
     h.type_text("37").keys("Enter");
     assert!(options(&h).typing().is_none());
-    assert_eq!(h.ctx().settings().sound_volume, 37);
+    assert_eq!(h.ctx().volume(SFX), 37);
     // Thrown away on leaving: as it was.
     h.keys("d Left f");
     assert_eq!(h.screens(), ["lobby"]);
-    assert_eq!(h.ctx().settings().sound_volume, 80);
+    assert_eq!(h.ctx().volume(SFX), 97);
+    assert!(h.ctx().settings().volumes.is_empty());
 }
 
 #[test]

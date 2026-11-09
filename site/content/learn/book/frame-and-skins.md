@@ -1,10 +1,11 @@
 +++
 title = "The frame and skins"
 description = "A screen says what it shows as plain data, and a skin paints it; tests read the data."
-weight = 40
+weight = 20
 
 [extra]
-chapter = 4
+part = "chapters"
+chapter = 2
 +++
 
 What's on the screen and how it looks are two different questions. "The second plot
@@ -34,7 +35,7 @@ It names no glyph, no color and no position: those are the skin's.
 > number, never negative, of the kind used to count a list's items.
 >
 > `plots.map(|&grows| ...).collect()` is an
-> [iterator chain](@/learn/tutorial/03-walk.md#the-rules): go through each plot, turn
+> [iterator chain](@/learn/book/box-pusher/03-walk.md#the-rules): go through each plot, turn
 > each into a `Plot`, and gather them into a list. `|&grows|` is a small nameless
 > function whose one argument is `grows`, and the `&` takes the value out of the
 > reference it comes as. In Rust, `if` gives back a value, so `if grows { Plot::Sprout }
@@ -251,7 +252,7 @@ check: 1 error(s)
 ```
 
 **Trying to change the game in `draw`.** The compiler stops you, as `draw` only has
-`&self` ([chapter 2](@/learn/book/games-and-screens.md#when-it-goes-wrong)).
+`&self` ([chapter 6](@/learn/book/games-and-screens.md#when-it-goes-wrong)).
 
 ## On a target's screen
 

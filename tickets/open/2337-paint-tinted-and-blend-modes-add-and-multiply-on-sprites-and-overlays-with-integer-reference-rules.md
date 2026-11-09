@@ -249,7 +249,7 @@ None.
 - **Either order with 1120** (world layers, parked): if 1120 is done,
   its world-layer sprite items draw `paint` and `blend` through the code
   here. If not, add a line to 1120 saying its sprite items carry them.
-- **From 2802 (done):** the book's chapter 4, "The frame and skins"
+- **From 2802 (done):** the book's chapter 2, "The frame and skins"
   (`site/content/learn/book/frame-and-skins.md`), gets a short section
   with a tinted sprite and an additive one, its code in
   `site/snippets/`.

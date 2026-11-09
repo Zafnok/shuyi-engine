@@ -928,24 +928,35 @@ fn the_music_the_platform_reports_becomes_the_clock() {
 
 /// The settings the platform applies go out every frame.
 #[test]
-fn frames_carry_the_volumes_and_fullscreen() {
+fn frames_carry_the_gains_and_fullscreen() {
+    use crate::audio::Gain;
+    use crate::audio::groups::{MUSIC, SFX, VOICE};
+    use crate::audio::loudness::loudness;
     let mut game = home(ctx());
     let out = game.frame(&[], 0.0);
-    assert!((out.music_volume - 0.8).abs() < 1e-6);
-    assert!((out.sound_volume - 0.8).abs() < 1e-6);
-    assert!((out.voice_volume - 0.8).abs() < 1e-6);
+    // A new player's: what the linear 0.8 sounded like.
+    let gains = [
+        out.gains.music("theme"),
+        out.gains.sound("x"),
+        out.gains.voice(),
+    ];
+    assert_eq!(gains, [Gain::new(3329); 3]);
     assert!(!out.fullscreen);
     game.ctx_mut()
         .change_settings(|s| {
-            s.music_volume = 25;
-            s.sound_volume = 50;
-            s.voice_volume = 30;
+            s.volumes.set(MUSIC, 25);
+            s.volumes.set(SFX, 50);
+            s.volumes.set(VOICE, 30);
         })
         .unwrap();
     let out = game.frame(&[], 0.0);
-    assert!((out.music_volume - 0.25).abs() < 1e-6);
-    assert!((out.sound_volume - 0.5).abs() < 1e-6);
-    assert!((out.voice_volume - 0.3).abs() < 1e-6);
+    let gains = [
+        out.gains.music("theme"),
+        out.gains.sound("x"),
+        out.gains.voice(),
+    ];
+    assert_eq!(gains, [25, 50, 30].map(loudness));
+    assert_eq!(game.gains().group(SFX), loudness(50), "the last frame's");
     // The window's own shortcut flips the setting.
     game.toggle_fullscreen();
     assert!(game.frame(&[], 0.0).fullscreen);
@@ -1018,7 +1029,7 @@ fn a_request_for_a_frame_cap_is_confirmed_by_the_platforms_report() {
     assert_eq!(game.ctx().frame_cap_status(again), CapStatus::Pending);
     // Any change of the cap takes the next serial; others don't.
     game.ctx_mut()
-        .change_settings(|s| s.music_volume = 1)
+        .change_settings(|s| s.volumes.set(crate::audio::groups::MUSIC, 1))
         .unwrap();
     assert_eq!(game.ctx().frame_cap_serial(), 4);
     game.ctx_mut()

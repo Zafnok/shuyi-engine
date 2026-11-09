@@ -1,4 +1,4 @@
-//! Chapter 3, actions, never keys: the help line that names the player's
+//! Chapter 4, actions, never keys: the help line that names the player's
 //! own keys, and an action set of a game's own, for a game that needs
 //! more than the six moves of `UiAction`.
 
