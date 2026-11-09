@@ -247,6 +247,7 @@ pub(crate) const MANIFEST: &str = r#"(
     pools: [],
     credits: [],
     groups: [(id: "ambience", parent: "sfx", volume: 80), (id: "music", volume: 90)],
+    ducks: [(when: "voice", lower: "music", to: 80, attack_ms: 100, release_ms: 500)],
 )"#;
 pub(crate) const SCRIPT: &str = "\
 @scene gate

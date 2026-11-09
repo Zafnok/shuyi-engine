@@ -148,7 +148,7 @@ confirmed. A backend that never reports leaves every request pending.
    screen's ask waits for one;
 7. `audio().music_playing(now)`, for the screens that keep time with the
    music, then `audio().voice_playing(now)`, for the screens that wait
-   for a voice to end;
+   for a voice to end and for the manifest's ducking rules (ADR-0094);
 8. the game's update (`shuyi_ui::Game::frame`);
 9. `audio().play(&frame, now)` with that frame's audio, every frame (its
    gains at 0 while the game is muted without focus);
@@ -300,7 +300,10 @@ The sound device:
 - `voice_playing(now)`: the file of the voice clip sounding, or asked for
   and still loading, or `None` once it has ended or was stopped,
   replaced, failed or given up on as late; a clip held by `suspend`
-  still sounds. `None` by default; `PlayerDevice` answers it;
+  still sounds. `None` by default; `PlayerDevice` answers it. While it
+  names a clip, the groups the audio manifest's `ducks` lower go down
+  (ADR-0094): a backend that answers `None` never ducks, and the gains of
+  the next `play` carry the ducking, with nothing more to do;
 - `play(&frame, now)`: one frame's audio. Take the frame's `gains` first
   (ADR-0091): every sound, track and voice clip plays at its own volume
   times its cue's gain (`gains.sound(cue)`, `gains.music(cue)`,

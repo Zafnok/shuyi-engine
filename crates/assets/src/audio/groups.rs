@@ -6,14 +6,16 @@
 //! ids.
 //!
 //! A game declares its own groups in the manifest's `groups` list
-//! ([`GroupDef`]), and sets a built-in group's default there too; this
-//! module checks them.
+//! ([`GroupDef`]), and sets a built-in group's default there too, and
+//! lowers a group while a voice plays in its `ducks` list ([`DuckRule`],
+//! ADR-0094); this module checks them.
 
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-use super::Check;
+use super::{Check, MAX_VOLUME};
+use crate::error::{ContentError, line_of};
 
 /// The group over every other: its volume lowers everything.
 pub const MASTER: &str = "master";
@@ -68,6 +70,41 @@ pub(super) struct RawGroup {
     parent: Option<String>,
     #[serde(default)]
     volume: Option<u8>,
+}
+
+/// A ducking rule (ADR-0094): while a sound of group `when` plays, group
+/// `lower`'s gain goes down to `loudness(to)` of itself over `attack_ms`,
+/// and comes back over `release_ms` once it stops. Written in the
+/// manifest's `ducks` list as `(when: "voice", lower: "music", to: 80,
+/// attack_ms: 100, release_ms: 500)`. Build it with `default()` and assign
+/// its fields (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DuckRule {
+    /// The group whose playing lowers another: only [`VOICE`] for now, the
+    /// one a device says is playing.
+    pub when: String,
+    /// The group lowered: any group but `when` and its parents.
+    pub lower: String,
+    /// How far down it goes, as a position on the loudness curve (0–100):
+    /// its gain is multiplied by that position's. 80 lowers it by 12 dB,
+    /// and 100 changes nothing.
+    pub to: u8,
+    /// How long it takes to go down, in milliseconds (0: at once).
+    pub attack_ms: u32,
+    /// How long it takes to come back, in milliseconds (0: at once).
+    pub release_ms: u32,
+}
+
+/// One entry of the manifest's `ducks` list.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RawDuck {
+    when: String,
+    lower: String,
+    to: u8,
+    attack_ms: u32,
+    release_ms: u32,
 }
 
 impl Check<'_> {
@@ -134,6 +171,80 @@ impl Check<'_> {
             at = parent;
         }
         None
+    }
+
+    /// Checks and keeps the manifest's `ducks`, after its `groups`: each
+    /// rule's `when` is [`VOICE`], its `lower` a group there is that isn't
+    /// `when` or one of its parents, its `to` at most 100, and no two
+    /// rules lower the same group.
+    pub(super) fn ducks(&mut self, ducks: Vec<RawDuck>) {
+        for (at, raw) in ducks.into_iter().enumerate() {
+            let RawDuck {
+                when,
+                lower,
+                to,
+                attack_ms,
+                release_ms,
+            } = raw;
+            let rule = format!("ducks[{at}] (lower: \"{lower}\")");
+            if when != VOICE {
+                let why = format!(
+                    "lowers \"{lower}\" when \"{when}\" plays: only \"{VOICE}\" can, the one \
+                     group a device says is playing"
+                );
+                self.duck_err(&lower, &rule, &why);
+            }
+            if !self.is_group(&lower) {
+                self.duck_err(&lower, &rule, &format!("names unknown group \"{lower}\""));
+            } else if when == VOICE && Self::is_under(&when, &lower) {
+                let why = format!(
+                    "lowers \"{lower}\", which \"{when}\" plays under, so would lower it too"
+                );
+                self.duck_err(&lower, &rule, &why);
+            }
+            if to > MAX_VOLUME {
+                let why = format!("lowers to {to}, over {MAX_VOLUME} on the loudness curve");
+                self.duck_err(&lower, &rule, &why);
+            }
+            if self.manifest.ducks.iter().any(|d| d.lower == lower) {
+                self.duck_err(&lower, &rule, "lowers a group another rule lowers already");
+            }
+            self.manifest.ducks.push(DuckRule {
+                when,
+                lower,
+                to,
+                attack_ms,
+                release_ms,
+            });
+        }
+    }
+
+    /// Records a problem with ducking rule `rule`, at the first line with
+    /// its `lower`: a rule has no id to find.
+    fn duck_err(&mut self, lower: &str, rule: &str, why: &str) {
+        let e = ContentError::new(self.file, format!("{rule} {why}"));
+        let line = line_of(self.source, &format!("lower: \"{lower}\""));
+        self.errors.push(match line {
+            Some(l) => e.at(l, None),
+            None => e,
+        });
+    }
+
+    /// Whether built-in group `group` is `ancestor` or under it. A
+    /// rule's `when` is always built in ([`VOICE`]), and a built-in group's
+    /// parents are built in too.
+    fn is_under(group: &str, ancestor: &str) -> bool {
+        let mut at = Some(group);
+        while let Some(group) = at {
+            if group == ancestor {
+                return true;
+            }
+            at = BUILT_IN
+                .iter()
+                .find(|&&(id, _)| id == group)
+                .and_then(|&(_, parent)| parent);
+        }
+        false
     }
 
     /// Reports cue `id` if it names a group there isn't.

@@ -3,6 +3,7 @@
 //! for, the gains it told the platform, and a music clock that counts
 //! from when a track starts sounding.
 
+use shuyi_assets::audio::DuckRule;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 use shuyi_ui::audio::loudness::loudness;
@@ -419,4 +420,68 @@ fn a_stop_with_its_own_fade_takes_that_long() {
         stopped[0].abs_diff(asked + per_second / 2 - 1) <= 1,
         "{stopped:?}"
     );
+}
+
+/// The beeper, with the toy game's audio lowering `music` to 80 on the
+/// curve while a voice plays, over 100 ms down and 500 ms back, and every
+/// voice clip a second long.
+fn ducker() -> Harness<Toy> {
+    let mut ctx = toy::ctx();
+    let mut rule = DuckRule::default();
+    rule.when = VOICE.into();
+    rule.lower = MUSIC.into();
+    rule.to = 80;
+    rule.attack_ms = 100;
+    rule.release_ms = 500;
+    ctx.game.audio.ducks.push(rule);
+    let mut h = Harness::new(Game::new(ctx, Box::new(Beeper), GameHooks::default()));
+    h.voice_length(1.0);
+    let manifest = h.ctx().game.manifest(&[(0, "Only")]);
+    h.ctx_mut().set_voice_manifest(&manifest);
+    h
+}
+
+/// Acceptance (2343): a voice lowers the music by the rule once it has
+/// played for the attack, and the music is back once the voice has ended
+/// and the release has passed; the sounds never move.
+#[test]
+fn a_voice_lowers_the_music_as_the_manifests_rule_says() {
+    let mut h = ducker();
+    h.wait(0.0);
+    let (music, sfx) = (h.gain(MUSIC), h.gain(SFX));
+    assert_eq!(music, loudness(97));
+    let line = h.ctx().game.lines()[0].clone();
+    h.ctx_mut().play_voice(&line);
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.gain(MUSIC), music, "the platform hasn't read it");
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), Some(&line));
+    assert_eq!(h.gain(MUSIC), music.times(loudness(80)));
+    assert_eq!(h.gain(SFX), sfx);
+    // The voice ends a second after it started, and the music comes back
+    // over half a second.
+    h.wait(0.85);
+    assert_eq!(h.gain(MUSIC), music.times(loudness(80)), "still lowered");
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), None, "ended");
+    assert!(h.gain(MUSIC) < music, "coming back");
+    h.wait(0.5);
+    assert_eq!(h.gain(MUSIC), music);
+    assert_eq!(h.gain(SFX), sfx);
+}
+
+/// Acceptance (2343): a voice the player turned down to 0 lowers nothing.
+#[test]
+fn a_voice_turned_down_to_0_lowers_nothing() {
+    let mut h = ducker();
+    h.ctx_mut().preview_volume(VOICE, 0);
+    h.wait(0.0);
+    let music = h.gain(MUSIC);
+    let line = h.ctx().game.lines()[0].clone();
+    h.ctx_mut().play_voice(&line);
+    for _ in 0..30 {
+        h.frame(&[], FRAME_DT);
+        assert_eq!(h.gain(MUSIC), music);
+    }
+    assert_eq!(h.ctx().voice_playing(), Some(&line), "it was playing");
 }
