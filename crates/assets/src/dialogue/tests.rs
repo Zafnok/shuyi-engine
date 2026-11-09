@@ -1576,11 +1576,13 @@ fn the_text_boxes_are_where_they_play_for_those_present_with_the_replies() {
             (22, "last")
         ])
     );
-    // A reply past the menu takes the first.
-    assert_eq!(
-        boxes(&Present::Everyone, &[7]),
-        boxes(&Present::Everyone, &[0])
-    );
+    // A reply past the menu takes the first, the one just past it too.
+    for past in [2, 7] {
+        assert_eq!(
+            boxes(&Present::Everyone, &[past]),
+            boxes(&Present::Everyone, &[0])
+        );
+    }
 }
 
 #[test]
