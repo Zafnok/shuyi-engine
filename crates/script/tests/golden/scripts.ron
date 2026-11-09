@@ -1,0 +1,10 @@
+{
+    "card: no allies, more cards": "[]",
+    "card: three allies, fewer cards": "[#{\"Damage\": #{\"amount\": 6, \"target\": \"Opponent\"}}, #{\"Heal\": 1}]",
+    "crop: dry, alone": "#{\"height\": 7, \"ripe\": false}",
+    "crop: rain, alone": "#{\"height\": 10, \"ripe\": true}",
+    "crop: rain, crowded": "#{\"height\": 7, \"ripe\": false}",
+    "door: all on": "#{\"left\": [], \"message\": \"The door opens.\", \"open\": true}",
+    "door: none on": "#{\"left\": [\"red\", \"green\", \"blue\"], \"message\": \"3 to go.\", \"open\": false}",
+    "door: two on": "#{\"left\": [\"green\"], \"message\": \"1 to go.\", \"open\": false}",
+}

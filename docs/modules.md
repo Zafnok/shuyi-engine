@@ -79,6 +79,15 @@ visual novel.
 | `shuyi-action` | action RPGs: hits, hurts and loot in real time | parked | 2756, 2757, 2760–2762, 2764 |
 | `shuyi-procgen` | roguelikes: noise and generated levels; its field of view is in `shuyi-core` (2120) | parked | 2118, 2119, 2735 |
 
+## Scripted rules
+
+None by default: a game's rules are Rust. This lets modders write rules
+as text the game runs.
+
+| Module | Serves | Status | Tickets |
+| ------ | ------ | ------ | ------- |
+| `shuyi-script` | rules from Rhai scripts in the bundle, deterministic and sandboxed: turns, fixed ticks | planned | 2101, 2102 |
+
 ## Format plugins
 
 Formats are cargo features of `shuyi-assets` (ADR-0007), not modules:

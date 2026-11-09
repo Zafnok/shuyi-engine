@@ -37,6 +37,23 @@ None.
   the scripted rule.
 - A `frame-png` picture of it.
 - `shuyi-script`'s README claims the directions the example shows.
+- **From 2101 (done):** the module's status moves from `planned` to
+  `ready` in `docs/modules.ron` and `docs/modules.md`, once the example
+  passes CI.
+- **From 2101 (done):** the example's web build runs under macroquad's
+  loader with a script compiled and called. Rhai depends on `web-time`,
+  and so on wasm-bindgen, on wasm; with `no_time` nothing calls it, and
+  2101 measured no `__wbindgen` import in Hello, Grid's `.wasm`
+  (ADR-0093 §8). Opening the example's web build in CI's `web-render`
+  job keeps that true.
+- **From 2101 (done):** the module's skill, `skills/shuyi-script`
+  (ADR-0009 §4: a module ships one, and `shuyi add script` copies it),
+  with its worked example run on a new game: how to write a view type,
+  compile a script from the bundle, call it from the rules and turn its
+  values and errors into the game's own.
+- **From 2101 (done):** a game that runs `cargo deny` needs the
+  `smartstring` exception `crates/script/README.md` shows; the example's
+  own `deny.toml`, if it has one, carries it.
 
 **Out (do not do):**
 - Changing `shuyi-script`'s API, unless the example can't be written

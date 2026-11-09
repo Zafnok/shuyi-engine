@@ -32,6 +32,7 @@ tickets/
 | `30xx` | Export targets: platforms, devices, stores and performance budgets (ADR-0008, ADR-0012) |
 | `31xx` | 3D and HD-2D: the fixed-point 3D space, meshes, the 3D view, cameras, the diorama skin, and their examples (ADR-0011) |
 | `32xx` | Frame, screens and skins, continued: `23xx` filled up on 2026-11-03, so new tickets of that area start here |
+| `33xx` | Export targets, continued: `30xx` filled up on 2026-11-08, so new tickets of that area start here |
 
 Any other four-digit id in a ticket's text is the **game repository's**
 ticket (`github.com/Zafnok/visions-of-shuyi/tree/main/tickets`): for

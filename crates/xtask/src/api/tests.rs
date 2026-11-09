@@ -1453,7 +1453,7 @@ fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let real = packages(&root, &System).unwrap().into_keys().collect();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
-    assert_eq!(API_CRATES.len(), 11);
+    assert_eq!(API_CRATES.len(), 12);
 }
 
 #[test]
@@ -1659,11 +1659,12 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ),
     ("shuyi-app", &["link", "capture", "sound-probe"]),
     ("shuyi-cli", &["toy", "jis"]),
-    ("shuyi", &["std", "app", "schema"]),
+    ("shuyi", &["std", "app", "schema", "script"]),
     ("shuyi-sound", &["std", "wav", "vorbis"]),
     ("shuyi-sound-out", &[]),
     ("shuyi-playdate", &[]),
     ("shuyi-alloc-count", &["global"]),
+    ("shuyi-script", &[]),
 ];
 
 /// The features a crate's manifest has that its check leaves out, each for

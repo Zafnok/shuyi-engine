@@ -486,7 +486,7 @@ them.
 | 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
 | 2254 | A source language names its wide set and its punctuation's width, as a pack's `lang.ron` does | 2303 |
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
-| 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
+| 2101 (done) | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |
 | 2125 | A rollout bot: `Determinize`, and flat Monte Carlo on copies that never see the luck to come (split out of 2113) | game#0506 |
 | 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |
@@ -776,6 +776,11 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
+| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
+| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099) |
+| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
+| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300) |
 
 ## Parked
 
