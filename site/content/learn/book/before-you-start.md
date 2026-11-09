@@ -10,8 +10,8 @@ newcomer = "programming"
 +++
 
 This page gets your computer ready, and explains the handful of ideas every
-later page takes for granted. If you have programmed before, skip to
-[Install the tools](#install-the-tools).
+later page takes for granted. If you have programmed before, you can skip it:
+the [quick start](@/learn/book/quick-start.md) installs what you need.
 
 ## What you are about to do
 
@@ -33,6 +33,7 @@ let through and that would crash a game while someone is playing it. That
 strictness is why some of the code here looks unfamiliar at first. You will
 meet each odd-looking piece when it comes up, with what it means.
 
+{% newcomer(to="games", topic="the game loop and a frame") %}
 ## What a game is, to a computer
 
 A game feels alive, but it is a simple loop that runs about 60 times a second:
@@ -43,6 +44,7 @@ A game feels alive, but it is a simple loop that runs about 60 times a second:
 
 One trip round that loop is a **frame**. Everything you see move in a game is
 this loop drawing a slightly different picture 60 times a second.
+{% end %}
 
 ## What an engine is
 
@@ -52,11 +54,13 @@ a set of code that already does those things, so you write only what makes your
 game your game. **Shuyi Engine** is the engine you will use. It does the loop,
 and you hand it your game's screens and rules.
 
+{% newcomer(to="shuyi", topic="glyphs") %}
 A Shuyi game draws with **glyphs**, letters and symbols in a grid of cells, like
 a very colorful page of text. That is why your first game needs no art at all:
 your player is an `@`. Shuyi can draw pictures too, and the idea you'll learn in
 step 2, that a game's look is a separate thing from what happens in it, is what
 makes that possible later.
+{% end %}
 
 ## What a terminal is
 
@@ -148,13 +152,17 @@ your editor, or to keep a copy of the folder.
 **Words in `this font`** are code, or names of files or commands, exactly as you
 would type them.
 
-**Three kinds of note** come up throughout:
+**Notes for newcomers** come up throughout, each set off by a line at its side,
+under a label saying who it is for and what it explains:
 
-> **Rust:** explains a feature of the language, on the line that first uses it.
+- **New to programming?** what a program, a file or a terminal is;
+- **New to making games?** how games are made, whatever the engine;
+- **New to Rust?** a feature of the language, on the line that first uses it;
+- **New to Shuyi?** an idea of the engine, the first time you meet it.
 
-> **Shuyi:** explains a part of the engine and what it is for.
-
-> **Game idea:** explains how games are made in general, whatever the engine.
+This whole page is one, for readers new to programming. The bar at the top of
+each page folds the notes you don't need, and a folded note leaves a line you
+can click to open it.
 
 You don't need to remember all of it. The [glossary](@/learn/book/glossary.md)
 has every word, with a link back to where it was explained.

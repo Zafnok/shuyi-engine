@@ -3,6 +3,7 @@
 //! - `cargo xtask ticket-lint [--pr-branch <branch>] [--game-repo <path>]`
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
+//! - `cargo xtask check-book`
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
@@ -24,6 +25,7 @@
 //! - `cargo xtask sound-parity give-up [--apply]`
 
 mod api;
+mod book;
 mod changelog;
 mod compile_times;
 mod contract;
@@ -60,6 +62,10 @@ usage:
   cargo xtask check-docs
       Check that the docs map (docs/README.md) links every Markdown file, and
       that no two ADRs, or two rows of docs/adr/README.md, share a number.
+  cargo xtask check-book
+      Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
+      audience of the four, a topic, closed, not nested, on lines of their
+      own, and no callout left in the old form (`> **Rust:**`).
   cargo xtask next-id ticket <block>
   cargo xtask next-id adr
       Print the next ticket id in <block> (its two digits, tickets/README.md)
@@ -169,6 +175,7 @@ fn main() -> ExitCode {
             errors.extend(ids::duplicate_adrs(&root));
             report("check-docs", &errors, &[])
         }
+        Some("check-book") if args.len() == 1 => report("check-book", &book::run(&root), &[]),
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
