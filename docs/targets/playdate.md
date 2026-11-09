@@ -39,6 +39,16 @@ The device has no standard library, so the game's library builds without
    `CrankBack` are themselves.
 5. **Its sound:** its tools' `GameTools::audio` says what it ships there.
    Without it the export warns, and the game is silent.
+6. **A load in steps, if its load is long.** The system ends a game whose
+   update callback hasn't returned in 10 seconds, and the device loads
+   data hundreds of times slower than the Simulator. A game whose load
+   could pass that starts with `Start::in_steps`: its steps run a second's
+   worth a callback (the profile's `load_slice_ms`), the card on the
+   screen
+   ([ADR-0095](../adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+   A step is the unit: one that alone takes 10 seconds still stalls, so
+   make each a file or a part of a check. The run report's `Start, ms per
+   update callback` line says how long each callback took.
 
 [`examples/hello-grid`](../../examples/hello-grid/README.md) does all of it
 (`src/playdate.rs`).
@@ -108,6 +118,7 @@ the start:
 ```text
 Loading card shown 180 ms after start
 Game data loaded in 2,150 ms
+Start, ms per update callback: 1,000 (12 steps), 1,000 (40 steps), 120 (3 steps)
 Game stack used: 15,256 of 65,536 bytes
 Bundle: 212 reads of 180 files, 1 not in the bundle
 Not in the bundle: lang/fr/ui.ron
@@ -115,8 +126,11 @@ Slowest reads, ms to the next read: maps/lake.map 900, (the rules) 310, ...
 First frame of the game shown 2,400 ms after start
 ```
 
-A file's time runs from its read to the next read: reading it, then parsing
-and checking what it holds. A step of the load that reads no file can have a
+The callbacks line gives each update callback that ran the load, its time and
+the load's steps it ran: one callback of one step for a load at once. A file's
+time runs from its read to the next read: reading it, then parsing and
+checking what it holds, and the time between two callbacks is
+`(between update callbacks)`. A step of the load that reads no file can have a
 name of its own, so its time isn't added to the last file's:
 
 ```rust,ignore

@@ -160,8 +160,12 @@ confirmed. A backend that never reports leaves every request pending.
 The game's first frames are different: frame 1 presents the loading card;
 frame 2 calls `display`, `storage` and `facts` for the game's `Setup`, runs the
 game's load (seconds, on a slow device) and presents the game's first
-frame; frames after run the game. A failed load presents its errors until
-the player quits.
+frame; frames after run the game. A load in steps (`Start::in_steps`) asks
+`load_slice` in each loading frame and runs as many steps as fit, so it may
+take several frames, each presenting the card again until the last
+presents the game
+([ADR-0095](adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+A failed load presents its errors until the player quits.
 
 ## Each method
 
@@ -395,6 +399,20 @@ load, moves the clock into the game's context, and keeps a
 build never reads it. A backend without a clock leaves the default,
 `None`, and nothing is measured. Never reset the device's timer in the
 loop: a record's times are differences of its reads.
+
+### `load_slice(&self) -> Option<LoadSlice>` (has a default)
+
+How long one frame may run a game's load in steps for, and the clock that
+times it
+([ADR-0095](adr/0095-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)):
+`LoadSlice::new(length_us, PerfClock::Real(now_us))`. A backend whose
+system ends a game whose frame runs too long gives one, from its target
+profile's `budgets.load_slice_ms`; `shuyi-playdate` gives a second of the
+SDK's timer, a tenth of the system's 10 seconds. `App` asks in every frame
+that runs steps, in every build, and runs steps until the slice is used,
+and at least one. A run being recorded or hashed takes no slice. The
+default, `None`, runs all the steps in one frame: right where a long frame
+only shows the card longer (a PC, the web).
 
 ### `memory(&mut self) -> Option<MemoryReading>` (has a default)
 

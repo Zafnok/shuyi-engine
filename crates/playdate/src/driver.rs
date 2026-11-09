@@ -81,6 +81,9 @@ struct Reporter {
     first_shown: bool,
     /// Whether the bundle's reads are noted.
     reads: bool,
+    /// Each update callback that ran the game's load: its time in the
+    /// timer's microseconds, and the load's steps it ran.
+    callbacks: Vec<(u64, u32)>,
     /// The start's lines, for the file, until the first frame is shown.
     start: Vec<String>,
     /// Every read's line, for the file, once the game has loaded.
@@ -147,6 +150,7 @@ impl<G: GameData, S: Sdk> Driver<G, S> {
             loaded_us: None,
             first_shown: false,
             reads,
+            callbacks: Vec::new(),
             start,
             each: Vec::new(),
             since: None,
@@ -159,6 +163,7 @@ impl<G: GameData, S: Sdk> Driver<G, S> {
     pub fn update(&mut self) -> bool {
         self.app.set_pacing(self.platform.pacing(self.fps.last));
         let now = self.clock.at(self.platform.sdk().millis());
+        let steps = self.app.load_steps();
         let began = self.reporter.is_some().then(S::clock_us);
         // A game that has quit keeps its last frame: the player leaves
         // through the system's Home.
@@ -168,14 +173,16 @@ impl<G: GameData, S: Sdk> Driver<G, S> {
         self.after_frame();
         let changed = self.platform.take_changed();
         if let Some((began, ended)) = timed {
-            self.report(began, ended, now, changed);
+            let steps = self.app.load_steps() - steps;
+            self.report(began, ended, now, changed, steps);
         }
         changed
     }
 
     /// The run report's part of an update whose `App::frame` ran from
-    /// `began` to `ended` (the timer's microseconds), at `now`.
-    fn report(&mut self, began: u64, ended: u64, now: Millis, changed: bool) {
+    /// `began` to `ended` (the timer's microseconds), at `now`, and ran
+    /// `steps` of the game's load.
+    fn report(&mut self, began: u64, ended: u64, now: Millis, changed: bool, steps: u32) {
         let Some(mut r) = self.reporter.take() else {
             return;
         };
@@ -187,9 +194,17 @@ impl<G: GameData, S: Sdk> Driver<G, S> {
             r.card_us = Some(at);
             lines.push(report::shown_line("Loading card", at));
         }
+        if steps > 0 {
+            r.callbacks.push((ended.saturating_sub(began), steps));
+            if self.app.is_loading() {
+                // The time to the next callback is no file's.
+                report::mark(report::BETWEEN);
+            }
+        }
         if r.loaded_us.is_none() && self.app.game().is_some() {
             r.loaded_us = Some(at);
             lines.push(report::load_line(at - r.card_us.unwrap_or(0)));
+            lines.push(report::callbacks_line(&r.callbacks));
             let used = self.platform.sdk().stack_used();
             lines.push(report::stack_line(used, r.report.stack_bytes));
             if let Some(reads) = report::with_reads(Option::take).filter(|_| r.reads) {
