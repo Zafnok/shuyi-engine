@@ -73,12 +73,15 @@ pub mod text_input;
 pub mod tick;
 
 pub use app::{
-    App, Card, CrashRecord, FrameOutcome, GameHash, Load, LookOf, Setup, Start, SystemHook,
+    App, Card, CrashRecord, FrameOutcome, GameHash, Load, LoadInSteps, LoadStep, Loader, LookOf,
+    Progress, Setup, Start, SystemHook,
 };
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
-pub use platform::{DisplayInfo, Frame, Look, Millis, OneBitLook, Platform, Show, SystemEvent};
+pub use platform::{
+    DisplayInfo, Frame, LoadSlice, Look, Millis, OneBitLook, Platform, Show, SystemEvent,
+};
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
 
