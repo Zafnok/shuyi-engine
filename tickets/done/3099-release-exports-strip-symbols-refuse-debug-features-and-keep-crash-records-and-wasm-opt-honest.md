@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 3099 — Release exports strip symbols and refuse the debug features
@@ -126,20 +126,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A release Windows or Linux export's shipped program has an empty
+- [x] A release Windows or Linux export's shipped program has an empty
       symbol table and the companion still resolves a crash's frames.
-- [ ] `shuyi export` refuses `debug-tools`, `capture` and `sound-probe`
+- [x] `shuyi export` refuses `debug-tools`, `capture` and `sound-probe`
       with a message naming the feature.
-- [ ] A release build writes no play record and ignores
+- [x] A release build writes no play record and ignores
       `SHUYI_PANIC_AT_FRAME` unless the game opts in; a debug build keeps
       both.
-- [ ] A release web export fails, with the install hint, when `wasm-opt`
+- [x] A release web export fails, with the install hint, when `wasm-opt`
       is missing and the project did not say `optional`; its Wasm has no
       `name` or `producers` section.
-- [ ] `strings` of a release export has no Debug or Info log text and no
+- [x] `strings` of a release export has no Debug or Info log text and no
       `SHUYI_PERF`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -152,4 +152,115 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-11-09. The choices are [ADR-0094](../../docs/adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md).
+
+- **Symbols.** A release Windows or Linux package ships
+  `objcopy --strip-all` of the program; `<base>.debug` keeps it whole.
+  Checked on this machine (GNU host, MSYS2's binutils): a release
+  `export windows` of Hello, Grid has no symbol table (`nm`: "no
+  symbols"), the debug file 10,505 symbols, `.text` at 0x140001000 in
+  both, and `addr2line -f -e <base>.debug` names `frame_or_crash`'s
+  closure at `crates/app/src/crash.rs:216`. The stripped `.exe` runs.
+  macOS and the web build set `CARGO_PROFILE_RELEASE_STRIP=true` over
+  the game's profile.
+- **Debug features.** `no_live_link` is `no_debug_features`, over
+  `DEBUG_FEATURES` (`link`, `debug-tools`, `capture`, `sound-probe`),
+  each with its own message; the three call sites and the tests moved.
+- **Crash record.** The opt-in is code, not `shuyi.ron`:
+  `CrashReports::with_record_in_release()` (a new field,
+  `record_in_release`, on the `#[non_exhaustive]` struct) and
+  `BasicGame::crash_record_in_release()`. `records_play()` is
+  `DEBUG_TOOLS || record_in_release`; only then does `run` add the
+  record and read `SHUYI_PANIC_AT_FRAME`. Checked: the release package
+  run with `SHUYI_PANIC_AT_FRAME=3` ran 8 seconds and wrote no report.
+  CI's crash step runs a debug build, which keeps both.
+- **wasm-opt.** `run_wasm_opt` returns `WasmOptRun` (ran, failed,
+  missing) and warns with Binaryen's install hint when missing; it now
+  runs `-Oz --strip-debug --strip-producers`, and a binary that still
+  holds `name` or `producers` is refused, naming them (a section reader
+  of our own, `web::custom_sections`, not `wasmparser`). A release
+  `export web` fails with `SH1003` unless `export.wasm_opt: optional`
+  (`project::WasmOptRule`); `shuyi web --release` only warns. Checked
+  here without Binaryen: the export answers `SH1003` with the hint. The
+  release build's own `.wasm` already had no custom section at all.
+  CI's web leg now installs Binaryen (`apt-get install binaryen`).
+- **Logs.** `Ctx::log` drops info and debug lines without debug tools,
+  and `run` prints and keeps for a report warnings and errors only. The
+  test is `DEBUG_TOOLS`, not `debug_assertions` alone, so a release
+  tool program with `debug-tools` keeps its whole log. Deviation found
+  on the way: `SHUYI_PERF` was read in every build (to warn that it did
+  nothing), so its name was in every program; `perf_file::start` now
+  returns first without debug tools, and the warning is gone (the
+  `shuyi-perf` skill says so).
+- **Exposure report.** `inputs` gains `stripped` and `panic`; the
+  contract moves to 42.
+- **Deviation: no `panic = "abort"`.** Left out, as the ticket allows:
+  on a machine with no sound card quad-snd's threads panic as the game
+  starts and the game runs on without sound (ADR-0083); with abort it
+  would end. The record after a frame's panic and `crash::quiet` need
+  unwinding too.
+- **Deviation: the export test.** Not a cargo test in `crates/cli/tests/`
+  (a release LTO build of Hello, Grid in every `cargo test`): CI's export
+  job already release-exports Hello, Grid on each system, and
+  `tools/export-check/check.sh` now holds each package to it: no
+  `frame_or_crash` and no `SHUYI_PERF` in `strings`, no symbol table on
+  Windows and Linux (and one in the debug file), no `name` or
+  `producers` section on the web. Run here on the Windows package: it
+  passes.
+- **Follow-up:** 3085 landed first and resolves the live link through
+  Cargo's feature graph; its `live_link::refuse` now calls
+  `no_debug_features`. The other three debug features are refused by the
+  build's arguments only: ticket 3303 resolves them as 3085 does `link`.
+
+Breaking: shuyi-cli: export::no_live_link: renamed `export::no_debug_features`, which refuses `debug-tools`, `capture` and `sound-probe` beside `link`.
+
+```migration
+since: 0.1.0
+what: The export's feature check is no_debug_features, and refuses every debug feature.
+old: shuyi_cli::export::no_live_link(&args)
+new: shuyi_cli::export::no_debug_features(&args)
+before: |
+  shuyi_cli::export::no_live_link(&args)?;
+after: |
+  shuyi_cli::export::no_debug_features(&args)?;
+find: ["no_live_link"]
+```
+
+Breaking: shuyi-cli: export::ExportCx: a new field, `wasm_opt`, the `export` part's `WasmOptRule`; code that builds one field by field adds it.
+
+```migration
+since: 0.1.0
+what: An export's context says whether a release web build needs wasm-opt.
+old: ExportCx { beside, .. }
+new: ExportCx { beside, wasm_opt, .. }
+before: |
+  ExportCx { beside: Vec::new(), /* the other fields */ }
+after: |
+  ExportCx { beside: Vec::new(), wasm_opt: WasmOptRule::Required, /* the other fields */ }
+```
+
+Breaking: shuyi-cli: web::Options: a new field, `require_wasm_opt`; code that builds one field by field adds it or ends with `..Options::default()`.
+
+```migration
+since: 0.1.0
+what: The web build's options say whether a release build fails without wasm-opt.
+old: Options { release, features }
+new: Options { release, features, require_wasm_opt }
+before: |
+  let options = Options { release: true, features: Vec::new() };
+after: |
+  let options = Options { release: true, features: Vec::new(), require_wasm_opt: false };
+```
+
+Breaking: shuyi-cli: export::disclosure::BuildInputs: two new fields, `stripped` and `panic` (`disclosure::Panic`); code that builds one field by field adds them.
+
+```migration
+since: 0.1.0
+what: The exposure report's inputs say whether the program is stripped and what a panic does.
+old: BuildInputs { cargo_lock, .. }
+new: BuildInputs { cargo_lock, stripped, panic, .. }
+before: |
+  BuildInputs { cargo_lock: None, /* the other fields */ }
+after: |
+  BuildInputs { cargo_lock: None, stripped: true, panic: Panic::Unwind, /* the other fields */ }
+```

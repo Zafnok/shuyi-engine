@@ -163,6 +163,22 @@ pub struct BuildInputs {
     pub project_file: Option<String>,
     /// The SHA-256 of the workspace's `Cargo.lock`.
     pub cargo_lock: Option<String>,
+    /// Whether the shipped program has no symbol table.
+    pub stripped: bool,
+    /// What a panic does in the shipped program.
+    pub panic: Panic,
+}
+
+/// What a panic does in a shipped program.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Panic {
+    /// It unwinds: a game catches it, and its message and place stay in the
+    /// program.
+    #[default]
+    Unwind,
+    /// It ends the program at once.
+    Abort,
 }
 
 /// A file of the export.
@@ -462,6 +478,8 @@ fn build_inputs(cx: &ExportCx, exporter: &dyn Exporter) -> Result<BuildInputs, S
         toolchain,
         project_file: hash(cx.root.join(project::FILE)),
         cargo_lock: hash(cx.workspace.join("Cargo.lock")),
+        stripped: exporter.strips_symbols(cx),
+        panic: exporter.panic(),
     })
 }
 

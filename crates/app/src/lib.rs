@@ -436,7 +436,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     backend::tag_decodes();
     let storage_name = config.storage_name;
     crash::install(config.crash, move || storage::platform(storage_name));
-    let panic_at = crash::panic_at_frame();
+    let panic_at = crash::panic_at_frame(config.crash);
+    let records_play = config.crash.records_play();
     let mut platform = Macroquad::new(&mut config, facts);
     let mut app = App::new(start);
     let kept = sessions::Kept::start(&mut app, config.storage_name, recorded_manifest);
@@ -464,7 +465,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         if let Some(link) = &mut link {
             link.before_frame(&app, platform.link_input());
         }
-        let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at);
+        let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at, records_play);
         if app.take_session_save() {
             kept.save(&app);
         }
@@ -474,6 +475,9 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         }
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
+            if !kept_in_this_build(line.level) {
+                continue;
+            }
             print_line(&line);
             let (level, category) = (line.level.name(), line.category.name());
             crash::note_log(format!("f{} {level} {category}: {}", line.frame, line.text));
@@ -504,13 +508,15 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
 
 /// Runs `app`'s frame at `now`, and panics first if it is the one
 /// `SHUYI_PANIC_AT_FRAME` names (`panic_at`). A panic has written its
-/// report: the sound stops, the game's record is added to it, and the
-/// process ends with exit code 101.
+/// report: the sound stops, the game's record is added to it if
+/// `records_play` ([`CrashReports::records_play`]), and the process ends
+/// with exit code 101.
 fn frame_or_crash<G: GameData>(
     app: &mut App<G>,
     platform: &mut Macroquad,
     now: Millis,
     panic_at: Option<u32>,
+    records_play: bool,
 ) -> FrameOutcome {
     let frame = app.frame_number().saturating_add(1);
     crash::set_frame(frame, app.game().and_then(shuyi_ui::Game::top_screen));
@@ -522,11 +528,19 @@ fn frame_or_crash<G: GameData>(
         return outcome;
     }
     platform.audio().stop_all();
-    let record = crash::quiet(|| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.crash_record()))
-    });
-    crash::add_record(record.ok().flatten());
+    if records_play {
+        let record = crash::quiet(|| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.crash_record()))
+        });
+        crash::add_record(record.ok().flatten());
+    }
     std::process::exit(101);
+}
+
+/// Whether a line of the log at `level` is printed and kept for a crash
+/// report: every line with debug tools, and warnings and errors without.
+fn kept_in_this_build(level: LogLevel) -> bool {
+    shuyi_ui::DEBUG_TOOLS || matches!(level, LogLevel::Error | LogLevel::Warn)
 }
 
 /// After a frame is drawn: the cap it asked for applies from the next, and
@@ -633,6 +647,9 @@ fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> App
         sounds,
     );
     config.crash = CrashReports::new(game.app().version);
+    if game.records_play_in_release() {
+        config.crash = config.crash.with_record_in_release();
+    }
     config
 }
 
@@ -791,6 +808,42 @@ mod tests {
     fn a_short_path_games_crash_reports_name_its_version() {
         assert_eq!(basic_config(&basic()).crash, CrashReports::new("0.1.0"));
         assert_eq!(basic_config(&basic()).crash.game_version, "0.1.0");
+    }
+
+    #[test]
+    fn a_short_path_game_that_says_so_keeps_its_record_in_release() {
+        let crash = basic_config(&basic()).crash;
+        assert!(!crash.record_in_release);
+        assert_eq!(crash.records_play(), shuyi_ui::DEBUG_TOOLS);
+        let crash = basic_config(&basic().crash_record_in_release()).crash;
+        assert_eq!(crash, CrashReports::new("0.1.0").with_record_in_release());
+        assert!(crash.records_play());
+    }
+
+    #[test]
+    fn a_build_without_debug_tools_prints_and_keeps_warnings_and_errors_only() {
+        assert!(kept_in_this_build(LogLevel::Error));
+        assert!(kept_in_this_build(LogLevel::Warn));
+        assert_eq!(kept_in_this_build(LogLevel::Info), shuyi_ui::DEBUG_TOOLS);
+        assert_eq!(kept_in_this_build(LogLevel::Debug), shuyi_ui::DEBUG_TOOLS);
+    }
+
+    #[test]
+    fn the_panic_at_a_frame_is_read_as_the_reports_record_play() {
+        // `cargo test` builds with debug tools, so both read it; a release
+        // build reads it only when the game said.
+        assert!(CrashReports::new("").records_play());
+        assert!(
+            CrashReports::new("")
+                .with_record_in_release()
+                .records_play()
+        );
+        assert!(!CrashReports::off().record_in_release);
+        let off = CrashReports {
+            record_in_release: false,
+            ..CrashReports::new("")
+        };
+        assert_eq!(off.records_play(), shuyi_ui::DEBUG_TOOLS);
     }
 
     /// A config built in a `const fn`, as `AppConfig::new` stays one.

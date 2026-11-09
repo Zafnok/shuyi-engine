@@ -26,6 +26,7 @@ fn cx(release: bool) -> ExportCx {
         features: vec![FEATURE.to_owned()],
         turned_on: Vec::new(),
         beside: Vec::new(),
+        wasm_opt: crate::project::WasmOptRule::Required,
     }
 }
 

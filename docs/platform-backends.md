@@ -598,7 +598,11 @@ survives (a sound library's), which is kept and never offered
 ([ADR-0083](adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md)).
 A backend that can catch the game's frame adds the game's record
 (`App::crash_record`) and ends the process without calling the game's system
-hook. `App::load` offers the newest fatal report to the
+hook. It adds the record, and honours a panic asked for on purpose, only in a
+build with debug tools (`shuyi_ui::DEBUG_TOOLS`) or one whose game asked for
+its record in release; and without debug tools its log's lines in a report are
+warnings and errors only
+([ADR-0094](adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md)). `App::load` offers the newest fatal report to the
 game once (`Setup::last_crash`): a backend does nothing for that.
 
 `shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is

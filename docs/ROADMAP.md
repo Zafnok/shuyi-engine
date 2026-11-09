@@ -780,6 +780,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
 | 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
 | 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099) |
+| 3303 | Refuse every debug feature in the resolved export build, not the live link alone |
 | 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
 | 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300) |
 

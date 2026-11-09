@@ -40,6 +40,7 @@ pub(super) fn cx(name: &str, target: &str) -> ExportCx {
         features: Vec::new(),
         turned_on: Vec::new(),
         beside: Vec::new(),
+        wasm_opt: WasmOptRule::Required,
     }
 }
 
@@ -72,25 +73,62 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
                     );
                 }
                 assert_eq!(args.iter().any(|a| a == "--release"), release, "{args:?}");
-                assert_eq!(no_live_link(args), Ok(()));
+                assert_eq!(no_debug_features(args), Ok(()));
             }
         }
     }
-    let args = |items: &[&str]| items.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
-    for linked in [
-        &["build", "--features", "link"][..],
-        &["build", "--features", "capture,link"],
-        &["build", "-F", "game/link"],
-        &["build", "--features=link"],
-    ] {
-        let refused = no_live_link(&args(linked)).unwrap_err();
-        assert_eq!(refused.code(), codes::PROJECT_FILE, "{linked:?}");
-    }
-    assert_eq!(
-        no_live_link(&args(&["build", "--features", "linked"])),
-        Ok(())
-    );
     fs::remove_dir_all(&cx.out).unwrap();
+}
+
+/// The arguments `items`, owned.
+fn args(items: &[&str]) -> Vec<String> {
+    items.iter().map(|s| (*s).to_owned()).collect()
+}
+
+#[test]
+fn each_debug_feature_is_refused_by_name_however_it_is_turned_on() {
+    for (feature, what) in DEBUG_FEATURES {
+        let dependency = format!("game/{feature}");
+        let equals = format!("--features={feature}");
+        let listed = format!("a,{feature}");
+        for (asked, named) in [
+            (args(&["build", "--features", feature]), feature),
+            (args(&["build", "--features", &listed]), feature),
+            (args(&["build", "-F", &dependency]), dependency.as_str()),
+            (args(&["build", &equals]), feature),
+        ] {
+            let refused = no_debug_features(&asked).unwrap_err();
+            assert_eq!(refused.code(), codes::PROJECT_FILE, "{asked:?}");
+            assert_eq!(
+                refused.message(),
+                format!("an export never turns on `{named}`, {what}")
+            );
+        }
+    }
+}
+
+#[test]
+fn the_ticket_s_cases_and_a_clean_list() {
+    for (asked, named) in [
+        (&["build", "--features", "a,debug-tools"][..], "debug-tools"),
+        (&["build", "-F", "game/capture"], "game/capture"),
+        (&["build", "--features=sound-probe"], "sound-probe"),
+    ] {
+        let refused = no_debug_features(&args(asked)).unwrap_err();
+        assert!(
+            refused
+                .message()
+                .contains(&format!("never turns on `{named}`")),
+            "{refused:?}"
+        );
+    }
+    for clean in [
+        &["build", "--features", "linked,art,debug-toolsy"][..],
+        &["build", "-F", "game/captured"],
+        &["build"],
+    ] {
+        assert_eq!(no_debug_features(&args(clean)), Ok(()), "{clean:?}");
+    }
 }
 
 /// What ships beside the program, as `shuyi.ron` writes it.
@@ -212,11 +250,11 @@ fn a_targets_own_entry_names_its_package_and_features() {
 }
 
 #[test]
-fn link_in_the_export_parts_features_is_refused() {
+fn a_debug_feature_in_the_export_parts_features_is_refused() {
     let mut cx = cx("link-part", "windows");
     cx.turned_on = vec!["art".to_owned(), "link".to_owned()];
     for args in desktop::WINDOWS.cargo_args(&cx) {
-        let refused = no_live_link(&args).unwrap_err();
+        let refused = no_debug_features(&args).unwrap_err();
         assert_eq!(refused.code(), codes::PROJECT_FILE);
     }
     fs::remove_dir_all(&cx.out).unwrap();

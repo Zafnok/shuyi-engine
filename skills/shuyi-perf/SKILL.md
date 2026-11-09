@@ -293,6 +293,7 @@ their heap reading): run it with `--no-instructions`.
   attached (one at a time), or the link was lost. A build that quits
   ends the following early instead, with `follow.closed` and the limit
   "it quit", and the file keeps what was written.
-- **`SHUYI_PERF` writes nothing:** the build has no debug tools; its
-  log says so. A file it can't create or write is one warning in the
+- **`SHUYI_PERF` writes nothing:** the build has no debug tools (a
+  release build without the `debug-tools` feature), which doesn't read
+  the variable. A file it can't create or write is one warning in the
   log, and the game goes on.

@@ -1,5 +1,6 @@
 //! The trace file of a running desktop build (ADR-0046 §7): with
-//! `SHUYI_PERF=<path>` in a build with debug tools, each frame's record
+//! `SHUYI_PERF=<path>` in a build with debug tools (one without doesn't read
+//! the variable), each frame's record
 //! is written to the file as a JSON line, a [`PerfLine::Frame`], and
 //! flushed as the frame ends, so an agent reads the file while it grows.
 //! Where the heap is counted by tag, it also takes a heap snapshot on its
@@ -28,19 +29,15 @@ pub(crate) const SNAPSHOT_EVERY: u32 = 600;
 enum Decision {
     /// Not set, or empty: no trace.
     Off,
-    /// Set in a build without debug tools: no trace, and a line says why.
-    NoDebugTools,
     /// Write the trace to this file.
     Write(PathBuf),
 }
 
-/// What to do with `SHUYI_PERF`'s value `var`, in a build with debug tools
-/// if `debug_tools`.
-fn decide(var: Option<OsString>, debug_tools: bool) -> Decision {
+/// What to do with `SHUYI_PERF`'s value `var`.
+fn decide(var: Option<OsString>) -> Decision {
     match var {
         None => Decision::Off,
         Some(path) if path.is_empty() => Decision::Off,
-        Some(_) if !debug_tools => Decision::NoDebugTools,
         Some(path) => Decision::Write(PathBuf::from(path)),
     }
 }
@@ -82,20 +79,16 @@ impl Snapshots {
     }
 }
 
-/// The trace file `SHUYI_PERF` names, created now, or none: not set, no
-/// debug tools, or a file that can't be created (each but the first
-/// logged).
+/// The trace file `SHUYI_PERF` names, created now, or none: no debug
+/// tools, not set, or a file that can't be created (logged). A build
+/// without debug tools doesn't read the variable, so it doesn't hold its
+/// name.
 pub(crate) fn start() -> Option<PerfFile> {
-    match decide(std::env::var_os(VAR), shuyi_ui::DEBUG_TOOLS) {
+    if !shuyi_ui::DEBUG_TOOLS {
+        return None;
+    }
+    match decide(std::env::var_os(VAR)) {
         Decision::Off => None,
-        Decision::NoDebugTools => {
-            macroquad::logging::warn!(
-                "shuyi perf: {} is set, but this build has no debug tools (a release build \
-                 without the `debug-tools` feature), so it writes no trace",
-                VAR
-            );
-            None
-        }
         Decision::Write(path) => match File::create(&path) {
             Ok(file) => {
                 macroquad::logging::info!(
@@ -167,13 +160,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_variable_turns_the_trace_on_in_a_build_with_debug_tools_only() {
-        let path = || Some(OsString::from("perf.jsonl"));
-        assert_eq!(decide(None, true), Decision::Off);
-        assert_eq!(decide(Some(OsString::new()), true), Decision::Off);
-        assert_eq!(decide(path(), false), Decision::NoDebugTools);
+    fn the_variable_names_the_trace_file() {
+        assert_eq!(decide(None), Decision::Off);
+        assert_eq!(decide(Some(OsString::new())), Decision::Off);
         assert_eq!(
-            decide(path(), true),
+            decide(Some(OsString::from("perf.jsonl"))),
             Decision::Write(PathBuf::from("perf.jsonl"))
         );
     }

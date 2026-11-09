@@ -441,14 +441,29 @@ pub struct ExportPart {
     /// The package whose program ships, when it isn't the `game` part's (a
     /// game whose tool program is a package of its own).
     pub package: Option<String>,
-    /// The features of the game's package a build turns on. `link`, the
-    /// debug build's live link, is refused.
+    /// The features of the game's package a build turns on. The debug
+    /// features ([`crate::export::DEBUG_FEATURES`]) are refused.
     pub features: Vec<String>,
     /// The files and folders copied into the package.
     pub beside: Vec<Beside>,
     /// What one target builds instead, by its id (`playdate`): a game whose
     /// Playdate library is a package of its own, say.
     pub targets: BTreeMap<String, TargetExport>,
+    /// Whether a release web export needs `wasm-opt` (`required` until
+    /// said).
+    pub wasm_opt: WasmOptRule,
+}
+
+/// Whether a release web export needs Binaryen's `wasm-opt`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WasmOptRule {
+    /// The export fails when `wasm-opt` didn't run.
+    #[default]
+    Required,
+    /// The export warns when `wasm-opt` isn't installed, and ships the
+    /// program as the build left it.
+    Optional,
 }
 
 /// What one target's export builds, in place of the `export` part's.

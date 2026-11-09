@@ -128,8 +128,10 @@ Ship only what `check --target` passes.
 
    It writes the page, its loaders and `<bin>.wasm` into `dist/web/`
    (which `.gitignore` leaves out), and prints the folder and the
-   binary's size. With `wasm-opt` on `PATH` a release build is made
-   smaller too. Serve the folder over HTTP to play it: a page opened as
+   binary's size. With `wasm-opt` on `PATH` (Binaryen's) a release
+   build is made smaller too; without it the build warns, and a release
+   `export web` fails unless `shuyi.ron`'s `export` part says
+   `wasm_opt: optional`. Serve the folder over HTTP to play it: a page opened as
    a file doesn't load the binary.
 
    Beside the page it writes `NOTICES.txt`, which the build owes the

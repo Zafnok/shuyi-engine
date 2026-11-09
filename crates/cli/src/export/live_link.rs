@@ -33,11 +33,11 @@ pub const ENGINE: [&str; 2] = ["shuyi-app", "shuyi-platform"];
 const FORMAT: &str = "|{f}|{p}";
 
 /// Refuses `cx`'s export by `exporter` if a build it plans turns on the live
-/// link: the literal arguments first ([`super::no_live_link`]), then the
+/// link: the literal arguments first ([`super::no_debug_features`], which refuses every debug feature), then the
 /// build as Cargo resolves it.
 pub fn refuse(cx: &ExportCx, exporter: &dyn Exporter) -> Result<(), ExportError> {
     for args in exporter.cargo_args(cx) {
-        super::no_live_link(&args)?;
+        super::no_debug_features(&args)?;
         let flags = target(&args).map_or(&[][..], |triple| exporter.rustflags(triple));
         let nodes = resolve(cx, &args, flags)?;
         let found = violations(&nodes);
