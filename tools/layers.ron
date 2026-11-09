@@ -122,6 +122,19 @@
             devices: false,
             floats: false,
         ),
+        "shuyi-script": (
+            // The script runtime (ADR-0093), a module: a library a game's
+            // rules call, knowing nothing else of the engine. Integer only.
+            engine: [],
+            outside: Only([
+                // The language, its features cut to what a rule may do.
+                "rhai",
+                // Views in and values out, by their serde derives (ADR-0084).
+                "serde",
+            ]),
+            devices: false,
+            floats: false,
+        ),
         "shuyi-app": (
             // The macroquad backend: the one crate that reaches devices.
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count", "shuyi-sound", "shuyi-sound-out"],
@@ -179,7 +192,7 @@
         "shuyi": (
             // The front door (ADR-0009 §6): the default engine's crates,
             // the backend among them, and each module behind its feature.
-            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-app"],
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-app", "shuyi-script"],
             outside: Only([]),
             devices: true,
             floats: true,

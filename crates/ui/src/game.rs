@@ -261,7 +261,7 @@ impl<G: GameData> Game<G> {
         let input = InputState::new(ctx.keymap.clone()).starting_on(ctx.device);
         let blank = ctx.game.blank_cell(&ctx.palette);
         let switch = ctx.game.audio_manifest().music_switch();
-        ctx.sound_groups = SoundGroups::new(&ctx.game.audio_config());
+        ctx.sound_groups = SoundGroups::new(&ctx.game.audio_config(), ctx.game.audio_manifest());
         let gains = GroupGains::of(&ctx.sound_groups, &ctx.settings().volumes);
         let mut game = Self {
             stack,

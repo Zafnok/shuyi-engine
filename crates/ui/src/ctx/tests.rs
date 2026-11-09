@@ -357,7 +357,7 @@ fn the_sound_groups_are_the_games() {
         cursor_cue: "tick",
         ..crate::audio::AudioConfig::DEFAULT
     };
-    c.sound_groups = crate::audio::SoundGroups::new(&config);
+    c.sound_groups = crate::audio::SoundGroups::new(&config, c.game.audio_manifest());
     assert_eq!(c.sound_groups().sound_group("tick"), UI);
 }
 

@@ -135,7 +135,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi",
-        features: Features::Only(&["std", "app", "schema"]),
+        features: Features::Only(&["std", "app", "schema", "script"]),
     },
     ApiCrate {
         name: "shuyi-sound",
@@ -154,6 +154,11 @@ pub const API_CRATES: &[ApiCrate] = &[
     ApiCrate {
         name: "shuyi-alloc-count",
         features: Features::Only(&["global"]),
+    },
+    // The script runtime (ADR-0093) has no feature.
+    ApiCrate {
+        name: "shuyi-script",
+        features: Features::Only(&[]),
     },
 ];
 

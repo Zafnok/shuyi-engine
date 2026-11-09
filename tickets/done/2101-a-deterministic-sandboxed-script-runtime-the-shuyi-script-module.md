@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2907"]
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2101 — A deterministic, sandboxed script runtime: the `shuyi-script` module
@@ -126,19 +126,19 @@ None (technical).
 
 ## Acceptance criteria
 
-- [ ] The ADR compares the candidates as above, with measured sizes and
+- [x] The ADR compares the candidates as above, with measured sizes and
       quoted licenses, and the index lists it.
-- [ ] The same script on the same view always returns the same values
+- [x] The same script on the same view always returns the same values
       (property test).
-- [ ] A script that loops forever stops at the limit with an error value
+- [x] A script that loops forever stops at the limit with an error value
       (test).
-- [ ] A script that fails to compile reports its file and line (test).
-- [ ] A script can't read a clock, a random source, a file or the
+- [x] A script that fails to compile reports its file and line (test).
+- [x] A script can't read a clock, a random source, a file or the
       network (tests that each such call fails to compile or errors).
-- [ ] The WASM build and `cargo deny check` pass.
-- [ ] The fixture scripts' values match their golden table in CI's
+- [x] The WASM build and `cargo deny check` pass.
+- [x] The fixture scripts' values match their golden table in CI's
       `test` and `determinism` jobs.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -149,5 +149,84 @@ None (technical).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done:**
+
+- [ADR-0093](../../docs/adr/0093-scripted-rules-rhai-integer-only-with-no-clock-no-luck-no-files-and-limits-views-in-and-values-out-by-serde.md)
+  chooses Rhai 1.27. It compares the four candidates the ticket named,
+  and, at Nick's asking, Rune, Koto, Starlark, piccolo, Boa and
+  RustPython. For each it gives licenses quoted from their `Cargo.toml`,
+  the measured native and `.wasm` sizes (standalone and in Hello, Grid),
+  whether it runs on the web build, determinism, limits and a benchmark
+  of Rhai against Rune. The index lists it.
+- `shuyi-script` in `crates/script` is the first module crate. It has
+  its metadata, a README in ADR-0009 §4's order, a row in
+  `docs/modules.md` under a new concern, *Scripted rules*
+  (`docs/modules.ron`), its line in `tools/layers.ron`, and the `shuyi`
+  crate's feature `script` (re-exported as `shuyi::script`, needs
+  `std`).
+- The API: `Runtime` (with `Limits`), `compile(name, source)`, `run`
+  (top level, view as `view`), `call` (one function, view as its
+  argument), `Script`, `Value`, and `ScriptError` with file, line,
+  column and kind.
+  - Views go in by `rhai::serde::to_dynamic`, and values come out by
+    `from_dynamic` into the game's type or `Value`. No registry.
+  - Errors are values; nothing panics.
+- Tests:
+  - unit tests: compile and run errors name file and line; floats don't
+    compile; overflow is an error; a clock, random numbers, `import`,
+    files, the network, `print` and `eval` each fail; every limit stops
+    its case;
+  - a property test of determinism over generated views, against a Rust
+    oracle;
+  - the golden table `crates/script/tests/golden/scripts.ron`: three
+    fixture scripts (a crop, a door, a card) on eight views.
+- CI: `-p shuyi-script` in the `determinism` job's wasm32 tests, and a
+  clippy build of the crate for `wasm32-unknown-unknown` in the `wasm`
+  job. The `run-gates` skill matches. The crate's tests pass under
+  wasmtime locally.
+- Measured on Hello, Grid: +1,373,820 bytes of `.wasm` and +1,389,056
+  of `.exe`. No wasm-bindgen import and no `smartstring` code are in
+  either.
+
+**Deviations:**
+
+- **License, Nick's decision** (`docs/decisions.md`, 2026-11-08). Rhai
+  always depends on `smartstring` (MPL-2.0), which ADR-0002 §8 denies.
+  Nick allowed it as a one-crate exception in `deny.toml`, while Rhai's
+  `compact_str` feature keeps its code out of every program.
+  - A test, `smartstring_is_never_linked`, checks the feature.
+  - Its unmaintained advisory, RUSTSEC-2026-0249, is ignored for the same
+    reason.
+  - The exception goes when Rhai drops it.
+- **Without `std`: it doesn't build** for `thumbv7em-none-eabihf`. Rhai's
+  `serde` feature fails to compile with `no_std` in 1.27, and the bridge
+  is how views go in. The README and ADR-0093 §6 say so; a game keeps
+  scripting behind a feature of its own there.
+- **The standard package is cut**: bit fields, blobs, extra string
+  functions and maths are left out (about 240 KB of `.wasm`).
+- **Rhai doesn't check a map's size on `m[k] = v`** (its issue 1213).
+  The operation limit stops such a script, and a test checks that.
+- **The book:** *Games and screens*, Modules, now names the concern and
+  says a module can be a library the rules call, with `shuyi-script` as
+  the one.
+
+**Follow-ups:** handed to 2102 (written there as "From 2101 (done)"):
+- the status moves to `ready` once the example passes;
+- the example's web build is opened in the browser;
+- the module's skill, `skills/shuyi-script`;
+- the `deny.toml` exception, if the example has one.
+
+No new ticket.
+
+**For the game:** additive. game#1017's PR moves the pin after this one,
+and it adds `smartstring@1.0.1` and RUSTSEC-2026-0249 to the game's
+`deny.toml`, as `crates/script/README.md` shows.
+
+No break.
+
+Book: the *Games and screens* chapter's Modules section names the new
+concern and `shuyi-script`.
+
+**For Nick:** modders' scripts are Rhai. It can't break replays or reach
+outside the game. It adds about 1.4 MB to a web build, only for a game
+that turns it on, and it doesn't work on the Playdate yet.

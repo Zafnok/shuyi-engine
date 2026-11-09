@@ -68,8 +68,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: ".github/workflows/ci.yml",
-            find: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture",
-            with: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture",
+            find: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture",
+            with: "run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-script -- --nocapture",
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",
@@ -88,8 +88,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",
-            find: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture",
-            with: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture",
+            find: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture",
+            with: "cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-script -- --nocapture",
         ),
         Replace(
             file: "crates/app/Cargo.toml",
@@ -113,8 +113,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api/tests.rs",
-            find: "assert_eq!(API_CRATES.len(), 11);",
-            with: "assert_eq!(API_CRATES.len(), 9);",
+            find: "assert_eq!(API_CRATES.len(), 12);",
+            with: "assert_eq!(API_CRATES.len(), 10);",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",

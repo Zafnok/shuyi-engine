@@ -282,9 +282,9 @@ None.
     volume times the request's volume times its gain
     (`factor(gains.sound(cue))`), and keeps a handled sound's gain
     (`Handled::gain`). This ticket puts `percent(cue_volume)` in place
-    of the cue's own volume there. `SoundCue`'s `group` is 2258's: if
-    2258 is done, `SoundCue::new` leaves it `None`; the second of the
-    two to land rebases and bumps `pack::VERSION` again.
+    of the cue's own volume there. **From 2258 (done):** `SoundCue` has
+    `group`, which `SoundCue::new` leaves `None` beside this ticket's
+    fields, and `pack::VERSION` is 11: this ticket bumps it again.
   - **2363** (parked, positional sound): `Cues` runs in `App` on what
     `Game::collect_audio` hands out, so a sound 2363 drops past its
     `silent` distance never reaches it and counts toward no gap, cap or
