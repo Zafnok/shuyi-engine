@@ -86,10 +86,9 @@ whether it is what you meant by MIDI sound.
   direction guide's "modules" list gains MIDI as an option for music;
   if not, nothing to do (2004 adds it when it writes the guides).
 
-**Either order:**
-- **2343** (ducking): if it is done, a rule that lowers `music` lowers a
-  sequence cue in `music` too, through the gains it already plays at;
-  if not, nothing here, since 2343 multiplies into those same gains.
+**From 2343 (done):** a rule that lowers `music` lowers a sequence cue
+in `music` too, through the gains it already plays at (2343 multiplies
+into them, ADR-0094): nothing to do here.
 
 **Out (do not do):**
 - the Playdate's MIDI through its SDK's synth (3057, parked, which

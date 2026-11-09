@@ -1589,19 +1589,24 @@ mod tests {
         (when: "voice", lower: "ambience", to: 0, attack_ms: 0, release_ms: 0),"#,
         );
         let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
-        let mut music = DuckRule::default();
-        music.when = "voice".into();
-        music.lower = "music".into();
-        music.to = 80;
-        music.attack_ms = 100;
-        music.release_ms = 500;
-        let mut ambience = music.clone();
-        ambience.lower = "ambience".into();
-        (ambience.to, ambience.attack_ms, ambience.release_ms) = (0, 0, 0);
+        let music = DuckRule {
+            when: "voice".into(),
+            lower: "music".into(),
+            to: 80,
+            attack_ms: 100,
+            release_ms: 500,
+        };
+        let ambience = DuckRule {
+            lower: "ambience".into(),
+            to: 0,
+            attack_ms: 0,
+            release_ms: 0,
+            ..music.clone()
+        };
         assert_eq!(m.ducks, [music, ambience], "a declared group too");
         // A manifest without ducks lowers nothing.
         let full = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
-        assert!(full.ducks.is_empty());
+        assert_eq!(full.ducks, []);
     }
 
     #[test]
