@@ -1,5 +1,5 @@
 ---
-id: "2068"
+id: "2069"
 title: "Typos skips commit hashes by pattern"
 type: infra
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed: 2026-11-08
 ---
 
-# 2068 — Typos skips commit hashes by pattern
+# 2069 — Typos skips commit hashes by pattern
 
 ## Context
 

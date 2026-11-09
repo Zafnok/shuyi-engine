@@ -4,7 +4,7 @@
 # A commit hash (`c1ba9ec8`), which typos splits into fragments like "ba":
 # any hex run that holds a digit, so a hex-only word like "deadbeef" is
 # still read. Typos's regex has no look-ahead, so no length is required
-# (ticket 2068).
+# (ticket 2069).
 extend-ignore-re = [
     '\b[0-9a-f]{16}\b',
     '\b[0-9a-f]*[0-9][0-9a-f]*\b',
