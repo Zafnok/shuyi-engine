@@ -11,6 +11,11 @@
 //! `exposure-report.json`, and refused if it breaks the game's `disclosure`
 //! part ([`crate::export::disclosure`]). With `--run`, the package is run
 //! after that.
+//!
+//! Before the exporter prepares or builds anything, each build it plans is
+//! resolved by Cargo, and the export refused if the debug build's live link
+//! is on in one, by its default features, a feature that lists it or a
+//! dependency's ([`crate::export::live_link`]): nothing is built or run.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -22,7 +27,9 @@ use serde::{Deserialize, Serialize};
 use super::check::{self, CheckInput};
 use super::target::{Level, TargetProblem};
 use super::{Answer, Op, codes};
-use crate::export::{self as exporters, ExportCx, ExportError, RunCx, disclosure};
+use crate::export::{
+    self as exporters, ExportCx, ExportError, Exporter, RunCx, disclosure, live_link,
+};
 use crate::game::GameTools;
 use crate::project::Project;
 
@@ -178,10 +185,7 @@ pub fn export(
         Ok(cx) => cx,
         Err(e) => return failed(&e),
     };
-    if let Err(e) = exporter.prepare(&cx, project, game) {
-        return failed(&e);
-    }
-    let mut report = match exporter.export(&cx) {
+    let mut report = match build(&cx, exporter, project, game) {
         Ok(report) => report,
         Err(e) => return failed(&e),
     };
@@ -213,6 +217,21 @@ pub fn export(
         answer = answer.with_code(e.code());
     }
     answer
+}
+
+/// The package `exporter` makes of `cx`: its builds refused first if one
+/// turns on the live link ([`live_link::refuse`]), so a refused export
+/// prepares, bakes and builds nothing; then what it prepares, then its
+/// export.
+fn build(
+    cx: &ExportCx,
+    exporter: &dyn Exporter,
+    project: &Project,
+    game: Option<&dyn GameTools>,
+) -> Result<ExportOutput, ExportError> {
+    live_link::refuse(cx, exporter)?;
+    exporter.prepare(cx, project, game)?;
+    exporter.export(cx)
 }
 
 /// An answer of `export` that failed with `error`.
