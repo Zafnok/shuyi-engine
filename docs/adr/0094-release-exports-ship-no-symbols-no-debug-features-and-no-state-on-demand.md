@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-09
-- **Related tickets:** 3099, 2917, 3085
+- **Related tickets:** 3099, 2917, 3085, 3303
 
 ## Context
 
@@ -41,8 +41,10 @@ made the crash report, with its record in every build.
    `debug-tools`, `capture` and `sound-probe`, each with what it is;
    `export::no_debug_features` (was `no_live_link`) refuses any of them in a
    build's arguments, of the package or a dependency (`game/capture`), by
-   name, with `SH1002`. Resolving the features Cargo really enables stays
-   ticket 3085's.
+   name, with `SH1002`. The live link is also refused as Cargo resolves the
+   build ([ADR-0096](0096-an-export-asks-cargo-what-each-build-turns-on-and-refuses-the-live-link-before-anything-is-built.md),
+   whose `live_link::refuse` runs this check first); the other three, as
+   resolved, are ticket 3303's.
 3. **No state on demand.** `shuyi_app::crash::CrashReports` gains
    `record_in_release` (`with_record_in_release()`), and `records_play()` is
    `shuyi_ui::DEBUG_TOOLS || record_in_release`. Only then does `run` add the

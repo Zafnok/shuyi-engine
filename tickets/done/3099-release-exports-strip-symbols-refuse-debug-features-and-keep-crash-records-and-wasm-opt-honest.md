@@ -207,8 +207,10 @@ Done on 2026-11-09. The choices are [ADR-0094](../../docs/adr/0094-release-expor
   Windows and Linux (and one in the debug file), no `name` or
   `producers` section on the web. Run here on the Windows package: it
   passes.
-- **Handed over:** 3085 resolves all four debug features through the
-  real feature graph (its "From 3099" note).
+- **Follow-up:** 3085 landed first and resolves the live link through
+  Cargo's feature graph; its `live_link::refuse` now calls
+  `no_debug_features`. The other three debug features are refused by the
+  build's arguments only: ticket 3303 resolves them as 3085 does `link`.
 
 Breaking: shuyi-cli: export::no_live_link: renamed `export::no_debug_features`, which refuses `debug-tools`, `capture` and `sound-probe` beside `link`.
 
