@@ -1,7 +1,9 @@
 [default]
 # A 64-bit hash as sixteen hex digits, as snapshots print one (a painted
 # picture's, ADR-0078): its letters are no word.
-extend-ignore-re = ['\b[0-9a-f]{16}\b']
+# Nick's words, quoted verbatim in docs/decisions.md (2026-11-08): that
+# phrase alone, so the word stays a typo anywhere else.
+extend-ignore-re = ['\b[0-9a-f]{16}\b', 'in depth comparsion on rhai']
 
 [default.extend-words]
 # Fragments from hyphenated tokens that typos splits (e.g. "CC-BY-ND").

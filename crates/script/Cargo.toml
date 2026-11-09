@@ -1,0 +1,41 @@
+[package]
+name = "shuyi-script"
+description = "Shuyi Engine's script runtime: rules written as Rhai text, compiled once and run on a read-only view the game hands them, integer only, with no clock, no luck and no files, inside an operation and a size limit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+# What it answers (ADR-0009 §4), read by the catalog, `shuyi modules` and
+# `shuyi add`.
+[package.metadata.shuyi]
+answers = [{ concern = "scripting", answer = "rhai" }]
+serves = ["turns", "fixed-ticks"]
+
+[dependencies]
+# The language (ADR-0093): its features cut to what a rule may do. No
+# floats, no clock, no `import`, no custom syntax, `i64` the one integer.
+# `compact_str` replaces `smartstring` in its code; `smartstring` is still
+# built, never linked (deny.toml's exception says why).
+rhai = { version = "1.27", default-features = false, features = [
+    "std",
+    "serde",
+    "no_float",
+    "no_time",
+    "no_module",
+    "no_custom_syntax",
+    "only_i64",
+    "compact_str",
+] }
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+serde = { workspace = true, features = ["derive"] }
+# The fixture scripts' golden table (ticket 2116).
+shuyi-assets = { path = "../assets", default-features = false, features = ["golden"] }

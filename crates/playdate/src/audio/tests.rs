@@ -31,6 +31,7 @@ fn manifest() -> AudioManifest {
         looped,
         length_ms: 60_000,
         credit: CreditRef::Own,
+        group: None,
     };
     m.music.insert("theme".into(), track("theme.ogg", 80, true));
     m.music

@@ -926,6 +926,27 @@ fn the_music_the_platform_reports_becomes_the_clock() {
     assert_eq!(game.ctx().music_clock, None);
 }
 
+/// A manifest changed before the game is made gives its groups: a cue in
+/// a group of the game's own plays at that group's gain.
+#[test]
+fn the_games_groups_are_its_manifests_when_it_is_made() {
+    use crate::audio::groups::SFX;
+    use crate::audio::loudness::loudness;
+    let mut c = ctx();
+    let mut ambience = shuyi_assets::audio::GroupDef::default();
+    ambience.parent = Some(SFX.to_owned());
+    ambience.volume = Some(60);
+    c.game.audio.groups.insert("ambience".into(), ambience);
+    let hum = c.game.audio.sounds["hum"].clone().with_group("ambience");
+    c.game.audio.sounds.insert("hum".into(), hum);
+    let mut game = home(c);
+    assert_eq!(game.ctx().sound_groups().sound_group("hum"), "ambience");
+    let out = game.frame(&[], 0.0);
+    let want = loudness(60).times(loudness(97));
+    assert_eq!(out.gains.sound("hum"), want);
+    assert_eq!(out.gains.sound("click"), loudness(97));
+}
+
 /// The settings the platform applies go out every frame.
 #[test]
 fn frames_carry_the_gains_and_fullscreen() {

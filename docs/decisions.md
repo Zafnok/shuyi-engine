@@ -1651,3 +1651,45 @@ then devices"**. Then:
   is done.
 - A tier orders the targets; it doesn't unpark any. The parked tier 2
   targets (2026-10-15 and 2026-10-17) stay parked until Nick says.
+
+## 2026-11-08: Rhai for mods' scripts, with one license exception
+
+Source: Nick, in the session working ticket 2101. Rhai, the scripting
+language 2101 planned, always brings the crate `smartstring`, under
+MPL-2.0, which ADR-0002 §8 denies. With Rhai's `compact_str` switch, none
+of its code goes into a game: it is downloaded and built only (checked
+on 2026-11-08 in Windows release, debug and web builds). Asked whether
+to allow it, he said:
+
+> "if Rhai license is unclear then run a research agent to figure it out.
+> I rather not work on our own language as well as our own engine that's
+> major feature bloat. Also check about Lua support?"
+
+> "check more about Rhai 2.0 release date rumors. Also, aren't there other
+> Rust scripting langs like Rune and stuff? im just concerned cuz Rhai
+> seems individually maintained and can be a liability. Why not like
+> Python or something thats more popular... are you sure Lua wont work...????????"
+
+> "tell me why we cant use emscripten or the c toolchain for lua or
+> cpython needing c why is that a problem"
+
+> "do a more in depth comparsion on rhai vs rune and why bevy swapped"
+
+Shown the research (ADR-0093 holds it: Lua and Python need C or
+emscripten, which the web build doesn't have, and aren't deterministic as
+they come; Rune's maps iterate in a different order from one build to
+another and it can't drop floats; Bevy's scripting plugin swapped for the
+speed of its own reflection glue), he chose **"Yes, Rhai
+(Recommended)"**.
+
+**Rules:**
+
+- **`shuyi-script` is Rhai** (ADR-0093). No language of our own.
+- **`smartstring` is the one exception to ADR-0002 §8**, in `deny.toml`,
+  for version 1.0.1 alone, while Rhai's `compact_str` feature keeps its
+  code out of every program (a test checks the feature). Its RustSec
+  advisory (unmaintained, RUSTSEC-2026-0249) is ignored for the same
+  reason.
+- **The exception goes when Rhai drops `smartstring`** (its 2.0, or a
+  release that makes it optional). Not legal advice: MPL-2.0's duties
+  come with distributing its code, and no game does.

@@ -2,7 +2,9 @@
 //! group, and every group under [`MASTER`], so the player sets a volume
 //! for each and one over all of them. The five built-in groups are
 //! [`MASTER`]; [`MUSIC`], [`SFX`] and [`VOICE`] under it; and [`UI`] under
-//! [`SFX`], so the sound volume lowers the menus' sounds too.
+//! [`SFX`], so the sound volume lowers the menus' sounds too. A game adds
+//! its own, and sets the built-ins' defaults, in its audio manifest's
+//! `groups` (`shuyi_assets::audio`), and a cue names its group there.
 //!
 //! [`SoundGroups`] is the tree and which cue plays where; [`GroupGains`]
 //! each group's gain from the player's volumes, on the loudness curve
@@ -13,7 +15,8 @@
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 
-use shuyi_assets::audio::groups::BUILT_IN;
+use shuyi_assets::audio::AudioManifest;
+use shuyi_assets::audio::groups::{BUILT_IN, is_built_in};
 pub use shuyi_assets::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 
 use super::AudioConfig;
@@ -21,7 +24,8 @@ use super::loudness::{Gain, loudness};
 use crate::settings::Volumes;
 
 /// The volume `music`, `sfx` and `voice` start at: the position whose gain
-/// is nearest the 0.8 they played at before the curve. *Tunable.*
+/// is nearest the 0.8 they played at before the curve. A game's own group
+/// starts there too unless its manifest says otherwise. *Tunable.*
 const BUILT_IN_DEFAULT: u8 = 97;
 
 /// The volume a new player hears built-in group `group` at: 100 for
@@ -50,30 +54,59 @@ struct Group {
     default: u8,
 }
 
-/// The sound groups, and the group each cue plays in: a sound cue in
-/// [`UI`] if it is one of the menus' ([`AudioConfig`]), else in [`SFX`]; a
-/// music cue in [`MUSIC`]; a voice clip in [`VOICE`].
+/// The sound groups, and the group each cue plays in: the cue's own
+/// `group` in the manifest; else a sound cue in [`UI`] if it is one of the
+/// menus' ([`AudioConfig`]) and in [`SFX`] if not, and a music cue in
+/// [`MUSIC`]. A voice clip plays in [`VOICE`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SoundGroups {
-    /// Every group, parents before their children.
+    /// Every group, parents before their children: the built-ins first.
     groups: Vec<Group>,
     /// The sound cues that play in a group other than [`SFX`], by cue.
     sounds: BTreeMap<String, usize>,
+    /// The music cues that play in a group other than [`MUSIC`], by cue.
+    music: BTreeMap<String, usize>,
 }
 
 impl SoundGroups {
-    /// The built-in groups at their defaults, with the menus' cues of
-    /// `config` in [`UI`].
-    pub fn new(config: &AudioConfig) -> Self {
+    /// The built-in groups, then the groups `manifest` declares (parents
+    /// first), each at the default the manifest gives it, else at its own;
+    /// the menus' cues of `config` in [`UI`], and each cue `manifest` puts
+    /// in a group in that group. A declared group whose parent isn't there
+    /// (a manifest made in code, never checked) is left out, and its cues
+    /// play where they would without it.
+    pub fn new(config: &AudioConfig, manifest: &AudioManifest) -> Self {
+        let set = |id: &str| manifest.groups.get(id).and_then(|g| g.volume);
         let at = |id: &str| BUILT_IN.iter().position(|&(g, _)| g == id);
-        let groups = BUILT_IN
+        let mut groups: Vec<Group> = BUILT_IN
             .iter()
             .map(|&(id, parent)| Group {
                 id: id.to_owned(),
                 parent: parent.and_then(at),
-                default: built_in_default(id),
+                default: set(id).unwrap_or_else(|| built_in_default(id)),
             })
             .collect();
+        let mut waiting: Vec<_> = (manifest.groups.iter())
+            .filter(|(id, _)| !is_built_in(id))
+            .collect();
+        while !waiting.is_empty() {
+            let before = waiting.len();
+            waiting.retain(|&(id, def)| {
+                let parent = def.parent.as_deref().unwrap_or(MASTER);
+                let Some(parent) = groups.iter().position(|g| g.id == parent) else {
+                    return true;
+                };
+                groups.push(Group {
+                    id: id.clone(),
+                    parent: Some(parent),
+                    default: def.volume.unwrap_or(BUILT_IN_DEFAULT),
+                });
+                false
+            });
+            if waiting.len() == before {
+                break;
+            }
+        }
         let menus = [
             config.move_cue,
             config.select_cue,
@@ -81,8 +114,24 @@ impl SoundGroups {
             config.denied_cue,
             config.cursor_cue,
         ];
-        let sounds = menus.iter().map(|&cue| (cue.to_owned(), UI_AT)).collect();
-        Self { groups, sounds }
+        let mut sounds: BTreeMap<_, _> = menus.iter().map(|&cue| (cue.to_owned(), UI_AT)).collect();
+        let index = |cue: &String, group: &Option<String>| {
+            let group = group.as_deref()?;
+            Some((cue.clone(), groups.iter().position(|g| g.id == group)?))
+        };
+        let own = manifest
+            .sounds
+            .iter()
+            .filter_map(|(c, s)| index(c, &s.group));
+        sounds.extend(own);
+        let music = (manifest.music.iter())
+            .filter_map(|(c, t)| index(c, &t.group))
+            .collect();
+        Self {
+            groups,
+            sounds,
+            music,
+        }
     }
 
     /// Where `group` is, if there is one.
@@ -118,17 +167,22 @@ impl SoundGroups {
         &self.groups[self.sound_at(cue)].id
     }
 
+    /// Where music cue `cue` plays.
+    fn music_at(&self, cue: &str) -> usize {
+        self.music.get(cue).copied().unwrap_or(MUSIC_AT)
+    }
+
     /// The group music cue `cue` plays in.
     pub fn music_group(&self, cue: &str) -> &str {
-        let _ = cue;
-        &self.groups[MUSIC_AT].id
+        &self.groups[self.music_at(cue)].id
     }
 }
 
 impl Default for SoundGroups {
-    /// The groups of a game whose menus play [`AudioConfig::DEFAULT`]'s cues.
+    /// The built-in groups of a game whose menus play
+    /// [`AudioConfig::DEFAULT`]'s cues and whose manifest declares none.
     fn default() -> Self {
-        Self::new(&AudioConfig::DEFAULT)
+        Self::new(&AudioConfig::DEFAULT, &AudioManifest::default())
     }
 }
 
@@ -247,8 +301,7 @@ impl<'a> Gains<'a> {
 
     /// The gain music cue `cue` plays at: its group's.
     pub fn music(&self, cue: &str) -> Gain {
-        let _ = cue;
-        self.at(MUSIC_AT)
+        self.at(self.groups.music_at(cue))
     }
 
     /// The gain every voice clip plays at: [`VOICE`]'s.
@@ -303,7 +356,7 @@ mod tests {
             cursor_cue: "tick",
             ..AudioConfig::DEFAULT
         };
-        let groups = SoundGroups::new(&config);
+        let groups = SoundGroups::new(&config, &AudioManifest::default());
         for cue in ["ui_move", "ui_select", "ui_cancel", "tick"] {
             assert_eq!(groups.sound_group(cue), UI, "{cue}");
         }
@@ -319,6 +372,87 @@ mod tests {
         assert_eq!(view.voice(), view.group(VOICE));
         let all: Vec<_> = [MUSIC, SFX, VOICE, UI].map(|g| view.group(g)).into();
         assert!(all.windows(2).all(|w| w[0] != w[1]), "{all:?}");
+    }
+
+    /// A manifest declaring `ambience` under `sfx` at 80, `weather` under
+    /// `master` and `rain` under `weather` (before it in the map's order), and setting `music`'s
+    /// default to 90; `footfall` plays in `ambience`, the menus' `ui_move`
+    /// in `sfx`, and the track `storm` in `weather`.
+    fn manifest() -> AudioManifest {
+        use shuyi_assets::audio::{CreditRef, GroupDef, MusicCue, SoundCue};
+        let mut m = AudioManifest::default();
+        let group = |parent: Option<&str>, volume| {
+            let mut g = GroupDef::default();
+            g.parent = parent.map(str::to_owned);
+            g.volume = volume;
+            g
+        };
+        m.groups.insert("rain".into(), group(Some("weather"), None));
+        m.groups
+            .insert("ambience".into(), group(Some(SFX), Some(80)));
+        m.groups.insert("weather".into(), group(None, None));
+        m.groups.insert(MUSIC.into(), group(None, Some(90)));
+        m.groups
+            .insert("orphan".into(), group(Some("nowhere"), None));
+        let sound = |group: &str| SoundCue::new(Vec::new(), 100, CreditRef::Own).with_group(group);
+        m.sounds.insert("footfall".into(), sound("ambience"));
+        m.sounds.insert("ui_move".into(), sound(SFX));
+        m.sounds.insert("lost".into(), sound("orphan"));
+        let track = |group: Option<&str>| MusicCue {
+            file: "a.ogg".into(),
+            volume: 100,
+            looped: true,
+            length_ms: 1000,
+            credit: CreditRef::Own,
+            group: group.map(str::to_owned),
+        };
+        m.music.insert("storm".into(), track(Some("weather")));
+        m.music.insert("theme".into(), track(None));
+        m
+    }
+
+    #[test]
+    fn the_manifests_groups_come_after_the_built_ins_parents_first() {
+        let groups = SoundGroups::new(&AudioConfig::DEFAULT, &manifest());
+        let ids: Vec<_> = groups.ids().collect();
+        assert_eq!(
+            ids,
+            [MASTER, MUSIC, SFX, VOICE, UI, "ambience", "weather", "rain"]
+        );
+        assert_eq!(groups.parent("ambience"), Some(SFX));
+        assert_eq!(groups.parent("rain"), Some("weather"));
+        assert_eq!(groups.parent("weather"), Some(MASTER));
+        // A declared default, a game's own group's default, and a
+        // built-in's default the manifest sets.
+        assert_eq!(groups.default_volume("ambience"), Some(80));
+        assert_eq!(groups.default_volume("rain"), Some(97));
+        assert_eq!(groups.default_volume(MUSIC), Some(90));
+        assert_eq!(groups.default_volume(SFX), Some(97));
+        // A group whose parent isn't there is left out.
+        assert_eq!(groups.default_volume("orphan"), None);
+    }
+
+    #[test]
+    fn a_cue_plays_in_its_group_else_where_it_would() {
+        let groups = SoundGroups::new(&AudioConfig::DEFAULT, &manifest());
+        assert_eq!(groups.sound_group("footfall"), "ambience");
+        assert_eq!(groups.sound_group("ui_move"), SFX, "its group over ui");
+        assert_eq!(groups.sound_group("ui_select"), UI);
+        assert_eq!(groups.sound_group("splash"), SFX);
+        assert_eq!(groups.sound_group("lost"), SFX, "its group is left out");
+        assert_eq!(groups.music_group("storm"), "weather");
+        assert_eq!(groups.music_group("theme"), MUSIC);
+        let gains = GroupGains::of(&groups, &volumes(&[("weather", 50)]));
+        let view = Gains::new(&groups, &gains);
+        assert_eq!(view.music("storm"), view.group("weather"));
+        assert_eq!(view.music("storm"), loudness(50));
+        assert_eq!(view.music("theme"), view.group(MUSIC));
+        assert_eq!(view.sound("footfall"), view.group("ambience"));
+        // ambience at 80 under sfx at 97: its own gain times sfx's.
+        let ambience = loudness(80).times(loudness(97));
+        assert_eq!(view.group("ambience"), ambience);
+        assert_eq!(view.group("rain"), loudness(97).times(loudness(50)));
+        assert_eq!(view.each().count(), 8);
     }
 
     #[test]

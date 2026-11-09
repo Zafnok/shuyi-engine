@@ -1534,6 +1534,7 @@ mod tests {
             looped,
             length_ms,
             credit: CreditRef::Own,
+            group: None,
         }
     }
 
