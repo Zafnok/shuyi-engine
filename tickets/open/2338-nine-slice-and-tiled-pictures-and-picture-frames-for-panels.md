@@ -254,7 +254,7 @@ None.
 - **Docs:** module docs for `frame::slice` with a doc test of each
   helper; `GameData::nine_slice`'s doc names the two names; and,
   **from 2802 (done)**, a short section on nine-slice and tiled
-  pictures and picture frames in the book's chapter 4
+  pictures and picture frames in the book's chapter 2
   (`site/content/learn/book/frame-and-skins.md`), its code in
   `site/snippets/`.
 

@@ -51,7 +51,7 @@ use crate::screens::key_bindings::KeyRow;
 use crate::screens::key_bindings::RowGroup::{self, Optional, Required};
 use crate::screens::layout_picker::{self, LayoutPickerScreen, LegendKeys};
 use crate::screens::options::{self, OptionRow, RowAction, RowValue};
-use crate::settings::{GameSettings, Settings, TextSpeed};
+use crate::settings::{GameSettings, Settings, TextSpeed, Volumes, read_old_volumes};
 use crate::storage::Storage;
 use shuyi_assets::dialogue::{Present, Side};
 
@@ -107,7 +107,8 @@ pub struct Prefs {
     pub speed: u8,
 }
 
-/// The saved form of the toy's settings.
+/// The saved form of the toy's settings. The linear volumes it wrote
+/// before the loudness curve are read and never written.
 #[derive(Serialize, Deserialize)]
 #[serde(default, rename = "Toy")]
 struct File {
@@ -115,10 +116,13 @@ struct File {
     text_speed: TextSpeed,
     fullscreen: bool,
     theme: Theme,
-    music_volume: u8,
-    sound_volume: u8,
+    volumes: Volumes,
     frame_cap: FrameCap,
     layout: Option<String>,
+    #[serde(skip_serializing, deserialize_with = "crate::settings::old_volume")]
+    music_volume: Option<u8>,
+    #[serde(skip_serializing, deserialize_with = "crate::settings::old_volume")]
+    sound_volume: Option<u8>,
 }
 
 impl Default for File {
@@ -129,10 +133,11 @@ impl Default for File {
             text_speed: s.text_speed,
             fullscreen: s.fullscreen,
             theme: s.theme,
-            music_volume: s.music_volume,
-            sound_volume: s.sound_volume,
+            volumes: s.volumes,
             frame_cap: s.frame_cap,
             layout: None,
+            music_volume: None,
+            sound_volume: None,
         }
     }
 }
@@ -146,10 +151,11 @@ impl GameSettings for Prefs {
             text_speed: s.text_speed,
             fullscreen: s.fullscreen,
             theme: s.theme,
-            music_volume: s.music_volume,
-            sound_volume: s.sound_volume,
+            volumes: s.volumes.clone(),
             frame_cap: s.frame_cap,
             layout: s.layout().map(|l| l.name().to_owned()),
+            music_volume: None,
+            sound_volume: None,
         };
         ron::to_string(&file).unwrap_or_default()
     }
@@ -161,8 +167,8 @@ impl GameSettings for Prefs {
         s.text_speed = file.text_speed;
         s.fullscreen = file.fullscreen;
         s.theme = file.theme;
-        s.music_volume = file.music_volume;
-        s.sound_volume = file.sound_volume;
+        s.volumes = file.volumes;
+        read_old_volumes(&mut s.volumes, file.music_volume, file.sound_volume, None);
         s.frame_cap = file.frame_cap;
         Ok(match file.layout.as_deref().and_then(Layout::from_name) {
             Some(layout) => s.with_layout(layout),

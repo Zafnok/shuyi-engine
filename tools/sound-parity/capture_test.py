@@ -102,9 +102,9 @@ class NativeUnderrun(unittest.TestCase):
 
 
 class Stop(unittest.TestCase):
-    def recorder(self, losses: list[str]) -> LoopbackRecorder:
+    def recorder(self, losses: list[str], silences=()) -> LoopbackRecorder:
         recorder = LoopbackRecorder.__new__(LoopbackRecorder)
-        recorder.loopback = SimpleNamespace(losses=losses, longest_ms=12.0, stop=lambda: None, path=Path("x.pcm"))
+        recorder.loopback = SimpleNamespace(losses=losses, longest_ms=12.0, stop=lambda: None, path=Path("loop.pcm"), silences=list(silences))
         return recorder
 
     def test_a_recording_with_a_loss_is_refused_and_says_where(self):
@@ -114,6 +114,11 @@ class Stop(unittest.TestCase):
 
     def test_a_recording_without_one_is_kept(self):
         self.recorder([]).stop()
+
+    def test_flagged_packets_are_said_in_the_log_joined(self):
+        with contextlib.redirect_stderr(io.StringIO()) as said:
+            self.recorder([], ((0, 441), (441, 441), (9000, 441))).stop()
+        self.assertIn("loop.pcm: the loopback flagged silent 882 frames at 0, 441 frames at 9000", said.getvalue())
 
 
 if __name__ == "__main__":

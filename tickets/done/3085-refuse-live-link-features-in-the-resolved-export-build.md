@@ -160,7 +160,7 @@ None.
   `shuyi-app`'s dev-dependency turns its link on. By hand: `shuyi export
   windows` and `web` on Hello, Grid pass.
 - ADR-0092 records the decision; it amends ADR-0058 §2. ADR-0091 is
-  taken by the open PR 318, so this one is 0092.
+  taken by PR 318 (sound groups), so this one is 0092.
 - 3082 is not done: its either-order clause now says edition flags go in
   the exporter plan, which this check resolves, and that a new build flag
   must be taught to `tree_args`.

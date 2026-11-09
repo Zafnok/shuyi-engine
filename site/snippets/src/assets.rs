@@ -1,4 +1,4 @@
-//! Chapter 5, assets and formats: the garden's plan as a kind of asset of
+//! Chapter 3, assets and formats: the garden's plan as a kind of asset of
 //! the game's own, read from `files/garden.ron` through the format
 //! registry, the bundle's layers, a player's mod laid over the game's
 //! files, and the plan reloading as its file changes.

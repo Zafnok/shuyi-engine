@@ -1,10 +1,11 @@
 +++
 title = "Assets and formats"
 description = "Kinds of asset are plain types, formats are plugins that read them, the registry finds them by id in a bundle of layers."
-weight = 50
+weight = 30
 
 [extra]
-chapter = 5
+part = "chapters"
+chapter = 3
 +++
 
 A game is made of more than code. It has words, keys, colors, maps, pictures and

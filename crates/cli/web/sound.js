@@ -114,6 +114,17 @@
             process(inputs, outputs) {
                 var left = outputs[0][0];
                 var right = outputs[0][1] || new Float32Array(left.length);
+                // TRACE (scratch): each call's frame, wall time and what the ring held.
+                if (this.trace === undefined) {
+                    this.trace = [];
+                }
+                if (this.trace !== null) {
+                    this.trace.push([currentFrame, Date.now(), this.ring.held(), this.ring.taken]);
+                    if (this.trace.length >= 400) {
+                        this.port.postMessage({ trace: this.trace });
+                        this.trace = null;
+                    }
+                }
                 var real = this.ring.read(left, right);
                 this.played = (this.played + real) >>> 0;
                 this.silent = (this.silent + left.length - real) >>> 0;
@@ -163,12 +174,48 @@
             }
             var buffer = spare.pop() || new ArrayBuffer(block * 4);
             new Int16Array(buffer).set(frames);
+            if (loud_at < 0) {
+                for (var i = 0; i < frames.length; i++) {
+                    if (frames[i] > 64 || frames[i] < -64) {
+                        loud_at = sent + (i >> 1);
+                        break;
+                    }
+                }
+            }
+            note(["send", wall(), sent]);
             node.port.postMessage(buffer, [buffer]);
             sent = (sent + block) >>> 0;
         }
     }
 
+    // TRACE (scratch): what the main thread saw, in wall-clock milliseconds.
+    var trace = [];
+    var loud_at = -1;
+    function wall() {
+        return performance.timeOrigin + performance.now();
+    }
+    function note(entry) {
+        if (trace !== null && trace.length < 600) {
+            trace.push(entry);
+        }
+    }
+
     function on_message(event) {
+        if (event.data.trace) {
+            console.log(
+                "shuyi-sound-probe: " +
+                    JSON.stringify({
+                        event: "trace",
+                        loud_at: loud_at,
+                        base: context.baseLatency,
+                        out: context.outputLatency,
+                        main: trace,
+                        worklet: event.data.trace,
+                    })
+            );
+            trace = null;
+            return;
+        }
         if (event.data.back) {
             spare.push(event.data.back);
         } else {
@@ -178,6 +225,7 @@
             }
             silent = event.data.silent;
             played = event.data.played;
+            note(["report", wall(), played, silent, lead_blocks]);
             top_up();
         }
     }
@@ -223,6 +271,7 @@
     }
 
     function connect() {
+        note(["connect", wall(), context.state]);
         node = new AudioWorkletNode(context, "shuyi-sound", {
             numberOfInputs: 0,
             numberOfOutputs: 1,
@@ -272,6 +321,17 @@
                 return 0;
             }
             context = opened;
+            note(["open", wall(), opened.state]);
+            opened.addEventListener("statechange", function () {
+                note(["state", wall(), opened.state]);
+            });
+            window.document.addEventListener(
+                "mousedown",
+                function () {
+                    note(["gesture", wall()]);
+                },
+                true
+            );
             if (!window.navigator.userActivation) {
                 // A browser that doesn't say whether the page has had its gesture.
                 ["keydown", "mousedown", "touchend"].forEach(function (type) {

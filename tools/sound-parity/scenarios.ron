@@ -76,6 +76,11 @@
             expect: [
                 Waveform(file: "loop.wav", repeats: 3, class: Exact, smear: 4096),
                 Silent(from: 1950, to: 2400),
+                // Its joins: on Windows quad-snd leaves none, 127 or 441 frames of
+                // zeros there, as its blocks fall (ticket 2049).
+                Boundary(at: 500),
+                Boundary(at: 1000),
+                Boundary(at: 1500),
             ],
         ),
         (

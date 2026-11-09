@@ -1,7 +1,12 @@
 +++
 title = "Before you start"
 description = "What a program, a terminal and a game engine are, how to install what you need, and how to read these pages."
-weight = 5
+weight = 10
+aliases = ["learn/tutorial/00-start/"]
+
+[extra]
+part = "start"
+newcomer = "programming"
 +++
 
 This page gets your computer ready, and explains the handful of ideas every
@@ -151,7 +156,7 @@ would type them.
 
 > **Game idea:** explains how games are made in general, whatever the engine.
 
-You don't need to remember all of it. The [glossary](@/learn/tutorial/glossary.md)
+You don't need to remember all of it. The [glossary](@/learn/book/glossary.md)
 has every word, with a link back to where it was explained.
 
-Ready? [Make the game](@/learn/tutorial/01-new.md).
+Ready? [Make the game](@/learn/book/box-pusher/01-new.md).

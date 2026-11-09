@@ -120,8 +120,8 @@ None.
     the voice too; if not, nothing to do (2724 stops it when it lands);
   - **volume**: the voice volume is the `voice` sound group's (2342),
     not a `VnSettings` field. A volume per voiced character is a group
-    under `voice`, declared in the audio manifest. 2342 plays every
-    clip in `voice`, so this ticket adds the clip's group to
+    under `voice`, declared in the audio manifest (2258). 2342 plays
+    every clip in `voice`, so this ticket adds the clip's group to
     `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
     plays it at that group's gain (`Gains::group`). The quick menu gets
     a row for `voice` and one for each character's group.

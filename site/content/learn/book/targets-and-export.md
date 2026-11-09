@@ -4,6 +4,7 @@ description = "Each target says what its hardware can do, shuyi check --target h
 weight = 90
 
 [extra]
+part = "chapters"
 chapter = 9
 +++
 
@@ -96,7 +97,7 @@ checks, for each target the game lists, that:
 - its frame at its scale fits the target's display, inside its safe area (the part of a display
   sure to be visible), and its smallest text is as tall as the target asks;
 - every screen's required actions bind to distinct inputs the target has
-  ([chapter 3](@/learn/book/actions.md)). A target with no keyboard (a Steam Deck) plays with the
+  ([chapter 4](@/learn/book/actions.md)). A target with no keyboard (a Steam Deck) plays with the
   buttons of the keymap file's table named after it, `targets: { "steam-deck": { … } }`; when the
   actions don't fit, the screen changes, since the engine never folds actions onto fewer buttons;
 - on a one-bit target, every palette role has a pattern;

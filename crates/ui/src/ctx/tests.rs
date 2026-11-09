@@ -7,6 +7,7 @@ use super::*;
 use shuyi_assets::keymap::{Button, Chord, Key, RepeatDef};
 
 use crate::audio::AudioRequest;
+use crate::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 use crate::input::help_keys::key_name;
 use crate::storage::MemoryStorage;
 use crate::toy::{Action, DEBUG_LANG, LEFT_HANDED, Prefs, RIGHT_HANDED, Theme, Toy, ToyCtx, Voice};
@@ -324,6 +325,65 @@ fn a_manifest_the_game_refuses_leaves_no_voices_and_a_warning() {
     assert!(found.is_empty(), "{found:?}");
 }
 
+/// A group's volume is the player's, else its default; set back to the
+/// default it leaves the settings, so a slider moved away and back is no
+/// change.
+#[test]
+fn a_volume_set_back_to_its_default_is_no_change() {
+    let mut c = ctx();
+    let defaults = [MASTER, MUSIC, SFX, VOICE, UI].map(|g| c.volume(g));
+    assert_eq!(defaults, [100, 97, 97, 97, 100]);
+    assert!(c.preview_volume(MUSIC, 40));
+    assert!(!c.preview_volume(MUSIC, 40), "the same again");
+    assert_eq!(c.volume(MUSIC), 40);
+    assert_eq!(c.settings().volumes.get(MUSIC), Some(40));
+    assert!(c.preview_volume(MUSIC, 97));
+    assert!(c.settings().volumes.is_empty());
+    assert_eq!(*c.settings(), Settings::default());
+    // Over 100 is 100: `ui`'s default.
+    assert!(c.preview_volume(UI, 40));
+    assert!(c.preview_volume(UI, 250));
+    assert_eq!(c.volume(UI), 100);
+    assert!(c.settings().volumes.is_empty());
+    assert!(!c.preview_volume(UI, 100));
+}
+
+/// The context's groups are the game's: its menus' cues play in `ui`.
+#[test]
+fn the_sound_groups_are_the_games() {
+    let mut c = ctx();
+    assert_eq!(c.sound_groups().sound_group("ui_move"), UI);
+    let config = crate::audio::AudioConfig {
+        cursor_cue: "tick",
+        ..crate::audio::AudioConfig::DEFAULT
+    };
+    c.sound_groups = crate::audio::SoundGroups::new(&config);
+    assert_eq!(c.sound_groups().sound_group("tick"), UI);
+}
+
+/// A volume loaded at its group's default reads as none set: an old save
+/// at the old 80 reads as the defaults.
+#[test]
+fn a_volume_loaded_at_its_default_is_dropped() {
+    let mut storage = MemoryStorage::new();
+    let old = "Toy(music_volume: 35, sound_volume: 80)";
+    let key = ProfileId::FIRST.key(SETTINGS_KEY);
+    storage.write(&key, old).unwrap();
+    let c = launch(storage);
+    assert_eq!((c.volume(MUSIC), c.volume(SFX)), (85, 97));
+    assert_eq!(c.settings().volumes.get(SFX), None, "97 is the default");
+    let set: Vec<_> = c.settings().volumes.iter().collect();
+    assert_eq!(set, [(MUSIC, 85)]);
+}
+
+/// In a debug build a group there isn't is a bug in the caller.
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "no sound group \"ambience\"")]
+fn a_volume_of_a_group_there_isnt_panics_in_a_debug_build() {
+    let _ = ctx().volume("ambience");
+}
+
 /// Turning voices on, or changing another setting, stops nothing.
 #[test]
 fn only_turning_voices_off_stops_the_voice() {
@@ -331,8 +391,8 @@ fn only_turning_voices_off_stops_the_voice() {
     c.preview_settings(|s| s.voices = false);
     assert_eq!(c.audio.take(), [AudioRequest::StopVoice]);
     c.preview_settings(|s| s.voices = true);
-    c.preview_settings(|s| s.voice_volume = 10);
-    c.preview_settings(|s| s.music_volume = 10);
+    c.preview_volume(VOICE, 10);
+    c.preview_volume(MUSIC, 10);
     let found = c.audio.pending();
     assert!(found.is_empty(), "{found:?}");
 }
@@ -417,11 +477,11 @@ fn settings_are_saved_on_change_and_loaded_with_the_storage() {
     assert_eq!(c.change_settings(|_| {}), Ok(()));
     assert_eq!(c.storage.read(SETTINGS_KEY), Ok(None));
     c.change_settings(|s| {
-        s.music_volume = 3;
+        s.volumes.set(MUSIC, 3);
         s.game.speed = 5;
     })
     .unwrap();
-    assert_eq!(c.settings().music_volume, 3);
+    assert_eq!(c.volume(MUSIC), 3);
     let saved = c.storage.read(SETTINGS_KEY).unwrap().unwrap();
     assert_eq!(saved, c.settings().to_ron());
     let storage = core::mem::take(&mut c.storage).into_computer();
@@ -481,10 +541,13 @@ fn previewed_settings_are_saved_only_when_kept() {
     );
     assert_eq!(c.storage.read(SETTINGS_KEY), Ok(None));
     // Kept: written; keeping again writes nothing new.
-    c.preview_settings(|s| s.music_volume = 3);
+    c.preview_volume(MUSIC, 3);
     c.keep_settings().unwrap();
     let saved = c.storage.read(SETTINGS_KEY).unwrap().unwrap();
-    assert_eq!(Settings::from_ron(&saved).unwrap().music_volume, 3);
+    assert_eq!(
+        Settings::from_ron(&saved).unwrap().volumes.get(MUSIC),
+        Some(3)
+    );
     c.storage.write(SETTINGS_KEY, "marker").unwrap();
     c.keep_settings().unwrap();
     assert_eq!(c.storage.read(SETTINGS_KEY).unwrap().unwrap(), "marker");
@@ -493,15 +556,15 @@ fn previewed_settings_are_saved_only_when_kept() {
     let saved = c.storage.read(SETTINGS_KEY).unwrap().unwrap();
     assert_eq!(Settings::from_ron(&saved), Ok(before));
     // A layout picked meanwhile saves only the layout.
-    c.preview_settings(|s| s.music_volume = 9);
+    c.preview_volume(MUSIC, 9);
     c.choose_layout(LEFT_HANDED).unwrap();
     let saved = c.storage.read(SETTINGS_KEY).unwrap().unwrap();
     let saved = Settings::from_ron(&saved).unwrap();
     assert_eq!(
-        (saved.music_volume, saved.layout()),
-        (80, Some(LEFT_HANDED))
+        (saved.volumes.get(MUSIC), saved.layout()),
+        (None, Some(LEFT_HANDED))
     );
-    assert_eq!(c.settings().music_volume, 9);
+    assert_eq!(c.volume(MUSIC), 9);
 }
 
 impl ToyCtx {
@@ -558,8 +621,8 @@ fn a_failing_storage_leaves_the_defaults_and_a_warning_for_each() {
     let found = c.take_warnings();
     assert!(found.is_empty(), "{found:?}");
     // A failed save still changes the settings, and switches the layout.
-    assert!(c.change_settings(|s| s.sound_volume = 1).is_err());
-    assert_eq!(c.settings().sound_volume, 1);
+    assert!(c.change_settings(|s| s.volumes.set(SFX, 1)).is_err());
+    assert_eq!(c.volume(SFX), 1);
     assert!(c.choose_layout(LEFT_HANDED).is_err());
     assert_eq!(c.layout(), Some(LEFT_HANDED));
 }

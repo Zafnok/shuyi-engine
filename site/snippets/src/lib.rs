@@ -11,12 +11,12 @@
 //!
 //! - [`quick_start`]: the game on the short path, as `shuyi new` lays one
 //!   out (chapter 1);
-//! - [`screens`]: its screens and the screen stack (chapter 2);
-//! - [`actions`]: actions, never keys (chapter 3);
-//! - [`frame`]: views and the skin that paints them (chapter 4);
+//! - [`frame`]: views and the skin that paints them (chapter 2);
 //! - [`assets`]: its own kind of file, read through the registry
-//!   (chapter 5);
-//! - [`rules`]: its rules as commands (chapter 6);
+//!   (chapter 3);
+//! - [`actions`]: actions, never keys (chapter 4);
+//! - [`rules`]: its rules as commands (chapter 5);
+//! - [`screens`]: its screens and the screen stack (chapter 6);
 //! - [`saves`]: a save and the player's settings (chapter 7);
 //! - [`testing`]: bots and replays over its rules (chapter 8);
 //! - [`targets`]: its project file's targets and web build (chapter 9);
