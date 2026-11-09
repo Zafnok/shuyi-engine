@@ -120,6 +120,10 @@ pub struct Options {
     pub release: bool,
     /// The features to turn on, in the order given.
     pub features: Vec<String>,
+    /// Whether a release build fails when `wasm-opt` didn't run (a release
+    /// `export web` whose `export` part doesn't say `wasm_opt: optional`);
+    /// otherwise a missing one is a warning.
+    pub require_wasm_opt: bool,
 }
 
 /// The usage line, with `command` as the tool's name.
@@ -229,7 +233,10 @@ fn target_dir_of(
 /// named in a warning.
 ///
 /// A release build has its paths remapped, and its binary is refused if it
-/// still holds one of the build machine's ([`paths`]).
+/// still holds one of the build machine's ([`paths`]). It is built
+/// stripped, whatever the game's profile says, and `wasm-opt` strips the
+/// names and tools the build leaves; a binary that still holds them after
+/// it is refused, naming the sections.
 pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result<String, String> {
     let cargo = crate::cargo();
     let target = target_dir(root);
@@ -240,6 +247,7 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
         let outside = paths::outside(root, &workspace);
         let remaps = paths::remaps(&workspace, &target, &rules.package, &outside);
         build.env(paths::ENCODED, paths::remapped_flags_here(&remaps));
+        build.env("CARGO_PROFILE_RELEASE_STRIP", "true");
     }
     let status = build
         .status()
@@ -423,7 +431,20 @@ fn fill(
     }
 
     if options.release {
-        run_wasm_opt(opt, &wasm_dst);
+        match run_wasm_opt(opt, &wasm_dst) {
+            WasmOptRun::Ran => check_sections(&wasm_dst)?,
+            WasmOptRun::Missing if options.require_wasm_opt => {
+                return Err(format!(
+                    "{NO_WASM_OPT}, and a release export needs it: {WASM_OPT_HELP}; or set \
+                     `export.wasm_opt: optional` in {}",
+                    crate::project::FILE
+                ));
+            }
+            WasmOptRun::Failed if options.require_wasm_opt => {
+                return Err("wasm-opt failed, and a release export needs it".to_owned());
+            }
+            WasmOptRun::Missing | WasmOptRun::Failed => {}
+        }
     }
 
     Ok(fs::metadata(&wasm_dst)
@@ -555,15 +576,41 @@ pub fn copy_tree(src: &Path, dst: &Path, keep: &dyn Fn(&Path) -> bool) -> Result
 }
 
 /// Runs `wasm-opt -Oz` on a wasm binary, abstracted so tests can substitute a
-/// fake instead of depending on a real `wasm-opt` install (which is optional
-/// and often absent — see the "skip silently" rule on [`WasmOpt::optimize`]).
+/// fake instead of depending on a real `wasm-opt` install (which `shuyi web`
+/// warns of when absent, and a release `export web` refuses).
 pub(crate) trait WasmOpt {
-    /// Optimizes `input` into `output` (mirroring `wasm-opt -Oz -o <output>
-    /// <input>`). `Ok(true)`/`Ok(false)` is a completed process's exit
-    /// status; `Err` means it couldn't be spawned at all (e.g. not on
-    /// `PATH`), which the caller treats the same as "skip silently".
+    /// Optimizes `input` into `output` (mirroring `wasm-opt -Oz
+    /// --strip-debug --strip-producers -o <output> <input>`).
+    /// `Ok(true)`/`Ok(false)` is a completed process's exit status; `Err`
+    /// means it couldn't be spawned at all (not on `PATH`, say).
     fn optimize(&self, input: &Path, output: &Path) -> Result<bool, String>;
 }
+
+/// What became of `wasm-opt` in a build ([`run_wasm_opt`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WasmOptRun {
+    /// It ran, and its output replaced the binary.
+    Ran,
+    /// It ran and failed, or its output couldn't replace the binary: the
+    /// binary is as the build left it.
+    Failed,
+    /// It isn't installed: the binary is as the build left it.
+    Missing,
+}
+
+/// The start of the error of a release export with no `wasm-opt`.
+pub(crate) const NO_WASM_OPT: &str = "wasm-opt isn't installed";
+
+/// How to install `wasm-opt`.
+pub(crate) const WASM_OPT_HELP: &str = "install Binaryen, which has it, and put its `bin` \
+                                        folder on PATH: `apt-get install binaryen`, `brew \
+                                        install binaryen`, MSYS2's `pacman -S \
+                                        mingw-w64-x86_64-binaryen`, or a release from \
+                                        github.com/WebAssembly/binaryen";
+
+/// The custom sections a shipped Wasm binary never holds: the functions'
+/// names and the tools that made it.
+pub(crate) const NAMED_SECTIONS: [&str; 2] = ["name", "producers"];
 
 /// The real `wasm-opt` binary on `PATH`.
 pub(crate) struct RealWasmOpt;
@@ -576,7 +623,7 @@ impl WasmOpt for RealWasmOpt {
     /// the logic that consumes its result via a fake [`WasmOpt`] instead.
     fn optimize(&self, input: &Path, output: &Path) -> Result<bool, String> {
         Command::new("wasm-opt")
-            .args(["-Oz", "-o"])
+            .args(["-Oz", "--strip-debug", "--strip-producers", "-o"])
             .arg(output)
             .arg(input)
             .status()
@@ -586,20 +633,91 @@ impl WasmOpt for RealWasmOpt {
 }
 
 /// Runs `opt` on `wasm_path` in place, replacing it with the optimized
-/// output on success. Does nothing (silently) if `opt` reports the tool
-/// isn't available. Whatever a failed run left behind isn't shipped.
-fn run_wasm_opt(opt: &impl WasmOpt, wasm_path: &Path) {
+/// output on success, and says what became of it. A tool that isn't
+/// installed is a warning naming it and how to install it. Whatever a failed
+/// run left behind isn't shipped.
+fn run_wasm_opt(opt: &impl WasmOpt, wasm_path: &Path) -> WasmOptRun {
     let optimized = wasm_path.with_extension("wasm.opt");
-    match opt.optimize(wasm_path, &optimized) {
-        Ok(true) => {
-            if let Err(e) = fs::rename(&optimized, wasm_path) {
+    let outcome = match opt.optimize(wasm_path, &optimized) {
+        Ok(true) => match fs::rename(&optimized, wasm_path) {
+            Ok(()) => WasmOptRun::Ran,
+            Err(e) => {
                 eprintln!("web: wasm-opt ran but replacing the binary failed: {e}");
+                WasmOptRun::Failed
+            }
+        },
+        Ok(false) => {
+            eprintln!("web: wasm-opt exited with a failure, skipping optimization");
+            WasmOptRun::Failed
+        }
+        Err(_) => {
+            eprintln!(
+                "web: warning: {NO_WASM_OPT}, so the binary isn't optimized, and nothing checks \
+                 that it holds no names: {WASM_OPT_HELP}"
+            );
+            WasmOptRun::Missing
+        }
+    };
+    let _ = fs::remove_file(&optimized);
+    outcome
+}
+
+/// The names of the custom sections of the Wasm binary `bytes`, in order.
+/// Not a Wasm binary, or one cut short, is an error.
+pub(crate) fn custom_sections(bytes: &[u8]) -> Result<Vec<String>, String> {
+    /// An unsigned LEB128 at `at`, and where it ends.
+    fn leb(bytes: &[u8], mut at: usize) -> Option<(usize, usize)> {
+        let mut value = 0_usize;
+        for shift in (0..35).step_by(7) {
+            let byte = *bytes.get(at)?;
+            at += 1;
+            value |= usize::from(byte & 0x7f).checked_shl(shift)?;
+            if byte & 0x80 == 0 {
+                return Some((value, at));
             }
         }
-        Ok(false) => eprintln!("web: wasm-opt exited with a failure, skipping optimization"),
-        Err(_) => {} // wasm-opt not on PATH: skip silently.
+        None
     }
-    let _ = fs::remove_file(&optimized);
+    if bytes.get(..8) != Some(b"\0asm\x01\0\0\0") {
+        return Err("not a Wasm binary (version 1)".to_owned());
+    }
+    let cut = || "a Wasm binary cut short".to_owned();
+    let mut names = Vec::new();
+    let mut at = 8;
+    while at < bytes.len() {
+        let id = bytes[at];
+        let (size, start) = leb(bytes, at + 1).ok_or_else(cut)?;
+        let end = start.checked_add(size).filter(|end| *end <= bytes.len());
+        let end = end.ok_or_else(cut)?;
+        if id == 0 {
+            let (length, name) = leb(bytes, start).ok_or_else(cut)?;
+            let name_end = name.checked_add(length).filter(|n| *n <= end);
+            let text = bytes.get(name..name_end.ok_or_else(cut)?).ok_or_else(cut)?;
+            names.push(String::from_utf8_lossy(text).into_owned());
+        }
+        at = end;
+    }
+    Ok(names)
+}
+
+/// Refuses the Wasm binary at `wasm` if it holds one of the
+/// [`NAMED_SECTIONS`], naming each it holds.
+pub(crate) fn check_sections(wasm: &Path) -> Result<(), String> {
+    let bytes = fs::read(wasm).map_err(|e| format!("read {}: {e}", wasm.display()))?;
+    let found: Vec<String> = custom_sections(&bytes)
+        .map_err(|e| format!("{}: {e}", wasm.display()))?
+        .into_iter()
+        .filter(|name| NAMED_SECTIONS.contains(&name.as_str()))
+        .collect();
+    if found.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{} still holds the custom section(s) {} after wasm-opt",
+            wasm.display(),
+            found.join(", ")
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -654,6 +772,7 @@ mod tests {
         Options {
             release: true,
             features: Vec::new(),
+            require_wasm_opt: false,
         }
     }
 
@@ -701,8 +820,8 @@ mod tests {
         let usage = "usage: shuyi web [--release] [--debug-tools] [--bought-art]";
         assert_eq!(usage, super::usage(&rules(), "shuyi"));
         let both = |features: &[&str]| Options {
-            release: true,
             features: args(features),
+            ..release()
         };
         assert_eq!(
             parse(&["--release", "--debug-tools"]),
@@ -735,8 +854,8 @@ mod tests {
         assert_eq!(cargo_args(&rules(), &debug()), base);
         assert_eq!(cargo_args(&rules(), &release())[5..], ["--release"]);
         let all = Options {
-            release: true,
             features: args(&["debug-tools", "bought-art"]),
+            ..release()
         };
         assert_eq!(
             cargo_args(&rules(), &all)[5..],
@@ -1045,15 +1164,15 @@ mod tests {
         let root = fixture("package-release-ok");
         write_wasm(&root, &release(), b"unoptimized-bytes");
         let opt = FakeWasmOpt(|_input: &Path, output: &Path| {
-            fs::write(output, b"opt").unwrap();
+            fs::write(output, wasm_with(&[])).unwrap();
             Ok(true)
         });
         let summary =
             package(&opt, &rules(), &root, &root.join("target"), &release(), &[]).unwrap();
-        assert!(summary.contains("3 bytes"), "{summary}");
+        assert!(summary.contains("11 bytes"), "{summary}");
         assert_eq!(
             fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
-            b"opt"
+            wasm_with(&[])
         );
         fs::remove_dir_all(&root).unwrap();
     }
@@ -1074,6 +1193,156 @@ mod tests {
                 fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
                 b"unoptimized"
             );
+            fs::remove_dir_all(&root).unwrap();
+        }
+    }
+
+    #[test]
+    fn run_wasm_opt_says_whether_it_ran_failed_or_is_missing() {
+        let root = fixture("wasm-opt-outcome");
+        fs::create_dir_all(&root).unwrap();
+        let wasm = root.join("the-game.wasm");
+        let ran = FakeWasmOpt(|_: &Path, output: &Path| {
+            fs::write(output, b"opt").unwrap();
+            Ok(true)
+        });
+        fs::write(&wasm, b"built").unwrap();
+        assert_eq!(run_wasm_opt(&ran, &wasm), WasmOptRun::Ran);
+        assert_eq!(fs::read(&wasm).unwrap(), b"opt");
+        for (result, outcome) in [
+            (Ok(false), WasmOptRun::Failed),
+            (Err("not found".to_owned()), WasmOptRun::Missing),
+        ] {
+            fs::write(&wasm, b"built").unwrap();
+            let opt = FakeWasmOpt(|_: &Path, _: &Path| result.clone());
+            assert_eq!(run_wasm_opt(&opt, &wasm), outcome);
+            assert_eq!(fs::read(&wasm).unwrap(), b"built");
+        }
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// `release()`, needing `wasm-opt` as a release export does.
+    fn required() -> Options {
+        Options {
+            require_wasm_opt: true,
+            ..release()
+        }
+    }
+
+    /// The smallest Wasm binary, with a custom section for each of `names`.
+    fn wasm_with(names: &[&str]) -> Vec<u8> {
+        let mut bytes = b"\0asm\x01\0\0\0".to_vec();
+        for name in names {
+            let body = [
+                &[u8::try_from(name.len()).unwrap()][..],
+                name.as_bytes(),
+                b"x",
+            ]
+            .concat();
+            bytes.push(0);
+            bytes.push(u8::try_from(body.len()).unwrap());
+            bytes.extend(body);
+        }
+        // A type section with no types: not a custom one.
+        bytes.extend([1, 1, 0]);
+        bytes
+    }
+
+    #[test]
+    fn the_custom_sections_are_read_by_name() {
+        assert_eq!(
+            custom_sections(&wasm_with(&[])).unwrap(),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            custom_sections(&wasm_with(&["name", "producers", "target_features"])).unwrap(),
+            ["name", "producers", "target_features"]
+        );
+        assert!(custom_sections(b"not wasm").is_err());
+        let mut cut = wasm_with(&["name"]);
+        cut.truncate(12);
+        assert!(custom_sections(&cut).is_err());
+        // A size past the end, in a LEB128 of two bytes.
+        let long = [&b"\0asm\x01\0\0\0"[..], &[0, 0xff, 0x01, 4]].concat();
+        assert!(custom_sections(&long).is_err());
+    }
+
+    #[test]
+    fn a_required_wasm_opt_that_is_missing_or_fails_refuses_the_build() {
+        for (name, outcome, says) in [
+            ("missing", Err("not found".to_owned()), NO_WASM_OPT),
+            ("fails", Ok(false), "wasm-opt failed"),
+        ] {
+            let root = fixture(&format!("package-required-{name}"));
+            write_wasm(&root, &release(), b"unoptimized");
+            let opt = FakeWasmOpt(|_: &Path, _: &Path| outcome.clone());
+            let err = package(
+                &opt,
+                &rules(),
+                &root,
+                &root.join("target"),
+                &required(),
+                &[],
+            )
+            .unwrap_err();
+            assert!(err.starts_with(says), "{err}");
+            assert!(!root.join("dist/web").exists(), "nothing published");
+            fs::remove_dir_all(&root).unwrap();
+        }
+        let err = {
+            let root = fixture("package-required-help");
+            write_wasm(&root, &release(), b"unoptimized");
+            let opt = FakeWasmOpt(|_: &Path, _: &Path| Err("not found".to_owned()));
+            let err = package(
+                &opt,
+                &rules(),
+                &root,
+                &root.join("target"),
+                &required(),
+                &[],
+            );
+            fs::remove_dir_all(&root).unwrap();
+            err.unwrap_err()
+        };
+        assert!(err.contains("install Binaryen"), "{err}");
+        assert!(err.contains("`export.wasm_opt: optional`"), "{err}");
+    }
+
+    #[test]
+    fn a_binary_that_keeps_its_names_after_wasm_opt_is_refused_naming_them() {
+        for (kept, says) in [
+            (&["name"][..], Some("name")),
+            (&["producers"], Some("producers")),
+            (&["name", "producers"], Some("name, producers")),
+            (&["target_features"], None),
+        ] {
+            let root = fixture(&format!("package-sections-{}", kept.join("-")));
+            write_wasm(&root, &release(), b"unoptimized");
+            let bytes = wasm_with(kept);
+            let opt = FakeWasmOpt(move |_: &Path, output: &Path| {
+                fs::write(output, &bytes).unwrap();
+                Ok(true)
+            });
+            let made = package(
+                &opt,
+                &rules(),
+                &root,
+                &root.join("target"),
+                &required(),
+                &[],
+            );
+            match says {
+                Some(names) => {
+                    let err = made.unwrap_err();
+                    assert!(
+                        err.contains(&format!("custom section(s) {names} ")),
+                        "{err}"
+                    );
+                }
+                None => {
+                    made.unwrap();
+                }
+            }
             fs::remove_dir_all(&root).unwrap();
         }
     }

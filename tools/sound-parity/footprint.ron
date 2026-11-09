@@ -414,6 +414,22 @@ pub(crate) mod device {
             find: r##""shuyi-alloc-count", "shuyi-sound", "shuyi-sound-out"],"##,
             with: r##""shuyi-alloc-count"],"##,
         ),
+        // Ticket 3099: the probe is a debug feature `export` refuses.
+        Replace(
+            file: "crates/cli/src/export.rs",
+            find: "pub const DEBUG_FEATURES: [(&str, &str); 4] = [",
+            with: "pub const DEBUG_FEATURES: [(&str, &str); 3] = [",
+        ),
+        Replace(
+            file: "crates/cli/src/export.rs",
+            find: "    (\"sound-probe\", \"the sound parity gates' probe\"),\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/src/export/tests.rs",
+            find: "        (&[\"build\", \"--features=sound-probe\"], \"sound-probe\"),\n",
+            with: "",
+        ),
         Replace(
             file: "crates/cli/src/web.rs",
             find: "const SHELL: [(&str, &str); 8] = [",

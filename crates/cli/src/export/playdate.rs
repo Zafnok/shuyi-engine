@@ -793,6 +793,11 @@ impl Exporter for PlaydateExporter {
         false
     }
 
+    /// A `no_std` library has no unwinding: its build sets `panic = "abort"`.
+    fn panic(&self) -> super::disclosure::Panic {
+        super::disclosure::Panic::Abort
+    }
+
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>> {
         self.triples()
             .iter()
@@ -846,7 +851,7 @@ impl Exporter for PlaydateExporter {
 
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError> {
         for args in self.cargo_args(cx) {
-            super::no_live_link(&args)?;
+            super::no_debug_features(&args)?;
         }
         let part = cx.app.as_ref().ok_or_else(|| {
             ExportError::Setup(format!(

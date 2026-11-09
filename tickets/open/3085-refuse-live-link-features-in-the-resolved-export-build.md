@@ -18,7 +18,7 @@ completed:
 [PR 183](https://github.com/Zafnok/shuyi-engine/pull/183) (3004) and
 [PR 212](https://github.com/Zafnok/shuyi-engine/pull/212) (3075) require
 exports to refuse the debug live link. The 2026-11-01 PR review found
-that `export::no_live_link` checks only strings after Cargo's feature
+that `export::no_debug_features` (then `no_live_link`) checks only strings after Cargo's feature
 flags. A package with `default = ["link"]`, or a requested
 `devtools = ["link"]` alias, passes that check without a literal
 `--features link` argument. An ordinary dependency can also enable
@@ -34,6 +34,14 @@ this is a build-policy bypass, not an automatically listening release.
 Exports must nevertheless uphold the rule before packaging, in debug
 and release configurations alike
 ([ADR-0047](../../docs/adr/0047-the-live-link-json-lines-over-loopback-tcp-to-a-running-debug-build-read-only-but-a-players-input.md)).
+
+**From 3099 (done):** `no_live_link` is now `export::no_debug_features`,
+which refuses every name in `export::DEBUG_FEATURES` (`link`, `debug-tools`,
+`capture`, `sound-probe`), still by the build's arguments alone. This
+ticket resolves all four through the real feature graph, not `link` alone:
+`shuyi-ui/debug-tools`, `shuyi-app/capture` (and `shuyi-platform/capture`)
+and `shuyi-app/sound-probe` beside the live link's
+([ADR-0094](../../docs/adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md)).
 
 ## Nick input
 

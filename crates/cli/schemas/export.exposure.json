@@ -88,6 +88,10 @@
           "description": "The game's package.",
           "type": "string"
         },
+        "panic": {
+          "description": "What a panic does in the shipped program.",
+          "$ref": "#/$defs/Panic"
+        },
         "profile": {
           "description": "The target profile its check ran with.",
           "type": "string"
@@ -101,6 +105,10 @@
         },
         "release": {
           "description": "Whether it was a release build.",
+          "type": "boolean"
+        },
+        "stripped": {
+          "description": "Whether the shipped program has no symbol table.",
           "type": "boolean"
         },
         "target": {
@@ -127,7 +135,9 @@
         "builds",
         "default_features",
         "features",
-        "toolchain"
+        "toolchain",
+        "stripped",
+        "panic"
       ]
     },
     "ExposedEntry": {
@@ -351,6 +361,21 @@
           "description": "A file over [`MAX_FILE_BYTES`].",
           "type": "string",
           "const": "too-big"
+        }
+      ]
+    },
+    "Panic": {
+      "description": "What a panic does in a shipped program.",
+      "oneOf": [
+        {
+          "description": "It unwinds: a game catches it, and its message and place stay in the\nprogram.",
+          "type": "string",
+          "const": "unwind"
+        },
+        {
+          "description": "It ends the program at once.",
+          "type": "string",
+          "const": "abort"
         }
       ]
     }

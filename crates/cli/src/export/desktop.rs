@@ -178,6 +178,12 @@ impl Exporter for Desktop {
         shipped
     }
 
+    /// A release build's: Windows' and Linux' copy is stripped by
+    /// `objcopy`, and macOS' is built stripped.
+    fn strips_symbols(&self, cx: &ExportCx) -> bool {
+        cx.release
+    }
+
     fn run(&self, cx: &RunCx) -> Result<(), ExportError> {
         let program = cx.report.sizes.get(1).map(|size| cx.out.join(&size.file));
         let (Some(program), Some(_)) = (program, System::here().filter(|s| *s == self.system))
@@ -219,8 +225,8 @@ impl Desktop {
 /// Writes the Windows or Linux package of `program` (built for `triple`):
 /// the folder `<base>/` with the program, `NOTICES.txt` and on Windows the
 /// players' note, then its zip or `tar.gz`. In a release build the
-/// program keeps its line tables in `<base>.debug`, and the package's copy
-/// is stripped of them.
+/// program keeps its symbols and line tables in `<base>.debug`, and the
+/// package's copy is stripped of both (`objcopy --strip-all`).
 pub fn pack(
     cx: &ExportCx,
     system: System,
@@ -237,7 +243,7 @@ pub fn pack(
         copy(program, &cx.out.join(&debug))?;
         tool(
             "objcopy",
-            &[Path::new("--strip-debug"), program, &shipped],
+            &[Path::new("--strip-all"), program, &shipped],
             system.objcopy_help(),
         )?;
         Some(debug)

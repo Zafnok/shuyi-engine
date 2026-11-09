@@ -175,8 +175,12 @@ Each desktop package builds on its own system: Windows on Windows, Linux on Linu
 `HOW-TO-OPEN.txt`: they aren't signed by a developer, so a player opens them once by hand.
 
 With `--release`, the build carries nothing of the machine it was made on: its paths are renamed,
-and a program that still holds one is refused. On Windows and Linux, `<package>.debug` beside the
-package keeps the program's line tables for crash reports, and is never shipped.
+and a program that still holds one is refused. Nor does it carry what only you need: the program
+has no symbol table (the names of its functions), and a build without debug tools leaves out its
+log's info and debug lines. On Windows and Linux, `<package>.debug` beside the package keeps the
+symbols and line tables for reading crash reports, and is never shipped. A release `web` export needs
+Binaryen's `wasm-opt`, which makes the `.wasm` smaller; without it the export says how to install it,
+unless the `export` part says `wasm_opt: optional`.
 `export-report.json` beside it gives the version, the sizes, the check's warnings and the signing,
 and `--run` runs the package.
 
@@ -194,7 +198,9 @@ Each desktop and web build turns the features on, and each package holds those f
 under their own names (`name` gives another). In a `.app`, a folder goes in `Contents/Resources`,
 where the engine's music and voices look for it, and a file goes beside the `.app`. A path that isn't
 there refuses the export, unless it is `optional`. `--without <feature>` leaves a feature off one
-build, and `--with <feature>` turns on one more that the package has, for a measuring build say.
+build, and `--with <feature>` turns on one more that the package has, for a measuring build say. A
+debug feature is never turned on: `link`, `debug-tools` or `capture` in the list refuses the
+export, naming it.
 
 A game split into packages gives a target its own package and features in `targets`, each replacing
 the part's for that target. The Playdate builds the `game` part's package and takes nothing else of
@@ -282,9 +288,12 @@ anything, and in what words, is up to the game. A panic the game survived, like 
 machine with no sound card, keeps its report but isn't offered as a crash. A game that gives `Start::crash_record` a function
 writing its record of play (the record its `replay` reads) gets that in the report too, on a computer,
 so a crash can be replayed to the panic; a game on the short path gives it to `BasicGame::crash_record`.
+A release build adds the record only if the game asks, with `CrashReports::with_record_in_release` or
+`BasicGame::crash_record_in_release`: a record anyone can make a shipped game write is a picture of its
+state for anyone who wants one.
 A game made with `shuyi new --template grid` already does: its report holds the open stage's record,
-the command its rules were applying included. To try it, run the game with `SHUYI_PANIC_AT_FRAME=3`: it
-panics at its third frame on purpose and exits with code 101.
+the command its rules were applying included. To try it, run a debug build of the game with
+`SHUYI_PANIC_AT_FRAME=3`: it panics at its third frame on purpose and exits with code 101.
 
 ## When it goes wrong
 

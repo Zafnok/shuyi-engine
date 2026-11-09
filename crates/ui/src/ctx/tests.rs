@@ -1007,6 +1007,25 @@ fn a_line_logged_waits_with_its_level_and_category_until_taken() {
 }
 
 #[test]
+fn a_build_keeps_the_info_and_debug_lines_as_it_has_debug_tools() {
+    let mut c = ctx();
+    for level in [
+        LogLevel::Error,
+        LogLevel::Warn,
+        LogLevel::Info,
+        LogLevel::Debug,
+    ] {
+        c.log(level, LogCategory::Game, level.name());
+    }
+    let kept: Vec<LogLevel> = c.take_log().0.iter().map(|line| line.level).collect();
+    let mut expected = vec![LogLevel::Error, LogLevel::Warn];
+    if crate::DEBUG_TOOLS {
+        expected.extend([LogLevel::Info, LogLevel::Debug]);
+    }
+    assert_eq!(kept, expected);
+}
+
+#[test]
 fn saved_data_that_cant_be_read_is_logged_by_what_it_is_about() {
     let mut c = launch(Failing);
     c.set_voice_manifest("not a manifest");

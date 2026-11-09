@@ -8,14 +8,15 @@
 //! program (`HOW-TO-OPEN.txt`).
 //!
 //! A `--release` build has nothing of the build machine: its paths are
-//! remapped, and the built binary is searched for them ([`paths`]). On
-//! Windows and Linux it keeps its line tables in `<package>.debug`, beside
-//! the package and never in it, and the package's copy is stripped of
-//! them with `objcopy --strip-debug` (which moves no code, so a crash's
-//! offsets name the same lines).
+//! remapped, and the built binary is searched for them ([`paths`]). It
+//! ships no symbol table: on Windows and Linux it keeps its symbols and line
+//! tables in `<package>.debug`, beside the package and never in it, and the
+//! package's copy is stripped of both with `objcopy --strip-all` (which moves
+//! no code, so a crash's offsets name the same lines); on macOS and the web
+//! the release profile strips them (`strip = true`).
 //!
-//! `shuyi.ron`'s `export` part names the features a build turns on, never the
-//! debug build's live link (`link`), and the files and folders copied into
+//! `shuyi.ron`'s `export` part names the features a build turns on, never one
+//! of the debug features ([`DEBUG_FEATURES`]), and the files and folders copied into
 //! the package ([`ExportCx::copy_beside`]); its `targets` give one target a
 //! package and features of its own, the only part of it the Playdate reads.
 //! `--with` turns on one more feature the package has for one build. A game
@@ -45,7 +46,7 @@ use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{AppPart, Beside, Config, ExportPart, GameProgram, Project, Web};
+use crate::project::{AppPart, Beside, Config, ExportPart, GameProgram, Project, WasmOptRule, Web};
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -97,6 +98,17 @@ pub trait Exporter: Sync {
             archive,
             format!("{}/", report.folder),
         )
+    }
+
+    /// Whether the program `export` shipped for `cx` has no symbol table:
+    /// by default not said, so `false`.
+    fn strips_symbols(&self, _cx: &ExportCx) -> bool {
+        false
+    }
+
+    /// What a panic does in the program it ships: by default it unwinds.
+    fn panic(&self) -> disclosure::Panic {
+        disclosure::Panic::Unwind
     }
 
     /// Runs the package `export` wrote: by default there is no run step.
@@ -216,6 +228,8 @@ pub struct ExportCx {
     pub turned_on: Vec<String>,
     /// What ships beside the program.
     pub beside: Vec<Beside>,
+    /// Whether a release web build needs `wasm-opt`: the `export` part's.
+    pub wasm_opt: WasmOptRule,
 }
 
 /// What a run step works from.
@@ -328,6 +342,10 @@ impl ExportCx {
             features,
             turned_on,
             beside,
+            wasm_opt: config
+                .export
+                .as_ref()
+                .map_or_else(WasmOptRule::default, |part| part.wasm_opt),
         })
     }
 
@@ -383,7 +401,7 @@ impl ExportCx {
     pub fn build(&self, triple: &str, keep_debug: bool) -> Result<PathBuf, ExportError> {
         installed(triple)?;
         let args = self.cargo_args(triple);
-        no_live_link(&args)?;
+        no_debug_features(&args)?;
         let mut cargo = Command::new(crate::cargo());
         cargo.args(&args).current_dir(&self.root);
         if self.release {
@@ -393,6 +411,10 @@ impl ExportCx {
             if keep_debug {
                 cargo.env("CARGO_PROFILE_RELEASE_STRIP", "false");
                 cargo.env("CARGO_PROFILE_RELEASE_DEBUG", "line-tables-only");
+            } else {
+                // Whatever the game's own profile says, nothing ships its
+                // symbol table.
+                cargo.env("CARGO_PROFILE_RELEASE_STRIP", "true");
             }
         }
         let status = cargo
@@ -740,9 +762,21 @@ fn program(package: &str, bins: &[String]) -> Result<String, ExportError> {
     }
 }
 
-/// Refuses a build whose `args` turn on a feature named `link`, the debug
-/// build's live link (ADR-0035).
-pub fn no_live_link(args: &[String]) -> Result<(), ExportError> {
+/// The features an export never turns on, each with what it is: the debug
+/// build's surfaces, which a shipped game doesn't carry.
+pub const DEBUG_FEATURES: [(&str, &str); 4] = [
+    ("link", "the debug build's live link"),
+    (
+        "debug-tools",
+        "the debug tools: the debug menu, `SHUYI_PERF` traces and session recording",
+    ),
+    ("capture", "the capture mode, for CI's pictures"),
+    ("sound-probe", "the sound parity gates' probe"),
+];
+
+/// Refuses a build whose `args` turn on one of the [`DEBUG_FEATURES`], of
+/// the game's package or a dependency's (`game/link`), naming it.
+pub fn no_debug_features(args: &[String]) -> Result<(), ExportError> {
     let features = args
         .windows(2)
         .filter(|pair| pair[0] == "--features" || pair[0] == "-F")
@@ -752,9 +786,13 @@ pub fn no_live_link(args: &[String]) -> Result<(), ExportError> {
                 .filter_map(|arg| arg.strip_prefix("--features=")),
         );
     for feature in features {
-        if feature.rsplit('/').next() == Some("link") {
+        let name = feature.rsplit('/').next();
+        if let Some((_, what)) = DEBUG_FEATURES
+            .iter()
+            .find(|(debug, _)| Some(*debug) == name)
+        {
             return Err(ExportError::Setup(format!(
-                "an export never turns on `{feature}`, the debug build's live link"
+                "an export never turns on `{feature}`, {what}"
             )));
         }
     }

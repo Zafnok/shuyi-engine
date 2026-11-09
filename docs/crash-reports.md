@@ -40,8 +40,8 @@ A report is RON (`shuyi_platform::crash::CrashReport`):
 | `target` | The OS, the processor and the build: `windows x86_64 release` |
 | `frame` | The frame that was running, counted from 1 |
 | `top_screen` | The name of the screen on top |
-| `log` | The log's last 200 lines, `f{frame} {level} {category}: {text}` |
-| `record` | The game's record of its play, if it gives one (below), up to 1 MiB |
+| `log` | The log's last 200 lines, `f{frame} {level} {category}: {text}`: in a build without debug tools, its warnings and errors only |
+| `record` | The game's record of its play, if it gives one, in a build with debug tools or one the game asks for it in (below), up to 1 MiB |
 
 It never holds the player's settings, saves or keymap. It holds what the player
 typed only if the game's record does.
@@ -107,6 +107,21 @@ that keeps the command its rules are applying until they return (hello-grid's
 and the grid template's `StageScreen::pending`) has it in the record, so a panic inside its rules is
 replayed to the panic. Keep what the player typed (a name) out of the record.
 
+### In a release build
+
+A build with debug tools (a debug build, or one with the `debug-tools` feature)
+adds the record. A release build without them doesn't, and doesn't read
+`SHUYI_PANIC_AT_FRAME` either: together they would write a shipped game's state
+on demand, for anyone who runs it. Its report keeps the rest, the backtrace and
+the log's warnings and errors among it. A game that wants its players' records
+asks for them:
+
+```rust
+config.crash = CrashReports::new(APP.version).with_record_in_release();
+```
+
+On the short path, `BasicGame::crash_record_in_release()` does the same.
+
 On desktop the engine catches the panic, asks for the record, adds it to the
 report, and closes the game with exit code 101. The game's system hook is not
 called, so a game in a broken state never saves over a good save. On the web a
@@ -130,8 +145,8 @@ which writes no report.
 
 ## Trying it
 
-`SHUYI_PANIC_AT_FRAME=<n>` panics at frame `n` on purpose, on desktop, in any
-build:
+`SHUYI_PANIC_AT_FRAME=<n>` panics at frame `n` on purpose, on desktop, in a
+build with debug tools (and a release build whose game asked for its record):
 
 ```text
 SHUYI_PANIC_AT_FRAME=3 cargo run -p hello-grid

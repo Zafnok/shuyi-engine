@@ -185,6 +185,13 @@ jobs:
       - name: Set up Linux
         if: matrix.target == 'linux' || matrix.target == 'web'
         run: bash scripts/setup-linux.sh
+      # A release web export needs wasm-opt (ticket 3099).
+      - name: Set up Binaryen
+        if: matrix.target == 'web'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binaryen
+          wasm-opt --version
       - name: Set up Rust
         if: matrix.target != 'linux' && matrix.target != 'web'
         run: rustup show

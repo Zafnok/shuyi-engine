@@ -243,8 +243,12 @@ shuyi web [--release] [--<feature>...]
 
 Builds the game's binary for `wasm32-unknown-unknown` (each `--<feature>`
 turns on a feature `web.features` lists) and packages it with the shell. With
-`--release` and `wasm-opt` on `PATH`, runs `wasm-opt -Oz` on the binary;
-otherwise skips that step silently. Writes `NOTICES.txt` beside the page.
+`--release` it builds the binary stripped (`CARGO_PROFILE_RELEASE_STRIP=true`)
+and runs `wasm-opt -Oz --strip-debug --strip-producers` on it, then refuses a
+binary that still holds a `name` or `producers` section; without `wasm-opt` on
+`PATH` it prints a warning naming it and how to install it, and skips that
+step. A release `shuyi export web` fails there instead, unless `shuyi.ron`'s
+`export` part says `wasm_opt: optional`. Writes `NOTICES.txt` beside the page.
 Prints the output folder and the wasm binary's size. Serve that folder over HTTP (any static file server; the
 WASM binary must not be opened as a `file://` URL).
 
