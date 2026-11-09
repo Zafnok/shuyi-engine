@@ -1,13 +1,13 @@
 //! The player's settings: the engine's (the text speed, fullscreen, the
-//! volumes, the frame cap) and the game's own, the map's look; saved as one
-//! RON record.
+//! sound groups' volumes, the frame cap) and the game's own, the map's
+//! look; saved as one RON record.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use shuyi::ui::frame_cap::FrameCap;
-use shuyi::ui::settings::{GameSettings, Settings, TextSpeed};
+use shuyi::ui::settings::{GameSettings, Settings, TextSpeed, Volumes, read_old_volumes};
 
 /// How the stage is drawn: which of the engine's skins.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,16 +39,20 @@ pub struct Prefs {
     pub look: MapLook,
 }
 
-/// The saved form of the settings.
+/// The saved form of the settings. The linear music and sound volumes it
+/// wrote before the loudness curve are read, and never written.
 #[derive(Serialize, Deserialize)]
 #[serde(default, rename = "Settings")]
 struct File {
     look: MapLook,
     text_speed: TextSpeed,
     fullscreen: bool,
-    music_volume: u8,
-    sound_volume: u8,
+    volumes: Volumes,
     frame_cap: FrameCap,
+    #[serde(skip_serializing, deserialize_with = "shuyi::ui::settings::old_volume")]
+    music_volume: Option<u8>,
+    #[serde(skip_serializing, deserialize_with = "shuyi::ui::settings::old_volume")]
+    sound_volume: Option<u8>,
 }
 
 impl Default for File {
@@ -63,9 +67,10 @@ impl File {
             look: s.game.look,
             text_speed: s.text_speed,
             fullscreen: s.fullscreen,
-            music_volume: s.music_volume,
-            sound_volume: s.sound_volume,
+            volumes: s.volumes.clone(),
             frame_cap: s.frame_cap,
+            music_volume: None,
+            sound_volume: None,
         }
     }
 }
@@ -84,8 +89,8 @@ impl GameSettings for Prefs {
         s.game.look = file.look;
         s.text_speed = file.text_speed;
         s.fullscreen = file.fullscreen;
-        s.music_volume = file.music_volume;
-        s.sound_volume = file.sound_volume;
+        s.volumes = file.volumes;
+        read_old_volumes(&mut s.volumes, file.music_volume, file.sound_volume, None);
         s.frame_cap = file.frame_cap;
         Ok(s)
     }
@@ -94,6 +99,7 @@ impl GameSettings for Prefs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shuyi::ui::audio::groups::{MUSIC, SFX};
 
     #[test]
     fn the_settings_read_back_what_was_saved() {
@@ -101,8 +107,8 @@ mod tests {
         s.game.look = MapLook::Tiles;
         s.text_speed = TextSpeed::Fast;
         s.fullscreen = true;
-        s.music_volume = 3;
-        s.sound_volume = 7;
+        s.volumes.set(MUSIC, 3);
+        s.volumes.set(SFX, 7);
         s.frame_cap = FrameCap::Off;
         let saved = Prefs::to_ron(&s);
         assert_eq!(Prefs::from_ron(&saved), Ok(s));
@@ -114,6 +120,23 @@ mod tests {
         // A save from before the frame cap reads the default.
         let old = Prefs::from_ron("Settings(look: Tiles)").map(|s| s.frame_cap);
         assert_eq!(old, Ok(FrameCap::Fps(60)));
+    }
+
+    /// A save from before the loudness curve: its linear volumes are read
+    /// where they sound the same, and a new save writes no old field.
+    #[test]
+    fn an_old_save_reads_its_volumes_where_they_sound_the_same() {
+        let old = Prefs::from_ron("Settings(look: Tiles, music_volume: 35, sound_volume: 80)");
+        let s = old.unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            (s.volumes.get(MUSIC), s.volumes.get(SFX)),
+            (Some(85), Some(97))
+        );
+        assert_eq!(s.game.look, MapLook::Tiles);
+        let saved = Prefs::to_ron(&s);
+        assert!(saved.contains("volumes:{"), "{saved}");
+        assert!(!saved.contains("_volume"), "{saved}");
+        assert_eq!(Prefs::from_ron(&saved), Ok(s));
     }
 
     #[test]

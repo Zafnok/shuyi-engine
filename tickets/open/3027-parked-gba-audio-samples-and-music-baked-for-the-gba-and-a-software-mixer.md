@@ -99,10 +99,8 @@ save file the cart wrote, as in 3022's steps 4 and 5.
     its output on the device, and a host test checks it bit for bit.
 - **`Audio` for `shuyi-gba`** (3003's trait): play and stop a sound
   effect, and play, stop and fade music, each at the frame's gain for
-  its cue (`AudioFrame::gains`, 2342), which already holds the player's
-  master volume and any ducking (2343). If 2342 isn't done, at the
-  frame's `sound_volume` and `music_volume`, and 2342 moves it onto the
-  gains (its clause says so).
+  its cue (`AudioFrame::gains`, 2342, done; ADR-0091), which already
+  holds the player's master volume and any ducking (2343).
   **From 3029 (done).** Implement the shared backend trait
   (`shuyi_platform::audio::player::Backend`, ADR-0063) under its player, so that cue volumes, fades and the
   music clock are not written again. Fill in the provided methods this

@@ -197,7 +197,7 @@ impl<B: Backend> Voices<B> {
 
     /// Sets how loud clips play (0–1), the one playing included.
     pub(crate) fn set_volume(&mut self, backend: &mut B, volume: f32) {
-        // Volumes are steps of a tenth: exact equality is the point.
+        // A gain is a whole number of units of 1/4096: exact equality is the point.
         #[allow(clippy::float_cmp)]
         if volume == self.volume {
             return;
@@ -270,7 +270,7 @@ impl<B: Backend> Voices<B> {
 mod tests {
     use shuyi_assets::dialogue::LineId;
 
-    use super::super::tests::{Fake, Request, Take, audio};
+    use super::super::tests::{Fake, Request, Take, audio, levels};
     use super::*;
     use crate::audio::player::Player as Audio;
 
@@ -367,38 +367,42 @@ mod tests {
         );
     }
 
-    /// A suspend mutes the voice playing, a volume asked for meanwhile
-    /// waits, and the resume brings it back at that volume.
+    /// A suspend mutes the voice playing, a gain given meanwhile waits,
+    /// and the resume brings it back at that gain.
     #[test]
     fn a_suspend_mutes_the_voice_until_the_resume() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.set_voice_volume(&mut fake, 0.8);
+        audio.set_gains(&mut fake, levels(100, 100, 80).view());
         audio.hear(&mut fake, &[play(0)], &[], 0.0);
         fake.calls();
         audio.suspend(&mut fake);
         assert_eq!(fake.calls(), [format!("volume {} 0.00", path(0))]);
-        audio.set_voice_volume(&mut fake, 0.5);
+        audio.set_gains(&mut fake, levels(100, 100, 50).view());
         let found = fake.calls();
         assert!(found.is_empty(), "{found:?}");
         audio.resume(&mut fake);
         assert_eq!(fake.calls(), [format!("volume {} 0.50", path(0))]);
     }
 
-    /// Acceptance: clips play at the voice volume, and a change reaches
+    /// Acceptance: clips play at the voice's gain, and a change reaches
     /// the clip that is playing.
     #[test]
-    fn the_volume_follows_the_voice_volume() {
+    fn the_volume_follows_the_voices_gain() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.set_voice_volume(&mut fake, 0.8);
+        audio.set_gains(&mut fake, levels(100, 100, 80).view());
         assert!(fake.calls().is_empty(), "nothing is playing yet");
         audio.hear(&mut fake, &[play(0)], &[], 0.0);
         assert_eq!(fake.calls()[1], format!("play {} 0.80", path(0)));
-        audio.set_voice_volume(&mut fake, 0.3);
+        audio.set_gains(&mut fake, levels(100, 100, 30).view());
         assert_eq!(fake.calls(), [format!("volume {} 0.30", path(0))]);
-        // The same volume again (every frame sends it) does nothing.
-        audio.set_voice_volume(&mut fake, 0.3);
+        // The same gains again (every frame sends them) do nothing, and
+        // another group's change leaves the voice alone.
+        audio.set_gains(&mut fake, levels(100, 100, 30).view());
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
+        audio.set_gains(&mut fake, levels(50, 100, 30).view());
         let found = fake.calls();
         assert!(found.is_empty(), "{found:?}");
         audio.hear(&mut fake, &[play(1)], &[], 1.0);
@@ -645,7 +649,7 @@ mod tests {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         audio.take_warnings();
-        audio.set_voice_volume(&mut fake, 1.0);
+        audio.set_gains(&mut fake, levels(100, 100, 100).view());
         audio.play(&mut fake, &[], &[], 0.0);
         let found = audio.take_warnings();
         assert!(found.is_empty(), "{found:?}");

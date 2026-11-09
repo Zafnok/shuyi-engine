@@ -75,15 +75,18 @@ version, the game's word for its build, and a fingerprint of the files it ships.
 
 ## Settings
 
-The player's settings are the engine's (text speed, full screen, the color theme, the
-music and sound volumes, whether voices play and how loud, the frame cap, the layout of
-keys) and the game's own.
+The player's settings are the engine's (text speed, full screen, the color theme, a
+volume for each sound group, whether voices play, the frame cap, the layout of keys) and
+the game's own. The sound groups are `master` over everything, `music`, `sfx` and
+`voice` under it, and `ui`, the menus' sounds, under `sfx`; each volume goes from 0 to
+100 on a loudness curve, so every step sounds like the same change. `ctx.volume(MUSIC)`
+reads one.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in
 the profile:
 
 {{ snippet(file="src/saves.rs", anchor="settings") }}
 
-> **Rust:** `|settings| settings.music_volume = 40` is a small nameless function:
+> **Rust:** `|settings| settings.volumes.set(MUSIC, 40)` is a small nameless function:
 > `change_settings` hands it the settings to change, and then saves them. So you can't
 > forget the save. `.unwrap()` stops the test if the save failed.
 

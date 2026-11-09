@@ -37,7 +37,7 @@ use core::time::Duration;
 use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
-use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, Gain, MusicClock, MusicCommand};
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::input::pad::PadKind;
@@ -713,17 +713,12 @@ impl<G: GameData> Harness<G> {
         self.audio.last().map_or(&[], Vec::as_slice)
     }
 
-    /// The volumes the last frame told the platform to play at, 0–1: the
-    /// music's and the sounds' ([`AudioFrame`](crate::AudioFrame)).
-    pub fn volumes(&self) -> (f32, f32) {
-        let (music, sound, _) = self.platform.speaker().volumes();
-        (music, sound)
-    }
-
-    /// The voice volume the last frame told the platform to play at, 0–1
-    /// ([`AudioFrame`](crate::AudioFrame)).
-    pub fn voice_volume(&self) -> f32 {
-        self.platform.speaker().volumes().2
+    /// The gain sound group `group` played at in the last frame
+    /// ([`AudioFrame::gains`](crate::AudioFrame::gains)); silence for a
+    /// group it didn't have.
+    pub fn gain(&self, group: &str) -> Gain {
+        let gains = self.platform.speaker().gains();
+        gains.get(group).copied().unwrap_or(Gain::SILENT)
     }
 
     /// Whether the last frame told the platform to fill the screen.

@@ -26,7 +26,7 @@ use shuyi_assets::lang::{Lang, LangCode};
 use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{ClipVariant, Playable};
 
-use crate::audio::{AudioConfig, AudioQueue, MusicClock, pick_from_pool};
+use crate::audio::{AudioConfig, AudioQueue, MusicClock, SoundGroups, pick_from_pool};
 use crate::debug::gizmo::DebugView;
 use crate::frame::color::{ColorSet, EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
@@ -322,6 +322,9 @@ pub struct Ctx<G: GameData> {
     /// `ctx.audio.play_sound("click")`. `Game` passes them to the
     /// platform.
     pub audio: AudioQueue<G::Voice>,
+    /// The sound groups, and which cue plays in which
+    /// ([`sound_groups`](Self::sound_groups)).
+    pub(crate) sound_groups: SoundGroups,
     /// Where the music that is sounding is in its track, for a screen that
     /// keeps time with it. `None` in silence: nothing asked for, the track
     /// still loading, its file missing, or a track played once that has
@@ -393,6 +396,7 @@ impl<G: GameData> Ctx<G> {
         let settings = Settings::default();
         let mut audio = AudioQueue::new(game.audio_config());
         audio.set_manifest(game.audio_manifest());
+        let sound_groups = SoundGroups::new(&game.audio_config());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         let lang = game.lang().source_lang().code.clone();
         Ok(Self {
@@ -418,6 +422,7 @@ impl<G: GameData> Ctx<G> {
             debug_view: DebugView::default(),
             idle_motion: IdleMotion::Off,
             audio,
+            sound_groups,
             music_clock: None,
             voices: Playable::default(),
             voice_playing: None,
@@ -1002,6 +1007,46 @@ impl<G: GameData> Ctx<G> {
         true
     }
 
+    /// The sound groups (ADR-0091): every group's id, parent and default,
+    /// and which group each cue plays in.
+    pub fn sound_groups(&self) -> &SoundGroups {
+        &self.sound_groups
+    }
+
+    /// The default volume of `group`; in a debug build a group there isn't
+    /// is a bug in the caller and panics.
+    fn group_default(&self, group: &str) -> Option<u8> {
+        let default = self.sound_groups.default_volume(group);
+        debug_assert!(default.is_some(), "no sound group {group:?}");
+        default
+    }
+
+    /// The volume of sound group `group` (0 to
+    /// [`MAX_VOLUME`](crate::settings::MAX_VOLUME)): the player's, else
+    /// the group's default.
+    pub fn volume(&self, group: &str) -> u8 {
+        let default = self.group_default(group);
+        self.settings.volumes.get(group).or(default).unwrap_or(0)
+    }
+
+    /// Sets the volume of sound group `group`, as
+    /// [`preview_settings`](Self::preview_settings) does: it is heard at
+    /// once, and kept or thrown away with the other settings. A volume
+    /// set back to the group's default is taken out of the settings
+    /// ([`Volumes`](crate::settings::Volumes)), so a slider moved away and
+    /// back is no change. Whether anything changed.
+    pub fn preview_volume(&mut self, group: &str, volume: u8) -> bool {
+        let default = self.group_default(group);
+        let volume = volume.min(crate::settings::MAX_VOLUME);
+        self.preview_settings(|s| {
+            if Some(volume) == default {
+                s.volumes.remove(group);
+            } else {
+                s.volumes.set(group, volume);
+            }
+        })
+    }
+
     /// Saves the settings if they differ from what `storage` holds (a
     /// previewed change, [`preview_settings`](Self::preview_settings)).
     pub fn keep_settings(&mut self) -> Result<(), StorageError> {
@@ -1098,7 +1143,8 @@ impl<G: GameData> Ctx<G> {
     }
 
     /// Loads the settings from `storage`: the defaults if none are saved,
-    /// or (with a warning) if they can't be read. A layout saved under the
+    /// or (with a warning) if they can't be read. A volume saved at its
+    /// group's default is dropped, so it is the default. A layout saved under the
     /// game's old key is taken over ([`saved_layout`](Self::saved_layout)).
     fn load_settings(&mut self) {
         let cap_before = self.settings.frame_cap;
@@ -1117,6 +1163,12 @@ impl<G: GameData> Ctx<G> {
             );
             Settings::default()
         });
+        // A volume at its group's default is the default: an old save at
+        // the old default reads as none set.
+        let groups = &self.sound_groups;
+        self.settings
+            .volumes
+            .retain(|group, volume| groups.default_volume(group) != Some(volume));
         self.settings.layout = self.saved_layout();
         self.stored_settings = self.settings.clone();
         if self.settings.frame_cap != cap_before {

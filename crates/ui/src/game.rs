@@ -18,7 +18,9 @@ use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::dialogue::LineId;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
-use crate::audio::{AudioConfig, AudioRequest, MusicClock, MusicCommand, MusicState};
+use crate::audio::{
+    AudioConfig, AudioRequest, Gains, GroupGains, MusicClock, MusicCommand, MusicState, SoundGroups,
+};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::debug;
 use crate::frame::EngineColor;
@@ -154,19 +156,13 @@ pub struct FrameOutput<'a, V> {
     pub audio: &'a [AudioRequest<V>],
     /// What to do to the music this frame.
     pub music: &'a [MusicCommand],
-    /// The player's music volume, 0–1: the platform multiplies the music's
-    /// own volume by it, also for a track already playing.
-    pub music_volume: f32,
-    /// The player's sound volume, 0–1: the platform multiplies every
-    /// sound's own volume by it.
-    pub sound_volume: f32,
+    /// What every sound, track and voice clip plays at, from the player's
+    /// volumes and the sound groups (ADR-0091): the platform multiplies
+    /// each cue's own volume by its gain, also for one already playing.
+    pub gains: Gains<'a>,
     /// Whether the game should fill the screen (the Fullscreen setting);
     /// the platform switches when this changes.
     pub fullscreen: bool,
-    /// How loud voice clips play, 0–1
-    /// ([`Settings::voice_volume`](crate::settings::Settings::voice_volume)). The
-    /// platform applies it to the voice that is playing too.
-    pub voice_volume: f32,
     /// The most frames a second to show (the player's frame cap): the
     /// platform paces its frames to it from the next.
     pub frame_cap: FrameCap,
@@ -237,6 +233,9 @@ pub struct Game<G: GameData> {
     /// This frame's audio requests and music commands.
     audio_out: Vec<AudioRequest<G::Voice>>,
     music_out: Vec<MusicCommand>,
+    /// Each sound group's gain, from the player's volumes: worked out
+    /// every frame.
+    gains: GroupGains,
     /// The fixed simulation steps due in the next frame
     /// ([`set_ticks`](Self::set_ticks)).
     ticks: u32,
@@ -256,11 +255,14 @@ impl<G: GameData> Game<G> {
 
     /// A game showing the screens of `stack`, with the game's `hooks`,
     /// already drawn. Music switches as the audio manifest's default switch
-    /// says ([`AudioManifest::music_switch`]).
-    pub fn with_stack(ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
+    /// says ([`AudioManifest::music_switch`]), and the sound groups are the
+    /// game's as it is now ([`Ctx::sound_groups`]).
+    pub fn with_stack(mut ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
         let input = InputState::new(ctx.keymap.clone()).starting_on(ctx.device);
         let blank = ctx.game.blank_cell(&ctx.palette);
         let switch = ctx.game.audio_manifest().music_switch();
+        ctx.sound_groups = SoundGroups::new(&ctx.game.audio_config());
+        let gains = GroupGains::of(&ctx.sound_groups, &ctx.settings().volumes);
         let mut game = Self {
             stack,
             input,
@@ -271,6 +273,7 @@ impl<G: GameData> Game<G> {
             music: MusicState::with_switch(switch),
             audio_out: Vec::new(),
             music_out: Vec::new(),
+            gains,
             ticks: 0,
             resumed: false,
             modules: Vec::new(),
@@ -467,18 +470,25 @@ impl<G: GameData> Game<G> {
             self.ctx.set_perf_frame_times(start, drawing, drawn);
             self.collect_audio(dt);
         }
+        self.gains
+            .update(&self.ctx.sound_groups, &self.ctx.settings().volumes);
         FrameOutput {
             buffer: &self.buffer,
             quit: self.quit,
             audio: &self.audio_out,
             music: &self.music_out,
-            music_volume: self.ctx.settings().music_factor(),
-            sound_volume: self.ctx.settings().sound_factor(),
+            gains: Gains::new(&self.ctx.sound_groups, &self.gains),
             fullscreen: self.ctx.settings().fullscreen,
-            voice_volume: self.ctx.settings().voice_factor(),
             frame_cap: self.ctx.settings().frame_cap,
             frame_cap_serial: self.ctx.frame_cap_serial(),
         }
+    }
+
+    /// The gains of the last [`frame`](Self::frame) (ADR-0091), for a
+    /// platform that plays audio in a frame that doesn't run (the game
+    /// paused without focus).
+    pub fn gains(&self) -> Gains<'_> {
+        Gains::new(&self.ctx.sound_groups, &self.gains)
     }
 
     /// Advances the sounds' fades, moves the screens' audio requests into

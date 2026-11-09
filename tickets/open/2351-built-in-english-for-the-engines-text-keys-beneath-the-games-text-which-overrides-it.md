@@ -57,8 +57,9 @@ Shuyi today (checked 2026-10-21):
   them their words.
 - Each engine ticket that adds a row puts its English in two files
   (2321, 2333). The tickets that add engine keys have an either-order
-  clause with this ticket: 2340, 2342, 2346, 2349 and 3043, and the
-  parked 2366, 2404, 2408 and 3054. So do 2226, 2353 and 2511.
+  clause with this ticket: 2340, 2346, 2349 and 3043, and the parked
+  2366, 2404, 2408 and 3054. So do 2226, 2353 and 2511. 2342 (done)
+  added three, below.
 
 Why it matters:
 
@@ -181,7 +182,11 @@ None.
     `options.value.unlimited` ("Unlimited"), are in the toy's `en.ron`
     and hello-grid's. This PR moves them into the engine's file with the
     rest, and hello-grid drops them.
-  - **2333, 2340, 2342, 2346, 2349 and 3043, and the parked
+  - **From 2342 (done):** `options.row.master_volume` ("Master
+    volume"), `options.row.ui_volume` ("Menu sounds") and
+    `options.row.voice_volume` ("Voice volume") are in the toy's
+    `en.ron`. This PR moves them into the engine's file with the rest.
+  - **2333, 2340, 2346, 2349 and 3043, and the parked
     2323** (each adds engine keys): any done first put its English in
     the toy's `en.ron`, and some in hello-grid's too. This PR moves
     those keys into the engine's file with the rest, and hello-grid
@@ -250,7 +255,7 @@ None.
    `crates/assets/src/lang/formats.rs`, `crates/cli/src/lang_status.rs`,
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
    `crates/ui/src/toy.rs` (lines 339 to 478). Check which of
-   2226, 2330, 2333, 2340, 2342, 2346, 2348, 2349, 2353, 2511,
+   2226, 2330, 2333, 2340, 2346, 2348, 2349, 2353, 2511,
    and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
    `Lang::with_engine_english`, `Lang::is_engine`,
