@@ -396,7 +396,7 @@ impl<G: GameData> Ctx<G> {
         let settings = Settings::default();
         let mut audio = AudioQueue::new(game.audio_config());
         audio.set_manifest(game.audio_manifest());
-        let sound_groups = SoundGroups::new(&game.audio_config());
+        let sound_groups = SoundGroups::new(&game.audio_config(), game.audio_manifest());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         let lang = game.lang().source_lang().code.clone();
         Ok(Self {

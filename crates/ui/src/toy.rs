@@ -427,6 +427,7 @@ fn track(cue: &str) -> MusicCue {
         looped: true,
         length_ms: 10_000,
         credit: CreditRef::Own,
+        group: None,
     }
 }
 

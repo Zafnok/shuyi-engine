@@ -1197,6 +1197,7 @@ mod tests {
             looped,
             length_ms: 60_000,
             credit: CreditRef::Own,
+            group: None,
         };
         m.music.insert("title".into(), track("title.ogg", 80, true));
         m.music
@@ -2153,7 +2154,7 @@ mod tests {
             cursor_cue: "beep",
             ..AudioConfig::DEFAULT
         };
-        let groups = SoundGroups::new(&config);
+        let groups = SoundGroups::new(&config, &AudioManifest::default());
         let gains = GroupGains::full(&groups).with(&groups, UI, Gain::new(1024));
         audio.set_gains(&mut fake, Gains::new(&groups, &gains));
         audio.hear(&mut fake, &[sound("beep", 1.0)], &[], 0.0);

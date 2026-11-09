@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2342"]
 nick_input: none
-completed:
+completed: 2026-11-08
 ---
 
 # 2258 — A game's own sound groups in the audio manifest
@@ -121,17 +121,17 @@ adds `group: None`, which the PR says.
 
 ## Acceptance criteria
 
-- [ ] A manifest with no `groups` and no cue `group` loads as before, and
+- [x] A manifest with no `groups` and no cue `group` loads as before, and
       the existing tests of `crates/assets/src/audio.rs` pass unchanged.
-- [ ] Each manifest error above is reported at the line that names it (a
+- [x] Each manifest error above is reported at the line that names it (a
       test each).
-- [ ] A cue with a `group` plays in it, a sound without one in `ui` or
+- [x] A cue with a `group` plays in it, a sound without one in `ui` or
       `sfx` and a track in `music` (a unit test of `SoundGroups`); a
       built-in's default set by the manifest is the default a new player
       hears.
-- [ ] The book's chapter is updated, or the completion notes have a `Book:`
+- [x] The book's chapter is updated, or the completion notes have a `Book:`
       line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -142,5 +142,86 @@ adds `group: None`, which the PR says.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Manifest** (`crates/assets/src/audio.rs`, `audio/groups.rs`): an
+  optional `groups` list, kept in `AudioManifest.groups` as a
+  `GroupDef` (`parent`, `volume`, both `Option`) per id, only what the
+  file declares; an optional `group` on `SoundCue` and `MusicCue`
+  (`SoundCue::with_group`). The checks (in `groups.rs`, an `impl` of the
+  parent's `Check`) run before the cues: an empty or duplicate id, a
+  `parent` on a built-in, a volume over 100, an unknown parent, a loop of
+  parents (reported at each group in it, with the chain), and a cue
+  naming an unknown group, each at the line that names it.
+  `groups::is_built_in` is new.
+- The manifest now reads with RON's implicit `Some`, so `parent: "sfx"`
+  and `group: "ambience"` are written without `Some(...)`. Nothing in
+  the file was an `Option` before, so every old file reads the same.
+- `pack::VERSION` is 11; the pack snapshot and the audio manifest's
+  golden value were accepted. The format tests' manifest
+  (`format/builtin_tests.rs`) declares two groups and puts a cue in one,
+  so both pin the new fields.
+- **`SoundGroups::new(config, manifest)`** (`crates/ui/src/audio/groups.rs`):
+  the built-ins at the manifest's defaults or their own, then the
+  manifest's groups, parents first (97 unless the manifest says); a sound
+  plays in its `group`, else `ui` for a menu's cue, else `sfx`; a track
+  in its `group`, else `music` (a `music` map read by `Gains::music`). A
+  declared group whose parent isn't there (a manifest made in code and
+  never checked) is left out, and its cues play where they would without
+  it. `Ctx::new` and `Game::with_stack` pass the game's manifest.
+- **Tests:** the manifest's groups and each error; `SoundGroups` from a
+  manifest (order, parents, defaults, a cue's group, gains); a `Game`
+  made after its manifest changed hears the cue in the game's group; an
+  options row written with a game's own group id starts at the
+  manifest's default and moves that group alone.
+- **Deviation:** `the_constructors_give_the_literals` in
+  `crates/assets/src/audio.rs` compares a `SoundCue` struct literal, so it
+  gained `group: None` (and a `with_group` check); the other existing
+  tests are unchanged.
+- **Either order:** 2218, 2343 and 2345 are open; their clauses now say
+  what holds (2218 writes `groups` and `group`; 2343's `lower` may name a
+  declared group; 2345 bumps `pack::VERSION` again). 2366 (parked): its
+  clause only.
+- Docs: the module and `AudioManifest` docs show a `groups` entry, and
+  the book's *Saves and settings* chapter, where the sound groups are
+  described, shows one and a game's own row.
+
+Breaking: shuyi-assets: audio::MusicCue: it has a new field, `group`; a struct literal adds `group: None`.
+
+```migration
+since: 0.1.0
+what: A music cue names the sound group it plays in; None plays it in music.
+old: "MusicCue { file, volume, looped, length_ms, credit }"
+new: "MusicCue { file, volume, looped, length_ms, credit, group: None }"
+before: |
+  let track = MusicCue { file, volume: 100, looped: true, length_ms, credit: CreditRef::Own };
+after: |
+  let track = MusicCue { file, volume: 100, looped: true, length_ms, credit: CreditRef::Own, group: None };
+```
+
+Breaking: shuyi-ui: audio::SoundGroups::new: it takes the audio manifest too, whose groups and cues' groups it reads.
+
+```migration
+since: 0.1.0
+what: The sound groups are built from the audio manifest as well as the menus' cues.
+old: "SoundGroups::new(&AudioConfig)"
+new: "SoundGroups::new(&AudioConfig, &AudioManifest)"
+before: |
+  let groups = SoundGroups::new(&config);
+after: |
+  let groups = SoundGroups::new(&config, game.audio_manifest());
+find: ["SoundGroups::new(&config)"]
+```
+
+Breaking: shuyi-assets: pack::VERSION and the audio manifest's golden value: a pack is of version 11 (the manifest's binary form has `groups` and each cue's `group`); a pack baked before is refused, bake it again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 11; packs baked before are refused.
+old: "pack::VERSION == 10"
+new: "pack::VERSION == 11"
+before: |
+  shuyi bake
+after: |
+  shuyi bake
+```
+
+Nick input: none.

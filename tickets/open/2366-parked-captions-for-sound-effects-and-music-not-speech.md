@@ -244,9 +244,9 @@ None.
     `Game::collect_audio`, so a play they drop (a gap, a cap, every
     voice busy) still shows its caption: the thing happened. Done or
     not, nothing more to do here.
-  - **2258 and 2345** each add a field to `SoundCue`, and 2258
-    and 2365 each add one to `MusicCue` (2342, done, moved its `group`
-    to 2258). The later to land rebases onto
+  - **From 2258 (done):** `SoundCue` and `MusicCue` have `group`, and
+    `pack::VERSION` is 11. **2345** adds a field to `SoundCue`, and
+    2365 one to `MusicCue`. The later to land rebases onto
     the other's cue and bumps `pack::VERSION` again. **From 2344
     (done):** `SoundCue` has `looped`, and `pack::VERSION` is 5.
   - **From 2344 (done):** `AudioRequest::StartSound` starts a sound

@@ -407,6 +407,7 @@ mod tests {
             looped: true,
             length_ms: 1000,
             credit,
+            group: None,
         }
     }
 
@@ -416,6 +417,7 @@ mod tests {
             volume: 100,
             credit,
             looped: false,
+            group: None,
         }
     }
 

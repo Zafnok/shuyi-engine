@@ -190,6 +190,7 @@ async fn player(
             looped: true,
             length_ms: *length_ms,
             credit: CreditRef::Own,
+            group: None,
         };
         manifest.music.insert(cue.clone(), music);
     }

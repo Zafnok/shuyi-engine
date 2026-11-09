@@ -251,6 +251,7 @@ fn manifest(sounds: &[&str]) -> AudioManifest {
         looped: true,
         length_ms: 1000,
         credit: CreditRef::Own,
+        group: None,
     };
     m.music.insert("theme".into(), track);
     m
