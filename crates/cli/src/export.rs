@@ -624,11 +624,19 @@ impl ExportCx {
     }
 
     /// Writes `NOTICES.txt` into `dir` for a native build for `triple`:
-    /// the crates compiled in, the engine's files they compile in, and the
-    /// game's own works.
+    /// the crates of its build as Cargo resolves it ([`Self::cargo_args`],
+    /// [`notices::built_crates`]), the engine's files they compile in, and
+    /// the game's own works.
     pub fn native_notices(&self, triple: &str, dir: &Path) -> Result<(), ExportError> {
-        let mut works = notices::crates(&self.root, &self.package, triple, &self.turned_on)
-            .map_err(ExportError::Build)?;
+        let encoded = live_link::encoded_flags(self.release, &[]);
+        let mut works = notices::built_crates(
+            &self.root,
+            &self.package,
+            triple,
+            &self.cargo_args(triple),
+            encoded.as_deref(),
+        )
+        .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
         works.extend(self.game.iter().cloned());
         notices::write(dir, &self.title, &works).map_err(ExportError::Build)
