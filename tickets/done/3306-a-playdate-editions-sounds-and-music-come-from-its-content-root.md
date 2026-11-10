@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3304"]
 nick_input: none
-completed:
+completed: 2026-11-10
 ---
 
 # 3306 — A Playdate edition's sounds and music come from its content root
@@ -62,11 +62,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Playdate export of an edition whose content folder lacks a sound of
+- [x] A Playdate export of an edition whose content folder lacks a sound of
       `files/` has no `audio/` file of it.
-- [ ] Without an edition the audio is baked as before.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Without an edition the audio is baked as before.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -78,5 +78,33 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `bake --audio <folder>` (`BakeInput::audio`) empties the folder and writes
+  the sounds and music the game ships on the target there, baked as the
+  Playdate plays them; `PackMade::audio_files` counts them. With `--content`
+  it is passed through to the tool program built with the folder, so one run
+  of one program bakes the pack, the sounds and the music.
+  [ADR-0102](../../docs/adr/0102-bake-writes-a-targets-sounds-and-music-too-so-an-editions-come-from-its-content-root.md)
+  amends ADR-0101. Contract 45.
+- The Playdate exporter's own audio bake is gone: `playdate::bake_input` asks
+  for the audio in `baked-audio/`, where the export took it from before, with
+  or without an edition. Without a content root the bake runs in process, as
+  it did; the files it writes are the same.
+- Deviation: the way chosen is a field of `bake` (the ticket's "the bake's
+  answer carrying it"), not a command of its own. One run already has the
+  target, the content root and the program built; the ADR says why.
+- The cache of baked sounds moved from the exporter's build folder to the
+  project's `target/shuyi/audio-v1`, since `bake` doesn't know that folder. The
+  first export after this decodes its sounds once more.
+- Music a game's tools read from the project's own `music/` folder (no music
+  reader in `GameAudio::files`) is that folder's in every edition, as the
+  ticket's Out says: the ADR and `docs/targets/playdate.md` say so.
+- Tests: the in-process audio bake (folder emptied first, files written,
+  cache, no audio, a file that isn't a sound, no target), `bake_input` and the
+  `--audio` passed to the content program (unit), and the stand-in game's tool
+  program baking the demo's and the full game's sounds, read back (integration).
+- Docs: `docs/contract.md`, `docs/targets/playdate.md`, the `shuyi-ship` skill
+  and the book's *Targets and export* chapter.
+- No follow-up tickets.
+
+No break: `BakeInput` and `PackMade` are `#[non_exhaustive]`; the new fields
+are additions.
