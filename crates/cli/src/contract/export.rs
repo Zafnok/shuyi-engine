@@ -13,9 +13,9 @@
 //! after that.
 //!
 //! Before the exporter prepares or builds anything, each build it plans is
-//! resolved by Cargo, and the export refused if the debug build's live link
-//! is on in one, by its default features, a feature that lists it or a
-//! dependency's ([`crate::export::live_link`]): nothing is built or run.
+//! resolved by Cargo, and the export refused if a debug feature is on in
+//! one, by its default features, a feature that lists it or a dependency's
+//! ([`crate::export::live_link`]): nothing is built or run.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -220,7 +220,7 @@ pub fn export(
 }
 
 /// The package `exporter` makes of `cx`: its builds refused first if one
-/// turns on the live link ([`live_link::refuse`]), so a refused export
+/// turns on a debug feature ([`live_link::refuse`]), so a refused export
 /// prepares, bakes and builds nothing; then what it prepares, then its
 /// export.
 fn build(

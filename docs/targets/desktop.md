@@ -95,9 +95,12 @@ export: (
 - **`features`** go to the build's `--features`, on every desktop target and
   the web, and to `NOTICES.txt`. A debug feature is refused, by name:
   `link` (the live link), `debug-tools` (the debug menu, `SHUYI_PERF`
-  traces and session recording), `capture` and the sound gates' probe.
-  `--without <feature>` leaves one off a build, as a build with no access to
-  a feature's files needs, and `--with <feature>` turns on another the
+  traces and session recording), `capture` and the sound gates' probe;
+  so is one the build reaches another way, the package's own or the
+  engine's (`shuyi-ui/debug-tools`, `shuyi-app/capture` and the rest), by
+  a `default` list, a feature that lists it or a dependency, which Cargo
+  is asked before anything is built. `--without <feature>` leaves one off
+  a build, as a build with no access to a feature's files needs, and `--with <feature>` turns on another the
   package has, for that build only.
 - **`targets`** gives one target, by its id, a `package` and `features` of
   its own, each replacing the part's for that target: `targets: {
