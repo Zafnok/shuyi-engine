@@ -125,6 +125,6 @@ None.
   `book-macros.html` and `book-filter.js` are unchanged.
 - `site/README.md`'s `style.css` row says that an action is a button and
   looks like one, and that a `.button` link goes to another page.
-- No follow-up tickets.
+- Follow-up: 2070. CI's `compile-times` job failed this PR twice on Linux (1.65 s, then 1.70 s, against a 1.60 s budget), though it changed no Rust and `main` at the same commit took 1.19 s. That ticket fixes the gate's noise; the budget was not raised here.
 
 Book: none, only the site's stylesheet changed; no chapter's text or code.
