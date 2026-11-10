@@ -41,6 +41,20 @@ ticket's playground.
 (under `page.extra.step`, beside *Play this step*), and copy each step's
 files to `/learn/book/box-pusher/<step>/`, where its `play/` is.
 
+**From 2814 (done):** the playground is `site/templates/playground.html`
+(the editors from the page's `extra.files`, the frame's address and the
+files' folder, `data-files`, in the template) and `site/static/playground.js`
+(it finds `.playground`, its `iframe`, its `textarea[data-file]` and its
+buttons; no address is in the script). The script keeps a run file under
+`shuyi-page-file:files/<name>` and the reader's typing under
+`shuyi-playground-draft:files/<name>`. Every page of the site is one
+origin, so every playground in a tab shares those keys: a step's game
+would play Hello, Grid's edited `palette.ron`. Give each playground its
+own keys (the game reads only `shuyi-page-file:files/…`, so a page clears
+or swaps the others' before it runs), or say why sharing is right.
+`copy-playground.sh` reads Hello, Grid's list from the page's front matter;
+a step's copy reads its own.
+
 ## Nick input
 
 None.

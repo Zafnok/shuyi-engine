@@ -30,6 +30,20 @@ and open <http://127.0.0.1:1111>. `--drafts` shows the posts marked
 `draft = true`. An example's page shows how to build it: the Pages build
 copies each example's web build there.
 
+The [playground](#the-playground) needs two more things. `bash copy-playground.sh`
+copies the files its editors hold; without them, its Problems says they didn't
+load. And under `zola serve` its frame shows Hello, Grid's page, which says how to
+build the game: to play it there, build the site, copy the game's web build where
+the Pages build puts it, and serve the folder:
+
+```bash
+bash copy-playground.sh
+(cd ../examples/hello-grid && cargo shuyi web --release)
+zola build --output-dir public --force
+cp -r ../examples/hello-grid/dist/web/. public/examples/hello-grid/
+python -m http.server --directory public 1111
+```
+
 ## What is where
 
 | Path | What |
@@ -38,7 +52,7 @@ copies each example's web build there.
 | `content/` | The pages: `_index.md` (the home page's text), `learn/`, `community.md`, `sponsor.md`, `news/` (one Markdown file a post) and `examples/` (one page an example, named as its folder in `examples/`) |
 | `content/changelog.md`, `content/news/generated/` | **Never committed**: `cargo xtask changelog --site site/content` writes the Changelog page and a News post for each release (`release-vX-Y-Z.md`, or `changes-YYYY-MM.md` before the first tag), and `pages.yml` runs it before `zola build`. It needs the tags and the whole history (`git clone` in full, not shallow) |
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
-| `content/learn/` | Learn: `_index.md`, the one way in; `book/`, the book ([The book's order](#the-book-s-order)); and `errors/`, which `errors.sh` writes |
+| `content/learn/` | Learn: `_index.md`, the one way in; `book/`, the book ([The book's order](#the-book-s-order)); `errors/`, which `errors.sh` writes; and `playground.md`, the playground ([The playground](#the-playground)) |
 | `content/learn/book/` | The book ([ADR-0090](../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)): `_index.md`, its front page, whose `extra.parts` gives its order; its flat pages, each naming its part in `extra.part` (`before-you-start.md`; the chapters, numbered by `extra.chapter`; the appendices, lettered by `extra.appendix`, the glossary the last); and `box-pusher/`, its project |
 | `content/learn/book/box-pusher/` | The book's project: `_index.md`, its landing page (`extra.project = true`, its code's folder in `extra.code`), and a page per step, named as its folder in `tutorial/`, its number in `extra.step` and the chapter it comes after in `extra.follows` |
 | `tutorial/` | The project's code: one folder per step, a whole game project and no member of the workspace, with its own `Cargo.lock` and a path dependency on the engine's crates. CI's `tutorial` job builds and tests each. `shuyi new`'s files for agents and CI, and the pinned Rust (the root's applies), are left out. It keeps its name while the book has one project (ADR-0090 §2) |
@@ -48,7 +62,9 @@ copies each example's web build there.
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
 | `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, and the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)); `shortcodes/snippet.md` shows the book's code, and `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)) |
-| `static/book-filter.js` | The reader's filter, the site's one script: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
+| `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
+| `templates/playground.html`, `static/playground.js` | The playground's page and its script ([The playground](#the-playground)) |
+| `copy-playground.sh`, `static/playground/` | `copy-playground.sh` copies the playground's files from `examples/hello-grid/files/` into `static/playground/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
@@ -61,8 +77,9 @@ copies each example's web build there.
   in Markdown and `get_url` in templates, never with an address:
   changing `base_url` alone must move every link.
 - Load nothing from another host: no fonts, scripts, stylesheets or
-  images. The one script is our own, `static/book-filter.js`, with no
-  framework and no build step, and every page reads in full without it.
+  images. The scripts are our own, `static/book-filter.js` and
+  `static/playground.js`, with no framework and no build step, and every
+  page reads in full without them.
 - A new example gets its page in `content/examples/`, or the Pages build
   fails.
 - The book's code comes from `snippets/`, never written in a page: CI
@@ -248,6 +265,35 @@ and the build checks (`check-build.sh`) fail a home page that doesn't
 show a card's made status. Name a done ticket that shipped the part a
 card has today, so the card says it's partly there.
 
+## The playground
+
+`/learn/playground/` (ticket 2814) plays Hello, Grid's web build in a frame,
+`/examples/hello-grid/`, beside an editor for each of its files. The game
+lays the files the page holds in `sessionStorage` over its own, and sends
+the page its problems ([`page-files.js`](../crates/cli/web/page-files.js),
+ticket 3069); the page and the frame are one origin, so they share the
+tab's storage.
+
+- `content/learn/playground.md` is its text: before `<!-- more -->` above
+  the playground, the rest below. Its `extra.files` lists the files, in
+  their tabs' order; `copy-playground.sh` copies those, and the build
+  checks fail one it doesn't, or a list of other than five.
+- `static/playground.js` fetches the game's own text from
+  `/playground/files/`. Each editor shows the reader's text, kept under
+  `shuyi-playground-draft:files/<name>` as it is typed. **Run** writes each
+  file whose text differs from the game's to `shuyi-page-file:files/<name>`,
+  removes the rest, and reloads the frame. **Reset this file** and **Reset
+  all** put the game's text back and run.
+- Problems shows each `shuyi-report` message from the frame at the page's
+  own origin, and "Loaded with your files." for an empty one. A game that
+  got no file reports nothing.
+- With no JavaScript, the game plays its own files and the editors are
+  hidden.
+
+`check-build.sh` checks that the page loads `playground.js` and frames
+`/examples/hello-grid/`, and that the build's `playground/files/` holds
+each file, the same as Hello, Grid's.
+
 ## The docs for agents
 
 After `zola build`, and once the API docs are in, `cargo xtask llms`
@@ -294,6 +340,7 @@ CI's `site` job, on every pull request:
 
 ```bash
 bash errors.sh
+bash copy-playground.sh
 cargo xtask check-book
 zola check --skip-external-links
 bash check-build.sh

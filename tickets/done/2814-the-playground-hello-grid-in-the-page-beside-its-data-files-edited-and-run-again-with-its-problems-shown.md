@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["3069", "2808"]
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 2814 — The playground
@@ -144,26 +144,26 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `/learn/playground/` shows Hello, Grid playing beside five tabs,
+- [x] `/learn/playground/` shows Hello, Grid playing beside five tabs,
       one per file, each holding the game's own text.
-- [ ] A changed `stage.map` and **Run** play the changed map, and the
+- [x] A changed `stage.map` and **Run** play the changed map, and the
       problems line says the files loaded.
-- [ ] A broken `palette.ron` and **Run** show its problem with its file
+- [x] A broken `palette.ron` and **Run** show its problem with its file
       and line, and the game still plays.
-- [ ] **Reset this file** and **Reset all** put the game's text back.
-- [ ] A reload of the page keeps the edits.
-- [ ] A message from another origin, or from a window other than the
+- [x] **Reset this file** and **Reset all** put the game's text back.
+- [x] A reload of the page keeps the edits.
+- [x] A message from another origin, or from a window other than the
       frame, is ignored (checked in the browser's console by posting
       one; say so in the completion notes).
-- [ ] At 375 px the page has no sideways scroll, and the tabs work with
+- [x] At 375 px the page has no sideways scroll, and the tabs work with
       the keyboard.
-- [ ] The page loads nothing from another host (`check-build.sh`
+- [x] The page loads nothing from another host (`check-build.sh`
       passes), and the top menu and Learn link it.
-- [ ] `llms.txt` lists the page, and its twin says what the playground
+- [x] `llms.txt` lists the page, and its twin says what the playground
       is and which files it edits.
-- [ ] The book's chapter is updated (2802), or the completion notes say
+- [x] The book's chapter is updated (2802), or the completion notes say
       why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -178,5 +178,87 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `site/content/learn/playground.md` at `/learn/playground/`: the text
+  above the playground (what it is; data, not code, and why) and below it
+  (each file with its chapter; how Run, the storage and Reset work). Its
+  `extra.files` lists the five files in their tabs' order.
+- `site/templates/playground.html`: the page's text before
+  `<!-- more -->` above the playground, the rest below; the frame of
+  `/examples/hello-grid/` (the example page's permalink, so the trailing
+  slash the build's relative files need is there) at 384 × 384, the web
+  target's frame; a `tablist` of the files, a labelled monospace
+  `textarea` each; Run, Reset this file, Reset all; Problems, a
+  `<pre role="status">`. With no JavaScript the editors stay hidden and a
+  `<noscript>` says the game plays its own files.
+- `site/static/playground.js`: fetches the game's text from
+  `/playground/files/`; arrow keys, Home and End move between the tabs;
+  Run writes each changed file to `shuyi-page-file:files/<name>`, removes
+  the rest and reloads the frame; Problems shows each `shuyi-report` from
+  the frame at the page's origin, "Loaded with your files." for an empty
+  one, and is cleared on each run.
+- `site/copy-playground.sh` copies the files the page lists to
+  `site/static/playground/files/` (in `.gitignore`); `pages.yml` and the
+  `site` job run it before `zola build`, and `check-build.sh` runs it too
+  and checks the build: the five files `cmp`-equal to Hello, Grid's, an
+  editor of each, the page loading `playground.js` and framing
+  `/examples/hello-grid/`.
+- Links: the top menu ("Playground", after Learn; `nav_item` gained an
+  `except` so Learn isn't also marked current there), Learn's landing
+  page, the book's contents beside the problem codes and the API docs, and
+  chapter 3's *Layers*, which describes such a page.
+- Docs: `site/README.md` (*The playground*, *What is where*, the rules'
+  two scripts, how to try it locally, the checks), the docs map's
+  website row, and Hello, Grid's README.
+
+Deviations:
+
+- The reader's typing is kept under `shuyi-playground-draft:files/<name>`
+  as it is typed, beside the run files, so a reload of the page keeps
+  edits not yet run too; the game never reads those keys.
+- The script isn't deferred: from the cache the game can report before a
+  deferred script runs. Its listener is there first and keeps the last
+  report for the page.
+- The game's web shell focuses its canvas as it starts, which took the
+  focus into the frame on a load and after Run. The script gives it back
+  (to the page on its first load, to the pressed button after a run), so
+  the frame has the focus only when the reader clicks it.
+- `zola serve` can't put the game's build in the frame: the README says
+  to build, copy it into `public/` as `pages.yml` does, and serve that.
+
+Checked by hand in the built-in browser, on a build with Hello, Grid's web
+build copied in, served on `127.0.0.1:1111` (the pane was hidden, so a
+report came late, and once frames were driven by hand):
+
+- five tabs, each the game's own text, beside the game playing;
+- the stage's two top inner rows of walls cleared and Run: Problems said
+  "Loaded with your files." and the stage played without them;
+- `"hero": "blue"` in `palette.ron` and Run: Problems showed
+  `files/palette.ron:24: colour "hero": "blue" must start with '#' (format "#RRGGBB")`,
+  and the game played its title;
+- Reset this file put the palette back and removed its key; Reset all
+  put every file back and left no key;
+- a reload of the page kept both edits and showed the palette's problem;
+- in the console: a `shuyi-report` posted by the page itself, one from a
+  sandboxed frame (an opaque origin), and one dispatched with the frame
+  as its source but another origin were all ignored; the same with the
+  frame and the page's origin was shown;
+- at 375 px no sideways scroll (`scrollWidth` 375), the game above the
+  editors; the tabs by the arrow keys, End and wrapping, and Tab into the
+  editor; light and dark;
+- `check-build.sh` passed (nothing from another host), and
+  `cargo xtask llms` listed the page in `llms.txt` with its twin, with no
+  change to `llms.rs`.
+
+The live page is to be tried after the merge.
+
+The book: chapter 3's *Layers* now links the playground. No public API
+changed.
+
+No break.
+
+Follow-ups: none new. 2820 has a **From 2814 (done)** note: every
+playground in a tab shares the page-file keys.
+
+Nick input: none.

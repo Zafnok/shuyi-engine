@@ -16,6 +16,8 @@ Beside it:
   code.
 - **[The problem codes](@/learn/errors/_index.md).** What each error the engine's
   tools give means, and how to fix it.
+- **[The playground](@/learn/playground.md).** Hello, Grid playing beside its data
+  files, which you change and run again in the page, with nothing to install.
 
 [Hello, Grid](@/examples/hello-grid.md) shows a whole game made from the engine's
 crates alone.
