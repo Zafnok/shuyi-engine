@@ -204,14 +204,22 @@ that no longer parses keeps its last good scenes playing.
    and `switches` (named switches, read back with `play.switch(i)`).
 2. Implement `PreviewScreen` on that screen: `showing()` is
    `Showing::of(&self.player)`.
-3. The program's game: `DialoguePreview::new(&ctx, YourPreview)` as the
-   root screen, `.with_debug_screens(false)`, and
-   `.with_module(DialogueFolder::new(layer))`, where `layer` is the folder
-   read with `shuyi::app::read_watched_folder` (watched in an optimized
-   build too).
+3. The program: a second binary of the game, `src/bin/preview.rs`,
+   whose `main` is one call,
+   `shuyi::app::run_dialogue_preview(game(), Path::new(&folder),
+   YourPreview)`. It runs the game's window, files and settings with
+   `DialoguePreview` as the first screen, the game's modules, a
+   `DialogueFolder` over the folder (read with `read_watched_folder`,
+   watched in an optimized build too) and no debug screens; a folder that
+   can't be read shows why in the window. A game on the long path builds
+   it itself: `BasicGame::preview_start(folder, preview)`, or
+   `DialoguePreview::new(&ctx, YourPreview)` as the root screen,
+   `.with_debug_screens(false)` and
+   `.with_module(DialogueFolder::new(layer))`.
 4. Give the `preview.*` text keys words in the language file (the book's
    chapter 6 lists them).
-5. Test it through the Harness: `h.watch_files(true)`, then
+5. Test it through the Harness: `game().preview_harness(layer,
+   YourPreview)`, `h.watch_files(true)`, then
    `h.change_file(layer, "scene.dlg", bytes)` and one frame; read
    `h.screen::<DialoguePreview<_, _>>()?.view(h.ctx())`.
 
