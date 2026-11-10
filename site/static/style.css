@@ -149,10 +149,12 @@ img {
   height: auto;
 }
 
+/* Its sides only: `main`, the header's `.nav` and the footer's `.footer-grid`
+   are `.wrap`s too, and set their own top and bottom (ticket 2831). */
 .wrap {
   max-width: var(--wrap);
   margin: 0 auto;
-  padding: 0 1rem;
+  padding-inline: 1rem;
 }
 
 /* The header: the wordmark and the menu. */
@@ -480,15 +482,37 @@ h3 {
   display: inline;
 }
 
-.newcomer-hide {
-  padding: 0;
-  border: 0;
-  background: none;
+/* The small button (ticket 2831): an action on this page — a passage's
+   "hide" and its stub's "show", the bar's Show all and Start over, the
+   popup's Skip. A box in the accent, never underlined, so it isn't taken for
+   a link to another page; at least 24 px tall to hit (WCAG 2.2, 2.5.8). The
+   stub's "show" is a span inside the stub's own button: the same look. */
+.newcomer-hide,
+.newcomer-stub .newcomer-stub-show,
+.book-bar-button,
+.book-welcome-skip button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.05rem 0.6rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
   color: var(--accent);
   font: inherit;
-  font-weight: 400;
-  text-decoration: underline;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  vertical-align: middle;
   cursor: pointer;
+}
+
+.newcomer-hide:hover,
+.newcomer-stub:hover .newcomer-stub-show,
+.book-bar-button:hover,
+.book-welcome-skip button:hover {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .newcomer-hide:focus-visible {
@@ -528,11 +552,6 @@ h3 {
 .newcomer-stub span {
   color: var(--muted);
   font-weight: 400;
-}
-
-.newcomer-stub .newcomer-stub-show {
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 /* The bar: who the notes are for, how many are hidden, and Start over. */
@@ -577,14 +596,6 @@ h3 {
 
 .book-toggle[aria-pressed="true"]::before {
   content: "✓ ";
-}
-
-.book-bar-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 .book-bar-button[hidden] {
@@ -661,14 +672,6 @@ h3 {
   margin: 1.5rem 0 0;
   padding-top: 1rem;
   border-top: 1px solid var(--line);
-}
-
-.book-welcome-skip button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 .pager {
