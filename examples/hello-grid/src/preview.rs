@@ -9,7 +9,6 @@
 
 use shuyi::assets::bundle::Layer;
 use shuyi::assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
-use shuyi::assets::font::CellWidths;
 use shuyi::platform::{Card, Start};
 use shuyi::ui::dialogue::Plain;
 use shuyi::ui::dialogue::preview::{
@@ -22,32 +21,28 @@ use crate::prelude::*;
 use crate::screens::{HelloCtx, Talk};
 use crate::{Hello, TITLE, bundle, ctx_from};
 
-/// What the game's text box and reply menu hold: [`Talk`]'s box. The game
-/// has no reply choices; their limits are the engine's usual ones.
+/// What the game's text box and reply menu hold: [`Talk`]'s box, a line of
+/// text at most a page of it. The game has no reply choices; their limits
+/// are the engine's usual ones.
 pub const LIMITS: DialogueLimits = DialogueLimits {
     box_width: Talk::WIDTH,
     box_lines: Talk::LINES,
-    max_text: Talk::WIDTH * Talk::LINES * 2,
+    max_text: Talk::WIDTH * Talk::LINES,
     max_option: 30,
     min_options: 2,
     max_options: 4,
     max_reaction_texts: 3,
 };
 
-/// The rules the format's checks hold a scene to: [`LIMITS`], counted in
-/// the font's cells, and no tokens.
-#[derive(Debug, Clone)]
-pub struct HelloRules {
-    widths: CellWidths,
-}
+/// The rules the format's checks hold a scene to: [`LIMITS`], and no
+/// tokens. Every glyph of the game's font is one cell wide, the rules'
+/// default widths.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HelloRules;
 
 impl SceneRules<NoDirective> for HelloRules {
     fn limits(&self) -> &DialogueLimits {
         &LIMITS
-    }
-
-    fn widths(&self) -> &CellWidths {
-        &self.widths
     }
 
     fn tokens(&self) -> &dyn Tokens {
@@ -63,10 +58,8 @@ impl PreviewGame<Hello> for HelloPreview {
     type Directive = NoDirective;
     type Rules = HelloRules;
 
-    fn rules(&self, ctx: &HelloCtx) -> HelloRules {
-        HelloRules {
-            widths: ctx.widths().clone(),
-        }
+    fn rules(&self, _: &HelloCtx) -> HelloRules {
+        HelloRules
     }
 
     fn play(

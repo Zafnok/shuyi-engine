@@ -11,6 +11,7 @@ use hello_grid::screens::Talk;
 use hello_grid::tools::Start;
 use hello_grid::{Action, Hello, bundle, ctx_from, file};
 use shuyi::assets::bundle::Layer;
+use shuyi::assets::font::CellWidths;
 use shuyi::platform::harness::{FRAME_DT, Harness};
 use shuyi::ui::Screen;
 use shuyi::ui::dialogue::preview::{DialoguePreview, PreviewView, Tab};
@@ -84,6 +85,8 @@ fn the_scene_is_listed_and_plays_in_the_games_text_box() {
         ("intro.dlg", "intro")
     );
     assert!(!scenes[0].problems, "{:?}", view(&h).problems);
+    // The font's glyphs are each a cell wide, as the rules count them.
+    assert_eq!(h.ctx().widths(), &CellWidths::NARROW);
     h.act(Action::Confirm);
     assert!(shown(&h).starts_with("A small grid"));
     let strip = view(&h).strip.unwrap_or_else(|| panic!("no strip"));
@@ -96,6 +99,9 @@ fn with_the_guide_sent_away_the_scene_plays_its_else_line() {
     h.act(Action::Confirm);
     // The Switches tab: the guide, there, is its first row.
     act(&mut h, &[Action::Cancel, Action::Right]);
+    // The guide, then the strip's: the game has no switches of its own.
+    let names: Vec<String> = view(&h).switches.into_iter().map(|s| s.name).collect();
+    assert_eq!(names, ["guide", "Strip: file, line, direction"]);
     let guide = view(&h).switch("guide").cloned();
     assert!(guide.is_some_and(|g| g.on));
     h.act(Action::Confirm);

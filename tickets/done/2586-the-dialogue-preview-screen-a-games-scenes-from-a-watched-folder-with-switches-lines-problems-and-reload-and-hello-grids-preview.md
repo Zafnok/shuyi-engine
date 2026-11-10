@@ -242,6 +242,10 @@ Deviations:
   `hello-grid-preview` builds for the web too: there, with no folder to
   read, it plays the game's own scene file and reads nothing again (a
   writer's web preview stays 3092's dropped files).
+- `.cargo/mutants.toml` leaves out the examples' binaries in `src/bin/` as
+  it does `src/main.rs` (they hand the example to the window), and the
+  default `PreviewGame::problems`, whose only mutant is itself. The skin
+  is held by snapshots of views built by hand (`glyph/tests.rs`).
 - The unit tests that change a layer's bytes are `std`-only
   (`Layer::replace` is). Seen, not done: on this machine the `shuyi-ui`
   tests without `std` don't build, for `frame/raster/card/tests.rs`

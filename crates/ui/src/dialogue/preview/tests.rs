@@ -7,6 +7,7 @@ use core::cell::Cell as Seen;
 
 use shuyi_assets::bundle::Layer;
 use shuyi_assets::dialogue::{DialogueLimits, NoDirective, NoTokens, Tokens};
+use shuyi_assets::keymap::{Chord, Key};
 
 use super::*;
 use crate::dialogue::{Plain, TextBox};
@@ -69,6 +70,8 @@ impl SceneRules<NoDirective> for Rules {
 struct ToyPreview {
     /// The switch's value when the screen was last made.
     switched: Seen<Option<bool>>,
+    /// How many screens it has made.
+    plays: Seen<usize>,
 }
 
 impl PreviewGame<Toy> for ToyPreview {
@@ -91,6 +94,7 @@ impl PreviewGame<Toy> for ToyPreview {
 
     fn play(&self, ctx: &mut ToyCtx, play: &Play<'_, NoDirective>) -> Box<dyn PreviewScreen<Toy>> {
         self.switched.set(Some(play.switch(0)));
+        self.plays.set(self.plays.get() + 1);
         let player = play.player(Plain);
         let text = player.current().text.unwrap_or_default();
         let text = TextBox::new(&text, 34, 3, ctx.widths());
@@ -620,4 +624,275 @@ fn the_skin_paints_the_tabs_and_the_strip() {
     assert!(strip.starts_with(" gate.dlg:4  (quietly) "), "{strip}");
     assert!(strip.ends_with(&format!(" {help}")), "{strip}");
     assert_eq!(strip.chars().count(), 39);
+}
+
+/// A scene whose `@if` block adds a text box: three with the scout there,
+/// two without.
+const WATCH: &str = "\
+@scene watch
+@left mentor neutral
+@right scout happy
+mentor: Dusk.
+@if scout
+scout: I'll keep watch.
+@endif
+mentor: Then we go.
+@end
+";
+
+/// Types the text box's fixed `keys` (its delete, done and cancel) in one
+/// frame.
+fn fixed(p: &mut Preview, ctx: &mut ToyCtx, keys: &[Key]) {
+    let chords = keys.iter().map(|&k| Chord::plain(k)).collect();
+    let input = FrameInput::new(vec![], 0.0, vec![]).with_typing(chords, vec![]);
+    let _ = p.update(ctx, &input);
+}
+
+/// From the scene playing, the line box open on the Lines tab.
+fn line_box(p: &mut Preview, ctx: &mut ToyCtx) {
+    presses(
+        p,
+        ctx,
+        &[Action::Cancel, Action::CursorLeft, Action::CursorLeft],
+    );
+    press(p, ctx, &[Action::Confirm]);
+    assert!(p.view(ctx).go_to.typing);
+}
+
+#[test]
+fn the_screen_and_its_module_have_their_names_and_are_found_by_type() {
+    let (game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    assert_eq!(p.name(), "dialogue_preview");
+    let modules: Vec<&str> = game.modules().iter().map(|m| m.name).collect();
+    assert_eq!(modules, ["dialogue_folder"]);
+    assert!(p.as_any().is_some_and(<dyn Any>::is::<Preview>));
+    assert!(p.as_any_mut().is_some_and(|a| a.is::<Preview>()));
+    assert!(format!("{p:?}").starts_with("DialoguePreview {"));
+}
+
+#[test]
+fn up_moves_the_focus_back_and_left_goes_round_to_the_last_tab() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    presses(&mut p, ctx, &[Action::CursorDown, Action::CursorUp]);
+    assert_eq!(p.view(ctx).focus, 0);
+    press(&mut p, ctx, &[Action::CursorDown]);
+    assert_eq!(p.view(ctx).focus, 1);
+    press(&mut p, ctx, &[Action::CursorLeft]);
+    assert_eq!(p.view(ctx).tab, Tab::Problems);
+    press(&mut p, ctx, &[Action::CursorLeft]);
+    assert_eq!(p.view(ctx).tab, Tab::Lines);
+}
+
+#[test]
+fn several_actions_in_one_frame_each_count_until_one_closes_the_tabs() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::CursorDown, Action::CursorDown]);
+    assert_eq!(p.view(ctx).focus, 1, "two scenes: the second");
+    press(
+        &mut p,
+        ctx,
+        &[Action::CursorUp, Action::Confirm, Action::CursorDown],
+    );
+    let view = p.view(ctx);
+    assert!(!view.open);
+    assert_eq!(
+        view.focus, 0,
+        "the Down after the scene started isn't the tabs'"
+    );
+}
+
+#[test]
+fn cancel_with_nothing_playing_keeps_the_tabs() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Cancel]);
+    assert!(p.view(ctx).open);
+}
+
+#[test]
+fn only_the_scene_picked_is_marked() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    let picked: Vec<bool> = p.view(ctx).scenes.iter().map(|s| s.picked).collect();
+    assert_eq!(picked, [true, false]);
+}
+
+#[test]
+fn the_notes_say_what_an_empty_tab_lacks_and_nothing_while_a_scene_plays() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::CursorLeft]);
+    assert_eq!(p.view(ctx).note.as_deref(), Some("No problems"));
+    presses(&mut p, ctx, &[Action::CursorRight, Action::Confirm]);
+    presses(
+        &mut p,
+        ctx,
+        &[Action::Cancel, Action::CursorLeft, Action::CursorLeft],
+    );
+    let view = p.view(ctx);
+    assert_eq!(view.tab, Tab::Lines);
+    assert_eq!(view.note, None);
+}
+
+#[test]
+fn a_switch_that_takes_the_text_box_away_plays_from_the_start() {
+    let (mut game, _, _, mut p) = preview(&[("watch.dlg", WATCH)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    read_on(&mut p, ctx);
+    read_on(&mut p, ctx);
+    assert_eq!(shown(&p), "Then we go.");
+    // Two text boxes without the scout: the third is gone.
+    presses(
+        &mut p,
+        ctx,
+        &[Action::Cancel, Action::CursorRight, Action::Confirm],
+    );
+    assert_eq!(shown(&p), "Dusk.");
+    assert_eq!(p.view(ctx).playing.unwrap().text_box, 0);
+}
+
+#[test]
+fn the_line_box_takes_digits_only_six_at_most_and_deletes_the_last() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    line_box(&mut p, ctx);
+    typed(&mut p, ctx, "1a2345678");
+    assert_eq!(p.view(ctx).go_to.digits, "123456");
+    fixed(&mut p, ctx, &[Key::Backspace]);
+    assert_eq!(p.view(ctx).go_to.digits, "12345");
+    fixed(&mut p, ctx, &[Key::Backspace; 6]);
+    assert_eq!(p.view(ctx).go_to.digits, "");
+    assert!(p.view(ctx).go_to.typing, "still open");
+    typed(&mut p, ctx, "5");
+    fixed(&mut p, ctx, &[Key::Enter]);
+    let view = p.view(ctx);
+    assert!(!view.go_to.typing);
+    assert_eq!(view.playing.unwrap().text_box, 1);
+}
+
+#[test]
+fn a_jump_leaves_the_lines_tab_on_the_text_box_it_played() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    line_box(&mut p, ctx);
+    typed(&mut p, ctx, "11");
+    press(&mut p, ctx, &[Action::Confirm]);
+    press(&mut p, ctx, &[Action::Cancel]);
+    let view = p.view(ctx);
+    assert_eq!(view.tab, Tab::Lines);
+    assert_eq!(view.focus, 4, "the line box, then the fourth text box");
+}
+
+#[test]
+fn the_tabs_hide_the_scene_and_closed_show_it() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    let boxed = |p: &Preview, ctx: &ToyCtx| {
+        let colour = |e| ctx.palette.engine(e);
+        let blank = Cell::new(
+            ' ',
+            colour(EngineColor::Text),
+            colour(EngineColor::Background),
+        );
+        let mut buf = GlyphBuffer::new(40, 20, blank);
+        p.draw(ctx, &mut buf);
+        (0..20).any(|y| buf.get(0, y).is_some_and(|c| c.glyph == '┌'))
+    };
+    assert!(boxed(&p, ctx));
+    press(&mut p, ctx, &[Action::Cancel]);
+    assert!(!boxed(&p, ctx));
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn a_change_to_another_file_leaves_the_scene_playing_as_it_was() {
+    let (mut game, mut folder, layer, mut p) =
+        preview(&[("gate.dlg", GATE), ("other.dlg", LONELY)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    let plays = p.game().plays.get();
+    save(
+        &mut folder,
+        layer,
+        ctx,
+        "other.dlg",
+        "@scene other\n> O.\n@end\n",
+    );
+    press(&mut p, ctx, &[]);
+    assert_eq!(p.game().plays.get(), plays, "not made again");
+    assert_eq!(p.view(ctx).scenes.len(), 3);
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn a_scene_cut_to_the_text_box_it_was_on_plays_from_its_start() {
+    let (mut game, mut folder, layer, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    press(&mut p, ctx, &[Action::Confirm]);
+    read_on(&mut p, ctx);
+    // One text box now: the second, where it was, is gone.
+    save(
+        &mut folder,
+        layer,
+        ctx,
+        "gate.dlg",
+        "@scene gate\n> One.\n@end\n",
+    );
+    press(&mut p, ctx, &[]);
+    assert_eq!(shown(&p), "One.");
+    assert_eq!(p.view(ctx).playing.unwrap().text_box, 0);
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn the_focus_stays_on_a_row_when_the_list_shrinks() {
+    let (mut game, mut folder, layer, mut p) = preview(&[("gate.dlg", GATE), ("z.dlg", LONELY)]);
+    let ctx = game.ctx_mut();
+    presses(&mut p, ctx, &[Action::CursorDown, Action::CursorDown]);
+    assert_eq!(p.view(ctx).focus, 2);
+    save(
+        &mut folder,
+        layer,
+        ctx,
+        "gate.dlg",
+        "@scene gate\n> One.\n@end\n",
+    );
+    press(&mut p, ctx, &[]);
+    assert_eq!(p.view(ctx).focus, 1, "two scenes left");
+}
+
+/// A preview that keeps every default of the trait: no switches of its
+/// own, no checks of its own.
+struct Bare;
+
+impl PreviewGame<Toy> for Bare {
+    type Directive = NoDirective;
+    type Rules = Rules;
+
+    fn rules(&self, _: &ToyCtx) -> Rules {
+        Rules
+    }
+
+    fn play(&self, ctx: &mut ToyCtx, play: &Play<'_, NoDirective>) -> Box<dyn PreviewScreen<Toy>> {
+        ToyPreview::default().play(ctx, play)
+    }
+}
+
+#[test]
+fn a_game_with_no_switches_of_its_own_has_the_characters_and_the_strip() {
+    let folder = DialogueFolder::new(layer(&[("gate.dlg", GATE)]));
+    let mut game = toy::game().with_module(folder).unwrap();
+    let ctx = game.ctx_mut();
+    let mut p = DialoguePreview::new(ctx, Bare);
+    let input = FrameInput::new(vec![Action::Confirm], 0.0, vec![]);
+    let _ = p.update(ctx, &input);
+    let names: Vec<String> = p.view(ctx).switches.into_iter().map(|s| s.name).collect();
+    assert_eq!(names, ["scout", "Strip: file, line, direction"]);
 }

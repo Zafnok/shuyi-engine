@@ -1,6 +1,7 @@
 # The platform shell (`crates/app`) drives a window, a sound device and
 # controllers, which no test has; mutants leave it out, and the examples'
-# binaries (`src/main.rs`, which hand the example to the shell).
+# binaries (`src/main.rs` and those in `src/bin/`, which hand the example
+# to the shell).
 #
 # `keymap/sample.rs` is a sample game's actions, test data for the keymap
 # format's and input's tests, built only for tests; so is `shuyi-ui`'s toy
@@ -28,6 +29,7 @@ exclude_globs = [
     "crates/sound-out/src/web.rs",
     "crates/playdate/src/device/**",
     "examples/*/src/main.rs",
+    "examples/*/src/bin/**",
     "examples/*/src/playdate.rs",
     "crates/assets/src/keymap/sample.rs",
     "crates/ui/src/toy.rs",
@@ -60,6 +62,8 @@ exclude_re = [
     # The default `scene_problems` is `Vec::new()`: its only viable mutant,
     # `vec![]`, is the same function.
     "SceneRules::scene_problems",
+    # So is the default `PreviewGame::problems`.
+    'replace PreviewGame::problems -> Vec<ContentError> with vec!\[\]',
     # The default `Session::log` is `Vec::new()`: its only viable mutant,
     # `vec![]`, is the same function.
     "replace Session::log -> Vec<LogEntry>",

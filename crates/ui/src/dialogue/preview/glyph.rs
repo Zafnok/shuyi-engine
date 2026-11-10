@@ -212,3 +212,6 @@ fn first_shown(items: &[Item], focus: usize, room: usize) -> usize {
     }
     first
 }
+
+#[cfg(test)]
+mod tests;

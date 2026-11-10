@@ -141,6 +141,8 @@ mod tests {
 
     use shuyi::platform::harness::Harness;
 
+    use shuyi::assets::dialogue::{Present, parse_dlg};
+
     use super::*;
 
     // ANCHOR: test
@@ -165,4 +167,55 @@ mod tests {
         assert_eq!(view.lines[0].words, "Nobody is in the garden.");
     }
     // ANCHOR_END: test
+
+    /// The talk of a scene of two lines, its first on screen.
+    fn talk() -> (Ctx<Data>, Talk) {
+        let source = "@scene dusk\n> The moon is up.\n> The garden sleeps.\n@end\n";
+        let (scenes, errors) = parse_dlg::<NoDirective>("dusk.dlg", source);
+        assert_eq!(errors, []);
+        let ctx = game().ctx().unwrap();
+        let player = DialoguePlayer::new(&scenes[0].scene, Plain, &Present::Everyone);
+        let talk = Talk::new(&ctx, player);
+        (ctx, talk)
+    }
+
+    fn press(talk: &mut Talk, ctx: &mut Ctx<Data>, action: UiAction) -> bool {
+        let input = FrameInput::new(vec![action], 0.0, vec![]);
+        matches!(talk.update(ctx, &input), Transition::Pop)
+    }
+
+    #[test]
+    fn the_talk_reads_on_with_confirm_and_pops_after_its_last_line() {
+        let (mut ctx, mut talk) = talk();
+        assert_eq!(talk.name(), "talk");
+        assert_eq!(talk.actions(), Some(vec![UiAction::Confirm]));
+        assert!(talk.is_overlay());
+        // Another action does nothing; Confirm shows the page, then goes on.
+        assert!(!press(&mut talk, &mut ctx, UiAction::Down));
+        assert!(!press(&mut talk, &mut ctx, UiAction::Confirm));
+        assert_eq!(talk.showing().line, talk.player.line().cloned());
+        assert_eq!(
+            talk.player.current().text.as_deref(),
+            Some("The moon is up.")
+        );
+        assert!(!press(&mut talk, &mut ctx, UiAction::Confirm));
+        assert_eq!(
+            talk.player.current().text.as_deref(),
+            Some("The garden sleeps.")
+        );
+        assert!(!press(&mut talk, &mut ctx, UiAction::Confirm));
+        assert!(press(&mut talk, &mut ctx, UiAction::Confirm));
+    }
+
+    #[test]
+    fn the_talk_paints_its_page_in_the_box() {
+        let (mut ctx, mut talk) = talk();
+        let _ = press(&mut talk, &mut ctx, UiAction::Confirm);
+        let mut buf = GlyphBuffer::new(48, 24, ctx.game.blank_cell(&ctx.palette));
+        talk.draw(&ctx, &mut buf);
+        let row: String = (0..48)
+            .map(|x| buf.get(x, 19).map_or(' ', |c| c.glyph))
+            .collect();
+        assert!(row.contains("The moon is up."), "{row}");
+    }
 }
