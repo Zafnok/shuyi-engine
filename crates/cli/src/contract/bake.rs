@@ -12,9 +12,18 @@
 //! (`Bundle::for_target`) where it has one: the answer names the pictures
 //! dithered, for an artist to check, and those its layer replaced, and
 //! `--sheet` draws each dithered one beside its source ([`sheet`]).
+//!
+//! `--content <folder>` bakes a folder of the project in place of the files
+//! the game's tools embed, as an edition's export does (ADR-0100, ADR-0101):
+//! the game's tool program is built with the folder as `SHUYI_CONTENT`, in a
+//! Cargo profile of its own ([`CONTENT_PROFILE`]), and bakes in its own
+//! process. The game's code says what the folder replaces, as it does for
+//! the program it ships.
 
 use std::fmt::Write as _;
 use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use schemars::JsonSchema;
@@ -27,8 +36,9 @@ use shuyi_assets::image::PNG_SIGNATURE;
 use shuyi_assets::pack::{Bake, Baked, Pack};
 
 use super::{Answer, Op, Problem, codes, target};
+use crate::export::CONTENT;
 use crate::game::{GameBake, GameTools, code_of};
-use crate::project::Project;
+use crate::project::{self, GameProgram, Project};
 
 pub mod sheet;
 
@@ -38,6 +48,12 @@ pub const OUT_DIR: &str = "target/shuyi";
 
 /// How many times each load is timed: the fastest counts.
 pub const LOAD_RUNS: u32 = 5;
+
+/// The Cargo profile the game's tool program is built in to bake a content
+/// root ([`BakeInput::content`]): the `dev` profile's settings in a folder of
+/// its own, so the tool program running the bake isn't rebuilt under itself,
+/// and its own build isn't undone for the next command.
+pub const CONTENT_PROFILE: &str = "shuyi-content";
 
 /// What `bake` bakes.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -56,6 +72,12 @@ pub struct BakeInput {
     /// picture the bake dithered, each beside its source, for review.
     #[serde(default)]
     pub sheet: Option<String>,
+    /// A folder of the project, from its root with `/`, to bake in place of
+    /// the files the game's tools embed: an edition's content root. The
+    /// game's tool program is built with it as `SHUYI_CONTENT` and bakes;
+    /// none bakes the files of the tools running now.
+    #[serde(default)]
+    pub content: Option<String>,
 }
 
 /// What `bake` made.
@@ -200,8 +222,119 @@ fn out_file(input: &BakeInput) -> String {
     })
 }
 
-/// `bake`: `game`'s pack for `input`, written under `project`'s root.
+/// The absolute path of `content`, a folder of the project at `root` written
+/// from it with `/`; or why it isn't one.
+pub fn content_folder(root: &Path, content: &str) -> Result<PathBuf, String> {
+    let outside = content.starts_with('/')
+        || content.contains([':', '\\'])
+        || content
+            .split('/')
+            .any(|part| matches!(part, "" | "." | ".."));
+    if outside {
+        return Err(format!(
+            "the content root `{content}`: write it from the project's root, with `/`, and no \
+             empty part, `.` or `..`"
+        ));
+    }
+    let folder = root.join(content);
+    if !folder.is_dir() {
+        return Err(format!(
+            "the content root `{content}` isn't a folder of the project"
+        ));
+    }
+    Ok(std::path::absolute(&folder).unwrap_or(folder))
+}
+
+/// The arguments of the game's tool program's own `bake` for `input`, the
+/// pack written to `out`: all of `input` but the content root, which the
+/// program is built with.
+fn content_args(input: &BakeInput, out: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    if let Some(target) = &input.target {
+        args.extend(["--target".to_owned(), target.clone()]);
+    }
+    args.extend(["--out".to_owned(), out.to_owned()]);
+    if let Some(sheet) = &input.sheet {
+        args.extend(["--sheet".to_owned(), sheet.clone()]);
+    }
+    args.push("--json".to_owned());
+    args
+}
+
+/// The `cargo` arguments that run `program`, the game's tool program, built
+/// in [`CONTENT_PROFILE`], for its `bake` of `input` into `out`.
+fn content_cargo_args(program: &GameProgram, input: &BakeInput, out: &str) -> Vec<String> {
+    let mut cargo = program.cargo_args("bake", &content_args(input, out));
+    let profile = [
+        "--profile".to_owned(),
+        CONTENT_PROFILE.to_owned(),
+        "--config".to_owned(),
+        format!("profile.{CONTENT_PROFILE}.inherits=\"dev\""),
+    ];
+    cargo.splice(1..1, profile);
+    cargo
+}
+
+/// `bake` of `input`, whose content root is `content`: the answer of the
+/// game's tool program of `project` built with the folder as [`CONTENT`] (in
+/// [`CONTENT_PROFILE`]), which names the folder in its limits.
+fn bake_content(project: &Project, content: &str, input: &BakeInput) -> Answer<BakeOutput> {
+    let folder = match content_folder(&project.root, content) {
+        Ok(folder) => folder,
+        Err(e) => return Answer::failed(Op::Bake, codes::FILE, e),
+    };
+    let Some(program) = &project.config.game else {
+        return Answer::failed(
+            Op::Bake,
+            codes::PROJECT_FILE,
+            format!(
+                "{} names no game tool program (`game`): a content root is baked by it, \
+                 built with that folder",
+                project::FILE
+            ),
+        );
+    };
+    let out = out_file(input);
+    let ran = Command::new(crate::cargo())
+        .args(content_cargo_args(program, input, &out))
+        .current_dir(&project.root)
+        .env(CONTENT, &folder)
+        .stderr(Stdio::inherit())
+        .output();
+    let output = match ran {
+        Ok(output) => output,
+        Err(e) => {
+            return Answer::failed(Op::Bake, codes::TOOLCHAIN, format!("cannot run cargo: {e}"));
+        }
+    };
+    let said = String::from_utf8_lossy(&output.stdout);
+    match serde_json::from_str::<Answer<BakeOutput>>(said.trim()) {
+        Ok(mut answer) => {
+            answer.limits.push(format!(
+                "baked by the game's tool program built with `{content}` as its files \
+                 ({CONTENT})"
+            ));
+            answer
+        }
+        Err(_) => Answer::failed(
+            Op::Bake,
+            codes::GAME_PROGRAM,
+            format!(
+                "the game's tool program, built with `{content}` as its files, gave no answer \
+                 of a bake ({}): {}",
+                output.status,
+                said.trim()
+            ),
+        ),
+    }
+}
+
+/// `bake`: `game`'s pack for `input`, written under `project`'s root; with a
+/// content root, the pack of the game's tool program built with it.
 pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answer<BakeOutput> {
+    if let Some(content) = &input.content {
+        return bake_content(project, content, input);
+    }
     let target = input.target.as_deref();
     if let Some(Err((code, why))) =
         target.map(|target| target::profile(&project.config, &project.root, target))
@@ -311,6 +444,7 @@ pub fn parse_args(args: &[String]) -> Result<BakeInput, String> {
             "--target" => input.target = Some(value()?),
             "--out" => input.out = Some(value()?),
             "--sheet" => input.sheet = Some(value()?),
+            "--content" => input.content = Some(value()?),
             other => return Err(format!("unknown argument: {other}")),
         }
     }
@@ -319,7 +453,10 @@ pub fn parse_args(args: &[String]) -> Result<BakeInput, String> {
 
 /// `bake`'s usage, with `command` as the tool's name.
 pub fn usage(command: &str) -> String {
-    format!("usage: {command} bake [--target <id>] [--out <file>] [--sheet <file>] [--json]")
+    format!(
+        "usage: {command} bake [--target <id>] [--out <file>] [--sheet <file>] \
+         [--content <folder>] [--json]"
+    )
 }
 
 /// `n` bytes, with a thousands separator.

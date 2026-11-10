@@ -308,8 +308,11 @@ gives its package, features and content root too. Put a canary in each file of w
 give the demo a `disclosure` part that lists them: if the demo is ever built from the wrong folder, the
 export finds one and is refused.
 
-The Playdate's pack is baked by the game's tools from the files they embed, so a Playdate edition has no
-`content` and keeps no default features.
+On the Playdate the edition's `content` folder is what its pack is baked from: the game's tool program
+is built again with the folder as `SHUYI_CONTENT` and bakes it, so the `.pdx` holds the demo's files and
+no others (`cargo shuyi bake --target playdate --content <folder>` shows you that pack). Its sounds and
+music still come from the full game's tools, so give them canaries too. A Playdate edition keeps no
+default features.
 
 ## Size and speed
 
