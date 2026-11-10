@@ -55,12 +55,11 @@
     // How long the mix waits for a context that is starting, in milliseconds.
     var START_MS = 2000;
 
-    // The worklet's code, run there as a string of its source and here for what the
-    // ring is, which CI's ring test reads from this plugin's `ring`.
-    function worklet_scope(in_worklet) {
-        // A ring of frames for one writer and one reader, whose counters run on,
-        // wrapping at 2^32, so the two are compared by their difference alone.
-        function PcmRing(frames) {
+    // A ring of frames for one writer and one reader, whose counters run on, wrapping
+    // at 2^32, so the two are compared by their difference alone. The worklet runs it
+    // from a string of its source, and CI's ring test reads it from this plugin's `ring`.
+    class PcmRing {
+        constructor(frames) {
             var capacity = 1;
             while (capacity < frames) {
                 capacity *= 2;
@@ -71,11 +70,11 @@
             this.taken = 0;
         }
         // How many frames it holds.
-        PcmRing.prototype.held = function () {
+        held() {
             return (this.written - this.taken) >>> 0;
-        };
+        }
         // Takes as many whole frames of `block`, interleaved, as there is room for.
-        PcmRing.prototype.write = function (block) {
+        write(block) {
             var frames = Math.min(block.length >> 1, this.capacity - this.held());
             var mask = this.capacity - 1;
             for (var i = 0; i < frames; i++) {
@@ -85,10 +84,10 @@
             }
             this.written = (this.written + frames) >>> 0;
             return frames;
-        };
+        }
         // Fills `left` and `right` as floats, silence past what it holds, and says
         // how many frames were real.
-        PcmRing.prototype.read = function (left, right) {
+        read(left, right) {
             var frames = Math.min(left.length, this.held());
             var mask = this.capacity - 1;
             for (var i = 0; i < frames; i++) {
@@ -102,10 +101,11 @@
             }
             this.taken = (this.taken + frames) >>> 0;
             return frames;
-        };
-        if (!in_worklet) {
-            return PcmRing;
         }
+    }
+
+    // The worklet's processor, run there as a string of its source after PcmRing's.
+    function worklet_scope() {
         class Output extends AudioWorkletProcessor {
             constructor(options) {
                 super();
@@ -114,10 +114,9 @@
                 this.played = 0;
                 this.silent = 0;
                 this.since = 0;
-                var self = this;
-                this.port.onmessage = function (event) {
-                    self.ring.write(new Int16Array(event.data));
-                    self.port.postMessage({ back: event.data }, [event.data]);
+                this.port.onmessage = (event) => {
+                    this.ring.write(new Int16Array(event.data));
+                    this.port.postMessage({ back: event.data }, [event.data]);
                 };
             }
             process(inputs, outputs) {
@@ -135,7 +134,6 @@
             }
         }
         registerProcessor("shuyi-sound", Output);
-        return null;
     }
 
     var context = null;
@@ -307,7 +305,7 @@
                 });
             }
             start_idle();
-            var source = "(" + worklet_scope.toString() + ")(true);";
+            var source = PcmRing.toString() + "\n(" + worklet_scope.toString() + ")();";
             var url = URL.createObjectURL(new Blob([source], { type: "application/javascript" }));
             opened.audioWorklet.addModule(url).then(connect, function (error) {
                 console.warn("audio: the sound worklet didn't load: " + error);
@@ -336,21 +334,20 @@
         // context never reaches a device.
         importObject.env.shuyi_sound_vet = function (at, bytes) {
             var number = vets.length;
-            vets.push(0);
-            var copy = new Uint8Array(wasm_memory.buffer, at, bytes).slice().buffer;
             var Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-            if (!Offline) {
-                vets[number] = 2;
-                return number;
+            // Without a decoder to ask, refused at once.
+            vets.push(Offline ? 0 : 2);
+            if (Offline) {
+                var copy = new Uint8Array(wasm_memory.buffer, at, bytes).slice().buffer;
+                new Offline(1, 1, 44100).decodeAudioData(copy).then(
+                    function () {
+                        vets[number] = 1;
+                    },
+                    function () {
+                        vets[number] = 2;
+                    }
+                );
             }
-            new Offline(1, 1, 44100).decodeAudioData(copy).then(
-                function () {
-                    vets[number] = 1;
-                },
-                function () {
-                    vets[number] = 2;
-                }
-            );
             return number;
         };
         // 0 while the browser decodes, 1 if it read the file, 2 if it refused it.
@@ -363,6 +360,6 @@
         register_plugin: register_plugin,
         name: "shuyi_sound",
         version: VERSION,
-        ring: worklet_scope(false)
+        ring: PcmRing
     });
 })();
