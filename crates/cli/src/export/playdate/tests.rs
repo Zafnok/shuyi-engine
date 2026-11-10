@@ -388,3 +388,26 @@ fn the_shim_is_the_backends() {
     assert!(SHIM.contains("eventHandler"));
     assert!(SHIM.contains("shuyi_playdate_update"));
 }
+
+#[test]
+fn the_pack_is_baked_from_the_editions_content_root_if_it_has_one() {
+    let mut cx = cx(true);
+    let input = bake_input(&cx);
+    assert_eq!(input.target.as_deref(), Some("playdate"));
+    assert_eq!(input.out.as_deref(), Some("dist/export/playdate/game.pack"));
+    assert_eq!(input.content, None, "the files the game's tools embed");
+    cx.edition = Some(super::super::EditionBuild::new("demo", false));
+    assert_eq!(bake_input(&cx).content, None, "an edition with no folder");
+    cx.edition = Some(super::super::EditionBuild {
+        content: Some("game/files-demo".to_owned()),
+        ..super::super::EditionBuild::new("demo", false)
+    });
+    assert_eq!(bake_input(&cx).content.as_deref(), Some("game/files-demo"));
+    assert!(edition_fits(cx.edition.as_ref().unwrap()).is_ok());
+    let full = super::super::EditionBuild::new("full", true);
+    let refused = edition_fits(&full).unwrap_err();
+    assert!(
+        refused.message().contains("default features"),
+        "{refused:?}"
+    );
+}

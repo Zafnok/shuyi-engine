@@ -294,25 +294,32 @@ where
 }
 
 /// Refuses an edition the Playdate can't build as it says: its library never
-/// keeps the package's default features, and its pack is baked by the game's
-/// tools from the files they embed, so no content root reaches it.
+/// keeps the package's default features.
 fn edition_fits(edition: &super::EditionBuild) -> Result<(), ExportError> {
-    let name = &edition.name;
     if edition.default_features {
         return Err(ExportError::Setup(format!(
-            "the edition `{name}` keeps the package's default features, and the Playdate's \
+            "the edition `{}` keeps the package's default features, and the Playdate's \
              library is always built without them: give the Playdate an edition with \
-             `default_features: false`"
-        )));
-    }
-    if let Some(content) = &edition.content {
-        return Err(ExportError::Setup(format!(
-            "the edition `{name}` embeds the files of `{content}`, and the Playdate's pack is \
-             baked by the game's tools from the files they embed: give the Playdate an edition \
-             with no `content`"
+             `default_features: false`",
+            edition.name
         )));
     }
     Ok(())
+}
+
+/// What the export bakes: the pack for the target's profile, written where
+/// [`PlaydateExporter::export`] takes it from, of the edition's content root
+/// if it has one (ADR-0101), else of the files the game's tools embed.
+pub fn bake_input(cx: &ExportCx) -> BakeInput {
+    BakeInput {
+        target: Some(cx.profile.clone()),
+        out: Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/"))),
+        content: cx
+            .edition
+            .as_ref()
+            .and_then(|edition| edition.content.clone()),
+        ..BakeInput::default()
+    }
 }
 
 /// `cargo rustc`'s arguments for the game's library as a static library.
@@ -841,7 +848,8 @@ impl Exporter for PlaydateExporter {
         rustflags(triple)
     }
 
-    /// Bakes the game's pack for the target with its tools.
+    /// Bakes the game's pack for the target with its tools; for an edition
+    /// with a content root, with the tool program built from that folder.
     fn prepare(
         &self,
         cx: &ExportCx,
@@ -865,12 +873,7 @@ impl Exporter for PlaydateExporter {
             ))
         })?;
         bake_audio(cx, game)?;
-        let input = BakeInput {
-            target: Some(cx.profile.clone()),
-            out: Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/"))),
-            ..BakeInput::default()
-        };
-        let answer = bake(game, project, &input);
+        let answer = bake(game, project, &bake_input(cx));
         if answer.ok {
             Ok(())
         } else {

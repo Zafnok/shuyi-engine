@@ -90,6 +90,9 @@ Ship only what `check --target` passes.
      the demo leaves off, its files out of the demo's folder, and a canary
      in each file of what isn't out yet. It goes in
      `dist/export/<edition>/<target>/`, and both reports name the edition.
+     On the Playdate the edition's pack is baked from its `content` folder
+     by the tool program built with it (`cargo shuyi bake --content
+     <folder>`), and the edition says `default_features: false`.
 
    A release build on Windows opens no console window.
 

@@ -113,5 +113,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0098](0098-the-readers-filter-leaves-a-known-audiences-notes-out-whole-and-show-and-hide-are-for-the-notes-a-reader-sees.md) | The reader's filter leaves a known audience's notes out whole, and show and hide are for the notes a reader sees | Accepted; amends ADR-0090 §6 |
 | [0099](0099-ducking-rules-in-the-audio-manifest-a-voice-the-device-reports-and-a-straight-line-in-whole-milliseconds-in-shuyi-ui.md) | Ducking: rules in the audio manifest, a voice the device reports, and a straight line in whole milliseconds in shuyi-ui | Accepted; extends ADR-0091 |
 | [0100](0100-editions-named-builds-in-shuyi-ron-a-content-root-handed-to-the-build-and-default-features-always-said.md) | Editions: named builds in shuyi.ron, a content root handed to the build, and default features always said | Accepted; builds on ADR-0070 and ADR-0096 |
+| [0101](0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md) | An edition's pack is baked by the game's tool program built with its content root | Accepted; amends ADR-0100 §7 |
 
 Template: [`0000-template.md`](0000-template.md).

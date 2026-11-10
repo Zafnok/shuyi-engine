@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use shuyi_assets::pack::{self as assets_pack, Content, PackInfo};
 
 use super::super::live_link::{Node, refuse, unwanted};
-use super::super::{CONTENT, EditionBuild, ExportCx, desktop, find, web};
+use super::super::{CONTENT, EditionBuild, ExportCx, desktop, find, playdate, web};
 use super::*;
 use crate::contract::export::{ExportInput, export, parse_args};
 use crate::project::{Config, Project};
@@ -329,8 +329,9 @@ fn an_edition_that_cant_be_built_as_it_says_is_refused_before_anything_is_built(
         refused.message().contains("`never_features`"),
         "{refused:?}"
     );
-    // The Playdate builds no default features and bakes its pack from the
-    // game's tools: an edition saying otherwise is refused as it prepares.
+    // The Playdate builds no default features: an edition keeping them is
+    // refused as it prepares. One with a content root goes on to its bake
+    // (ADR-0101), which needs the game's tools.
     let playdate = find("playdate").unwrap();
     let mut cx = ExportCx::of(&project, &desktop::WINDOWS, &input("windows", None)).unwrap();
     for (edition, why) in [
@@ -340,7 +341,7 @@ fn an_edition_that_cant_be_built_as_it_says_is_refused_before_anything_is_built(
                 content: Some("game/files".to_owned()),
                 ..EditionBuild::new("demo", false)
             },
-            "`game/files`",
+            "no `game` part",
         ),
     ] {
         cx.edition = Some(edition);
@@ -587,5 +588,197 @@ fn an_edition_ships_another_program_of_the_package_with_its_own_files() {
         assert!(!holds(bytes, canary), "{canary}");
     }
     assert!(holds(bytes, "maps/first.ron"));
+    fs::remove_dir_all(&project.root).unwrap();
+}
+
+/// The project file of the stand-in game with a tool program: a public demo
+/// held to the canaries of the full game's files, and the full game.
+const TOOL_PROJECT: &str = r#"(
+    game: (package: "game", bin: "tools"),
+    editions: {
+        "public-demo": (
+            default_features: false,
+            content: "game/files-demo",
+            disclosure: (
+                allowed_pack_entries: ["maps/first.ron"],
+                forbidden_paths: ["maps/future.ron"],
+                canaries: ["EDITIONS-FUTURE-MAP-CANARY", "EDITIONS-DIALOGUE-CANARY"],
+            ),
+        ),
+        "full": (default_features: false, content: "game/files"),
+    },
+)"#;
+
+/// The stand-in's tool program: its `bake` writes a pack of the files it
+/// embeds (its content root, [`BUILD`]) where `--out` says, and answers as
+/// a game's tool program does.
+const TOOLS: &str = r#"include!(concat!(env!("OUT_DIR"), "/content.rs"));
+
+use std::collections::BTreeMap;
+
+use shuyi_assets::pack::{self, Content, PackInfo};
+
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    assert_eq!(args.first().map(String::as_str), Some("bake"), "{args:?}");
+    let value = |flag: &str| {
+        let at = args.iter().position(|arg| arg == flag).unwrap();
+        args[at + 1].clone()
+    };
+    let info = PackInfo {
+        stamp: "the stand-in 1".to_owned(),
+        target: Some(value("--target")),
+        ..PackInfo::default()
+    };
+    let files: BTreeMap<String, Content> = FILES
+        .iter()
+        .map(|(name, bytes)| ((*name).to_owned(), Content::Raw(bytes.to_vec())))
+        .collect();
+    let out = std::path::PathBuf::from(value("--out"));
+    std::fs::create_dir_all(out.parent().unwrap()).unwrap();
+    std::fs::write(&out, pack::write(&info, &files)).unwrap();
+    println!(
+        "{{\"contract\": CONTRACT, \"op\": \"bake\", \"ok\": true, \"result\": {{\"errors\": [], \
+         \"pack\": null}}, \"error\": null, \"code\": null, \"help\": null, \"limits\": []}}"
+    );
+}
+"#;
+
+/// The stand-in game with a tool program, for test `name`, fresh: its full
+/// files in `game/files` and the demo's in `game/files-demo`. Its program
+/// depends on the engine's `shuyi-assets` alone, resolved from the engine's
+/// lock file with no network, and is built in a folder kept between runs.
+fn tool_game(name: &str) -> Project {
+    let engine = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let engine = std::path::absolute(&engine).unwrap();
+    let root = std::env::temp_dir().join(format!("shuyi-editions-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    write(
+        &root.join("Cargo.toml"),
+        b"[workspace]\nresolver = \"2\"\nmembers = [\"game\"]\n",
+    );
+    for file in ["Cargo.lock", "rust-toolchain.toml"] {
+        write(&root.join(file), &fs::read(engine.join(file)).unwrap());
+    }
+    let target = std::env::temp_dir().join("shuyi-editions-tool-game-target");
+    let config = format!(
+        "[build]\ntarget-dir = '{}'\n\n[net]\noffline = true\n",
+        target.display()
+    );
+    write(&root.join(".cargo/config.toml"), config.as_bytes());
+    let manifest = format!(
+        "[package]\nname = \"game\"\nversion = \"0.1.0\"\nedition = \"2021\"\npublish = false\n\n\
+         [dependencies]\nshuyi-assets = {{ path = '{}', default-features = false }}\n",
+        engine.join("crates/assets").display()
+    );
+    write(&root.join("game/Cargo.toml"), manifest.as_bytes());
+    write(&root.join("game/build.rs"), BUILD.as_bytes());
+    write(&root.join("game/src/main.rs"), b"fn main() {}\n");
+    let tools = TOOLS.replace("CONTRACT", &crate::contract::VERSION.to_string());
+    write(&root.join("game/src/bin/tools.rs"), tools.as_bytes());
+    let full = root.join("game/files");
+    write(&full.join("maps/first.ron"), b"(name: \"the first map\")\n");
+    write(
+        &full.join("maps/future.ron"),
+        format!("(name: \"{MAP}\")\n").as_bytes(),
+    );
+    write(
+        &full.join("dialogue/act2.dlg"),
+        format!("= act two\n{DIALOGUE}\n").as_bytes(),
+    );
+    let demo = root.join("game/files-demo");
+    write(&demo.join("maps/first.ron"), b"(name: \"the first map\")\n");
+    write(&root.join("shuyi.ron"), TOOL_PROJECT.as_bytes());
+    Project::load(&root).unwrap()
+}
+
+/// The Playdate export of `edition` of `project`, as far as its `prepare`.
+fn playdate_cx(project: &Project, edition: &str) -> ExportCx {
+    let content = project.config.editions[edition].content.clone();
+    let shown = format!("dist/export/{edition}/playdate");
+    ExportCx {
+        target: "playdate".to_owned(),
+        profile: "playdate".to_owned(),
+        workspace: project.root.clone(),
+        target_dir: project.root.join("target"),
+        out: project.root.join(&shown),
+        shown,
+        root: project.root.clone(),
+        release: false,
+        package: "game".to_owned(),
+        bin: "game".to_owned(),
+        version: "0.1.0".to_owned(),
+        title: "Game".to_owned(),
+        game: Vec::new(),
+        web: None,
+        app: None,
+        features: args(&[playdate::FEATURE]),
+        turned_on: Vec::new(),
+        beside: Vec::new(),
+        wasm_opt: crate::project::WasmOptRule::Required,
+        edition: Some(EditionBuild {
+            content,
+            ..EditionBuild::new(edition, false)
+        }),
+    }
+}
+
+#[test]
+fn a_playdate_editions_pack_is_baked_from_its_own_folder_and_holds_nothing_else() {
+    let project = tool_game("playdate");
+    let demo_part = project.config.editions["public-demo"]
+        .disclosure
+        .clone()
+        .unwrap();
+    // The game's tools running now embed neither folder: the bake is the
+    // tool program's, built from the edition's.
+    let running = crate::contract::fake::Fake::default();
+    for (edition, entries) in [
+        ("public-demo", vec!["maps/first.ron"]),
+        (
+            "full",
+            vec!["dialogue/act2.dlg", "maps/first.ron", "maps/future.ron"],
+        ),
+    ] {
+        let cx = playdate_cx(&project, edition);
+        let input = playdate::bake_input(&cx);
+        assert_eq!(
+            input.content, project.config.editions[edition].content,
+            "{edition}"
+        );
+        playdate::PLAYDATE
+            .prepare(&cx, &project, Some(&running))
+            .unwrap_or_else(|e| panic!("{edition}: {e:?}"));
+        // The pack, as the .pdx would hold it, read back by the gate.
+        let gate = project.root.join("gate").join(edition);
+        let tree = gate.join("game.pdx");
+        write(
+            &tree.join("game.pack"),
+            &fs::read(cx.out.join("game.pack")).unwrap(),
+        );
+        let mut shipped = disclosure::Shipped::new(tree, None, "");
+        shipped.source(
+            "game.pack",
+            disclosure::FileKind::Pack,
+            "the game's bundle, baked",
+        );
+        let report = disclosure::inspect(
+            &gate,
+            Some(&demo_part),
+            &shipped,
+            1 << 30,
+            disclosure::BuildInputs::default(),
+        )
+        .unwrap();
+        let held: Vec<&str> = report
+            .pack_entries
+            .iter()
+            .map(|entry| entry.path.as_str())
+            .collect();
+        assert_eq!(held, entries, "{edition}");
+        // The demo passes its canaries; the full game's pack, held to the
+        // demo's part, would not.
+        assert_eq!(report.ok, edition == "public-demo", "{edition}: {report:?}");
+    }
     fs::remove_dir_all(&project.root).unwrap();
 }
