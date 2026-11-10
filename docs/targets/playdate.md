@@ -80,7 +80,11 @@ pack, so the pack holds what the edition's program would embed and none of
 `files/` the folder lacks ([ADR-0101](../adr/0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md)).
 `cargo shuyi bake --target playdate --content <folder>` bakes the same pack
 by hand. The first such export builds every dependency of the tool program
-once more. The sounds and music are still the running tools' (ticket 3306).
+once more. The same program bakes the sounds and music (`bake --audio`), so
+they too are the folder's: a sound of `files/` the folder lacks isn't in the
+`.pdx` ([ADR-0102](../adr/0102-bake-writes-a-targets-sounds-and-music-too-so-an-editions-come-from-its-content-root.md)).
+Music the game's tools read from the project's own `music/` folder, not
+through their files, is that folder's in every edition.
 An edition with `default_features: true` is refused here (the library never
 keeps them).
 

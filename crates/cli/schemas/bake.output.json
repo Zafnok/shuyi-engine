@@ -99,6 +99,16 @@
       "description": "A pack `bake` wrote.",
       "type": "object",
       "properties": {
+        "audio_files": {
+          "description": "How many sound and music files were written to the audio folder\n(`--audio`); none if it wasn't asked for, or the game's tools offer no\naudio.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "default": null,
+          "minimum": 0
+        },
         "bake_us": {
           "description": "How long baking took, in microseconds.",
           "type": "integer",

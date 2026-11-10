@@ -25,6 +25,8 @@ const DIALOGUE: &str = "EDITIONS-DIALOGUE-CANARY";
 const CODE: &str = "EDITIONS-FULL-CODE-CANARY";
 const PACKED: &str = "EDITIONS-PACKED-CANARY";
 const CANARIES: [&str; 4] = [MAP, DIALOGUE, CODE, PACKED];
+/// A sound only the full game has.
+const SOUND: &str = "EDITIONS-SOUND-CANARY";
 
 /// The project file: a public demo held to the canaries, and the full game.
 const PROJECT: &str = r#"(
@@ -610,8 +612,9 @@ const TOOL_PROJECT: &str = r#"(
 )"#;
 
 /// The stand-in's tool program: its `bake` writes a pack of the files it
-/// embeds (its content root, [`BUILD`]) where `--out` says, and answers as
-/// a game's tool program does.
+/// embeds (its content root, [`BUILD`]) where `--out` says, its sounds
+/// (`audio/`) where `--audio` says, as they are, and answers as a game's tool
+/// program does.
 const TOOLS: &str = r#"include!(concat!(env!("OUT_DIR"), "/content.rs"));
 
 use std::collections::BTreeMap;
@@ -632,8 +635,17 @@ fn main() {
     };
     let files: BTreeMap<String, Content> = FILES
         .iter()
+        .filter(|(name, _)| !name.starts_with("audio/"))
         .map(|(name, bytes)| ((*name).to_owned(), Content::Raw(bytes.to_vec())))
         .collect();
+    if args.iter().any(|arg| arg == "--audio") {
+        let folder = std::path::PathBuf::from(value("--audio"));
+        for (name, bytes) in FILES.iter().filter(|(name, _)| name.starts_with("audio/")) {
+            let to = folder.join(name);
+            std::fs::create_dir_all(to.parent().unwrap()).unwrap();
+            std::fs::write(&to, bytes).unwrap();
+        }
+    }
     let out = std::path::PathBuf::from(value("--out"));
     std::fs::create_dir_all(out.parent().unwrap()).unwrap();
     std::fs::write(&out, pack::write(&info, &files)).unwrap();
@@ -645,7 +657,8 @@ fn main() {
 "#;
 
 /// The stand-in game with a tool program, for test `name`, fresh: its full
-/// files in `game/files` and the demo's in `game/files-demo`. Its program
+/// files in `game/files` and the demo's in `game/files-demo`, each with its
+/// sounds. Its program
 /// depends on the engine's `shuyi-assets` alone, resolved from the engine's
 /// lock file with no network, and is built in a folder kept between runs.
 fn tool_game(name: &str) -> Project {
@@ -686,8 +699,11 @@ fn tool_game(name: &str) -> Project {
         &full.join("dialogue/act2.dlg"),
         format!("= act two\n{DIALOGUE}\n").as_bytes(),
     );
+    write(&full.join("audio/sfx/blip.wav"), b"blip");
+    write(&full.join("audio/sfx/vault.wav"), SOUND.as_bytes());
     let demo = root.join("game/files-demo");
     write(&demo.join("maps/first.ron"), b"(name: \"the first map\")\n");
+    write(&demo.join("audio/sfx/blip.wav"), b"blip");
     write(&root.join("shuyi.ron"), TOOL_PROJECT.as_bytes());
     Project::load(&root).unwrap()
 }
@@ -724,7 +740,7 @@ fn playdate_cx(project: &Project, edition: &str) -> ExportCx {
 }
 
 #[test]
-fn a_playdate_editions_pack_is_baked_from_its_own_folder_and_holds_nothing_else() {
+fn a_playdate_editions_pack_and_sounds_are_baked_from_its_own_folder_and_hold_nothing_else() {
     let project = tool_game("playdate");
     let demo_part = project.config.editions["public-demo"]
         .disclosure
@@ -733,11 +749,12 @@ fn a_playdate_editions_pack_is_baked_from_its_own_folder_and_holds_nothing_else(
     // The game's tools running now embed neither folder: the bake is the
     // tool program's, built from the edition's.
     let running = crate::contract::fake::Fake::default();
-    for (edition, entries) in [
-        ("public-demo", vec!["maps/first.ron"]),
+    for (edition, entries, sounds) in [
+        ("public-demo", vec!["maps/first.ron"], vec!["blip.wav"]),
         (
             "full",
             vec!["dialogue/act2.dlg", "maps/first.ron", "maps/future.ron"],
+            vec!["blip.wav", "vault.wav"],
         ),
     ] {
         let cx = playdate_cx(&project, edition);
@@ -749,6 +766,19 @@ fn a_playdate_editions_pack_is_baked_from_its_own_folder_and_holds_nothing_else(
         playdate::PLAYDATE
             .prepare(&cx, &project, Some(&running))
             .unwrap_or_else(|e| panic!("{edition}: {e:?}"));
+        // Its sounds, as `pdc` would take them: the edition's own, written by
+        // the same program (ADR-0102).
+        let sfx = cx.out.join("baked-audio/audio/sfx");
+        let mut baked: Vec<String> = fs::read_dir(&sfx)
+            .unwrap_or_else(|e| panic!("{edition}: {}: {e}", sfx.display()))
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        baked.sort();
+        assert_eq!(baked, sounds, "{edition}");
+        let holds_sound = baked
+            .iter()
+            .any(|name| holds(&fs::read(sfx.join(name)).unwrap(), SOUND));
+        assert_eq!(holds_sound, edition == "full", "{edition}");
         // The pack, as the .pdx would hold it, read back by the gate.
         let gate = project.root.join("gate").join(edition);
         let tree = gate.join("game.pdx");

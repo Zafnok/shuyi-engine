@@ -390,11 +390,16 @@ fn the_shim_is_the_backends() {
 }
 
 #[test]
-fn the_pack_is_baked_from_the_editions_content_root_if_it_has_one() {
+fn the_pack_and_audio_are_baked_from_the_editions_content_root_if_it_has_one() {
     let mut cx = cx(true);
     let input = bake_input(&cx);
     assert_eq!(input.target.as_deref(), Some("playdate"));
     assert_eq!(input.out.as_deref(), Some("dist/export/playdate/game.pack"));
+    // The sounds and music are baked by the same bake, beside the pack.
+    assert_eq!(
+        input.audio.as_deref(),
+        Some("dist/export/playdate/baked-audio")
+    );
     assert_eq!(input.content, None, "the files the game's tools embed");
     cx.edition = Some(super::super::EditionBuild::new("demo", false));
     assert_eq!(bake_input(&cx).content, None, "an edition with no folder");
@@ -402,7 +407,12 @@ fn the_pack_is_baked_from_the_editions_content_root_if_it_has_one() {
         content: Some("game/files-demo".to_owned()),
         ..super::super::EditionBuild::new("demo", false)
     });
-    assert_eq!(bake_input(&cx).content.as_deref(), Some("game/files-demo"));
+    let input = bake_input(&cx);
+    assert_eq!(input.content.as_deref(), Some("game/files-demo"));
+    assert_eq!(
+        input.audio.as_deref(),
+        Some("dist/export/playdate/baked-audio")
+    );
     assert!(edition_fits(cx.edition.as_ref().unwrap()).is_ok());
     let full = super::super::EditionBuild::new("full", true);
     let refused = edition_fits(&full).unwrap_err();
