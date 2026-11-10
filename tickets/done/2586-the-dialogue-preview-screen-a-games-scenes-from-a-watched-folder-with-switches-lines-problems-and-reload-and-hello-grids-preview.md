@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2585"]
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 2586 — The dialogue preview screen
@@ -150,18 +150,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On Hello, Grid's preview, with a character switched off, the
+- [x] On Hello, Grid's preview, with a character switched off, the
       scene plays its `@else` line (Harness test reading the view).
-- [ ] A changed file, through the headless backend's script, is played
+- [x] A changed file, through the headless backend's script, is played
       on the next frame from the same text box; a broken one keeps the
       last good scene and lists its problem with file and line (Harness
       tests).
-- [ ] A jump to a typed line number shows the text box it falls in
+- [x] A jump to a typed line number shows the text box it falls in
       (Harness test reading the view).
-- [ ] The preview's controls are actions a game binds; no key is named
+- [x] The preview's controls are actions a game binds; no key is named
       in code or text (`input-actions` skill).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -172,5 +172,102 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **`shuyi_ui::dialogue::preview`** (new): the `DialoguePreview` screen,
+  split as every screen is: logic (`preview.rs`), a plain-data view
+  (`view.rs`: `PreviewView` and its rows, each `#[non_exhaustive]` with a
+  `new`, ADR-0039 kind 3) and a glyph skin (`glyph.rs`). Four tabs:
+  Scenes (by file, in file order, a file with problems marked),
+  Switches (one per character of `Scene::conditions`, all there at
+  first; the game's own; and the strip's), Lines (`text_boxes`, and a
+  line box that takes typed digits or the cursor and plays from
+  `text_box_at`), Problems (file, line, message, and the fix: the part
+  of a check's message after its first `; `). While a scene plays the
+  game's screen takes the input but Cancel, which brings the tabs back
+  over it; a strip on the top row shows the file, the line and the
+  line's direction.
+- **What the game hands in** is a trait, `PreviewGame<G>`: its
+  `Directive` and `Rules` types, `rules`, `problems` (defaulted),
+  `switches` (defaulted) and `play`, which builds the game's dialogue
+  screen for a `Play` (scene, present, text box, switch values;
+  `Play::player` starts a `DialoguePlayer` there). A trait, not a struct
+  of functions, because the game's lines and rules are types, which a
+  struct of functions would carry as type parameters on every use (said
+  on the trait). The screen it builds implements `PreviewScreen`
+  (`showing()`, `Showing::of(&player)`), so the preview follows the text
+  box the writer is on.
+- **Reload:** the `DialogueFolder` module keeps the folder's `.dlg` files
+  on the context (`DialogueFiles`, with a version) and reads them again
+  when a `.dlg` of it changes (`Module::reloaded`); the screen takes them
+  on its next update. Each file is parsed alone, so a file that no longer
+  parses keeps its last good scenes and lists its problems; the format's
+  checks (`scripts_from_parsed`) and the game's run over the files that
+  parsed. The scene playing goes on from the same text box if it still
+  has one, else from its start; a scene taken out stops.
+- **Controls** are the six `UiAction` moves a game already maps its
+  actions onto, and typed digits in the line box (the text box's fixed
+  keys finish, delete and cancel it, as the options' number box).
+- **Hello, Grid:** `hello_grid::preview` (`HelloPreview`, its rules,
+  `game`, `start`), a second binary `hello-grid-preview`
+  (`src/bin/preview.rs`, reading its folder with `read_watched_folder`),
+  and a `--preview` start option for its tools, so the MCP session
+  starts it. `files/intro.dlg` gained an `@if guide` block around its
+  last line; the game plays everyone there, so its scene is unchanged.
+  Checked through the MCP session tools: the tabs, the strip, the guide
+  sent away and the `@else` line in the game's text box.
+- **Tests:** 22 unit tests over the view on the toy game (the list, the
+  switches, the lines and the line box, the problems, reload, a broken
+  file, the skin's rows) and 7 Harness tests of Hello, Grid's preview
+  (`tests/it/preview.rs`), the reload ones with debug tools off and
+  `watch_files(true)`.
+- **Docs:** the book's chapter 6 section *A preview for your writer*,
+  its code `site/snippets/src/preview.rs` (with a Harness test) and the
+  words in `site/snippets/files/en.ron`; the `shuyi-dialogue` skill's
+  section *A preview for your writer*; Hello, Grid's README. The
+  preview's text keys (`preview.*`) are in the toy's and Hello, Grid's
+  English.
+
+Deviations:
+
+- No ADR: the one choice the ticket left open (trait or struct of
+  functions) is said on the trait; the rest follows ADR-0040 (a module
+  with state on the context), ADR-0071/0095 (reload) and ADR-0039.
+- The strip is turned on and off from a row of the Switches tab rather
+  than by an action of its own, so the preview needs no action a game
+  lacks.
+- The Lines tab and the reload follow each reply choice's first reply,
+  as `text_boxes` and `from_text_box` do with no replies given.
+- `cargo shuyi web` builds every binary of a package, so
+  `hello-grid-preview` builds for the web too: there, with no folder to
+  read, it plays the game's own scene file and reads nothing again (a
+  writer's web preview stays 3092's dropped files).
+- The unit tests that change a layer's bytes are `std`-only
+  (`Layer::replace` is). Seen, not done: on this machine the `shuyi-ui`
+  tests without `std` don't build, for `frame/raster/card/tests.rs`
+  (`vec!` and `String` unimported), a file this ticket doesn't touch.
+- A short-path game (`BasicGame`, `run_game`) can't start a preview
+  binary without leaving the short path, so the book shows the preview's
+  parts and its test, and names Hello, Grid's binary for the program:
+  **2587** gives the short path a preview binary in one call.
+
+Follow-up tickets: 2587 (a dialogue preview on the short path). 3082's
+clause now says it adds the editions sentence to the book's section.
+
+The game: game#0764 needs this; the game's PR that moves the pin is
+game#0764's own (it writes the game's `PreviewGame` and binary).
+
+Breaking: hello-grid: tests/golden/hello-grid.ron "asset en.ron", "asset intro.dlg" and "fingerprint files": the example's English has the preview's words and its scene an `@if` block; only the example's table moves, and a game changes nothing.
+
+```migration
+since: 0.1.0
+what: Hello, Grid's golden table moved with its files; nothing in a game changes.
+old: the example's table before
+new: the example's table blessed
+before: |
+  // nothing
+after: |
+  // nothing
+```
+
+No other break: every change to the engine's public API is an addition.
