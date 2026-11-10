@@ -140,6 +140,7 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         }],
         signing: Signing::None,
         debug: Some("g-0.1.0-windows.debug".to_owned()),
+        edition: Some("public-demo".to_owned()),
     };
     let said = text(&output).replace('\\', "/");
     for line in [
@@ -147,6 +148,7 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         "  g-0.1.0-windows.zip: 12 bytes\n",
         "  debug file: dist/export/windows/g-0.1.0-windows.debug\n",
         "  signing: none\n",
+        "  edition: public-demo\n",
         "  report: dist/export/windows/export-report.json\n",
         "  warning: targets.\"desktop\".text_px: small\n",
     ] {

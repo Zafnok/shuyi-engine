@@ -28,8 +28,18 @@
 //! it, or a dependency asking for the engine's. Each build is resolved by
 //! Cargo and refused before anything is prepared or built ([`live_link`]).
 //!
+//! `shuyi.ron`'s `editions` name what one build of the game is
+//! (`export --edition public-demo`), on any target: its package and
+//! program, whether it keeps the package's default features (always said),
+//! its features, the folder of files its program embeds, what ships beside it
+//! and what its packages may hold, each in place of what the target would
+//! build ([`EditionBuild`], ADR-0100). Its content root reaches the build as
+//! [`CONTENT`], and a build without one has that variable taken away. Its
+//! `never_features` are refused in the build as Cargo resolves it, as the
+//! debug features are.
+//!
 //! Every final package is then read back and written down, and held to the
-//! game's `disclosure` part if it has one ([`disclosure`]).
+//! game's `disclosure` part, or its edition's, if it has one ([`disclosure`]).
 
 pub mod archive;
 mod desktop;
@@ -52,7 +62,15 @@ use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{AppPart, Beside, Config, ExportPart, GameProgram, Project, WasmOptRule, Web};
+use crate::project::{
+    AppPart, Beside, Config, Edition, ExportPart, GameProgram, Project, WasmOptRule, Web,
+};
+
+/// The variable an export of an edition with a content root sets for its
+/// builds: the folder's absolute path, which the game's build script hands to
+/// what embeds its files (`include_dir!`). A build of no such edition runs
+/// without it, whatever the shell has.
+pub const CONTENT: &str = "SHUYI_CONTENT";
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -242,6 +260,36 @@ pub struct ExportCx {
     pub beside: Vec<Beside>,
     /// Whether a release web build needs `wasm-opt`: the `export` part's.
     pub wasm_opt: WasmOptRule,
+    /// The edition it builds, if `--edition` named one.
+    pub edition: Option<EditionBuild>,
+}
+
+/// What an export takes of the edition it builds, beside the package, the
+/// program, the features and what ships beside it, which are in
+/// [`ExportCx`]'s own fields.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct EditionBuild {
+    /// Its name in `shuyi.ron`'s `editions`.
+    pub name: String,
+    /// Whether its builds keep the package's default features.
+    pub default_features: bool,
+    /// The features its builds never have on: the package's own, or
+    /// `package/feature`.
+    pub never_features: Vec<String>,
+    /// Its content root, from the project's root, written with `/`.
+    pub content: Option<String>,
+}
+
+impl EditionBuild {
+    /// The edition `name`, which keeps the package's default features or not.
+    pub fn new(name: impl Into<String>, default_features: bool) -> Self {
+        Self {
+            name: name.into(),
+            default_features,
+            ..Self::default()
+        }
+    }
 }
 
 /// What a run step works from.
@@ -299,7 +347,11 @@ impl ExportCx {
             .export
             .as_ref()
             .filter(|_| exporter.takes_export_part());
-        let choice = Choice::of(config.export.as_ref(), exporter)?;
+        let edition = edition_of(project, input.edition.as_deref())?;
+        let mut choice = Choice::of(config.export.as_ref(), exporter)?;
+        if let Some((name, edition)) = edition {
+            choice = Choice::of_edition(name, edition, choice);
+        }
         let named = part.and_then(|part| part.package.as_deref());
         let package = choice
             .package
@@ -314,15 +366,11 @@ impl ExportCx {
         let (package_version, bins, features) = metadata(root, &package)?;
         let features: Vec<String> = features.into_keys().collect();
         let version = version(config.app.as_ref(), package_version);
-        let bin = match web {
-            Some(web) if exporter.id() == "web" => web.bin.clone(),
-            _ if !exporter.builds_a_program() => package.clone(),
-            _ => program(&package, &bins)?,
-        };
-        let shown = input
-            .out
-            .clone()
-            .unwrap_or_else(|| format!("dist/export/{}", exporter.id()));
+        let (bin, web) = program_and_web(exporter, web, edition, &package, &bins)?;
+        let shown = input.out.clone().unwrap_or_else(|| match edition {
+            Some((name, _)) => format!("dist/export/{name}/{}", exporter.id()),
+            None => format!("dist/export/{}", exporter.id()),
+        });
         let out = root.join(&shown);
         fs::create_dir_all(&out)
             .map_err(|e| ExportError::Build(format!("create {}: {e}", out.display())))?;
@@ -331,10 +379,10 @@ impl ExportCx {
             None => Vec::new(),
         };
         let turned_on = choice.turned_on(&input.without, &input.with, &package, &features)?;
-        let mut beside = present(root, part)?;
-        if let Some(web) = web.filter(|_| exporter.id() == "web") {
-            beside.retain(|item| !in_web_build(item, web));
-        }
+        let beside = beside_of(root, exporter, part, edition, web.as_ref())?;
+        let edition = edition
+            .map(|(name, edition)| EditionBuild::of(root, name, edition, &turned_on))
+            .transpose()?;
         Ok(Self {
             target: exporter.id().to_owned(),
             profile: exporter.profile().to_owned(),
@@ -345,11 +393,13 @@ impl ExportCx {
             shown,
             release: input.release,
             package,
-            title: web.map_or_else(|| bin.clone(), |web| web.title.clone()),
+            title: web
+                .as_ref()
+                .map_or_else(|| bin.clone(), |web| web.title.clone()),
             bin,
             version,
             game,
-            web: web.cloned(),
+            web,
             app: config.app.clone(),
             features,
             turned_on,
@@ -358,13 +408,45 @@ impl ExportCx {
                 .export
                 .as_ref()
                 .map_or_else(WasmOptRule::default, |part| part.wasm_opt),
+            edition,
         })
     }
 
-    /// The package's name without its extension:
-    /// `<program>-<version>-<target>`.
+    /// The package's name without its extension: `<program>-<version>-<target>`,
+    /// or `<program>-<version>-<edition>-<target>` for an edition.
     pub fn base(&self) -> String {
-        format!("{}-{}-{}", self.bin, self.version, self.target)
+        match &self.edition {
+            Some(edition) => format!(
+                "{}-{}-{}-{}",
+                self.bin, self.version, edition.name, self.target
+            ),
+            None => format!("{}-{}-{}", self.bin, self.version, self.target),
+        }
+    }
+
+    /// Whether its builds keep the package's default features: unless its
+    /// edition says not.
+    pub fn default_features(&self) -> bool {
+        self.edition
+            .as_ref()
+            .is_none_or(|edition| edition.default_features)
+    }
+
+    /// The absolute path of its edition's content root, if it has one.
+    pub fn content(&self) -> Option<PathBuf> {
+        self.edition
+            .as_ref()
+            .and_then(|edition| edition.content.as_ref())
+            .map(|content| self.root.join(content))
+    }
+
+    /// Hands `cargo` its edition's content root as [`CONTENT`], or takes the
+    /// variable away if it has none.
+    pub fn content_env(&self, cargo: &mut Command) {
+        match self.content() {
+            Some(content) => cargo.env(CONTENT, content),
+            None => cargo.env_remove(CONTENT),
+        };
     }
 
     /// `cargo build`'s arguments for the program and `triple`.
@@ -375,6 +457,9 @@ impl ExportCx {
         args.extend(["--target".to_owned(), triple.to_owned()]);
         if self.release {
             args.push("--release".to_owned());
+        }
+        if !self.default_features() {
+            args.push("--no-default-features".to_owned());
         }
         if !self.turned_on.is_empty() {
             args.extend(["--features".to_owned(), self.turned_on.join(",")]);
@@ -416,6 +501,7 @@ impl ExportCx {
         no_debug_features(&args)?;
         let mut cargo = Command::new(crate::cargo());
         cargo.args(&args).current_dir(&self.root);
+        self.content_env(&mut cargo);
         if self.release {
             let outside = paths::outside(&self.root, &self.workspace);
             let remaps = paths::remaps(&self.workspace, &self.target_dir, &self.package, &outside);
@@ -478,6 +564,7 @@ impl ExportCx {
             signing,
             debug,
             beside: Vec::new(),
+            edition: self.edition.as_ref().map(|edition| edition.name.clone()),
         }
     }
 
@@ -597,12 +684,22 @@ struct Choice<'a> {
     package: Option<String>,
     /// The features it turns on.
     features: &'a [String],
-    /// Where they are listed, for a refusal: `export.features` or
-    /// `export.targets.<id>.features`.
+    /// Where they are listed, for a refusal: `export.features`,
+    /// `export.targets.<id>.features` or `editions.<name>.features`.
     listed_in: String,
 }
 
 impl<'a> Choice<'a> {
+    /// What the edition `name`, `edition`, builds in place of `target`'s
+    /// choice: its package, else the target's, and its features.
+    fn of_edition(name: &str, edition: &'a Edition, target: Self) -> Self {
+        Self {
+            package: edition.package.clone().or(target.package),
+            features: &edition.features,
+            listed_in: format!("`editions.{name}.features`"),
+        }
+    }
+
     /// What `part` says `exporter`'s target builds: its own entry's package
     /// and features, each when the entry names it, else the part's features
     /// if the target takes the part. An entry of a target with no exporter is
@@ -675,11 +772,11 @@ impl<'a> Choice<'a> {
     }
 }
 
-/// What `part` ships that is there: one that isn't refuses the export,
-/// unless it is optional.
-fn present(root: &Path, part: Option<&ExportPart>) -> Result<Vec<Beside>, ExportError> {
+/// What of `listed` is there: one that isn't refuses the export, unless it is
+/// optional.
+fn present(root: &Path, listed: &[Beside]) -> Result<Vec<Beside>, ExportError> {
     let mut found = Vec::new();
-    for item in part.map_or(&[][..], |part| &part.beside) {
+    for item in listed {
         beside_name(item)?;
         if root.join(&item.path).exists() {
             found.push(item.clone());
@@ -692,6 +789,157 @@ fn present(root: &Path, part: Option<&ExportPart>) -> Result<Vec<Beside>, Export
         }
     }
     Ok(found)
+}
+
+/// The edition `name` of `project`'s `editions`, with its name, if `name` is
+/// given: one it doesn't have refuses the export, naming those it has.
+fn edition_of<'a>(
+    project: &'a Project,
+    name: Option<&str>,
+) -> Result<Option<(&'a str, &'a Edition)>, ExportError> {
+    let Some(name) = name else {
+        return Ok(None);
+    };
+    let editions = &project.config.editions;
+    editions
+        .get_key_value(name)
+        .map(|(name, edition)| Some((name.as_str(), edition)))
+        .ok_or_else(|| {
+            let has = if editions.is_empty() {
+                "it has none".to_owned()
+            } else {
+                let names: Vec<&str> = editions.keys().map(String::as_str).collect();
+                format!("it has {}", names.join(", "))
+            };
+            ExportError::Setup(format!(
+                "--edition {name}: {}'s `editions` has no such edition ({has})",
+                crate::project::FILE
+            ))
+        })
+}
+
+/// The program `exporter` ships of `package`, whose programs are `bins`, and
+/// the web build's part `web` it builds with: the package itself for a
+/// library, else the program `edition` names, else the web build's on the web
+/// (when no edition changes its package), else the package's own. An
+/// edition's web build builds its package and program.
+fn program_and_web(
+    exporter: &dyn Exporter,
+    web: Option<&Web>,
+    edition: Option<(&str, &Edition)>,
+    package: &str,
+    bins: &[String],
+) -> Result<(String, Option<Web>), ExportError> {
+    let on_web = exporter.id() == "web";
+    let named = edition.and_then(|(_, edition)| edition.bin.as_deref());
+    let bin = match (web, named) {
+        _ if !exporter.builds_a_program() => package.to_owned(),
+        (_, Some(bin)) => chosen(edition, package, bins, bin)?,
+        (Some(web), None) if on_web && (edition.is_none() || web.package == package) => {
+            web.bin.clone()
+        }
+        _ => program(package, bins)?,
+    };
+    let web = web.map(|web| {
+        let mut web = web.clone();
+        if on_web && edition.is_some() {
+            package.clone_into(&mut web.package);
+            web.bin.clone_from(&bin);
+        }
+        web
+    });
+    Ok((bin, web))
+}
+
+/// What ships beside the program `exporter` packages: `edition`'s list, else
+/// `part`'s, those there, less what the web build `web` already ships; none
+/// for a target that takes no `export` part.
+fn beside_of(
+    root: &Path,
+    exporter: &dyn Exporter,
+    part: Option<&ExportPart>,
+    edition: Option<(&str, &Edition)>,
+    web: Option<&Web>,
+) -> Result<Vec<Beside>, ExportError> {
+    if !exporter.takes_export_part() {
+        return Ok(Vec::new());
+    }
+    let listed = match edition.and_then(|(_, edition)| edition.beside.as_deref()) {
+        Some(beside) => beside,
+        None => part.map_or(&[][..], |part| &part.beside),
+    };
+    let mut beside = present(root, listed)?;
+    if let Some(web) = web.filter(|_| exporter.id() == "web") {
+        beside.retain(|item| !in_web_build(item, web));
+    }
+    Ok(beside)
+}
+
+/// The program `bin` that `edition` names, which `package`, whose programs
+/// are `bins`, must have.
+fn chosen(
+    edition: Option<(&str, &Edition)>,
+    package: &str,
+    bins: &[String],
+    bin: &str,
+) -> Result<String, ExportError> {
+    if bins.iter().any(|name| name == bin) {
+        return Ok(bin.to_owned());
+    }
+    let name = edition.map_or("", |(name, _)| name);
+    Err(ExportError::Setup(format!(
+        "`editions.{name}.bin` in {} names `{bin}`, but the package `{package}` has no such \
+         program (`[[bin]]`)",
+        crate::project::FILE
+    )))
+}
+
+impl EditionBuild {
+    /// What an export takes of the edition `name`, `edition`, of the project
+    /// at `root`, whose build turns on `turned_on`: its content root must be a
+    /// folder of the project, and none of its `never_features` may be turned
+    /// on by name.
+    fn of(
+        root: &Path,
+        name: &str,
+        edition: &Edition,
+        turned_on: &[String],
+    ) -> Result<Self, ExportError> {
+        if let Some(content) = &edition.content {
+            let at = format!("`editions.{name}.content` in {}", crate::project::FILE);
+            let outside = content.starts_with('/')
+                || content.contains([':', '\\'])
+                || content
+                    .split('/')
+                    .any(|part| matches!(part, "" | "." | ".."));
+            if outside {
+                return Err(ExportError::Setup(format!(
+                    "{at}, `{content}`: write it from the project's root, with `/`, and no \
+                     empty part, `.` or `..`"
+                )));
+            }
+            if !root.join(content).is_dir() {
+                return Err(ExportError::Setup(format!(
+                    "{at} names `{content}`, which isn't a folder of the project"
+                )));
+            }
+        }
+        if let Some(both) = edition
+            .never_features
+            .iter()
+            .find(|never| turned_on.contains(never))
+        {
+            return Err(ExportError::Setup(format!(
+                "the edition `{name}` turns on `{both}`, which its `never_features` refuses"
+            )));
+        }
+        Ok(Self {
+            name: name.to_owned(),
+            default_features: edition.default_features,
+            never_features: edition.never_features.clone(),
+            content: edition.content.clone(),
+        })
+    }
 }
 
 /// Whether the web build already ships `item`: its `music` or `voice` folder.

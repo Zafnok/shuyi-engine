@@ -44,6 +44,16 @@ the template's unpacked path uses its table and this ticket touches only
 the packed path; if not, the unpacked path keeps `include_dir!` and 2215
 replaces it later, the packed path being unaffected either way.
 
+**From 3082 (done):** `shuyi.ron`'s `editions` build a public demo from its
+own folder of files (`content`), handed to the build as `SHUYI_CONTENT`, which
+the template's `build.rs` points `include_dir!` at
+([ADR-0100](../../docs/adr/0100-editions-named-builds-in-shuyi-ron-a-content-root-handed-to-the-build-and-default-features-always-said.md)).
+The packed path must bake an edition's folder, not `files/`. **Either order
+with 3304:** if 3304 is done, bake an edition through the way it gives the
+bake a content root; if not, refuse a packed export of an edition with a
+`content` root, as the Playdate does (`playdate.rs::edition_fits`), and 3304
+lifts it.
+
 ## Nick input
 
 None.

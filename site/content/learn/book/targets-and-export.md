@@ -268,6 +268,49 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+## A public demo
+
+A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
+a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
+builds it, on any target.
+
+```ron
+editions: {
+    "public-demo": (
+        default_features: false,
+        never_features: ["full"],
+        content: "crates/game/files-demo",
+        disclosure: (canaries: ["CHAPTER-TWO-IS-NOT-OUT"]),
+    ),
+    "full": (default_features: true, content: "crates/game/files"),
+},
+```
+
+An edition says, before anything is compiled:
+
+- `content`: the folder of files its program embeds. The export hands it to the build as
+  `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
+  only that folder. Without it, the build embeds `files/`, as `cargo run` does.
+- `default_features`, always written: whether the build keeps the package's `default` features. The full
+  game's code can sit behind a feature that is on by default, so `cargo run` plays all of it; the demo
+  says `false`, and that code isn't compiled in.
+- `never_features`: features its build must never have on. Cargo turns a feature on through a default,
+  another feature or a dependency, so each build is resolved before it is compiled, and one that turns
+  on `full` anyway is refused with `SH1002`, naming how it got there.
+- `features`, `package` and `bin`: what it turns on and builds, in place of the `export` part's.
+- `beside` and `disclosure`: the files it ships beside the program and what its packages may hold, in
+  place of the project's.
+
+The package goes in `dist/export/<edition>/<target>/`, named
+`<program>-<version>-<edition>-<target>`, and both reports name the edition; `exposure-report.json`
+gives its package, features and content root too. Put a canary in each file of what isn't out yet, and
+give the demo a `disclosure` part that lists them: if the demo is ever built from the wrong folder, the
+export finds one and is refused.
+
+The Playdate's pack is baked by the game's tools from the files they embed, so a Playdate edition has no
+`content` and keeps no default features.
+
 ## Size and speed
 
 A target's budgets are the most frame time, heap (the memory a program asks for as it runs) and start-up

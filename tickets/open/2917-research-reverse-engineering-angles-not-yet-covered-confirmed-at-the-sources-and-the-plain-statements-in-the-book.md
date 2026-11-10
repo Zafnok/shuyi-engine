@@ -37,7 +37,10 @@ map ([`docs/README.md`](../../docs/README.md)) keeps one research report
 per research ticket, so the draft needs a ticket, a pass over its
 sources, and a home for the plain statements it says the book owes:
 
-- a web demo is a published copy of its assets and rules;
+- a web demo is a published copy of its assets and rules (**From 3082
+  (done):** the book's *A public demo*, in `targets-and-export.md`, says
+  it, with how an edition leaves the rest out; check its words against
+  the confirmed claim);
 - anything decoded, drawn, heard or simulated on the player's machine
   can be extracted, and no engine setting changes that;
 - art perturbation tools are unproven on small palette-limited sprites;

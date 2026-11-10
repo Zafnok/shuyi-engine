@@ -62,11 +62,13 @@ A dialogue screen is the game's, not the engine's
 (`crates/ui/src/dialogue.rs`). Hello, Grid has one
 (`examples/hello-grid/src/screens.rs`, `Talk`, over `files/intro.dlg`).
 
-- **Either order with 3082** (demo editions): if 3082 is done, the
-  book's section says a preview program is built as an edition that
-  leaves the game's own scripts out, so the program holds only the
-  scenes in its folder; if not, nothing to do (3082 adds the sentence if
-  this lands first).
+- **From 3082 (done):** this ticket's book section says a preview program is
+  built as an edition that leaves the game's own scripts out, so the
+  program holds only the scenes in its folder: an edition of
+  `shuyi.ron`'s `editions` whose `bin` is the preview and whose
+  `content` is a folder without the scripts (`export <target> --edition
+  <name>`, ADR-0100; the book's *A public demo*, in
+  `targets-and-export.md`).
 - **3092** (files dropped on the window) would give a web preview; Out.
 
 ## Nick input
@@ -137,8 +139,8 @@ None.
 1. Read ADR-0071, ADR-0095, `player.rs` (`from_text_box`, `direction`),
    `present.rs` (`conditions`, `text_boxes`), `folder.rs`
    (`read_watched_folder`), Hello, Grid's `Talk`, and a ready-made screen
-   (`crates/ui/src/screens/options.rs`) for the logic / view / skin split.
-   Check whether 3082 is done.
+   (`crates/ui/src/screens/options.rs`) for the logic / view / skin split,
+   and the book's *A public demo* (editions, 3082).
 2. The trait the game hands in, and the screen's logic and view, with
    unit tests reading the view.
 3. The skin.
