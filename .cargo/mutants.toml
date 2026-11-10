@@ -168,6 +168,10 @@ exclude_re = [
     # process's own arguments and answers an `ExitCode`, which can't be
     # compared. The game they run is tested.
     'quick_start\.rs:\d+:\d+: replace (main|tool_program)',
+    # The same for the book's preview binary (`main` in
+    # `site/snippets/src/preview.rs`): it opens the preview's window. The
+    # preview it runs is tested (`preview_harness`).
+    'snippets/src/preview\.rs:\d+:\d+: replace main with \(\)',
     # The book's long-form data has no sounds: its manifest is the default,
     # so the mutant that returns a leaked default is the same function.
     '<impl GameData for OwnData>::audio_manifest -> .* with Box::leak\(Box::new\(Default::default\(\)\)\)',
