@@ -2,12 +2,12 @@
 //! files played in the game's own dialogue screen, read again when one is
 //! saved, through the engine's `DialoguePreview`.
 
-use shuyi::assets::bundle::Layer;
+use std::path::Path;
+
+use shuyi::app::run_dialogue_preview;
 use shuyi::assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
 use shuyi::prelude::*;
-use shuyi::ui::dialogue::preview::{
-    DialogueFolder, DialoguePreview, Play, PreviewGame, PreviewScreen, Showing,
-};
+use shuyi::ui::dialogue::preview::{Play, PreviewGame, PreviewScreen, Showing};
 use shuyi::ui::dialogue::text_box::glyph::{self, BoxPlace};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView};
 use shuyi::ui::frame::glyph_buffer::Rect;
@@ -123,25 +123,27 @@ impl PreviewScreen<Data> for Talk {
     }
 }
 
-/// The preview over the folder read as `folder`: the game's data from its
-/// own files, and the scenes from the folder's.
-pub fn preview(folder: Layer) -> Result<Game<Data>, String> {
-    let ctx = game().ctx()?;
-    let root = DialoguePreview::new(&ctx, GardenPreview);
-    Game::new(ctx, Box::new(root), GameHooks::default())
-        .with_debug_screens(false)
-        .with_module(DialogueFolder::new(folder))
-        .map_err(|e| e.to_string())
-}
 // ANCHOR_END: preview
+
+// ANCHOR: main
+/// The preview's binary (`src/bin/preview.rs`), the program the writer
+/// runs: the scenes of the folder named on its command line, else
+/// `scenes/`, in the game's window.
+pub fn main() {
+    let folder = std::env::args_os()
+        .nth(1)
+        .unwrap_or_else(|| "scenes".into());
+    run_dialogue_preview(game(), Path::new(&folder), GardenPreview);
+}
+// ANCHOR_END: main
 
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
-    use shuyi::platform::harness::Harness;
-
+    use shuyi::assets::bundle::Layer;
     use shuyi::assets::dialogue::{Present, parse_dlg};
+    use shuyi::ui::dialogue::preview::DialoguePreview;
 
     use super::*;
 
@@ -158,7 +160,7 @@ mod tests {
                      @end\n";
         let files = BTreeMap::from([("dusk.dlg".to_owned(), scene.as_bytes().to_vec())]);
         let folder = Layer::owned("scenes".to_owned(), files).unwrap();
-        let mut h = Harness::new(preview(folder).unwrap());
+        let mut h = game().preview_harness(folder, GardenPreview);
         // Play it, then the Switches tab: send the gardener away.
         h.keys("Enter Backspace Right Enter");
         let preview = h.screen::<DialoguePreview<Data, GardenPreview>>().unwrap();

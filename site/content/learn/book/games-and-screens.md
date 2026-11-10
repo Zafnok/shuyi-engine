@@ -284,15 +284,13 @@ screen that plays one. Here is Moon Garden's dialogue screen:
 
 {{ snippet(file="src/preview.rs", anchor="talk") }}
 
-and what it hands the preview, with the preview itself as a game whose files come from
-a folder:
+and what it hands the preview:
 
 {{ snippet(file="src/preview.rs", anchor="preview") }}
 
 `play.player(Plain)` starts the scene where the preview asks: from its text box, for
 those there. `Showing::of` tells the preview which line is on screen, so a saved file
-plays again from it. The `DialogueFolder` module reads the folder's `.dlg` files again
-when one changes. Your game's own lines (a `Directive` type), checks over every scene
+plays again from it. Your game's own lines (a `Directive` type), checks over every scene
 (`problems`) and named switches (`switches`, a hero the player names or not, say) go
 in the same trait.
 
@@ -302,12 +300,21 @@ over the scene. The preview's words are text keys in your language files:
 
 {{ snippet(file="files/en.ron", anchor="preview", language="ron") }}
 
-The program reads its folder with `shuyi::app::read_watched_folder`, which watches it
-in an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)).
-Hello, Grid's `hello-grid-preview` is such a program: its `src/bin/preview.rs` reads the
-folder named on its command line and starts the preview.
+The program is a second binary of your game, beside its own: `src/bin/preview.rs`, whose
+`main` is one call.
 
-A test of it plays the preview through the Harness:
+{{ snippet(file="src/preview.rs", anchor="main") }}
+
+`run_dialogue_preview` runs it as `run_game` runs the game: the same window, files and
+settings, with the preview as its first screen, your game's modules, and no debug
+screens. It reads the folder with `shuyi::app::read_watched_folder`, which watches it in
+an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)),
+and a `DialogueFolder` module reads its `.dlg` files again when one changes. A folder
+that can't be read shows why in the window, as a broken file of your game does. Build it
+optimized (`cargo build --release --bin preview`) and hand the writer the program.
+
+A test of it plays the preview through the Harness, which `preview_harness` starts on
+your `BasicGame` over a folder you make in the test:
 
 {{ snippet(file="src/preview.rs", anchor="test") }}
 

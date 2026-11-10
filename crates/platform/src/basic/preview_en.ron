@@ -1,0 +1,26 @@
+// The demo's English with the dialogue preview's words: the blank
+// template's keys, and the `preview.*` keys the preview shows.
+{
+    "keys.not_mapped": "! not mapped",
+    "keys.arrows": "arrows",
+    "keys.chord_join": "+",
+    "layout.arrows": "Arrows",
+
+    "preview.tab.scenes": "Scenes",
+    "preview.tab.switches": "Switches",
+    "preview.tab.lines": "Lines",
+    "preview.tab.problems": "Problems",
+    "preview.switch.here": "Here",
+    "preview.switch.gone": "Gone",
+    "preview.switch.on": "On",
+    "preview.switch.off": "Off",
+    "preview.switch.strip": "Strip: file, line, direction",
+    "preview.lines.go_to": "Go to line",
+    "preview.note.no_scenes": "No scenes: save a .dlg file in the folder",
+    "preview.note.no_scene": "Pick a scene first",
+    "preview.note.no_problems": "No problems",
+    "preview.note.finished": "The scene is over: pick a line to play it again",
+    "preview.help": "{Cursor} move · {Confirm} pick · {Cancel} back",
+    "preview.help.go_to": "Type a line number · {Confirm} go · {Cancel} close",
+    "preview.help.playing": "{Cancel} preview",
+}

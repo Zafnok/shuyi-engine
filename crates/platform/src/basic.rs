@@ -5,7 +5,8 @@
 //! every screen it can show, the modules it installs and its record of
 //! its play for a crash report. From it come
 //! its data ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
-//! [`Game`] and how a backend starts it ([`BasicGame::start`]).
+//! [`Game`] and how a backend starts it ([`BasicGame::start`]), and its
+//! dialogue preview for a writer ([`BasicGame::preview_start`]).
 
 use crate::alloc_prelude::*;
 use alloc::{format, vec};
@@ -16,6 +17,7 @@ use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
 use shuyi_core::Made;
 use shuyi_ui::basic::{BasicData, Own};
+use shuyi_ui::dialogue::preview::{DialogueFolder, DialoguePreview, PreviewGame};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
@@ -243,6 +245,70 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             Some(hook) => start.crash_record(hook),
             None => start,
         }
+    }
+
+    /// Its dialogue preview on `ctx` ([`DialoguePreview`]): the scenes of
+    /// the `.dlg` files of `folder`, played as `preview` says, read again
+    /// when one changes ([`DialogueFolder`] over `folder`). Its
+    /// [`modules`](Self::modules) are installed, and no debug screen: it is
+    /// a writer's program. Or why a module could not be installed.
+    pub fn preview_game<P: PreviewGame<BasicData<A, T>>>(
+        &self,
+        ctx: Ctx<BasicData<A, T>>,
+        folder: Layer,
+        preview: P,
+    ) -> Result<Game<BasicData<A, T>>, ModuleError> {
+        let root = DialoguePreview::new(&ctx, preview);
+        let game = Game::new(ctx, Box::new(root), GameHooks::default()).with_debug_screens(false);
+        let game = match self.modules {
+            Some(modules) => game.with_modules(modules())?,
+            None => game,
+        };
+        game.with_module(DialogueFolder::new(folder))
+    }
+
+    /// How a backend starts its dialogue preview
+    /// ([`preview_game`](Self::preview_game)) over `folder`, as
+    /// [`start`](Self::start) starts the game: its card, then the preview.
+    /// A folder that couldn't be read (its `Err`, what went wrong), a file
+    /// of the game's that doesn't load, or a module that can't be
+    /// installed, is the load's error, which the platform shows in place of
+    /// the preview.
+    pub fn preview_start<P: PreviewGame<BasicData<A, T>>>(
+        self,
+        folder: Result<Layer, String>,
+        preview: P,
+    ) -> Start<BasicData<A, T>> {
+        let made = self.made();
+        Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
+            let folder = folder?;
+            let ctx = self.ctx()?;
+            self.preview_game(setup.ctx(ctx), folder, preview)
+                .map_err(|e| e.to_string())
+        })
+        .made(made)
+        .state_hash(Game::state_hash)
+    }
+
+    /// Its dialogue preview ([`preview_game`](Self::preview_game)) over
+    /// `folder` in the test Harness.
+    ///
+    /// # Panics
+    ///
+    /// As [`harness`](Self::harness).
+    #[cfg(any(test, feature = "harness"))]
+    pub fn preview_harness<P: PreviewGame<BasicData<A, T>>>(
+        &self,
+        folder: Layer,
+        preview: P,
+    ) -> crate::harness::Harness<BasicData<A, T>> {
+        let ctx = self
+            .ctx()
+            .unwrap_or_else(|errors| panic!("the game's files:\n{errors}"));
+        let game = self
+            .preview_game(ctx, folder, preview)
+            .unwrap_or_else(|e| panic!("the game's modules: {e}"));
+        crate::harness::Harness::new(game)
     }
 
     /// The game in the test Harness, at its first screen.
