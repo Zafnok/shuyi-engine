@@ -124,6 +124,13 @@ pub struct Options {
     /// `export web` whose `export` part doesn't say `wasm_opt: optional`);
     /// otherwise a missing one is a warning.
     pub require_wasm_opt: bool,
+    /// Whether the build leaves the package's `default` features off (an
+    /// export's edition that says `default_features: false`).
+    pub no_default_features: bool,
+    /// The folder of the game's files its program embeds, handed to the build
+    /// as [`crate::export::CONTENT`]; without it, the build runs without that
+    /// variable.
+    pub content: Option<PathBuf>,
 }
 
 /// The usage line, with `command` as the tool's name.
@@ -169,6 +176,9 @@ pub(crate) fn cargo_args(rules: &Web, options: &Options) -> Vec<String> {
         .to_vec();
     if options.release {
         args.push("--release".to_owned());
+    }
+    if options.no_default_features {
+        args.push("--no-default-features".to_owned());
     }
     for feature in &options.features {
         args.extend(["--features".to_owned(), feature.clone()]);
@@ -243,6 +253,10 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
     let workspace = workspace_root(root);
     let mut build = Command::new(cargo);
     build.args(cargo_args(rules, options)).current_dir(root);
+    match &options.content {
+        Some(content) => build.env(crate::export::CONTENT, content),
+        None => build.env_remove(crate::export::CONTENT),
+    };
     if options.release {
         let outside = paths::outside(root, &workspace);
         let remaps = paths::remaps(&workspace, &target, &rules.package, &outside);
@@ -787,8 +801,7 @@ mod tests {
     fn release() -> Options {
         Options {
             release: true,
-            features: Vec::new(),
-            require_wasm_opt: false,
+            ..Options::default()
         }
     }
 

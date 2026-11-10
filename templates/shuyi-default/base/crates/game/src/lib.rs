@@ -17,9 +17,11 @@ use include_dir::{Dir, include_dir};
 use shuyi::core::Made;
 use shuyi::prelude::*;
 
-/// The game's files, embedded.
+/// The game's files, embedded: `files/`, or an edition's own folder when
+/// `cargo shuyi export --edition` builds one with a content root
+/// (`build.rs`).
 // check-text: not player text, a folder
-static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+static FILES: Dir<'static> = include_dir!("$SHUYI_FILES");
 
 /// The game's data and state, which its screens share: the engine's, read
 /// from `files/`, with the six moves of `files/keymap.ron` as its actions,

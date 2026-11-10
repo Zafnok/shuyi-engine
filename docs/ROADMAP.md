@@ -771,7 +771,9 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | ------ | ---- |
 | 2912 | Measure footage imitation, package extraction, binary reconstruction and store attribution separately |
 | 3081 | Inspect final exports for undeclared files and game-declared forbidden content (after 3080) |
-| 3082 | Build named public-demo editions from separate code and content roots (after 3081 and 3075) |
+| 3082 | Build named public-demo editions from separate code and content roots (done 2026-11-10) |
+| 3304 | The bake takes an edition's content root, so a Playdate edition ships only its own files (after 3082) |
+| 3305 | NOTICES.txt lists the crates of the build as Cargo resolves it, default features included (after 3082) |
 | 2816 | Prepare a verifiable public reveal kit from captures and tagged releases (after 2811 and 3050) |
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |

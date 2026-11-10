@@ -310,8 +310,12 @@ settings, with the preview as its first screen, your game's modules, and no debu
 screens. It reads the folder with `shuyi::app::read_watched_folder`, which watches it in
 an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)),
 and a `DialogueFolder` module reads its `.dlg` files again when one changes. A folder
-that can't be read shows why in the window, as a broken file of your game does. Build it
-optimized (`cargo build --release --bin preview`) and hand the writer the program.
+that can't be read shows why in the window, as a broken file of your game does.
+
+Build the program you hand out as an
+[edition](@/learn/book/targets-and-export.md#a-public-demo) that leaves your game's own
+scripts out: its `bin` is the preview, and its `content` a folder of your files without
+the scenes, so the program holds only the scenes in the writer's folder.
 
 A test of it plays the preview through the Harness, which `preview_harness` starts on
 your `BasicGame` over a folder you make in the test:
