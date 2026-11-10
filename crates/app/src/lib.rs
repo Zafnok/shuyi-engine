@@ -157,13 +157,16 @@ pub mod storage;
 mod watch;
 
 use core::fmt::Debug;
+use std::path::Path;
 
 use macroquad::prelude::*;
 use shuyi_assets::audio::{Bytes, Files};
+use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Platform, Start, TextInput};
 use shuyi_ui::GameData;
-use shuyi_ui::basic::FONT_PNG;
+use shuyi_ui::basic::{BasicData, FONT_PNG};
+use shuyi_ui::dialogue::preview::PreviewGame;
 use shuyi_ui::log::{LogLevel, LogLine};
 
 #[cfg(feature = "sound-probe")]
@@ -594,6 +597,55 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
     let window = basic_window(&game);
     // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
     macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+}
+
+/// Runs the dialogue preview of a game on the short path until it quits, as
+/// [`run_game`] runs the game: its window, its files and its settings, with
+/// the engine's preview as its first screen (`BasicGame::preview_start`),
+/// played as `preview` says. The scenes are the `.dlg` files of the folder
+/// at `folder`, read with [`read_watched_folder`] and read again a second
+/// after one is saved, in an optimized build too. A folder that can't be
+/// read shows why in the window, as a file that doesn't load does. The web
+/// has no folders: there the window says so.
+///
+/// A visual novel hands its writer a second binary of one call:
+/// `run_dialogue_preview(game(), Path::new("scenes"), MyPreview)`.
+pub fn run_dialogue_preview<A, T, P>(game: BasicGame<A, T>, folder: &Path, preview: P)
+where
+    A: ActionSet,
+    T: Debug + 'static,
+    P: PreviewGame<BasicData<A, T>>,
+{
+    let scenes = preview_folder(folder);
+    let game = match watched_layer() {
+        Some(layer) => game.over(layer),
+        None => game,
+    };
+    let _ = shuyi_assets::bundle::install(game.bundle());
+    let window = basic_window(&game);
+    let start = game.preview_start(scenes, preview);
+    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), start));
+}
+
+/// The name of the layer a dialogue preview reads its folder into.
+#[cfg(not(target_arch = "wasm32"))]
+const PREVIEW_LAYER: &str = "scenes";
+
+/// The folder at `path`, read to be watched in every build, or why it
+/// can't be read.
+#[cfg(not(target_arch = "wasm32"))]
+fn preview_folder(path: &Path) -> Result<Layer, String> {
+    let limit = u64::try_from(shuyi_assets::format::DEFAULT_MAX_BYTES).unwrap_or(u64::MAX);
+    read_watched_folder(path, PREVIEW_LAYER, limit).map_err(|e| e.to_string())
+}
+
+/// On the web, which has no folders: why the preview can't read one.
+#[cfg(target_arch = "wasm32")]
+fn preview_folder(path: &Path) -> Result<Layer, String> {
+    Err(format!(
+        "{}: a dialogue preview reads a folder, and the web has none",
+        path.display()
+    ))
 }
 
 /// The margin around a short-path game's console, in pixels.

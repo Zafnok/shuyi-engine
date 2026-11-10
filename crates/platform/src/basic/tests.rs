@@ -6,8 +6,15 @@ use shuyi_assets::keymap::{Layout, UiAction};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::{FrameInput, Transition};
 
+use alloc::collections::BTreeMap;
+
+use shuyi_assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
+use shuyi_ui::dialogue::preview::{Play, PreviewScreen, PreviewView, Showing};
+use shuyi_ui::dialogue::{DialoguePlayer, Plain};
+
 use super::*;
 use crate::app::App;
+use crate::harness::{FRAME_DT, Harness};
 use crate::headless::{HeadlessPlatform, Presented};
 use crate::platform::Millis;
 
@@ -25,6 +32,15 @@ const ATLAS_PNG: &[u8] =
 /// The blank template's files.
 static GOOD: &[(&str, &[u8])] = &[
     ("en.ron", EN),
+    ("font/atlas.png", ATLAS_PNG),
+    ("font/atlas.ron", ATLAS_RON),
+    ("keymap.ron", KEYMAP),
+    ("palette.ron", PALETTE),
+];
+
+/// Its files, with the dialogue preview's words in its language file.
+static WITH_PREVIEW: &[(&str, &[u8])] = &[
+    ("en.ron", include_bytes!("preview_en.ron")),
     ("font/atlas.png", ATLAS_PNG),
     ("font/atlas.ron", ATLAS_RON),
     ("keymap.ron", KEYMAP),
@@ -252,4 +268,155 @@ fn a_game_is_copied_and_shown_by_its_name() {
         shown.starts_with("BasicGame { app: AppInfo { name: \"Demo\""),
         "{shown}"
     );
+}
+
+/// The demo's dialogue screen: Confirm reads on, and it pops after its
+/// last line.
+struct Talk(DialoguePlayer<Plain>);
+
+impl Screen<Data> for Talk {
+    fn name(&self) -> &'static str {
+        "talk"
+    }
+
+    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
+        if input.actions.contains(&UiAction::Confirm) {
+            self.0.advance();
+            if self.0.is_finished() {
+                return Transition::Pop;
+            }
+        }
+        Transition::None
+    }
+
+    fn draw(&self, _: &Ctx<Data>, _: &mut GlyphBuffer) {}
+}
+
+impl PreviewScreen<Data> for Talk {
+    fn showing(&self) -> Showing {
+        Showing::of(&self.0)
+    }
+}
+
+/// What the demo hands its preview: its limits, and its talk.
+struct DemoPreview;
+
+impl PreviewGame<Data> for DemoPreview {
+    type Directive = NoDirective;
+    type Rules = DemoRules;
+
+    fn rules(&self, _: &Ctx<Data>) -> DemoRules {
+        DemoRules(LIMITS)
+    }
+
+    fn play(
+        &self,
+        _: &mut Ctx<Data>,
+        play: &Play<'_, NoDirective>,
+    ) -> Box<dyn PreviewScreen<Data>> {
+        Box::new(Talk(play.player(Plain)))
+    }
+}
+
+/// The engine's usual limits, in a box of 40 × 3.
+const LIMITS: DialogueLimits = DialogueLimits {
+    box_width: 40,
+    box_lines: 3,
+    max_text: 120,
+    max_option: 30,
+    min_options: 2,
+    max_options: 4,
+    max_reaction_texts: 3,
+};
+
+/// The rules the demo's scenes are checked against.
+struct DemoRules(DialogueLimits);
+
+impl SceneRules<NoDirective> for DemoRules {
+    fn limits(&self) -> &DialogueLimits {
+        &self.0
+    }
+
+    fn tokens(&self) -> &dyn Tokens {
+        &NoTokens
+    }
+}
+
+/// A folder of one scene of one line, `words`.
+fn scenes(words: &str) -> Layer {
+    let files = BTreeMap::from([("dusk.dlg".to_owned(), scene(words))]);
+    Layer::owned("scenes".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"))
+}
+
+fn scene(words: &str) -> Vec<u8> {
+    format!("@scene dusk\n> {words}\n@end\n").into_bytes()
+}
+
+type Preview = DialoguePreview<Data, DemoPreview>;
+
+fn preview_view(h: &Harness<Data>) -> PreviewView {
+    let preview = h
+        .screen::<Preview>()
+        .unwrap_or_else(|| panic!("no preview"));
+    preview.view(h.ctx())
+}
+
+#[test]
+fn its_preview_plays_a_scene_of_the_folder_and_its_saved_file_again() {
+    let folder = scenes("The moon is up.");
+    let mut h = demo(WITH_PREVIEW)
+        .modules(one_marker)
+        .preview_harness(folder, DemoPreview);
+    assert_eq!(h.ctx().module_state::<u8>(), Some(&7), "its modules");
+    h.wait(FRAME_DT);
+    let view = preview_view(&h);
+    assert_eq!(view.scenes.len(), 1);
+    assert_eq!(view.scenes[0].id, "dusk");
+    // Play it.
+    h.keys("Enter");
+    let view = preview_view(&h);
+    let playing = view.playing.unwrap_or_else(|| panic!("not playing"));
+    assert_eq!((playing.scene.as_str(), playing.finished), ("dusk", false));
+    assert_eq!(view.lines[0].words, "The moon is up.");
+    // The writer saves the file: it is read again.
+    h.watch_files(true);
+    h.change_file(folder, "dusk.dlg", scene("The garden sleeps."));
+    h.wait(FRAME_DT);
+    assert_eq!(preview_view(&h).lines[0].words, "The garden sleeps.");
+    // Read on past its one line: the scene is over.
+    h.keys("Enter");
+    assert!(preview_view(&h).playing.is_some_and(|p| p.finished));
+}
+
+#[test]
+fn its_preview_starts_after_its_card_with_no_debug_screen() {
+    let mut app = App::new(demo(WITH_PREVIEW).preview_start(Ok(scenes("Hi.")), DemoPreview));
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(p.last_frame(), Some(&Presented::Card(Card::text("Demo"))));
+    let _ = app.frame(&mut p, Millis(16));
+    let game = app.game().unwrap_or_else(|| panic!("{:?}", app.errors()));
+    assert_eq!(game.top_screen(), Some("dialogue_preview"));
+    assert!(!game.ctx().debug_tools);
+}
+
+#[test]
+fn a_folder_that_couldnt_be_read_is_the_previews_error() {
+    let unread = Err("scenes: no such folder".to_owned());
+    let mut app = App::new(demo(WITH_PREVIEW).preview_start(unread, DemoPreview));
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    assert!(app.game().is_none());
+    assert_eq!(app.errors(), Some("scenes: no such folder"));
+}
+
+#[test]
+fn a_preview_whose_module_cant_be_installed_is_the_loads_error() {
+    let game = demo(WITH_PREVIEW).modules(two_markers);
+    let mut app = App::new(game.preview_start(Ok(scenes("Hi.")), DemoPreview));
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    assert_eq!(app.errors(), Some("the module marker is installed twice"));
 }
