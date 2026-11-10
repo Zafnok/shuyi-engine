@@ -52,14 +52,25 @@
                 var storage = window.sessionStorage;
                 for (var i = 0; i < storage.length; i++) {
                     var key = storage.key(i);
-                    if (key !== null && key.indexOf(PREFIX) === 0) {
+                    if (key !== null && key.startsWith(PREFIX)) {
                         keys.push(key);
                     }
                 }
             } catch (e) {
+                // Storage turned off, or gone mid-read: the page has no files
+                // for the game, which is not an error for it. Drop any keys
+                // read before the throw rather than hand over half a list.
                 keys = [];
             }
-            keys.sort();
+            // Code-unit order, the same in every browser and locale, so the
+            // game reads the files, and names the first one wrong, the same
+            // way everywhere; `localeCompare` would make that the reader's.
+            keys.sort(function (a, b) {
+                if (a < b) {
+                    return -1;
+                }
+                return a > b ? 1 : 0;
+            });
             return keys.length;
         };
         // File i's path, after the prefix.
