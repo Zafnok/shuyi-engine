@@ -22,11 +22,11 @@
 //! the package has for one build. A game with no such part gets a build with
 //! no feature and a package with nothing else in it.
 //!
-//! No build turns on a debug feature ([`DEBUG_FEATURES`]) by its arguments,
-//! nor the debug build's live link (`link`) however Cargo would reach it:
-//! by the arguments, the package's `default` list, a feature that lists it,
-//! or a dependency asking for the engine's. Each build is resolved by Cargo
-//! and refused before anything is prepared or built ([`live_link`]).
+//! No build turns on a debug feature ([`DEBUG_FEATURES`]), the package's
+//! or the engine's ([`ENGINE_DEBUG_FEATURES`]), however Cargo would reach
+//! it: by the arguments, the package's `default` list, a feature that lists
+//! it, or a dependency asking for the engine's. Each build is resolved by
+//! Cargo and refused before anything is prepared or built ([`live_link`]).
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part if it has one ([`disclosure`]).
@@ -786,10 +786,21 @@ pub const DEBUG_FEATURES: [(&str, &str); 4] = [
     ("sound-probe", "the sound parity gates' probe"),
 ];
 
+/// The engine's packages that have each of the [`DEBUG_FEATURES`], by the
+/// same name: where, beside the package built, an export's build as Cargo
+/// resolves it is checked for that feature ([`live_link::violations`]). A
+/// test keeps it equal to the engine crates' `[features]`.
+pub const ENGINE_DEBUG_FEATURES: [(&str, &[&str]); 4] = [
+    ("link", &["shuyi-app", "shuyi-platform"]),
+    ("debug-tools", &["shuyi-ui"]),
+    ("capture", &["shuyi-app", "shuyi-platform"]),
+    ("sound-probe", &["shuyi-app"]),
+];
+
 /// Refuses a build whose `args` turn on one of the [`DEBUG_FEATURES`], of
 /// the game's package or a dependency's (`game/link`), naming it, by its
 /// arguments alone: what the build turns on as Cargo resolves it is
-/// [`live_link::refuse`]'s, for the live link.
+/// [`live_link::refuse`]'s.
 pub fn no_debug_features(args: &[String]) -> Result<(), ExportError> {
     let features = args
         .windows(2)

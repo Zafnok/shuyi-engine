@@ -425,6 +425,17 @@ pub(crate) mod device {
             find: "    (\"sound-probe\", \"the sound parity gates' probe\"),\n",
             with: "",
         ),
+        // Ticket 3303: the engine's crates that have each debug feature.
+        Replace(
+            file: "crates/cli/src/export.rs",
+            find: "pub const ENGINE_DEBUG_FEATURES: [(&str, &[&str]); 4] = [",
+            with: "pub const ENGINE_DEBUG_FEATURES: [(&str, &[&str]); 3] = [",
+        ),
+        Replace(
+            file: "crates/cli/src/export.rs",
+            find: "    (\"sound-probe\", &[\"shuyi-app\"]),\n",
+            with: "",
+        ),
         Replace(
             file: "crates/cli/src/export/tests.rs",
             find: "        (&[\"build\", \"--features=sound-probe\"], \"sound-probe\"),\n",

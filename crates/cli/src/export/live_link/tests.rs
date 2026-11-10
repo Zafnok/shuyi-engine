@@ -1,6 +1,7 @@
-//! The live link's check: its arguments, its reading of `cargo tree`, its
-//! refusals, and small workspaces resolved by Cargo itself, with stand-ins
-//! for the engine's two packages (no network, no SDK).
+//! The debug features' check: its arguments, its reading of `cargo tree`,
+//! its refusals, its table of the engine's debug features, and small
+//! workspaces resolved by Cargo itself, with stand-ins for the engine's
+//! three packages that have them (no network, no SDK).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -161,10 +162,12 @@ fn the_link_counts_in_the_package_built_and_the_engine_only() {
         [
             Violation {
                 package: "shuyi-app".to_owned(),
+                feature: "link",
                 path: args(&["game", "helper", "shuyi-app"]),
             },
             Violation {
                 package: "shuyi-platform".to_owned(),
+                feature: "link",
                 path: args(&["game", "helper", "shuyi-app", "shuyi-platform"]),
             },
         ]
@@ -173,6 +176,7 @@ fn the_link_counts_in_the_package_built_and_the_engine_only() {
         violations(&[node(0, "game", &["default", "link"])]),
         [Violation {
             package: "game".to_owned(),
+            feature: "link",
             path: args(&["game"]),
         }]
     );
@@ -195,14 +199,131 @@ fn a_refusal_names_the_package_the_feature_and_the_way_there() {
     let message = refused.message();
     assert!(
         message.starts_with(
-            "an export never turns on the debug build's live link, and Cargo's build of `game` \
-             for wasm32-unknown-unknown turns it on:\n  `game/link`, among the package's \
-             features as built: default, devtools, link\n  `shuyi-app/link`, the engine's live \
-             link, reached through game -> helper -> shuyi-app\n"
+            "an export never turns on a debug feature, and Cargo's build of `game` for \
+             wasm32-unknown-unknown turns on:\n  `game/link`, the debug build's live link, \
+             among the package's features as built: default, devtools, link\n  \
+             `shuyi-app/link`, the debug build's live link, reached through game -> helper -> \
+             shuyi-app\n"
         ),
         "{message}"
     );
     assert!(message.contains("`--without` leaves out only"), "{message}");
+}
+
+/// The packages of `cargo tree`'s answer `lines`, one package a line.
+fn tree_of(lines: &[String]) -> Vec<Node> {
+    parse(&lines.join("\n")).unwrap()
+}
+
+#[test]
+fn each_debug_feature_counts_by_a_default_an_alias_and_a_dependency() {
+    for (feature, engine) in crate::export::ENGINE_DEBUG_FEATURES {
+        let what = what(feature);
+        // The package's own, by its `default` list and by an alias.
+        for features in [format!("default,{feature}"), format!("devtools,{feature}")] {
+            let nodes = tree_of(&[format!("0|{features}|game v0.1.0 (/g)")]);
+            assert_eq!(
+                violations(&nodes),
+                [Violation {
+                    package: "game".to_owned(),
+                    feature,
+                    path: args(&["game"]),
+                }],
+                "{features}"
+            );
+            let message = refusal(&args(&["build"]), &nodes, &violations(&nodes)).message();
+            assert!(
+                message.contains(&format!(
+                    "`game/{feature}`, {what}, among the package's features as built: {}",
+                    features.replace(',', ", ")
+                )),
+                "{message}"
+            );
+        }
+        for package in engine {
+            // An alias of the game's forwarding to the engine's, and a
+            // dependency's defaults asking for it, under the game's alias.
+            let alias = tree_of(&[
+                "0|devtools|game v0.1.0 (/g)".to_owned(),
+                format!("1|{feature}|{package} v0.1.0 (/e)"),
+            ]);
+            let dependency = tree_of(&[
+                "0||game v0.1.0 (/g)".to_owned(),
+                "1|default,live|helper v0.1.0 (/h)".to_owned(),
+                format!("2|default,{feature}|{package} v0.1.0 (/e)"),
+            ]);
+            for (nodes, path) in [
+                (alias, vec!["game", package]),
+                (dependency, vec!["game", "helper", package]),
+            ] {
+                let found = violations(&nodes);
+                assert_eq!(
+                    found,
+                    [Violation {
+                        package: (*package).to_owned(),
+                        feature,
+                        path: args(&path),
+                    }],
+                    "{package}/{feature}"
+                );
+                let message = refusal(&args(&["build"]), &nodes, &found).message();
+                assert!(
+                    message.contains(&format!(
+                        "`{package}/{feature}`, {what}, reached through {}",
+                        path.join(" -> ")
+                    )),
+                    "{message}"
+                );
+            }
+        }
+        // A dependency that isn't the engine's, or an engine package that
+        // hasn't the feature, isn't watched for it.
+        let other = ["shuyi-app", "shuyi-platform", "shuyi-ui"]
+            .into_iter()
+            .find(|package| !engine.contains(package))
+            .unwrap();
+        let nodes = tree_of(&[
+            "0||game v0.1.0 (/g)".to_owned(),
+            format!("1|{feature}|helper v0.1.0 (/h)"),
+            format!("1|{feature}|{other} v0.1.0 (/e)"),
+        ]);
+        assert_eq!(violations(&nodes), [], "{feature} in {other}");
+    }
+}
+
+#[test]
+fn the_engines_debug_features_are_its_crates_features() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut found: Vec<(&str, Vec<String>)> = DEBUG_FEATURES
+        .iter()
+        .map(|(name, _)| (*name, Vec::new()))
+        .collect();
+    for entry in fs::read_dir(&crates).unwrap() {
+        let manifest = entry.unwrap().path().join("Cargo.toml");
+        let Ok(text) = fs::read_to_string(&manifest) else {
+            continue;
+        };
+        let doc: toml_edit::DocumentMut = text.parse().unwrap();
+        let name = doc["package"]["name"].as_str().unwrap().to_owned();
+        let Some(features) = doc.get("features").and_then(|f| f.as_table()) else {
+            continue;
+        };
+        for (feature, packages) in &mut found {
+            if features.contains_key(feature) {
+                packages.push(name.clone());
+            }
+        }
+    }
+    for (feature, packages) in &mut found {
+        packages.sort();
+        let mut table: Vec<String> = crate::export::ENGINE_DEBUG_FEATURES
+            .iter()
+            .find(|(name, _)| name == feature)
+            .map(|(_, engine)| engine.iter().map(|&p| p.to_owned()).collect())
+            .unwrap_or_default();
+        table.sort();
+        assert_eq!(*packages, table, "the engine's crates with `{feature}`");
+    }
 }
 
 /// An exporter whose builds are `builds`, and which fails if anything
@@ -240,11 +361,13 @@ impl Exporter for Plan {
 
 /// The stand-ins' and the game's manifests, and the game's: `[package]` is
 /// written for each.
-const SHUYI_PLATFORM: &str = "[features]\ndefault = []\nlink = []\n";
-const SHUYI_APP: &str = "[dependencies]\nshuyi-platform = { path = \"../shuyi-platform\" }\n\n\
-    [features]\nlink = [\"shuyi-platform/link\"]\n\n\
-    # As the engine's own: its tests turn its link on.\n\
-    [dev-dependencies]\nshuyi-app = { path = \".\", features = [\"link\"] }\n";
+const SHUYI_PLATFORM: &str = "[features]\ndefault = []\nlink = []\ncapture = []\n";
+const SHUYI_UI: &str = "[features]\ndebug-tools = []\n";
+const SHUYI_APP: &str = "[dependencies]\nshuyi-platform = { path = \"../shuyi-platform\" }\n\
+    shuyi-ui = { path = \"../shuyi-ui\" }\n\n\
+    [features]\nlink = [\"shuyi-platform/link\"]\ncapture = [\"shuyi-platform/capture\"]\n\n\
+    # As the engine's own: its tests turn its link and its capture on.\n\
+    [dev-dependencies]\nshuyi-app = { path = \".\", features = [\"link\", \"capture\"] }\n";
 /// Another member, not the game's, that turns the link on.
 const OTHER: &str =
     "[dependencies]\nshuyi-app = { path = \"../shuyi-app\", features = [\"link\"] }\n";
@@ -257,6 +380,7 @@ fn workspace(name: &str, game: &str, more: &[(&str, &str)]) -> PathBuf {
     let _ = fs::remove_dir_all(&root);
     let mut members = vec![
         ("shuyi-platform", SHUYI_PLATFORM),
+        ("shuyi-ui", SHUYI_UI),
         ("shuyi-app", SHUYI_APP),
         ("other", OTHER),
         ("game", game),
@@ -438,6 +562,63 @@ fn a_dependency_turning_on_the_engines_link_is_refused_under_any_name() {
 }
 
 #[test]
+fn the_debug_tools_and_capture_are_refused_by_a_default_or_a_dependency_not_a_dev_dependency() {
+    let helper = format!(
+        "{}shuyi-ui = {{ path = \"../shuyi-ui\" }}\n\n\
+         [features]\ndefault = [\"tools\"]\ntools = [\"shuyi-ui/debug-tools\", \"shuyi-app/capture\"]\n",
+        app("")
+    );
+    let game = format!(
+        "{}ui = {{ package = \"shuyi-ui\", path = \"../shuyi-ui\" }}\n\
+         helper = {{ path = \"../helper\", optional = true, default-features = false }}\n\n\
+         [features]\ndefault = [\"debug-tools\"]\ndebug-tools = [\"ui/debug-tools\"]\n\
+         viahelper = [\"helper/default\"]\n\n\
+         [dev-dependencies]\nshuyi-app = {{ path = \"../shuyi-app\", features = [\"capture\"] }}\n",
+        app("")
+    );
+    let root = workspace("every", &game, &[("helper", &helper)]);
+    // The package's `default` list: its own `debug-tools` and the engine's.
+    let refused = check(&root, &[&WINDOWS], &[]);
+    let message = refused.unwrap_err().message();
+    assert!(
+        message.contains(
+            "`game/debug-tools`, the debug tools: the debug menu, `SHUYI_PERF` traces and \
+             session recording, among the package's features as built: debug-tools, default"
+        ),
+        "{message}"
+    );
+    // The engine's, the first way Cargo shows it.
+    assert!(
+        message.contains(
+            "`shuyi-ui/debug-tools`, the debug tools: the debug menu, `SHUYI_PERF` traces and \
+             session recording, reached through game -> shuyi-app -> shuyi-ui"
+        ),
+        "{message}"
+    );
+    // A dependency's defaults asking for the engine's debug tools and its
+    // capture mode, each named with the way there.
+    let no_default = [WINDOWS[0], WINDOWS[1], "--no-default-features"];
+    let mut viahelper = no_default.to_vec();
+    viahelper.extend(["--features", "viahelper"]);
+    let message = check(&root, &[&viahelper], &[]).unwrap_err().message();
+    assert!(!message.contains("`game/"), "{message}");
+    assert!(
+        message.contains("`shuyi-ui/debug-tools`")
+            && message.contains("reached through game -> helper -> shuyi-app -> shuyi-ui"),
+        "{message}"
+    );
+    assert!(
+        message.contains("`shuyi-app/capture`, the capture mode, for CI's pictures, reached through game -> helper -> shuyi-app"),
+        "{message}"
+    );
+    assert!(message.contains("`shuyi-platform/capture`"), "{message}");
+    // None of them asked: the game's and the stand-in app's dev-dependencies
+    // turning on the capture don't count.
+    assert_eq!(check(&root, &[&no_default], &[]), Ok(()));
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn a_dev_dependency_or_another_targets_link_passes_and_its_own_target_is_refused() {
     let game = format!(
         "{}\n[features]\nplaydate = []\n\n\
@@ -478,8 +659,9 @@ fn a_build_cargo_cant_resolve_is_refused_with_its_cause() {
     assert_eq!(refused.code(), codes::PROJECT_FILE);
     let message = refused.message();
     assert!(
-        message
-            .contains("failed, so the export can't tell whether its build turns on the live link"),
+        message.contains(
+            "failed, so the export can't tell whether its build turns on a debug feature"
+        ),
         "{message}"
     );
     assert!(message.contains("nosuch"), "{message}");
@@ -503,7 +685,7 @@ fn hello_grids_exports_pass_though_the_engines_tests_turn_its_link_on() {
     assert!(
         nodes
             .iter()
-            .any(|n| n.name == "shuyi-app" && n.features.iter().any(|f| f == FEATURE))
+            .any(|n| n.name == "shuyi-app" && n.features.iter().any(|f| f == "link"))
     );
     let mut cx = crate::export::tests::cx("live-link-hello-grid", "windows");
     cx.turned_on = args(&["packaged"]);
@@ -560,7 +742,7 @@ fn an_export_is_refused_before_its_target_prepares_or_builds_anything() {
         let error = answer.error.unwrap();
         assert!(
             error.starts_with(
-                "an export never turns on the debug build's live link, and Cargo's build of `game`"
+                "an export never turns on a debug feature, and Cargo's build of `game`"
             ),
             "{target}: {error}"
         );

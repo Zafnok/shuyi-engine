@@ -203,19 +203,22 @@ under their own names (`name` gives another). In a `.app`, a folder goes in `Con
 where the engine's music and voices look for it, and a file goes beside the `.app`. A path that isn't
 there refuses the export, unless it is `optional`. `--without <feature>` leaves a feature off one
 build, and `--with <feature>` turns on one more that the package has, for a measuring build say. A
-debug feature is never turned on: `link`, `debug-tools` or `capture` in the list refuses the
-export, naming it.
+debug feature is never turned on: `link`, `debug-tools`, `capture` or the sound probe in the list
+refuses the export, naming it.
 
-No export ever turns on the debug build's live link, the `link` feature `cargo shuyi attach` talks
-to. Naming it isn't the only way to turn it on: a `default = ["link"]`, a `devtools = ["link"]` the
-export lists, or a dependency that asks for `shuyi-app/link` under any name turn it on too. So before
-it prepares or builds anything, the export asks Cargo what each of its builds turns on, for that
-build's target and with its own features, and refuses one that has the game's `link`,
-`shuyi-app/link` or `shuyi-platform/link` on, naming the feature and the packages it was reached
-through. A dev-dependency doesn't count, nor a dependency only for another target, since neither is
-in the program shipped. `--without devtools` passes only when nothing else turns the link on: take
-it out of `default` or the dependency's `features` instead. When Cargo can't answer, the export
-stops with its error rather than guess.
+Naming one isn't the only way to turn it on. The debug build's live link (`link`, which `cargo
+shuyi attach` talks to), the debug tools (`debug-tools`: the debug menu, `SHUYI_PERF` traces and
+session recording), the capture mode and the sound probe can each be turned on by a `default =
+["debug-tools"]`, a `devtools = ["link"]` the export lists, or a dependency that asks for
+`shuyi-ui/debug-tools` or `shuyi-app/capture` under any name. So before it prepares or builds
+anything, the export asks Cargo what each of its builds turns on, for that build's target and with
+its own features, and refuses one that has a debug feature on, the game's own or the engine's
+(`shuyi-app/link`, `shuyi-platform/link`, `shuyi-ui/debug-tools`, `shuyi-app/capture`,
+`shuyi-platform/capture` and `shuyi-app`'s probe), naming each feature and the packages it was
+reached through. A dev-dependency doesn't count, nor a dependency only for another target, since
+neither is in the program shipped. `--without devtools` passes only when nothing else turns the
+feature on: take it out of `default` or the dependency's `features` instead. When Cargo can't
+answer, the export stops with its error rather than guess.
 
 A game split into packages gives a target its own package and features in `targets`, each replacing
 the part's for that target. The Playdate builds the `game` part's package and takes nothing else of

@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3085", "3099"]
 nick_input: none
-completed:
+completed: 2026-11-09
 ---
 
 # 3303 — Refuse every debug feature in the resolved export build
@@ -74,13 +74,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An export of a package with `default = ["debug-tools"]` is refused,
+- [x] An export of a package with `default = ["debug-tools"]` is refused,
       naming `debug-tools` and the `default` list.
-- [ ] A dependency turning on `shuyi-ui/debug-tools` or
+- [x] A dependency turning on `shuyi-ui/debug-tools` or
       `shuyi-app/capture` is refused, naming the path.
-- [ ] Hello, Grid and both templates' games still export.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Hello, Grid and both templates' games still export.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -90,5 +90,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as scoped. `live_link::violations` now watches every feature of
+`export::DEBUG_FEATURES`: each in the package built, and each in the
+engine's crates that have it, from a new table beside it,
+`export::ENGINE_DEBUG_FEATURES` (`link` in `shuyi-app` and
+`shuyi-platform`, `debug-tools` in `shuyi-ui`, `capture` in `shuyi-app`
+and `shuyi-platform`, `sound-probe` in `shuyi-app`). A test reads every
+engine crate's `[features]` and keeps the table equal to them. The
+refusal names each feature as `package/feature`, with `DEBUG_FEATURES`'
+words for it and the way Cargo reached it. `no_debug_features` stays
+the arguments' quick check before the resolution.
+
+The module keeps the name `live_link`: accepted ADRs (0058, 0094, 0096)
+name its path, and its doc says it now checks every debug feature. The
+design is ADR-0096's with a wider table, so no ADR.
+
+Tests: fixture `cargo tree` answers for each feature by a `default` list,
+an alias and a dependency (and a dependency outside the engine, or an
+engine crate without the feature, not counted); a workspace of stand-ins
+resolved by Cargo where `default = ["debug-tools"]`, a dependency's
+`shuyi-ui/debug-tools` and `shuyi-app/capture` are refused and
+dev-dependencies turning on `capture` aren't. The sound probe is in the
+table and the fixture tests only: `tools/sound-parity/footprint.ron`
+takes its row out on a give-up (ADR-0068), and the docs name it as
+3099's did, "the sound gates' probe", so a give-up leaves no word of it.
+
+Hello, Grid's exports through every exporter still pass, and a new
+`grid` and `blank` game each exported for Windows (`--release`) locally.
+
+Breaking: shuyi-cli: export::live_link::FEATURE, export::live_link::ENGINE, export::live_link::Violation: the two constants are gone, replaced by `export::ENGINE_DEBUG_FEATURES`, and `Violation` has a new field, `feature`, the debug feature on.
+
+```migration
+since: 0.2.0
+what: The export's resolved-build check covers every debug feature; its live-link-only constants gave way to a table, and a violation names its feature.
+old: export::live_link::ENGINE, export::live_link::FEATURE, Violation { package, path }
+new: export::ENGINE_DEBUG_FEATURES, Violation { package, feature, path }
+before: |
+  let watched = live_link::ENGINE.contains(&name) && feature == live_link::FEATURE;
+after: |
+  let watched = export::ENGINE_DEBUG_FEATURES.iter().any(|(f, crates)| *f == feature && crates.contains(&name));
+find: ["live_link::ENGINE", "live_link::FEATURE"]
+```
+
+Book: `targets-and-export.md`'s paragraph on what an export refuses now
+names every debug feature and the engine's crates that have them.
