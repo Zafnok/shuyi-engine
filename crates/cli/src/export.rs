@@ -906,23 +906,12 @@ impl EditionBuild {
         turned_on: &[String],
     ) -> Result<Self, ExportError> {
         if let Some(content) = &edition.content {
-            let at = format!("`editions.{name}.content` in {}", crate::project::FILE);
-            let outside = content.starts_with('/')
-                || content.contains([':', '\\'])
-                || content
-                    .split('/')
-                    .any(|part| matches!(part, "" | "." | ".."));
-            if outside {
-                return Err(ExportError::Setup(format!(
-                    "{at}, `{content}`: write it from the project's root, with `/`, and no \
-                     empty part, `.` or `..`"
-                )));
-            }
-            if !root.join(content).is_dir() {
-                return Err(ExportError::Setup(format!(
-                    "{at} names `{content}`, which isn't a folder of the project"
-                )));
-            }
+            crate::contract::bake::content_folder(root, content).map_err(|why| {
+                ExportError::Setup(format!(
+                    "`editions.{name}.content` in {}: {why}",
+                    crate::project::FILE
+                ))
+            })?;
         }
         if let Some(both) = edition
             .never_features

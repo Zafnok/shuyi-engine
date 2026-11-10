@@ -48,11 +48,14 @@ replaces it later, the packed path being unaffected either way.
 own folder of files (`content`), handed to the build as `SHUYI_CONTENT`, which
 the template's `build.rs` points `include_dir!` at
 ([ADR-0100](../../docs/adr/0100-editions-named-builds-in-shuyi-ron-a-content-root-handed-to-the-build-and-default-features-always-said.md)).
-The packed path must bake an edition's folder, not `files/`. **Either order
-with 3304:** if 3304 is done, bake an edition through the way it gives the
-bake a content root; if not, refuse a packed export of an edition with a
-`content` root, as the Playdate does (`playdate.rs::edition_fits`), and 3304
-lifts it.
+The packed path must bake an edition's folder, not `files/`.
+
+**From 3304 (done):** `BakeInput::content` (`bake --content <folder>`) bakes
+a content root by the game's tool program built with it as `SHUYI_CONTENT`, in
+the Cargo profile `shuyi-content`
+([ADR-0101](../../docs/adr/0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md)).
+Bake an edition's pack through it, as `playdate::bake_input` does for the
+Playdate.
 
 ## Nick input
 

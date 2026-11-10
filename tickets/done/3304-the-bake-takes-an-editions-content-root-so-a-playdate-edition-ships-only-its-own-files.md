@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-10
 ---
 
 # 3304 — The bake takes an edition's content root
@@ -69,13 +69,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Playdate export of an edition whose `content` folder lacks a file of
+- [x] A Playdate export of an edition whose `content` folder lacks a file of
       `files/` has no pack entry of that file, and its canaries pass.
-- [ ] The same export with `content` naming `files/` holds it.
-- [ ] An edition with `default_features: true` is still refused on the
+- [x] The same export with `content` naming `files/` holds it.
+- [x] An edition with `default_features: true` is still refused on the
       Playdate.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -86,5 +86,37 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Option (a): the game's tool program is built with the edition's folder as
+`SHUYI_CONTENT` and bakes the pack
+([ADR-0101](../../docs/adr/0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md),
+amending ADR-0100 §7). (b) was turned down because the engine would need its
+own rule for which layer of a game's bundle the folder replaces, which could
+disagree with the game's build script and leave the full game's files in the
+demo's pack.
+
+- `BakeInput::content` (`bake --content <folder>`): with a folder, `bake` runs
+  the game's tool program (`shuyi.ron`'s `game`) with `cargo run` in the Cargo
+  profile `shuyi-content` (declared with `--config`, as `bench` declares its
+  own), the folder as `SHUYI_CONTENT`, and answers its JSON answer, a limit
+  naming the folder added. Its own profile because Windows can't relink the
+  tool program running the export. `contract::bake::content_folder` checks
+  the folder. Contract 44.
+- `playdate::bake_input(cx)` is what `prepare` bakes, the edition's content
+  root in it; `edition_fits` refuses only `default_features: true`.
+  `exposure-report.json`'s `inputs.content_root` already named the edition's
+  folder on every target.
+- Tests: the bake's arguments, its refusals (not a folder `SH3004`, no `game`
+  part `SH1002`), the Playdate's bake input with and without a content root,
+  and a stand-in game whose tool program (on `shuyi-assets` alone, from the
+  engine's lock file, offline) bakes two content roots through
+  `PlaydateExporter::prepare`; the packs are read back by the disclosure
+  gate: the demo's holds `maps/first.ron` alone and passes its canaries, the
+  full game's holds the rest and fails the demo's part.
+- Docs: `docs/contract.md`, `docs/targets/playdate.md`, the book's *A public
+  demo*, the `shuyi-ship` skill.
+- Follow-up: 3306, the Playdate's sounds and music, still baked from the
+  running tools (`GameTools::audio`), come from the edition's folder too.
+- For Nick: the first Playdate export of a demo builds the game's tools a
+  second time, which takes some minutes once.
+
+No break: `BakeInput` is `#[non_exhaustive]`; the new items are additions.

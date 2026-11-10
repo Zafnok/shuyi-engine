@@ -4,6 +4,14 @@
   "description": "What `bake` bakes.",
   "type": "object",
   "properties": {
+    "content": {
+      "description": "A folder of the project, from its root with `/`, to bake in place of\nthe files the game's tools embed: an edition's content root. The\ngame's tool program is built with it as `SHUYI_CONTENT` and bakes;\nnone bakes the files of the tools running now.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "out": {
       "description": "The pack's file, from the project's root; `target/shuyi/game.shuyipak`\n(or `<target>.shuyipak`) if none.",
       "type": [

@@ -73,9 +73,16 @@ has for one build, a measuring build say: `shuyi export playdate --with
 bench`. `check --target playdate` and `bake` still run the game's tools.
 
 `--edition <name>` builds one of `shuyi.ron`'s `editions` instead: its
-package and features. Its pack is still baked by the game's tools from the
-files they embed, so an edition with a `content` folder is refused here, as
-is one with `default_features: true` (the library never keeps them).
+package and features, and its pack from its `content` folder. The game's tool
+program is built again with that folder as `SHUYI_CONTENT` (in the Cargo
+profile `shuyi-content`, beside the one running the export) and bakes the
+pack, so the pack holds what the edition's program would embed and none of
+`files/` the folder lacks ([ADR-0101](../adr/0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md)).
+`cargo shuyi bake --target playdate --content <folder>` bakes the same pack
+by hand. The first such export builds every dependency of the tool program
+once more. The sounds and music are still the running tools' (ticket 3306).
+An edition with `default_features: true` is refused here (the library never
+keeps them).
 
 The crank's notch is `crank: (notch_degrees: 45)` in the keymap file, 45
 unless it says. An optional action bound to `SystemMenu0` to `SystemMenu2`

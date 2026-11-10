@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use super::*;
 use crate::contract::check::{CheckInput, check};
 use crate::contract::fake::{Fake, SOURCES};
-use crate::project::Config;
+use crate::project::{Config, GameProgram};
 
 /// The project of no game file at `root`, which has the engine's target
 /// profiles.
@@ -34,6 +34,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         target: Some("playdate".to_owned()),
         out: None,
         sheet: None,
+        content: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     assert!(answer.ok, "{answer:?}");
@@ -62,6 +63,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         target: None,
         out: Some("out/p.shuyipak".to_owned()),
         sheet: None,
+        content: None,
     };
     assert!(bake(&Fake::default(), &project(&dir), &input).ok);
     assert!(dir.join("out/p.shuyipak").is_file());
@@ -112,6 +114,7 @@ fn bake_refuses_a_target_with_no_profile() {
         target: Some("toaster".to_owned()),
         out: None,
         sheet: None,
+        content: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     let error = answer.error.unwrap_or_default();
@@ -199,6 +202,14 @@ fn bakes_arguments_are_a_target_and_a_file() {
             target: Some("playdate".to_owned()),
             out: Some("p.shuyipak".to_owned()),
             sheet: Some("s.png".to_owned()),
+            content: None,
+        })
+    );
+    assert_eq!(
+        parse_args(&args(&["--content", "demo/files"])),
+        Ok(BakeInput {
+            content: Some("demo/files".to_owned()),
+            ..BakeInput::default()
         })
     );
     assert_eq!(parse_args(&[]), Ok(BakeInput::default()));
@@ -212,7 +223,8 @@ fn bakes_arguments_are_a_target_and_a_file() {
     );
     assert_eq!(
         usage("shuyi"),
-        "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--json]"
+        "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--content <folder>] \
+         [--json]"
     );
     assert_eq!(bytes(1_234_567), "1,234,567");
     assert_eq!(bytes(123_456), "123,456");
@@ -305,4 +317,92 @@ fn a_load_is_timed_from_the_sources_and_from_the_pack() {
     let baked = bake.bake(&formats, &bundle, None).unwrap();
     assert!(load_time(&bake, &formats, &bundle, None) > 100);
     assert!(load_time(&bake, &formats, &bundle, Some(&baked.bytes)) > 100);
+}
+
+#[test]
+fn a_content_root_is_baked_by_the_tool_program_built_with_it() {
+    let program = GameProgram {
+        package: "moon-garden".to_owned(),
+        bin: None,
+        example: Some("tools".to_owned()),
+        features: vec!["tools".to_owned()],
+        args: Vec::new(),
+    };
+    let input = BakeInput {
+        target: Some("playdate".to_owned()),
+        sheet: Some("sheet.png".to_owned()),
+        content: Some("demo/files".to_owned()),
+        ..BakeInput::default()
+    };
+    let out = out_file(&input);
+    assert_eq!(out, "target/shuyi/playdate.shuyipak");
+    // Its own `bake` takes all the input but the folder, which it is built
+    // with, and answers in JSON; it is built in a profile of its own.
+    assert_eq!(
+        content_cargo_args(&program, &input, &out),
+        [
+            "run",
+            "--profile",
+            "shuyi-content",
+            "--config",
+            "profile.shuyi-content.inherits=\"dev\"",
+            "--quiet",
+            "-p",
+            "moon-garden",
+            "--example",
+            "tools",
+            "--features",
+            "tools",
+            "--",
+            "bake",
+            "--target",
+            "playdate",
+            "--out",
+            "target/shuyi/playdate.shuyipak",
+            "--sheet",
+            "sheet.png",
+            "--json",
+        ]
+    );
+}
+
+#[test]
+fn a_content_root_is_a_folder_of_the_project_and_needs_the_tool_program() {
+    let dir = folder("content");
+    fs::create_dir_all(dir.join("demo/files")).unwrap();
+    let found = content_folder(&dir, "demo/files").unwrap();
+    assert!(found.is_absolute() && found.ends_with("files"), "{found:?}");
+    for wrong in [
+        "/demo",
+        "demo/../files",
+        "demo\\files",
+        "c:/demo",
+        "demo//files",
+    ] {
+        let refused = content_folder(&dir, wrong).unwrap_err();
+        assert!(
+            refused.contains("from the project's root"),
+            "{wrong}: {refused}"
+        );
+    }
+    let missing = content_folder(&dir, "demo/none").unwrap_err();
+    assert!(missing.contains("isn't a folder"), "{missing}");
+    let bake_of = |content: &str| {
+        let input = BakeInput {
+            content: Some(content.to_owned()),
+            ..BakeInput::default()
+        };
+        bake(&Fake::default(), &project(&dir), &input)
+    };
+    let answer = bake_of("demo/none");
+    assert_eq!(answer.code.as_deref(), Some(codes::FILE.0));
+    // The tools running now embed their own files: a folder needs the tool
+    // program the project names, built with it.
+    let answer = bake_of("demo/files");
+    assert_eq!(answer.code.as_deref(), Some(codes::PROJECT_FILE.0));
+    assert!(
+        answer.error.unwrap().contains("names no game tool program"),
+        "a project with no `game` part"
+    );
+    fs::remove_dir_all(&dir).unwrap();
 }
