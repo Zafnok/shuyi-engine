@@ -59,6 +59,7 @@ pub mod basic;
 #[cfg(feature = "capture")]
 pub mod capture;
 pub mod crash;
+pub mod dropped;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
@@ -79,6 +80,7 @@ pub use app::{
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
+pub use dropped::DroppedFile;
 pub use platform::{
     DisplayInfo, Frame, LoadSlice, Look, Millis, OneBitLook, Platform, Show, SystemEvent,
 };

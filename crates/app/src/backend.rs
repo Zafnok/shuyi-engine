@@ -1,7 +1,8 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's focus ([`focus`](crate::focus)), its own
-//! shortcut and close button, the OS's data
+//! shortcut and close button, the files dropped on it
+//! ([`drops`](crate::drops)), the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
 //! memory tags and its snapshots, in debug builds. It keeps the frame cap
@@ -28,6 +29,7 @@ use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, Perf
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::audio;
+use crate::drops;
 use crate::focus::WindowFocus;
 use crate::pacing::Held;
 use crate::pads::PadInput;
@@ -382,6 +384,7 @@ impl Platform for Macroquad {
         if keys::fullscreen_shortcut() {
             out.push(SystemEvent::ToggleFullscreen);
         }
+        out.extend(drops::poll());
         if is_quit_requested() {
             out.push(SystemEvent::QuitRequested);
         }

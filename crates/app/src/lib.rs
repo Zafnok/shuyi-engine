@@ -131,6 +131,7 @@ mod backend;
 #[cfg(feature = "capture")]
 pub mod capture;
 pub mod crash;
+mod drops;
 mod facts;
 mod focus;
 #[cfg(not(target_arch = "wasm32"))]

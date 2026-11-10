@@ -49,6 +49,17 @@ machine, with a screen you couldn't test:
 - `windowed` is false on a device that is always full screen: the engine's options screen
   leaves out its Fullscreen row.
 - `keyboard`, `pointer` and `touch` say what the player has.
+- `can_drop_files()` is true where the player can drop a file on the game's window (the desktop) or
+  its page (the web): a screen says "drop a file here" only there.
+
+A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
+`start()` one) as
+`SystemEvent::FilesDropped`, each file with its `name()`, never the folders it came from, and its
+`bytes()`. That is how a player brings what the game can't ship: a level they made, a mod, their
+own copy of a file. `DroppedFile::layer(files)` makes a bundle layer named `dropped` of them, each
+at its name, for the game to lay over its own files. The engine refuses a drop of more than 16
+files, or a file of more than 256 MB, and logs why. A test drops a file with `Harness::drop_file`,
+and the tools with the `drop` step (`--drop level.txt`, from the game's folder), on any target.
 
 The facts are the screens'. A game's rules never read them, so the same commands play the same
 game on every target. A test runs a screen as a target with `Harness::as_target`, before the

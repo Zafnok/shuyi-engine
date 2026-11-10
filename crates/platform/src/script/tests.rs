@@ -355,3 +355,79 @@ fn a_debug_step_turns_channels_on_in_the_harness_and_plays_no_frame() {
     let view = &h.ctx().debug_view;
     assert!(view.is_on("anything") && !view.on().any(|id| id == "all"));
 }
+
+/// A system hook that logs each dropped file's name and size.
+fn log_drops(game: &mut shuyi_ui::Game<Toy>, event: crate::SystemEvent) {
+    if let crate::SystemEvent::FilesDropped(files) = event {
+        for file in files {
+            let line = format!("dropped {} ({} bytes)", file.name(), file.bytes().len());
+            let (level, category) = (
+                shuyi_ui::log::LogLevel::Warn,
+                shuyi_ui::log::LogCategory::Game,
+            );
+            game.ctx_mut().log(level, category, line);
+        }
+    }
+}
+
+/// The text of the lines `h`'s game has logged.
+fn logged(h: &Harness<Toy>) -> Vec<String> {
+    h.log().lines().map(|l| l.text.clone()).collect()
+}
+
+#[test]
+#[cfg(feature = "std")]
+fn a_drop_step_drops_the_file_by_its_name_in_one_frame() {
+    let drop = |path: &str| Step::Drop(path.to_owned());
+    assert_eq!(drop("a.txt").check(), Ok(()));
+    assert_eq!(drop(" ").check().unwrap_err(), "drop: no file named");
+    assert_eq!(drop("levels/a.txt").to_string(), r#"drop("levels/a.txt")"#);
+    let json = serde_json::to_string(&drop("a.txt")).unwrap();
+    assert_eq!(json, r#"{"drop":"a.txt"}"#);
+    let error = frames(&[drop("a.txt")], &keymap(), PadKind::default()).unwrap_err();
+    assert_eq!(error, "step 1: drop: not over the live link yet");
+
+    // This file, from the crate's folder, where its tests run.
+    let path = "src/script/tests.rs";
+    let size = super::files::read(path).unwrap().len();
+    let mut h: Harness<Toy> = Harness::new(toy::game()).with_system_hook(log_drops);
+    Script::new(vec![drop(path)]).play(&mut h);
+    assert_eq!(h.frame_count(), 1);
+    assert!(
+        logged(&h).contains(&format!("dropped tests.rs ({size} bytes)")),
+        "{:?}",
+        logged(&h)
+    );
+}
+
+#[test]
+#[cfg(feature = "std")]
+#[should_panic(expected = "Harness: step 1: drop: no/such.file")]
+fn the_harness_panics_on_a_file_it_cant_read() {
+    let mut h: Harness<Toy> = Harness::new(toy::game());
+    Script::new(vec![Step::Drop("no/such.file".to_owned())]).play(&mut h);
+}
+
+#[test]
+fn a_drop_over_the_limits_is_refused_and_logged() {
+    use crate::dropped::{DroppedFile, MAX_DROPPED_FILES};
+    let mut h: Harness<Toy> = Harness::new(toy::game()).with_system_hook(log_drops);
+    let many = (0..=MAX_DROPPED_FILES)
+        .map(|i| DroppedFile::new(&format!("{i}.txt"), Vec::new()))
+        .collect();
+    h.drop_files(many);
+    let big = DroppedFile::new("big.wad", vec![0; crate::dropped::MAX_DROPPED_BYTES + 1]);
+    h.drop_files(vec![big, DroppedFile::new("small.wad", vec![1, 2])]);
+    assert_eq!(
+        logged(&h),
+        [
+            "a drop of 17 files was refused: at most 16 at once".to_owned(),
+            format!(
+                "the dropped file big.wad was refused: {} bytes, more than {}",
+                crate::dropped::MAX_DROPPED_BYTES + 1,
+                crate::dropped::MAX_DROPPED_BYTES
+            ),
+            "dropped small.wad (2 bytes)".to_owned(),
+        ]
+    );
+}

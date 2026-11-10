@@ -19,6 +19,7 @@ use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::Audio;
+use crate::dropped::DroppedFile;
 use crate::text_input::TextInput;
 
 /// A moment on the backend's clock, in whole milliseconds. Where the clock
@@ -223,7 +224,7 @@ impl<'a> Frame<'a> {
 }
 
 /// Something the system tells the game, between frames.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum SystemEvent {
     /// The game is about to stop running for a while: the device sleeps or
@@ -255,6 +256,13 @@ pub enum SystemEvent {
     CrankDocked,
     /// The device's crank was unfolded.
     CrankUndocked,
+    /// The player dropped these files on the game's window (the desktop)
+    /// or its canvas (the web), each with its name and bytes, in the order
+    /// the system gave them; the backend has refused those over the limits
+    /// ([`dropped::accept`](crate::dropped::accept)). Only where
+    /// [`PlatformFacts::can_drop_files`] says so. The game's hook reads them,
+    /// and [`DroppedFile::layer`] makes a bundle layer of those it wants.
+    FilesDropped(Vec<DroppedFile>),
 }
 
 /// How long one frame may run a load in steps for

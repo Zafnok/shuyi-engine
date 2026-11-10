@@ -45,6 +45,26 @@ pub struct PlatformFacts {
     /// ([`Ctx::device`](crate::Ctx::device)). `None` where it isn't known
     /// until something is pressed.
     pub device: Option<Device>,
+    /// Whether the player can drop a file on the game's window (the
+    /// desktop) or its page (the web) and the game hears it
+    /// ([`can_drop_files`](Self::can_drop_files)). The backend says it
+    /// ([`with_file_drops`](Self::with_file_drops)): a profile doesn't, and
+    /// [`from_profile`](Self::from_profile) and the default give
+    /// [`FileDrops::Unheard`], as a session record made before it does.
+    #[serde(default)]
+    pub file_drops: FileDrops,
+}
+
+/// Whether a file dropped on the game's window reaches it
+/// ([`PlatformFacts::file_drops`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub enum FileDrops {
+    /// It does (a computer's window, a browser's page): the game's system
+    /// hook hears the files.
+    Heard,
+    /// Nothing can be dropped (a console, a phone, the headless backend).
+    #[default]
+    Unheard,
 }
 
 impl PlatformFacts {
@@ -63,7 +83,16 @@ impl PlatformFacts {
             pointer: input.pointer,
             touch: input.touch,
             device: None,
+            file_drops: FileDrops::Unheard,
         }
+    }
+
+    /// The same facts with files dropped on the window heard, or not
+    /// ([`file_drops`](Self::file_drops)).
+    #[must_use]
+    pub fn with_file_drops(mut self, file_drops: FileDrops) -> Self {
+        self.file_drops = file_drops;
+        self
     }
 
     /// The same facts on a target whose player holds `device`.
@@ -79,11 +108,19 @@ impl PlatformFacts {
     pub fn can_quit(&self) -> bool {
         self.quit == Quit::Game
     }
+
+    /// Whether the player can drop a file on the game's window (or its
+    /// page) and the game hears it: a screen offers "drop a file here"
+    /// only where it does.
+    pub fn can_drop_files(&self) -> bool {
+        self.file_drops == FileDrops::Heard
+    }
 }
 
 impl Default for PlatformFacts {
     /// The engine's `desktop` target's facts: a window that can go full
     /// screen, the game's own Quit, a keyboard and a pointer, no touch.
+    /// Files dropped are unheard until a backend says.
     fn default() -> Self {
         Self {
             target: "desktop".to_owned(),
@@ -93,6 +130,7 @@ impl Default for PlatformFacts {
             pointer: true,
             touch: false,
             device: None,
+            file_drops: FileDrops::Unheard,
         }
     }
 }
@@ -149,6 +187,8 @@ mod tests {
         assert!(!playdate.pointer && !playdate.touch);
         assert_eq!(playdate.keyboard, Keyboard::Absent);
         let desktop = PlatformFacts::from_profile(&desktop());
-        assert!(desktop.can_quit());
+        assert!(desktop.can_quit() && !desktop.can_drop_files());
+        let heard = desktop.with_file_drops(FileDrops::Heard);
+        assert!(heard.can_drop_files());
     }
 }

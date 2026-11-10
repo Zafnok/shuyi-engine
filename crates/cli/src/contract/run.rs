@@ -594,7 +594,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
         };
         if matches!(
             arg.as_str(),
-            "--script" | "--keys" | "--pad" | "--act" | "--wait"
+            "--script" | "--keys" | "--pad" | "--act" | "--wait" | "--drop"
         ) {
             let text = value()?;
             if let Some(step) = frame_png::parse_step(arg, &text) {

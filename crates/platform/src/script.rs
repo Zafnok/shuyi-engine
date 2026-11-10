@@ -1,6 +1,6 @@
 //! Input scripts: the steps of a player's input a tool plays (keys,
-//! controller buttons, an action by name, waits in seconds, the crank, and
-//! the debug view's channels turned on) and the one plan that turns them into frames of raw input events
+//! controller buttons, an action by name, waits in seconds, the crank, the
+//! debug view's channels turned on, and a file dropped on the window) and the one plan that turns them into frames of raw input events
 //! ([`frames`]). The Harness plays a [`Script`] (`Script::play`, the
 //! `harness` feature), the live link's server plays a `Play` request's
 //! steps, and a capture plan's input steps are these (ticket 2566): a key
@@ -8,8 +8,8 @@
 //!
 //! A step's form is the same in JSON and in RON: `{"keys": "Enter Up"}`,
 //! `{"pad": "South+East"}`, `{"act": "Confirm"}`, `{"wait": 0.5}`,
-//! `{"crank": 30}`, `{"debug": "grid"}`; `keys("Enter Up")` and so on in
-//! a plan's RON.
+//! `{"crank": 30}`, `{"debug": "grid"}`, `{"drop": "levels/one.txt"}`;
+//! `keys("Enter Up")` and so on in a plan's RON.
 //!
 //! Every frame is [`FRAME_DT`] long, and a wait is played as
 //! [`wait_frames`] of them. How long one wait may be is the player's to
@@ -54,6 +54,12 @@ pub enum Step {
     /// every channel, offered or not), and the frame drawn again: no frame
     /// passes (ADR-0085). Played by the Harness only.
     Debug(String),
+    /// The file at this path, from the working folder (a game's project
+    /// folder, for the tool contract), dropped on the game's window in one
+    /// frame: the game's system hook hears it by its name, never its path
+    /// ([`SystemEvent::FilesDropped`](crate::SystemEvent::FilesDropped)).
+    /// Played by the Harness only, in a build with `std`.
+    Drop(String),
 }
 
 /// Whether `id` can name a debug view channel in a [`Step::Debug`]: not
@@ -111,6 +117,11 @@ impl Step {
                     ));
                 }
             }
+            Step::Drop(path) => {
+                if path.trim().is_empty() {
+                    return Err("drop: no file named".to_owned());
+                }
+            }
         }
         Ok(())
     }
@@ -126,6 +137,7 @@ impl fmt::Display for Step {
             Step::Wait(seconds) => write!(f, "wait({seconds})"),
             Step::Crank(degrees) => write!(f, "crank({degrees})"),
             Step::Debug(channels) => write!(f, "debug({channels:?})"),
+            Step::Drop(path) => write!(f, "drop({path:?})"),
         }
     }
 }
@@ -157,13 +169,14 @@ impl Script {
     }
 
     /// Plays the steps in `h`, each frame [`FRAME_DT`] long: the frames of
-    /// [`frames`] with the game's keymap and the Harness's pad, and a crank
-    /// step with `Harness::crank`.
+    /// [`frames`] with the game's keymap and the Harness's pad, a crank
+    /// step with `Harness::crank` and a drop with `Harness::drop_file`.
     ///
     /// # Panics
     ///
     /// On a step [`Step::check`] refuses, an action the game has no key or
-    /// button for, and a wait longer than `harness::MAX_WAIT`.
+    /// button for, a wait longer than `harness::MAX_WAIT`, and a file to
+    /// drop that can't be read.
     #[cfg(any(test, feature = "harness"))]
     pub fn play<G: shuyi_ui::GameData>(&self, h: &mut crate::harness::Harness<G>) {
         for (i, step) in self.steps.iter().enumerate() {
@@ -177,6 +190,10 @@ impl Script {
                     h.show_debug(channels);
                     Vec::new()
                 }),
+                Step::Drop(path) => step.check().and_then(|()| read_dropped(path)).map(|bytes| {
+                    h.drop_file(path, bytes);
+                    Vec::new()
+                }),
                 // Only an action needs the game: keys play while it loads.
                 Step::Act(_) => step_frames(step, h.game().input().keymap(), pad),
                 _ => plain_frames(step, pad),
@@ -185,6 +202,17 @@ impl Script {
             h.play_planned(&planned);
         }
     }
+}
+
+/// The bytes of the file at `path` a [`Step::Drop`] drops; an error names
+/// it.
+#[cfg(any(test, feature = "harness"))]
+fn read_dropped(path: &str) -> Result<Vec<u8>, String> {
+    #[cfg(feature = "std")]
+    let read = files::read(path);
+    #[cfg(not(feature = "std"))]
+    let read = Err(format!("drop: {path}: reading a file needs std"));
+    read
 }
 
 /// Whether every wait of `steps` is at most `max` seconds, the most the
@@ -334,6 +362,7 @@ fn plain_frames(step: &Step, pad: PadKind) -> Result<Vec<Planned>, String> {
         Step::Act(_) => return Err("act: pressed with the game's keymap".to_owned()),
         Step::Crank(_) => return Err("crank: not over the live link yet".to_owned()),
         Step::Debug(_) => return Err("debug: not over the live link yet".to_owned()),
+        Step::Drop(_) => return Err("drop: not over the live link yet".to_owned()),
     })
 }
 
@@ -385,5 +414,7 @@ fn pad_press(buttons: &[Button], pad: PadKind) -> [Planned; 2] {
     ]
 }
 
+#[cfg(any(test, feature = "harness"))]
+mod files;
 #[cfg(test)]
 mod tests;
