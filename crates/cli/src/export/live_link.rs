@@ -65,11 +65,21 @@ fn target(args: &[String]) -> Option<&str> {
         .map(|pair| pair[1].as_str())
 }
 
-/// The arguments of `cargo tree` resolving the build `cargo <build>` runs:
-/// its package, target and feature flags as they are, and what changes no
-/// feature (the profile, the target kind) left out. A flag not known here
-/// is refused rather than guessed at.
+/// The arguments of `cargo tree` resolving the build `cargo <build>` runs
+/// ([`build_flags`]): normal and build edges, in the check's format.
 pub fn tree_args(build: &[String]) -> Result<Vec<String>, ExportError> {
+    let mut args = build_flags(build)?;
+    args.extend(["-e", "normal,build", "--prefix", "depth", "-f", FORMAT].map(str::to_owned));
+    Ok(args)
+}
+
+/// `tree` and the flags of the build `cargo <build>` that choose what
+/// `cargo tree` resolves: its package, target and feature flags as they
+/// are, and what changes no feature (the profile, the target kind) left
+/// out. A flag not known here is refused rather than guessed at.
+/// `NOTICES.txt` lists the crates of the same resolution
+/// ([`crate::notices::built_crates`]).
+pub fn build_flags(build: &[String]) -> Result<Vec<String>, ExportError> {
     let mut rest = build.iter();
     match rest.next().map(String::as_str) {
         Some("build" | "rustc") => {}
@@ -103,7 +113,6 @@ pub fn tree_args(build: &[String]) -> Result<Vec<String>, ExportError> {
             }
         }
     }
-    args.extend(["-e", "normal,build", "--prefix", "depth", "-f", FORMAT].map(str::to_owned));
     Ok(args)
 }
 
@@ -338,23 +347,33 @@ fn refusal(args: &[String], nodes: &[Node], found: &[Violation]) -> ExportError 
     ExportError::Setup(message)
 }
 
+/// The Rust flags a resolution of a build hands Cargo in [`paths::ENCODED`]:
+/// the machine's, then `rustflags`, when it is a release build (`release`)
+/// or its exporter adds flags; else none, and Cargo finds them as it does.
+/// A `cfg` in them can choose a target's dependencies, so they are handed
+/// over as the build hands them.
+pub fn encoded_flags(release: bool, rustflags: &[&str]) -> Option<String> {
+    if !release && rustflags.is_empty() {
+        return None;
+    }
+    let mut flags: Vec<String> = paths::remapped_flags_here(&[])
+        .split('\x1f')
+        .filter(|flag| !flag.is_empty())
+        .map(str::to_owned)
+        .collect();
+    flags.extend(rustflags.iter().map(|&flag| flag.to_owned()));
+    Some(flags.join("\x1f"))
+}
+
 /// The packages of the build `cargo <build>` in `cx`'s project, with the Rust
-/// flags `rustflags` after the machine's, as `cargo tree` resolves them. A
-/// `cfg` in those flags can choose a target's dependencies, so they are
-/// handed over as the build hands them: in [`paths::ENCODED`] when it is a
-/// release build or its exporter adds flags, else as Cargo finds them.
+/// flags `rustflags` after the machine's ([`encoded_flags`]), as `cargo tree`
+/// resolves them.
 fn resolve(cx: &ExportCx, build: &[String], rustflags: &[&str]) -> Result<Vec<Node>, ExportError> {
     let args = tree_args(build)?;
     let mut cargo = Command::new(crate::cargo());
     cargo.args(&args).current_dir(&cx.root);
-    if cx.release || !rustflags.is_empty() {
-        let mut flags: Vec<String> = paths::remapped_flags_here(&[])
-            .split('\x1f')
-            .filter(|flag| !flag.is_empty())
-            .map(str::to_owned)
-            .collect();
-        flags.extend(rustflags.iter().map(|&flag| flag.to_owned()));
-        cargo.env(paths::ENCODED, flags.join("\x1f"));
+    if let Some(flags) = encoded_flags(cx.release, rustflags) {
+        cargo.env(paths::ENCODED, flags);
     }
     let output = cargo.output().map_err(|e| {
         ExportError::MissingTool(format!(
