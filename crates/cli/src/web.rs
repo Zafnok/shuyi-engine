@@ -273,7 +273,14 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
         let needles = paths::needles(&[root, &workspace]);
         paths::check_file(&wasm_artifact_path(rules, &target, options), &needles)?;
     }
-    let mut works = notices::crates(root, &rules.package, TARGET, &options.features)?;
+    let encoded = crate::export::live_link::encoded_flags(options.release, &[]);
+    let mut works = notices::built_crates(
+        root,
+        &rules.package,
+        TARGET,
+        &cargo_args(rules, options),
+        encoded.as_deref(),
+    )?;
     let bare: Vec<&str> = works
         .iter()
         .filter(|work| work.texts.is_empty())

@@ -52,9 +52,12 @@ engine's own files get no header.
 Every build writes `NOTICES.txt` beside the page (`shuyi-cli`'s
 `notices` module). It lists:
 
-- the crates compiled in: the game's package's normal dependencies for
-  `wasm32-unknown-unknown`, all the way down (`cargo metadata`), with the
-  license files at the top of each crate's folder. The engine's crates
+- the crates compiled in: the build's own, as Cargo resolves it
+  (`cargo tree` with the build's package, target and feature flags,
+  `--no-default-features` included, normal edges only), so neither a dev-
+  or build-dependency nor a crate only a feature left off brings; and
+  from `cargo metadata`, the license files at the top of each crate's
+  folder. The engine's crates
   get the engine's `LICENSE-MIT` and `LICENSE-APACHE`. Another crate
   with no file gets the standard text of each license it declares that
   the tool can write (Apache-2.0, and MIT with its authors), and one

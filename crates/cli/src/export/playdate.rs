@@ -922,8 +922,15 @@ impl Exporter for PlaydateExporter {
         fs::rename(&baked, dirs.source.join(playdate_pack()))
             .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", baked.display())))?;
         let has_audio = place_audio(cx, &dirs)?;
-        let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &features(cx))
-            .map_err(ExportError::Build)?;
+        let encoded = super::live_link::encoded_flags(cx.release, rustflags(DEVICE));
+        let mut works = notices::built_crates(
+            &cx.root,
+            &cx.package,
+            DEVICE,
+            &cargo_args(cx, DEVICE),
+            encoded.as_deref(),
+        )
+        .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
         works.push(setup_c_notice(&tools.sdk)?);
         works.extend(cx.game.iter().cloned());
