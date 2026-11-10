@@ -21,7 +21,9 @@ tools are that system's. On another one, `export` says where it builds.
 - **The program.** Built with the features of `shuyi.ron`'s `export` part
   (below), and none without one; never a debug feature (`link`,
   `debug-tools`, `capture` or the sound gates' probe).
-- **`NOTICES.txt`**: every crate compiled in, the engine's data compiled
+- **`NOTICES.txt`**: every crate compiled in, as Cargo resolves the
+  package's build (its features, and its defaults only when the edition
+  keeps them), the engine's data compiled
   in with it (the controller database `gilrs` carries, under Zlib), and
   the game's own texts its `shuyi.ron`'s `notices` names, then each
   license text once.

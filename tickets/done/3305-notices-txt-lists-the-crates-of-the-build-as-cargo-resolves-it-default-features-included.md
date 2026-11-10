@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-10
 ---
 
 # 3305 — NOTICES.txt lists the crates of the build as built
@@ -66,13 +66,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An export with `--no-default-features` lists no crate only a default
+- [x] An export with `--no-default-features` lists no crate only a default
       feature brings, in a stand-in workspace like
       `export/tests/editions.rs`'s.
-- [ ] A dev-dependency of the game is never listed.
-- [ ] Hello, Grid's packages list the same crates or fewer than before.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A dev-dependency of the game is never listed.
+- [x] Hello, Grid's packages list the same crates or fewer than before.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -82,5 +82,35 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `notices::built_crates` (new, beside `notices::crates`, which is kept)
+  lists the crates of a build as Cargo resolves it: `cargo tree` with the
+  build's own package, target and feature flags (`--no-default-features`
+  included) and its Rust flags in `CARGO_ENCODED_RUSTFLAGS`, then each of
+  those crates' license and files from `cargo metadata`, as before. A crate
+  of the build that `cargo metadata` doesn't list is an error, never left
+  out unseen.
+- `live_link::tree_args` is split: `live_link::build_flags` turns a build's
+  arguments into `cargo tree`'s, shared by the debug-feature check and the
+  notices; `live_link::encoded_flags` gives the Rust flags both hand Cargo.
+- `ExportCx::native_notices` (desktop), the Playdate's `export` and
+  `web::run` (`shuyi web` and `export web`) call it with the arguments of
+  the build they run (`ExportCx::cargo_args`, the Playdate's `cargo rustc`
+  arguments, `web::cargo_args`).
+- Tests: a resolved tree mapped to its notices on the fixture's metadata
+  (and the unseen-crate error); the build's features handed to the
+  metadata; a stand-in workspace whose `story` comes only through the
+  default `full` feature, with a dev- and a build-dependency, built with
+  and without its defaults; Hello, Grid's web and Linux builds list a
+  subset of what the whole-graph walk did.
+- Deviation: only **normal** edges are listed, not normal and build as the
+  Scope's first line says. A build-dependency runs on the build machine and
+  isn't compiled into the program, which is what `NOTICES.txt` lists (as
+  before this ticket); listing them would have made Hello, Grid's list
+  longer, against the third criterion. The debug-feature check still
+  resolves normal and build edges.
+- Docs: `crates/cli/web/README.md`'s notices and `docs/targets/desktop.md`
+  say how the list is made. ADR-0100's *Consequences* line about the
+  superset is now history; accepted ADRs aren't edited.
+- No break: the public items are additions.
+
+Book: none, the book's `targets-and-export.md` says `NOTICES.txt` holds the licenses of every crate the build carries, which is now exactly so; the new functions are the CLI's own.
