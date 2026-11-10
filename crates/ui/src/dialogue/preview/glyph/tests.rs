@@ -82,7 +82,7 @@ fn the_lines_tab_shows_the_line_box_and_the_text_box_playing() {
     go_to.digits = "12".into();
     go_to.typing = true;
     v.go_to = go_to;
-    let mut said = LineRow::new(4, "Is the road clear?".into());
+    let mut said = LineRow::new(4, "Is the road clear, or is it the riders?".into());
     said.speaker = Some("mentor".into());
     let mut playing = LineRow::new(9, "Nobody keeps watch.".into());
     playing.current = true;

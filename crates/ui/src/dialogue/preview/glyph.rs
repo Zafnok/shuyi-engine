@@ -196,19 +196,17 @@ fn items(view: &PreviewView, width: usize, buf: &GlyphBuffer) -> Vec<Item> {
     }
 }
 
-/// The first item shown, so that the focused one shows in `room` rows.
+/// The first item shown, so that the focused one shows in `room` rows:
+/// the focused one, and as many before it as fit with it.
 fn first_shown(items: &[Item], focus: usize, room: usize) -> usize {
-    let height = |from: usize| -> usize {
-        items
-            .iter()
-            .take(focus + 1)
-            .skip(from)
-            .map(|i| i.lines.len())
-            .sum()
-    };
-    let mut first = 0;
-    while first < focus && height(first) > room {
-        first += 1;
+    let mut used = items.get(focus).map_or(0, |i| i.lines.len());
+    let mut first = focus;
+    for (i, item) in items.iter().enumerate().take(focus).rev() {
+        used += item.lines.len();
+        if used > room {
+            break;
+        }
+        first = i;
     }
     first
 }

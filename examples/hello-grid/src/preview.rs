@@ -37,7 +37,7 @@ pub const LIMITS: DialogueLimits = DialogueLimits {
 /// The rules the format's checks hold a scene to: [`LIMITS`], and no
 /// tokens. Every glyph of the game's font is one cell wide, the rules'
 /// default widths.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct HelloRules;
 
 impl SceneRules<NoDirective> for HelloRules {
