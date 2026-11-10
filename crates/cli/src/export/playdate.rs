@@ -293,6 +293,28 @@ where
     items.into_iter().map(Into::into).collect()
 }
 
+/// Refuses an edition the Playdate can't build as it says: its library never
+/// keeps the package's default features, and its pack is baked by the game's
+/// tools from the files they embed, so no content root reaches it.
+fn edition_fits(edition: &super::EditionBuild) -> Result<(), ExportError> {
+    let name = &edition.name;
+    if edition.default_features {
+        return Err(ExportError::Setup(format!(
+            "the edition `{name}` keeps the package's default features, and the Playdate's \
+             library is always built without them: give the Playdate an edition with \
+             `default_features: false`"
+        )));
+    }
+    if let Some(content) = &edition.content {
+        return Err(ExportError::Setup(format!(
+            "the edition `{name}` embeds the files of `{content}`, and the Playdate's pack is \
+             baked by the game's tools from the files they embed: give the Playdate an edition \
+             with no `content`"
+        )));
+    }
+    Ok(())
+}
+
 /// `cargo rustc`'s arguments for the game's library as a static library.
 fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
     let mut args: Vec<String> = [
@@ -826,6 +848,9 @@ impl Exporter for PlaydateExporter {
         project: &Project,
         game: Option<&dyn GameTools>,
     ) -> Result<(), ExportError> {
+        if let Some(edition) = &cx.edition {
+            edition_fits(edition)?;
+        }
         if !cx.features.iter().any(|feature| feature == FEATURE) {
             return Err(ExportError::Setup(format!(
                 "the package `{}` has no `{FEATURE}` feature, which makes its library the game \

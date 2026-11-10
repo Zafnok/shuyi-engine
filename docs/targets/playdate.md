@@ -72,6 +72,11 @@ leaves one of them off, and `--with <feature>` turns on another the package
 has for one build, a measuring build say: `shuyi export playdate --with
 bench`. `check --target playdate` and `bake` still run the game's tools.
 
+`--edition <name>` builds one of `shuyi.ron`'s `editions` instead: its
+package and features. Its pack is still baked by the game's tools from the
+files they embed, so an edition with a `content` folder is refused here, as
+is one with `default_features: true` (the library never keeps them).
+
 The crank's notch is `crank: (notch_degrees: 45)` in the keymap file, 45
 unless it says. An optional action bound to `SystemMenu0` to `SystemMenu2`
 becomes an item of the system menu, titled by the text key

@@ -109,6 +109,10 @@ pub struct Config {
     /// What the game's packages may hold, which `export` holds each final
     /// package to ([`crate::export::disclosure`]).
     pub disclosure: Option<Disclosure>,
+    /// The game's editions, by name (`public-demo`, `full`): what `export
+    /// --edition <name>` builds and ships, on any target
+    /// ([`crate::export`], ADR-0100).
+    pub editions: BTreeMap<String, Edition>,
     /// `glyph-tiles`.
     pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
@@ -523,6 +527,61 @@ pub struct Disclosure {
     /// yet so that a copy of it can be found: UTF-8 or UTF-16, whole, in any
     /// file of the package, of a pack or beside it.
     pub canaries: Vec<String>,
+}
+
+/// One edition of the game (`public-demo`, `full`): the program, the
+/// features and the files a build of it is made from, chosen before anything
+/// is compiled, and what its packages may hold. What it leaves unsaid is what
+/// the target would build, but its default features, which it always says.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Edition {
+    /// The package it builds, in place of the one the target would.
+    #[serde(default)]
+    pub package: Option<String>,
+    /// The program of that package it ships, in place of the one named as
+    /// the package (or its only one). A target that builds a library
+    /// (the Playdate) has none.
+    #[serde(default)]
+    pub bin: Option<String>,
+    /// Whether its builds keep the package's `default` features: always
+    /// written, since a default that turns on what only another edition has
+    /// is the easy way to ship it.
+    pub default_features: bool,
+    /// The features of the package it turns on, in place of the `export`
+    /// part's and the target's own list.
+    #[serde(default)]
+    pub features: Vec<String>,
+    /// The features its builds never have on, however Cargo would turn one
+    /// on (the package's own, or `package/feature` for a dependency's): a
+    /// build that has one is refused before anything is built.
+    #[serde(default)]
+    pub never_features: Vec<String>,
+    /// The folder of the game's files its program embeds, from the project's
+    /// root: handed to the build as `SHUYI_CONTENT`, which the game's build
+    /// script reads. Without it, the build embeds what the game names itself.
+    #[serde(default)]
+    pub content: Option<String>,
+    /// What its packages ship beside the program, in place of
+    /// `export.beside`.
+    #[serde(default)]
+    pub beside: Option<Vec<Beside>>,
+    /// What its packages may hold, in place of the project's `disclosure`
+    /// part.
+    #[serde(default)]
+    pub disclosure: Option<Disclosure>,
+}
+
+impl Edition {
+    /// An edition that keeps the package's default features or not, and
+    /// otherwise builds what the target would.
+    pub fn new(default_features: bool) -> Self {
+        Self {
+            default_features,
+            ..Self::default()
+        }
+    }
 }
 
 /// The private repository of files the game may not hand out (bought art):

@@ -85,6 +85,13 @@
             "null"
           ]
         },
+        "edition": {
+          "description": "The edition of `shuyi.ron`'s `editions` it built, if any:\n`exposure-report.json` says what it was built from.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "folder": {
           "description": "The folder the package was made from, from the export's folder:\nwhat `--run` runs.",
           "type": "string"

@@ -307,6 +307,11 @@ in an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reload
 Hello, Grid's `hello-grid-preview` is such a program: its `src/bin/preview.rs` reads the
 folder named on its command line and starts the preview.
 
+Build the program you hand out as an
+[edition](@/learn/book/targets-and-export.md#a-public-demo) that leaves your game's own
+scripts out: its `bin` is the preview, and its `content` a folder of your files without
+the scenes, so the program holds only the scenes in the writer's folder.
+
 A test of it plays the preview through the Harness:
 
 {{ snippet(file="src/preview.rs", anchor="test") }}
