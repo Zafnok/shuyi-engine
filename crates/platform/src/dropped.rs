@@ -18,7 +18,7 @@ use shuyi_assets::bundle::{Layer, LayerError};
 
 /// The most bytes one dropped file may have: a bigger one is refused
 /// ([`accept`]).
-pub const MAX_DROPPED_BYTES: usize = 256 * 1024 * 1024;
+pub const MAX_DROPPED_BYTES: usize = 268_435_456; // 256 MB
 
 /// The most files one drop may hold: a drop of more is refused whole
 /// ([`accept`]).

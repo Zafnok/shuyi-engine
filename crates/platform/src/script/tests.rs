@@ -387,8 +387,8 @@ fn a_drop_step_drops_the_file_by_its_name_in_one_frame() {
     let error = frames(&[drop("a.txt")], &keymap(), PadKind::default()).unwrap_err();
     assert_eq!(error, "step 1: drop: not over the live link yet");
 
-    // This file, from the crate's folder, where its tests run.
-    let path = "src/script/tests.rs";
+    // This file, by its whole path: wasm32's tests run in another folder.
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/src/script/tests.rs");
     let size = super::files::read(path).unwrap().len();
     let mut h: Harness<Toy> = Harness::new(toy::game()).with_system_hook(log_drops);
     Script::new(vec![drop(path)]).play(&mut h);
