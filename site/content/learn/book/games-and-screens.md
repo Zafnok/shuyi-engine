@@ -266,6 +266,56 @@ characters, but never before `。` or `、` and never after `「`, as a reader o
 expects. A key's name filled into a text, such as `Left Shift`, is never split across
 two lines.
 
+## A preview for your writer
+
+A writer who doesn't program can't run your source. Hand them a **dialogue preview**
+instead: a small program, built from your game's code, that lists the scenes of the
+`.dlg` files in a folder and plays the one they pick in your own dialogue screen. They
+save a file in their editor, and a second later it plays again from the same text box.
+A switch sends away each character the scene's `@if` blocks test, so they read the
+other part; the Lines tab jumps to any text box, or to the one a typed line number falls
+in; a strip over the scene shows the file, the line and how the line is said; and the
+Problems tab lists what the format's checks and yours find, with the file and line,
+while the last good version keeps playing.
+
+The engine has the program's screen, `DialoguePreview`. You hand it what only your game
+knows, with the trait `PreviewGame`: the rules your scenes are checked against, and the
+screen that plays one. Here is Moon Garden's dialogue screen:
+
+{{ snippet(file="src/preview.rs", anchor="talk") }}
+
+and what it hands the preview, with the preview itself as a game whose files come from
+a folder:
+
+{{ snippet(file="src/preview.rs", anchor="preview") }}
+
+`play.player(Plain)` starts the scene where the preview asks: from its text box, for
+those there. `Showing::of` tells the preview which line is on screen, so a saved file
+plays again from it. The `DialogueFolder` module reads the folder's `.dlg` files again
+when one changes. Your game's own lines (a `Directive` type), checks over every scene
+(`problems`) and named switches (`switches`, a hero the player names or not, say) go
+in the same trait.
+
+Every control is one of the six moves of `UiAction`, so your keys work as they are:
+the cursor moves and changes the tab, Confirm picks, and Cancel brings the tabs back
+over the scene. The preview's words are text keys in your language files:
+
+{{ snippet(file="files/en.ron", anchor="preview", language="ron") }}
+
+The program reads its folder with `shuyi::app::read_watched_folder`, which watches it
+in an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)).
+Hello, Grid's `hello-grid-preview` is such a program: its `src/bin/preview.rs` reads the
+folder named on its command line and starts the preview.
+
+Build the program you hand out as an
+[edition](@/learn/book/targets-and-export.md#a-public-demo) that leaves your game's own
+scripts out: its `bin` is the preview, and its `content` a folder of your files without
+the scenes, so the program holds only the scenes in the writer's folder.
+
+A test of it plays the preview through the Harness:
+
+{{ snippet(file="src/preview.rs", anchor="test") }}
+
 ## Modules
 
 The default engine stays small, so a game doesn't pay for what it doesn't use.

@@ -1,0 +1,15 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 40, 2)"
+---
+ gate.dlg:14  (quietly, out o… Esc tabs 
+                                        
+--- colours ---
+abbbbbbbbbbbaaccccccccccccccccadddddddda
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+c = fg:text bg:panel
+d = fg:text_dim bg:panel
+e = fg:text bg:background

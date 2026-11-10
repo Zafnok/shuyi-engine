@@ -36,12 +36,13 @@ None.
   compilation, so edition builds are checked with no separate edition
   bypass. A build flag the guard doesn't know (`live_link::tree_args`)
   refuses the export: teach it the flag in the same PR.
-- **Either order with 2586** (the dialogue preview screen): if 2586 is
-  done, its book section says a preview program is built as an edition
-  that leaves the game's own scripts out; check that an edition can do
-  that (a content root without the scripts folder) and name it in the
-  section; if not, nothing to do (2586 adds the sentence if this lands
-  first).
+- **From 2586 (done):** the dialogue preview a game hands a writer is in
+  the book's chapter 6, section *A preview for your writer*
+  (`site/content/learn/book/games-and-screens.md`). Add a sentence there:
+  a preview program is built as an edition that leaves the game's own
+  scripts out, so it holds only the scenes in its folder. Check that an
+  edition can do that (a content root without the scripts folder) and
+  name it in the sentence.
 
 **Out (do not do):**
 - Automatic guesses about which mechanic, story or art a game considers secret.
@@ -129,11 +130,18 @@ Deviations and limits:
 - `content` is one folder, as the ticket's title says; a demo folder copies
   the shared files (the font, the keymap). A filter over one folder was
   considered and left out (ADR-0100, *Alternatives*).
-- 2586 isn't done: its clause now says its book section names an edition
-  whose `content` leaves the scripts out, which an edition can do. 2917's
+- 2586 landed first: *A preview for your writer* (chapter 6) now says to
+  build the preview as an edition whose `bin` is the preview and whose
+  `content` is a folder without the game's scenes, linking *A public demo*.
+  An edition can: the stand-in's `writer-preview` edition ships its second
+  program from the demo's folder, and holds no canary
+  (`an_edition_ships_another_program_of_the_package_with_its_own_files`).
+  Hello, Grid's own `hello-grid-preview` embeds `files/` by its manifest's
+  path, not `SHUYI_CONTENT`, so it wasn't built as an edition. 2917's
   first plain statement is now in the book's *A public demo*.
 
-Book: `targets-and-export.md`, *A public demo*; the `shuyi-ship` skill,
+Book: `targets-and-export.md`, *A public demo*, and `games-and-screens.md`,
+*A preview for your writer*; the `shuyi-ship` skill,
 `docs/contract.md` and `docs/targets/playdate.md` too.
 
 Breaking: shuyi-cli: export::ExportCx: a new public field, `edition`; a literal of it adds it.

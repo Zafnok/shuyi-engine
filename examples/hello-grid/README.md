@@ -15,6 +15,7 @@ cargo run -p hello-grid              # from the repository's root
 cargo shuyi run --watch              # from here: a colour saved in files/palette.ron shows, and a picture saved in files/tiles.png
 cargo shuyi web --release            # from this folder: the page in dist/web/
 cargo test -p hello-grid             # the tests
+cargo run -p hello-grid --bin hello-grid-preview -- files   # the writer's dialogue preview over files/
 ```
 
 ## Layout
@@ -27,6 +28,7 @@ cargo test -p hello-grid             # the tests
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
+| `src/preview.rs`, `src/bin/preview.rs` | The dialogue preview a writer is handed (`hello-grid-preview`): the scenes of a folder's `.dlg` files in the game's text box, read again when one is saved; the tools start it with `--preview` |
 | `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |

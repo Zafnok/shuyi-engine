@@ -54,6 +54,7 @@ const PROJECT: &str = r#"(
             ),
         ),
         "full": (default_features: true, content: "game/files"),
+        "writer-preview": (default_features: false, bin: "preview", content: "game/files-demo"),
     },
 )"#;
 
@@ -147,6 +148,7 @@ fn game(name: &str) -> Project {
     write(&root.join("game/Cargo.toml"), manifest.as_bytes());
     write(&root.join("game/build.rs"), BUILD.as_bytes());
     write(&root.join("game/src/main.rs"), MAIN.as_bytes());
+    write(&root.join("game/src/bin/preview.rs"), MAIN.as_bytes());
     let full = root.join("game/files");
     write(&full.join("maps/first.ron"), b"(name: \"the first map\")\n");
     write(
@@ -281,7 +283,9 @@ fn an_edition_that_cant_be_built_as_it_says_is_refused_before_anything_is_built(
         ExportCx::of(&project, &desktop::WINDOWS, &input("windows", Some("demo"))).unwrap_err();
     assert_eq!(unknown.code(), codes::PROJECT_FILE);
     assert!(
-        unknown.message().contains("it has full, public-demo"),
+        unknown
+            .message()
+            .contains("it has full, public-demo, writer-preview"),
         "{unknown:?}"
     );
     for (content, why) in [
@@ -564,5 +568,24 @@ fn a_build_without_a_content_root_takes_the_variable_away() {
         set,
         [(std::ffi::OsStr::new(CONTENT), Some(path.as_os_str()))]
     );
+    fs::remove_dir_all(&project.root).unwrap();
+}
+
+#[test]
+fn an_edition_ships_another_program_of_the_package_with_its_own_files() {
+    // A writer's preview: the package's second program, built from a folder
+    // without the game's scenes.
+    let project = game("preview");
+    let answer = export(&project, &input("web", Some("writer-preview")), None);
+    assert!(answer.ok, "{:?}", answer.error);
+    let output = answer.result.unwrap();
+    assert_eq!(output.package, "preview-0.1.0-writer-preview-web.zip");
+    let files = package_files(&project, &output.out, &output.package);
+    let program = files.iter().find(|(name, _)| name == "preview.wasm");
+    let (_, bytes) = program.expect("the preview's program");
+    for canary in CANARIES {
+        assert!(!holds(bytes, canary), "{canary}");
+    }
+    assert!(holds(bytes, "maps/first.ron"));
     fs::remove_dir_all(&project.root).unwrap();
 }

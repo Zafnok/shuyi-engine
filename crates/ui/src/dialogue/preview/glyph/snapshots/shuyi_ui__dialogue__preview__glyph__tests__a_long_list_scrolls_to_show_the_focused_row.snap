@@ -1,0 +1,35 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 24, 12)"
+---
+  Scenes   Switches   Li
+                        
+    a.dlg: scene17      
+    a.dlg: scene18      
+    a.dlg: scene19      
+    a.dlg: scene20      
+    a.dlg: scene21      
+    a.dlg: scene22      
+    a.dlg: scene23      
+    a.dlg: scene24      
+    a.dlg: scene25      
+       keys here        
+--- colours ---
+abbbbbbbbaccccccccccaccc
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dddddddddddddddddddddddd
+dbbbbbbbbbbbbbbbbbdddddd
+dddddddeeeeeeeeedddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:panel bg:focus
+c = fg:text bg:panel
+d = fg:text bg:background
+e = fg:text_dim bg:background

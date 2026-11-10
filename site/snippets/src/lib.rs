@@ -17,6 +17,7 @@
 //! - [`actions`]: actions, never keys (chapter 4);
 //! - [`rules`]: its rules as commands (chapter 5);
 //! - [`screens`]: its screens and the screen stack (chapter 6);
+//! - [`preview`]: a preview of its dialogue for a writer (chapter 6);
 //! - [`saves`]: a save and the player's settings (chapter 7);
 //! - [`testing`]: bots and replays over its rules (chapter 8);
 //! - [`targets`]: its project file's targets and web build (chapter 9);
@@ -25,6 +26,7 @@
 pub mod actions;
 pub mod assets;
 pub mod frame;
+pub mod preview;
 pub mod quick_start;
 pub mod rules;
 pub mod saves;

@@ -36,6 +36,8 @@ pub mod hot_palette;
 pub mod map;
 #[cfg(feature = "playdate")]
 pub mod playdate;
+#[cfg(feature = "std")]
+pub mod preview;
 pub mod rules;
 pub mod screens;
 pub mod settings;

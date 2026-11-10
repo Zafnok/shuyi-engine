@@ -18,6 +18,15 @@ path = "src/main.rs"
 # target with no window (CI's `determinism` job, ticket 2116).
 required-features = ["window"]
 
+[[bin]]
+# The dialogue preview a writer is handed: the scenes of a folder's `.dlg`
+# files in the game's text box, read again when one is saved
+# (`hello_grid::preview`). `cargo run -p hello-grid --bin hello-grid-preview
+# -- <folder>`; the folder is `files/` when none is named.
+name = "hello-grid-preview"
+path = "src/bin/preview.rs"
+required-features = ["window"]
+
 [[example]]
 # The game's tool program: `frame-png` and `lang-status` on this project
 # (`shuyi.ron`).

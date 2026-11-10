@@ -16,6 +16,7 @@ fn picture(look: MapLook) -> Vec<u8> {
         stage: true,
         look,
         seed: 0,
+        preview: false,
     }
     .harness();
     h.keys("Enter Up Right Right");
@@ -75,9 +76,10 @@ fn frame_png_paints_what_the_harness_shows() {
         value: None,
     };
     assert!(HelloTools.frame(&[unknown], &script, None).is_err());
-    assert_eq!(HelloTools.frame_options().len(), 3);
+    assert_eq!(HelloTools.frame_options().len(), 4);
     let usage = frame_png::usage("cargo shuyi", HelloTools.frame_options(), "");
     assert!(usage.contains("--tiles"), "{usage}");
+    assert!(usage.contains("--preview"), "{usage}");
     let lang = HelloTools.lang().unwrap();
     assert_eq!(lang.lang.source_text("title.name"), Some("Hello, Grid"));
 }
