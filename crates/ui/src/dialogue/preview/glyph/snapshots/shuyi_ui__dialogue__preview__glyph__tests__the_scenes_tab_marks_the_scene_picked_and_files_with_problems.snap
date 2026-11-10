@@ -1,0 +1,28 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 40, 8)"
+---
+  Scenes   Switches   Lines   Problems  
+ a/folder/with/a/very/long/name/gate.d… 
+ ►  gate.dlg: gate                      
+    gate.dlg: second                    
+  ! lonely.dlg: lonely                  
+                                        
+                                        
+               keys here                
+--- colours ---
+abbbbbbbbaccccccccccacccccccacccccccccca
+deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeed
+dfffffffffffffffffdddddddddddddddddddddd
+dbbbbbbbbbbbbbbbbbbbdddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddeeeeeeeeedddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:panel bg:focus
+c = fg:text bg:panel
+d = fg:text bg:background
+e = fg:text_dim bg:background
+f = fg:highlight bg:background

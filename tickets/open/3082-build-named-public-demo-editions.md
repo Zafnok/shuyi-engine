@@ -36,12 +36,13 @@ None.
   compilation, so edition builds are checked with no separate edition
   bypass. A build flag the guard doesn't know (`live_link::tree_args`)
   refuses the export: teach it the flag in the same PR.
-- **Either order with 2586** (the dialogue preview screen): if 2586 is
-  done, its book section says a preview program is built as an edition
-  that leaves the game's own scripts out; check that an edition can do
-  that (a content root without the scripts folder) and name it in the
-  section; if not, nothing to do (2586 adds the sentence if this lands
-  first).
+- **From 2586 (done):** the dialogue preview a game hands a writer is in
+  the book's chapter 6, section *A preview for your writer*
+  (`site/content/learn/book/games-and-screens.md`). Add a sentence there:
+  a preview program is built as an edition that leaves the game's own
+  scripts out, so it holds only the scenes in its folder. Check that an
+  edition can do that (a content root without the scripts folder) and
+  name it in the sentence.
 
 **Out (do not do):**
 - Automatic guesses about which mechanic, story or art a game considers secret.

@@ -62,7 +62,7 @@ use crate::{Action, FONT_PNG, Hello, MapLook};
 pub use crate::{FONT_1BIT, PATTERN_MAP};
 
 /// The game's own `frame-png` options.
-pub const OPTIONS: [GameOption; 3] = [
+pub const OPTIONS: [GameOption; 4] = [
     GameOption::new(
         "--stage",
         "start on the stage, its scene seen, not at the title",
@@ -72,6 +72,10 @@ pub const OPTIONS: [GameOption; 3] = [
         "draw the map with the tileset (the Tiles look), not glyphs",
     ),
     GameOption::new("--seed", "seed the stage's luck with N (0 by default)").with_value(Some("N")),
+    GameOption::new(
+        "--preview",
+        "start the writer's dialogue preview over the game's scene file",
+    ),
 ];
 
 /// How a game in the Harness starts.
@@ -83,6 +87,9 @@ pub struct Start {
     pub look: MapLook,
     /// The first stage's seed.
     pub seed: u64,
+    /// The writer's dialogue preview ([`crate::preview`]), over a folder
+    /// holding the game's scene file, in place of the game.
+    pub preview: bool,
 }
 
 impl Start {
@@ -93,6 +100,7 @@ impl Start {
             match (option.flag.as_str(), option.value.as_deref()) {
                 ("--stage", _) => start.stage = true,
                 ("--tiles", _) => start.look = MapLook::Tiles,
+                ("--preview", _) => start.preview = true,
                 ("--seed", Some(n)) => {
                     start.seed = n.parse().map_err(|_| format!("--seed {n}: not a number"))?;
                 }
@@ -114,7 +122,13 @@ impl Start {
 
     fn harness_of(self, mut ctx: shuyi::ui::Ctx<Hello>) -> Harness<Hello> {
         ctx.preview_settings(|s| s.game.look = self.look);
-        let game = if self.stage {
+        let game = if self.preview {
+            let scene = crate::file(crate::DIALOGUE).unwrap_or_default().to_vec();
+            let files = std::collections::BTreeMap::from([(crate::DIALOGUE.to_owned(), scene)]);
+            let folder = shuyi::assets::bundle::Layer::owned("files".to_owned(), files)
+                .unwrap_or_else(|e| panic!("the scene's folder: {e}"));
+            crate::preview::game(ctx, folder).unwrap_or_else(|e| panic!("the preview: {e}"))
+        } else if self.stage {
             let stage = StageScreen::new(&mut ctx).briefed();
             Game::new(ctx, Box::new(stage), GameHooks::default())
         } else {

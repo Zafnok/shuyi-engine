@@ -1,0 +1,28 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 24, 8)"
+---
+  Scenes   Switches   Li
+                        
+ a.dlg:3: problem 3     
+     fix 3              
+ a.dlg:4: problem 4     
+     fix 4              
+ a.dlg:5: problem 5     
+       keys here        
+--- colours ---
+abbbbbbbbabbbbbbbbbbabbb
+cccccccccccccccccccccccc
+cccccccccccccccccccccccc
+cdddddddddcccccccccccccc
+ceeeeeeeeeeeeeeeeeeccccc
+cdddddddddcccccccccccccc
+cccccccccccccccccccccccc
+cccccccfffffffffcccccccc
+--- legend ---
+a = fg:panel bg:panel
+b = fg:text bg:panel
+c = fg:text bg:background
+d = fg:highlight bg:background
+e = fg:panel bg:focus
+f = fg:text_dim bg:background
