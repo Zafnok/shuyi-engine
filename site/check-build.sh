@@ -4,9 +4,10 @@
 #
 #   site/check-build.sh                 checks the book's sources, writes
 #                                       the problem codes' pages
-#                                       (errors.sh), builds the site twice,
-#                                       with two base URLs, and checks both
-#                                       outputs
+#                                       (errors.sh), copies the playground's
+#                                       files (copy-playground.sh), builds
+#                                       the site twice, with two base URLs,
+#                                       and checks both outputs
 #   site/check-build.sh hosts DIR BASE  checks a built site in DIR, served
 #                                       at BASE, loads nothing from another
 #                                       host (pages.yml, after the examples
@@ -89,6 +90,7 @@ for manifest in "$site_dir"/../crates/*/Cargo.toml; do
 done
 
 bash "$site_dir/errors.sh"
+bash "$site_dir/copy-playground.sh"
 
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
@@ -173,6 +175,23 @@ for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sor
 done
 grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
   fail "/hello-grid/ doesn't redirect to /examples/hello-grid/"
+# The playground (ticket 2814): the build holds each file its page names,
+# the same as Hello, Grid's, and the page loads its script and frames the
+# game.
+playground="$out/one/learn/playground/index.html"
+if [ -f "$playground" ]; then
+  grep -qE '<script [^>]*src="[^"]*/playground\.js' "$playground" || fail "learn/playground/ doesn't load playground.js"
+  grep -qF "<iframe src=\"${one}examples/hello-grid/\"" "$playground" || fail "learn/playground/ doesn't frame ${one}examples/hello-grid/"
+else
+  fail "the build has no learn/playground/"
+fi
+names="$(sed -nE 's/^files = \[(.*)\]$/\1/p' "$site_dir/content/learn/playground.md" | tr -d '",')"
+[ "$(echo "$names" | wc -w)" = 5 ] || fail "the playground names $(echo "$names" | wc -w) files rather than Hello, Grid's five"
+for name in $names; do
+  cmp -s "$site_dir/../examples/hello-grid/files/$name" "$out/one/playground/files/$name" ||
+    fail "the build's playground/files/$name isn't Hello, Grid's files/$name"
+  grep -qF "data-file=\"$name\"" "$playground" 2>/dev/null || fail "learn/playground/ has no editor of $name"
+done
 
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"

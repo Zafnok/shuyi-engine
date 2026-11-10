@@ -8,7 +8,9 @@ name: Pages
 # it last: llms.txt, llms-full.txt, a Markdown twin of each Learn page and
 # the contract's schemas (ticket 2808). Each step of the book's project, built
 # for the web, plays at /learn/book/box-pusher/<step>/play/ (ticket 2803,
-# ADR-0090); its code stays in site/tutorial/<step>/.
+# ADR-0090); its code stays in site/tutorial/<step>/. The playground at
+# /learn/playground/ plays /examples/hello-grid/ beside its files, copied to
+# /playground/files/ (ticket 2814).
 
 on:
   push:
@@ -66,6 +68,10 @@ jobs:
       # Learn's problem codes, from crates/cli/errors/ (ticket 2802).
       - name: Write the problem codes' pages
         run: bash site/errors.sh
+      # Hello, Grid's files the playground edits, which its page fetches as
+      # the game's own text (ticket 2814).
+      - name: Copy the playground's files
+        run: bash site/copy-playground.sh
       - name: Build the site
         working-directory: site
         env:

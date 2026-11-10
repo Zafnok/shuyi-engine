@@ -126,7 +126,10 @@ set before the page loads (or before a reload), is the stage it plays. When
 its data doesn't load with them, every problem goes to the page's parent
 frame, or to the console when there is none (`files/stage.map:11:6: 'X' is
 not in the legend`), and it plays its own files. The web shell's
-[README](../../crates/cli/web/README.md) says how.
+[README](../../crates/cli/web/README.md) says how. The website's playground,
+`/learn/playground/`, is such a page: it frames this game beside an editor of
+each of its text files ([`site/README.md`](../../site/README.md), *The
+playground*).
 
 ## Debug tools
 

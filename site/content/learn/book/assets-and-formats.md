@@ -212,9 +212,10 @@ a layer laid over the game's files replaces a file at its path, and adds the one
 it has. A player's **mod**, a change a player makes to a game, is such a layer; on
 desktop, `shuyi::app::read_folder` reads a folder on disk into one. On the web, where
 there are no folders, `shuyi::app::page::page_layer` reads the text files the game's
-page hands it (a page that edits the game's data beside it, and runs it again), and
-`page::report` tells the page what was wrong with them: load your data with the layer
-laid first, and lay it only if that works.
+page hands it (a page that edits the game's data beside it, and runs it again, as the
+[playground](@/learn/playground.md) does with Hello, Grid), and `page::report` tells the
+page what was wrong with them: load your data with the layer laid first, and lay it only
+if that works.
 
 {{ snippet(file="src/assets.rs", anchor="layers") }}
 
