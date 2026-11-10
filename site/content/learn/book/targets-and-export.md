@@ -321,9 +321,9 @@ export finds one and is refused.
 
 On the Playdate the edition's `content` folder is what its pack is baked from: the game's tool program
 is built again with the folder as `SHUYI_CONTENT` and bakes it, so the `.pdx` holds the demo's files and
-no others (`cargo shuyi bake --target playdate --content <folder>` shows you that pack). Its sounds and
-music still come from the full game's tools, so give them canaries too. A Playdate edition keeps no
-default features.
+no others (`cargo shuyi bake --target playdate --content <folder>` shows you that pack). The same
+program bakes its sounds and music, so they are the folder's too; music your tools read from the
+project's own `music/` folder is in every edition. A Playdate edition keeps no default features.
 
 ## Size and speed
 

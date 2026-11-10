@@ -1,11 +1,14 @@
 //! A game and a session made up for the contract's tests: each answer is
 //! what the test sets.
 
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use shuyi_assets::ContentError;
+use shuyi_assets::audio::{AudioManifest, Bytes as AudioBytes, CreditRef, Files, SoundCue};
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::format::Formats;
@@ -27,8 +30,8 @@ use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{
-    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
-    PlaytestChecks, PlaytestPlan, Tunable,
+    AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
+    PlaytestChecks, PlaytestPlan, Tunable, unsupported,
 };
 use shuyi_platform::script::wait_frames;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PerfRing};
@@ -231,6 +234,9 @@ pub struct Fake {
     /// one. An empty atlas by default, which the empty text needs nothing
     /// of.
     pub font_atlas: Option<Result<FontAtlasDef, String>>,
+    /// The sound files it ships on every target that bakes its audio, by
+    /// name, a cue each, and no music; `None`: it doesn't offer audio.
+    pub sounds: Option<Vec<(String, Vec<u8>)>>,
 }
 
 /// A game's sources: a names table, a palette and a picture.
@@ -257,6 +263,7 @@ impl Default for Fake {
             one_bit: None,
             lang: Ok(Lang::default()),
             font_atlas: Some(Ok(FontAtlasDef::default())),
+            sounds: None,
         }
     }
 }
@@ -570,6 +577,35 @@ impl GameTools for Fake {
 
     fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
         self.font_atlas.clone()
+    }
+
+    /// Its sounds, read from a copy of them kept for the rest of the test
+    /// run, since `GameAudio` reads with `'static` functions.
+    fn audio(&self, _target: &str) -> Result<GameAudio, String> {
+        fn shown(file: &str) -> String {
+            format!("sounds/{file}")
+        }
+        fn kept(_: &str) -> bool {
+            false
+        }
+        let sounds = self
+            .sounds
+            .clone()
+            .ok_or_else(|| unsupported("audio for a target that bakes it", "audio"))?;
+        let mut manifest = AudioManifest::default();
+        for (name, _) in &sounds {
+            let cue = SoundCue::new(vec![name.clone()], 100, CreditRef::Own);
+            manifest.sounds.insert(name.clone(), cue);
+        }
+        let table: &'static BTreeMap<String, Vec<u8>> =
+            Box::leak(Box::new(sounds.into_iter().collect()));
+        let read: &'static dyn Fn(&str) -> AudioBytes = Box::leak(Box::new(|file: &str| {
+            table.get(file).map(|b| Cow::Owned(b.clone()))
+        }));
+        Ok(GameAudio::new(
+            manifest,
+            Files::new(read, &shown, &kept, "music"),
+        ))
     }
 
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {

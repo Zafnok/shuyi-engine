@@ -148,7 +148,7 @@ What was done:
   `drop: "path"` (`--drop` on `run`, `scene`, `frame-png` and the MCP's
   `step`), read from the game's folder; a missing file is refused before
   anything plays (`SH0001`). The live link and capture plans refuse the
-  step. Contract version 45.
+  step. Contract version 46.
 - Docs: `docs/platform-backends.md` (the event, the fact, the backend),
   `docs/contract.md` (the step), the book's *Targets and export* chapter,
   and ADR-0103.
