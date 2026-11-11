@@ -264,7 +264,10 @@ In debug builds it logs each system event it sends (a dropped file by
 its name and size, never its bytes). It reads drops from macroquad's
 `get_dropped_files` in every frame, the web's skipped frames too
 (`crates/app/src/drops.rs`), leaving out a file the system gave no path
-or no bytes for.
+or no bytes for. On Windows it answers `WM_DROPFILES` itself, through a
+subclass of miniquad's window, and leaves out a folder or a file it
+can't read: miniquad 0.4.11 panics on one there, and never hands a drop
+on to macroquad ([ADR-0104](adr/0104-drops-on-windows-read-by-the-backend-itself-through-a-subclass-of-miniquads-window.md)).
 
 A device that freezes the process without a word (the Steam Deck asleep)
 sends `Resume` itself when it sees a long gap between frames (ticket

@@ -2,16 +2,25 @@
 //! system's [`SystemEvent::FilesDropped`], from what macroquad kept of
 //! miniquad's `files_dropped_event`.
 //!
-//! miniquad 0.4 reads a drop on Windows, Linux (X11 and Wayland), macOS
-//! and the web, where its loader reads each file the page was handed.
-//! macroquad keeps each file's path and bytes until the end of the frame
+//! miniquad 0.4 reads a drop on Linux (X11 and Wayland), macOS and the
+//! web, where its loader reads each file the page was handed. macroquad
+//! keeps each file's path and bytes until the end of the frame
 //! (`get_dropped_files`), so the backend reads them in every frame, a web
 //! frame that doesn't run the game too ([`Held`](crate::pacing::Held)), and
-//! `App` hands them to the game in the next that does. `App` refuses a
-//! drop over the limits ([`shuyi_platform::dropped::accept`]) and logs why.
+//! `App` hands them to the game in the next that does. On Windows the
+//! backend reads a drop itself ([`windows`], ticket 3307, ADR-0104):
+//! miniquad 0.4.11 panics on a dropped folder there and never tells
+//! macroquad of a drop. `App` refuses a drop over the limits
+//! ([`shuyi_platform::dropped::accept`]) and logs why.
+
+#[cfg(any(windows, test))]
+use std::path::PathBuf;
 
 use macroquad::input::get_dropped_files;
 use shuyi_platform::{DroppedFile, SystemEvent};
+
+#[cfg(windows)]
+mod windows;
 
 /// One file as macroquad gives it: its path (on the web, its name alone)
 /// and its bytes, either missing when the system couldn't say.
@@ -19,14 +28,28 @@ pub(crate) type Raw = (Option<String>, Option<Vec<u8>>);
 
 /// The drop of the files macroquad has kept this frame, if any.
 pub(crate) fn poll() -> Option<SystemEvent> {
-    let raw = get_dropped_files()
+    let raw = get_dropped_files().into_iter().map(|file| {
+        let path = file.path.map(|p| p.to_string_lossy().into_owned());
+        (path, file.bytes)
+    });
+    #[cfg(windows)]
+    let raw = raw.chain(windows::take());
+    event(raw.collect())
+}
+
+/// Each of `paths` with its bytes, leaving out one that can't be read as a
+/// file: a folder, or a file the player may not read. A drop on Windows,
+/// where miniquad would panic on it.
+#[cfg(any(windows, test))]
+pub(crate) fn read(paths: impl IntoIterator<Item = PathBuf>) -> Vec<Raw> {
+    paths
         .into_iter()
-        .map(|file| {
-            let path = file.path.map(|p| p.to_string_lossy().into_owned());
-            (path, file.bytes)
+        .filter(|path| path.is_file())
+        .filter_map(|path| {
+            let bytes = std::fs::read(&path).ok()?;
+            Some((Some(path.to_string_lossy().into_owned()), Some(bytes)))
         })
-        .collect();
-    event(raw)
+        .collect()
 }
 
 /// The drop of `raw`'s files, each by its name, leaving out one with no
@@ -70,5 +93,21 @@ mod tests {
         assert_eq!(files, [DroppedFile::new("b.txt", Vec::new())]);
         assert_eq!(event(Vec::new()), None);
         assert_eq!(event(vec![(None, None)]), None);
+    }
+
+    #[test]
+    fn a_dropped_folder_is_left_out_and_the_files_with_it_still_come() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("niño.txt");
+        std::fs::write(&file, b"hi").unwrap();
+        let folder = dir.path().join("levels");
+        std::fs::create_dir(&folder).unwrap();
+        let missing = dir.path().join("gone.wad");
+        let raw = read([folder, file, missing]);
+        let Some(SystemEvent::FilesDropped(files)) = event(raw) else {
+            panic!("no drop");
+        };
+        assert_eq!(files, [DroppedFile::new("niño.txt", b"hi".to_vec())]);
+        assert_eq!(read([dir.path().to_path_buf()]), []);
     }
 }

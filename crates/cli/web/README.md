@@ -117,6 +117,13 @@ home and the game's folders, and refused with `SH3009` if one is there.
   byte-for-byte identical to `js/mq_js_bundle.js` at that commit on GitHub.
 - License: MIT (macroquad is dual MIT/Apache-2.0; the license text is
   committed at [`mq_js_bundle-LICENSE-MIT.txt`](mq_js_bundle-LICENSE-MIT.txt)).
+- **Local patch** (ticket 3307): `window.ondrop` sizes a dropped file's
+  name by its UTF-8 bytes (`new TextEncoder().encode(name)`, copied in
+  with `set`) instead of `name.length`, its UTF-16 length, which cut a
+  name beyond ASCII (`niño.txt`) short. Upstream has the bug in
+  miniquad's `js/gl.js` too. Re-apply it when re-vendoring, unless
+  upstream has fixed it; the test
+  `a_dropped_files_name_is_sized_in_utf8_bytes` fails if it is lost.
 
 When bumping the `macroquad` crate version, re-vendor this file from the
 matching tag (or commit, if no tag exists) and update this note. The
