@@ -66,8 +66,9 @@
 <script src="gamepad.js"></script>
 <!-- Sound output (3031): our own plugin over Web Audio, for the in-house sound. -->
 <script src="sound.js"></script>
-<!-- Saving a debug build's session: a download, our own plugin. -->
-<script src="download.js"></script>
+<!-- Files the player keeps (3309): a download, and the browser's file picker
+     for a file the game asks for; our own plugin, after sapp_jsutils.js. -->
+<script src="player-files.js"></script>
 <!-- Files from the page (3069): its sessionStorage's files laid over the
      game's, and its problems sent back; our own plugin, after sapp_jsutils.js. -->
 <script src="page-files.js"></script>

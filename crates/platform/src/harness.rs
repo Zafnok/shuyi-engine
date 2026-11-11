@@ -51,6 +51,7 @@ use crate::app::{App, Start, SystemHook};
 use crate::dropped::DroppedFile;
 use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
+use crate::player_files::ChosenFile;
 use crate::script::{self, Planned};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
@@ -538,6 +539,27 @@ impl<G: GameData> Harness<G> {
     /// [`drop_file`](Self::drop_file) drops one.
     pub fn drop_files(&mut self, files: Vec<DroppedFile>) -> &mut Self {
         self.system(SystemEvent::FilesDropped(files))
+    }
+
+    /// Queues the player's answer to the game's next ask for a file
+    /// ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)): the file they
+    /// pick ([`ChosenFile::picked`], or [`ChosenFile::from_bytes`] for bytes
+    /// that may be refused), or that they cancel. The game's system hook
+    /// hears it as [`SystemEvent::FileChosen`] in the frame after the ask.
+    /// An ask with no answer queued is cancelled. It answers whatever the
+    /// platform's facts say, so a test picks a file on any target.
+    pub fn answer_next_ask(&mut self, answer: ChosenFile) -> &mut Self {
+        self.platform.answer_next_ask(answer);
+        self
+    }
+
+    /// Each file the game offered the player
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)), in order: the name
+    /// it was written as (`a (2).ron` for a second `a.ron`) and its text.
+    /// The game's system hook hears
+    /// [`SystemEvent::FileOffered`] in the frame after each.
+    pub fn offered(&self) -> &[(String, String)] {
+        self.platform.offered()
     }
 
     /// Holds the controller button `button` for `seconds` of frames (so a

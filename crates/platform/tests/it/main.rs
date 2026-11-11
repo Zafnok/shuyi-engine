@@ -6,6 +6,7 @@
 
 mod added_sounds;
 mod bare;
+mod player_files;
 #[cfg(feature = "std")]
 mod reload;
 mod session;

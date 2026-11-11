@@ -14,6 +14,7 @@ pub use web::WebStorage;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::data_dir;
 
+use shuyi_ui::StoragePlace;
 use shuyi_ui::storage::Storage;
 
 /// The storage backend for this platform, for the game whose storage is
@@ -43,6 +44,38 @@ pub fn platform(name: &str) -> Box<dyn Storage> {
 /// game whose storage is called `name`: `name/`.
 pub fn web_prefix(name: &str) -> String {
     format!("{name}/")
+}
+
+/// Where the game whose storage is called `name` keeps it, to tell the
+/// player (`shuyi_ui::PlatformFacts::storage_place`): its data folder on
+/// native ([`data_dir`]), unknown where the system has none; the browser's
+/// site storage under [`web_prefix`] on the web.
+pub fn place(name: &str) -> StoragePlace {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        folder_place(data_dir(name).as_deref())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        browser_place(name)
+    }
+}
+
+/// The place of storage in the folder `dir`, if there is one.
+#[cfg(any(not(target_arch = "wasm32"), test))]
+fn folder_place(dir: Option<&std::path::Path>) -> StoragePlace {
+    dir.map_or(StoragePlace::Unknown, |dir| {
+        StoragePlace::Folder(dir.display().to_string())
+    })
+}
+
+/// The place of storage in the browser for the game whose storage is
+/// called `name`.
+#[cfg(any(target_arch = "wasm32", test))]
+fn browser_place(name: &str) -> StoragePlace {
+    StoragePlace::Browser {
+        prefix: web_prefix(name),
+    }
 }
 
 /// The key [`smoke_check`] writes and removes.
@@ -84,5 +117,26 @@ mod tests {
     #[test]
     fn the_web_prefix_is_the_storage_name_and_a_slash() {
         assert_eq!(web_prefix("some-game"), "some-game/");
+    }
+
+    #[test]
+    fn the_place_is_the_data_folder_on_a_desktop_and_the_prefix_on_the_web() {
+        let dir = std::path::Path::new("saves").join("some-game");
+        assert_eq!(
+            folder_place(Some(&dir)),
+            StoragePlace::Folder(dir.display().to_string())
+        );
+        assert_eq!(folder_place(None), StoragePlace::Unknown);
+        assert_eq!(
+            browser_place("some-game"),
+            StoragePlace::Browser {
+                prefix: "some-game/".to_owned()
+            }
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        assert_eq!(
+            place("some-game"),
+            folder_place(data_dir("some-game").as_deref())
+        );
     }
 }

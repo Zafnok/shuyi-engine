@@ -88,7 +88,9 @@ None.
   `apply`).
 
 **Out (do not do):**
-- Getting the file to and from the player (a download, a picker): 3309.
+- Getting the file to and from the player (a download, a picker): 3309
+  (done) does it: `Ctx::offer_file`, `Ctx::ask_for_file`, and the
+  answers `SystemEvent::FileOffered` and `SystemEvent::FileChosen`.
 - Which keys a game bundles, its screens and its words: the game's
   (game#0872, game#0873).
 - Merging two saves into one: an entry is taken whole or not at all.

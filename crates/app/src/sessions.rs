@@ -3,7 +3,8 @@
 //! session" hands over as `<unix ms of its start>.session.ron`, the record
 //! so far, and recording goes on. A desktop build also writes it when the
 //! game quits ([`disk`]: the newest ten stay). The web has no files and never
-//! quits, so it saves only when asked, as a download ([`web`]).
+//! quits, so it saves only when asked, as a download ([`web`], through the
+//! player's files' plugin).
 
 #[cfg(not(target_arch = "wasm32"))]
 mod disk;

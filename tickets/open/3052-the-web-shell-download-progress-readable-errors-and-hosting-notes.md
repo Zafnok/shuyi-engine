@@ -100,7 +100,8 @@ What is planned:
   `rel="license"` link to it, and 3049 (After MVP) the game's icons and
   title.
 - 3043, 2522, 2519 and 2349 (After MVP) add `lifecycle.js`, `net.js`,
-  `download.js` and `languages.js` to `SHELL`.
+  `download.js` (since 3309, done, `player-files.js`) and `languages.js`
+  to `SHELL`.
 - 3046 (After MVP) leaves "the web page showing an error over a stopped
   canvas" to this ticket.
 - 3034 (parked) would move the web build to `wasm-bindgen` and drop
@@ -300,7 +301,8 @@ None.
 - **From 3039 (done):** `shell.js` goes in `SHELL_NOTICES` (`web.rs`'s
   notices table) as the engine's own (its test fails until it does).
 - **From 2519 (done):** `download.js` is in `SHELL`, and stays in the
-  page between the bundle and `load(...)`.
+  page between the bundle and `load(...)`; 3309 (done) renamed it
+  `player-files.js`, loaded after `sapp_jsutils.js`.
 - **Either order with 3043, 2522, 2349 and 2377:** they add
   `lifecycle.js`, `net.js`, `languages.js` and
   `motion.js` to `SHELL` and load them between the bundle and

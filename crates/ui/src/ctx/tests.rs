@@ -1083,3 +1083,20 @@ fn a_modules_state_is_found_by_its_type_and_none_is_there_otherwise() {
     assert_eq!(c.module_state::<u32>(), Some(&4));
     assert_eq!(c.module_state_mut::<u64>(), None);
 }
+
+#[test]
+fn requests_about_the_players_files_queue_until_the_platform_takes_them() {
+    let mut ctx = ctx();
+    assert_eq!(ctx.take_file_requests(), []);
+    ctx.offer_file("farm.ron", "(hay: 3)");
+    ctx.ask_for_file(&[".ron", ".txt"]);
+    ctx.open_storage_folder(Folder::Exports);
+    let taken = ctx.take_file_requests();
+    assert!(matches!(
+        &taken[0],
+        FileRequest::Offer { name, text, .. } if name == "farm.ron" && text == "(hay: 3)"
+    ));
+    assert!(matches!(&taken[1], FileRequest::Ask { accept, .. } if accept == &[".ron", ".txt"]));
+    assert_eq!(taken[2], FileRequest::OpenFolder(Folder::Exports));
+    assert_eq!(ctx.take_file_requests(), []);
+}
