@@ -67,6 +67,7 @@ use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInp
 
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::crash::{self, LastCrash};
+use crate::dropped;
 use crate::platform::{DisplayInfo, Frame, LoadSlice, Look, Millis, Platform, Show, SystemEvent};
 use crate::session::{Recorder, SessionRecord};
 use crate::text_input::TextInput;
@@ -982,13 +983,39 @@ impl<G: GameData> App<G> {
         let mut events = core::mem::take(&mut self.lists.system);
         events.clear();
         platform.system_events(&mut events);
+        self.refuse_too_much(&mut events);
         if let Some(recorder) = &mut self.recorder {
             recorder.system(&events);
         }
-        for &event in &events {
+        for event in events.drain(..) {
             self.on_system_event(platform, event);
         }
         self.lists.system = events;
+    }
+
+    /// Takes out of each drop in `events` what is over the limits
+    /// ([`dropped::accept`]), logging why, and a drop left with no file:
+    /// before a record notes them, so it holds what the game heard.
+    fn refuse_too_much(&mut self, events: &mut Vec<SystemEvent>) {
+        if !events
+            .iter()
+            .any(|e| matches!(e, SystemEvent::FilesDropped(_)))
+        {
+            return;
+        }
+        let mut refused = Vec::new();
+        events.retain_mut(|event| {
+            let SystemEvent::FilesDropped(files) = event else {
+                return true;
+            };
+            let (kept, why) = dropped::accept(core::mem::take(files));
+            refused.extend(why);
+            *files = kept;
+            !files.is_empty()
+        });
+        for why in refused {
+            self.log_line(LogLevel::Warn, LogCategory::Platform, why);
+        }
     }
 
     fn on_system_event(&mut self, platform: &mut impl Platform, event: SystemEvent) {
@@ -1031,7 +1058,7 @@ impl<G: GameData> App<G> {
                     game.toggle_fullscreen();
                 }
             }
-            SystemEvent::LowBattery => {}
+            SystemEvent::LowBattery | SystemEvent::FilesDropped(_) => {}
             SystemEvent::CrankDocked | SystemEvent::CrankUndocked => {
                 if let Some(game) = self.game_mut() {
                     game.ctx_mut().crank_docked = event == SystemEvent::CrankDocked;

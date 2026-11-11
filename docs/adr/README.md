@@ -115,5 +115,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0100](0100-editions-named-builds-in-shuyi-ron-a-content-root-handed-to-the-build-and-default-features-always-said.md) | Editions: named builds in shuyi.ron, a content root handed to the build, and default features always said | Accepted; builds on ADR-0070 and ADR-0096 |
 | [0101](0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md) | An edition's pack is baked by the game's tool program built with its content root | Accepted; amends ADR-0100 §7 |
 | [0102](0102-bake-writes-a-targets-sounds-and-music-too-so-an-editions-come-from-its-content-root.md) | `bake` writes a target's sounds and music too, so an edition's come from its content root | Accepted; amends ADR-0101 |
+| [0103](0103-dropped-files-a-system-event-with-names-and-bytes-limits-kept-by-app-and-a-fact-the-backend-says.md) | Dropped files: a system event with names and bytes, limits kept by App, and a fact the backend says | Accepted; builds on ADR-0060 and ADR-0072 |
 
 Template: [`0000-template.md`](0000-template.md).

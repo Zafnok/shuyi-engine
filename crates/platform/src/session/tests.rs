@@ -577,7 +577,10 @@ fn any_event() -> impl Strategy<Value = RawInputEvent> {
 
 /// Any event the system says.
 fn any_system() -> impl Strategy<Value = SystemEvent> {
-    prop::sample::select(vec![
+    let dropped = (".{0,12}", prop::collection::vec(any::<u8>(), 0..8))
+        .prop_map(|(name, bytes)| crate::DroppedFile::new(&name, bytes));
+    let drop = prop::collection::vec(dropped, 1..3).prop_map(SystemEvent::FilesDropped);
+    let plain = prop::sample::select(vec![
         SystemEvent::Suspend,
         SystemEvent::Resume,
         SystemEvent::FocusLost,
@@ -587,7 +590,8 @@ fn any_system() -> impl Strategy<Value = SystemEvent> {
         SystemEvent::ToggleFullscreen,
         SystemEvent::CrankDocked,
         SystemEvent::CrankUndocked,
-    ])
+    ]);
+    prop_oneof![4 => plain, 1 => drop]
 }
 
 /// Any position a sound device may answer but NaN, which has no position.

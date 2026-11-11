@@ -207,6 +207,19 @@
           "required": [
             "debug"
           ]
+        },
+        {
+          "description": "The file at this path, from the working folder (a game's project\nfolder, for the tool contract), dropped on the game's window in one\nframe: the game's system hook hears it by its name, never its path\n([`SystemEvent::FilesDropped`](crate::SystemEvent::FilesDropped)).\nPlayed by the Harness only, in a build with `std`.",
+          "type": "object",
+          "properties": {
+            "drop": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "drop"
+          ]
         }
       ]
     }

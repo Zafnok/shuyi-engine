@@ -248,6 +248,7 @@ Add what the system said since the last call:
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
 | `CrankDocked`, `CrankUndocked` | the device's crank is folded away, or out; said once the game has loaded, then on each change | `Ctx::crank_docked`: a screen whose required action is only on the crank gets a hint to unfold it (the text key `crank.unfold`) |
+| `FilesDropped(files)` | the player dropped files on the window or the canvas: each a `DroppedFile` made with `DroppedFile::new(path, bytes)`, which keeps the name alone; only where `PlatformFacts::can_drop_files()` | refuses a drop of more than 16 files whole, and a file of more than 256 MB alone (`shuyi_platform::dropped::accept`), logging each as a `platform` warning and noting only what is left in a session record; then the game's hook hears the rest |
 
 A window that loses focus sends `FocusLost`, not `Suspend`: `Suspend`
 means the game can't be seen or can't run (ADR-0076). The macroquad
@@ -259,7 +260,11 @@ minimized when the window moves, with no restore). It hands focus events
 over before the fullscreen shortcut and the close button, and while
 unfocused hands `poll_input` no pad presses, only the releases of what
 pads held; a button held across the change counts once pressed again.
-In debug builds it logs each system event it sends.
+In debug builds it logs each system event it sends (a dropped file by
+its name and size, never its bytes). It reads drops from macroquad's
+`get_dropped_files` in every frame, the web's skipped frames too
+(`crates/app/src/drops.rs`), leaving out a file the system gave no path
+or no bytes for.
 
 A device that freezes the process without a word (the Steam Deck asleep)
 sends `Resume` itself when it sees a long gap between frames (ticket
@@ -379,7 +384,10 @@ Where the game runs (`shuyi_ui::PlatformFacts`, ADR-0060): the target's
 id, whether the game may quit (`quit`: `System` where the player leaves
 through the system, and a game shows no Quit), whether it is in a
 window that goes full screen and back (`windowed`), and the keyboard,
-pointer and touch screen the device has. Read them from the target's
+pointer and touch screen the device has, and whether a file dropped on
+the window reaches the game (`file_drops`: the backend's to say with
+`with_file_drops`, since a profile doesn't; `shuyi-app` says `Heard` on
+`desktop` and `web`). Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`

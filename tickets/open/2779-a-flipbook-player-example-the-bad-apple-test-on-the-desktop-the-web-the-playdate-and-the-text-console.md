@@ -99,11 +99,13 @@ or sounds out of time.
   - on the desktop, `clip.flip` (and its music, `clip.ogg`) in a
     folder named `mine` beside the program is read with `read_folder`
     and laid over the example's files;
-  - **Either order with 3092:** if 3092 is done, a flipbook and its
-    music dropped on the window are played too, on the desktop and the
-    web, and the title says "Drop a flipbook here" where
-    `ctx.platform` says drops work. If not, nothing more here: 3092
-    adds it;
+  - **From 3092 (done):** a flipbook and its music dropped on the
+    window are played too, on the desktop and the web: the game's system
+    hook hears `SystemEvent::FilesDropped`, and
+    `DroppedFile::layer(files)` makes a layer named `dropped` to lay over
+    the example's files. The title says "Drop a flipbook here" where
+    `ctx.platform.can_drop_files()`; a test drops a clip with
+    `Harness::drop_file` or the `drop` step;
   - the README's recipe: `ffmpeg -i bad_apple.mp4 -vf scale=480:360
     -f apng clip.png`, then `ffmpeg -i bad_apple.mp4 -vn clip.ogg`,
     then `shuyi bake`. It says plainly that the video and song aren't
@@ -133,7 +135,7 @@ or sounds out of time.
    APNG through the `png` crate, the tune.
 3. The view, the pixel skin, the screens and the actions.
 4. The text skin.
-5. The player's own clip on the desktop, and the drop if 3092 is done.
+5. The player's own clip on the desktop, and the drop (3092).
 6. The web build on Pages, the Playdate build in the simulator.
 7. The README with the recipe; the docs; the gates.
 8. Play it start to end on the desktop and the web, and in the

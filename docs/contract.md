@@ -46,7 +46,12 @@ reads the same ones, and in JSON they are `{"keys": "Enter Up"}`,
 debug tools on, and the debug view's channels of those comma-separated
 ids (`"all"`: every channel), from there on, and draws the frame again
 (headless only, as the crank; ADR-0085). `frame-png --debug grid` puts it
-first, so the picture shows the channels a person would see. Key and button names are the Harness's test-script
+first, so the picture shows the channels a person would see. `--drop
+levels/one.txt` (`{"drop": "levels/one.txt"}`) drops that file, from the
+game's folder, on the window in one frame: the game's system hook hears
+it by its name, as the player's drop (`frame-png`, `run`, `scene` and
+`step` only, the live link and capture plans refuse it); a file that
+isn't there is refused before anything plays. Key and button names are the Harness's test-script
 names. An action the game has no key or button for is refused before
 anything plays (`SH0001`), and the error lists the game's actions; one
 wait is at most 33.3 seconds headless (the Harness's 2000 frames) and
@@ -66,7 +71,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 45,
+  "contract": 46,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
