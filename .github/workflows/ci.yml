@@ -624,7 +624,7 @@ jobs:
           "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
             --page target/sound-parity-page --new-page target/sound-parity-page-new --revision "$REVISION" --build-seconds "$WEB_BUILD"
       - name: What Windows recorded
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sound-parity-windows
           path: target/sound-parity
@@ -1118,7 +1118,7 @@ jobs:
       - run: rustup target add wasm32-wasip1
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # The run-gates skill names this version for a local run.
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
@@ -1155,7 +1155,7 @@ jobs:
         with:
           key: bench
       - name: The web package the export job made
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: hello-grid-export-web
           path: examples/hello-grid/dist/export/web
@@ -1273,7 +1273,7 @@ jobs:
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
@@ -1363,7 +1363,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
           inputs: .
           min-severity: medium
@@ -1379,7 +1379,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
           tool: cargo-machete
       - run: cargo machete
@@ -1404,7 +1404,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage report
@@ -1414,7 +1414,7 @@ jobs:
         continue-on-error: true
       - name: SonarCloud scan
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -1473,7 +1473,7 @@ jobs:
       # characters to every path, and libgit2 stops at 260 (ticket 2071).
       - name: Check no tracked path is too long
         run: cargo xtask check-paths
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
         with:
           tool: typos
       - name: Check spelling
