@@ -260,9 +260,15 @@ pub(crate) fn sections<'a>(
 }
 
 /// The offset in `source` of the section name `name`, which ends before
-/// the colon that ends right before byte `value` (spaces between).
+/// the colon before byte `value` (spaces between each). Before ron 0.12.3
+/// a section's raw text held the spaces after the colon; since, it starts
+/// at its first bracket.
 fn name_offset(source: &str, value: usize, name: &str) -> Option<usize> {
-    let before = source.get(..value)?.strip_suffix(':')?.trim_end();
+    let before = source
+        .get(..value)?
+        .trim_end()
+        .strip_suffix(':')?
+        .trim_end();
     before.ends_with(name).then(|| before.len() - name.len())
 }
 
