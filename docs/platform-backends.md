@@ -204,7 +204,7 @@ next. `frame.show` is one of:
   as RGBA). A one-bit display draws with `look.one_bit` instead (a
   `OneBitLook`, ADR-0062): the pattern map, the font's one-bit rows and
   the pictures, which the game's load makes from its pack;
-  `shuyi_ui::frame::onebit::render_changed_with` draws them. The picture to match, pixel for pixel at
+  `shuyi_ui::frame::onebit::render_changed` draws them. The picture to match, pixel for pixel at
   whole scales, is the raster's (`shuyi_ui::frame::raster::Painter`,
   feature `raster`): compare a backend's pixels with it through
   `raster::compare`, within a `Tolerance`.

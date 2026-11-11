@@ -214,15 +214,12 @@ not parked.
   and add what this scope asks that they lack, with 2315's snapshots and
   pictures (the render card's gizmos among them) unchanged.
 - **1-bit (3006 is done, ADR-0026):** a shape's colour goes through the
-  one-bit renderer's `Shades` (the game's inks, or a `PatternMap`) as a
+  one-bit renderer's `Shades` (a `PatternMap`) as a
   rectangle's does, in `shuyi_ui::frame::onebit`'s fast renderer and its
   reference, and the fast-equals-reference property tests cover shapes.
-- **Either order with 2389** (the inks removed): if 2389 is done, the
-  renderers' only `Shades` is a `PatternMap`: shapes draw through
-  `Shades::shape` as above, and the tests use a pattern map (2389's
-  test helper). If not, draw the same way, through `Shades::shape`,
-  never `ink_of` or an `Ink`, so 2389 has no shape code to move; it
-  moves this ticket's tests that use `InkShades` with the rest.
+- **From 2389 (done):** the inks are gone (ADR-0107): the renderers take
+  a `Shades`, shapes draw through `Shades::shape`, and the one-bit tests
+  draw in `onebit::test_map`'s swatches (`Swatch`, `c`, `test_map()`).
 - **The render card:** add shapes of each kind to the render card
   (`shuyi_ui::frame::raster::card`, 2392); its tests' `match` on `Item`
   has no `_` arm, so they don't compile until the card shows them.

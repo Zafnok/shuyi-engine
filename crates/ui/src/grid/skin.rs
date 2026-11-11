@@ -120,7 +120,8 @@ pub trait Terrains {
 }
 
 /// The palette's names of the colors a grid skin paints the path, the
-/// cursor and the threat arrows in: what the game's palette calls them.
+/// cursor, the threat arrows and an inverted flash in: what the game's
+/// palette calls them.
 /// The ranges are painted in the colors of their own names; a threat's
 /// marks are the engine's highlight color, and every dark edge (and what
 /// the cursor fades toward) its background color. Build it with
@@ -134,6 +135,10 @@ pub struct MapColors {
     pub cursor: &'static str,
     /// The threat arrows: the color of whoever threatens.
     pub threat: &'static str,
+    /// The rectangle over a tile flashing [inverted](crate::grid::glyph::FlashLook::Invert):
+    /// on a one-bit screen, a role whose pattern map says `invert: true`,
+    /// so the rectangle flips the pixels under it. `None`: the cursor's.
+    pub flash: Option<&'static str>,
 }
 
 impl MapColors {
@@ -145,6 +150,16 @@ impl MapColors {
             path,
             cursor,
             threat,
+            flash: None,
+        }
+    }
+
+    /// These names, and an inverted flash in the palette's color `name`.
+    #[must_use]
+    pub const fn with_flash(self, name: &'static str) -> Self {
+        Self {
+            flash: Some(name),
+            ..self
         }
     }
 }
@@ -212,6 +227,12 @@ impl<'a> Looks<'a> {
     /// The cursor's color, at full brightness.
     pub fn cursor(&self, colors: &MapColors) -> Rgb {
         self.named(colors.cursor, EngineColor::Text)
+    }
+
+    /// The color of the rectangle over a tile flashing inverted:
+    /// `colors`' flash color, or else its cursor's.
+    pub fn flash(&self, colors: &MapColors) -> Rgb {
+        self.named(colors.flash.unwrap_or(colors.cursor), EngineColor::Text)
     }
 
     /// The colors of the threat arrows and marks: the arrows in
@@ -493,6 +514,12 @@ mod tests {
         assert_eq!(looks.range(RangeName("nothing")), text);
         assert_eq!(looks.path(&colors), lookup("path"));
         assert_eq!(looks.cursor(&colors), lookup("cursor"));
+        assert_eq!(looks.flash(&colors), lookup("flash"));
+        let no_flash = MapColors {
+            flash: None,
+            ..colors
+        };
+        assert_eq!(looks.flash(&no_flash), lookup("cursor"));
         let threat = looks.threat(&colors);
         assert_eq!(threat.arrow, lookup("foe"));
         assert_eq!(threat.mark, palette.engine(EngineColor::Highlight));
@@ -528,8 +555,11 @@ mod tests {
                 path: "path",
                 cursor: "cursor",
                 threat: "threat",
+                flash: None,
             }
         );
+        assert_eq!(COLORS.with_flash("flash").flash, Some("flash"));
+        assert_eq!(COLORS.with_flash("flash").cursor, "cursor");
         let kit = Kit::new();
         let literal = kit.looks();
         let looks = Looks::new(literal.palette, literal.terrains, literal.lights);

@@ -164,12 +164,9 @@ None.
     pixel with `set`, as a sprite is (they are rare);
   - a rectangle whose shade `flips` (`shades.shape(color).flips`)
     stays as it is: blend and opacity don't apply to it.
-  - **Either order with 2389** (the inks removed): if 2389 is done, a
-    flipping rectangle is one in a role whose pattern map says
-    `invert: true` (2388), and the one-bit tests use 2389's pattern map
-    helper. If not, the code reads `flips` off `Shades` as above and
-    names no `Ink`, and 2389 moves this ticket's tests that use
-    `InkShades` or `Ink::Invert`'s code with the rest.
+  - **From 2389 (done):** a flipping rectangle is one in a role whose
+    pattern map says `invert: true` (2388), and the one-bit tests draw
+    in `onebit::test_map`'s swatches (`Swatch::Invert` flips).
   - **From 3056 (done):** `draw_sprite` writes a byte at a time, its
     pixels from `Columns` (`Run` pixel for pixel, `Table` otherwise),
     as `out & !m | bits & m`: `Paint::Tinted` goes through it as

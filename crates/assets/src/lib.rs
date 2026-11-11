@@ -3,7 +3,7 @@
 //! ([`error`]), and RON files read with those errors ([`ron`]). On top of
 //! them, the kinds of file every game has: images ([`image`]) and their
 //! one-bit versions ([`bitmap`]), a font atlas
-//! ([`font`]), named colours ([`palette`], [`ink`]) and their one-bit
+//! ([`font`]), named colours ([`palette`]) and their one-bit
 //! patterns ([`onebit`]), lights ([`lighting`]),
 //! the audio manifest ([`audio`]) and the credits ([`credits`]); the `.map`
 //! text format of a grid map ([`grid_map`]) and a tileset's terrain tiles
@@ -56,7 +56,6 @@ pub mod grid_map;
 pub mod hot;
 pub mod image;
 pub mod import_settings;
-pub mod ink;
 pub mod keymap;
 pub mod lang;
 pub mod lighting;

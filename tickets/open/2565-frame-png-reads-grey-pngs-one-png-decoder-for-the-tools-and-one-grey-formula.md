@@ -109,8 +109,6 @@ None.
 - `roles::luminance` (`crates/ui/src/frame/onebit/roles.rs`): an
   integer form on purpose, so a one-bit frame is the same bits on every
   platform (ADR-0026).
-- `ink_of`'s own brightness rule (`crates/ui/src/frame/onebit.rs`),
-  which disagrees with `luminance`: 2389 removes `ink_of` with the inks.
 - The private `wrap` in `crates/app/src/lib.rs`, beside
   `shuyi_assets::text::word_wrap`: it wraps error text for the log,
   keeps blank lines and never cuts a long word (a file path stays

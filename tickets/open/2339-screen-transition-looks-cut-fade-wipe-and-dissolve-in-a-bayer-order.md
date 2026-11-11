@@ -39,8 +39,8 @@ What Shuyi has today (checked 2026-10-20):
   tinted toward white.
 - The one-bit renderer already fades a sprite's pixels out in a 4 × 4
   Bayer order (`BAYER` and `shows`, `crates/ui/src/frame/onebit.rs:975-983`).
-  A colour fade drawn there is a cut at half brightness, since each
-  colour is black or white (`ink_of`).
+  A colour fade drawn there through a `Shades` is a role's pattern or
+  a colour of no role dithered by its `luminance`.
 - `cinematic::ease_in_out` (`crates/ui/src/cinematic.rs:160`) is a
   smoothstep in `f32`.
 - `Ctx::idle_motion` (the field at `crates/ui/src/ctx.rs:266`, of type
@@ -168,11 +168,9 @@ None. Which look the game uses stays Nick's choice in game#0813.
     shade (`shades.shape(color)`, as a rectangle's), so a fade dithers
     in the order sprites already fade in. `render_changed` redraws the
     whole screen when the veil changed.
-  - **Either order with 2389** (the inks removed): if 2389 is done, the
-    renderer's only `Shades` is a `PatternMap`, and the one-bit veil
-    tests and their text snapshot use 2389's pattern map helper. If
-    not, the veil goes through `Shades` as above, never `ink_of`, and
-    2389 moves this ticket's tests that use `InkShades` with the rest.
+  - **From 2389 (done):** the renderer takes a `Shades` (the inks are
+    gone, ADR-0107), and the one-bit veil tests and their text snapshot
+    draw in `onebit::test_map`'s swatches.
   - The veil goes in `shuyi_ui::frame::raster` (2332), as the reference
     the backends match.
 - **Asking for a look:** `Ctx::transition_look(&mut self, look)`, which
