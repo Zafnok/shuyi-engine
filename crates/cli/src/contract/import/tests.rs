@@ -192,6 +192,44 @@ fn a_file_no_kind_reads_gives_the_errors_of_those_that_claim_it() {
 }
 
 #[test]
+fn a_save_bundle_reads_and_a_broken_one_says_where() {
+    let dir = scratch("save-bundle");
+    let bundle = "SaveBundle(\n    version: 1,\n    made: Made(\n        engine: \"0.1.0\",\n        \
+                  game: \"demo 1.0\",\n        content: \"1a2b3c4d5e6f7a8b\",\n    ),\n    \
+                  entries: {\n        \"garden\": \"(version:1)\",\n    },\n)\n";
+    fs::write(dir.join("backup.ron"), bundle).unwrap();
+    fs::write(
+        dir.join("broken.ron"),
+        bundle.replace("version: 1,", "version: 1"),
+    )
+    .unwrap();
+    let importers = Importers::standard();
+    assert!(importers.kinds().contains(&"save bundle"));
+    let read = import(&importers, &dir, &input("backup.ron", None, true));
+    assert!(read.ok, "{read:?}");
+    let out = read.result.unwrap();
+    assert_eq!(out.read_as.len(), 1, "{:?}", out.read_as);
+    assert_eq!(out.read_as[0].kind, "save bundle");
+    assert_eq!(
+        out.read_as[0].summary,
+        "save bundle: 1 entry, made with engine 0.1.0, game \"demo 1.0\", content \
+         1a2b3c4d5e6f7a8b"
+    );
+    assert_eq!(out.read_as[0].text.as_deref(), Some(bundle));
+    let broken = import(
+        &importers,
+        &dir,
+        &input("broken.ron", Some("save bundle"), false),
+    );
+    assert!(!broken.ok);
+    let errors = &broken.result.as_ref().unwrap().errors;
+    assert_eq!(errors[0].file, "broken.ron");
+    assert_eq!(errors[0].line, Some(3));
+    assert_eq!(errors[0].code.as_deref(), Some("SH2001"));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn a_folder_too_big_to_read_is_a_limit() {
     let dir = scratch("big");
     for i in 0..=MAX_FOLDER_FILES {

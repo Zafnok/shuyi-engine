@@ -111,6 +111,19 @@ The ones a game registers with its own types or rules:
 | english | `lang::English`: the screen text by key, as one file (`en.ron`) holds it | `ron::Ron<English>` | `ron` | `ron` | nothing |
 | its own | any type serde reads | `ron::Ron<T>` | `ron`, or its own | `ron`, or its own | the type |
 
+A format of `shuyi-ui`, not of `Formats::standard()` (its kind needs the
+storage's keys): `shuyi import` reads it with the standard ones.
+
+| Kind | Type of the kind | Format | Id | Extensions | Limit |
+| ---- | ---------------- | ------ | -- | ---------- | ----- |
+| save bundle | `storage::bundle::SaveBundle`: some of a storage's entries, its version (`SAVE_BUNDLE_VERSION`) and its `Made` stamp | `storage::bundle::SaveBundleRon` (and `Encode`) | `save-bundle` | `ron` | 4 MiB |
+
+A bundle of another version is refused by its version alone, whatever
+the rest holds (`SaveHeader`), and so is a key that isn't a valid storage
+key or starts with `_bundle-`, the bundle's own. Its golden row is in
+`crates/ui/tests/golden/bundle.ron`, over the fixture
+`crates/ui/tests/fixtures/bundle_v1.ron`.
+
 Some formats are configured with the game's rules. They replace the
 standard one of their kind:
 

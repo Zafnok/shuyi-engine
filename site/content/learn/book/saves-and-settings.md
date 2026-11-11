@@ -188,6 +188,48 @@ with `Harness::answer_next_ask`:
 
 {{ snippet(file="src/saves.rs", anchor="test_files") }}
 
+## Bundles
+
+{% newcomer(to="games", topic="why a file of saves needs a verdict per save") %}
+A player's file may come from an older build of the game, or a newer one, or a friend's
+copy of another game. Before it replaces their saves, they should hear which of its saves
+this build can read, and which it would write over.
+{% end %}
+
+A **save bundle** packs several entries of the storage into one text file, stamped with
+what made it (`Made`), and reads one back with a verdict per entry before anything is
+written. It is in `shuyi::ui::storage::bundle`:
+
+- `write_bundle(storage, made, keep)` writes the keys `keep` keeps, in key order, so the
+  same saves always give the same text;
+- `plan_import(text, storage, check, now)` reads it back into an `ImportPlan`: each entry
+  with its `Verdict` (`Ready`, `Incompatible { found, wants }`, `Unreadable`, or
+  `Unknown` for a key the game doesn't know), whether it `replaces` a key the storage
+  holds, and the stamp's `mismatch` with this build. It writes nothing;
+- `apply(plan, storage, take)` writes the `Ready` entries `take` takes, all or nothing.
+
+The game's knowledge of its own keys is the check: `FormatCheck::<Save>::new(|key| …)`
+reads the keys it picks as saves of one `SaveFormat`, with `SaveHeader`, and `Checks`
+puts several together (the first that knows the key decides).
+
+{{ snippet(file="src/saves.rs", anchor="bundle") }}
+
+The text goes to the player and back as any file does, with `ctx.offer_file` and
+`ctx.ask_for_file` ([above](#files-the-player-keeps)). A file another build made still
+plans: its `mismatch` says what differs, and the verdicts decide what can be written.
+What the game tells the player, and whether it asks before replacing a save, are the
+game's.
+
+{{ snippet(file="src/saves.rs", anchor="test_bundle") }}
+
+`apply` keeps a journal while it writes, so a power cut in the middle doesn't leave half
+the old saves and half the new. Call `bundle::recover(storage)` at start, before reading
+saves, and it puts the old ones back after such a cut; `apply` calls it first too. Keys
+starting with `_bundle-` are the bundle's own: never use them for a save.
+
+`shuyi import backup.ron` reads a bundle file and says what it holds, or where a broken
+one is broken.
+
 ## When it goes wrong
 
 **Forgetting the copy.** Write `garden,` in place of `garden: garden.clone(),`, and the

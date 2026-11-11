@@ -228,6 +228,14 @@ and "drop a file here" where `can_drop_files()`; show where the saves are
 from `ctx.platform.storage_place`. A test reads `Harness::offered` and
 answers the next ask with `Harness::answer_next_ask`.
 
+For several saves in one file, use a save bundle
+(`shuyi::ui::storage::bundle`), not a format of your own: `write_bundle`
+packs the keys the game picks, `plan_import` gives each entry a
+`Verdict` from the game's `FormatCheck`s before anything is written, and
+`apply` writes the `Ready` ones the player takes, all or nothing. Show
+the plan's verdicts, `replaces` and `mismatch` before applying it, and
+call `bundle::recover` at start.
+
 ## The engine's own screens and widgets
 
 Before writing one, look for it in the engine:
