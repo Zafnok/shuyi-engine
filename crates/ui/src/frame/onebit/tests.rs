@@ -4,19 +4,14 @@
 use alloc::rc::Rc;
 use alloc::string::String;
 
+use super::test_map::{Swatch, c, test_map};
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageId;
-use shuyi_assets::ink::Ink;
 
 use super::*;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, Layer, Overlay, Rect, Sprite};
 use crate::prelude::*;
-
-/// The colour reserved for `ink`.
-fn c(ink: Ink) -> Rgb {
-    Rgb::from(ink.code())
-}
 
 /// A test font of 8 × 16 cells: `X` a 2 × 2 block (columns 3–4, rows
 /// 6–7), `?` the two top corners, `[` its left column, `]` its right one,
@@ -42,7 +37,7 @@ fn test_font() -> (FontAtlasDef, Vec<u8>) {
 
 /// A buffer of `w × h` Playdate cells, blank on white.
 fn buf(w: u16, h: u16) -> GlyphBuffer {
-    let blank = Cell::new(' ', c(Ink::Black), c(Ink::White));
+    let blank = Cell::new(' ', c(Swatch::Black), c(Swatch::White));
     GlyphBuffer::with_spec(ConsoleSpec::text(50, 15).sized(w, h), blank)
 }
 
@@ -51,7 +46,7 @@ fn draw_with(buf: &GlyphBuffer, images: &impl Images) -> Box<Frame> {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(buf, &font, images, &mut frame);
+    render(buf, &font, images, &test_map(), &mut frame);
     frame
 }
 
@@ -70,33 +65,33 @@ fn text(frame: &Frame, x: i32, y: i32, w: i32, h: i32) -> Vec<String> {
         .collect()
 }
 
-/// The top-left 8 × 4 pixels of a cell filled in `ink`.
-fn fill_of(ink: Ink) -> Vec<String> {
+/// The top-left 8 × 4 pixels of a cell filled in `swatch`.
+fn fill_of(swatch: Swatch) -> Vec<String> {
     let mut b = buf(2, 1);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(ink)));
+    b.fill_rect(b.bounds(), Cell::new(' ', c(Swatch::Black), c(swatch)));
     text(&draw(&b), 0, 0, 8, 4)
 }
 
 #[test]
-fn each_ink_fills_its_pattern() {
-    assert_eq!(fill_of(Ink::White), ["........"; 4]);
-    assert_eq!(fill_of(Ink::Black), ["########"; 4]);
-    assert_eq!(fill_of(Ink::BlackEdged), ["########"; 4]);
-    assert_eq!(fill_of(Ink::Invert), ["########"; 4]);
+fn each_role_fills_its_pattern() {
+    assert_eq!(fill_of(Swatch::White), ["........"; 4]);
+    assert_eq!(fill_of(Swatch::Black), ["########"; 4]);
+    assert_eq!(fill_of(Swatch::BlackEdged), ["########"; 4]);
+    assert_eq!(fill_of(Swatch::Invert), ["########"; 4]);
     assert_eq!(
-        fill_of(Ink::Grey),
+        fill_of(Swatch::Grey),
         ["#.#.#.#.", ".#.#.#.#", "#.#.#.#.", ".#.#.#.#"]
     );
     assert_eq!(
-        fill_of(Ink::Dots),
+        fill_of(Swatch::Dots),
         ["#...#...", "........", "..#...#.", "........"]
     );
     assert_eq!(
-        fill_of(Ink::Diagonals),
+        fill_of(Swatch::Diagonals),
         ["#...#...", ".#...#..", "..#...#.", "...#...#"]
     );
     assert_eq!(
-        fill_of(Ink::Dashes),
+        fill_of(Swatch::Dashes),
         ["##..##..", "##..##..", "..##..##", "..##..##"]
     );
 }
@@ -105,21 +100,23 @@ fn each_ink_fills_its_pattern() {
 /// cells and repeat every 4 rows.
 #[test]
 fn patterns_line_up_across_cells() {
-    for ink in Ink::ALL {
+    let map = test_map();
+    for swatch in Swatch::ALL {
         let mut b = buf(3, 2);
-        b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(ink)));
+        b.fill_rect(b.bounds(), Cell::new(' ', c(Swatch::Black), c(swatch)));
         let frame = draw(&b);
+        let shade = map.ground(c(swatch));
         for y in 0..32 {
             for x in 0..24 {
                 assert_eq!(
                     is_white(&frame, x, y),
-                    ink_is_white(ink, x, y),
-                    "{ink:?} ({x}, {y})"
+                    shade.is_white(x, y),
+                    "{swatch:?} ({x}, {y})"
                 );
                 assert_eq!(
-                    ink_is_white(ink, x, y),
-                    ink_is_white(ink, x + 8, y + 4),
-                    "{ink:?} repeats"
+                    shade.is_white(x, y),
+                    shade.is_white(x + 8, y + 4),
+                    "{swatch:?} repeats"
                 );
             }
         }
@@ -127,27 +124,10 @@ fn patterns_line_up_across_cells() {
 }
 
 #[test]
-fn a_colour_without_an_ink_is_white_or_black_by_its_brightness() {
-    for ink in Ink::ALL {
-        assert_eq!(ink_of(c(ink)), ink);
-    }
-    // 299 × 128 + 587 × 128 + 114 × 127 is just under half of 255 × 1000.
-    assert_eq!(ink_of(Rgb::new(128, 128, 127)), Ink::Black);
-    assert_eq!(ink_of(Rgb::new(128, 128, 129)), Ink::White);
-    // Exactly half: 299 × 1 + 587 × 189 + 114 × 147 = 128,000.
-    assert_eq!(ink_of(Rgb::new(1, 189, 147)), Ink::White);
-    assert_eq!(ink_of(Rgb::new(1, 189, 146)), Ink::Black);
-    assert_eq!(ink_of(Rgb::new(0, 0, 255)), Ink::Black);
-    assert_eq!(ink_of(Rgb::new(0, 255, 0)), Ink::White);
-    assert_eq!(ink_of(Rgb::new(230, 0, 0)), Ink::Black);
-    assert_eq!(ink_of(Rgb::new(255, 255, 254)), Ink::White);
-}
-
-#[test]
 fn glyphs_draw_black_on_white_and_white_on_black() {
     let mut b = buf(2, 1);
-    b.print(0, 0, "X", c(Ink::Black), c(Ink::White));
-    b.print(1, 0, "X", c(Ink::White), c(Ink::Black));
+    b.print(0, 0, "X", c(Swatch::Black), c(Swatch::White));
+    b.print(1, 0, "X", c(Swatch::White), c(Swatch::Black));
     let frame = draw(&b);
     assert_eq!(
         text(&frame, 0, 5, 16, 4),
@@ -167,8 +147,11 @@ fn glyphs_draw_black_on_white_and_white_on_black() {
 #[test]
 fn edged_glyphs_keep_a_white_edge() {
     let mut b = buf(2, 3);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
-    b.print_fg(0, 1, "][", c(Ink::BlackEdged));
+    b.fill_rect(
+        b.bounds(),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::Grey)),
+    );
+    b.print_fg(0, 1, "][", c(Swatch::BlackEdged));
     let frame = draw(&b);
     // x 4 to 11, from the row above the glyphs: `]` is x 7, `[` x 8.
     assert_eq!(
@@ -182,7 +165,7 @@ fn edged_glyphs_keep_a_white_edge() {
     );
     // Without the edge, only the grey.
     let mut plain = b.clone();
-    plain.print_fg(0, 1, "][", c(Ink::Black));
+    plain.print_fg(0, 1, "][", c(Swatch::Black));
     assert_eq!(
         text(&draw(&plain), 4, 15, 8, 3),
         [".#.#.#.#", "#.###.#.", ".#.###.#"]
@@ -191,7 +174,7 @@ fn edged_glyphs_keep_a_white_edge() {
     let mut b = buf(1, 1);
     b.fill_rect(
         b.bounds(),
-        Cell::new('X', c(Ink::BlackEdged), c(Ink::Black)),
+        Cell::new('X', c(Swatch::BlackEdged), c(Swatch::Black)),
     );
     assert_eq!(
         text(&draw(&b), 0, 4, 8, 6),
@@ -207,7 +190,7 @@ fn the_white_edge_fills_a_gap_between_two_pixels() {
     let mut b = buf(1, 1);
     b.fill_rect(
         b.bounds(),
-        Cell::new('"', c(Ink::BlackEdged), c(Ink::Black)),
+        Cell::new('"', c(Swatch::BlackEdged), c(Swatch::Black)),
     );
     assert_eq!(
         text(&draw(&b), 0, 7, 8, 3),
@@ -218,7 +201,7 @@ fn the_white_edge_fills_a_gap_between_two_pixels() {
 #[test]
 fn a_glyph_can_be_drawn_in_a_pattern() {
     let mut b = buf(1, 1);
-    b.print(0, 0, "[", c(Ink::Grey), c(Ink::White));
+    b.print(0, 0, "[", c(Swatch::Grey), c(Swatch::White));
     let frame = draw(&b);
     assert_eq!(text(&frame, 0, 0, 2, 4), ["#.", "..", "#.", ".."]);
 }
@@ -226,7 +209,7 @@ fn a_glyph_can_be_drawn_in_a_pattern() {
 #[test]
 fn a_missing_glyph_is_the_fallback_and_a_space_is_nothing() {
     let mut b = buf(2, 1);
-    b.print(0, 0, "é ", c(Ink::Black), c(Ink::White));
+    b.print(0, 0, "é ", c(Swatch::Black), c(Swatch::White));
     let frame = draw(&b);
     assert_eq!(
         text(&frame, 0, 0, 16, 2),
@@ -240,7 +223,7 @@ fn a_missing_glyph_is_the_fallback_and_a_space_is_nothing() {
     let bits = test_font().1;
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(&b, &font, &(), &mut frame);
+    render(&b, &font, &(), &test_map(), &mut frame);
     assert_eq!(text(&frame, 0, 0, 8, 1), ["........"]);
 }
 
@@ -261,17 +244,17 @@ fn wide_font() -> (FontAtlasDef, Vec<u8>) {
 fn a_wide_glyph_draws_a_half_in_each_of_its_cells() {
     let widths = shuyi_assets::font::CellWidths::wide(['田']);
     let mut b = buf(4, 1).with_widths(widths);
-    b.print(0, 0, "田X", c(Ink::Black), c(Ink::White));
+    b.print(0, 0, "田X", c(Swatch::Black), c(Swatch::White));
     let (atlas, bits) = wide_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(&b, &font, &(), &mut frame);
+    render(&b, &font, &(), &test_map(), &mut frame);
     assert_eq!(text(&frame, 0, 0, 24, 1), ["####..........##........"]);
     assert_eq!(text(&frame, 16, 6, 8, 1), ["...##..."], "the X after it");
     // Printed narrow, without its continuation: the fallback.
     let mut narrow = buf(2, 1);
-    narrow.print(0, 0, "田", c(Ink::Black), c(Ink::White));
-    render(&narrow, &font, &(), &mut frame);
+    narrow.print(0, 0, "田", c(Swatch::Black), c(Swatch::White));
+    render(&narrow, &font, &(), &test_map(), &mut frame);
     assert_eq!(text(&frame, 0, 0, 8, 1), ["#......#"]);
     // A one-bit atlas shorter than the wide glyph's halves is refused.
     assert!(Font::new(&atlas, &bits[..6 * 16]).is_err());
@@ -297,10 +280,10 @@ fn a_wide_glyph_draws_from_the_set_its_language_names_first() {
     ] {
         let widths = CellWidths::wide(['田']).in_lang(set, false);
         let mut b = buf(4, 1).with_widths(widths);
-        b.print(0, 0, "田", c(Ink::Black), c(Ink::White));
-        render(&b, &font, &(), &mut frame);
+        b.print(0, 0, "田", c(Swatch::Black), c(Swatch::White));
+        render(&b, &font, &(), &test_map(), &mut frame);
         assert_eq!(text(&frame, 0, 0, 16, 1), [row], "{set:?}");
-        super::reference::render(&b, &font, &(), &mut slow);
+        super::reference::render(&b, &font, &(), &test_map(), &mut slow);
         assert_eq!(*frame, *slow, "{set:?}");
     }
 }
@@ -314,10 +297,10 @@ fn narrow_cells(w: u16, text: &str) -> GlyphBuffer {
         cell_w: 6,
         cell_h: 16,
     };
-    let blank = Cell::new(' ', c(Ink::Black), c(Ink::White));
+    let blank = Cell::new(' ', c(Swatch::Black), c(Swatch::White));
     let mut b = GlyphBuffer::with_spec(spec, blank)
         .with_widths(shuyi_assets::font::CellWidths::wide(['田', 'い']));
-    b.print(2, 0, text, c(Ink::Black), c(Ink::White));
+    b.print(2, 0, text, c(Swatch::Black), c(Swatch::White));
     b
 }
 
@@ -336,11 +319,11 @@ fn a_continuation_is_drawn_again_when_its_first_half_changes() {
         "the continuations are the same"
     );
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(&old, &font, &(), &mut frame);
+    render(&old, &font, &(), &test_map(), &mut frame);
     assert_eq!(text(&frame, 22, 0, 4, 1), ["..##"]);
-    render_changed(&old, &new, &font, &(), &mut frame);
+    render_changed(&old, &new, &font, &(), &test_map(), &mut frame);
     let mut full = Box::new([0u8; FRAME_BYTES]);
-    render(&new, &font, &(), &mut full);
+    render(&new, &font, &(), &test_map(), &mut full);
     assert_eq!(text(&frame, 22, 0, 4, 1), ["...."]);
     assert_eq!(*frame, *full);
 }
@@ -352,13 +335,13 @@ fn an_unchanged_wide_glyph_is_not_drawn_again() {
     let (atlas, bits) = wide_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut b = buf(6, 1).with_widths(shuyi_assets::font::CellWidths::wide(['田']));
-    b.print(2, 0, "田", c(Ink::Black), c(Ink::White));
+    b.print(2, 0, "田", c(Swatch::Black), c(Swatch::White));
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(&b, &font, &(), &mut frame);
+    render(&b, &font, &(), &test_map(), &mut frame);
     // The continuation is cell 3: pixels 24 to 31 of row 0, byte 3.
     frame[3] ^= 0b0100_0000;
     let spoiled = frame.clone();
-    render_changed(&b, &b, &font, &(), &mut frame);
+    render_changed(&b, &b, &font, &(), &test_map(), &mut frame);
     assert_eq!(*frame, *spoiled);
 }
 
@@ -367,17 +350,17 @@ fn an_unchanged_wide_glyph_is_not_drawn_again() {
 #[test]
 fn items_draw_under_and_over_the_glyphs() {
     let mut b = buf(1, 1);
-    b.print(0, 0, "[", c(Ink::White), c(Ink::White));
+    b.print(0, 0, "[", c(Swatch::White), c(Swatch::White));
     // Under: black behind the white glyph, which shows over it.
     b.add_overlay(Overlay::new(
         Rect::new(0, 0, 4, 2),
-        c(Ink::Black),
+        c(Swatch::Black),
         Layer::Under,
     ));
     // Over: black covering the glyph's second row.
     b.add_overlay(Overlay::new(
         Rect::new(0, 1, 1, 1),
-        c(Ink::Black),
+        c(Swatch::Black),
         Layer::Over,
     ));
     let frame = draw(&b);
@@ -387,14 +370,14 @@ fn items_draw_under_and_over_the_glyphs() {
 #[test]
 fn an_invert_rectangle_flips_white_grey_and_black() {
     let mut b = buf(3, 1);
-    b.set(1, 0, Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
-    b.set(2, 0, Cell::new('X', c(Ink::White), c(Ink::Black)));
-    let invert = Overlay::new(Rect::new(4, 0, 18, 8), c(Ink::Invert), Layer::Under);
+    b.set(1, 0, Cell::new(' ', c(Swatch::Black), c(Swatch::Grey)));
+    b.set(2, 0, Cell::new('X', c(Swatch::White), c(Swatch::Black)));
+    let invert = Overlay::new(Rect::new(4, 0, 18, 8), c(Swatch::Invert), Layer::Under);
     b.add_overlay(invert);
     // Drawn after the invert, it is still flipped.
     b.add_overlay(Overlay::new(
         Rect::new(0, 0, 6, 1),
-        c(Ink::Black),
+        c(Swatch::Black),
         Layer::Over,
     ));
     let frame = draw(&b);
@@ -442,7 +425,10 @@ impl Images for TestImages {
 /// `edit` makes it.
 fn sprite_frame(edit: impl Fn(Sprite) -> Sprite, none: bool) -> Vec<String> {
     let mut b = buf(1, 1);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
+    b.fill_rect(
+        b.bounds(),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::Grey)),
+    );
     let sprite = Sprite::new(
         picture_id(),
         Rect::new(0, 0, 4, 2),
@@ -475,13 +461,13 @@ fn a_sprite_draws_its_one_bit_picture() {
         ["..#.#.#.", "..##.#.#", "###.#.#.", "##.#.#.#"]
     );
     // A silhouette in one ink, a pattern fixed to the screen.
-    let solid = |ink: Ink| move |s: Sprite| s.painted(Paint::Solid(c(ink)));
+    let solid = |ink: Swatch| move |s: Sprite| s.painted(Paint::Solid(c(ink)));
     assert_eq!(
-        sprite_frame(solid(Ink::Black), false),
+        sprite_frame(solid(Swatch::Black), false),
         ["########", "########", "###.#.#.", "##.#.#.#"]
     );
     assert_eq!(
-        sprite_frame(solid(Ink::Dots), false),
+        sprite_frame(solid(Swatch::Dots), false),
         ["#...#...", "........", "..#.#.#.", "...#.#.#"]
     );
     // Dimmed: every other pixel white. Shaded: as it is.
@@ -499,14 +485,17 @@ fn a_sprite_draws_its_one_bit_picture() {
     let dark = |brightness| move |s: Sprite| Sprite { brightness, ..s };
     assert_eq!(
         sprite_frame(dark(0), false),
-        sprite_frame(solid(Ink::Black), false)
+        sprite_frame(solid(Swatch::Black), false)
     );
     assert_eq!(sprite_frame(dark(255), false), sprite_frame(|s| s, false));
     // Faded out: none of it; with no picture, a grey rectangle.
     let faded = |opacity| move |s: Sprite| Sprite { opacity, ..s };
     assert_eq!(sprite_frame(faded(0), false), grey);
     let mut b = buf(1, 1);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::White)));
+    b.fill_rect(
+        b.bounds(),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::White)),
+    );
     b.add_sprite(Sprite::new(
         picture_id(),
         Rect::new(0, 0, 4, 2),
@@ -531,7 +520,10 @@ fn a_one_bit_packs_bundle_gives_the_picture_at_each_images_path() {
         Bundle::new(vec![BundleLayer::table("pack", files)])
     };
     let mut b = buf(1, 1);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
+    b.fill_rect(
+        b.bounds(),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::Grey)),
+    );
     let sprite = Sprite::new(
         picture_id(),
         Rect::new(0, 0, 4, 2),
@@ -562,7 +554,10 @@ impl Images for One<'_> {
 /// stretched to `dest`, over a grey cell.
 fn drawn(image: Image<'_>, src: Rect, dest: Rect, flip_x: bool) -> Vec<String> {
     let mut b = buf(1, 1);
-    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
+    b.fill_rect(
+        b.bounds(),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::Grey)),
+    );
     let sprite = Sprite::new(picture_id(), src, dest, Layer::Over);
     b.add_sprite(Sprite { flip_x, ..sprite });
     text(&draw_with(&b, &One(image)), 0, 0, 8, 4)
@@ -758,10 +753,13 @@ fn a_font_must_fit_the_one_bit_atlas() {
 #[test]
 fn a_backdrop_shows_behind_see_through_cells() {
     let mut scene = buf(2, 1);
-    scene.print(0, 0, "X", c(Ink::Black), c(Ink::White));
+    scene.print(0, 0, "X", c(Swatch::Black), c(Swatch::White));
     let scene = Rc::new(scene);
     let mut b = buf(3, 2);
-    b.fill_rect(Rect::new(0, 0, 2, 2), Cell::see_through(' ', c(Ink::Black)));
+    b.fill_rect(
+        Rect::new(0, 0, 2, 2),
+        Cell::see_through(' ', c(Swatch::Black)),
+    );
     b.set_backdrop(Rc::clone(&scene), Rect::new(0, 0, 3, 2), (0.0, 0.0), 2);
     // The X is 4 × 4 at (6, 12); the solid third column covers the scene.
     let frame = draw(&b);
@@ -807,8 +805,8 @@ fn scene_of(b: &GlyphBuffer) -> Rc<GlyphBuffer> {
 #[test]
 fn a_zoomed_scene_draws_everything_in_place() {
     let mut scene = buf(2, 2);
-    scene.print(0, 0, "[", c(Ink::Black), c(Ink::White));
-    scene.set(1, 1, Cell::new(' ', c(Ink::Black), c(Ink::Black)));
+    scene.print(0, 0, "[", c(Swatch::Black), c(Swatch::White));
+    scene.set(1, 1, Cell::new(' ', c(Swatch::Black), c(Swatch::Black)));
     scene.add_sprite(Sprite::new(
         picture_id(),
         Rect::new(0, 0, 4, 2),
@@ -816,7 +814,7 @@ fn a_zoomed_scene_draws_everything_in_place() {
         Layer::Over,
     ));
     let mut b = buf(5, 6);
-    b.fill_rect(b.bounds(), Cell::see_through(' ', c(Ink::Black)));
+    b.fill_rect(b.bounds(), Cell::see_through(' ', c(Swatch::Black)));
     // The window's top-left is screen pixel (8, 16).
     b.set_backdrop(Rc::new(scene), Rect::new(1, 1, 4, 5), (0.0, 0.0), 2);
     let frame = draw_with(&b, &TestImages { none: false });
@@ -838,11 +836,11 @@ fn a_zoomed_scene_draws_everything_in_place() {
 fn what_lies_past_the_screen_is_cut_off() {
     let mut b = GlyphBuffer::with_spec(
         ConsoleSpec::text(100, 32),
-        Cell::new(' ', c(Ink::Black), c(Ink::Black)),
+        Cell::new(' ', c(Swatch::Black), c(Swatch::Black)),
     );
     b.add_overlay(Overlay::new(
         Rect::new(396, 236, 10, 10),
-        c(Ink::Invert),
+        c(Swatch::Invert),
         Layer::Over,
     ));
     let frame = draw(&b);
@@ -869,10 +867,10 @@ fn runs_cross_bytes_and_clip() {
         },
     };
     let bits = 0b1011u64 << 60 | 1;
-    target.run(1, 3, bits, Pen::ink(Ink::Black));
+    target.run(1, 3, bits, Pen::Paint(Shade::rows([0; 8])));
     target.run(2, 3, u64::MAX, Pen::Flip);
-    target.run(0, 3, u64::MAX, Pen::ink(Ink::Black));
-    target.run(3, 3, u64::MAX, Pen::ink(Ink::Black));
+    target.run(0, 3, u64::MAX, Pen::Paint(Shade::rows([0; 8])));
+    target.run(3, 3, u64::MAX, Pen::Paint(Shade::rows([0; 8])));
     target.run(2, -60, u64::MAX, Pen::Flip);
     assert_eq!(
         text(&frame, 0, 0, 24, 4),
@@ -908,85 +906,53 @@ fn a_gizmo_draws_its_runs_in_both_renderers() {
         from: (1, 1),
         to: (3, 1),
     };
-    b.add_gizmo(GizmoItem::new("t", GizmoRole::Note, line, c(Ink::Black)));
+    b.add_gizmo(GizmoItem::new("t", GizmoRole::Note, line, c(Swatch::Black)));
     let want = ["......", ".###..", "......"];
     assert_eq!(text(&draw(&b), 0, 0, 6, 3), want);
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut slow = Box::new([0u8; FRAME_BYTES]);
-    reference::render(&b, &font, &(), &mut slow);
+    reference::render(&b, &font, &(), &test_map(), &mut slow);
     assert_eq!(text(&slow, 0, 0, 6, 3), want);
 }
 
 #[test]
-fn the_dots_pattern_has_the_dots_inks_pixels() {
+fn the_dots_pattern_is_a_pixel_in_eight_on_staggered_rows() {
     let dots = Shade::from(Pattern::new(Base::Dots));
     for y in 0..8 {
         for x in 0..8 {
-            assert_eq!(
-                dots.is_white(x, y),
-                ink_is_white(Ink::Dots, x, y),
-                "({x}, {y})"
-            );
+            // Black every fourth pixel of every other row, the rows staggered.
+            let black = y % 2 == 0 && x % 4 == y % 4;
+            assert_eq!(dots.is_white(x, y), !black, "({x}, {y})");
         }
     }
     let inverted = Shade::from(Pattern::new(Base::Dots).inverted());
     assert!(inverted.is_white(0, 0) && !inverted.is_white(1, 0) && !inverted.is_white(0, 1));
 }
 
-/// The pattern map that draws everything the inks draw (ticket 2388).
-const INKS_AS_ROLES: &str = r#"(
-    roles: {
-        "white": (fg: White),
-        "black": (fg: Black),
-        "black_edged": (fg: Black, edge: true),
-        "grey": (fg: Dither50),
-        "dots": (fg: Dots),
-        "diagonals": (fg: DiagonalDown),
-        "dashes": (fg: Checker2),
-        "invert": (fg: Black, invert: true),
-    },
-)"#;
-
-/// [`INKS_AS_ROLES`] over a palette of the inks' codes, named by ink.
-fn inks_as_roles() -> PatternMap {
-    let def = PatternMapDef::from_source("inks@onebit.ron", INKS_AS_ROLES).unwrap();
-    let palette = Ink::ALL.map(|ink| (ink.name(), Rgb::from(ink.code())));
-    PatternMap::new(palette, &def)
-}
-
+/// Each swatch is its own role: black with a white edge for glyphs, black
+/// that flips for rectangles, the rest plain.
 #[test]
-fn each_ink_is_a_role_of_the_same_shades() {
-    let map = inks_as_roles();
-    for ink in Ink::ALL {
-        let rgb = Rgb::from(ink.code());
-        assert_eq!(map.role_of(rgb), Some(ink.name()));
-        let shade = Shade::of_ink(ink);
-        assert_eq!(map.glyph(rgb).rows, shade.rows, "{ink:?}");
-        assert_eq!(map.glyph(rgb).edged, shade.edged, "{ink:?}");
-        assert_eq!(map.shape(rgb).flips, shade.flips, "{ink:?}");
+fn each_swatch_is_its_role() {
+    let map = test_map();
+    for swatch in Swatch::ALL {
+        let rgb = c(swatch);
+        assert_eq!(map.role_of(rgb), Some(swatch.name()));
+        assert_eq!(
+            map.glyph(rgb).edged,
+            swatch == Swatch::BlackEdged,
+            "{swatch:?}"
+        );
+        assert_eq!(map.shape(rgb).flips, swatch == Swatch::Invert, "{swatch:?}");
+        assert_eq!(map.glyph(rgb).rows, map.shape(rgb).rows, "{swatch:?}");
+        assert_eq!(map.ground(rgb).rows, map.shape(rgb).rows, "{swatch:?}");
     }
 }
 
-proptest::proptest! {
-    /// A pattern map draws everything the inks draw, pixel for pixel, for
-    /// any buffer drawn in the inks' colours.
-    #[test]
-    fn the_inks_pattern_map_draws_as_the_inks_do(
-        buf in super::speed_tests::ink_buffer(),
-    ) {
-        let (atlas, bits) = super::speed_tests::test_font();
-        let font = Font::new(&atlas, &bits).unwrap();
-        let images = super::speed_tests::TestImages;
-        let mut inks = Box::new([0u8; FRAME_BYTES]);
-        render(&buf, &font, &images, &mut inks);
-        let mut roles = Box::new([0u8; FRAME_BYTES]);
-        render_with(&buf, &font, &images, &inks_as_roles(), &mut roles);
-        let first = inks.iter().zip(roles.iter()).position(|(a, b)| a != b);
-        proptest::prop_assert!(
-            first.is_none(),
-            "first differs at byte {:?}",
-            first
-        );
-    }
+/// The renderer's own grey (a missing picture, a dimmed one) is
+/// [`Base::Dither50`]'s pixels, as the reference draws it.
+#[test]
+fn the_renderers_grey_is_the_dither50_pattern() {
+    assert_eq!(GREY, Shade::from(Pattern::new(Base::Dither50)));
+    assert_eq!(WHITE, Shade::from(Pattern::new(Base::White)));
 }

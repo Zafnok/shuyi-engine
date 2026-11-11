@@ -85,7 +85,7 @@ impl<U> GridSkin<U> for GlyphSkin {
         let style = &self.style;
         let layout = style.layout(scene, area);
         let grid = layout.grid();
-        style.draw_tiles(looks, buf, scene, &layout);
+        style.draw_tiles(looks, &self.colors, buf, scene, &layout);
         units.paint_under(scene, &grid, buf);
         units.paint(scene, &grid, buf);
         let color = looks.path(&self.colors);
@@ -237,7 +237,9 @@ pub fn draw_terrain(looks: &Looks, buf: &mut GlyphBuffer, id: TerrainId, (x, y):
 /// undermost; and a tile that would change is drawn as the terrain it would
 /// become instead.
 pub fn draw_tiles<U>(looks: &Looks, buf: &mut GlyphBuffer, scene: &MapScene<U>, layout: &Layout) {
-    GlyphStyle::PLAIN.draw_tiles(looks, buf, scene, layout);
+    // The plain style blends its flashes: it reads no flash color.
+    const NONE: MapColors = MapColors::new("", "", "");
+    GlyphStyle::PLAIN.draw_tiles(looks, &NONE, buf, scene, layout);
 }
 
 #[cfg(test)]

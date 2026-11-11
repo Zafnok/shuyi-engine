@@ -7,45 +7,27 @@
 
 use shuyi_assets::bitmap::dither::brightness;
 use shuyi_assets::font::FALLBACK_GLYPH;
-use shuyi_assets::ink::Ink;
 
 use super::{
-    Font, Frame, HEIGHT, Image, Images, InkShades, Phase, Placed, ROW_BYTES, Shade, Shades, WIDTH,
-    alpha_drawn, darken,
+    Base, Font, Frame, HEIGHT, Image, Images, Pattern, Phase, Placed, ROW_BYTES, Shade, Shades,
+    WIDTH, alpha_drawn, darken,
 };
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Rect, Sprite};
 use crate::frame::painted::{PaintedKind, PaintedSprite, PaintedTable};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
-pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
-    render_marked(buf, font, images, out, &mut |_| {});
-}
-
-/// [`render`], calling `mark` as each [`Phase`] ends.
-pub fn render_marked(
-    buf: &GlyphBuffer,
-    font: &Font<'_>,
-    images: &impl Images,
-    out: &mut Frame,
-    mark: &mut impl FnMut(Phase),
-) {
-    render_marked_with(buf, font, images, &InkShades, out, mark);
-}
-
-/// Draws `buf` into `out` exactly as [`render_with`](super::render_with)
-/// does.
-pub fn render_with(
+pub fn render(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
     shades: &impl Shades,
     out: &mut Frame,
 ) {
-    render_marked_with(buf, font, images, shades, out, &mut |_| {});
+    render_marked(buf, font, images, shades, out, &mut |_| {});
 }
 
-/// [`render_with`], calling `mark` as each [`Phase`] ends.
-pub fn render_marked_with(
+/// [`render`], calling `mark` as each [`Phase`] ends.
+pub fn render_marked(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
@@ -354,11 +336,17 @@ fn draw_glyph(target: &mut Target<'_>, rows: Option<&[u8]>, cell: Clip, scale: i
             for dy in -1..=height {
                 let near = (row(dy - 1) | row(dy) | row(dy + 1)) >> 1;
                 let edge = near | near << 1 | near >> 1;
-                let white = Pen::Paint(Shade::of_ink(Ink::White));
+                let white = Pen::Paint(Shade::rows([u8::MAX; 8]));
                 target.run(cell.y0 + dy, cell.x0 - 1, edge, white);
             }
         }
     }
+}
+
+/// A 50% checker: a missing picture's rectangle, and the pixels a dimmed
+/// one turns white.
+fn grey() -> Shade {
+    Shade::from(Pattern::new(Base::Dither50))
 }
 
 fn widen(byte: u8, scale: i64) -> u64 {
@@ -387,7 +375,7 @@ fn draw_sprite<I: Images, S: Shades>(
 ) {
     let shown = at.screen(sprite.clip).within(target.clip);
     let Some(image) = look.1.image(sprite.image) else {
-        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
+        target.fill(shown, Pen::Paint(grey()));
         return;
     };
     draw_one_bit(
@@ -412,7 +400,7 @@ fn draw_painted<I: Images, S: Shades>(
     let placed = Placed::of_painted(painted);
     let shown = at.screen(painted.clip).within(target.clip);
     let Some(picture) = look.3.get(painted.picture) else {
-        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
+        target.fill(shown, Pen::Paint(grey()));
         return;
     };
     let (width, height) = picture.size();
@@ -504,9 +492,7 @@ fn draw_one_bit(
             #[allow(clippy::cast_possible_truncation)] // screen pixels
             let white = match (solid, sprite.paint) {
                 (Some(shade), _) => shade.is_white(x as i32, y as i32),
-                (None, Paint::Dimmed) => {
-                    white || Shade::of_ink(Ink::Grey).is_white(x as i32, y as i32)
-                }
+                (None, Paint::Dimmed) => white || grey().is_white(x as i32, y as i32),
                 (None, _) => white,
             };
             target.set(x, y, white);

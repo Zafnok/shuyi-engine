@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/02-board/", "learn/tutorial/02-board/play/"]
 
 [extra]
 step = 2
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels/1.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "assets-and-formats"
 +++
 
@@ -465,3 +467,31 @@ skins, and cameras.
 
 For another take on the same ideas, [chapter 3](@/learn/book/assets-and-formats.md) explains the
 registry, and [chapter 2](@/learn/book/frame-and-skins.md) the skins. Next, you'll walk.
+
+## Check yourself
+
+{% check() %}
+In `1.map`, where on the board is `(3, 2): Box`?
+
+- [x] In the fourth column of the third row, counted from the top left. — Tiles are counted like cells, `(x, y)` from the top left, starting at 0 ([the level's file](#the-level-s-file)).
+- [ ] In the third column of the second row. — Counting starts at 0, so 3 is the fourth column and 2 the third row ([the level's file](#the-level-s-file)).
+- [ ] In the fourth column of the third row, counted from the bottom left. — `y` counts from the top, downward, as cells do ([the level's file](#the-level-s-file)).
+{% end %}
+
+{% check() %}
+A level's `features` has `Start` twice. In `Puzzle::new`, the arm
+`Feature::Start if player.is_some() => return Err("two starts".to_owned())` comes before
+`Feature::Start => player = Some(pos)`. What happens?
+
+- [x] The second start returns the error "two starts", which `read` reports with the level's file as the game loads. — `match` tries each arm from the top, and the guarded arm takes a start once there is a player ([what can change](#what-can-change-rules-rs)).
+- [ ] The second start replaces the first, and the player begins there. — The guarded arm comes first, so the second start never reaches `player = Some(pos)` ([what can change](#what-can-change-rules-rs)).
+- [ ] The game panics when the player reaches that level. — `read` checks each level when the game loads, so you hear of it straight away ([reading it](#reading-it-level-rs)).
+{% end %}
+
+{% check() %}
+The rules keep the boxes in a `BTreeSet<Pos>`, not a `HashSet<Pos>`. Why?
+
+- [x] A `BTreeSet` keeps its items in the same order on every run, and the rules must do the same thing every time. — A `HashSet`'s order differs from one run to the next ([what can change](#what-can-change-rules-rs)).
+- [ ] A `HashSet` may hold the same position twice. — Both are sets, with no duplicates; the difference is the order ([what can change](#what-can-change-rules-rs)).
+- [ ] A `HashSet` can't be saved by serde. — The reason given is the order, which must be the same on every computer ([what can change](#what-can-change-rules-rs)).
+{% end %}

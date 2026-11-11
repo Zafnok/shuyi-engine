@@ -14,10 +14,12 @@
 //! again and compares the bytes: the Harness's frames are exact, the same
 //! on every OS.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 
 use serde::Deserialize;
 
@@ -353,10 +355,21 @@ fn keep(root: &Path, name: &str, check: bool, made: &[(&str, Vec<u8>)]) -> Vec<S
 }
 
 /// Builds copies of the steps and asks them for frames.
+///
+/// Every copy of a step is the same package (`box-pusher`, at the same place
+/// in its workspace), so in the one target folder each copy's build replaces
+/// the last one's, and cargo decides by files' times whether a copy needs
+/// building again (ticket 2822). A copy's files can look older than the last
+/// build: Windows keeps a copied file's time, and the step's checkout gives
+/// many files the same time. The files the game embeds are in no list cargo
+/// checks at all. So when the target last built another copy, [`Self::frame`]
+/// marks each of this copy's files as changed now, and cargo builds it again.
 struct Renderer {
     root: PathBuf,
     /// One target folder, so the engine's crates build once.
     target_dir: PathBuf,
+    /// The copy the target folder last built, if this run built one.
+    built: RefCell<Option<PathBuf>>,
 }
 
 impl Renderer {
@@ -366,7 +379,20 @@ impl Renderer {
         Self {
             root: root.to_owned(),
             target_dir,
+            built: RefCell::new(None),
         }
+    }
+
+    /// Makes cargo build the copy at `dir` again unless the target folder
+    /// holds its build from this run.
+    fn switch_to(&self, dir: &Path) -> Result<(), String> {
+        let mut built = self.built.borrow_mut();
+        if !needs_touch(built.as_deref(), dir) {
+            return Ok(());
+        }
+        touch_tree(dir, SystemTime::now()).map_err(|e| format!("{}: {e}", dir.display()))?;
+        *built = Some(dir.to_owned());
+        Ok(())
     }
 
     /// Where the copy `copy` of `step` is built.
@@ -439,7 +465,7 @@ impl Renderer {
         // A step has `cargo shuyi`, as a new game does. The book's game runs
         // its tool program by hand.
         let tools: &[&str] = if one.step == BOOK {
-            &["run", "-q", "--example", "tools", "--"]
+            &["run", "-q", "--example", "snippet-tools", "--"]
         } else {
             &["shuyi"]
         };
@@ -448,6 +474,7 @@ impl Renderer {
         if !one.keys.is_empty() {
             args.extend(["--keys", one.keys.as_str()]);
         }
+        self.switch_to(&dir)?;
         self.cargo(&dir, &args)
             .map_err(|e| format!("try `{name}`, {file}: {e}"))?;
         fs::read(&out).map_err(|e| format!("{}: {e}", out.display()))
@@ -470,6 +497,28 @@ impl Renderer {
             ))
         }
     }
+}
+
+/// Whether a build of the copy at `dir` must mark its files changed: when the
+/// target folder last built `last`, or none this run.
+fn needs_touch(last: Option<&Path>, dir: &Path) -> bool {
+    last != Some(dir)
+}
+
+/// Sets the time each file under `dir` was last changed to `now`.
+fn touch_tree(dir: &Path, now: SystemTime) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            touch_tree(&entry.path(), now)?;
+        } else {
+            fs::File::options()
+                .write(true)
+                .open(entry.path())?
+                .set_modified(now)?;
+        }
+    }
+    Ok(())
 }
 
 /// Copies the folder `from` to `to`, but for [`LEFT_OUT`].

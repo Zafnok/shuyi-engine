@@ -697,8 +697,13 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         {
             continue;
         }
-        let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
-        errors.extend(part_errors);
+        let text = if let Some(check) = &part.check {
+            checked(check)
+        } else {
+            let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
+            errors.extend(part_errors);
+            text
+        };
         let text = match &part.mark {
             Some(mark) => quoted(mark, &text),
             None => text,
@@ -726,6 +731,18 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         linked.trim()
     );
     (text, errors)
+}
+
+/// A quick check as text (ticket 2827): its question, then each answer,
+/// right or wrong, and why.
+fn checked(check: &book::Check) -> String {
+    let mut out = format!("\n**Quick check.** {}\n\n", check.question);
+    for answer in &check.answers {
+        let verdict = if answer.right { "Right" } else { "Wrong" };
+        let _ = writeln!(out, "- {verdict}: {} — {}", answer.text, answer.why);
+    }
+    out.push('\n');
+    out
 }
 
 /// A marked passage's `text` as a blockquote: its label and topic, then
@@ -931,7 +948,7 @@ fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
 /// The `try_it` shortcode (`site/templates/shortcodes/try_it.md`, ticket
 /// 2818): the try `name` of `site/tutorial/tries.toml`, each edit as a diff
 /// and each picture as an image, from `site/static/tutorial-tries/<name>/`,
-/// which must be there.
+/// which must be there; a try of the Rust code ends with [`TRY_RUST`].
 fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
     let mut name = None;
     for (key, value) in arguments(args).map_err(|e| format!("try_it: {e}"))? {
@@ -969,8 +986,17 @@ fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
         }
         let _ = write!(out, "![{alt}](/{path})\n\n");
     }
+    let rust = |file: &str| Path::new(file).extension().is_some_and(|e| e == "rs");
+    if one.edits.iter().any(|edit| rust(&edit.file)) {
+        out.push_str(TRY_RUST);
+    }
     Ok(out.trim_end().to_owned())
 }
+
+/// What a try of the Rust code says under its pictures, as the shortcode
+/// says it (ticket 2820): a page can try only the data files.
+const TRY_RUST: &str = "This change is to the Rust code: try it on your own machine, where \
+    `cargo run` builds the game again with it. A web page can't build Rust.";
 
 /// Every line of `source`, without the anchors' lines, as the shortcode
 /// shows a file named with no anchor. The empty line after its last

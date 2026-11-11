@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/06-levels/", "learn/tutorial/06-levels/play/"]
 
 [extra]
 step = 6
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels.ron", "levels/1.map", "levels/2.map", "levels/3.map", "levels/4.map", "levels/5.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "games-and-screens"
 +++
 
@@ -258,3 +260,31 @@ screens.
 
 [Chapter 6](@/learn/book/games-and-screens.md) explains screens and their results. Next: the game should
 remember how far you got.
+
+## Check yourself
+
+{% check() %}
+You swap the first and last names in `levels.ron`. What has to change in the code for
+level 5 to come first?
+
+- [x] Nothing: the order of the list is data, read from the file. — The list names the levels in the order they're played ([the list](#the-list)).
+- [ ] `Board::new` needs the new order of the levels. — The board takes a position on the list, and the list comes from the file ([the list](#the-list)).
+- [ ] The menu's items must be written again in the new order. — `menu` makes one item for each level on the list, whatever its order ([the menu](#the-menu)).
+{% end %}
+
+{% check() %}
+Two of the maps on the list are broken. What does `read_all` do?
+
+- [ ] It stops at the first broken level and reports that one. — It tries them all, so you don't fix one problem only to find the next ([the list](#the-list)).
+- [x] It tries every level and gathers each problem into `errors`, so `cargo shuyi check` shows them all at once. — `errors.extend(...)` adds each level's problems to the list ([the list](#the-list)).
+- [ ] It leaves the broken levels out and loads the rest. — The problems are gathered and reported, not hidden ([the list](#the-list)).
+{% end %}
+
+{% check() %}
+The board pops with `LevelWon(1)`, and the menu's `uncovered` runs
+`self.focus = (level + 1).min(last);`. What does the player see?
+
+- [x] The menu, with the focus on the third item, ready for Enter to start it. — The focus moves on to the next level, and `.min(last)` keeps it on the list ([a result](#a-result)).
+- [ ] The board of the next level, pushed by the menu at once. — `uncovered` only moves the focus. Enter, chosen in `update`, pushes a board ([a result](#a-result)).
+- [ ] The menu with its focus where it was, as the menu can't know which board was won. — The two screens agree on the type `LevelWon`, which carries the level ([a result](#a-result)).
+{% end %}

@@ -20,8 +20,9 @@ and so are the ADRs named "game ADR-NNNN".
   `Bundle::left_out`, which the audio check honors), a watcher of every
   file read (`watch`) and a thread reading another bundle (`reading`).
 - `shuyi-assets` (1104): the image table (`image`), font atlases
-  (`font`), named colors and themes (`palette`), one-bit inks (`ink`),
-  lights (`lighting`), the audio manifest (`audio`) and the credits
+  (`font`), named colors and themes (`palette`), one-bit inks (`ink`,
+  removed by ticket 2389, ADR-0107: one-bit screens draw by roles'
+  patterns), lights (`lighting`), the audio manifest (`audio`) and the credits
   (`credits`). The game names its files and what it requires.
 - `shuyi-assets` (1105): languages and packs (`lang`), the names table
   (`names`), the `.dlg` dialogue format with its checks and `@if`

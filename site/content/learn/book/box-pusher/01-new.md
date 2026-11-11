@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/01-new/", "learn/tutorial/01-new/play/"]
 
 [extra]
 step = 1
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["palette.ron", "en.ron", "keymap.ron"]
 follows = "quick-start"
 +++
 
@@ -569,3 +571,32 @@ In Shuyi: screens and the stack, `Ctx`, views and skins, text by key, actions an
 the keymap, the palette, cells, and the Harness.
 
 Next, you'll put a real level on the board.
+
+## Check yourself
+
+{% check() %}
+In `draw`, the box is at row 8 and the name is printed at row 9. Which change moves both
+up the screen?
+
+- [x] Row 6 for the box and row 7 for the name. — `y` counts from the top, downward, so a smaller row is higher up ([the screen's jobs](#the-screen-s-jobs)).
+- [ ] Row 10 for the box and row 11 for the name. — A bigger `y` is lower on the screen, not higher ([the screen's jobs](#the-screen-s-jobs)).
+- [ ] Row 6 for the box, and the name stays at row 9. — The name is printed in the row inside the box, so the two have to move together ([the screen's jobs](#the-screen-s-jobs)).
+{% end %}
+
+{% check() %}
+`update` starts with `if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel)`.
+In the browser, the player presses Backspace on the title. What happens?
+
+- [x] Nothing: `can_quit()` is false on the web, so `update` answers `Transition::None`. — A game in a browser can't quit, as the player closes the tab, which is also why its help line is empty ([a screen](#a-screen-title-rs)).
+- [ ] The game quits, since Backspace gives Cancel. — `&&` needs both sides true, and on the web the game can't quit ([the screen's jobs](#the-screen-s-jobs)).
+- [ ] The title is popped off the stack, leaving it empty. — `update` only answers `Quit`, `Push` or `None` here, never `Pop` ([the screen's jobs](#the-screen-s-jobs)).
+{% end %}
+
+{% check() %}
+`en.ron`'s help says `{Cancel} leave`. A player changes their Cancel key to Escape. What
+does the help line show?
+
+- [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
+- [ ] `Backspace leave`, until `en.ron` is changed. — The text names an action, never a key, so it follows the player's keymap ([the keys](#the-keys-keymap-ron)).
+- [ ] `{Cancel} leave`, as written. — `{Cancel}` is filled in, and on screen it came out as `Backspace` for the default keys ([the words](#the-words-en-ron)).
+{% end %}

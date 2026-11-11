@@ -182,9 +182,9 @@ the release's `blocked_by` is Nick's call.
 | 2054 | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
 | 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
 | 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
-| 2059 | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
+| 2059 (done) | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
 | 2066 | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
-| 2584 | The ticket skills check a ticket against the code before trusting it |
+| 2584 (done) | The ticket skills check a ticket against the code before trusting it |
 | 2057 | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
 | 2064 | Flaky gates have a ledger, and a calibration run is one reusable workflow |
 | 2058 | A migration block's `since` is the workspace's version |
@@ -195,7 +195,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 
 | Ticket | What |
 | ------ | ---- |
-| 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307) |
+| 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307; done 2026-11-11) |
 | 2061 | `cargo xtask api` runs from a Windows worktree |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes |
 | 2063 | The MCP server's forwarding tests pass under load |

@@ -1,12 +1,15 @@
 //! Persistence: a game's saves and the player's settings go through
 //! [`Storage`], so the UI stays pure. The platform supplies the real
 //! implementation (files, the browser's `localStorage`, a console's own
-//! files); [`MemoryStorage`] is for tests and the test harness.
+//! files); [`MemoryStorage`] is for tests and the test harness. Some of a
+//! storage's entries go to a file the player keeps, and come back from
+//! one, as a save bundle ([`bundle`]).
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use core::fmt;
 
+pub mod bundle;
 #[cfg(any(test, feature = "storage-conformance"))]
 mod power_cut;
 #[cfg(any(test, feature = "storage-conformance"))]

@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: blocked
+status: done
 blocked_by: ["2388", "game#1253"]
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2389 — The inks removed: one-bit screens draw only by roles' patterns
@@ -137,15 +137,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "Ink\b\|InkShades\|ink_of\|of_ink" crates` finds
+- [x] `grep -rn "Ink\b\|InkShades\|ink_of\|of_ink" crates` finds
       nothing but unrelated words (the toy palette's colour `ink` is a
       name, not an ink).
-- [ ] One `render`, `render_marked` and `render_changed`, each taking a
+- [x] One `render`, `render_marked` and `render_changed`, each taking a
       `Shades`; the fast-equals-reference proptests pass.
-- [ ] A grid map's flash draws as an inverted rectangle on a one-bit
+- [x] A grid map's flash draws as an inverted rectangle on a one-bit
       frame through a pattern map (a test over the toy's grid).
-- [ ] The completion notes carry the `Breaking:` lines.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The completion notes carry the `Breaking:` lines.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -158,5 +158,101 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as scoped, decided in
+[ADR-0107](../../docs/adr/0107-the-inks-removed-one-bit-screens-draw-only-by-roles.md),
+which amends ADR-0026 §4.
+
+- `shuyi_assets::ink` is gone, and so are `InkShades`, `ink_of`,
+  `ink_is_white` and `Shade::of_ink`. `render`, `render_marked` and
+  `render_changed` take a `Shades` (the `_with` forms' bodies), in
+  `onebit::reference` too. The renderer's own grey (a missing picture,
+  a dimmed one) is a private `GREY` shade, `Base::Dither50`'s pixels; the
+  reference uses `Shade::from(Pattern::new(Base::Dither50))`, and a test
+  holds the two equal.
+- `MapColors` has a `flash: Option<&str>` and `const fn with_flash`;
+  `Looks::flash` gives its colour, the cursor's when none is named.
+  `FlashLook::Invert` covers the tile in it, so `GlyphStyle::draw_tiles`
+  takes the `MapColors` (a break, below). The toy names `flash`
+  (`[255, 0, 255]`, a new entry of `MAP_PALETTE`).
+- Tests: the inks became the tests' eight swatches, each a role of the
+  map 2388 proved (`crates/ui/src/frame/onebit/test_map.rs`: `Swatch`,
+  `c`, `TEST_ROLES`, `test_map()`), which `tests.rs`, `speed_tests.rs`
+  (and its timing) and `painted_tests.rs` all use. The proof that the
+  map draws as the inks did had nothing left to compare and is replaced
+  by `each_swatch_is_its_role`. The fast-equals-reference proptests run
+  with `test_map()` and with the varied `roles()` map.
+- New grid tests: the toy's flash colour is a role that flips in a
+  pattern map made in code, and a flashing tile of the one-bit skin
+  draws through it as exactly its rectangle's pixels flipped.
+
+Deviations:
+
+- **Snapshots.** The grid's one-bit example snapshot names the flash's
+  colour (`flash`) where it showed `#ff00ff`: the colour is now in the
+  toy's palette. The toy's `frame-png --target playdate` picture
+  (`it__toy__plasma_playdate.snap.png`) changed: the toy has no pattern
+  map, so it draws with `PatternMap::default()`, and its colours of no
+  role dither by luminance where the inks' rule made each white or
+  black (its dark background is now a dither). Reviewed; the plain
+  glyph snapshots are unchanged.
+- **The free `glyph::draw_tiles`** (the plain style, which blends its
+  flashes) keeps its signature and passes empty `MapColors`, which it
+  never reads.
+
+No follow-up tickets. The clauses of 2336, 2337, 2339 and 2340 that
+waited on this one now say what holds (the test helper's names), and
+2565's **Out** line about `ink_of` is gone.
+
+The game's ticket game#1253 already draws its Playdate build with a
+pattern map; its PR that moves the pin past this change renames the
+`_with` calls and deletes its own `content::ink` re-export (no such PR
+yet).
+
+Breaking: shuyi-assets: ink: the module, `Ink` and `PaletteDef::from_ink_source` are gone; give a one-bit target a pattern map beside its palette (ADR-0026) instead.
+
+```migration
+since: 0.2.0
+what: The one-bit inks are gone; a one-bit palette is an ordinary palette with a pattern map beside it.
+old: shuyi_assets::ink::Ink, PaletteDef::from_ink_source(file, source, base)
+new: PaletteDef::from_source and a PatternMapDef in palette@onebit.ron
+before: |
+  use shuyi_assets::ink::Ink;
+  let pal = PaletteDef::from_ink_source("p.ron", src, &base)?;
+after: |
+  let pal = PaletteDef::from_source("p.ron", src, &required)?;
+  let map = PatternMapDef::from_source("p@onebit.ron", map_src)?;
+find: ["from_ink_source", "shuyi_assets::ink"]
+```
+
+Breaking: shuyi-ui: frame::onebit::render, render_marked, render_changed (and reference's): each takes a `Shades` before `out`; the `_with` forms, `InkShades`, `ink_of`, `ink_is_white` and `Shade::of_ink` are gone.
+
+```migration
+since: 0.2.0
+what: The one-bit renderer's functions take the Shades to draw with; the _with forms took their names.
+old: onebit::render_with(buf, font, images, shades, out)
+new: onebit::render(buf, font, images, shades, out)
+before: |
+  onebit::render_with(buf, font, &images, &map, &mut frame);
+  onebit::render_changed_with(old, buf, font, &images, &map, &mut frame);
+after: |
+  onebit::render(buf, font, &images, &map, &mut frame);
+  onebit::render_changed(old, buf, font, &images, &map, &mut frame);
+find: ["render_with(", "render_changed_with("]
+```
+
+Breaking: shuyi-ui: grid::GlyphStyle::draw_tiles: takes the skin's `MapColors` after the `Looks`, for an inverted flash's colour.
+
+```migration
+since: 0.2.0
+what: GlyphStyle::draw_tiles takes the MapColors that name the flash's colour.
+old: GlyphStyle::draw_tiles(&self, looks, buf, scene, layout)
+new: GlyphStyle::draw_tiles(&self, looks, colors, buf, scene, layout)
+before: |
+  style.draw_tiles(&looks, &mut buf, &scene, &layout);
+after: |
+  style.draw_tiles(&looks, &COLORS, &mut buf, &scene, &layout);
+```
+
+Book: none, the book teaches neither the one-bit renderer's functions
+nor the glyph skin's styles; it reaches one-bit screens only through
+`frame-png --target` and the pattern map's file, which keep their shape.

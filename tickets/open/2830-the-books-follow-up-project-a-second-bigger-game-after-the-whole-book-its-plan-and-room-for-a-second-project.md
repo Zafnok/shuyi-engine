@@ -67,7 +67,10 @@ Don't propose anything from Visions of Shuyi (`AGENTS.md` rule 4).
 - **The game, chosen by Nick,** and a plan of its steps, in this
   ticket's completion notes. Each step names what it adds, the chapters
   it leans on (by title and link), and its data files for 2820's
-  playground.
+  playground. **From 2820 (done):** a project's steps get the playground
+  by `game` and `game_files` in its `_index.md` and `files = [...]` on
+  each step's page; `copy-playground.sh` and `check-build.sh` already go
+  over every project of the book.
 - **Room for a second project**, as ADR-0090 §1 lists: the code move
   (`git mv`, so history follows), `snippet` and `tries.toml` naming
   `<project>/<step>`, `crates/xtask/src/tries.rs` and `llms.rs` reading

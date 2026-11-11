@@ -280,6 +280,13 @@ players keep after a patch.
   `shuyi_assets::ron` gain items; `PlayerKeys::from_ron` and
   `Profiles::from_ron` keep their signatures. The engine writes new
   `-refused` keys in a player's storage. Say so in the PR.
+- **From 2138 (done):** save bundles are in `shuyi_ui::storage::bundle`.
+  Its `FormatCheck` (`bundle.rs`) uses `read_save` and gains
+  `Verdict::Migratable { from, to }` for an older version inside the
+  chain (`Verdict` is `#[non_exhaustive]`, so the variant isn't a
+  break), and its `apply` writes the migrated text: `PlanEntry` then
+  holds the text to write, or `apply` migrates `Migratable` entries
+  through the same chain. `apply` writes only `Ready` entries today.
 
 **Out (do not do):**
 - Packs: ADR-0023 §5 keeps them refused; bake again.

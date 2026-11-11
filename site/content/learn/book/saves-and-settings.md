@@ -149,6 +149,87 @@ Paused, the game isn't updated and shows its last frame until the player comes b
 the time away makes no steps. Muted, its music keeps its place in silence. `Background`
 is in `shuyi::ui::settings`.
 
+## Files the player keeps
+
+{% newcomer(to="games", topic="why a player wants their save as a file") %}
+Storage is the game's: on the web it sits inside the browser, where the player can't see,
+copy or move it. A player who wants to back up their garden, move it to another computer
+or send it to a friend needs it as a file of their own.
+{% end %}
+
+A game hands the player a file with `ctx.offer_file(name, text)`, and asks them for one
+with `ctx.ask_for_file(&[".ron"])`. Both happen after the frame. On the web the file is a
+download, and the browser's file picker opens; on a desktop the file is written into an
+`exports` folder beside the saves, as `garden (2).ron` if a `garden.ron` is there, never
+over it:
+
+{{ snippet(file="src/saves.rs", anchor="files") }}
+
+The answers come back to the game's system hook (`Start::on_system`) in a later frame:
+`SystemEvent::FileOffered` says where the file went (downloaded, written at a path, or
+why not), and `SystemEvent::FileChosen` holds the file the player picked, with its name
+and text, or says they cancelled, or why it was refused: a file that isn't text, or is
+over 256 MB.
+
+A desktop has no picker: there, the player drops the file on the window, and the hook
+hears `SystemEvent::FilesDropped` ([chapter 9](@/learn/book/targets-and-export.md)).
+`ctx.platform` says which to offer: `can_pick_files()` for "choose a file",
+`can_drop_files()` for "drop a file here". It also says where the saves are, to show
+the player: `ctx.platform.storage_place` is a folder on a desktop
+(`StoragePlace::Folder`), or the browser's storage under the game's prefix on the web
+(`StoragePlace::Browser`). `ctx.open_storage_folder(Folder::Exports)` opens the exports
+folder in the system's file manager, on a desktop.
+
+A browser opens its picker only just after the player pressed something, so ask in the
+frame of the press, as a menu does when its row is chosen.
+
+A test reads what was offered with `Harness::offered`, and picks a file for the next ask
+with `Harness::answer_next_ask`:
+
+{{ snippet(file="src/saves.rs", anchor="test_files") }}
+
+## Bundles
+
+{% newcomer(to="games", topic="why a file of saves needs a verdict per save") %}
+A player's file may come from an older build of the game, or a newer one, or a friend's
+copy of another game. Before it replaces their saves, they should hear which of its saves
+this build can read, and which it would write over.
+{% end %}
+
+A **save bundle** packs several entries of the storage into one text file, stamped with
+what made it (`Made`), and reads one back with a verdict per entry before anything is
+written. It is in `shuyi::ui::storage::bundle`:
+
+- `write_bundle(storage, made, keep)` writes the keys `keep` keeps, in key order, so the
+  same saves always give the same text;
+- `plan_import(text, storage, check, now)` reads it back into an `ImportPlan`: each entry
+  with its `Verdict` (`Ready`, `Incompatible { found, wants }`, `Unreadable`, or
+  `Unknown` for a key the game doesn't know), whether it `replaces` a key the storage
+  holds, and the stamp's `mismatch` with this build. It writes nothing;
+- `apply(plan, storage, take)` writes the `Ready` entries `take` takes, all or nothing.
+
+The game's knowledge of its own keys is the check: `FormatCheck::<Save>::new(|key| …)`
+reads the keys it picks as saves of one `SaveFormat`, with `SaveHeader`, and `Checks`
+puts several together (the first that knows the key decides).
+
+{{ snippet(file="src/saves.rs", anchor="bundle") }}
+
+The text goes to the player and back as any file does, with `ctx.offer_file` and
+`ctx.ask_for_file` ([above](#files-the-player-keeps)). A file another build made still
+plans: its `mismatch` says what differs, and the verdicts decide what can be written.
+What the game tells the player, and whether it asks before replacing a save, are the
+game's.
+
+{{ snippet(file="src/saves.rs", anchor="test_bundle") }}
+
+`apply` keeps a journal while it writes, so a power cut in the middle doesn't leave half
+the old saves and half the new. Call `bundle::recover(storage)` at start, before reading
+saves, and it puts the old ones back after such a cut; `apply` calls it first too. Keys
+starting with `_bundle-` are the bundle's own: never use them for a save.
+
+`shuyi import backup.ron` reads a bundle file and says what it holds, or where a broken
+one is broken.
+
 ## When it goes wrong
 
 **Forgetting the copy.** Write `garden,` in place of `garden: garden.clone(),`, and the
@@ -177,3 +258,30 @@ the placeholder `com.example.…` id share them. `cargo shuyi check --target` wa
 **On the web.** A player who clears their browser's site data loses their saves, as
 `localStorage` belongs to the browser. So on the web, as anywhere, `load` must handle
 `Ok(None)`.
+
+## Check yourself
+
+{% check() %}
+Why does a game save through `ctx.storage` and never open a file itself?
+
+- [ ] Writing a file is slower than writing to storage. — Speed isn't the reason. Not every target has files a game can write ([storage](#storage)).
+- [x] The platform hands it storage that fits the target, so the same code saves everywhere and a test needs no disk. — Files on desktop, `localStorage` on the web, a console's own saves and memory in tests, all behind one trait ([storage](#storage)).
+- [ ] Storage keeps one save for every player who shares the computer. — `ctx.storage` is the storage of the profile in use, so each player keeps their own ([profiles](#profiles)).
+{% end %}
+
+{% check() %}
+A field is added to `Garden`, and `VERSION` stays as it was. What does the new build do
+with a player's old save?
+
+- [ ] It refuses it as a save of another version. — The old save names the same version, so the refusal can't tell ([a save](#a-save)).
+- [x] The version matches but the save doesn't parse, so `load` says `Damaged` to a player whose save was fine. — No tool catches this, so raise `VERSION` whenever a saved type changes ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] It reads the save and fills the new field with a default. — The old text lacks the new field, so it doesn't parse at all ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+What is the difference between `ctx.change_settings` and `ctx.preview_settings`?
+
+- [x] `change_settings` changes the settings and saves them in the profile, and `preview_settings` changes them without saving. — An options screen previews a change before the player keeps it ([settings](#settings)).
+- [ ] `preview_settings` only reads the settings, and `change_settings` writes them. — `ctx.settings()` reads them. `preview_settings` changes them too, but doesn't save ([settings](#settings)).
+- [ ] `change_settings` saves for every profile, and `preview_settings` for the one in use. — Settings are kept in the profile in use, and only `change_settings` saves them ([settings](#settings)).
+{% end %}

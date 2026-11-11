@@ -90,6 +90,13 @@
 //! the game hears of it once (`shuyi_platform::Setup::last_crash`).
 //! [`AppConfig::crash`] names the game's version in it, or turns it off.
 //!
+//! A game's screens hand the player a file and ask them for one
+//! (`shuyi_ui::Ctx::offer_file`, `ask_for_file`): on a desktop the file is
+//! written into `exports/` in the game's data folder, which the game may
+//! open in the system's file manager, and the player drops a file on the
+//! window to give one; on the web it is a download, and the browser's file
+//! picker opens (ticket 3309).
+//!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
 //! game's data folder (the `sessions` module, ADR-0074): the record of a run,
 //! written when the game quits and when the debug menu's "Save session" asks,
@@ -112,7 +119,7 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `download.js`'s,
+//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `player-files.js`'s,
 //! `page-files.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
@@ -146,6 +153,7 @@ mod painted;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
 mod pictures;
+mod player_files;
 #[cfg(any(
     all(feature = "link", not(target_arch = "wasm32")),
     feature = "capture"
@@ -585,11 +593,20 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
 /// voices and no system keyboard. Called from a plain `fn main`. Under
 /// `cargo shuyi run --watch` the game's files on disk are laid over the
-/// embedded ones ([`watched_layer`]).
+/// embedded ones ([`watched_layer`]). On the web, the files the page holds
+/// under `files/` (the site's playground, [`page`]) are laid over them when
+/// the game's data loads with them, and the page hears the game's problems
+/// with them either way.
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
-    let game = match watched_layer() {
-        Some(layer) => game.over(layer),
-        None => game,
+    let game = if let Some(layer) = watched_layer() {
+        game.over(layer)
+    } else {
+        let page = page::page_layer(PAGE_FOLDER, page::PageLimits::default());
+        let (game, heard) = lay_page(&game, page);
+        if let Some(text) = heard {
+            page::report(&text);
+        }
+        game
     };
     // Only the binary installs the bundle: the tools and the tests read
     // the one the game's data holds, since one test process runs many
@@ -598,6 +615,30 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
     let window = basic_window(&game);
     // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
     macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+}
+
+/// The folder of a short-path game's project its files are in, and the
+/// name of their layer: the page's files under it are laid over them.
+const PAGE_FOLDER: &str = "files";
+
+/// `game` with the page's files (`page`, [`page::page_layer`]) laid over its
+/// own when its data loads with them, and what the page hears: `""` then,
+/// every problem one a line when it doesn't (and `game` plays its own
+/// files), and nothing when the page holds no file.
+fn lay_page<A: ActionSet, T: Debug + 'static>(
+    game: &BasicGame<A, T>,
+    page: Result<Option<Layer>, page::PageError>,
+) -> (BasicGame<A, T>, Option<String>) {
+    let layer = match page {
+        Ok(Some(layer)) => layer,
+        Ok(None) => return (*game, None),
+        Err(error) => return (*game, Some(error.to_string())),
+    };
+    let over = game.over(layer);
+    match over.ctx() {
+        Ok(_) => (over, Some(String::new())),
+        Err(problems) => (*game, Some(problems)),
+    }
 }
 
 /// Runs the dialogue preview of a game on the short path until it quits, as
@@ -842,6 +883,107 @@ mod tests {
         let files = shuyi_assets::bundle::Layer::table("files", &[]);
         let app = AppInfo::new("A game", "com.example.a-game", "0.1.0").with_storage("a-game");
         BasicGame::new(app, files, |_| unreachable!("never started"))
+    }
+
+    /// The blank template's files, a short-path game's own.
+    static TEMPLATE: &[(&str, &[u8])] = &[
+        (
+            "en.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/en.ron"),
+        ),
+        (
+            "font/atlas.png",
+            include_bytes!(
+                "../../../templates/shuyi-default/base/crates/game/files/font/atlas.png"
+            ),
+        ),
+        (
+            "font/atlas.ron",
+            include_bytes!(
+                "../../../templates/shuyi-default/base/crates/game/files/font/atlas.ron"
+            ),
+        ),
+        (
+            "keymap.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/keymap.ron"),
+        ),
+        (
+            "palette.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/palette.ron"),
+        ),
+    ];
+
+    /// The blank template's game, whose files load.
+    fn template() -> BasicGame<shuyi_assets::keymap::UiAction> {
+        let files = shuyi_assets::bundle::Layer::table(PAGE_FOLDER, TEMPLATE);
+        let app = AppInfo::new("A game", "com.example.a-game", "0.1.0");
+        BasicGame::new(app, files, |_| unreachable!("never started"))
+    }
+
+    /// A page's layer of one file, `files/<path>`.
+    fn page_file(path: &str, text: &str) -> Layer {
+        let files = std::collections::BTreeMap::from([(path.to_owned(), text.as_bytes().to_vec())]);
+        Layer::owned(PAGE_FOLDER.to_owned(), files).unwrap()
+    }
+
+    /// The template's palette with its `text` colour changed to `colour`.
+    fn palette_with_text(colour: &str) -> String {
+        let own = core::str::from_utf8(TEMPLATE[4].1).unwrap();
+        let line = own
+            .lines()
+            .find(|line| line.trim_start().starts_with("\"text\":"))
+            .expect("the template's palette has a text colour");
+        own.replace(line, &format!("    \"text\": \"{colour}\","))
+    }
+
+    #[test]
+    fn a_page_with_no_files_leaves_the_game_alone_and_hears_nothing() {
+        let (game, heard) = lay_page(&template(), Ok(None));
+        assert_eq!(heard, None);
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
+    }
+
+    #[test]
+    fn the_pages_files_that_load_are_played_and_the_page_hears_the_empty_text() {
+        let palette = palette_with_text("#5a9bff");
+        let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
+        assert_eq!(heard.as_deref(), Some(""));
+        assert_eq!(game.bundle().file("palette.ron"), Some(palette.as_str()));
+        assert_eq!(
+            game.bundle().display_path("palette.ron"),
+            "files/palette.ron"
+        );
+        assert!(game.bundle().has("keymap.ron"));
+    }
+
+    #[test]
+    fn broken_page_files_are_reported_by_file_and_line_and_the_game_plays_its_own() {
+        let palette = palette_with_text("blue");
+        let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
+        let heard = heard.unwrap();
+        assert!(heard.starts_with("files/palette.ron:"), "{heard}");
+        assert!(heard.contains("blue"), "{heard}");
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
+    }
+
+    #[test]
+    fn page_files_that_cannot_be_read_are_reported_and_the_game_plays_its_own() {
+        let error = page::PageError::TooMuch { limit: 7 };
+        let (game, heard) = lay_page(&template(), Err(error));
+        assert_eq!(
+            heard.as_deref(),
+            Some("the page's files are over 7 bytes in all")
+        );
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
     }
 
     #[test]

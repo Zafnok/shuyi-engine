@@ -7,8 +7,6 @@
 
 use crate::prelude::*;
 
-use shuyi_assets::ink::Ink;
-
 use super::cursor::{self, CORNER_ARM, LARGE_CORNER_ARM, corner_arms};
 use super::{CELL_PX, Layout, OVERLAY_BLEND, TILE_W_CELLS, draw_terrain, tile_to_cell};
 use crate::frame::color::{EngineColor, Rgb};
@@ -65,8 +63,9 @@ pub enum FlashLook {
     /// strength, each flash in turn, fading out.
     Blend,
     /// While its strongest flash is at least [`FLASH_SHOWN`], covered by a
-    /// rectangle in the [invert ink](Ink::Invert), which a one-bit frame
-    /// draws by flipping the pixels under it.
+    /// rectangle in the [flash color](MapColors::flash), which a one-bit
+    /// frame draws by flipping the pixels under it when its role's pattern
+    /// map says `invert: true`.
     Invert,
 }
 
@@ -77,7 +76,7 @@ pub enum CursorLook {
     /// tinting its tile ([`cursor::draw_cursor`]).
     Pulse,
     /// The same corner marks at full strength with no pixel in two arms
-    /// (an ink that flips pixels flips each once), or for the tile glow
+    /// (a color that flips pixels flips each once), or for the tile glow
     /// the whole tile covered: one bit has no fading. Clipped to the area,
     /// so the marks beside a tile at its side show in the side cells.
     Flat,
@@ -125,12 +124,14 @@ impl GlyphStyle {
     }
 
     /// Draws every tile of `layout`: its terrain (tiles off the map are
-    /// left as they are, blank); a tile whose terrain just changed flashes;
+    /// left as they are, blank); a tile whose terrain just changed flashes
+    /// (inverted, in `colors`' [flash](Looks::flash));
     /// its ranges show on it; and a tile that would change is drawn as the
     /// terrain it would become instead.
     pub fn draw_tiles<U>(
         &self,
         looks: &Looks,
+        colors: &MapColors,
         buf: &mut GlyphBuffer,
         scene: &MapScene<U>,
         layout: &Layout,
@@ -157,9 +158,9 @@ impl GlyphStyle {
                     }
                     FlashLook::Invert => {
                         if tile.flashes.iter().any(|&s| s >= FLASH_SHOWN) {
-                            let invert = Rgb::from(Ink::Invert.code());
+                            let flash = looks.flash(colors);
                             let rect = grid.rect_at(dx, dy);
-                            buf.add_overlay(Overlay::new(rect, invert, Layer::Over));
+                            buf.add_overlay(Overlay::new(rect, flash, Layer::Over));
                         }
                     }
                 }
