@@ -684,11 +684,11 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/xtask/src/gates.rs",
-            find: r##"    gate("sound parity", "sound-parity", Filter::Sound)
+            find: r##"    gate("sound parity", "sound-parity", Filter::Output("sound"))
         .ci_only("records the backend's output from PulseAudio and Chromium"),
-    gate("sound parity (Windows)", "sound-parity-windows", Filter::Sound)
+    gate("sound parity (Windows)", "sound-parity-windows", Filter::Output("sound"))
         .ci_only("records the backend's output on a Windows runner"),
-    gate("sound give-up", "sound-give-up", Filter::Sound)
+    gate("sound give-up", "sound-give-up", Filter::Output("sound"))
         .ci_only("takes the sound replacement out of a checkout and builds what is left"),
 "##,
             with: "",

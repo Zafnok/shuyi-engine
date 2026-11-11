@@ -21,38 +21,28 @@ use std::time::{Duration, Instant};
 use serde_norway::Value;
 
 /// Which of CI's filters a gate's job runs under: the output of
-/// `changes.yml` its `if:` reads, or none.
+/// `changes.yml` its `if:` reads, or none. The output is named, not a
+/// variant of its own, so giving up the sound replacement (ADR-0068) takes
+/// out the gates that read `sound` and leaves this type whole.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Filter {
     /// No filter: every pull request runs it.
     Always,
-    /// `needs.changes.outputs.code`: anything but docs-only paths.
-    Code,
-    /// `needs.changes.outputs.crates`: the crates or what builds them.
-    Crates,
-    /// `needs.changes.outputs.sound`: the sound backend and its gates.
-    Sound,
+    /// `needs.changes.outputs.<name>`.
+    Output(&'static str),
 }
+
+/// `code`: anything but docs-only paths.
+const CODE: Filter = Filter::Output("code");
+/// `crates`: the crates or what builds them.
+const CRATES: Filter = Filter::Output("crates");
 
 impl Filter {
     /// The output's name in `changes.yml`, if any.
     fn output(self) -> Option<&'static str> {
         match self {
             Self::Always => None,
-            Self::Code => Some("code"),
-            Self::Crates => Some("crates"),
-            Self::Sound => Some("sound"),
-        }
-    }
-
-    /// The filter of an output's name.
-    #[cfg(test)]
-    fn of_output(name: &str) -> Option<Self> {
-        match name {
-            "code" => Some(Self::Code),
-            "crates" => Some(Self::Crates),
-            "sound" => Some(Self::Sound),
-            _ => None,
+            Self::Output(name) => Some(name),
         }
     }
 }
@@ -148,7 +138,7 @@ pub const NOT_GATES: &[&str] = &["changes", "api-label", "ci-result"];
 
 /// Every gate, fast to slow: a run stops at the first failure.
 pub const GATES: &[Gate] = &[
-    gate("fmt", "fmt", Filter::Code)
+    gate("fmt", "fmt", CODE)
         .fast(Fast::Yes)
         .steps(&["cargo fmt --all --check"]),
     gate("typos", "tickets", Filter::Always)
@@ -157,7 +147,7 @@ pub const GATES: &[Gate] = &[
     gate("ticket-lint", "tickets", Filter::Always)
         .fast(Fast::Yes)
         .steps(&["cargo xtask ticket-lint {pr-branch}"]),
-    gate("engine lint", "test", Filter::Code)
+    gate("engine lint", "test", CODE)
         .fast(Fast::IfChanged(".rs"))
         .steps(&["cargo run -q -p shuyi-cli --locked -- lint"]),
     gate("skill loaders", "tickets", Filter::Always)
@@ -170,7 +160,7 @@ pub const GATES: &[Gate] = &[
         "cargo xtask check-docs",
         "cargo xtask check-paths",
     ]),
-    gate("layers", "layers", Filter::Code).steps(&["cargo xtask check-layers"]),
+    gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem
     // codes, Hello, Grid's files and the tickets (the feature cards).
     // As CI: the codes' pages and the playground's files are written
@@ -190,18 +180,18 @@ pub const GATES: &[Gate] = &[
             "cargo xtask check-book",
             "bash site/check-build.sh",
         ]),
-    gate("clippy", "clippy", Filter::Code).steps(&[
+    gate("clippy", "clippy", CODE).steps(&[
         "cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings",
     ]),
-    gate("docs", "docs", Filter::Code)
+    gate("docs", "docs", CODE)
         .steps(&["RUSTDOCFLAGS=\"-D warnings\" cargo doc --workspace --no-deps --locked"]),
-    gate("deny", "deny", Filter::Code).steps(&["cargo deny check"]),
+    gate("deny", "deny", CODE).steps(&["cargo deny check"]),
     // `cargo-machete` itself: started by cargo under `cargo xtask`, it
     // reads its subcommand's name as a folder to check.
-    gate("machete", "machete", Filter::Code).steps(&["cargo-machete"]),
-    gate("test", "test", Filter::Code)
+    gate("machete", "machete", CODE).steps(&["cargo-machete"]),
+    gate("test", "test", CODE)
         .steps(&["cargo test --workspace --locked --no-fail-fast"]),
-    gate("no-std", "no-std", Filter::Code).steps(&[
+    gate("no-std", "no-std", CODE).steps(&[
         "cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked",
@@ -211,18 +201,18 @@ pub const GATES: &[Gate] = &[
         "cargo xtask check-no-std",
         "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
     ]),
-    gate("modules", "modules", Filter::Code).steps(&[
+    gate("modules", "modules", CODE).steps(&[
         "cargo xtask check-modules",
         "cargo build -p shuyi --locked",
         "cargo test -p shuyi --all-features --locked",
     ]),
-    gate("wasm", "wasm", Filter::Code).steps(&[
+    gate("wasm", "wasm", CODE).steps(&[
         "examples/hello-grid: cargo shuyi check --target all",
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings",
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings",
         "examples/hello-grid: cargo shuyi web --release",
     ]),
-    gate("templates (grid)", "templates", Filter::Code)
+    gate("templates (grid)", "templates", CODE)
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root}",
@@ -234,7 +224,7 @@ pub const GATES: &[Gate] = &[
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
         ]),
-    gate("templates (blank)", "templates", Filter::Code)
+    gate("templates (blank)", "templates", CODE)
         .fresh(&["target/gates/demo-blank"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-blank --template blank --engine-path {root}",
@@ -248,32 +238,32 @@ pub const GATES: &[Gate] = &[
         ]),
     // CI's job times the builds too; their budget is a runner's, so a
     // local run holds the crates' count alone.
-    gate("compile-times (crates)", "compile-times", Filter::Code)
+    gate("compile-times (crates)", "compile-times", CODE)
         .steps(&["cargo xtask compile-times --budget tools/compile-budget.ron --count-only"]),
-    gate("skill examples", "skills", Filter::Code).steps(&["cargo xtask skill-examples"]),
-    gate("tutorial-tries", "tutorial-tries", Filter::Code)
+    gate("skill examples", "skills", CODE).steps(&["cargo xtask skill-examples"]),
+    gate("tutorial-tries", "tutorial-tries", CODE)
         .steps(&["cargo xtask tutorial-tries --check"]),
     // CI's alone, with why.
-    gate("tutorial", "tutorial", Filter::Code).ci_only(
+    gate("tutorial", "tutorial", CODE).ci_only(
         "builds and tests the ten steps of the tutorial's game, each from its own lock moved to this engine",
     ),
-    gate("determinism", "determinism", Filter::Code)
+    gate("determinism", "determinism", CODE)
         .ci_only("the tests on wasm32 under wasmtime; natively, `test` runs the golden tables"),
-    gate("export", "export", Filter::Code)
+    gate("export", "export", CODE)
         .ci_only("exports on each OS's runner and the Steam runtime"),
-    gate("render", "render", Filter::Code).ci_only("needs Xvfb and Mesa"),
-    gate("web-render", "web-render", Filter::Code)
+    gate("render", "render", CODE).ci_only("needs Xvfb and Mesa"),
+    gate("web-render", "web-render", CODE)
         .ci_only("needs headless Chromium and Playwright"),
-    gate("bench", "bench", Filter::Code).ci_only("counts instructions with Valgrind"),
-    gate("coverage", "coverage", Filter::Code)
+    gate("bench", "bench", CODE).ci_only("counts instructions with Valgrind"),
+    gate("coverage", "coverage", CODE)
         .ci_only("cargo llvm-cov and the SonarCloud scan"),
-    gate("zizmor", "zizmor", Filter::Code).ci_only("the zizmor action audits the workflows"),
-    gate("api", "api", Filter::Crates).ci_only("needs a nightly and two tools"),
-    gate("sound parity", "sound-parity", Filter::Sound)
+    gate("zizmor", "zizmor", CODE).ci_only("the zizmor action audits the workflows"),
+    gate("api", "api", CRATES).ci_only("needs a nightly and two tools"),
+    gate("sound parity", "sound-parity", Filter::Output("sound"))
         .ci_only("records the backend's output from PulseAudio and Chromium"),
-    gate("sound parity (Windows)", "sound-parity-windows", Filter::Sound)
+    gate("sound parity (Windows)", "sound-parity-windows", Filter::Output("sound"))
         .ci_only("records the backend's output on a Windows runner"),
-    gate("sound give-up", "sound-give-up", Filter::Sound)
+    gate("sound give-up", "sound-give-up", Filter::Output("sound"))
         .ci_only("takes the sound replacement out of a checkout and builds what is left"),
     gate("playtest", "playtest", Filter::Always).ci_only("a bot plays Hello, Grid"),
 ];
@@ -421,9 +411,10 @@ pub fn classifier(changes_yml: &str) -> Result<String, String> {
         .ok_or_else(|| "changes.yml: no `classify` step with a `run` in the `detect` job".into())
 }
 
-/// Each job of `ci.yml`'s text, with the filter its `if:` reads.
+/// Each job of `ci.yml`'s text, with the output of `changes.yml` its `if:`
+/// reads, if any.
 #[cfg(test)]
-pub fn ci_jobs(ci_yml: &str) -> Result<BTreeMap<String, Filter>, String> {
+pub fn ci_jobs(ci_yml: &str) -> Result<BTreeMap<String, Option<String>>, String> {
     let yaml: Value = serde_norway::from_str(ci_yml).map_err(|e| format!("ci.yml: {e}"))?;
     let jobs = yaml["jobs"]
         .as_mapping()
@@ -432,19 +423,14 @@ pub fn ci_jobs(ci_yml: &str) -> Result<BTreeMap<String, Filter>, String> {
     for (name, job) in jobs {
         let name = name.as_str().ok_or("ci.yml: a job's name isn't text")?;
         let condition = job["if"].as_str().unwrap_or("");
-        let filter = match condition.split_once("needs.changes.outputs.") {
-            None => Filter::Always,
-            Some((_, rest)) => {
-                let output: String = rest
-                    .chars()
+        let output = condition
+            .split_once("needs.changes.outputs.")
+            .map(|(_, rest)| {
+                rest.chars()
                     .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
-                    .collect();
-                Filter::of_output(&output).ok_or_else(|| {
-                    format!("ci.yml: job `{name}` reads an unknown output `{output}`")
-                })?
-            }
-        };
-        found.insert(name.to_owned(), filter);
+                    .collect::<String>()
+            });
+        found.insert(name.to_owned(), output);
     }
     Ok(found)
 }
@@ -939,8 +925,16 @@ done
     #[test]
     fn every_ci_job_is_a_gate_with_its_filter() {
         let jobs = ci_jobs(&read(&repo(), ".github/workflows/ci.yml").unwrap()).unwrap();
+        let (outputs, _) = outputs_for(&[]);
         let mut errors = Vec::new();
-        for (job, filter) in &jobs {
+        for (job, output) in &jobs {
+            if let Some(output) = output
+                && !outputs.contains_key(output)
+            {
+                errors.push(format!(
+                    "ci.yml's job `{job}` reads `{output}`, no output of changes.yml"
+                ));
+            }
             if NOT_GATES.contains(&job.as_str()) {
                 continue;
             }
@@ -948,9 +942,9 @@ done
                 errors.push(format!("ci.yml's job `{job}` is in no gate of gates.rs"));
             }
             for gate in GATES.iter().filter(|g| g.job == job) {
-                if gate.filter != *filter {
+                if gate.filter.output() != output.as_deref() {
                     errors.push(format!(
-                        "gate `{}`: filter {:?}, but its job `{job}` runs under {filter:?}",
+                        "gate `{}`: filter {:?}, but its job `{job}` reads {output:?}",
                         gate.name, gate.filter
                     ));
                 }
@@ -976,9 +970,11 @@ done
     fn a_new_filtered_job_fails_the_coverage() {
         let ci = "jobs:\n  fmt:\n    if: needs.changes.outputs.code == 'true'\n  shiny:\n    needs: changes\n    if: needs.changes.outputs.sound == 'true'\n";
         let jobs = ci_jobs(ci).unwrap();
-        assert_eq!(jobs["shiny"], Filter::Sound);
+        assert_eq!(jobs["shiny"].as_deref(), Some("sound"));
+        assert_eq!(jobs["fmt"].as_deref(), Some("code"));
         assert!(!GATES.iter().any(|g| g.job == "shiny"));
-        assert!(ci_jobs("jobs:\n  x:\n    if: needs.changes.outputs.nope == 'true'\n").is_err());
+        let unfiltered = ci_jobs("jobs:\n  x:\n    runs-on: ubuntu-latest\n").unwrap();
+        assert_eq!(unfiltered["x"], None);
     }
 
     #[test]
