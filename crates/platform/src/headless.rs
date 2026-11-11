@@ -32,7 +32,7 @@ use shuyi_ui::{PlatformFacts, RawInputEvent, StoragePlace};
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
 use crate::platform::{DisplayInfo, Frame, LoadSlice, Millis, Platform, Show, SystemEvent};
-use crate::player_files::{self, ChosenFile, EXPORTS_FOLDER, Offered};
+use crate::player_files::{self, ChosenFile, EXPORTS_FOLDER, MOST_NUMBERED, Offered};
 use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
@@ -975,17 +975,25 @@ impl Platform for HeadlessPlatform {
     }
 
     /// Keeps the file, numbered as a desktop's exports folder numbers it,
-    /// and says it was written under [`MEMORY_FOLDER`]; while a session
-    /// record plays, its frames hold the answer.
+    /// and says it was written under [`MEMORY_FOLDER`]; past
+    /// [`MOST_NUMBERED`] files of the name, it fails, as a desktop's does.
+    /// While a session record plays, its frames hold the answer.
     fn offer_file(&mut self, name: &str, text: &str) -> Option<Offered> {
         let taken = |name: &str| self.files.offered.iter().any(|(kept, _)| kept == name);
-        let written = (1..=u32::MAX)
+        let written = (1..=MOST_NUMBERED)
             .map(|n| player_files::numbered_name(name, n))
-            .find(|numbered| !taken(numbered))
-            .unwrap_or_else(|| name.to_owned());
-        let path = format!("{MEMORY_FOLDER}/{EXPORTS_FOLDER}/{written}");
-        self.files.offered.push((written, text.to_owned()));
-        (!self.files.playing).then_some(Offered::Written(path))
+            .find(|numbered| !taken(numbered));
+        let answer = match written {
+            Some(written) => {
+                let path = format!("{MEMORY_FOLDER}/{EXPORTS_FOLDER}/{written}");
+                self.files.offered.push((written, text.to_owned()));
+                Offered::Written(path)
+            }
+            None => Offered::Failed(format!(
+                "{MOST_NUMBERED} files called {name} are there already"
+            )),
+        };
+        (!self.files.playing).then_some(answer)
     }
 
     /// The next answer queued ([`answer_next_ask`](Self::answer_next_ask)),

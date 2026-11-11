@@ -28,6 +28,10 @@ pub const MAX_CHOSEN_BYTES: usize = MAX_DROPPED_BYTES;
 /// files the game offers.
 pub const EXPORTS_FOLDER: &str = "exports";
 
+/// The most files of one name a folder numbers ([`numbered_name`]): past
+/// it, an offer of the name fails.
+pub const MOST_NUMBERED: u32 = 10_000;
+
 /// Where a file the game offered went
 /// ([`SystemEvent::FileOffered`](crate::SystemEvent::FileOffered)).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -10,14 +10,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use shuyi_platform::Offered;
-use shuyi_platform::player_files::{EXPORTS_FOLDER, numbered_name};
+use shuyi_platform::player_files::{EXPORTS_FOLDER, MOST_NUMBERED, numbered_name};
 use shuyi_ui::player_files::Folder;
 
 use crate::storage;
-
-/// The most files of one name the exports folder numbers
-/// ([`write_export`]): past it, an offer fails.
-const MOST_NUMBERED: u32 = 10_000;
 
 /// The player's files of the game whose storage is in `dir`.
 #[derive(Debug)]
