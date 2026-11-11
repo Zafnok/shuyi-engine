@@ -312,13 +312,21 @@ an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading
 and a `DialogueFolder` module reads its `.dlg` files again when one changes. A folder
 that can't be read shows why in the window, as a broken file of your game does.
 
+A `.dlg` file dropped on the window joins the folder, as if it were saved there. On the
+[web](@/learn/book/targets-and-export.md#the-web-build), which has no folders, that is how a writer
+uses it: the preview starts with no scenes, its Scenes tab says to drop a file, and the
+writer drops their `.dlg` files on the page. Changed, a file dropped again plays again
+from the same text box. The tab's note there is the key `preview.note.no_scenes_drop`;
+a language file without it shows `preview.note.no_scenes` instead.
+
 Build the program you hand out as an
 [edition](@/learn/book/targets-and-export.md#a-public-demo) that leaves your game's own
 scripts out: its `bin` is the preview, and its `content` a folder of your files without
 the scenes, so the program holds only the scenes in the writer's folder.
 
 A test of it plays the preview through the Harness, which `preview_harness` starts on
-your `BasicGame` over a folder you make in the test:
+your `BasicGame` over a folder you make in the test. `h.drop_file(name, bytes)`, or an
+input script's `drop` step, drops a file on it:
 
 {{ snippet(file="src/preview.rs", anchor="test") }}
 

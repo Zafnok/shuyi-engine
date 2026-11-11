@@ -1,12 +1,15 @@
 //! The files a dialogue preview reads: the `.dlg` files of a folder, kept
 //! on the context ([`DialogueFiles`]) by a module ([`DialogueFolder`]) that
-//! reads them again when one changes on disk.
+//! reads them again when one changes on disk, or when one is dropped on
+//! the window ([`drop_scenes`]).
 
 use crate::prelude::*;
 
 use shuyi_assets::bundle::{Bundle, Layer};
 
 use crate::ctx::{Ctx, GameData};
+#[cfg(feature = "std")]
+use crate::game::Game;
 use crate::module::{Hook, Install, Module};
 
 /// The extension of the files read.
@@ -45,12 +48,49 @@ impl DialogueFiles {
     }
 }
 
+/// The folder's layer, on the context: where [`drop_scenes`] puts a
+/// dropped file.
+#[cfg(feature = "std")]
+#[derive(Debug, Clone, Copy)]
+struct FolderLayer(Layer);
+
+/// Puts the `.dlg` files of `files` (each a file's name and its bytes) in
+/// the folder of the dialogue preview `game` plays, at the folder's root,
+/// in place of a file of the same name there, as if the writer had saved
+/// them there: the game's modules hear of each ([`Game::reloaded`]), and
+/// the [`DialogueFolder`] module reads the folder again. A file of
+/// another kind is left out. Gives the names put in the folder: none on a
+/// game without the module.
+///
+/// A platform calls it with the files the player dropped on the window
+/// (`shuyi_platform::BasicGame::preview_start` does), so a writer on the
+/// web, which has no folders, drops their scenes on the page.
+#[cfg(feature = "std")]
+pub fn drop_scenes<G: GameData>(
+    game: &mut Game<G>,
+    files: impl IntoIterator<Item = (String, Vec<u8>)>,
+) -> Vec<String> {
+    let Some(&FolderLayer(layer)) = game.ctx().module_state::<FolderLayer>() else {
+        return Vec::new();
+    };
+    let put: Vec<String> = files
+        .into_iter()
+        .filter(|(name, _)| name.ends_with(DLG))
+        .filter_map(|(name, bytes)| layer.replace(&name, bytes).then_some(name))
+        .collect();
+    if !put.is_empty() {
+        game.reloaded(&put);
+    }
+    put
+}
+
 /// The module that keeps the [`DialogueFiles`] of a folder on the context,
 /// reading them again when a `.dlg` file of it changes
 /// ([`Module::reloaded`]). A preview program reads its folder with
 /// `shuyi_app::read_watched_folder`, so the files are watched in a build
 /// without debug tools (ADR-0095), and installs this module over the layer
-/// it gives.
+/// it gives. A file dropped on the window joins the folder
+/// ([`drop_scenes`]).
 #[derive(Debug, Clone)]
 pub struct DialogueFolder {
     /// The folder.
@@ -74,6 +114,10 @@ impl<G: GameData> Module<G> for DialogueFolder {
     fn install(&mut self, install: &mut Install<'_, G>) {
         install.hook(Hook::Reloaded);
         install.state(DialogueFiles::read(&self.bundle, 0));
+        #[cfg(feature = "std")]
+        if let Some(&layer) = self.bundle.layers().first() {
+            install.state(FolderLayer(layer));
+        }
     }
 
     fn reloaded(&mut self, ctx: &mut Ctx<G>, changed: &[String]) {

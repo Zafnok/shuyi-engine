@@ -420,3 +420,107 @@ fn a_preview_whose_module_cant_be_installed_is_the_loads_error() {
     let _ = app.frame(&mut p, Millis(16));
     assert_eq!(app.errors(), Some("the module marker is installed twice"));
 }
+
+/// The fixture `name` of this test's dropped files, by its whole path:
+/// wasm32's tests run in another folder.
+#[cfg(feature = "std")]
+fn dropped(name: &str) -> String {
+    format!("{}/src/basic/drop/{name}", env!("CARGO_MANIFEST_DIR"))
+}
+
+#[test]
+#[cfg(feature = "std")]
+fn a_scene_dropped_on_the_preview_joins_its_folder_and_plays_again_dropped_changed() {
+    use crate::script::{Script, Step};
+    use shuyi_ui::FileDrops;
+    let empty =
+        Layer::owned("scenes".to_owned(), BTreeMap::new()).unwrap_or_else(|e| panic!("{e:?}"));
+    let mut h = demo(WITH_PREVIEW).preview_harness(empty, DemoPreview);
+    // Nothing is listed: where files can't be dropped, the note says to
+    // save one, and where they can, to drop one.
+    let note = |h: &Harness<Data>| preview_view(h).note;
+    assert_eq!(
+        note(&h).as_deref(),
+        Some("No scenes: save a .dlg file in the folder")
+    );
+    let facts = h.ctx().platform.clone().with_file_drops(FileDrops::Heard);
+    h.ctx_mut().platform = facts;
+    assert_eq!(
+        note(&h).as_deref(),
+        Some("No scenes: drop a .dlg file here")
+    );
+    // A file of another kind is left out.
+    h.drop_file("notes.txt", b"not a scene".to_vec());
+    assert_eq!(preview_view(&h).scenes, []);
+
+    let drop = |name: &str| Step::Drop(dropped(name));
+    Script::new(vec![drop("first/dusk.dlg")]).play(&mut h);
+    let view = preview_view(&h);
+    assert_eq!(view.scenes.len(), 1);
+    assert_eq!(
+        (view.scenes[0].file.as_str(), view.scenes[0].id.as_str()),
+        ("dusk.dlg", "dusk")
+    );
+    assert_eq!(view.note, None);
+    h.keys("Enter");
+    assert_eq!(preview_view(&h).lines[0].words, "The moon is up.");
+    // The writer changes it and drops it again: it plays again.
+    Script::new(vec![drop("changed/dusk.dlg")]).play(&mut h);
+    h.wait(FRAME_DT);
+    let view = preview_view(&h);
+    assert_eq!(view.scenes.len(), 1);
+    assert_eq!(view.lines[0].words, "The garden sleeps.");
+    assert!(view.playing.is_some_and(|p| !p.finished));
+}
+
+#[test]
+fn a_game_whose_text_lacks_the_drop_note_shows_the_folders() {
+    let empty =
+        Layer::owned("scenes".to_owned(), BTreeMap::new()).unwrap_or_else(|e| panic!("{e:?}"));
+    // The preview's words as a game had them before the drop's note.
+    let words = String::from_utf8_lossy(include_bytes!("preview_en.ron"));
+    let words = words
+        .lines()
+        .filter(|line| !line.contains("no_scenes_drop"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let files = BTreeMap::from([("en.ron".to_owned(), words.into_bytes())]);
+    let older = Layer::owned("older".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"));
+    let mut h = demo(WITH_PREVIEW)
+        .over(older)
+        .preview_harness(empty, DemoPreview);
+    let facts = h
+        .ctx()
+        .platform
+        .clone()
+        .with_file_drops(shuyi_ui::FileDrops::Heard);
+    h.ctx_mut().platform = facts;
+    let note = preview_view(&h).note;
+    assert_eq!(
+        note.as_deref(),
+        Some("No scenes: save a .dlg file in the folder")
+    );
+}
+
+#[test]
+#[cfg(feature = "std")]
+fn the_previews_start_hears_a_drop() {
+    use crate::dropped::DroppedFile;
+    let empty = Layer::owned("scenes".to_owned(), BTreeMap::new());
+    let mut app =
+        App::new(demo(WITH_PREVIEW).preview_start(empty.map_err(|e| e.to_string()), DemoPreview));
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    let dusk = DroppedFile::new(r"C:\writer\dusk.dlg", scene("Hi."));
+    p.push_system(crate::SystemEvent::FilesDropped(vec![dusk]));
+    let _ = app.frame(&mut p, Millis(32));
+    let game = app.game().unwrap_or_else(|| panic!("{:?}", app.errors()));
+    let files = game
+        .ctx()
+        .module_state::<shuyi_ui::dialogue::preview::DialogueFiles>();
+    let names: Vec<_> = files
+        .map(|f| f.files().map(|(path, _)| path).collect())
+        .unwrap_or_default();
+    assert_eq!(names, ["dusk.dlg"]);
+}
