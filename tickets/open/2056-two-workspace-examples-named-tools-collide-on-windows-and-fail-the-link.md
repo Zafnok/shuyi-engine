@@ -26,8 +26,9 @@ cause in CI's own log:
 
 `site/snippets/examples/tools.rs` came in with #233 (ticket 2819). On
 MSVC, two parallel links of one output file fail. Locally the GNU `ld`
-doesn't lock the file, so it never shows. Open ticket 2822 is about the
-tutorial's own `tools.exe`, not this collision.
+doesn't lock the file, so it never shows. Ticket 2822 (done) fixed the
+tutorial's own `tools.exe`, a stale build of one copy of a step run for
+another, not this collision.
 
 ## Nick input
 

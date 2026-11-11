@@ -157,3 +157,31 @@ fn a_copy_of_the_books_game_leaves_the_roots_patches_behind() {
         "the section after it stays: {manifest}"
     );
 }
+
+#[test]
+fn a_copy_is_marked_changed_when_the_target_built_another_or_none() {
+    let walk = Path::new("target/tutorial-tries/step-03-walk");
+    let board = Path::new("target/tutorial-tries/step-02-board");
+    assert!(needs_touch(None, walk), "nothing built yet this run");
+    assert!(
+        needs_touch(Some(walk), board),
+        "the target holds another copy"
+    );
+    assert!(!needs_touch(Some(walk), walk), "the target holds this copy");
+}
+
+#[test]
+fn touching_a_tree_sets_every_files_time() {
+    let root = std::env::temp_dir().join(format!("xtask-tries-touch-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("crates/game/files")).unwrap();
+    fs::write(root.join("Cargo.toml"), "").unwrap();
+    fs::write(root.join("crates/game/files/en.ron"), "()").unwrap();
+    let then = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(2_000_000_000);
+    touch_tree(&root, then).unwrap();
+    for file in ["Cargo.toml", "crates/game/files/en.ron"] {
+        let modified = fs::metadata(root.join(file)).unwrap().modified().unwrap();
+        assert_eq!(modified, then, "{file}");
+    }
+    fs::remove_dir_all(&root).unwrap();
+}
