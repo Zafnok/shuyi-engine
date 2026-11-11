@@ -100,7 +100,8 @@ Set `status: in-progress` in the ticket's frontmatter.
 
 ## 4. Verify
 
-Run the `run-gates` skill. Check a change a player sees through the MCP
+Run the `run-gates` skill: `cargo xtask gates` runs every gate the
+diff needs and prints a summary block; keep it for the PR's body. Check a change a player sees through the MCP
 session tools (the root `.mcp.json`) on `examples/hello-grid`: `start`,
 `step`, `scene`, `frame_png`; not by reading the Harness's code to drive
 it. Walk the **Acceptance criteria** and tick each box honestly. If one can't be met, say so in the Completion notes and
@@ -174,8 +175,10 @@ the PR.
   `write-ticket` skill). **No bare `@word`** in a title, body, commit
   message or comment. Use backticks.
 - Body: summary bullets, the acceptance criteria (checked), follow-up
-  tickets, the ticket's `Breaking:` lines (or "No break"), and a `Nick
-  input:` line.
+  tickets, the ticket's `Breaking:` lines (or "No break"), a `Nick
+  input:` line, and the summary block of `cargo xtask gates` run on the
+  commit you push (§4). Not "all gates pass": the block says which ran
+  and which CI alone runs.
 - If the game must change too (a pin bump, a call site), write or link
   the game ticket. Say in both PRs which merges first: the engine's.
 - **After the last merge of `main`** into the branch, re-read the PR

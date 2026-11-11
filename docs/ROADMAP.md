@@ -172,14 +172,14 @@ What slipped was mostly at the seams, where nothing checked:
 These tickets make the checks deterministic where they can be. None
 holds up the first release (2005), so they are not in the MVP. They come
 **ahead of** the MVP's remaining tickets all the same: each one saves
-redone PRs on the rest. 2052 and 2054 first (2051 is done). Whether they go into
+redone PRs on the rest. 2051, 2052 and 2054 are done. Whether they go into
 the release's `blocked_by` is Nick's call.
 
 | Ticket | What |
 | ------ | ---- |
 | 2051 (done) | The ticket a PR is for comes from its title, and a branch the checks can't read fails; the ticket-only PR convention |
-| 2052 | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
-| 2054 | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
+| 2052 (done) | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
+| 2054 (done) | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
 | 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
 | 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
 | 2059 | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
