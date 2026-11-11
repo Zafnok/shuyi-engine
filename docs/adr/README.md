@@ -118,6 +118,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0103](0103-dropped-files-a-system-event-with-names-and-bytes-limits-kept-by-app-and-a-fact-the-backend-says.md) | Dropped files: a system event with names and bytes, limits kept by App, and a fact the backend says | Accepted; builds on ADR-0060 and ADR-0072 |
 | [0104](0104-drops-on-windows-read-by-the-backend-itself-through-a-subclass-of-miniquads-window.md) | Drops on Windows, read by the backend itself through a subclass of miniquad's window | Accepted; amends ADR-0103 §4 |
 | [0105](0105-a-wrong-finding-of-the-api-gate-is-argued-with-here-alone-with-no-issue-upstream.md) | A wrong finding of the API gate is argued with here alone, with no issue upstream | Accepted; amends ADR-0038 §7 |
+| [0106](0106-files-the-player-keeps-requests-queued-on-ctx-three-platform-methods-and-answers-as-recorded-system-events.md) | Files the player keeps: requests queued on Ctx, three Platform methods, and answers as recorded system events | Accepted; builds on ADR-0050, ADR-0072 and ADR-0103 |
 | [0107](0107-the-inks-removed-one-bit-screens-draw-only-by-roles.md) | The inks removed: one-bit screens draw only by roles' patterns | Accepted; amends ADR-0026 §4 |
 
 Template: [`0000-template.md`](0000-template.md).

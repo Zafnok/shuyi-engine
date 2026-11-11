@@ -545,3 +545,29 @@ fn the_platform_takes_a_snapshot_from_its_fake_or_a_counter_set() {
     fake.set_memory(None);
     assert_eq!(fake.heap_snapshot(), None);
 }
+
+#[test]
+fn past_the_most_files_of_a_name_an_offer_fails_and_keeps_nothing() {
+    let mut p = HeadlessPlatform::new();
+    p.files.offered = (1..=MOST_NUMBERED)
+        .map(|n| (player_files::numbered_name("a.ron", n), String::new()))
+        .collect();
+    let answer = p.offer_file("a.ron", "x");
+    let why = format!("{MOST_NUMBERED} files called a.ron are there already");
+    assert_eq!(answer, Some(Offered::Failed(why)));
+    assert_eq!(
+        p.offered().len(),
+        usize::try_from(MOST_NUMBERED).unwrap_or(0)
+    );
+    // Another name is still written, and while a record plays the record
+    // answers.
+    assert!(matches!(
+        p.offer_file("b.ron", "x"),
+        Some(Offered::Written(_))
+    ));
+    p.push_frame(&FrameRecord::default());
+    assert_eq!(p.offer_file("c.ron", "x"), None);
+    assert_eq!(p.ask_for_file(&[]), None);
+    p.end_session();
+    assert_eq!(p.ask_for_file(&[]), Some(ChosenFile::Cancelled));
+}

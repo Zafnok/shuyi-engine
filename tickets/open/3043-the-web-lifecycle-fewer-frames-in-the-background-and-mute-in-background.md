@@ -233,7 +233,8 @@ Visions of Shuyi.
   Whichever lands second keeps the other's part; `load("%WASM%")` stays
   in the page, so both tickets' tests hold.
 - **From 2519 (done):** the `Cargo.toml` comment and `lib.rs`'s docs
-  name its `download.js` block too.
+  name its `download.js` block too; 3309 (done) renamed it
+  `player-files.js`.
 - **From 3067 (done):** `run` reads the frame's time once,
   `pacing::seconds()` (the `start` it hands the pacer), and the
   synchronous frame for a lifecycle code hands `App::frame` that same

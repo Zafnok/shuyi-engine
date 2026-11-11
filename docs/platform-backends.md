@@ -156,7 +156,9 @@ confirmed. A backend that never reports leaves every request pending.
 10. `text_input().open(&ask)` if a screen asked for the system keyboard;
 11. `audio().stop_all()` if the game quit in that update;
 12. `present(&frame)` (timed, in a frame `App` measures, and the
-    frame's end read after it).
+    frame's end read after it);
+13. `offer_file`, `ask_for_file` and `open_folder`, for each request
+    about the player's files the game made in its update, in order.
 
 The game's first frames are different: frame 1 presents the loading card;
 frame 2 calls `display`, `storage` and `facts` for the game's `Setup`, runs the
@@ -249,6 +251,7 @@ Add what the system said since the last call:
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
 | `CrankDocked`, `CrankUndocked` | the device's crank is folded away, or out; said once the game has loaded, then on each change | `Ctx::crank_docked`: a screen whose required action is only on the crank gets a hint to unfold it (the text key `crank.unfold`) |
 | `FilesDropped(files)` | the player dropped files on the window or the canvas: each a `DroppedFile` made with `DroppedFile::new(path, bytes)`, which keeps the name alone; only where `PlatformFacts::can_drop_files()` | refuses a drop of more than 16 files whole, and a file of more than 256 MB alone (`shuyi_platform::dropped::accept`), logging each as a `platform` warning and noting only what is left in a session record; then the game's hook hears the rest |
+| `FileOffered(offered)`, `FileChosen(chosen)` | the answer to a screen's request about the player's files (*Files the player keeps*, below): `App` adds the answers a backend gave at once, first in the next frame; a backend adds an answer that comes later (the web's picker) itself | nothing but note it in a session record: the game's hook hears it |
 
 A window that loses focus sends `FocusLost`, not `Suspend`: `Suspend`
 means the game can't be seen or can't run (ADR-0076). The macroquad
@@ -390,7 +393,10 @@ window that goes full screen and back (`windowed`), and the keyboard,
 pointer and touch screen the device has, and whether a file dropped on
 the window reaches the game (`file_drops`: the backend's to say with
 `with_file_drops`, since a profile doesn't; `shuyi-app` says `Heard` on
-`desktop` and `web`). Read them from the target's
+`desktop` and `web`), where the game's storage is (`storage_place`, with
+`with_storage_place`: its folder, or the browser's site storage under its
+prefix) and whether a file picker opens (`file_picker`, with
+`with_file_picker`: `Opens` on the web alone). Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
@@ -517,10 +523,44 @@ files the page holds (`shuyi_app::page::page_layer`), sending the page the
 game's problems with them (`page::report`). The web has no API of its own
 for either without `wasm-bindgen`, so it reaches the browser through a
 miniquad JS plugin of the engine's, beside the page: `page-files.js` here,
-as `gamepad.js` reaches the Gamepad API and `download.js` offers a file
+as `gamepad.js` reaches the Gamepad API and `player-files.js` offers a file
 ([`crates/cli/web/README.md`](../crates/cli/web/README.md) lists them and
 what each needs). Off the web, `page_layer` is always `None`. A device
 with nothing to hand in offers neither.
+
+## Files the player keeps (optional)
+
+A screen hands the player a file (`Ctx::offer_file(name, text)`), asks
+them for one (`Ctx::ask_for_file(accept)`) or opens a folder of the game's
+(`Ctx::open_storage_folder`). `App` carries the requests out after the
+frame, in order, through three methods with defaults, and a name that
+isn't one file's (a folder in it, empty, `..`) fails before a backend
+sees it (`player_files::check_offered_name`):
+
+- `offer_file(name, text) -> Option<Offered>`: a download
+  (`Offered::Downloaded`), a file written at a path (`Written(path)`), or
+  why not (`Failed`). A file of the name already there is never written
+  over: `player_files::numbered_name` gives `farm (2).ron`. The default
+  fails: no files a player reaches.
+- `ask_for_file(accept) -> Option<ChosenFile>`: `None` while the player
+  chooses, the backend adding `SystemEvent::FileChosen` to a later frame's
+  events itself; or an answer now. A backend makes it from the file's name
+  and bytes with `ChosenFile::from_bytes`, which refuses a file that isn't
+  UTF-8 or is over 256 MB (`MAX_CHOSEN_BYTES`). The default refuses: no
+  picker.
+- `open_folder(folder) -> Result<(), String>`: the storage folder or its
+  `exports` folder in the system's file manager; `App` logs an error as a
+  `platform` warning. The default has no folder.
+
+`App` hands the answers given at once to the game as the next frame's
+first system events, so a session record holds them and a replay reads the
+same text; a backend playing a record answers `None` (the headless one does,
+while `push_frame` plays). `shuyi-app` writes an offered file into
+`<data folder>/exports/` and opens folders with `explorer`, `open` or
+`xdg-open` on a desktop, which has no picker (the player drops the file on
+the window); on the web it downloads, and opens the browser's picker,
+through its `player-files.js` plugin. Say where the storage is and whether
+a picker opens in the facts (`facts`, above).
 
 ## The live link (optional)
 
@@ -637,7 +677,10 @@ gives memory tags only when a test hands it some (`with_scopes`,
 `set_scopes`): fakes that note what is entered. A test changes a file with
 `change_file(layer, path, bytes)`: the next ask replaces it and tells its path
 (`changed_asks` counts the asks), and `reload_errors` keeps what the last frame
-asked to show. It plays a session record too (`from_session`, `push_frame`:
+asked to show. It keeps the files a game offers (`offered`), answers its
+asks for a file from a queue (`answer_next_ask`; cancelled when it is
+empty), notes the folders it opens (`opened_folders`), and says its
+storage is a folder called `<memory>`. It plays a session record too (`from_session`, `push_frame`:
 *Session records*, above). The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
