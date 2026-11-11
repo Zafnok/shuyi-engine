@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/05-undo/", "learn/tutorial/05-undo/play/"]
 
 [extra]
 step = 5
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels/1.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "rules-as-commands"
 +++
 

@@ -881,6 +881,19 @@ fn a_try_is_its_edits_as_a_diff_and_its_pictures_as_images() {
 }
 
 #[test]
+fn a_try_of_the_rust_code_says_it_needs_a_build() {
+    let list = BLUE.replace("files/palette.ron", "src/title.rs");
+    let root = tries_site("rust", &list, &["blue/before.png", "blue/after.png"]);
+    let text = try_it("name=\"blue\"", &root.join("snippets")).unwrap();
+    assert!(
+        text.ends_with(&format!("after.png)\n\n{TRY_RUST}")),
+        "{text}"
+    );
+    assert!(TRY_RUST.contains("on your own machine"), "{TRY_RUST}");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn a_try_with_no_edits_is_one_picture() {
     let list = "[title]\nstep = \"01-new\"\nalt = \"The title\"\n";
     let root = tries_site("one", list, &["title/before.png"]);

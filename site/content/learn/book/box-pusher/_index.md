@@ -9,6 +9,11 @@ aliases = ["learn/tutorial/"]
 [extra]
 project = true
 code = "tutorial"
+# The game's name, and its files' folder in each step's project: a step's
+# playground (ticket 2820) edits the files its page's `extra.files` names
+# from there, and `copy-playground.sh` copies them beside its page.
+game = "Box Pusher"
+game_files = "crates/game/files"
 +++
 
 This project takes you from nothing to a finished small game: a box-pushing

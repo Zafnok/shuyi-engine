@@ -30,8 +30,20 @@ What there is once the blockers are done:
   `shuyi-page-file:<path>`) over its own through
   `shuyi_app::page::page_layer`, and `page::report(text)` sends its
   problems to the parent frame as `{ kind: "shuyi-report", text }`.
-- 2820: each project step's page has a playground of that step's data
-  files beside its game, reusing 2814's `playground.js`.
+- **From 2820 (done):** each project step's page has a playground of
+  that step's data files beside its game, folded in a `<details>` under
+  *Play this step* (`site/templates/chapter.html`, the playground itself
+  in `playground-macros.html`), its files listed in the step's
+  `extra.files`. The steps' games get the page's files with no code of
+  their own: `shuyi_app::run_game` lays them (`lay_page`) and reports, so
+  the step's `page_check` goes beside that, in `run_game`, or each step's
+  `main.rs` stops calling it. `playground.js` keeps each page's files
+  under keys of its own (`shuyi-playground-run:<page's path>:files/…`)
+  and hands them to `shuyi-page-file:` as the page loads, before its
+  frame, and empties them as the reader leaves: `shuyi-page-check` can
+  follow the same pattern. A try's **Try this here** button
+  (`try_it`, `tries()` in the script) makes edits in the editors and
+  runs: an exercise's button can reuse it.
 - **From 2827 (done):** a quick check is the body shortcode
   `site/templates/shortcodes/check.html`, answered by
   `site/static/book-check.js`, and written as text in the twins by
