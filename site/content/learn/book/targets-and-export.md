@@ -58,7 +58,9 @@ A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame`
 `bytes()`. That is how a player brings what the game can't ship: a level they made, a mod, their
 own copy of a file. `DroppedFile::layer(files)` makes a bundle layer named `dropped` of them, each
 at its name, for the game to lay over its own files. The engine refuses a drop of more than 16
-files, or a file of more than 256 MB, and logs why. A test drops a file with `Harness::drop_file`,
+files, or a file of more than 256 MB, and logs why. A dropped folder, or a file the player
+can't read, is left out, and the files dropped with it still come; a name comes whole in any
+language (`niño.txt`). A test drops a file with `Harness::drop_file`,
 and the tools with the `drop` step (`--drop level.txt`, from the game's folder), on any target.
 
 The facts are the screens'. A game's rules never read them, so the same commands play the same

@@ -1853,4 +1853,17 @@ version = "1.2.3"
             expected.trim_end()
         );
     }
+
+    #[test]
+    fn a_dropped_files_name_is_sized_in_utf8_bytes() {
+        // Ticket 3307: upstream sizes the name by `name.length`, its UTF-16
+        // length, and a name beyond ASCII comes through cut short. The
+        // local patch (web/README.md) sizes it by its UTF-8 bytes.
+        let bundle = shell("mq_js_bundle.js");
+        assert!(
+            bundle.contains("const u=new TextEncoder().encode(n.name),t=u.length,"),
+            "web/mq_js_bundle.js must size a dropped file's name in UTF-8 bytes"
+        );
+        assert!(!bundle.contains("n.name.length"));
+    }
 }

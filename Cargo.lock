@@ -1716,6 +1716,7 @@ dependencies = [
  "shuyi-sound-out",
  "shuyi-ui",
  "tempfile",
+ "winapi",
 ]
 
 [[package]]
