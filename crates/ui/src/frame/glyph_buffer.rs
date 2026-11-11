@@ -715,20 +715,38 @@ impl GlyphBuffer {
         else {
             return;
         };
-        self.items = self
-            .items
-            .iter()
-            .flat_map(|item| {
-                let overhang = item.overhang(hole);
-                subtract(item.visible(), hole)
-                    .into_iter()
-                    .flat_map(move |part| match overhang {
-                        Some(overhang) => subtract(part, overhang),
-                        None => vec![part],
-                    })
-                    .map(move |visible| item.with_visible(visible))
-            })
-            .collect();
+        // An item the hole and its overhang miss stays as it is: most
+        // fills (a menu's rows over a map) meet few of the items drawn.
+        let meets = |item: &Item| {
+            let seen = item.visible();
+            seen.intersect(&hole).is_some()
+                || item
+                    .overhang(hole)
+                    .is_some_and(|o| seen.intersect(&o).is_some())
+        };
+        let Some(first) = self.items.iter().position(meets) else {
+            return;
+        };
+        let mut items = Vec::with_capacity(self.items.len() + 3);
+        items.extend_from_slice(&self.items[..first]);
+        for item in &self.items[first..] {
+            if !meets(item) {
+                items.push(*item);
+                continue;
+            }
+            let overhang = item.overhang(hole);
+            for part in subtract(item.visible(), hole) {
+                match overhang {
+                    Some(overhang) => items.extend(
+                        subtract(part, overhang)
+                            .into_iter()
+                            .map(|visible| item.with_visible(visible)),
+                    ),
+                    None => items.push(item.with_visible(part)),
+                }
+            }
+        }
+        self.items = items;
     }
 
     /// After `other` was copied into `target` from column `dest_x`: a wide
@@ -1562,6 +1580,26 @@ mod tests {
         b.fill_rect(b.bounds(), BLANK);
         let found = b.overlays();
         assert!(found.is_empty(), "{found:?}");
+    }
+
+    #[test]
+    fn a_fill_keeps_the_items_it_misses_as_they_were() {
+        let mut b = buf(4, 2);
+        let far = Overlay::new(Rect::new(24, 16, 8, 16), BLUE, Layer::Under);
+        b.add_overlay(far);
+        b.add_overlay(over(0, 14, 32, 2));
+        b.add_overlay(far);
+        // A fill that meets no item keeps the list itself, not a copy.
+        let list = b.items().as_ptr();
+        b.fill_rect(Rect::new(0, 1, 2, 1), BLANK);
+        assert_eq!(b.items().as_ptr(), list);
+        assert_eq!(b.overlays(), [far, over(0, 14, 32, 2), far]);
+        // One that meets the middle item cuts it alone, in its place.
+        b.fill_rect(Rect::new(1, 0, 2, 1), BLANK);
+        assert_eq!(
+            b.overlays(),
+            [far, over(0, 14, 8, 2), over(24, 14, 8, 2), far]
+        );
     }
 
     #[test]
