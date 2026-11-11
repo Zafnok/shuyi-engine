@@ -39,10 +39,12 @@ dependency, so each game would have to copy the patch.
    under `#[allow(unsafe_code)]`, as the web plugins' declarations do
    (game ADR-0034). Its calls come from `winapi` 0.3, which miniquad
    already builds; `shuyi-app` adds the `processthreadsapi` feature.
-4. **Upstream too.** The same fix is offered to miniquad. When a miniquad
-   release reads drops without panicking and fires `files_dropped_event`
-   on Windows, the subclass goes, and `get_dropped_files` is the one way
-   in again.
+4. **It stays until miniquad fixes it on its own.** No PR goes to
+   miniquad ([decision of 2026-11-10](../decisions.md#2026-11-10-no-prs-on-other-projects)).
+   Each bump of miniquad checks its `WM_DROPFILES` (the
+   `dependency-upkeep` skill). When a release skips a path it can't read
+   and fires `files_dropped_event` on Windows, the subclass goes, and
+   `get_dropped_files` is the one way in again.
 
 ## Consequences
 

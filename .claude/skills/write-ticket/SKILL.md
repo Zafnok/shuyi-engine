@@ -36,6 +36,10 @@ them without asking questions.
      files, types and functions.
    - **Acceptance criteria:** checkboxes, each objectively verifiable.
    - **Tests required.**
+   - A bug in a dependency is fixed here: a workaround in our code, a
+     local patch to a vendored file, or a backend doing the work
+     itself. Never a PR on another project, and no step that waits on
+     one (`AGENTS.md`, rule 12).
    - A new dependency names its license and how it was checked.
    - A new file format follows ADR-0007 (a `Format`, fuzz-style test,
      determinism fixture). The fixture is a row in its crate's golden

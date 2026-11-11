@@ -1723,3 +1723,24 @@ Shown the filter built that way, he answered **"Yes, signed off"**.
 - The bar still says how many notes it leaves out, and **Show all** shows
   them for the visit.
 - ADR-0098 holds the design; it amends ADR-0090 §6.
+
+## 2026-11-10: no PRs on other projects
+
+Source: ticket 3307, which asked for a fix "upstream in miniquad (a PR
+there)". The session that worked it offered to open the PRs; Nick
+answered:
+
+> "we will never open any upstream PRs so any approach that necessitates
+> that is out of the question. I don't want to vibecode upstream PRs ok.
+> Make sure to never do that and rethink how we do these tickets."
+
+**Rules:**
+
+- **No PR on another project, ever** (`AGENTS.md`, rule 12), from any
+  session, on any account, whatever a ticket says.
+- **A bug in a dependency is fixed here:** a workaround in our own code,
+  a vendored file with a local patch, or a backend that does the work
+  itself. A ticket names that fix, never a PR upstream.
+- **The workaround stays** until a release of the dependency fixes the
+  bug on its own. The bump that brings that release checks it (the
+  `dependency-upkeep` skill), and takes the workaround out then.

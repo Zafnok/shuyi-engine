@@ -79,6 +79,9 @@ Set `status: in-progress` in the ticket's frontmatter.
   - unit and property tests for logic;
   - Harness and snapshot tests for screens;
   - `frame-png` pictures for looks.
+- **Never open a PR on another project** (`AGENTS.md`, rule 12), even
+  where a ticket asks for one: fix or work around the bug here, and say
+  in the Completion notes that the PR was left out and why.
 - **Scope creep rule:** if you notice something else worth doing, don't
   do it. Write a ticket with the `write-ticket` skill and mention it in
   the PR.
