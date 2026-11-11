@@ -4,6 +4,22 @@
   "description": "What `bake` bakes.",
   "type": "object",
   "properties": {
+    "audio": {
+      "description": "A folder to write the target's sounds and music into, from the\nproject's root: each sound file and music track the game ships on\n`target` (`GameTools::audio`), baked as the target plays them, under\n`audio/` and `music/`. It is emptied first, and not made when the\ngame's tools offer no audio. Needs a target. With `content`, the tool\nprogram built with that folder writes it.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "content": {
+      "description": "A folder of the project, from its root with `/`, to bake in place of\nthe files the game's tools embed: an edition's content root. The\ngame's tool program is built with it as `SHUYI_CONTENT` and bakes;\nnone bakes the files of the tools running now.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "out": {
       "description": "The pack's file, from the project's root; `target/shuyi/game.shuyipak`\n(or `<target>.shuyipak`) if none.",
       "type": [

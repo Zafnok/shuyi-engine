@@ -173,12 +173,9 @@ None.
     flipping the pixels it covers where `shows(alpha, x, y)`. So a flash
     in that colour shows whatever is under it, as a flipping rectangle
     does today.
-  - **Either order with 2389** (the inks removed): if 2389 is done, the
-    flash colour is a role whose pattern map says `invert: true`
-    (2388), and the one-bit flash tests use 2389's pattern map helper.
-    If not, the code reads `flips` off `Shades` as above and names no
-    `Ink`; its tests may flash in `Ink::Invert`'s code through
-    `InkShades`, and 2389 moves them with the rest.
+  - **From 2389 (done):** the flash colour is a role whose pattern map
+    says `invert: true` (2388), and the one-bit flash tests draw in
+    `onebit::test_map`'s swatches (`Swatch::Invert` flips).
 - **Photosensitivity, whatever the game asks** (in `Game`):
   - at most three flashes start in any one second; a flash asked for
     sooner is dropped (WCAG 2.3.1);

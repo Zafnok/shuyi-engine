@@ -41,6 +41,7 @@ pub(super) fn cx(name: &str, target: &str) -> ExportCx {
         turned_on: Vec::new(),
         beside: Vec::new(),
         wasm_opt: WasmOptRule::Required,
+        edition: None,
     }
 }
 
@@ -311,16 +312,16 @@ fn a_missing_beside_path_refuses_the_export_by_name_unless_it_is_optional() {
         part
     };
     let missing = part(beside("no-such-folder", None, false));
-    let refused = present(&root, Some(&missing)).unwrap_err();
+    let refused = present(&root, &missing.beside).unwrap_err();
     assert_eq!(refused.code(), codes::PROJECT_FILE);
     assert!(refused.message().contains("no-such-folder"), "{refused:?}");
     let optional = part(beside("no-such-folder", None, true));
-    assert_eq!(present(&root, Some(&optional)).unwrap(), []);
+    assert_eq!(present(&root, &optional.beside).unwrap(), []);
     let there = part(beside("capture", None, false));
-    assert_eq!(present(&root, Some(&there)).unwrap().len(), 1);
+    assert_eq!(present(&root, &there.beside).unwrap().len(), 1);
     let path_name = part(beside("capture", Some("../up"), false));
     assert!(
-        present(&root, Some(&path_name))
+        present(&root, &path_name.beside)
             .unwrap_err()
             .message()
             .contains("plain name")
@@ -569,13 +570,13 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 /// What a web build of [`web_build`]'s game makes.
 const WEB_FILES: [&str; 11] = [
     "NOTICES.txt",
-    "download.js",
     "gamepad.js",
     "hello-grid.wasm",
     "index.html",
     "mq_js_bundle.js",
     "music/a.ogg",
     "page-files.js",
+    "player-files.js",
     "quad-storage.js",
     "sapp_jsutils.js",
     "sound.js",
@@ -691,3 +692,5 @@ fn a_release_package_with_a_build_path_is_refused_by_name() {
     assert_eq!(cx.search(&file), Ok(()));
     fs::remove_dir_all(&cx.out).unwrap();
 }
+
+mod editions;

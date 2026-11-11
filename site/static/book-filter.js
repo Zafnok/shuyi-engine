@@ -197,23 +197,32 @@
     }
   }
 
+  // "No notes hidden", "1 note hidden", "2 notes and 1 check hidden".
+  function counted(notes, checks) {
+    const some = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+    if (checks === 0) return notes === 0 ? "No notes hidden" : some(notes, "note") + " hidden";
+    if (notes === 0) return some(checks, "check") + " hidden";
+    return some(notes, "note") + " and " + some(checks, "check") + " hidden";
+  }
+
   // The bar: the toggles, how many passages are hidden, and Show all.
   function bar() {
     for (const toggle of document.querySelectorAll(".book-toggle")) {
       toggle.setAttribute("aria-pressed", String(!knows(toggle.dataset.audience)));
     }
-    // The passages the answers leave out, not those the reader hid.
-    let hidden = 0;
+    // The passages the answers leave out, not those the reader hid: the
+    // notes, and the quick checks (ticket 2827), each counted in its word.
+    let notes = 0;
+    let checks = 0;
     for (const aside of document.querySelectorAll("aside.newcomer")) {
-      if (folded(aside) && !aside.classList.contains("is-shut")) hidden += 1;
+      if (!folded(aside) || aside.classList.contains("is-shut")) continue;
+      if (aside.classList.contains("check")) checks += 1;
+      else notes += 1;
     }
     const count = document.querySelector(".book-bar-count");
-    if (count) {
-      count.textContent =
-        hidden === 0 ? "No notes hidden" : hidden === 1 ? "1 note hidden" : hidden + " notes hidden";
-    }
+    if (count) count.textContent = counted(notes, checks);
     const all = document.querySelector("[data-book-show-all]");
-    if (all) all.hidden = hidden === 0;
+    if (all) all.hidden = notes + checks === 0;
   }
 
   // A page the reader can skip says so at its top, with the next page they

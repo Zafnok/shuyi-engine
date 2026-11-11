@@ -23,7 +23,13 @@ them without asking questions.
    (`gh pr list --state open`) before taking the number. A ticket lint
    on the merge ref fails two tickets with one id.
 3. Copy `tickets/TEMPLATE.md` to `tickets/open/NNNN-short-kebab-title.md`.
-   Keep a bare `@word` out of the title.
+   Keep a bare `@word` out of the title. **The file name is a few words,
+   not the title:** the path from the repository's root stays at 150
+   characters or fewer, so the name at about 60. A game's Cargo checks
+   this repository out on Windows under about 80 characters of its own,
+   and libgit2 refuses a path over 260: one long name failed every
+   Windows build of the game (ticket 2071). `cargo xtask ticket-lint`
+   and `cargo xtask check-paths` fail a longer one.
 4. **Fill in every section:**
    - **Model/effort:** copy one complete Claude/OpenAI pair and choose effort
      from `tickets/README.md`; never use a category or swap the pairs.
@@ -36,6 +42,10 @@ them without asking questions.
      files, types and functions.
    - **Acceptance criteria:** checkboxes, each objectively verifiable.
    - **Tests required.**
+   - A bug in a dependency is fixed here: a workaround in our code, a
+     local patch to a vendored file, or a backend doing the work
+     itself. Never a PR or an issue on another project, and no step
+     that waits on one (`AGENTS.md`, rule 12).
    - A new dependency names its license and how it was checked.
    - A new file format follows ADR-0007 (a `Format`, fuzz-style test,
      determinism fixture). The fixture is a row in its crate's golden
@@ -48,6 +58,47 @@ them without asking questions.
 5. **Keep it small:** one PR's worth, about 1,500 changed lines or fewer
    excluding fixtures and snapshots. Split otherwise.
 6. **Check the dependency chain** (below).
+7. **Check the claims against the code** (below).
+
+## Check the claims against the code
+
+A ticket is trusted by the session that works it, so check each claim
+it makes while you still know why you made it. Why: a retro of 46
+tickets (2026-11-08) found most deviations came from a ticket that was
+wrong about the code.
+
+- **A claim about the game** ("the game builds no `X`", "nothing in the
+  game must change", "game#NNNN waits only on this") is backed by a
+  search of the game, cited in the ticket with the query and what it
+  found:
+  ```bash
+  gh api repos/Zafnok/visions-of-shuyi/contents/shuyi-engine.rev --jq .content | base64 -d
+  gh search code --repo Zafnok/visions-of-shuyi '<X>'
+  ```
+  Name the engine revision the game pins beside it. Why: 2388 said "the
+  game builds no `RolePatterns`", which one search disproves, and #307
+  had to add `RolePatterns::of`; 3090 said game#1170 waited only on it,
+  and 1170 needed 2388 and 3096 too.
+- **Each type or function the steps name** is grepped in
+  `tickets/open` (`grep -rnw '<name>' tickets/open`), to find a ticket
+  that plans the same thing. Name the other ticket, and settle which
+  builds it (*Check the dependency chain*). Why: 3042 specified
+  `release_all` and `forget_held`, which 2411 had planned too, and
+  neither ticket named the other.
+- **A ticket that loosens or tightens a validator or a format** searches
+  the game's ADRs for the rule
+  (`gh search code --repo Zafnok/visions-of-shuyi '<rule>' path:docs/adr`)
+  and names the consequence for the game in its Scope. Why: 2350 said
+  "nothing in the game must change", but game ADR-0045 keeps `.dlg`
+  text ASCII.
+- **A ticket comes before its code.** A change with anything to decide
+  gets its ticket before the code is written, not after. Acceptance
+  values come from the requirement, never from pasting the code's
+  output. Each bound or clamp the ticket changes gets an acceptance
+  case that reaches it. Why: 3210 was written and closed inside #294;
+  its case "23 lines at row 2" copied an off-by-one and contradicted
+  its own "panels that already fit are painted as before". The fix
+  took three PRs and about 212 lines for about 10.
 
 ## A request from the game
 

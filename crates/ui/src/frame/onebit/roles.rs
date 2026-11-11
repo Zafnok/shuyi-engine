@@ -171,7 +171,7 @@ impl fmt::Debug for OneBitFrame {
 
 /// Draws `frame` as a one-bit target shows it: its colours in their roles'
 /// patterns by `map`, glyphs from `font`, sprites' one-bit pictures from
-/// `images` ([`render_with`](super::render_with)). The frame is drawn
+/// `images` ([`render`](super::render)). The frame is drawn
 /// from the display's top-left corner, and what lies past 400 × 240
 /// pixels is cut off.
 pub fn to_one_bit(
@@ -181,7 +181,7 @@ pub fn to_one_bit(
     images: &impl Images,
 ) -> OneBitFrame {
     let mut out = OneBitFrame::white();
-    super::render_with(frame, font, images, map, out.bytes_mut());
+    super::render(frame, font, images, map, out.bytes_mut());
     out
 }
 

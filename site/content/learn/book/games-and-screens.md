@@ -284,15 +284,13 @@ screen that plays one. Here is Moon Garden's dialogue screen:
 
 {{ snippet(file="src/preview.rs", anchor="talk") }}
 
-and what it hands the preview, with the preview itself as a game whose files come from
-a folder:
+and what it hands the preview:
 
 {{ snippet(file="src/preview.rs", anchor="preview") }}
 
 `play.player(Plain)` starts the scene where the preview asks: from its text box, for
 those there. `Showing::of` tells the preview which line is on screen, so a saved file
-plays again from it. The `DialogueFolder` module reads the folder's `.dlg` files again
-when one changes. Your game's own lines (a `Directive` type), checks over every scene
+plays again from it. Your game's own lines (a `Directive` type), checks over every scene
 (`problems`) and named switches (`switches`, a hero the player names or not, say) go
 in the same trait.
 
@@ -302,12 +300,33 @@ over the scene. The preview's words are text keys in your language files:
 
 {{ snippet(file="files/en.ron", anchor="preview", language="ron") }}
 
-The program reads its folder with `shuyi::app::read_watched_folder`, which watches it
-in an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)).
-Hello, Grid's `hello-grid-preview` is such a program: its `src/bin/preview.rs` reads the
-folder named on its command line and starts the preview.
+The program is a second binary of your game, beside its own: `src/bin/preview.rs`, whose
+`main` is one call.
 
-A test of it plays the preview through the Harness:
+{{ snippet(file="src/preview.rs", anchor="main") }}
+
+`run_dialogue_preview` runs it as `run_game` runs the game: the same window, files and
+settings, with the preview as its first screen, your game's modules, and no debug
+screens. It reads the folder with `shuyi::app::read_watched_folder`, which watches it in
+an optimized build too ([chapter 3](@/learn/book/assets-and-formats.md#reloading-while-the-game-runs)),
+and a `DialogueFolder` module reads its `.dlg` files again when one changes. A folder
+that can't be read shows why in the window, as a broken file of your game does.
+
+A `.dlg` file dropped on the window joins the folder, as if it were saved there. On the
+[web](@/learn/book/targets-and-export.md#the-web-build), which has no folders, that is how a writer
+uses it: the preview starts with no scenes, its Scenes tab says to drop a file, and the
+writer drops their `.dlg` files on the page. Changed, a file dropped again plays again
+from the same text box. The tab's note there is the key `preview.note.no_scenes_drop`;
+a language file without it shows `preview.note.no_scenes` instead.
+
+Build the program you hand out as an
+[edition](@/learn/book/targets-and-export.md#a-public-demo) that leaves your game's own
+scripts out: its `bin` is the preview, and its `content` a folder of your files without
+the scenes, so the program holds only the scenes in the writer's folder.
+
+A test of it plays the preview through the Harness, which `preview_harness` starts on
+your `BasicGame` over a folder you make in the test. `h.drop_file(name, bytes)`, or an
+input script's `drop` step, drops a file on it:
 
 {{ snippet(file="src/preview.rs", anchor="test") }}
 
@@ -450,3 +469,32 @@ this game has none of its own.
 Such a game makes its context with `Ctx::new(data)`, its game with `Game::new(ctx,
 first_screen, GameHooks::default())`, and its binary calls `shuyi::app::run` with its
 own window settings. The API docs of `shuyi_ui` and `shuyi_app` have the details.
+
+## Check yourself
+
+{% check() %}
+A pause screen whose `is_overlay` is `true` is pushed over the game. What happens on the
+next frame?
+
+- [ ] Both screens read the player's actions, the pause screen first. — `update` runs only for the screen on top, and the ones below wait ([a screen](#a-screen)).
+- [x] The stack draws the game, then the pause screen over it, and only the pause screen reads the actions. — An overlay lets the one below show through, but only the top screen updates ([the stack](#the-stack)).
+- [ ] The game is no longer drawn until the pause screen pops. — That is a screen whose `is_overlay` is `false`. An overlay has the one below drawn first ([the stack](#the-stack)).
+{% end %}
+
+{% check() %}
+The "Leave the garden?" screen closes with `Transition::pop_with(true)`. How does the
+garden get the answer?
+
+- [x] The stack hands it to the garden's `uncovered`, which takes it out as a `bool` and acts on it in the same frame. — The two screens agree only on the type of the value ([asking the screen below](#asking-the-screen-below)).
+- [ ] The question screen sets a global that the garden reads on its next `update`. — There are no globals: everything a screen reaches comes in the context ([the context](#the-context)).
+- [ ] The question screen calls a function of the garden before it closes. — Neither screen knows what the other is. The stack carries the value down ([asking the screen below](#asking-the-screen-below)).
+{% end %}
+
+{% check() %}
+A line in `en.ron` reads `"Press {Confirm} to start"`. What does
+`ctx.text_with(key, &[])` give back?
+
+- [ ] `Press {Confirm} to start`, as written, since `args` is empty. — Each action's name in braces is filled whatever `args` holds, and `&[]` is for a line with only actions to fill ([text by key](#text-by-key)).
+- [x] The line with the player's own key for Confirm in place of `{Confirm}`. — `text_with` fills each action's name with the player's key for it ([text by key](#text-by-key)).
+- [ ] The line with the game's default key for Confirm, whatever the player chose. — The key comes from the player's keymap, so a rebound key shows ([text by key](#text-by-key)).
+{% end %}

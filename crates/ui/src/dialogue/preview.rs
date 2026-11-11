@@ -46,6 +46,8 @@ use alloc::collections::BTreeSet;
 use core::any::Any;
 use core::fmt;
 
+#[cfg(feature = "std")]
+pub use folder::drop_scenes;
 pub use folder::{DialogueFiles, DialogueFolder};
 pub use view::{
     GoToView, LineRow, PlayingView, PreviewView, ProblemRow, SceneRow, StripView, SwitchRow, Tab,
@@ -81,6 +83,13 @@ pub const STRIP_SWITCH: &str = "preview.switch.strip";
 pub const GO_TO: &str = "preview.lines.go_to";
 /// Text key of the note on an empty Scenes tab.
 pub const NO_SCENES: &str = "preview.note.no_scenes";
+/// Text key of the note on an empty Scenes tab where a file dropped on the
+/// window joins the folder ([`PlatformFacts::can_drop_files`]): the note
+/// says to drop one. A game's text without it shows [`NO_SCENES`] there
+/// too.
+///
+/// [`PlatformFacts::can_drop_files`]: crate::PlatformFacts::can_drop_files
+pub const NO_SCENES_DROP: &str = "preview.note.no_scenes_drop";
 /// Text key of the note on the Switches or Lines tab before a scene is
 /// picked.
 pub const NO_SCENE_PICKED: &str = "preview.note.no_scene";
@@ -827,7 +836,10 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
     /// The note for the tab shown, if it has nothing to list.
     fn note(&self, ctx: &Ctx<G>) -> Option<String> {
         let key = match self.tab {
-            Tab::Scenes if self.files.iter().all(|f| f.scenes.is_empty()) => NO_SCENES,
+            Tab::Scenes if self.files.iter().all(|f| f.scenes.is_empty()) => {
+                let drops = ctx.platform.can_drop_files() && ctx.game.lang().has(NO_SCENES_DROP);
+                if drops { NO_SCENES_DROP } else { NO_SCENES }
+            }
             Tab::Switches | Tab::Lines if self.picked.is_none() => NO_SCENE_PICKED,
             Tab::Lines if self.playing.is_none() => FINISHED,
             Tab::Problems if self.problems.is_empty() => NO_PROBLEMS,

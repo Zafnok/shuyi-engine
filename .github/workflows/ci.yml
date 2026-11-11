@@ -1214,6 +1214,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: cargo xtask check-layers
+      # No two packages build a binary or an example of one name: on
+      # Windows their links collide (ticket 2056).
+      - run: cargo xtask check-targets
 
   # The modules (ticket 2003, ADR-0009 §2 and §6): each against the
   # catalog (docs/modules.md, docs/modules.ron), then the `shuyi` crate
@@ -1419,7 +1422,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # The ticket lint, the Markdown links, the pins (`check-pins`), the
-  # pinned Rust (`check-toolchain`), the docs map (`check-docs`) and typos.
+  # pinned Rust (`check-toolchain`), the docs map (`check-docs`), the paths'
+  # length (`check-paths`) and typos.
   # Cheap, and tickets and
   # docs are what they check, so this always runs: never gated on
   # `needs.changes` (game ADR-0014), like the game's `tickets` job.
@@ -1468,6 +1472,10 @@ jobs:
         run: cargo xtask check-toolchain
       - name: Check the docs map
         run: cargo xtask check-docs
+      # A game's Windows checkout of this repository by Cargo adds about 80
+      # characters to every path, and libgit2 stops at 260 (ticket 2071).
+      - name: Check no tracked path is too long
+        run: cargo xtask check-paths
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: typos

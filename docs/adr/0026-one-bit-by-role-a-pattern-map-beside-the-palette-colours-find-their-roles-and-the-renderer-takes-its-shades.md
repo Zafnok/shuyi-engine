@@ -1,6 +1,6 @@
 # ADR-0026: One bit by role: a pattern map beside the palette, colours find their roles, and the renderer takes its shades
 
-- **Status:** Accepted; amended by ADR-0089 (§1: a `Dots` pattern; §2–4 and §6: a role's `edge` and `invert`)
+- **Status:** Accepted; amended by ADR-0089 (§1: a `Dots` pattern; §2–4 and §6: a role's `edge` and `invert`) and ADR-0107 (§4: the inks removed, one form of each renderer function)
 - **Date:** 2026-10-20
 - **Related tickets:** 3006 (this), 3007 (one-bit sprites), 3010 (the Playdate backend), 2324 (colour vision), game 1025
 

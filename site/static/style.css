@@ -149,10 +149,12 @@ img {
   height: auto;
 }
 
+/* Its sides only: `main`, the header's `.nav` and the footer's `.footer-grid`
+   are `.wrap`s too, and set their own top and bottom (ticket 2831). */
 .wrap {
   max-width: var(--wrap);
   margin: 0 auto;
-  padding: 0 1rem;
+  padding-inline: 1rem;
 }
 
 /* The header: the wordmark and the menu. */
@@ -443,6 +445,99 @@ h3 {
   margin-bottom: 0;
 }
 
+/* A quick check (ticket 2827, ADR-0090 §8): a box with its question and
+   its answers. One marked for a newcomer keeps the newcomer's rule at its
+   side and label, and folds as a passage does. `book-check.js` shows the
+   answers as buttons; with no JavaScript they are in a `<details>`. */
+.check {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.check.newcomer {
+  border-left: 3px solid var(--newcomer);
+}
+
+.check-label {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.check-question > :first-child {
+  margin-top: 0;
+}
+
+.check-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.check-choices[hidden] {
+  display: none;
+}
+
+/* An answer: the whole width, at least 44 px tall to hit at 375 px. */
+.check-choice {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.check-choice:hover {
+  border-color: var(--accent);
+}
+
+.check-choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.check-choice.is-right {
+  border: 2px solid var(--ready);
+}
+
+.check-choice.is-wrong {
+  border: 2px solid var(--code-deleted);
+}
+
+.check-result {
+  margin: 0.25rem 0 0;
+}
+
+.check-result:empty {
+  display: none;
+}
+
+.check-result.is-right strong {
+  color: var(--ready);
+}
+
+.check-result.is-wrong strong {
+  color: var(--code-deleted);
+}
+
+.check-answers summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.check-answers ul {
+  margin-bottom: 0;
+}
+
 /* The reader's filter (ADR-0090 §6, `book-filter.js`). The script sets
    `data-book` on `<html>`, which shows the bar, and `data-book-fold` to the
    audiences the reader knows, whose passages it leaves out. With no
@@ -480,15 +575,37 @@ h3 {
   display: inline;
 }
 
-.newcomer-hide {
-  padding: 0;
-  border: 0;
-  background: none;
+/* The small button (ticket 2831): an action on this page — a passage's
+   "hide" and its stub's "show", the bar's Show all and Start over, the
+   popup's Skip. A box in the accent, never underlined, so it isn't taken for
+   a link to another page; at least 24 px tall to hit (WCAG 2.2, 2.5.8). The
+   stub's "show" is a span inside the stub's own button: the same look. */
+.newcomer-hide,
+.newcomer-stub .newcomer-stub-show,
+.book-bar-button,
+.book-welcome-skip button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.05rem 0.6rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
   color: var(--accent);
   font: inherit;
-  font-weight: 400;
-  text-decoration: underline;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  vertical-align: middle;
   cursor: pointer;
+}
+
+.newcomer-hide:hover,
+.newcomer-stub:hover .newcomer-stub-show,
+.book-bar-button:hover,
+.book-welcome-skip button:hover {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .newcomer-hide:focus-visible {
@@ -528,11 +645,6 @@ h3 {
 .newcomer-stub span {
   color: var(--muted);
   font-weight: 400;
-}
-
-.newcomer-stub .newcomer-stub-show {
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 /* The bar: who the notes are for, how many are hidden, and Start over. */
@@ -577,14 +689,6 @@ h3 {
 
 .book-toggle[aria-pressed="true"]::before {
   content: "✓ ";
-}
-
-.book-bar-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 .book-bar-button[hidden] {
@@ -661,14 +765,6 @@ h3 {
   margin: 1.5rem 0 0;
   padding-top: 1rem;
   border-top: 1px solid var(--line);
-}
-
-.book-welcome-skip button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 .pager {
@@ -890,4 +986,52 @@ h3 {
   min-height: 1.6em;
   margin: 0;
   white-space: pre-wrap;
+}
+
+/* A step's playground (ticket 2820): folded under the step's links until
+   the reader opens it or a try's button does, and in the page's column,
+   so always the game above its files. */
+.playground-fold {
+  margin: 1rem 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.playground-fold summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.playground-fold[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+.playground-fold .playground {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 1rem 0 0.5rem;
+}
+
+.playground-fold .playground-panel textarea {
+  background: var(--bg);
+}
+
+/* A try's "Try this here" (shown by playground.js), and the line under a
+   try of the Rust code, which a page can't build. */
+.try-here button.button {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.try-here button.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.try-rust {
+  color: var(--muted);
+  font-size: 0.95em;
 }

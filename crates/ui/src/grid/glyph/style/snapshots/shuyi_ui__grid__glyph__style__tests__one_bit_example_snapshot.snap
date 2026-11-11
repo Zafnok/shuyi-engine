@@ -19,7 +19,7 @@ d = fg:grass_fg bg:grass_bg
 e = fg:water_fg bg:water_bg
 f = fg:piece bg:grass_bg
 --- overlays ---
-over  56,16 16x16  #ff00ff
+over  56,16 16x16  flash
 over  9,46 14x2  piece
 over  39,32 3x1  cursor
 over  39,33 1x2  cursor

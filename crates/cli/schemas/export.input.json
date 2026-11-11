@@ -4,6 +4,13 @@
   "description": "What `export` makes.",
   "type": "object",
   "properties": {
+    "edition": {
+      "description": "The edition of `shuyi.ron`'s `editions` to build: its program,\nfeatures and files in place of what the target would build. Without\none, the game as `export` builds it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "out": {
       "description": "The folder the package goes in, from the game's folder;\n`dist/export/<target>` without it.",
       "type": [

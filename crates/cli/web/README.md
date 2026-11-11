@@ -32,8 +32,10 @@ itself, so a game needs no copy of its own.
 - `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
   with `shuyi-app`'s `in-house-sound` feature plays through. The engine's own
   code, not vendored. See below.
-- `download.js`: offers the browser a file, for the debug menu's "Save
-  session". The engine's own code, not vendored. See below.
+- `player-files.js`: the files the player keeps, a miniquad JS plugin
+  that offers the browser a file (a download: a game's export, the debug
+  menu's "Save session") and opens its file picker for a file the game
+  asks for. The engine's own code, not vendored. See below.
 - `page-files.js`: files from the page, a miniquad JS plugin over
   `sessionStorage` and `postMessage`: the text files a page hands the
   game, which it lays over its own, and the game's problems with them
@@ -52,9 +54,12 @@ engine's own files get no header.
 Every build writes `NOTICES.txt` beside the page (`shuyi-cli`'s
 `notices` module). It lists:
 
-- the crates compiled in: the game's package's normal dependencies for
-  `wasm32-unknown-unknown`, all the way down (`cargo metadata`), with the
-  license files at the top of each crate's folder. The engine's crates
+- the crates compiled in: the build's own, as Cargo resolves it
+  (`cargo tree` with the build's package, target and feature flags,
+  `--no-default-features` included, normal edges only), so neither a dev-
+  or build-dependency nor a crate only a feature left off brings; and
+  from `cargo metadata`, the license files at the top of each crate's
+  folder. The engine's crates
   get the engine's `LICENSE-MIT` and `LICENSE-APACHE`. Another crate
   with no file gets the standard text of each license it declares that
   the tool can write (Apache-2.0, and MIT with its authors), and one
@@ -114,6 +119,13 @@ home and the game's folders, and refused with `SH3009` if one is there.
   byte-for-byte identical to `js/mq_js_bundle.js` at that commit on GitHub.
 - License: MIT (macroquad is dual MIT/Apache-2.0; the license text is
   committed at [`mq_js_bundle-LICENSE-MIT.txt`](mq_js_bundle-LICENSE-MIT.txt)).
+- **Local patch** (ticket 3307): `window.ondrop` sizes a dropped file's
+  name by its UTF-8 bytes (`new TextEncoder().encode(name)`, copied in
+  with `set`) instead of `name.length`, its UTF-16 length, which cut a
+  name beyond ASCII (`niño.txt`) short. Upstream has the bug in
+  miniquad's `js/gl.js` too. Re-apply it when re-vendoring, unless
+  upstream has fixed it; the test
+  `a_dropped_files_name_is_sized_in_utf8_bytes` fails if it is lost.
 
 When bumping the `macroquad` crate version, re-vendor this file from the
 matching tag (or commit, if no tag exists) and update this note. The
@@ -154,14 +166,27 @@ from the matching commit/tag and update this note; `sapp_jsutils.js` can
 just be re-copied from the new version of the crate. Both come in
 Dependabot's `backend` group too.
 
-## The engine's own `download.js`
+## The engine's own `player-files.js`
 
-- `shuyi_download` makes a `Blob` of the bytes it is handed and clicks a
-  temporary link. `crates/app/src/sessions/web.rs` declares it. The two files
-  must list the same function and the same plugin version: `shuyi-cli`'s tests
-  fail otherwise.
-- Only a build with debug tools calls it, when the debug menu asks. The web
-  never quits, so nothing saves by itself.
+- It and `crates/app/src/player_files/web.rs` list the same `shuyi_*`
+  functions (`shuyi_offer_file`, `shuyi_ask_for_file`,
+  `shuyi_file_answer`) and the same plugin version: `shuyi-cli`'s tests
+  fail otherwise. Strings and bytes cross as `sapp_jsutils.js`'s objects,
+  so `index.html` loads it after that file, and before `load(...)`.
+- `shuyi_offer_file` makes a `Blob` of the text it is handed and clicks a
+  temporary link: a download, which lands where the browser says.
+- `shuyi_ask_for_file` clicks a hidden `<input type="file">` with the
+  game's extensions in `accept`. A browser opens it only shortly after the
+  player pressed something (transient user activation, about 5 seconds):
+  where `navigator.userActivation` says there was none, it answers 0 and
+  the game hears the ask refused. The input's `change` reads the file's
+  bytes (`File.arrayBuffer()`), refusing one over the size it was handed
+  unread, and its `cancel` (Chromium 113, Firefox 91, Safari 16.4) says
+  the player closed it. The answer waits until the game polls
+  `shuyi_file_answer`, once a frame while an ask is open; Rust checks the
+  bytes are UTF-8.
+- The web never quits, so a debug build's session saves only when the debug
+  menu asks, through `shuyi_offer_file`.
 
 ## The engine's own `page-files.js`
 
@@ -184,7 +209,9 @@ Dependabot's `backend` group too.
   says), the files over `in_all` (1 MiB) together, or a bad path, and the
   game gets an error naming it. A page with storage turned off holds no
   files. Hello, Grid lays the layer over its own files when its data loads
-  with it, and plays its own files otherwise.
+  with it, and plays its own files otherwise; so does every game on the
+  short path, in `shuyi_app::run_game` (ticket 2820), which reports for
+  it.
 - **What comes back:** `page::report(text)`, the game's problems with the
   files, one a line (`files/stage.map:11:6: 'X' is not in the legend`),
   or the empty text when they load. In a frame whose parent has the page's

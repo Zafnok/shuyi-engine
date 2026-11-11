@@ -27,6 +27,7 @@ fn cx(release: bool) -> ExportCx {
         turned_on: Vec::new(),
         beside: Vec::new(),
         wasm_opt: crate::project::WasmOptRule::Required,
+        edition: None,
     }
 }
 
@@ -386,4 +387,37 @@ fn the_pack_is_where_the_backend_reads_it() {
 fn the_shim_is_the_backends() {
     assert!(SHIM.contains("eventHandler"));
     assert!(SHIM.contains("shuyi_playdate_update"));
+}
+
+#[test]
+fn the_pack_and_audio_are_baked_from_the_editions_content_root_if_it_has_one() {
+    let mut cx = cx(true);
+    let input = bake_input(&cx);
+    assert_eq!(input.target.as_deref(), Some("playdate"));
+    assert_eq!(input.out.as_deref(), Some("dist/export/playdate/game.pack"));
+    // The sounds and music are baked by the same bake, beside the pack.
+    assert_eq!(
+        input.audio.as_deref(),
+        Some("dist/export/playdate/baked-audio")
+    );
+    assert_eq!(input.content, None, "the files the game's tools embed");
+    cx.edition = Some(super::super::EditionBuild::new("demo", false));
+    assert_eq!(bake_input(&cx).content, None, "an edition with no folder");
+    cx.edition = Some(super::super::EditionBuild {
+        content: Some("game/files-demo".to_owned()),
+        ..super::super::EditionBuild::new("demo", false)
+    });
+    let input = bake_input(&cx);
+    assert_eq!(input.content.as_deref(), Some("game/files-demo"));
+    assert_eq!(
+        input.audio.as_deref(),
+        Some("dist/export/playdate/baked-audio")
+    );
+    assert!(edition_fits(cx.edition.as_ref().unwrap()).is_ok());
+    let full = super::super::EditionBuild::new("full", true);
+    let refused = edition_fits(&full).unwrap_err();
+    assert!(
+        refused.message().contains("default features"),
+        "{refused:?}"
+    );
 }

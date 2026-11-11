@@ -74,15 +74,11 @@ impl Terrains for Terrain {
 }
 
 /// The toy palette's names of the map's colors.
-pub const COLORS: MapColors = MapColors {
-    path: "path",
-    cursor: "cursor",
-    threat: "foe",
-};
+pub const COLORS: MapColors = MapColors::new("path", "cursor", "foe").with_flash("flash");
 
 /// The map's colors in the toy's palette: no value is one of the engine's
 /// colors'.
-pub const MAP_PALETTE: [(&str, [u8; 3]); 14] = [
+pub const MAP_PALETTE: [(&str, [u8; 3]); 15] = [
     ("grass_fg", [40, 160, 60]),
     ("grass_bg", [20, 90, 30]),
     ("water_fg", [120, 170, 250]),
@@ -91,6 +87,7 @@ pub const MAP_PALETTE: [(&str, [u8; 3]); 14] = [
     ("bridge_bg", [110, 80, 40]),
     ("path", [250, 250, 120]),
     ("cursor", [255, 230, 0]),
+    ("flash", [255, 0, 255]),
     ("foe", [230, 60, 50]),
     ("piece", PIECE_RGB),
     ("move", [60, 110, 230]),

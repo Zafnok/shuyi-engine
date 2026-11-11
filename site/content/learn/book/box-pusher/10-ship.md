@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/10-ship/", "learn/tutorial/10-ship/play/"]
 
 [extra]
 step = 10
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels.ron", "levels/1.map", "levels/2.map", "levels/3.map", "levels/4.map", "levels/5.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "targets-and-export"
 +++
 
@@ -123,3 +125,28 @@ The best next step is to change this game until it's yours. In order of difficul
 
 The [book](@/learn/book/_index.md) explains each idea of the engine on its own, including all the things this game didn't need: real-time
 games, maps, pictures, sounds and more. And [Hello, Grid](@/examples/hello-grid.md) is a bigger example to read.
+
+## Check yourself
+
+{% check() %}
+Why should a game's id never change after you hand out a build?
+
+- [x] The player's saves are kept under it, so they would lose their progress. — Set your own id before the first build you hand out, and keep it ([who it is](#who-it-is)).
+- [ ] The address that Pages gives your repository is made from it. — Pages serves the folder at your repository's address, and everything in it loads by a relative path ([put it on Pages](#put-it-on-pages)).
+- [ ] The web build refuses a game whose id changed. — Nothing refuses it, and the harm falls on the players' saves ([who it is](#who-it-is)).
+{% end %}
+
+{% check() %}
+A screen needs a control that one of the game's targets doesn't have. Which gate tells you?
+
+- [x] `cargo shuyi check --target all`. — It holds the game to each target it lists: its frame fits, its text can be read, and every screen's controls exist there ([check it](#check-it)).
+- [ ] `cargo shuyi lint`. — `lint` reads your code for what breaks Shuyi's rules, such as a key named in text, not for what a target has ([check it](#check-it)).
+- [ ] `cargo test --workspace`. — The tests run what you and `shuyi new` wrote, and they don't hold the game to its targets ([check it](#check-it)).
+{% end %}
+
+{% check() %}
+Can you leave `NOTICES.txt` out of `dist/web/` when you publish it?
+
+- [ ] Yes, it is a note for you, and players never need it. — It is part of what ships, written by the tools for the game's players ([build it](#build-it)).
+- [x] No, it must ship with the game. — It credits everyone whose code and fonts your game uses, as their licenses require ([build it](#build-it)).
+{% end %}

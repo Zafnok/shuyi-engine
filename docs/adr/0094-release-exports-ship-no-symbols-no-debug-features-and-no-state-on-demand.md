@@ -24,7 +24,7 @@ own doing:
 
 None of this is protection, and nothing here claims any
 ([`decisions.md`](../decisions.md), 2026-10-31). It removes what the engine
-adds for free. [ADR-0058](0058-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md)
+adds for free. [ADR-0058](0058-export-packages-carry-nothing-of-the-build-machine.md)
 (nothing of the build machine) is the precedent;
 [ADR-0079](0079-crash-reports-one-panic-hook-per-backend-writing-through-the-games-storage-offered-once-and-the-games-record-added-on-native.md)
 made the crash report, with its record in every build.

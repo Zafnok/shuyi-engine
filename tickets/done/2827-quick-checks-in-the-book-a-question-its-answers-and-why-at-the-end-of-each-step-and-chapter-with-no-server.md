@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2826"]
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2827 — Quick checks in the book
@@ -107,16 +107,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every project step and concept chapter ends with two or three
+- [x] Every project step and concept chapter ends with two or three
       checks.
-- [ ] Choosing an answer says whether it is right and why, and with no
+- [x] Choosing an answer says whether it is right and why, and with no
       JavaScript the answers are in a `<details>`.
-- [ ] A check carries an audience, and 2826's filter hides it, with its
+- [x] A check carries an audience, and 2826's filter hides it, with its
       stub, when the reader knows that audience.
-- [ ] A malformed check fails the build checks.
-- [ ] The twin of a page shows its checks as text.
-- [ ] The book's chapter is updated (2802): this ticket is that change.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A malformed check fails the build checks.
+- [x] The twin of a page shows its checks as text.
+- [x] The book's chapter is updated (2802): this ticket is that change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -126,5 +126,63 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+
+- **The check:** `site/templates/shortcodes/check.html`, the body
+  shortcode of ADR-0090 §8. **The list parses in Tera**, so the checks
+  stay in the pages and no TOML file was needed: the body splits at each
+  `\n- [`, and each answer at its first ` — `. It fails the build itself on
+  no question, fewer than two or more than four answers, an answer with
+  no reason, no right answer, or an unknown `to`.
+- **In the page:** the answers are buttons (`static/book-check.js`, loaded
+  by `book::script()` with `defer`). Choosing one says "Right." or "Not
+  quite." and why in the check's `role="status"` line. With no JavaScript
+  the buttons stay hidden and the answers and why are in a `<details>`.
+  Nothing is kept or sent.
+- **The filter:** a check with `to` is an `aside.check.newcomer` with
+  `data-newcomer` and a `.newcomer-label` ("New to Rust? a quick check"),
+  so 2826's fold rules, stubs and hide work on it unchanged. The bar
+  counts it as a check, not a note: "6 notes and 1 check hidden". A
+  check with no `to` is for everyone and doesn't fold.
+- **The build checks:** `cargo xtask check-book` (`crates/xtask/src/book.rs`)
+  reads the `check` opener as a mark's (no nesting either way), and
+  `read_check` fails what the shortcode fails, plus an answer that isn't
+  one line or holds a link (it becomes a button), text after the answers,
+  and a shortcode inside. It also fails a concept chapter (`[extra]
+  chapter`) or a step (`[extra] step`) whose last `## ` section isn't `##
+  Check yourself` holding two or three checks, a check outside it, and
+  a check on any other page. `site/check-build.sh` fails a built page with
+  a check that doesn't load `book-check.js`.
+- **The twin:** `llms.rs` writes a check as `**Quick check.**`, the
+  question, and each answer as `- Right: …` or `- Wrong: …` and why. One
+  with `to` is a blockquote under its label, and `llms-full.txt` leaves out
+  the `programming`, `games` and `rust` ones, as it does their passages.
+- **The checks:** three in the `## Check yourself` section at the end of
+  each of the 10 concept chapters and 10 steps, 60 in all. Each reason
+  links the passage that explains it. Three carry `to="rust"` (steps 8 and 9,
+  and Testing). *Before you start* is a whole page for one
+  newcomer, not a concept chapter, and has none, as the appendices don't.
+- **Docs:** `site/README.md`, a new section *Quick checks*, and the
+  layout table.
+
+**Tried by hand** (`zola serve`, the built-in browser):
+
+- Step 5: a wrong answer shows "Not quite." and its reason with the
+  answer's border in red; then the right one, "Right." in green, and the
+  first answer's state cleared. Dark mode.
+- Keyboard alone on step 5: Tab reaches each answer, Enter chooses it,
+  `aria-pressed` follows, and the result is in the `role="status"` line.
+- Testing: "New to Rust" off leaves its Rust check out whole, the bar
+  says "6 notes and 1 check hidden"; on again, its "hide" folds it to
+  the stub "New to Rust? a quick check · show", focus on the stub, and
+  "show" opens it.
+- Rules as commands at 375 px, light mode: no sideways scroll, answers
+  full width at least 44 px tall. As served, with no JavaScript, the
+  buttons are `hidden` and the `<details>` isn't; its list reads "Right:
+  … — why" for each answer.
+
+**Deviations:** none from the scope. The ADR's example writes "Yes:" or
+"No:" at the start of why; the page adds "Right." or "Not quite." itself,
+so a reason starts with the reason.
+
+No break: `xtask` isn't published, and no public item changed.

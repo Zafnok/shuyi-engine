@@ -49,6 +49,19 @@ machine, with a screen you couldn't test:
 - `windowed` is false on a device that is always full screen: the engine's options screen
   leaves out its Fullscreen row.
 - `keyboard`, `pointer` and `touch` say what the player has.
+- `can_drop_files()` is true where the player can drop a file on the game's window (the desktop) or
+  its page (the web): a screen says "drop a file here" only there.
+
+A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
+`start()` one) as
+`SystemEvent::FilesDropped`, each file with its `name()`, never the folders it came from, and its
+`bytes()`. That is how a player brings what the game can't ship: a level they made, a mod, their
+own copy of a file. `DroppedFile::layer(files)` makes a bundle layer named `dropped` of them, each
+at its name, for the game to lay over its own files. The engine refuses a drop of more than 16
+files, or a file of more than 256 MB, and logs why. A dropped folder, or a file the player
+can't read, is left out, and the files dropped with it still come; a name comes whole in any
+language (`niño.txt`). A test drops a file with `Harness::drop_file`,
+and the tools with the `drop` step (`--drop level.txt`, from the game's folder), on any target.
 
 The facts are the screens'. A game's rules never read them, so the same commands play the same
 game on every target. A test runs a screen as a target with `Harness::as_target`, before the
@@ -268,6 +281,52 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+## A public demo
+
+A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
+a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
+builds it, on any target.
+
+```ron
+editions: {
+    "public-demo": (
+        default_features: false,
+        never_features: ["full"],
+        content: "crates/game/files-demo",
+        disclosure: (canaries: ["CHAPTER-TWO-IS-NOT-OUT"]),
+    ),
+    "full": (default_features: true, content: "crates/game/files"),
+},
+```
+
+An edition says, before anything is compiled:
+
+- `content`: the folder of files its program embeds. The export hands it to the build as
+  `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
+  only that folder. Without it, the build embeds `files/`, as `cargo run` does.
+- `default_features`, always written: whether the build keeps the package's `default` features. The full
+  game's code can sit behind a feature that is on by default, so `cargo run` plays all of it; the demo
+  says `false`, and that code isn't compiled in.
+- `never_features`: features its build must never have on. Cargo turns a feature on through a default,
+  another feature or a dependency, so each build is resolved before it is compiled, and one that turns
+  on `full` anyway is refused with `SH1002`, naming how it got there.
+- `features`, `package` and `bin`: what it turns on and builds, in place of the `export` part's.
+- `beside` and `disclosure`: the files it ships beside the program and what its packages may hold, in
+  place of the project's.
+
+The package goes in `dist/export/<edition>/<target>/`, named
+`<program>-<version>-<edition>-<target>`, and both reports name the edition; `exposure-report.json`
+gives its package, features and content root too. Put a canary in each file of what isn't out yet, and
+give the demo a `disclosure` part that lists them: if the demo is ever built from the wrong folder, the
+export finds one and is refused.
+
+On the Playdate the edition's `content` folder is what its pack is baked from: the game's tool program
+is built again with the folder as `SHUYI_CONTENT` and bakes it, so the `.pdx` holds the demo's files and
+no others (`cargo shuyi bake --target playdate --content <folder>` shows you that pack). The same
+program bakes its sounds and music, so they are the folder's too; music your tools read from the
+project's own `music/` folder is in every edition. A Playdate edition keeps no default features.
+
 ## Size and speed
 
 A target's budgets are the most frame time, heap (the memory a program asks for as it runs) and start-up
@@ -364,3 +423,29 @@ limits:
 **A web page that stays blank.** If you opened `index.html` by double-clicking it, that's the rule
 above: the page must be served over HTTP. If `cargo shuyi web` itself fails to build, run `cargo shuyi
 doctor`, which checks that rustup has the `wasm32-unknown-unknown` target.
+
+## Check yourself
+
+{% check() %}
+A title screen should offer no Quit on the web, where the player leaves by closing the tab. How does it decide?
+
+- [x] It asks `ctx.platform.can_quit()`. — The running game knows its target through `ctx.platform`, and a test can run the screen as the web with `Harness::as_target` ([where the game runs](#where-the-game-runs)).
+- [ ] It asks `cfg!(target_arch = "wasm32")`. — That asks while compiling, which makes the game a different program on each machine, with a screen you couldn't test ([where the game runs](#where-the-game-runs)).
+- [ ] The rules read the platform and leave the command out. — A game's rules never read the platform's facts, so the same commands play the same game on every target ([where the game runs](#where-the-game-runs)).
+{% end %}
+
+{% check() %}
+You ran `cargo shuyi web --release` and double-clicked `dist/web/index.html`. The page stays blank. Why?
+
+- [ ] The release build has no symbol table, so the browser can't start it. — Leaving out the symbols makes a smaller program, and it still runs ([export](#export)).
+- [x] A page opened from the disk can't load its `.wasm`: the folder has to be served over HTTP. — Serve that folder and open it in a browser ([the web build](#the-web-build), and [when it goes wrong](#when-it-goes-wrong)).
+- [ ] The files from an older build were left in the folder. — Each build replaces everything in the folder, so an old file can't stay there ([the web build](#the-web-build)).
+{% end %}
+
+{% check() %}
+A public web demo must not hold chapter two. What keeps it out?
+
+- [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
+- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
+- [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
+{% end %}

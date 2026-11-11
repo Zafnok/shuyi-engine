@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2056 — Two workspace examples named `tools` collide on Windows and fail the link
@@ -26,8 +26,9 @@ cause in CI's own log:
 
 `site/snippets/examples/tools.rs` came in with #233 (ticket 2819). On
 MSVC, two parallel links of one output file fail. Locally the GNU `ld`
-doesn't lock the file, so it never shows. Open ticket 2822 is about the
-tutorial's own `tools.exe`, not this collision.
+doesn't lock the file, so it never shows. Ticket 2822 (done) fixed the
+tutorial's own `tools.exe`, a stale build of one copy of a step run for
+another, not this collision.
 
 ## Nick input
 
@@ -59,12 +60,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo build --workspace --examples` warns of no output filename
+- [x] `cargo build --workspace --examples` warns of no output filename
       collision.
-- [ ] The new check fails when a second `tools` example is added, in a
+- [x] The new check fails when a second `tools` example is added, in a
       unit test over metadata JSON.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -72,5 +73,24 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `site/snippets/examples/tools.rs` is now `snippet-tools.rs` (no
+  `[[example]]` entry existed, so the file name is the example's name).
+  Its one caller by name, the book's tries in `cargo xtask
+  tutorial-tries` (`crates/xtask/src/tries.rs`), runs `--example
+  snippet-tools`. `cargo build --workspace --examples` now warns of no
+  output filename collision.
+- New `cargo xtask check-targets` (`crates/xtask/src/targets.rs`): over
+  `cargo metadata --no-deps`, it fails when two workspace packages build
+  a `bin`, or an `example`, of one name (a bin and an example of one
+  name write different folders, so they don't count). Unit tests over a
+  metadata fixture, including a second `tools` example, and one over the
+  repository. CI runs it in the `layers` job, beside `check-layers`; the
+  `run-gates` skill lists it.
+- The pages that say `examples/tools.rs` (the quick start, *box-pusher*
+  step 1) describe a reader's new game, whose tool program is still
+  `tools`; they stay. `site/snippets/project/shuyi.ron` is the reader's
+  Moon Garden project file, also still `tools`.
+
+No break.
+
+Book: none, the book's pages describe a new game's `examples/tools.rs`, which is unchanged; only the snippets crate's own copy was renamed.

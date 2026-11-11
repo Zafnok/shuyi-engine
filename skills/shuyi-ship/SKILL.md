@@ -81,6 +81,19 @@ Ship only what `check --target` passes.
      doesn't allow refuses the export and removes the package. It finds what
      is written plainly, so leave out of the build what mustn't be seen; a
      menu that hides a level doesn't hide its file.
+   - A public demo is an edition: `shuyi.ron`'s `editions` (`public-demo`,
+     `full`), built with `--edition <name>` on any target. Each names its
+     `content` folder (the files its program embeds, handed to the build as
+     `SHUYI_CONTENT`), always its `default_features`, its `never_features`
+     (refused however Cargo turns one on), its `features`, and its own
+     `beside` and `disclosure`. Keep the full game's code behind a feature
+     the demo leaves off, its files out of the demo's folder, and a canary
+     in each file of what isn't out yet. It goes in
+     `dist/export/<edition>/<target>/`, and both reports name the edition.
+     On the Playdate the edition's pack, sounds and music are baked from
+     its `content` folder by the tool program built with it (`cargo shuyi
+     bake --content <folder>`), and the edition says
+     `default_features: false`.
 
    A release build on Windows opens no console window.
 

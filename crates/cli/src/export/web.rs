@@ -19,13 +19,16 @@ pub struct WebExporter;
 
 impl WebExporter {
     /// The web build's options: release or not, the `export` part's
-    /// features, and whether `wasm-opt` must run (unless the part says
-    /// `wasm_opt: optional`).
+    /// features (or the edition's), whether `wasm-opt` must run (unless the
+    /// part says `wasm_opt: optional`), and the edition's default features and
+    /// content root.
     fn options(cx: &ExportCx) -> Options {
         Options {
             release: cx.release,
             features: cx.turned_on.clone(),
             require_wasm_opt: cx.wasm_opt == WasmOptRule::Required,
+            no_default_features: !cx.default_features(),
+            content: cx.content(),
         }
     }
 }

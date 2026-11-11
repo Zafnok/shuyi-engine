@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2059 — Ticket lint finds a blocked ticket nothing blocks, a follow-up left in prose, and a game adopter left unnamed
@@ -77,14 +77,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An open non-parked ticket `status: blocked` whose blockers are all
+- [x] An open non-parked ticket `status: blocked` whose blockers are all
       in `done/` fails, naming them.
-- [ ] A ticket moved to `done/` whose notes say "worth a ticket if it
+- [x] A ticket moved to `done/` whose notes say "worth a ticket if it
       comes back" with no id warns; with `No ticket: …` it doesn't.
-- [ ] A ticket moved to `done/` naming `game#1245` with no game PR or
+- [x] A ticket moved to `done/` naming `game#1245` with no game PR or
       ticket line fails.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -92,5 +92,34 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Three checks in `crates/xtask/src/tickets.rs`:
+
+- `check_blocked_with_done_blockers` fails an open, non-parked
+  `status: blocked` ticket whose `blocked_by` ids are all done, naming
+  them. The game's ids are now read as two sets, all and done, so a
+  `game#` blocker counts as done only in the game's `done/`, and never
+  when the game can't be read. A blocked ticket with an empty
+  `blocked_by` passes: it waits on something no ticket names. No ticket
+  in the repository fails it today.
+- `check_prose_follow_ups` warns on each line, or bullet with its
+  indented lines, of the PR's done ticket's completion notes that holds
+  one of the phrases and names no ticket. A ticket is one of this
+  repository's ids (so a date such as 2026-11-08 doesn't count) or a
+  `game#NNNN`. Phrases in inline code and fenced blocks don't count, and
+  `follow-ups` is matched too.
+- `check_game_adopter` fails the PR's done ticket when its body names a
+  `game#NNNN` and no `Game:` line names a game PR
+  (`visions-of-shuyi#N` or its `/pull/N` link) or game ticket, or says
+  `Game: nothing to adopt, <why>`.
+
+Deviation: the adopter must be on a `Game:` line, not any line of the
+notes, beside `Breaking:` and `Book:`. Any line naming a `game#` id
+would pass the ticket that names one in its notes for another reason.
+
+The `work-ticket` skill's section 5 says what each check wants.
+
+Book: none, the lint is the repository's own tooling and no public API
+changed.
+
+Game: nothing to adopt, the engine's ticket lint is its own; game#0147
+is the game's half and needs nothing from this change.

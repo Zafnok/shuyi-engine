@@ -471,7 +471,10 @@ fn by_default_the_setup_waits_for_a_key_on_a_keyboard() {
         |setup| {
             assert_eq!(setup.voice_manifest, None);
             assert_eq!(setup.key_prompt, KeyPrompt::Waiting);
-            assert_eq!(setup.platform, PlatformFacts::default());
+            // The headless backend's: the desktop's, its storage in memory.
+            let memory = shuyi_ui::StoragePlace::Folder(crate::headless::MEMORY_FOLDER.into());
+            let headless = PlatformFacts::default().with_storage_place(memory);
+            assert_eq!(setup.platform, headless);
             Ok(toy::game_on(setup.ctx(toy::ctx())))
         },
     );

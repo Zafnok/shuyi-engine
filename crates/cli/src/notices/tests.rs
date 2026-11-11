@@ -346,3 +346,161 @@ fn the_engines_files_are_the_rows_of_third_party_assets_under_crates() {
         );
     }
 }
+
+#[test]
+fn a_resolved_tree_maps_to_the_notices_of_its_crates_and_no_other() {
+    let tree = "game-web v0.1.0 (/x/game-web)\n\
+                lib-a v1.2.0\n\
+                the-rules v0.1.0 (/x/the-rules)\n\
+                odd-e v0.3.0\n\
+                lib-a v1.2.0 (*)\n\n";
+    let built = tree_packages(tree).unwrap();
+    assert_eq!(built.len(), 4);
+    assert!(built.contains(&("lib-a".to_owned(), "1.2.0".to_owned())));
+    let json = METADATA.replace("%ROOT%", "/x");
+    // Not old-b: the build doesn't hold it, though the-rules can bring it.
+    // Not the-rules: the game's own. game-web is the engine's.
+    let works = built_of(&json, "game-web", &built).unwrap();
+    assert_eq!(names(&works), ["game-web", "lib-a", "odd-e"]);
+    assert_eq!(find(&works, "odd-e").license, "Zlib");
+    // A crate of the build that the metadata lacks is never left out unseen.
+    let mut more = built.clone();
+    more.insert(("ghost".to_owned(), "9.9.9".to_owned()));
+    let error = built_of(&json, "game-web", &more).unwrap_err();
+    assert!(error.contains("ghost 9.9.9"), "{error}");
+    // Another version than the metadata's is the same error.
+    let other = tree_packages("lib-a v1.3.0\n").unwrap();
+    assert!(built_of(&json, "game-web", &other).is_err());
+    let bad = tree_packages("lib-a 1.2.0\n").unwrap_err();
+    assert!(bad.contains("isn't a package"), "{bad}");
+}
+
+#[test]
+fn the_builds_features_are_handed_to_the_metadata_by_name() {
+    let build: Vec<String> = [
+        "build",
+        "-p",
+        "game",
+        "--features",
+        "a,game/b",
+        "-F",
+        "dep/c",
+        "--features=d e",
+        "--no-default-features",
+    ]
+    .map(str::to_owned)
+    .to_vec();
+    assert_eq!(
+        build_features("game", &build),
+        ["a", "b", "dep/c", "d", "e"]
+    );
+}
+
+/// A stand-in game at `root/game`, its own workspace, with a dependency
+/// for each kind: `story` only through its default feature `full`,
+/// `helper` always, `dev-only` as a dev-dependency and `build-only` as a
+/// build-dependency, each a package of its own outside the workspace.
+fn stand_in(root: &Path) {
+    let lib = |name: &str| {
+        format!(
+            "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\
+             license = \"MIT\"\nrepository = \"https://example.com/{name}\"\n"
+        )
+    };
+    let mut files: Vec<(String, String)> = Vec::new();
+    for name in ["story", "helper", "dev-only", "build-only"] {
+        files.push((format!("{name}/Cargo.toml"), lib(name)));
+        files.push((format!("{name}/src/lib.rs"), String::new()));
+    }
+    files.push((
+        "game/Cargo.toml".to_owned(),
+        "[package]\nname = \"game\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\
+         [workspace]\n\
+         [features]\ndefault = [\"full\"]\nfull = [\"dep:story\"]\ndemo = []\n\
+         [dependencies]\nstory = { path = \"../story\", optional = true }\n\
+         helper = { path = \"../helper\" }\n\
+         [dev-dependencies]\ndev-only = { path = \"../dev-only\" }\n\
+         [build-dependencies]\nbuild-only = { path = \"../build-only\" }\n"
+            .to_owned(),
+    ));
+    files.push(("game/src/main.rs".to_owned(), "fn main() {}\n".to_owned()));
+    files.push(("game/build.rs".to_owned(), "fn main() {}\n".to_owned()));
+    let files: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, text)| (path.as_str(), text.as_str()))
+        .collect();
+    write_files(root, &files);
+}
+
+#[test]
+fn a_build_without_its_defaults_lists_no_crate_only_a_default_feature_brings() {
+    let root = folder("built");
+    stand_in(&root);
+    let game = root.join("game");
+    let triple = "x86_64-unknown-linux-gnu";
+    let build = |extra: &[&str]| -> Vec<String> {
+        let mut args: Vec<String> = ["build", "-p", "game", "--bin", "game", "--target", triple]
+            .map(str::to_owned)
+            .to_vec();
+        args.extend(extra.iter().map(|&arg| arg.to_owned()));
+        args
+    };
+    let full = built_crates(&game, "game", triple, &build(&[]), None).unwrap();
+    assert_eq!(names(&full), ["helper", "story"]);
+    assert_eq!(find(&full, "story").license, "MIT");
+    let demo = built_crates(
+        &game,
+        "game",
+        triple,
+        &build(&["--release", "--no-default-features", "--features", "demo"]),
+        None,
+    )
+    .unwrap();
+    // No story, and never the dev- or build-dependency.
+    assert_eq!(names(&demo), ["helper"]);
+    // A demo that turns `full` back on names it again.
+    let named = built_crates(
+        &game,
+        "game",
+        triple,
+        &build(&["--no-default-features", "--features", "full"]),
+        None,
+    )
+    .unwrap();
+    assert_eq!(names(&named), ["helper", "story"]);
+    let unknown = built_crates(&game, "game", triple, &build(&["--frozen"]), None).unwrap_err();
+    assert!(unknown.starts_with(FILE), "{unknown}");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn hello_grids_builds_list_the_same_crates_or_fewer_than_its_whole_graph() {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
+    for triple in ["wasm32-unknown-unknown", "x86_64-unknown-linux-gnu"] {
+        let build: Vec<String> = ["build", "-p", "hello-grid", "--target", triple]
+            .map(str::to_owned)
+            .to_vec();
+        let listed_works = built_crates(&example, "hello-grid", triple, &build, None).unwrap();
+        let graph = crates(&example, "hello-grid", triple, &[]).unwrap();
+        for work in &listed_works {
+            assert!(
+                graph.contains(work),
+                "{triple}: {} isn't in the graph",
+                work.name
+            );
+        }
+        let listed = names(&listed_works);
+        for shipped in ["hello-grid", "macroquad", "shuyi-core"] {
+            assert!(
+                listed.contains(&shipped),
+                "{triple}: {shipped} in {listed:?}"
+            );
+        }
+        for left_out in ["insta", "autocfg"] {
+            assert!(
+                !listed.contains(&left_out),
+                "{triple}: {left_out} in {listed:?}"
+            );
+        }
+    }
+}

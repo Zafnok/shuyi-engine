@@ -15,7 +15,7 @@ completed: 2026-11-07
 
 ## Context
 
-[ADR-0084](../../docs/adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+[ADR-0084](../../docs/adr/0084-one-description-of-a-games-types.md)
 (ticket 2907) decides that a game's types are described by their serde
 derives, with `schemars::JsonSchema` for their shapes in the tools
 (§1–§2), and that a path to one value is a JSON Pointer (§5). Its §8

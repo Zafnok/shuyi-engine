@@ -676,3 +676,44 @@ fn assert_session_fails_a_kept_file_that_plays_differently() {
     *frame.unwrap() ^= 1;
     assert_session(home(), kept_file("differs.session.ron", &record.to_ron()));
 }
+
+/// A game at a [`Files`](crate::player_files::Files) screen, its frames
+/// hashed by what its hook heard of the player's files: their text too.
+fn files() -> Start<Toy> {
+    use crate::player_files::{Files, hear};
+    start_at(|| Box::new(Files::default()))
+        .state_hash(|game| shuyi_core::state_hash(&game.screen::<Files>()?.heard).ok())
+        .on_system(hear)
+}
+
+#[test]
+fn a_record_holding_a_chosen_file_replays_to_the_same_hashes() {
+    use crate::player_files::Files;
+    use shuyi_platform::ChosenFile;
+    let mut h = recording(files());
+    h.answer_next_ask(ChosenFile::picked("farm.ron", "(hay: 3)"));
+    // Confirm asks, Cancel offers: each answer is heard in the next frame.
+    h.keys("f").keys("Escape").keys("f");
+    let record = record_of(&h);
+    let chosen = record
+        .frames
+        .iter()
+        .flat_map(|frame| &frame.system)
+        .filter(|event| matches!(event, SystemEvent::FileChosen(_)))
+        .count();
+    assert_eq!(chosen, 2, "the record holds both answers");
+    // The record's text holds the file's text, so another run reads it.
+    let text = record.to_ron();
+    assert!(text.contains("(hay: 3)"), "{text}");
+    let record = SessionRecord::from_ron(&text).unwrap_or_else(|e| panic!("{e}"));
+    let mut played = playing(files(), &record);
+    let answer = played.play_all().clone();
+    assert_eq!(answer.first_difference, None);
+    assert_eq!(answer.frames, answer.of);
+    let heard = |h: &Harness<Toy>| h.screen::<Files>().map(|files| files.heard.clone());
+    assert_eq!(heard(&played), heard(&h));
+    assert_eq!(heard(&played).map_or(0, |heard| heard.len()), 3);
+    // The playback asked the platform again, and the record answered.
+    assert_eq!(played.platform().asks().len(), 2);
+    assert_eq!(played.offered().len(), 1);
+}

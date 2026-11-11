@@ -1,6 +1,7 @@
 //! `NOTICES.txt`: the notices a package of a game owes for the works in
 //! it, written beside the game. `shuyi web` writes one into the web build
-//! ([`crate::web`]). It lists the crates compiled in ([`crates`]), the web
+//! ([`crate::web`]). It lists the crates compiled in (the build's as Cargo
+//! resolves it, [`built_crates`], which a package's exporter uses), the web
 //! shell's files and the game's own license texts ([`game_texts`]), then
 //! each license text once ([`write()`]).
 //!
@@ -16,6 +17,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+use crate::export::{live_link, paths};
 use crate::project::Notices;
 
 /// The file's name.
@@ -273,7 +275,18 @@ pub fn crates(
     triple: &str,
     features: &[String],
 ) -> Result<Vec<Work>, String> {
-    let cargo = crate::cargo();
+    crates_of(&metadata(root, package, triple, features)?, package)
+}
+
+/// `cargo metadata`'s answer for the workspace at `root`, for `triple`,
+/// with `features` turned on: the package `package`'s own by their names,
+/// a dependency's as `dependency/feature`.
+fn metadata(
+    root: &Path,
+    package: &str,
+    triple: &str,
+    features: &[String],
+) -> Result<String, String> {
     let mut args: Vec<String> = [
         "metadata",
         "--format-version",
@@ -284,9 +297,14 @@ pub fn crates(
     .map(str::to_owned)
     .to_vec();
     for feature in features {
-        args.extend(["--features".to_owned(), format!("{package}/{feature}")]);
+        let named = if feature.contains('/') {
+            feature.clone()
+        } else {
+            format!("{package}/{feature}")
+        };
+        args.extend(["--features".to_owned(), named]);
     }
-    let output = Command::new(cargo)
+    let output = Command::new(crate::cargo())
         .args(args)
         .current_dir(root)
         .output()
@@ -295,8 +313,112 @@ pub fn crates(
         let error = String::from_utf8_lossy(&output.stderr);
         return Err(format!("cargo metadata failed: {}", error.trim()));
     }
-    let json = String::from_utf8_lossy(&output.stdout);
-    crates_of(&json, package)
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// The crates the build `cargo <build>` of the package `package` of the
+/// workspace at `root` compiles in for `triple`, as Cargo resolves that
+/// build: `cargo tree` with its own package, target and feature flags
+/// (`--no-default-features` included, [`live_link::build_flags`]), normal
+/// edges only, and its Rust flags `encoded` in [`paths::ENCODED`] when it
+/// has some ([`live_link::encoded_flags`]). `cargo metadata` with the
+/// build's features says each crate's license and files. So a crate only a
+/// default feature brings isn't listed in a build without its defaults, nor
+/// a dev- or build-dependency; the game's own crates aren't, as in
+/// [`crates`].
+pub fn built_crates(
+    root: &Path,
+    package: &str,
+    triple: &str,
+    build: &[String],
+    encoded: Option<&str>,
+) -> Result<Vec<Work>, String> {
+    let mut args = live_link::build_flags(build).map_err(|e| format!("{FILE}: {}", e.message()))?;
+    args.extend(["-e", "normal", "--prefix", "none", "-f", "{p}"].map(str::to_owned));
+    let mut tree = Command::new(crate::cargo());
+    tree.args(&args).current_dir(root);
+    if let Some(flags) = encoded {
+        tree.env(paths::ENCODED, flags);
+    }
+    let output = tree
+        .output()
+        .map_err(|e| format!("spawn cargo tree: {e}"))?;
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("cargo {} failed: {}", args.join(" "), error.trim()));
+    }
+    let packages = tree_packages(&String::from_utf8_lossy(&output.stdout))?;
+    let json = metadata(root, package, triple, &build_features(package, build))?;
+    built_of(&json, package, &packages)
+}
+
+/// The features `build` turns on, as `cargo metadata` takes them: each of
+/// its `--features` lists' names, the package's own named through it.
+fn build_features(package: &str, build: &[String]) -> Vec<String> {
+    let mut lists = Vec::new();
+    let mut args = build.iter();
+    while let Some(arg) = args.next() {
+        if let Some(list) = arg.strip_prefix("--features=") {
+            lists.push(list);
+        } else if matches!(arg.as_str(), "--features" | "-F") {
+            lists.extend(args.next().map(String::as_str));
+        }
+    }
+    lists
+        .into_iter()
+        .flat_map(|list| list.split([',', ' ']))
+        .filter(|name| !name.is_empty())
+        .map(|name| {
+            name.strip_prefix(&format!("{package}/"))
+                .unwrap_or(name)
+                .to_owned()
+        })
+        .collect()
+}
+
+/// The packages, by name and version, of `cargo tree`'s answer `text` in
+/// the format `{p}` with no prefix: `name v1.2.3 (source)`, and a `(*)`
+/// after one shown before.
+fn tree_packages(text: &str) -> Result<BTreeSet<(String, String)>, String> {
+    text.lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            let mut words = line.split_whitespace();
+            match (words.next(), words.next().and_then(|v| v.strip_prefix('v'))) {
+                (Some(name), Some(version)) => Ok((name.to_owned(), version.to_owned())),
+                _ => Err(format!(
+                    "`cargo tree` wrote `{line}`, which isn't a package"
+                )),
+            }
+        })
+        .collect()
+}
+
+/// [`built_crates`] from `cargo metadata`'s answer `json` and the packages
+/// of the build, `built` (names and versions): the works of those, apart
+/// from the game's own crates. A package of the build that `json` doesn't
+/// have is an error: it is never left out of the notices unseen.
+fn built_of(
+    json: &str,
+    package: &str,
+    built: &BTreeSet<(String, String)>,
+) -> Result<Vec<Work>, String> {
+    let meta: Metadata =
+        serde_json::from_str(json).map_err(|e| format!("read cargo metadata: {e}"))?;
+    if let Some((name, version)) = built.iter().find(|(name, version)| {
+        !meta
+            .packages
+            .iter()
+            .any(|p| p.name == *name && p.version == *version)
+    }) {
+        return Err(format!(
+            "the build of `{package}` holds {name} {version}, which cargo metadata doesn't \
+             list, so {FILE} can't say its license"
+        ));
+    }
+    Ok(shipped(&meta, |p| {
+        built.contains(&(p.name.clone(), p.version.clone()))
+    }))
 }
 
 /// `cargo metadata`'s answer, the fields [`crates`] reads.
@@ -373,14 +495,22 @@ fn crates_of(json: &str, package: &str) -> Result<Vec<Work>, String> {
             .filter(|dep| dep.dep_kinds.iter().any(|kind| kind.kind.is_none()));
         stack.extend(normal.map(|dep| dep.pkg.as_str()));
     }
+    Ok(shipped(&meta, |p| seen.contains(p.id.as_str())))
+}
+
+/// The works of `meta`'s packages that are `in_build`, sorted by name and
+/// version, apart from the game's own crates (workspace members outside
+/// the engine's repository).
+fn shipped(meta: &Metadata, in_build: impl Fn(&Package) -> bool) -> Vec<Work> {
+    let member = |p: &Package| meta.workspace_members.contains(&p.id);
     let engine = |p: &Package| p.repository.as_deref() == Some(ENGINE_REPOSITORY);
     let mut shipped: Vec<&Package> = meta
         .packages
         .iter()
-        .filter(|p| seen.contains(p.id.as_str()) && (engine(p) || !member(p)))
+        .filter(|p| in_build(p) && (engine(p) || !member(p)))
         .collect();
     shipped.sort_by(|a, b| (&a.name, &a.version).cmp(&(&b.name, &b.version)));
-    Ok(shipped.into_iter().map(crate_work).collect())
+    shipped.into_iter().map(crate_work).collect()
 }
 
 /// A crate's work: what it declares, and its texts.

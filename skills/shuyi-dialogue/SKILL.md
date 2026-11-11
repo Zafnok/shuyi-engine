@@ -204,15 +204,32 @@ that no longer parses keeps its last good scenes playing.
    and `switches` (named switches, read back with `play.switch(i)`).
 2. Implement `PreviewScreen` on that screen: `showing()` is
    `Showing::of(&self.player)`.
-3. The program's game: `DialoguePreview::new(&ctx, YourPreview)` as the
-   root screen, `.with_debug_screens(false)`, and
-   `.with_module(DialogueFolder::new(layer))`, where `layer` is the folder
-   read with `shuyi::app::read_watched_folder` (watched in an optimized
-   build too).
+3. The program: a second binary of the game, `src/bin/preview.rs`,
+   whose `main` is one call,
+   `shuyi::app::run_dialogue_preview(game(), Path::new(&folder),
+   YourPreview)`. It runs the game's window, files and settings with
+   `DialoguePreview` as the first screen, the game's modules, a
+   `DialogueFolder` over the folder (read with `read_watched_folder`,
+   watched in an optimized build too) and no debug screens; a folder that
+   can't be read shows why in the window. A `.dlg` file dropped on the
+   window joins the folder. On the web, which has no folders, the
+   preview starts with none: the writer opens its page and drops their
+   `.dlg` files on it, and drops one again after changing it. A game on
+   the long path builds
+   it itself: `BasicGame::preview_start(folder, preview)`, or
+   `DialoguePreview::new(&ctx, YourPreview)` as the root screen,
+   `.with_debug_screens(false)`,
+   `.with_module(DialogueFolder::new(layer))` and a system hook that
+   hands a drop's files to `shuyi::ui::dialogue::preview::drop_scenes`.
 4. Give the `preview.*` text keys words in the language file (the book's
-   chapter 6 lists them).
-5. Test it through the Harness: `h.watch_files(true)`, then
-   `h.change_file(layer, "scene.dlg", bytes)` and one frame; read
+   chapter 6 lists them). `preview.note.no_scenes_drop` is the empty
+   Scenes tab's note where files can be dropped; without it the tab
+   shows `preview.note.no_scenes` there too.
+5. Test it through the Harness: `game().preview_harness(layer,
+   YourPreview)`, `h.watch_files(true)`, then
+   `h.change_file(layer, "scene.dlg", bytes)` and one frame, or drop a
+   file with `h.drop_file("scene.dlg", bytes)` (an input script's
+   `drop` step); read
    `h.screen::<DialoguePreview<_, _>>()?.view(h.ctx())`.
 
 Its controls are the six `UiAction` moves (Cancel brings the tabs back

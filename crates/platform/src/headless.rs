@@ -3,7 +3,9 @@
 //! card. It plays scripted input and system events, records the frames
 //! presented to it, keeps its storage in memory, and stands in for the
 //! music player ([`Speaker`]), so a screen that keeps time with the music
-//! is tested too.
+//! is tested too. The files a game offers the player are kept in memory
+//! ([`HeadlessPlatform::offered`]), and its asks for a file are answered
+//! from a queue ([`HeadlessPlatform::answer_next_ask`]).
 //!
 //! The test Harness runs games on it, through the same
 //! [`App::frame`](crate::App::frame) the devices do. It is also the
@@ -12,7 +14,7 @@
 
 use crate::alloc_prelude::*;
 use alloc::collections::{BTreeMap, VecDeque};
-use alloc::vec;
+use alloc::{format, vec};
 
 #[cfg(feature = "std")]
 use shuyi_assets::bundle::Layer;
@@ -23,12 +25,14 @@ use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{
     HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass, TagRow,
 };
+use shuyi_ui::player_files::Folder;
 use shuyi_ui::storage::{MemoryStorage, Storage};
-use shuyi_ui::{PlatformFacts, RawInputEvent};
+use shuyi_ui::{PlatformFacts, RawInputEvent, StoragePlace};
 
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
 use crate::platform::{DisplayInfo, Frame, LoadSlice, Millis, Platform, Show, SystemEvent};
+use crate::player_files::{self, ChosenFile, EXPORTS_FOLDER, MOST_NUMBERED, Offered};
 use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
@@ -558,7 +562,29 @@ pub struct HeadlessPlatform {
     watches_files: bool,
     /// What runs on each frame presented, if a tool set it.
     present_hook: Option<Hook>,
+    /// The player's files: what was offered, asked and opened, and the
+    /// answers to the asks to come.
+    files: PlayerFiles,
 }
+
+/// The player's files on the headless backend.
+#[derive(Debug, Default)]
+struct PlayerFiles {
+    /// Each file offered, in order: the name it was written as, and its
+    /// text.
+    offered: Vec<(String, String)>,
+    /// The extensions of each ask, in order.
+    asks: Vec<Vec<String>>,
+    /// The answers to the next asks, in order.
+    answers: VecDeque<ChosenFile>,
+    /// The folders opened, in order.
+    opened: Vec<Folder>,
+    /// Whether a session record is playing: its frames hold the answers.
+    playing: bool,
+}
+
+/// Where the headless backend says the game's storage is: in memory.
+pub const MEMORY_FOLDER: &str = "<memory>";
 
 /// What runs on each frame a [`HeadlessPlatform`] is presented, in its
 /// [`present`](Platform::present): the work a device's backend does there,
@@ -596,7 +622,8 @@ impl HeadlessPlatform {
             speaker: Speaker::default(),
             keyboard: None,
             recorded_keyboard: None,
-            facts: PlatformFacts::default(),
+            facts: PlatformFacts::default()
+                .with_storage_place(StoragePlace::Folder(MEMORY_FOLDER.to_owned())),
             clock: None,
             load_slice: None,
             memory: Memory::None,
@@ -612,6 +639,7 @@ impl HeadlessPlatform {
             changed_asks: 0,
             watches_files: false,
             present_hook: None,
+            files: PlayerFiles::default(),
         }
     }
 
@@ -634,6 +662,7 @@ impl HeadlessPlatform {
     /// Queues one frame of a session record: its system events, its input,
     /// and what the sound device and the system keyboard answer in it.
     pub fn push_frame(&mut self, frame: &FrameRecord) {
+        self.files.playing = true;
         self.system.extend_from_slice(&frame.system);
         self.push_input(&frame.input);
         self.speaker.play_recorded(frame);
@@ -647,6 +676,35 @@ impl HeadlessPlatform {
     pub fn end_session(&mut self) {
         self.speaker.recorded = None;
         self.recorded_keyboard = None;
+        self.files.playing = false;
+    }
+
+    /// Queues the answer to the next ask for a file
+    /// ([`Platform::ask_for_file`]), after those already queued: the file the
+    /// player picks ([`ChosenFile::picked`], or [`ChosenFile::from_bytes`]
+    /// for bytes that may be refused), or that they cancel. An ask with no
+    /// answer queued is cancelled. It answers whatever the facts say
+    /// ([`PlatformFacts::can_pick_files`]), so a test picks a file on any
+    /// target.
+    pub fn answer_next_ask(&mut self, answer: ChosenFile) {
+        self.files.answers.push_back(answer);
+    }
+
+    /// Each file the game offered the player, in order: the name it was
+    /// written as in the exports folder (`a (2).ron` for a second `a.ron`)
+    /// and its text.
+    pub fn offered(&self) -> &[(String, String)] {
+        &self.files.offered
+    }
+
+    /// The extensions of each ask for a file, in order.
+    pub fn asks(&self) -> &[Vec<String>] {
+        &self.files.asks
+    }
+
+    /// The folders the game opened, in order.
+    pub fn opened_folders(&self) -> &[Folder] {
+        &self.files.opened
     }
 
     /// The same backend on `display`.
@@ -914,6 +972,49 @@ impl Platform for HeadlessPlatform {
 
     fn watches_files(&self) -> bool {
         self.watches_files
+    }
+
+    /// Keeps the file, numbered as a desktop's exports folder numbers it,
+    /// and says it was written under [`MEMORY_FOLDER`]; past
+    /// [`MOST_NUMBERED`] files of the name, it fails, as a desktop's does.
+    /// While a session record plays, its frames hold the answer.
+    fn offer_file(&mut self, name: &str, text: &str) -> Option<Offered> {
+        let taken = |name: &str| self.files.offered.iter().any(|(kept, _)| kept == name);
+        let written = (1..=MOST_NUMBERED)
+            .map(|n| player_files::numbered_name(name, n))
+            .find(|numbered| !taken(numbered));
+        let answer = match written {
+            Some(written) => {
+                let path = format!("{MEMORY_FOLDER}/{EXPORTS_FOLDER}/{written}");
+                self.files.offered.push((written, text.to_owned()));
+                Offered::Written(path)
+            }
+            None => Offered::Failed(format!(
+                "{MOST_NUMBERED} files called {name} are there already"
+            )),
+        };
+        (!self.files.playing).then_some(answer)
+    }
+
+    /// The next answer queued ([`answer_next_ask`](Self::answer_next_ask)),
+    /// or cancelled; while a session record plays, its frames hold the
+    /// answer.
+    fn ask_for_file(&mut self, accept: &[String]) -> Option<ChosenFile> {
+        self.files.asks.push(accept.to_vec());
+        if self.files.playing {
+            return None;
+        }
+        Some(
+            self.files
+                .answers
+                .pop_front()
+                .unwrap_or(ChosenFile::Cancelled),
+        )
+    }
+
+    fn open_folder(&mut self, folder: Folder) -> Result<(), String> {
+        self.files.opened.push(folder);
+        Ok(())
     }
 
     #[cfg(feature = "std")]

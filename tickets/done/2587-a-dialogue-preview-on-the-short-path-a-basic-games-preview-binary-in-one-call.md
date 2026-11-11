@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2586"]
 nick_input: none
-completed:
+completed: 2026-11-10
 ---
 
 # 2587 — A dialogue preview on the short path
@@ -73,12 +73,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A short-path game's preview binary is one call, shown in the book
+- [x] A short-path game's preview binary is one call, shown in the book
       from a snippet CI builds.
-- [ ] A Harness test starts the preview of a `BasicGame` over a folder's
+- [x] A Harness test starts the preview of a `BasicGame` over a folder's
       layer and plays a scene.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -87,5 +87,32 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi-platform`: `BasicGame::preview_game(ctx, folder, preview)` (the
+  `DialoguePreview` as the root screen, the game's own modules, a
+  `DialogueFolder` over the folder's layer, no debug screens),
+  `BasicGame::preview_start(folder, preview)`, whose `folder` is a
+  `Result<Layer, String>` so a folder that couldn't be read is the load's
+  error the platform shows, and `BasicGame::preview_harness(folder,
+  preview)` for tests. All additive.
+- `shuyi-app`: `run_dialogue_preview(game, folder: &Path, preview)`, as
+  `run_game`: the game's window, files (with `--watch`'s layer) and
+  settings; the folder read with `read_watched_folder` into a layer named
+  `scenes`. On the web it compiles and the window says the web has no
+  folders (a web preview, of dropped files, is 2588).
+- Tests: `crates/platform/src/basic/tests.rs` starts a `BasicGame`'s
+  preview in the Harness over a folder's layer, plays its scene, changes
+  the file with `Harness::change_file` and reads the new line, then reads
+  the scene to its end; and on the headless backend the start shows the
+  card then the preview with debug tools off, and a folder's read error
+  and a module error are the load's error. The test language file
+  `preview_en.ron` holds the preview's text keys, which the blank
+  template's has not.
+- The book's chapter 6 *A preview for your writer* now shows Moon
+  Garden's preview binary (`src/bin/preview.rs`, the `main` anchor of
+  `site/snippets/src/preview.rs`), and its test starts with
+  `game().preview_harness`; the snippet's hand-built `preview()` is gone.
+  The `shuyi-dialogue` skill names the call.
+- No ADR: the call follows `run_game`'s shape, and the start
+  `BasicGame::start`'s.
+
+No break.

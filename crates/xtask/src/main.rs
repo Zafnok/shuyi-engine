@@ -3,10 +3,12 @@
 //! - `cargo xtask ticket-lint [--pr-branch <branch>] [--pr-title <title>] [--base <rev>] [--game-repo <path>]`
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
+//! - `cargo xtask check-paths`
 //! - `cargo xtask check-book`
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-targets`
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
@@ -37,11 +39,13 @@ mod links;
 mod llms;
 mod modules;
 mod no_std;
+mod paths;
 mod pins;
 mod script;
 mod site_data;
 mod skills;
 mod sound_parity;
+mod targets;
 mod tickets;
 mod toolchain;
 mod tries;
@@ -66,6 +70,9 @@ usage:
   cargo xtask check-docs
       Check that the docs map (docs/README.md) links every Markdown file, and
       that no two ADRs, or two rows of docs/adr/README.md, share a number.
+  cargo xtask check-paths
+      Check that no tracked path is over 150 characters: Cargo's git checkout
+      on Windows adds about 80, and libgit2 stops at 260 (ticket 2071).
   cargo xtask check-book
       Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
       audience of the four, a topic, closed, not nested, on lines of their
@@ -83,6 +90,9 @@ usage:
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
       no device crate below them and the float ban in the simulations.
+  cargo xtask check-targets
+      Check that no two workspace packages build a binary, or an example, of
+      the same name: their outputs are one file (ticket 2056).
   cargo xtask check-modules
       Check the modules against docs/modules.md and docs/modules.ron (ADR-0009):
       no default crate depends on one, each has a README, its metadata and a
@@ -179,10 +189,14 @@ fn main() -> ExitCode {
             errors.extend(ids::duplicate_adrs(&root));
             report("check-docs", &errors, &[])
         }
+        Some("check-paths") if args.len() == 1 => report("check-paths", &paths::run(&root), &[]),
         Some("check-book") if args.len() == 1 => report("check-book", &book::run(&root), &[]),
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-targets") if args.len() == 1 => {
+            report("check-targets", &targets::run(&root), &[])
+        }
         Some("check-modules") if args.len() == 1 => {
             report("check-modules", &modules::run(&root), &[])
         }

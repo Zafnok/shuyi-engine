@@ -12,6 +12,11 @@
 //! in it ([`refuse`], ADR-0096). The module keeps the name of the live
 //! link, the first feature it refused.
 //!
+//! An edition's `never_features` ([`super::EditionBuild`]) are refused the
+//! same way, in the same resolution: a public demo whose package's
+//! `default` list, a feature or a dependency turns on what only the full
+//! game has is refused before it is built ([`unwanted`]).
+//!
 //! Only what the built program is made of counts: the normal and build
 //! dependencies for that target. A dev-dependency (`shuyi-app` turns its
 //! own `link` and `capture` on in its tests), another member of the
@@ -32,7 +37,8 @@ const FORMAT: &str = "|{f}|{p}";
 
 /// Refuses `cx`'s export by `exporter` if a build it plans turns on a debug
 /// feature: by the literal arguments first ([`super::no_debug_features`]),
-/// then by the build as Cargo resolves it.
+/// then by the build as Cargo resolves it; or, in an edition's export, one of
+/// its `never_features` ([`unwanted`]).
 pub fn refuse(cx: &ExportCx, exporter: &dyn Exporter) -> Result<(), ExportError> {
     for args in exporter.cargo_args(cx) {
         super::no_debug_features(&args)?;
@@ -41,6 +47,12 @@ pub fn refuse(cx: &ExportCx, exporter: &dyn Exporter) -> Result<(), ExportError>
         let found = violations(&nodes);
         if !found.is_empty() {
             return Err(refusal(&args, &nodes, &found));
+        }
+        if let Some(edition) = &cx.edition {
+            let found = unwanted(&nodes, &edition.never_features);
+            if !found.is_empty() {
+                return Err(edition_refusal(&edition.name, &args, &nodes, &found));
+            }
         }
     }
     Ok(())
@@ -53,11 +65,21 @@ fn target(args: &[String]) -> Option<&str> {
         .map(|pair| pair[1].as_str())
 }
 
-/// The arguments of `cargo tree` resolving the build `cargo <build>` runs:
-/// its package, target and feature flags as they are, and what changes no
-/// feature (the profile, the target kind) left out. A flag not known here
-/// is refused rather than guessed at.
+/// The arguments of `cargo tree` resolving the build `cargo <build>` runs
+/// ([`build_flags`]): normal and build edges, in the check's format.
 pub fn tree_args(build: &[String]) -> Result<Vec<String>, ExportError> {
+    let mut args = build_flags(build)?;
+    args.extend(["-e", "normal,build", "--prefix", "depth", "-f", FORMAT].map(str::to_owned));
+    Ok(args)
+}
+
+/// `tree` and the flags of the build `cargo <build>` that choose what
+/// `cargo tree` resolves: its package, target and feature flags as they
+/// are, and what changes no feature (the profile, the target kind) left
+/// out. A flag not known here is refused rather than guessed at.
+/// `NOTICES.txt` lists the crates of the same resolution
+/// ([`crate::notices::built_crates`]).
+pub fn build_flags(build: &[String]) -> Result<Vec<String>, ExportError> {
     let mut rest = build.iter();
     match rest.next().map(String::as_str) {
         Some("build" | "rustc") => {}
@@ -91,7 +113,6 @@ pub fn tree_args(build: &[String]) -> Result<Vec<String>, ExportError> {
             }
         }
     }
-    args.extend(["-e", "normal,build", "--prefix", "depth", "-f", FORMAT].map(str::to_owned));
     Ok(args)
 }
 
@@ -195,6 +216,91 @@ pub fn violations(nodes: &[Node]) -> Vec<Violation> {
     found
 }
 
+/// A feature an edition never has, turned on in its build: the package, the
+/// feature, and the packages from the one built to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Unwanted {
+    /// The package whose feature is on.
+    pub package: String,
+    /// The feature, as `never_features` names it.
+    pub feature: String,
+    /// The packages from the one built to it, the first way `cargo tree`
+    /// shows.
+    pub path: Vec<String>,
+}
+
+/// Where a feature of `never` is on in the build of `nodes` (the first, at
+/// depth 0, is the package built): a bare name is the built package's
+/// feature, `package/feature` that package's anywhere in the build. Each
+/// once, in the order of `nodes`, then of `never`.
+pub fn unwanted(nodes: &[Node], never: &[String]) -> Vec<Unwanted> {
+    let Some(built) = nodes.first() else {
+        return Vec::new();
+    };
+    let mut found: Vec<Unwanted> = Vec::new();
+    let mut path: Vec<&str> = Vec::new();
+    for node in nodes {
+        path.truncate(node.depth);
+        path.push(&node.name);
+        for name in never {
+            let (package, feature) = name
+                .split_once('/')
+                .unwrap_or((built.name.as_str(), name.as_str()));
+            if node.name == package
+                && node.features.iter().any(|on| on == feature)
+                && !found
+                    .iter()
+                    .any(|u| u.package == package && u.feature == feature)
+            {
+                found.push(Unwanted {
+                    package: package.to_owned(),
+                    feature: feature.to_owned(),
+                    path: path.iter().map(|&name| name.to_owned()).collect(),
+                });
+            }
+        }
+    }
+    found
+}
+
+/// The refusal of the edition `edition`'s build `cargo <args>`, resolved as
+/// `nodes`, which turns on what its `never_features` lists, as `found` says.
+fn edition_refusal(
+    edition: &str,
+    args: &[String],
+    nodes: &[Node],
+    found: &[Unwanted],
+) -> ExportError {
+    let root = &nodes[0];
+    let on_target = target(args).map_or_else(String::new, |triple| format!(" for {triple}"));
+    let mut message = format!(
+        "the edition `{edition}` never turns on what its `never_features` lists, and Cargo's \
+         build of `{}`{on_target} turns on:",
+        root.name
+    );
+    for unwanted in found {
+        let named = format!("`{}/{}`", unwanted.package, unwanted.feature);
+        let _ = if unwanted.path.len() == 1 {
+            write!(
+                message,
+                "\n  {named}, among the package's features as built: {}",
+                root.features.join(", ")
+            )
+        } else {
+            write!(
+                message,
+                "\n  {named}, reached through {}",
+                unwanted.path.join(" -> ")
+            )
+        };
+    }
+    message.push_str(
+        "\nTake each out of what turns it on: the package's `default` (`default_features: false` \
+         leaves it off), a feature the edition lists, or a dependency's `features`.",
+    );
+    ExportError::Setup(message)
+}
+
 /// What the debug feature `feature` is, in [`DEBUG_FEATURES`]' words.
 fn what(feature: &str) -> &'static str {
     DEBUG_FEATURES
@@ -241,23 +347,33 @@ fn refusal(args: &[String], nodes: &[Node], found: &[Violation]) -> ExportError 
     ExportError::Setup(message)
 }
 
+/// The Rust flags a resolution of a build hands Cargo in [`paths::ENCODED`]:
+/// the machine's, then `rustflags`, when it is a release build (`release`)
+/// or its exporter adds flags; else none, and Cargo finds them as it does.
+/// A `cfg` in them can choose a target's dependencies, so they are handed
+/// over as the build hands them.
+pub fn encoded_flags(release: bool, rustflags: &[&str]) -> Option<String> {
+    if !release && rustflags.is_empty() {
+        return None;
+    }
+    let mut flags: Vec<String> = paths::remapped_flags_here(&[])
+        .split('\x1f')
+        .filter(|flag| !flag.is_empty())
+        .map(str::to_owned)
+        .collect();
+    flags.extend(rustflags.iter().map(|&flag| flag.to_owned()));
+    Some(flags.join("\x1f"))
+}
+
 /// The packages of the build `cargo <build>` in `cx`'s project, with the Rust
-/// flags `rustflags` after the machine's, as `cargo tree` resolves them. A
-/// `cfg` in those flags can choose a target's dependencies, so they are
-/// handed over as the build hands them: in [`paths::ENCODED`] when it is a
-/// release build or its exporter adds flags, else as Cargo finds them.
+/// flags `rustflags` after the machine's ([`encoded_flags`]), as `cargo tree`
+/// resolves them.
 fn resolve(cx: &ExportCx, build: &[String], rustflags: &[&str]) -> Result<Vec<Node>, ExportError> {
     let args = tree_args(build)?;
     let mut cargo = Command::new(crate::cargo());
     cargo.args(&args).current_dir(&cx.root);
-    if cx.release || !rustflags.is_empty() {
-        let mut flags: Vec<String> = paths::remapped_flags_here(&[])
-            .split('\x1f')
-            .filter(|flag| !flag.is_empty())
-            .map(str::to_owned)
-            .collect();
-        flags.extend(rustflags.iter().map(|&flag| flag.to_owned()));
-        cargo.env(paths::ENCODED, flags.join("\x1f"));
+    if let Some(flags) = encoded_flags(cx.release, rustflags) {
+        cargo.env(paths::ENCODED, flags);
     }
     let output = cargo.output().map_err(|e| {
         ExportError::MissingTool(format!(

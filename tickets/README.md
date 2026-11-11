@@ -14,7 +14,9 @@ tickets/
 
 ## Numbering
 
-`NNNN-short-kebab-title.md`. Numbers are never reused.
+`NNNN-short-kebab-title.md`. Numbers are never reused. The slug is a few
+words, not the whole title: no tracked path may be over 150 characters
+(`cargo xtask check-paths`, ticket 2071; the `write-ticket` skill says why).
 
 | Ids | What |
 | --- | ---- |

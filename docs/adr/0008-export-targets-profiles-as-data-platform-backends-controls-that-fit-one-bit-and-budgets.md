@@ -3,7 +3,10 @@
 - **Status:** Accepted; extended by ADR-0057 (§4's "an image's sidecar"
   is its import settings file, `<image>.meta`); extended by ADR-0058
   (export packages: paths remapped and searched, the Linux floor); §2's
-  "over the MIT `playdate` crates" changed by ADR-0062 (a C shim)
+  "over the MIT `playdate` crates" changed by ADR-0062 (a C shim); §6
+  extended and narrowed by ADR-0081 (the bench measures per frame under
+  Callgrind, and gates only the profiles the game's `targets` lists, not
+  "every `supported` profile")
 - **Date:** 2026-10-15
 - **Related tickets:** 3001–3016; game 1025 (the parked Playdate port),
   game 0903 (Steam readiness)

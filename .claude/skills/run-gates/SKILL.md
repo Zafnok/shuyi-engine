@@ -83,6 +83,14 @@ outside crate of a pure crate adds its line there in the same PR.
 cargo xtask check-layers
 ```
 
+No two workspace packages build a binary, or an example, of the same
+name (CI's `layers` job, ticket 2056): Cargo writes them to one file, and
+on Windows the MSVC linker fails when both link at once.
+
+```bash
+cargo xtask check-targets
+```
+
 The modules (CI's `modules` job, ADR-0009): no default crate depends on
 one; each has a README, its `[package.metadata.shuyi]` and a row in
 `docs/modules.md`; its answers are in `docs/modules.ron`; alternatives
@@ -328,6 +336,7 @@ cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
+cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
 
@@ -350,7 +359,11 @@ box under *Acceptance criteria*: tick it, or write `- [x] ~~…~~ (not
 done: why)`. It fails a clause in an
 open ticket that names another open ticket, not in its `blocked_by`,
 whose text never names it back: write the other side there (the
-`write-ticket` skill, *Check the dependency chain*).
+`write-ticket` skill, *Check the dependency chain*). It fails an open,
+non-parked `status: blocked` ticket whose blockers are all done. In the
+ticket the PR moves to `done/`, it warns on a promise of later work that
+names no ticket, and fails a `game#NNNN` with no `Game:` line (the
+`work-ticket` skill, §5).
 
 ## The engine's own input and text rules (CI's `test` job)
 

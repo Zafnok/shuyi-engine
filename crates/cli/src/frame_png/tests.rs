@@ -723,3 +723,28 @@ fn a_character_draws_from_the_set_its_language_names() {
         assert_matches_reference(image, reference);
     }
 }
+
+#[test]
+fn a_drop_step_is_read_and_its_file_must_be_there() {
+    // The tests run in the crate's folder.
+    let here = "src/frame_png/tests.rs";
+    assert_eq!(
+        parse_step("--drop", here),
+        Some(Ok(Step::Drop(here.into())))
+    );
+    let parsed = parse_args(&args(&["a.png", "--drop", here]), &[]).unwrap();
+    assert_eq!(parsed.script.steps, [Step::Drop(here.into())]);
+    assert_eq!(
+        parse_step("--drop", " "),
+        Some(Err("--drop: no file named".into()))
+    );
+    let missing = check(&Script::new(vec![
+        Step::Wait(0.0),
+        Step::Drop("no/such.wad".into()),
+    ]));
+    assert_eq!(
+        missing.unwrap_err(),
+        "step 2: drop: no/such.wad is no file in the game's folder"
+    );
+    assert!(check(&Script::new(vec![Step::Drop("src".into())])).is_err());
+}

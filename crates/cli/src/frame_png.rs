@@ -57,6 +57,7 @@ steps (each may repeat):
   --wait 0.5         let that many seconds pass (60 frames a second, rounded up)
   --crank -30        wind the crank that many degrees in one frame
                      (backwards is negative)
+  --drop a.txt       drop that file, from the game's folder, on the window
 
 options:
   --scale N            whole-number scale, 1 to {MAX_SCALE} (the game says what by default)
@@ -94,7 +95,8 @@ action instead, and presses whatever the player's keymap binds to it.",
 }
 
 /// Reads the script flag `flag` with its value `value`, if it is one:
-/// `--keys` (or `--script`), `--pad`, `--act`, `--wait` or `--crank`. A
+/// `--keys` (or `--script`), `--pad`, `--act`, `--wait`, `--crank` or
+/// `--drop`. A
 /// step no player can play ([`Step::check`]) is an error, not a panic
 /// later. The longest wait is the player's to check (the Harness's with
 /// [`check`]), and an action's name is looked up in the game's keymap.
@@ -115,17 +117,30 @@ pub fn parse_step(flag: &str, value: &str) -> Option<Result<Step, String>> {
                 return Some(Err(format!("--crank: not a number of degrees: {value}")));
             }
         },
+        "--drop" => Step::Drop(value.to_owned()),
         _ => return None,
     };
     Some(step.check().map(|()| step).map_err(|e| format!("--{e}")))
 }
 
 /// Whether the Harness can play every step of `script`: each step
-/// ([`Script::check`]), and waits of at most [`MAX_WAIT`] seconds. An error
-/// names the step.
+/// ([`Script::check`]), waits of at most [`MAX_WAIT`] seconds, and a file
+/// to drop that is there, from the working folder (the game's project
+/// folder). An error names the step.
 pub fn check(script: &Script) -> Result<(), String> {
     script.check()?;
-    check_waits(&script.steps, MAX_WAIT)
+    check_waits(&script.steps, MAX_WAIT)?;
+    for (i, step) in script.steps.iter().enumerate() {
+        if let Step::Drop(path) = step
+            && !Path::new(path).is_file()
+        {
+            return Err(format!(
+                "step {}: drop: {path} is no file in the game's folder",
+                i + 1
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// The command's arguments.
@@ -166,7 +181,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                 .cloned()
         };
         match arg.as_str() {
-            "--keys" | "--pad" | "--act" | "--wait" | "--crank" => {
+            "--keys" | "--pad" | "--act" | "--wait" | "--crank" | "--drop" => {
                 let text = value()?;
                 if let Some(step) = parse_step(arg, &text) {
                     steps.push(step?);

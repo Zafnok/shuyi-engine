@@ -30,6 +30,7 @@ fn a_page_with_marks_passes_and_splits_at_them() {
         [
             Part {
                 mark: None,
+                check: None,
                 text: "Before.\n\n",
                 line: 4
             },
@@ -38,11 +39,13 @@ fn a_page_with_marks_passes_and_splits_at_them() {
                     to: "rust".into(),
                     topic: "`match`".into()
                 }),
+                check: None,
                 text: "It compares.\n\n{{ snippet(file=\"a.rs\") }}\n",
                 line: 7
             },
             Part {
                 mark: None,
+                check: None,
                 text: "\nAfter.\n",
                 line: 11
             },
@@ -211,6 +214,202 @@ fn a_page_with_no_front_matter_fails() {
         &check("a.md", "+++\ntitle = \"A\"\n"),
         "no closing `+++`"
     ));
+}
+
+// -- the quick checks (ticket 2827) --
+
+/// A check with `to` and `answers` (each a whole line).
+fn a_check(to: &str, answers: &str) -> String {
+    format!("\n{{% check({to}) %}}\nWhat does `?` do?\n\n{answers}{{% end %}}\n")
+}
+
+const GOOD: &str =
+    "- [x] It returns early. — `?` hands the `Err` back.\n- [ ] It panics. — Nothing stops.\n";
+
+#[test]
+fn a_check_reads_into_its_question_and_answers() {
+    let body = a_check("to=\"rust\"", GOOD);
+    let (parts, errors) = parts("a.md", &body, 4);
+    assert!(errors.is_empty(), "{errors:?}");
+    let part = parts.iter().find(|part| part.check.is_some()).unwrap();
+    assert_eq!(
+        part.mark,
+        Some(Mark {
+            to: "rust".into(),
+            topic: CHECK_TOPIC.into()
+        })
+    );
+    assert_eq!(
+        part.check,
+        Some(Check {
+            question: "What does `?` do?".into(),
+            answers: vec![
+                Answer {
+                    right: true,
+                    text: "It returns early.".into(),
+                    why: "`?` hands the `Err` back.".into()
+                },
+                Answer {
+                    right: false,
+                    text: "It panics.".into(),
+                    why: "Nothing stops.".into()
+                },
+            ]
+        })
+    );
+    assert_eq!(part.line, 6);
+}
+
+#[test]
+fn a_check_with_no_to_is_for_everyone() {
+    let body = a_check("", GOOD);
+    let (parts, errors) = parts("a.md", &body, 4);
+    assert!(errors.is_empty(), "{errors:?}");
+    let part = parts.iter().find(|part| part.check.is_some()).unwrap();
+    assert_eq!(part.mark, None);
+}
+
+#[test]
+fn a_malformed_check_fails() {
+    for (to, answers, wanted) in [
+        (
+            "",
+            "- [ ] It returns early. — No.\n- [ ] It panics. — No.\n",
+            "a.md:5: a check with no right answer",
+        ),
+        (
+            "",
+            "- [x] It returns early.\n- [ ] It panics. — Nothing stops.\n",
+            "a.md:8: an answer with no reason",
+        ),
+        (
+            "",
+            "- [x] It returns early. — \n- [ ] It panics. — Nothing stops.\n",
+            "a.md:8: an answer with no reason",
+        ),
+        (
+            "to=\"godot\"",
+            GOOD,
+            "a.md:5: to=\"godot\" isn't an audience",
+        ),
+        ("look=\"x\"", GOOD, "no argument `look`"),
+        (
+            "",
+            "- [x] It returns early. — Yes.\n",
+            "a.md:5: a check with 1 answers: it has two to four",
+        ),
+        (
+            "",
+            "- [x] A. — a.\n- [ ] B. — b.\n- [ ] C. — c.\n- [ ] D. — d.\n- [ ] E. — e.\n",
+            "a check with 5 answers",
+        ),
+        (
+            "",
+            "- [X] It returns early. — Yes.\n- [ ] It panics. — No.\n",
+            "a.md:8: an answer starts `- [x] `",
+        ),
+        (
+            "",
+            "- [x] It returns early. — Yes.\n- [ ] It panics. — No.\nMore text.\n",
+            "a.md:10: a check's answers are one line each",
+        ),
+        (
+            "",
+            "- [x] See [the book](@/a.md). — Yes.\n- [ ] It panics. — No.\n",
+            "an answer holds no link",
+        ),
+    ] {
+        let errors = check("a.md", &page(&a_check(to, answers)));
+        assert!(has(&errors, wanted), "{to} {answers}: {errors:?}");
+    }
+}
+
+#[test]
+fn a_check_needs_its_question() {
+    let errors = check(
+        "a.md",
+        &page(&format!("\n{{% check() %}}\n{GOOD}{{% end %}}\n")),
+    );
+    assert!(
+        has(&errors, "a.md:6: a check with no question"),
+        "{errors:?}"
+    );
+}
+
+#[test]
+fn a_mark_inside_a_check_fails() {
+    let body = "\n{% check() %}\nWhat?\n\n{% newcomer(to=\"rust\", topic=\"x\") %}\nText.\n{% end %}\n\n{% end %}\n";
+    let errors = check("a.md", &page(body));
+    assert!(
+        has(
+            &errors,
+            "a.md:8: a mark inside the check of line 5: marks don't nest"
+        ),
+        "{errors:?}"
+    );
+}
+
+/// A page of `kind` (`chapter = 1`, `step = 1` or nothing) with `body`,
+/// whose first line is line 7.
+fn kind_page(kind: &str, body: &str) -> String {
+    format!("+++\ntitle = \"A\"\n\n[extra]\n{kind}\n+++\n{body}")
+}
+
+#[test]
+fn a_chapter_or_a_step_ends_with_two_or_three_checks() {
+    let two = format!(
+        "\n## Check yourself\n{}{}",
+        a_check("", GOOD),
+        a_check("", GOOD)
+    );
+    for kind in ["chapter = 1", "step = 1"] {
+        assert_eq!(
+            check("a.md", &kind_page(kind, &two)),
+            Vec::<String>::new(),
+            "{kind}"
+        );
+        let none = check("a.md", &kind_page(kind, "\nText.\n"));
+        assert!(has(&none, "ends with `## Check yourself`"), "{none:?}");
+        let one = format!("\n## Check yourself\n{}", a_check("", GOOD));
+        let errors = check("a.md", &kind_page(kind, &one));
+        assert!(
+            has(&errors, "a.md:8: `## Check yourself` holds 1 checks"),
+            "{errors:?}"
+        );
+        let after = format!("{two}\n## More\n");
+        let errors = check("a.md", &kind_page(kind, &after));
+        assert!(
+            has(&errors, "a heading after `## Check yourself`"),
+            "{errors:?}"
+        );
+        let before = format!("{}{two}", a_check("", GOOD));
+        let errors = check("a.md", &kind_page(kind, &before));
+        assert!(
+            has(&errors, "a.md:8: a check before `## Check yourself`"),
+            "{errors:?}"
+        );
+    }
+}
+
+#[test]
+fn another_page_has_no_checks() {
+    let two = format!(
+        "\n## Check yourself\n{}{}",
+        a_check("", GOOD),
+        a_check("", GOOD)
+    );
+    let errors = check("a.md", &kind_page("appendix = \"A\"", &two));
+    assert!(
+        has(
+            &errors,
+            "a.md:8: `## Check yourself` is for a concept chapter"
+        ),
+        "{errors:?}"
+    );
+    assert!(
+        has(&errors, "a.md:10: a check is for a concept chapter"),
+        "{errors:?}"
+    );
 }
 
 #[test]

@@ -1,5 +1,6 @@
-//! `export <target> [--out <dir>] [--release] [--run] [--without <feature>]
-//! [--with <feature>]`: the game checked
+//! `export <target> [--out <dir>] [--release] [--run] [--edition <name>]
+//! [--without <feature>] [--with <feature>]`: the game, or one of its
+//! editions ([`crate::export`]), checked
 //! against the target (`check --target` with the target's profile: the
 //! `desktop` one for `windows`, `linux` and `macos`), refused on any
 //! error, then built and packaged by the target's exporter
@@ -7,15 +8,17 @@
 //! folder; `dist/export/<target>` without it) with `export-report.json`,
 //! which holds this answer's result: the target, the version, the sizes,
 //! the check's warnings, the signing and, with `--release`, the debug file
-//! kept beside the package. The final package is read back into
+//! kept beside the package. An edition goes in `dist/export/<edition>/<target>`
+//! without `--out`. The final package is read back into
 //! `exposure-report.json`, and refused if it breaks the game's `disclosure`
-//! part ([`crate::export::disclosure`]). With `--run`, the package is run
+//! part, or its edition's ([`crate::export::disclosure`]). With `--run`, the package is run
 //! after that.
 //!
 //! Before the exporter prepares or builds anything, each build it plans is
 //! resolved by Cargo, and the export refused if a debug feature is on in
-//! one, by its default features, a feature that lists it or a dependency's
-//! ([`crate::export::live_link`]): nothing is built or run.
+//! one, or one of its edition's `never_features`, by its default features, a
+//! feature that lists it or a dependency's ([`crate::export::live_link`]):
+//! nothing is built or run.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -67,6 +70,11 @@ pub struct ExportInput {
     /// measuring build, say): each one the package has.
     #[serde(default)]
     pub with: Vec<String>,
+    /// The edition of `shuyi.ron`'s `editions` to build: its program,
+    /// features and files in place of what the target would build. Without
+    /// one, the game as `export` builds it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition: Option<String>,
 }
 
 /// How a package is signed.
@@ -126,6 +134,10 @@ pub struct ExportOutput {
     /// export's folder, a folder with the bytes of all its files.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub beside: Vec<FileSize>,
+    /// The edition of `shuyi.ron`'s `editions` it built, if any:
+    /// `exposure-report.json` says what it was built from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition: Option<String>,
 }
 
 /// `export` on `project`: the target's check, with the game's tools
@@ -169,7 +181,13 @@ pub fn export(
         );
         return Answer::failed(op, codes::NO_EXPORTER, error);
     };
-    let part = project.config.disclosure.as_ref();
+    let edition = input
+        .edition
+        .as_ref()
+        .and_then(|name| project.config.editions.get(name));
+    let part = edition
+        .and_then(|edition| edition.disclosure.as_ref())
+        .or(project.config.disclosure.as_ref());
     if let Some(part) = part {
         let problems = disclosure::problems(part);
         if !problems.is_empty() {
@@ -240,8 +258,9 @@ fn failed(error: &ExportError) -> Answer<ExportOutput> {
 }
 
 /// `export`'s arguments (`--json` taken out): the target, then
-/// `--out <dir>`, `--release` and `--run` in any order, each once, and
-/// `--without <feature>` and `--with <feature>`, any number of times.
+/// `--out <dir>`, `--release`, `--run` and `--edition <name>` in any order,
+/// each once, and `--without <feature>` and `--with <feature>`, any number of
+/// times.
 pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
     let mut input = ExportInput::default();
     let mut rest = args.iter();
@@ -270,6 +289,11 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
                 let feature = rest.next().ok_or("--with needs a feature")?;
                 input.with.push(feature.clone());
             }
+            "--edition" => {
+                once(input.edition.is_some())?;
+                let name = rest.next().ok_or("--edition needs an edition's name")?;
+                input.edition = Some(name.clone());
+            }
             flag if flag.starts_with("--") => return Err(format!("unknown option {flag}")),
             _ if target.is_none() => target = Some(arg.clone()),
             _ => return Err("one target".to_owned()),
@@ -283,7 +307,7 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} export <windows | linux | macos | web | playdate> [--out <dir>] [--release] \
-         [--run] [--without <feature>] [--with <feature>] [--json]"
+         [--run] [--edition <name>] [--without <feature>] [--with <feature>] [--json]"
     )
 }
 
@@ -311,6 +335,9 @@ pub fn text(output: &ExportOutput) -> String {
         Signing::AdHoc => "ad-hoc",
     };
     let _ = writeln!(text, "  signing: {signing}");
+    if let Some(edition) = &output.edition {
+        let _ = writeln!(text, "  edition: {edition}");
+    }
     let _ = writeln!(text, "  report: {}", out.join(REPORT).display());
     let exposure = out.join(disclosure::REPORT);
     let _ = writeln!(text, "  exposure: {}", exposure.display());

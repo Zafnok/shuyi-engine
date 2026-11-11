@@ -43,7 +43,7 @@ const SHELL: [(&str, &str); 8] = [
     ("quad-storage.js", include_str!("../web/quad-storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
     ("sound.js", include_str!("../web/sound.js")),
-    ("download.js", include_str!("../web/download.js")),
+    ("player-files.js", include_str!("../web/player-files.js")),
     ("page-files.js", include_str!("../web/page-files.js")),
 ];
 
@@ -64,7 +64,7 @@ const SHELL_NOTICES: [(&str, Origin); 8] = [
     ("quad-storage.js", Origin::Vendored),
     ("gamepad.js", Origin::Engine),
     ("sound.js", Origin::Engine),
-    ("download.js", Origin::Engine),
+    ("player-files.js", Origin::Engine),
     ("page-files.js", Origin::Engine),
 ];
 
@@ -124,6 +124,13 @@ pub struct Options {
     /// `export web` whose `export` part doesn't say `wasm_opt: optional`);
     /// otherwise a missing one is a warning.
     pub require_wasm_opt: bool,
+    /// Whether the build leaves the package's `default` features off (an
+    /// export's edition that says `default_features: false`).
+    pub no_default_features: bool,
+    /// The folder of the game's files its program embeds, handed to the build
+    /// as [`crate::export::CONTENT`]; without it, the build runs without that
+    /// variable.
+    pub content: Option<PathBuf>,
 }
 
 /// The usage line, with `command` as the tool's name.
@@ -169,6 +176,9 @@ pub(crate) fn cargo_args(rules: &Web, options: &Options) -> Vec<String> {
         .to_vec();
     if options.release {
         args.push("--release".to_owned());
+    }
+    if options.no_default_features {
+        args.push("--no-default-features".to_owned());
     }
     for feature in &options.features {
         args.extend(["--features".to_owned(), feature.clone()]);
@@ -243,6 +253,10 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
     let workspace = workspace_root(root);
     let mut build = Command::new(cargo);
     build.args(cargo_args(rules, options)).current_dir(root);
+    match &options.content {
+        Some(content) => build.env(crate::export::CONTENT, content),
+        None => build.env_remove(crate::export::CONTENT),
+    };
     if options.release {
         let outside = paths::outside(root, &workspace);
         let remaps = paths::remaps(&workspace, &target, &rules.package, &outside);
@@ -259,7 +273,14 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
         let needles = paths::needles(&[root, &workspace]);
         paths::check_file(&wasm_artifact_path(rules, &target, options), &needles)?;
     }
-    let mut works = notices::crates(root, &rules.package, TARGET, &options.features)?;
+    let encoded = crate::export::live_link::encoded_flags(options.release, &[]);
+    let mut works = notices::built_crates(
+        root,
+        &rules.package,
+        TARGET,
+        &cargo_args(rules, options),
+        encoded.as_deref(),
+    )?;
     let bare: Vec<&str> = works
         .iter()
         .filter(|work| work.texts.is_empty())
@@ -745,8 +766,8 @@ mod tests {
     /// The Rust side of `web/sound.js`: the engine's web sound output.
     const SOUND_WEB: &str = include_str!("../../sound-out/src/sys.rs");
 
-    /// The Rust side of `web/download.js`: the engine's web downloads.
-    const SESSIONS_WEB: &str = include_str!("../../app/src/sessions/web.rs");
+    /// The Rust side of `web/player-files.js`: the files the player keeps.
+    const PLAYER_FILES_WEB: &str = include_str!("../../app/src/player_files/web.rs");
 
     /// The Rust side of `web/page-files.js`: the files from the page.
     const PAGE: &str = include_str!("../../app/src/page.rs");
@@ -787,8 +808,7 @@ mod tests {
     fn release() -> Options {
         Options {
             release: true,
-            features: Vec::new(),
-            require_wasm_opt: false,
+            ..Options::default()
         }
     }
 
@@ -974,7 +994,7 @@ mod tests {
             ),
             ("gamepad.js", ""),
             ("sound.js", ""),
-            ("download.js", ""),
+            ("player-files.js", ""),
             ("page-files.js", ""),
         ] {
             assert_eq!(
@@ -1727,40 +1747,53 @@ version = "1.2.3"
     }
 
     #[test]
-    fn download_js_provides_exactly_the_function_the_app_imports() {
-        let provided = identifiers_starting(shell("download.js"), "importObject.env.shuyi_");
-        assert_eq!(provided, ["importObject.env.shuyi_download"]);
-        // Beside the function, what the loader asks for its version.
-        let imported = identifiers_starting(SESSIONS_WEB, "fn shuyi_d");
+    fn player_files_js_provides_exactly_the_functions_the_app_imports() {
+        // A function missing on either side only shows up in the browser,
+        // as a warning and a download or a picker that never comes.
+        let js = shell("player-files.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(PLAYER_FILES_WEB, "safe fn shuyi_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
         assert_eq!(
             imported,
-            ["fn shuyi_download", "fn shuyi_download_crate_version"]
+            [
+                "shuyi_ask_for_file",
+                "shuyi_file_answer",
+                "shuyi_offer_file"
+            ]
         );
+        assert_eq!(provided, imported);
     }
 
     #[test]
-    fn download_js_version_matches_the_app() {
-        let js = shell("download.js");
+    fn player_files_js_version_matches_the_app() {
+        let js = shell("player-files.js");
         assert_eq!(
             number_after(js, "var VERSION = "),
-            number_after(SESSIONS_WEB, "const PLUGIN_VERSION: u32 = ")
+            number_after(PLAYER_FILES_WEB, "const PLUGIN_VERSION: u32 = ")
         );
         assert!(js.contains("version: VERSION"));
-        assert!(js.contains(r#"name: "shuyi_download""#));
-        assert!(SESSIONS_WEB.contains("fn shuyi_download_crate_version() -> u32"));
+        assert!(js.contains(r#"name: "shuyi_player_files""#));
+        assert!(PLAYER_FILES_WEB.contains("fn shuyi_player_files_crate_version() -> u32"));
     }
 
     #[test]
-    fn index_html_loads_download_js_between_the_bundle_and_the_game() {
+    fn index_html_loads_player_files_js_after_sapp_jsutils_and_before_the_game() {
+        // Its strings and bytes are `sapp_jsutils.js`'s objects.
         let html = shell("index.html");
         let at = |needle: &str| {
             html.find(needle)
                 .unwrap_or_else(|| panic!("index.html has `{needle}`"))
         };
-        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
-        let download = at(r#"<script src="download.js">"#);
+        let jsutils = at(r#"<script src="sapp_jsutils.js">"#);
+        let files = at(r#"<script src="player-files.js">"#);
         let load = at(r#"load("%WASM%")"#);
-        assert!(bundle < download && download < load);
+        assert!(jsutils < files && files < load);
     }
 
     #[test]
@@ -1832,5 +1865,18 @@ version = "1.2.3"
             "web/quad-storage.js must declare `{}`",
             expected.trim_end()
         );
+    }
+
+    #[test]
+    fn a_dropped_files_name_is_sized_in_utf8_bytes() {
+        // Ticket 3307: upstream sizes the name by `name.length`, its UTF-16
+        // length, and a name beyond ASCII comes through cut short. The
+        // local patch (web/README.md) sizes it by its UTF-8 bytes.
+        let bundle = shell("mq_js_bundle.js");
+        assert!(
+            bundle.contains("const u=new TextEncoder().encode(n.name),t=u.length,"),
+            "web/mq_js_bundle.js must size a dropped file's name in UTF-8 bytes"
+        );
+        assert!(!bundle.contains("n.name.length"));
     }
 }

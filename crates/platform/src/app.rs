@@ -60,6 +60,7 @@ use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRin
 use shuyi_ui::perf::{
     FrameRecord, HeapSnapshot, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass,
 };
+use shuyi_ui::player_files::FileRequest;
 use shuyi_ui::settings::{Background, BackgroundAudio, GameSettings};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
@@ -67,7 +68,9 @@ use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInp
 
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::crash::{self, LastCrash};
+use crate::dropped;
 use crate::platform::{DisplayInfo, Frame, LoadSlice, Look, Millis, Platform, Show, SystemEvent};
+use crate::player_files::{self, Offered};
 use crate::session::{Recorder, SessionRecord};
 use crate::text_input::TextInput;
 use crate::tick::TickClock;
@@ -614,6 +617,9 @@ struct Lists<V> {
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
     changed: Vec<String>,
+    /// The platform's answers to the last frame's requests about the
+    /// player's files, for the game at the start of the next.
+    answers: Vec<SystemEvent>,
     /// The voice clip asked for last: its line, and its file as the sound
     /// device names it.
     voice: Option<(LineId, String)>,
@@ -729,6 +735,7 @@ impl<G: GameData> App<G> {
                 audio: Vec::new(),
                 music: Vec::new(),
                 changed: Vec::new(),
+                answers: Vec::new(),
                 voice: None,
             },
             frames: 0,
@@ -824,6 +831,7 @@ impl<G: GameData> App<G> {
     /// record.
     fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         let outcome = self.run(platform, elapsed);
+        self.carry_out_file_requests(platform);
         self.take_game_log();
         let tagged = enter(self.memory_scopes(), "perf");
         self.end_perf(platform);
@@ -976,19 +984,88 @@ impl<G: GameData> App<G> {
         }
     }
 
+    /// Carries out the requests about the player's files the game made in
+    /// this frame ([`Ctx::offer_file`]), in order: a name that isn't one
+    /// file's fails here, before the platform sees it, and a folder that
+    /// can't be opened is logged. The answers the platform gives now go to
+    /// the game at the start of the next frame.
+    fn carry_out_file_requests(&mut self, platform: &mut impl Platform) {
+        let Some(game) = self.game_mut() else {
+            return;
+        };
+        let requests = game.ctx_mut().take_file_requests();
+        let mut failed = Vec::new();
+        for request in requests {
+            match request {
+                FileRequest::Offer { name, text, .. } => {
+                    let answer = match player_files::check_offered_name(&name) {
+                        Ok(()) => platform.offer_file(&name, &text),
+                        Err(why) => Some(Offered::Failed(why)),
+                    };
+                    self.lists
+                        .answers
+                        .extend(answer.map(SystemEvent::FileOffered));
+                }
+                FileRequest::Ask { accept, .. } => {
+                    let answer = platform.ask_for_file(&accept);
+                    self.lists
+                        .answers
+                        .extend(answer.map(SystemEvent::FileChosen));
+                }
+                FileRequest::OpenFolder(folder) => {
+                    if let Err(why) = platform.open_folder(folder) {
+                        failed.push(format!("the {folder:?} folder wasn't opened: {why}"));
+                    }
+                }
+                _ => {}
+            }
+        }
+        for why in failed {
+            self.log_line(LogLevel::Warn, LogCategory::Platform, why);
+        }
+    }
+
     /// Reads the system's events and acts on them; a resume restarts the
-    /// clock before this frame reads it.
+    /// clock before this frame reads it. The answers to the last frame's
+    /// requests about the player's files come first.
     fn system_events(&mut self, platform: &mut impl Platform) {
         let mut events = core::mem::take(&mut self.lists.system);
         events.clear();
+        events.append(&mut self.lists.answers);
         platform.system_events(&mut events);
+        self.refuse_too_much(&mut events);
         if let Some(recorder) = &mut self.recorder {
             recorder.system(&events);
         }
-        for &event in &events {
+        for event in events.drain(..) {
             self.on_system_event(platform, event);
         }
         self.lists.system = events;
+    }
+
+    /// Takes out of each drop in `events` what is over the limits
+    /// ([`dropped::accept`]), logging why, and a drop left with no file:
+    /// before a record notes them, so it holds what the game heard.
+    fn refuse_too_much(&mut self, events: &mut Vec<SystemEvent>) {
+        if !events
+            .iter()
+            .any(|e| matches!(e, SystemEvent::FilesDropped(_)))
+        {
+            return;
+        }
+        let mut refused = Vec::new();
+        events.retain_mut(|event| {
+            let SystemEvent::FilesDropped(files) = event else {
+                return true;
+            };
+            let (kept, why) = dropped::accept(core::mem::take(files));
+            refused.extend(why);
+            *files = kept;
+            !files.is_empty()
+        });
+        for why in refused {
+            self.log_line(LogLevel::Warn, LogCategory::Platform, why);
+        }
     }
 
     fn on_system_event(&mut self, platform: &mut impl Platform, event: SystemEvent) {
@@ -1031,7 +1108,10 @@ impl<G: GameData> App<G> {
                     game.toggle_fullscreen();
                 }
             }
-            SystemEvent::LowBattery => {}
+            SystemEvent::LowBattery
+            | SystemEvent::FilesDropped(_)
+            | SystemEvent::FileOffered(_)
+            | SystemEvent::FileChosen(_) => {}
             SystemEvent::CrankDocked | SystemEvent::CrankUndocked => {
                 if let Some(game) = self.game_mut() {
                     game.ctx_mut().crank_docked = event == SystemEvent::CrankDocked;

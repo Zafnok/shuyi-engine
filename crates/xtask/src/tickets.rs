@@ -16,6 +16,12 @@
 //! The warning reads the docs too (`docs/**/*.md`, but not `docs/adr/` or
 //! `docs/ROADMAP.md`), and a done ticket with an unticked acceptance box
 //! fails (ticket 2023).
+//!
+//! An open ticket, not parked, that is `status: blocked` with every blocker
+//! done fails. And the ticket a PR moves to `done/` (ticket 2059) warns on a
+//! line of its completion notes that promises later work and names no ticket,
+//! and fails when its body names a `game#NNNN` and no `Game:` line says which
+//! game PR or ticket adopts it.
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -82,6 +88,12 @@ struct TicketFields {
     status: Option<String>,
     completed: Option<String>,
     blocked_by: Option<Vec<String>>,
+    /// Whether the title starts with `Parked:`.
+    parked: bool,
+    /// The body after the frontmatter, CRLF read as LF, and the line it
+    /// starts on in the file: the checks of the PR's own ticket read it.
+    body: String,
+    body_line: usize,
 }
 
 /// One ticket file: where it is, what it says, and every problem found in
@@ -120,7 +132,11 @@ pub enum GameSource<'a> {
 
 /// The game's ticket ids, or why they couldn't be read.
 enum GameTickets {
-    Known(HashSet<String>),
+    /// Every id, and those in the game's `tickets/done/`.
+    Known {
+        all: HashSet<String>,
+        done: HashSet<String>,
+    },
     Unavailable(String),
 }
 
@@ -170,15 +186,33 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
     let game_tickets = if names_a_game_ticket {
         game_ticket_ids(game)
     } else {
-        GameTickets::Known(HashSet::new())
+        GameTickets::Known {
+            all: HashSet::new(),
+            done: HashSet::new(),
+        }
     };
     let (errors, warnings) = check_blocked_by_exists(&tickets, &game_tickets);
     report.errors.extend(errors);
     report.warnings.extend(warnings);
+    report
+        .errors
+        .extend(check_blocked_with_done_blockers(&tickets, &game_tickets));
 
     if let Some(pr) = pr {
         match pr.kind() {
             Ok(kind) => {
+                if let PrKind::Work(id) = &kind
+                    && let Some(done) = tickets
+                        .iter()
+                        .find(|t| t.folder == Folder::Done && t.fields.id.as_deref() == Some(id))
+                {
+                    let known = tickets
+                        .iter()
+                        .filter_map(|t| t.fields.id.as_deref())
+                        .collect();
+                    report.warnings.extend(check_prose_follow_ups(done, &known));
+                    report.errors.extend(check_game_adopter(done));
+                }
                 let changed = match &kind {
                     PrKind::TicketsOnly(_) => changed_files(repo_root, base),
                     _ => Ok(Vec::new()),
@@ -221,14 +255,22 @@ pub(crate) fn read_ticket_files(dir: &Path) -> std::io::Result<Vec<(String, Stri
     Ok(files)
 }
 
-fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &str) -> Ticket {
+/// What is wrong with a ticket's file name: its shape, and a path from the
+/// repository's root too long for a game's Windows checkout (ticket 2071).
+fn filename_errors(folder: Folder, filename: &str) -> Vec<String> {
     let mut errors = Vec::new();
-
     if !is_valid_ticket_filename(filename) {
         errors.push(format!(
             "filename `{filename}` must match `^\\d{{4}}-[a-z0-9-]+\\.md$`"
         ));
     }
+    let repo_path = format!("tickets/{}/{filename}", folder.dirname());
+    errors.extend(crate::paths::path_error(&repo_path));
+    errors
+}
+
+fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &str) -> Ticket {
+    let mut errors = filename_errors(folder, filename);
 
     let mut fields = TicketFields::default();
     // A checkout with CRLF line endings reads the same as one with LF.
@@ -292,7 +334,11 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
                 check_enum(map, "status", VALID_STATUSES, &mut errors);
                 check_enum(map, "nick_input", VALID_NICK_INPUTS, &mut errors);
 
-                if scalar_string(map, "title").is_some_and(|t| t.starts_with(PARKED_TITLE)) {
+                fields.body = body.to_string();
+                fields.body_line = first_line_of(&content, body);
+                fields.parked =
+                    scalar_string(map, "title").is_some_and(|t| t.starts_with(PARKED_TITLE));
+                if fields.parked {
                     errors.extend(check_parked(fields.status.as_deref(), body));
                 }
 
@@ -878,10 +924,12 @@ fn check_blocked_by_exists(tickets: &[Ticket], game: &GameTickets) -> (Vec<Strin
                     continue;
                 }
                 match game {
-                    GameTickets::Known(ids) if !ids.contains(game_id) => errors.push(format!(
-                        "{path}: `blocked_by` references unknown game ticket `{dep}`"
-                    )),
-                    GameTickets::Known(_) => {}
+                    GameTickets::Known { all, .. } if !all.contains(game_id) => {
+                        errors.push(format!(
+                            "{path}: `blocked_by` references unknown game ticket `{dep}`"
+                        ));
+                    }
+                    GameTickets::Known { .. } => {}
                     GameTickets::Unavailable(why) => warnings.push(format!(
                         "{path}: `blocked_by` entry `{dep}` not checked: {why}"
                     )),
@@ -899,18 +947,222 @@ fn check_blocked_by_exists(tickets: &[Ticket], game: &GameTickets) -> (Vec<Strin
 /// The game's ticket ids, from the file names in its `tickets/open` and
 /// `tickets/done`.
 fn game_ticket_ids(source: &GameSource) -> GameTickets {
-    let mut names = Vec::new();
+    let mut all = HashSet::new();
+    let mut done = HashSet::new();
     for folder in [Folder::Open, Folder::Done] {
         let listed = match source {
             GameSource::Checkout(root) => list_dir(&root.join("tickets").join(folder.dirname())),
             GameSource::GitHub => list_on_github(folder.dirname()),
         };
         match listed {
-            Ok(found) => names.extend(found),
+            Ok(found) => {
+                let ids = ticket_ids_from_names(&found);
+                if folder == Folder::Done {
+                    done.extend(ids.iter().cloned());
+                }
+                all.extend(ids);
+            }
             Err(why) => return GameTickets::Unavailable(why),
         }
     }
-    GameTickets::Known(ticket_ids_from_names(&names))
+    GameTickets::Known { all, done }
+}
+
+/// An error for each open ticket, not parked, that is `status: blocked`
+/// though every one of its `blocked_by` ids is done (ticket 2059): this
+/// repository's in `tickets/done/`, a `game#` id in the game's when the
+/// lint could read it. Nothing would ever pick such a ticket up. A ticket
+/// with no `blocked_by` is waiting on something no ticket names, and passes.
+fn check_blocked_with_done_blockers(tickets: &[Ticket], game: &GameTickets) -> Vec<String> {
+    let done_here: HashSet<&str> = tickets
+        .iter()
+        .filter(|t| t.folder == Folder::Done)
+        .filter_map(|t| t.fields.id.as_deref())
+        .collect();
+    let is_done = |dep: &String| match dep.strip_prefix(GAME_PREFIX) {
+        Some(game_id) => {
+            matches!(game, GameTickets::Known { done, .. } if done.contains(game_id))
+        }
+        None => done_here.contains(dep.as_str()),
+    };
+    tickets
+        .iter()
+        .filter(|t| t.folder == Folder::Open && !t.fields.parked)
+        .filter(|t| t.fields.status.as_deref() == Some("blocked"))
+        .filter_map(|t| {
+            let deps = t.fields.blocked_by.as_deref()?;
+            (!deps.is_empty() && deps.iter().all(is_done)).then(|| {
+                format!(
+                    "{}: `status: blocked`, but every blocker is done ({}); set `status: todo`, \
+                     or name what still blocks it in `blocked_by`",
+                    t.display_path,
+                    deps.join(", ")
+                )
+            })
+        })
+        .collect()
+}
+
+/// What in a done ticket's completion notes promises later work (ticket
+/// 2059, `AGENTS.md` rule 2), matched as whole words in any case.
+const FOLLOW_UP_PHRASES: &[&str] = &[
+    "worth a ticket",
+    "for now",
+    "follow-up",
+    "follow-ups",
+    "later",
+    "not yet",
+    "out of scope",
+    "todo",
+];
+
+/// What starts a line or bullet that promises nothing a ticket would hold.
+const NO_TICKET: &str = "No ticket:";
+
+/// The units of a ticket's completion notes, outside fenced code blocks and
+/// with inline code dropped: each bullet with its indented lines, and each
+/// other line alone. Each comes with its first line, counted from the body's
+/// first line `first_line`.
+fn notes_units(body: &str, first_line: usize) -> Vec<(usize, String)> {
+    let mut units: Vec<(usize, String)> = Vec::new();
+    let mut in_notes = false;
+    let mut fenced = false;
+    // The indent of the bullet the last unit is, if it is one.
+    let mut bullet: Option<usize> = None;
+    for (n, line) in body.lines().enumerate() {
+        if line.starts_with("# ") || line.starts_with("## ") {
+            in_notes = line.trim_end() == COMPLETION_NOTES;
+            bullet = None;
+            continue;
+        }
+        if !in_notes {
+            continue;
+        }
+        let text = line.trim_start();
+        if text.starts_with("```") {
+            fenced = !fenced;
+            bullet = None;
+            continue;
+        }
+        if fenced || text.is_empty() {
+            bullet = None;
+            continue;
+        }
+        let indent = line.len() - text.len();
+        let text = without_inline_code(text);
+        let marker = text.starts_with("- ")
+            || text.starts_with("* ")
+            || text.starts_with("+ ")
+            || text
+                .split_once(". ")
+                .is_some_and(|(n, _)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+        match (marker, bullet, units.last_mut()) {
+            (false, Some(at), Some((_, unit))) if indent > at => {
+                unit.push(' ');
+                unit.push_str(&text);
+            }
+            _ => {
+                bullet = marker.then_some(indent);
+                units.push((first_line + n, text));
+            }
+        }
+    }
+    units
+}
+
+/// `text` without its `` `…` `` spans: a phrase in code is quoted, not
+/// promised.
+fn without_inline_code(text: &str) -> String {
+    text.split('`').step_by(2).collect::<Vec<_>>().join("")
+}
+
+/// Whether lower-cased `text` holds `phrase` as whole words.
+fn has_phrase(text: &str, phrase: &str) -> bool {
+    let word = |c: char| c.is_alphanumeric() || c == '-';
+    text.match_indices(phrase).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + phrase.len()..].chars().next();
+        !before.is_some_and(word) && !after.is_some_and(word)
+    })
+}
+
+/// Whether `text` names a ticket: one of `known` (this repository's ids),
+/// or a `game#NNNN`.
+fn names_a_ticket(text: &str, known: &HashSet<&str>) -> bool {
+    named_ids(text).iter().any(|id| known.contains(id.as_str()))
+        || text.match_indices(GAME_PREFIX).any(|(at, _)| {
+            text.get(at + GAME_PREFIX.len()..at + GAME_PREFIX.len() + 4)
+                .is_some_and(is_four_digits)
+        })
+}
+
+/// A warning for each line or bullet of a done ticket's completion notes
+/// that promises later work in one of [`FOLLOW_UP_PHRASES`] and names no
+/// ticket (ticket 2059). `known` is every ticket id of this repository. A
+/// line or bullet that starts `No ticket: <why>` passes.
+fn check_prose_follow_ups(ticket: &Ticket, known: &HashSet<&str>) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for (line, unit) in notes_units(&ticket.fields.body, ticket.fields.body_line) {
+        let bare = unit
+            .trim_start_matches(|c: char| matches!(c, '-' | '*' | '+' | '.') || c.is_ascii_digit())
+            .trim_start();
+        if bare
+            .strip_prefix(NO_TICKET)
+            .is_some_and(|why| !why.trim().is_empty())
+            || names_a_ticket(&unit, known)
+        {
+            continue;
+        }
+        let lower = unit.to_lowercase();
+        if let Some(phrase) = FOLLOW_UP_PHRASES.iter().find(|p| has_phrase(&lower, p)) {
+            warnings.push(format!(
+                "{}:{line}: \"{phrase}\" promises later work but names no ticket; write it \
+                 (write-ticket) and name its id on the line, or start the line `{NO_TICKET} \
+                 <why>` (AGENTS.md rule 2)",
+                ticket.display_path
+            ));
+        }
+    }
+    warnings
+}
+
+/// What follows `Game:` when the game takes nothing from a ticket.
+const NOTHING_TO_ADOPT: &str = "nothing to adopt";
+
+/// An error when a done ticket's body names a game ticket (`game#NNNN`)
+/// and no `Game:` line of its completion notes names the game PR
+/// (`visions-of-shuyi#N`, or its `…/pull/N` link) or game ticket
+/// (`game#NNNN`) that adopts the change, or says `Game: nothing to adopt,
+/// <why>` (ticket 2059, `work-ticket` §5.2).
+fn check_game_adopter(ticket: &Ticket) -> Option<String> {
+    let body = &ticket.fields.body;
+    if !names_a_ticket(body, &HashSet::new()) {
+        return None;
+    }
+    let adopts = |line: &str| {
+        let rest = line["Game:".len()..].trim();
+        let reason = rest.strip_prefix(NOTHING_TO_ADOPT).map(|why| {
+            why.trim_start_matches([',', ':', ';', '—', '-', ' '])
+                .trim()
+        });
+        reason.is_some_and(|why| !why.is_empty())
+            || names_a_ticket(rest, &HashSet::new())
+            || ["visions-of-shuyi#", "visions-of-shuyi/pull/"]
+                .iter()
+                .any(|pr| {
+                    rest.match_indices(pr).any(|(at, _)| {
+                        rest[at + pr.len()..].starts_with(|c: char| c.is_ascii_digit())
+                    })
+                })
+    };
+    (!notes_lines(body, "Game:").into_iter().any(adopts)).then(|| {
+        format!(
+            "{}: names a game ticket, but no `Game:` line in its completion notes names \
+             the game PR (`Zafnok/visions-of-shuyi#N`) or game ticket (`game#NNNN`) that \
+             adopts it; or write `Game: {NOTHING_TO_ADOPT}, <why>` (work-ticket §5)",
+            ticket.display_path
+        )
+    })
 }
 
 fn list_dir(dir: &Path) -> Result<Vec<String>, String> {
@@ -1065,6 +1317,7 @@ mod tests {
                 status: Some(status.to_string()),
                 completed: None,
                 blocked_by: Some(blocked_by.iter().map(|s| (*s).to_string()).collect()),
+                ..TicketFields::default()
             },
             errors: Vec::new(),
             clauses: Vec::new(),
@@ -1073,7 +1326,10 @@ mod tests {
     }
 
     fn game(ids: &[&str]) -> GameTickets {
-        GameTickets::Known(ids.iter().map(|s| (*s).to_string()).collect())
+        GameTickets::Known {
+            all: ids.iter().map(|s| (*s).to_string()).collect(),
+            done: HashSet::new(),
+        }
     }
 
     // -- filename --
@@ -1094,6 +1350,25 @@ mod tests {
         assert!(!is_valid_ticket_filename("0106-.md")); // empty slug
         assert!(!is_valid_ticket_filename("0106-branch-protection.txt")); // wrong ext
         assert!(!is_valid_ticket_filename("readme.md"));
+    }
+
+    #[test]
+    fn a_file_name_too_long_for_a_windows_checkout_is_flagged() {
+        // `tickets/open/` is 13 characters, so a name of 138 is 151 in all.
+        let long = format!("2106-{}.md", "x".repeat(130));
+        let ticket = parse_ticket("p".to_string(), Folder::Open, &long, VALID_FRONTMATTER);
+        assert!(
+            ticket.errors.iter().any(|e| e.contains("over 150")),
+            "{:?}",
+            ticket.errors
+        );
+        let short = format!("2106-{}.md", "x".repeat(129));
+        let ticket = parse_ticket("p".to_string(), Folder::Open, &short, VALID_FRONTMATTER);
+        assert!(
+            !ticket.errors.iter().any(|e| e.contains("over 150")),
+            "{:?}",
+            ticket.errors
+        );
     }
 
     // -- frontmatter extraction --
@@ -1480,11 +1755,13 @@ completed:
         let root = make_temp_tickets_dir("game-checkout");
         fs::write(root.join("tickets/open/1131-a.md"), "").unwrap();
         fs::write(root.join("tickets/done/0903-b.md"), "").unwrap();
-        let GameTickets::Known(ids) = game_ticket_ids(&GameSource::Checkout(&root)) else {
+        let GameTickets::Known { all, done } = game_ticket_ids(&GameSource::Checkout(&root)) else {
             panic!("the checkout was not read");
         };
         let expected: HashSet<String> = ["1131", "0903"].map(str::to_string).into();
-        assert_eq!(ids, expected);
+        assert_eq!(all, expected);
+        let expected: HashSet<String> = ["0903"].map(str::to_string).into();
+        assert_eq!(done, expected);
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1525,6 +1802,234 @@ README.md
             game_ticket_ids(&GameSource::Checkout(&root)),
             GameTickets::Unavailable(_)
         ));
+    }
+
+    // -- blocked with every blocker done --
+
+    fn game_with_done(done: &[&str]) -> GameTickets {
+        let done: HashSet<String> = done.iter().map(|s| (*s).to_string()).collect();
+        GameTickets::Known {
+            all: done.clone(),
+            done,
+        }
+    }
+
+    #[test]
+    fn a_blocked_ticket_whose_blockers_are_all_done_fails_naming_them() {
+        let tickets = vec![
+            ticket("2100", Folder::Done, "done", &[]),
+            ticket("2101", Folder::Done, "done", &[]),
+            ticket("2102", Folder::Open, "blocked", &["2100", "2101"]),
+        ];
+        let errors = check_blocked_with_done_blockers(&tickets, &game(&[]));
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(errors[0].contains("tickets/open/2102-x.md"), "{errors:?}");
+        assert!(errors[0].contains("(2100, 2101)"), "{errors:?}");
+        assert!(errors[0].contains("`status: todo`"), "{errors:?}");
+    }
+
+    #[test]
+    fn a_blocked_ticket_with_one_blocker_open_passes() {
+        let tickets = vec![
+            ticket("2100", Folder::Done, "done", &[]),
+            ticket("2101", Folder::Open, "todo", &[]),
+            ticket("2102", Folder::Open, "blocked", &["2100", "2101"]),
+        ];
+        let errors = check_blocked_with_done_blockers(&tickets, &game(&[]));
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    #[test]
+    fn parked_unblocked_or_blockerless_tickets_pass() {
+        let mut parked = ticket("2102", Folder::Open, "blocked", &["2100"]);
+        parked.fields.parked = true;
+        let tickets = vec![
+            ticket("2100", Folder::Done, "done", &[]),
+            parked,
+            ticket("2103", Folder::Open, "todo", &["2100"]),
+            ticket("2104", Folder::Open, "blocked", &[]),
+        ];
+        let errors = check_blocked_with_done_blockers(&tickets, &game(&[]));
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    #[test]
+    fn a_game_blocker_counts_as_done_only_in_the_games_done_folder() {
+        let tickets = vec![ticket("2102", Folder::Open, "blocked", &["game#1245"])];
+        let errors = check_blocked_with_done_blockers(&tickets, &game_with_done(&["1245"]));
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(errors[0].contains("game#1245"), "{errors:?}");
+        for open_or_unknown in [
+            game(&["1245"]),
+            GameTickets::Unavailable("no gh".to_string()),
+        ] {
+            let errors = check_blocked_with_done_blockers(&tickets, &open_or_unknown);
+            assert!(errors.is_empty(), "{errors:?}");
+        }
+    }
+
+    // -- follow-ups promised in prose --
+
+    /// A done ticket whose body is a heading, a Scope section and `notes`
+    /// as its completion notes, which start on line 9.
+    fn done_with_notes(notes: &str) -> Ticket {
+        let mut t = ticket("2106", Folder::Done, "done", &[]);
+        t.fields.body =
+            format!("# 2106 — X\n\n## Scope\n\nLater, for now.\n\n## Completion notes\n\n{notes}");
+        t.fields.body_line = 1;
+        t
+    }
+
+    fn follow_ups(notes: &str) -> Vec<String> {
+        let known: HashSet<&str> = ["2061", "2106"].into();
+        check_prose_follow_ups(&done_with_notes(notes), &known)
+    }
+
+    #[test]
+    fn a_promise_with_no_ticket_warns_naming_the_line() {
+        let warnings = follow_ups("Done.\n\nThe crash is worth a ticket if it comes back.\n");
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(
+            warnings[0].starts_with("tickets/done/2106-x.md:11: \"worth a ticket\""),
+            "{warnings:?}"
+        );
+    }
+
+    #[test]
+    fn each_phrase_warns_in_any_case() {
+        for phrase in [
+            "worth a ticket",
+            "For now",
+            "a follow-up",
+            "follow-ups",
+            "LATER",
+            "not yet",
+            "out of scope",
+            "TODO",
+        ] {
+            assert_eq!(follow_ups(&format!("- {phrase}\n")).len(), 1, "{phrase}");
+        }
+    }
+
+    #[test]
+    fn a_ticket_id_or_no_ticket_silences_it() {
+        for notes in [
+            "The crash is worth a ticket if it comes back, now 2061.\n",
+            "- The crash, for now: game#1245 does it.\n",
+            "No ticket: the crash was the runner's, and it is gone.\n",
+            "- No ticket: rare enough to leave for now.\n",
+            "1. No ticket: never seen again, so not yet worth one.\n",
+        ] {
+            assert!(follow_ups(notes).is_empty(), "{notes}");
+        }
+    }
+
+    #[test]
+    fn an_empty_no_ticket_or_an_unknown_id_still_warns() {
+        for notes in [
+            "Later, perhaps. No ticket: it may never come back.\n",
+            "No ticket:\n- later\n",
+            "Measured on 2026-11-08; the rest later.\n",
+        ] {
+            assert_eq!(follow_ups(notes).len(), 1, "{notes}");
+        }
+    }
+
+    #[test]
+    fn a_bullet_reads_its_indented_lines_but_a_paragraph_line_stands_alone() {
+        let bullet = "- The flaky test is worth a ticket if it comes\n  back: 2061.\n";
+        let warnings = follow_ups(bullet);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        let paragraph = "The flaky test is worth a ticket if it comes\nback: 2061.\n";
+        assert_eq!(follow_ups(paragraph).len(), 1);
+        let next_bullet = "- The flaky test is for now\n- left, 2061.\n";
+        assert_eq!(follow_ups(next_bullet).len(), 1);
+    }
+
+    #[test]
+    fn whole_words_outside_code_only() {
+        for notes in [
+            "Collateral, translated, todos.\n",
+            "The lint looks for `for now` and `later`.\n",
+            "```yaml\nlater: for now\n```\n",
+        ] {
+            assert!(follow_ups(notes).is_empty(), "{notes}");
+        }
+    }
+
+    // -- the game's adopter --
+
+    fn adopter(body: &str) -> Option<String> {
+        let mut t = ticket("2106", Folder::Done, "done", &[]);
+        t.fields.body = body.to_string();
+        check_game_adopter(&t)
+    }
+
+    #[test]
+    fn a_ticket_naming_a_game_ticket_needs_its_adopter() {
+        let body = "# X\n\nThe game asked (game#1245).\n\n## Completion notes\n\nDone.\n";
+        let error = adopter(body).expect("no Game: line");
+        assert!(error.contains("`Game:` line"), "{error}");
+        for game in [
+            "Game: Zafnok/visions-of-shuyi#88 moves the pin.",
+            "- Game: https://github.com/Zafnok/visions-of-shuyi/pull/88",
+            "Game: game#1252 moves the pin.",
+            "Game: nothing to adopt, the game never calls it.",
+            "Game: nothing to adopt — the lint is the engine's own.",
+        ] {
+            assert_eq!(adopter(&format!("{body}\n{game}\n")), None, "{game}");
+        }
+        for not_enough in [
+            "Game: nothing to adopt",
+            "Game: the game will pick it up.",
+            "Game: Zafnok/visions-of-shuyi#N",
+        ] {
+            assert!(adopter(&format!("{body}\n{not_enough}\n")).is_some());
+        }
+        let elsewhere = "# X\n\nGame: game#1252\n\ngame#1245\n\n## Completion notes\n\nDone.\n";
+        assert!(adopter(elsewhere).is_some());
+    }
+
+    #[test]
+    fn a_ticket_naming_no_game_ticket_needs_no_adopter() {
+        assert_eq!(
+            adopter("# X\n\nThe game's 1245.\n\n## Completion notes\n"),
+            None
+        );
+    }
+
+    #[test]
+    fn run_checks_the_prs_done_ticket_only() {
+        let root = make_temp_tickets_dir("run-pr-ticket");
+        let done = VALID_FRONTMATTER
+            .replace("blocked_by: [\"2102\", \"game#1131\"]", "blocked_by: []")
+            .replace("status: todo", "status: done")
+            .replace("completed:", "completed: 2026-11-11")
+            + "\nFor game#1245.\n\n## Completion notes\n\nThe rest later.\n";
+        fs::write(root.join("tickets/done/2106-x.md"), &done).unwrap();
+        fs::write(
+            root.join("tickets/done/2107-y.md"),
+            done.replace("2106", "2107"),
+        )
+        .unwrap();
+        let pr = Pr {
+            branch: "claude/x-1a2b",
+            title: Some("[2106] X"),
+        };
+        let report = run(&root, Some(pr), None, &GameSource::Checkout(&root));
+        assert_eq!(report.errors.len(), 1, "{:?}", report.errors);
+        assert!(
+            report.errors[0].contains("2106-x.md"),
+            "{:?}",
+            report.errors
+        );
+        assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+        assert!(
+            report.warnings[0].contains("2106-x.md:20:"),
+            "{:?}",
+            report.warnings
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     // -- the branch --

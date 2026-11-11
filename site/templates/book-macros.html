@@ -57,9 +57,11 @@
 
 {#- The reader's filter's script, in the `<head>` of every page of the
     book: it runs before the page is drawn, so a passage the reader knows
-    never shows before it folds. -#}
+    never shows before it folds. Then the quick checks' script (ticket
+    2827), which waits for the page. -#}
 {% macro script() -%}
 <script src="{{ get_url(path='book-filter.js', cachebust=true) }}"></script>
+<script src="{{ get_url(path='book-check.js', cachebust=true) }}" defer></script>
 {%- endmacro script %}
 
 {#- The reader's filter (ticket 2826, ADR-0090 §6), at the top of every

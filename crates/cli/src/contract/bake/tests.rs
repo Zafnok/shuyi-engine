@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use super::*;
 use crate::contract::check::{CheckInput, check};
 use crate::contract::fake::{Fake, SOURCES};
-use crate::project::Config;
+use crate::project::{Config, GameProgram};
 
 /// The project of no game file at `root`, which has the engine's target
 /// profiles.
@@ -34,6 +34,8 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         target: Some("playdate".to_owned()),
         out: None,
         sheet: None,
+        content: None,
+        audio: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     assert!(answer.ok, "{answer:?}");
@@ -62,6 +64,8 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         target: None,
         out: Some("out/p.shuyipak".to_owned()),
         sheet: None,
+        content: None,
+        audio: None,
     };
     assert!(bake(&Fake::default(), &project(&dir), &input).ok);
     assert!(dir.join("out/p.shuyipak").is_file());
@@ -112,6 +116,8 @@ fn bake_refuses_a_target_with_no_profile() {
         target: Some("toaster".to_owned()),
         out: None,
         sheet: None,
+        content: None,
+        audio: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     let error = answer.error.unwrap_or_default();
@@ -199,6 +205,16 @@ fn bakes_arguments_are_a_target_and_a_file() {
             target: Some("playdate".to_owned()),
             out: Some("p.shuyipak".to_owned()),
             sheet: Some("s.png".to_owned()),
+            content: None,
+            audio: None,
+        })
+    );
+    assert_eq!(
+        parse_args(&args(&["--content", "demo/files", "--audio", "out/audio"])),
+        Ok(BakeInput {
+            content: Some("demo/files".to_owned()),
+            audio: Some("out/audio".to_owned()),
+            ..BakeInput::default()
         })
     );
     assert_eq!(parse_args(&[]), Ok(BakeInput::default()));
@@ -212,7 +228,8 @@ fn bakes_arguments_are_a_target_and_a_file() {
     );
     assert_eq!(
         usage("shuyi"),
-        "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--json]"
+        "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--content <folder>] \
+         [--audio <folder>] [--json]"
     );
     assert_eq!(bytes(1_234_567), "1,234,567");
     assert_eq!(bytes(123_456), "123,456");
@@ -238,6 +255,7 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
             dithered: Vec::new(),
             replaced: Vec::new(),
             sheet: None,
+            audio_files: None,
         }),
     };
     assert_eq!(
@@ -305,4 +323,195 @@ fn a_load_is_timed_from_the_sources_and_from_the_pack() {
     let baked = bake.bake(&formats, &bundle, None).unwrap();
     assert!(load_time(&bake, &formats, &bundle, None) > 100);
     assert!(load_time(&bake, &formats, &bundle, Some(&baked.bytes)) > 100);
+}
+
+#[test]
+fn a_content_root_is_baked_by_the_tool_program_built_with_it() {
+    let program = GameProgram {
+        package: "moon-garden".to_owned(),
+        bin: None,
+        example: Some("tools".to_owned()),
+        features: vec!["tools".to_owned()],
+        args: Vec::new(),
+    };
+    let input = BakeInput {
+        target: Some("playdate".to_owned()),
+        sheet: Some("sheet.png".to_owned()),
+        content: Some("demo/files".to_owned()),
+        audio: Some("out/audio".to_owned()),
+        ..BakeInput::default()
+    };
+    let out = out_file(&input);
+    assert_eq!(out, "target/shuyi/playdate.shuyipak");
+    // Its own `bake` takes all the input but the folder, which it is built
+    // with, and answers in JSON; it is built in a profile of its own.
+    assert_eq!(
+        content_cargo_args(&program, &input, &out),
+        [
+            "run",
+            "--profile",
+            "shuyi-content",
+            "--config",
+            "profile.shuyi-content.inherits=\"dev\"",
+            "--quiet",
+            "-p",
+            "moon-garden",
+            "--example",
+            "tools",
+            "--features",
+            "tools",
+            "--",
+            "bake",
+            "--target",
+            "playdate",
+            "--out",
+            "target/shuyi/playdate.shuyipak",
+            "--sheet",
+            "sheet.png",
+            "--audio",
+            "out/audio",
+            "--json",
+        ]
+    );
+}
+
+#[test]
+fn a_content_root_is_a_folder_of_the_project_and_needs_the_tool_program() {
+    let dir = folder("content");
+    fs::create_dir_all(dir.join("demo/files")).unwrap();
+    let found = content_folder(&dir, "demo/files").unwrap();
+    assert!(found.is_absolute() && found.ends_with("files"), "{found:?}");
+    for wrong in [
+        "/demo",
+        "demo/../files",
+        "demo\\files",
+        "c:/demo",
+        "demo//files",
+    ] {
+        let refused = content_folder(&dir, wrong).unwrap_err();
+        assert!(
+            refused.contains("from the project's root"),
+            "{wrong}: {refused}"
+        );
+    }
+    let missing = content_folder(&dir, "demo/none").unwrap_err();
+    assert!(missing.contains("isn't a folder"), "{missing}");
+    let bake_of = |content: &str| {
+        let input = BakeInput {
+            content: Some(content.to_owned()),
+            ..BakeInput::default()
+        };
+        bake(&Fake::default(), &project(&dir), &input)
+    };
+    let answer = bake_of("demo/none");
+    assert_eq!(answer.code.as_deref(), Some(codes::FILE.0));
+    // The tools running now embed their own files: a folder needs the tool
+    // program the project names, built with it.
+    let answer = bake_of("demo/files");
+    assert_eq!(answer.code.as_deref(), Some(codes::PROJECT_FILE.0));
+    assert!(
+        answer.error.unwrap().contains("names no game tool program"),
+        "a project with no `game` part"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// A WAV file of `samples` of silence, mono, 16-bit, at the audio bake's
+/// rate.
+fn silence(samples: usize) -> Vec<u8> {
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: shuyi_assets::audio::SAMPLE_RATE,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    let mut writer = hound::WavWriter::new(&mut bytes, spec).unwrap();
+    for _ in 0..samples {
+        writer.write_sample(0_i16).unwrap();
+    }
+    writer.finalize().unwrap();
+    bytes.into_inner()
+}
+
+/// The files under `dir`, by their paths from it with `/`, sorted.
+fn files_under(dir: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut todo = vec![dir.to_path_buf()];
+    while let Some(at) = todo.pop() {
+        for entry in fs::read_dir(&at).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                todo.push(path);
+            } else {
+                let name = path.strip_prefix(dir).unwrap().to_string_lossy();
+                found.push(name.replace(std::path::MAIN_SEPARATOR, "/"));
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+#[test]
+fn the_audio_is_baked_for_the_target_into_its_folder_emptied_first() {
+    let dir = folder("audio");
+    let game = Fake {
+        sounds: Some(vec![
+            ("sfx/blip.wav".to_owned(), silence(100)),
+            ("sfx/door.wav".to_owned(), silence(3000)),
+        ]),
+        ..Fake::default()
+    };
+    // What an earlier bake left there is gone.
+    let stale = dir.join("out/audio/audio/sfx/old.wav");
+    fs::create_dir_all(stale.parent().unwrap()).unwrap();
+    fs::write(&stale, b"old").unwrap();
+    let input = BakeInput {
+        target: Some("playdate".to_owned()),
+        audio: Some("out/audio".to_owned()),
+        ..BakeInput::default()
+    };
+    let answer = bake(&game, &project(&dir), &input);
+    assert!(answer.ok, "{answer:?}");
+    let output = answer.result.unwrap();
+    assert_eq!(output.pack.as_ref().unwrap().audio_files, Some(2));
+    assert_eq!(
+        files_under(&dir.join("out/audio")),
+        ["audio/sfx/blip.wav", "audio/sfx/door.wav"]
+    );
+    assert!(
+        text(&output).ends_with("  sounds and music: 2 file(s) baked\n"),
+        "{}",
+        text(&output)
+    );
+    // Each file made is kept, so the next bake doesn't decode it again.
+    assert!(audio_cache(&project(&dir)).starts_with(dir.join("target/shuyi")));
+    assert_eq!(files_under(&audio_cache(&project(&dir))).len(), 2);
+    // A game with no audio: the folder isn't made, and the pack is.
+    let answer = bake(&Fake::default(), &project(&dir), &input);
+    assert!(answer.ok, "{answer:?}");
+    assert_eq!(answer.result.unwrap().pack.unwrap().audio_files, None);
+    assert!(!dir.join("out/audio").exists());
+    // A sound file that isn't one, and audio with no target.
+    let missing = Fake {
+        sounds: Some(vec![("sfx/broken.wav".to_owned(), b"not a wav".to_vec())]),
+        ..Fake::default()
+    };
+    let answer = bake(&missing, &project(&dir), &input);
+    assert_eq!(answer.code.as_deref(), Some(codes::FILE.0));
+    assert!(
+        answer
+            .error
+            .unwrap()
+            .starts_with("the game's audio: sounds/sfx/broken.wav"),
+        "the file, by its name"
+    );
+    let untargeted = BakeInput {
+        target: None,
+        ..input
+    };
+    let answer = bake(&game, &project(&dir), &untargeted);
+    assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    fs::remove_dir_all(&dir).unwrap();
 }

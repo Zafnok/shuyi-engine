@@ -95,6 +95,11 @@ serde_json = "1"
 # web it would need `wasm-bindgen`).
 getrandom = { version = "0.4", default-features = false, optional = true }
 
+# Drops on Windows, read by the backend itself (ticket 3307, ADR-0104): the
+# version and features miniquad already builds, and `processthreadsapi`.
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.9", features = ["winuser", "shellapi", "processthreadsapi"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 quad-storage = "0.1"
 # Strings from the page's own plugin, `crates/cli/web/page-files.js` (ticket
