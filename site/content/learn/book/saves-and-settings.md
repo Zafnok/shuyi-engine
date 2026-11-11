@@ -149,6 +149,45 @@ Paused, the game isn't updated and shows its last frame until the player comes b
 the time away makes no steps. Muted, its music keeps its place in silence. `Background`
 is in `shuyi::ui::settings`.
 
+## Files the player keeps
+
+{% newcomer(to="games", topic="why a player wants their save as a file") %}
+Storage is the game's: on the web it sits inside the browser, where the player can't see,
+copy or move it. A player who wants to back up their garden, move it to another computer
+or send it to a friend needs it as a file of their own.
+{% end %}
+
+A game hands the player a file with `ctx.offer_file(name, text)`, and asks them for one
+with `ctx.ask_for_file(&[".ron"])`. Both happen after the frame. On the web the file is a
+download, and the browser's file picker opens; on a desktop the file is written into an
+`exports` folder beside the saves, as `garden (2).ron` if a `garden.ron` is there, never
+over it:
+
+{{ snippet(file="src/saves.rs", anchor="files") }}
+
+The answers come back to the game's system hook (`Start::on_system`) in a later frame:
+`SystemEvent::FileOffered` says where the file went (downloaded, written at a path, or
+why not), and `SystemEvent::FileChosen` holds the file the player picked, with its name
+and text, or says they cancelled, or why it was refused: a file that isn't text, or is
+over 256 MB.
+
+A desktop has no picker: there, the player drops the file on the window, and the hook
+hears `SystemEvent::FilesDropped` ([chapter 9](@/learn/book/targets-and-export.md)).
+`ctx.platform` says which to offer: `can_pick_files()` for "choose a file",
+`can_drop_files()` for "drop a file here". It also says where the saves are, to show
+the player: `ctx.platform.storage_place` is a folder on a desktop
+(`StoragePlace::Folder`), or the browser's storage under the game's prefix on the web
+(`StoragePlace::Browser`). `ctx.open_storage_folder(Folder::Exports)` opens the exports
+folder in the system's file manager, on a desktop.
+
+A browser opens its picker only just after the player pressed something, so ask in the
+frame of the press, as a menu does when its row is chosen.
+
+A test reads what was offered with `Harness::offered`, and picks a file for the next ask
+with `Harness::answer_next_ask`:
+
+{{ snippet(file="src/saves.rs", anchor="test_files") }}
+
 ## When it goes wrong
 
 **Forgetting the copy.** Write `garden,` in place of `garden: garden.clone(),`, and the

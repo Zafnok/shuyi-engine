@@ -14,12 +14,14 @@ use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::onebit::{Font, Images, PatternMap};
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
+use shuyi_ui::player_files::Folder;
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::Audio;
 use crate::dropped::DroppedFile;
+use crate::player_files::{ChosenFile, Offered};
 use crate::text_input::TextInput;
 
 /// A moment on the backend's clock, in whole milliseconds. Where the clock
@@ -263,6 +265,17 @@ pub enum SystemEvent {
     /// [`PlatformFacts::can_drop_files`] says so. The game's hook reads them,
     /// and [`DroppedFile::layer`] makes a bundle layer of those it wants.
     FilesDropped(Vec<DroppedFile>),
+    /// Where the file a screen offered went
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)): downloaded, written
+    /// at a path, or why not. One for each offer, in order, in a later
+    /// frame.
+    FileOffered(Offered),
+    /// The answer to a screen's ask for a file
+    /// ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)): the file the
+    /// player picked, as text, or that they cancelled, or why it was
+    /// refused. One for each ask, in a later frame. A session record holds
+    /// it, so a replay reads the same text.
+    FileChosen(ChosenFile),
 }
 
 /// How long one frame may run a load in steps for
@@ -411,7 +424,53 @@ pub trait Platform {
     fn watches_files(&self) -> bool {
         false
     }
+
+    /// Hands the player a file called `name` (one file's name, checked by
+    /// `App`) holding `text`, as a screen asked
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)): a download, a file
+    /// in the exports folder of the game's storage. `App` calls it after the
+    /// frame. The answer goes to the game as
+    /// [`SystemEvent::FileOffered`] at the start of the next frame;
+    /// `None` when the backend gives it through
+    /// [`system_events`](Self::system_events) instead (the headless backend
+    /// playing a session record, which holds it). By default the file is
+    /// refused: a device with no files a player reaches.
+    fn offer_file(&mut self, _name: &str, _text: &str) -> Option<Offered> {
+        Some(Offered::Failed(NO_FILES.to_owned()))
+    }
+
+    /// Asks the player to pick a text file of one of the extensions in
+    /// `accept` (each with its dot; any when it is empty), as a screen
+    /// asked ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)). `App`
+    /// calls it after the frame, in the frame of the press that asked, as a
+    /// browser wants. An answer now goes to the game as
+    /// [`SystemEvent::FileChosen`] at the start of the next frame; `None`
+    /// when it comes later through [`system_events`](Self::system_events)
+    /// (once the player has chosen). A backend reads the file's bytes into
+    /// [`ChosenFile::from_bytes`], which keeps the limits. By default the
+    /// ask is refused: no picker ([`PlatformFacts::can_pick_files`]).
+    fn ask_for_file(&mut self, _accept: &[String]) -> Option<ChosenFile> {
+        Some(ChosenFile::Refused(NO_PICKER.to_owned()))
+    }
+
+    /// Opens `folder` in the system's file manager, as a screen asked
+    /// ([`Ctx::open_storage_folder`](shuyi_ui::Ctx::open_storage_folder)).
+    /// `App` calls it after the frame, and logs the error as a `platform`
+    /// warning. By default there is no such folder.
+    ///
+    /// # Errors
+    ///
+    /// Why the folder couldn't be opened, in a line.
+    fn open_folder(&mut self, _folder: Folder) -> Result<(), String> {
+        Err(NO_FILES.to_owned())
+    }
 }
+
+/// Why a file isn't offered on a backend with no files a player reaches.
+pub const NO_FILES: &str = "this platform has no files the player reaches";
+
+/// Why an ask for a file is refused on a backend with no picker.
+pub const NO_PICKER: &str = "this platform has no file picker: drop the file on the window";
 
 #[cfg(test)]
 mod tests {

@@ -40,6 +40,7 @@ use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
 use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
 use crate::platform_facts::PlatformFacts;
+use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -307,6 +308,9 @@ pub struct Ctx<G: GameData> {
     pub debug_tools: bool,
     /// The platform's session record, as the debug tools see it.
     session: SessionState,
+    /// The requests about the player's files made since the platform last
+    /// took them ([`offer_file`](Self::offer_file)), oldest first.
+    file_requests: Vec<FileRequest>,
     /// Which channels of the debug view are on (none at first), and which
     /// the running screens have offered (ADR-0085): read from the
     /// computer's storage by [`with_storage`](Self::with_storage) with
@@ -419,6 +423,7 @@ impl<G: GameData> Ctx<G> {
             pacing: None,
             debug_tools: crate::DEBUG_TOOLS,
             session: SessionState::default(),
+            file_requests: Vec::new(),
             debug_view: DebugView::default(),
             idle_motion: IdleMotion::Off,
             audio,
@@ -1132,6 +1137,51 @@ impl<G: GameData> Ctx<G> {
     /// The frame cap changed: it takes the next serial.
     fn next_frame_cap_serial(&mut self) {
         self.frame_cap_serial = self.frame_cap_serial.saturating_add(1);
+    }
+
+    /// Hands the player a file called `name` (`farm.ron`, never a path)
+    /// holding `text`, after this frame: a download on the web, and on a
+    /// desktop a file in the `exports` folder of the game's storage folder,
+    /// beside the others, never over one (`farm (2).ron`). The game's
+    /// system hook hears where it went in a later frame
+    /// (`SystemEvent::FileOffered`): downloaded, written at a path, or why
+    /// it failed (a name with a folder in it, a platform with no files a
+    /// player reaches).
+    pub fn offer_file(&mut self, name: &str, text: impl Into<String>) {
+        self.file_requests.push(FileRequest::Offer {
+            name: name.to_owned(),
+            text: text.into(),
+        });
+    }
+
+    /// Asks the player to pick a text file, after this frame: one whose
+    /// name ends in one of `accept` (`[".ron"]`), or any when it is empty.
+    /// The game's system hook hears the answer in a later frame
+    /// (`SystemEvent::FileChosen`): the file's name and text, cancelled, or
+    /// refused (not UTF-8, too big, or no picker here). Only where
+    /// [`PlatformFacts::can_pick_files`]; elsewhere the answer is
+    /// refused, and a screen says "drop the file on the window" instead,
+    /// where [`can_drop_files`](PlatformFacts::can_drop_files).
+    ///
+    /// A browser opens a picker only shortly after the player pressed
+    /// something: ask in the frame of the press.
+    pub fn ask_for_file(&mut self, accept: &[&str]) {
+        let accept = accept.iter().map(|&ext| ext.to_owned()).collect();
+        self.file_requests.push(FileRequest::Ask { accept });
+    }
+
+    /// Opens `folder` in the system's file manager, after this frame, so the
+    /// player sees their files: on a desktop. Where it fails, or there is no
+    /// such folder (the web), the platform logs why.
+    pub fn open_storage_folder(&mut self, folder: Folder) {
+        self.file_requests.push(FileRequest::OpenFolder(folder));
+    }
+
+    /// Takes the requests about the player's files made since the last
+    /// call, oldest first: for the platform's `App`, which carries them out
+    /// after the frame.
+    pub fn take_file_requests(&mut self) -> Vec<FileRequest> {
+        core::mem::take(&mut self.file_requests)
     }
 
     /// Builds [`palette`](Self::palette) from the color theme in the

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 3309 — Files the player keeps: hand a file out, take one back, and say where storage lives
@@ -144,23 +144,23 @@ Expected size: about 900–1,200 changed lines with tests.
 
 ## Acceptance criteria
 
-- [ ] A Harness test: a screen calls `offer_file("a.ron", "x")`; the
+- [x] A Harness test: a screen calls `offer_file("a.ron", "x")`; the
       harness records it and the next frame's events hold
       `FileOffered(Written(..))` or the headless equivalent.
-- [ ] A Harness test: a queued answer `Picked { name, text }` arrives as
+- [x] A Harness test: a queued answer `Picked { name, text }` arrives as
       `SystemEvent::FileChosen` after `ask_for_file`; a `Cancelled` one
       too; a file that isn't UTF-8 or is too big is `Refused`.
-- [ ] A desktop test (temp dir as the data dir): two offers of `a.ron`
+- [x] A desktop test (temp dir as the data dir): two offers of `a.ron`
       write `exports/a.ron` and `exports/a (2).ron`.
-- [ ] `shuyi web` copies `player-files.js`; the comparison test lists
+- [x] `shuyi web` copies `player-files.js`; the comparison test lists
       `shuyi_offer_file`, `shuyi_ask_for_file`, `shuyi_file_answer`.
-- [ ] A session record that holds a `FileChosen` replays to the same
+- [x] A session record that holds a `FileChosen` replays to the same
       state hash.
-- [ ] `PlatformFacts::storage_place` is `Folder(..)` on the desktop
+- [x] `PlatformFacts::storage_place` is `Folder(..)` on the desktop
       backend, `Browser { prefix }` on the web one (unit tests of the
       functions that build them).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -173,5 +173,58 @@ Expected size: about 900–1,200 changed lines with tests.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi-ui`: `Ctx::offer_file`, `Ctx::ask_for_file`,
+  `Ctx::open_storage_folder` queue a `player_files::FileRequest`
+  (`Ctx::take_file_requests` for `App`). `PlatformFacts::storage_place`
+  (`StoragePlace::Folder`, `Browser { prefix }`, `Unknown`) and
+  `PlatformFacts::file_picker` (`FilePicker`), with `with_storage_place`,
+  `with_file_picker` and `can_pick_files()`; both default and are skipped
+  when written, so an older session record reads.
+- `shuyi-platform`: `SystemEvent::FileOffered(Offered)` and
+  `SystemEvent::FileChosen(ChosenFile)` (`player_files`, with
+  `ChosenFile::from_bytes` keeping the UTF-8 check and the 256 MB limit,
+  `numbered_name`, `check_offered_name`). Three `Platform` methods with
+  defaults (`offer_file`, `ask_for_file`, `open_folder`). `App` carries out
+  the requests after the frame and puts the answers given at once first in
+  the next frame's events, so a session record holds them. The headless
+  backend keeps the offers, answers asks from a queue, notes opened folders,
+  says its storage is `Folder("<memory>")`, and answers `None` while a
+  record plays. `Harness::offered` and `Harness::answer_next_ask`.
+- `shuyi-app`: a desktop writes into `<data folder>/exports/` with
+  `create_new` and ` (2)`, ` (3)` … and opens folders with `explorer`,
+  `open` or `xdg-open`; the web downloads and opens a hidden file input
+  through `player-files.js` (the old `download.js`, version 2:
+  `shuyi_offer_file`, `shuyi_ask_for_file`, `shuyi_file_answer`), one ask
+  at a time. The debug menu's "Save session" downloads through it.
+- ADR-0106 records the shape. Docs: `docs/platform-backends.md`, the web
+  shell's README, the book's chapter 7 (*Files the player keeps*, with a
+  snippet and its test), the `shuyi-screen` skill.
+
+Deviations:
+
+- `PlatformFacts::file_picker` is a `FilePicker` enum (`Opens`, `Absent`),
+  not a `bool`: clippy's pedantic `struct_excessive_bools` refuses a fourth
+  bool in the struct, as it did for `FileDrops` (ADR-0103 §5).
+- A desktop keeps `Platform::ask_for_file`'s default, refused with "drop the
+  file on the window"; the web's ask is refused at once when
+  `navigator.userActivation` says there was no recent press.
+- A session record replayed by keys: reaching into a recorded game between
+  frames (`Harness::screen_mut`) stops its record, so the replay test drives
+  its screen with key presses.
+
+Manual: `player-files.js` checked in Chromium (the built-in browser) on a
+page that stubs `sapp_jsutils`: a download is handed a `Blob` named
+`farm.ron`; an ask with no recent press answers 0; after a real click a
+file set on the hidden input comes back as `kind: 1` with its name and
+bytes, one over the limit as `kind: 3` with the reason, and a `cancel` as
+`kind: 2`. Not done: the browser's own picker dialog, Firefox, and a game's
+wasm build polling the answer, since no example calls `ask_for_file` yet;
+game#0872 and game#0873 are the first callers.
+
+Follow-ups: none written. The game's tickets game#0872 and game#0873 use this
+and will move the pin.
+
+No break: the new `SystemEvent` variants, `Platform` methods and
+`PlatformFacts` fields are additive (`#[non_exhaustive]` or defaulted).

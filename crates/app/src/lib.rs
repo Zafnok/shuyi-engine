@@ -90,6 +90,13 @@
 //! the game hears of it once (`shuyi_platform::Setup::last_crash`).
 //! [`AppConfig::crash`] names the game's version in it, or turns it off.
 //!
+//! A game's screens hand the player a file and ask them for one
+//! (`shuyi_ui::Ctx::offer_file`, `ask_for_file`): on a desktop the file is
+//! written into `exports/` in the game's data folder, which the game may
+//! open in the system's file manager, and the player drops a file on the
+//! window to give one; on the web it is a download, and the browser's file
+//! picker opens (ticket 3309).
+//!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
 //! game's data folder (the `sessions` module, ADR-0074): the record of a run,
 //! written when the game quits and when the debug menu's "Save session" asks,
@@ -112,7 +119,7 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `download.js`'s,
+//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `player-files.js`'s,
 //! `page-files.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
@@ -146,6 +153,7 @@ mod painted;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
 mod pictures;
+mod player_files;
 #[cfg(any(
     all(feature = "link", not(target_arch = "wasm32")),
     feature = "capture"
