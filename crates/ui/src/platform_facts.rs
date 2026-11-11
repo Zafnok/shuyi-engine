@@ -313,5 +313,12 @@ mod tests {
         let text = ron::to_string(&folder).unwrap_or_else(|e| panic!("{e}"));
         let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, folder);
+        // A picker that opens is written, and reads back.
+        let picker = folder.with_file_picker(FilePicker::Opens);
+        let text = ron::to_string(&picker).unwrap_or_else(|e| panic!("{e}"));
+        assert!(text.contains("file_picker:Opens"), "{text}");
+        let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, picker);
+        assert!(!FilePicker::Opens.is_absent() && FilePicker::Absent.is_absent());
     }
 }
