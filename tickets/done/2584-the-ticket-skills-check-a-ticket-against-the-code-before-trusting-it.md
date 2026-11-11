@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2584 — The ticket skills check a ticket against the code before trusting it
@@ -106,12 +106,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Each bullet of *In* is a step or rule in its skill, with its
+- [x] Each bullet of *In* is a step or rule in its skill, with its
       reason.
-- [ ] ADR-0008's status names ADR-0081.
-- [ ] `pwsh -File scripts/sync-agent-skills.ps1 -Check` passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ADR-0008's status names ADR-0081.
+- [x] `pwsh -File scripts/sync-agent-skills.ps1 -Check` passes.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -119,5 +119,43 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `work-ticket`:
+  - §0 step 3 re-checks a ticket older than 7 days against `main` and
+    against the tickets done since, and fixes it first;
+  - §3 puts a decision's ticket before its code (acceptance values
+    from the requirement, a case for each bound or clamp), and makes a
+    small bug found by the game's pin move one PR;
+  - §5 records manual evidence at the tip of `main` and names the
+    commit;
+  - §6 re-reads the PR body against the final diff before the last
+    push, and links pictures at a commit.
+- `write-ticket` has a new section, *Check the claims against the
+  code* (step 7):
+  - a claim about the game cites a `gh search code` at the game's pin;
+  - each named type or function is grepped in `tickets/open`;
+  - a validator or format change searches the game's ADRs;
+  - the ticket comes before the code.
+- `write-adr` step 5 has the old ADR's status line name a new ADR that
+  extends, narrows or amends it, as superseding does.
+- ADR-0008's status line, and its row in the ADR index, name ADR-0081
+  (§6 extended and narrowed).
+- `docs/ROADMAP.md` marks 2584 done.
+
+Deviations:
+
+- The ticket was 3 days old, so the new 7-day re-check didn't apply
+  to it. Its named files (`scripts/sync-agent-skills.ps1`, the three
+  skills, ADR-0008 and ADR-0081) all exist on `main`.
+- The "pictures link at a commit" bullet names no skill. It went in
+  `work-ticket` §6, beside the PR body's other rules.
+- The sync script rewrote no loader. The loaders point at the shared
+  skills, and no skill was added or renamed.
+
+No break.
+
+Book: none, the book is for people making games, and these are the
+engine repository's own working skills.
+
+Follow-up tickets: none. game#0148 does the game's half.

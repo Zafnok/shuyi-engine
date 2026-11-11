@@ -25,6 +25,13 @@ description: Record a technical/architecture decision as an ADR in docs/adr/. Us
 5. **Superseding:** never rewrite an accepted ADR's decision. Write the new
    ADR, then change only the old one's `Status:` line to `Superseded by
    ADR-NNNN`, and update both rows in the index.
+   **Extending, narrowing or amending** works the same way: the new ADR
+   says so in its own `Extends:` (or `Amends:`) line, and the old one's
+   `Status:` line names it ("extended by ADR-NNNN (§N: what)", "§N
+   narrowed by ADR-NNNN", "amended by ADR-NNNN"), with both rows in the
+   index. Why: ADR-0081 extends and narrows ADR-0008 §6, and ADR-0008's
+   status didn't say so, so a reader of ADR-0008 alone gated every
+   `supported` profile.
 6. Include the ADR in the same PR as the ticket that needed it.
 7. Refer to the game's ADRs as "game ADR-NNNN" (ADR-0001).
 
