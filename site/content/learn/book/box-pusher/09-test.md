@@ -206,3 +206,29 @@ In making games: bots, records and replays, hashes, and when a test should read 
 In Shuyi: `GameTools`, scenes for programs, `Bot` and `play`, `replay`, and `h.snapshot()`.
 
 [Chapter 8](@/learn/book/testing.md) has more on testing, and [chapter 10](@/learn/book/tools-for-agents.md) on the tools. Next: hand it out.
+
+## Check yourself
+
+{% check() %}
+What does `every_levels_line_wins_it` prove each time it passes?
+
+- [x] That every level can be won. — It plays each level's line with `LineBot` and checks it wins, so a level edited so it can't be won fails the test, naming it ([a bot](#a-bot)).
+- [ ] That the bot finds the shortest way through each level. — The bot isn't clever: it plays a line written by hand, kept in `files/lines/` ([a bot](#a-bot)).
+- [ ] That each level looks as it did. — That is `the_first_level_looks_as_it_did`, which compares a frame with a file ([a frame](#a-frame)).
+{% end %}
+
+{% check() %}
+The kept frame names its colors by role, as `fg:box`. You change the box's color in the palette to blue. What does `the_first_level_looks_as_it_did` do?
+
+- [ ] It fails, because the box's color is a different number now. — The file names colors by role, not by number ([a frame](#a-frame)).
+- [x] It passes, since the box is still drawn with its `box` color. — A change of look on purpose doesn't fail it, while drawing the box with another role would ([a frame](#a-frame)).
+- [ ] It writes the new frame into `level1.txt` for you. — It writes the file only when `UPDATE_FRAMES` is set, and you read the new file before keeping it ([a frame](#a-frame)).
+{% end %}
+
+{% check(to="rust") %}
+In `lib.rs`, what does `#[cfg(feature = "tools")]` above `pub mod tools;` do?
+
+- [x] It includes the `tools` module only when the crate is built with its `tools` feature. — So the module never ends up in the game you ship ([the game's own tools](#the-game-s-own-tools)).
+- [ ] It always builds the module, and hides it from players while the game runs. — `#[cfg]` decides while compiling: without the feature, the module isn't part of the build at all ([the game's own tools](#the-game-s-own-tools)).
+- [ ] It turns the `tools` feature on for every build. — A feature is turned on by the build, as the `shuyi` alias does with `--features tools`, and `#[cfg]` only asks whether it is on ([the game's own tools](#the-game-s-own-tools)).
+{% end %}

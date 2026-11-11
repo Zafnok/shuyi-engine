@@ -360,3 +360,31 @@ A rebuild after a one-line change takes about a second: [Fast
 compiles](@/learn/book/fast-compiles.md) has the numbers and the setup behind it.
 [Chapter 2](@/learn/book/frame-and-skins.md) says how a screen shows the garden: as plain
 data, which a skin paints.
+
+## Check yourself
+
+{% check() %}
+What does `cargo shuyi run --frames 30` do?
+
+- [x] It plays 30 frames with no window, and answers in text with the top screen and what the frame shows, cell by cell. — Seeing the game as text is what lets a test or a coding agent play it ([run it](#run-it)).
+- [ ] It opens the game's window for 30 frames, then closes it. — `cargo run` opens the window, and `cargo shuyi run` plays the game headless ([run it](#run-it)).
+- [ ] It runs the game's tests 30 times over. — The tests are `cargo test --workspace`, and `run` plays the game itself ([run it](#run-it)).
+{% end %}
+
+{% check() %}
+`cargo shuyi run` answers ``error: no such command: `shuyi` ``, though `shuyi doctor`
+works. What is wrong?
+
+- [x] The terminal isn't in the game's folder. — `cargo shuyi` is defined by the game's own `.cargo/config.toml`, so it only works inside the game's folder ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] The engine's tools aren't installed. — `shuyi doctor` working means they are, and `cargo shuyi` comes from the game's folder, not from that install ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] The C linker is missing. — A missing linker shows as ``linker `cc` not found`` or a linker error, not as an unknown command ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+A new game's id is the placeholder `com.example.moon-garden`. Why set your own before
+you hand out a build?
+
+- [x] The player's settings are kept under the id, so two games with one id share their saves. — That's why `check --target` warns of the placeholder ([what it is made of](#what-it-is-made-of)).
+- [ ] The game doesn't build until the id is changed. — The placeholder builds and runs, and `check --target` only warns of it ([what it is made of](#what-it-is-made-of)).
+- [ ] Players would see "com.example" as the game's name. — The name is separate from the id: `shuyi.ron`'s `app` holds the name, the id and the version ([what it is made of](#what-it-is-made-of)).
+{% end %}

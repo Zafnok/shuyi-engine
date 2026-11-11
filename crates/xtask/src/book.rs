@@ -11,8 +11,20 @@
 //! - a page marked whole (`[extra] newcomer`) names one of the audiences;
 //! - no callout is left in the old hand-made form (`> **Rust:**`).
 //!
-//! [`parts`] splits a page at its marks for `llms.rs`, which writes each
-//! passage in the twins as a blockquote under its label.
+//! And the quick checks (ticket 2827, ADR-0090 §8), `{% check(to="rust") %}`
+//! … `{% end %}`, placed as a mark is and never inside one:
+//!
+//! - `to` is optional, and one of [`AUDIENCES`];
+//! - the question comes first, then two to four answers, one line each,
+//!   `- [x] ` for a right one and `- [ ] ` for a wrong one, each with
+//!   ` — ` and why after it, and at least one right;
+//! - every concept chapter (`[extra] chapter`) and project step (`[extra]
+//!   step`) ends with a `## Check yourself` section holding two or three,
+//!   and no other page has one.
+//!
+//! [`parts`] splits a page at its marks and checks for `llms.rs`, which
+//! writes each passage in the twins as a blockquote under its label, and
+//! each check as text.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -56,11 +68,40 @@ pub struct Mark {
     pub topic: String,
 }
 
-/// A run of a page's body: plain text, or the text of a marked passage
-/// without its two shortcode lines.
+/// The topic of a check's mark, as the shortcode's label says it.
+pub const CHECK_TOPIC: &str = "a quick check";
+
+/// The heading of the section a chapter or a step ends with, holding its
+/// checks.
+pub const CHECK_SECTION: &str = "## Check yourself";
+
+/// A quick check: its question and its answers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Check {
+    /// The text before the answers, Markdown.
+    pub question: String,
+    pub answers: Vec<Answer>,
+}
+
+/// One answer of a check.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Answer {
+    pub right: bool,
+    /// The answer, inline Markdown.
+    pub text: String,
+    /// Why it is right or wrong, inline Markdown.
+    pub why: String,
+}
+
+/// A run of a page's body: plain text, or the text of a marked passage or
+/// a check without its two shortcode lines.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Part<'a> {
+    /// A passage's mark, or a check's audience under [`CHECK_TOPIC`].
     pub mark: Option<Mark>,
+    /// The check this part is, read from `text`; none for a passage, plain
+    /// text, or a check that doesn't read.
+    pub check: Option<Check>,
     pub text: &'a str,
     /// The number of its first line in the file.
     pub line: usize,
@@ -104,11 +145,12 @@ fn markdown_under(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
 /// What is wrong with the marks of the page `shown`, whose whole text is
 /// `text`.
 pub fn check(shown: &str, text: &str) -> Vec<String> {
-    let (body, first_line, mut errors) = match front_matter(shown, text) {
+    let (body, first_line, mut errors, kind) = match front_matter(shown, text) {
         Ok(found) => found,
         Err(e) => return vec![e],
     };
     errors.extend(parts(shown, body, first_line).1);
+    errors.extend(check_section(shown, body, first_line, kind));
     for (at, line) in body.lines().enumerate() {
         let quoted = line.trim_start().strip_prefix('>').map(str::trim_start);
         if let Some(old) = quoted.and_then(|q| OLD_CALLOUTS.iter().find(|old| q.starts_with(**old)))
@@ -123,22 +165,41 @@ pub fn check(shown: &str, text: &str) -> Vec<String> {
     errors
 }
 
+/// What a page is to the checks: a concept chapter or a project step,
+/// which ends with its checks, or another page, which has none.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PageKind {
+    Chapter,
+    Step,
+    Other,
+}
+
+/// What [`front_matter`] finds: the body, its first line's number, what is
+/// wrong with a page-level mark, and what the page is.
+type FrontMatter<'a> = (&'a str, usize, Vec<String>, PageKind);
+
 /// The body of the page `shown` after its `+++` front matter, the number of
-/// its first line, and what is wrong with a page-level mark
-/// (`newcomer = "…"`).
-fn front_matter<'a>(shown: &str, text: &'a str) -> Result<(&'a str, usize, Vec<String>), String> {
+/// its first line, what is wrong with a page-level mark
+/// (`newcomer = "…"`), and what the page is (`chapter = …`, `step = …`).
+fn front_matter<'a>(shown: &str, text: &'a str) -> Result<FrontMatter<'a>, String> {
     let mut lines = text.split_inclusive('\n');
     if lines.next().map(str::trim_end) != Some("+++") {
         return Err(format!("{shown}:1: no `+++` front matter"));
     }
     let mut errors = Vec::new();
+    let mut kind = PageKind::Other;
     let mut at = text.find('\n').map_or(text.len(), |end| end + 1);
     for (number, line) in lines.enumerate() {
         let number = number + 2;
         at += line.len();
         let bare = line.trim();
         if bare == "+++" {
-            return Ok((&text[at..], number + 1, errors));
+            return Ok((&text[at..], number + 1, errors, kind));
+        }
+        match bare.split('=').next().map(str::trim) {
+            Some("chapter") => kind = PageKind::Chapter,
+            Some("step") => kind = PageKind::Step,
+            _ => {}
         }
         if let Some(value) = bare
             .strip_prefix("newcomer")
@@ -165,9 +226,25 @@ fn ids() -> String {
 
 /// What a line of a body is to the marks.
 enum Line {
-    Open(Result<Mark, String>),
+    Open(Result<Opened, String>),
     End,
     Other,
+}
+
+/// What an opener opens: a passage's mark, or a check and its audience.
+enum Opened {
+    Mark(Mark),
+    Check(Option<String>),
+}
+
+impl Opened {
+    /// What it is called in an error.
+    fn name(&self) -> &'static str {
+        match self {
+            Opened::Mark(_) => "mark",
+            Opened::Check(_) => "check",
+        }
+    }
 }
 
 /// `body`, the text of `shown` from its line `first_line`, split at its
@@ -178,8 +255,8 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
     let mut errors = Vec::new();
     // The plain run's start, as a byte and a line.
     let (mut from, mut from_line) = (0, first_line);
-    // The open mark, its text's first byte, and the opener's line.
-    let mut open: Option<(Mark, usize, usize)> = None;
+    // The open mark or check, its text's first byte, and the opener's line.
+    let mut open: Option<(Opened, usize, usize)> = None;
     let mut previous_blank = true;
     let mut next_must_be_blank: Option<usize> = None;
     let mut at = 0;
@@ -202,13 +279,15 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
                     ));
                 }
                 match (mark, &open) {
-                    (_, Some((_, _, opened))) => errors.push(format!(
-                        "{shown}:{number}: a mark inside the mark of line {opened}: marks don't nest"
+                    (_, Some((what, _, opened))) => errors.push(format!(
+                        "{shown}:{number}: a mark inside the {} of line {opened}: marks don't nest",
+                        what.name()
                     )),
                     (Err(e), None) => errors.push(format!("{shown}:{number}: {e}")),
                     (Ok(mark), None) => {
                         out.push(Part {
                             mark: None,
+                            check: None,
                             text: &body[from..at],
                             line: from_line,
                         });
@@ -218,10 +297,31 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
             }
             Line::End => {
                 match open.take() {
-                    Some((mark, start, opened)) => {
+                    Some((what, start, opened)) => {
+                        let text = &body[start..at];
+                        let (mark, check) = match what {
+                            Opened::Mark(mark) => (Some(mark), None),
+                            Opened::Check(to) => {
+                                let check = match read_check(text, opened + 1) {
+                                    Ok(check) => Some(check),
+                                    Err(found) => {
+                                        errors.extend(
+                                            found.into_iter().map(|e| format!("{shown}:{e}")),
+                                        );
+                                        None
+                                    }
+                                };
+                                let mark = to.map(|to| Mark {
+                                    to,
+                                    topic: CHECK_TOPIC.to_owned(),
+                                });
+                                (mark, check)
+                            }
+                        };
                         out.push(Part {
-                            mark: Some(mark),
-                            text: &body[start..at],
+                            mark,
+                            check,
+                            text,
                             line: opened + 1,
                         });
                         from = at + raw.len();
@@ -247,10 +347,11 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
     }
     out.push(Part {
         mark: None,
+        check: None,
         text: &body[from..],
         line: from_line,
     });
-    out.retain(|part| part.mark.is_some() || !part.text.is_empty());
+    out.retain(|part| part.mark.is_some() || part.check.is_some() || !part.text.is_empty());
     (out, errors)
 }
 
@@ -271,7 +372,8 @@ fn shortcode(line: &str) -> Option<(&str, &str)> {
 /// What `line` is: a mark's opener, its closer, or another line.
 fn kind(line: &str) -> Line {
     match shortcode(line) {
-        Some(("newcomer", after)) => Line::Open(opener(after)),
+        Some(("newcomer", after)) => Line::Open(opener(after).map(Opened::Mark)),
+        Some(("check", after)) => Line::Open(check_opener(after).map(Opened::Check)),
         Some(("end", after)) if after.trim_start()["end".len()..].trim() == "%}" => Line::End,
         _ => Line::Other,
     }
@@ -320,7 +422,7 @@ fn misplaced(line: &str) -> Option<&'static str> {
     let mut first = true;
     while let Some(found) = rest.find("{%") {
         let here = &rest[found..];
-        if let Some(name @ ("newcomer" | "end")) = shortcode(here).map(|(name, _)| name) {
+        if let Some(name @ ("newcomer" | "check" | "end")) = shortcode(here).map(|(name, _)| name) {
             return Some(if first && found > 0 && rest[..found].trim().is_empty() {
                 "a mark's line starts at the line's start, with no indent"
             } else if name == "end" {
@@ -333,4 +435,185 @@ fn misplaced(line: &str) -> Option<&'static str> {
         rest = &here[2..];
     }
     None
+}
+
+/// A check's audience, from its opener `after` its `{%`: none when it has
+/// no `to`.
+fn check_opener(after: &str) -> Result<Option<String>, String> {
+    let call = match llms::call(after, "%}") {
+        Some(Ok(call)) => call,
+        Some(Err(e)) => return Err(e),
+        None => return Err("a check is `{% check() %}` or `{% check(to=\"…\") %}`".into()),
+    };
+    if !after[call.len..].trim().is_empty() {
+        return Err("a check stands on a line of its own".into());
+    }
+    let mut to = None;
+    for (key, value) in llms::arguments(call.args)? {
+        if key == "to" {
+            to = Some(value);
+        } else {
+            return Err(format!(
+                "a check takes no argument `{key}` (it takes `to`, or nothing)"
+            ));
+        }
+    }
+    match to {
+        Some(to) if label(to).is_none() => Err(format!("to=\"{to}\" isn't an audience: {}", ids())),
+        to => Ok(to.map(str::to_owned)),
+    }
+}
+
+/// The check written in `text`, whose first line is `first_line`, the line
+/// after its opener, or what is wrong with it, each error starting with its
+/// line's number. What is wrong with the whole check is on its opener.
+pub fn read_check(text: &str, first_line: usize) -> Result<Check, Vec<String>> {
+    let opener = first_line.saturating_sub(1);
+    let mut errors = Vec::new();
+    let mut question: Vec<&str> = Vec::new();
+    let mut answers = Vec::new();
+    // Answers that don't read, counted with the rest.
+    let mut unread = 0;
+    for (index, line) in text.lines().enumerate() {
+        let number = first_line + index;
+        let line = line.trim_end();
+        let item = if let Some(rest) = line.strip_prefix("- [x] ") {
+            Some((true, rest))
+        } else {
+            line.strip_prefix("- [ ] ").map(|rest| (false, rest))
+        };
+        match item {
+            Some((right, rest)) => match read_answer(right, rest) {
+                Ok(answer) => answers.push(answer),
+                Err(e) => {
+                    unread += 1;
+                    errors.push(format!("{number}: {e}"));
+                }
+            },
+            None if line.trim().is_empty() => {}
+            None if line.trim_start().starts_with("- [") => {
+                unread += 1;
+                errors.push(format!(
+                    "{number}: an answer starts `- [x] ` (right) or `- [ ] ` (wrong), at the line's start"
+                ));
+            }
+            None if !answers.is_empty() || unread > 0 => errors.push(format!(
+                "{number}: a check's answers are one line each, and nothing comes after them"
+            )),
+            None if line.contains("{{") || line.contains("{%") => errors.push(format!(
+                "{number}: a check holds no shortcode: quote the line it asks about in `code`"
+            )),
+            None => question.push(line),
+        }
+    }
+    let question = question.join("\n").trim().to_owned();
+    if question.is_empty() {
+        errors.push(format!(
+            "{first_line}: a check with no question before its answers"
+        ));
+    }
+    let count = answers.len() + unread;
+    if !(2..=4).contains(&count) {
+        errors.push(format!(
+            "{opener}: a check with {count} answers: it has two to four"
+        ));
+    }
+    if unread == 0 && !answers.iter().any(|answer: &Answer| answer.right) {
+        errors.push(format!(
+            "{opener}: a check with no right answer: mark one `- [x] `"
+        ));
+    }
+    if errors.is_empty() {
+        Ok(Check { question, answers })
+    } else {
+        Err(errors)
+    }
+}
+
+/// One answer, from the text after its `- [x] ` or `- [ ] `.
+fn read_answer(right: bool, rest: &str) -> Result<Answer, String> {
+    let (text, why) = rest
+        .split_once(" — ")
+        .map(|(text, why)| (text.trim(), why.trim()))
+        .filter(|(text, why)| !text.is_empty() && !why.is_empty())
+        .ok_or("an answer with no reason: write the answer, ` — `, then why")?;
+    if text.contains("](") {
+        return Err(
+            "an answer holds no link (the page makes it a button): put the link in why".into(),
+        );
+    }
+    Ok(Answer {
+        right,
+        text: text.to_owned(),
+        why: why.to_owned(),
+    })
+}
+
+/// What is wrong with where the checks of `shown` are: a chapter or a step
+/// ends with [`CHECK_SECTION`] holding two or three, and every check is in
+/// it; another page has none.
+fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> Vec<String> {
+    let mut errors = Vec::new();
+    // The `## ` headings outside fenced code, and the checks' openers, by
+    // line.
+    let mut headings = Vec::new();
+    let mut checks = Vec::new();
+    let mut fenced = false;
+    for (index, line) in body.lines().enumerate() {
+        let number = first_line + index;
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            fenced = !fenced;
+        } else if fenced {
+        } else if line.starts_with("## ") {
+            headings.push((number, line.trim_end()));
+        } else if matches!(shortcode(line), Some(("check", _))) {
+            checks.push(number);
+        }
+    }
+    let section = headings
+        .iter()
+        .find(|(_, heading)| *heading == CHECK_SECTION)
+        .map(|(line, _)| *line);
+    if kind == PageKind::Other {
+        if let Some(line) = section {
+            errors.push(format!(
+                "{shown}:{line}: `{CHECK_SECTION}` is for a concept chapter or a project step"
+            ));
+        }
+        if let Some(line) = checks.first() {
+            errors.push(format!(
+                "{shown}:{line}: a check is for a concept chapter or a project step"
+            ));
+        }
+        return errors;
+    }
+    let what = if kind == PageKind::Chapter {
+        "chapter"
+    } else {
+        "step"
+    };
+    let Some(section) = section else {
+        errors.push(format!(
+            "{shown}: a {what} ends with `{CHECK_SECTION}`, holding two or three checks"
+        ));
+        return errors;
+    };
+    if let Some((line, _)) = headings.iter().find(|(line, _)| *line > section) {
+        errors.push(format!(
+            "{shown}:{line}: a heading after `{CHECK_SECTION}`: it is the {what}'s last section"
+        ));
+    }
+    for line in checks.iter().filter(|line| **line < section) {
+        errors.push(format!(
+            "{shown}:{line}: a check before `{CHECK_SECTION}`: the checks go in it"
+        ));
+    }
+    let count = checks.iter().filter(|line| **line > section).count();
+    if !(2..=3).contains(&count) {
+        errors.push(format!(
+            "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or three"
+        ));
+    }
+    errors
 }

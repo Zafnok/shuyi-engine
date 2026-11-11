@@ -423,3 +423,29 @@ limits:
 **A web page that stays blank.** If you opened `index.html` by double-clicking it, that's the rule
 above: the page must be served over HTTP. If `cargo shuyi web` itself fails to build, run `cargo shuyi
 doctor`, which checks that rustup has the `wasm32-unknown-unknown` target.
+
+## Check yourself
+
+{% check() %}
+A title screen should offer no Quit on the web, where the player leaves by closing the tab. How does it decide?
+
+- [x] It asks `ctx.platform.can_quit()`. — The running game knows its target through `ctx.platform`, and a test can run the screen as the web with `Harness::as_target` ([where the game runs](#where-the-game-runs)).
+- [ ] It asks `cfg!(target_arch = "wasm32")`. — That asks while compiling, which makes the game a different program on each machine, with a screen you couldn't test ([where the game runs](#where-the-game-runs)).
+- [ ] The rules read the platform and leave the command out. — A game's rules never read the platform's facts, so the same commands play the same game on every target ([where the game runs](#where-the-game-runs)).
+{% end %}
+
+{% check() %}
+You ran `cargo shuyi web --release` and double-clicked `dist/web/index.html`. The page stays blank. Why?
+
+- [ ] The release build has no symbol table, so the browser can't start it. — Leaving out the symbols makes a smaller program, and it still runs ([export](#export)).
+- [x] A page opened from the disk can't load its `.wasm`: the folder has to be served over HTTP. — Serve that folder and open it in a browser ([the web build](#the-web-build), and [when it goes wrong](#when-it-goes-wrong)).
+- [ ] The files from an older build were left in the folder. — Each build replaces everything in the folder, so an old file can't stay there ([the web build](#the-web-build)).
+{% end %}
+
+{% check() %}
+A public web demo must not hold chapter two. What keeps it out?
+
+- [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
+- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
+- [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
+{% end %}

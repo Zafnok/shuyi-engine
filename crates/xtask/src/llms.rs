@@ -697,8 +697,13 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         {
             continue;
         }
-        let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
-        errors.extend(part_errors);
+        let text = if let Some(check) = &part.check {
+            checked(check)
+        } else {
+            let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
+            errors.extend(part_errors);
+            text
+        };
         let text = match &part.mark {
             Some(mark) => quoted(mark, &text),
             None => text,
@@ -726,6 +731,18 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         linked.trim()
     );
     (text, errors)
+}
+
+/// A quick check as text (ticket 2827): its question, then each answer,
+/// right or wrong, and why.
+fn checked(check: &book::Check) -> String {
+    let mut out = format!("\n**Quick check.** {}\n\n", check.question);
+    for answer in &check.answers {
+        let verdict = if answer.right { "Right" } else { "Wrong" };
+        let _ = writeln!(out, "- {verdict}: {} — {}", answer.text, answer.why);
+    }
+    out.push('\n');
+    out
 }
 
 /// A marked passage's `text` as a blockquote: its label and topic, then

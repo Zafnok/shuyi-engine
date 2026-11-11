@@ -292,3 +292,31 @@ display is and how small its text may be, and `cargo shuyi check --target` check
 game's frame and scale against it ([chapter 9](@/learn/book/targets-and-export.md)). A
 one-bit display, such as the Playdate's, has only black and white, and takes each
 palette role's pattern from the game's one-bit map.
+
+## Check yourself
+
+{% check() %}
+You change bare soil's glyph from `·` to `.` in the skin. Which test breaks?
+
+- [x] Only the test of the look, which reads `h.snapshot()`. — A test of what happened reads the view, and the view names no glyph ([why tests read the view](#why-tests-read-the-view)).
+- [ ] Both, since the view's plots are drawn with that glyph. — The view holds `Plot::Soil`, and only the skin knows it's drawn as `·` ([the view](#the-view)).
+- [ ] Neither, since tests never read cells. — A test of a look does, and `the_garden_looks_like_a_row_of_plots` looks for the `·` ([why tests read the view](#why-tests-read-the-view)).
+{% end %}
+
+{% check() %}
+The skin gets a color with `ctx.palette.lookup(name).unwrap_or(c(EngineColor::Text))`.
+`palette.ron` spells the game's color `sprot`. What happens?
+
+- [x] The sprouts are drawn in the engine's text color, and no error is shown. — `lookup` gives `None` for a name that isn't there, and `unwrap_or` falls back to the text color ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] `cargo shuyi check` reports the missing color. — It catches a missing or bad color of the engine's, not a name of the game's own that nothing defines ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] The game stops with an error when it draws the garden. — `lookup` gives an `Option`, so a missing name is handled, not a crash ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+`sprout_offset(ms)` is `SPROUT_RISE.value_at(ms)`, a tween of 300 milliseconds. The game
+drops from 60 frames a second to 30. What happens to the sprout's rise?
+
+- [x] It still takes 300 milliseconds and is at the same place at each moment, shown in fewer frames. — Its value is worked out from the time alone, so it looks the same at any frame rate ([things that move](#things-that-move)).
+- [ ] It takes twice as long, as it moves once a frame. — Nothing steps a tween along from the frame before ([things that move](#things-that-move)).
+- [ ] It lands at a slightly different place, as the curve rounds differently. — The curves are worked out in whole numbers, so they are the same on every machine and at every rate ([things that move](#things-that-move)).
+{% end %}

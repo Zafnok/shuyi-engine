@@ -167,6 +167,10 @@ audiences=" $(sed -nE 's/^ *const AUDIENCES = \[(.*)\];$/\1/p' "$site_dir/static
 [ "$audiences" != "  " ] || fail "site/static/book-filter.js has no AUDIENCES line"
 while IFS= read -r page; do
   grep -qE '<script src="[^"]*/book-filter\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-filter.js"
+  # A page with a quick check (ticket 2827) loads the script that answers it.
+  if grep -qF 'class="check-choices"' "$page"; then
+    grep -qE '<script src="[^"]*/book-check\.js' "$page" || fail "${page#"$out"/one/} has a quick check and doesn't load book-check.js"
+  fi
 done < <(find "$out/one/learn/book" -name index.html)
 for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sort -u | sed -E 's/^data-newcomer="(.*)"$/\1/'); do
   [[ "$audiences" == *" $audience "* ]] || fail "a passage is marked $audience, which book-filter.js's AUDIENCES doesn't have"
