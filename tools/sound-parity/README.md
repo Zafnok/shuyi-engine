@@ -284,3 +284,5 @@ quad-snd reports neither. A command's moment is good to a tick and a mixer
 block, which `timing_ms` covers, so sample-exact claims are made only inside
 one sound, from its marker. Browser CPU counts the whole browser, its software
 WebGL too: a comparison across backends, not an absolute cost of sound.
+
+<!-- CI probe for ticket 3089: sound-parity on main's code. Never merged. -->
