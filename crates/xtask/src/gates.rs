@@ -196,7 +196,9 @@ pub const GATES: &[Gate] = &[
     gate("docs", "docs", Filter::Code)
         .steps(&["RUSTDOCFLAGS=\"-D warnings\" cargo doc --workspace --no-deps --locked"]),
     gate("deny", "deny", Filter::Code).steps(&["cargo deny check"]),
-    gate("machete", "machete", Filter::Code).steps(&["cargo machete"]),
+    // `cargo-machete` itself: started by cargo under `cargo xtask`, it
+    // reads its subcommand's name as a folder to check.
+    gate("machete", "machete", Filter::Code).steps(&["cargo-machete"]),
     gate("test", "test", Filter::Code)
         .steps(&["cargo test --workspace --locked --no-fail-fast"]),
     gate("no-std", "no-std", Filter::Code).steps(&[
