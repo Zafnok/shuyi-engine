@@ -15,6 +15,21 @@ so discipline here is the whole quality system.
 2. Read the ticket fully, then the docs that the map's *What each task
    reads* names for its block, then every ADR, decision and
    game-repository page the ticket links.
+3. **Check a ticket older than 7 days against the code.** Its age is the
+   date of the commit that added it (`git log --diff-filter=A --format=%ad
+   --date=short -- tickets/open/<file>.md`). Re-check every type,
+   function, file and ticket its steps name:
+   - against `main`: does it still exist, under that name, and is it
+     still missing where the ticket says it is;
+   - against the tickets done since it was written (`git log
+     --since=<date> --name-only -- tickets/done`): did one of them build
+     it, or rename it.
+
+   Fix the ticket in this PR, before the code, and record each fix as a
+   deviation in the Completion notes. Why: four of the six major
+   deviations of a retro (2026-11-08) were in tickets 14–16 days old.
+   3042 planned a method 2411 had built, and 2350 and 2252 named files
+   and loaders that were gone.
 
 ## 1. Choose the ticket
 
@@ -86,6 +101,18 @@ Set `status: in-progress` in the ticket's frontmatter.
 - **Scope creep rule:** if you notice something else worth doing, don't
   do it. Write a ticket with the `write-ticket` skill and mention it in
   the PR.
+- **A decision gets its ticket before its code.** A change found along
+  the way with anything to decide is written as a ticket first, and the
+  code follows it. Its acceptance values come from the requirement,
+  never from pasting the code's output, and each bound or clamp it
+  changes gets a case that reaches it. Why: 3210 was written after its
+  code, inside #294, and its case "23 lines at row 2" copied an
+  off-by-one; fixing it took three PRs for about 10 lines.
+- **A bug the game's pin move finds** is one PR, its ticket and the fix
+  together, when the fix is small (the `write-ticket` skill's
+  *A request from the game*). Why: a ticket-only PR followed by a fix
+  PR doubles the review and the CI for the same few lines (#305 and
+  #313).
 - **Adding a dependency or asset:** check its license against ADR-0002
   §8 *before* using it. Use `default-features = false` and only the
   features you need (traps: ADR-0004 §7). `cargo deny check` must pass,
@@ -115,6 +142,12 @@ the PR.
    ticket (`game#NNNN`) also lists the game PR that will move the pin to
    this change (`Zafnok/visions-of-shuyi#N`), or the game ticket that
    will, if that PR doesn't exist yet.
+
+   **Manual evidence** (a browser walk-through, a device run, a
+   picture) is recorded after merging the tip of `main` into the
+   branch, and the notes name that commit. Why: #308 (2817) tested a
+   revision a day old and drafted a corrective ticket for a bug 2576
+   (#304) had already fixed.
 
    Add one `Breaking:` line per break of the public API, a file format
    or a golden value, in the notes (ADR-0038 §6):
@@ -184,6 +217,20 @@ the PR.
   have taken one first: renumber with `cargo xtask next-id` (and the
   contract's to `main`'s plus one), fix the links to it, and edit the
   PR body to match. The squash message is the PR body (ticket 2052).
+- **Before the last push, re-read the PR body against the final diff:**
+  - the gates it says ran are the gates that ran, named one by one,
+    never "all gates" over a shorter list;
+  - every number (ADR, ticket, contract version) is the one the diff
+    holds;
+  - each "no break" or "nothing changes" claim still holds.
+
+  Why: #302 ticked "All gates" and listed three, #297 said contract
+  version 38 where the merge took it to 39, and #283 named the wrong
+  ADR.
+- **A picture in the PR body links at a commit**
+  (`…/blob/<sha>/…?raw=true`), never at the branch. Why: the branch is
+  deleted on merge, and the game's #516, #531, #534 and #555 have dead
+  pictures.
 - Don't run mutation testing locally; CI runs it. Push, open the PR,
   and read CI once.
 - If a check fails, fix it on the branch. Never disable a gate, lower a
