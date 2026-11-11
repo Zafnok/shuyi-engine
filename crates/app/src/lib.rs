@@ -606,8 +606,10 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
 /// played as `preview` says. The scenes are the `.dlg` files of the folder
 /// at `folder`, read with [`read_watched_folder`] and read again a second
 /// after one is saved, in an optimized build too. A folder that can't be
-/// read shows why in the window, as a file that doesn't load does. The web
-/// has no folders: there the window says so.
+/// read shows why in the window, as a file that doesn't load does. A `.dlg`
+/// file dropped on the window joins the folder. The web has no folders:
+/// there the preview starts with none, and the writer drops their scenes
+/// on the page.
 ///
 /// A visual novel hands its writer a second binary of one call:
 /// `run_dialogue_preview(game(), Path::new("scenes"), MyPreview)`.
@@ -629,7 +631,6 @@ where
 }
 
 /// The name of the layer a dialogue preview reads its folder into.
-#[cfg(not(target_arch = "wasm32"))]
 const PREVIEW_LAYER: &str = "scenes";
 
 /// The folder at `path`, read to be watched in every build, or why it
@@ -640,13 +641,12 @@ fn preview_folder(path: &Path) -> Result<Layer, String> {
     read_watched_folder(path, PREVIEW_LAYER, limit).map_err(|e| e.to_string())
 }
 
-/// On the web, which has no folders: why the preview can't read one.
+/// On the web, which has no folders: an empty layer, which the files the
+/// writer drops on the page join.
 #[cfg(target_arch = "wasm32")]
-fn preview_folder(path: &Path) -> Result<Layer, String> {
-    Err(format!(
-        "{}: a dialogue preview reads a folder, and the web has none",
-        path.display()
-    ))
+fn preview_folder(_: &Path) -> Result<Layer, String> {
+    Layer::owned(PREVIEW_LAYER.to_owned(), std::collections::BTreeMap::new())
+        .map_err(|e| e.to_string())
 }
 
 /// The margin around a short-path game's console, in pixels.

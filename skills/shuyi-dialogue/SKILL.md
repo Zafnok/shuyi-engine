@@ -211,16 +211,25 @@ that no longer parses keeps its last good scenes playing.
    `DialoguePreview` as the first screen, the game's modules, a
    `DialogueFolder` over the folder (read with `read_watched_folder`,
    watched in an optimized build too) and no debug screens; a folder that
-   can't be read shows why in the window. A game on the long path builds
+   can't be read shows why in the window. A `.dlg` file dropped on the
+   window joins the folder. On the web, which has no folders, the
+   preview starts with none: the writer opens its page and drops their
+   `.dlg` files on it, and drops one again after changing it. A game on
+   the long path builds
    it itself: `BasicGame::preview_start(folder, preview)`, or
    `DialoguePreview::new(&ctx, YourPreview)` as the root screen,
-   `.with_debug_screens(false)` and
-   `.with_module(DialogueFolder::new(layer))`.
+   `.with_debug_screens(false)`,
+   `.with_module(DialogueFolder::new(layer))` and a system hook that
+   hands a drop's files to `shuyi::ui::dialogue::preview::drop_scenes`.
 4. Give the `preview.*` text keys words in the language file (the book's
-   chapter 6 lists them).
+   chapter 6 lists them). `preview.note.no_scenes_drop` is the empty
+   Scenes tab's note where files can be dropped; without it the tab
+   shows `preview.note.no_scenes` there too.
 5. Test it through the Harness: `game().preview_harness(layer,
    YourPreview)`, `h.watch_files(true)`, then
-   `h.change_file(layer, "scene.dlg", bytes)` and one frame; read
+   `h.change_file(layer, "scene.dlg", bytes)` and one frame, or drop a
+   file with `h.drop_file("scene.dlg", bytes)` (an input script's
+   `drop` step); read
    `h.screen::<DialoguePreview<_, _>>()?.view(h.ctx())`.
 
 Its controls are the six `UiAction` moves (Cancel brings the tabs back

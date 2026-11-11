@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3092"]
 nick_input: none
-completed:
+completed: 2026-11-10
 ---
 
 # 2588 — A dialogue preview on the web
@@ -62,12 +62,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A `.dlg` file dropped on the preview's web page is listed and
+- [x] A `.dlg` file dropped on the preview's web page is listed and
       plays; dropped again changed, it plays again.
-- [ ] A Harness test drops a scene through the input script and reads it
+- [x] A Harness test drops a scene through the input script and reads it
       in the preview's view.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -76,5 +76,31 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_ui::dialogue::preview::drop_scenes(game, files)` puts the
+  `.dlg` files of a drop in the preview's folder layer (the
+  `DialogueFolder` module keeps it on the context) and tells the game's
+  modules, as a saved file does; other files are left out.
+- `BasicGame::preview_start` and `preview_harness` give the preview a
+  system hook that hands it each drop, on the desktop and the web. On
+  the web `run_dialogue_preview` starts it over an empty layer, where
+  it used to show an error.
+- The Scenes tab's note, where nothing is listed and the platform hears
+  drops (`ctx.platform.can_drop_files()`), is a new text key,
+  `preview.note.no_scenes_drop` ("No scenes: drop a .dlg file here").
+  A game's text without the key shows `preview.note.no_scenes` there as
+  before, so a game's language file needn't change (the game's preview
+  included).
+- Tests in `crates/platform/src/basic/tests.rs`: an empty folder, the
+  note on each platform, a dropped non-scene left out, a scene dropped
+  through the input script's `drop` step played, then the same file
+  dropped changed played again; the old note for a text without the
+  key; and an `App` started with `preview_start` hearing a drop.
+- Docs: the book's chapter 6 *A preview for your writer* and the
+  `shuyi-dialogue` skill.
+- Not checked in a browser: CI's `web-render` job loads the examples'
+  pages, but no example runs `run_dialogue_preview` on the web, and a
+  drop can't be scripted there. The web path is the same `App` and hook
+  the tests drive, over 3092's drop.
+
+No break: an added function, an added text key constant and a key games
+may add.

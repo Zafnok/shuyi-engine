@@ -896,3 +896,38 @@ fn a_game_with_no_switches_of_its_own_has_the_characters_and_the_strip() {
     let names: Vec<String> = p.view(ctx).switches.into_iter().map(|s| s.name).collect();
     assert_eq!(names, ["scout", "Strip: file, line, direction"]);
 }
+
+#[test]
+#[cfg(feature = "std")]
+fn a_dropped_scene_joins_the_folder_and_its_files_are_read_again() {
+    let (mut game, _, layer, _) = preview(&[]);
+    let version = |game: &Game<Toy>| {
+        game.ctx()
+            .module_state::<DialogueFiles>()
+            .map(DialogueFiles::version)
+    };
+    assert_eq!(version(&game), Some(0));
+    // Nothing of another kind is put in, and the files aren't read again.
+    let other = drop_scenes(&mut game, [("notes.txt".to_owned(), b"no".to_vec())]);
+    assert_eq!(other, Vec::<String>::new());
+    assert_eq!(version(&game), Some(0));
+    let files = [
+        ("gate.dlg".to_owned(), GATE.as_bytes().to_vec()),
+        ("notes.txt".to_owned(), b"no".to_vec()),
+    ];
+    assert_eq!(drop_scenes(&mut game, files), ["gate.dlg"]);
+    assert_eq!(version(&game), Some(1));
+    let read = game
+        .ctx()
+        .module_state::<DialogueFiles>()
+        .map(|f| f.files().map(|(path, _)| path).collect::<Vec<_>>());
+    assert_eq!(read, Some(vec!["gate.dlg"]));
+    assert!(shuyi_assets::bundle::Bundle::new(vec![layer]).has("gate.dlg"));
+    // A game without the module takes nothing.
+    let mut plain = toy::game();
+    let none = drop_scenes(
+        &mut plain,
+        [("gate.dlg".to_owned(), GATE.as_bytes().to_vec())],
+    );
+    assert_eq!(none, Vec::<String>::new());
+}
