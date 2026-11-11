@@ -83,6 +83,14 @@ outside crate of a pure crate adds its line there in the same PR.
 cargo xtask check-layers
 ```
 
+No two workspace packages build a binary, or an example, of the same
+name (CI's `layers` job, ticket 2056): Cargo writes them to one file, and
+on Windows the MSVC linker fails when both link at once.
+
+```bash
+cargo xtask check-targets
+```
+
 The modules (CI's `modules` job, ADR-0009): no default crate depends on
 one; each has a README, its `[package.metadata.shuyi]` and a row in
 `docs/modules.md`; its answers are in `docs/modules.ron`; alternatives

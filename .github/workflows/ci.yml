@@ -1214,6 +1214,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: cargo xtask check-layers
+      # No two packages build a binary or an example of one name: on
+      # Windows their links collide (ticket 2056).
+      - run: cargo xtask check-targets
 
   # The modules (ticket 2003, ADR-0009 §2 and §6): each against the
   # catalog (docs/modules.md, docs/modules.ron), then the `shuyi` crate
