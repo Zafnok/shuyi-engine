@@ -28,6 +28,7 @@ use shuyi_assets::image::ImageInfo;
 use shuyi_assets::lighting::Lighting;
 use shuyi_assets::names::Names;
 use shuyi_assets::palette::PaletteDef;
+use shuyi_ui::storage::bundle::{SaveBundle, SaveBundleRon};
 
 use super::{Answer, Op, Problem, codes};
 
@@ -181,9 +182,13 @@ impl Importers {
     }
 
     /// The engine's standard kinds over its standard formats
-    /// ([`Formats::standard`]).
+    /// ([`Formats::standard`]), and a save bundle
+    /// (`shuyi_ui::storage::bundle`), which a player's file is.
     pub fn standard() -> Self {
-        Self::new(Formats::standard())
+        let mut formats = Formats::standard();
+        // The registry has no other save bundle format to clash with.
+        let _ = formats.register(SaveBundleRon);
+        Self::new(formats)
             .kind::<ImageInfo>(|i| format!("{}×{} pixels", i.width, i.height))
             .kind::<Sound>(|s| format!("{} channel(s) at {} Hz", s.channels, s.sample_rate))
             .kind::<MusicTrack>(|m| {
@@ -219,6 +224,16 @@ impl Importers {
                     ids.join(", ")
                 )
             })
+            .kind_with_text::<SaveBundle>(
+                |b| {
+                    format!(
+                        "{}, made with {}",
+                        count(b.entries.len(), "entry", "entries"),
+                        b.made
+                    )
+                },
+                SaveBundle::to_text,
+            )
     }
 
     /// These importers, trying kind `K` too, summed up by `summary`. Its

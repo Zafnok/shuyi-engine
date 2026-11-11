@@ -1,11 +1,16 @@
 //! Chapter 7, saves and settings: a garden saved through the player's
 //! storage with the version of its format, read back only by a build of
 //! that version, the player's settings changed and kept, and a save handed
-//! to the player as a file they keep, and read back from one they pick.
+//! to the player as a file they keep, and read back from one they pick,
+//! and the saves packed in a bundle and read back with a verdict each.
 
 use serde::{Deserialize, Serialize};
+use shuyi::core::made::Made;
 use shuyi::core::{SaveFormat, SaveHeader};
 use shuyi::platform::{ChosenFile, SystemEvent};
+use shuyi::ui::storage::bundle::{
+    Applied, BundleError, FormatCheck, ImportPlan, apply, plan_import, write_bundle,
+};
 use shuyi::ui::storage::{Storage, StorageError};
 use shuyi::ui::{Ctx, GameData};
 
@@ -96,11 +101,35 @@ pub fn restore(event: &SystemEvent) -> Option<Result<Garden, LoadError>> {
 }
 // ANCHOR_END: files
 
+// ANCHOR: bundle
+/// The player's saves as one file's text, stamped with what made them.
+pub fn export_saves(storage: &dyn Storage, made: &Made) -> Result<String, StorageError> {
+    write_bundle(storage, made, |key| key == SAVE_KEY)
+}
+
+/// What importing the file's `text` would do, before anything is written:
+/// each save with its verdict, and whether it replaces one.
+pub fn plan_saves(
+    text: &str,
+    storage: &dyn Storage,
+    now: &Made,
+) -> Result<ImportPlan, BundleError> {
+    let check = FormatCheck::<Save>::new(|key| key == SAVE_KEY);
+    plan_import(text, storage, &check, now)
+}
+
+/// Writes every save of `plan` this build reads, all or nothing.
+pub fn import_saves(plan: &ImportPlan, storage: &mut dyn Storage) -> Result<Applied, StorageError> {
+    apply(plan, storage, |_| true)
+}
+// ANCHOR_END: bundle
+
 #[cfg(test)]
 mod tests {
     use shuyi::platform::harness::{FRAME_DT, Harness};
     use shuyi::ui::audio::groups::MUSIC;
     use shuyi::ui::settings::SETTINGS_KEY;
+    use shuyi::ui::storage::bundle::Verdict;
 
     use super::*;
     use crate::assets::Plan;
@@ -145,6 +174,44 @@ mod tests {
         assert_eq!(restore(&picked), Some(Ok(garden)));
     }
     // ANCHOR_END: test_files
+
+    // ANCHOR: test_bundle
+    #[test]
+    fn saves_come_back_from_a_bundle_with_a_verdict_each() {
+        let mut ctx = game().ctx().unwrap();
+        let garden = Garden::new(&Plan::new(6, 9, 75), 3);
+        save(&mut ctx.storage, &garden).unwrap();
+        let text = export_saves(&ctx.storage, &game().made()).unwrap();
+
+        // On another computer, with no save yet.
+        let mut other = game().ctx().unwrap();
+        let plan = plan_saves(&text, &other.storage, &game().made()).unwrap();
+        let entry = plan.entry(SAVE_KEY).unwrap();
+        assert_eq!(entry.verdict, Verdict::Ready);
+        assert!(!entry.replaces);
+        assert_eq!(plan.mismatch, None);
+        import_saves(&plan, &mut other.storage).unwrap();
+        assert_eq!(load(&other.storage), Ok(Some(garden)));
+    }
+    // ANCHOR_END: test_bundle
+
+    #[test]
+    fn a_bundles_save_of_another_version_is_not_imported() {
+        let mut ctx = game().ctx().unwrap();
+        ctx.storage
+            .write(SAVE_KEY, "(version: 9, garden: ())")
+            .unwrap();
+        let text = export_saves(&ctx.storage, &game().made()).unwrap();
+        let mut other = game().ctx().unwrap();
+        let plan = plan_saves(&text, &other.storage, &game().made()).unwrap();
+        assert_eq!(
+            plan.entry(SAVE_KEY).unwrap().verdict,
+            Verdict::Incompatible { found: 9, wants: 1 }
+        );
+        let applied = import_saves(&plan, &mut other.storage).unwrap();
+        assert_eq!(applied.written, Vec::<String>::new());
+        assert_eq!(load(&other.storage), Ok(None));
+    }
 
     // ANCHOR: settings
     #[test]
