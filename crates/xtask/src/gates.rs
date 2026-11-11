@@ -173,8 +173,8 @@ pub const GATES: &[Gate] = &[
     gate("layers", "layers", Filter::Code).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem
     // codes, Hello, Grid's files and the tickets (the feature cards).
-    // `check-build.sh` writes the codes' pages and copies the playground's
-    // files itself.
+    // As CI: the codes' pages and the playground's files are written
+    // before `zola check` reads them.
     gate("site", "site", Filter::Always)
         .local(Local::Under(&[
             "site/",
@@ -183,7 +183,9 @@ pub const GATES: &[Gate] = &[
             "tickets/",
         ]))
         .steps(&[
+            "bash site/errors.sh",
             "cargo xtask site-data --site site",
+            "bash site/copy-playground.sh",
             "site: zola check --skip-external-links",
             "cargo xtask check-book",
             "bash site/check-build.sh",

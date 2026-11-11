@@ -397,10 +397,12 @@ touches `site/`, the problem codes (`crates/cli/errors/`), Hello, Grid
 `bash`:
 
 ```bash
+bash site/errors.sh          # the problem codes' pages, which the book links
 cargo xtask site-data --site site
+bash site/copy-playground.sh
 (cd site && zola check --skip-external-links)
 cargo xtask check-book
-bash site/check-build.sh   # writes the problem codes' pages, copies the playground's files, builds twice, checks both
+bash site/check-build.sh    # builds twice, with two base URLs, and checks both
 ```
 
 ## The engine's own input and text rules (CI's `test` job)
