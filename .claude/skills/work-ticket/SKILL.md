@@ -111,10 +111,23 @@ the PR.
 1. **Write the docs.** Run the `document` skill over the change, or say
    in the completion notes why the change needs none.
 2. Fill in `## Completion notes`: what was done, deviations, follow-up
-   tickets, and anything Nick should know. A ticket that names a game
-   ticket (`game#NNNN`) also lists the game PR that will move the pin to
-   this change (`Zafnok/visions-of-shuyi#N`), or the game ticket that
-   will, if that PR doesn't exist yet.
+   tickets, and anything Nick should know. The ticket lint reads the
+   notes of the ticket the PR moves to `done/` (ticket 2059):
+
+   - **A follow-up named, not promised.** A line, or a bullet with its
+     indented lines, that says "worth a ticket", "for now", "follow-up",
+     "later", "not yet", "out of scope" or "TODO" names the ticket that
+     does it (write it with the `write-ticket` skill), or starts
+     `No ticket: <why>`. Otherwise the lint warns, naming the line.
+     Words in `` `code` `` and fenced blocks don't count.
+   - **The game's adopter.** A ticket whose body names a game ticket
+     (`game#NNNN`) has a `Game:` line naming the game PR that will move
+     the pin to this change (`Zafnok/visions-of-shuyi#N`), or the game
+     ticket that will (`game#NNNN`) if that PR doesn't exist yet, or
+     `Game: nothing to adopt, <why>`. Without one the lint fails.
+
+   It also fails an open ticket, not parked, that is `status: blocked`
+   with every `blocked_by` id done: set it to `todo`.
 
    Add one `Breaking:` line per break of the public API, a file format
    or a golden value, in the notes (ADR-0038 §6):
