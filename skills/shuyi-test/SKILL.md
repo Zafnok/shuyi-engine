@@ -88,7 +88,7 @@ colours or the frame's text.
 4. **The contract in tests.** The template's tests call the operations
    as library functions with the game's tools: `check(&tools,
    &CheckInput::default())`, `run(&tools, &input)` with `input.script =
-   keys("Enter Right")`, `bots`, `replay` and `import`, each answer's
+   keys("Enter Right")`, `playtest`, `replay` and `import`, each answer's
    `ok`, `result` and `limits`. `crates/game/tests/` in a new game shows
    them.
 
@@ -114,7 +114,8 @@ colours or the frame's text.
 
 7. **Play it live, headless.** The engine's MCP server keeps one game
    running between calls: `start` (with the game's options), `step` (a
-   script, then idle frames), `scene` (the scene and the log),
+   script, then idle frames), `scene` (the scene and the log; `path`
+   reads one value of its data by JSON Pointer, `shape` its shape),
    `frame_png` (a picture of the frame now), `events`, `perf` (the
    frames' times, `shuyi-perf`), `reset` and `stop`. Call `start` again after changing the game's code.
    `cargo shuyi run --script "Enter Right" --frames 30` gives the same
@@ -164,12 +165,14 @@ A test panics with its message. The contract's commands answer with a
 - `SH0001`: the command is wrong, such as a key name the Harness
   doesn't know (`--keys: unknown key chord`); the answer's `help` lists
   the steps it takes.
-- `SH3001`: the game's tools don't offer the operation (bots or a
-  replay for a game with no rules).
+- `SH3001`: the game's tools don't offer the operation (a playtest or
+  a replay for a game with no rules).
 - `SH3005`: the game's tool program didn't build: the answer ends with
   the compiler's output.
 - `SH1005`: `attach` found no build listening: start it with the link
   first. `SH0004`: the token isn't the build's latest.
+- `SH0005`: `scene --path` names no value; the message lists the keys
+  there are.
 
 A `run` that is `ok` but whose `limits` say "no scene" ran on a screen
 that shows none: open the stage first (`--script "Enter"`).

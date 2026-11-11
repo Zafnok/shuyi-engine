@@ -1,8 +1,10 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's focus ([`focus`](crate::focus)), its own
-//! shortcut and close button, the OS's data
-//! folder or the browser's `localStorage`, the sound player, and the
+//! shortcut and close button, the files dropped on it
+//! ([`drops`](crate::drops)), the OS's data
+//! folder or the browser's `localStorage`, the files the game hands the
+//! player and asks for ([`player_files`]), the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
 //! memory tags and its snapshots, in debug builds. It keeps the frame cap
 //! the last frame asked for, for [`run`](crate::run)'s pacer, and the input
@@ -18,20 +20,27 @@ use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+#[cfg(target_arch = "wasm32")]
+use shuyi_platform::ChosenFile;
 use shuyi_platform::audio::player::{Player, PlayerDevice};
 use shuyi_platform::heap;
-use shuyi_platform::{DisplayInfo, Frame, Look, Platform, Show, Storage, SystemEvent, TextInput};
+use shuyi_platform::{
+    DisplayInfo, Frame, Look, Offered, Platform, Show, Storage, SystemEvent, TextInput,
+};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
+use shuyi_ui::player_files::Folder;
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::audio;
+use crate::drops;
 use crate::focus::WindowFocus;
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
+use crate::player_files::{self, PlayerFiles};
 use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
@@ -84,6 +93,8 @@ pub(crate) struct Macroquad {
     changed: Vec<String>,
     /// Why pictures saved since the start don't decode.
     picture_errors: PictureErrors,
+    /// The files the game hands the player, and the one it asks for.
+    player_files: PlayerFiles,
 }
 
 impl Macroquad {
@@ -97,6 +108,7 @@ impl Macroquad {
         }
         Self {
             storage_name: config.storage_name,
+            player_files: PlayerFiles::new(config.storage_name),
             files: config.files,
             font_png: config.font_png,
             renderer: None,
@@ -108,7 +120,7 @@ impl Macroquad {
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
-            facts,
+            facts: player_files::facts(facts, config.storage_name),
             frame_cap: (FrameCap::DEFAULT, 0),
             held: Held::default(),
             #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
@@ -382,6 +394,9 @@ impl Platform for Macroquad {
         if keys::fullscreen_shortcut() {
             out.push(SystemEvent::ToggleFullscreen);
         }
+        out.extend(drops::poll());
+        #[cfg(target_arch = "wasm32")]
+        out.extend(self.player_files.poll());
         if is_quit_requested() {
             out.push(SystemEvent::QuitRequested);
         }
@@ -414,6 +429,23 @@ impl Platform for Macroquad {
         self.facts.clone()
     }
 
+    /// A file in the exports folder on a desktop, a download on the web.
+    fn offer_file(&mut self, name: &str, text: &str) -> Option<Offered> {
+        Some(self.player_files.offer(name, text))
+    }
+
+    /// The browser's file picker, answered in a later frame. A desktop
+    /// keeps the default, refused: the player drops the file instead.
+    #[cfg(target_arch = "wasm32")]
+    fn ask_for_file(&mut self, accept: &[String]) -> Option<ChosenFile> {
+        self.player_files.ask(accept)
+    }
+
+    /// The system's file manager on a desktop; the web has no folders.
+    fn open_folder(&mut self, folder: Folder) -> Result<(), String> {
+        self.player_files.open(folder)
+    }
+
     fn clock(&self) -> Option<PerfClock> {
         Some(PerfClock::Real(now_us))
     }
@@ -436,6 +468,13 @@ impl Platform for Macroquad {
     /// heap.
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         heap_snapshot()
+    }
+
+    /// Whether the game read a folder to be watched in every build
+    /// (`read_watched_folder`).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn watches_files(&self) -> bool {
+        crate::watch::watches_always()
     }
 
     /// The files of the disk layers that changed, their new bytes in their

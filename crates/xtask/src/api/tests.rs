@@ -62,10 +62,36 @@ fn catalog_names() -> Vec<&'static str> {
     API_CRATES.iter().map(|krate| krate.name).collect()
 }
 
+/// `cargo metadata`'s JSON of a workspace of `packages`, each with the
+/// features its entry in [`API_CRATES`] chooses.
 fn metadata_json(packages: &[&str]) -> String {
+    metadata_json_without(packages, &[])
+}
+
+/// [`metadata_json`], but `missing` (a crate and a feature) not in that
+/// crate's manifest.
+fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String {
     let list: Vec<String> = packages
         .iter()
-        .map(|name| format!("{{\"name\":\"{name}\"}}"))
+        .map(|name| {
+            let chosen =
+                API_CRATES
+                    .iter()
+                    .find(|krate| krate.name == *name)
+                    .map_or(&[][..], |krate| {
+                        let Features::Only(chosen) = krate.features;
+                        chosen
+                    });
+            let features: Vec<String> = chosen
+                .iter()
+                .filter(|feature| !missing.contains(&(*name, **feature)))
+                .map(|feature| format!("\"{feature}\":[]"))
+                .collect();
+            format!(
+                "{{\"name\":\"{name}\",\"features\":{{{}}}}}",
+                features.join(",")
+            )
+        })
         .collect();
     format!("{{\"packages\":[{}]}}", list.join(","))
 }
@@ -198,6 +224,8 @@ fn options_read_each_flag() {
         "HEAD^1",
         "--pr-branch",
         "t2010-api",
+        "--pr-title",
+        "[2010] The API",
         "--summary",
         "out.md",
         "--verdict",
@@ -208,6 +236,7 @@ fn options_read_each_flag() {
         Some(Options {
             base: Some("HEAD^1".to_string()),
             pr_branch: Some("t2010-api".to_string()),
+            pr_title: Some("[2010] The API".to_string()),
             summary: Some(PathBuf::from("out.md")),
             verdict: Some(PathBuf::from("verdict.txt")),
         })
@@ -405,6 +434,96 @@ fn no_ticket(_: &str) -> Option<String> {
     None
 }
 
+/// A PR on `branch`, with no title (a local run).
+fn pr(branch: &str) -> Pr<'_> {
+    Pr {
+        branch,
+        title: None,
+    }
+}
+
+/// A PR on a desktop worktree's branch, titled `title`.
+fn titled(title: &str) -> Pr<'_> {
+    Pr {
+        branch: "claude/x-1a2b3c",
+        title: Some(title),
+    }
+}
+
+#[test]
+fn a_break_reads_the_ticket_from_the_title() {
+    let verdict = rule(&breaking_core(), &titled("[2100] A"), &|id| {
+        (id == "2100").then(|| TICKET_2100.to_string())
+    });
+    assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
+    let Verdict::Fail(why) = rule(&breaking_core(), &titled("[2100] A"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100 is not in tickets/done/"),
+        "{why}"
+    );
+}
+
+#[test]
+fn a_book_line_is_read_from_the_titles_ticket() {
+    let Verdict::Fail(why) = book_rule(&added_ui(), &titled("[2100] A"), &[], &done_with("Done."))
+    else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100's `## Completion notes`"),
+        "{why}"
+    );
+    let verdict = book_rule(
+        &added_ui(),
+        &titled("[2100] A"),
+        &[],
+        &done_with("Book: none, a test helper."),
+    );
+    assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
+}
+
+#[test]
+fn a_break_on_a_titled_ticket_only_pr_fails() {
+    let Verdict::Fail(why) = rule(&breaking_core(), &titled("Ticket 2100: A"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("names no ticket's work"), "{why}");
+    assert!(why.contains("`[NNNN] …`"), "{why}");
+}
+
+#[test]
+fn a_title_and_branch_that_disagree_fail_a_break() {
+    let pr = Pr {
+        branch: "t2101-b",
+        title: Some("[2100] A"),
+    };
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr, &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("names ticket 2101"), "{why}");
+}
+
+#[test]
+fn a_game_small_change_adds_no_public_item() {
+    let Verdict::Fail(why) = rule(&added_ui(), &titled("Game 0859: a hook"), &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(why.contains("game ticket 0859's small change"), "{why}");
+    let listing = lines(&["pub fn a()"]);
+    let same = [CrateApi::new(
+        "shuyi-ui",
+        Some(&listing),
+        &listing,
+        Vec::new(),
+    )];
+    assert!(matches!(
+        rule(&same, &titled("Game 0859: a fix"), &no_ticket),
+        Verdict::Pass(_)
+    ));
+}
+
 #[test]
 fn no_break_on_a_ticket_branch_passes() {
     let crates = vec![CrateApi::new(
@@ -414,14 +533,14 @@ fn no_break_on_a_ticket_branch_passes() {
         Vec::new(),
     )];
     assert!(matches!(
-        rule(&crates, "t2100-a", &no_ticket),
+        rule(&crates, &pr("t2100-a"), &no_ticket),
         Verdict::Pass(_)
     ));
 }
 
 #[test]
 fn a_break_with_a_line_naming_the_crate_passes() {
-    let verdict = rule(&breaking_core(), "t2100-a", &|id| {
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|id| {
         (id == "2100").then(|| TICKET_2100.to_string())
     });
     assert_eq!(
@@ -433,15 +552,18 @@ fn a_break_with_a_line_naming_the_crate_passes() {
 #[test]
 fn a_line_may_name_several_crates_in_backticks() {
     let ticket = "## Completion notes\n\n- Breaking: `shuyi-ui`, `shuyi-core`: `x`: y.\n";
-    let verdict = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()));
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    });
     assert!(matches!(verdict, Verdict::Pass(_)), "{verdict:?}");
 }
 
 #[test]
 fn a_line_naming_another_crate_fails() {
     let ticket = "## Completion notes\n\nBreaking: shuyi-ui: `x`: y.\n";
-    let Verdict::Fail(why) = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()))
-    else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    }) else {
         panic!("passed");
     };
     assert!(
@@ -461,13 +583,15 @@ fn a_line_naming_another_crate_fails() {
 #[test]
 fn a_line_outside_the_completion_notes_fails() {
     let ticket = "## Scope\n\nBreaking: shuyi-core: `x`: y.\n\n## Completion notes\n\nDone.\n";
-    let verdict = rule(&breaking_core(), "t2100-a", &|_| Some(ticket.to_string()));
+    let verdict = rule(&breaking_core(), &pr("t2100-a"), &|_| {
+        Some(ticket.to_string())
+    });
     assert!(matches!(verdict, Verdict::Fail(_)), "{verdict:?}");
 }
 
 #[test]
 fn a_ticket_not_in_done_fails() {
-    let Verdict::Fail(why) = rule(&breaking_core(), "t2100-a", &no_ticket) else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("t2100-a"), &no_ticket) else {
         panic!("passed");
     };
     assert!(
@@ -478,7 +602,7 @@ fn a_ticket_not_in_done_fails() {
 
 #[test]
 fn a_break_on_a_sonar_branch_fails() {
-    let Verdict::Fail(why) = rule(&breaking_core(), "sonar/312-lifetimes", &no_ticket) else {
+    let Verdict::Fail(why) = rule(&breaking_core(), &pr("sonar/312-lifetimes"), &no_ticket) else {
         panic!("passed");
     };
     assert!(why.contains("names no ticket"), "{why}");
@@ -495,7 +619,7 @@ fn no_break_on_a_sonar_branch_passes() {
         Vec::new(),
     )];
     assert!(matches!(
-        rule(&crates, "sonar/312-lifetimes", &no_ticket),
+        rule(&crates, &pr("sonar/312-lifetimes"), &no_ticket),
         Verdict::Pass(_)
     ));
 }
@@ -522,7 +646,7 @@ fn done_with(notes: &'static str) -> impl Fn(&str) -> Option<String> {
 #[test]
 fn an_api_change_without_the_book_or_a_line_fails() {
     let changed = lines(&["crates/ui/src/lib.rs", "site/content/news/x.md"]);
-    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."))
+    let Verdict::Fail(why) = book_rule(&added_ui(), &pr("t2100-a"), &changed, &done_with("Done."))
     else {
         panic!("passed");
     };
@@ -540,7 +664,7 @@ fn an_api_change_without_the_book_or_a_line_fails() {
 fn an_api_change_with_a_book_line_passes_and_quotes_it() {
     let verdict = book_rule(
         &added_ui(),
-        "t2100-a",
+        &pr("t2100-a"),
         &[],
         &done_with("- Book: none, a helper the tests call made public."),
     );
@@ -559,7 +683,7 @@ fn an_api_change_with_the_book_changed_passes() {
         "site/snippets/src/rules.rs",
     ] {
         let changed = lines(&["crates/ui/src/lib.rs", file]);
-        let verdict = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."));
+        let verdict = book_rule(&added_ui(), &pr("t2100-a"), &changed, &done_with("Done."));
         assert!(
             matches!(&verdict, Verdict::Pass(why) if why.starts_with("the book changed")),
             "{verdict:?}"
@@ -574,7 +698,7 @@ fn a_branch_with_no_ticket_is_skipped() {
         "sonar/312-lifetimes",
         "game-1203-x",
     ] {
-        let verdict = book_rule(&added_ui(), branch, &[], &no_ticket);
+        let verdict = book_rule(&added_ui(), &pr(branch), &[], &no_ticket);
         assert!(
             matches!(&verdict, Verdict::Pass(why) if why.contains("names no ticket")),
             "{verdict:?}"
@@ -592,14 +716,14 @@ fn no_api_change_asks_nothing_of_the_book() {
         Vec::new(),
     )];
     assert!(matches!(
-        book_rule(&crates, "t2100-a", &[], &no_ticket),
+        book_rule(&crates, &pr("t2100-a"), &[], &no_ticket),
         Verdict::Pass(_)
     ));
 }
 
 #[test]
 fn an_api_change_on_a_ticket_not_done_fails() {
-    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &[], &no_ticket) else {
+    let Verdict::Fail(why) = book_rule(&added_ui(), &pr("t2100-a"), &[], &no_ticket) else {
         panic!("passed");
     };
     assert!(
@@ -985,16 +1109,18 @@ fn a_run_compares_every_crate_and_removes_the_base() {
     let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
         "head: cargo semver-checks check-release -p shuyi-core --baseline-root {base_root} \
-         --release-type minor --color never"
+         --release-type minor --color never{CORE_SEMVER}"
     )));
     let target = root.join("target").to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
-        "head: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {target}"
+        "head: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified{UI_LISTING} \
+         --target-dir {target}"
     )));
     // The base builds apart, so it never builds on the head's crates.
     let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
-        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {base_target}"
+        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified{UI_LISTING} \
+         --target-dir {base_target}"
     )));
     // `shuyi-cli` is new: listed in the head only, and never checked.
     assert!(
@@ -1325,9 +1451,9 @@ fn members(names: &[&str]) -> HashSet<String> {
 #[test]
 fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let real = packages(&root, &System).unwrap();
+    let real = packages(&root, &System).unwrap().into_keys().collect();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
-    assert_eq!(API_CRATES.len(), 11);
+    assert_eq!(API_CRATES.len(), 12);
 }
 
 #[test]
@@ -1383,24 +1509,81 @@ fn a_run_on_an_engine_member_left_out_fails_before_any_listing() {
 
 #[test]
 fn features_become_each_tools_flags() {
-    assert_eq!(Features::ToolDefaults.listing_args(), Vec::<&str>::new());
-    assert_eq!(Features::ToolDefaults.semver_args(), Vec::<&str>::new());
+    let global = members(&["global", "std"]);
+    let none = HashSet::new();
     assert_eq!(
-        Features::Only(&[]).listing_args(),
+        Features::Only(&[]).listing_args(&global),
         ["--no-default-features"]
     );
     assert_eq!(
-        Features::Only(&[]).semver_args(),
+        Features::Only(&[]).semver_args(&global, &global),
         ["--only-explicit-features"]
     );
     assert_eq!(
-        Features::Only(&["global"]).listing_args(),
+        Features::Only(&["global"]).listing_args(&global),
         ["--no-default-features", "--features", "global"]
     );
     assert_eq!(
-        Features::Only(&["global"]).semver_args(),
+        Features::Only(&["global"]).semver_args(&global, &global),
         ["--only-explicit-features", "--features", "global"]
     );
+    // A side without the feature builds without it, and the semver check
+    // takes it only when both sides have it.
+    assert_eq!(
+        Features::Only(&["global"]).listing_args(&none),
+        ["--no-default-features"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).semver_args(&global, &none),
+        ["--only-explicit-features"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).semver_args(&none, &global),
+        ["--only-explicit-features"]
+    );
+}
+
+#[test]
+fn a_feature_new_in_the_head_is_listed_there_and_its_items_are_added() {
+    let root = temp_root("new-feature");
+    let fake = Fake::new(&root)
+        .with_tools()
+        .with_base("abc123")
+        .answer(
+            "base: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_without(
+                &catalog_names(),
+                &[("shuyi-core", "toy")],
+            ))),
+        )
+        .with_listing("head", "shuyi-core", "pub fn shuyi_core::toy::run()\n");
+    let outcome = run(&root, &Options::default(), &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert_eq!(outcome.label, Some(Label::Added));
+    let ran = fake.ran();
+    let target = root.join("target").to_string_lossy().into_owned();
+    let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
+    let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
+    for command in [
+        format!(
+            "head: cargo +{NIGHTLY} public-api -p shuyi-core --simplified \
+             --no-default-features --features std --features schema --features toy \
+             --target-dir {target}"
+        ),
+        format!(
+            "base: cargo +{NIGHTLY} public-api -p shuyi-core --simplified \
+             --no-default-features --features std --features schema \
+             --target-dir {base_target}"
+        ),
+        format!(
+            "head: cargo semver-checks check-release -p shuyi-core --baseline-root {base_root} \
+             --release-type minor --color never --only-explicit-features --features std \
+             --features schema"
+        ),
+    ] {
+        assert!(ran.contains(&command), "no `{command}` in {ran:#?}");
+    }
+    let _ = fs::remove_dir_all(&root);
 }
 
 // -- the two crates checked in a configuration of their own --
@@ -1446,8 +1629,50 @@ const ADDED_CRATES: [(&str, &str, &str, &str); 2] = [
     ),
 ];
 
+/// `shuyi-core`'s semver flags, and `shuyi-ui`'s listing flags.
+const CORE_SEMVER: &str =
+    " --only-explicit-features --features std --features schema --features toy";
+const UI_LISTING: &str = " --no-default-features --features std --features debug-tools \
+     --features storage-conformance --features onebit-reference --features raster \
+     --features toy --features schema";
+
+/// Each crate of the catalog and the features it is checked with (ticket
+/// 2041), spelled out here rather than read from [`API_CRATES`].
+const CONFIGURATIONS: &[(&str, &[&str])] = &[
+    ("shuyi-core", &["std", "schema", "toy"]),
+    ("shuyi-assets", &["std", "png", "sample-actions", "golden"]),
+    (
+        "shuyi-ui",
+        &[
+            "std",
+            "debug-tools",
+            "storage-conformance",
+            "onebit-reference",
+            "raster",
+            "toy",
+            "schema",
+        ],
+    ),
+    (
+        "shuyi-platform",
+        &["std", "harness", "link", "heap", "capture", "schema"],
+    ),
+    ("shuyi-app", &["link", "capture", "sound-probe"]),
+    ("shuyi-cli", &["toy", "jis"]),
+    ("shuyi", &["std", "app", "schema", "script"]),
+    ("shuyi-sound", &["std", "wav", "vorbis"]),
+    ("shuyi-sound-out", &[]),
+    ("shuyi-playdate", &[]),
+    ("shuyi-alloc-count", &["global"]),
+    ("shuyi-script", &[]),
+];
+
+/// The features a crate's manifest has that its check leaves out, each for
+/// the reason `API_CRATES` gives.
+const LEFT_OUT: [(&str, &str); 1] = [("shuyi-app", "in-house-sound")];
+
 #[test]
-fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
+fn every_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
     let root = temp_root("configuration");
     let fake = Fake::new(&root)
         .with_tools()
@@ -1459,7 +1684,14 @@ fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
     let target = root.join("target").to_string_lossy().into_owned();
     let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
     let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
-    for (krate, _, listing, semver) in ADDED_CRATES {
+    assert_eq!(CONFIGURATIONS.len(), API_CRATES.len());
+    for &(krate, features) in CONFIGURATIONS {
+        let flags = features.iter().fold(String::new(), |mut flags, f| {
+            let _ = write!(flags, " --features {f}");
+            flags
+        });
+        let listing = format!(" --no-default-features{flags}");
+        let semver = format!(" --only-explicit-features{flags}");
         for command in [
             format!(
                 "head: cargo +{NIGHTLY} public-api -p {krate} --simplified{listing} \
@@ -1478,6 +1710,58 @@ fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
         }
     }
     let _ = fs::remove_dir_all(&root);
+}
+
+/// Each crate's chosen and left-out features are, together, every feature
+/// its manifest has but `default`: a feature added later is chosen or left
+/// out on purpose, never skipped by one tool and turned on by the other.
+#[test]
+fn every_feature_of_each_crates_manifest_is_chosen_or_left_out() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut manifests = std::collections::HashMap::new();
+    for entry in fs::read_dir(&crates).unwrap() {
+        let path = entry.unwrap().path().join("Cargo.toml");
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let manifest: toml::Table = toml::from_str(&text).unwrap();
+        let name = manifest["package"]["name"].as_str().unwrap().to_string();
+        manifests.insert(name, manifest);
+    }
+    for krate in API_CRATES {
+        let empty = toml::Table::new();
+        let table = manifests[krate.name]
+            .get("features")
+            .and_then(toml::Value::as_table)
+            .unwrap_or(&empty);
+        let mut declared: Vec<&str> = table
+            .keys()
+            .map(String::as_str)
+            .filter(|name| *name != "default")
+            .collect();
+        declared.sort_unstable();
+        let Features::Only(chosen) = krate.features;
+        // A chosen feature, what it turns on of this crate's, and so on.
+        let mut covered: Vec<&str> = chosen.to_vec();
+        let mut next = 0;
+        while let Some(feature) = covered.get(next).copied() {
+            next += 1;
+            let turned_on = table[feature].as_array().unwrap();
+            for name in turned_on.iter().filter_map(toml::Value::as_str) {
+                if table.contains_key(name) && !covered.contains(&name) {
+                    covered.push(name);
+                }
+            }
+        }
+        covered.extend(
+            LEFT_OUT
+                .iter()
+                .filter(|(name, _)| *name == krate.name)
+                .map(|(_, feature)| *feature),
+        );
+        covered.sort_unstable();
+        assert_eq!(covered, declared, "{}", krate.name);
+    }
 }
 
 #[test]

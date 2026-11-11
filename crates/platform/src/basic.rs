@@ -5,7 +5,8 @@
 //! every screen it can show, the modules it installs and its record of
 //! its play for a crash report. From it come
 //! its data ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
-//! [`Game`] and how a backend starts it ([`BasicGame::start`]).
+//! [`Game`] and how a backend starts it ([`BasicGame::start`]), and its
+//! dialogue preview for a writer ([`BasicGame::preview_start`]).
 
 use crate::alloc_prelude::*;
 use alloc::{format, vec};
@@ -16,6 +17,7 @@ use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
 use shuyi_core::Made;
 use shuyi_ui::basic::{BasicData, Own};
+use shuyi_ui::dialogue::preview::{DialogueFolder, DialoguePreview, PreviewGame};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
@@ -51,6 +53,9 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     screens: Option<Screens<A, T>>,
     modules: Option<Modules<A, T>>,
     crash_record: Option<CrashRecord<BasicData<A, T>>>,
+    /// Whether a crash report holds its record in a build without debug
+    /// tools too.
+    record_in_release: bool,
 }
 
 /// What a game on the short path is painted with: its font and pictures.
@@ -81,6 +86,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             screens: None,
             modules: None,
             crash_record: None,
+            record_in_release: false,
         }
     }
 
@@ -113,6 +119,23 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     pub fn crash_record(mut self, hook: CrashRecord<BasicData<A, T>>) -> Self {
         self.crash_record = Some(hook);
         self
+    }
+
+    /// The same game, with its record of its play in a crash report in a
+    /// build without debug tools too, where the panic at a frame named by
+    /// `SHUYI_PANIC_AT_FRAME` is honoured as well. Until said, only a build
+    /// with debug tools adds the record: together they write the game's
+    /// state on demand, which a shipped game gives anyone who runs it.
+    #[must_use]
+    pub fn crash_record_in_release(mut self) -> Self {
+        self.record_in_release = true;
+        self
+    }
+
+    /// Whether its crash reports hold its record in a build without debug
+    /// tools too ([`crash_record_in_release`](Self::crash_record_in_release)).
+    pub fn records_play_in_release(&self) -> bool {
+        self.record_in_release
     }
 
     /// Who it is.
@@ -224,6 +247,79 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         }
     }
 
+    /// Its dialogue preview on `ctx` ([`DialoguePreview`]): the scenes of
+    /// the `.dlg` files of `folder`, played as `preview` says, read again
+    /// when one changes ([`DialogueFolder`] over `folder`). Its
+    /// [`modules`](Self::modules) are installed, and no debug screen: it is
+    /// a writer's program. Or why a module could not be installed.
+    pub fn preview_game<P: PreviewGame<BasicData<A, T>>>(
+        &self,
+        ctx: Ctx<BasicData<A, T>>,
+        folder: Layer,
+        preview: P,
+    ) -> Result<Game<BasicData<A, T>>, ModuleError> {
+        let root = DialoguePreview::new(&ctx, preview);
+        let game = Game::new(ctx, Box::new(root), GameHooks::default()).with_debug_screens(false);
+        let game = match self.modules {
+            Some(modules) => game.with_modules(modules())?,
+            None => game,
+        };
+        game.with_module(DialogueFolder::new(folder))
+    }
+
+    /// How a backend starts its dialogue preview
+    /// ([`preview_game`](Self::preview_game)) over `folder`, as
+    /// [`start`](Self::start) starts the game: its card, then the preview.
+    /// A folder that couldn't be read (its `Err`, what went wrong), a file
+    /// of the game's that doesn't load, or a module that can't be
+    /// installed, is the load's error, which the platform shows in place of
+    /// the preview. A `.dlg` file dropped on the window joins the folder
+    /// ([`drop_scenes`](shuyi_ui::dialogue::preview::drop_scenes)): on the
+    /// web, which has no folders, `folder` is an empty layer the writer
+    /// drops their scenes in.
+    pub fn preview_start<P: PreviewGame<BasicData<A, T>>>(
+        self,
+        folder: Result<Layer, String>,
+        preview: P,
+    ) -> Start<BasicData<A, T>> {
+        let made = self.made();
+        let start = Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
+            let folder = folder?;
+            let ctx = self.ctx()?;
+            self.preview_game(setup.ctx(ctx), folder, preview)
+                .map_err(|e| e.to_string())
+        })
+        .made(made)
+        .state_hash(Game::state_hash);
+        #[cfg(feature = "std")]
+        let start = start.on_system(dropped_scenes::<A, T>);
+        start
+    }
+
+    /// Its dialogue preview ([`preview_game`](Self::preview_game)) over
+    /// `folder` in the test Harness.
+    ///
+    /// # Panics
+    ///
+    /// As [`harness`](Self::harness).
+    #[cfg(any(test, feature = "harness"))]
+    pub fn preview_harness<P: PreviewGame<BasicData<A, T>>>(
+        &self,
+        folder: Layer,
+        preview: P,
+    ) -> crate::harness::Harness<BasicData<A, T>> {
+        let ctx = self
+            .ctx()
+            .unwrap_or_else(|errors| panic!("the game's files:\n{errors}"));
+        let game = self
+            .preview_game(ctx, folder, preview)
+            .unwrap_or_else(|e| panic!("the game's modules: {e}"));
+        let harness = crate::harness::Harness::new(game);
+        #[cfg(feature = "std")]
+        let harness = harness.with_system_hook(dropped_scenes::<A, T>);
+        harness
+    }
+
     /// The game in the test Harness, at its first screen.
     ///
     /// # Panics
@@ -239,6 +335,21 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             .game(ctx)
             .unwrap_or_else(|e| panic!("the game's modules: {e}"));
         crate::harness::Harness::new(game)
+    }
+}
+
+/// The dialogue preview's hook for the system's events: the `.dlg` files
+/// of a drop join its folder ([`drop_scenes`](shuyi_ui::dialogue::preview::drop_scenes)).
+#[cfg(feature = "std")]
+fn dropped_scenes<A: ActionSet, T: Debug + 'static>(
+    game: &mut Game<BasicData<A, T>>,
+    event: crate::SystemEvent,
+) {
+    if let crate::SystemEvent::FilesDropped(files) = event {
+        let files = files
+            .into_iter()
+            .map(|file| (file.name().to_owned(), file.into_bytes()));
+        shuyi_ui::dialogue::preview::drop_scenes(game, files);
     }
 }
 

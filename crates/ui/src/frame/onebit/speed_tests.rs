@@ -4,10 +4,10 @@
 
 use alloc::rc::Rc;
 
+use super::test_map::{Swatch, c, test_map};
 use proptest::prelude::*;
 use shuyi_assets::font::{CellWidths, FontAtlasDef};
 use shuyi_assets::image::ImageId;
-use shuyi_assets::ink::Ink;
 
 use super::*;
 use crate::frame::console::ConsoleSpec;
@@ -20,13 +20,14 @@ mod timing;
 /// A font of 8 × 16 cells: `X` a block, `?` (the fallback) two corners,
 /// `[` and `]` a column at either side, `"` two dots, `#` every pixel, and
 /// a wide `田`, its left half's left column and its right half's top row.
-fn test_font() -> (FontAtlasDef, Vec<u8>) {
+pub(super) fn test_font() -> (FontAtlasDef, Vec<u8>) {
     let atlas = FontAtlasDef {
         cell_w: 8,
         cell_h: 16,
         columns: 32,
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4), ('#', 5)].into(),
         wide: [('田', 6)].into(),
+        wide_sets: alloc::collections::BTreeMap::new(),
     };
     let mut bits = vec![0u8; 8 * 16];
     bits[6] = 0b0001_1000;
@@ -48,10 +49,11 @@ const GLYPHS: [char; 11] = [' ', ' ', 'X', '?', '[', ']', '"', '#', 'Z', '田', 
 
 /// The glyphs of [`GLYPHS`] a buffer prints in two cells.
 const WIDE_GLYPHS: [char; 2] = ['田', 'あ'];
-/// Every ink's code, and colours white or black by brightness, one each
-/// side of the half.
+/// Every swatch's colour (the first eight, in [`Swatch::ALL`]'s order),
+/// roles of [`test_map`], and colours of no role, dithered by
+/// their luminance: light, dark, and either side of the half.
 fn colors() -> Vec<Rgb> {
-    let mut colors: Vec<Rgb> = Ink::ALL.iter().map(|ink| Rgb::from(ink.code())).collect();
+    let mut colors: Vec<Rgb> = Swatch::ALL.iter().map(|&s| c(s)).collect();
     colors.extend([
         Rgb::new(250, 250, 10),
         Rgb::new(200, 30, 30),
@@ -154,7 +156,7 @@ fn picture_id(big: bool) -> ImageId {
     picture_of(usize::from(big))
 }
 
-struct TestImages;
+pub(super) struct TestImages;
 
 impl Images for TestImages {
     fn image(&self, id: ImageId) -> Option<Image<'_>> {
@@ -177,13 +179,12 @@ impl Images for TestImages {
 /// A cell: a glyph, fg and bg (indices into [`GLYPHS`] and
 /// [`colors`]) and whether it is see-through.
 fn cell() -> impl Strategy<Value = Cell> {
-    cell_see_through(0.2)
+    cell_see_through(0.2, colors().len())
 }
 
-/// [`cell`], see-through that often.
-fn cell_see_through(odds: f64) -> impl Strategy<Value = Cell> {
+/// [`cell`], see-through that often, in the first `n` of [`colors`].
+fn cell_see_through(odds: f64, n: usize) -> impl Strategy<Value = Cell> {
     let colors = colors();
-    let n = colors.len();
     (0..GLYPHS.len(), 0..n, 0..n, prop::bool::weighted(odds)).prop_map(
         move |(glyph, fg, bg, see_through)| Cell {
             glyph: GLYPHS[glyph],
@@ -313,17 +314,20 @@ fn src_and_dest(picture: usize) -> impl Strategy<Value = (Rect, Rect)> {
 }
 
 fn thing() -> impl Strategy<Value = Thing> {
-    let n = colors().len();
+    thing_in(colors().len())
+}
+
+/// A thing in the first `n` of [`colors`] (a painted picture has its own).
+fn thing_in(n: usize) -> impl Strategy<Value = Thing> {
     prop_oneof![
         (px_rect(420, 260), 0..n, any::<bool>()).prop_map(|(r, c, l)| Thing::Rect(r, c, l)),
-        sprite(),
+        sprite(n),
         painted(),
     ]
 }
 
-/// A [`Thing::Sprite`].
-fn sprite() -> impl Strategy<Value = Thing> {
-    let n = colors().len();
+/// A [`Thing::Sprite`], a solid paint in the first `n` of [`colors`].
+fn sprite(n: usize) -> impl Strategy<Value = Thing> {
     (0..PICTURES.len())
         .prop_flat_map(move |picture| {
             (
@@ -385,16 +389,16 @@ const CELL_SIZES: [(u16, u16); 3] = [(8, 16), (6, 8), (8, 12)];
 
 /// A buffer of up to `max_w × max_h` cells of one of [`CELL_SIZES`],
 /// sometimes past the screen, with its cells (see-through that often) and
-/// things.
-fn plain_buffer(max_w: u16, max_h: u16, odds: f64) -> impl Strategy<Value = GlyphBuffer> {
+/// things, in the first `n` of [`colors`].
+fn plain_buffer(max_w: u16, max_h: u16, odds: f64, n: usize) -> impl Strategy<Value = GlyphBuffer> {
     (1..=max_w, 1..=max_h, 0..CELL_SIZES.len())
         .prop_flat_map(move |(w, h, size)| {
-            let n = usize::from(w) * usize::from(h);
-            let cells = prop::collection::vec(cell_see_through(odds), n);
+            let cells = usize::from(w) * usize::from(h);
+            let cells = prop::collection::vec(cell_see_through(odds, n), cells);
             (
                 Just((w, h, size)),
                 cells,
-                prop::collection::vec(thing(), 0..6),
+                prop::collection::vec(thing_in(n), 0..6),
             )
         })
         .prop_map(|((w, h, size), cells, things)| {
@@ -428,8 +432,13 @@ fn plain_buffer(max_w: u16, max_h: u16, odds: f64) -> impl Strategy<Value = Glyp
 type Backdrop = (GlyphBuffer, Rect, (f32, f32), u8);
 
 fn backdrop() -> impl Strategy<Value = Backdrop> {
+    backdrop_in(colors().len())
+}
+
+/// A backdrop in the first `n` of [`colors`].
+fn backdrop_in(n: usize) -> impl Strategy<Value = Backdrop> {
     (
-        plain_buffer(24, 8, 0.2),
+        plain_buffer(24, 8, 0.2, n),
         (0..52, 0..16, 1..30, 1..10).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h)),
         (-80.0f32..80.0, -40.0f32..40.0),
         1..=4u8,
@@ -445,9 +454,14 @@ fn with_backdrop(mut buf: GlyphBuffer, backdrop: Option<Backdrop>) -> GlyphBuffe
 
 /// Any buffer: a plain one, or one mostly see-through over a backdrop.
 fn buffer() -> impl Strategy<Value = GlyphBuffer> {
+    buffer_in(colors().len())
+}
+
+/// [`buffer`] in the first `n` of [`colors`].
+fn buffer_in(n: usize) -> impl Strategy<Value = GlyphBuffer> {
     prop_oneof![
-        plain_buffer(52, 16, 0.2),
-        (plain_buffer(52, 16, 0.8), backdrop())
+        plain_buffer(52, 16, 0.2, n),
+        (plain_buffer(52, 16, 0.8, n), backdrop_in(n))
             .prop_map(|(buf, backdrop)| with_backdrop(buf, Some(backdrop))),
     ]
 }
@@ -501,7 +515,7 @@ fn fast(buf: &GlyphBuffer) -> Box<Frame> {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render(buf, &font, &TestImages, &mut frame);
+    render(buf, &font, &TestImages, &test_map(), &mut frame);
     frame
 }
 
@@ -509,7 +523,7 @@ fn slow(buf: &GlyphBuffer) -> Box<Frame> {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    reference::render(buf, &font, &TestImages, &mut frame);
+    reference::render(buf, &font, &TestImages, &test_map(), &mut frame);
     frame
 }
 
@@ -535,7 +549,7 @@ proptest! {
         let (atlas, bits) = test_font();
         let font = Font::new(&atlas, &bits).unwrap();
         let mut frame = fast(&old);
-        render_changed(&old, &new, &font, &TestImages, &mut frame);
+        render_changed(&old, &new, &font, &TestImages, &test_map(), &mut frame);
         let full = fast(&new);
         prop_assert!(*frame == *full, "first differs at {:?}", first_difference(&frame, &full));
     }
@@ -555,7 +569,7 @@ proptest! {
         let (atlas, bits) = test_font();
         let font = Font::new(&atlas, &bits).unwrap();
         let mut frame = fast_with_roles(&old);
-        render_changed_with(&old, &new, &font, &TestImages, &roles(), &mut frame);
+        render_changed(&old, &new, &font, &TestImages, &roles(), &mut frame);
         let full = fast_with_roles(&new);
         prop_assert!(*frame == *full, "first differs at {:?}", first_difference(&frame, &full));
     }
@@ -587,7 +601,7 @@ fn fast_with_roles(buf: &GlyphBuffer) -> Box<Frame> {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    render_with(buf, &font, &TestImages, &roles(), &mut frame);
+    render(buf, &font, &TestImages, &roles(), &mut frame);
     frame
 }
 
@@ -595,20 +609,22 @@ fn slow_with_roles(buf: &GlyphBuffer) -> Box<Frame> {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
-    reference::render_with(buf, &font, &TestImages, &roles(), &mut frame);
+    reference::render(buf, &font, &TestImages, &roles(), &mut frame);
     frame
 }
 
-/// Every ink's looked-up byte is the pattern's pixels, on every row and
-/// all along it.
+/// Every swatch's looked-up byte is its pattern's pixels, on every row
+/// and all along it.
 #[test]
-fn pattern_bytes_are_the_inks_pixels() {
-    for ink in Ink::ALL {
+fn pattern_bytes_are_the_patterns_pixels() {
+    let map = test_map();
+    for swatch in Swatch::ALL {
+        let shade = map.shape(c(swatch));
         for y in 0..HEIGHT {
-            let byte = InkShades::of(ink).row(y);
+            let byte = shade.row(y);
             for x in 0..WIDTH {
                 let white = byte >> (7 - (x & 7)) & 1 == 1;
-                assert_eq!(white, ink_is_white(ink, x, y), "{ink:?} at ({x}, {y})");
+                assert_eq!(white, shade.is_white(x, y), "{swatch:?} at ({x}, {y})");
             }
         }
     }
@@ -653,9 +669,9 @@ fn a_byte_at_a_whole_cell_is_written_whole_only_inside_the_clip() {
         },
     };
     let bits = u64::from(0b1000_0001u8) << 56;
-    target.run(0, 0, bits, Pen::ink(Ink::Black));
-    target.run(0, 8, bits, Pen::ink(Ink::Black));
-    target.run(0, 16, bits, Pen::ink(Ink::Black));
+    target.run(0, 0, bits, Pen::Paint(Shade::rows([0; 8])));
+    target.run(0, 8, bits, Pen::Paint(Shade::rows([0; 8])));
+    target.run(0, 16, bits, Pen::Paint(Shade::rows([0; 8])));
     target.run(0, 16, bits >> 1, Pen::Flip);
     let row: String = (0..24)
         .map(|x| if is_white(&frame, x, 0) { '.' } else { '#' })
@@ -716,9 +732,9 @@ fn a_render_marks_each_phase_in_order() {
         let mut marked = Vec::new();
         let mut mark = |phase| marked.push(phase);
         if slow {
-            reference::render_marked(&buf, &font, &(), &mut frame, &mut mark);
+            reference::render_marked(&buf, &font, &(), &test_map(), &mut frame, &mut mark);
         } else {
-            render_marked(&buf, &font, &(), &mut frame, &mut mark);
+            render_marked(&buf, &font, &(), &test_map(), &mut frame, &mut mark);
         }
         assert_eq!(marked, Phase::ALL);
     }
@@ -777,11 +793,7 @@ fn only_a_whole_byte_inside_the_clip_is_written_straight() {
 fn a_new_console_size_is_drawn_whole() {
     let (atlas, bits) = test_font();
     let font = Font::new(&atlas, &bits).unwrap();
-    let cell = Cell::new(
-        '#',
-        Rgb::from(Ink::Black.code()),
-        Rgb::from(Ink::Grey.code()),
-    );
+    let cell = Cell::new('#', c(Swatch::Black), c(Swatch::Grey));
     let old = GlyphBuffer::with_spec(ConsoleSpec::text(4, 2), cell);
     let small = ConsoleSpec {
         cols: 4,
@@ -791,7 +803,7 @@ fn a_new_console_size_is_drawn_whole() {
     };
     let new = GlyphBuffer::with_spec(small, cell);
     let mut frame = fast(&old);
-    render_changed(&old, &new, &font, &TestImages, &mut frame);
+    render_changed(&old, &new, &font, &TestImages, &test_map(), &mut frame);
     let whole = fast(&new);
     assert!(
         *frame == *whole,
@@ -805,9 +817,9 @@ fn a_new_console_size_is_drawn_whole() {
 /// reference draws them.
 #[test]
 fn a_zoomed_scene_away_from_the_corner_draws_as_the_reference() {
-    let black = Rgb::from(Ink::Black.code());
-    let edged = Rgb::from(Ink::BlackEdged.code());
-    let grey = Rgb::from(Ink::Grey.code());
+    let black = c(Swatch::Black);
+    let edged = c(Swatch::BlackEdged);
+    let grey = c(Swatch::Grey);
     for zoom in 2..=4 {
         let mut scene =
             GlyphBuffer::with_spec(ConsoleSpec::text(6, 3), Cell::new(' ', black, grey));
@@ -903,7 +915,7 @@ fn a_cell_reaches_its_glyph_and_a_pixel_more() {
 /// (opacity 247 is the edge for the last pixel of the 4 × 4 order).
 #[test]
 fn a_sprite_at_the_dithers_edge_draws_as_the_reference() {
-    let grey = Rgb::from(Ink::Grey.code());
+    let grey = c(Swatch::Grey);
     for level in [246, 247, 248] {
         let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(4, 2), Cell::new(' ', grey, grey));
         buf.add_sprite(Sprite {
@@ -930,8 +942,8 @@ fn a_sprite_at_the_dithers_edge_draws_as_the_reference() {
 /// scene's glyphs there, as the reference does.
 #[test]
 fn a_window_ending_inside_a_byte_cuts_the_scene_there() {
-    let black = Rgb::from(Ink::Black.code());
-    let white = Rgb::from(Ink::White.code());
+    let black = c(Swatch::Black);
+    let white = c(Swatch::White);
     let mut scene = GlyphBuffer::with_spec(ConsoleSpec::text(8, 2), Cell::new(' ', black, white));
     scene.print(0, 0, "########", black, white);
     let narrow = ConsoleSpec {
@@ -1007,7 +1019,7 @@ impl Fight {
     /// it at `x` and `x + 176`, the second flipped, neither on a byte.
     fn frame(x: i32) -> GlyphBuffer {
         let table = Self::table();
-        let black = Rgb::from(Ink::Black.code());
+        let black = c(Swatch::Black);
         let mut buf =
             GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::see_through(' ', black));
         let backdrop = table.id("backdrop.png").unwrap();
@@ -1054,8 +1066,8 @@ fn a_fight_draws_as_the_reference() {
     let (mut fast, mut slow) = (Box::new([0u8; FRAME_BYTES]), Box::new([0u8; FRAME_BYTES]));
     for x in 0..9 {
         let buf = Fight::frame(x * 3 + 5);
-        render(&buf, &font, &fight, &mut fast);
-        reference::render(&buf, &font, &fight, &mut slow);
+        render(&buf, &font, &fight, &test_map(), &mut fast);
+        reference::render(&buf, &font, &fight, &test_map(), &mut slow);
         assert!(
             fast == slow,
             "at {x}: first differs at {:?}",
@@ -1067,11 +1079,11 @@ fn a_fight_draws_as_the_reference() {
 /// A buffer of grey cells and only sprites, half the time see-through
 /// over a backdrop's scene of sprites, at any zoom.
 fn sprites_buffer() -> impl Strategy<Value = GlyphBuffer> {
-    let things = || prop::collection::vec(sprite(), 1..10);
+    let things = || prop::collection::vec(sprite(colors().len()), 1..10);
     let window = (0..52, 0..16, 1..52, 1..16).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h));
     let backdrop = (things(), window, (-80.0f32..80.0, -40.0f32..40.0), 1..=4u8);
     (things(), prop::option::of(backdrop)).prop_map(|(things, backdrop)| {
-        let grey = Rgb::from(Ink::Grey.code());
+        let grey = c(Swatch::Grey);
         let fill = |see_through| {
             if see_through {
                 Cell::see_through(' ', grey)
@@ -1251,11 +1263,11 @@ fn pixel_for_pixel_is_found_exactly() {
 /// reference draws it, not as a run of 0, 1 and 2.
 #[test]
 fn a_sprite_from_left_of_its_picture_draws_as_the_reference() {
-    let black = Rgb::from(Ink::Black.code());
+    let black = c(Swatch::Black);
     for (picture, dest_x) in [(0, 0), (0, 13), (2, 5), (3, 21)] {
         let mut buf = GlyphBuffer::with_spec(
             ConsoleSpec::text(50, 15),
-            Cell::new(' ', black, Rgb::from(Ink::Grey.code())),
+            Cell::new(' ', black, c(Swatch::Grey)),
         );
         buf.add_sprite(Sprite::new(
             picture_of(picture),
@@ -1276,8 +1288,8 @@ fn a_sprite_from_left_of_its_picture_draws_as_the_reference() {
 /// flipped: every pixel of rows 0..7 is the picture's under it (where
 /// its mask draws it) or white, and the reference draws the same.
 fn check_wide(src: Rect, dest: Rect, flip_x: bool) {
-    let black = Rgb::from(Ink::Black.code());
-    let white = Rgb::from(Ink::White.code());
+    let black = c(Swatch::Black);
+    let white = c(Swatch::White);
     let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::new(' ', black, white));
     buf.add_sprite(Sprite {
         flip_x,
@@ -1328,9 +1340,10 @@ fn a_sprite_inside_a_byte_draws_only_there() {
     }
 }
 
-/// Shades that count how often each is asked.
+/// Shades that count how often each is asked, drawing as [`test_map`].
 #[derive(Default)]
 struct Counted {
+    map: PatternMap,
     grounds: core::cell::Cell<u32>,
     glyphs: core::cell::Cell<u32>,
 }
@@ -1338,16 +1351,16 @@ struct Counted {
 impl Shades for Counted {
     fn ground(&self, rgb: Rgb) -> Shade {
         self.grounds.set(self.grounds.get() + 1);
-        InkShades.ground(rgb)
+        self.map.ground(rgb)
     }
 
     fn glyph(&self, rgb: Rgb) -> Shade {
         self.glyphs.set(self.glyphs.get() + 1);
-        InkShades.glyph(rgb)
+        self.map.glyph(rgb)
     }
 
     fn shape(&self, rgb: Rgb) -> Shade {
-        InkShades.shape(rgb)
+        self.map.shape(rgb)
     }
 }
 
@@ -1361,11 +1374,11 @@ fn a_run_of_one_colour_asks_its_shade_once() {
     let mut buf = GlyphBuffer::new(50, 15, Cell::new('X', a, b));
     let mut frame = Box::new([0u8; FRAME_BYTES]);
     let counted = Counted::default();
-    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    render(&buf, &font, &TestImages, &counted, &mut frame);
     assert_eq!((counted.grounds.get(), counted.glyphs.get()), (1, 1));
     // Another colour in the middle: asked again after it, and again back.
     buf.set(10, 3, Cell::new('X', b, a));
     let counted = Counted::default();
-    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    render(&buf, &font, &TestImages, &counted, &mut frame);
     assert_eq!((counted.grounds.get(), counted.glyphs.get()), (3, 5));
 }

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 773b965a5b268b0607234d10996b65581388db35bc7ab0e4c8be4629d3ac08b2 # shrinks to steps = [Choice { options: [ChoiceOption { tone: "a", text: "A!", line: LineId(""), steps: [] }] }], present = Everyone, replies = [], text_box = 0

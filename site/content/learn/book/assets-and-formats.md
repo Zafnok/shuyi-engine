@@ -1,10 +1,11 @@
 +++
 title = "Assets and formats"
 description = "Kinds of asset are plain types, formats are plugins that read them, the registry finds them by id in a bundle of layers."
-weight = 50
+weight = 30
 
 [extra]
-chapter = 5
+part = "chapters"
+chapter = 3
 +++
 
 A game is made of more than code. It has words, keys, colors, maps, pictures and
@@ -36,12 +37,16 @@ The garden's plan is a kind of the game's own, plain data with a name for messag
 
 {{ snippet(file="src/assets.rs", anchor="kind") }}
 
-> **Rust:** `u8` and `u32` are whole numbers that are never negative, 8 and 32 bits
-> long, so a `u8` goes up to 255. `Deserialize` comes from a crate called `serde`, and
-> deriving it writes the code that reads this type from a file.
-> `#[serde(deny_unknown_fields)]` says a field this type doesn't have is an error
-> rather than being ignored, which catches a typo in the file. `impl AssetKind for Plan`
-> keeps the one promise of that trait, a `const`, a fixed value: its name in messages.
+{% newcomer(to="rust", topic="`u8`, `serde` and `deny_unknown_fields`") %}
+`u8` and `u32` are whole numbers that are never negative, 8 and 32 bits
+long, so a `u8` goes up to 255. `Deserialize` comes from a crate called `serde`, and
+deriving it writes the code that reads this type from a file.
+`#[serde(deny_unknown_fields)]` says a field this type doesn't have is an error
+rather than being ignored, which catches a typo in the file.
+{% end %}
+
+`impl AssetKind for Plan` keeps the one promise of that trait, a `const`, a fixed
+value: its name in messages.
 
 in a RON file of the game's:
 
@@ -54,15 +59,22 @@ for the plan by its id, the file's path with or without its extension:
 
 {{ snippet(file="src/assets.rs", anchor="formats") }}
 
-> **Rust:** `Ron::<Plan>::new()` makes the format that reads a `Plan` from RON. `let mut`
-> gives a name to a value that may change, and `register` changes it.
->
-> `Result<Plan, Vec<ContentError>>` is either a `Plan`, or the list of what's wrong.
-> The `?` after `.load::<Plan>(bundle, "garden")` says: if this is an error, hand it
-> back now, and otherwise give me the value inside. `Err(vec![...])` is the same kind of
-> error, made by hand, and `Ok(plan)` is the good answer.
->
-> `&Bundle` means this function borrows the bundle, only to look.
+`Ron::<Plan>::new()` makes the format that reads a `Plan` from RON.
+
+{% newcomer(to="rust", topic="`let mut`") %}
+`let mut` gives a name to a value that may change, and `register` changes it.
+{% end %}
+
+{% newcomer(to="rust", topic="`Result` and `?`") %}
+`Result<Plan, Vec<ContentError>>` is either a `Plan`, or the list of what's wrong.
+The `?` after `.load::<Plan>(bundle, "garden")` says: if this is an error, hand it
+back now, and otherwise give me the value inside. `Err(vec![...])` is the same kind of
+error, made by hand, and `Ok(plan)` is the good answer.
+{% end %}
+
+{% newcomer(to="rust", topic="a borrow, `&`") %}
+`&Bundle` means this function borrows the bundle, only to look.
+{% end %}
 
 `read_plan` is the function `BasicGame::with_own` takes in
 [chapter 1](@/learn/book/quick-start.md#what-it-is-made-of): it reads the game's own
@@ -140,27 +152,80 @@ cargo shuyi font-atlas --wide files-src/my-16x16.bdf files-src/ter-u16n.bdf crat
 
 The atlas then keeps the wide font's glyphs of every character the text uses that the
 narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` names
-(a name entry's letters, say). A font in JIS X 0208, as many Japanese bitmap fonts are,
+(a name entry's letters, say).
+
+Japanese and Chinese write many of the same characters with one code point but each in
+its own shape (直, 骨, 角). A game in both gives a wide font for each, as a named
+**set**:
+
+```text
+cargo shuyi font-atlas --wide ja=files-src/ja-16.bdf --wide zh-Hans=files-src/zh-16.bdf files-src/ter-u16n.bdf crates/game/files/font
+```
+
+Each language pack names the set it draws from in its `lang.ron`, and a Chinese one says
+its quotes, ellipsis and dash (`“ ” ‘ ’ … —`) are wide, as Chinese writes them:
+
+```ron
+(name: "简体中文", made_by: Machine, wide_font: Some("zh-Hans"), wide_punctuation: true)
+```
+
+The source language has no `lang.ron`: a game written in Chinese says the same in its
+code, where it declares the source:
+
+{{ snippet(file="src/assets.rs", anchor="source_lang") }}
+
+A set keeps the characters of the languages that name it, and those `font_atlas.wide_set_glyphs`
+names for it (`{"ja": "..."}`). A wide character is drawn from the language's own set
+first, then from any other, so a pack's own name shows in its shapes whatever language is
+on; `cargo shuyi check` fails on a pack character its set lacks. A font in JIS X 0208, as many Japanese bitmap fonts are,
 needs `shuyi-cli`'s `jis` feature in the game's `tools`. Text measured for a layout counts a wide character as
 two: `shuyi::assets::lang::text_width` does, with the widths of the frame
 (`buf.widths()`), and `buf.text_cells(text)` gives the same as a column count.
 The checks that keep text to a length count so too, once they have the atlas's widths
 (`CellWidths::of(&atlas)`): a language pack's rules (`PackRules::widths`, or
 `LangPackRon::widths_of`), a tip's (`TipRules::widths`) and a dialogue's
-(`SceneRules::widths`). So load the font atlas before the text.
+(`SceneRules::widths`). So load the font atlas before the text. The source's own text is
+measured in its language: `source.widths(&CellWidths::of(&atlas))`, or
+`lang.widths(code, &base)` for any language.
+
+## Voices
+
+A language's voice clips sit in its voice folder, one per dialogue line, listed in its
+manifest (`voice::from_source`), and its cast says which voice says each speaker's lines
+(`voice::cast_from_source`). Whatever makes the clips, a speech program or an actor in a
+booth, is the game's own tool, and the engine tells that tool what to do:
+`voice::plan::plan` takes the dialogue, the scenes to voice, the cast and the manifest's
+clips, with three answers only the game knows: which clips a line needs (one, one per
+variant, or none for a reply nobody says aloud), the words a clip says, and whether a
+generated clip's voice changed (its sample was redone, say). It gives back every clip
+wanted, with the line before it, and which to make and why (`Why::Missing`, `Words`,
+`Direction`, `Recast`, or the tool's own reason), which a person must record again, which
+to delete, and which lines no voice is cast to say. A clip of a scene that isn't voiced is
+kept while its line is there. `voice::plan::recording_script(&plan, "guide")` lists one
+voice's lines in script order, for a recording session. It reads and writes no file, so
+the tool loads the files, plans, and does the work.
 
 ## Layers
 
 A bundle is **layers** read in order: a file comes from the first layer that has it. So
 a layer laid over the game's files replaces a file at its path, and adds the ones only
 it has. A player's **mod**, a change a player makes to a game, is such a layer; on
-desktop, `shuyi::app::read_folder` reads a folder on disk into one.
+desktop, `shuyi::app::read_folder` reads a folder on disk into one. On the web, where
+there are no folders, `shuyi::app::page::page_layer` reads the text files the game's
+page hands it (a page that edits the game's data beside it, and runs it again, as the
+[playground](@/learn/playground.md) does with Hello, Grid), and `page::report` tells the
+page what was wrong with them: load your data with the layer laid first, and lay it only
+if that works. A game started with `run_game`, as the project's is, does all that with no
+code of its own, which is how each step of the project plays in its own page's
+playground.
 
 {{ snippet(file="src/assets.rs", anchor="layers") }}
 
-> **Rust:** `BTreeMap` is a list of values looked up by a key. `b"..."` is text as raw
-> bytes, which is what a file holds, and `.to_vec()` makes it a list you own.
-> `.to_owned()` does the same for a `&str`.
+{% newcomer(to="rust", topic="`BTreeMap` and bytes") %}
+`BTreeMap` is a list of values looked up by a key. `b"..."` is text as raw
+bytes, which is what a file holds, and `.to_vec()` makes it a list you own.
+`.to_owned()` does the same for a `&str`.
+{% end %}
 
 A layer can also be private (files that may not be handed out, such as bought art: the
 tools say which files come from one), or hold only the tests' files, which a build that
@@ -201,15 +266,19 @@ the value. A small module of the game's keeps it, and refreshes it when files ch
 
 {{ snippet(file="src/assets.rs", anchor="hot") }}
 
-> **Rust:** `impl<G: GameData> Module<G> for HotPlan` says `HotPlan` is a module of any
-> game: `G` is a blank, and `G: GameData` says it must be a type with that trait. `Arc`
-> lets several owners share one value. `'_` lets the compiler work out how long a borrow
-> lasts.
+{% newcomer(to="rust", topic="a generic `impl`, `Arc` and `'_`") %}
+`impl<G: GameData> Module<G> for HotPlan` says `HotPlan` is a module of any
+game: `G` is a blank, and `G: GameData` says it must be a type with that trait. `Arc`
+lets several owners share one value. `'_` lets the compiler work out how long a borrow
+lasts.
+{% end %}
 
 A broken file never stops the game: the old value stays, and `note_reload` shows its
 error, with its file and line, at the top of the frame until the next good save. A
-reload is no input and is in no record, and a build that ships never looks at the disk.
-It isn't on the web, which rebuilds the page instead, or on a console.
+reload is no input and is in no record, and a build that ships never looks at the disk,
+but at a folder the game reads with `shuyi::app::read_watched_folder`: a program you hand
+to a writer or an artist, built optimized, which plays the files they save in that one
+folder. It isn't on the web, which rebuilds the page instead, or on a console.
 
 ## The pack
 
@@ -236,3 +305,31 @@ the target's folder has its own. `cargo shuyi bake --target playdate --sheet she
 names the pictures it dithered and draws each beside its source, so you see which ones
 are worth drawing by hand. The formats page says [what each dither
 does](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-onebit-section).
+
+## Check yourself
+
+{% check() %}
+`Plan` has `#[serde(deny_unknown_fields)]`, and someone adds `rain: 3` to `garden.ron`.
+What does `cargo shuyi check` say?
+
+- [x] An `SH2001` error at the file, line and column of `rain`, naming the fields `Plan` does have. — `deny_unknown_fields` makes a field the type doesn't have an error, which catches a typo ([when a file is wrong](#when-a-file-is-wrong)).
+- [ ] Nothing: the field is ignored and the plan loads. — That would happen without `deny_unknown_fields`, which asks for the error ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [ ] Nothing, but the game crashes when it starts. — A broken file never crashes a game: the format finds the problem and says where it is ([when a file is wrong](#when-a-file-is-wrong)).
+{% end %}
+
+{% check() %}
+`garden.ron` says `grow_percent: 150`. `grow_percent` is a `u8`. What catches it?
+
+- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
+- [ ] The RON format, with "Integer is out of bounds". — A `u8` goes up to 255, so 150 reads fine ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [ ] Nothing: the game reads it, and every seed grows. — `read_plan` gives back an error when `plan.grow_percent > 100` ([reading it through the registry](#reading-it-through-the-registry)).
+{% end %}
+
+{% check() %}
+A test makes `Bundle::new(vec![layer, game().bundle().layers()[0]])`, where `layer` holds
+only a `garden.ron`. Where do `garden.ron` and `en.ron` come from?
+
+- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
+- [ ] Both from the game's layer, since the game's files come first. — The order of the list decides, and `layer` is first ([layers](#layers)).
+- [ ] `garden.ron` from the mod's layer, and no `en.ron` at all. — A layer laid over the game's files only replaces the ones it has, and the test checks `bundle.has("en.ron")` ([layers](#layers)).
+{% end %}

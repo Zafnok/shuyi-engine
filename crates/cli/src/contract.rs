@@ -14,10 +14,9 @@
 //! | `modules` | the catalog by concern, the modules the game's engine builds, and the ones the game has on | [`modules`] |
 //! | `add <module>` | a module turned on: its feature of `shuyi` in `Cargo.toml`, its skill copied, what it is for, an alternative already on | [`add`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds; with `--perf`, the frames' times | [`run`], [`perf`] |
-//! | `scene` | the scene or stage on screen after a script | [`run`] |
+//! | `scene` | the scene or stage on screen after a script; with `--path` one value of its data, with `--shape` its shape | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
-//! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
-//! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands | [`playtest`] |
+//! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands (none: a plain bot run); each try's commands and record for `replay`, each bot's outcomes counted and the spread of its numbers | [`playtest`] |
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
@@ -44,7 +43,6 @@ pub mod add;
 pub mod attach;
 pub mod autobalance;
 pub mod bake;
-pub mod bots;
 pub mod check;
 pub mod cli;
 pub mod codes;
@@ -75,7 +73,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 37;
+pub const VERSION: u32 = 46;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -97,8 +95,6 @@ pub enum Op {
     Scene,
     /// A record replayed.
     Replay,
-    /// Bots playing the game.
-    Bots,
     /// Named bots' tries judged against the game's checks.
     Playtest,
     /// A stage changed until the game's named bots land in their bands.
@@ -134,7 +130,7 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 17] = [
+    pub const ALL: [Op; 16] = [
         Op::New,
         Op::Check,
         Op::Lint,
@@ -143,7 +139,6 @@ impl Op {
         Op::Run,
         Op::Scene,
         Op::Replay,
-        Op::Bots,
         Op::Playtest,
         Op::Autobalance,
         Op::Import,
@@ -178,7 +173,6 @@ impl Op {
             Op::Run => "run",
             Op::Scene => "scene",
             Op::Replay => "replay",
-            Op::Bots => "bots",
             Op::Playtest => "playtest",
             Op::Autobalance => "autobalance",
             Op::Import => "import",
@@ -438,8 +432,8 @@ fn names_its_op(mut answer: Schema, op: Op) -> Schema {
 /// tool does (named `session.<op>`; [`Op::SESSION`]).
 pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
     use crate::mcp::{
-        EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartInput,
-        StartOutput, StepInput, StopOutput,
+        EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, SceneInput,
+        StartInput, StartOutput, StepInput, StopOutput,
     };
     let name = if session {
         format!("session.{}", op.name())
@@ -455,9 +449,8 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Add, _) => pair::<add::AddInput, add::AddOutput>(op, name),
         (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(op, name),
         (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(op, name),
-        (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(op, name),
+        (Op::Scene, true) => pair::<SceneInput, run::SceneOutput>(op, name),
         (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(op, name),
-        (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(op, name),
         (Op::Playtest, _) => {
             pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(op, name)
         }

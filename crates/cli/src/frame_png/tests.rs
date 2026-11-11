@@ -26,6 +26,7 @@ fn tiny_atlas() -> (FontAtlasDef, Vec<u8>) {
         columns: 3,
         glyphs: BTreeMap::from([(' ', 0), ('A', 1), (FALLBACK_GLYPH, 2)]),
         wide: BTreeMap::new(),
+        wide_sets: BTreeMap::new(),
     };
     let mut rgba = vec![0; 24 * 16 * 4];
     let mut set = |x: usize, y: usize| rgba[(y * 24 + x) * 4..][..4].copy_from_slice(&[255; 4]);
@@ -591,7 +592,7 @@ fn a_line_of_wide_and_narrow_glyphs_matches_its_reference() {
     let wide = read_font(&root.join("tests/fixtures/fonts/wide-16.bdf")).unwrap();
     let chars = AtlasChars::default().with_wide("口田日一");
     let atlas = build_wide_atlas(&narrow, Some(&wide), &chars);
-    let png = encode_png(atlas.width, atlas.height, &atlas.rgba).unwrap();
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
     let widths = CellWidths::of(&atlas.def);
     let table = ImageTable::new(BTreeMap::new());
     let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
@@ -602,23 +603,148 @@ fn a_line_of_wide_and_narrow_glyphs_matches_its_reference() {
     buf.print(x, 0, "1一!", white, CLEAR);
     let image = painter.render(&buf, 2);
     assert_eq!((image.width, image.height), (14 * 8 * 2, 16 * 2));
-    let reference = root.join(WIDE_REFERENCE);
-    let matches = fs::read(&reference)
+    assert_matches_reference(&image, WIDE_REFERENCE);
+}
+
+/// Panics unless `image` is the committed picture at `reference` (from the
+/// crate's folder), writing the new picture beside it
+/// (`<name>.new.png`) to look at and move over the old one when the
+/// change is meant.
+fn assert_matches_reference(image: &Image, reference: &str) {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(reference);
+    let matches = fs::read(&path)
         .ok()
         .and_then(|bytes| decode_png(&bytes).ok())
         .is_some_and(|(w, h, rgba)| {
             (w, h, rgba) == (image.width, image.height, image.rgba.clone())
         });
     if !matches {
-        let new = reference.with_extension("new.png");
+        let new = path.with_extension("new.png");
         fs::write(
             &new,
             encode_png(image.width, image.height, &image.rgba).unwrap(),
         )
         .unwrap();
         panic!(
-            "the wide line isn't its reference {WIDE_REFERENCE}: the new picture is {}",
+            "the picture isn't its reference {reference}: the new picture is {}",
             new.display()
         );
     }
+}
+
+/// The committed pictures of one line drawn in Japanese and in Chinese.
+const SETS_REFERENCES: [&str; 2] = [
+    "tests/fixtures/fonts/wide-set-ja.png",
+    "tests/fixtures/fonts/wide-set-zh.png",
+];
+
+/// An atlas with two wide sets from our fixture fonts, `ja` and
+/// `zh-Hans`, each with its own `直`, made by `font-atlas` for a Japanese
+/// pack and a Chinese one with its punctuation wide: `直` drawn in each
+/// language is the shape of its set, and the Chinese line's quotes and
+/// ellipsis are wide, each picture the same as its committed reference.
+#[test]
+fn a_character_draws_from_the_set_its_language_names() {
+    use crate::font_atlas::{AtlasChars, build_atlas_with_sets, read_font};
+    use shuyi_assets::font::CellWidths;
+    use shuyi_assets::lang::{Lang, LangCode, LangFile, PackRules, from_files};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let narrow =
+        read_font(&root.join("../../templates/shuyi-default/base/files-src/ter-u16n.bdf")).unwrap();
+    let fixture = |name: &str| read_font(&root.join("tests/fixtures/fonts").join(name)).unwrap();
+    let (ja, zh) = (fixture("wide-16-ja.bdf"), fixture("wide-16-zh.bdf"));
+    let (japanese, chinese) = ("直日", "“直简”……");
+    let ui = |text: &str| format!(r#"[(key: "a.line", source: "Line", text: "{text}")]"#);
+    let (ja_ui, zh_ui) = (ui(japanese), ui(chinese));
+    let files = [
+        ("en/ui.ron", r#"{"a.line": "Line"}"#),
+        (
+            "ja/lang.ron",
+            r#"(name: "日", made_by: Machine, wide_font: Some("ja"))"#,
+        ),
+        ("ja/ui.ron", ja_ui.as_str()),
+        (
+            "zh-Hans/lang.ron",
+            r#"(name: "简", made_by: Machine, wide_font: Some("zh-Hans"), wide_punctuation: true)"#,
+        ),
+        ("zh-Hans/ui.ron", zh_ui.as_str()),
+    ]
+    .map(|(path, source)| LangFile {
+        path,
+        source: Some(source),
+    });
+    let rules = PackRules {
+        data_problem: |_, _| None,
+        tokens: &shuyi_assets::dialogue::NoTokens,
+        limits: shuyi_assets::dialogue::DialogueLimits {
+            box_width: 40,
+            box_lines: 3,
+            max_text: 200,
+            max_option: 30,
+            min_options: 2,
+            max_options: 4,
+            max_reaction_texts: 3,
+        },
+        widths: &CellWidths::NARROW,
+        variants: &[],
+    };
+    let lang: Lang = from_files(&files, None, str::to_owned, &rules).unwrap();
+    let chars = AtlasChars::of_lang(&lang, "?");
+    let atlas = build_atlas_with_sets(
+        &narrow,
+        &[(Some("ja"), &ja), (Some("zh-Hans"), &zh)],
+        &chars,
+    );
+    assert_eq!(shuyi_assets::font::undrawn(&atlas.def, &lang), Vec::new());
+    let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
+    let base = CellWidths::of(&atlas.def);
+    let table = ImageTable::new(BTreeMap::new());
+    let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
+    let white = Rgb::new(255, 255, 255);
+    let mut images = Vec::new();
+    for (code, text) in [("ja", japanese), ("zh-Hans", chinese)] {
+        let info = &lang.pack(&LangCode::new(code).unwrap()).unwrap().info;
+        let mut buf =
+            GlyphBuffer::new(14, 1, Cell::new(' ', CLEAR, CLEAR)).with_widths(info.widths(&base));
+        let x = buf.print(0, 0, text, white, CLEAR);
+        buf.print(i32::from(x), 0, "ok", white, CLEAR);
+        images.push(painter.render(&buf, 2));
+    }
+    // 直 starts the Japanese line, in cells 0 and 1, and follows a wide `“`
+    // in the Chinese one, in cells 2 and 3: its two shapes differ.
+    let glyph = |image: &Image, cell: u32| -> Vec<Option<[u8; 4]>> {
+        let (from, to) = (cell * 8 * 2, (cell + 2) * 8 * 2);
+        (0..image.height)
+            .flat_map(|y| (from..to).map(move |x| image.pixel(x, y)))
+            .collect()
+    };
+    assert_ne!(glyph(&images[0], 0), glyph(&images[1], 2));
+    for (image, reference) in images.iter().zip(SETS_REFERENCES) {
+        assert_matches_reference(image, reference);
+    }
+}
+
+#[test]
+fn a_drop_step_is_read_and_its_file_must_be_there() {
+    // The tests run in the crate's folder.
+    let here = "src/frame_png/tests.rs";
+    assert_eq!(
+        parse_step("--drop", here),
+        Some(Ok(Step::Drop(here.into())))
+    );
+    let parsed = parse_args(&args(&["a.png", "--drop", here]), &[]).unwrap();
+    assert_eq!(parsed.script.steps, [Step::Drop(here.into())]);
+    assert_eq!(
+        parse_step("--drop", " "),
+        Some(Err("--drop: no file named".into()))
+    );
+    let missing = check(&Script::new(vec![
+        Step::Wait(0.0),
+        Step::Drop("no/such.wad".into()),
+    ]));
+    assert_eq!(
+        missing.unwrap_err(),
+        "step 2: drop: no/such.wad is no file in the game's folder"
+    );
+    assert!(check(&Script::new(vec![Step::Drop("src".into())])).is_err());
 }

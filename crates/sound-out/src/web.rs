@@ -11,6 +11,9 @@
 //!   keeps a bounded lead of blocks over that. So nothing is shared but messages: it
 //!   needs a secure context, as a worklet does, and neither cross-origin isolation,
 //!   special headers nor atomics.
+//! - For the first second the context plays after it starts, or after a hold lets go,
+//!   the lead is twice its least: a page is busiest then, and the device takes several
+//!   blocks a callback, so a page late there would cut the first sound.
 //! - A worklet with nothing to play sounds silence and counts it: the mix is only
 //!   asked for what will be heard, so a late page delays the sound and loses nothing.
 //! - Until the first gesture, or where a page has no worklet, a timer asks for the

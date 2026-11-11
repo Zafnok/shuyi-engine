@@ -13,6 +13,7 @@
 //! [`install`](crate::module::Module::install) and listed.
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use core::any::Any;
 use core::fmt::{Debug, Display};
 
@@ -25,7 +26,7 @@ use shuyi_assets::lang::{Lang, LangCode};
 use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{ClipVariant, Playable};
 
-use crate::audio::{AudioConfig, AudioQueue, MusicClock, pick_from_pool};
+use crate::audio::{AudioConfig, AudioQueue, MusicClock, SoundGroups, pick_from_pool};
 use crate::debug::gizmo::DebugView;
 use crate::frame::color::{ColorSet, EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
@@ -39,6 +40,7 @@ use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
 use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
 use crate::platform_facts::PlatformFacts;
+use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -238,10 +240,13 @@ pub struct Ctx<G: GameData> {
     /// [`Game`](crate::Game) starts.
     pub console: ConsoleSpec,
     /// Which characters take two cells of the console: those the font
-    /// atlas has wide. Nothing is wide here; the platform sets the
-    /// atlas's when the game has loaded
+    /// atlas has wide, where no language says more. Nothing is wide here;
+    /// the platform sets the atlas's when the game has loaded
     /// ([`Game::set_widths`](crate::Game::set_widths)).
     widths: CellWidths,
+    /// [`widths`](Self::widths) in each language, the source's and each
+    /// pack's: its wide set and its punctuation's width ([`Lang::widths`]).
+    lang_widths: BTreeMap<LangCode, CellWidths>,
     /// The active key bindings, for help text that names keys: the chosen
     /// layout's with the player's changes, or the layout picker's
     /// ([`Keymap::layout_picker`]) until one is chosen. Change it with
@@ -303,6 +308,9 @@ pub struct Ctx<G: GameData> {
     pub debug_tools: bool,
     /// The platform's session record, as the debug tools see it.
     session: SessionState,
+    /// The requests about the player's files made since the platform last
+    /// took them ([`offer_file`](Self::offer_file)), oldest first.
+    file_requests: Vec<FileRequest>,
     /// Which channels of the debug view are on (none at first), and which
     /// the running screens have offered (ADR-0085): read from the
     /// computer's storage by [`with_storage`](Self::with_storage) with
@@ -318,6 +326,9 @@ pub struct Ctx<G: GameData> {
     /// `ctx.audio.play_sound("click")`. `Game` passes them to the
     /// platform.
     pub audio: AudioQueue<G::Voice>,
+    /// The sound groups, and which cue plays in which
+    /// ([`sound_groups`](Self::sound_groups)).
+    pub(crate) sound_groups: SoundGroups,
     /// Where the music that is sounding is in its track, for a screen that
     /// keeps time with it. `None` in silence: nothing asked for, the track
     /// still loading, its file missing, or a track played once that has
@@ -329,6 +340,9 @@ pub struct Ctx<G: GameData> {
     /// The voice clips that may be played: none until the platform hands
     /// over a manifest ([`set_voice_manifest`](Self::set_voice_manifest)).
     voices: Playable<G::Voice>,
+    /// The line whose voice clip the platform last said is sounding
+    /// ([`voice_playing`](Self::voice_playing)).
+    pub(crate) voice_playing: Option<LineId>,
     /// Seeds random music picks (e.g. a track from a pool), kept apart
     /// from any simulation's randomness. A fixed [`DEFAULT_MUSIC_SEED`]
     /// here, so tests are repeatable; the platform sets it from the clock
@@ -384,12 +398,15 @@ impl<G: GameData> Ctx<G> {
         let palette = Palette::new::<G::Colors>(game.palette_def())?;
         let keymap = Keymap::layout_picker(game.keymap_def());
         let settings = Settings::default();
-        let audio = AudioQueue::new(game.audio_config());
+        let mut audio = AudioQueue::new(game.audio_config());
+        audio.set_manifest(game.audio_manifest());
+        let sound_groups = SoundGroups::new(&game.audio_config(), game.audio_manifest());
         let profiles = Profiles::first(&numbered_profile(game.lang(), ProfileId::FIRST.get()));
         let lang = game.lang().source_lang().code.clone();
         Ok(Self {
             console: game.console(),
             widths: CellWidths::NARROW,
+            lang_widths: lang_widths(game.lang(), &CellWidths::NARROW),
             game,
             palette,
             keymap,
@@ -406,11 +423,14 @@ impl<G: GameData> Ctx<G> {
             pacing: None,
             debug_tools: crate::DEBUG_TOOLS,
             session: SessionState::default(),
+            file_requests: Vec::new(),
             debug_view: DebugView::default(),
             idle_motion: IdleMotion::Off,
             audio,
+            sound_groups,
             music_clock: None,
             voices: Playable::default(),
+            voice_playing: None,
             music_seed: DEFAULT_MUSIC_SEED,
             music_picks: 0,
             clock_s: 0.0,
@@ -426,15 +446,25 @@ impl<G: GameData> Ctx<G> {
 
     /// Which characters take two cells of the console, for a screen that
     /// measures text before it has the frame to draw it in
-    /// ([`text_width`](shuyi_assets::lang::text_width)): the same as the
-    /// frame's ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)).
+    /// ([`text_width`](shuyi_assets::lang::text_width)): the font atlas's
+    /// in the language text is shown in ([`effective_lang`]), as that
+    /// language has them ([`Lang::widths`]: its wide set, and its
+    /// punctuation wide or not, a pack's or the source's). The frame's
+    /// ([`GlyphBuffer::widths`](crate::frame::GlyphBuffer::widths)) follow
+    /// them at each drawing.
+    ///
+    /// [`effective_lang`]: Self::effective_lang
     pub fn widths(&self) -> &CellWidths {
-        &self.widths
+        self.lang_widths
+            .get(self.effective_lang())
+            .unwrap_or(&self.widths)
     }
 
-    /// Sets [`widths`](Self::widths): only with the frame's, by
+    /// Sets the font atlas's widths, which [`widths`](Self::widths) are
+    /// made of in each language: only with the frame's, by
     /// [`Game::set_widths`](crate::Game::set_widths).
     pub(crate) fn set_widths(&mut self, widths: CellWidths) {
+        self.lang_widths = lang_widths(self.game.lang(), &widths);
         self.widths = widths;
     }
 
@@ -589,6 +619,24 @@ impl<G: GameData> Ctx<G> {
         }
     }
 
+    /// The line whose voice clip is sounding, or asked for and still
+    /// loading; `None` in silence. The platform reports it each frame
+    /// through [`Game::set_voice_playing`](crate::Game::set_voice_playing),
+    /// before the screens run: a clip that ended, was stopped or replaced,
+    /// whose file failed or that loaded too late to be played is `None`. A
+    /// clip paused with the game still sounds.
+    ///
+    /// A screen sees its own [`play_voice`](Self::play_voice) from the next
+    /// frame, once the platform has read the request: in the frame it asks,
+    /// and on a platform with no voices, this is still `None`. So a screen
+    /// that waits for a voice to end waits for its line to sound first,
+    /// and takes `None` after that as the end. A clip that never sounds
+    /// (its file missing or slow) gives up within half a second: a screen
+    /// that hasn't seen its line by then may move on.
+    pub fn voice_playing(&self) -> Option<&LineId> {
+        self.voice_playing.as_ref()
+    }
+
     /// Stops the voice that is playing, if any.
     pub fn stop_voice(&mut self) {
         self.audio.stop_voice();
@@ -721,7 +769,17 @@ impl<G: GameData> Ctx<G> {
     /// the platform takes it ([`take_log`](Self::take_log)) and stamps it
     /// with its frame. Past [`LOG_LINES`] waiting, the oldest is dropped
     /// and counted. English, never translated: no player reads it.
+    ///
+    /// A build without debug tools ([`crate::DEBUG_TOOLS`]: a release build
+    /// without the `debug-tools` feature) keeps warnings and errors only:
+    /// an [`Info`](LogLevel::Info) or [`Debug`](LogLevel::Debug) line is
+    /// dropped here, and its text is left out of the program where the
+    /// compiler can see it is never used.
+    #[inline]
     pub fn log(&mut self, level: LogLevel, category: LogCategory, text: impl Into<String>) {
+        if !crate::DEBUG_TOOLS && matches!(level, LogLevel::Info | LogLevel::Debug) {
+            return;
+        }
         self.log_lines.push(LogLine {
             frame: 0,
             level,
@@ -964,6 +1022,46 @@ impl<G: GameData> Ctx<G> {
         true
     }
 
+    /// The sound groups (ADR-0091): every group's id, parent and default,
+    /// and which group each cue plays in.
+    pub fn sound_groups(&self) -> &SoundGroups {
+        &self.sound_groups
+    }
+
+    /// The default volume of `group`; in a debug build a group there isn't
+    /// is a bug in the caller and panics.
+    fn group_default(&self, group: &str) -> Option<u8> {
+        let default = self.sound_groups.default_volume(group);
+        debug_assert!(default.is_some(), "no sound group {group:?}");
+        default
+    }
+
+    /// The volume of sound group `group` (0 to
+    /// [`MAX_VOLUME`](crate::settings::MAX_VOLUME)): the player's, else
+    /// the group's default.
+    pub fn volume(&self, group: &str) -> u8 {
+        let default = self.group_default(group);
+        self.settings.volumes.get(group).or(default).unwrap_or(0)
+    }
+
+    /// Sets the volume of sound group `group`, as
+    /// [`preview_settings`](Self::preview_settings) does: it is heard at
+    /// once, and kept or thrown away with the other settings. A volume
+    /// set back to the group's default is taken out of the settings
+    /// ([`Volumes`](crate::settings::Volumes)), so a slider moved away and
+    /// back is no change. Whether anything changed.
+    pub fn preview_volume(&mut self, group: &str, volume: u8) -> bool {
+        let default = self.group_default(group);
+        let volume = volume.min(crate::settings::MAX_VOLUME);
+        self.preview_settings(|s| {
+            if Some(volume) == default {
+                s.volumes.remove(group);
+            } else {
+                s.volumes.set(group, volume);
+            }
+        })
+    }
+
     /// Saves the settings if they differ from what `storage` holds (a
     /// previewed change, [`preview_settings`](Self::preview_settings)).
     pub fn keep_settings(&mut self) -> Result<(), StorageError> {
@@ -1041,6 +1139,51 @@ impl<G: GameData> Ctx<G> {
         self.frame_cap_serial = self.frame_cap_serial.saturating_add(1);
     }
 
+    /// Hands the player a file called `name` (`farm.ron`, never a path)
+    /// holding `text`, after this frame: a download on the web, and on a
+    /// desktop a file in the `exports` folder of the game's storage folder,
+    /// beside the others, never over one (`farm (2).ron`). The game's
+    /// system hook hears where it went in a later frame
+    /// (`SystemEvent::FileOffered`): downloaded, written at a path, or why
+    /// it failed (a name with a folder in it, a platform with no files a
+    /// player reaches).
+    pub fn offer_file(&mut self, name: &str, text: impl Into<String>) {
+        self.file_requests.push(FileRequest::Offer {
+            name: name.to_owned(),
+            text: text.into(),
+        });
+    }
+
+    /// Asks the player to pick a text file, after this frame: one whose
+    /// name ends in one of `accept` (`[".ron"]`), or any when it is empty.
+    /// The game's system hook hears the answer in a later frame
+    /// (`SystemEvent::FileChosen`): the file's name and text, cancelled, or
+    /// refused (not UTF-8, too big, or no picker here). Only where
+    /// [`PlatformFacts::can_pick_files`]; elsewhere the answer is
+    /// refused, and a screen says "drop the file on the window" instead,
+    /// where [`can_drop_files`](PlatformFacts::can_drop_files).
+    ///
+    /// A browser opens a picker only shortly after the player pressed
+    /// something: ask in the frame of the press.
+    pub fn ask_for_file(&mut self, accept: &[&str]) {
+        let accept = accept.iter().map(|&ext| ext.to_owned()).collect();
+        self.file_requests.push(FileRequest::Ask { accept });
+    }
+
+    /// Opens `folder` in the system's file manager, after this frame, so the
+    /// player sees their files: on a desktop. Where it fails, or there is no
+    /// such folder (the web), the platform logs why.
+    pub fn open_storage_folder(&mut self, folder: Folder) {
+        self.file_requests.push(FileRequest::OpenFolder(folder));
+    }
+
+    /// Takes the requests about the player's files made since the last
+    /// call, oldest first: for the platform's `App`, which carries them out
+    /// after the frame.
+    pub fn take_file_requests(&mut self) -> Vec<FileRequest> {
+        core::mem::take(&mut self.file_requests)
+    }
+
     /// Builds [`palette`](Self::palette) from the color theme in the
     /// settings. Keeps the palette if the theme has none, or one that
     /// lacks colors.
@@ -1060,7 +1203,8 @@ impl<G: GameData> Ctx<G> {
     }
 
     /// Loads the settings from `storage`: the defaults if none are saved,
-    /// or (with a warning) if they can't be read. A layout saved under the
+    /// or (with a warning) if they can't be read. A volume saved at its
+    /// group's default is dropped, so it is the default. A layout saved under the
     /// game's old key is taken over ([`saved_layout`](Self::saved_layout)).
     fn load_settings(&mut self) {
         let cap_before = self.settings.frame_cap;
@@ -1079,6 +1223,12 @@ impl<G: GameData> Ctx<G> {
             );
             Settings::default()
         });
+        // A volume at its group's default is the default: an old save at
+        // the old default reads as none set.
+        let groups = &self.sound_groups;
+        self.settings
+            .volumes
+            .retain(|group, volume| groups.default_volume(group) != Some(volume));
         self.settings.layout = self.saved_layout();
         self.stored_settings = self.settings.clone();
         if self.settings.frame_cap != cap_before {
@@ -1217,6 +1367,16 @@ impl<G: GameData> Ctx<G> {
         self.profiles = changed;
         Ok(())
     }
+}
+
+/// `base`, a font atlas's widths, in each of `lang`'s languages, the
+/// source's and each pack's ([`Lang::widths`]).
+fn lang_widths(lang: &Lang, base: &CellWidths) -> BTreeMap<LangCode, CellWidths> {
+    let source = &lang.source_lang().code;
+    core::iter::once(source)
+        .chain(lang.codes())
+        .map(|code| (code.clone(), lang.widths(code, base)))
+        .collect()
 }
 
 /// The name of the profile numbered `n` when the player hasn't named it

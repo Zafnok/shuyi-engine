@@ -40,6 +40,17 @@ fn the_arguments_are_a_target_then_out_release_and_run_once_each() {
 }
 
 #[test]
+fn with_takes_a_feature_each_time() {
+    let input = parse_args(&args(&["playdate", "--with", "bench", "--with", "demo"])).unwrap();
+    assert_eq!(input.with, ["bench", "demo"]);
+    assert_eq!(input.without, Vec::<String>::new());
+    assert_eq!(
+        parse_args(&args(&["playdate", "--with"])).unwrap_err(),
+        "--with needs a feature"
+    );
+}
+
+#[test]
 fn without_takes_a_feature_each_time() {
     let input = parse_args(&args(&["web", "--without", "a", "--without", "b"])).unwrap();
     assert_eq!(input.without, ["a", "b"]);
@@ -129,6 +140,7 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         }],
         signing: Signing::None,
         debug: Some("g-0.1.0-windows.debug".to_owned()),
+        edition: Some("public-demo".to_owned()),
     };
     let said = text(&output).replace('\\', "/");
     for line in [
@@ -136,6 +148,7 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         "  g-0.1.0-windows.zip: 12 bytes\n",
         "  debug file: dist/export/windows/g-0.1.0-windows.debug\n",
         "  signing: none\n",
+        "  edition: public-demo\n",
         "  report: dist/export/windows/export-report.json\n",
         "  warning: targets.\"desktop\".text_px: small\n",
     ] {

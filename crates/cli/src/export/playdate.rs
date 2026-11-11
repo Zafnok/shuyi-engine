@@ -28,7 +28,7 @@ use crate::app_info;
 use crate::codec;
 use crate::contract::bake::{BakeInput, bake};
 use crate::contract::target::{Level, TargetCheck, TargetProblem, engine_profiles};
-use crate::game::{GameTools, is_unsupported};
+use crate::game::GameTools;
 use crate::notices::{self, Build, Section, Text, Work};
 use crate::project::{AppPart, Project};
 
@@ -243,10 +243,20 @@ fn tools_here(cx: &ExportCx) -> Result<Tools, ExportError> {
         arm_gcc,
         simulator: simulator_here(path_var.as_deref()),
         rustflags: (
-            with_flags(&flags, &DEVICE_RUSTFLAGS),
-            with_flags(&flags, &[CFG]),
+            with_flags(&flags, rustflags(DEVICE)),
+            with_flags(&flags, rustflags(SIMULATOR)),
         ),
     })
+}
+
+/// The Rust flags of the build for `triple`: the device's, else the
+/// Simulator's, which only says to link the SDK.
+fn rustflags(triple: &str) -> &'static [&'static str] {
+    if triple == DEVICE {
+        &DEVICE_RUSTFLAGS
+    } else {
+        &[CFG]
+    }
 }
 
 /// `encoded`, Cargo's flags variable, with `flags` after what it holds.
@@ -283,6 +293,38 @@ where
     items.into_iter().map(Into::into).collect()
 }
 
+/// Refuses an edition the Playdate can't build as it says: its library never
+/// keeps the package's default features.
+fn edition_fits(edition: &super::EditionBuild) -> Result<(), ExportError> {
+    if edition.default_features {
+        return Err(ExportError::Setup(format!(
+            "the edition `{}` keeps the package's default features, and the Playdate's \
+             library is always built without them: give the Playdate an edition with \
+             `default_features: false`",
+            edition.name
+        )));
+    }
+    Ok(())
+}
+
+/// What the export bakes: the pack for the target's profile and its sounds
+/// and music, written where [`PlaydateExporter::export`] takes them from, of
+/// the edition's content root if it has one (ADR-0101, ADR-0102), else of the
+/// files the game's tools embed.
+pub fn bake_input(cx: &ExportCx) -> BakeInput {
+    let shown = cx.shown.replace('\\', "/");
+    BakeInput {
+        target: Some(cx.profile.clone()),
+        out: Some(format!("{shown}/{BAKED}")),
+        audio: Some(format!("{shown}/{BAKED_AUDIO}")),
+        content: cx
+            .edition
+            .as_ref()
+            .and_then(|edition| edition.content.clone()),
+        ..BakeInput::default()
+    }
+}
+
 /// `cargo rustc`'s arguments for the game's library as a static library.
 fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
     let mut args: Vec<String> = [
@@ -294,7 +336,7 @@ fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
         "staticlib",
         "--no-default-features",
         "--features",
-        FEATURE,
+        &features(cx).join(","),
         "--target",
         triple,
     ]
@@ -304,6 +346,13 @@ fn cargo_args(cx: &ExportCx, triple: &str) -> Vec<String> {
         args.push("--release".to_owned());
     }
     args
+}
+
+/// The features of the build: [`FEATURE`], then those `cx` turns on.
+fn features(cx: &ExportCx) -> Vec<String> {
+    let mut on = vec![FEATURE.to_owned()];
+    on.extend(cx.turned_on.iter().filter(|name| *name != FEATURE).cloned());
+    on
 }
 
 /// Cargo's profile settings for the build, by variable, over the game's own
@@ -677,27 +726,8 @@ const BAKED: &str = "game.pack";
 /// build. It isn't there when the game's tools offer no audio.
 const BAKED_AUDIO: &str = "baked-audio";
 
-/// Bakes the sounds and music `game` ships on `cx`'s target, for the build.
-fn bake_audio(cx: &ExportCx, game: &dyn GameTools) -> Result<(), ExportError> {
-    let into = cx.out.join(BAKED_AUDIO);
-    if into.exists() {
-        fs::remove_dir_all(&into)
-            .map_err(|e| ExportError::Build(format!("clear {}: {e}", into.display())))?;
-    }
-    let shipped = match game.audio(&cx.profile) {
-        Ok(shipped) => shipped,
-        Err(e) if is_unsupported(&e) => return Ok(()),
-        Err(e) => return Err(ExportError::Setup(format!("the game's audio: {e}"))),
-    };
-    let jobs = audio::jobs(&shipped, &cx.root)
-        .map_err(|e| ExportError::Setup(format!("the game's audio: {e}")))?;
-    fs::create_dir_all(&into)
-        .map_err(|e| ExportError::Build(format!("create {}: {e}", into.display())))?;
-    audio::bake(&jobs, &audio::cache_dir(&Dirs::of(cx).build), &into)
-        .map_err(|e| ExportError::Build(format!("the game's audio: {e}")))
-}
-
-/// Moves what [`bake_audio`] made into what `pdc` packs: true if there was any.
+/// Moves the sounds and music the bake wrote ([`bake_input`]) into what `pdc`
+/// packs: true if there were any.
 fn place_audio(cx: &ExportCx, dirs: &Dirs) -> Result<bool, ExportError> {
     let baked = cx.out.join(BAKED_AUDIO);
     if !baked.is_dir() {
@@ -786,6 +816,11 @@ impl Exporter for PlaydateExporter {
         false
     }
 
+    /// A `no_std` library has no unwinding: its build sets `panic = "abort"`.
+    fn panic(&self) -> super::disclosure::Panic {
+        super::disclosure::Panic::Abort
+    }
+
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>> {
         self.triples()
             .iter()
@@ -793,13 +828,22 @@ impl Exporter for PlaydateExporter {
             .collect()
     }
 
-    /// Bakes the game's pack for the target with its tools.
+    fn rustflags(&self, triple: &str) -> &'static [&'static str] {
+        rustflags(triple)
+    }
+
+    /// Bakes the game's pack, sounds and music for the target with its tools;
+    /// for an edition with a content root, with the tool program built from
+    /// that folder.
     fn prepare(
         &self,
         cx: &ExportCx,
         project: &Project,
         game: Option<&dyn GameTools>,
     ) -> Result<(), ExportError> {
+        if let Some(edition) = &cx.edition {
+            edition_fits(edition)?;
+        }
         if !cx.features.iter().any(|feature| feature == FEATURE) {
             return Err(ExportError::Setup(format!(
                 "the package `{}` has no `{FEATURE}` feature, which makes its library the game \
@@ -813,13 +857,7 @@ impl Exporter for PlaydateExporter {
                 crate::project::FILE
             ))
         })?;
-        bake_audio(cx, game)?;
-        let input = BakeInput {
-            target: Some(cx.profile.clone()),
-            out: Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/"))),
-            ..BakeInput::default()
-        };
-        let answer = bake(game, project, &input);
+        let answer = bake(game, project, &bake_input(cx));
         if answer.ok {
             Ok(())
         } else {
@@ -839,7 +877,7 @@ impl Exporter for PlaydateExporter {
 
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError> {
         for args in self.cargo_args(cx) {
-            super::no_live_link(&args)?;
+            super::no_debug_features(&args)?;
         }
         let part = cx.app.as_ref().ok_or_else(|| {
             ExportError::Setup(format!(
@@ -868,8 +906,15 @@ impl Exporter for PlaydateExporter {
         fs::rename(&baked, dirs.source.join(playdate_pack()))
             .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", baked.display())))?;
         let has_audio = place_audio(cx, &dirs)?;
-        let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &[FEATURE.to_owned()])
-            .map_err(ExportError::Build)?;
+        let encoded = super::live_link::encoded_flags(cx.release, rustflags(DEVICE));
+        let mut works = notices::built_crates(
+            &cx.root,
+            &cx.package,
+            DEVICE,
+            &cargo_args(cx, DEVICE),
+            encoded.as_deref(),
+        )
+        .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
         works.push(setup_c_notice(&tools.sdk)?);
         works.extend(cx.game.iter().cloned());

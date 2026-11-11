@@ -6,9 +6,9 @@
 use alloc::rc::Rc;
 use alloc::string::String;
 
+use super::test_map::{Swatch, c, test_map};
 use proptest::prelude::*;
 use shuyi_assets::fnv::Hasher;
-use shuyi_assets::ink::Ink;
 
 use super::*;
 use crate::frame::console::ConsoleSpec;
@@ -21,7 +21,7 @@ const ID: PaintedId = PaintedId::new("picture");
 /// A Playdate frame of black cells with `picture` placed from `src` to
 /// `dest`.
 fn frame_of(picture: Option<Painted>, src: Rect, dest: Rect) -> GlyphBuffer {
-    let black = Rgb::from(Ink::Black.code());
+    let black = c(Swatch::Black);
     let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::new(' ', black, black));
     if let Some(picture) = picture {
         buf.pictures_mut().insert(ID, picture);
@@ -38,12 +38,13 @@ fn draw(buf: &GlyphBuffer) -> Box<Frame> {
         columns: 1,
         glyphs: alloc::collections::BTreeMap::default(),
         wide: alloc::collections::BTreeMap::default(),
+        wide_sets: alloc::collections::BTreeMap::new(),
     };
     let font = Font::new(&atlas, &[]).unwrap();
     let mut fast = Box::new([0u8; FRAME_BYTES]);
-    render(buf, &font, &(), &mut fast);
+    render(buf, &font, &(), &test_map(), &mut fast);
     let mut slow = Box::new([0u8; FRAME_BYTES]);
-    reference::render(buf, &font, &(), &mut slow);
+    reference::render(buf, &font, &(), &test_map(), &mut slow);
     assert!(fast == slow, "the fast renderer and the reference differ");
     fast
 }
@@ -127,7 +128,7 @@ fn ramp(w: u16, h: u16) -> Painted {
 
 #[test]
 fn a_picture_on_white_dithers_as_on_black() {
-    let white = Rgb::from(Ink::White.code());
+    let white = c(Swatch::White);
     let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::new(' ', white, white));
     buf.pictures_mut().insert(ID, grey(4, 2, 128));
     let src = Rect::new(0, 0, 4, 2);
@@ -160,7 +161,7 @@ fn a_source_past_the_pictures_edges_draws_nothing_there() {
 
 #[test]
 fn a_picture_in_a_zoomed_scene_away_from_the_corner_draws_as_the_reference() {
-    let black = Rgb::from(Ink::Black.code());
+    let black = c(Swatch::Black);
     let ground = Cell::new(' ', black, black);
     let mut scene = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15).sized(6, 4), ground);
     scene.pictures_mut().insert(ID, ramp(12, 9));
@@ -219,7 +220,7 @@ fn a_one_bit_picture_is_drawn_as_it_is_and_a_missing_one_grey() {
     // The half its mask leaves out shows the black cells under it.
     assert_eq!(text(&draw(&buf), 0, 0, 8, 1), ["..######"]);
     buf.pictures_mut().remove(ID);
-    let grey = Shade::of_ink(Ink::Grey);
+    let grey = test_map().shape(c(Swatch::Grey));
     let row: String = (0..8)
         .map(|x| if grey.is_white(x, 0) { '.' } else { '#' })
         .collect();
@@ -245,11 +246,12 @@ fn a_repainted_picture_is_drawn_again_where_it_changed() {
         columns: 1,
         glyphs: alloc::collections::BTreeMap::default(),
         wide: alloc::collections::BTreeMap::default(),
+        wide_sets: alloc::collections::BTreeMap::new(),
     };
     let font = Font::new(&atlas, &[]).unwrap();
     let mut frame = draw(&old);
     assert_eq!(text(&frame, 40, 40, 4, 1), ["####"]);
-    render_changed(&old, &new, &font, &(), &mut frame);
+    render_changed(&old, &new, &font, &(), &test_map(), &mut frame);
     assert_eq!(text(&frame, 40, 40, 4, 1), ["...."]);
     assert_eq!(frame, draw(&new));
 }

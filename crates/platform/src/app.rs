@@ -7,7 +7,9 @@
 //!
 //! A game starts in a loading phase ([`Start`]): the first frame shows a
 //! [`Card`] the game gives, the next loads the game behind it, and the
-//! frames after run it. On [`SystemEvent::Suspend`] the game's hook saves,
+//! frames after run it. A load in steps ([`Start::in_steps`]) goes on over
+//! as many frames as the platform's slice needs ([`Platform::load_slice`]),
+//! the card on the screen. On [`SystemEvent::Suspend`] the game's hook saves,
 //! `App` stops stepping and the device holds the audio
 //! ([`Audio::suspend`](crate::Audio::suspend)); on [`SystemEvent::Resume`]
 //! the audio comes back and `App` forgets the time it was away, so a sleep
@@ -45,10 +47,12 @@ use alloc::format;
 use core::time::Duration;
 
 use serde::Serialize;
+use shuyi_assets::dialogue::LineId;
 use shuyi_assets::font::CellWidths;
+use shuyi_assets::voice::clip_file;
 use shuyi_core::made::Made;
 use shuyi_core::{StateHash, state_hash};
-use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame_cap::Pacing;
 use shuyi_ui::input::frame_seconds;
@@ -56,6 +60,7 @@ use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRin
 use shuyi_ui::perf::{
     FrameRecord, HeapSnapshot, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass,
 };
+use shuyi_ui::player_files::FileRequest;
 use shuyi_ui::settings::{Background, BackgroundAudio, GameSettings};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
@@ -63,7 +68,9 @@ use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInp
 
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::crash::{self, LastCrash};
-use crate::platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
+use crate::dropped;
+use crate::platform::{DisplayInfo, Frame, LoadSlice, Look, Millis, Platform, Show, SystemEvent};
+use crate::player_files::{self, Offered};
 use crate::session::{Recorder, SessionRecord};
 use crate::text_input::TextInput;
 use crate::tick::TickClock;
@@ -201,9 +208,50 @@ impl Setup {
     }
 }
 
-/// A game's load: its data read and its game made from the [`Setup`], or
-/// why it can't start (shown instead of the game).
+/// A game's load at once: its data read and its game made from the
+/// [`Setup`], or why it can't start (shown instead of the game). It runs in
+/// one frame. Where the system ends a game whose frame runs too long (the
+/// Playdate's, after 10 seconds), a long load is one in steps
+/// ([`LoadInSteps`]).
 pub type Load<G> = Box<dyn FnOnce(Setup) -> Result<Game<G>, String>>;
+
+/// What a step of a load in steps says ([`LoadStep`]).
+#[non_exhaustive]
+pub enum Progress<G: GameData> {
+    /// More steps are to come: the next call runs the next.
+    More,
+    /// The load is over: the game it made, or why it can't start
+    /// ([`done`](Self::done) boxes the game).
+    Done(Result<Box<Game<G>>, String>),
+}
+
+impl<G: GameData> Progress<G> {
+    /// The load is over with `loaded`: the game, or why it can't start.
+    pub fn done(loaded: Result<Game<G>, String>) -> Self {
+        Self::Done(loaded.map(Box::new))
+    }
+}
+
+/// The steps of a load in steps, one a call, until one says the load is
+/// [`Done`](Progress::Done). A step should be short (a file read, a part of
+/// a check): a frame runs as many as fit in the platform's slice
+/// ([`Platform::load_slice`]), and at least one.
+pub type LoadStep<G> = Box<dyn FnMut() -> Progress<G>>;
+
+/// A game's load in steps: given the [`Setup`], its steps. It runs once,
+/// before the first step and in the same frame's slice, so it should only
+/// keep what the setup gives.
+pub type LoadInSteps<G> = Box<dyn FnOnce(Setup) -> LoadStep<G>>;
+
+/// How a game loads ([`Start::load`]).
+#[non_exhaustive]
+pub enum Loader<G: GameData> {
+    /// At once, in one frame ([`Start::new`]).
+    Once(Load<G>),
+    /// In steps, over as many frames as the platform's slice needs
+    /// ([`Start::in_steps`]).
+    Steps(LoadInSteps<G>),
+}
 
 /// Where a game's frame finds what it is painted with, in its data.
 pub type LookOf<G> = fn(&G) -> Look<'_>;
@@ -232,8 +280,8 @@ pub type CrashRecord<G> = fn(&Game<G>) -> Option<String>;
 pub struct Start<G: GameData> {
     /// What the first frame shows.
     pub card: Card,
-    /// Runs on the second frame, the card on the screen.
-    pub load: Load<G>,
+    /// Runs from the second frame, the card on the screen.
+    pub load: Loader<G>,
     /// What the game's frames are painted with.
     pub look: LookOf<G>,
     /// The game's hook for the system's events, if it has one.
@@ -254,9 +302,32 @@ impl<G: GameData> Start<G> {
         look: LookOf<G>,
         load: impl FnOnce(Setup) -> Result<Game<G>, String> + 'static,
     ) -> Self {
+        Self::with_loader(card, look, Loader::Once(Box::new(load)))
+    }
+
+    /// A game that shows `card`, then loads in steps: `begin` takes the
+    /// [`Setup`] and gives the steps ([`LoadStep`]), and the frames run them
+    /// behind the card, as many a frame as the platform's slice holds
+    /// ([`Platform::load_slice`]). On a PC or the web that is all of them in
+    /// one frame; on the Playdate, whose system ends a game whose frame runs
+    /// 10 seconds, a second's worth a frame. Painted with what `look` finds
+    /// in its data.
+    pub fn in_steps<S>(
+        card: Card,
+        look: LookOf<G>,
+        begin: impl FnOnce(Setup) -> S + 'static,
+    ) -> Self
+    where
+        S: FnMut() -> Progress<G> + 'static,
+    {
+        let begin: LoadInSteps<G> = Box::new(move |setup| Box::new(begin(setup)));
+        Self::with_loader(card, look, Loader::Steps(begin))
+    }
+
+    fn with_loader(card: Card, look: LookOf<G>, load: Loader<G>) -> Self {
         Self {
             card,
-            load: Box::new(load),
+            load,
             look,
             on_system: None,
             made: None,
@@ -306,23 +377,80 @@ impl<G: GameData> Start<G> {
     /// load: a backend's own part (the voice manifest it read).
     #[must_use]
     pub fn before_load(self, before: impl FnOnce(&mut Setup) + 'static) -> Self {
-        let load = self.load;
-        Self {
-            load: Box::new(move |mut setup| {
+        let load = match self.load {
+            Loader::Once(load) => Loader::Once(Box::new(move |mut setup| {
                 before(&mut setup);
                 load(setup)
-            }),
-            ..self
+            })),
+            Loader::Steps(begin) => Loader::Steps(Box::new(move |mut setup| {
+                before(&mut setup);
+                begin(setup)
+            })),
+        };
+        Self { load, ..self }
+    }
+}
+
+/// A load that isn't over.
+enum Pending<G: GameData> {
+    /// Not begun.
+    Begin(Loader<G>),
+    /// In steps, begun: the next.
+    Next(LoadStep<G>),
+}
+
+/// What a frame's part of a load came to.
+enum Ran<G: GameData> {
+    /// The load is over.
+    Over(Result<Box<Game<G>>, String>),
+    /// The slice is used: the next step, for the next frame.
+    More(LoadStep<G>),
+}
+
+/// When a frame's slice of a load in steps is used.
+struct Deadline {
+    clock: PerfClock,
+    /// The clock's time then.
+    at: u64,
+}
+
+impl Deadline {
+    /// The end of `slice`, from now.
+    fn start(mut slice: LoadSlice) -> Self {
+        let at = slice.clock.read().saturating_add(slice.length_us);
+        Self {
+            clock: slice.clock,
+            at,
+        }
+    }
+
+    /// Whether it has passed.
+    fn passed(&mut self) -> bool {
+        self.clock.read() >= self.at
+    }
+}
+
+/// Runs `step` until a step says the load is over or the `deadline` has
+/// passed, and at least once: what that came to, and the steps run.
+fn run_steps<G: GameData>(mut step: LoadStep<G>, mut deadline: Option<Deadline>) -> (Ran<G>, u32) {
+    let mut ran: u32 = 0;
+    loop {
+        ran = ran.saturating_add(1);
+        if let Progress::Done(over) = step() {
+            return (Ran::Over(over), ran);
+        }
+        if deadline.as_mut().is_some_and(Deadline::passed) {
+            return (Ran::More(step), ran);
         }
     }
 }
 
 /// Where the game is.
 enum Phase<G: GameData> {
-    /// Loading: the card, and the load until it has run.
+    /// Loading: the card, and the load until it is over.
     Loading {
         card: Card,
-        load: Option<Load<G>>,
+        load: Option<Pending<G>>,
         /// Whether a frame has shown the card.
         shown: bool,
     },
@@ -489,6 +617,12 @@ struct Lists<V> {
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
     changed: Vec<String>,
+    /// The platform's answers to the last frame's requests about the
+    /// player's files, for the game at the start of the next.
+    answers: Vec<SystemEvent>,
+    /// The voice clip asked for last: its line, and its file as the sound
+    /// device names it.
+    voice: Option<(LineId, String)>,
 }
 
 /// The frames' hashes.
@@ -540,6 +674,8 @@ pub struct App<G: GameData> {
     frame_hashes: FrameHashes,
     /// The fixed steps the last frame handed the game ([`ticks`](Self::ticks)).
     ticks: u32,
+    /// The steps the game's load has run ([`load_steps`](Self::load_steps)).
+    load_steps: u32,
 }
 
 impl<G: GameData> App<G> {
@@ -557,7 +693,7 @@ impl<G: GameData> App<G> {
         let mut app = Self::in_phase(
             Phase::Loading {
                 card,
-                load: Some(load),
+                load: Some(Pending::Begin(load)),
                 shown: false,
             },
             Some(look),
@@ -599,6 +735,8 @@ impl<G: GameData> App<G> {
                 audio: Vec::new(),
                 music: Vec::new(),
                 changed: Vec::new(),
+                answers: Vec::new(),
+                voice: None,
             },
             frames: 0,
             log: LogRing::new(LOG_LINES),
@@ -612,6 +750,7 @@ impl<G: GameData> App<G> {
             recorder: None,
             frame_hashes: FrameHashes::default(),
             ticks: 0,
+            load_steps: 0,
         }
     }
 
@@ -692,6 +831,7 @@ impl<G: GameData> App<G> {
     /// record.
     fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         let outcome = self.run(platform, elapsed);
+        self.carry_out_file_requests(platform);
         self.take_game_log();
         let tagged = enter(self.memory_scopes(), "perf");
         self.end_perf(platform);
@@ -844,19 +984,88 @@ impl<G: GameData> App<G> {
         }
     }
 
+    /// Carries out the requests about the player's files the game made in
+    /// this frame ([`Ctx::offer_file`]), in order: a name that isn't one
+    /// file's fails here, before the platform sees it, and a folder that
+    /// can't be opened is logged. The answers the platform gives now go to
+    /// the game at the start of the next frame.
+    fn carry_out_file_requests(&mut self, platform: &mut impl Platform) {
+        let Some(game) = self.game_mut() else {
+            return;
+        };
+        let requests = game.ctx_mut().take_file_requests();
+        let mut failed = Vec::new();
+        for request in requests {
+            match request {
+                FileRequest::Offer { name, text, .. } => {
+                    let answer = match player_files::check_offered_name(&name) {
+                        Ok(()) => platform.offer_file(&name, &text),
+                        Err(why) => Some(Offered::Failed(why)),
+                    };
+                    self.lists
+                        .answers
+                        .extend(answer.map(SystemEvent::FileOffered));
+                }
+                FileRequest::Ask { accept, .. } => {
+                    let answer = platform.ask_for_file(&accept);
+                    self.lists
+                        .answers
+                        .extend(answer.map(SystemEvent::FileChosen));
+                }
+                FileRequest::OpenFolder(folder) => {
+                    if let Err(why) = platform.open_folder(folder) {
+                        failed.push(format!("the {folder:?} folder wasn't opened: {why}"));
+                    }
+                }
+                _ => {}
+            }
+        }
+        for why in failed {
+            self.log_line(LogLevel::Warn, LogCategory::Platform, why);
+        }
+    }
+
     /// Reads the system's events and acts on them; a resume restarts the
-    /// clock before this frame reads it.
+    /// clock before this frame reads it. The answers to the last frame's
+    /// requests about the player's files come first.
     fn system_events(&mut self, platform: &mut impl Platform) {
         let mut events = core::mem::take(&mut self.lists.system);
         events.clear();
+        events.append(&mut self.lists.answers);
         platform.system_events(&mut events);
+        self.refuse_too_much(&mut events);
         if let Some(recorder) = &mut self.recorder {
             recorder.system(&events);
         }
-        for &event in &events {
+        for event in events.drain(..) {
             self.on_system_event(platform, event);
         }
         self.lists.system = events;
+    }
+
+    /// Takes out of each drop in `events` what is over the limits
+    /// ([`dropped::accept`]), logging why, and a drop left with no file:
+    /// before a record notes them, so it holds what the game heard.
+    fn refuse_too_much(&mut self, events: &mut Vec<SystemEvent>) {
+        if !events
+            .iter()
+            .any(|e| matches!(e, SystemEvent::FilesDropped(_)))
+        {
+            return;
+        }
+        let mut refused = Vec::new();
+        events.retain_mut(|event| {
+            let SystemEvent::FilesDropped(files) = event else {
+                return true;
+            };
+            let (kept, why) = dropped::accept(core::mem::take(files));
+            refused.extend(why);
+            *files = kept;
+            !files.is_empty()
+        });
+        for why in refused {
+            self.log_line(LogLevel::Warn, LogCategory::Platform, why);
+        }
     }
 
     fn on_system_event(&mut self, platform: &mut impl Platform, event: SystemEvent) {
@@ -899,7 +1108,10 @@ impl<G: GameData> App<G> {
                     game.toggle_fullscreen();
                 }
             }
-            SystemEvent::LowBattery => {}
+            SystemEvent::LowBattery
+            | SystemEvent::FilesDropped(_)
+            | SystemEvent::FileOffered(_)
+            | SystemEvent::FileChosen(_) => {}
             SystemEvent::CrankDocked | SystemEvent::CrankUndocked => {
                 if let Some(game) = self.game_mut() {
                     game.ctx_mut().crank_docked = event == SystemEvent::CrankDocked;
@@ -939,7 +1151,9 @@ impl<G: GameData> App<G> {
                 // and in silence if it is muted too.
                 drain(platform, &mut self.lists.input);
                 if muted {
-                    platform.audio().play(&silent(&[], &[]), elapsed.now);
+                    platform
+                        .audio()
+                        .play(&silent(&[], &[], game.gains()), elapsed.now);
                 }
                 present_tagged(platform, game, self.look);
             }
@@ -993,10 +1207,50 @@ impl<G: GameData> App<G> {
         }
     }
 
-    /// Runs the game's load, the card on the screen, and shows the game it
-    /// made, or why it couldn't. The game prints wide what its look's font
-    /// atlas has wide ([`Game::set_widths`]).
-    fn load(&mut self, platform: &mut impl Platform, load: Load<G>, now: Millis) {
+    /// Runs the game's load, the card on the screen: a load at once whole,
+    /// and a load in steps for this frame's slice ([`Platform::load_slice`]).
+    /// Once it is over, shows the game it made, or why it couldn't. The
+    /// game prints wide what its look's font atlas has wide
+    /// ([`Game::set_widths`]). A recorded or hashed run takes no slice: where
+    /// a slice ends depends on the clock, which a playback doesn't repeat.
+    fn load(&mut self, platform: &mut impl Platform, pending: Pending<G>, now: Millis) {
+        let started = match pending {
+            Pending::Begin(loader) => Ok((loader, self.setup(platform, now))),
+            Pending::Next(step) => Err(step),
+        };
+        drain(platform, &mut self.lists.input);
+        let recorded = self.frame_hashes.on || self.recorder.as_ref().is_some_and(|r| r.is_on());
+        let slice = platform.load_slice().filter(|_| !recorded);
+        let tagged = enter(self.perf.scopes, "load");
+        let loading = self.perf.clock.as_mut().map(PerfClock::read);
+        let (ran, steps) = match started {
+            Ok((Loader::Once(load), setup)) => (Ran::Over(load(setup).map(Box::new)), 1),
+            Ok((Loader::Steps(begin), setup)) => {
+                let deadline = slice.map(Deadline::start);
+                run_steps(begin(setup), deadline)
+            }
+            Err(step) => run_steps(step, slice.map(Deadline::start)),
+        };
+        let done = self.perf.clock.as_mut().map(PerfClock::read);
+        leave(tagged);
+        let us = loading.zip(done).map(|(from, to)| micros(from, to));
+        self.perf.load_us = us.map(|us| self.perf.load_us.unwrap_or(0).saturating_add(us));
+        self.load_steps = self.load_steps.saturating_add(steps);
+        match ran {
+            Ran::Over(loaded) => self.loaded(platform, loaded),
+            Ran::More(step) => {
+                if let Phase::Loading { card, load, .. } = &mut self.phase {
+                    *load = Some(Pending::Next(step));
+                    platform.present(&Frame::new(Show::Card(card)));
+                }
+            }
+        }
+    }
+
+    /// What the game's load begins with, noted in the record: the
+    /// platform's display, storage and facts, a seed from `now`, and the
+    /// last crash.
+    fn setup(&mut self, platform: &mut impl Platform, now: Millis) -> Setup {
         let mut setup = Setup {
             display: platform.display(),
             storage: platform.storage(),
@@ -1011,18 +1265,16 @@ impl<G: GameData> App<G> {
         }
         // After the record took the storage: a playback offers it again.
         setup.last_crash = crash::offer_last_crash(setup.storage.as_mut());
-        drain(platform, &mut self.lists.input);
-        let tagged = enter(self.perf.scopes, "load");
-        let loading = self.perf.clock.as_mut().map(PerfClock::read);
-        let loaded = load(setup);
-        let done = self.perf.clock.as_mut().map(PerfClock::read);
-        leave(tagged);
-        self.perf.load_us = loading.zip(done).map(|(from, to)| micros(from, to));
+        setup
+    }
+
+    /// The load is over: shows the game it `loaded`, or why it couldn't.
+    fn loaded(&mut self, platform: &mut impl Platform, loaded: Result<Box<Game<G>>, String>) {
         match loaded {
             Ok(mut game) => {
                 use_look_widths(&mut game, self.look);
                 present_game(platform, &game, self.look);
-                self.phase = Phase::Running(Box::new(game));
+                self.phase = Phase::Running(game);
                 self.give_clock();
             }
             Err(errors) => {
@@ -1217,9 +1469,17 @@ impl<G: GameData> App<G> {
     }
 
     /// How long the game's load took, in microseconds, if it was timed: in
-    /// a build with debug tools, on a platform with a clock.
+    /// a build with debug tools, on a platform with a clock. A load in steps
+    /// counts the time its frames ran it, so far while it runs.
     pub fn load_us(&self) -> Option<u32> {
         self.perf.load_us
+    }
+
+    /// The steps the game's load has run: none before it begins, one for a
+    /// load at once, and so far for a load in steps
+    /// ([`Start::in_steps`]).
+    pub fn load_steps(&self) -> u32 {
+        self.load_steps
     }
 
     /// What holds the heap now, by memory tag (ADR-0046 §6): `platform`'s
@@ -1270,14 +1530,16 @@ fn use_look_widths<G: GameData>(game: &mut Game<G>, look: Option<LookOf<G>>) {
 }
 
 /// Hands the files the platform says changed to `game`'s modules: while
-/// debug tools are on, in a build with them. A build that ships never asks.
-/// Whether it named any.
+/// debug tools are on, in a build with them, or while the platform watches
+/// a folder the game asked for in every build (ADR-0095). A build
+/// that ships asks only then. Whether it named any.
 fn tell_changed<G: GameData>(
     platform: &mut impl Platform,
     game: &mut Game<G>,
     changed: &mut Vec<String>,
 ) -> bool {
-    if !(shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools) {
+    let debug = shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools;
+    if !(debug || platform.watches_files()) {
         return false;
     }
     changed.clear();
@@ -1289,14 +1551,17 @@ fn tell_changed<G: GameData>(
     told
 }
 
-/// `requests` and `music` at volume 0: a muted frame's audio.
-fn silent<'a>(requests: &'a [SoundRequest], music: &'a [MusicCommand]) -> AudioFrame<'a> {
+/// `requests` and `music` with every gain at 0 ([`Gains::muted`]): a muted
+/// frame's audio.
+fn silent<'a>(
+    requests: &'a [SoundRequest],
+    music: &'a [MusicCommand],
+    gains: Gains<'a>,
+) -> AudioFrame<'a> {
     AudioFrame {
         requests,
         music,
-        music_volume: 0.0,
-        sound_volume: 0.0,
-        voice_volume: 0.0,
+        gains: gains.muted(),
     }
 }
 
@@ -1334,24 +1599,33 @@ fn step<G: GameData>(
         recorder.music(playing);
     }
     game.set_music_playing(playing);
+    let voice = platform.audio().voice_playing(elapsed.now);
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.voice(voice);
+    }
+    let asked = lists.voice.as_ref();
+    let line = asked.filter(|(_, file)| voice == Some(file.as_str()));
+    game.set_voice_playing(line.map(|(line, _)| line));
     game.set_ticks(elapsed.ticks);
     let out = game.frame(&lists.input, elapsed.dt);
     lists.audio.extend_from_slice(out.audio);
+    for request in out.audio {
+        if let AudioRequest::PlayVoice { line, variant } = request {
+            lists.voice = Some((line.clone(), clip_file(line, *variant)));
+        }
+    }
     lists.music.extend_from_slice(out.music);
-    let (music_volume, sound_volume, voice_volume) =
-        (out.music_volume, out.sound_volume, out.voice_volume);
+    let gains = out.gains;
     lists.sounds.clear();
     let sounds = lists.audio.iter().filter_map(SoundRequest::from_request);
     lists.sounds.extend(sounds);
     let audio = if muted {
-        silent(&lists.sounds, &lists.music)
+        silent(&lists.sounds, &lists.music, gains)
     } else {
         AudioFrame {
             requests: &lists.sounds,
             music: &lists.music,
-            music_volume,
-            sound_volume,
-            voice_volume,
+            gains,
         }
     };
     platform.audio().play(&audio, elapsed.now);

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "playground-macros.html" as pg %}
+
+{#- The playground (ticket 2814): Hello, Grid's web build in a frame beside
+    an editor for each of its files (`page.extra.files`), and the problems
+    the game sends back (`playground-macros.html`). The page's text before
+    `<!-- more -->` goes above the playground, the rest below it. Its files'
+    own text is at /playground/files/ (`copy-playground.sh`). -#}
+{% block head %}{{ pg::script() }}{% endblock head %}
+
+{% block content %}
+{%- set more = '<span id="continue-reading"></span>' %}
+<article class="prose">
+  <h1>{{ page.title }}</h1>
+  {{ page.content | split(pat=more) | first | safe }}
+</article>
+{{ pg::playground(game="Hello, Grid", frame=get_url(path='@/examples/hello-grid.md'), files_url=get_url(path='playground/files/', trailing_slash=true), files=page.extra.files) }}
+<article class="prose">
+  {%- set parts = page.content | split(pat=more) %}
+  {%- if parts | length > 1 %}
+  {{ parts | last | safe }}
+  {%- endif %}
+</article>
+{% endblock content %}

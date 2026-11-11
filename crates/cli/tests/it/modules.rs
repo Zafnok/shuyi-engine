@@ -301,7 +301,7 @@ fn an_unknown_name_lists_the_known_ones_and_a_planned_one_says_so() {
 }
 
 #[test]
-fn on_this_repository_the_catalog_is_its_own_and_no_module_is_built_yet() {
+fn on_this_repository_the_catalog_is_its_own_with_the_modules_it_builds() {
     let root = scratch("modules-repository");
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let project = game(&root, "grid", &repo);
@@ -315,10 +315,17 @@ fn on_this_repository_the_catalog_is_its_own_and_no_module_is_built_yet() {
             "bodies",
             "online",
             "world-drawing",
-            "kind"
+            "kind",
+            "scripting"
         ]
     );
-    assert!(catalog.modules.is_empty() && catalog.on.is_empty());
+    let built: Vec<(&str, &str)> = catalog
+        .modules
+        .iter()
+        .map(|m| (m.name.as_str(), m.feature.as_str()))
+        .collect();
+    assert_eq!(built, [("shuyi-script", "script")]);
+    assert_eq!(catalog.on, Vec::<String>::new());
     let answer = add(&project, &AddInput::new("physics"));
     assert_eq!(answer.code.as_deref(), Some("SH0003"));
     assert_eq!(

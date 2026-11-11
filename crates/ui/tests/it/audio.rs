@@ -1,10 +1,13 @@
 //! The audio the Harness records and its stand-in for the music player
 //! (ticket 1111): the sounds, voices and music commands each frame asked
-//! for, the volumes it told the platform, and a music clock that counts
+//! for, the gains it told the platform, and a music clock that counts
 //! from when a track starts sounding.
 
+use shuyi_assets::audio::DuckRule;
 use shuyi_platform::harness::{FRAME_DT, Harness};
-use shuyi_ui::audio::{AudioRequest, MusicCommand, MusicSwitch};
+use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
+use shuyi_ui::audio::loudness::loudness;
+use shuyi_ui::audio::{AudioRequest, Gain, MusicCommand, MusicSwitch};
 use shuyi_ui::frame::GlyphBuffer;
 use shuyi_ui::settings::MAX_VOLUME;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx, Voice};
@@ -124,26 +127,77 @@ fn records_the_voices_asked_for_by_line() {
     assert_eq!(h.voices(), ids);
 }
 
+/// Acceptance (2255): after `play_voice`, `voice_playing` names the line
+/// from the next frame until the clip's length has passed, then is `None`;
+/// a voice stopped is `None` from the next frame.
 #[test]
-fn the_volumes_and_fullscreen_are_what_the_last_frame_said() {
+fn a_voice_sounds_from_the_next_frame_until_its_length_has_passed() {
     let mut h = beeper();
-    // Before any frame: as the platform starts.
-    assert_eq!(h.volumes(), (1.0, 1.0));
+    h.voice_length(1.0);
+    let lines = h.ctx().game.lines();
+    let manifest = h.ctx().game.manifest(&[(0, "Only"), (1, "Only")]);
+    h.ctx_mut().set_voice_manifest(&manifest);
+    h.ctx_mut().play_voice(&lines[0]);
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), None, "the platform hasn't read it");
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[0]));
+    h.wait(0.9);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[0]), "still sounding");
+    h.wait(0.2);
+    assert_eq!(h.ctx().voice_playing(), None, "ended");
+    // Stopped: `None` from the next frame.
+    h.ctx_mut().play_voice(&lines[1]);
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[1]));
+    h.ctx_mut().stop_voice();
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), Some(&lines[1]), "a frame behind");
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.ctx().voice_playing(), None, "stopped");
+}
+
+#[test]
+fn the_gains_and_fullscreen_are_what_the_last_frame_said() {
+    let mut h = beeper();
+    // Before any frame: no group heard of yet.
+    assert_eq!(h.gain(MUSIC), Gain::SILENT);
     assert!(!h.fullscreen());
+    h.ctx_mut().preview_volume(MUSIC, MAX_VOLUME / 2);
+    h.ctx_mut().preview_volume(SFX, 0);
     h.ctx_mut()
-        .change_settings(|s| {
-            s.music_volume = MAX_VOLUME / 2;
-            s.sound_volume = 0;
-            s.fullscreen = true;
-        })
+        .change_settings(|s| s.fullscreen = true)
         .unwrap_or_else(|e| panic!("{e}"));
     // Not told until a frame runs.
     assert!(!h.fullscreen());
     h.wait(0.0);
-    let music = h.ctx().settings().music_factor();
-    assert!(music > 0.0 && music < 1.0, "{music}");
-    assert_eq!(h.volumes(), (music, 0.0));
+    assert_eq!(h.gain(MUSIC), loudness(MAX_VOLUME / 2));
+    // The menus' sounds are under the sounds'.
+    assert_eq!((h.gain(SFX), h.gain(UI)), (Gain::SILENT, Gain::SILENT));
+    assert_eq!(h.gain(VOICE), loudness(97));
     assert!(h.fullscreen());
+}
+
+/// Acceptance: the master volume at 0 silences every group from the next
+/// frame, and Restore defaults brings back the defaults' gains.
+#[test]
+fn master_at_zero_silences_every_group_and_the_defaults_come_back() {
+    let mut h = beeper();
+    h.wait(0.0);
+    let groups = [MASTER, MUSIC, SFX, VOICE, UI];
+    let defaults = groups.map(|g| h.gain(g));
+    assert_eq!(defaults, [4096, 3329, 3329, 3329, 3329].map(Gain::new));
+    h.ctx_mut().preview_volume(MASTER, 0);
+    assert_eq!(
+        h.gain(MUSIC),
+        Gain::new(3329),
+        "not told until a frame runs"
+    );
+    h.wait(0.0);
+    assert_eq!(groups.map(|g| h.gain(g)), [Gain::SILENT; 5]);
+    h.ctx_mut().preview_settings(|s| *s = s.restored());
+    h.wait(0.0);
+    assert_eq!(groups.map(|g| h.gain(g)), defaults);
 }
 
 /// Whether `cue` sounds, `expected` seconds in (to 10 ms: frame times are
@@ -366,4 +420,68 @@ fn a_stop_with_its_own_fade_takes_that_long() {
         stopped[0].abs_diff(asked + per_second / 2 - 1) <= 1,
         "{stopped:?}"
     );
+}
+
+/// The beeper, with the toy game's audio lowering `music` to 80 on the
+/// curve while a voice plays, over 100 ms down and 500 ms back, and every
+/// voice clip a second long.
+fn ducker() -> Harness<Toy> {
+    let mut ctx = toy::ctx();
+    let mut rule = DuckRule::default();
+    rule.when = VOICE.into();
+    rule.lower = MUSIC.into();
+    rule.to = 80;
+    rule.attack_ms = 100;
+    rule.release_ms = 500;
+    ctx.game.audio.ducks.push(rule);
+    let mut h = Harness::new(Game::new(ctx, Box::new(Beeper), GameHooks::default()));
+    h.voice_length(1.0);
+    let manifest = h.ctx().game.manifest(&[(0, "Only")]);
+    h.ctx_mut().set_voice_manifest(&manifest);
+    h
+}
+
+/// Acceptance (2343): a voice lowers the music by the rule once it has
+/// played for the attack, and the music is back once the voice has ended
+/// and the release has passed; the sounds never move.
+#[test]
+fn a_voice_lowers_the_music_as_the_manifests_rule_says() {
+    let mut h = ducker();
+    h.wait(0.0);
+    let (music, sfx) = (h.gain(MUSIC), h.gain(SFX));
+    assert_eq!(music, loudness(97));
+    let line = h.ctx().game.lines()[0].clone();
+    h.ctx_mut().play_voice(&line);
+    h.frame(&[], FRAME_DT);
+    assert_eq!(h.gain(MUSIC), music, "the platform hasn't read it");
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), Some(&line));
+    assert_eq!(h.gain(MUSIC), music.times(loudness(80)));
+    assert_eq!(h.gain(SFX), sfx);
+    // The voice ends a second after it started, and the music comes back
+    // over half a second.
+    h.wait(0.85);
+    assert_eq!(h.gain(MUSIC), music.times(loudness(80)), "still lowered");
+    h.wait(0.1);
+    assert_eq!(h.ctx().voice_playing(), None, "ended");
+    assert!(h.gain(MUSIC) < music, "coming back");
+    h.wait(0.5);
+    assert_eq!(h.gain(MUSIC), music);
+    assert_eq!(h.gain(SFX), sfx);
+}
+
+/// Acceptance (2343): a voice the player turned down to 0 lowers nothing.
+#[test]
+fn a_voice_turned_down_to_0_lowers_nothing() {
+    let mut h = ducker();
+    h.ctx_mut().preview_volume(VOICE, 0);
+    h.wait(0.0);
+    let music = h.gain(MUSIC);
+    let line = h.ctx().game.lines()[0].clone();
+    h.ctx_mut().play_voice(&line);
+    for _ in 0..30 {
+        h.frame(&[], FRAME_DT);
+        assert_eq!(h.gain(MUSIC), music);
+    }
+    assert_eq!(h.ctx().voice_playing(), Some(&line), "it was playing");
 }

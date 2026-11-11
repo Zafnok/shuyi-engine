@@ -17,8 +17,8 @@ hashes differ, and that step's command is where to look.
 
 ## When to use it
 
-- A play ended wrongly, and you have its record or can make one (`bots`
-  writes one per play).
+- A play ended wrongly, and you have its record or can make one
+  (`playtest` keeps one per try).
 - Two runs of one record disagree: the rules own something they
   shouldn't (an unordered map, a clock, luck of their own).
 - Records made before a change no longer play the same, and you need to
@@ -35,14 +35,16 @@ hashes differ, and that step's command is where to look.
 
 1. **Get the record.** A game's record is in its own format; the `grid`
    template's is a `StageRecord`, `(seed: 0, commands: [Step(Right),
-   Step(Up)])`. The bots' plays carry theirs:
+   Step(Up)])`. The bots' tries carry theirs:
 
    ```bash
-   cargo shuyi bots 20 --json
+   cargo shuyi playtest --tries 20 --json
    ```
 
-   Each of `result.plays` has its `seed`, `outcome` and `record`: write
-   the record of the play that went wrong to a file. The bots stamp each
+   Each of `result[0].entrants[0].tries` has its `seed`, `commands` and
+   `record` (its outcome is the report's line of the same seed,
+   `result[0].report.entrants[0].tries`): write the record of the try
+   that went wrong to a file. The bots stamp each
    record with what made it (`made`: the engine's version, the game's
    name and version, and a fingerprint of its files).
 
@@ -119,7 +121,9 @@ A player's crash report (`crash-<when>.ron` in the game's data folder)
 holds the game's record of its play in its `record` field, on a
 computer, when the game gives one (`Start::crash_record`, or
 `BasicGame::crash_record` on the short path; the grid template's game
-gives its open stage's `StageRecord`): write that
+gives its open stage's `StageRecord`). A release build adds it only when
+the game asks (`CrashReports::with_record_in_release`, or
+`BasicGame::crash_record_in_release`). Write that
 text to a file and replay it as above; it ends with the command the
 rules were applying when they panicked. The report also names the frame,
 the screen on top and the log's last lines. Replaying a report to its
@@ -164,7 +168,7 @@ Branch on the `code`, and read its page with `cargo shuyi explain
   folder).
 - `SH3002`: the game's tools failed, most often on a record that
   doesn't read in the game's format; the error says where.
-- `SH3001`: the game's tools give no `replay` (or no `bots`): a stage's
+- `SH3001`: the game's tools give no `replay` (or no `playtest`): a stage's
   `GameTools` writes them.
 - `SH3005`: the game's tool program didn't build.
 

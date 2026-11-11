@@ -279,7 +279,8 @@ impl Renderer {
             if cell.glyph == ' ' {
                 continue;
             }
-            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide) else {
+            let set = buf.widths().wide_font();
+            let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide, set) else {
                 continue;
             };
             #[allow(clippy::cast_precision_loss)] // cell coords < 2^16
@@ -443,11 +444,18 @@ impl Renderer {
 
     /// Where to find `glyph` in the atlas, what colour to tint it and how
     /// many cells it covers: `fg` over both cells for a wide glyph whose
-    /// continuation follows it (`wide`), over one for a narrow glyph, or
+    /// continuation follows it (`wide`), from the language's wide set `set`
+    /// first ([`FontAtlasDef::wide_cell`]), over one for a narrow glyph, or
     /// the fallback glyph in [`MISSING_COLOR`] over one (logged once per
     /// glyph). As the raster's painter does.
-    fn atlas_cell(&mut self, glyph: char, fg: Rgb, wide: bool) -> Option<(AtlasRect, Color, f32)> {
-        if let Some(rect) = self.atlas.wide_rect(glyph).filter(|_| wide) {
+    fn atlas_cell(
+        &mut self,
+        glyph: char,
+        fg: Rgb,
+        wide: bool,
+        set: Option<&str>,
+    ) -> Option<(AtlasRect, Color, f32)> {
+        if let Some(rect) = self.atlas.wide_rect_in(set, glyph).filter(|_| wide) {
             return Some((rect, color(fg), 2.0));
         }
         if let Some(rect) = self.atlas.glyph_rect(glyph) {

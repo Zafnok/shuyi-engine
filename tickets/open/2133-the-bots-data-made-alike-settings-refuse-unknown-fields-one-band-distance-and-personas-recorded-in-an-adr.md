@@ -94,11 +94,10 @@ None.
   stage's. `Entrant::bots`' doc comment says the `seed` is the try's,
   the same `start` gets, and that a bot seeded from it uses
   `bot_seed(seed)`. Hello, Grid's `random` hero uses it.
-- **Either order with 2544:** the grid template's random bot is seeded
-  with `bot_seed(seed)` too (`templates/grid/crates/game/src/tools.rs`),
-  so a new game's bot doesn't read its stage's luck. If 2544 is done,
-  that is the bot of its `playtest` entrant; if not, it is `bot_play`'s
-  `RandomBot::new(seed)`, and 2544 keeps it when it moves the bot.
+- The grid template's random bot is seeded with `bot_seed(seed)` too,
+  so a new game's bot doesn't read its stage's luck: the bot of its
+  `playtest` entrant `random`, today `RandomBot::new(seed)`
+  (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`).
 - `lib.rs`: re-export `Persona`, `Weighted`, `Weights` and
   `UnknownFeature` beside the balance items. The playtest items stay
   under `bots::playtest` (`run` and `judge` are too plain for the
@@ -119,7 +118,7 @@ None.
 - changing what `Persona` holds, or adding rollout personas;
 - `play_tries` changing the seed it hands `Entrant::bots`: a game's own
   entrant decides, with `bot_seed`;
-- the CLI's `bots` and `playtest` operations (2544);
+- the CLI's `playtest` operation (2544 folded `bots` into it);
 - `autobalance_by` and its stop check in `bots/balance.rs` (2541, done):
   of that file this ticket edits only `distance`, whose results don't
   change.

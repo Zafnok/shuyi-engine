@@ -1,0 +1,43 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "both.join(\"\\n\")"
+---
+  Scenes   Switches   Lines   
+                              
+   :                          
+  Pick a scene first          
+                              
+          keys here           
+--- colours ---
+abbbbbbbbabbbbbbbbbbacccccccab
+dddddddddddddddddddddddddddddd
+dccccddddddddddddddddddddddddd
+ddeeeeeeeeeeeeeeeeeedddddddddd
+dddddddddddddddddddddddddddddd
+ddddddddddeeeeeeeeeddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:text bg:panel
+c = fg:panel bg:focus
+d = fg:text bg:background
+e = fg:text_dim bg:background
+
+  Scenes   Switches   Lines   
+                              
+  No scenes                   
+                              
+                              
+          keys here           
+--- colours ---
+abbbbbbbbaccccccccccacccccccac
+dddddddddddddddddddddddddddddd
+ddeeeeeeeeeddddddddddddddddddd
+dddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddd
+ddddddddddeeeeeeeeeddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:panel bg:focus
+c = fg:text bg:panel
+d = fg:text bg:background
+e = fg:text_dim bg:background

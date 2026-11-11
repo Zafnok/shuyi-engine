@@ -10,7 +10,11 @@
 //! here too: the terrains' glyphs and colors, and the pieces' letters. Its
 //! play is a [`StageRecord`], which its tools' `replay` reads and a crash
 //! report holds ([`crash_record`]). Its tools ([`Tools`]) add its scene,
-//! records, bots and map to the engine's.
+//! records, its bot run and map to the engine's.
+//!
+//! In a debug build the debug menu's "Debug view" shows the map's grid
+//! layout (the grid kit's `grid` channel, [`Screen::debug_draw`]), and
+//! `cargo shuyi frame-png out.png --debug grid` pictures it.
 
 #[cfg(feature = "tools")]
 mod tools;
@@ -23,7 +27,9 @@ use shuyi::assets::grid_map::GridMap;
 use shuyi::assets::lighting::Lighting;
 use shuyi::core::{Dir, Made, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
 use shuyi::prelude::*;
+use shuyi::ui::debug::gizmo::Gizmos;
 use shuyi::ui::frame::Palette;
+use shuyi::ui::grid::debug::{GRID, layout_gizmos};
 use shuyi::ui::grid::{
     Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
     Terrains, UnitPainter, WalkSpeeds, glyph,
@@ -32,15 +38,15 @@ use shuyi::ui::grid::{
 use crate::Data;
 
 #[cfg(feature = "tools")]
-pub use tools::{OPTIONS, Tools, seed_of};
+pub use tools::{OPTIONS, Tools, playtest_plan, seed_of};
 
 /// The stage's map, in the game's files.
 // check-text: not player text, a file name
 pub const MAP: &str = "stage.map";
 
 /// A record of a stage: its seed and the commands sent to its rules, and
-/// what made it. The game's record format for `replay`; `bots` writes one
-/// of each play, and a crash report holds the open stage's
+/// what made it. The game's record format for `replay`; `playtest` keeps
+/// one of each try, and a crash report holds the open stage's
 /// ([`crash_record`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -369,6 +375,17 @@ impl Screen<Data> for StageScreen {
         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
         let scene = self.scene(Self::view_tiles());
         GLYPHS.paint(&looks, &scene, AREA, &Letters { palette }, buf);
+    }
+
+    /// The grid kit's `grid` channel of the debug view: the map's layout
+    /// as the glyph skin painted it.
+    fn debug_draw(&self, _: &Ctx<Data>, out: &mut Gizmos) {
+        if !out.channel_on(GRID) {
+            return;
+        }
+        let scene = self.scene(Self::view_tiles());
+        let grid = GridSkin::<Piece>::grid(&GLYPHS, &scene, AREA);
+        layout_gizmos(&scene, &grid, out);
     }
 
     /// The rules' state, in each frame's hash in a session record.

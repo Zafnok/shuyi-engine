@@ -3,7 +3,9 @@
 //! card. It plays scripted input and system events, records the frames
 //! presented to it, keeps its storage in memory, and stands in for the
 //! music player ([`Speaker`]), so a screen that keeps time with the music
-//! is tested too.
+//! is tested too. The files a game offers the player are kept in memory
+//! ([`HeadlessPlatform::offered`]), and its asks for a file are answered
+//! from a queue ([`HeadlessPlatform::answer_next_ask`]).
 //!
 //! The test Harness runs games on it, through the same
 //! [`App::frame`](crate::App::frame) the devices do. It is also the
@@ -11,24 +13,26 @@
 //! (`docs/platform-backends.md`).
 
 use crate::alloc_prelude::*;
-use alloc::collections::VecDeque;
-use alloc::vec;
+use alloc::collections::{BTreeMap, VecDeque};
+use alloc::{format, vec};
 
 #[cfg(feature = "std")]
 use shuyi_assets::bundle::Layer;
-use shuyi_ui::audio::{MusicCommand, SoundId};
+use shuyi_ui::audio::{Gain, MusicCommand, SharedSamples, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{
     HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass, TagRow,
 };
+use shuyi_ui::player_files::Folder;
 use shuyi_ui::storage::{MemoryStorage, Storage};
-use shuyi_ui::{PlatformFacts, RawInputEvent};
+use shuyi_ui::{PlatformFacts, RawInputEvent, StoragePlace};
 
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
-use crate::platform::{DisplayInfo, Frame, Millis, Platform, Show, SystemEvent};
+use crate::platform::{DisplayInfo, Frame, LoadSlice, Millis, Platform, Show, SystemEvent};
+use crate::player_files::{self, ChosenFile, EXPORTS_FOLDER, MOST_NUMBERED, Offered};
 use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
@@ -112,12 +116,31 @@ pub struct PlayingSound {
     pub paused: bool,
 }
 
+/// A play of a sound the game added at run time, as the [`Speaker`] heard
+/// it: the samples it played. Only the `Speaker` builds one (ADR-0039).
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct AddedPlay {
+    /// The sound cue.
+    pub cue: String,
+    /// The samples it played.
+    pub samples: SharedSamples,
+    /// The volume asked for, 0–1: a multiplier on the sound's own, full.
+    pub volume: f32,
+    /// The handle it was started with, if it was.
+    pub id: Option<SoundId>,
+}
+
 /// The headless backend's sound device: it records what the last frame
 /// played, works out which music "sounds" from the music commands and the
 /// clock, and keeps the sounds started with a handle until they stop (one
 /// that plays once too: it knows no lengths). Like `shuyi-app`, it mutes
 /// rather than pauses: while [`suspended`](Self::suspended) its music
-/// clock runs on.
+/// clock runs on. It keeps the sounds the game added at run time, and
+/// hears every play of them ([`added_plays`](Self::added_plays)). A voice
+/// clip sounds from its request until it is stopped or replaced, or until
+/// the length a test gave clips has passed
+/// ([`set_voice_length`](Self::set_voice_length)).
 #[derive(Debug, Clone, Default)]
 pub struct Speaker {
     /// Seconds a track takes to load: it sounds that long after its
@@ -127,12 +150,17 @@ pub struct Speaker {
     silent: bool,
     /// The track started last, and when.
     started: Option<(String, Millis)>,
+    /// How long every voice clip lasts, in seconds; `None` until it is
+    /// stopped.
+    voice_length: Option<f64>,
+    /// The voice clip asked for last and not stopped, and when.
+    voice: Option<(String, Millis)>,
     /// The last frame's sound and voice requests.
     requests: Vec<SoundRequest>,
     /// The last frame's music commands.
     music: Vec<MusicCommand>,
-    /// The last frame's volumes: music, sound and voice. Full until told.
-    volumes: Option<(f32, f32, f32)>,
+    /// The last frame's gain of each sound group; none before a frame.
+    gains: BTreeMap<String, Gain>,
     /// Whether everything was stopped (the game quit).
     stopped: bool,
     /// The sounds started with a handle and not stopped, in id order.
@@ -142,6 +170,10 @@ pub struct Speaker {
     /// What a session record says is sounding, while one plays: the
     /// answer to `music_playing` in place of the speaker's own.
     recorded: Option<RecordedMusic>,
+    /// The sounds added and not removed, by cue.
+    added: BTreeMap<String, SharedSamples>,
+    /// Every play of a sound added, in order.
+    added_plays: Vec<AddedPlay>,
 }
 
 /// What a session record says is sounding.
@@ -151,6 +183,9 @@ struct RecordedMusic {
     track: String,
     /// Its position this frame; `None` in silence.
     position: Option<f64>,
+    /// The file of the voice clip sounding, written only when it changes;
+    /// empty for none.
+    voice: String,
 }
 
 impl Speaker {
@@ -159,6 +194,13 @@ impl Speaker {
     /// 0.
     pub fn set_load_delay(&mut self, seconds: f64) {
         self.load_delay = seconds.max(0.0);
+    }
+
+    /// Makes every voice clip last `seconds`: it stops sounding that long
+    /// after it was asked for. Until this is called a clip sounds until it
+    /// is stopped or replaced. Negative or NaN counts as 0.
+    pub fn set_voice_length(&mut self, seconds: f64) {
+        self.voice_length = Some(seconds.max(0.0));
     }
 
     /// Makes no music ever sound, as when the music files are missing.
@@ -177,10 +219,10 @@ impl Speaker {
         &self.music
     }
 
-    /// The music, sound and voice volumes the last frame played at, 0–1;
-    /// full before any.
-    pub fn volumes(&self) -> (f32, f32, f32) {
-        self.volumes.unwrap_or((1.0, 1.0, 1.0))
+    /// The gain of each sound group the last frame played at, by group
+    /// ([`Gains::each`](shuyi_ui::audio::Gains::each)); empty before any.
+    pub fn gains(&self) -> &BTreeMap<String, Gain> {
+        &self.gains
     }
 
     /// Whether the game stopped all its audio (it quit).
@@ -198,22 +240,54 @@ impl Speaker {
         self.suspended
     }
 
-    /// One frame of a session record: the track if it changed, and its
-    /// position.
-    fn play_recorded(&mut self, track: Option<&str>, position: Option<f64>) {
+    /// The sounds the game added at run time and hasn't removed, by cue.
+    pub fn added_sounds(&self) -> &BTreeMap<String, SharedSamples> {
+        &self.added
+    }
+
+    /// Every play and start of a sound the game added, in order, since the
+    /// speaker was made: what each played.
+    pub fn added_plays(&self) -> &[AddedPlay] {
+        &self.added_plays
+    }
+
+    /// Hears a play of `cue`, if it is a sound added.
+    fn hear_added(&mut self, cue: &str, volume: f32, id: Option<SoundId>) {
+        if let Some(samples) = self.added.get(cue) {
+            self.added_plays.push(AddedPlay {
+                cue: cue.to_owned(),
+                samples: samples.clone(),
+                volume,
+                id,
+            });
+        }
+    }
+
+    /// One frame of a session record: the track if it changed, its
+    /// position, and the voice clip if it changed.
+    fn play_recorded(&mut self, frame: &FrameRecord) {
         let recorded = self.recorded.get_or_insert_default();
-        if let Some(track) = track {
+        if let Some(track) = &frame.track {
             track.clone_into(&mut recorded.track);
         }
-        recorded.position = position;
+        recorded.position = frame.music;
+        if let Some(voice) = &frame.voice {
+            voice.clone_into(&mut recorded.voice);
+        }
     }
 
     /// Follows one sound request: a start adds a sound playing (or
     /// replaces the one of its id, as a new game's queue counts from 1
     /// again), a stop takes it away.
-    fn hear(&mut self, request: &SoundRequest) {
+    fn hear(&mut self, request: &SoundRequest, now: Millis) {
         match request {
-            SoundRequest::Start { id, cue, .. } => {
+            SoundRequest::Voice { clip } => self.voice = Some((clip.clone(), now)),
+            SoundRequest::StopVoice => self.voice = None,
+            SoundRequest::Sound { cue, volume } => self.hear_added(cue, *volume, None),
+            SoundRequest::Start {
+                id, cue, volume, ..
+            } => {
+                self.hear_added(cue, *volume, Some(*id));
                 let sound = PlayingSound {
                     id: *id,
                     cue: cue.clone(),
@@ -227,6 +301,12 @@ impl Speaker {
             SoundRequest::Stop { id } => self.playing.retain(|p| p.id != *id),
             SoundRequest::PauseSounds => self.playing.iter_mut().for_each(|p| p.paused = true),
             SoundRequest::ResumeSounds => self.playing.iter_mut().for_each(|p| p.paused = false),
+            SoundRequest::Add { cue, samples, .. } => {
+                self.added.insert(cue.clone(), samples.clone());
+            }
+            SoundRequest::Remove { cue } if self.added.remove(cue).is_some() => {
+                self.playing.retain(|p| p.cue != *cue);
+            }
             _ => {}
         }
     }
@@ -256,12 +336,30 @@ impl Audio for Speaker {
         (elapsed >= 0.0).then_some((cue.as_str(), elapsed))
     }
 
+    fn voice_playing(&self, now: Millis) -> Option<&str> {
+        if let Some(recorded) = &self.recorded {
+            return Some(recorded.voice.as_str()).filter(|voice| !voice.is_empty());
+        }
+        let (clip, at) = self.voice.as_ref()?;
+        let on = self
+            .voice_length
+            .is_none_or(|length| now.since(*at).as_secs_f64() < length);
+        on.then_some(clip.as_str())
+    }
+
     fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) {
-        self.volumes = Some((frame.music_volume, frame.sound_volume, frame.voice_volume));
+        let same = (self.gains.iter())
+            .map(|(group, &gain)| (group.as_str(), gain))
+            .eq(frame.gains.each());
+        if !same {
+            self.gains.clear();
+            let each = frame.gains.each().map(|(g, gain)| (g.to_owned(), gain));
+            self.gains.extend(each);
+        }
         self.requests.clear();
         self.requests.extend_from_slice(frame.requests);
         for request in frame.requests {
-            self.hear(request);
+            self.hear(request, now);
         }
         self.music.clear();
         self.music.extend_from_slice(frame.music);
@@ -272,6 +370,7 @@ impl Audio for Speaker {
 
     fn stop_all(&mut self) {
         self.started = None;
+        self.voice = None;
         self.playing.clear();
         self.stopped = true;
     }
@@ -435,6 +534,8 @@ pub struct HeadlessPlatform {
     facts: PlatformFacts,
     /// The clock it gives to measure frames with, if a test set one.
     clock: Option<PerfClock>,
+    /// The slice a frame runs a load in steps for, if a test set one.
+    load_slice: Option<LoadSlice>,
     /// Where its memory readings come from.
     memory: Memory,
     /// How many times `App` asked for the memory.
@@ -457,9 +558,33 @@ pub struct HeadlessPlatform {
     changes: Vec<(Layer, String, Vec<u8>)>,
     /// How many times `App` asked what changed.
     changed_asks: u32,
+    /// Whether it says a folder is watched in every build.
+    watches_files: bool,
     /// What runs on each frame presented, if a tool set it.
     present_hook: Option<Hook>,
+    /// The player's files: what was offered, asked and opened, and the
+    /// answers to the asks to come.
+    files: PlayerFiles,
 }
+
+/// The player's files on the headless backend.
+#[derive(Debug, Default)]
+struct PlayerFiles {
+    /// Each file offered, in order: the name it was written as, and its
+    /// text.
+    offered: Vec<(String, String)>,
+    /// The extensions of each ask, in order.
+    asks: Vec<Vec<String>>,
+    /// The answers to the next asks, in order.
+    answers: VecDeque<ChosenFile>,
+    /// The folders opened, in order.
+    opened: Vec<Folder>,
+    /// Whether a session record is playing: its frames hold the answers.
+    playing: bool,
+}
+
+/// Where the headless backend says the game's storage is: in memory.
+pub const MEMORY_FOLDER: &str = "<memory>";
 
 /// What runs on each frame a [`HeadlessPlatform`] is presented, in its
 /// [`present`](Platform::present): the work a device's backend does there,
@@ -497,8 +622,10 @@ impl HeadlessPlatform {
             speaker: Speaker::default(),
             keyboard: None,
             recorded_keyboard: None,
-            facts: PlatformFacts::default(),
+            facts: PlatformFacts::default()
+                .with_storage_place(StoragePlace::Folder(MEMORY_FOLDER.to_owned())),
             clock: None,
+            load_slice: None,
             memory: Memory::None,
             memory_calls: 0,
             scopes: None,
@@ -510,7 +637,9 @@ impl HeadlessPlatform {
             #[cfg(feature = "std")]
             changes: Vec::new(),
             changed_asks: 0,
+            watches_files: false,
             present_hook: None,
+            files: PlayerFiles::default(),
         }
     }
 
@@ -533,10 +662,10 @@ impl HeadlessPlatform {
     /// Queues one frame of a session record: its system events, its input,
     /// and what the sound device and the system keyboard answer in it.
     pub fn push_frame(&mut self, frame: &FrameRecord) {
+        self.files.playing = true;
         self.system.extend_from_slice(&frame.system);
         self.push_input(&frame.input);
-        self.speaker
-            .play_recorded(frame.track.as_deref(), frame.music);
+        self.speaker.play_recorded(frame);
         self.recorded_keyboard
             .get_or_insert_default()
             .play(frame.keyboard.as_ref());
@@ -547,6 +676,35 @@ impl HeadlessPlatform {
     pub fn end_session(&mut self) {
         self.speaker.recorded = None;
         self.recorded_keyboard = None;
+        self.files.playing = false;
+    }
+
+    /// Queues the answer to the next ask for a file
+    /// ([`Platform::ask_for_file`]), after those already queued: the file the
+    /// player picks ([`ChosenFile::picked`], or [`ChosenFile::from_bytes`]
+    /// for bytes that may be refused), or that they cancel. An ask with no
+    /// answer queued is cancelled. It answers whatever the facts say
+    /// ([`PlatformFacts::can_pick_files`]), so a test picks a file on any
+    /// target.
+    pub fn answer_next_ask(&mut self, answer: ChosenFile) {
+        self.files.answers.push_back(answer);
+    }
+
+    /// Each file the game offered the player, in order: the name it was
+    /// written as in the exports folder (`a (2).ron` for a second `a.ron`)
+    /// and its text.
+    pub fn offered(&self) -> &[(String, String)] {
+        &self.files.offered
+    }
+
+    /// The extensions of each ask for a file, in order.
+    pub fn asks(&self) -> &[Vec<String>] {
+        &self.files.asks
+    }
+
+    /// The folders the game opened, in order.
+    pub fn opened_folders(&self) -> &[Folder] {
+        &self.files.opened
     }
 
     /// The same backend on `display`.
@@ -585,6 +743,16 @@ impl HeadlessPlatform {
     #[must_use]
     pub fn with_clock(mut self, clock: PerfClock) -> Self {
         self.clock = Some(clock);
+        self
+    }
+
+    /// The same backend running a load in steps for `slice` a frame
+    /// ([`Platform::load_slice`]): with a fake clock, a test's steps fall
+    /// in the same frames on every run. Without it, all the steps run in
+    /// one frame.
+    #[must_use]
+    pub fn with_load_slice(mut self, slice: LoadSlice) -> Self {
+        self.load_slice = Some(slice);
         self
     }
 
@@ -673,6 +841,13 @@ impl HeadlessPlatform {
     #[cfg(feature = "std")]
     pub fn change_file(&mut self, layer: Layer, path: &str, bytes: Vec<u8>) {
         self.changes.push((layer, path.to_owned(), bytes));
+    }
+
+    /// Says from now on that a folder is watched in every build, or not
+    /// ([`Platform::watches_files`]): as a backend does once a game read
+    /// one to be.
+    pub fn set_watches_files(&mut self, on: bool) {
+        self.watches_files = on;
     }
 
     /// How many times `App` asked what changed
@@ -770,6 +945,10 @@ impl Platform for HeadlessPlatform {
         self.clock
     }
 
+    fn load_slice(&self) -> Option<LoadSlice> {
+        self.load_slice
+    }
+
     fn memory_scopes(&self) -> Option<MemoryScopes> {
         self.scopes
     }
@@ -789,6 +968,53 @@ impl Platform for HeadlessPlatform {
             Memory::Fake => Some(fake_snapshot(self.presented)),
             Memory::None | Memory::Real(_) => self.snapshots.map(|snapshot| snapshot()),
         }
+    }
+
+    fn watches_files(&self) -> bool {
+        self.watches_files
+    }
+
+    /// Keeps the file, numbered as a desktop's exports folder numbers it,
+    /// and says it was written under [`MEMORY_FOLDER`]; past
+    /// [`MOST_NUMBERED`] files of the name, it fails, as a desktop's does.
+    /// While a session record plays, its frames hold the answer.
+    fn offer_file(&mut self, name: &str, text: &str) -> Option<Offered> {
+        let taken = |name: &str| self.files.offered.iter().any(|(kept, _)| kept == name);
+        let written = (1..=MOST_NUMBERED)
+            .map(|n| player_files::numbered_name(name, n))
+            .find(|numbered| !taken(numbered));
+        let answer = match written {
+            Some(written) => {
+                let path = format!("{MEMORY_FOLDER}/{EXPORTS_FOLDER}/{written}");
+                self.files.offered.push((written, text.to_owned()));
+                Offered::Written(path)
+            }
+            None => Offered::Failed(format!(
+                "{MOST_NUMBERED} files called {name} are there already"
+            )),
+        };
+        (!self.files.playing).then_some(answer)
+    }
+
+    /// The next answer queued ([`answer_next_ask`](Self::answer_next_ask)),
+    /// or cancelled; while a session record plays, its frames hold the
+    /// answer.
+    fn ask_for_file(&mut self, accept: &[String]) -> Option<ChosenFile> {
+        self.files.asks.push(accept.to_vec());
+        if self.files.playing {
+            return None;
+        }
+        Some(
+            self.files
+                .answers
+                .pop_front()
+                .unwrap_or(ChosenFile::Cancelled),
+        )
+    }
+
+    fn open_folder(&mut self, folder: Folder) -> Result<(), String> {
+        self.files.opened.push(folder);
+        Ok(())
     }
 
     #[cfg(feature = "std")]

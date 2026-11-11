@@ -55,8 +55,9 @@ groups:
   the web (2777) and 2576. Not the blog (2805) or sponsors (2806), which
   the release doesn't touch.
 - **The breaks already planned,** cheaper before anyone installs: 2544
-  (the `bots` operation and MCP tool go), 2391 (one picture type), and
-  2389 with 2388 before it (the inks go).
+  (done: the `bots` operation and MCP tool are gone, folded into
+  `playtest`), 2391 (one picture type), and 2389 with 2388 before it
+  (the inks go).
 
 ## Nick input
 
@@ -271,8 +272,7 @@ The sign-off also:
   release without the file is skipped with a notice.
 - **The book after the release (2802, done):** the quick start's
   install line (`site/content/learn/book/quick-start.md`) becomes `cargo
-  install --locked shuyi-cli` from crates.io (the `--git` form goes;
-  2824 may have moved the page into the book's first part),
+  install --locked shuyi-cli` from crates.io (the `--git` form goes),
   and Learn adds each crate's docs.rs link beside its `/api/` link
   (`site/templates/learn.html`, over `site/data/api.toml`).
 - **Either order with 3050** (release a game from a tag): if 3050 is
@@ -282,9 +282,9 @@ The sign-off also:
   already checked the tag). It attaches the packages, a `SHA256SUMS`
   and attestations (`actions/attest`; the repository is public) to the
   engine's GitHub Release. If not, 3050 adds this job when it lands.
-- **2544 comes first** (`bots` folded into `playtest`, which removes
-  the `bots` operation and `GameTools::bots`; in `blocked_by`): its
-  break lands before the first release, so nothing is left here.
+- **2544 is done** (`bots` folded into `playtest`, which removed the
+  `bots` operation and `GameTools::bots`): its break landed before the
+  first release, so nothing is left here.
 - **Either order with 2906** (research on asset memory): if 2906 is
   done, nothing to do: a build ticket of its ADR that changes the
   `&'static` reads (`Bundle`, `DecodeCx`, `ImageId`) carries its own

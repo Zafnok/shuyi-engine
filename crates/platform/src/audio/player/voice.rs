@@ -197,7 +197,7 @@ impl<B: Backend> Voices<B> {
 
     /// Sets how loud clips play (0–1), the one playing included.
     pub(crate) fn set_volume(&mut self, backend: &mut B, volume: f32) {
-        // Volumes are steps of a tenth: exact equality is the point.
+        // A gain is a whole number of units of 1/4096: exact equality is the point.
         #[allow(clippy::float_cmp)]
         if volume == self.volume {
             return;
@@ -238,6 +238,19 @@ impl<B: Backend> Voices<B> {
         }
     }
 
+    /// The file of the clip sounding at `now`, or asked for and still
+    /// loading and not yet late. A clip held with the backend still sounds;
+    /// one that has ended, was stopped, failed or was given up on as late
+    /// doesn't.
+    pub(crate) fn sounding(&self, now: f64) -> Option<&str> {
+        if let Some(speaking) = &self.playing {
+            let on = speaking.held_at.is_some() || speaking.ends.is_none_or(|ends| ends > now);
+            return on.then_some(speaking.file.as_str());
+        }
+        let (file, at) = self.asked.as_ref()?;
+        (now - at <= LATE_SECS).then_some(file.as_str())
+    }
+
     /// Stops the voice and frees every clip (the game quit).
     pub(crate) fn stop_all(&mut self, backend: &mut B, abandoned: &mut Vec<B::Loading>) {
         self.stop(backend);
@@ -257,7 +270,7 @@ impl<B: Backend> Voices<B> {
 mod tests {
     use shuyi_assets::dialogue::LineId;
 
-    use super::super::tests::{Fake, Request, Take, audio};
+    use super::super::tests::{Fake, Request, Take, audio, levels};
     use super::*;
     use crate::audio::player::Player as Audio;
 
@@ -354,38 +367,42 @@ mod tests {
         );
     }
 
-    /// A suspend mutes the voice playing, a volume asked for meanwhile
-    /// waits, and the resume brings it back at that volume.
+    /// A suspend mutes the voice playing, a gain given meanwhile waits,
+    /// and the resume brings it back at that gain.
     #[test]
     fn a_suspend_mutes_the_voice_until_the_resume() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.set_voice_volume(&mut fake, 0.8);
+        audio.set_gains(&mut fake, levels(100, 100, 80).view());
         audio.hear(&mut fake, &[play(0)], &[], 0.0);
         fake.calls();
         audio.suspend(&mut fake);
         assert_eq!(fake.calls(), [format!("volume {} 0.00", path(0))]);
-        audio.set_voice_volume(&mut fake, 0.5);
+        audio.set_gains(&mut fake, levels(100, 100, 50).view());
         let found = fake.calls();
         assert!(found.is_empty(), "{found:?}");
         audio.resume(&mut fake);
         assert_eq!(fake.calls(), [format!("volume {} 0.50", path(0))]);
     }
 
-    /// Acceptance: clips play at the voice volume, and a change reaches
+    /// Acceptance: clips play at the voice's gain, and a change reaches
     /// the clip that is playing.
     #[test]
-    fn the_volume_follows_the_voice_volume() {
+    fn the_volume_follows_the_voices_gain() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.set_voice_volume(&mut fake, 0.8);
+        audio.set_gains(&mut fake, levels(100, 100, 80).view());
         assert!(fake.calls().is_empty(), "nothing is playing yet");
         audio.hear(&mut fake, &[play(0)], &[], 0.0);
         assert_eq!(fake.calls()[1], format!("play {} 0.80", path(0)));
-        audio.set_voice_volume(&mut fake, 0.3);
+        audio.set_gains(&mut fake, levels(100, 100, 30).view());
         assert_eq!(fake.calls(), [format!("volume {} 0.30", path(0))]);
-        // The same volume again (every frame sends it) does nothing.
-        audio.set_voice_volume(&mut fake, 0.3);
+        // The same gains again (every frame sends them) do nothing, and
+        // another group's change leaves the voice alone.
+        audio.set_gains(&mut fake, levels(100, 100, 30).view());
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
+        audio.set_gains(&mut fake, levels(50, 100, 30).view());
         let found = fake.calls();
         assert!(found.is_empty(), "{found:?}");
         audio.hear(&mut fake, &[play(1)], &[], 1.0);
@@ -567,14 +584,63 @@ mod tests {
         if let Some(speaking) = &mut voices.playing {
             speaking.held_at = Some(0.5);
         }
+        assert_eq!(voices.sounding(9.0), Some("test/a.ogg"), "paused: sounding");
         voices.poll(&mut fake, 9.0, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), ["test/a.ogg"], "held: not at its end");
         voices.release_clock(9.0);
         voices.poll(&mut fake, 9.4, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), ["test/a.ogg"]);
+        assert_eq!(voices.sounding(9.4), Some("test/a.ogg"));
+        assert_eq!(voices.sounding(9.5), None, "ended, before the poll too");
         voices.poll(&mut fake, 9.5, &mut warnings, &mut abandoned);
         assert_eq!(voices.held(), [] as [&str; 0]);
+        assert_eq!(voices.sounding(9.5), None);
         let _ = (Provided::default(), fake.length(&String::new()));
+    }
+
+    /// The clip sounding is reported while it is asked for and while it
+    /// plays; not once it has ended, been stopped or replaced, given up on
+    /// as late or failed.
+    #[test]
+    fn the_clip_sounding_is_reported_until_it_ends_stops_or_fails() {
+        let mut fake = Fake {
+            length: Some(1.0),
+            ..Fake::default()
+        };
+        fake.broken.push(path(4));
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        let file = |i: usize| format!("test/{}.ogg", LINES[i]);
+        assert_eq!(audio.voice_playing(0.0), None, "nothing asked for");
+        // Asked for and loading: it sounds, until it is late.
+        audio.hear(&mut fake, &[play(0)], &[], 10.0);
+        assert_eq!(audio.voice_playing(10.0), Some(file(0).as_str()));
+        assert_eq!(audio.voice_playing(10.0 + LATE_SECS + 0.01), None);
+        // Loaded in time, it sounds for its length.
+        fake.ready.extend([path(0), path(1), path(2)]);
+        audio.play(&mut fake, &[], &[], 10.25);
+        assert_eq!(audio.voice_playing(11.0), Some(file(0).as_str()));
+        assert_eq!(audio.voice_playing(11.5), None, "ended");
+        audio.play(&mut fake, &[], &[], 11.5);
+        assert_eq!(audio.voice_playing(11.5), None);
+        // Replaced, then stopped.
+        audio.hear(&mut fake, &[play(1)], &[], 20.0);
+        assert_eq!(audio.voice_playing(20.0), Some(file(1).as_str()));
+        audio.hear(&mut fake, &[play(2)], &[], 20.5);
+        assert_eq!(audio.voice_playing(20.5), Some(file(2).as_str()));
+        audio.hear(&mut fake, &[Request::StopVoice], &[], 20.6);
+        assert_eq!(audio.voice_playing(20.6), None, "stopped");
+        // Given up on as late: not even once it has loaded.
+        audio.hear(&mut fake, &[play(3)], &[], 30.0);
+        audio.play(&mut fake, &[], &[], 30.31);
+        assert_eq!(audio.voice_playing(30.31), None, "late");
+        fake.ready.push(path(3));
+        audio.play(&mut fake, &[], &[], 30.4);
+        assert_eq!(audio.voice_playing(30.4), None);
+        // Its file failed.
+        audio.hear(&mut fake, &[play(4)], &[], 40.0);
+        assert_eq!(audio.voice_playing(40.0), None, "failed");
+        assert_eq!(audio.take_warnings().len(), 1);
     }
 
     /// A frame of ordinary audio warns of nothing about voices.
@@ -583,7 +649,7 @@ mod tests {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         audio.take_warnings();
-        audio.set_voice_volume(&mut fake, 1.0);
+        audio.set_gains(&mut fake, levels(100, 100, 100).view());
         audio.play(&mut fake, &[], &[], 0.0);
         let found = audio.take_warnings();
         assert!(found.is_empty(), "{found:?}");

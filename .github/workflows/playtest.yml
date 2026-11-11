@@ -69,8 +69,7 @@ on:
       allow-no-plan:
         description: >-
           Pass, with a notice, while the game gives no playtest plan
-          (`SH3001`): for a game fresh from the grid template, which has
-          none until it writes one.
+          (`SH3001`): for a game whose tools don't give one yet.
         type: boolean
         default: false
       timeout-minutes:

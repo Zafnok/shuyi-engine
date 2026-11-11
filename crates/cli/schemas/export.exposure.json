@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "declared": {
-      "description": "Whether `shuyi.ron` has a `disclosure` part to hold it to. Without one\nnothing is refused, and there are no findings.",
+      "description": "Whether `shuyi.ron` has a `disclosure` part to hold it to, or the\nedition one of its own. Without one nothing is refused, and there are no\nfindings.",
       "type": "boolean"
     },
     "files": {
@@ -73,9 +73,23 @@
             "null"
           ]
         },
+        "content_root": {
+          "description": "The folder of the game's files the edition's program embeds, from the\nproject's root, if it names one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "default_features": {
           "description": "Whether the builds keep the package's default features.",
           "type": "boolean"
+        },
+        "edition": {
+          "description": "The edition of `shuyi.ron`'s `editions` it built, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "features": {
           "description": "The features of the game's package they turn on, with what those turn\non.",
@@ -88,12 +102,16 @@
           "description": "The game's package.",
           "type": "string"
         },
+        "panic": {
+          "description": "What a panic does in the shipped program.",
+          "$ref": "#/$defs/Panic"
+        },
         "profile": {
           "description": "The target profile its check ran with.",
           "type": "string"
         },
         "project_file": {
-          "description": "The SHA-256 of `shuyi.ron`, which holds the `disclosure` part.",
+          "description": "The SHA-256 of `shuyi.ron`, which holds the `disclosure` part and the\neditions.",
           "type": [
             "string",
             "null"
@@ -101,6 +119,10 @@
         },
         "release": {
           "description": "Whether it was a release build.",
+          "type": "boolean"
+        },
+        "stripped": {
+          "description": "Whether the shipped program has no symbol table.",
           "type": "boolean"
         },
         "target": {
@@ -127,7 +149,9 @@
         "builds",
         "default_features",
         "features",
-        "toolchain"
+        "toolchain",
+        "stripped",
+        "panic"
       ]
     },
     "ExposedEntry": {
@@ -351,6 +375,21 @@
           "description": "A file over [`MAX_FILE_BYTES`].",
           "type": "string",
           "const": "too-big"
+        }
+      ]
+    },
+    "Panic": {
+      "description": "What a panic does in a shipped program.",
+      "oneOf": [
+        {
+          "description": "It unwinds: a game catches it, and its message and place stay in the\nprogram.",
+          "type": "string",
+          "const": "unwind"
+        },
+        {
+          "description": "It ends the program at once.",
+          "type": "string",
+          "const": "abort"
         }
       ]
     }

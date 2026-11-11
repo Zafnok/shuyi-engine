@@ -31,9 +31,9 @@ own text formats first, so the pattern and its tests are in place.
 
 **From 2223 (open):** `CreditsRon` and `AudioManifestRon` writers write `licenses` and `files` when they exist at that point, with round trips covering them; if this ticket lands after them, writing them is part of this one.
 
-**From 2342 (open):** Its `AudioManifestRon` writer writes `groups` and the cues' `group`, with a round-trip test over a manifest that has them; if this ticket lands after 2342, writing them is part of this one.
+**From 2258 (done):** the manifest has `groups` (`AudioManifest.groups`, each a `GroupDef` with an optional `parent` and `volume`) and the cues have `group` (`SoundCue`, `MusicCue`). Its `AudioManifestRon` writer writes them, with a round-trip test over a manifest that has them.
 
-**From 2343 (open):** Its `AudioManifestRon` writer writes `ducks`, with a round-trip test covering a rule; if this ticket lands after 2343, writing them is part of this one.
+**From 2343 (done):** the manifest has `ducks` (`AudioManifest.ducks`, each a `DuckRule` with `when`, `lower`, `to`, `attack_ms` and `release_ms`). Its `AudioManifestRon` writer writes them, with a round-trip test covering a rule.
 
 ## Nick input
 

@@ -15,6 +15,7 @@ cargo run -p hello-grid              # from the repository's root
 cargo shuyi run --watch              # from here: a colour saved in files/palette.ron shows, and a picture saved in files/tiles.png
 cargo shuyi web --release            # from this folder: the page in dist/web/
 cargo test -p hello-grid             # the tests
+cargo run -p hello-grid --bin hello-grid-preview -- files   # the writer's dialogue preview over files/
 ```
 
 ## Layout
@@ -27,8 +28,9 @@ cargo test -p hello-grid             # the tests
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
+| `src/preview.rs`, `src/bin/preview.rs` | The dialogue preview a writer is handed (`hello-grid-preview`): the scenes of a folder's `.dlg` files in the game's text box, read again when one is saved; the tools start it with `--preview` |
 | `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
-| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
+| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
 | `files-src/` | Not embedded: the font the atlas is made from |
@@ -61,12 +63,12 @@ cargo shuyi check                                  # every error in files/
 cargo shuyi check --target all                     # it fits each target shuyi.ron lists
 cargo shuyi run --stage --script "z Right z" --frames 60
 cargo shuyi scene --stage                          # the stage's map and state
-cargo shuyi bots 30                                # a random walker against the foe
+cargo shuyi playtest --entrant random --tries 30   # a random walker against the foe
 cargo shuyi playtest --tries 50                    # each hero against playtest.ron's bands
 cargo shuyi playtest --entrant walk --threads 1    # the walker alone, on one thread
 cargo shuyi autobalance                            # tune balance.ron's stage into its bands
 cargo shuyi autobalance --time 60 --apply          # at most a minute, then write the tuning found
-cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
+cargo shuyi replay play.ron                        # a bot's record (playtest --json), step by step
 cargo shuyi import files/stage.map
 cargo shuyi bake --target playdate --sheet sheet.png  # every picture one-bit
 ```
@@ -118,9 +120,25 @@ own: the tileset is the font's glyphs on the palette's colors (and in
 black and white in `files@playdate/`), and the sounds are sine blips the
 game makes when it starts.
 
+## Files from the page
+
+The web build plays the files its page hands it in place of its own: a file
+the page's `sessionStorage` holds under `shuyi-page-file:files/stage.map`,
+set before the page loads (or before a reload), is the stage it plays. When
+its data doesn't load with them, every problem goes to the page's parent
+frame, or to the console when there is none (`files/stage.map:11:6: 'X' is
+not in the legend`), and it plays its own files. The web shell's
+[README](../../crates/cli/web/README.md) says how. The website's playground,
+`/learn/playground/`, is such a page: it frames this game beside an editor of
+each of its text files ([`site/README.md`](../../site/README.md), *The
+playground*).
+
 ## Debug tools
 
 In a debug build `F2` opens the debug menu, whose "Save session" keeps the
 session so far: a file in `sessions/` under the game's data folder, or a download
 in the web build. Quitting keeps it too. `cargo shuyi run --session <file>` plays
 one. `tests/sessions/stage.session.ron` is kept as a test (`tests/golden.rs`).
+Its "Debug view" shows the stage's grid layout (the cells, the map's
+bounds, the cursor and each piece's cell), and `cargo shuyi frame-png
+out.png --debug grid` pictures it.

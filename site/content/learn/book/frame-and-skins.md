@@ -1,18 +1,22 @@
 +++
 title = "The frame and skins"
 description = "A screen says what it shows as plain data, and a skin paints it; tests read the data."
-weight = 40
+weight = 20
 
 [extra]
-chapter = 4
+part = "chapters"
+chapter = 2
 +++
 
+{% newcomer(to="shuyi", topic="why the look is kept apart") %}
 What's on the screen and how it looks are two different questions. "The second plot
 has a sprout in it" is one. "A sprout is a green triangle" is another.
 
 If one piece of code answers both, you can't change the look without risking the game,
-and a test of the game breaks whenever a color changes. So the engine keeps them apart.
-**Graphics are a skin.** A screen says *what* it shows, as plain data called its
+and a test of the game breaks whenever a color changes.
+{% end %}
+
+The engine keeps what's on the screen apart from how it looks. **Graphics are a skin.** A screen says *what* it shows, as plain data called its
 **view**, and a **skin** says *how* that looks. Glyph art, pixel art and bought sprite
 packs then swap without touching the rules, and a test of what happened never breaks
 because a color changed.
@@ -30,18 +34,24 @@ The garden's view is built from the rules' state and the game's text, and nothin
 
 It names no glyph, no color and no position: those are the skin's.
 
-> **Rust:** `enum Plot` is one of a fixed list, `Soil` or `Sprout`. `usize` is a whole
-> number, never negative, of the kind used to count a list's items.
->
-> `plots.map(|&grows| ...).collect()` is an
-> [iterator chain](@/learn/tutorial/03-walk.md#the-rules): go through each plot, turn
-> each into a `Plot`, and gather them into a list. `|&grows|` is a small nameless
-> function whose one argument is `grows`, and the `&` takes the value out of the
-> reference it comes as. In Rust, `if` gives back a value, so `if grows { Plot::Sprout }
-> else { Plot::Soil }` is one `Plot`.
->
-> `match garden.outcome()` opens an `Option`: `None` while the game goes on, or
-> `Some(...)` with how it ended. It picks which line of text to show.
+{% newcomer(to="rust", topic="an enum and `usize`") %}
+`enum Plot` is one of a fixed list, `Soil` or `Sprout`. `usize` is a whole
+number, never negative, of the kind used to count a list's items.
+{% end %}
+
+{% newcomer(to="rust", topic="an iterator chain") %}
+`plots.map(|&grows| ...).collect()` is an
+[iterator chain](@/learn/book/box-pusher/03-walk.md#the-rules): go through each plot, turn
+each into a `Plot`, and gather them into a list. `|&grows|` is a small nameless
+function whose one argument is `grows`, and the `&` takes the value out of the
+reference it comes as. In Rust, `if` gives back a value, so `if grows { Plot::Sprout }
+else { Plot::Soil }` is one `Plot`.
+{% end %}
+
+{% newcomer(to="rust", topic="`match` on an `Option`") %}
+`match garden.outcome()` opens an `Option`: `None` while the game goes on, or
+`Some(...)` with how it ended. It picks which line of text to show.
+{% end %}
 
 ## The frame
 
@@ -59,8 +69,10 @@ roles, and `ctx.palette.lookup(name)` for one of the game's, from `files/palette
 
 {{ snippet(file="files/palette.ron", anchor="own", language="ron") }}
 
+{% newcomer(to="programming", topic="a hex color") %}
 A color like `#7ad07a` is three pairs of digits in base 16, for how much red, green and
 blue it has, from `00` to `ff`.
+{% end %}
 
 ## The skin
 
@@ -68,21 +80,27 @@ The garden's skin is one function of its view:
 
 {{ snippet(file="src/frame.rs", anchor="skin") }}
 
-> **Rust:** `fg` and `bg` are the cell's foreground and background colors. `let
-> (glyph, fg) = match plot { ... }` takes a pair apart: each arm gives back a glyph and
-> a color, side by side, as a **tuple**, and this names both.
->
-> `(left..).step_by(4)` counts up from `left` in fours, forever, and `.zip(&view.plots)`
-> pairs each number with a plot, stopping when the plots run out. So `x` and `plot` go
-> along together. `..` makes a **range**.
->
-> The cell positions are `i32`, which may go negative, as something can be drawn partly
-> off the screen. A list's length is a `usize`. Rust won't mix number types without
-> being told, so `i32::try_from(view.at)` converts, and `unwrap_or(0)` says what to use
-> if it can't.
->
-> There isn't a single fractional number here: cells are counted, and everything lands
-> on the same place on every machine.
+{% newcomer(to="rust", topic="a tuple") %}
+`fg` and `bg` are the cell's foreground and background colors. `let
+(glyph, fg) = match plot { ... }` takes a pair apart: each arm gives back a glyph and
+a color, side by side, as a **tuple**, and this names both.
+{% end %}
+
+{% newcomer(to="rust", topic="a range, `step_by` and `zip`") %}
+`(left..).step_by(4)` counts up from `left` in fours, forever, and `.zip(&view.plots)`
+pairs each number with a plot, stopping when the plots run out. So `x` and `plot` go
+along together. `..` makes a **range**.
+{% end %}
+
+{% newcomer(to="rust", topic="`i32`, `usize` and `try_from`") %}
+The cell positions are `i32`, which may go negative, as something can be drawn partly
+off the screen. A list's length is a `usize`. Rust won't mix number types without
+being told, so `i32::try_from(view.at)` converts, and `unwrap_or(0)` says what to use
+if it can't.
+{% end %}
+
+There isn't a single fractional number here: cells are counted, and everything lands
+on the same place on every machine.
 
 A screen's `draw` builds the view and hands it to the skin. Since the view says nothing
 of how it looks, changing the look changes one line of the skin:
@@ -117,12 +135,14 @@ revision moved. `update` puts the picture in only if it differs from the
 one already there, so a plasma painted afresh at every frame costs
 nothing in the frames where it didn't change.
 
-> **Rust:** `as_chunks_mut::<4>()` cuts the pixels' bytes into groups of
-> four, red, green, blue and how solid the pixel is (255 is fully), and
-> `.0` takes the whole groups. `.chunks_mut(64)` cuts those into rows of
-> 64 pixels, and `(0u32..).zip(rows)` numbers the rows, so `py` is a
-> pixel's row; the inner loop numbers each row's pixels, its column `px`.
-> `abs_diff` is how far apart two numbers are, never negative.
+{% newcomer(to="rust", topic="chunks, `zip` and `abs_diff`") %}
+`as_chunks_mut::<4>()` cuts the pixels' bytes into groups of
+four, red, green, blue and how solid the pixel is (255 is fully), and
+`.0` takes the whole groups. `.chunks_mut(64)` cuts those into rows of
+64 pixels, and `(0u32..).zip(rows)` numbers the rows, so `py` is a
+pixel's row; the inner loop numbers each row's pixels, its column `px`.
+`abs_diff` is how far apart two numbers are, never negative.
+{% end %}
 
 A picture comes in three kinds: `Painted::rgba` (four bytes a pixel, as
 here), `Painted::indexed` (a byte a pixel and a palette of up to 256
@@ -140,17 +160,23 @@ A test of what happened reads the view, or the state behind it:
 
 {{ snippet(file="src/frame.rs", anchor="test_view") }}
 
-> **Rust:** `h.screen::<GardenScreen>()` asks the stack for the screen of that type, and
-> gives back an `Option`, as it might not be there. `.unwrap()` opens it, and stops the
-> test if it's `None`. That's fine in a test, and in a game you'd handle the `None`.
+`h.screen::<GardenScreen>()` asks the stack for the screen of that type, and
+gives back an `Option`, as it might not be there.
+
+{% newcomer(to="rust", topic="`unwrap`") %}
+`.unwrap()` opens it, and stops the test if it's `None`. That's fine in a test, and
+in a game you'd handle the `None`.
+{% end %}
 
 Only a test of a look reads cells and colors. `h.snapshot()` is the frame as text, the
 cells' glyphs and then their colors:
 
 {{ snippet(file="src/frame.rs", anchor="test_look") }}
 
-> **Rust:** `assert!` fails the test unless its first argument is true, and the rest is
-> what to print if so, with `{frame}` filled in by the value of `frame`.
+{% newcomer(to="rust", topic="`assert!` with a message") %}
+`assert!` fails the test unless its first argument is true, and the rest is
+what to print if so, with `{frame}` filled in by the value of `frame`.
+{% end %}
 
 Change bare soil's glyph from `·`, and the second test breaks, as it should, since the
 look is what it's about. The first test doesn't notice. That's the whole reason for the
@@ -172,9 +198,13 @@ it looks the same at any frame rate, and a test can ask for any moment:
 
 {{ snippet(file="src/frame.rs", anchor="tween") }}
 
-> **Rust:** `const` makes a value the program has from the start, built by `const fn`s
-> such as `Tween::new`. `Tween<i32>` is a tween of whole numbers; a tween of a pair, a
-> color or a number of your own type works the same way.
+{% newcomer(to="rust", topic="`const` and `const fn`") %}
+`const` makes a value the program has from the start, built by `const fn`s
+such as `Tween::new`.
+{% end %}
+
+`Tween<i32>` is a tween of whole numbers; a tween of a pair, a color or a number of
+your own type works the same way.
 
 The curves have the names other engines and websites give them, after Robert Penner's
 equations: `Ease::Out(Family::Back)` is `easeOutBack` on easings.net, and Godot's
@@ -193,9 +223,11 @@ A test reads the motion at any moment, and asks when it ended:
 
 {{ snippet(file="src/frame.rs", anchor="test_tween") }}
 
-> **Rust:** `frames.windows(2)` goes through each pair of neighbors in the list, here
-> one frame's time and the next. `.filter(...)` keeps the pairs where the sprout landed,
-> and `.count()` counts them.
+{% newcomer(to="rust", topic="`windows`, `filter` and `count`") %}
+`frames.windows(2)` goes through each pair of neighbors in the list, here
+one frame's time and the next. `.filter(...)` keeps the pairs where the sprout landed,
+and `.count()` counts them.
+{% end %}
 
 `finished_between` is how a screen hears "it landed": given the time of the frame
 before and this one's, it is true once, so the screen plays its sound or moves on
@@ -220,7 +252,8 @@ game. The garden's own channel boxes each plot:
 
 The grid kit offers its own channel, `grid`: a map screen calls
 `shuyi::ui::grid::debug::layout_gizmos` from its `debug_draw`, and the cell lines, the
-map's edges, the cursor's cell and each unit's appear. A test reads the gizmos as it
+map's edges, the cursor's cell and each unit's appear. Hello, Grid's stage and the stage
+of a `shuyi new --template grid` game offer it already. A test reads the gizmos as it
 reads a view, never their pixels:
 
 {{ snippet(file="src/frame.rs", anchor="test_gizmos") }}
@@ -250,7 +283,7 @@ check: 1 error(s)
 ```
 
 **Trying to change the game in `draw`.** The compiler stops you, as `draw` only has
-`&self` ([chapter 2](@/learn/book/games-and-screens.md#when-it-goes-wrong)).
+`&self` ([chapter 6](@/learn/book/games-and-screens.md#when-it-goes-wrong)).
 
 ## On a target's screen
 
@@ -259,3 +292,31 @@ display is and how small its text may be, and `cargo shuyi check --target` check
 game's frame and scale against it ([chapter 9](@/learn/book/targets-and-export.md)). A
 one-bit display, such as the Playdate's, has only black and white, and takes each
 palette role's pattern from the game's one-bit map.
+
+## Check yourself
+
+{% check() %}
+You change bare soil's glyph from `·` to `.` in the skin. Which test breaks?
+
+- [x] Only the test of the look, which reads `h.snapshot()`. — A test of what happened reads the view, and the view names no glyph ([why tests read the view](#why-tests-read-the-view)).
+- [ ] Both, since the view's plots are drawn with that glyph. — The view holds `Plot::Soil`, and only the skin knows it's drawn as `·` ([the view](#the-view)).
+- [ ] Neither, since tests never read cells. — A test of a look does, and `the_garden_looks_like_a_row_of_plots` looks for the `·` ([why tests read the view](#why-tests-read-the-view)).
+{% end %}
+
+{% check() %}
+The skin gets a color with `ctx.palette.lookup(name).unwrap_or(c(EngineColor::Text))`.
+`palette.ron` spells the game's color `sprot`. What happens?
+
+- [x] The sprouts are drawn in the engine's text color, and no error is shown. — `lookup` gives `None` for a name that isn't there, and `unwrap_or` falls back to the text color ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] `cargo shuyi check` reports the missing color. — It catches a missing or bad color of the engine's, not a name of the game's own that nothing defines ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] The game stops with an error when it draws the garden. — `lookup` gives an `Option`, so a missing name is handled, not a crash ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+`sprout_offset(ms)` is `SPROUT_RISE.value_at(ms)`, a tween of 300 milliseconds. The game
+drops from 60 frames a second to 30. What happens to the sprout's rise?
+
+- [x] It still takes 300 milliseconds and is at the same place at each moment, shown in fewer frames. — Its value is worked out from the time alone, so it looks the same at any frame rate ([things that move](#things-that-move)).
+- [ ] It takes twice as long, as it moves once a frame. — Nothing steps a tween along from the frame before ([things that move](#things-that-move)).
+- [ ] It lands at a slightly different place, as the curve rounds differently. — The curves are worked out in whole numbers, so they are the same on every machine and at every rate ([things that move](#things-that-move)).
+{% end %}

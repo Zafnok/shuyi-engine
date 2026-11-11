@@ -180,6 +180,59 @@ fn new_widths_go_to_the_frame_and_the_context_and_the_frame_is_drawn_again() {
     assert_eq!(game.buffer().get(5, 5).map(|c| c.bg), Some(panel));
 }
 
+#[test]
+fn the_widths_follow_the_language_text_is_shown_in() {
+    use shuyi_assets::font::CellWidths;
+    let info =
+        r#"(name: "Debug", made_by: Machine, wide_font: Some("zh"), wide_punctuation: true)"#;
+    let mut ctx = Ctx::new(Toy::with_debug_info(info)).unwrap();
+    ctx.debug_tools = true;
+    let mut game = home(ctx);
+    // Before an atlas, the source's widths are narrow; the debug pack's
+    // have its punctuation wide and name its set.
+    assert_eq!(*game.ctx().widths(), CellWidths::NARROW);
+    let wide = CellWidths::wide(['直']);
+    game.set_widths(wide.clone());
+    assert_eq!(*game.buffer().widths(), wide);
+    game.ctx_mut().lang = shuyi_assets::lang::LangCode::new(crate::toy::DEBUG_LANG).unwrap();
+    let chinese = wide.clone().in_lang(Some("zh"), true);
+    assert_eq!(*game.ctx().widths(), chinese);
+    assert!(game.ctx().widths().is_wide('…') && game.ctx().widths().is_wide('直'));
+    // The frame takes them at its next drawing.
+    assert_eq!(*game.buffer().widths(), wide);
+    game.redraw();
+    assert_eq!(*game.buffer().widths(), chinese);
+    assert_eq!(game.buffer().widths().wide_font(), Some("zh"));
+    // New atlas widths reach the language's too.
+    let wider = CellWidths::wide(['直', '简']);
+    game.set_widths(wider.clone());
+    assert_eq!(*game.buffer().widths(), wider.in_lang(Some("zh"), true));
+    // Back in the source language, the atlas's own.
+    game.ctx_mut().lang = shuyi_assets::lang::LangCode::default();
+    game.redraw();
+    assert!(!game.buffer().widths().is_wide('…'));
+}
+
+#[test]
+fn the_source_language_has_the_wide_set_and_punctuation_it_names() {
+    use shuyi_assets::font::CellWidths;
+    use shuyi_assets::lang::{LangCode, SourceLang};
+    let zh = LangCode::new("zh-Hans").unwrap();
+    let source = SourceLang::new(zh.clone(), "中文")
+        .with_wide_font("zh-Hans")
+        .with_wide_punctuation(true);
+    let mut ctx = Ctx::new(Toy::new().with_source_lang(source)).unwrap();
+    ctx.lang = zh;
+    let mut game = home(ctx);
+    let wide = CellWidths::wide(['直']);
+    game.set_widths(wide.clone());
+    let chinese = wide.in_lang(Some("zh-Hans"), true);
+    assert_eq!(*game.ctx().widths(), chinese);
+    assert!(game.ctx().widths().is_wide('“'));
+    assert_eq!(game.ctx().widths().wide_font(), Some("zh-Hans"));
+    assert_eq!(*game.buffer().widths(), chinese);
+}
+
 /// What a [`Spy`] saw, frame by frame.
 type Seen = Rc<RefCell<Vec<FrameInput<Action>>>>;
 
@@ -873,26 +926,58 @@ fn the_music_the_platform_reports_becomes_the_clock() {
     assert_eq!(game.ctx().music_clock, None);
 }
 
+/// A manifest changed before the game is made gives its groups: a cue in
+/// a group of the game's own plays at that group's gain.
+#[test]
+fn the_games_groups_are_its_manifests_when_it_is_made() {
+    use crate::audio::groups::SFX;
+    use crate::audio::loudness::loudness;
+    let mut c = ctx();
+    let mut ambience = shuyi_assets::audio::GroupDef::default();
+    ambience.parent = Some(SFX.to_owned());
+    ambience.volume = Some(60);
+    c.game.audio.groups.insert("ambience".into(), ambience);
+    let hum = c.game.audio.sounds["hum"].clone().with_group("ambience");
+    c.game.audio.sounds.insert("hum".into(), hum);
+    let mut game = home(c);
+    assert_eq!(game.ctx().sound_groups().sound_group("hum"), "ambience");
+    let out = game.frame(&[], 0.0);
+    let want = loudness(60).times(loudness(97));
+    assert_eq!(out.gains.sound("hum"), want);
+    assert_eq!(out.gains.sound("click"), loudness(97));
+}
+
 /// The settings the platform applies go out every frame.
 #[test]
-fn frames_carry_the_volumes_and_fullscreen() {
+fn frames_carry_the_gains_and_fullscreen() {
+    use crate::audio::Gain;
+    use crate::audio::groups::{MUSIC, SFX, VOICE};
+    use crate::audio::loudness::loudness;
     let mut game = home(ctx());
     let out = game.frame(&[], 0.0);
-    assert!((out.music_volume - 0.8).abs() < 1e-6);
-    assert!((out.sound_volume - 0.8).abs() < 1e-6);
-    assert!((out.voice_volume - 0.8).abs() < 1e-6);
+    // A new player's: what the linear 0.8 sounded like.
+    let gains = [
+        out.gains.music("theme"),
+        out.gains.sound("x"),
+        out.gains.voice(),
+    ];
+    assert_eq!(gains, [Gain::new(3329); 3]);
     assert!(!out.fullscreen);
     game.ctx_mut()
         .change_settings(|s| {
-            s.music_volume = 25;
-            s.sound_volume = 50;
-            s.voice_volume = 30;
+            s.volumes.set(MUSIC, 25);
+            s.volumes.set(SFX, 50);
+            s.volumes.set(VOICE, 30);
         })
         .unwrap();
     let out = game.frame(&[], 0.0);
-    assert!((out.music_volume - 0.25).abs() < 1e-6);
-    assert!((out.sound_volume - 0.5).abs() < 1e-6);
-    assert!((out.voice_volume - 0.3).abs() < 1e-6);
+    let gains = [
+        out.gains.music("theme"),
+        out.gains.sound("x"),
+        out.gains.voice(),
+    ];
+    assert_eq!(gains, [25, 50, 30].map(loudness));
+    assert_eq!(game.gains().group(SFX), loudness(50), "the last frame's");
     // The window's own shortcut flips the setting.
     game.toggle_fullscreen();
     assert!(game.frame(&[], 0.0).fullscreen);
@@ -965,7 +1050,7 @@ fn a_request_for_a_frame_cap_is_confirmed_by_the_platforms_report() {
     assert_eq!(game.ctx().frame_cap_status(again), CapStatus::Pending);
     // Any change of the cap takes the next serial; others don't.
     game.ctx_mut()
-        .change_settings(|s| s.music_volume = 1)
+        .change_settings(|s| s.volumes.set(crate::audio::groups::MUSIC, 1))
         .unwrap();
     assert_eq!(game.ctx().frame_cap_serial(), 4);
     game.ctx_mut()

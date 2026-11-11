@@ -180,6 +180,7 @@ mod toy {
                 kind: "toy".into(),
                 text: "H".into(),
                 data: serde_json::Value::Null,
+                shape: None,
             })
         });
         assert_eq!(s.scene().unwrap().screen, "home");
@@ -250,6 +251,7 @@ fn a_new_scene_has_no_data() {
         kind: "grid map".to_owned(),
         text: "@ (1,1)".to_owned(),
         data: serde_json::Value::Null,
+        shape: None,
     };
     assert_eq!(Scene::new("stage", "grid map", "@ (1,1)"), literal);
 }
@@ -412,4 +414,253 @@ mod perf {
         assert!(load.is_some_and(|r| r.live_bytes >= 1 << 16), "{rows:?}");
         drop(kept);
     }
+}
+
+#[test]
+fn a_session_that_says_nothing_of_sounds_added_has_none() {
+    assert_eq!(Bare.sounds_added(), []);
+}
+
+/// The sounds a game adds at run time, in a session's answers.
+#[cfg(feature = "toy")]
+mod added {
+    use shuyi_ui::audio::Samples;
+    use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+    use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
+    use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
+    use shuyi_ui::{Game, GameHooks};
+
+    use super::*;
+    use crate::contract::run::{RunOutput, run_output};
+    use crate::contract::{Answer, Op, op_schemas};
+
+    /// A screen that adds `high` and `low` on its first frame and removes
+    /// `low` on its second.
+    #[derive(Default)]
+    struct Synth {
+        frames: u32,
+    }
+
+    impl Screen<Toy> for Synth {
+        fn name(&self) -> &'static str {
+            "synth"
+        }
+
+        fn update(&mut self, ctx: &mut ToyCtx, _: &FrameInput<Action>) -> Transition<Toy> {
+            self.frames += 1;
+            match self.frames {
+                1 => {
+                    // 800 frames, mono, at 8,000 a second: 100 milliseconds.
+                    let low = Samples::new(8_000, 1, vec![0; 800]);
+                    // 441 stereo frames at 44,100 a second: 10 milliseconds.
+                    let high = Samples::new(44_100, 2, vec![0; 882]);
+                    for (cue, samples) in [("low", low), ("high", high)] {
+                        let samples = samples.unwrap_or_else(|e| panic!("{e}"));
+                        let _ = ctx.audio.add_sound(cue, samples);
+                    }
+                }
+                2 => ctx.audio.remove_sound("low"),
+                _ => {}
+            }
+            Transition::None
+        }
+
+        fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+    }
+
+    /// The toy with a [`Synth`] over its home, headless.
+    fn synth() -> Headless<Toy> {
+        let mut stack = ScreenStack::new(Box::new(Home::default()));
+        stack.push(Box::new(Synth::default()));
+        Headless::new(Harness::new(Game::with_stack(
+            toy::ctx(),
+            stack,
+            GameHooks::default(),
+        )))
+    }
+
+    fn high() -> AddedSound {
+        AddedSound {
+            cue: "high".into(),
+            rate: 44_100,
+            channels: 2,
+            frames: 441,
+            millis: 10,
+        }
+    }
+
+    #[test]
+    fn a_session_lists_the_sounds_added_and_not_removed_in_cue_order() {
+        let mut s = synth();
+        s.idle(1);
+        let low = AddedSound {
+            cue: "low".into(),
+            rate: 8_000,
+            channels: 1,
+            frames: 800,
+            millis: 100,
+        };
+        assert_eq!(s.sounds_added(), [high(), low]);
+        s.idle(1);
+        assert_eq!(s.sounds_added(), [high()]);
+        let toy = Headless::new(Harness::new(toy::game()));
+        assert_eq!(toy.sounds_added(), []);
+    }
+
+    /// The names of `value`'s fields, sorted.
+    fn keys(value: &serde_json::Value) -> Vec<&str> {
+        let mut keys: Vec<&str> = value
+            .as_object()
+            .map(|o| o.keys().map(String::as_str).collect())
+            .unwrap_or_default();
+        keys.sort_unstable();
+        keys
+    }
+
+    #[test]
+    fn runs_json_answer_lists_the_sounds_added_as_its_schema_says() {
+        let [_, schema] = op_schemas(Op::Run, false);
+        let schema: serde_json::Value = serde_json::from_str(&schema.text).unwrap();
+        let output = &schema["$defs"]["RunOutput"];
+        let mut s = synth();
+        s.idle(2);
+        let (result, limits) = run_output(&s);
+        let answer = Answer::new(Op::Run, true, result, limits);
+        let json: serde_json::Value = serde_json::from_str(&answer.to_json()).unwrap();
+        assert_eq!(keys(&json["result"]), keys(&output["properties"]));
+        assert_eq!(
+            json["result"]["sounds_added"],
+            serde_json::json!([
+                {"cue": "high", "rate": 44_100, "channels": 2, "frames": 441, "millis": 10}
+            ])
+        );
+        let added = &schema["$defs"]["AddedSound"];
+        assert_eq!(
+            keys(&json["result"]["sounds_added"][0]),
+            keys(&added["properties"])
+        );
+        let read: Answer<RunOutput> = serde_json::from_value(json).unwrap();
+        assert_eq!(read, answer);
+        assert!(
+            crate::contract::run::text(&answer.result.unwrap())
+                .contains("sounds added: high (44100 samples a second, 2 channel(s), 441 frames, 10 milliseconds)\n")
+        );
+    }
+
+    #[test]
+    fn an_answer_with_no_sounds_added_has_no_field_for_them() {
+        let toy = Headless::new(Harness::new(toy::game()));
+        let (result, _) = run_output(&toy);
+        let json = serde_json::to_value(&result).unwrap();
+        assert!(json.get("sounds_added").is_none(), "{json}");
+        // An answer without the field reads as one with none.
+        let read: RunOutput = serde_json::from_value(json).unwrap();
+        assert_eq!(read, result);
+    }
+}
+
+/// A small state: a position, an outcome serde tags by variant, and a
+/// field it skips.
+#[derive(Serialize, JsonSchema)]
+struct Small {
+    at: At,
+    outcome: Option<Ending>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notes: Vec<String>,
+    #[serde(skip)]
+    secret: u32,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct At {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Serialize, JsonSchema)]
+enum Ending {
+    Won { turn: u32 },
+    Lost,
+}
+
+fn small() -> Small {
+    Small {
+        at: At { x: 2, y: 5 },
+        outcome: Some(Ending::Won { turn: 3 }),
+        notes: Vec::new(),
+        secret: 7,
+    }
+}
+
+#[test]
+fn with_data_keeps_the_values_serde_tree_and_its_shape_in_serialize_mode() {
+    let scene = Scene::new("stage", "grid map", "")
+        .with_data(&small())
+        .unwrap();
+    assert_eq!(
+        scene.data,
+        serde_json::json!({ "at": { "x": 2, "y": 5 }, "outcome": { "Won": { "turn": 3 } } })
+    );
+    let shape = scene.shape.unwrap().to_value();
+    let properties = &shape["properties"];
+    assert!(properties.get("at").is_some() && properties.get("outcome").is_some());
+    assert!(properties.get("secret").is_none(), "{shape}");
+    // Serialize mode: a field serde may leave out isn't required.
+    let required = shape["required"].as_array().unwrap();
+    assert!(!required.contains(&serde_json::json!("notes")), "{shape}");
+    assert!(required.contains(&serde_json::json!("at")), "{shape}");
+    let text = shape.to_string();
+    assert!(
+        text.contains("\"Won\"") && text.contains("\"Lost\""),
+        "{text}"
+    );
+    // The skipped field is held, but neither in the data nor its shape.
+    assert_eq!(small().secret, 7);
+    assert_eq!(serde_json::to_value(Ending::Lost).unwrap(), "Lost");
+}
+
+#[test]
+fn the_shape_is_never_in_the_scenes_answer() {
+    let scene = Scene::new("stage", "grid map", "")
+        .with_data(&small())
+        .unwrap();
+    let json = serde_json::to_value(&scene).unwrap();
+    assert!(json.get("shape").is_none(), "{json}");
+    let back: Scene = serde_json::from_value(json).unwrap();
+    assert_eq!(back.shape, None);
+    assert_eq!(back.data, scene.data);
+}
+
+#[test]
+fn a_pointer_reads_one_value_of_the_data() {
+    let data = serde_json::to_value(small()).unwrap();
+    assert_eq!(at_pointer(&data, "/at/x").unwrap(), 2);
+    assert_eq!(at_pointer(&data, "/outcome/Won/turn").unwrap(), 3);
+    assert_eq!(at_pointer(&data, "").unwrap(), &data);
+}
+
+#[test]
+fn a_pointer_that_names_nothing_says_the_keys_of_the_deepest_object_it_reached() {
+    let data = serde_json::to_value(small()).unwrap();
+    assert_eq!(
+        at_pointer(&data, "/at/z").unwrap_err(),
+        "no value at `/at/z`: /at has the keys x, y"
+    );
+    assert_eq!(
+        at_pointer(&data, "/hero").unwrap_err(),
+        "no value at `/hero`: the data has the keys at, outcome"
+    );
+    assert_eq!(
+        at_pointer(&data, "/at/x/deeper").unwrap_err(),
+        "no value at `/at/x/deeper`: /at has the keys x, y"
+    );
+    assert_eq!(
+        at_pointer(&serde_json::Value::Null, "/turn").unwrap_err(),
+        "no value at `/turn`: the data is null (the game gives no data)"
+    );
+    assert!(
+        at_pointer(&data, "at")
+            .unwrap_err()
+            .contains("is no JSON Pointer")
+    );
 }

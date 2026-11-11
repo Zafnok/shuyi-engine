@@ -1,0 +1,23 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 40, 6)"
+---
+  Scenes   Switches   Lines   Problems  
+                                        
+   scout                    Gone        
+   hero named               On          
+                                        
+               keys here                
+--- colours ---
+abbbbbbbbaccccccccccabbbbbbbabbbbbbbbbba
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dccccccccccccdddddddddddddddccdddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddeeeeeeeeedddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:text bg:panel
+c = fg:panel bg:focus
+d = fg:text bg:background
+e = fg:text_dim bg:background

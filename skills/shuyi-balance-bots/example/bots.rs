@@ -5,7 +5,7 @@
 
 use rules::{Command, Event, Feature, Outcome, Player, Stage};
 use shuyi::assets::grid_map::GridMap;
-use shuyi::core::bots::playtest::{Check, Entrant, Measure, Measures, play_tries};
+use shuyi::core::bots::playtest::{Check, Entrant, Measure, Measures, play_try};
 use shuyi::core::{
     Bot, Determinize, Horizon, Pos, RandomBot, Report, Rollout, RolloutSettings, TerrainId,
     TurnRules, Unordered,
@@ -108,7 +108,7 @@ pub fn checks() -> Result<Vec<Check>, String> {
 }
 
 /// The playtest of the stage of `map`: [`HEROES`], each try played by
-/// `play_tries` from its seed alone, judged by those of [`checks`] whose
+/// `play_try` from its seed alone, judged by those of [`checks`] whose
 /// entrants all play.
 pub fn plan(map: &GridMap<TerrainId, Feature>) -> Result<PlaytestPlan, String> {
     let stage = Stage::new(map, 0)?;
@@ -124,9 +124,7 @@ pub fn plan(map: &GridMap<TerrainId, Feature>) -> Result<PlaytestPlan, String> {
                 .collect()
         }),
         Box::new(move |entrant, seed, turns| {
-            let mut tries = play_tries(&stage, &HEROES[entrant], seed..seed + 1, turns)
-                .map_err(|e| e.to_string())?;
-            tries.pop().ok_or_else(|| "no try".to_owned())
+            play_try(&stage, &HEROES[entrant], seed, turns).map_err(|e| e.to_string())
         }),
     ))
 }

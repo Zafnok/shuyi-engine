@@ -102,6 +102,7 @@ impl fmt::Display for Error {
 
 /// How the stage ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum Outcome {
     /// Your piece reached the goal on this turn.
     Won {
@@ -124,6 +125,7 @@ pub struct Player;
 /// come and, once it is over, how it ended. It serializes for its state
 /// hash (`shuyi_core::state_hash`), which a replay compares step by step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Stage {
     map: Grid<TerrainId>,
     goal: Pos,

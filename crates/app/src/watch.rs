@@ -1,8 +1,9 @@
 //! The disk layers watched for changes, in a build with debug tools
 //! (ADR-0071): [`read_folder`](crate::read_folder) notes each folder beside
-//! its layer, and the backend's [`Poller`] compares its files' modification
-//! times and sizes once a second, puts what changed in the layer
-//! ([`Layer::replace`]) and says which paths changed
+//! its layer, [`read_watched_folder`](crate::read_watched_folder) in every
+//! build (ADR-0095), and the backend's [`Poller`] compares its files'
+//! modification times and sizes once a second, puts what changed in the
+//! layer ([`Layer::replace`]) and says which paths changed
 //! ([`Platform::changed_files`](shuyi_platform::Platform::changed_files)). A
 //! file deleted keeps its last bytes until the game starts again: an editor
 //! that saves by deleting and renaming would otherwise flash the embedded
@@ -11,6 +12,7 @@
 use std::collections::BTreeMap;
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, SystemTime};
 
@@ -35,6 +37,8 @@ pub(crate) struct Watched {
     layer: Layer,
     max_file_bytes: u64,
     seen: BTreeMap<String, Stamp>,
+    /// Whether it is watched in every build, not only with debug tools.
+    always: bool,
 }
 
 impl Watched {
@@ -66,23 +70,37 @@ impl Watched {
 /// The folders read since a [`Poller`] last took them.
 static READ: Mutex<Vec<Watched>> = Mutex::new(Vec::new());
 
+/// Whether a folder was read to be watched in every build.
+static ALWAYS: AtomicBool = AtomicBool::new(false);
+
 /// Notes the folder at `root`, read into `layer` after its files were seen
-/// as `seen`, for the backend's [`Poller`].
+/// as `seen`, for the backend's [`Poller`]: in every build if `always`.
 pub(crate) fn note_folder(
     root: &Path,
     layer: Layer,
     max_file_bytes: u64,
     seen: BTreeMap<String, Stamp>,
+    always: bool,
 ) {
     let watched = Watched {
         root: root.to_path_buf(),
         layer,
         max_file_bytes,
         seen,
+        always,
     };
+    if always {
+        ALWAYS.store(true, Ordering::Relaxed);
+    }
     READ.lock()
         .unwrap_or_else(PoisonError::into_inner)
         .push(watched);
+}
+
+/// Whether a folder was read to be watched in every build
+/// ([`read_watched_folder`](crate::read_watched_folder)).
+pub(crate) fn watches_always() -> bool {
+    ALWAYS.load(Ordering::Relaxed)
 }
 
 /// Where a [`Poller`] looks: the disk, or a test's.
@@ -155,10 +173,12 @@ fn stamp_of(meta: &Metadata) -> Stamp {
     (meta.modified().ok(), meta.len())
 }
 
-/// Looks at the folders once a second, while debug tools are on.
+/// Looks at the folders once a second: all of them while debug tools are
+/// on, and those watched in every build.
 #[derive(Debug)]
 pub(crate) struct Poller {
-    /// Whether it looks at all: never in a build without debug tools.
+    /// Whether it looks at every folder: off in a build without debug
+    /// tools, where it looks only at those watched in every build.
     on: bool,
     folders: Vec<Watched>,
     /// When it last looked.
@@ -175,24 +195,30 @@ impl Poller {
         }
     }
 
-    /// Takes the folders read since the last call.
+    /// Takes the folders read since the last call that it looks at.
     pub(crate) fn take_read(&mut self) {
+        let mut read = READ.lock().unwrap_or_else(PoisonError::into_inner);
         if self.on {
-            let mut read = READ.lock().unwrap_or_else(PoisonError::into_inner);
             self.folders.append(&mut read);
+        } else if read.iter().any(|w| w.always) {
+            let (always, rest): (Vec<Watched>, Vec<Watched>) =
+                read.drain(..).partition(|w| w.always);
+            *read = rest;
+            self.folders.extend(always);
         }
     }
 
     /// Adds the paths of the files that changed to `out`, if a second has
-    /// passed on `clock` since it last looked. Off, or with no folders, it
-    /// never reads the clock.
+    /// passed on `clock` since it last looked. With no folder to look at
+    /// (off, and none watched in every build) it never reads the clock.
     pub(crate) fn poll(
         &mut self,
         clock: impl FnOnce() -> Millis,
         disk: &impl Disk,
         out: &mut Vec<String>,
     ) {
-        if !self.on || self.folders.is_empty() {
+        let on = self.on;
+        if !self.folders.iter().any(|f| on || f.always) {
             return;
         }
         let now = clock();
@@ -200,7 +226,7 @@ impl Poller {
             return;
         }
         self.last = Some(now);
-        for folder in &mut self.folders {
+        for folder in self.folders.iter_mut().filter(|f| on || f.always) {
             folder.poll(disk, out);
         }
     }
@@ -266,9 +292,19 @@ mod tests {
         }
     }
 
+    /// Held by the tests that take the folders read, which another test's
+    /// poller would take too.
+    static TAKING: Mutex<()> = Mutex::new(());
+
     /// A poller watching a layer that holds what `disk` holds, and a bundle
     /// of the layer.
     fn watching(disk: &FakeDisk) -> (Poller, Bundle) {
+        watching_with(disk, true, false)
+    }
+
+    /// A poller, on if `on`, watching a layer that holds what `disk` holds,
+    /// in every build if `always`, and a bundle of the layer.
+    fn watching_with(disk: &FakeDisk, on: bool, always: bool) -> (Poller, Bundle) {
         let files = disk
             .files
             .borrow()
@@ -276,12 +312,13 @@ mod tests {
             .map(|(path, (_, bytes))| (path.clone(), bytes.clone()))
             .collect();
         let layer = Layer::owned("disk".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"));
-        let mut poller = Poller::new(true);
+        let mut poller = Poller::new(on);
         poller.watch(Watched {
             root: PathBuf::from("root"),
             layer,
             max_file_bytes: 8,
             seen: disk.scan(Path::new("root")),
+            always,
         });
         (poller, Bundle::new(vec![layer]))
     }
@@ -332,6 +369,7 @@ mod tests {
 
     #[test]
     fn with_debug_tools_off_it_never_reads_the_clock_or_the_disk() {
+        let _taking = TAKING.lock().unwrap_or_else(PoisonError::into_inner);
         let disk = FakeDisk::default();
         disk.write("a.txt", 1, b"old");
         let reads = Cell::new(0);
@@ -348,6 +386,37 @@ mod tests {
         // On, with no folder, nothing to look at either.
         Poller::new(true).poll(clock, &disk, &mut out);
         assert_eq!((reads.get(), disk.scans.get()), (0, 0));
+        // Off, a folder read for debug builds only is never looked at.
+        let (mut off, _) = watching_with(&disk, false, false);
+        let scans = disk.scans.get();
+        disk.write("a.txt", 2, b"new");
+        off.poll(clock, &disk, &mut out);
+        assert_eq!((reads.get(), disk.scans.get()), (0, scans));
+        assert_eq!(out, Vec::<String>::new());
+    }
+
+    #[test]
+    fn with_debug_tools_off_a_folder_watched_in_every_build_is_looked_at() {
+        let disk = FakeDisk::default();
+        disk.write("a.txt", 1, b"old");
+        let (mut off, bundle) = watching_with(&disk, false, true);
+        let reads = Cell::new(0);
+        let clock = |ms| {
+            reads.set(reads.get() + 1);
+            Millis(ms)
+        };
+        disk.write("a.txt", 2, b"new");
+        let mut out = Vec::new();
+        off.poll(|| clock(0), &disk, &mut out);
+        assert_eq!(out, ["a.txt"]);
+        assert_eq!(bundle.file("a.txt"), Some("new"));
+        // Once a second, as with debug tools on.
+        disk.write("a.txt", 3, b"newer");
+        off.poll(|| clock(500), &disk, &mut out);
+        assert_eq!(out, ["a.txt"]);
+        off.poll(|| clock(1000), &disk, &mut out);
+        assert_eq!(out, ["a.txt", "a.txt"]);
+        assert_eq!(reads.get(), 3);
     }
 
     #[test]
@@ -405,6 +474,7 @@ mod tests {
     /// `read_folder` hands its folder over in a build with debug tools.
     #[test]
     fn a_folder_read_is_taken_by_the_poller() {
+        let _taking = TAKING.lock().unwrap_or_else(PoisonError::into_inner);
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("a.txt"), b"old").unwrap();
         let layer = crate::read_folder(dir.path(), "disk", 16).unwrap();
@@ -419,5 +489,25 @@ mod tests {
         poller.poll(|| Millis(0), &RealDisk, &mut out);
         assert_eq!(out, ["a.txt"]);
         assert_eq!(Bundle::new(vec![layer]).file("a.txt"), Some("new!"));
+    }
+
+    /// `read_watched_folder` hands its folder over to a poller that is off:
+    /// a build without debug tools looks at it.
+    #[test]
+    fn a_folder_read_to_be_watched_is_taken_with_debug_tools_off() {
+        let _taking = TAKING.lock().unwrap_or_else(PoisonError::into_inner);
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("scene.dlg"), b"old").unwrap();
+        let layer = crate::read_watched_folder(dir.path(), "scenes", 16).unwrap();
+        assert!(watches_always());
+        let mut off = Poller::new(false);
+        off.take_read();
+        off.folders.retain(|f| f.root == dir.path());
+        assert_eq!(off.folders.len(), 1);
+        fs::write(dir.path().join("scene.dlg"), b"saved").unwrap();
+        let mut out = Vec::new();
+        off.poll(|| Millis(0), &RealDisk, &mut out);
+        assert_eq!(out, ["scene.dlg"]);
+        assert_eq!(Bundle::new(vec![layer]).file("scene.dlg"), Some("saved"));
     }
 }

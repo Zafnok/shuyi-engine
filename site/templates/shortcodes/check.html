@@ -1,0 +1,79 @@
+{#- A quick check (ticket 2827, ADR-0090 §8), in a page's `## Check yourself`
+    section, between `{% check(to="rust") %}` and `{% end %}`, each on a line
+    of its own. Its first lines, up to the list, are the question. Then the
+    list, two to four answers: `- [x]` a right one, `- [ ]` a wrong one, and
+    ` — ` before why. `to`, optional, is one of the four audiences: the
+    reader's filter folds the check as it folds a passage.
+    - In the page, `static/book-check.js` shows the answers as buttons, and
+      choosing one says whether it is right and why in a `role="status"`.
+    - With no JavaScript, the answers and why are in a `<details>`.
+    - `cargo xtask check-book` checks the same shape, and `cargo xtask llms`
+      writes the check as text in the twins. -#}
+{%- set label = "" -%}
+{%- if to is defined -%}
+{%- if to == "programming" -%}{%- set label = "New to programming?" -%}
+{%- elif to == "games" -%}{%- set label = "New to making games?" -%}
+{%- elif to == "rust" -%}{%- set label = "New to Rust?" -%}
+{%- elif to == "shuyi" -%}{%- set label = "New to Shuyi?" -%}
+{%- else -%}
+{{ throw(message='check: to="' ~ to ~ '" is not one of programming, games, rust or shuyi') }}
+{%- endif -%}
+{%- endif -%}
+{%- set text = "
+" ~ body | trim -%}
+{%- set pieces = text | split(pat="
+- [") -%}
+{%- set question = pieces | first | trim -%}
+{%- if question == "" -%}
+{{ throw(message="check: no question before its answers") }}
+{%- endif -%}
+{%- set items = pieces | slice(start=1) -%}
+{%- set count = items | length -%}
+{%- if count < 2 or count > 4 -%}
+{{ throw(message="check: " ~ count ~ " answers, where a check has two to four: " ~ question) }}
+{%- endif -%}
+{%- set_global answers = [] -%}
+{%- set_global whys = [] -%}
+{%- set_global rights = [] -%}
+{%- for item in items -%}
+{%- if item is starting_with("x] ") -%}{%- set right = "true" -%}{%- set rest = item | trim_start_matches(pat="x] ") -%}
+{%- elif item is starting_with(" ] ") -%}{%- set right = "false" -%}{%- set rest = item | trim_start_matches(pat=" ] ") -%}
+{%- else -%}
+{{ throw(message="check: an answer starts `- [x] ` or `- [ ] `: - [" ~ item) }}
+{%- endif -%}
+{%- set halves = rest | trim | split(pat=" — ") -%}
+{%- if halves | length < 2 or halves | slice(start=1) | join(sep=" — ") | trim == "" -%}
+{{ throw(message="check: an answer with no ` — ` and why after it: " ~ item) }}
+{%- endif -%}
+{%- set_global answers = answers | concat(with=halves | first | trim) -%}
+{%- set_global whys = whys | concat(with=halves | slice(start=1) | join(sep=" — ") | trim) -%}
+{%- set_global rights = rights | concat(with=right) -%}
+{%- endfor -%}
+{%- if rights is not containing("true") -%}
+{{ throw(message="check: no right answer (`- [x]`): " ~ question) }}
+{%- endif -%}
+{%- set id = "check-" ~ nth -%}
+{%- if label != "" %}
+<aside class="check newcomer" data-newcomer="{{ to }}" aria-labelledby="{{ id }}">
+<p class="newcomer-label">{{ label }} <span>a quick check</span></p>
+{%- else %}
+<aside class="check" aria-labelledby="{{ id }}">
+<p class="check-label">Quick check</p>
+{%- endif %}
+<div class="check-question" id="{{ id }}">{{ question | markdown | safe }}</div>
+<div class="check-choices" role="group" aria-labelledby="{{ id }}" hidden>
+{%- for answer in answers %}
+<button type="button" class="check-choice" data-right="{{ rights | nth(n=loop.index0) }}" aria-pressed="false">{{ answer | markdown(inline=true) | safe }}</button>
+{%- endfor %}
+<p class="check-result" role="status"></p>
+</div>
+<details class="check-answers">
+<summary>Answers</summary>
+<ul>
+{%- for answer in answers %}
+{%- set right = rights | nth(n=loop.index0) %}
+<li data-right="{{ right }}"><strong>{% if right == "true" %}Right:{% else %}Wrong:{% endif %}</strong> {{ answer | markdown(inline=true) | safe }} <span class="check-why">— {{ whys | nth(n=loop.index0) | markdown(inline=true) | safe }}</span></li>
+{%- endfor %}
+</ul>
+</details>
+</aside>

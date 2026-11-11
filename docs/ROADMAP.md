@@ -126,9 +126,9 @@ tickets, in order:
 | 2822 | `tutorial-tries` on Windows can draw a try with another step's program |
 | 2821 | Code on the site that stands out: inline code with its own color and background, and code blocks with syntax colors of our own |
 | 2823 | One book, the design: its parts, the tutorial as its first project, marks for who a passage is for, and the reader's filter, in an ADR |
-| 2824 | One book: the tutorial's pages become the book's project, with one glossary and the old addresses sending readers on |
-| 2825 | Every passage says who it is for: new to programming, new to Rust or new to Shuyi, checked in CI |
-| 2826 | The reader's filter: a welcome page with three questions and a skip, a bar on every page, and skipping ahead |
+| 2824 | One book: the tutorial's steps fold into the chapters, each after the chapter it uses, with one glossary and the old addresses sending readers on |
+| 2825 | Every passage says who it is for: new to programming, to making games, to Rust or to Shuyi, checked in CI |
+| 2826 | The reader's filter: a popup with three questions and a skip on a first visit, a bar on every page, and skipping ahead |
 | 2827 | Quick checks in the book: a question, its answers and why, at the end of each step and chapter |
 | 3069 | Files from the page: a web build lays the files its page holds over its own |
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
@@ -139,16 +139,76 @@ tickets, in order:
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
 | 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
 | 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |
-| 2577 | The bake's fastest-run test holds on a busy machine |
+| 2577 (done) | The bake's fastest-run test holds on a busy machine |
 | 2250 | A voice cast a voice tool can use |
 | 2251 | Plan a language's voice clips (after 2250) |
 | 2544 | One operation plays a game's bots: `bots` folded into `playtest`, before the release |
 | 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
 | 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
-| 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388) |
+| 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1253) |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
+
+### Guardrails from the retro of the last 60 PRs
+
+A retro of engine PRs #254–#313 and game PRs #513–#580 (2026-11-08)
+looked at how the sessions worked. What held:
+- precise tickets finished without questions;
+- deviations and evidence in the completion notes;
+- follow-ups written as tickets with both sides of the handoff;
+- `Breaking:` lines the game's pin review read;
+- CI's mutants and API gates catching real gaps.
+
+What slipped was mostly at the seams, where nothing checked:
+- a branch name the checks couldn't read (4 PRs closed and redone);
+- ticket and ADR numbers two parallel sessions both took (13 renumber
+  commits);
+- PRs over the size rule;
+- gates claimed but not run;
+- Dependabot PRs left red;
+- behaviour changes the game found at pin time.
+
+These tickets make the checks deterministic where they can be. None
+holds up the first release (2005), so they are not in the MVP. They come
+**ahead of** the MVP's remaining tickets all the same: each one saves
+redone PRs on the rest. 2052 and 2054 first (2051 is done). Whether they go into
+the release's `blocked_by` is Nick's call.
+
+| Ticket | What |
+| ------ | ---- |
+| 2051 (done) | The ticket a PR is for comes from its title, and a branch the checks can't read fails; the ticket-only PR convention |
+| 2052 | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
+| 2054 | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
+| 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
+| 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
+| 2059 (done) | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
+| 2066 | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
+| 2584 (done) | The ticket skills check a ticket against the code before trusting it |
+| 2057 | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
+| 2064 | Flaky gates have a ledger, and a calibration run is one reusable workflow |
+| 2058 | A migration block's `since` is the workspace's version |
+| 2065 | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
+| 2060 | Nick decides how `main` is guarded: required checks, merges on green, and the `model` line |
+
+Bugs and follow-ups the retro found left in prose, now tickets:
+
+| Ticket | What |
+| ------ | ---- |
+| 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307; done 2026-11-11) |
+| 2061 | `cargo xtask api` runs from a Windows worktree |
+| 2062 | The tutorial steps' lockfiles match what `cargo test` writes |
+| 2063 | The MCP server's forwarding tests pass under load |
+| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
+| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
+| 2257 | The text checks say cells where they count cells |
+| 2583 | The debug step plays over the live link and in a capture plan |
+| 3097 | A game's load runs over several update callbacks on the Playdate (game#1170) |
+
+The retro also set 2397, 3032 and 3082 to `todo` (every blocker done),
+added 2049 and 2050 to 3084's `blocked_by`, and noted on 2343 that
+game#0865 now waits on it. The game's own tickets from the retro are its
+0143–0151, 0911 and 1254–1258.
 
 ### Bevy's homepage
 
@@ -201,8 +261,9 @@ launches.
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 (game#0250, key names that stand out), 2228
-(game#1013, mod tables merged by id), 2342 (game#0826, the voices'
-volume), and 2226, 2253 and 2349 (game#0825, the language option).
+(game#1013, mod tables merged by id), and 2226, 2253 and 2349
+(game#0825, the language option). 2342 (game#0826, the voices' volume)
+is done.
 
 **Seeing what players see:**
 
@@ -232,6 +293,7 @@ volume), and 2226, 2253 and 2349 (game#0825, the language option).
 | Ticket | What |
 | ------ | ---- |
 | 2342 | Sound groups as data: a master volume and a volume per group on a loudness curve |
+| 2258 | A game's own sound groups in the audio manifest, and a group on a cue |
 | 2343 | Ducking: a group lowered while a voice plays |
 | 2344 | Looped sounds with handles, owned by the screen that started them |
 | 2394 | Sounds paused under a pause menu, and the audio held while the system suspends the game |
@@ -284,7 +346,7 @@ volume), and 2226, 2253 and 2349 (game#0825, the language option).
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
 | 2906 | Research: asset memory, lifetimes, groups and loading in steps |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
-| 2581 | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
+| 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
 **Debugging, and agents:**
 
@@ -422,8 +484,9 @@ them.
 | 2252 | The text checks measure with the font atlas's wide glyphs, and a reloaded atlas changes the frame's widths | 2301 |
 | 2302 | Line breaking for text without spaces, and a report of translated text too long for its place | game#0237 |
 | 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
+| 2254 | A source language names its wide set and its punctuation's width, as a pack's `lang.ron` does | 2303 |
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
-| 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
+| 2101 (done) | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |
 | 2125 | A rollout bot: `Determinize`, and flat Monte Carlo on copies that never see the luck to come (split out of 2113) | game#0506 |
 | 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |
@@ -693,6 +756,7 @@ going public, with the one book (2823–2828).
 | 2813 | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
+| 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
 | 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
 
 ### Public demo defenses
@@ -707,11 +771,21 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | ------ | ---- |
 | 2912 | Measure footage imitation, package extraction, binary reconstruction and store attribution separately |
 | 3081 | Inspect final exports for undeclared files and game-declared forbidden content (after 3080) |
-| 3082 | Build named public-demo editions from separate code and content roots (after 3081 and 3075) |
+| 3082 | Build named public-demo editions from separate code and content roots (done 2026-11-10) |
+| 3304 | The bake takes an edition's content root, so a Playdate edition ships only its own files (done 2026-11-10) |
+| 3306 | A Playdate edition's sounds and music come from its content root (done 2026-11-10) |
+| 3305 | NOTICES.txt lists the crates of the build as Cargo resolves it, default features included (after 3082; done 2026-11-10) |
 | 2816 | Prepare a verifiable public reveal kit from captures and tagged releases (after 2811 and 3050) |
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
+| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
+| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
+| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099) |
+| 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
+| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
+| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300) |
 
 ## Parked
 
@@ -740,6 +814,13 @@ unparked:
 - **The GBA and the DS:** 3017 and 3018 first, then 3019, 3020 and
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
   3025, 3026). DS 3D (3025) also needs 3103 and 3107.
+
+On 2026-11-08 Nick put the export targets in tiers
+([`decisions.md`](decisions.md)): tier 1 is Windows, Linux, macOS and
+the web; tier 2 is the Steam Deck, the Playdate (the first of them being
+worked), the Switch, Android and iOS, PlayStation and Xbox, the GBA and
+the DS; tier 3 is PICO-8. Its research ticket, 3098, waits for every
+tier 1 and tier 2 target as well as for Nick.
 
 On 2026-10-19 Nick asked for a visual editor like Godot's or Unreal's
 Blueprints, and for the debug view's channels

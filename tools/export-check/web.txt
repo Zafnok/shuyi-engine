@@ -1,11 +1,12 @@
 ABOUT.md
 NOTICES.txt
 capture/frames.ron
-download.js
 gamepad.js
 hello-grid.wasm
 index.html
 mq_js_bundle.js
+page-files.js
+player-files.js
 quad-storage.js
 sapp_jsutils.js
 sound.js

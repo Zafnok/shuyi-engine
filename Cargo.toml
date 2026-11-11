@@ -26,6 +26,9 @@ libm = "0.2"
 # (ticket 2116).
 proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
 insta = "1"
+# A game's types describe their shapes for its tools (ADR-0084 §2): a
+# game's `tools` feature turns it on, with `shuyi/schema`.
+schemars = { version = "1", default-features = false, features = ["derive"] }
 
 # Cargo allows one crate of a build to say `links = "alsa"`, on any target, and
 # quad-snd and CPAL each bring one. While both are here this holds CPAL's place, and

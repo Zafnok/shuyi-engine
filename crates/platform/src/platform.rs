@@ -14,11 +14,14 @@ use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::onebit::{Font, Images, PatternMap};
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
+use shuyi_ui::player_files::Folder;
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::Audio;
+use crate::dropped::DroppedFile;
+use crate::player_files::{ChosenFile, Offered};
 use crate::text_input::TextInput;
 
 /// A moment on the backend's clock, in whole milliseconds. Where the clock
@@ -107,7 +110,7 @@ pub struct Look<'a> {
 }
 
 /// A game's look on a one-bit display (ADR-0062): what
-/// [`render_with`](shuyi_ui::frame::onebit::render_with) needs beside the
+/// [`render`](shuyi_ui::frame::onebit::render) needs beside the
 /// frame. The game's load makes it from its pack, once.
 #[derive(Clone, Copy)]
 #[non_exhaustive]
@@ -223,7 +226,7 @@ impl<'a> Frame<'a> {
 }
 
 /// Something the system tells the game, between frames.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum SystemEvent {
     /// The game is about to stop running for a while: the device sleeps or
@@ -255,6 +258,43 @@ pub enum SystemEvent {
     CrankDocked,
     /// The device's crank was unfolded.
     CrankUndocked,
+    /// The player dropped these files on the game's window (the desktop)
+    /// or its canvas (the web), each with its name and bytes, in the order
+    /// the system gave them; the backend has refused those over the limits
+    /// ([`dropped::accept`](crate::dropped::accept)). Only where
+    /// [`PlatformFacts::can_drop_files`] says so. The game's hook reads them,
+    /// and [`DroppedFile::layer`] makes a bundle layer of those it wants.
+    FilesDropped(Vec<DroppedFile>),
+    /// Where the file a screen offered went
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)): downloaded, written
+    /// at a path, or why not. One for each offer, in order, in a later
+    /// frame.
+    FileOffered(Offered),
+    /// The answer to a screen's ask for a file
+    /// ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)): the file the
+    /// player picked, as text, or that they cancelled, or why it was
+    /// refused. One for each ask, in a later frame. A session record holds
+    /// it, so a replay reads the same text.
+    FileChosen(ChosenFile),
+}
+
+/// How long one frame may run a load in steps for
+/// ([`Platform::load_slice`]), and the clock that times it.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct LoadSlice {
+    /// The time a frame runs steps for, in microseconds: steps run until
+    /// it is used, and at least one runs each frame.
+    pub length_us: u64,
+    /// The clock the steps are timed by.
+    pub clock: PerfClock,
+}
+
+impl LoadSlice {
+    /// A slice of `length_us` microseconds, timed by `clock`.
+    pub const fn new(length_us: u64, clock: PerfClock) -> Self {
+        Self { length_us, clock }
+    }
 }
 
 /// What a backend gives the engine: a display to [`present`] frames on,
@@ -322,6 +362,17 @@ pub trait Platform {
         None
     }
 
+    /// How long one frame may run a game's load in steps for
+    /// ([`Start::in_steps`](crate::Start::in_steps)), on a device whose
+    /// system ends a game whose frame runs too long (the Playdate's, after
+    /// 10 seconds): the steps go on in the next frame, the card on the
+    /// screen. Asked in every frame that runs steps, in every build. `None`
+    /// (the default): all the steps run in one frame, as on a PC or the
+    /// web, where a long frame only shows the card longer.
+    fn load_slice(&self) -> Option<LoadSlice> {
+        None
+    }
+
     /// The device's memory now, in debug builds (ADR-0046): the heap's
     /// live bytes, their peak and the allocations since the last call.
     /// `App` asks once a frame, at the end of a frame it keeps a record of
@@ -360,10 +411,66 @@ pub trait Platform {
     /// backend has already put their new bytes in their layers
     /// ([`Layer::replace`](shuyi_assets::bundle::Layer::replace)). `App` asks
     /// once a frame while the game runs, only with
-    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on. By default it
-    /// adds nothing: a device with no files to watch.
+    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on, or while
+    /// [`watches_files`](Self::watches_files). By default it adds nothing:
+    /// a device with no files to watch.
     fn changed_files(&mut self, _out: &mut Vec<String>) {}
+
+    /// Whether the game asked for a folder to be watched in every build,
+    /// not only one with debug tools (ADR-0095): a writer's preview
+    /// program, built optimized, that plays the files they save. `App`
+    /// then asks for [`changed_files`](Self::changed_files) with debug
+    /// tools off too. `false` by default.
+    fn watches_files(&self) -> bool {
+        false
+    }
+
+    /// Hands the player a file called `name` (one file's name, checked by
+    /// `App`) holding `text`, as a screen asked
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)): a download, a file
+    /// in the exports folder of the game's storage. `App` calls it after the
+    /// frame. The answer goes to the game as
+    /// [`SystemEvent::FileOffered`] at the start of the next frame;
+    /// `None` when the backend gives it through
+    /// [`system_events`](Self::system_events) instead (the headless backend
+    /// playing a session record, which holds it). By default the file is
+    /// refused: a device with no files a player reaches.
+    fn offer_file(&mut self, _name: &str, _text: &str) -> Option<Offered> {
+        Some(Offered::Failed(NO_FILES.to_owned()))
+    }
+
+    /// Asks the player to pick a text file of one of the extensions in
+    /// `accept` (each with its dot; any when it is empty), as a screen
+    /// asked ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)). `App`
+    /// calls it after the frame, in the frame of the press that asked, as a
+    /// browser wants. An answer now goes to the game as
+    /// [`SystemEvent::FileChosen`] at the start of the next frame; `None`
+    /// when it comes later through [`system_events`](Self::system_events)
+    /// (once the player has chosen). A backend reads the file's bytes into
+    /// [`ChosenFile::from_bytes`], which keeps the limits. By default the
+    /// ask is refused: no picker ([`PlatformFacts::can_pick_files`]).
+    fn ask_for_file(&mut self, _accept: &[String]) -> Option<ChosenFile> {
+        Some(ChosenFile::Refused(NO_PICKER.to_owned()))
+    }
+
+    /// Opens `folder` in the system's file manager, as a screen asked
+    /// ([`Ctx::open_storage_folder`](shuyi_ui::Ctx::open_storage_folder)).
+    /// `App` calls it after the frame, and logs the error as a `platform`
+    /// warning. By default there is no such folder.
+    ///
+    /// # Errors
+    ///
+    /// Why the folder couldn't be opened, in a line.
+    fn open_folder(&mut self, _folder: Folder) -> Result<(), String> {
+        Err(NO_FILES.to_owned())
+    }
 }
+
+/// Why a file isn't offered on a backend with no files a player reaches.
+pub const NO_FILES: &str = "this platform has no files the player reaches";
+
+/// Why an ask for a file is refused on a backend with no picker.
+pub const NO_PICKER: &str = "this platform has no file picker: drop the file on the window";
 
 #[cfg(test)]
 mod tests {
@@ -412,6 +519,7 @@ mod tests {
             columns: 16,
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
+            wide_sets: alloc::collections::BTreeMap::new(),
         };
         let images = ImageTable::default();
         let map = PatternMap::default();
@@ -432,6 +540,7 @@ mod tests {
             columns: 16,
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
+            wide_sets: alloc::collections::BTreeMap::new(),
         };
         let images = ImageTable::default();
         let look = Look::new(&font, &images);

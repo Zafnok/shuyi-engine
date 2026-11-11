@@ -25,7 +25,7 @@ use std::process::Command;
 
 use pulldown_cmark::{Event, LinkType, Options as Extensions, Parser, Tag, TagEnd};
 
-use crate::tries;
+use crate::{book, tries};
 
 #[cfg(test)]
 mod tests;
@@ -40,10 +40,15 @@ const REPO: &str = "Zafnok/shuyi-engine";
 const CONTENT: &str = "site/content";
 /// Learn's folder, from [`CONTENT`], as a section's folder is written.
 const LEARN: &str = "learn/";
-/// The URL of what `llms-full.txt` leaves out: the tutorial teaches people
-/// from nothing, and an agent has the book, the API docs and the steps'
-/// sources (ticket 2818). Its pages keep their twins and `llms.txt` lines.
-const FOR_PEOPLE: &str = "learn/tutorial/";
+/// The newcomers whom `llms-full.txt` leaves out, a page written whole for
+/// one (`extra.newcomer`) and a passage marked for one alike: an agent
+/// programs, knows how games are made and knows Rust (ADR-0090 §5). It is
+/// new to Shuyi, so `shuyi` stays in.
+/// A project's pages (a section with `extra.project = true`) are left out
+/// too: a project teaches people from nothing, and an agent has the
+/// chapters, the API docs and the steps' sources (ticket 2818). Both keep
+/// their twins and `llms.txt` lines.
+const NOT_FOR_AGENTS: [&str; 3] = ["programming", "games", "rust"];
 /// The book's code, which the `snippet` shortcode reads.
 const SNIPPETS: &str = "site/snippets";
 /// The start of `llms.txt`, written by hand.
@@ -176,18 +181,24 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
     let mut texts = Vec::new();
     let before = out.errors.len();
     for page in &listed {
-        let (text, errors) = twin(page, &site, &snippets);
+        let (text, errors) = twin(page, &site, &snippets, &[]);
         out.errors.extend(errors);
         out.errors
             .extend(left_shortcodes(&format!("/{}index.md", page.url), &text));
         texts.push(text);
     }
 
+    let projects: Vec<&str> = pages
+        .iter()
+        .filter(|page| page.is_section && page.project)
+        .map(|page| page.folder.as_str())
+        .collect();
+    // A twin's errors are named once, above: the full file's copy of it
+    // only leaves the passages out.
     let in_full: Vec<String> = listed
         .iter()
-        .zip(&texts)
-        .filter(|(page, _)| !page.url.starts_with(FOR_PEOPLE))
-        .map(|(_, text)| text.clone())
+        .filter(|page| for_agents(page, &projects))
+        .map(|page| twin(page, &site, &snippets, &NOT_FOR_AGENTS).0)
         .collect();
     let full = full_text(&facts, &in_full);
     // A twin's error is already named at its twin; the full file has only
@@ -223,6 +234,20 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
         write_site(root, &options.dir, &written, &mut out);
     }
     out
+}
+
+/// Whether `page` goes in `llms-full.txt`: not when it is in one of the
+/// `projects`' folders (its landing page too), nor when it is written whole
+/// for a newcomer an agent isn't ([`NOT_FOR_AGENTS`]).
+fn for_agents(page: &Page, projects: &[&str]) -> bool {
+    let in_project = projects
+        .iter()
+        .any(|folder| page.folder.starts_with(folder));
+    let for_newcomer = page
+        .newcomer
+        .as_deref()
+        .is_some_and(|to| NOT_FOR_AGENTS.contains(&to));
+    !in_project && !for_newcomer
 }
 
 /// What [`run`] made, for [`write_site`].
@@ -355,6 +380,10 @@ struct Page {
     title: String,
     description: Option<String>,
     weight: i64,
+    /// A section's `extra.project`: it is one of the book's projects.
+    project: bool,
+    /// `extra.newcomer`: the newcomer the whole page is written for.
+    newcomer: Option<String>,
     /// The text after the front matter.
     body: String,
     /// The number of the body's first line in the file.
@@ -457,6 +486,8 @@ fn page(source: &str, shown: &str, text: &str) -> Result<Option<Page>, String> {
         title: front.title,
         description: front.description,
         weight: front.weight,
+        project: front.project,
+        newcomer: front.newcomer,
         body: text[front.body..].to_owned(),
         body_line: front.body_line,
     }))
@@ -486,6 +517,10 @@ struct Front {
     description: Option<String>,
     weight: i64,
     draft: bool,
+    /// `extra.project`.
+    project: bool,
+    /// `extra.newcomer`.
+    newcomer: Option<String>,
     /// Where its body starts, in bytes.
     body: usize,
     /// Its body's first line's number.
@@ -540,6 +575,7 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
         .get("title")
         .and_then(toml::Value::as_str)
         .ok_or_else(|| format!("{shown}:1: no `title` in its front matter"))?;
+    let extra = table.get("extra").and_then(toml::Value::as_table);
     Ok(Front {
         title: title.to_owned(),
         description: table
@@ -554,6 +590,14 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
             .get("draft")
             .and_then(toml::Value::as_bool)
             .unwrap_or(false),
+        project: extra
+            .and_then(|extra| extra.get("project"))
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false),
+        newcomer: extra
+            .and_then(|extra| extra.get("newcomer"))
+            .and_then(toml::Value::as_str)
+            .map(str::to_owned),
         body,
         body_line,
     })
@@ -639,20 +683,81 @@ struct Site<'a> {
     twins: &'a BTreeMap<String, String>,
 }
 
-/// The twin of `page`, and every error making it.
-fn twin(page: &Page, site: &Site, snippets: &Path) -> (String, Vec<String>) {
+/// The twin of `page` without the passages marked for the newcomers
+/// `leave_out`, and every error making it. A page marked whole has its
+/// label under its `Source:` line, and each passage left in is a
+/// blockquote under its label and topic (ADR-0090 §5).
+fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (String, Vec<String>) {
     let shown = page.file();
-    let (expanded, mut errors) = expand(&shown, &page.body, page.body_line, snippets);
+    let (parts, mut errors) = book::parts(&shown, &page.body, page.body_line);
+    let mut expanded = String::with_capacity(page.body.len());
+    for part in parts {
+        if let Some(mark) = &part.mark
+            && leave_out.contains(&mark.to.as_str())
+        {
+            continue;
+        }
+        let text = if let Some(check) = &part.check {
+            checked(check)
+        } else {
+            let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
+            errors.extend(part_errors);
+            text
+        };
+        let text = match &part.mark {
+            Some(mark) => quoted(mark, &text),
+            None => text,
+        };
+        // One blank line between parts, where a passage was left out too.
+        if expanded.ends_with("\n\n") {
+            expanded.push_str(text.trim_start_matches('\n'));
+        } else {
+            expanded.push_str(&text);
+        }
+    }
     let (linked, link_errors) = rewrite_links(&shown, &expanded, &page.url, site);
     errors.extend(link_errors);
+    let whole = page
+        .newcomer
+        .as_deref()
+        .and_then(book::label)
+        .map(|label| format!("> **{label}** This whole page.\n\n"))
+        .unwrap_or_default();
     let text = format!(
-        "# {}\n\nSource: {}{}\n\n{}\n",
+        "# {}\n\nSource: {}{}\n\n{whole}{}\n",
         page.title,
         site.base,
         page.url,
         linked.trim()
     );
     (text, errors)
+}
+
+/// A quick check as text (ticket 2827): its question, then each answer,
+/// right or wrong, and why.
+fn checked(check: &book::Check) -> String {
+    let mut out = format!("\n**Quick check.** {}\n\n", check.question);
+    for answer in &check.answers {
+        let verdict = if answer.right { "Right" } else { "Wrong" };
+        let _ = writeln!(out, "- {verdict}: {} — {}", answer.text, answer.why);
+    }
+    out.push('\n');
+    out
+}
+
+/// A marked passage's `text` as a blockquote: its label and topic, then
+/// each of its lines.
+fn quoted(mark: &book::Mark, text: &str) -> String {
+    let label = book::label(&mark.to).unwrap_or(&mark.to);
+    let mut out = format!("> **{label}** {}\n>\n", mark.topic);
+    for line in text.trim_matches('\n').lines() {
+        if line.trim().is_empty() {
+            out.push_str(">\n");
+        } else {
+            let _ = writeln!(out, "> {line}");
+        }
+    }
+    out
 }
 
 /// `body`, the text of `shown` from its line `first_line`, with Zola's
@@ -719,16 +824,16 @@ fn expand(shown: &str, body: &str, first_line: usize, snippets: &Path) -> (Strin
 }
 
 /// A shortcode's call: `name(args)` and its closer.
-struct Call<'a> {
-    name: &'a str,
-    args: &'a str,
+pub struct Call<'a> {
+    pub name: &'a str,
+    pub args: &'a str,
     /// Its length in bytes after the opener, the closer included.
-    len: usize,
+    pub len: usize,
 }
 
 /// The call after a `{{` or `{%`: none when it isn't one (Zola leaves that
 /// text as it is), an error when it starts as one and doesn't end.
-fn call<'a>(after: &'a str, closer: &str) -> Option<Result<Call<'a>, String>> {
+pub fn call<'a>(after: &'a str, closer: &str) -> Option<Result<Call<'a>, String>> {
     let trimmed = after.trim_start();
     let name_len = trimmed
         .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
@@ -769,7 +874,7 @@ fn call<'a>(after: &'a str, closer: &str) -> Option<Result<Call<'a>, String>> {
 
 /// A shortcode's arguments, `name=value` split by commas, a value quoted
 /// with `"`, `'` or `` ` `` or bare.
-fn arguments(args: &str) -> Result<Vec<(&str, &str)>, String> {
+pub fn arguments(args: &str) -> Result<Vec<(&str, &str)>, String> {
     let mut out = Vec::new();
     let mut rest = args.trim();
     while !rest.is_empty() {
@@ -843,7 +948,7 @@ fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
 /// The `try_it` shortcode (`site/templates/shortcodes/try_it.md`, ticket
 /// 2818): the try `name` of `site/tutorial/tries.toml`, each edit as a diff
 /// and each picture as an image, from `site/static/tutorial-tries/<name>/`,
-/// which must be there.
+/// which must be there; a try of the Rust code ends with [`TRY_RUST`].
 fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
     let mut name = None;
     for (key, value) in arguments(args).map_err(|e| format!("try_it: {e}"))? {
@@ -881,8 +986,17 @@ fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
         }
         let _ = write!(out, "![{alt}](/{path})\n\n");
     }
+    let rust = |file: &str| Path::new(file).extension().is_some_and(|e| e == "rs");
+    if one.edits.iter().any(|edit| rust(&edit.file)) {
+        out.push_str(TRY_RUST);
+    }
     Ok(out.trim_end().to_owned())
 }
+
+/// What a try of the Rust code says under its pictures, as the shortcode
+/// says it (ticket 2820): a page can try only the data files.
+const TRY_RUST: &str = "This change is to the Rust code: try it on your own machine, where \
+    `cargo run` builds the game again with it. A web page can't build Rust.";
 
 /// Every line of `source`, without the anchors' lines, as the shortcode
 /// shows a file named with no anchor. The empty line after its last
@@ -1081,7 +1195,10 @@ fn left_shortcodes(shown: &str, text: &str) -> Vec<String> {
 fn full_text(facts: &Facts, twins: &[String]) -> String {
     let mut out = format!(
         "# Shuyi Engine {}: every page of Learn\n\nFrom commit {} of {}. The list of them, and the \
-         rest of the docs, are in {}llms.txt.\n",
+         rest of the docs, are in {}llms.txt. It leaves out the book's projects, which teach people \
+         from nothing, and the pages and passages written for a newcomer to programming, to making \
+         games or to Rust: an agent has the chapters, the API docs and the projects' sources. It \
+         keeps the passages for a newcomer to Shuyi, each a blockquote under \"New to Shuyi?\".\n",
         facts.version, facts.commit, facts.date, facts.base
     );
     for twin in twins {
@@ -1281,8 +1398,10 @@ fn llms_txt(listing: &Listing) -> String {
         "This copy documents Shuyi Engine {} at commit [`{short}`](https://github.com/{REPO}/commit/{}), \
          of {}. It follows the `main` branch and changes with each merge, so a game on a released \
          version reads its version's copy, under *Released versions*. Each page listed under \
-         Learn's sections, but the tutorial's, which teaches people from nothing, is also in one \
-         file, [llms-full.txt]({base}llms-full.txt): {} bytes, about {} tokens.",
+         Learn's sections, but a project's, which teaches people from nothing, and a page written \
+         whole for a newcomer to programming, to making games or to Rust, is also in one file, \
+         without its passages for those newcomers, [llms-full.txt]({base}llms-full.txt): {} bytes, \
+         about {} tokens.",
         facts.version,
         facts.commit,
         facts.date,

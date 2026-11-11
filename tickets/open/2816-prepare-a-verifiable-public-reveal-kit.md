@@ -27,6 +27,15 @@ None.
 - A local, human-reviewed reveal bundle containing approved captures, canonical store URL, game name, artifact hashes and provenance receipts.
 - Optional private salted commitments to unreleased source/content; opening them later requires the retained salt and source.
 - A copyable incident evidence index tying a public clip to its source build.
+- A checklist step before the first public footage: register the game's
+  copyright (art, music, text; the US fee is about US$65 and statutory
+  damages need registration before infringement or within three months of
+  first publication, 17 U.S.C. 412), written as information with a
+  "not legal advice" line, as research ticket 2917's report (section 9)
+  says. Whether to file, and the fee, is Nick's: the kit only reminds.
+- The bundle's manifest carries the game's name, keywords and approved
+  captures in a form 3301 (the store watch) and 3302 (the recipient
+  overlay) read; both are blocked on this ticket and add nothing here.
 
 **Out (do not do):**
 - Automatic Steam publication, legal conclusions or guaranteed takedowns.

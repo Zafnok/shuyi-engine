@@ -139,28 +139,36 @@ confirmed. A backend that never reports leaves every request pending.
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
    nothing presented;
    while paused without focus (`App::is_paused`), `poll_input`
-   (dropped), `audio().play` with nothing at volume 0 if the game is
-   muted too, and `present` of the last frame: no update, no steps;
-4. `changed_files`, with debug tools on: the paths go to the game's
-   modules before its update (never in a build that ships);
+   (dropped), `audio().play` with nothing and every gain at 0
+   (`Gains::muted`) if the game is muted too, and `present` of the last frame: no update, no steps;
+4. `changed_files`, with debug tools on or while `watches_files`: the
+   paths go to the game's modules before its update (in a build that
+   ships, only for a folder the game named to be watched);
 5. `poll_input`;
 6. `text_input`: whether there is a system keyboard, and its answer if a
    screen's ask waits for one;
 7. `audio().music_playing(now)`, for the screens that keep time with the
-   music;
+   music, then `audio().voice_playing(now)`, for the screens that wait
+   for a voice to end and for the manifest's ducking rules (ADR-0099);
 8. the game's update (`shuyi_ui::Game::frame`);
 9. `audio().play(&frame, now)` with that frame's audio, every frame (its
-   volumes at 0 while the game is muted without focus);
+   gains at 0 while the game is muted without focus);
 10. `text_input().open(&ask)` if a screen asked for the system keyboard;
 11. `audio().stop_all()` if the game quit in that update;
 12. `present(&frame)` (timed, in a frame `App` measures, and the
-    frame's end read after it).
+    frame's end read after it);
+13. `offer_file`, `ask_for_file` and `open_folder`, for each request
+    about the player's files the game made in its update, in order.
 
 The game's first frames are different: frame 1 presents the loading card;
 frame 2 calls `display`, `storage` and `facts` for the game's `Setup`, runs the
 game's load (seconds, on a slow device) and presents the game's first
-frame; frames after run the game. A failed load presents its errors until
-the player quits.
+frame; frames after run the game. A load in steps (`Start::in_steps`) asks
+`load_slice` in each loading frame and runs as many steps as fit, so it may
+take several frames, each presenting the card again until the last
+presents the game
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+A failed load presents its errors until the player quits.
 
 ## Each method
 
@@ -198,7 +206,7 @@ next. `frame.show` is one of:
   as RGBA). A one-bit display draws with `look.one_bit` instead (a
   `OneBitLook`, ADR-0062): the pattern map, the font's one-bit rows and
   the pictures, which the game's load makes from its pack;
-  `shuyi_ui::frame::onebit::render_changed_with` draws them. The picture to match, pixel for pixel at
+  `shuyi_ui::frame::onebit::render_changed` draws them. The picture to match, pixel for pixel at
   whole scales, is the raster's (`shuyi_ui::frame::raster::Painter`,
   feature `raster`): compare a backend's pixels with it through
   `raster::compare`, within a `Tolerance`.
@@ -242,6 +250,8 @@ Add what the system said since the last call:
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
 | `CrankDocked`, `CrankUndocked` | the device's crank is folded away, or out; said once the game has loaded, then on each change | `Ctx::crank_docked`: a screen whose required action is only on the crank gets a hint to unfold it (the text key `crank.unfold`) |
+| `FilesDropped(files)` | the player dropped files on the window or the canvas: each a `DroppedFile` made with `DroppedFile::new(path, bytes)`, which keeps the name alone; only where `PlatformFacts::can_drop_files()` | refuses a drop of more than 16 files whole, and a file of more than 256 MB alone (`shuyi_platform::dropped::accept`), logging each as a `platform` warning and noting only what is left in a session record; then the game's hook hears the rest |
+| `FileOffered(offered)`, `FileChosen(chosen)` | the answer to a screen's request about the player's files (*Files the player keeps*, below): `App` adds the answers a backend gave at once, first in the next frame; a backend adds an answer that comes later (the web's picker) itself | nothing but note it in a session record: the game's hook hears it |
 
 A window that loses focus sends `FocusLost`, not `Suspend`: `Suspend`
 means the game can't be seen or can't run (ADR-0076). The macroquad
@@ -253,7 +263,14 @@ minimized when the window moves, with no restore). It hands focus events
 over before the fullscreen shortcut and the close button, and while
 unfocused hands `poll_input` no pad presses, only the releases of what
 pads held; a button held across the change counts once pressed again.
-In debug builds it logs each system event it sends.
+In debug builds it logs each system event it sends (a dropped file by
+its name and size, never its bytes). It reads drops from macroquad's
+`get_dropped_files` in every frame, the web's skipped frames too
+(`crates/app/src/drops.rs`), leaving out a file the system gave no path
+or no bytes for. On Windows it answers `WM_DROPFILES` itself, through a
+subclass of miniquad's window, and leaves out a folder or a file it
+can't read: miniquad 0.4.11 panics on one there, and never hands a drop
+on to macroquad ([ADR-0104](adr/0104-drops-on-windows-read-by-the-backend-itself-through-a-subclass-of-miniquads-window.md)).
 
 A device that freezes the process without a word (the Steam Deck asleep)
 sends `Resume` itself when it sees a long gap between frames (ticket
@@ -296,10 +313,20 @@ The sound device:
 - `music_playing(now)`: the music cue sounding and the seconds since it
   really started (once its file loaded), or `None`; of two tracks
   sounding (a crossfade), the newest;
-- `play(&frame, now)`: one frame's audio. Set the volumes first
-  (`music_volume`, `sound_volume` and `voice_volume` reach what is
-  already playing), then play the `SoundRequest`s in order (a sound cue
-  at its manifest volume times its own and the sound volume; a sound
+- `voice_playing(now)`: the file of the voice clip sounding, or asked for
+  and still loading, or `None` once it has ended or was stopped,
+  replaced, failed or given up on as late; a clip held by `suspend`
+  still sounds. `None` by default; `PlayerDevice` answers it. While it
+  names a clip, the groups the audio manifest's `ducks` lower go down
+  (ADR-0099): a backend that answers `None` never ducks, and the gains of
+  the next `play` carry the ducking, with nothing more to do;
+- `play(&frame, now)`: one frame's audio. Take the frame's `gains` first
+  (ADR-0091): every sound, track and voice clip plays at its own volume
+  times its cue's gain (`gains.sound(cue)`, `gains.music(cue)`,
+  `gains.voice()`, each a `Gain` in units of 1/4096), and a change reaches what
+  is already playing. The sound groups behind them are worked out before
+  the backend; it never sees the tree. Then play the `SoundRequest`s in
+  order (a sound cue at its manifest volume times its own and its gain; a sound
   started with a handle, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the
@@ -335,6 +362,11 @@ handled sounds, fades and the music clock are
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
   as recorded). The first `Unsupported` of each is one warning;
+- **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
+  `add_sound`, which readies the samples as a sound, says the backend can't by
+  default, and the cue then plays nothing, with a warning; `remove_sound` stops
+  one and drops it by default, and a device that frees it says so there. Every
+  backend of the engine's has both;
 - **provided, with a default that works:** `load_sound_file`, for a device that
   loads a sound from its own path, `hold_output`, for a device whose whole output
   can stop while the system suspends the game, and `warn`, which says the player's
@@ -358,7 +390,13 @@ Where the game runs (`shuyi_ui::PlatformFacts`, ADR-0060): the target's
 id, whether the game may quit (`quit`: `System` where the player leaves
 through the system, and a game shows no Quit), whether it is in a
 window that goes full screen and back (`windowed`), and the keyboard,
-pointer and touch screen the device has. Read them from the target's
+pointer and touch screen the device has, and whether a file dropped on
+the window reaches the game (`file_drops`: the backend's to say with
+`with_file_drops`, since a profile doesn't; `shuyi-app` says `Heard` on
+`desktop` and `web`), where the game's storage is (`storage_place`, with
+`with_storage_place`: its folder, or the browser's site storage under its
+prefix) and whether a file picker opens (`file_picker`, with
+`with_file_picker`: `Opens` on the web alone). Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
@@ -382,6 +420,20 @@ load, moves the clock into the game's context, and keeps a
 build never reads it. A backend without a clock leaves the default,
 `None`, and nothing is measured. Never reset the device's timer in the
 loop: a record's times are differences of its reads.
+
+### `load_slice(&self) -> Option<LoadSlice>` (has a default)
+
+How long one frame may run a game's load in steps for, and the clock that
+times it
+([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)):
+`LoadSlice::new(length_us, PerfClock::Real(now_us))`. A backend whose
+system ends a game whose frame runs too long gives one, from its target
+profile's `budgets.load_slice_ms`; `shuyi-playdate` gives a second of the
+SDK's timer, a tenth of the system's 10 seconds. `App` asks in every frame
+that runs steps, in every build, and runs steps until the slice is used,
+and at least one. A run being recorded or hashed takes no slice. The
+default, `None`, runs all the steps in one frame: right where a long frame
+only shows the card longer (a PC, the web).
 
 ### `memory(&mut self) -> Option<MemoryReading>` (has a default)
 
@@ -439,7 +491,7 @@ default, `None`, and no snapshot is taken.
 The files that changed on disk since the last call, in debug builds
 (ADR-0071): their paths in the bundle, each with its new bytes already in its
 layer (`Layer::replace`). `App` asks once a frame the game runs, while debug
-tools are on, so a build that ships never asks. A backend with files to watch
+tools are on or while `watches_files` (below) says so, so a build that ships asks only for a folder the game named. A backend with files to watch
 looks at them only every so often: `shuyi-app` compares the modification times
 and sizes of the folders `read_folder` read, once a second, with no clock read
 and no folder scanned when it has none. Keep what a frame shows of
@@ -449,6 +501,68 @@ something from a file keeps it current itself: `shuyi-app` remakes the textures
 of the changed paths, shows a picture's decode error beside those, and reads
 `AppConfig::files` through the folder `watched_layer` read. A device with no
 files to watch leaves the default, which adds nothing.
+
+### `watches_files(&self) -> bool` (has a default)
+
+Whether the game asked for a folder to be watched in every build, not only
+one with debug tools (ADR-0095): a writer's preview program, built
+optimized, that plays the files they save. `App` then asks for
+`changed_files` with debug tools off too. `shuyi-app` answers whether a
+folder was read with `read_watched_folder`, and in a build without debug
+tools its poller looks at those folders only. The headless backend answers
+what `HeadlessPlatform::set_watches_files` set. A device with no files to
+watch leaves the default, `false`.
+
+## Files handed in at run time (optional)
+
+A backend may read files from outside the game into a bundle layer
+(`Layer::owned`, ADR-0004 §1) that the game lays over its own: the game
+says where they come from and asks; the backend only reads. `shuyi-app`
+reads a folder on disk on desktop (`read_folder`), and on the web the text
+files the page holds (`shuyi_app::page::page_layer`), sending the page the
+game's problems with them (`page::report`). The web has no API of its own
+for either without `wasm-bindgen`, so it reaches the browser through a
+miniquad JS plugin of the engine's, beside the page: `page-files.js` here,
+as `gamepad.js` reaches the Gamepad API and `player-files.js` offers a file
+([`crates/cli/web/README.md`](../crates/cli/web/README.md) lists them and
+what each needs). Off the web, `page_layer` is always `None`. A game on
+the short path gets the page's files with no code of its own:
+`run_game` lays them over the game's when its data loads with them, and
+reports either way. A device with nothing to hand in offers neither.
+
+## Files the player keeps (optional)
+
+A screen hands the player a file (`Ctx::offer_file(name, text)`), asks
+them for one (`Ctx::ask_for_file(accept)`) or opens a folder of the game's
+(`Ctx::open_storage_folder`). `App` carries the requests out after the
+frame, in order, through three methods with defaults, and a name that
+isn't one file's (a folder in it, empty, `..`) fails before a backend
+sees it (`player_files::check_offered_name`):
+
+- `offer_file(name, text) -> Option<Offered>`: a download
+  (`Offered::Downloaded`), a file written at a path (`Written(path)`), or
+  why not (`Failed`). A file of the name already there is never written
+  over: `player_files::numbered_name` gives `farm (2).ron`. The default
+  fails: no files a player reaches.
+- `ask_for_file(accept) -> Option<ChosenFile>`: `None` while the player
+  chooses, the backend adding `SystemEvent::FileChosen` to a later frame's
+  events itself; or an answer now. A backend makes it from the file's name
+  and bytes with `ChosenFile::from_bytes`, which refuses a file that isn't
+  UTF-8 or is over 256 MB (`MAX_CHOSEN_BYTES`). The default refuses: no
+  picker.
+- `open_folder(folder) -> Result<(), String>`: the storage folder or its
+  `exports` folder in the system's file manager; `App` logs an error as a
+  `platform` warning. The default has no folder.
+
+`App` hands the answers given at once to the game as the next frame's
+first system events, so a session record holds them and a replay reads the
+same text; a backend playing a record answers `None` (the headless one does,
+while `push_frame` plays). `shuyi-app` writes an offered file into
+`<data folder>/exports/` and opens folders with `explorer`, `open` or
+`xdg-open` on a desktop, which has no picker (the player drops the file on
+the window); on the web it downloads, and opens the browser's picker,
+through its `player-files.js` plugin. Say where the storage is and whether
+a picker opens in the facts (`facts`, above).
 
 ## The live link (optional)
 
@@ -540,7 +654,11 @@ survives (a sound library's), which is kept and never offered
 ([ADR-0083](adr/0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md)).
 A backend that can catch the game's frame adds the game's record
 (`App::crash_record`) and ends the process without calling the game's system
-hook. `App::load` offers the newest fatal report to the
+hook. It adds the record, and honours a panic asked for on purpose, only in a
+build with debug tools (`shuyi_ui::DEBUG_TOOLS`) or one whose game asked for
+its record in release; and without debug tools its log's lines in a report are
+warnings and errors only
+([ADR-0094](adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md)). `App::load` offers the newest fatal report to the
 game once (`Setup::last_crash`): a backend does nothing for that.
 
 `shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is
@@ -561,7 +679,10 @@ gives memory tags only when a test hands it some (`with_scopes`,
 `set_scopes`): fakes that note what is entered. A test changes a file with
 `change_file(layer, path, bytes)`: the next ask replaces it and tells its path
 (`changed_asks` counts the asks), and `reload_errors` keeps what the last frame
-asked to show. It plays a session record too (`from_session`, `push_frame`:
+asked to show. It keeps the files a game offers (`offered`), answers its
+asks for a file from a queue (`answer_next_ask`; cancelled when it is
+empty), notes the folders it opens (`opened_folders`), and says its
+storage is a folder called `<memory>`. It plays a session record too (`from_session`, `push_frame`:
 *Session records*, above). The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a

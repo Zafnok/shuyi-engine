@@ -120,16 +120,16 @@ None.
     the voice too; if not, nothing to do (2724 stops it when it lands);
   - **volume**: the voice volume is the `voice` sound group's (2342),
     not a `VnSettings` field. A volume per voiced character is a group
-    under `voice`, declared in the audio manifest. 2342 plays every
-    clip in `voice`, so this ticket adds the clip's group to
+    under `voice`, declared in the audio manifest (2258). 2342 plays
+    every clip in `voice`, so this ticket adds the clip's group to
     `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
     plays it at that group's gain (`Gains::group`). The quick menu gets
     a row for `voice` and one for each character's group.
-  - **Either order with 2343** (ducking under a voice): if 2343 is
-    done, the `sounding` it hands `DuckState::update` also needs the
-    gain of the playing clip's own group above 0, not only `voice`'s,
-    so a character turned down to 0 lowers nothing, with a test; if
-    not, nothing to do (2343 does it).
+  - **From 2343 (done):** ducking under a voice (ADR-0099). The
+    `sounding` that `Game::collect_audio` hands `DuckState::update` is
+    `Ctx::voice_playing` and `voice`'s gain above 0; this ticket makes
+    it also need the gain of the playing clip's own group above 0, so a
+    character turned down to 0 lowers nothing, with a test.
 - **Auto waits for the voice**: 2723's auto sends `Advance` only after
   the reveal, the pause, and the voice's `duration_ms`. With no
   envelope, it doesn't wait for the voice, and the README says to bake

@@ -18,7 +18,7 @@ use shuyi_ui::perf::HeapSnapshot;
 use super::server::{Launch, Link};
 use super::{
     EventsOutput, FramePngInput, FramePngOutput, KEPT_SNAPSHOTS, NoInput, PerfInput, PerfOutput,
-    StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
+    SceneInput, StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
 use crate::contract::attach::Failed;
@@ -28,7 +28,7 @@ use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
+    Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
@@ -195,7 +195,6 @@ pub fn one_off(
         Op::Replay => {
             needs(&|game, p| answered(op, input.clone(), |i| replay::replay(game, &p.root, &i)))
         }
-        Op::Bots => needs(&|game, _| answered(op, input.clone(), |i| bots::bots(game, &i))),
         Op::Playtest => {
             needs(&|game, p| answered(op, input.clone(), |i| playtest::kept(game, &p.root, &i)))
         }
@@ -259,9 +258,8 @@ impl<'a> Host<'a> {
                 answered(op, input, |i: StepInput| step(game, &i))
             }),
             Op::Scene => self.with_game(op, |game| {
-                answered(op, input, |NoInput {}| {
-                    let (output, limits) = run::scene_output(game);
-                    Answer::new(op, output.scene.is_some(), output, limits)
+                answered(op, input, |i: SceneInput| {
+                    run::scene_answer(op, game, i.ask(), None, false)
                 })
             }),
             Op::Events => self.with_game(op, |game| {
@@ -270,6 +268,7 @@ impl<'a> Host<'a> {
                         frames: game.frame_count(),
                         events: game.events(),
                         sounds: game.sounds(),
+                        sounds_added: game.sounds_added(),
                     };
                     Answer::new(op, true, output, Vec::new())
                 })

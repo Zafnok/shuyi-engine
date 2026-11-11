@@ -123,7 +123,7 @@ fn the_range_laid_on_last_fills_its_tiles_but_a_skipped_one() {
     scene.tile_mut(p(2, 0)).unwrap().becomes = Some(WATER);
     let mut buf = console();
     let area = Rect::new(0, 0, 10, 1);
-    ONE.draw_tiles(&looks, &mut buf, &scene, &ONE.layout(&scene, area));
+    ONE.draw_tiles(&looks, &COLORS, &mut buf, &scene, &ONE.layout(&scene, area));
     let cell = |x| *buf.get(x, 0).unwrap();
     // No side cells: 4 tiles fit, from cell 1.
     assert_eq!(cell(0), blank());
@@ -145,7 +145,7 @@ fn the_range_laid_on_last_fills_its_tiles_but_a_skipped_one() {
     scene.tint([p(0, 0)], MOVE);
     let mut buf = console();
     let area = Rect::new(0, 0, 4, 1);
-    ONE.draw_tiles(&looks, &mut buf, &scene, &ONE.layout(&scene, area));
+    ONE.draw_tiles(&looks, &COLORS, &mut buf, &scene, &ONE.layout(&scene, area));
     let off = Cell::new('x', text, filled(MOVE));
     assert_eq!((buf.get(1, 0), buf.get(2, 0)), (Some(&off), Some(&off)));
     assert_eq!(buf.get(3, 0), Some(&blank()));
@@ -159,7 +159,13 @@ fn a_fill_reaches_only_cells_on_the_console() {
     let mut buf = console();
     // Tiles at cells -1..1 and 1..3: half of the first is off the console.
     let area = Rect::new(-2, 0, 6, 1);
-    ONE.draw_tiles(&kit.looks(), &mut buf, &scene, &ONE.layout(&scene, area));
+    ONE.draw_tiles(
+        &kit.looks(),
+        &COLORS,
+        &mut buf,
+        &scene,
+        &ONE.layout(&scene, area),
+    );
     let moved = kit.looks().range(MOVE);
     for x in 0..3 {
         assert_eq!(buf.get(x, 0).map(|c| c.bg), Some(moved), "{x}");
@@ -182,10 +188,17 @@ fn a_tile_flashes_inverted_while_its_flash_is_at_least_half() {
             ..GlyphStyle::PLAIN
         };
         let area = Rect::new(0, 0, 8, 1);
-        style.draw_tiles(&looks, &mut buf, &scene, &style.layout(&scene, area));
+        style.draw_tiles(
+            &looks,
+            &COLORS,
+            &mut buf,
+            &scene,
+            &style.layout(&scene, area),
+        );
         buf
     };
-    let invert = Rgb::from(Ink::Invert.code());
+    let invert = looks.flash(&COLORS);
+    assert_eq!(Some(invert), looks.palette.lookup("flash"));
     let rects: Vec<_> = plain
         .overlays()
         .iter()
@@ -211,10 +224,89 @@ fn a_tile_flashes_inverted_while_its_flash_is_at_least_half() {
     }
 }
 
+/// The toy's pattern map, made in code: its flash color is a role that
+/// flips, everything else of no role.
+fn toy_pattern_map(looks: &Looks) -> crate::frame::onebit::PatternMap {
+    use crate::frame::onebit::{Pattern, PatternMap, PatternMapDef, RolePatterns};
+    let def = PatternMapDef {
+        roles: [(
+            "flash".to_owned(),
+            RolePatterns::of(Pattern::new(crate::frame::onebit::Base::Black)).with_invert(true),
+        )]
+        .into(),
+        ..PatternMapDef::default()
+    };
+    PatternMap::new(looks.palette.iter(), &def)
+}
+
+#[test]
+fn the_toys_flash_color_is_a_role_that_flips() {
+    use crate::frame::onebit::Shades;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let map = toy_pattern_map(&looks);
+    let flash = looks.flash(&COLORS);
+    assert_eq!(map.role_of(flash), Some("flash"));
+    assert!(map.shape(flash).flips);
+}
+
+/// A tile flashing on the one-bit skin draws, through a pattern map, as its
+/// rectangle's pixels flipped and nothing else changed.
+#[test]
+fn a_flash_on_a_one_bit_frame_flips_its_tile() {
+    use crate::frame::console::ConsoleSpec;
+    use crate::frame::onebit::{FRAME_BYTES, Font, is_white, render};
+    use shuyi_assets::font::FontAtlasDef;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let map = toy_pattern_map(&looks);
+    let atlas = FontAtlasDef {
+        cell_w: 8,
+        cell_h: 16,
+        columns: 32,
+        glyphs: [('?', 0)].into(),
+        wide: alloc::collections::BTreeMap::default(),
+        wide_sets: alloc::collections::BTreeMap::new(),
+    };
+    let mut bits = vec![0u8; 16];
+    bits[3] = 0b0110_0110;
+    let font = Font::new(&atlas, &bits).unwrap();
+    let draw = |scene: &MapScene<Piece>| {
+        let spec = ConsoleSpec::text(50, 15).sized(12, 3);
+        let mut buf = GlyphBuffer::with_spec(spec, blank());
+        ONE_BIT.paint(&looks, scene, Rect::new(0, 0, 12, 3), &Letters, &mut buf);
+        let mut frame = Box::new([0u8; FRAME_BYTES]);
+        render(&buf, &font, &(), &map, &mut frame);
+        (buf, frame)
+    };
+    let still = grass(4, 2);
+    let mut flashing = still.clone();
+    flashing.tile_mut(p(1, 1)).unwrap().flashes = vec![1.0];
+    let (_, before) = draw(&still);
+    let (buf, after) = draw(&flashing);
+    let rect = buf
+        .overlays()
+        .iter()
+        .find(|o| o.color == looks.flash(&COLORS))
+        .map(|o| o.rect)
+        .unwrap();
+    for y in 0..48 {
+        for x in 0..96 {
+            let inside =
+                (rect.x..rect.x + rect.w).contains(&x) && (rect.y..rect.y + rect.h).contains(&y);
+            assert_eq!(
+                is_white(&after, x, y),
+                is_white(&before, x, y) != inside,
+                "({x}, {y}) inside: {inside}"
+            );
+        }
+    }
+}
+
 /// `scene`'s tiles in the plain style into `area` of `buf`.
 fn draw_tiles_plain(looks: &Looks, buf: &mut GlyphBuffer, scene: &MapScene<Piece>, area: Rect) {
     let plain = GlyphStyle::PLAIN;
-    plain.draw_tiles(looks, buf, scene, &plain.layout(scene, area));
+    plain.draw_tiles(looks, &COLORS, buf, scene, &plain.layout(scene, area));
 }
 
 /// The scene's cursor at `pos` in `style`, half bright, drawn flat in a

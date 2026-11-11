@@ -197,7 +197,7 @@ None.
     2511's `BasicTools` for what it doesn't change, and adds `check`,
     `session` (a scene with the body, the food, the score, the step and
     the outcome), `replay` through `ticks` above, and `controls`.
-    `bots` stays unsupported (Out).
+    `playtest` stays unsupported (Out).
   - **sound:** if 2225 is done, an eat and a death sound from its
     presets. If not, none, the README says so, and 2225's PR adds them.
   - the font atlas copied from `examples/hello-grid/files/font`
@@ -318,7 +318,7 @@ None.
     to `arcade`, and empty its `waits_for`;
   - make its `Scene` checks show that the snake grows when it eats and
     dies on a wall, through scene data its prompt names;
-  - leave `Replay` out of its checks: a tick game has no `bots` here
+  - leave `Replay` out of its checks: a tick game has no `playtest` here
     (Out), so the grader gets no record. This ticket's replay test
     covers the example;
   - **From 3010 (done):** 3010 left `evals/tasks` alone, so add
@@ -337,7 +337,7 @@ None.
 **Out (do not do):**
 - free movement, collision, cameras and animation clips (1120–1123), and
   the platformer (1127);
-- a bot trait for tick games, and `shuyi bots` on this example: a
+- a bot trait for tick games, and `shuyi playtest` on this example: a
   follow-up ticket if a game asks;
 - two players on one keyboard (2406, parked), high-score tables (3054,
   parked), screen transitions (2339);

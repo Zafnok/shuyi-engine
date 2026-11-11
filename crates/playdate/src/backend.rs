@@ -8,7 +8,7 @@ use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::target::TargetProfile;
 use shuyi_platform::audio::player::PlayerDevice;
 use shuyi_platform::{
-    Audio, DisplayInfo, Frame, Millis, Platform, Storage, SystemEvent, TextInput,
+    Audio, DisplayInfo, Frame, LoadSlice, Millis, Platform, Storage, SystemEvent, TextInput,
 };
 use shuyi_ui::frame_cap::{FrameCap, Pacing};
 use shuyi_ui::input::pad::PadKind;
@@ -53,6 +53,9 @@ pub struct Playdate<S: Sdk> {
     rate: u16,
     /// The most items the system menu holds: the profile's.
     menu_slots: u8,
+    /// How long an update callback runs a load in steps for, in
+    /// microseconds: the profile's.
+    load_slice_us: Option<u64>,
     pad: PadInput,
     /// Whether the crank was docked when the game was last told.
     docked: Option<bool>,
@@ -83,6 +86,7 @@ impl<S: Sdk> Playdate<S> {
                 .with_device(Device::Pad(PadKind::Playdate)),
             rate,
             menu_slots: profile.input.system_menu_slots,
+            load_slice_us: profile.budgets.load_slice_ms.map(|ms| u64::from(ms) * 1000),
             pad: PadInput::new(shuyi_assets::keymap::CrankDef::default()),
             docked: None,
             chosen: Vec::new(),
@@ -261,6 +265,11 @@ impl<S: Sdk> Platform for Playdate<S> {
 
     fn clock(&self) -> Option<PerfClock> {
         cfg!(debug_assertions).then_some(PerfClock::Real(S::clock_us))
+    }
+
+    fn load_slice(&self) -> Option<LoadSlice> {
+        self.load_slice_us
+            .map(|us| LoadSlice::new(us, PerfClock::Real(S::clock_us)))
     }
 
     fn memory(&mut self) -> Option<MemoryReading> {

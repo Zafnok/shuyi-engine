@@ -21,6 +21,8 @@
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
+//! - [`player_files`]: where a file the game offered the player went, and
+//!   the file the player picked ([`ChosenFile`]), as the system's events;
 //! - [`crash`]: the report a backend's panic hook writes through the
 //!   game's storage, and the last crash the game hears of at its next
 //!   start ([`Setup::last_crash`]);
@@ -59,6 +61,7 @@ pub mod basic;
 #[cfg(feature = "capture")]
 pub mod capture;
 pub mod crash;
+pub mod dropped;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
@@ -67,18 +70,24 @@ pub mod heap;
 #[cfg(feature = "link")]
 pub mod link;
 pub mod platform;
+pub mod player_files;
 pub mod script;
 pub mod session;
 pub mod text_input;
 pub mod tick;
 
 pub use app::{
-    App, Card, CrashRecord, FrameOutcome, GameHash, Load, LookOf, Setup, Start, SystemHook,
+    App, Card, CrashRecord, FrameOutcome, GameHash, Load, LoadInSteps, LoadStep, Loader, LookOf,
+    Progress, Setup, Start, SystemHook,
 };
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
-pub use platform::{DisplayInfo, Frame, Look, Millis, OneBitLook, Platform, Show, SystemEvent};
+pub use dropped::DroppedFile;
+pub use platform::{
+    DisplayInfo, Frame, LoadSlice, Look, Millis, OneBitLook, Platform, Show, SystemEvent,
+};
+pub use player_files::{ChosenFile, Offered};
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
 

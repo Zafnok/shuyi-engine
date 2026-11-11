@@ -15,9 +15,14 @@ use core::fmt;
 use shuyi_core::StateHash;
 
 use shuyi_assets::audio::AudioManifest;
+use shuyi_assets::dialogue::LineId;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
-use crate::audio::{AudioConfig, AudioRequest, MusicClock, MusicCommand, MusicState};
+use crate::audio::{
+    AudioConfig, AudioRequest, DuckState, Gain, Gains, GroupGains, MusicClock, MusicCommand,
+    MusicState, SoundGroups,
+};
+use crate::cinematic::millis;
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::debug;
 use crate::frame::EngineColor;
@@ -27,6 +32,7 @@ use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
+use crate::log::{LogCategory, LogLevel};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
@@ -152,19 +158,13 @@ pub struct FrameOutput<'a, V> {
     pub audio: &'a [AudioRequest<V>],
     /// What to do to the music this frame.
     pub music: &'a [MusicCommand],
-    /// The player's music volume, 0–1: the platform multiplies the music's
-    /// own volume by it, also for a track already playing.
-    pub music_volume: f32,
-    /// The player's sound volume, 0–1: the platform multiplies every
-    /// sound's own volume by it.
-    pub sound_volume: f32,
+    /// What every sound, track and voice clip plays at, from the player's
+    /// volumes and the sound groups (ADR-0091): the platform multiplies
+    /// each cue's own volume by its gain, also for one already playing.
+    pub gains: Gains<'a>,
     /// Whether the game should fill the screen (the Fullscreen setting);
     /// the platform switches when this changes.
     pub fullscreen: bool,
-    /// How loud voice clips play, 0–1
-    /// ([`Settings::voice_volume`](crate::settings::Settings::voice_volume)). The
-    /// platform applies it to the voice that is playing too.
-    pub voice_volume: f32,
     /// The most frames a second to show (the player's frame cap): the
     /// platform paces its frames to it from the next.
     pub frame_cap: FrameCap,
@@ -232,9 +232,14 @@ pub struct Game<G: GameData> {
     buffer: GlyphBuffer,
     quit: bool,
     music: MusicState,
+    /// The ducking rules' multipliers (ADR-0099), stepped every frame.
+    duck: DuckState,
     /// This frame's audio requests and music commands.
     audio_out: Vec<AudioRequest<G::Voice>>,
     music_out: Vec<MusicCommand>,
+    /// Each sound group's gain, from the player's volumes: worked out
+    /// every frame.
+    gains: GroupGains,
     /// The fixed simulation steps due in the next frame
     /// ([`set_ticks`](Self::set_ticks)).
     ticks: u32,
@@ -254,11 +259,16 @@ impl<G: GameData> Game<G> {
 
     /// A game showing the screens of `stack`, with the game's `hooks`,
     /// already drawn. Music switches as the audio manifest's default switch
-    /// says ([`AudioManifest::music_switch`]).
-    pub fn with_stack(ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
+    /// says ([`AudioManifest::music_switch`]), the sound groups are the
+    /// game's as it is now ([`Ctx::sound_groups`]), and a voice lowers the
+    /// groups its ducking rules say ([`AudioManifest::ducks`]).
+    pub fn with_stack(mut ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
         let input = InputState::new(ctx.keymap.clone()).starting_on(ctx.device);
         let blank = ctx.game.blank_cell(&ctx.palette);
         let switch = ctx.game.audio_manifest().music_switch();
+        let duck = DuckState::new(&ctx.game.audio_manifest().ducks);
+        ctx.sound_groups = SoundGroups::new(&ctx.game.audio_config(), ctx.game.audio_manifest());
+        let gains = GroupGains::of(&ctx.sound_groups, &ctx.settings().volumes);
         let mut game = Self {
             stack,
             input,
@@ -267,8 +277,10 @@ impl<G: GameData> Game<G> {
             hooks,
             quit: false,
             music: MusicState::with_switch(switch),
+            duck,
             audio_out: Vec::new(),
             music_out: Vec::new(),
+            gains,
             ticks: 0,
             resumed: false,
             modules: Vec::new(),
@@ -354,6 +366,17 @@ impl<G: GameData> Game<G> {
         self.ctx.music_clock =
             playing.and_then(|(cue, elapsed)| MusicClock::from_elapsed(manifest, cue, elapsed));
         self.music.heard(self.ctx.music_clock.as_ref());
+    }
+
+    /// Tells the game which line's voice clip is sounding, for
+    /// [`Ctx::voice_playing`], or `None` in silence. The platform knows
+    /// (a clip sounds once its file has loaded, and until it ends) and
+    /// calls this before every [`frame`](Self::frame), as it does
+    /// [`set_music_playing`](Self::set_music_playing).
+    pub fn set_voice_playing(&mut self, line: Option<&LineId>) {
+        if self.ctx.voice_playing.as_ref() != line {
+            self.ctx.voice_playing = line.cloned();
+        }
     }
 
     /// Tells the game how the platform paces its frames: the frame cap it
@@ -454,22 +477,29 @@ impl<G: GameData> Game<G> {
             self.ctx.set_perf_frame_times(start, drawing, drawn);
             self.collect_audio(dt);
         }
+        self.update_gains();
         FrameOutput {
             buffer: &self.buffer,
             quit: self.quit,
             audio: &self.audio_out,
             music: &self.music_out,
-            music_volume: self.ctx.settings().music_factor(),
-            sound_volume: self.ctx.settings().sound_factor(),
+            gains: Gains::new(&self.ctx.sound_groups, &self.gains),
             fullscreen: self.ctx.settings().fullscreen,
-            voice_volume: self.ctx.settings().voice_factor(),
             frame_cap: self.ctx.settings().frame_cap,
             frame_cap_serial: self.ctx.frame_cap_serial(),
         }
     }
 
+    /// The gains of the last [`frame`](Self::frame) (ADR-0091), for a
+    /// platform that plays audio in a frame that doesn't run (the game
+    /// paused without focus).
+    pub fn gains(&self) -> Gains<'_> {
+        Gains::new(&self.ctx.sound_groups, &self.gains)
+    }
+
     /// Advances the sounds' fades, moves the screens' audio requests into
-    /// this frame's output and runs the music state machine. In debug
+    /// this frame's output, runs the music state machine and steps the
+    /// ducking (ADR-0099) while a voice sounds ([`Ctx::voice_playing`]). In debug
     /// builds, a cue the manifest lacks is a bug in the screen and panics,
     /// and so does a looped cue played without a handle, which nothing
     /// could stop (a release build plays it once). The engine's widgets
@@ -479,11 +509,17 @@ impl<G: GameData> Game<G> {
     fn collect_audio(&mut self, dt: f32) {
         self.ctx.audio.advance(dt);
         self.audio_out = self.ctx.audio.take();
+        for problem in self.ctx.audio.take_problems() {
+            self.ctx.log(LogLevel::Warn, LogCategory::Audio, problem);
+        }
         for request in &self.audio_out {
             let manifest = self.ctx.game.audio_manifest();
             debug_assert!(
                 is_known(manifest, request)
-                    || is_widget_cue(&self.ctx.game.audio_config(), request),
+                    || is_widget_cue(&self.ctx.game.audio_config(), request)
+                    || request
+                        .cue()
+                        .is_some_and(|cue| self.ctx.audio.knows_added(cue)),
                 "audio request for a cue not in the audio manifest: {request:?}"
             );
             debug_assert!(
@@ -494,6 +530,19 @@ impl<G: GameData> Game<G> {
             self.music.request(request, &mut self.music_out);
         }
         self.music.update(dt, &mut self.music_out);
+        // A voice the player turned down to 0 lowers nothing. No rule
+        // lowers voice or its parents, so its gain never waits on the duck.
+        self.update_gains();
+        let voice = Gains::new(&self.ctx.sound_groups, &self.gains).voice();
+        let sounding = self.ctx.voice_playing.is_some() && voice > Gain::SILENT;
+        self.duck.update(millis(dt), sounding);
+    }
+
+    /// Works each sound group's gain out from the player's volumes, with
+    /// the groups the ducking rules lower as low as they are now.
+    fn update_gains(&mut self) {
+        let volumes = &self.ctx.settings().volumes;
+        (self.gains).update_ducked(&self.ctx.sound_groups, volumes, &self.duck);
     }
 
     /// One frame's update: `events` in order, `dt` seconds, and the fixed
@@ -638,26 +687,29 @@ impl<G: GameData> Game<G> {
     }
 
     /// Prints the characters `widths` has wide in two cells, as the font
-    /// atlas the frame is drawn with has them ([`CellWidths::of`]): the
-    /// frame's ([`GlyphBuffer::widths`]) and the context's
-    /// ([`Ctx::widths`]). The frame is drawn again with them. The platform
-    /// calls it once the game has loaded, with its look's atlas.
+    /// atlas the frame is drawn with has them ([`CellWidths::of`]), in the
+    /// language text is shown in ([`Ctx::widths`], which the frame's
+    /// [`GlyphBuffer::widths`] follow). The frame is drawn again if that
+    /// changed them. The platform calls it once the game has loaded, with
+    /// its look's atlas, and again after its files change.
     ///
     /// [`CellWidths::of`]: shuyi_assets::font::CellWidths::of
     pub fn set_widths(&mut self, widths: CellWidths) {
-        if *self.ctx.widths() == widths {
-            return;
-        }
-        self.buffer.set_widths(widths.clone());
         self.ctx.set_widths(widths);
-        self.redraw();
+        if self.buffer.widths() != self.ctx.widths() {
+            self.redraw();
+        }
     }
 
     /// Clears the buffer and draws the stack into it, then the modules
     /// over it, then, with debug tools on, the debug view's gizmos over
     /// everything: after a change made from outside the frame loop (a test
-    /// changing the context).
+    /// changing the context). The buffer takes the widths of the language
+    /// text is shown in first ([`Ctx::widths`]).
     pub fn redraw(&mut self) {
+        if self.buffer.widths() != self.ctx.widths() {
+            self.buffer.set_widths(self.ctx.widths().clone());
+        }
         let blank = self.ctx.game.blank_cell(&self.ctx.palette);
         self.buffer.fill_rect(self.buffer.bounds(), blank);
         self.stack.draw(&self.ctx, &mut self.buffer);
@@ -826,7 +878,9 @@ fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
         | AudioRequest::StopMusicWith { .. }
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice
-        | AudioRequest::PreloadVoices { .. } => true,
+        | AudioRequest::PreloadVoices { .. }
+        | AudioRequest::AddSound { .. }
+        | AudioRequest::RemoveSound { .. } => true,
     }
 }
 

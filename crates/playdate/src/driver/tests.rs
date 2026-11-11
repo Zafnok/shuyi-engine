@@ -10,7 +10,7 @@ use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageTable;
 use shuyi_assets::keymap::Button;
 use shuyi_assets::onebit::PatternMapDef;
-use shuyi_platform::{Card, Look, OneBitLook, Platform, Setup, Start, SystemEvent};
+use shuyi_platform::{Card, Look, OneBitLook, Platform, Progress, Setup, Start, SystemEvent};
 use shuyi_ui::frame::onebit::{Font, PatternMap, ROW_BYTES};
 use shuyi_ui::frame_cap::{CapStatus, FrameCap};
 use shuyi_ui::input::help_keys::key_name;
@@ -42,6 +42,7 @@ fn drawn() -> &'static Drawn {
             columns: 16,
             glyphs: BTreeMap::from([('?', 0)]),
             wide: BTreeMap::new(),
+            wide_sets: BTreeMap::new(),
         }));
         Drawn {
             atlas,
@@ -854,6 +855,7 @@ fn the_start_times_are_from_init_and_the_load_from_the_card() {
     for line in [
         "Loading card shown 180 ms after start",
         "Game data loaded in 2,220 ms",
+        "Start, ms per update callback: 0 (1 step)",
         "First frame of the game shown 2,400 ms after start",
     ] {
         assert!(lines.contains(&line.to_string()), "{line} in {lines:?}");
@@ -877,4 +879,84 @@ fn the_card_is_said_once_though_it_shows_again() {
         .filter(|line| line.starts_with("Loading card"))
         .count();
     assert_eq!(cards, 1, "{:?}", report_lines(&sdk));
+}
+
+/// A load of `count` steps of `us` each on the fake's timer, which stands
+/// still otherwise.
+fn stepped_start(count: u32, us: u64) -> Start<Toy> {
+    Start::in_steps(Card::text("Toy"), look, move |setup| {
+        let mut ctx = Some(setup.ctx(toy::ctx()));
+        let mut left = count;
+        move || {
+            FakeSdk::set_clock_us(FakeSdk::clock_us() + us);
+            left -= 1;
+            if left > 0 {
+                return Progress::More;
+            }
+            let game = ctx.take().map(toy::game_on);
+            Progress::done(game.ok_or_else(|| "loaded twice".to_string()))
+        }
+    })
+}
+
+/// The ticket: a load of 3 seconds, 30 steps of 100 ms, runs over three
+/// update callbacks of the profile's slice, each well within the system's
+/// 10 seconds, the card on the screen until the game's first frame.
+#[test]
+fn a_load_in_steps_runs_over_several_callbacks_each_within_the_slice() {
+    FakeSdk::set_clock_step_us(0);
+    FakeSdk::set_clock_us(0);
+    let sdk = FakeSdk::default();
+    let report = RunReport::new().file("run-report.txt");
+    let mut driver = Driver::with_report(stepped_start(30, 100_000), sdk.clone(), report);
+    let slice = driver
+        .platform()
+        .load_slice()
+        .unwrap_or_else(|| panic!("the profile gives a slice"));
+    assert_eq!(slice.length_us, 1_000_000);
+    let mut callbacks = Vec::new();
+    for _ in 0..10 {
+        let began = FakeSdk::clock_us();
+        driver.update();
+        callbacks.push(FakeSdk::clock_us() - began);
+        if driver.app().game().is_some() {
+            break;
+        }
+        assert_eq!(driver.platform().showing(), crate::display::Showing::Card);
+    }
+    // The card's callback, then three of a second each.
+    assert_eq!(callbacks, [0, 1_000_000, 1_000_000, 1_000_000]);
+    assert!(callbacks.iter().all(|&us| us <= slice.length_us));
+    assert_eq!(driver.platform().showing(), crate::display::Showing::Game);
+    let lines = report_lines(&sdk);
+    let each =
+        "Start, ms per update callback: 1,000 (10 steps), 1,000 (10 steps), 1,000 (10 steps)";
+    assert!(lines.contains(&each.to_string()), "{lines:?}");
+    // The time between two callbacks is a step of its own in the reads.
+    let file = sdk
+        .file("run-report.txt")
+        .unwrap_or_else(|| panic!("written"));
+    let file = String::from_utf8(file).unwrap_or_else(|e| panic!("{e}"));
+    assert!(
+        file.lines()
+            .any(|l| l.starts_with("  (between update callbacks): ")),
+        "{file}"
+    );
+}
+
+/// A one-shot load still runs in the callback after the card's, whatever
+/// the slice.
+#[test]
+fn a_load_at_once_runs_in_one_callback_whatever_the_slice() {
+    FakeSdk::set_clock_step_us(0);
+    let sdk = FakeSdk::default();
+    let start = Start::new(Card::text("Toy"), look, |setup| {
+        FakeSdk::set_clock_us(FakeSdk::clock_us() + 3_000_000);
+        Ok(load(setup))
+    });
+    let mut driver = Driver::new(start, sdk);
+    driver.update();
+    driver.update();
+    assert!(driver.app().game().is_some());
+    assert_eq!(driver.app().load_steps(), 1);
 }

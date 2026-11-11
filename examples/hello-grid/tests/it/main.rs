@@ -5,21 +5,25 @@
 //! the same seed and commands giving the same game, its options and key
 //! rebinding, its profiles, its files, its look on a one-bit screen, its pack, pictures
 //! of its frames, a sleep and a wake, a key held as the window loses focus,
-//! and its palette reloading.
+//! its palette reloading, its stage's layout in the debug view, the
+//! files a web page lays over its own, and its writer's dialogue preview.
 
 mod autobalance;
 mod balance;
 mod bots;
 mod contract;
 mod controls;
+mod debug_view;
 mod determinism;
 mod files;
 mod focus;
 mod onebit;
 mod options;
 mod pack;
+mod page;
 mod playtest;
 mod playthrough;
+mod preview;
 mod profiles;
 mod reload;
 mod snapshot;

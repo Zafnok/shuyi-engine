@@ -120,6 +120,10 @@ jobs:
       # render card's (ticket 2019).
       - name: Clippy on the web's code
         run: cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings
+      # The script runtime (ticket 2101) builds for the web; its example's
+      # web build (2102) is what shows the loader runs it.
+      - name: The script runtime for the web
+        run: cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings
       - name: Build Hello, Grid for the web
         working-directory: examples/hello-grid
         run: cargo shuyi web --release
@@ -181,6 +185,13 @@ jobs:
       - name: Set up Linux
         if: matrix.target == 'linux' || matrix.target == 'web'
         run: bash scripts/setup-linux.sh
+      # A release web export needs wasm-opt (ticket 3099).
+      - name: Set up Binaryen
+        if: matrix.target == 'web'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binaryen
+          wasm-opt --version
       - name: Set up Rust
         if: matrix.target != 'linux' && matrix.target != 'web'
         run: rustup show
@@ -407,7 +418,8 @@ jobs:
             "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "target/web/$name" \
               --out "target/web-check/boot-$name"
           done
-      # As pages.yml builds them: every step of the tutorial (ticket 2803).
+      # As pages.yml builds them: every step of the book's project (ticket
+      # 2803), its code in site/tutorial/.
       - name: Every tutorial step's web build boots
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target/tutorial
@@ -596,6 +608,9 @@ jobs:
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
           sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' crates/cli/web/index.html > "$page/index.html"
+      # A scenario quad-snd underran in is refused and made again (ticket 2048).
+      - name: Which recordings are made again
+        run: python3 tools/sound-parity/capture_test.py
       - name: Record the native backend
         env:
           REVISION: ${{ github.sha }}
@@ -840,6 +855,19 @@ jobs:
           cargo shuyi check-keys
           cargo shuyi lint
           cargo shuyi doctor
+      # Ticket 2777: a new game builds for the web as it is, with the
+      # `web` part, `build.rs` and the web target the template gives it.
+      - name: Build it for the web
+        run: |
+          cd "$RUNNER_TEMP/demo"
+          cargo shuyi web
+          test -f dist/web/index.html
+          test -f dist/web/NOTICES.txt
+          if [ "$(find dist/web -maxdepth 1 -name '*.wasm' | wc -l)" != 1 ]; then
+            ls dist/web
+            echo "::error::dist/web/ doesn't hold one .wasm"
+            exit 1
+          fi
       # Ticket 2548: a long name lays out the same, so the game's own fmt
       # gate passes whatever it is called. It uses the older form, `new
       # <template> <dir>`, which keeps working (ticket 2501).
@@ -1094,7 +1122,7 @@ jobs:
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
-        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 
@@ -1186,6 +1214,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: cargo xtask check-layers
+      # No two packages build a binary or an example of one name: on
+      # Windows their links collide (ticket 2056).
+      - run: cargo xtask check-targets
 
   # The modules (ticket 2003, ADR-0009 §2 and §6): each against the
   # catalog (docs/modules.md, docs/modules.ron), then the `shuyi` crate
@@ -1250,13 +1281,20 @@ jobs:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
       - run: cargo install --locked cargo-public-api@0.52.0
+      # The PR's ticket is read from its title first (ticket 2051), as the
+      # title is now: a re-run after a retitle reads the new one.
       - name: Show the public API change
         env:
           HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
           # Warnings are the clippy and test jobs' gate: a lint only the
           # nightly has must not fail this job as a build error.
           RUSTFLAGS: ""
-        run: cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
+        run: |
+          title=$(bash scripts/pr-title.sh)
+          cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
       - name: Hand the verdict to api-label
         id: verdict
         run: echo "label=$(cat "$RUNNER_TEMP/api-verdict")" >> "$GITHUB_OUTPUT"
@@ -1384,7 +1422,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # The ticket lint, the Markdown links, the pins (`check-pins`), the
-  # pinned Rust (`check-toolchain`), the docs map (`check-docs`) and typos.
+  # pinned Rust (`check-toolchain`), the docs map (`check-docs`), the paths'
+  # length (`check-paths`) and typos.
   # Cheap, and tickets and
   # docs are what they check, so this always runs: never gated on
   # `needs.changes` (game ADR-0014), like the game's `tickets` job.
@@ -1394,22 +1433,30 @@ jobs:
     env:
       HEAD_REF: ${{ github.head_ref }}
       EVENT_NAME: ${{ github.event_name }}
-      # For `gh api` on the game's tickets (`game#NNNN` ids). Without access
-      # to the game repository the lint warns and skips those ids.
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      # For `gh api` on the game's tickets (`game#NNNN` ids), and the PR's
+      # title as it is now. Without access to the game repository the lint
+      # warns and skips those ids.
       GH_TOKEN: ${{ github.token }}
     steps:
+      # HEAD^1 is the base tip: a ticket-only PR's diff is read against it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check shared agent skill loaders
         shell: pwsh
         run: ./scripts/sync-agent-skills.ps1 -Check
+      # The PR's ticket is read from its title first (ticket 2051), as the
+      # title is now: pr-title.yml re-runs this job after a retitle.
       - name: Run ticket lint
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
-            cargo xtask ticket-lint --pr-branch "$HEAD_REF"
+            title=$(bash scripts/pr-title.sh)
+            cargo xtask ticket-lint --pr-branch "$HEAD_REF" --pr-title "$title" --base HEAD^1
           else
             cargo xtask ticket-lint
           fi
@@ -1425,6 +1472,10 @@ jobs:
         run: cargo xtask check-toolchain
       - name: Check the docs map
         run: cargo xtask check-docs
+      # A game's Windows checkout of this repository by Cargo adds about 80
+      # characters to every path, and libgit2 stops at 260 (ticket 2071).
+      - name: Check no tracked path is too long
+        run: cargo xtask check-paths
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: typos
@@ -1437,8 +1488,8 @@ jobs:
   # from another host. Then the docs for agents over a build (ticket 2808):
   # no shortcode left unexpanded, every llms.txt link resolving but the API
   # docs' (pages.yml builds those), and llms-full.txt under its budget.
-  # The feature cards' statuses come from their tickets (ticket 2815).
-  # Cheap, and Markdown is what it reads, so this always runs, like
+  # The feature cards' statuses come from their tickets (ticket 2815), and
+  # the playground's files from Hello, Grid's (ticket 2814). Cheap, and Markdown is what it reads, so this always runs, like
   # `tickets`. pages.yml builds and publishes the site on main.
   site:
     name: site
@@ -1455,9 +1506,16 @@ jobs:
       # check-build.sh checks the home page shows them (ticket 2815).
       - name: Write the feature cards' statuses
         run: cargo xtask site-data --site site
+      # Hello, Grid's files the playground edits (ticket 2814); check-build.sh
+      # checks the build holds them as the example has them.
+      - name: Copy the playground's files
+        run: bash site/copy-playground.sh
       - name: Check the site's links
         working-directory: site
         run: zola check --skip-external-links
+      # Who each passage of the book is for (ticket 2825, ADR-0090 §5).
+      - name: Check the book's marks
+        run: cargo xtask check-book
       - name: Check the site's builds
         run: bash site/check-build.sh
       - name: Check the docs for agents

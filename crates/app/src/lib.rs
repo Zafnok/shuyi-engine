@@ -7,9 +7,11 @@
 //!
 //! On desktop, `read_folder` reads a folder on disk (a player's mod) into
 //! a bundle layer the game lays over its own files. The web has no
-//! folders, so it isn't there. In a build with debug tools the folders it
+//! folders, so it isn't there: there [`page::page_layer`] reads the files
+//! the page holds into one instead. In a build with debug tools the folders it
 //! reads are watched, and `watched_layer` gives the one `cargo shuyi run
-//! --watch` names (ADR-0071).
+//! --watch` names (ADR-0071); `read_watched_folder` reads one watched in
+//! every build.
 //!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
@@ -88,6 +90,13 @@
 //! the game hears of it once (`shuyi_platform::Setup::last_crash`).
 //! [`AppConfig::crash`] names the game's version in it, or turns it off.
 //!
+//! A game's screens hand the player a file and ask them for one
+//! (`shuyi_ui::Ctx::offer_file`, `ask_for_file`): on a desktop the file is
+//! written into `exports/` in the game's data folder, which the game may
+//! open in the system's file manager, and the player drops a file on the
+//! window to give one; on the web it is a download, and the browser's file
+//! picker opens (ticket 3309).
+//!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
 //! game's data folder (the `sessions` module, ADR-0074): the record of a run,
 //! written when the game quits and when the debug menu's "Save session" asks,
@@ -110,8 +119,8 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `download.js`'s,
-//! `quad-storage`'s) are
+//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `player-files.js`'s,
+//! `page-files.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
 //! (`crates/cli/web/README.md` shows how).
@@ -129,6 +138,7 @@ mod backend;
 #[cfg(feature = "capture")]
 pub mod capture;
 pub mod crash;
+mod drops;
 mod facts;
 mod focus;
 #[cfg(not(target_arch = "wasm32"))]
@@ -138,10 +148,12 @@ pub mod keys;
 mod link;
 mod pacing;
 pub mod pads;
+pub mod page;
 mod painted;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
 mod pictures;
+mod player_files;
 #[cfg(any(
     all(feature = "link", not(target_arch = "wasm32")),
     feature = "capture"
@@ -154,13 +166,16 @@ pub mod storage;
 mod watch;
 
 use core::fmt::Debug;
+use std::path::Path;
 
 use macroquad::prelude::*;
 use shuyi_assets::audio::{Bytes, Files};
+use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Platform, Start, TextInput};
 use shuyi_ui::GameData;
-use shuyi_ui::basic::FONT_PNG;
+use shuyi_ui::basic::{BasicData, FONT_PNG};
+use shuyi_ui::dialogue::preview::PreviewGame;
 use shuyi_ui::log::{LogLevel, LogLine};
 
 #[cfg(feature = "sound-probe")]
@@ -171,7 +186,7 @@ pub use crate::crash::CrashReports;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use crate::folder::watched_file;
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::folder::{FolderError, read_folder, watched_layer};
+pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_layer};
 use crate::pacing::{Pacer, WebFrame};
 
 /// The web has no folders to watch.
@@ -433,7 +448,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     backend::tag_decodes();
     let storage_name = config.storage_name;
     crash::install(config.crash, move || storage::platform(storage_name));
-    let panic_at = crash::panic_at_frame();
+    let panic_at = crash::panic_at_frame(config.crash);
+    let records_play = config.crash.records_play();
     let mut platform = Macroquad::new(&mut config, facts);
     let mut app = App::new(start);
     let kept = sessions::Kept::start(&mut app, config.storage_name, recorded_manifest);
@@ -461,7 +477,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         if let Some(link) = &mut link {
             link.before_frame(&app, platform.link_input());
         }
-        let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at);
+        let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at, records_play);
         if app.take_session_save() {
             kept.save(&app);
         }
@@ -471,6 +487,9 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         }
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
+            if !kept_in_this_build(line.level) {
+                continue;
+            }
             print_line(&line);
             let (level, category) = (line.level.name(), line.category.name());
             crash::note_log(format!("f{} {level} {category}: {}", line.frame, line.text));
@@ -501,13 +520,15 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
 
 /// Runs `app`'s frame at `now`, and panics first if it is the one
 /// `SHUYI_PANIC_AT_FRAME` names (`panic_at`). A panic has written its
-/// report: the sound stops, the game's record is added to it, and the
-/// process ends with exit code 101.
+/// report: the sound stops, the game's record is added to it if
+/// `records_play` ([`CrashReports::records_play`]), and the process ends
+/// with exit code 101.
 fn frame_or_crash<G: GameData>(
     app: &mut App<G>,
     platform: &mut Macroquad,
     now: Millis,
     panic_at: Option<u32>,
+    records_play: bool,
 ) -> FrameOutcome {
     let frame = app.frame_number().saturating_add(1);
     crash::set_frame(frame, app.game().and_then(shuyi_ui::Game::top_screen));
@@ -519,11 +540,19 @@ fn frame_or_crash<G: GameData>(
         return outcome;
     }
     platform.audio().stop_all();
-    let record = crash::quiet(|| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.crash_record()))
-    });
-    crash::add_record(record.ok().flatten());
+    if records_play {
+        let record = crash::quiet(|| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.crash_record()))
+        });
+        crash::add_record(record.ok().flatten());
+    }
     std::process::exit(101);
+}
+
+/// Whether a line of the log at `level` is printed and kept for a crash
+/// report: every line with debug tools, and warnings and errors without.
+fn kept_in_this_build(level: LogLevel) -> bool {
+    shuyi_ui::DEBUG_TOOLS || matches!(level, LogLevel::Error | LogLevel::Warn)
 }
 
 /// After a frame is drawn: the cap it asked for applies from the next, and
@@ -564,11 +593,20 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
 /// voices and no system keyboard. Called from a plain `fn main`. Under
 /// `cargo shuyi run --watch` the game's files on disk are laid over the
-/// embedded ones ([`watched_layer`]).
+/// embedded ones ([`watched_layer`]). On the web, the files the page holds
+/// under `files/` (the site's playground, [`page`]) are laid over them when
+/// the game's data loads with them, and the page hears the game's problems
+/// with them either way.
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
-    let game = match watched_layer() {
-        Some(layer) => game.over(layer),
-        None => game,
+    let game = if let Some(layer) = watched_layer() {
+        game.over(layer)
+    } else {
+        let page = page::page_layer(PAGE_FOLDER, page::PageLimits::default());
+        let (game, heard) = lay_page(&game, page);
+        if let Some(text) = heard {
+            page::report(&text);
+        }
+        game
     };
     // Only the binary installs the bundle: the tools and the tests read
     // the one the game's data holds, since one test process runs many
@@ -577,6 +615,79 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
     let window = basic_window(&game);
     // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
     macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+}
+
+/// The folder of a short-path game's project its files are in, and the
+/// name of their layer: the page's files under it are laid over them.
+const PAGE_FOLDER: &str = "files";
+
+/// `game` with the page's files (`page`, [`page::page_layer`]) laid over its
+/// own when its data loads with them, and what the page hears: `""` then,
+/// every problem one a line when it doesn't (and `game` plays its own
+/// files), and nothing when the page holds no file.
+fn lay_page<A: ActionSet, T: Debug + 'static>(
+    game: &BasicGame<A, T>,
+    page: Result<Option<Layer>, page::PageError>,
+) -> (BasicGame<A, T>, Option<String>) {
+    let layer = match page {
+        Ok(Some(layer)) => layer,
+        Ok(None) => return (*game, None),
+        Err(error) => return (*game, Some(error.to_string())),
+    };
+    let over = game.over(layer);
+    match over.ctx() {
+        Ok(_) => (over, Some(String::new())),
+        Err(problems) => (*game, Some(problems)),
+    }
+}
+
+/// Runs the dialogue preview of a game on the short path until it quits, as
+/// [`run_game`] runs the game: its window, its files and its settings, with
+/// the engine's preview as its first screen (`BasicGame::preview_start`),
+/// played as `preview` says. The scenes are the `.dlg` files of the folder
+/// at `folder`, read with [`read_watched_folder`] and read again a second
+/// after one is saved, in an optimized build too. A folder that can't be
+/// read shows why in the window, as a file that doesn't load does. A `.dlg`
+/// file dropped on the window joins the folder. The web has no folders:
+/// there the preview starts with none, and the writer drops their scenes
+/// on the page.
+///
+/// A visual novel hands its writer a second binary of one call:
+/// `run_dialogue_preview(game(), Path::new("scenes"), MyPreview)`.
+pub fn run_dialogue_preview<A, T, P>(game: BasicGame<A, T>, folder: &Path, preview: P)
+where
+    A: ActionSet,
+    T: Debug + 'static,
+    P: PreviewGame<BasicData<A, T>>,
+{
+    let scenes = preview_folder(folder);
+    let game = match watched_layer() {
+        Some(layer) => game.over(layer),
+        None => game,
+    };
+    let _ = shuyi_assets::bundle::install(game.bundle());
+    let window = basic_window(&game);
+    let start = game.preview_start(scenes, preview);
+    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), start));
+}
+
+/// The name of the layer a dialogue preview reads its folder into.
+const PREVIEW_LAYER: &str = "scenes";
+
+/// The folder at `path`, read to be watched in every build, or why it
+/// can't be read.
+#[cfg(not(target_arch = "wasm32"))]
+fn preview_folder(path: &Path) -> Result<Layer, String> {
+    let limit = u64::try_from(shuyi_assets::format::DEFAULT_MAX_BYTES).unwrap_or(u64::MAX);
+    read_watched_folder(path, PREVIEW_LAYER, limit).map_err(|e| e.to_string())
+}
+
+/// On the web, which has no folders: an empty layer, which the files the
+/// writer drops on the page join.
+#[cfg(target_arch = "wasm32")]
+fn preview_folder(_: &Path) -> Result<Layer, String> {
+    Layer::owned(PREVIEW_LAYER.to_owned(), std::collections::BTreeMap::new())
+        .map_err(|e| e.to_string())
 }
 
 /// The margin around a short-path game's console, in pixels.
@@ -630,6 +741,9 @@ fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> App
         sounds,
     );
     config.crash = CrashReports::new(game.app().version);
+    if game.records_play_in_release() {
+        config.crash = config.crash.with_record_in_release();
+    }
     config
 }
 
@@ -771,6 +885,107 @@ mod tests {
         BasicGame::new(app, files, |_| unreachable!("never started"))
     }
 
+    /// The blank template's files, a short-path game's own.
+    static TEMPLATE: &[(&str, &[u8])] = &[
+        (
+            "en.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/en.ron"),
+        ),
+        (
+            "font/atlas.png",
+            include_bytes!(
+                "../../../templates/shuyi-default/base/crates/game/files/font/atlas.png"
+            ),
+        ),
+        (
+            "font/atlas.ron",
+            include_bytes!(
+                "../../../templates/shuyi-default/base/crates/game/files/font/atlas.ron"
+            ),
+        ),
+        (
+            "keymap.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/keymap.ron"),
+        ),
+        (
+            "palette.ron",
+            include_bytes!("../../../templates/shuyi-default/base/crates/game/files/palette.ron"),
+        ),
+    ];
+
+    /// The blank template's game, whose files load.
+    fn template() -> BasicGame<shuyi_assets::keymap::UiAction> {
+        let files = shuyi_assets::bundle::Layer::table(PAGE_FOLDER, TEMPLATE);
+        let app = AppInfo::new("A game", "com.example.a-game", "0.1.0");
+        BasicGame::new(app, files, |_| unreachable!("never started"))
+    }
+
+    /// A page's layer of one file, `files/<path>`.
+    fn page_file(path: &str, text: &str) -> Layer {
+        let files = std::collections::BTreeMap::from([(path.to_owned(), text.as_bytes().to_vec())]);
+        Layer::owned(PAGE_FOLDER.to_owned(), files).unwrap()
+    }
+
+    /// The template's palette with its `text` colour changed to `colour`.
+    fn palette_with_text(colour: &str) -> String {
+        let own = core::str::from_utf8(TEMPLATE[4].1).unwrap();
+        let line = own
+            .lines()
+            .find(|line| line.trim_start().starts_with("\"text\":"))
+            .expect("the template's palette has a text colour");
+        own.replace(line, &format!("    \"text\": \"{colour}\","))
+    }
+
+    #[test]
+    fn a_page_with_no_files_leaves_the_game_alone_and_hears_nothing() {
+        let (game, heard) = lay_page(&template(), Ok(None));
+        assert_eq!(heard, None);
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
+    }
+
+    #[test]
+    fn the_pages_files_that_load_are_played_and_the_page_hears_the_empty_text() {
+        let palette = palette_with_text("#5a9bff");
+        let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
+        assert_eq!(heard.as_deref(), Some(""));
+        assert_eq!(game.bundle().file("palette.ron"), Some(palette.as_str()));
+        assert_eq!(
+            game.bundle().display_path("palette.ron"),
+            "files/palette.ron"
+        );
+        assert!(game.bundle().has("keymap.ron"));
+    }
+
+    #[test]
+    fn broken_page_files_are_reported_by_file_and_line_and_the_game_plays_its_own() {
+        let palette = palette_with_text("blue");
+        let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
+        let heard = heard.unwrap();
+        assert!(heard.starts_with("files/palette.ron:"), "{heard}");
+        assert!(heard.contains("blue"), "{heard}");
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
+    }
+
+    #[test]
+    fn page_files_that_cannot_be_read_are_reported_and_the_game_plays_its_own() {
+        let error = page::PageError::TooMuch { limit: 7 };
+        let (game, heard) = lay_page(&template(), Err(error));
+        assert_eq!(
+            heard.as_deref(),
+            Some("the page's files are over 7 bytes in all")
+        );
+        assert_eq!(
+            game.bundle().file("palette.ron"),
+            template().bundle().file("palette.ron")
+        );
+    }
+
     #[test]
     fn a_short_path_games_window_is_its_console_twice_and_a_margin() {
         let window = basic_window(&basic());
@@ -788,6 +1003,42 @@ mod tests {
     fn a_short_path_games_crash_reports_name_its_version() {
         assert_eq!(basic_config(&basic()).crash, CrashReports::new("0.1.0"));
         assert_eq!(basic_config(&basic()).crash.game_version, "0.1.0");
+    }
+
+    #[test]
+    fn a_short_path_game_that_says_so_keeps_its_record_in_release() {
+        let crash = basic_config(&basic()).crash;
+        assert!(!crash.record_in_release);
+        assert_eq!(crash.records_play(), shuyi_ui::DEBUG_TOOLS);
+        let crash = basic_config(&basic().crash_record_in_release()).crash;
+        assert_eq!(crash, CrashReports::new("0.1.0").with_record_in_release());
+        assert!(crash.records_play());
+    }
+
+    #[test]
+    fn a_build_without_debug_tools_prints_and_keeps_warnings_and_errors_only() {
+        assert!(kept_in_this_build(LogLevel::Error));
+        assert!(kept_in_this_build(LogLevel::Warn));
+        assert_eq!(kept_in_this_build(LogLevel::Info), shuyi_ui::DEBUG_TOOLS);
+        assert_eq!(kept_in_this_build(LogLevel::Debug), shuyi_ui::DEBUG_TOOLS);
+    }
+
+    #[test]
+    fn the_panic_at_a_frame_is_read_as_the_reports_record_play() {
+        // `cargo test` builds with debug tools, so both read it; a release
+        // build reads it only when the game said.
+        assert!(CrashReports::new("").records_play());
+        assert!(
+            CrashReports::new("")
+                .with_record_in_release()
+                .records_play()
+        );
+        assert!(!CrashReports::off().record_in_release);
+        let off = CrashReports {
+            record_in_release: false,
+            ..CrashReports::new("")
+        };
+        assert_eq!(off.records_play(), shuyi_ui::DEBUG_TOOLS);
     }
 
     /// A config built in a `const fn`, as `AppConfig::new` stays one.

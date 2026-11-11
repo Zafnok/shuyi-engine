@@ -329,7 +329,7 @@ Done 2026-11-05.
   license and the commands.
 - **The spike** is on the local branch `spike/2907`, one commit per
   candidate, never pushed. This branch's `Cargo.lock` is unchanged.
-- **The ADR:** [ADR-0084](../../docs/adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md).
+- **The ADR:** [ADR-0084](../../docs/adr/0084-one-description-of-a-games-types.md).
   serde is the description, and `schemars` gives shapes in the tools
   only. A shipped schema cost 165 KB; a shipped value tree cost 22 KB;
   in the tools only, 0. Names are given at registration: `schemars`

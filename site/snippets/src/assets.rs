@@ -1,4 +1,4 @@
-//! Chapter 5, assets and formats: the garden's plan as a kind of asset of
+//! Chapter 3, assets and formats: the garden's plan as a kind of asset of
 //! the game's own, read from `files/garden.ron` through the format
 //! registry, the bundle's layers, a player's mod laid over the game's
 //! files, and the plan reloading as its file changes.
@@ -162,6 +162,24 @@ mod tests {
         assert!(bundle.has("en.ron"));
     }
     // ANCHOR_END: layers
+
+    #[test]
+    fn a_game_written_in_chinese_names_its_wide_set_in_its_code() {
+        use shuyi::assets::font::CellWidths;
+        use shuyi::assets::lang::{Lang, LangCode, SourceLang};
+        let ui = BTreeMap::from([("menu.title".to_owned(), "“开始”".to_owned())]);
+        let zh = LangCode::new("zh-Hans").unwrap();
+        // ANCHOR: source_lang
+        let source = SourceLang::new(zh.clone(), "简体中文")
+            .with_wide_font("zh-Hans")
+            .with_wide_punctuation(true);
+        let lang = Lang::new(ui, BTreeMap::new()).with_source_lang(source);
+        // ANCHOR_END: source_lang
+        let widths = lang.widths(&zh, &CellWidths::wide(['开', '始']));
+        assert_eq!(widths.wide_font(), Some("zh-Hans"));
+        let title = lang.source_text("menu.title").unwrap();
+        assert_eq!(shuyi::assets::lang::text_width(title, &widths), 8);
+    }
 
     #[test]
     fn a_plan_that_cant_be_is_refused_naming_its_file() {

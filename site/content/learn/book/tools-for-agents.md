@@ -4,6 +4,7 @@ description = "One tool contract, offered as a CLI, an MCP server and Agent Skil
 weight = 100
 
 [extra]
+part = "chapters"
 chapter = 10
 +++
 
@@ -14,8 +15,12 @@ agent can make, run, see, test and replay a game without a window and without gu
 
 You have been using this all along. Every `cargo shuyi` command in this book is one set of
 operations, the **tool contract**, offered three ways: the `shuyi` command line, an MCP server,
-and Agent Skills that teach an agent to use them. A **contract** here means a promise of what
+and Agent Skills that teach an agent to use them.
+
+{% newcomer(to="programming", topic="a contract") %}
+A **contract** here means a promise of what
 goes in and what comes out, which a program can rely on.
+{% end %}
 
 ## The tool contract
 
@@ -37,20 +42,28 @@ limits:
 
 That isn't an error. It's the tool being plain that there was something it couldn't tell you.
 
-`cargo shuyi <op>` prints the answer for people, and with `--json` as one JSON document, a
-common text format for data, for a program, whose **exit code**, the number a program hands back
-when it stops, says its class: 0 when `ok`, 1 when it ran and found something, 2 for a wrong
-command, 3 for a setup to fix. The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
-`scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
+`cargo shuyi <op>` prints the answer for people, and with `--json` as one JSON document, for a
+program, whose **exit code** says its class: 0 when `ok`, 1 when it ran and found something, 2 for
+a wrong command, 3 for a setup to fix.
+
+{% newcomer(to="programming", topic="JSON and an exit code") %}
+JSON is a common text format for data. A program's exit code is the number it hands back when it
+stops.
+{% end %}
+
+The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
+`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
 `attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
 
 {{ snippet(file="src/tools.rs", anchor="contract") }}
 
-> **Rust:** `CheckInput::default()` makes the input with every setting at its default, and `let mut`
-> lets the next line change one. `"{answer:?}"` prints the whole answer in its debug form, if the
-> test fails, as `Debug` was derived for it. `answer.result.as_ref().unwrap()` looks inside the
-> `Option` without taking it out of `answer`. `.iter().any(|e| matches!(e, Event::Quit { .. }))` asks
-> whether any event is a quit, whatever else it holds, which is what `..` means.
+{% newcomer(to="rust", topic="`default()`, debug printing and `matches!`") %}
+`CheckInput::default()` makes the input with every setting at its default, and `let mut`
+lets the next line change one. `"{answer:?}"` prints the whole answer in its debug form, if the
+test fails, as `Debug` was derived for it. `answer.result.as_ref().unwrap()` looks inside the
+`Option` without taking it out of `answer`. `.iter().any(|e| matches!(e, Event::Quit { .. }))` asks
+whether any event is a quit, whatever else it holds, which is what `..` means.
+{% end %}
 
 The [contract's page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/contract.md) says what
 each operation answers, and every input and answer has a **JSON schema**, a description of a
@@ -58,9 +71,38 @@ document's shape that a program can read: `cargo shuyi schema run.output` prints
 
 A game gives the tools what they need of it in its tool program
 ([chapter 1](@/learn/book/quick-start.md#what-it-is-made-of)). On the short path that is `BasicTools`:
-its frame, its text, its files' errors and its controls. A game with a scene, records, bots or
+its frame, its text, its files' errors and its controls. A game with a scene, records, a playtest or
 importers writes its own `GameTools`, adds those, and calls `BasicTools` for the rest; a `grid` game's
 stage has one to read.
+
+## One value of the game
+
+A stage's scene carries its **data**: the stage's whole state, written by serde, the same derive that
+writes its state hash, so your game writes no code to show it. `scene --path` reads one value of it by a
+**JSON Pointer**, a path of keys from the top, and `scene --shape` answers its **JSON Schema**, every key
+it may hold:
+
+```bash
+cargo shuyi scene --script "Enter Right" --path /hero/x
+cargo shuyi scene --script "Enter" --shape
+```
+
+The first answers your piece's column. A pointer that names nothing fails with `SH0005`, and its message
+lists the keys there are. An enum is written as serde writes it, its variant a key:
+`/outcome/Won/turn` is the turn a won stage ended on.
+
+The stage's tools name the value with `Scene::with_data`. To show what lives on the screen and not in the
+state, such as the number of commands taken, a `grid` game's stage names a small struct of its own,
+`StageData` in its `tools.rs`: the stage's state, then its `seed` and its `commands`.
+
+{% newcomer(to="rust", topic="`#[serde(flatten)]`") %}
+`#[serde(flatten)]` on `StageData`'s `stage` field writes the state's own keys at the top,
+beside `seed` and `commands`, instead of under a `stage` key.
+{% end %}
+
+The rules' types derive `JsonSchema`, which describes their shape, under a `schema` feature that the
+game's `tools` feature turns on, so the game you ship builds no schema. A type of your own that the
+stage holds needs the same line, `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]`.
 
 ## The MCP server
 
@@ -84,9 +126,9 @@ look, and press another, as you would:
 | ---- | ---- |
 | `start` | builds the game's tool program and starts the game, with its start options |
 | `step` | plays a script of keys, buttons, actions by name and waits, then idle frames, and answers as `run` does |
-| `scene` | the scene on screen now, and the log |
+| `scene` | the scene on screen now, and the log; with `path`, one value of its data, with `shape`, its data's shape |
 | `frame_png` | a picture of the frame now |
-| `events` | what happened since the start, and the sounds |
+| `events` | what happened since the start, the sounds, and the sounds the game made at run time |
 | `perf` | the frames' times and memory |
 | `reset` | starts the game again as `start` did |
 | `stop` | stops it |
@@ -116,7 +158,7 @@ a skill that has gone wrong fails there first.
   [`skills/`](https://github.com/Zafnok/shuyi-engine/tree/main/skills), the layout the common skill
   installers read. Copy the folders into your agent's skills folder.
 
-A game's own `AGENTS.md` holds the rules a game on the engine keeps (this book's chapters 3, 4 and 6, in
+A game's own `AGENTS.md` holds the rules a game on the engine keeps (this book's chapters 2, 4 and 5, in
 short), for any agent that reads it. It also links the engine's rules and docs, those of the engine the game
 builds with: for a game on `main`, the site's `llms.txt` and `llms-full.txt`; for a game on a commit
 (`--engine-rev`), this book's Markdown at that commit; for a game on a checkout (`--engine-path`), the same
@@ -167,3 +209,29 @@ lint: OK
 limits:
   - the rules crate's fence wasn't checked: shuyi.ron names no rules package (`rules`)
 ```
+
+## Check yourself
+
+{% check() %}
+A command run with `--json` exits with code 3. What does that say?
+
+- [ ] It ran and found something wrong in the game. — That is exit code 1, and code 0 is `ok` ([the tool contract](#the-tool-contract)).
+- [ ] The command was written wrong. — A wrong command is exit code 2 ([the tool contract](#the-tool-contract)).
+- [x] There is a setup to fix: the tools couldn't get as far as looking at the game. — Check that you are in the game's folder, then run `cargo shuyi doctor` ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+An agent's call gives an error. What should the agent branch on?
+
+- [x] The problem code, such as `SH1002`. — Every error has a stable code, and the code won't change ([problem codes](#problem-codes)).
+- [ ] The words of the message. — A message's words may improve over time, so a program that matches them would break ([problem codes](#problem-codes)).
+- [ ] Whether `limits` is empty. — `limits` says what an answer couldn't determine, not what went wrong, and an `ok` answer can have them too ([the tool contract](#the-tool-contract)).
+{% end %}
+
+{% check() %}
+An agent changed the game's code, but the MCP session still plays the old game. What brings in the new code?
+
+- [ ] Calling `reset`. — `reset` starts the game again as `start` did, from the same build ([the MCP server](#the-mcp-server)).
+- [x] Calling `start` again. — `start` builds the game's tool program, and the session runs the game as it was at `start` ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] Calling `step` with no keys, so that frames run. — `step` plays the game the session already has ([the MCP server](#the-mcp-server)).
+{% end %}

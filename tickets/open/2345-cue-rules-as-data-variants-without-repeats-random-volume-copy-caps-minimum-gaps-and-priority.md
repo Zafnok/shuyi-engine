@@ -277,10 +277,14 @@ None.
     file and a cue volume as it does `Sound`, with no gap: the game
     stops a handled sound itself. The player's `Audio::start_sound`
     in `crates/app/src/audio.rs` is where it plays.
-  - **2342** (sound groups): if it is done, `SoundCue::new` leaves
-    `group` empty, and the player multiplies `percent(cue_volume)` by
-    the gains 2342 gives in place of `sound_volume`. If not, 2342 does
-    that. The second to land rebases and bumps `pack::VERSION` again.
+  - **From 2342 (done):** the shared player
+    (`crates/platform/src/audio/player.rs`) plays a sound at its cue's
+    volume times the request's volume times its gain
+    (`factor(gains.sound(cue))`), and keeps a handled sound's gain
+    (`Handled::gain`). This ticket puts `percent(cue_volume)` in place
+    of the cue's own volume there. **From 2258 (done):** `SoundCue` has
+    `group`, which `SoundCue::new` leaves `None` beside this ticket's
+    fields, and `pack::VERSION` is 11: this ticket bumps it again.
   - **2363** (parked, positional sound): `Cues` runs in `App` on what
     `Game::collect_audio` hands out, so a sound 2363 drops past its
     `silent` distance never reaches it and counts toward no gap, cap or

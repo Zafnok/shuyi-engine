@@ -36,6 +36,9 @@ pub const UNKNOWN_MODULE: Code = Code("SH0003");
 /// `link-token`: `attach` gave a token the build doesn't have, and it
 /// closed the link.
 pub const LINK_TOKEN: Code = Code("SH0004");
+/// `no-value`: `scene --path` was given a JSON Pointer that names nothing
+/// in the scene's data.
+pub const NO_VALUE: Code = Code("SH0005");
 /// `no-project`: no `shuyi.ron` here or above.
 pub const NO_PROJECT: Code = Code("SH1001");
 /// `project-file`: `shuyi.ron` doesn't read, or lacks what the command
@@ -220,6 +223,15 @@ pub static TABLE: &[Entry] = &[
         "The build closed the link at its hello: the token is wrong",
         "pass the token of the build's log line `shuyi link: listening on <address>, token \
          <token>` as --token (it changes each start, unless SHUYI_LINK_TOKEN sets it)"
+    ),
+    row!(
+        NO_VALUE,
+        "no-value",
+        Usage,
+        "SH0005",
+        "The JSON Pointer names no value in the scene's data",
+        "pass a pointer to a key the message lists (`/hero/x`); `scene --json` shows the whole \
+         data, and `scene --shape` its shape"
     ),
     row!(
         NO_PROJECT,

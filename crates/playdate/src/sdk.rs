@@ -109,6 +109,20 @@ pub trait Sdk: Clone + fmt::Debug + 'static {
     fn sample_load(&self, path: &str) -> Option<Self::Sample>;
     /// `sample->getLength`, in seconds.
     fn sample_length(&self, sample: Self::Sample) -> f32;
+    /// `sample->newSampleFromData`: a sound of `samples`, 16 bits each,
+    /// interleaved, at `rate` a second, mono or `stereo`. The SDK keeps a copy
+    /// of its own. `None` if it made none (no memory, or no samples). Without
+    /// it, none.
+    fn sample_from_data(&self, samples: &[i16], rate: u32, stereo: bool) -> Option<Self::Sample> {
+        let _ = (samples, rate, stereo);
+        None
+    }
+    /// `sample->freeSample`, with its copy of the samples: a sample
+    /// [`sample_from_data`](Self::sample_from_data) made, which no sample
+    /// player plays any more. Without it, nothing.
+    fn sample_free(&self, sample: Self::Sample) {
+        let _ = sample;
+    }
     /// `sampleplayer->newPlayer`.
     fn sample_player_new(&self) -> Option<Self::SamplePlayer>;
     /// Plays `sample` from its start on `player`, stopping what it played, at

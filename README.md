@@ -119,7 +119,7 @@ and a game that needs more than that doesn't export there
 | `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
 | `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |
-| `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, their JSON answers and schemas |
+| `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `playtest`, `import`, `doctor`, their JSON answers and schemas |
 | `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
 | `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, and so does CI |
@@ -145,7 +145,8 @@ counter. An engine crate never depends on a game.
 | `shuyi-alloc-count` | `crates/alloc-count` | The heap counter: `CountingAlloc`, a global allocator around another that counts the bytes live, their peak and the allocations, and with its `global` feature the one counter every debug build of a game on `shuyi-app`, and of its tool program, runs on, counting by memory tag too (the frame's phase, the game's span, the asset kind being decoded). Each frame's perf record carries its counts; `--cfg shuyi_no_heap_count` opts out. Builds without `std`. |
 | `shuyi-sound` | `crates/sound` | Decoded sound apart from the rest of the engine: `Pcm`, a bounded `Source` of it, optional WAV and Ogg Vorbis adapters, and an integer mixer. Builds without `std`; only the backend of `shuyi-app`'s `in-house-sound` feature plays through it yet. |
 | `shuyi-sound-out` | `crates/sound-out` | Hands a mix to the system: CPAL on Windows, a Web Audio worklet in the browser, and an output that discards it. |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `bench`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi-script` | `crates/script` | A module: rules written as Rhai scripts, compiled once and run on a read-only view the game hands them, integer only, with no clock, no luck and no files, inside an operation and size limit ([`crates/script/README.md`](crates/script/README.md)). Needs `std`. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `bench`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
 | `shuyi` | `crates/shuyi` | The front door a game depends on: the crates above under short names (`shuyi::core` to `shuyi::app`), the `prelude` with `run_game`, and one cargo feature per module, all off by default, with `enabled_modules`, the modules turned on, for the game to install. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
@@ -203,7 +204,7 @@ it couldn't determine ([`docs/contract.md`](docs/contract.md)):
 ```
 cargo shuyi check                                # every error in the game's files
 cargo shuyi run --script "Right Down" --frames 30   # screens, scene, events, sounds
-cargo shuyi bots 20                              # how 20 bot games ended
+cargo shuyi playtest --tries 20                  # how 20 bot tries ended
 cargo shuyi doctor                               # what the toolchain lacks
 ```
 

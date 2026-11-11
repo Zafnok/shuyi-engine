@@ -38,13 +38,15 @@
             "examples/hello-grid/src/action.rs",
             // The tools: they take keys as text the player of a game
             // types (`--keys "Enter Up"`), scan for key names, and print
-            // `s` for seconds, `[x]` for a ticked box.
+            // `s` for seconds, `[x]` for a ticked box, and read the book's
+            // quick checks, whose right answers are `- [x] `.
             "crates/cli/src/check_keys.rs",
             "crates/cli/src/contract/attach.rs",
             "crates/cli/src/contract/autobalance.rs",
             "crates/cli/src/contract/playtest.rs",
             "crates/cli/src/contract/run.rs",
             "crates/cli/src/frame_png.rs",
+            "crates/xtask/src/book.rs",
             "crates/xtask/src/tickets.rs",
         ],
         // The rebinding screens' keyboard pictures.

@@ -67,6 +67,12 @@ Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
 cd examples/hello-grid && cargo shuyi check --target all
 ```
 
+The script runtime builds for the web (CI's `wasm` job, ticket 2101):
+
+```bash
+cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings
+```
+
 The crates' layers (CI's `layers` job, ADR-0032): which engine crate
 depends on which, the outside crates of the pure ones, no device crate
 below any crate but the backend's, and the float ban in the simulations,
@@ -75,6 +81,14 @@ outside crate of a pure crate adds its line there in the same PR.
 
 ```bash
 cargo xtask check-layers
+```
+
+No two workspace packages build a binary, or an example, of the same
+name (CI's `layers` job, ticket 2056): Cargo writes them to one file, and
+on Windows the MSVC linker fails when both link at once.
+
+```bash
+cargo xtask check-targets
 ```
 
 The modules (CI's `modules` job, ADR-0009): no default crate depends on
@@ -237,7 +251,7 @@ repository root):
 
 ```bash
 export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
-cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 ```
 
@@ -316,14 +330,20 @@ A slow rebuild is never fixed by raising the budget: find what grew
 They run on every PR, docs-only ones too:
 
 ```bash
-cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
+cargo xtask ticket-lint --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # the title the PR will have, as CI does; without them on main
 cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses (ticket 2804)
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
-cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md
+cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
+cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
+
+The PR's ticket comes from the title first (`tickets/README.md`, *Pull
+requests*): `[NNNN] …` must be in `done/`; `Ticket NNNN: …` changes only
+tickets, read against where the branch left `origin/main` (or `--base
+<rev>`). A title naming no ticket on a branch naming none fails.
 
 The ticket lint checks `game#NNNN` ids in `blocked_by` against the game
 repository's tickets with `gh api`, or against a local checkout with
@@ -339,7 +359,11 @@ box under *Acceptance criteria*: tick it, or write `- [x] ~~…~~ (not
 done: why)`. It fails a clause in an
 open ticket that names another open ticket, not in its `blocked_by`,
 whose text never names it back: write the other side there (the
-`write-ticket` skill, *Check the dependency chain*).
+`write-ticket` skill, *Check the dependency chain*). It fails an open,
+non-parked `status: blocked` ticket whose blockers are all done. In the
+ticket the PR moves to `done/`, it warns on a promise of later work that
+names no ticket, and fails a `game#NNNN` with no `Game:` line (the
+`work-ticket` skill, §5).
 
 ## The engine's own input and text rules (CI's `test` job)
 
@@ -360,24 +384,27 @@ beside it; never loosen the checks to pass.
 
 Not a local gate: it needs a nightly and two tools. CI runs it on every
 PR that changes a crate (ADR-0038): it shows what merging adds to the
-public API of every engine crate, and fails a break that the branch's
-ticket has no `Breaking:` line for (the `work-ticket` skill, §5). It also
+public API of every engine crate, and fails a break that the PR's
+ticket (its title's, else its branch's) has no `Breaking:` line for (the `work-ticket` skill, §5). It also
 fails a change to the public API that changes no file of the book
 (`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
-`Book:` line saying why (ticket 2815). Before pushing a change you think
+`Book:` line saying why (ticket 2815), and a change to the contract's
+`VERSION` other than one over the base's (ticket 2052). Before pushing a change you think
 breaks, run it from the repository root:
 
 ```bash
-cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main`; without --pr-branch, no rule
+cargo xtask api --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # against `git merge-base HEAD main`; without --pr-branch, no rule
 ```
 
 `API_CRATES` in `crates/xtask/src/api.rs` is the catalog: a new engine
 crate left out of it fails the check, naming the crate. Each crate is
-checked once, on the host, in a debug build. `shuyi-alloc-count` is
-checked with `global`, and `shuyi-playdate` without the SDK, so its
-`device` module and the arms of `main!` are not. The others take each
-tool's default: the listing has their default features, and the semver
-check the features its heuristic turns on. That file's docs say the same.
+checked once, on the host, in a debug build, with every feature it has,
+the same in both tools, but where an entry says why it leaves one out.
+`shuyi-playdate` is checked without the SDK, so its `device` module
+and the arms of `main!` are not. A feature added to an engine crate goes
+in its entry, or in the test's `LEFT_OUT` with the reason in the entry:
+a test fails on one in neither. A side whose manifest lacks the feature
+yet builds without it. That file's docs say the same.
 
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).

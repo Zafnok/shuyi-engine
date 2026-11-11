@@ -6,10 +6,18 @@
 //! `shuyi check --target` checks of a one-bit target; the renderer that
 //! draws with the map is `shuyi_ui::frame::onebit`.
 //!
+//! A role gives `fg`, and may give `bg` (else `fg` again), `edge` (its
+//! glyphs get a white edge one pixel wide, to read over a pattern) and
+//! `invert` (its rectangles flip what is under them, after everything
+//! else: a cursor; never a text role's). The patterns are the [`Base`]s,
+//! each plain or `Inverted(…)`.
+//!
 //! ```ron
 //! (
 //!     roles: {
 //!         "text": (fg: Black, bg: White),
+//!         "text.on_pattern": (fg: Black, edge: true),
+//!         "cursor": (fg: Black, invert: true),
 //!         "team.player": (fg: White),
 //!         "team.enemy": (fg: Dither50),
 //!         "team.ally": (fg: Inverted(DiagonalUp)),
@@ -70,7 +78,7 @@ fn rows_where(black: impl Fn(usize, usize) -> bool) -> Rows {
 }
 
 /// One of the fixed patterns, before any inversion: black and white
-/// solids, three ordered dithers, and four kinds of line.
+/// solids, three ordered dithers, four kinds of line, a checker and dots.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Base {
     /// Every pixel black.
@@ -93,11 +101,15 @@ pub enum Base {
     VLines,
     /// A checker of 2 × 2 squares.
     Checker2,
+    /// Black dots, one pixel in eight: every fourth pixel of every other
+    /// row, the rows staggered (black where `y` is even and
+    /// `x % 4 == y % 4`).
+    Dots,
 }
 
 impl Base {
     /// Every base pattern.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Black,
         Self::White,
         Self::Dither25,
@@ -108,6 +120,7 @@ impl Base {
         Self::HLines,
         Self::VLines,
         Self::Checker2,
+        Self::Dots,
     ];
 
     /// Its name in a pattern map.
@@ -123,6 +136,7 @@ impl Base {
             Self::HLines => "HLines",
             Self::VLines => "VLines",
             Self::Checker2 => "Checker2",
+            Self::Dots => "Dots",
         }
     }
 
@@ -138,6 +152,7 @@ impl Base {
             | Self::VLines => 16,
             Self::Dither50 | Self::Checker2 => 32,
             Self::Dither75 => 48,
+            Self::Dots => 8,
         }
     }
 
@@ -154,6 +169,7 @@ impl Base {
             Self::HLines => y.is_multiple_of(4),
             Self::VLines => x.is_multiple_of(4),
             Self::Checker2 => (x / 2 + y / 2).is_multiple_of(2),
+            Self::Dots => y.is_multiple_of(2) && x % 4 == y % 4,
         }
     }
 
@@ -269,6 +285,7 @@ enum Spelled {
     HLines,
     VLines,
     Checker2,
+    Dots,
     Inverted(Box<Spelled>),
 }
 
@@ -285,6 +302,7 @@ impl Spelled {
             Base::HLines => Self::HLines,
             Base::VLines => Self::VLines,
             Base::Checker2 => Self::Checker2,
+            Base::Dots => Self::Dots,
         };
         if pattern.inverted {
             Self::Inverted(Box::new(plain))
@@ -307,6 +325,7 @@ impl Spelled {
             Self::HLines => Base::HLines,
             Self::VLines => Base::VLines,
             Self::Checker2 => Base::Checker2,
+            Self::Dots => Base::Dots,
         };
         Pattern::new(base)
     }
@@ -326,21 +345,59 @@ impl<'de> Deserialize<'de> for Pattern {
 
 /// A role's two patterns: `fg` for what is drawn in its colour (a glyph, a
 /// rectangle, a sprite painted in it), `bg` for a cell's background in it
-/// (`fg` again, if the map doesn't say).
+/// (`fg` again, if the map doesn't say); and what its glyphs and
+/// rectangles do besides (`edge`, `invert`, both `false` if the map
+/// doesn't say). A map spells them `"cursor": (fg: Black, invert: true)`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct RolePatterns {
     /// What is drawn in the role's colour.
     pub fg: Pattern,
     /// A cell's background in the role's colour.
     #[serde(default)]
     pub bg: Option<Pattern>,
+    /// A glyph in the role gets a white edge one pixel wide around it.
+    #[serde(default)]
+    pub edge: bool,
+    /// A rectangle in the role flips the pixels under it, after everything
+    /// else, instead of being drawn in `fg`.
+    #[serde(default)]
+    pub invert: bool,
 }
 
 impl RolePatterns {
     /// `fg`, with `bg` behind.
     pub const fn new(fg: Pattern, bg: Pattern) -> Self {
-        Self { fg, bg: Some(bg) }
+        Self {
+            fg,
+            bg: Some(bg),
+            edge: false,
+            invert: false,
+        }
+    }
+
+    /// `fg` alone: a cell's background in the role is `fg` too, as when a
+    /// map gives no `bg`.
+    pub const fn of(fg: Pattern) -> Self {
+        Self {
+            fg,
+            bg: None,
+            edge: false,
+            invert: false,
+        }
+    }
+
+    /// The same, its glyphs edged in white if `edge`.
+    #[must_use]
+    pub const fn with_edge(self, edge: bool) -> Self {
+        Self { edge, ..self }
+    }
+
+    /// The same, its rectangles flipping what is under them if `invert`.
+    #[must_use]
+    pub const fn with_invert(self, invert: bool) -> Self {
+        Self { invert, ..self }
     }
 
     /// The background pattern: `bg`, or else `fg`.
@@ -466,7 +523,8 @@ pub enum Rule {
     SharedColour,
     /// Two roles of a distinct group have foregrounds that look alike.
     Distinct,
-    /// A text role isn't black on white or white on black.
+    /// A text role isn't black on white or white on black (a warning), or
+    /// inverts, so its glyphs would flip (an error).
     Text,
 }
 
@@ -500,8 +558,10 @@ impl Problem {
 /// - errors: a role of the palette with no patterns ([`Rule::Missing`]),
 ///   a role of the map, a group or the text roles that the palette lacks
 ///   ([`Rule::Unknown`]), two roles of one colour with different patterns
-///   ([`Rule::SharedColour`]), and two roles of a distinct group whose
-///   foregrounds look alike ([`Rule::Distinct`], [`Pattern::looks_like`]);
+///   or a different `edge` or `invert` ([`Rule::SharedColour`]), two
+///   roles of a distinct group whose foregrounds look alike
+///   ([`Rule::Distinct`], [`Pattern::looks_like`]), and a text role with
+///   `invert` ([`Rule::Text`]: its glyphs would flip);
 /// - warnings: a text role that isn't `Black` on `White` or `White` on
 ///   `Black` ([`Rule::Text`]).
 pub fn check(palette: &PaletteDef, map: &PatternMapDef) -> Vec<Problem> {
@@ -544,7 +604,7 @@ pub fn check(palette: &PaletteDef, map: &PatternMapDef) -> Vec<Problem> {
         let Some(&(first, patterns)) = roles.first() else {
             continue;
         };
-        let drawn = |p: &RolePatterns| (p.fg, p.background());
+        let drawn = |p: &RolePatterns| (p.fg, p.background(), p.edge, p.invert);
         for &(other, theirs) in &roles[1..] {
             if drawn(theirs) != drawn(patterns) {
                 out.push(Problem::error(
@@ -583,6 +643,23 @@ pub fn check(palette: &PaletteDef, map: &PatternMapDef) -> Vec<Problem> {
                     ));
                 }
             }
+        }
+    }
+    out.extend(text_problems(map));
+    out
+}
+
+/// What [`check`] finds wrong with `map`'s text roles: one that inverts
+/// (an error), then one that isn't solid black and white (a warning).
+fn text_problems(map: &PatternMapDef) -> Vec<Problem> {
+    let mut out = Vec::new();
+    for role in &map.text {
+        if map.roles.get(role).is_some_and(|p| p.invert) {
+            out.push(Problem::error(
+                Rule::Text,
+                vec![role.clone()],
+                format!("text role \"{role}\" can't invert: its glyphs would flip"),
+            ));
         }
     }
     let solid_pair = |p: &RolePatterns| {

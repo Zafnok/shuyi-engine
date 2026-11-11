@@ -281,6 +281,7 @@ fn input_frames(step: &Step) -> Result<u32, String> {
         }
         Step::Crank(_) => return Err("crank: not in a capture plan yet".to_owned()),
         Step::Debug(_) => return Err("debug: not in a capture plan yet".to_owned()),
+        Step::Drop(_) => return Err("drop: not in a capture plan yet".to_owned()),
     })
 }
 

@@ -4,8 +4,8 @@
 //! file of each pack, the debug file, whatever else is beside it, and what
 //! the package was built from.
 //!
-//! A game whose `shuyi.ron` has a `disclosure` part ([`Disclosure`]) is held
-//! to it: a file of the game or of a pack that the part doesn't allow, a
+//! A game whose `shuyi.ron` has a `disclosure` part ([`Disclosure`]), or an
+//! edition built with one of its own, is held to it: a file of the game or of a pack that the part doesn't allow, a
 //! path it forbids, a canary of it anywhere (as UTF-8 or UTF-16, in what a
 //! pack unpacks to as well), or a file beside the package that this export
 //! didn't make refuses the export. A refused export leaves the report and
@@ -148,6 +148,13 @@ pub struct BuildInputs {
     pub bin: String,
     /// The game's version.
     pub version: String,
+    /// The edition of `shuyi.ron`'s `editions` it built, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition: Option<String>,
+    /// The folder of the game's files the edition's program embeds, from the
+    /// project's root, if it names one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_root: Option<String>,
     /// Whether it was a release build.
     pub release: bool,
     /// The `cargo` arguments of each build.
@@ -159,10 +166,27 @@ pub struct BuildInputs {
     pub features: Vec<String>,
     /// `rustc -V`.
     pub toolchain: String,
-    /// The SHA-256 of `shuyi.ron`, which holds the `disclosure` part.
+    /// The SHA-256 of `shuyi.ron`, which holds the `disclosure` part and the
+    /// editions.
     pub project_file: Option<String>,
     /// The SHA-256 of the workspace's `Cargo.lock`.
     pub cargo_lock: Option<String>,
+    /// Whether the shipped program has no symbol table.
+    pub stripped: bool,
+    /// What a panic does in the shipped program.
+    pub panic: Panic,
+}
+
+/// What a panic does in a shipped program.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Panic {
+    /// It unwinds: a game catches it, and its message and place stay in the
+    /// program.
+    #[default]
+    Unwind,
+    /// It ends the program at once.
+    Abort,
 }
 
 /// A file of the export.
@@ -252,8 +276,9 @@ pub struct Finding {
 pub struct ExposureReport {
     /// Whether the package stands: false when a finding removed it.
     pub ok: bool,
-    /// Whether `shuyi.ron` has a `disclosure` part to hold it to. Without one
-    /// nothing is refused, and there are no findings.
+    /// Whether `shuyi.ron` has a `disclosure` part to hold it to, or the
+    /// edition one of its own. Without one nothing is refused, and there are no
+    /// findings.
     pub declared: bool,
     /// What it was built from.
     pub inputs: BuildInputs,
@@ -455,6 +480,11 @@ fn build_inputs(cx: &ExportCx, exporter: &dyn Exporter) -> Result<BuildInputs, S
         package: cx.package.clone(),
         bin: cx.bin.clone(),
         version: cx.version.clone(),
+        edition: cx.edition.as_ref().map(|edition| edition.name.clone()),
+        content_root: cx
+            .edition
+            .as_ref()
+            .and_then(|edition| edition.content.clone()),
         release: cx.release,
         features: resolved_features(&map, default_features, &asked),
         builds,
@@ -462,6 +492,8 @@ fn build_inputs(cx: &ExportCx, exporter: &dyn Exporter) -> Result<BuildInputs, S
         toolchain,
         project_file: hash(cx.root.join(project::FILE)),
         cargo_lock: hash(cx.workspace.join("Cargo.lock")),
+        stripped: exporter.strips_symbols(cx),
+        panic: exporter.panic(),
     })
 }
 

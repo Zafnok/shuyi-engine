@@ -27,13 +27,14 @@ fn time_fight() -> (Duration, Duration, u128) {
     let font = Font::new(&atlas, &bits).unwrap();
     let fight = Fight::new();
     let buf = Fight::frame(37);
+    let map = test_map();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
     let mut time = |plain: bool| {
         let start = Instant::now();
         if plain {
-            reference::render(&buf, &font, &fight, &mut frame);
+            reference::render(&buf, &font, &fight, &map, &mut frame);
         } else {
-            render(&buf, &font, &fight, &mut frame);
+            render(&buf, &font, &fight, &map, &mut frame);
         }
         start.elapsed()
     };

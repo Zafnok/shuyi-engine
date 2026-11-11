@@ -210,6 +210,11 @@ pub struct Budgets {
     pub package_bytes: Option<u64>,
     /// The longest start-up, in milliseconds.
     pub startup_ms: Option<u32>,
+    /// How long one frame runs a game's load in steps for, in
+    /// milliseconds, on a device whose system ends a game whose frame runs
+    /// too long (the Playdate's, after 10 seconds). Left out, a load runs
+    /// in one frame.
+    pub load_slice_ms: Option<u32>,
 }
 
 impl TargetProfile {
@@ -256,6 +261,9 @@ impl TargetProfile {
             {
                 out.push(format!("display: the safe area leaves nothing of {name}"));
             }
+        }
+        if self.budgets.load_slice_ms == Some(0) {
+            out.push("budgets: load_slice_ms must be at least 1".to_owned());
         }
         let rate = self.frame_rate;
         if rate.floor == 0 || rate.floor > rate.target {
@@ -357,6 +365,7 @@ pub(crate) mod tests {
         assert_eq!(p.input.chords, [[Button::East, Button::West]]);
         assert_eq!(p.budgets.startup_ms, Some(5000));
         assert_eq!(p.budgets.frame_instructions, None);
+        assert_eq!(p.budgets.load_slice_ms, None);
         assert!(!p.input.touch);
         // A profile from before `quit` and `windowed`: the game quits
         // itself, always full screen.
@@ -389,6 +398,7 @@ pub(crate) mod tests {
         let source = profile("other", "safe_area: (left: 200, right: 200)")
             .replace("min_text_px: 8", "min_text_px: 12")
             .replace("floor: 30", "floor: 40")
+            .replace("startup_ms: 5000", "load_slice_ms: 0")
             .replace("[\"East\", \"West\"]", "[\"East\", \"SystemMenu0\"]")
             .replace(
                 "[(width: 400, height: 240)]",
@@ -401,6 +411,7 @@ pub(crate) mod tests {
                 "t.ron: display: min_text_px 12 is more than good_text_px 10",
                 "t.ron: display: the safe area leaves nothing of 400 × 240",
                 "t.ron: display: size 0 × 9 tiny is empty",
+                "t.ron: budgets: load_slice_ms must be at least 1",
                 "t.ron: frame_rate: floor 40 must be from 1 to target 30",
                 "t.ron: input: SystemMenu0 is a system menu item, not a button: system_menu_slots \
                  says how many the target has",

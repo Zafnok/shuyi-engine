@@ -5,9 +5,16 @@ description: Record a technical/architecture decision as an ADR in docs/adr/. Us
 
 # Write an ADR
 
-1. Next number: highest `docs/adr/NNNN-*.md` + 1. Check open PRs for
-   numbers already taken (`gh pr list --state open`).
+1. **Next number:** `git fetch origin`, then `cargo xtask next-id adr`.
+   It prints one past the highest that `origin/main`, this checkout and
+   every open PR hold (ticket 2052). If it warns that `gh` couldn't list
+   the open PRs, check them by hand before taking it. `cargo xtask
+   check-docs` fails two ADRs with one number, so on the merge ref the
+   second PR to take it fails: renumber yours with `next-id` again.
 2. Copy `docs/adr/0000-template.md` to `docs/adr/NNNN-kebab-title.md`.
+   The file name is a few words, not the whole title: `cargo xtask
+   check-paths` fails a path over 150 characters, as a game's Windows
+   checkout by Cargo adds about 80 and libgit2 stops at 260 (ticket 2071).
 3. Fill in four sections:
    - **Context**: the facts and forces, with sources;
    - **Decision**: concrete enough to follow without guessing, naming
@@ -18,6 +25,13 @@ description: Record a technical/architecture decision as an ADR in docs/adr/. Us
 5. **Superseding:** never rewrite an accepted ADR's decision. Write the new
    ADR, then change only the old one's `Status:` line to `Superseded by
    ADR-NNNN`, and update both rows in the index.
+   **Extending, narrowing or amending** works the same way: the new ADR
+   says so in its own `Extends:` (or `Amends:`) line, and the old one's
+   `Status:` line names it ("extended by ADR-NNNN (§N: what)", "§N
+   narrowed by ADR-NNNN", "amended by ADR-NNNN"), with both rows in the
+   index. Why: ADR-0081 extends and narrows ADR-0008 §6, and ADR-0008's
+   status didn't say so, so a reader of ADR-0008 alone gated every
+   `supported` profile.
 6. Include the ADR in the same PR as the ticket that needed it.
 7. Refer to the game's ADRs as "game ADR-NNNN" (ADR-0001).
 

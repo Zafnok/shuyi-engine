@@ -1,5 +1,9 @@
-{% macro nav_item(label, path, prefix, current) %}
-<li><a href="{{ get_url(path=path) }}"{% if current is starting_with(prefix) %} aria-current="page"{% endif %}>{{ label }}</a></li>
+{#- A link of the menu, marked current on the pages under `prefix` but
+    those under `except`, which have their own link. #}
+{% macro nav_item(label, path, prefix, current, except="") %}
+{%- set here = current is starting_with(prefix) %}
+{%- if except != "" and current is starting_with(except) %}{% set here = false %}{% endif %}
+<li><a href="{{ get_url(path=path) }}"{% if here %} aria-current="page"{% endif %}>{{ label }}</a></li>
 {%- endmacro nav_item %}
 
 {% macro post_list(pages) %}

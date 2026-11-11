@@ -215,6 +215,27 @@ fn uncovered(&mut self, _: &mut Ctx<Data>, result: Option<ScreenResult>) -> Tran
 
 Any `'static` type will do as the answer: the two screens agree on it.
 
+## A file the player keeps
+
+A screen hands the player a file with `ctx.offer_file("farm.ron",
+text)` (a download on the web, a file in `exports/` beside the saves on
+a desktop) and asks for one with `ctx.ask_for_file(&[".ron"])`, in the
+frame of the press: a browser opens its picker only just after one. The
+answers reach the game's system hook in a later frame,
+`SystemEvent::FileOffered` and `SystemEvent::FileChosen`, never the
+screen. Offer "choose a file" only where `ctx.platform.can_pick_files()`,
+and "drop a file here" where `can_drop_files()`; show where the saves are
+from `ctx.platform.storage_place`. A test reads `Harness::offered` and
+answers the next ask with `Harness::answer_next_ask`.
+
+For several saves in one file, use a save bundle
+(`shuyi::ui::storage::bundle`), not a format of your own: `write_bundle`
+packs the keys the game picks, `plan_import` gives each entry a
+`Verdict` from the game's `FormatCheck`s before anything is written, and
+`apply` writes the `Ready` ones the player takes, all or nothing. Show
+the plan's verdicts, `replaces` and `mismatch` before applying it, and
+call `bundle::recover` at start.
+
 ## The engine's own screens and widgets
 
 Before writing one, look for it in the engine:
@@ -228,7 +249,7 @@ Before writing one, look for it in the engine:
   `ListCursor` (a list's focus), `Ask` (a question over the screen),
   `NameEntry` (a name typed or spelled on a letter grid) and
   `word_wrap` (in cells, with `ctx.widths()`: Japanese breaks between
-  characters, never before `。` or after `「`). Each says what it shows
+  characters, never before `。` or after `「`; Chinese never splits `……`). Each says what it shows
   as a view, and a skin paints it.
 - The engine's screens react to `UiAction`s. A game with its own actions
   declares them for an engine screen with `ui_actions`

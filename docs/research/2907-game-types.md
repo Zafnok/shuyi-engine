@@ -2,7 +2,7 @@
 
 Research for ticket 2907, measured **2026-11-05** on Nick's machine
 (Windows 11, the GNU host, Rust 1.99.1) at engine commit `e2697683`.
-[ADR-0084](../adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+[ADR-0084](../adr/0084-one-description-of-a-games-types.md)
 records the decision.
 
 **serde is the description, and `schemars` gives its shapes in the

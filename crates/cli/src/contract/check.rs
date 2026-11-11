@@ -372,12 +372,19 @@ mod tests {
     /// English's `menu.title`, and the pack `ru`, whose `menu.title` is
     /// written `title`.
     fn russian(title: &str) -> Lang {
+        one_pack("ru", r#"(name: "Russkij", made_by: Machine)"#, title)
+    }
+
+    /// English's `menu.title`, and the pack `code` described by `info` (its
+    /// `lang.ron`), whose `menu.title` is written `title`.
+    fn one_pack(code: &str, info: &str, title: &str) -> Lang {
         use shuyi_assets::lang::{LangFile, PackRules, from_files};
         let ui = format!(r#"[(key: "menu.title", source: "Start", text: "{title}")]"#);
+        let (info_path, ui_path) = (format!("{code}/lang.ron"), format!("{code}/ui.ron"));
         let files = [
             ("en/ui.ron", r#"{"menu.title": "Start"}"#),
-            ("ru/lang.ron", r#"(name: "Russkij", made_by: Machine)"#),
-            ("ru/ui.ron", ui.as_str()),
+            (info_path.as_str(), info),
+            (ui_path.as_str(), ui.as_str()),
         ]
         .map(|(path, source)| LangFile {
             path,
@@ -438,6 +445,39 @@ mod tests {
         assert!(answer.ok, "{:?}", answer.result);
     }
 
+    #[test]
+    fn check_fails_on_a_wide_character_the_set_a_pack_names_lacks() {
+        // 简 is in the atlas, in the Chinese set, but not in the Japanese
+        // set the pack draws from.
+        let mut atlas = ascii_and("");
+        atlas.wide_sets = [
+            ("ja".to_owned(), [('直', 96)].into()),
+            ("zh-Hans".to_owned(), [('直', 98), ('简', 100)].into()),
+        ]
+        .into();
+        let info =
+            |set: &str| format!(r#"(name: "Pack", made_by: Machine, wide_font: Some("{set}"))"#);
+        let game = |set: &str| Fake {
+            lang: Ok(one_pack("ja", &info(set), "直简")),
+            font_atlas: Some(Ok(atlas.clone())),
+            ..Fake::default()
+        };
+        let answer = check(&game("ja"), &CheckInput::default());
+        assert!(!answer.ok);
+        let errors = &answer.result.as_ref().unwrap().errors;
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].file, "ja/ui.ron");
+        assert!(
+            errors[0]
+                .message
+                .starts_with("'简' (U+7B80) isn't in the font atlas's wide set \"ja\""),
+            "{errors:?}"
+        );
+        // Drawn from the set that has both, it passes.
+        let answer = check(&game("zh-Hans"), &CheckInput::default());
+        assert!(answer.ok, "{:?}", answer.result);
+    }
+
     /// The errors of a game's tips, `title` the one tip's title, whose
     /// loader measures them with `atlas`'s widths, as a game's does when
     /// its atlas loads before its text.
@@ -452,6 +492,7 @@ mod tests {
                 text_lines: 1,
                 line_chars: 10,
                 title_chars: 6,
+                how_lines: 0,
             },
             widths: &widths,
             placeholder: &|_| true,

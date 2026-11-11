@@ -12,7 +12,7 @@ pub mod player;
 use crate::alloc_prelude::*;
 
 use shuyi_assets::voice::{ClipVariant, clip_file};
-use shuyi_ui::audio::{AudioRequest, MusicCommand, SoundId};
+use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand, SharedSamples, SoundId};
 
 use crate::platform::Millis;
 
@@ -75,6 +75,38 @@ pub enum SoundRequest {
         /// Their files, in the order they are expected.
         clips: Vec<String>,
     },
+    /// Make `samples` the sound cue `cue`, which the manifest doesn't have:
+    /// [`Sound`](Self::Sound) and [`Start`](Self::Start) of it play it at its
+    /// own volume, full, once. A cue added before is replaced. Build it with
+    /// [`SoundRequest::add`] (ADR-0039). A record of it holds the samples'
+    /// rate, channels and frames, not the samples.
+    #[non_exhaustive]
+    Add {
+        /// The sound cue.
+        cue: String,
+        /// Its samples.
+        #[serde(serialize_with = "samples_summary")]
+        samples: SharedSamples,
+    },
+    /// Forget the sound cue `cue` that [`Add`](Self::Add) made, stopping
+    /// what plays it.
+    Remove {
+        /// The sound cue.
+        cue: String,
+    },
+}
+
+/// `samples` as a record writes it: its rate, channels and frames.
+fn samples_summary<S: serde::Serializer>(
+    samples: &SharedSamples,
+    out: S,
+) -> Result<S::Ok, S::Error> {
+    use serde::ser::SerializeStruct;
+    let mut summary = out.serialize_struct("Samples", 3)?;
+    summary.serialize_field("rate", &samples.rate())?;
+    summary.serialize_field("channels", &samples.channels())?;
+    summary.serialize_field("frames", &samples.frames())?;
+    summary.end()
 }
 
 impl SoundRequest {
@@ -84,6 +116,14 @@ impl SoundRequest {
             id,
             cue: cue.into(),
             volume,
+        }
+    }
+
+    /// An [`Add`](Self::Add) of `samples` as `cue`.
+    pub fn add(cue: impl Into<String>, samples: SharedSamples) -> Self {
+        Self::Add {
+            cue: cue.into(),
+            samples,
         }
     }
 
@@ -110,6 +150,8 @@ impl SoundRequest {
             AudioRequest::PreloadVoices { lines } => Self::PreloadVoices {
                 clips: lines.iter().map(|(l, v)| clip_file(l, *v)).collect(),
             },
+            AudioRequest::AddSound { cue, samples, .. } => Self::add(cue.clone(), samples.clone()),
+            AudioRequest::RemoveSound { cue } => Self::Remove { cue: cue.clone() },
             // The music's, and any request this engine doesn't know yet.
             _ => return None,
         })
@@ -123,13 +165,10 @@ pub struct AudioFrame<'a> {
     pub requests: &'a [SoundRequest],
     /// What to do to the music, in order.
     pub music: &'a [MusicCommand],
-    /// The player's music volume, 0–1: it multiplies every track's own
-    /// volume, a track already playing too.
-    pub music_volume: f32,
-    /// The player's sound volume, 0–1: it multiplies every sound's own.
-    pub sound_volume: f32,
-    /// How loud voice clips play, 0–1, the one playing too.
-    pub voice_volume: f32,
+    /// What every sound, track and voice clip plays at (ADR-0091): each
+    /// cue's own volume times its gain ([`Gains::sound`],
+    /// [`Gains::music`], [`Gains::voice`]), one already playing too.
+    pub gains: Gains<'a>,
 }
 
 /// A backend's sound device.
@@ -149,7 +188,18 @@ pub trait Audio {
     /// new one has loaded.
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)>;
 
-    /// Plays one frame's `frame` of audio at `now`: the volumes first, then
+    /// The voice clip sounding at `now`, by its file
+    /// ([`SoundRequest::Voice`]), or asked for and still loading: `None`
+    /// once it has ended, and for a clip stopped, replaced, whose file
+    /// failed or that loaded too late to be played. A clip held by
+    /// [`suspend`](Self::suspend) still sounds. `None` by default, for a
+    /// device that plays no voices.
+    fn voice_playing(&self, now: Millis) -> Option<&str> {
+        let _ = now;
+        None
+    }
+
+    /// Plays one frame's `frame` of audio at `now`: the gains first, then
     /// the requests and the music commands in order. It also checks on
     /// what is still loading, so it is called every frame, with nothing to
     /// play too.
@@ -268,19 +318,50 @@ mod tests {
     }
 
     #[test]
+    fn a_sound_added_reaches_the_device_and_its_record_holds_no_samples() {
+        let samples = shuyi_ui::audio::Samples::from_u8(11_025, 2, &[128; 8]);
+        let mut queue = shuyi_ui::audio::AudioQueue::<Voice>::default();
+        assert_eq!(
+            queue.add_sound("tone", samples.unwrap_or_else(|e| panic!("{e}"))),
+            Ok(())
+        );
+        queue.remove_sound("tone");
+        let got: Vec<_> = queue
+            .take()
+            .iter()
+            .filter_map(SoundRequest::from_request)
+            .collect();
+        let [
+            SoundRequest::Add { cue, samples, .. },
+            SoundRequest::Remove { cue: removed },
+        ] = &got[..]
+        else {
+            panic!("{got:?}");
+        };
+        assert_eq!((cue.as_str(), removed.as_str()), ("tone", "tone"));
+        assert_eq!(samples.frames(), 4);
+        let record = ron::to_string(&got[0]).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            record,
+            "Add(cue:\"tone\",samples:(rate:11025,channels:2,frames:4))"
+        );
+    }
+
+    #[test]
     fn silence_plays_nothing() {
         let mut silent = Silent;
+        let groups = shuyi_ui::audio::SoundGroups::default();
+        let gains = shuyi_ui::audio::GroupGains::full(&groups);
         let frame = AudioFrame {
             requests: &[SoundRequest::StopVoice],
             music: &[],
-            music_volume: 1.0,
-            sound_volume: 1.0,
-            voice_volume: 1.0,
+            gains: Gains::new(&groups, &gains),
         };
         silent.play(&frame, Millis(0));
         silent.suspend();
         silent.resume();
         silent.stop_all();
         assert_eq!(silent.music_playing(Millis(0)), None);
+        assert_eq!(silent.voice_playing(Millis(0)), None, "it plays no voices");
     }
 }

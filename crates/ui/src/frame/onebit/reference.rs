@@ -7,45 +7,27 @@
 
 use shuyi_assets::bitmap::dither::brightness;
 use shuyi_assets::font::FALLBACK_GLYPH;
-use shuyi_assets::ink::Ink;
 
 use super::{
-    Font, Frame, HEIGHT, Image, Images, InkShades, Phase, Placed, ROW_BYTES, Shade, Shades, WIDTH,
-    alpha_drawn, darken,
+    Base, Font, Frame, HEIGHT, Image, Images, Pattern, Phase, Placed, ROW_BYTES, Shade, Shades,
+    WIDTH, alpha_drawn, darken,
 };
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Item, Layer, Paint, PxRect, Rect, Sprite};
 use crate::frame::painted::{PaintedKind, PaintedSprite, PaintedTable};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
-pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
-    render_marked(buf, font, images, out, &mut |_| {});
-}
-
-/// [`render`], calling `mark` as each [`Phase`] ends.
-pub fn render_marked(
-    buf: &GlyphBuffer,
-    font: &Font<'_>,
-    images: &impl Images,
-    out: &mut Frame,
-    mark: &mut impl FnMut(Phase),
-) {
-    render_marked_with(buf, font, images, &InkShades, out, mark);
-}
-
-/// Draws `buf` into `out` exactly as [`render_with`](super::render_with)
-/// does.
-pub fn render_with(
+pub fn render(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
     shades: &impl Shades,
     out: &mut Frame,
 ) {
-    render_marked_with(buf, font, images, shades, out, &mut |_| {});
+    render_marked(buf, font, images, shades, out, &mut |_| {});
 }
 
-/// [`render_with`], calling `mark` as each [`Phase`] ends.
-pub fn render_marked_with(
+/// [`render`], calling `mark` as each [`Phase`] ends.
+pub fn render_marked(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
@@ -112,9 +94,9 @@ fn rows<'a>(font: &Font<'a>, glyph: char) -> Option<&'a [u8]> {
 }
 
 /// The pixel rows of half `half` of wide glyph `glyph`, looked up in the
-/// wide glyph map.
-fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize) -> Option<&'a [u8]> {
-    let index = font.atlas.wide.get(&glyph)?;
+/// wide sets, `set` first.
+fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize, set: Option<&str>) -> Option<&'a [u8]> {
+    let index = &font.atlas.wide_cell(set, glyph)?;
     let rows = font.atlas.cell_h as usize;
     let start = (*index as usize + half) * rows;
     font.bits.get(start..start + rows)
@@ -126,14 +108,14 @@ fn wide_rows<'a>(font: &Font<'a>, glyph: char, half: usize) -> Option<&'a [u8]> 
 fn cell_rows<'a>(font: &Font<'a>, buf: &GlyphBuffer, x: i32, y: i32) -> Option<&'a [u8]> {
     let cell = buf.get(x, y)?;
     if cell.is_continuation() {
-        return wide_rows(font, buf.get(x - 1, y)?.glyph, 1);
+        return wide_rows(font, buf.get(x - 1, y)?.glyph, 1, buf.widths().wide_font());
     }
     if cell.glyph == ' ' {
         return None;
     }
     let next = buf.get(x + 1, y);
     if next.is_some_and(Cell::is_continuation)
-        && let Some(rows) = wide_rows(font, cell.glyph, 0)
+        && let Some(rows) = wide_rows(font, cell.glyph, 0, buf.widths().wide_font())
     {
         return Some(rows);
     }
@@ -354,11 +336,17 @@ fn draw_glyph(target: &mut Target<'_>, rows: Option<&[u8]>, cell: Clip, scale: i
             for dy in -1..=height {
                 let near = (row(dy - 1) | row(dy) | row(dy + 1)) >> 1;
                 let edge = near | near << 1 | near >> 1;
-                let white = Pen::Paint(Shade::of_ink(Ink::White));
+                let white = Pen::Paint(Shade::rows([u8::MAX; 8]));
                 target.run(cell.y0 + dy, cell.x0 - 1, edge, white);
             }
         }
     }
+}
+
+/// A 50% checker: a missing picture's rectangle, and the pixels a dimmed
+/// one turns white.
+fn grey() -> Shade {
+    Shade::from(Pattern::new(Base::Dither50))
 }
 
 fn widen(byte: u8, scale: i64) -> u64 {
@@ -387,7 +375,7 @@ fn draw_sprite<I: Images, S: Shades>(
 ) {
     let shown = at.screen(sprite.clip).within(target.clip);
     let Some(image) = look.1.image(sprite.image) else {
-        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
+        target.fill(shown, Pen::Paint(grey()));
         return;
     };
     draw_one_bit(
@@ -412,7 +400,7 @@ fn draw_painted<I: Images, S: Shades>(
     let placed = Placed::of_painted(painted);
     let shown = at.screen(painted.clip).within(target.clip);
     let Some(picture) = look.3.get(painted.picture) else {
-        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
+        target.fill(shown, Pen::Paint(grey()));
         return;
     };
     let (width, height) = picture.size();
@@ -504,9 +492,7 @@ fn draw_one_bit(
             #[allow(clippy::cast_possible_truncation)] // screen pixels
             let white = match (solid, sprite.paint) {
                 (Some(shade), _) => shade.is_white(x as i32, y as i32),
-                (None, Paint::Dimmed) => {
-                    white || Shade::of_ink(Ink::Grey).is_white(x as i32, y as i32)
-                }
+                (None, Paint::Dimmed) => white || grey().is_white(x as i32, y as i32),
                 (None, _) => white,
             };
             target.set(x, y, white);

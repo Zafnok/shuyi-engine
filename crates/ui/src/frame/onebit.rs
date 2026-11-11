@@ -6,24 +6,19 @@
 //!
 //! Colours become [`Shade`]s, 8 × 8 patterns fixed to the screen's pixels
 //! (so neighbouring tiles line up and patterns don't swim when things
-//! move), as a [`Shades`] says. Two say it:
-//!
-//! - **The game's inks** ([`InkShades`], game ADR-0074): a colour that is
-//!   an ink's reserved [code](Ink::code) (the Playdate's palette is made
-//!   of them) is drawn in that ink, any other one white or black by its
-//!   brightness. [`render`] draws with them.
-//! - **Roles' patterns** ([`PatternMap`], ADR-0008 §4): the skin's palette
-//!   names its colours by role, and its pattern map gives each role a
-//!   foreground and a background [`Pattern`]. A colour of no role is
-//!   dithered by its [`luminance`]; a glyph's is solid, white or black, as
-//!   text is never dithered. [`to_one_bit`] draws with them.
+//! move), as a [`Shades`] says. A game's says it with roles' patterns
+//! ([`PatternMap`], ADR-0008 §4, ADR-0026): the skin's palette names its
+//! colours by role, and its pattern map gives each role a foreground and a
+//! background [`Pattern`], an `edge` and an `invert`. A colour of no role
+//! is dithered by its [`luminance`]; a glyph's is solid, white or black,
+//! as text is never dithered. [`to_one_bit`] draws with them.
 //!
 //! The order: the white ground; a backdrop's scene in its window
 //! (game ADR-0048), drawn the same way; then the cell backgrounds, `Under`
-//! items, the white edges of [`Ink::BlackEdged`] glyphs, the glyphs (each
+//! items, the white edges of [edged](Shade::edged) glyphs, the glyphs (each
 //! half of a wide one in its own cell: the font's one-bit atlas keeps the
 //! halves as two cells),
-//! `Over` items, and last the [`Ink::Invert`] rectangles, which flip what
+//! `Over` items, and last the [flipping](Shade::flips) rectangles, which flip what
 //! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
 //! *One-bit pictures*). A painted picture (ADR-0078) is looked up in the
 //! frame's table: a one-bit one is drawn as a one-bit sprite, an RGBA or
@@ -44,7 +39,6 @@ use shuyi_assets::bitmap::dither::brightness;
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageId;
-use shuyi_assets::ink::Ink;
 pub use shuyi_assets::onebit::{Base, Pattern, PatternMapDef, RolePatterns, Rows};
 
 use crate::frame::color::Rgb;
@@ -81,51 +75,20 @@ pub fn is_white(frame: &Frame, x: i32, y: i32) -> bool {
     byte >> (7 - (x & 7)) & 1 == 1
 }
 
-/// The ink a colour is drawn in: the ink it is the [code](Ink::code) of,
-/// or else white if it is at least half bright (in the eye's weighting of
-/// red, green and blue), black if not.
-pub fn ink_of(rgb: Rgb) -> Ink {
-    Ink::from_code([rgb.r, rgb.g, rgb.b]).unwrap_or_else(|| {
-        let luma = 299 * u32::from(rgb.r) + 587 * u32::from(rgb.g) + 114 * u32::from(rgb.b);
-        if luma >= 128 * 1000 {
-            Ink::White
-        } else {
-            Ink::Black
-        }
-    })
-}
-
-/// Whether `ink` makes screen pixel `(x, y)` white. [`Ink::BlackEdged`]
-/// and [`Ink::Invert`] are black here: the edge is drawn around glyphs,
-/// and only rectangles flip.
-pub const fn ink_is_white(ink: Ink, x: i32, y: i32) -> bool {
-    match ink {
-        Ink::White => true,
-        Ink::Black | Ink::BlackEdged | Ink::Invert => false,
-        // Black where x + y is even.
-        Ink::Grey => x.rem_euclid(2) != y.rem_euclid(2),
-        // Black every fourth pixel of every other row, the rows staggered.
-        Ink::Dots => !(y.rem_euclid(2) == 0 && x.rem_euclid(4) == y.rem_euclid(4)),
-        // Black where x − y is a multiple of 4: lines down to the right.
-        Ink::Diagonals => (x - y).rem_euclid(4) != 0,
-        // A checker of 2 × 2 squares: a 1-pixel line of it is dashed.
-        Ink::Dashes => x.div_euclid(2).rem_euclid(2) != y.div_euclid(2).rem_euclid(2),
-    }
-}
-
 /// How a colour is drawn: an 8 × 8 pattern fixed to the screen, and
-/// what two of the game's inks do besides.
+/// what a role's `edge` and `invert` do besides (ADR-0089).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Shade {
     /// The pattern: screen pixel `(x, y)` takes bit `x % 8` (from the
     /// highest) of row `y % 8`, a set bit white. Every pattern repeats
     /// within 8 pixels across, so a row's byte is the same all along it.
     pub rows: Rows,
-    /// A glyph in it gets a white edge one pixel wide around it
-    /// ([`Ink::BlackEdged`]).
+    /// A glyph in it gets a white edge one pixel wide around it, so it
+    /// reads over a pattern (a role's `edge`); anything else in it is
+    /// drawn in the pattern.
     pub edged: bool,
     /// A rectangle in it flips the pixels under it, after everything else
-    /// ([`Ink::Invert`]); anything else in it is drawn in the pattern.
+    /// (a role's `invert`); anything else in it is drawn in the pattern.
     pub flips: bool,
 }
 
@@ -136,28 +99,6 @@ impl Shade {
             rows,
             edged: false,
             flips: false,
-        }
-    }
-
-    /// How `ink` draws ([`ink_is_white`]).
-    #[allow(clippy::cast_sign_loss)] // 0..8
-    pub const fn of_ink(ink: Ink) -> Self {
-        let mut rows = [0; 8];
-        let mut y = 0;
-        while y < 8 {
-            let mut x = 0;
-            while x < 8 {
-                if ink_is_white(ink, x, y) {
-                    rows[y as usize] |= 0x80 >> x;
-                }
-                x += 1;
-            }
-            y += 1;
-        }
-        Self {
-            rows,
-            edged: matches!(ink, Ink::BlackEdged),
-            flips: matches!(ink, Ink::Invert),
         }
     }
 
@@ -190,42 +131,13 @@ pub trait Shades {
     fn shape(&self, rgb: Rgb) -> Shade;
 }
 
-/// The game's inks (game ADR-0074): everything in `rgb` is drawn in
-/// [`ink_of`]`(rgb)`.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub struct InkShades;
+/// White.
+const WHITE: Shade = Shade::rows([u8::MAX; 8]);
 
-/// Each ink's [`Shade`], by `ink as usize`.
-const INK_SHADES: [Shade; Ink::ALL.len()] = {
-    let mut table = [Shade::rows([0; 8]); Ink::ALL.len()];
-    let mut i = 0;
-    while i < Ink::ALL.len() {
-        table[Ink::ALL[i] as usize] = Shade::of_ink(Ink::ALL[i]);
-        i += 1;
-    }
-    table
-};
-
-impl InkShades {
-    /// How `ink` draws, looked up.
-    const fn of(ink: Ink) -> Shade {
-        INK_SHADES[ink as usize]
-    }
-}
-
-impl Shades for InkShades {
-    fn ground(&self, rgb: Rgb) -> Shade {
-        Self::of(ink_of(rgb))
-    }
-
-    fn glyph(&self, rgb: Rgb) -> Shade {
-        Self::of(ink_of(rgb))
-    }
-
-    fn shape(&self, rgb: Rgb) -> Shade {
-        Self::of(ink_of(rgb))
-    }
-}
+/// A 50% checker, black where `x + y` is even ([`Base::Dither50`]'s
+/// pixels): a missing picture's rectangle, and the pixels a dimmed one
+/// turns white.
+const GREY: Shade = Shade::rows([0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa]);
 
 /// The index in a [`Frame`] of the byte holding screen pixel `(x, y)`,
 /// which must be on the screen.
@@ -258,10 +170,7 @@ impl<'a> Font<'a> {
             return Err("the one-bit font has cells at most 8 pixels wide");
         }
         let rows = atlas.cell_h as usize;
-        let narrow = atlas.glyphs.values().map(|&i| i as usize + 1);
-        let wide = atlas.wide.values().map(|&i| i as usize + 2);
-        let needed = narrow.chain(wide).map(|cells| cells * rows);
-        if needed.max().unwrap_or(0) > bits.len() {
+        if atlas.cell_end() as usize * rows > bits.len() {
             // check-text: not player text (a build problem for the log)
             return Err("the one-bit atlas is shorter than its glyph map");
         }
@@ -287,10 +196,11 @@ impl<'a> Font<'a> {
     }
 
     /// The pixel rows of half `half` (0 the left, 1 the right) of wide
-    /// glyph `glyph`, or `None` if the font has no wide glyph `glyph`.
-    fn wide_rows(&self, glyph: char, half: usize) -> Option<&'a [u8]> {
+    /// glyph `glyph`, from the wide set `set` first
+    /// ([`FontAtlasDef::wide_cell`]), or `None` if no set has `glyph`.
+    fn wide_rows(&self, glyph: char, half: usize, set: Option<&str>) -> Option<&'a [u8]> {
         let rows = self.atlas.cell_h as usize;
-        let start = (*self.atlas.wide.get(&glyph)? as usize + half) * rows;
+        let start = (self.atlas.wide_cell(set, glyph)? as usize + half) * rows;
         self.bits.get(start..start + rows)
     }
 
@@ -303,13 +213,16 @@ impl<'a> Font<'a> {
         let cell = buf.get(x, y)?;
         if cell.is_continuation() {
             let first = buf.get(x.checked_sub(1)?, y)?;
-            return self.wide_rows(first.glyph, 1);
+            return self.wide_rows(first.glyph, 1, buf.widths().wide_font());
         }
         if cell.glyph == ' ' {
             return None;
         }
         let wide = buf.get(x + 1, y).is_some_and(Cell::is_continuation);
-        match self.wide_rows(cell.glyph, 0).filter(|_| wide) {
+        match self
+            .wide_rows(cell.glyph, 0, buf.widths().wide_font())
+            .filter(|_| wide)
+        {
             Some(rows) => Some(rows),
             None => self.rows(cell.glyph),
         }
@@ -506,38 +419,22 @@ impl Phase {
     }
 }
 
-/// Draws `buf` into `out` in the game's inks ([`InkShades`]), from its
+/// Draws `buf` into `out`, its colours drawn as `shades` says, from its
 /// top-left corner; whatever lies past 400 × 240 pixels is cut off. See
 /// the [module](self) for the order.
-pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
-    render_with(buf, font, images, &InkShades, out);
-}
-
-/// [`render`], calling `mark` as each [`Phase`] ends (the Playdate's
-/// bench build times them).
-pub fn render_marked(
-    buf: &GlyphBuffer,
-    font: &Font<'_>,
-    images: &impl Images,
-    out: &mut Frame,
-    mark: &mut impl FnMut(Phase),
-) {
-    render_marked_with(buf, font, images, &InkShades, out, mark);
-}
-
-/// [`render`], its colours drawn as `shades` says.
-pub fn render_with(
+pub fn render(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
     shades: &impl Shades,
     out: &mut Frame,
 ) {
-    render_marked_with(buf, font, images, shades, out, &mut |_| {});
+    render_marked(buf, font, images, shades, out, &mut |_| {});
 }
 
-/// [`render_with`], calling `mark` as each [`Phase`] ends.
-pub fn render_marked_with(
+/// [`render`], calling `mark` as each [`Phase`] ends (the Playdate's
+/// bench build times them).
+pub fn render_marked(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
@@ -562,20 +459,9 @@ pub fn render_marked_with(
 /// screen where they may differ: around a changed cell (one pixel more
 /// for a glyph's edge), under a changed item (the old and the new one),
 /// the window of a changed backdrop, and a painted item whose picture
-/// changed.
+/// changed. The colours are drawn as `shades` says (as they were for
+/// `old`).
 pub fn render_changed(
-    old: &GlyphBuffer,
-    new: &GlyphBuffer,
-    font: &Font<'_>,
-    images: &impl Images,
-    out: &mut Frame,
-) {
-    render_changed_with(old, new, font, images, &InkShades, out);
-}
-
-/// [`render_changed`], the colours drawn as `shades` says (as they were
-/// for `old`).
-pub fn render_changed_with(
     old: &GlyphBuffer,
     new: &GlyphBuffer,
     font: &Font<'_>,
@@ -584,7 +470,7 @@ pub fn render_changed_with(
     out: &mut Frame,
 ) {
     if old.spec() != new.spec() {
-        render_with(new, font, images, shades, out);
+        render(new, font, images, shades, out);
         return;
     }
     let mut dirty = Tiles::default();
@@ -874,12 +760,10 @@ enum Pen {
 
 impl Pen {
     /// Paints white.
-    const WHITE: Self = Self::ink(Ink::White);
+    const WHITE: Self = Self::Paint(WHITE);
 
-    /// Paints in `ink`.
-    const fn ink(ink: Ink) -> Self {
-        Self::Paint(InkShades::of(ink))
-    }
+    /// Paints grey.
+    const GREY: Self = Self::Paint(GREY);
 
     /// Byte `byte` with this pen applied to the pixels `mask` selects, on
     /// screen row `y`.
@@ -1479,7 +1363,7 @@ fn draw_sprite<I: Images, S: Shades>(
         return;
     }
     let Some(image) = look.images.image(sprite.image) else {
-        target.fill(shown, Pen::ink(Ink::Grey));
+        target.fill(shown, Pen::GREY);
         return;
     };
     let placed = Placed::of_sprite(sprite);
@@ -1501,7 +1385,7 @@ fn draw_painted<I: Images, S: Shades>(
         return;
     }
     let Some(picture) = look.pictures.get(painted.picture) else {
-        target.fill(shown, Pen::ink(Ink::Grey));
+        target.fill(shown, Pen::GREY);
         return;
     };
     let placed = Placed::of_painted(painted);
@@ -1644,7 +1528,7 @@ fn draw_one_bit(
                 (Some(shade), _) => shade.row(y),
                 // One-bit has no dimming: every other pixel goes white
                 // (`docs/design/playdate.md`, the faded listener).
-                (None, Paint::Dimmed) => white | InkShades::of(Ink::Grey).row(y),
+                (None, Paint::Dimmed) => white | GREY.row(y),
                 (None, _) => white,
             };
             // The paint's bits where it is drawn, the frame's elsewhere.
@@ -1658,5 +1542,7 @@ fn draw_one_bit(
 mod painted_tests;
 #[cfg(test)]
 mod speed_tests;
+#[cfg(test)]
+pub(crate) mod test_map;
 #[cfg(test)]
 mod tests;

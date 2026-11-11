@@ -120,6 +120,7 @@ fn the_tools_start_on_the_stage_in_either_look() {
         stage: true,
         look: MapLook::Tiles,
         seed: 4,
+        preview: false,
     }
     .harness();
     assert_eq!(h.screens(), ["stage"]);

@@ -5,72 +5,85 @@
 //! (the working tree) and of the base (a `git worktree` at the base
 //! revision) with `cargo-public-api`, diffs the two lists, and runs
 //! `cargo-semver-checks` against the base. With `--pr-branch`, a semver
-//! finding needs a `Breaking:` line in the branch's ticket. With
+//! finding needs a `Breaking:` line in the PR's ticket, which its
+//! `--pr-title` names first (ticket 2051, ADR-0092). With
 //! `--verdict`, it writes what the change did in one word (ticket 2030), for
 //! CI's `api:` label on the PR. With `--pr-branch` too, a change to the
 //! public API that changes no file of the book needs a `Book:` line in the
-//! branch's ticket (ticket 2815).
+//! PR's ticket (ticket 2815). A change to the contract's `VERSION`
+//! raises it by exactly one over the base's ([`contract`], ticket 2052).
 //!
-//! **What is checked** (ticket 2040) is one configuration per crate, on the
-//! host, in a debug build:
+//! **What is checked** (tickets 2040 and 2041) is one configuration per
+//! crate, on the host, in a debug build, the same in both tools: each crate
+//! with every feature it has, so a public item behind a feature that is off
+//! by default is listed and judged alike. But:
 //!
-//! - `shuyi-alloc-count` with `global`, so its feature-gated module is
-//!   listed too. A release build's `global` is not checked: the same items,
-//!   which read nothing there.
+//! - `shuyi-alloc-count`'s `global` is checked in a debug build only. A
+//!   release build's is not: the same items, which read nothing there.
 //! - `shuyi-playdate` without `--cfg shuyi_playdate_sdk`: the SDK-free
 //!   surface, `stack_high_water` and `main!` among it. Its doc-hidden
 //!   `device` module is not checked, and of `main!` only that it exists: a
 //!   change to its arms shows in neither tool.
-//! - `shuyi-app` with the features it had before `in-house-sound`, as that one
-//!   brings CPAL, which needs the root's patch (ADR-0075), and the semver check builds
-//!   a crate outside this workspace.
-//! - The other eight with each tool's own default: the listing has their
-//!   default features, and the semver check the features its heuristic turns
-//!   on, so a public item behind another feature is judged but not listed.
+//! - `shuyi-app` without `in-house-sound`, as that one brings CPAL, which
+//!   needs the root's patch (ADR-0075), and the semver check builds a crate
+//!   outside this workspace. `shuyi`'s `app` builds it without it too.
 //!
-//! No crate is checked in every combination of its features.
+//! No crate is checked in every combination of its features. A test holds
+//! each entry to its manifest: a new feature is chosen, or left out with a
+//! reason. A side whose manifest lacks a chosen feature builds without it,
+//! and the semver check takes those both sides have.
 //!
 //! Every `git`, `cargo` and `rustup` call goes through [`Runner`], which the
 //! tests fake.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::contract;
 use crate::layers::is_engine;
-use crate::tickets::{book_lines, breaking_lines, ticket_id_from_branch};
+use crate::tickets::{Pr, PrKind, book_lines, breaking_lines};
 
-/// The features a crate's public API is checked with.
+/// The features a crate's public API is checked with. There is no "each
+/// tool's own default": the listing's (the default features) and the semver
+/// check's (its heuristic's) differ (ticket 2041).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Features {
-    /// Each tool's own default (the module's docs say what differs).
-    ToolDefaults,
     /// Exactly these features, in the listing and the semver check alike, on
-    /// the head and the base alike.
+    /// the head and the base alike. A side whose manifest lacks one (a PR that
+    /// adds or removes a feature) builds without it.
     Only(&'static [&'static str]),
 }
 
 impl Features {
-    /// What `cargo-public-api` is given.
-    fn listing_args(self) -> Vec<&'static str> {
-        self.args("--no-default-features")
+    /// What `cargo-public-api` is given, in a workspace whose manifest of the
+    /// crate has the features `declared`.
+    fn listing_args(self, declared: &HashSet<String>) -> Vec<&'static str> {
+        self.args("--no-default-features", |name| declared.contains(name))
     }
 
     /// What `cargo-semver-checks` is given. Its `--features` holds for the
-    /// baseline and the current version both.
-    fn semver_args(self) -> Vec<&'static str> {
-        self.args("--only-explicit-features")
+    /// baseline and the current version both, so it takes those both
+    /// manifests have: an item behind a feature new on one side is an
+    /// addition or a removal in the listing.
+    fn semver_args(self, head: &HashSet<String>, base: &HashSet<String>) -> Vec<&'static str> {
+        self.args("--only-explicit-features", |name| {
+            head.contains(name) && base.contains(name)
+        })
     }
 
-    fn args(self, only: &'static str) -> Vec<&'static str> {
-        match self {
-            Self::ToolDefaults => Vec::new(),
-            Self::Only(features) => std::iter::once(only)
-                .chain(features.iter().flat_map(|name| ["--features", *name]))
-                .collect(),
-        }
+    fn args(self, only: &'static str, declared: impl Fn(&str) -> bool) -> Vec<&'static str> {
+        let Self::Only(features) = self;
+        std::iter::once(only)
+            .chain(
+                features
+                    .iter()
+                    .filter(|name| declared(name))
+                    .flat_map(|name| ["--features", *name]),
+            )
+            .collect()
     }
 }
 
@@ -81,33 +94,60 @@ pub struct ApiCrate {
     pub features: Features,
 }
 
-const fn defaults(name: &'static str) -> ApiCrate {
-    ApiCrate {
-        name,
-        features: Features::ToolDefaults,
-    }
-}
-
 /// Every engine crate (a workspace member [`is_engine`] names), the one
 /// catalog of what a game can build on: [`check_catalog`] fails a run on a
 /// member left out. Not `xtask` (never shipped), the examples or the book.
 /// Not read from `publish`: every crate is unpublished before the first
 /// release.
 pub const API_CRATES: &[ApiCrate] = &[
-    defaults("shuyi-core"),
-    defaults("shuyi-assets"),
-    defaults("shuyi-ui"),
-    defaults("shuyi-platform"),
+    // Every feature, as for the crates below but where one says otherwise:
+    // what the semver check's own heuristic turned on (no name it skips).
+    ApiCrate {
+        name: "shuyi-core",
+        features: Features::Only(&["std", "schema", "toy"]),
+    },
+    ApiCrate {
+        name: "shuyi-assets",
+        features: Features::Only(&["std", "png", "sample-actions", "golden"]),
+    },
+    ApiCrate {
+        name: "shuyi-ui",
+        features: Features::Only(&[
+            "std",
+            "debug-tools",
+            "storage-conformance",
+            "onebit-reference",
+            "raster",
+            "toy",
+            "schema",
+        ]),
+    },
+    ApiCrate {
+        name: "shuyi-platform",
+        features: Features::Only(&["std", "harness", "link", "heap", "capture", "schema"]),
+    },
     // Its `in-house-sound` can't be built outside this workspace (ADR-0075): the rest,
     // which is what the semver check's own choice comes to without it.
     ApiCrate {
         name: "shuyi-app",
         features: Features::Only(&["link", "capture", "sound-probe"]),
     },
-    defaults("shuyi-cli"),
-    defaults("shuyi"),
-    defaults("shuyi-sound"),
-    defaults("shuyi-sound-out"),
+    ApiCrate {
+        name: "shuyi-cli",
+        features: Features::Only(&["toy", "jis"]),
+    },
+    ApiCrate {
+        name: "shuyi",
+        features: Features::Only(&["std", "app", "schema", "script"]),
+    },
+    ApiCrate {
+        name: "shuyi-sound",
+        features: Features::Only(&["std", "wav", "vorbis"]),
+    },
+    ApiCrate {
+        name: "shuyi-sound-out",
+        features: Features::Only(&[]),
+    },
     // The crate has no feature; none may join the check unchosen.
     ApiCrate {
         name: "shuyi-playdate",
@@ -117,6 +157,11 @@ pub const API_CRATES: &[ApiCrate] = &[
     ApiCrate {
         name: "shuyi-alloc-count",
         features: Features::Only(&["global"]),
+    },
+    // The script runtime (ADR-0093) has no feature.
+    ApiCrate {
+        name: "shuyi-script",
+        features: Features::Only(&[]),
     },
 ];
 
@@ -209,8 +254,10 @@ pub struct Options {
     /// `--base <rev>`: the revision to compare with, or `git merge-base HEAD
     /// main`.
     pub base: Option<String>,
-    /// `--pr-branch <branch>`: check the rule for this branch's ticket.
+    /// `--pr-branch <branch>`: check the rule for this PR's ticket.
     pub pr_branch: Option<String>,
+    /// `--pr-title <title>`: the PR's title, which names its ticket first.
+    pub pr_title: Option<String>,
     /// `--summary <file>`: append the summary's Markdown to this file.
     pub summary: Option<PathBuf>,
     /// `--verdict <file>`: write the [`Label`]'s word to this file.
@@ -226,6 +273,7 @@ impl Options {
             match (arg.as_str(), rest.next()) {
                 ("--base", Some(value)) => options.base = Some(value.clone()),
                 ("--pr-branch", Some(value)) => options.pr_branch = Some(value.clone()),
+                ("--pr-title", Some(value)) => options.pr_title = Some(value.clone()),
                 ("--summary", Some(value)) => options.summary = Some(PathBuf::from(value)),
                 ("--verdict", Some(value)) => options.verdict = Some(PathBuf::from(value)),
                 _ => return None,
@@ -358,9 +406,11 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             ..Outcome::default()
         };
     }
-    let compared = base_revision(root, options, runner)
-        .and_then(|base| compare(root, &base, runner).map(|crates| (base, crates)));
-    let (base, crates) = match compared {
+    let compared = base_revision(root, options, runner).and_then(|base| {
+        let contract = contract::check(root, &base, runner);
+        compare(root, &base, runner).map(|crates| (base, crates, contract))
+    });
+    let (base, crates, contract) = match compared {
         Ok(compared) => compared,
         Err(error) => {
             return Outcome {
@@ -370,22 +420,24 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
         }
     };
     let warnings = lost_lines(&crates);
-    let verdict = options
-        .pr_branch
-        .as_deref()
-        .map(|branch| rule(&crates, branch, &|id| done_ticket(root, id)));
-    let book = options.pr_branch.as_deref().map(|branch| {
+    let pr = options.pr_branch.as_deref().map(|branch| Pr {
+        branch,
+        title: options.pr_title.as_deref(),
+    });
+    let verdict = pr.map(|pr| rule(&crates, &pr, &|id| done_ticket(root, id)));
+    let book = pr.map(|pr| {
         changed_files(root, &base, runner).map_or_else(Verdict::Fail, |changed| {
-            book_rule(&crates, branch, &changed, &|id| done_ticket(root, id))
+            book_rule(&crates, &pr, &changed, &|id| done_ticket(root, id))
         })
     });
-    let errors = [&verdict, &book]
+    let mut errors: Vec<String> = [&verdict, &book]
         .into_iter()
         .filter_map(|verdict| match verdict {
             Some(Verdict::Fail(why)) => Some(why.clone()),
             _ => None,
         })
         .collect();
+    errors.extend(contract.err());
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),
         label: Some(self::verdict(&crates)),
@@ -504,18 +556,21 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
     // both), and sources older than the head's builds: the base would be
     // built on the head's crates.
     let base_target_dir = root.join(BASE_TARGET_DIR);
-    check_catalog(&packages(root, runner)?, API_CRATES)?;
+    let in_head = packages(root, runner)?;
+    check_catalog(&in_head.keys().cloned().collect(), API_CRATES)?;
     let in_base = packages(&base_root, runner)?;
     API_CRATES
         .iter()
         .map(|krate| {
             let name = krate.name;
-            let head = listing(root, krate, &target_dir, runner)?;
-            if !in_base.contains(name) {
+            let head_features = &in_head[name];
+            let head = listing(root, krate, head_features, &target_dir, runner)?;
+            let Some(base_features) = in_base.get(name) else {
                 return Ok(CrateApi::new(name, None, &head, Vec::new()));
-            }
-            let base = listing(&base_root, krate, &base_target_dir, runner)?;
-            let findings = semver(root, krate, &base_root, runner)?;
+            };
+            let base = listing(&base_root, krate, base_features, &base_target_dir, runner)?;
+            let features = krate.features.semver_args(head_features, base_features);
+            let findings = semver(root, name, &features, &base_root, runner)?;
             Ok(CrateApi::new(name, Some(&base), &head, findings))
         })
         .collect()
@@ -556,8 +611,9 @@ pub fn check_catalog(members: &HashSet<String>, catalog: &[ApiCrate]) -> Result<
     }
 }
 
-/// The names of the workspace's packages in `dir`.
-fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashSet<String>, String> {
+/// The workspace's packages in `dir`, by name, each with the features its
+/// manifest has.
+fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, HashSet<String>>, String> {
     let ran = run_ok(
         runner,
         dir,
@@ -570,15 +626,24 @@ fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashSet<String>, String> 
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|package| package["name"].as_str())
-        .map(str::to_string)
+        .filter_map(|package| {
+            let features = package["features"]
+                .as_object()
+                .into_iter()
+                .flat_map(serde_json::Map::keys)
+                .cloned()
+                .collect();
+            Some((package["name"].as_str()?.to_string(), features))
+        })
         .collect())
 }
 
-/// `krate`'s public items in the workspace in `dir`, one per line.
+/// `krate`'s public items in the workspace in `dir`, whose manifest of it has
+/// the features `declared`, one per line.
 fn listing(
     dir: &Path,
     krate: &ApiCrate,
+    declared: &HashSet<String>,
     target_dir: &Path,
     runner: &dyn Runner,
 ) -> Result<Vec<String>, String> {
@@ -591,7 +656,7 @@ fn listing(
         krate.name,
         "--simplified",
     ];
-    args.extend(krate.features.listing_args());
+    args.extend(krate.features.listing_args(declared));
     args.extend(["--target-dir", &target_dir]);
     let ran = run_ok(runner, dir, "cargo", &args)?;
     Ok(ran
@@ -603,11 +668,13 @@ fn listing(
         .collect())
 }
 
-/// `cargo-semver-checks`'s findings on `krate` against the base. Only the
-/// lints that need a major version run (ADR-0038 §4).
+/// `cargo-semver-checks`'s findings on `krate`, built with `features`,
+/// against the base. Only the lints that need a major version run (ADR-0038
+/// §4).
 fn semver(
     root: &Path,
-    krate: &ApiCrate,
+    krate: &str,
+    features: &[&str],
     base_root: &Path,
     runner: &dyn Runner,
 ) -> Result<Vec<Finding>, String> {
@@ -616,7 +683,7 @@ fn semver(
         "semver-checks",
         "check-release",
         "-p",
-        krate.name,
+        krate,
         "--baseline-root",
         &base_root,
         "--release-type",
@@ -624,9 +691,9 @@ fn semver(
         "--color",
         "never",
     ];
-    args.extend(krate.features.semver_args());
+    args.extend(features);
     let ran = runner.run(root, "cargo", &args)?;
-    parse_semver(krate.name, &ran)
+    parse_semver(krate, &ran)
 }
 
 /// The findings in what `cargo semver-checks` printed. A run that failed
@@ -703,25 +770,39 @@ pub fn lost_lines(crates: &[CrateApi]) -> Vec<String> {
 }
 
 /// The rule: a crate with a semver finding is a break, and a break needs a
-/// `Breaking:` line naming the crate in the done ticket of `branch`.
-/// `done_ticket` reads a ticket in `tickets/done/` by id.
-pub fn rule(
-    crates: &[CrateApi],
-    branch: &str,
-    done_ticket: &dyn Fn(&str) -> Option<String>,
-) -> Verdict {
+/// `Breaking:` line naming the crate in the done ticket of `pr` (its title's
+/// ticket, else its branch's). A game ticket's small change (`Game NNNN: …`)
+/// adds nothing to the public API either. `done_ticket` reads a ticket in
+/// `tickets/done/` by id.
+pub fn rule(crates: &[CrateApi], pr: &Pr, done_ticket: &dyn Fn(&str) -> Option<String>) -> Verdict {
+    let kind = pr.kind();
+    if let Ok(PrKind::GameSmall(game)) = &kind
+        && verdict(crates) == Label::Added
+    {
+        return Verdict::Fail(format!(
+            "the PR is game ticket {game}'s small change (`Game {game}: …`), which adds \
+             nothing to the public API. Write a ticket here for the addition (the \
+             `write-ticket` skill), and title the PR `[NNNN] …`."
+        ));
+    }
     let breaking: Vec<&CrateApi> = crates.iter().filter(|c| !c.findings.is_empty()).collect();
     if breaking.is_empty() {
         return Verdict::Pass("no semver finding: the public API doesn't break.".to_string());
     }
     let breaks = describe_breaks(&breaking);
-    let Some(id) = ticket_id_from_branch(branch) else {
-        return Verdict::Fail(format!(
-            "branch `{branch}` names no ticket, and a change with no ticket never breaks \
-             the public API (ADR-0038). Write a ticket for it (the `write-ticket` skill).\n\
-             {breaks}"
-        ));
+    let id = match kind {
+        Ok(PrKind::Work(id)) => id,
+        Ok(_) => {
+            return Verdict::Fail(format!(
+                "{} names no ticket's work, and a change with no ticket never breaks the \
+                 public API (ADR-0038). Write a ticket for it (the `write-ticket` skill), \
+                 and title the PR `[NNNN] …`.\n{breaks}",
+                describe(pr)
+            ));
+        }
+        Err(why) => return Verdict::Fail(format!("{why}\n{breaks}")),
     };
+    let id = id.as_str();
     let Some(body) = done_ticket(id) else {
         return Verdict::Fail(format!(
             "ticket {id} is not in tickets/done/, so it has no `Breaking:` line.\n{breaks}"
@@ -771,13 +852,13 @@ fn changed_files(root: &Path, base: &str, runner: &dyn Runner) -> Result<Vec<Str
 
 /// The book's rule (ticket 2815): a change to the public API (a listing
 /// diff or a semver finding) that changes no file under [`BOOK_DIRS`] needs
-/// a `Book:` line in the done ticket of `branch`, saying why the book needs
-/// no change. A branch with no ticket of this repository is skipped: a
-/// break there already fails [`rule`]. `changed` is the files the branch
-/// changed; `done_ticket` reads a ticket in `tickets/done/` by id.
+/// a `Book:` line in the done ticket of `pr`, saying why the book needs no
+/// change. A PR for no ticket's work of this repository is skipped: a break
+/// there already fails [`rule`]. `changed` is the files the PR changed;
+/// `done_ticket` reads a ticket in `tickets/done/` by id.
 pub fn book_rule(
     crates: &[CrateApi],
-    branch: &str,
+    pr: &Pr,
     changed: &[String],
     done_ticket: &dyn Fn(&str) -> Option<String>,
 ) -> Verdict {
@@ -794,11 +875,17 @@ pub fn book_rule(
             BOOK_DIRS.join(" or ")
         ));
     }
-    let Some(id) = ticket_id_from_branch(branch) else {
-        return Verdict::Pass(format!(
-            "branch `{branch}` names no ticket, so no `Book:` line is asked for."
-        ));
+    let id = match pr.kind() {
+        Ok(PrKind::Work(id)) => id,
+        Ok(_) => {
+            return Verdict::Pass(format!(
+                "{} names no ticket's work, so no `Book:` line is asked for.",
+                describe(pr)
+            ));
+        }
+        Err(why) => return Verdict::Fail(why),
     };
+    let id = id.as_str();
     let changed_crates: Vec<&str> = crates
         .iter()
         .filter(|c| !c.removed.is_empty() || !c.added.is_empty() || !c.findings.is_empty())
@@ -822,6 +909,14 @@ pub fn book_rule(
         None => Verdict::Fail(format!(
             "ticket {id}'s `## Completion notes` have no `Book:` line.\n{ways}"
         )),
+    }
+}
+
+/// The PR, for a message: its branch, and its title when it has one.
+fn describe(pr: &Pr) -> String {
+    match pr.title {
+        Some(title) => format!("the PR `{title}` (branch `{}`)", pr.branch),
+        None => format!("branch `{}`", pr.branch),
     }
 }
 

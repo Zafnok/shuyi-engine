@@ -39,9 +39,54 @@ The device has no standard library, so the game's library builds without
    `CrankBack` are themselves.
 5. **Its sound:** its tools' `GameTools::audio` says what it ships there.
    Without it the export warns, and the game is silent.
+6. **A load in steps, if its load is long.** The system ends a game whose
+   update callback hasn't returned in 10 seconds, and the device loads
+   data hundreds of times slower than the Simulator. A game whose load
+   could pass that starts with `Start::in_steps`: its steps run a second's
+   worth a callback (the profile's `load_slice_ms`), the card on the
+   screen
+   ([ADR-0097](../adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+   A step is the unit: one that alone takes 10 seconds still stalls, so
+   make each a file or a part of a check. The run report's `Start, ms per
+   update callback` line says how long each callback took.
 
 [`examples/hello-grid`](../../examples/hello-grid/README.md) does all of it
 (`src/playdate.rs`).
+
+The export builds the `game` part's package. A game whose Playdate library is
+a package of its own, beside its desktop program and its tools, names it in
+the `export` part's `targets`, with the features its build turns on:
+
+```ron
+export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+    },
+),
+```
+
+The build turns on `playdate`, then those features (none without a list:
+the Playdate takes nothing else of the `export` part). `--without <feature>`
+leaves one of them off, and `--with <feature>` turns on another the package
+has for one build, a measuring build say: `shuyi export playdate --with
+bench`. `check --target playdate` and `bake` still run the game's tools.
+
+`--edition <name>` builds one of `shuyi.ron`'s `editions` instead: its
+package and features, and its pack from its `content` folder. The game's tool
+program is built again with that folder as `SHUYI_CONTENT` (in the Cargo
+profile `shuyi-content`, beside the one running the export) and bakes the
+pack, so the pack holds what the edition's program would embed and none of
+`files/` the folder lacks ([ADR-0101](../adr/0101-an-editions-pack-is-baked-by-the-game-s-tool-program-built-with-its-content-root.md)).
+`cargo shuyi bake --target playdate --content <folder>` bakes the same pack
+by hand. The first such export builds every dependency of the tool program
+once more. The same program bakes the sounds and music (`bake --audio`), so
+they too are the folder's: a sound of `files/` the folder lacks isn't in the
+`.pdx` ([ADR-0102](../adr/0102-bake-writes-a-targets-sounds-and-music-too-so-an-editions-come-from-its-content-root.md)).
+Music the game's tools read from the project's own `music/` folder, not
+through their files, is that folder's in every edition.
+An edition with `default_features: true` is refused here (the library never
+keeps them).
 
 The crank's notch is `crank: (notch_degrees: 45)` in the keymap file, 45
 unless it says. An optional action bound to `SystemMenu0` to `SystemMenu2`
@@ -89,6 +134,7 @@ the start:
 ```text
 Loading card shown 180 ms after start
 Game data loaded in 2,150 ms
+Start, ms per update callback: 1,000 (12 steps), 1,000 (40 steps), 120 (3 steps)
 Game stack used: 15,256 of 65,536 bytes
 Bundle: 212 reads of 180 files, 1 not in the bundle
 Not in the bundle: lang/fr/ui.ron
@@ -96,8 +142,11 @@ Slowest reads, ms to the next read: maps/lake.map 900, (the rules) 310, ...
 First frame of the game shown 2,400 ms after start
 ```
 
-A file's time runs from its read to the next read: reading it, then parsing
-and checking what it holds. A step of the load that reads no file can have a
+The callbacks line gives each update callback that ran the load, its time and
+the load's steps it ran: one callback of one step for a load at once. A file's
+time runs from its read to the next read: reading it, then parsing and
+checking what it holds, and the time between two callbacks is
+`(between update callbacks)`. A step of the load that reads no file can have a
 name of its own, so its time isn't added to the last file's:
 
 ```rust,ignore

@@ -30,4 +30,26 @@
     // Asked over the garden.
     "leave.question": "Leave the garden?",
     "leave.help": "{Confirm} yes · {Cancel} no",
+
+    // ANCHOR: preview
+    // The dialogue preview's, for a writer (chapter 6).
+    "preview.tab.scenes": "Scenes",
+    "preview.tab.switches": "Switches",
+    "preview.tab.lines": "Lines",
+    "preview.tab.problems": "Problems",
+    "preview.switch.here": "Here",
+    "preview.switch.gone": "Gone",
+    "preview.switch.on": "On",
+    "preview.switch.off": "Off",
+    "preview.switch.strip": "Strip: file, line, direction",
+    "preview.lines.go_to": "Go to line",
+    "preview.note.no_scenes": "No scenes: save a .dlg file in the folder",
+    "preview.note.no_scenes_drop": "No scenes: drop a .dlg file here",
+    "preview.note.no_scene": "Pick a scene first",
+    "preview.note.no_problems": "No problems",
+    "preview.note.finished": "The scene is over: pick a line to play it again",
+    "preview.help": "{Cursor} move · {Confirm} pick · {Cancel} back",
+    "preview.help.go_to": "Type a line number · {Confirm} go · {Cancel} close",
+    "preview.help.playing": "{Cancel} preview",
+    // ANCHOR_END: preview
 }

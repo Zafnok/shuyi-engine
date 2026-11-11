@@ -103,7 +103,7 @@
       "type": "object",
       "properties": {
         "data": {
-          "description": "What the game says of it as data: its stage's state."
+          "description": "What the game says of it as data: serde's tree of the value the game\nnames ([`with_data`](Self::with_data)), by default its stage's state."
         },
         "kind": {
           "description": "What kind of scene: `grid map`, or the game's own word.",
@@ -144,7 +144,7 @@
           }
         },
         "scene": {
-          "description": "The scene, if a stage is open.",
+          "description": "The scene, if a stage is open; left out with `path` or `shape`,\nwhich answer what was asked instead.",
           "anyOf": [
             {
               "$ref": "#/$defs/Scene"
@@ -165,9 +165,15 @@
             }
           ]
         },
+        "shape": {
+          "description": "With `shape`, the JSON Schema of the scene's data in serialize mode,\nif the game gave one (`Scene::with_data`)."
+        },
         "top_screen": {
           "description": "The top screen's name.",
           "type": "string"
+        },
+        "value": {
+          "description": "With `path`, the value at that pointer in the scene's data."
         }
       },
       "additionalProperties": false,

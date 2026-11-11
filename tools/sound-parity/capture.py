@@ -74,6 +74,10 @@ QUIET = 8
 GAP_FRAMES = RATE // 200
 
 
+# How quad-snd's ALSA output starts the line it prints when it underruns, spelt its way.
+UNDERRUN = "Underrun occured"
+
+
 # How the sink's monitor is read.
 RECORD = ["parec", f"--device={SINK}.monitor", "--format=s16le", f"--rate={RATE}", "--channels=2", "--latency-msec=10"]
 
@@ -169,6 +173,17 @@ class Recorder:
         self.process.wait(10)
 
 
+def spans(packets: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Packets as (first frame, frames), those that follow each other joined."""
+    joined: list[tuple[int, int]] = []
+    for at, frames in packets:
+        if joined and sum(joined[-1]) == at:
+            joined[-1] = (joined[-1][0], joined[-1][1] + frames)
+        else:
+            joined.append((at, frames))
+    return joined
+
+
 class LoopbackRecorder:
     """The same on Windows: the default render endpoint, through WASAPI loopback."""
 
@@ -195,6 +210,10 @@ class LoopbackRecorder:
 
     def stop(self) -> None:
         self.loopback.stop()
+        silences = spans(self.loopback.silences)
+        if silences:
+            where = ", ".join(f"{frames} frames at {at}" for at, frames in silences)
+            print(f"{self.loopback.path.name}: the loopback flagged silent {where}", file=sys.stderr, flush=True)
         # The system dropped frames while this was reading: not a recording of it all.
         if losses := self.loopback.losses:
             where = "; ".join(str(loss) for loss in losses)
@@ -205,7 +224,8 @@ class LoopbackRecorder:
 
 
 class LostFrames(Exception):
-    """A recording the system dropped frames from: no evidence of what played."""
+    """A recording the system, or the backend's own output, dropped frames from: no
+    evidence of what played."""
 
 
 # The most recordings of one play that may lose frames before the step fails.
@@ -280,14 +300,36 @@ class Native:
     target: Sink
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
+        # A scenario's recording is judged as the sound itself, so one the backend
+        # underran in is made again (ticket 2048). A timing's gaps are what it counts.
+        if order.startswith("scenario "):
+            return whole(lambda: self.play_once(order, record, perf, refuse=True))
+        return self.play_once(order, record, perf, refuse=False)
+
+    def play_once(self, order: str, record: Path, perf: dict[str, float] | None, refuse: bool) -> list[str]:
+        # Nothing of a refused recording's run is kept.
+        if perf is not None:
+            perf.clear()
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
         recorder = Recorder(self.target, record)
         recorder.flowing()
         process = subprocess.run(
-            [str(self.probe)], cwd=self.stage, env=self.target.env, stderr=subprocess.PIPE, text=True, timeout=TIMEOUT, check=False
+            [str(self.probe)],
+            cwd=self.stage,
+            env=self.target.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=TIMEOUT,
+            check=False,
         )
         time.sleep(0.3)
         recorder.stop()
+        # quad-snd says on its stdout when ALSA ran dry: the sink got a hole, not the sound.
+        underruns = [line for line in process.stdout.splitlines() if line.startswith(UNDERRUN)]
+        if refuse and underruns:
+            raise LostFrames(f"quad-snd underran {len(underruns)} times ({'; '.join(underruns)})")
+        sys.stdout.write(process.stdout)
         lines = [line[len(PREFIX):] for line in process.stderr.splitlines() if line.startswith(PREFIX)]
         if process.returncode != 0:
             lines.append(json.dumps({"event": "failed", "text": f"exit {process.returncode}: {process.stderr[-300:]}"}))

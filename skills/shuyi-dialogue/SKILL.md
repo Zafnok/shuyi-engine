@@ -19,6 +19,7 @@ time, and a screen paints that in the engine's text box.
 - Writing or changing a scene: a talk before a stage, a shopkeeper, a
   sign post, a choice with its reactions.
 - A game that has no screen to play a scene yet.
+- A program for a writer to check their scenes in (a preview).
 - A rule the game's scenes must keep (the box's size, who may speak,
   the expressions each character has).
 
@@ -151,6 +152,19 @@ map) with a type that implements `Directive`: the parser hands it every
      is `narration`, and the `choices` while a choice is open.
    - `advance()` moves to the next text box; at a choice it waits for
      `choose(n)`. `is_choosing()` and `is_finished()` say where it is.
+   - `DialoguePlayer::from_text_box(&scene, hooks, &present, n,
+     &replies)` starts at text box `n` (0 is the first), everything
+     before it applied as if read and its last `@music` pending; at each
+     choice on the way it takes the next of `replies`, else the first.
+     `direction()` is how the line on screen is said (its `( … )`, or the
+     `@delivery` in force), which the player never sees: a writer's
+     preview or a voice tool shows it.
+   - For a preview: `scene.conditions()` lists who the `@if` blocks
+     test, a switch each; `parsed.text_boxes(&present, &replies)` lists
+     each text box's source line and step, and `parsed.text_box_at(line,
+     &present, &replies)` which one a typed line falls in. A preview
+     program reads its folder with `shuyi_app::read_watched_folder`, so
+     an optimized build plays each file the writer saves.
    - `TextBox::new(&text, width, lines, ctx.widths())` pages and types
      a line out, wrapped in cells (a wide character is two; Japanese
      breaks between characters, never before `。` or after `「`):
@@ -170,6 +184,56 @@ map) with a type that implements `Directive`: the parser hands it every
    --frames 1` answers with the frame as text (`/result/frame`), and
    `frame-png` draws it. The MCP session's `step` and `frame_png` do the
    same between calls.
+
+## A preview for your writer
+
+A writer with no source checks their scenes in a **dialogue preview**: a
+program built from the game's code that lists the scenes of the `.dlg`
+files in a folder, plays the one picked in the game's own dialogue
+screen, and plays it again from the same text box a second after the
+file is saved. Its tabs: the scenes (a file with problems marked); a
+switch per character an `@if` block tests, the game's own switches and
+a strip with the file, line and direction; the text boxes, and a box to
+type a line number; and the problems, with file, line and fix. A file
+that no longer parses keeps its last good scenes playing.
+
+1. Implement `shuyi::ui::dialogue::preview::PreviewGame` on a type of
+   the game's: its `Directive` type, its `Rules` (the `SceneRules` the
+   checks use), and `play`, which builds its dialogue screen from
+   `play.player(hooks)`. Optional: `problems` (checks over every scene)
+   and `switches` (named switches, read back with `play.switch(i)`).
+2. Implement `PreviewScreen` on that screen: `showing()` is
+   `Showing::of(&self.player)`.
+3. The program: a second binary of the game, `src/bin/preview.rs`,
+   whose `main` is one call,
+   `shuyi::app::run_dialogue_preview(game(), Path::new(&folder),
+   YourPreview)`. It runs the game's window, files and settings with
+   `DialoguePreview` as the first screen, the game's modules, a
+   `DialogueFolder` over the folder (read with `read_watched_folder`,
+   watched in an optimized build too) and no debug screens; a folder that
+   can't be read shows why in the window. A `.dlg` file dropped on the
+   window joins the folder. On the web, which has no folders, the
+   preview starts with none: the writer opens its page and drops their
+   `.dlg` files on it, and drops one again after changing it. A game on
+   the long path builds
+   it itself: `BasicGame::preview_start(folder, preview)`, or
+   `DialoguePreview::new(&ctx, YourPreview)` as the root screen,
+   `.with_debug_screens(false)`,
+   `.with_module(DialogueFolder::new(layer))` and a system hook that
+   hands a drop's files to `shuyi::ui::dialogue::preview::drop_scenes`.
+4. Give the `preview.*` text keys words in the language file (the book's
+   chapter 6 lists them). `preview.note.no_scenes_drop` is the empty
+   Scenes tab's note where files can be dropped; without it the tab
+   shows `preview.note.no_scenes` there too.
+5. Test it through the Harness: `game().preview_harness(layer,
+   YourPreview)`, `h.watch_files(true)`, then
+   `h.change_file(layer, "scene.dlg", bytes)` and one frame, or drop a
+   file with `h.drop_file("scene.dlg", bytes)` (an input script's
+   `drop` step); read
+   `h.screen::<DialoguePreview<_, _>>()?.view(h.ctx())`.
+
+Its controls are the six `UiAction` moves (Cancel brings the tabs back
+over the scene), so the game's keymap needs nothing new.
 
 ## Keys and languages
 

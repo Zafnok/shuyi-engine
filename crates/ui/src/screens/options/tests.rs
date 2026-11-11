@@ -1,11 +1,13 @@
 //! The options screen on the toy game's rows ([`toy::option_rows`]): text
-//! speed, the toy's speed, fullscreen, colors, the two volumes, then the
+//! speed, the toy's speed, fullscreen, colors, the music and sound
+//! volumes, then the
 //! layout and the Key bindings, a locked row and Restore defaults; the
 //! toy's level (not a setting) only while it has one.
 
 use shuyi_assets::keymap::{Chord, Key};
 
 use super::*;
+use crate::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
@@ -187,21 +189,22 @@ fn type_in(s: &mut OptionsScreen, c: &mut Ctx, text: &str, keys: &[Key]) {
 fn left_and_right_move_a_volumes_slider_five_at_a_time() {
     use Action::{CursorLeft, CursorRight};
     let mut c = ctx();
+    c.change_settings(|s| s.volumes.set(MUSIC, 80)).unwrap();
     let mut s = on("options.row.music_volume");
     assert_eq!(s.help(&c), "arrows move · f type a number · d back");
     press(&mut s, &mut c, &[CursorLeft]);
-    assert_eq!(c.settings().music_volume, 75);
+    assert_eq!(c.volume(MUSIC), 75);
     assert!(unsaved(&c));
     press(&mut s, &mut c, &[CursorRight; 6]);
-    assert_eq!(c.settings().music_volume, 100);
+    assert_eq!(c.volume(MUSIC), 100);
     // Five steps changed it; the sixth did nothing.
     assert_eq!(sounds(&mut c).len(), 6);
-    c.change_settings(|s| s.music_volume = 3).unwrap();
+    c.change_settings(|s| s.volumes.set(MUSIC, 3)).unwrap();
     press(&mut s, &mut c, &[CursorLeft]);
-    assert_eq!(c.settings().music_volume, 0);
+    assert_eq!(c.volume(MUSIC), 0);
     press(&mut s, &mut c, &[CursorLeft]);
-    assert_eq!(c.settings().music_volume, 0);
-    assert_eq!(c.settings().sound_volume, 80);
+    assert_eq!(c.volume(MUSIC), 0);
+    assert_eq!(c.volume(SFX), 97);
 }
 
 #[test]
@@ -231,7 +234,7 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
     assert_eq!(
         music,
         Some(ValueView::Volume {
-            level: 80,
+            level: 97,
             max: 100
         })
     );
@@ -242,17 +245,17 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
     assert_eq!(s.typing().and_then(NumberBox::value), Some(3));
     // The second 5 was refused: three digits at most.
     assert_eq!(sounds(&mut c), ["ui_cancel"; 3]);
-    assert_eq!(c.settings().sound_volume, 80);
+    assert_eq!(c.volume(SFX), 97);
     type_in(&mut s, &mut c, "7", &[Key::Enter]);
     assert!(s.typing().is_none());
-    assert_eq!(c.settings().sound_volume, 37);
+    assert_eq!(c.volume(SFX), 37);
     assert_eq!(sounds(&mut c), ["ui_select", "ui_move"]);
     assert!(unsaved(&c));
-    assert_eq!(c.settings().music_volume, 80);
+    assert_eq!(c.volume(MUSIC), 97);
     // More than 100 is 100.
     press(&mut s, &mut c, &[Action::Confirm]);
     type_in(&mut s, &mut c, "250", &[Key::Enter]);
-    assert_eq!(c.settings().sound_volume, 100);
+    assert_eq!(c.volume(SFX), 100);
     // Escape, or Enter on an empty box, leaves the volume alone.
     press(&mut s, &mut c, &[Action::Confirm]);
     type_in(&mut s, &mut c, "12", &[Key::Escape]);
@@ -262,7 +265,7 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
     assert!(s.typing().is_none());
     press(&mut s, &mut c, &[Action::Confirm]);
     type_in(&mut s, &mut c, "", &[Key::Backspace, Key::Enter]);
-    assert_eq!(c.settings().sound_volume, 100);
+    assert_eq!(c.volume(SFX), 100);
     // The same number again is no change: it doesn't sound like one.
     press(&mut s, &mut c, &[Action::Confirm]);
     sounds(&mut c);
@@ -272,8 +275,8 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
     let mut s = on("options.row.music_volume");
     press(&mut s, &mut c, &[Action::Confirm]);
     type_in(&mut s, &mut c, "0", &[Key::Enter]);
-    assert_eq!(c.settings().music_volume, 0);
-    assert_eq!(c.settings().sound_volume, 100);
+    assert_eq!(c.volume(MUSIC), 0);
+    assert_eq!(c.volume(SFX), 100);
 }
 
 /// On a controller there is nothing to type with: the box holds the
@@ -282,6 +285,7 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
 fn the_volume_box_steps_by_one_on_a_controller() {
     let pad = |actions: &[Action]| FrameInput::new(actions.to_vec(), 0.0, vec![]).with_pad(true);
     let mut c = ctx();
+    c.change_settings(|s| s.volumes.set(MUSIC, 80)).unwrap();
     let mut s = on("options.row.music_volume");
     s.update(&mut c, &pad(&[Action::Confirm]));
     assert_eq!(s.typing().and_then(NumberBox::value), Some(80));
@@ -297,27 +301,27 @@ fn the_volume_box_steps_by_one_on_a_controller() {
     s.update(&mut c, &pad(&[Action::CursorLeft]));
     assert_eq!(s.typing().and_then(NumberBox::value), Some(81));
     // Not until Confirm.
-    assert_eq!(c.settings().music_volume, 80);
+    assert_eq!(c.volume(MUSIC), 80);
     s.update(&mut c, &pad(&[Action::Confirm, Action::CursorDown]));
     assert!(s.typing().is_none());
-    assert_eq!(c.settings().music_volume, 81);
+    assert_eq!(c.volume(MUSIC), 81);
     assert_eq!(s.focus(&c), "options.row.music_volume");
     // Cancel keeps the old volume; the ends hold.
     s.update(&mut c, &pad(&[Action::Confirm]));
     s.update(&mut c, &pad(&[Action::CursorLeft, Action::Cancel]));
-    assert_eq!(c.settings().music_volume, 81);
-    c.change_settings(|s| s.music_volume = 100).unwrap();
+    assert_eq!(c.volume(MUSIC), 81);
+    c.change_settings(|s| s.volumes.set(MUSIC, 100)).unwrap();
     s.update(&mut c, &pad(&[Action::Confirm]));
     sounds(&mut c);
     s.update(&mut c, &pad(&[Action::CursorUp]));
     assert_eq!(s.typing().and_then(NumberBox::value), Some(100));
     let found = sounds(&mut c);
     assert!(found.is_empty(), "{found:?}");
-    c.change_settings(|s| s.music_volume = 0).unwrap();
+    c.change_settings(|s| s.volumes.set(MUSIC, 0)).unwrap();
     s.update(&mut c, &pad(&[Action::Cancel]));
     s.update(&mut c, &pad(&[Action::Confirm]));
     s.update(&mut c, &pad(&[Action::CursorDown, Action::Confirm]));
-    assert_eq!(c.settings().music_volume, 0);
+    assert_eq!(c.volume(MUSIC), 0);
 }
 
 #[test]
@@ -347,8 +351,8 @@ fn rows_show_their_values() {
             "Off*",
             "60 FPS*",
             "Day*",
-            "<80/100>",
-            "<80/100>",
+            "<97/100>",
+            "<97/100>",
             "Right-handed",
             "",
             "-",
@@ -360,8 +364,8 @@ fn rows_show_their_values() {
         s.fullscreen = true;
         s.frame_cap = FrameCap::Off;
         s.theme = Theme::Night;
-        s.music_volume = 0;
-        s.sound_volume = 100;
+        s.volumes.set(MUSIC, 0);
+        s.volumes.set(SFX, 100);
     })
     .unwrap();
     c.use_layout(LEFT_HANDED);
@@ -615,7 +619,7 @@ fn restore_defaults_asks_first_and_keeps_the_layout() {
     c.change_settings(|s| {
         s.text_speed = TextSpeed::Slow;
         s.fullscreen = true;
-        s.music_volume = 2;
+        s.volumes.set(MUSIC, 2);
         s.game.speed = 1;
     })
     .unwrap();
@@ -809,7 +813,7 @@ fn discard_puts_every_setting_back_and_saves_nothing() {
             press(&mut s, &mut c, &[Action::CursorRight]);
         }
     }
-    assert!(s.changed(&c) && c.settings().fullscreen && c.settings().music_volume != 80);
+    assert!(s.changed(&c) && c.settings().fullscreen && c.volume(MUSIC) != 97);
     press(&mut s, &mut c, &[Action::Cancel]);
     press(&mut s, &mut c, &[Action::CursorLeft]);
     assert_eq!(s.leaving(), Some(LeaveChoice::Discard));
@@ -822,19 +826,17 @@ fn discard_puts_every_setting_back_and_saves_nothing() {
 #[test]
 fn restored_defaults_are_a_change_kept_or_discarded_on_leaving() {
     let mut c = ctx();
-    c.change_settings(|s| s.music_volume = 2).unwrap();
+    c.change_settings(|s| s.volumes.set(MUSIC, 2)).unwrap();
     let mut s = on("options.row.restore_defaults");
     press(&mut s, &mut c, &[Action::Confirm]);
     press(&mut s, &mut c, &[Action::Confirm]);
-    assert_eq!(
-        c.settings().music_volume,
-        Settings::<Prefs>::default().music_volume
-    );
+    assert_eq!(c.volume(MUSIC), 97);
+    assert_eq!(c.settings().volumes, Settings::<Prefs>::default().volumes);
     press(&mut s, &mut c, &[Action::Cancel]);
     assert_eq!(s.leaving(), Some(LeaveChoice::Back));
     press(&mut s, &mut c, &[Action::CursorLeft, Action::Confirm]);
-    assert_eq!(c.settings().music_volume, 2);
-    assert_eq!(saved(&c).music_volume, 2);
+    assert_eq!(c.volume(MUSIC), 2);
+    assert_eq!(saved(&c).volumes.get(MUSIC), Some(2));
 }
 
 #[test]
@@ -1064,9 +1066,64 @@ fn the_voice_rows_set_the_voices_and_their_volume() {
     press(&mut s, &mut c, &[CursorLeft]);
     assert!(!c.settings().voices);
     press(&mut s, &mut c, &[CursorDown, CursorLeft]);
-    assert_eq!(
-        c.settings().voice_volume,
-        crate::settings::DEFAULT_VOLUME - VOLUME_STEP
-    );
+    assert_eq!(c.volume(VOICE), 97 - VOLUME_STEP);
     assert!(OptionRow::<Toy>::voices().is_setting());
+}
+
+/// A game's own group, declared in its manifest, gets a row written with
+/// its id (as `OptionRow::music_volume`'s docs show), which starts at the
+/// manifest's default and moves that group alone.
+#[test]
+fn a_games_own_group_has_a_row_of_its_own() {
+    use Action::CursorLeft;
+    const AMBIENCE: &str = "ambience";
+    let mut toy = Toy::default();
+    let mut group = shuyi_assets::audio::GroupDef::default();
+    group.parent = Some(SFX.to_owned());
+    group.volume = Some(80);
+    toy.audio.groups.insert(AMBIENCE.to_owned(), group);
+    let mut c = Ctx::new(toy).unwrap_or_else(|missing| panic!("{missing:?}"));
+    c.use_layout(toy::RIGHT_HANDED);
+    assert_eq!(c.sound_groups().parent(AMBIENCE), Some(SFX));
+    assert_eq!(c.volume(AMBIENCE), 80);
+    let mut s = OptionsScreen::new(|_| {
+        vec![OptionRow::new(
+            "options.row.ambience_volume",
+            RowValue::volume(
+                |ctx| ctx.volume(AMBIENCE),
+                |ctx, v| ctx.preview_volume(AMBIENCE, v),
+            ),
+        )]
+    });
+    press(&mut s, &mut c, &[CursorLeft]);
+    assert_eq!(c.volume(AMBIENCE), 80 - VOLUME_STEP);
+    assert_eq!(c.volume(SFX), 97);
+    assert_eq!(c.settings().volumes.get(AMBIENCE), Some(80 - VOLUME_STEP));
+}
+
+/// Acceptance: the engine's volume rows, master, music, sound and voice in
+/// that order, each move their own group, and the menus' row moves `ui`.
+#[test]
+fn each_volume_row_moves_its_own_group() {
+    use Action::{CursorDown, CursorLeft};
+    let keys: Vec<_> = OptionRow::<Toy>::volumes().iter().map(|r| r.key).collect();
+    let want = ["master", "music", "sound", "voice"].map(|g| format!("options.row.{g}_volume"));
+    assert_eq!(keys, want);
+    let mut c = ctx();
+    let mut s = OptionsScreen::new(|_| {
+        let mut rows = OptionRow::volumes();
+        rows.push(OptionRow::ui_volume());
+        rows
+    });
+    let groups = [MASTER, MUSIC, SFX, VOICE, UI];
+    for (at, group) in groups.iter().enumerate() {
+        let before = groups.map(|g| c.volume(g));
+        press(&mut s, &mut c, &[CursorLeft]);
+        let after = groups.map(|g| c.volume(g));
+        for (other, (b, a)) in before.iter().zip(after).enumerate() {
+            let want = if other == at { b - VOLUME_STEP } else { *b };
+            assert_eq!(a, want, "the {group} row and {}", groups[other]);
+        }
+        press(&mut s, &mut c, &[CursorDown]);
+    }
 }

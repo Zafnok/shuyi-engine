@@ -16,6 +16,11 @@
 // - The lead starts at FEWEST_LEAD_BLOCKS, which is what a sound waits to be heard, and
 //   grows a block each time the worklet runs dry while playing, up to MOST_LEAD_BLOCKS:
 //   a page that keeps up stays quick, and one whose frames stall gets the room it needs.
+// - Until the context has played SETTLE_MS after it starts, or after a hold lets go,
+//   the lead is at least START_LEAD_BLOCKS. A device takes its frames in callbacks of
+//   several blocks (512 frames in CI's Chromium), and a page is busiest as it starts:
+//   the gesture, its release, the first sounds. A page late there by a few callbacks
+//   would cut the first sound it plays, before the lead could grow.
 // - The worklet plays what it has and silence after that, and counts neither as lost:
 //   the mix is only asked for what will be heard, so a late page delays the sound.
 // - Nothing is shared but messages. So this needs a secure context, as AudioWorklet
@@ -41,17 +46,20 @@
     var FEWEST_LEAD_BLOCKS = 4;
     var MOST_LEAD_BLOCKS = 16;
     var RING_BLOCKS = 32;
+    // The least lead while the context starts, and for how long it plays, in
+    // milliseconds, before the lead comes back down.
+    var START_LEAD_BLOCKS = 8;
+    var SETTLE_MS = 1000;
     // How often the timer looks, in milliseconds, before the context runs.
     var IDLE_MS = 20;
     // How long the mix waits for a context that is starting, in milliseconds.
     var START_MS = 2000;
 
-    // The worklet's code, run there as a string of its source and here for what the
-    // ring is, which CI's ring test reads from this plugin's `ring`.
-    function worklet_scope(in_worklet) {
-        // A ring of frames for one writer and one reader, whose counters run on,
-        // wrapping at 2^32, so the two are compared by their difference alone.
-        function PcmRing(frames) {
+    // A ring of frames for one writer and one reader, whose counters run on, wrapping
+    // at 2^32, so the two are compared by their difference alone. The worklet runs it
+    // from a string of its source, and CI's ring test reads it from this plugin's `ring`.
+    class PcmRing {
+        constructor(frames) {
             var capacity = 1;
             while (capacity < frames) {
                 capacity *= 2;
@@ -62,11 +70,11 @@
             this.taken = 0;
         }
         // How many frames it holds.
-        PcmRing.prototype.held = function () {
+        held() {
             return (this.written - this.taken) >>> 0;
-        };
+        }
         // Takes as many whole frames of `block`, interleaved, as there is room for.
-        PcmRing.prototype.write = function (block) {
+        write(block) {
             var frames = Math.min(block.length >> 1, this.capacity - this.held());
             var mask = this.capacity - 1;
             for (var i = 0; i < frames; i++) {
@@ -76,10 +84,10 @@
             }
             this.written = (this.written + frames) >>> 0;
             return frames;
-        };
+        }
         // Fills `left` and `right` as floats, silence past what it holds, and says
         // how many frames were real.
-        PcmRing.prototype.read = function (left, right) {
+        read(left, right) {
             var frames = Math.min(left.length, this.held());
             var mask = this.capacity - 1;
             for (var i = 0; i < frames; i++) {
@@ -93,10 +101,11 @@
             }
             this.taken = (this.taken + frames) >>> 0;
             return frames;
-        };
-        if (!in_worklet) {
-            return PcmRing;
         }
+    }
+
+    // The worklet's processor, run there as a string of its source after PcmRing's.
+    function worklet_scope() {
         class Output extends AudioWorkletProcessor {
             constructor(options) {
                 super();
@@ -105,10 +114,9 @@
                 this.played = 0;
                 this.silent = 0;
                 this.since = 0;
-                var self = this;
-                this.port.onmessage = function (event) {
-                    self.ring.write(new Int16Array(event.data));
-                    self.port.postMessage({ back: event.data }, [event.data]);
+                this.port.onmessage = (event) => {
+                    this.ring.write(new Int16Array(event.data));
+                    this.port.postMessage({ back: event.data }, [event.data]);
                 };
             }
             process(inputs, outputs) {
@@ -126,7 +134,6 @@
             }
         }
         registerProcessor("shuyi-sound", Output);
-        return null;
     }
 
     var context = null;
@@ -143,6 +150,8 @@
     var timer = null;
     var gestured = false;
     var starting_since = -1;
+    var settling = true;
+    var settle_from = -1;
     var vets = [];
 
     // The next block of the mix, or null while Rust has no output open.
@@ -151,12 +160,17 @@
         return at === 0 ? null : new Int16Array(wasm_memory.buffer, at, block * 2);
     }
 
+    // How many blocks the worklet is kept ahead by now.
+    function lead() {
+        return settling ? Math.max(lead_blocks, START_LEAD_BLOCKS) : lead_blocks;
+    }
+
     // Keeps the worklet its lead ahead.
     function top_up() {
         if (held) {
             return;
         }
-        while (((sent - played) >>> 0) + block <= lead_blocks * block) {
+        while (((sent - played) >>> 0) + block <= lead() * block) {
             var frames = next_block();
             if (frames === null) {
                 return;
@@ -178,6 +192,12 @@
             }
             silent = event.data.silent;
             played = event.data.played;
+            // Settled once it has played SETTLE_MS from its first word after a start.
+            if (settling && settle_from < 0) {
+                settle_from = played;
+            } else if (settling && ((played - settle_from) >>> 0) >= (rate * SETTLE_MS) / 1000) {
+                settling = false;
+            }
             top_up();
         }
     }
@@ -285,7 +305,7 @@
                 });
             }
             start_idle();
-            var source = "(" + worklet_scope.toString() + ")(true);";
+            var source = PcmRing.toString() + "\n(" + worklet_scope.toString() + ")();";
             var url = URL.createObjectURL(new Blob([source], { type: "application/javascript" }));
             opened.audioWorklet.addModule(url).then(connect, function (error) {
                 console.warn("audio: the sound worklet didn't load: " + error);
@@ -294,11 +314,17 @@
         };
         // Holds the output, or lets it go on if `on` is 0.
         importObject.env.shuyi_sound_hold = function (on) {
+            var was = held;
             held = on !== 0;
             if (context) {
                 if (held) {
                     context.suspend();
                 } else {
+                    if (was) {
+                        // Letting go starts the device again, and with it the start's lead.
+                        settling = true;
+                        settle_from = -1;
+                    }
                     context.resume();
                 }
             }
@@ -308,21 +334,20 @@
         // context never reaches a device.
         importObject.env.shuyi_sound_vet = function (at, bytes) {
             var number = vets.length;
-            vets.push(0);
-            var copy = new Uint8Array(wasm_memory.buffer, at, bytes).slice().buffer;
             var Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-            if (!Offline) {
-                vets[number] = 2;
-                return number;
+            // Without a decoder to ask, refused at once.
+            vets.push(Offline ? 0 : 2);
+            if (Offline) {
+                var copy = new Uint8Array(wasm_memory.buffer, at, bytes).slice().buffer;
+                new Offline(1, 1, 44100).decodeAudioData(copy).then(
+                    function () {
+                        vets[number] = 1;
+                    },
+                    function () {
+                        vets[number] = 2;
+                    }
+                );
             }
-            new Offline(1, 1, 44100).decodeAudioData(copy).then(
-                function () {
-                    vets[number] = 1;
-                },
-                function () {
-                    vets[number] = 2;
-                }
-            );
             return number;
         };
         // 0 while the browser decodes, 1 if it read the file, 2 if it refused it.
@@ -335,6 +360,6 @@
         register_plugin: register_plugin,
         name: "shuyi_sound",
         version: VERSION,
-        ring: worklet_scope(false)
+        ring: PcmRing
     });
 })();

@@ -1,0 +1,18 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "[tight, room].join(\"\\n\")"
+---
+ f:1   
+--- colours ---
+abbbaaa
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+
+ f:1 a 
+--- colours ---
+abbbaca
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+c = fg:text_dim bg:panel

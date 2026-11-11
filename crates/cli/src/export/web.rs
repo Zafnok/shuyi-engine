@@ -8,7 +8,7 @@ use std::fs;
 
 use super::disclosure::{FileKind, Shipped};
 use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
-use crate::project::Web;
+use crate::project::{WasmOptRule, Web};
 use crate::web::{self as build, Options};
 
 /// The web exporter.
@@ -18,12 +18,17 @@ pub static WEB: WebExporter = WebExporter;
 pub struct WebExporter;
 
 impl WebExporter {
-    /// The web build's options: release or not, and the `export` part's
-    /// features.
+    /// The web build's options: release or not, the `export` part's
+    /// features (or the edition's), whether `wasm-opt` must run (unless the
+    /// part says `wasm_opt: optional`), and the edition's default features and
+    /// content root.
     fn options(cx: &ExportCx) -> Options {
         Options {
             release: cx.release,
             features: cx.turned_on.clone(),
+            require_wasm_opt: cx.wasm_opt == WasmOptRule::Required,
+            no_default_features: !cx.default_features(),
+            content: cx.content(),
         }
     }
 }
@@ -54,7 +59,7 @@ impl Exporter for WebExporter {
         })?;
         super::installed(build::TARGET)?;
         for args in self.cargo_args(cx) {
-            super::no_live_link(&args)?;
+            super::no_debug_features(&args)?;
         }
         let dist = cx.root.join(&rules.dist);
         if build::is_under(&cx.out, &dist) {
@@ -67,11 +72,25 @@ impl Exporter for WebExporter {
         build::run(rules, &cx.root, &Self::options(cx), &cx.game).map_err(|e| {
             if e.starts_with(paths::FOUND) {
                 ExportError::BuildPath(e)
+            } else if e.starts_with(build::NO_WASM_OPT) {
+                ExportError::MissingTool(e)
             } else {
                 ExportError::Build(e)
             }
         })?;
         pack(cx, rules, &dist)
+    }
+
+    /// A release build's, if the binary it shipped holds no `name` section.
+    fn strips_symbols(&self, cx: &ExportCx) -> bool {
+        let Some(rules) = cx.web.as_ref().filter(|_| cx.release) else {
+            return false;
+        };
+        let wasm = cx.out.join(cx.base()).join(format!("{}.wasm", rules.bin));
+        fs::read(wasm)
+            .ok()
+            .and_then(|bytes| build::custom_sections(&bytes).ok())
+            .is_some_and(|names| !names.iter().any(|name| name == "name"))
     }
 
     /// The shell, the binary and the notices, which it writes; the music and

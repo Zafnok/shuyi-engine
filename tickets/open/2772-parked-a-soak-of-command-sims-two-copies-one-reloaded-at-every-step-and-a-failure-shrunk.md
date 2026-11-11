@@ -21,8 +21,8 @@ completed:
 same commands. One is written and read back through a `Codec` before
 every step, as a save would be, and the two must stay equal. That
 catches the state a save leaves out: a `#[serde(skip)]` field, a cache,
-anything the serde form doesn't hold. `state_hash`, `bots` and `replay`
-can't see that state, since they rebuild a game by replaying its
+anything the serde form doesn't hold. `state_hash`, `playtest` and
+`replay` can't see that state, since they rebuild a game by replaying its
 commands. A failure shrinks by delta debugging to a short list of
 commands that still shows it. 2527 checks turn games only, and its Out
 line sends command sims here.

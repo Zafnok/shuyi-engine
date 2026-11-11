@@ -265,10 +265,10 @@ None.
   - **from 2802 (done):** where the book tells the reader to serve the
     web build's folder (chapter 9, `site/content/learn/book/targets-and-export.md`,
     *The web build*), it names `cargo shuyi web --serve --open`.
-    **Either order with 2777:** if 2777 is done, the quick start's
-    `cargo shuyi web` step on a new game becomes `cargo shuyi web
-    --serve --open` too; if not, nothing to do (2777 writes it so);
-  - **From 2803 (done):** `site/content/learn/tutorial/10-ship.md`, *Build
+    **From 2777 (done):** the quick start's `cargo shuyi web` step on a
+    new game (*In the browser*, served with `python -m http.server`)
+    becomes `cargo shuyi web --serve --open` too;
+  - **From 2803 (done):** `site/content/learn/book/box-pusher/10-ship.md`, *Build
     it*, serves the folder with `python -m http.server`: it tries the build
     with `cargo shuyi web --serve --open` instead.
 - **Docs:**

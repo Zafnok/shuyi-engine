@@ -1,6 +1,6 @@
 [alias]
 # The engine's tools on this game: `cargo shuyi check`, `cargo shuyi run
-# --script "Right Right"`, `cargo shuyi bots 20`... (`cargo shuyi` alone
+# --script "Right Right"`, `cargo shuyi playtest --tries 20`... (`cargo shuyi` alone
 # lists them). They run in the game's own tool program.
 shuyi = "run -q -p {{crate_name}} --example tools --features tools --"
 

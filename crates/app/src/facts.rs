@@ -4,10 +4,15 @@
 //! Deck, so only the build can tell them apart: the Deck's exporter sets
 //! `SHUYI_TARGET=steam-deck`. The facts are read from the engine's profile
 //! of that id, embedded from `targets/`, and never typed twice.
+//!
+//! One fact is the backend's, not the profile's: files dropped on the
+//! window reach the game on `desktop` and `web`, where miniquad reads a
+//! drop ([`drops`](crate::drops)), and not on the Steam Deck, whose game
+//! mode has no desktop to drag a file from.
 
 use shuyi_assets::target::TargetProfile;
-use shuyi_platform::Start;
-use shuyi_ui::{GameData, PlatformFacts};
+use shuyi_platform::{Loader, Start};
+use shuyi_ui::{FileDrops, GameData, PlatformFacts};
 
 /// The engine's profiles of the targets this backend builds, by id.
 const PROFILES: [(&str, &str); 3] = [
@@ -47,11 +52,21 @@ pub(crate) fn facts_for(id: &str) -> Result<PlatformFacts, String> {
     };
     let file = format!("targets/{id}.ron");
     TargetProfile::from_source(&file, id, source)
-        .map(|profile| PlatformFacts::from_profile(&profile))
+        .map(|profile| PlatformFacts::from_profile(&profile).with_file_drops(file_drops(id)))
         .map_err(|errors| {
             let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
             lines.join("\n")
         })
+}
+
+/// Whether this backend hears a file dropped on the window on the target
+/// `id`.
+fn file_drops(id: &str) -> FileDrops {
+    if matches!(id, "desktop" | "web") {
+        FileDrops::Heard
+    } else {
+        FileDrops::Unheard
+    }
 }
 
 /// The facts of the target `id` for `start`'s game. On an error the
@@ -62,7 +77,7 @@ pub(crate) fn start_as<G: GameData>(id: &str, mut start: Start<G>) -> (Start<G>,
     match facts_for(id) {
         Ok(facts) => (start, facts),
         Err(why) => {
-            start.load = Box::new(move |_| Err(why));
+            start.load = Loader::Once(Box::new(move |_| Err(why)));
             (start, PlatformFacts::default())
         }
     }
@@ -96,11 +111,12 @@ mod tests {
             let facts = facts_for(id).unwrap_or_else(|e| panic!("{e}"));
             assert_eq!(facts.target, id);
         }
-        assert_eq!(facts_for("desktop"), Ok(PlatformFacts::default()));
+        let heard = PlatformFacts::default().with_file_drops(FileDrops::Heard);
+        assert_eq!(facts_for("desktop"), Ok(heard));
         let web = facts_for("web").unwrap();
-        assert!(!web.can_quit() && web.windowed);
+        assert!(!web.can_quit() && web.windowed && web.can_drop_files());
         let deck = facts_for("steam-deck").unwrap();
-        assert!(deck.can_quit() && !deck.windowed);
+        assert!(deck.can_quit() && !deck.windowed && !deck.can_drop_files());
         assert_eq!(deck.keyboard, Keyboard::Absent);
     }
 
@@ -117,6 +133,7 @@ mod tests {
         columns: 0,
         glyphs: BTreeMap::new(),
         wide: BTreeMap::new(),
+        wide_sets: BTreeMap::new(),
     };
     static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 

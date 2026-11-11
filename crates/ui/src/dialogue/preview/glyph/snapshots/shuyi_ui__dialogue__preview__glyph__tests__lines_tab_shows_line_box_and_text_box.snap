@@ -1,0 +1,24 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 40, 6)"
+---
+  Scenes   Switches   Lines   Problems  
+                                        
+   Go to line: 12_                      
+     4 mentor: Is the road clear, or i… 
+ ►   9 > Nobody keeps watch.            
+               keys here                
+--- colours ---
+abbbbbbbbabbbbbbbbbbacccccccabbbbbbbbbba
+dddddddddddddddddddddddddddddddddddddddd
+dcccccccccccccccccdddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+deeeeeeeeeeeeeeeeeeeeeeeeeeedddddddddddd
+dddddddddddddddfffffffffdddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:text bg:panel
+c = fg:panel bg:focus
+d = fg:text bg:background
+e = fg:highlight bg:background
+f = fg:text_dim bg:background

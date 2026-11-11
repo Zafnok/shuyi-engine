@@ -109,6 +109,10 @@ pub struct Config {
     /// What the game's packages may hold, which `export` holds each final
     /// package to ([`crate::export::disclosure`]).
     pub disclosure: Option<Disclosure>,
+    /// The game's editions, by name (`public-demo`, `full`): what `export
+    /// --edition <name>` builds and ships, on any target
+    /// ([`crate::export`], ADR-0100).
+    pub editions: BTreeMap<String, Edition>,
     /// `glyph-tiles`.
     pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
@@ -361,6 +365,9 @@ pub struct FontAtlas {
     /// the text uses (a name entry's letters), in any order: empty by
     /// default.
     pub wide_glyphs: String,
+    /// The glyphs `font-atlas --wide <set>=<font.bdf>` keeps in each named
+    /// wide set whatever the text uses, by set name: empty by default.
+    pub wide_set_glyphs: BTreeMap<String, String>,
 }
 
 /// `glyph-tiles`: a tileset of glyphs on colored squares
@@ -430,7 +437,7 @@ pub struct Notices {
 
 /// What `export` builds and ships for the desktop and web targets, on top of
 /// the program and its notes. The Playdate's package, a `.pdx`, takes none of
-/// it.
+/// it but its own entry in `targets`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 #[non_exhaustive]
@@ -438,11 +445,49 @@ pub struct ExportPart {
     /// The package whose program ships, when it isn't the `game` part's (a
     /// game whose tool program is a package of its own).
     pub package: Option<String>,
-    /// The features of the game's package a build turns on. `link`, the
-    /// debug build's live link, is refused.
+    /// The features of the game's package a build turns on. The debug
+    /// features ([`crate::export::DEBUG_FEATURES`]) are refused.
     pub features: Vec<String>,
     /// The files and folders copied into the package.
     pub beside: Vec<Beside>,
+    /// What one target builds instead, by its id (`playdate`): a game whose
+    /// Playdate library is a package of its own, say.
+    pub targets: BTreeMap<String, TargetExport>,
+    /// Whether a release web export needs `wasm-opt` (`required` until
+    /// said).
+    pub wasm_opt: WasmOptRule,
+}
+
+/// Whether a release web export needs Binaryen's `wasm-opt`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WasmOptRule {
+    /// The export fails when `wasm-opt` didn't run.
+    #[default]
+    Required,
+    /// The export warns when `wasm-opt` isn't installed, and ships the
+    /// program as the build left it.
+    Optional,
+}
+
+/// What one target's export builds, in place of the `export` part's.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct TargetExport {
+    /// The package it builds, in place of the one it would.
+    pub package: Option<String>,
+    /// The features of that package it turns on, in place of
+    /// `export.features`.
+    pub features: Option<Vec<String>>,
+}
+
+impl TargetExport {
+    /// A target's export that builds `package` with `features`, each `None`
+    /// to keep what the target would build.
+    pub fn new(package: Option<String>, features: Option<Vec<String>>) -> Self {
+        Self { package, features }
+    }
 }
 
 /// A file or folder of the game that ships in its package.
@@ -482,6 +527,61 @@ pub struct Disclosure {
     /// yet so that a copy of it can be found: UTF-8 or UTF-16, whole, in any
     /// file of the package, of a pack or beside it.
     pub canaries: Vec<String>,
+}
+
+/// One edition of the game (`public-demo`, `full`): the program, the
+/// features and the files a build of it is made from, chosen before anything
+/// is compiled, and what its packages may hold. What it leaves unsaid is what
+/// the target would build, but its default features, which it always says.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Edition {
+    /// The package it builds, in place of the one the target would.
+    #[serde(default)]
+    pub package: Option<String>,
+    /// The program of that package it ships, in place of the one named as
+    /// the package (or its only one). A target that builds a library
+    /// (the Playdate) has none.
+    #[serde(default)]
+    pub bin: Option<String>,
+    /// Whether its builds keep the package's `default` features: always
+    /// written, since a default that turns on what only another edition has
+    /// is the easy way to ship it.
+    pub default_features: bool,
+    /// The features of the package it turns on, in place of the `export`
+    /// part's and the target's own list.
+    #[serde(default)]
+    pub features: Vec<String>,
+    /// The features its builds never have on, however Cargo would turn one
+    /// on (the package's own, or `package/feature` for a dependency's): a
+    /// build that has one is refused before anything is built.
+    #[serde(default)]
+    pub never_features: Vec<String>,
+    /// The folder of the game's files its program embeds, from the project's
+    /// root: handed to the build as `SHUYI_CONTENT`, which the game's build
+    /// script reads. Without it, the build embeds what the game names itself.
+    #[serde(default)]
+    pub content: Option<String>,
+    /// What its packages ship beside the program, in place of
+    /// `export.beside`.
+    #[serde(default)]
+    pub beside: Option<Vec<Beside>>,
+    /// What its packages may hold, in place of the project's `disclosure`
+    /// part.
+    #[serde(default)]
+    pub disclosure: Option<Disclosure>,
+}
+
+impl Edition {
+    /// An edition that keeps the package's default features or not, and
+    /// otherwise builds what the target would.
+    pub fn new(default_features: bool) -> Self {
+        Self {
+            default_features,
+            ..Self::default()
+        }
+    }
 }
 
 /// The private repository of files the game may not hand out (bought art):
@@ -650,6 +750,33 @@ mod tests {
         );
         assert!(Config::parse("(export: (beside: [(optional: true)]))").is_err());
         assert!(Config::parse("(export: (files: []))").is_err());
+        assert!(part.targets.is_empty());
+    }
+
+    #[test]
+    fn the_export_part_names_a_targets_own_package_and_features() {
+        let text = r#"(export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+        "web": (features: []),
+        "linux": (),
+    },
+))"#;
+        let part = Config::parse(text).unwrap().export.unwrap();
+        assert_eq!(
+            part.targets["playdate"],
+            TargetExport::new(
+                Some("jumper-playdate".to_owned()),
+                Some(vec!["demo".to_owned()])
+            )
+        );
+        assert_eq!(
+            part.targets["web"],
+            TargetExport::new(None, Some(Vec::new()))
+        );
+        assert_eq!(part.targets["linux"], TargetExport::default());
+        assert!(Config::parse(r#"(export: (targets: {"playdate": (beside: [])}))"#).is_err());
     }
 
     #[test]

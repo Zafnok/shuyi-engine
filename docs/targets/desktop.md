@@ -19,8 +19,11 @@ tools are that system's. On another one, `export` says where it builds.
 ## What each package holds
 
 - **The program.** Built with the features of `shuyi.ron`'s `export` part
-  (below), and none without one; the debug build's live link (`link`) never.
-- **`NOTICES.txt`**: every crate compiled in, the engine's data compiled
+  (below), and none without one; never a debug feature (`link`,
+  `debug-tools`, `capture` or the sound gates' probe).
+- **`NOTICES.txt`**: every crate compiled in, as Cargo resolves the
+  package's build (its features, and its defaults only when the edition
+  keeps them), the engine's data compiled
   in with it (the controller database `gilrs` carries, under Zlib), and
   the game's own texts its `shuyi.ron`'s `notices` names, then each
   license text once.
@@ -49,13 +52,20 @@ tools are that system's. On another one, `export` says where it builds.
   through `CARGO_ENCODED_RUSTFLAGS`, after the flags already in it or in
   `RUSTFLAGS`, so a game's `rustflags` in `.cargo/config.toml` don't
   reach these builds.
-- **The debug file.** On Windows and Linux the program is built with its
-  line tables and kept as `<game>-<version>-<target>.debug` beside the
-  package, never in it. The package's copy is stripped of them with
-  `objcopy --strip-debug` (MSYS2's binutils on Windows, the system's on
+- **No symbol table.** The shipped program names none of its functions.
+  On Windows and Linux the program is built with its symbols and line
+  tables and kept whole as `<game>-<version>-<target>.debug` beside the
+  package, never in it. The package's copy is stripped of both with
+  `objcopy --strip-all` (MSYS2's binutils on Windows, the system's on
   Linux; `shuyi doctor` checks it on Windows), which moves no code, so a
-  crash's addresses in the shipped program name the same lines in the
-  debug file. Keep the debug file with each release.
+  crash's addresses in the shipped program name the same functions and
+  lines in the debug file (`addr2line -f -e <the .debug file> <address>`).
+  Keep the debug file with each release. On macOS the program is built
+  stripped (`strip = true`, whatever the game's profile says).
+- **No debug surfaces.** Without debug tools a build drops its log's info
+  and debug lines, doesn't read `SHUYI_PERF`, and writes no record of play
+  into a crash report unless the game asks
+  ([crash-reports.md](../crash-reports.md)).
 
 `export-report.json` beside the package names the debug file, with the
 version, the target, the sizes, what shipped beside the program, the check's
@@ -85,9 +95,25 @@ export: (
 - **`package`**, if the program that ships isn't in the `game` part's package
   (a game whose tool program is a package of its own), names it.
 - **`features`** go to the build's `--features`, on every desktop target and
-  the web, and to `NOTICES.txt`. `link`, the live link, is refused.
-  `--without <feature>` leaves one off a build, as a build with no access to
-  a feature's files needs.
+  the web, and to `NOTICES.txt`. A debug feature is refused, by name:
+  `link` (the live link), `debug-tools` (the debug menu, `SHUYI_PERF`
+  traces and session recording), `capture` and the sound gates' probe;
+  so is one the build reaches another way, the package's own or the
+  engine's (`shuyi-ui/debug-tools`, `shuyi-app/capture` and the rest), by
+  a `default` list, a feature that lists it or a dependency, which Cargo
+  is asked before anything is built. `--without <feature>` leaves one off
+  a build, as a build with no access to a feature's files needs, and `--with <feature>` turns on another the
+  package has, for that build only.
+- **`targets`** gives one target, by its id, a `package` and `features` of
+  its own, each replacing the part's for that target: `targets: {
+  "linux": (package: "jumper-linux") }`. The Playdate reads its entry here
+  too, and nothing else of the part ([playdate.md](playdate.md)). An id with
+  no exporter is refused.
+- **`wasm_opt`**, `required` until said, is for the web: a release web export
+  fails when Binaryen's `wasm-opt` didn't run (`SH1003` with how to install
+  it when it isn't there), and after it runs, when the binary still holds a
+  `name` or `producers` section. `wasm_opt: optional` makes a missing one a
+  warning, and the binary ships as the build left it (built stripped).
 - **`beside`** copies each file or folder under its own name, or `name`. A
   path that isn't there refuses the export, naming it, unless it is
   `optional`; a name the package already holds is refused too.

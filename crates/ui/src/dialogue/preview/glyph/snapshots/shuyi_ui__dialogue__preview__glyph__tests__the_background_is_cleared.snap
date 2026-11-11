@@ -1,0 +1,11 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: buf.to_snapshot(&ctx.palette)
+---
+    
+    
+--- colours ---
+aaaa
+aaaa
+--- legend ---
+a = fg:text bg:background

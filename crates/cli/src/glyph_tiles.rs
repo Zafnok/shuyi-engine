@@ -13,6 +13,7 @@ use std::fs;
 use std::path::Path;
 
 use shuyi_assets::font::FontAtlasDef;
+use shuyi_assets::image::Image;
 use shuyi_assets::palette::PaletteDef;
 
 use crate::codec::{decode_png, encode_png};
@@ -20,17 +21,6 @@ use crate::project::GlyphTiles;
 
 /// The most glyphs one tile may have.
 pub const MAX_GLYPHS: usize = 3;
-
-/// A tileset's picture: its size and its RGBA8 pixels, row-major.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tileset {
-    /// Width in pixels.
-    pub width: u32,
-    /// Height in pixels.
-    pub height: u32,
-    /// The pixels.
-    pub rgba: Vec<u8>,
-}
 
 /// The pixel of the top-left corner of tile `index` of `rules`.
 pub fn tile_origin(rules: &GlyphTiles, index: usize) -> (u32, u32) {
@@ -40,26 +30,22 @@ pub fn tile_origin(rules: &GlyphTiles, index: usize) -> (u32, u32) {
 }
 
 /// Draws the tileset `rules` describes with the font atlas `atlas` (its
-/// picture `atlas_rgba`, `atlas_width` pixels wide) and the colors of
+/// picture `atlas_image`) and the colors of
 /// `palette`. Fails on a color the palette lacks, a glyph the atlas lacks,
 /// or a tile of no glyphs, too many, or too many to fit.
 pub fn render(
     rules: &GlyphTiles,
     atlas: &FontAtlasDef,
-    (atlas_width, atlas_rgba): (u32, &[u8]),
+    atlas_image: &Image,
     palette: &PaletteDef,
-) -> Result<Tileset, String> {
+) -> Result<Image, String> {
     if rules.tile == 0 || rules.columns == 0 {
         return Err("tile and columns must be above 0".to_owned());
     }
     let count = u32::try_from(rules.tiles.len()).unwrap_or(u32::MAX);
     let width = rules.columns * rules.tile;
     let height = count.div_ceil(rules.columns).max(1) * rules.tile;
-    let mut out = Tileset {
-        width,
-        height,
-        rgba: vec![0; to_usize(u64::from(width) * u64::from(height) * 4)],
-    };
+    let mut out = Image::filled(width, height, [0; 4]);
     let color = |name: &str| {
         palette
             .get(name)
@@ -85,7 +71,7 @@ pub fn render(
             let [red, green, blue] = color(bg)?;
             for py in y..y + rules.tile {
                 for px in x..x + rules.tile {
-                    out.set(px, py, [red, green, blue, 255]);
+                    set(&mut out, px, py, [red, green, blue, 255]);
                 }
             }
         }
@@ -98,13 +84,11 @@ pub fn render(
                 .ok_or_else(|| format!("tile {index}: the font has no '{glyph}'"))?;
             for gy in 0..cell.h {
                 for gx in 0..cell.w {
-                    let at = (u64::from(cell.y + gy) * u64::from(atlas_width)
-                        + u64::from(cell.x + gx))
-                        * 4
-                        + 3;
-                    let cover = atlas_rgba.get(to_usize(at)).copied().unwrap_or(0);
+                    let cover = atlas_image
+                        .pixel(cell.x + gx, cell.y + gy)
+                        .map_or(0, |[.., alpha]| alpha);
                     if cover > 0 {
-                        out.stamp(left + i * atlas.cell_w + gx, top + gy, fg, cover);
+                        stamp(&mut out, left + i * atlas.cell_w + gx, top + gy, fg, cover);
                     }
                 }
             }
@@ -113,36 +97,28 @@ pub fn render(
     Ok(out)
 }
 
-impl Tileset {
-    fn index(&self, x: u32, y: u32) -> Option<usize> {
-        (x < self.width && y < self.height)
-            .then(|| to_usize((u64::from(y) * u64::from(self.width) + u64::from(x)) * 4))
-    }
+fn index(image: &Image, x: u32, y: u32) -> Option<usize> {
+    (x < image.width && y < image.height)
+        .then(|| to_usize((u64::from(y) * u64::from(image.width) + u64::from(x)) * 4))
+}
 
-    fn set(&mut self, x: u32, y: u32, rgba: [u8; 4]) {
-        if let Some(at) = self.index(x, y) {
-            self.rgba[at..at + 4].copy_from_slice(&rgba);
-        }
+fn set(image: &mut Image, x: u32, y: u32, rgba: [u8; 4]) {
+    if let Some(at) = index(image, x, y) {
+        image.rgba[at..at + 4].copy_from_slice(&rgba);
     }
+}
 
-    /// The pixel at `(x, y)`, clear outside the picture.
-    pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
-        self.index(x, y)
-            .map_or([0; 4], |at| [0, 1, 2, 3].map(|c| self.rgba[at + c]))
-    }
-
-    /// Blends `(x, y)` towards `color` by `cover` (0 none, 255 all). A
-    /// clear pixel takes the color at that cover as its opacity.
-    fn stamp(&mut self, x: u32, y: u32, color: [u8; 3], cover: u8) {
-        let under = self.pixel(x, y);
-        let out = if under[3] == 0 {
-            [color[0], color[1], color[2], cover]
-        } else {
-            let mix = |c: usize| blend(under[c], color[c], cover);
-            [mix(0), mix(1), mix(2), under[3]]
-        };
-        self.set(x, y, out);
-    }
+/// Blends `(x, y)` of `image` towards `color` by `cover` (0 none, 255
+/// all). A clear pixel takes the color at that cover as its opacity.
+fn stamp(image: &mut Image, x: u32, y: u32, color: [u8; 3], cover: u8) {
+    let under = image.pixel(x, y).unwrap_or([0; 4]);
+    let out = if under[3] == 0 {
+        [color[0], color[1], color[2], cover]
+    } else {
+        let mix = |c: usize| blend(under[c], color[c], cover);
+        [mix(0), mix(1), mix(2), under[3]]
+    };
+    set(image, x, y, out);
 }
 
 /// Channel `under` blended towards `over` by `cover`, rounded.
@@ -157,7 +133,7 @@ fn to_usize(v: u64) -> usize {
 }
 
 /// The tileset of `rules`, read from the files they name under `root`.
-pub fn render_files(rules: &GlyphTiles, root: &Path) -> Result<Tileset, String> {
+pub fn render_files(rules: &GlyphTiles, root: &Path) -> Result<Image, String> {
     let read = |rel: &str| {
         let path = root.join(rel);
         fs::read(&path).map_err(|e| format!("reading {}: {e}", path.display()))
@@ -176,10 +152,15 @@ pub fn render_files(rules: &GlyphTiles, root: &Path) -> Result<Tileset, String> 
     let atlas =
         FontAtlasDef::from_source(&atlas_ron, &text(&atlas_ron)?, &atlas_png, Some(&png), "")
             .map_err(joined)?;
-    let (width, _, rgba) = decode_png(&png)?;
+    let (width, height, rgba) = decode_png(&png)?;
+    let atlas_image = Image {
+        width,
+        height,
+        rgba,
+    };
     let palette =
         PaletteDef::from_source(&rules.palette, &text(&rules.palette)?, &[]).map_err(joined)?;
-    render(rules, &atlas, (width, &rgba), &palette)
+    render(rules, &atlas, &atlas_image, &palette)
 }
 
 /// Runs the command: draws the tileset and writes it to `rules.out` under

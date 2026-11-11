@@ -37,7 +37,7 @@ use core::time::Duration;
 use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
-use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, Gain, MusicClock, MusicCommand};
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::input::pad::PadKind;
@@ -48,8 +48,10 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, Start, SystemHook};
-use crate::headless::{HeadlessPlatform, PlayingSound, PresentHook, Presented};
+use crate::dropped::DroppedFile;
+use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
+use crate::player_files::ChosenFile;
 use crate::script::{self, Planned};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
@@ -323,6 +325,17 @@ impl<G: GameData> Harness<G> {
         self
     }
 
+    /// Makes every voice clip last `seconds`: [`Ctx::voice_playing`] names
+    /// its line from the frame after it was asked for until that long has
+    /// passed. Until this is called a clip sounds until it is stopped or
+    /// replaced. Negative or NaN counts as 0.
+    pub fn voice_length(&mut self, seconds: f32) -> &mut Self {
+        self.platform
+            .speaker_mut()
+            .set_voice_length(f64::from(seconds));
+        self
+    }
+
     /// Makes no music ever sound, as when the music files are missing:
     /// [`Ctx::music_clock`] stays `None`.
     pub fn without_music(&mut self) -> &mut Self {
@@ -351,6 +364,14 @@ impl<G: GameData> Harness<G> {
     #[cfg(feature = "std")]
     pub fn change_file(&mut self, layer: Layer, path: &str, bytes: Vec<u8>) -> &mut Self {
         self.platform.change_file(layer, path, bytes);
+        self
+    }
+
+    /// Has the headless backend say a folder is watched in every build, or
+    /// not ([`HeadlessPlatform::set_watches_files`]): the files changed
+    /// then reach the game with debug tools off too.
+    pub fn watch_files(&mut self, on: bool) -> &mut Self {
+        self.platform.set_watches_files(on);
         self
     }
 
@@ -502,6 +523,43 @@ impl<G: GameData> Harness<G> {
     pub fn system(&mut self, event: SystemEvent) -> &mut Self {
         self.platform.push_system(event);
         self.frame(&[], FRAME_DT)
+    }
+
+    /// The player drops the file `name` holding `bytes` on the game's
+    /// window, in a frame of [`FRAME_DT`] with no input: the game's system
+    /// hook hears [`SystemEvent::FilesDropped`] with it, as from a backend
+    /// ([`App`] refuses what is over the limits, and logs why). It works
+    /// whatever the platform's facts say, so a test drops a file on any
+    /// target.
+    pub fn drop_file(&mut self, name: &str, bytes: Vec<u8>) -> &mut Self {
+        self.drop_files(vec![DroppedFile::new(name, bytes)])
+    }
+
+    /// The player drops `files` on the game's window at once, as
+    /// [`drop_file`](Self::drop_file) drops one.
+    pub fn drop_files(&mut self, files: Vec<DroppedFile>) -> &mut Self {
+        self.system(SystemEvent::FilesDropped(files))
+    }
+
+    /// Queues the player's answer to the game's next ask for a file
+    /// ([`Ctx::ask_for_file`](shuyi_ui::Ctx::ask_for_file)): the file they
+    /// pick ([`ChosenFile::picked`], or [`ChosenFile::from_bytes`] for bytes
+    /// that may be refused), or that they cancel. The game's system hook
+    /// hears it as [`SystemEvent::FileChosen`] in the frame after the ask.
+    /// An ask with no answer queued is cancelled. It answers whatever the
+    /// platform's facts say, so a test picks a file on any target.
+    pub fn answer_next_ask(&mut self, answer: ChosenFile) -> &mut Self {
+        self.platform.answer_next_ask(answer);
+        self
+    }
+
+    /// Each file the game offered the player
+    /// ([`Ctx::offer_file`](shuyi_ui::Ctx::offer_file)), in order: the name
+    /// it was written as (`a (2).ron` for a second `a.ron`) and its text.
+    /// The game's system hook hears
+    /// [`SystemEvent::FileOffered`] in the frame after each.
+    pub fn offered(&self) -> &[(String, String)] {
+        self.platform.offered()
     }
 
     /// Holds the controller button `button` for `seconds` of frames (so a
@@ -668,6 +726,21 @@ impl<G: GameData> Harness<G> {
         self.platform.speaker().sounds_playing()
     }
 
+    /// The cues of the sounds the game added at run time
+    /// ([`AudioQueue::add_sound`](shuyi_ui::audio::AudioQueue::add_sound))
+    /// and hasn't removed, as the headless backend's speaker holds them, in
+    /// order.
+    pub fn sounds_added(&self) -> Vec<&str> {
+        let added = self.platform.speaker().added_sounds();
+        added.keys().map(String::as_str).collect()
+    }
+
+    /// Every play and start of a sound the game added, in order, with the
+    /// samples it played, as the headless backend's speaker heard them.
+    pub fn added_plays(&self) -> &[AddedPlay] {
+        self.platform.speaker().added_plays()
+    }
+
     /// The lines whose voice clip was asked for so far, in order, as line
     /// ids.
     pub fn voices(&self) -> Vec<String> {
@@ -687,17 +760,12 @@ impl<G: GameData> Harness<G> {
         self.audio.last().map_or(&[], Vec::as_slice)
     }
 
-    /// The volumes the last frame told the platform to play at, 0–1: the
-    /// music's and the sounds' ([`AudioFrame`](crate::AudioFrame)).
-    pub fn volumes(&self) -> (f32, f32) {
-        let (music, sound, _) = self.platform.speaker().volumes();
-        (music, sound)
-    }
-
-    /// The voice volume the last frame told the platform to play at, 0–1
-    /// ([`AudioFrame`](crate::AudioFrame)).
-    pub fn voice_volume(&self) -> f32 {
-        self.platform.speaker().volumes().2
+    /// The gain sound group `group` played at in the last frame
+    /// ([`AudioFrame::gains`](crate::AudioFrame::gains)); silence for a
+    /// group it didn't have.
+    pub fn gain(&self, group: &str) -> Gain {
+        let gains = self.platform.speaker().gains();
+        gains.get(group).copied().unwrap_or(Gain::SILENT)
     }
 
     /// Whether the last frame told the platform to fill the screen.

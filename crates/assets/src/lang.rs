@@ -75,7 +75,7 @@ pub const ENGLISH: &str = tag::DEFAULT_SOURCE;
 const UI_FILE: &str = "ui.ron";
 
 /// File name of a pack's description.
-const INFO_FILE: &str = "lang.ron";
+pub(crate) const INFO_FILE: &str = "lang.ron";
 
 /// File name of a pack's data text: names, tips, titles and notes.
 const DATA_FILE: &str = "data.ron";
@@ -104,15 +104,52 @@ pub struct SourceLang {
     pub code: LangCode,
     /// Its own name for itself, which a language menu shows.
     pub name: String,
+    /// The font atlas's wide set it draws from first, as a pack's
+    /// [`LangInfo::wide_font`] names one: `None` for none of its own.
+    pub wide_font: Option<String>,
+    /// Whether [`WIDE_PUNCTUATION`](crate::font::WIDE_PUNCTUATION) is wide
+    /// in it, as a pack's [`LangInfo::wide_punctuation`] says; narrow
+    /// (`false`) by default.
+    pub wide_punctuation: bool,
 }
 
 impl SourceLang {
-    /// The source language `code`, named `name` in itself.
+    /// The source language `code`, named `name` in itself, with no wide set
+    /// of its own and its punctuation narrow.
     pub fn new(code: LangCode, name: impl Into<String>) -> Self {
         Self {
             code,
             name: name.into(),
+            wide_font: None,
+            wide_punctuation: false,
         }
+    }
+
+    /// This language, drawing from the font atlas's wide set `set` first
+    /// ([`wide_font`](Self::wide_font)).
+    #[must_use]
+    pub fn with_wide_font(self, set: impl Into<String>) -> Self {
+        Self {
+            wide_font: Some(set.into()),
+            ..self
+        }
+    }
+
+    /// This language, its punctuation wide (`on`) or narrow
+    /// ([`wide_punctuation`](Self::wide_punctuation)).
+    #[must_use]
+    pub fn with_wide_punctuation(self, on: bool) -> Self {
+        Self {
+            wide_punctuation: on,
+            ..self
+        }
+    }
+
+    /// The width table of this language over `base`, the atlas's
+    /// ([`CellWidths::of`]), as [`LangInfo::widths`] makes a pack's.
+    pub fn widths(&self, base: &CellWidths) -> CellWidths {
+        base.clone()
+            .in_lang(self.wide_font.as_deref(), self.wide_punctuation)
     }
 }
 
@@ -140,6 +177,28 @@ pub struct LangInfo {
     pub name: String,
     /// Who made the text.
     pub made_by: MadeBy,
+    /// The font atlas's wide set the language draws from first (its own
+    /// word, as `font-atlas --wide <set>=<font.bdf>` names it), so a
+    /// character Japanese and Chinese share has this language's shape:
+    /// `None` for none of its own. Its wide characters must be in that set
+    /// ([`undrawn`](crate::font::undrawn)).
+    #[serde(default)]
+    pub wide_font: Option<String>,
+    /// Whether [`WIDE_PUNCTUATION`](crate::font::WIDE_PUNCTUATION)
+    /// (`“ ” ‘ ’ … —`) is wide in this language and drawn from its wide
+    /// set, as Chinese writes it; narrow (`false`) by default.
+    #[serde(default)]
+    pub wide_punctuation: bool,
+}
+
+impl LangInfo {
+    /// The width table of this language over `base`, the atlas's
+    /// ([`CellWidths::of`]): its wide set and its punctuation's width
+    /// ([`CellWidths::in_lang`]).
+    pub fn widths(&self, base: &CellWidths) -> CellWidths {
+        base.clone()
+            .in_lang(self.wide_font.as_deref(), self.wide_punctuation)
+    }
 }
 
 /// One piece of a pack's text.
@@ -284,6 +343,19 @@ impl Lang {
     /// The pack for `code`; `None` for the source or an unknown tag.
     pub fn pack(&self, code: &LangCode) -> Option<&LangPack> {
         self.packs.get(code)
+    }
+
+    /// The width table of language `code` over `base`, the atlas's
+    /// ([`CellWidths::of`]): its pack's ([`LangInfo::widths`]), the
+    /// source's ([`SourceLang::widths`]), else `base` itself.
+    pub fn widths(&self, code: &LangCode, base: &CellWidths) -> CellWidths {
+        if let Some(pack) = self.pack(code) {
+            pack.info.widths(base)
+        } else if *code == self.written_in.code {
+            self.written_in.widths(base)
+        } else {
+            base.clone()
+        }
     }
 
     /// The tags of the packs, in order (the source isn't one).
@@ -603,6 +675,24 @@ fn pack_from_files_in(
     if info.as_ref().is_some_and(|i| i.name.trim().is_empty()) {
         errors.push(ContentError::new(info_file, "the name must not be empty"));
     }
+    if info
+        .as_ref()
+        .and_then(|i| i.wide_font.as_deref())
+        .is_some_and(|set| set.trim().is_empty())
+    {
+        errors.push(ContentError::new(
+            info_file,
+            "wide_font must not be empty: leave it out for no wide set of its own",
+        ));
+    }
+    // The pack's limits count with its own widths (its punctuation's).
+    let widths = info
+        .as_ref()
+        .map_or_else(|| rules.widths.clone(), |i| i.widths(rules.widths));
+    let rules = &PackRules {
+        widths: &widths,
+        ..*rules
+    };
     let problem = rules.data_problem;
     let no_key = format!("no such key in the source language ({source})");
     let ui = entries(sources.ui, english, &no_key, problem, &mut errors);
@@ -860,6 +950,27 @@ mod tests {
         ]"#;
         let packs = BTreeMap::from([(code("xx"), pack(ui).unwrap())]);
         Lang::new(english(), packs)
+    }
+
+    #[test]
+    fn each_language_has_its_own_widths_the_source_too() {
+        let base = CellWidths::wide(['直']);
+        let lang = lang();
+        // Neither field: the source's are the atlas's, as before.
+        assert_eq!(SourceLang::default().widths(&base), base);
+        assert_eq!(lang.widths(&LangCode::default(), &base), base);
+        let source = SourceLang::new(code("zh-Hans"), "中文")
+            .with_wide_font("zh-Hans")
+            .with_wide_punctuation(true);
+        assert_eq!(source.wide_font.as_deref(), Some("zh-Hans"));
+        assert!(source.wide_punctuation);
+        let lang = lang.with_source_lang(source);
+        let chinese = lang.widths(&code("zh-Hans"), &base);
+        assert_eq!(chinese, base.clone().in_lang(Some("zh-Hans"), true));
+        assert!(chinese.is_wide('“') && chinese.is_wide('直'));
+        // A pack's are its lang.ron's; an unknown tag's the atlas's.
+        assert_eq!(lang.widths(&code("xx"), &base), base);
+        assert_eq!(lang.widths(&code("en"), &base), base);
     }
 
     #[test]

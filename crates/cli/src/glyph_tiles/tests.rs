@@ -5,7 +5,7 @@ use crate::font_atlas::{AtlasChars, BitmapFont, build_atlas};
 use crate::project::GlyphTile;
 
 /// A font of 2 × 3 cells: `a` all on, `b` only its top-left pixel.
-fn font() -> (FontAtlasDef, u32, Vec<u8>) {
+fn font() -> (FontAtlasDef, Image) {
     let glyphs = BTreeMap::from([
         ('a', vec![true; 6]),
         ('b', vec![true, false, false, false, false, false]),
@@ -18,7 +18,7 @@ fn font() -> (FontAtlasDef, u32, Vec<u8>) {
         },
         &AtlasChars::default(),
     );
-    (atlas.def, atlas.width, atlas.rgba)
+    (atlas.def, atlas.image)
 }
 
 fn palette() -> PaletteDef {
@@ -48,9 +48,9 @@ fn rules(columns: u32, tiles: Vec<GlyphTile>) -> GlyphTiles {
     }
 }
 
-fn draw(rules: &GlyphTiles) -> Result<Tileset, String> {
-    let (atlas, width, rgba) = font();
-    render(rules, &atlas, (width, &rgba), &palette())
+fn draw(rules: &GlyphTiles) -> Result<Image, String> {
+    let (atlas, atlas_image) = font();
+    render(rules, &atlas, &atlas_image, &palette())
 }
 
 const INK: [u8; 4] = [200, 0, 0, 255];
@@ -78,12 +78,12 @@ fn a_tiles_glyphs_are_centred_on_its_square() {
             let a = (1..3).contains(&x) && (1..4).contains(&y);
             let b = (x, y) == (3, 1);
             let want = if a || b { INK } else { PAPER };
-            assert_eq!(tiles.pixel(x, y), want, "({x}, {y})");
+            assert_eq!(tiles.pixel(x, y), Some(want), "({x}, {y})");
         }
     }
-    // Outside the picture: clear.
-    assert_eq!(tiles.pixel(6, 0), CLEAR);
-    assert_eq!(tiles.pixel(0, 6), CLEAR);
+    // Outside the picture: none.
+    assert_eq!(tiles.pixel(6, 0), None);
+    assert_eq!(tiles.pixel(0, 6), None);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn glyphs_that_just_fit_are_drawn_and_an_odd_tile_rounds_down() {
         for x in 0..7 {
             let on = (2..4).contains(&x) && (2..5).contains(&y);
             let want = if on { INK } else { PAPER };
-            assert_eq!(tiles.pixel(x, y), want, "({x}, {y})");
+            assert_eq!(tiles.pixel(x, y), Some(want), "({x}, {y})");
         }
     }
 }
@@ -111,25 +111,25 @@ fn glyphs_that_just_fit_are_drawn_and_an_odd_tile_rounds_down() {
 fn a_tile_with_no_background_is_clear_but_for_its_glyphs() {
     let tiles = draw(&rules(2, vec![tile("a", Some("paper")), tile("b", None)])).unwrap();
     // The second tile, at x 6: one glyph of 2 × 3, from (2, 1).
-    assert_eq!(tiles.pixel(6 + 2, 1), INK);
+    assert_eq!(tiles.pixel(6 + 2, 1), Some(INK));
     for (x, y) in [(6, 0), (6 + 3, 1), (6 + 2, 2), (11, 5)] {
-        assert_eq!(tiles.pixel(x, y), CLEAR, "({x}, {y})");
+        assert_eq!(tiles.pixel(x, y), Some(CLEAR), "({x}, {y})");
     }
-    assert_eq!(tiles.pixel(0, 0), PAPER);
+    assert_eq!(tiles.pixel(0, 0), Some(PAPER));
 }
 
 #[test]
 fn a_partly_covered_pixel_blends_or_takes_the_cover_as_its_opacity() {
-    let mut tiles = Tileset {
+    let mut tiles = Image {
         width: 2,
         height: 1,
         rgba: [PAPER, CLEAR].concat(),
     };
-    tiles.stamp(0, 0, [200, 0, 0], 51);
-    tiles.stamp(1, 0, [200, 0, 0], 51);
+    stamp(&mut tiles, 0, 0, [200, 0, 0], 51);
+    stamp(&mut tiles, 1, 0, [200, 0, 0], 51);
     // 0 → 200 by a fifth: 40; 100 → 0 by a fifth: 80.
-    assert_eq!(tiles.pixel(0, 0), [40, 0, 80, 255]);
-    assert_eq!(tiles.pixel(1, 0), [200, 0, 0, 51]);
+    assert_eq!(tiles.pixel(0, 0), Some([40, 0, 80, 255]));
+    assert_eq!(tiles.pixel(1, 0), Some([200, 0, 0, 51]));
     assert_eq!(blend(0, 255, 255), 255);
     assert_eq!(blend(255, 0, 0), 255);
     assert_eq!(blend(0, 255, 128), 128);
@@ -178,9 +178,8 @@ fn run_reads_the_font_and_palette_and_writes_the_picture() {
     let root = std::env::temp_dir().join(format!("shuyi-glyph-tiles-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("font")).unwrap();
-    let (atlas, width, rgba) = font();
-    let height = u32::try_from(rgba.len()).unwrap() / 4 / width;
-    let png = encode_png(width, height, &rgba).unwrap();
+    let (atlas, image) = font();
+    let png = encode_png(image.width, image.height, &image.rgba).unwrap();
     fs::write(root.join("font/atlas.png"), png).unwrap();
     let ron = crate::font_atlas::atlas_ron(&atlas, "tiny.bdf", "shuyi", None).unwrap();
     fs::write(root.join("font/atlas.ron"), ron).unwrap();

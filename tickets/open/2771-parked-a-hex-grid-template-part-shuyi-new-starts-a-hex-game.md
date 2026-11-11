@@ -196,7 +196,7 @@ None.
 - the projection, the skin, the example, the guide's first version and
   the catalog's answer (2740), and the hex maths and searches (2121);
 - a `GameTools` of the part's own. Base's `BasicTools` serves the hex
-  stage, so the contract's `bots` and `replay` stay unsupported on a
+  stage, so the contract's `playtest` and `replay` stay unsupported on a
   new hex game; the rules' own tests play the bots;
 - `frame-png` pictures of the part's game: Hello, Hex's pictures cover
   the skin;

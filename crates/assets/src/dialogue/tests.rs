@@ -1518,6 +1518,89 @@ fn a_scene_resolves_for_those_present() {
     assert!(!quiet.resolved(&Present::only([])).has_text());
 }
 
+#[test]
+fn the_conditions_are_each_character_tested_once_in_order() {
+    let src = "@scene a\n> x\n@if scout\n> here\n@if guide\n> both\n@endif\n@else\n@if mentor\n> m\n@endif\n@endif\n@choice\n* a: b\n  @if smith\n  > s\n  @endif\n  @if scout\n  > again\n  @endif\n* c: d\n  @if baker\n  > b\n  @endif\n@endchoice\n@if guide\n> g\n@endif\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let tested: Vec<String> = parsed[0]
+        .scene
+        .conditions()
+        .into_iter()
+        .map(|c| c.0)
+        .collect();
+    assert_eq!(tested, ["scout", "guide", "mentor", "smith", "baker"]);
+    let none = Scene::<Cue> {
+        id: "n".into(),
+        steps: vec![narrate("x")],
+    };
+    assert_eq!(none.conditions(), []);
+}
+
+/// A scene of every kind of block, for the text boxes: line 2 is the first
+/// step.
+const BOXES: &str = "@scene a\n@left guide calm\n> one\n@if scout\nscout: two\n@else\n> two, alone\n  and more\n@endif\n@music storm\n@choice\n* a: b\n  > three a\n* c: d\n  @if guide\n  > three c\n  @endif\n  > four c\n@endchoice\n@choice\n@endchoice\n> last\n@end\n";
+
+#[test]
+fn the_text_boxes_are_where_they_play_for_those_present_with_the_replies() {
+    let (parsed, _) = parse_dlg::<Cue>("t.dlg", BOXES);
+    let scene = &parsed[0];
+    let boxes = |present: &Present, replies: &[usize]| -> Vec<(u32, String)> {
+        let boxes = scene.text_boxes(present, replies);
+        let text = |b: &TextBoxAt<'_, Cue>| b.step.text().unwrap_or_default().to_owned();
+        boxes.iter().map(|b| (b.line, text(b))).collect()
+    };
+    let all = |texts: &[(u32, &str)]| -> Vec<(u32, String)> {
+        texts.iter().map(|&(n, t)| (n, t.to_owned())).collect()
+    };
+    assert_eq!(
+        boxes(&Present::Everyone, &[]),
+        all(&[(3, "one"), (5, "two"), (13, "three a"), (22, "last")])
+    );
+    assert_eq!(
+        boxes(&Present::only([]), &[1]),
+        all(&[
+            (3, "one"),
+            (7, "two, alone and more"),
+            (18, "four c"),
+            (22, "last")
+        ])
+    );
+    assert_eq!(
+        boxes(&Present::Everyone, &[1]),
+        all(&[
+            (3, "one"),
+            (5, "two"),
+            (16, "three c"),
+            (18, "four c"),
+            (22, "last")
+        ])
+    );
+    // A reply past the menu takes the first, the one just past it too.
+    for past in [2, 7] {
+        assert_eq!(
+            boxes(&Present::Everyone, &[past]),
+            boxes(&Present::Everyone, &[0])
+        );
+    }
+}
+
+#[test]
+fn a_line_falls_in_the_last_text_box_starting_at_or_before_it() {
+    let (parsed, _) = parse_dlg::<Cue>("t.dlg", BOXES);
+    let scene = &parsed[0];
+    let alone = Present::only([]);
+    let at = |line| scene.text_box_at(line, &alone, &[1]);
+    // Before the first box, the first; a box's own line; its next line.
+    assert_eq!([at(1), at(2), at(3)], [Some(0); 3]);
+    assert_eq!([at(7), at(8), at(10)], [Some(1); 3]);
+    assert_eq!(at(18), Some(2));
+    assert_eq!([at(22), at(99)], [Some(3); 2]);
+    let (quiet, _) = parse_dlg::<Cue>("t.dlg", "@scene q\n@if x\n> x\n@endif\n@end\n");
+    assert_eq!(quiet[0].text_box_at(3, &alone, &[]), None);
+    assert_eq!(quiet[0].text_box_at(3, &Present::Everyone, &[]), Some(0));
+}
+
 // --- Line ids -----------------------------------------------------------------
 
 /// The published FNV-1a 64 test vectors.

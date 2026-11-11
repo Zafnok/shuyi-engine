@@ -1,26 +1,34 @@
 +++
 title = "Rules as commands"
 description = "A game's rules are a state that changes only through commands, deterministic, with a history and a hash."
-weight = 60
+weight = 50
 
 [extra]
-chapter = 6
+part = "chapters"
+chapter = 5
 +++
 
+{% newcomer(to="shuyi", topic="why the rules change only through commands") %}
 Most of what's hard about a game comes later: undo, saving a game in progress, a replay
 of how someone got that bug, a bot that plays it, a test that doesn't need a screen,
 online play. Each of those needs to rebuild or repeat the game, exactly.
 
-You get all of them from one rule, if you keep it from the start. A game's rules are a
-**state**, everything that's true right now and could change, and that state changes
-**only through commands**. A **command** is plain data saying what a player asks for:
+You get all of them from one rule, if you keep it from the start.
+{% end %}
+
+A game's rules are a **state**, and that state changes **only through commands**. A
+**command** is plain data saying what a player asks for:
 "plant a seed here". The same state and the same command always give the same events
 and the same new state, on every machine, which is called being **deterministic**.
 That is what replays, bug reports, bots, undo and online play all rest on.
 
+{% newcomer(to="games", topic="the state") %}
+The **state** is everything that's true right now and could change.
+{% end %}
+
 The chain is short, and worth learning by heart. A key press becomes an **action** (the
-keymap, [chapter 3](@/learn/book/actions.md)), an action becomes a **command** (the
-screen, [chapter 2](@/learn/book/games-and-screens.md)), and a command changes the
+keymap, [chapter 4](@/learn/book/actions.md)), an action becomes a **command** (the
+screen, [chapter 6](@/learn/book/games-and-screens.md)), and a command changes the
 **state** (the rules, this chapter), which the screen then shows.
 
 A turn game sends a command for each thing a player does. A real-time game sends its
@@ -34,38 +42,54 @@ The garden's rules know nothing of screens, keys or the clock:
 
 {{ snippet(file="src/rules.rs", anchor="state") }}
 
-> **Rust:** each `enum` is one of a fixed list. `Event::Moved(usize)` is a possibility
-> that carries data: moved, and to which plot. `Vec<bool>` is a list of true-or-false,
-> one for each plot.
->
-> `Serialize` and `Deserialize`, derived here, write the code that turns a value into
-> text and back. It's what lets a state be saved and hashed, as you'll see below.
-> `Garden`'s fields have no `pub`, so nothing outside this file can change them: code
-> elsewhere has to send a command, and the compiler enforces it.
+{% newcomer(to="rust", topic="an `enum` with data, and `Vec<bool>`") %}
+Each `enum` is one of a fixed list. `Event::Moved(usize)` is a possibility
+that carries data: moved, and to which plot. `Vec<bool>` is a list of true-or-false,
+one for each plot.
+{% end %}
+
+{% newcomer(to="rust", topic="`Serialize`, `Deserialize` and `pub`") %}
+`Serialize` and `Deserialize`, derived here, write the code that turns a value into
+text and back. It's what lets a state be saved and hashed, as you'll see below.
+`Garden`'s fields have no `pub`, so nothing outside this file can change them: code
+elsewhere has to send a command, and the compiler enforces it.
+{% end %}
 
 ## TurnRules
 
-The rules implement `shuyi_core::TurnRules` for their state, the engine's **trait**,
-its list of functions a turn game's rules promise to have:
+The rules implement `shuyi_core::TurnRules` for their state.
+
+{% newcomer(to="rust", topic="a trait") %}
+`TurnRules` is the engine's **trait**,
+its list of functions a turn game's rules promise to have.
+{% end %}
 
 {{ snippet(file="src/rules.rs", anchor="rules") }}
 
-> **Rust:** the `type` lines fill in the trait's blanks: this game's command, event,
-> error and outcome. `Result<(), Refusal>` is either "fine, nothing more to say",
-> `Ok(())`, or a refusal, `Err(...)`.
->
-> `self.check(command)?` is the line that makes `apply` all or nothing. The `?` says: if
-> `check` refused, hand that refusal back now, before anything has changed. The compiler
-> helps too: `check` has `&self`, so it can't change the state, and `apply` has `&mut
-> self`, so it may.
->
-> `Command::Left if self.at == 0 => ...` is a match arm with a guard: it only fits if
-> the `if` is true too. `self.plots[self.at]` reads item number `at` from the list,
-> counting from 0.
->
-> `.into_iter().filter(|command| ...).collect()` goes through the three commands, keeps
-> those that pass, and gathers them into a list. `.all(|&grows| grows)` asks whether
-> every plot grows.
+{% newcomer(to="rust", topic="the `type` lines and `Result<(), Refusal>`") %}
+The `type` lines fill in the trait's blanks: this game's command, event,
+error and outcome. `Result<(), Refusal>` is either "fine, nothing more to say",
+`Ok(())`, or a refusal, `Err(...)`.
+{% end %}
+
+{% newcomer(to="rust", topic="`?`, `&self` and `&mut self`") %}
+`self.check(command)?` is the line that makes `apply` all or nothing. The `?` says: if
+`check` refused, hand that refusal back now, before anything has changed. The compiler
+helps too: `check` has `&self`, so it can't change the state, and `apply` has `&mut
+self`, so it may.
+{% end %}
+
+{% newcomer(to="rust", topic="a match guard, and reading a list's item") %}
+`Command::Left if self.at == 0 => ...` is a match arm with a guard: it only fits if
+the `if` is true too. `self.plots[self.at]` reads item number `at` from the list,
+counting from 0.
+{% end %}
+
+{% newcomer(to="rust", topic="an iterator chain") %}
+`.into_iter().filter(|command| ...).collect()` goes through the three commands, keeps
+those that pass, and gathers them into a list. `.all(|&grows| grows)` asks whether
+every plot grows.
+{% end %}
 
 Its contract:
 
@@ -81,7 +105,7 @@ Its contract:
 - Once `outcome` is `Some`, the game is over and `legal_commands` is empty.
 
 A screen sends the commands (the garden's `update`, in
-[chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below)) and shows the
+[chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below)) and shows the
 state; it never changes the state itself. To see that the rules decide everything,
 change one of them. Here, planting stops costing a seed:
 
@@ -97,8 +121,10 @@ A rule's test needs no screen at all:
 
 {{ snippet(file="src/rules.rs", anchor="test") }}
 
-> **Rust:** `matches!` asks whether a value fits a pattern, and `|` inside it means "or".
-> `events[..]` is the whole list, seen as a slice so it can be matched.
+{% newcomer(to="rust", topic="`matches!` and a slice") %}
+`matches!` asks whether a value fits a pattern, and `|` inside it means "or".
+`events[..]` is the whole list, seen as a slice so it can be matched.
+{% end %}
 
 ## History and undo
 
@@ -115,8 +141,12 @@ of a play is.
 ## Determinism and the hash
 
 How do you know two runs really played the same? Comparing whole states by eye doesn't
-scale. A **hash** is a short number worked out from a whole value, and it changes if any
+scale.
+
+{% newcomer(to="programming", topic="a hash") %}
+A **hash** is a short number worked out from a whole value, and it changes if any
 of it does.
+{% end %}
 
 `shuyi_core::state_hash` hashes any state that serializes, the same on every platform
 and every run. Two runs that should agree compare their hashes step by step, and the
@@ -124,9 +154,11 @@ first step that differs is where to look:
 
 {{ snippet(file="src/rules.rs", anchor="hash") }}
 
-> **Rust:** `let play = |seed| { ... };` keeps a small nameless function in a name, so
-> the test can call it twice. `.unwrap()` opens a `Result`, and stops the test if it's
-> an error.
+{% newcomer(to="rust", topic="a closure and `.unwrap()`") %}
+`let play = |seed| { ... };` keeps a small nameless function in a name, so
+the test can call it twice. `.unwrap()` opens a `Result`, and stops the test if it's
+an error.
+{% end %}
 
 A state hashes the same each run only if it serializes the same: its maps must be
 `BTreeMap` and its sets `BTreeSet`, which keep their items in order, never a hash map,
@@ -156,9 +188,13 @@ over the garden while Left or Right is held, a plot every 10 steps:
 
 {{ snippet(file="src/rules.rs", anchor="tick") }}
 
-> **Rust:** `ActionId(2)` is an action by its place in the game's list of actions,
-> counting from 0: the rules name actions that way, so they need nothing but the
-> engine's core. `left == right` is true when neither is held, and when both are.
+`ActionId(2)` is an action by its place in the game's list of actions,
+counting from 0: the rules name actions that way, so they need nothing but the
+engine's core.
+
+{% newcomer(to="programming", topic="comparing two true-or-false values") %}
+`left == right` is true when neither is held, and when both are.
+{% end %}
 
 The contract is `TurnRules`' first one: the same state and input always give the same
 events and the same new state. Events are also the only way out of a step: a sound or
@@ -186,8 +222,10 @@ plays, and `tick::replay` plays it again, giving the state's hash after each ste
 
 {{ snippet(file="src/rules.rs", anchor="tick-test") }}
 
-> **Rust:** `use` lines inside a function name things for that function alone.
-> `vec![UiAction::Right]` is the list of actions held in each of those frames.
+{% newcomer(to="rust", topic="`use` in a function, and `vec!`") %}
+`use` lines inside a function name things for that function alone.
+`vec![UiAction::Right]` is the list of actions held in each of those frames.
+{% end %}
 
 The record holds what each step saw, after the driver handed out the presses, so it
 replays the same whatever frame rate made it. A record from another build is refused,
@@ -240,5 +278,36 @@ it is and which turn it is:
 
 {{ snippet(file="src/rules.rs", anchor="sides") }}
 
-> **Rust:** a garden has one player, so its side is `()`, a value holding nothing, and
-> `side_to_move` has nothing to give back.
+{% newcomer(to="rust", topic="`()` as a side") %}
+A garden has one player, so its side is `()`, a value holding nothing, and
+`side_to_move` has nothing to give back.
+{% end %}
+
+## Check yourself
+
+{% check() %}
+The garden's `apply` starts with `self.check(command)?;`. What does that line do when
+`check` refuses the command?
+
+- [x] `apply` hands back the refusal at once, before anything in the state has changed. — That is what makes `apply` all or nothing: it changes the state and says what happened, or refuses and changes nothing ([TurnRules](#turnrules)).
+- [ ] `apply` carries on, and changes only the parts of the state the refusal allows. — A refused command changes nothing, not even part of the state ([TurnRules](#turnrules)).
+- [ ] The game stops with an error, since a refusal is a bug. — A refusal is a normal answer, such as walking into the edge, and the screen may ignore it ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+A `History` holds the state a game started in and every command since. How does it give
+back an earlier point of the game?
+
+- [x] It replays the commands up to that point from the first state. — The rules are deterministic, so the same commands always rebuild the same state ([history and undo](#history-and-undo)).
+- [ ] It keeps a copy of the state after each command, and hands back one of those. — There's no need to keep a copy for each move: replaying rebuilds any point ([history and undo](#history-and-undo)).
+- [ ] It applies the opposite of each later command, from the last one back. — It doesn't undo commands one by one; it starts again from the first state and replays ([history and undo](#history-and-undo)).
+{% end %}
+
+{% check() %}
+A real-time game wants a seed to sprout two seconds after it is planted. How should its
+rules count that time?
+
+- [x] With a timer in the state, advanced by one in each step, set to 120 steps. — Rules have no clock, so they count steps, and a timer fires on the same step at 30 and at 60 frames a second ([time in rules](#time-in-rules)).
+- [ ] By adding up `input.dt()`, the seconds since the last frame, until it reaches two. — A rule timed by `input.dt()` changes with the frame rate, and replays stop agreeing; it is for what only looks ([time in rules](#time-in-rules)).
+- [ ] By reading the clock when the seed is planted, and again in each step. — The rules have no clock: a replay could never give the same answers ([TurnRules](#turnrules)).
+{% end %}

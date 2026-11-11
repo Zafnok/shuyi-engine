@@ -187,15 +187,15 @@ impl Screen {
                 phases.add(phase, now.saturating_sub(last));
                 last = now;
             };
-            onebit::render_marked_with(buffer, font, &look.images, map, &mut self.drawn, mark);
+            onebit::render_marked(buffer, font, &look.images, map, &mut self.drawn, mark);
             self.shown = Some(buffer.clone());
             return;
         }
         if let Some(shown) = &mut self.shown {
-            onebit::render_changed_with(shown, buffer, font, &look.images, map, &mut self.drawn);
+            onebit::render_changed(shown, buffer, font, &look.images, map, &mut self.drawn);
             shown.clone_from(buffer);
         } else {
-            onebit::render_with(buffer, font, &look.images, map, &mut self.drawn);
+            onebit::render(buffer, font, &look.images, map, &mut self.drawn);
             self.shown = Some(buffer.clone());
         }
     }

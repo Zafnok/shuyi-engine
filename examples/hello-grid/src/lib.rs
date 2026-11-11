@@ -36,6 +36,8 @@ pub mod hot_palette;
 pub mod map;
 #[cfg(feature = "playdate")]
 pub mod playdate;
+#[cfg(feature = "std")]
+pub mod preview;
 pub mod rules;
 pub mod screens;
 pub mod settings;
@@ -82,6 +84,7 @@ use shuyi::ui::debug::DebugMenuScreen;
 use shuyi::ui::frame::onebit::{Font, PatternMap};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
+use shuyi::ui::text::check_key_placeholders;
 use shuyi::ui::{Ctx, Game, GameData, GameHooks, ScreenHook};
 
 pub use action::Action;
@@ -93,10 +96,37 @@ pub use settings::{MapLook, Prefs};
 #[cfg(feature = "std")]
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 
-/// The embedded file at `path` (relative to `files/`), if there is one.
+/// The files laid over the game's for good ([`lay_over_files`]): the
+/// page's, on the web.
+#[cfg(feature = "std")]
+static OVER: OnceLock<Bundle> = OnceLock::new();
+
+/// The file at `path` (relative to `files/`), if there is one: the file
+/// laid over the game's there ([`lay_over_files`]), else the embedded one.
 #[cfg(feature = "std")]
 pub fn file(path: &str) -> Option<&'static [u8]> {
-    FILES.get_file(path).map(include_dir::File::contents)
+    OVER.get()
+        .and_then(|over| over.bytes(path))
+        .or_else(|| FILES.get_file(path).map(include_dir::File::contents))
+}
+
+/// Lays `over` over the game's files for [`file()`] from now on, as
+/// [`start_over`] lays it first in the bundle: the page's files, on the
+/// web. Only the first call counts.
+#[cfg(feature = "std")]
+pub fn lay_over_files(over: Layer) {
+    let _ = OVER.set(Bundle::new(vec![over]));
+}
+
+/// Every problem the game's data has with `over` laid over its files, one a
+/// line, each with its file and line as `cargo shuyi check` prints them; or
+/// `None` when it loads. What the web build tells the page of the files it
+/// handed in ([`lay_over_files`]).
+#[cfg(feature = "std")]
+pub fn problems_over(over: Layer) -> Option<String> {
+    let errors = Hello::load_from(&Bundle::new(vec![over, layer()]), &formats()).err()?;
+    let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    Some(lines.join("\n"))
 }
 
 /// The game's files as a bundle layer, shown under `files`
@@ -379,7 +409,11 @@ impl Hello {
     /// problem found.
     pub fn load_from(bundle: &Bundle, formats: &Formats) -> Result<Self, Vec<ContentError>> {
         let mut errors = Vec::new();
-        let english = gather(&mut errors, || formats.load::<English>(bundle, "en.ron"));
+        let english = gather(&mut errors, || {
+            let english = formats.load::<English>(bundle, "en.ron")?;
+            check_key_placeholders::<Action>(bundle, "en.ron", &english.0)?;
+            Ok(english)
+        });
         let keymap = gather(&mut errors, || {
             formats.load::<KeymapDef<Action>>(bundle, "keymap.ron")
         });
@@ -569,7 +603,7 @@ pub fn start() -> Start<Hello> {
 }
 
 /// How the game starts with `over` laid over its files (a folder on disk,
-/// under `cargo shuyi run --watch`): its card, then its load. A session
+/// under `cargo shuyi run --watch`; on the web, the page's files): its card, then its load. A session
 /// record of it is stamped [`made`], and each frame's hash has the stage's
 /// rules state in it.
 #[cfg(feature = "std")]

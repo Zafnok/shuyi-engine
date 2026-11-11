@@ -91,11 +91,10 @@ None.
   packaging decodes the icon too (through `app_info::icon`, or
   `decode_png` if it calls one itself): the same move; if not, nothing
   to do (3049 decodes with `png_pixels`).
-- **Either order with 2391:** if 2391 is done, `frame_png::decode_image`
+- **From 2391 (done):** `frame_png::decode_image`
   and `glyph_tiles::render_files` build a `shuyi_assets::image::Image`
   from the decoder's `(width, height, rgba)`: swap `decode_png` for
-  `png_pixels` there and keep the rest; if not, nothing to do (2391
-  builds its `Image` from whichever decoder it finds).
+  `png_pixels` there and keep the rest.
 - `shuyi_assets::palette::grey(rgb: [u8; 3]) -> f32`: the Rec. 601
   grey, 0 to 255, documented once. `Light::apply`, the converter and
   `Rgb::dimmed` call it. Their results don't change (same sum, same
@@ -110,8 +109,6 @@ None.
 - `roles::luminance` (`crates/ui/src/frame/onebit/roles.rs`): an
   integer form on purpose, so a one-bit frame is the same bits on every
   platform (ADR-0026).
-- `ink_of`'s own brightness rule (`crates/ui/src/frame/onebit.rs`),
-  which disagrees with `luminance`: 2389 removes `ink_of` with the inks.
 - The private `wrap` in `crates/app/src/lib.rs`, beside
   `shuyi_assets::text::word_wrap`: it wraps error text for the log,
   keeps blank lines and never cuts a long word (a file path stays
@@ -145,7 +142,7 @@ None.
       only `palette::grey`.
 - [ ] Every existing test of lights, dimmed colours, one-bit conversion
       and `frame-png` passes unchanged.
-- [ ] The clauses with 2234, 2811 and 2391 are settled.
+- [ ] The clauses with 2234 and 2811 are settled.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

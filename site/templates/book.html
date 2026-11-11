@@ -1,23 +1,73 @@
 {% extends "base.html" %}
+{% import "book-macros.html" as book %}
 
-{#- The book's contents: its chapters in order (`weight`), numbered by
-    their `extra.chapter`, then the pages after them (appendices). -#}
+{#- The book's front page: its intro, then its contents in the book's
+    order (`extra.parts`, ADR-0090 §2). A chapter is numbered by its
+    `extra.chapter`, with the project's pages after it listed under it; an
+    appendix is lettered by its `extra.appendix`. The problem codes, the
+    API docs and the playground are linked last, and aren't pages of the book. The reader's
+    filter (`book::filter`) tags the contents once the reader has answered. -#}
+{% block head %}{{ book::script() }}{% endblock head %}
+
 {% block content %}
+{{ book::filter() }}
 <article class="prose">
   <h1>{{ section.title }}</h1>
   {{ section.content | safe }}
-  <ol class="contents">
-    {%- for chapter in section.pages %}{% if chapter.extra.chapter %}
-    <li value="{{ chapter.extra.chapter }}"><a href="{{ chapter.permalink | safe }}">{{ chapter.title }}</a>
-      {%- if chapter.description %}: {{ chapter.description }}{% endif %}</li>
-    {%- endif %}{% endfor %}
-  </ol>
-  <h2>Appendices</h2>
+  <h2>Contents</h2>
+  {%- for entry in section.extra.parts %}
+  {%- if entry.title %}
+  <h3>{{ entry.title }}</h3>
+  {%- endif %}
+  {%- if entry.part and entry.part == "appendices" %}
   <ul class="contents">
-    {%- for page in section.pages %}{% if not page.extra.chapter %}
-    <li><a href="{{ page.permalink | safe }}">{{ page.title }}</a>
-      {%- if page.description %}: {{ page.description }}{% endif %}</li>
+    {%- for p in section.pages %}{% if p.extra.part == entry.part %}
+    <li class="unnumbered">{{ p.extra.appendix }}. <a href="{{ p.permalink | safe }}">{{ p.title }}</a>
+      {%- if p.description %}: {{ p.description }}{% endif %}</li>
+    {%- endif %}{% endfor %}
+    <li class="unnumbered"><a href="{{ get_url(path='@/learn/errors/_index.md') }}">Problem codes</a>: what each error the engine's tools give means, and how to fix it.</li>
+    <li class="unnumbered"><a href="{{ get_url(path='@/learn/_index.md') }}#the-api-docs">The API docs</a>: every crate's reference, generated from its code.</li>
+    <li class="unnumbered"><a href="{{ get_url(path='@/learn/playground.md') }}">The playground</a>: Hello, Grid playing beside its data files, which you change and run again in the page.</li>
+  </ul>
+  {%- elif entry.part %}
+  <ul class="contents">
+    {%- for p in section.pages %}{% if p.extra.part == entry.part %}
+    <li class="unnumbered"><a href="{{ p.permalink | safe }}">{{ p.title }}</a>
+      {%- if p.description %}: {{ p.description }}{% endif %}</li>
     {%- endif %}{% endfor %}
   </ul>
+  {%- elif entry.chapters %}
+  <ol class="contents">
+    {%- for chapter in section.pages %}{% if chapter.extra.part == "chapters" %}
+    <li value="{{ chapter.extra.chapter }}"><a href="{{ chapter.permalink | safe }}">{{ chapter.title }}</a>
+      {%- if chapter.description %}: {{ chapter.description }}{% endif %}
+      {%- set after = book::after(chapter=chapter.slug, project=entry.chapters) | trim %}
+      {%- if after %}
+      <ul class="then">
+        {%- for path in after | split(pat="
+") %}
+        {%- if path is ending_with("_index.md") %}
+        {%- set p = get_section(path=path, metadata_only=true) %}
+        <li>↳ <a href="{{ p.permalink | safe }}">{{ p.title }}</a></li>
+        {%- else %}
+        {%- set p = get_page(path=path) %}
+        <li>↳ Project, step {{ p.extra.step }}: <a href="{{ p.permalink | safe }}">{{ p.title }}</a></li>
+        {%- endif %}
+        {%- endfor %}
+      </ul>
+      {%- endif %}</li>
+    {%- endif %}{% endfor %}
+  </ol>
+  {%- elif entry.section %}
+  {%- set folder = get_section(path="learn/book/" ~ entry.section ~ "/_index.md") %}
+  <h3><a href="{{ folder.permalink | safe }}">{{ folder.title }}</a></h3>
+  <ul class="contents">
+    {%- for p in folder.pages %}
+    <li class="unnumbered"><a href="{{ p.permalink | safe }}">{{ p.title }}</a>
+      {%- if p.description %}: {{ p.description }}{% endif %}</li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+  {%- endfor %}
 </article>
 {% endblock content %}

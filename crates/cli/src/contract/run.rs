@@ -23,8 +23,8 @@ use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES};
 
 use super::perf::{self, PerfSummary};
 use super::session::{
-    Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed, Sound, from_record,
-    measured_start,
+    self, AddedSound, Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed,
+    Sound, from_record, measured_start,
 };
 use super::{Answer, Op, codes};
 use crate::frame_png::{self, Script, Step};
@@ -57,6 +57,12 @@ pub struct RunInput {
     /// plays differently stops it there, and the script and `frames` don't
     /// play.
     pub session: Option<SessionInput>,
+    /// Answer only the value at this JSON Pointer (RFC 6901) in the
+    /// scene's data, `/hero/x` (`scene` only).
+    pub path: Option<String>,
+    /// Answer the JSON Schema of the scene's data, as the game derived it
+    /// (`scene` only).
+    pub shape: bool,
 }
 
 /// What `run` saw.
@@ -81,6 +87,10 @@ pub struct RunOutput {
     pub events: Vec<Event>,
     /// The sound cues asked for, in order.
     pub sounds: Vec<Sound>,
+    /// The sounds the game added at run time and hadn't removed at the
+    /// end of the run, in cue order; left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sounds_added: Vec<AddedSound>,
     /// The game's log, oldest first: its last lines.
     pub log: Vec<LogEntry>,
     /// The modules installed in the game, in install order, with the
@@ -96,17 +106,37 @@ pub struct RunOutput {
 /// What `scene` saw.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct SceneOutput {
     /// The frames run in all.
     pub frames: u32,
     /// The top screen's name.
     pub top_screen: String,
-    /// The scene, if a stage is open.
+    /// The scene, if a stage is open; left out with `path` or `shape`,
+    /// which answer what was asked instead.
     pub scene: Option<Scene>,
     /// The game's log, oldest first: its last lines.
     pub log: Vec<LogEntry>,
     /// How far the session record played, with `session`.
     pub session: Option<SessionPlayed>,
+    /// With `path`, the value at that pointer in the scene's data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+    /// With `shape`, the JSON Schema of the scene's data in serialize mode,
+    /// if the game gave one (`Scene::with_data`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<serde_json::Value>,
+}
+
+/// What `scene` is asked for beyond the scene: one value of its data, by
+/// pointer, and its data's shape.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SceneAsk<'a> {
+    /// A JSON Pointer into the scene's data.
+    pub path: Option<&'a str>,
+    /// Whether to answer the data's shape.
+    pub shape: bool,
 }
 
 impl RunInput {
@@ -164,6 +194,10 @@ fn played<T>(
     input
         .check()
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
+    if op == Op::Run && (input.path.is_some() || input.shape) {
+        let error = "path and shape are `scene`'s: `run` answers the whole scene";
+        return Err(Answer::failed(op, codes::WRONG_ARGUMENTS, error));
+    }
     check_start(game.frame_options(), &input.start)
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
     let start = || match &input.session {
@@ -299,6 +333,7 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         frame: session.snapshot(),
         events: session.events(),
         sounds: session.sounds(),
+        sounds_added: session.sounds_added(),
         log: session.log(),
         modules: session.modules(),
         perf: None,
@@ -379,8 +414,60 @@ pub fn scene_output(session: &dyn Session) -> (SceneOutput, Vec<String>) {
         scene: scene.ok(),
         log: session.log(),
         session: None,
+        value: None,
+        shape: None,
     };
     (output, limits)
+}
+
+/// `output` answering `ask` in place of its scene: the value at its path,
+/// and its data's shape, with what the shape's absence adds to `limits`;
+/// or the problem code and why, a path that names nothing. With no scene,
+/// or nothing asked, it is left as it is.
+pub fn ask_scene(
+    output: &mut SceneOutput,
+    limits: &mut Vec<String>,
+    ask: SceneAsk<'_>,
+) -> Result<(), (codes::Code, String)> {
+    if ask.path.is_none() && !ask.shape {
+        return Ok(());
+    }
+    let Some(scene) = output.scene.take() else {
+        return Ok(());
+    };
+    if let Some(path) = ask.path {
+        let value = session::at_pointer(&scene.data, path).map_err(|e| (codes::NO_VALUE, e))?;
+        output.value = Some(value.clone());
+    }
+    if ask.shape {
+        match scene.shape {
+            Some(shape) => output.shape = Some(shape.to_value()),
+            None => limits.push(NO_SHAPE.to_owned()),
+        }
+    }
+    Ok(())
+}
+
+/// The limit of `scene --shape` on a scene whose data has no shape.
+pub const NO_SHAPE: &str = "no shape: the game built its scene's data with no `Scene::with_data`";
+
+/// The answer `op` gives with `session`'s scene, asked `ask`, and how far
+/// its record played, `record`: it passes if there is a scene and the
+/// record played no differently (`differs`).
+pub fn scene_answer(
+    op: Op,
+    session: &dyn Session,
+    ask: SceneAsk<'_>,
+    record: Option<SessionPlayed>,
+    differs: bool,
+) -> Answer<SceneOutput> {
+    let (mut output, mut limits) = scene_output(session);
+    output.session = record;
+    let ok = output.scene.is_some() && !differs;
+    if let Err((code, error)) = ask_scene(&mut output, &mut limits, ask) {
+        return Answer::failed(op, code, error);
+    }
+    Answer::new(op, ok, output, limits)
 }
 
 /// `run`: plays `input` in `game`; a trace file (`perf_out`) is written
@@ -434,11 +521,13 @@ pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
 pub fn scene_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<SceneOutput> {
     match played(Op::Scene, game, root, input) {
         Ok(ran) => {
-            let (mut output, mut limits) = scene_output(&*ran.session);
-            output.session = ran.record;
-            limits.extend(ran.limits);
-            let ok = output.scene.is_some() && !ran.differs;
-            Answer::new(Op::Scene, ok, output, limits)
+            let ask = SceneAsk {
+                path: input.path.as_deref(),
+                shape: input.shape,
+            };
+            let mut answer = scene_answer(Op::Scene, &*ran.session, ask, ran.record, ran.differs);
+            answer.limits.extend(ran.limits);
+            answer
         }
         Err(answer) => answer,
     }
@@ -460,6 +549,13 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
          --any-stamp          play a record another build or other content made too\n",
         op.name()
     );
+    if op == Op::Scene {
+        out.push_str(
+            "\n--path <pointer>     answer only the value at that JSON Pointer in the scene's\n                     \
+             data (`/hero/x`)\n\
+             --shape              answer the JSON Schema of the scene's data\n",
+        );
+    }
     if op == Op::Run {
         out.push_str(
             "\n--perf               measure each frame, and answer a summary of the times\n\
@@ -498,7 +594,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
         };
         if matches!(
             arg.as_str(),
-            "--script" | "--keys" | "--pad" | "--act" | "--wait"
+            "--script" | "--keys" | "--pad" | "--act" | "--wait" | "--drop"
         ) {
             let text = value()?;
             if let Some(step) = frame_png::parse_step(arg, &text) {
@@ -516,6 +612,14 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
         }
         if arg == "--perf" {
             input.perf = true;
+            continue;
+        }
+        if arg == "--path" {
+            input.path = Some(value()?);
+            continue;
+        }
+        if arg == "--shape" {
+            input.shape = true;
             continue;
         }
         if arg == "--perf-out" {
@@ -645,6 +749,19 @@ pub fn text(output: &RunOutput) -> String {
             .collect();
         let _ = writeln!(out, "sounds: {}", sounds.join(", "));
     }
+    if !output.sounds_added.is_empty() {
+        let added: Vec<String> = output
+            .sounds_added
+            .iter()
+            .map(|s| {
+                format!(
+                    "{} ({} samples a second, {} channel(s), {} frames, {} milliseconds)",
+                    s.cue, s.rate, s.channels, s.frames, s.millis
+                )
+            })
+            .collect();
+        let _ = writeln!(out, "sounds added: {}", added.join(", "));
+    }
     if let Some(summary) = &output.perf {
         out.push_str(&perf::text(summary));
     }
@@ -671,6 +788,13 @@ pub fn scene_output_text(output: &SceneOutput) -> String {
     session_text(&mut out, output.session.as_ref());
     log_text(&mut out, &output.log);
     scene_text(&mut out, output.scene.as_ref());
+    if let Some(value) = &output.value {
+        let _ = writeln!(out, "value: {value}");
+    }
+    if let Some(shape) = &output.shape {
+        let pretty = serde_json::to_string_pretty(shape).unwrap_or_default();
+        let _ = writeln!(out, "shape:\n{pretty}");
+    }
     out
 }
 

@@ -299,6 +299,41 @@ fn a_line_of_wide_characters_is_measured_in_cells() {
 }
 
 #[test]
+fn a_packs_limits_count_its_punctuation_as_its_lang_ron_has_it() {
+    // 41 ellipses: 41 cells narrow, 82 in a pack that has them wide.
+    let gone = id("Gone.");
+    let text = "…".repeat(LIMITS.max_text / 2 + 1);
+    let entries = format!("[(key: {gone:?}, source: \"Gone.\", text: {text:?})]");
+    let errors = |info: &str| {
+        let sources = PackSources {
+            info: ("zh/lang.ron", info),
+            ui: ("zh/ui.ron", "[]"),
+            data: Some(("zh/data.ron", "[]")),
+            dialogue: vec![("zh/dialogue/gate.ron", entries.as_str())],
+        };
+        let errors = pack_from_files(&sources, &BTreeMap::new(), Some(&source()), &RULES)
+            .err()
+            .unwrap_or_default();
+        errors.iter().map(ToString::to_string).collect::<Vec<_>>()
+    };
+    assert_eq!(errors(INFO), [] as [&str; 0]);
+    let chinese =
+        r#"(name: "中文", made_by: Machine, wide_font: Some("zh"), wide_punctuation: true)"#;
+    assert_eq!(
+        errors(chinese),
+        [format!(
+            "zh/dialogue/gate.ron: {gone:?}: text is 82 cells; the limit is 80"
+        )]
+    );
+    // A set's name is never empty.
+    let empty = r#"(name: "中文", made_by: Machine, wide_font: Some(" "))"#;
+    assert_eq!(
+        errors(empty),
+        ["zh/lang.ron: wide_font must not be empty: leave it out for no wide set of its own"]
+    );
+}
+
+#[test]
 fn a_dialogue_entry_keeps_to_the_rules_of_english() {
     let shut = id("The gate is shut.");
     let reply = id("I will wait here.");

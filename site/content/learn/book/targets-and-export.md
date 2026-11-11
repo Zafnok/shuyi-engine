@@ -4,6 +4,7 @@ description = "Each target says what its hardware can do, shuyi check --target h
 weight = 90
 
 [extra]
+part = "chapters"
 chapter = 9
 +++
 
@@ -48,6 +49,19 @@ machine, with a screen you couldn't test:
 - `windowed` is false on a device that is always full screen: the engine's options screen
   leaves out its Fullscreen row.
 - `keyboard`, `pointer` and `touch` say what the player has.
+- `can_drop_files()` is true where the player can drop a file on the game's window (the desktop) or
+  its page (the web): a screen says "drop a file here" only there.
+
+A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
+`start()` one) as
+`SystemEvent::FilesDropped`, each file with its `name()`, never the folders it came from, and its
+`bytes()`. That is how a player brings what the game can't ship: a level they made, a mod, their
+own copy of a file. `DroppedFile::layer(files)` makes a bundle layer named `dropped` of them, each
+at its name, for the game to lay over its own files. The engine refuses a drop of more than 16
+files, or a file of more than 256 MB, and logs why. A dropped folder, or a file the player
+can't read, is left out, and the files dropped with it still come; a name comes whole in any
+language (`niño.txt`). A test drops a file with `Harness::drop_file`,
+and the tools with the `drop` step (`--drop level.txt`, from the game's folder), on any target.
 
 The facts are the screens'. A game's rules never read them, so the same commands play the same
 game on every target. A test runs a screen as a target with `Harness::as_target`, before the
@@ -55,9 +69,11 @@ screen opens:
 
 {{ snippet(file="src/screens.rs", anchor="as_target") }}
 
-> **Rust:** `&profiles["web"].profile` looks up the `web` entry by its name, and lends its
-> `profile`. `.unwrap()` opens a `Result`, and stops the test on an error. `assert!(!x)` fails
-> unless `x` is false, as `!` means "not".
+{% newcomer(to="rust", topic="looking up by name, `.unwrap()` and `!`") %}
+`&profiles["web"].profile` looks up the `web` entry by its name, and lends its
+`profile`. `.unwrap()` opens a `Result`, and stops the test on an error. `assert!(!x)` fails
+unless `x` is false, as `!` means "not".
+{% end %}
 
 ## Who the game is
 
@@ -96,7 +112,7 @@ checks, for each target the game lists, that:
 - its frame at its scale fits the target's display, inside its safe area (the part of a display
   sure to be visible), and its smallest text is as tall as the target asks;
 - every screen's required actions bind to distinct inputs the target has
-  ([chapter 3](@/learn/book/actions.md)). A target with no keyboard (a Steam Deck) plays with the
+  ([chapter 4](@/learn/book/actions.md)). A target with no keyboard (a Steam Deck) plays with the
   buttons of the keymap file's table named after it, `targets: { "steam-deck": { … } }`; when the
   actions don't fit, the screen changes, since the engine never folds actions onto fewer buttons;
 - on a one-bit target, every palette role has a pattern;
@@ -112,20 +128,25 @@ one.
 The web is the easiest way to hand someone your game: a link, and nothing to install. `cargo shuyi
 web` builds the game's binary for the browser (`wasm32-unknown-unknown`, the name of that target to
 Rust, which `cargo shuyi doctor` checks rustup has) and writes it with the page it runs in to a
-folder. A game that has a web build says so in `shuyi.ron`:
+folder. A game made with `shuyi new` has what it needs already. Its `rust-toolchain.toml` lists
+that target, so rustup fetches it with the pinned Rust, and its `shuyi.ron` has a `web` part, which
+says what to build and where:
 
 {{ snippet(file="project/shuyi.ron", anchor="web", language="ron") }}
 
-and its binary links with `--allow-undefined` on the web, so the page's own scripts (the player's
+Its binary links with `--allow-undefined` on the web, so the page's own scripts (the player's
 storage, controllers) are found when it loads. A link argument reaches a binary only from its own
-**build script**, a small Rust program Cargo runs before compiling, `crates/game/build.rs`:
+**build script**, a small Rust program Cargo runs before compiling, and the new game has one,
+`crates/game/build.rs`:
 
 {{ snippet(file="build.rs", anchor="build") }}
 
-> **Rust:** `std::env::var(...)` reads an environment variable, which Cargo sets here to the
-> machine being built for. It gives back a `Result`, and `.as_deref()` lets it be compared with
-> `Ok("wasm32")` as plain text. `println!` prints a line, and a build script's lines starting
-> `cargo:` are instructions to Cargo.
+{% newcomer(to="rust", topic="`std::env::var` and a build script's output") %}
+`std::env::var(...)` reads an environment variable, which Cargo sets here to the
+machine being built for. It gives back a `Result`, and `.as_deref()` lets it be compared with
+`Ok("wasm32")` as plain text. `println!` prints a line, and a build script's lines starting
+`cargo:` are instructions to Cargo.
+{% end %}
 
 Then:
 
@@ -171,8 +192,12 @@ Each desktop package builds on its own system: Windows on Windows, Linux on Linu
 `HOW-TO-OPEN.txt`: they aren't signed by a developer, so a player opens them once by hand.
 
 With `--release`, the build carries nothing of the machine it was made on: its paths are renamed,
-and a program that still holds one is refused. On Windows and Linux, `<package>.debug` beside the
-package keeps the program's line tables for crash reports, and is never shipped.
+and a program that still holds one is refused. Nor does it carry what only you need: the program
+has no symbol table (the names of its functions), and a build without debug tools leaves out its
+log's info and debug lines. On Windows and Linux, `<package>.debug` beside the package keeps the
+symbols and line tables for reading crash reports, and is never shipped. A release `web` export needs
+Binaryen's `wasm-opt`, which makes the `.wasm` smaller; without it the export says how to install it,
+unless the `export` part says `wasm_opt: optional`.
 `export-report.json` beside it gives the version, the sizes, the check's warnings and the signing,
 and `--run` runs the package.
 
@@ -190,7 +215,36 @@ Each desktop and web build turns the features on, and each package holds those f
 under their own names (`name` gives another). In a `.app`, a folder goes in `Contents/Resources`,
 where the engine's music and voices look for it, and a file goes beside the `.app`. A path that isn't
 there refuses the export, unless it is `optional`. `--without <feature>` leaves a feature off one
-build.
+build, and `--with <feature>` turns on one more that the package has, for a measuring build say. A
+debug feature is never turned on: `link`, `debug-tools`, `capture` or the sound probe in the list
+refuses the export, naming it.
+
+Naming one isn't the only way to turn it on. The debug build's live link (`link`, which `cargo
+shuyi attach` talks to), the debug tools (`debug-tools`: the debug menu, `SHUYI_PERF` traces and
+session recording), the capture mode and the sound probe can each be turned on by a `default =
+["debug-tools"]`, a `devtools = ["link"]` the export lists, or a dependency that asks for
+`shuyi-ui/debug-tools` or `shuyi-app/capture` under any name. So before it prepares or builds
+anything, the export asks Cargo what each of its builds turns on, for that build's target and with
+its own features, and refuses one that has a debug feature on, the game's own or the engine's
+(`shuyi-app/link`, `shuyi-platform/link`, `shuyi-ui/debug-tools`, `shuyi-app/capture`,
+`shuyi-platform/capture` and `shuyi-app`'s probe), naming each feature and the packages it was
+reached through. A dev-dependency doesn't count, nor a dependency only for another target, since
+neither is in the program shipped. `--without devtools` passes only when nothing else turns the
+feature on: take it out of `default` or the dependency's `features` instead. When Cargo can't
+answer, the export stops with its error rather than guess.
+
+A game split into packages gives a target its own package and features in `targets`, each replacing
+the part's for that target. The Playdate builds the `game` part's package and takes nothing else of
+the `export` part, so a game whose Playdate library is a package of its own names it there:
+
+```ron
+export: (
+    package: "jumper-app",
+    targets: {
+        "playdate": (package: "jumper-playdate", features: ["demo"]),
+    },
+),
+```
 
 ## What a package gives away
 
@@ -227,6 +281,52 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+## A public demo
+
+A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
+a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
+builds it, on any target.
+
+```ron
+editions: {
+    "public-demo": (
+        default_features: false,
+        never_features: ["full"],
+        content: "crates/game/files-demo",
+        disclosure: (canaries: ["CHAPTER-TWO-IS-NOT-OUT"]),
+    ),
+    "full": (default_features: true, content: "crates/game/files"),
+},
+```
+
+An edition says, before anything is compiled:
+
+- `content`: the folder of files its program embeds. The export hands it to the build as
+  `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
+  only that folder. Without it, the build embeds `files/`, as `cargo run` does.
+- `default_features`, always written: whether the build keeps the package's `default` features. The full
+  game's code can sit behind a feature that is on by default, so `cargo run` plays all of it; the demo
+  says `false`, and that code isn't compiled in.
+- `never_features`: features its build must never have on. Cargo turns a feature on through a default,
+  another feature or a dependency, so each build is resolved before it is compiled, and one that turns
+  on `full` anyway is refused with `SH1002`, naming how it got there.
+- `features`, `package` and `bin`: what it turns on and builds, in place of the `export` part's.
+- `beside` and `disclosure`: the files it ships beside the program and what its packages may hold, in
+  place of the project's.
+
+The package goes in `dist/export/<edition>/<target>/`, named
+`<program>-<version>-<edition>-<target>`, and both reports name the edition; `exposure-report.json`
+gives its package, features and content root too. Put a canary in each file of what isn't out yet, and
+give the demo a `disclosure` part that lists them: if the demo is ever built from the wrong folder, the
+export finds one and is refused.
+
+On the Playdate the edition's `content` folder is what its pack is baked from: the game's tool program
+is built again with the folder as `SHUYI_CONTENT` and bakes it, so the `.pdx` holds the demo's files and
+no others (`cargo shuyi bake --target playdate --content <folder>` shows you that pack). The same
+program bakes its sounds and music, so they are the folder's too; music your tools read from the
+project's own `music/` folder is in every edition. A Playdate edition keeps no default features.
+
 ## Size and speed
 
 A target's budgets are the most frame time, heap (the memory a program asks for as it runs) and start-up
@@ -252,6 +352,15 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
 
+A slow device loads slowly too. The Playdate reads a game's data hundreds of times slower than your
+computer, and its system ends a game whose frame runs for 10 seconds. A game whose load could take that
+long there starts with `Start::in_steps` instead of `Start::new`. You give it a function that takes the
+`Setup` and gives back a step, which the engine calls again and again. Each call does one small part (a
+file, a check) and gives `Progress::More`, until the last gives `Progress::done` with the game. On a PC or
+the web every step runs in one frame. On the Playdate a second's worth runs each frame, the loading card
+on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
+says how long each frame took.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
@@ -265,9 +374,12 @@ anything, and in what words, is up to the game. A panic the game survived, like 
 machine with no sound card, keeps its report but isn't offered as a crash. A game that gives `Start::crash_record` a function
 writing its record of play (the record its `replay` reads) gets that in the report too, on a computer,
 so a crash can be replayed to the panic; a game on the short path gives it to `BasicGame::crash_record`.
+A release build adds the record only if the game asks, with `CrashReports::with_record_in_release` or
+`BasicGame::crash_record_in_release`: a record anyone can make a shipped game write is a picture of its
+state for anyone who wants one.
 A game made with `shuyi new --template grid` already does: its report holds the open stage's record,
-the command its rules were applying included. To try it, run the game with `SHUYI_PANIC_AT_FRAME=3`: it
-panics at its third frame on purpose and exits with code 101.
+the command its rules were applying included. To try it, run a debug build of the game with
+`SHUYI_PANIC_AT_FRAME=3`: it panics at its third frame on purpose and exits with code 101.
 
 ## When it goes wrong
 
@@ -311,3 +423,29 @@ limits:
 **A web page that stays blank.** If you opened `index.html` by double-clicking it, that's the rule
 above: the page must be served over HTTP. If `cargo shuyi web` itself fails to build, run `cargo shuyi
 doctor`, which checks that rustup has the `wasm32-unknown-unknown` target.
+
+## Check yourself
+
+{% check() %}
+A title screen should offer no Quit on the web, where the player leaves by closing the tab. How does it decide?
+
+- [x] It asks `ctx.platform.can_quit()`. — The running game knows its target through `ctx.platform`, and a test can run the screen as the web with `Harness::as_target` ([where the game runs](#where-the-game-runs)).
+- [ ] It asks `cfg!(target_arch = "wasm32")`. — That asks while compiling, which makes the game a different program on each machine, with a screen you couldn't test ([where the game runs](#where-the-game-runs)).
+- [ ] The rules read the platform and leave the command out. — A game's rules never read the platform's facts, so the same commands play the same game on every target ([where the game runs](#where-the-game-runs)).
+{% end %}
+
+{% check() %}
+You ran `cargo shuyi web --release` and double-clicked `dist/web/index.html`. The page stays blank. Why?
+
+- [ ] The release build has no symbol table, so the browser can't start it. — Leaving out the symbols makes a smaller program, and it still runs ([export](#export)).
+- [x] A page opened from the disk can't load its `.wasm`: the folder has to be served over HTTP. — Serve that folder and open it in a browser ([the web build](#the-web-build), and [when it goes wrong](#when-it-goes-wrong)).
+- [ ] The files from an older build were left in the folder. — Each build replaces everything in the folder, so an old file can't stay there ([the web build](#the-web-build)).
+{% end %}
+
+{% check() %}
+A public web demo must not hold chapter two. What keeps it out?
+
+- [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
+- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
+- [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
+{% end %}

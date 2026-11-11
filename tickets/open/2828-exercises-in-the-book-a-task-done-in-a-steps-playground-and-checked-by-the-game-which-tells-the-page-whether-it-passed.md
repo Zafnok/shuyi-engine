@@ -30,15 +30,44 @@ What there is once the blockers are done:
   `shuyi-page-file:<path>`) over its own through
   `shuyi_app::page::page_layer`, and `page::report(text)` sends its
   problems to the parent frame as `{ kind: "shuyi-report", text }`.
-- 2820: each project step's page has a playground of that step's data
-  files beside its game, reusing 2814's `playground.js`.
-- 2827: a quick check's shortcode, its script and its expansion in the
-  twins.
-- 2823's ADR names where an exercise sits in a page (beside the step's
-  quick check), and nothing more: on 2026-11-05 the exercises' design
-  moved here from 2823 (`docs/decisions.md`, *the first release waits
-  for everything before going public*), to be made once the playground
-  they are done in exists.
+- **From 2820 (done):** each project step's page has a playground of
+  that step's data files beside its game, folded in a `<details>` under
+  *Play this step* (`site/templates/chapter.html`, the playground itself
+  in `playground-macros.html`), its files listed in the step's
+  `extra.files`. The steps' games get the page's files with no code of
+  their own: `shuyi_app::run_game` lays them (`lay_page`) and reports, so
+  the step's `page_check` goes beside that, in `run_game`, or each step's
+  `main.rs` stops calling it. `playground.js` keeps each page's files
+  under keys of its own (`shuyi-playground-run:<page's path>:files/…`)
+  and hands them to `shuyi-page-file:` as the page loads, before its
+  frame, and empties them as the reader leaves: `shuyi-page-check` can
+  follow the same pattern. A try's **Try this here** button
+  (`try_it`, `tries()` in the script) makes edits in the editors and
+  runs: an exercise's button can reuse it.
+- **From 2827 (done):** a quick check is the body shortcode
+  `site/templates/shortcodes/check.html`, answered by
+  `site/static/book-check.js`, and written as text in the twins by
+  `llms.rs`'s `checked` (`site/README.md`, *Quick checks*).
+  - Every step and concept chapter ends with `## Check yourself`, its
+    last `## ` section, holding two or three checks. `cargo xtask
+    check-book` (`book.rs`'s `check_section`) fails a heading after it, so
+    an exercise goes in that section after the checks, with no heading
+    of its own.
+  - `book.rs`'s `kind()` knows two body openers, `newcomer` and `check`,
+    and takes every `{% end %}` as the close of one of them. An
+    `exercise` body shortcode adds its opener there (an `Opened` variant),
+    or its `{% end %}` fails as one with no mark open.
+  - A check with `to` is an `aside.check.newcomer` with a
+    `.newcomer-label`, so 2826's filter folds it and the bar counts it as
+    a check ("6 notes and 1 check hidden", `counted` in
+    `book-filter.js`). An exercise with `to` can do the same, and adds
+    its own word there.
+- **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §8 says only where an exercise sits:
+  in the step's `## Check yourself` section, after its quick checks. On
+  2026-11-05 the exercises' design moved here (`docs/decisions.md`, *the
+  first release waits for everything before going public*), to be made
+  once the playground they are done in exists. An exercise takes an
+  audience as a quick check does: ADR-0090 §5's `to`, optional.
 
 The playground edits data files, not Rust (decision of 2026-10-28), so an
 exercise's task is a change to a data file.
@@ -53,8 +82,8 @@ None.
 - **The design, in an ADR** (the `write-adr` skill), first: where a
   check lives (outside the code a step's page asks the reader to type,
   so the reader's project stays as the page says), how the game reports
-  it to the page, and how the exercise's shortcode sits with 2823's
-  audience marks and 2827's quick check. Where it changes what the
+  it to the page, and how the exercise's shortcode sits with ADR-0090's
+  `newcomer` marks and 2827's quick check. Where it changes what the
   points below say, it wins, and the completion notes say so.
 - **The page asks for a check:** `playground.js` writes the exercise's
   name to `sessionStorage` under `shuyi-page-check` before it runs the
@@ -90,7 +119,7 @@ None.
 
 ## Implementation steps
 
-1. Read 2823's ADR, 3069's, 2820's and 2827's completion notes,
+1. Read ADR-0090, 3069's, 2820's and 2827's completion notes,
    `crates/app/src/page.rs`, `crates/cli/web/page-files.js` and its
    version test, `site/static/playground.js`, and the steps' web starts.
 2. Write the ADR, trying the check's path from the playground to the

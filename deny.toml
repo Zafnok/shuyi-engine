@@ -25,6 +25,7 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
     { id = "RUSTSEC-2025-0035", reason = "macroquad soundness issues (mutable statics); no fix upstream, no safe alternative chosen yet; revisit on macroquad upgrade" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser (via fontdue via macroquad) is unmaintained; no fix upstream; revisit on macroquad upgrade" },
+    { id = "RUSTSEC-2026-0249", reason = "smartstring (via rhai via shuyi-script) is unmaintained; rhai's compact_str feature keeps its code out of every program (deny.toml's license exception); revisit when rhai drops it" },
 ]
 
 [licenses]
@@ -46,7 +47,14 @@ allow = [
     "OFL-1.1", # only used if a font crate needs it
 ]
 confidence-threshold = 0.9
-exceptions = []
+exceptions = [
+    # Rhai (shuyi-script, ADR-0093) always depends on smartstring, MPL-2.0.
+    # Its `compact_str` feature, which shuyi-script turns on (a test checks),
+    # replaces every use: smartstring is built, never linked into a program.
+    # Nick's decision of 2026-11-08 (docs/decisions.md). Remove it when Rhai
+    # drops smartstring (rhaiscript/rhai PR 1175 plans it for 2.0).
+    { crate = "smartstring@1.0.1", allow = ["MPL-2.0"] },
+]
 
 # The engine's own crates are checked too: they are MIT OR Apache-2.0.
 [licenses.private]

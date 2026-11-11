@@ -67,6 +67,49 @@
     "limits"
   ],
   "$defs": {
+    "AddedSound": {
+      "description": "A sound the game made at run time\n([`AudioQueue::add_sound`](shuyi_ui::audio::AudioQueue::add_sound)) and\nhasn't removed: its cue and the shape of its samples, never the samples.",
+      "type": "object",
+      "properties": {
+        "channels": {
+          "description": "Its channels: 1 or 2.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "cue": {
+          "description": "The cue it plays as.",
+          "type": "string"
+        },
+        "frames": {
+          "description": "How many frames it holds (a sample of each channel).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "millis": {
+          "description": "How long it plays, in milliseconds, rounded down.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "rate": {
+          "description": "Its rate, in samples a second.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cue",
+        "rate",
+        "channels",
+        "frames",
+        "millis"
+      ]
+    },
     "Event": {
       "description": "Something that happened while a session ran, with its frame (frames\ncount from 1).",
       "oneOf": [
@@ -243,6 +286,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Sound"
+          }
+        },
+        "sounds_added": {
+          "description": "The sounds the game added at run time and hasn't removed, in cue\norder; left out when none.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AddedSound"
           }
         }
       },

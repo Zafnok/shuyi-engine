@@ -32,6 +32,7 @@ static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef
     columns: 0,
     glyphs: BTreeMap::new(),
     wide: BTreeMap::new(),
+    wide_sets: BTreeMap::new(),
 };
 static IMAGES: shuyi_assets::image::ImageTable =
     shuyi_assets::image::ImageTable::new(BTreeMap::new());
@@ -66,6 +67,8 @@ struct Seen {
     ticks: u32,
     answer: Option<TextAnswer>,
     music: Option<(String, f32)>,
+    /// The line whose voice clip sounds.
+    voice: Option<String>,
     seed: u64,
     display: DisplayInfo,
     target: String,
@@ -77,8 +80,8 @@ struct Seen {
 type Log = Rc<RefCell<Vec<Seen>>>;
 
 /// A screen that logs all a game can see of the platform: Confirm asks for
-/// the system keyboard, Cancel starts the music, and an answer writes to
-/// the store.
+/// the system keyboard, Cancel starts the music, Info says the first line,
+/// and an answer writes to the store.
 struct Probe {
     log: Log,
     /// The display its load was handed.
@@ -101,6 +104,10 @@ impl Screen<Toy> for Probe {
         if input.actions.contains(&Action::Cancel) {
             ctx.audio.play_music("theme");
         }
+        if input.actions.contains(&Action::Info) {
+            let line = ctx.game.lines().swap_remove(0);
+            ctx.play_voice(&line);
+        }
         let answer = ctx.system_keyboard.take_answer();
         if let Some(TextAnswer::Typed(name)) = &answer {
             let wrote = ctx.storage.computer_mut().write("name", name);
@@ -115,6 +122,7 @@ impl Screen<Toy> for Probe {
                 .music_clock
                 .as_ref()
                 .map(|c| (c.cue.clone(), c.position)),
+            voice: ctx.voice_playing().map(ToString::to_string),
             seed: ctx.music_seed,
             display: self.display,
             target: ctx.platform.target.clone(),
@@ -132,7 +140,9 @@ fn probe_on(log: Log) -> Start<Toy> {
     Start::new(Card::text("Toy"), look, move |setup: Setup| {
         let display = setup.display;
         let probe = Probe { log, display };
-        let ctx = setup.ctx(toy::ctx());
+        let mut ctx = setup.ctx(toy::ctx());
+        let voices = ctx.game.manifest(&[(0, "Only")]);
+        ctx.set_voice_manifest(&voices);
         Ok(Game::new(ctx, Box::new(probe), GameHooks::default()))
     })
     .before_load(|setup| setup.key_prompt = KeyPrompt::Off)
@@ -567,7 +577,10 @@ fn any_event() -> impl Strategy<Value = RawInputEvent> {
 
 /// Any event the system says.
 fn any_system() -> impl Strategy<Value = SystemEvent> {
-    prop::sample::select(vec![
+    let dropped = (".{0,12}", prop::collection::vec(any::<u8>(), 0..8))
+        .prop_map(|(name, bytes)| crate::DroppedFile::new(&name, bytes));
+    let drop = prop::collection::vec(dropped, 1..3).prop_map(SystemEvent::FilesDropped);
+    let plain = prop::sample::select(vec![
         SystemEvent::Suspend,
         SystemEvent::Resume,
         SystemEvent::FocusLost,
@@ -577,7 +590,8 @@ fn any_system() -> impl Strategy<Value = SystemEvent> {
         SystemEvent::ToggleFullscreen,
         SystemEvent::CrankDocked,
         SystemEvent::CrankUndocked,
-    ])
+    ]);
+    prop_oneof![4 => plain, 1 => drop]
 }
 
 /// Any position a sound device may answer but NaN, which has no position.
@@ -619,17 +633,19 @@ fn any_frame() -> impl Strategy<Value = FrameRecord> {
         proptest::option::of(keyboard),
         proptest::option::of(any_position()),
         proptest::option::of(any::<String>()),
+        proptest::option::of(any::<String>()),
         proptest::option::of(pacing),
         proptest::option::of(any::<u64>()),
     )
         .prop_map(
-            |(dt, system, input, keyboard, music, track, pacing, hash)| FrameRecord {
+            |(dt, system, input, keyboard, music, track, voice, pacing, hash)| FrameRecord {
                 dt,
                 system,
                 input,
                 keyboard,
                 music,
                 track,
+                voice,
                 pacing,
                 hash,
             },
@@ -1015,6 +1031,45 @@ fn the_music_plays_back_from_the_record_whatever_the_speaker_says() {
     assert!(again.borrow().iter().any(|s| s.music.is_some()));
     // Played, the speaker answers for itself: 5 s of load to go.
     assert_eq!(platform.speaker().music_playing(playback.now()), None);
+}
+
+/// Acceptance (2255): the voice sounding is written when it changes, and a
+/// record plays back with the same reports, whatever the speaker says.
+#[test]
+fn the_voice_sounding_plays_back_from_the_record() {
+    let (start, seen) = probe();
+    let mut p = HeadlessPlatform::new();
+    p.speaker_mut().set_voice_length(0.05);
+    let frames = timed(16, &[(3, press_action(Action::Info))]);
+    let (record, _) = record_on(start, &mut p, frames);
+    let changes: Vec<_> = record
+        .frames
+        .iter()
+        .filter_map(|f| f.voice.as_deref())
+        .collect();
+    assert_eq!(changes.len(), 2, "it starts and ends: {changes:?}");
+    let line = toy::ctx().game.lines().swap_remove(0);
+    let file = shuyi_assets::voice::clip_file(&line, toy::Voice::Only);
+    assert_eq!(changes[0], file, "its file");
+    assert_eq!(changes[1], "");
+    let said = Some(line.to_string());
+    let reports: Vec<_> = seen.borrow().iter().map(|s| s.voice.clone()).collect();
+    assert!(
+        reports.iter().all(|r| r.is_none() || *r == said),
+        "{reports:?}"
+    );
+    assert_eq!(reports.first(), Some(&None), "before it is asked for");
+    assert_eq!(reports.last(), Some(&None), "after it ended");
+    let voiced = seen.borrow().iter().filter(|s| s.voice.is_some()).count();
+    assert!(voiced >= 3, "sounds for 0.05 s: {voiced} frames");
+
+    let (start, again) = probe();
+    let mut app = App::new(start);
+    let mut platform = HeadlessPlatform::from_session(&record);
+    platform.speaker_mut().set_voice_length(5.0);
+    let mut playback = Playback::new(&record);
+    assert_same(&play_out(&mut playback, &record, &mut app, &mut platform));
+    assert_eq!(*seen.borrow(), *again.borrow());
 }
 
 #[test]

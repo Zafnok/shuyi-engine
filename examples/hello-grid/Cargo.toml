@@ -18,6 +18,15 @@ path = "src/main.rs"
 # target with no window (CI's `determinism` job, ticket 2116).
 required-features = ["window"]
 
+[[bin]]
+# The dialogue preview a writer is handed: the scenes of a folder's `.dlg`
+# files in the game's text box, read again when one is saved
+# (`hello_grid::preview`). `cargo run -p hello-grid --bin hello-grid-preview
+# -- <folder>`; the folder is `files/` when none is named.
+name = "hello-grid-preview"
+path = "src/bin/preview.rs"
+required-features = ["window"]
+
 [[example]]
 # The game's tool program: `frame-png` and `lang-status` on this project
 # (`shuyi.ron`).
@@ -35,8 +44,9 @@ std = ["shuyi/std", "dep:include_dir", "serde/std", "ron/std"]
 # golden test does under WASI (`tests/golden.rs`).
 window = ["std", "shuyi/app", "dep:macroquad"]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
-# for its tool program and its tests.
-tools = ["std", "dep:shuyi-cli"]
+# for its tool program and its tests; the rules' types describe their
+# shapes for `scene --shape` (ADR-0084 §2).
+tools = ["std", "dep:shuyi-cli", "shuyi/schema", "dep:schemars"]
 # `playdate`: the game on the Playdate (`hello_grid::playdate`), which
 # `cargo shuyi export playdate` builds with its default features off.
 playdate = ["dep:shuyi-playdate"]
@@ -68,6 +78,8 @@ shuyi-app = { path = "../../crates/app", optional = true }
 macroquad = { workspace = true, optional = true }
 serde.workspace = true
 ron.workspace = true
+# The shapes of the rules' types, for the tools (the `tools` feature).
+schemars = { workspace = true, optional = true }
 # The files under `files/`, embedded.
 include_dir = { workspace = true, optional = true }
 

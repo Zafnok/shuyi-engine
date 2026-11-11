@@ -1,12 +1,22 @@
 +++
 title = "Fast compiles"
 description = "How long a new game takes to rebuild, and the setup in its Cargo.toml behind it."
-weight = 200
+weight = 210
+
+[extra]
+part = "appendices"
+appendix = "B"
 +++
 
-You change one line, you want to see it, and you wait. What you wait for is a
+You change one line, you want to see it, and you wait.
+
+{% newcomer(to="rust", topic="a rebuild and linking") %}
+What you wait for is a
 **rebuild**: Cargo compiling what changed and joining it to the rest, a job called
-**linking**. It's the wait you'll meet a hundred times a day, so it's the one that
+**linking**.
+{% end %}
+
+A rebuild is the wait you'll meet a hundred times a day, so it's the one that
 matters. A game made with `shuyi new` rebuilds in about a second, on the stable Rust it
 pins:
 
@@ -17,9 +27,12 @@ pins:
 | Clean build | 40–55 s | 105–120 s | 25 s |
 
 A **clean build** compiles everything, the engine included, as your first build does.
+
+{% newcomer(to="rust", topic="`cargo check` and Windows' two toolchains") %}
 `cargo check` looks for errors and doesn't make a program, which is why it's so quick.
 MSVC and GNU are Rust's two toolchains on Windows
 ([chapter 1](@/learn/book/quick-start.md#install-rust)).
+{% end %}
 
 Linux and Windows (MSVC) are GitHub's 4-core runners; Windows (GNU) is a 24-core desktop.
 The engine's CI measures a new game's rebuild on every change to the engine, and fails one
@@ -62,7 +75,10 @@ built, so linking them statically, into the program, costs little.
 
 ## On a nightly toolchain
 
-**Nightly** is the Rust that's built each night, with features not yet finished. Two more
-options may help, for a developer to try in their own `.cargo/config.toml`: the Cranelift
+{% newcomer(to="rust", topic="nightly") %}
+**Nightly** is the Rust that's built each night, with features not yet finished.
+{% end %}
+
+Two more options may help, for a developer to try in their own `.cargo/config.toml`: the Cranelift
 backend (`-Zcodegen-backend=cranelift`, with the `rustc-codegen-cranelift` component) and
 shared generics (`-Zshare-generics=y`).

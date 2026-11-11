@@ -248,8 +248,16 @@ players keep after a patch.
   each form here, and in the `()` form's version 0. (The grid
   template's `File` is gone: the templates take `()` for their
   settings.)
-- **Either order with the settings fields of 2333, 2340, 2342,
-  2349 and 3043, and of the parked 2323, 2404 and 2408:** one that
+- **From 2342 (done):** the `()` form, the toy's and hello-grid's save
+  `volumes` (a map of sound group to volume, `shuyi_ui::settings::Volumes`)
+  and read the linear `music_volume` and `sound_volume` they wrote before
+  (the `()` form's `voice_volume` too) with
+  `shuyi_ui::settings::old_volume` and `read_old_volumes`, never writing
+  them. That is in version 1 of each form here, and in the `()` form's
+  version 0; a fixture of an old save (`music_volume: 35, sound_volume:
+  80`) reads as `music` at 85 and `sfx` at 97.
+- **Either order with the settings fields of 2333, 2340, 2349 and 3043,
+  and of the parked 2323, 2404 and 2408:** one that
   lands first is in version 1 of each form here, and in the `()`
   form's version 0. One that lands after raises the `VERSION` of each
   versioned form it changes and adds a fixture; the guard's failure
@@ -272,6 +280,13 @@ players keep after a patch.
   `shuyi_assets::ron` gain items; `PlayerKeys::from_ron` and
   `Profiles::from_ron` keep their signatures. The engine writes new
   `-refused` keys in a player's storage. Say so in the PR.
+- **From 2138 (done):** save bundles are in `shuyi_ui::storage::bundle`.
+  Its `FormatCheck` (`bundle.rs`) uses `read_save` and gains
+  `Verdict::Migratable { from, to }` for an older version inside the
+  chain (`Verdict` is `#[non_exhaustive]`, so the variant isn't a
+  break), and its `apply` writes the migrated text: `PlanEntry` then
+  holds the text to write, or `apply` migrates `Migratable` entries
+  through the same chain. `apply` writes only `Ready` entries today.
 
 **Out (do not do):**
 - Packs: ADR-0023 §5 keeps them refused; bake again.

@@ -4,6 +4,7 @@
 
 use alloc::collections::BTreeSet;
 
+use proptest::prelude::*;
 use shuyi_assets::names::Names;
 
 use shuyi_assets::dialogue::{
@@ -428,4 +429,213 @@ fn a_scene_with_name_tokens_checks_and_plays_with_none_left_on_screen() {
         }
     }
     assert!(seen > 4);
+}
+
+#[test]
+fn the_direction_is_the_lines_own_or_the_delivery_in_force() {
+    let src = "@scene d\n@left guide calm\nguide (softly): One.\n@delivery out of breath\n> Two.\nguide: Three?\n@choice\n* a: Yes.\n@endchoice\n@delivery clear\nguide: Four.\n@end\n";
+    let mut p = plain(src);
+    let mut seen = Vec::new();
+    while !p.is_finished() {
+        seen.push(p.direction().map(str::to_owned));
+        if p.is_choosing() {
+            p.choose(0);
+        } else {
+            p.advance();
+        }
+    }
+    let breath = Some("out of breath".to_owned());
+    assert_eq!(
+        seen,
+        [
+            Some("softly".to_owned()),
+            breath.clone(),
+            breath.clone(),
+            // The choice answers the line before it.
+            breath,
+            None,
+        ]
+    );
+    assert_eq!(p.direction(), None, "finished");
+}
+
+#[test]
+fn a_player_started_at_a_text_box_takes_the_replies_it_is_given() {
+    let scene = scenes::<NoDirective>(ASK).remove(0);
+    let at = |text_box, replies: &[usize]| {
+        DialoguePlayer::from_text_box(&scene, Plain, &Present::Everyone, text_box, replies)
+    };
+    assert_eq!(text(&at(0, &[])).as_deref(), Some("Ready?"));
+    assert_eq!(
+        at(0, &[]),
+        DialoguePlayer::new(&scene, Plain, &Present::Everyone)
+    );
+    assert_eq!(text(&at(1, &[])).as_deref(), Some("Good."));
+    assert_eq!(text(&at(2, &[])).as_deref(), Some("She nods."));
+    assert_eq!(text(&at(1, &[2])).as_deref(), Some("Fine."));
+    assert_eq!(text(&at(1, &[1])).as_deref(), Some("Let's go."));
+    // A reply that isn't there takes the first.
+    assert_eq!(at(1, &[9]), at(1, &[0]));
+    assert_eq!(
+        at(3, &[0]).current().right.map(|r| r.expression),
+        Some("smile")
+    );
+    assert!(at(4, &[]).is_finished());
+    assert!(at(2, &[1]).is_finished());
+    // A choice before the first text box is answered too.
+    let opens = scenes::<NoDirective>(
+        "@scene o
+@choice
+* a: A.
+  > Took a.
+* b: B.
+  > Took b.
+@endchoice
+@end
+",
+    )
+    .remove(0);
+    let first = DialoguePlayer::from_text_box(&opens, Plain, &Present::Everyone, 0, &[1]);
+    assert_eq!(text(&first).as_deref(), Some("Took b."));
+}
+
+/// The speakers and those tested in the generated scenes.
+const WHO: [&str; 3] = ["guide", "scout", "smith"];
+
+fn arb_who() -> impl Strategy<Value = CharacterId> {
+    proptest::sample::select(&WHO[..]).prop_map(id)
+}
+
+fn arb_text() -> impl Strategy<Value = String> {
+    "[A-Z][a-z]{0,8}[.?!]"
+}
+
+/// A step of a generated scene that is no block.
+fn arb_simple() -> impl Strategy<Value = Step<Lamp>> {
+    let say = (
+        arb_who(),
+        proptest::option::of("[a-z]{1,6}"),
+        arb_text(),
+        proptest::option::of("[a-z]{1,6}"),
+    )
+        .prop_map(|(speaker, expression, text, direction)| Step::Say {
+            speaker,
+            expression,
+            text,
+            direction,
+            line: LineId::default(),
+        });
+    let narrate = arb_text().prop_map(|text| Step::Narrate {
+        text,
+        direction: None,
+        line: LineId::default(),
+    });
+    let side = prop_oneof![Just(Side::Left), Just(Side::Right)];
+    prop_oneof![
+        3 => say,
+        2 => narrate,
+        1 => arb_text().prop_map(|text| Step::Caption { text }),
+        1 => (side.clone(), arb_who(), "[a-z]{1,6}").prop_map(|(side, character, expression)| {
+            Step::Place {
+                side,
+                character,
+                expression,
+            }
+        }),
+        1 => side.prop_map(|side| Step::Clear { side }),
+        1 => "[a-z]{1,6}".prop_map(|cue| Step::Music(MusicLine::Cue(cue))),
+        1 => Just(Step::Music(MusicLine::Stop)),
+        1 => proptest::bool::ANY.prop_map(|on| Step::Directive(Lamp(on))),
+    ]
+}
+
+/// A step with `@if` blocks in it.
+fn arb_with_ifs() -> impl Strategy<Value = Step<Lamp>> {
+    arb_simple().prop_recursive(2, 8, 3, |inner| {
+        let steps = || proptest::collection::vec(inner.clone(), 0..3);
+        (arb_who(), steps(), steps()).prop_map(|(character, then, otherwise)| Step::If {
+            character,
+            then,
+            otherwise,
+        })
+    })
+}
+
+/// Any step: a reply choice, each reply with a reaction, among them.
+fn arb_step() -> impl Strategy<Value = Step<Lamp>> {
+    let option = (
+        "[a-z]{1,6}",
+        arb_text(),
+        proptest::collection::vec(arb_with_ifs(), 0..3),
+    )
+        .prop_map(|(tone, text, steps)| ChoiceOption {
+            tone,
+            text,
+            line: LineId::default(),
+            steps,
+        });
+    let choice =
+        proptest::collection::vec(option, 1..4).prop_map(|options| Step::Choice { options });
+    prop_oneof![4 => arb_with_ifs(), 1 => choice]
+}
+
+fn arb_present() -> impl Strategy<Value = Present> {
+    prop_oneof![
+        Just(Present::Everyone),
+        proptest::sample::subsequence(WHO.to_vec(), 0..=WHO.len())
+            .prop_map(|who| Present::only(who.into_iter().map(id))),
+    ]
+}
+
+proptest::proptest! {
+    /// A player started at a text box is the one read up to it, and shows
+    /// the text box `ParsedScene::text_boxes` says is there.
+    #[test]
+    fn starting_at_a_text_box_equals_reading_up_to_it(
+        steps in proptest::collection::vec(arb_step(), 0..10),
+        present in arb_present(),
+        replies in proptest::collection::vec(0..4_usize, 0..4),
+        text_box in 0..10_usize,
+    ) {
+        use shuyi_assets::dialogue::print_scene;
+        let written = Scene { id: "gen".into(), steps };
+        let (parsed, errors) = parse_dlg::<Lamp>("gen.dlg", &print_scene(&written));
+        proptest::prop_assert_eq!(errors, vec![]);
+        let parsed = &parsed[0];
+        let hooks = Lamps { hero: "Mei" };
+        let started =
+            DialoguePlayer::from_text_box(&parsed.scene, hooks.clone(), &present, text_box, &replies);
+        let mut read = DialoguePlayer::new(&parsed.scene, hooks, &present);
+        let mut given = replies.iter().copied();
+        let on_text = |p: &DialoguePlayer<Lamps>| !p.is_choosing() && !p.is_finished();
+        let mut shown = usize::from(on_text(&read));
+        while !(read.is_finished() || on_text(&read) && shown > text_box) {
+            if read.is_choosing() {
+                let count = read.current().choices.map_or(0, |c| c.len());
+                read.choose(given.next().filter(|&r| r < count).unwrap_or(0));
+            } else {
+                read.advance();
+            }
+            if on_text(&read) {
+                shown += 1;
+            }
+        }
+        proptest::prop_assert_eq!(started.current(), read.current());
+        proptest::prop_assert_eq!(started.pending_music(), read.pending_music());
+        proptest::prop_assert_eq!(started.line(), read.line());
+        proptest::prop_assert_eq!(started.direction(), read.direction());
+        let boxes = parsed.text_boxes(&present, &replies);
+        match boxes.get(text_box) {
+            Some(b) => {
+                let shown = text(&started);
+                proptest::prop_assert_eq!(shown.as_deref(), b.step.text());
+                let line = match b.step {
+                    Step::Say { line, .. } | Step::Narrate { line, .. } => Some(line),
+                    _ => None,
+                };
+                proptest::prop_assert_eq!(started.line(), line);
+            }
+            None => proptest::prop_assert!(started.is_finished()),
+        }
+    }
 }

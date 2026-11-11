@@ -28,7 +28,12 @@
         // file: measured 1 step on both platforms, one step of rounding.
         exact_peak: 2,
         decoded_peak: 2,
-        // Worst measured 0.29 dB, once commands' moments are left out.
+        // Worst measured 0.29 dB, once commands' moments are left out. Ticket 2048:
+        // `windows repeat:loop` failed at 1.06 dB in CI run 42341397532 (attempt 1),
+        // on a recording with a 10 ms packet of zeros in it, not noise: quad-snd's gap
+        // at the loop's join, which 2049 leaves out as a `Boundary`. The 20 jobs of CI
+        // run 42389680314 read 0.000 there 17 times and 0.268 3 times (127 zeros at
+        // each join), and 0.268 was Windows' worst repeat: twice that is under 1.0.
         repeat_db: 1.0,
     ),
     // An equal-work ratio's limits. `max_ratio` is 1 plus twice the worst distance

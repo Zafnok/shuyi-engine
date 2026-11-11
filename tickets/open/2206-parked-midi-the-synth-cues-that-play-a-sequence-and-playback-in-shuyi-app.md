@@ -46,7 +46,7 @@ whether it is what you meant by MIDI sound.
   clock, no `unsafe`.
 - **Cues:** the cue manifest (ADR-0004 §6) gains a kind, `Sequence {
   sequence, bank }`, beside recorded files. Like a recorded music cue, a
-  sequence cue takes an optional `group` (2342), `music` by default, and
+  sequence cue takes an optional `group` (2258), `music` by default, and
   plays at its group's gain, ducking (2343) included. Logic starts and
   stops it by its `SoundId` (2344), and changes tempo and muting through
   cue commands, so logic stays deterministic. The Harness reports a
@@ -86,10 +86,9 @@ whether it is what you meant by MIDI sound.
   direction guide's "modules" list gains MIDI as an option for music;
   if not, nothing to do (2004 adds it when it writes the guides).
 
-**Either order:**
-- **2343** (ducking): if it is done, a rule that lowers `music` lowers a
-  sequence cue in `music` too, through the gains it already plays at;
-  if not, nothing here, since 2343 multiplies into those same gains.
+**From 2343 (done):** a rule that lowers `music` lowers a sequence cue
+in `music` too, through the gains it already plays at (2343 multiplies
+into them, ADR-0099): nothing to do here.
 
 **Out (do not do):**
 - the Playdate's MIDI through its SDK's synth (3057, parked, which

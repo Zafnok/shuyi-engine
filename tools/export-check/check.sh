@@ -2,8 +2,11 @@
 # Checks a package `shuyi export <target> --release` wrote (ticket 3004),
 # as CI's `export` job runs it: its files against the list in
 # `<target>.txt` beside this script (`{base}` is the package's name
-# without its extension), then by target:
+# without its extension), then that the program holds no engine function's
+# name and no `SHUYI_PERF` (on Windows and Linux no symbol table, its debug
+# file one), then by target:
 #
+# - web: the Wasm binary has no `name` or `producers` section;
 # - windows: the program imports no MinGW runtime DLL, has no `.debug_*`
 #   section, and its `.debug` file beside the package has them at the
 #   same `.text` address;
@@ -72,7 +75,57 @@ sections() {
   echo "check: no debug sections; $folder.debug has them, .text at $a in both"
 }
 
+# What a shipped program leaves out (ticket 3099): its function names, which
+# an engine function's name stands for, and what only a build with debug
+# tools reads; on Windows and Linux its symbol table, kept in the debug file.
+hygiene() {
+  local program="$1" text
+  text=$(strings -a "$program")
+  for needle in frame_or_crash SHUYI_PERF; do
+    if printf '%s\n' "$text" | grep -q "$needle"; then
+      echo "check: $program holds \"$needle\""; exit 1
+    fi
+  done
+  case "$target" in
+    windows|linux)
+      if [ -n "$(nm "$program" 2>/dev/null)" ]; then
+        echo "check: $program has a symbol table"; exit 1
+      fi
+      [ -n "$(nm "$out/$folder.debug")" ] || { echo "check: $folder.debug has no symbols"; exit 1; }
+      ;;
+  esac
+  echo "check: no function names, no SHUYI_PERF"
+}
+hygiene "$program"
+
 case "$target" in
+  web)
+    # wasm-opt ran and left no names: the exporter checks the same.
+    "$py" - "$program" <<'PY'
+import sys
+data = open(sys.argv[1], "rb").read()
+assert data[:8] == b"\0asm\x01\0\0\0", "not a Wasm binary"
+def leb(at):
+    value = shift = 0
+    while True:
+        byte = data[at]; at += 1
+        value |= (byte & 0x7F) << shift; shift += 7
+        if byte < 0x80:
+            return value, at
+at, found = 8, []
+while at < len(data):
+    kind = data[at]
+    size, start = leb(at + 1)
+    if kind == 0:
+        length, name = leb(start)
+        found.append(data[name:name + length].decode())
+    at = start + size
+left = [name for name in found if name in ("name", "producers")]
+if left:
+    sys.exit("check: the binary holds the sections " + ", ".join(left))
+print("check: custom sections", found or "none")
+PY
+    ;;
   windows)
     sections "$program"
     dlls=$(objdump -p "$program" | awk '/DLL Name:/ { print $3 }' | sort -fu)

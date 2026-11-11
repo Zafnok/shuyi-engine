@@ -34,8 +34,8 @@
     ),
 
     // The game's tool program, for the commands that run the game:
-    // frame-png, lang-status, font-atlas, check, run, scene, replay, bots,
-    // import.
+    // frame-png, lang-status, font-atlas, check, run, scene, replay,
+    // playtest, import.
     game: (package: "{{crate_name}}", example: "tools", features: ["tools"]),
 
     // The folder of the game's files, which `cargo shuyi run --watch` lays
@@ -61,6 +61,17 @@
         "web": (frame: (384, 384), scale: integer, text_px: 16),
     },
 
+    // `cargo shuyi web`: the web build, the page and the game's `.wasm` in
+    // `dist` (serve that folder over HTTP to play it; `--release` for
+    // players). `crates/game/build.rs` gives the binary the link argument
+    // the page's JS plugins need.
+    web: (
+        package: "{{crate_name}}",
+        bin: "{{crate_name}}",
+        title: "{{name}}",
+        dist: "dist/web",
+    ),
+
     // `cargo shuyi check-keys`: no key named in the game's code or text.
     check_keys: (
         rust: ["crates/game/src"],
@@ -73,4 +84,23 @@
     // `NOTICES.txt` of every package the engine's tools make, beside the
     // notices of the crates and files they put in.
     notices: (texts: ["crates/game/files/font/Terminus-LICENSE.txt"]),
+
+    // `cargo shuyi export <target> --edition <name>`: the game's editions,
+    // each built from its own folder of files and its own features, on any
+    // target. A public demo built from a folder that holds only what is out
+    // ships nothing else: what a build never embeds, nobody can dig out of
+    // it. `default_features` is always written, so the demo never turns on a
+    // default that only the full game has, and `never_features` refuses a
+    // build that does anyway. `disclosure` lists what its packages may hold,
+    // and `canaries` texts written only in what isn't out yet: a package that
+    // holds one is refused.
+    // editions: {
+    //     "public-demo": (
+    //         default_features: false,
+    //         never_features: ["full"],
+    //         content: "crates/game/files-demo",
+    //         disclosure: (canaries: ["CHAPTER-TWO-IS-NOT-OUT"]),
+    //     ),
+    //     "full": (default_features: true, content: "crates/game/files"),
+    // },
 )

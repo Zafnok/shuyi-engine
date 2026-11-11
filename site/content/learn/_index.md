@@ -1,25 +1,26 @@
 +++
 title = "Learn"
-description = "The book, the tutorial and the API docs of Shuyi Engine."
+description = "The book and the API docs of Shuyi Engine."
 template = "learn.html"
 +++
 
-Three ways in:
+**[The book](@/learn/book/_index.md)** is the way in. A chapter for each idea the
+engine is built on, from the [quick start](@/learn/book/quick-start.md) to the
+tools agents use, and after each one the step of the book's project that uses it: a
+box-pushing puzzle built from an empty folder, each step tested and playable in the
+browser.
 
-- **[The book](@/learn/book/_index.md).** A [quick
-  start](@/learn/book/quick-start.md), then a chapter for each idea the
-  engine is built on: screens and skins, input actions, assets and
-  formats, rules as commands and their determinism, saves, testing,
-  targets, and the tools agents use.
-- **[The tutorial](@/learn/tutorial/01-new.md).** A small puzzle game
-  built step by step, each step tested and playable in the browser.
-- **[The API docs](#the-api-docs).** Every crate's reference, generated
-  from its code.
+Beside it:
 
-[Hello, Grid](@/examples/hello-grid.md) shows a whole game made from the
-engine's crates alone, and the
-[problem codes](@/learn/errors/_index.md) say what each error the
-engine's tools give means and how to fix it.
+- **[The API docs](#the-api-docs).** Every crate's reference, generated from its
+  code.
+- **[The problem codes](@/learn/errors/_index.md).** What each error the engine's
+  tools give means, and how to fix it.
+- **[The playground](@/learn/playground.md).** Hello, Grid playing beside its data
+  files, which you change and run again in the page, with nothing to install.
+
+[Hello, Grid](@/examples/hello-grid.md) shows a whole game made from the engine's
+crates alone.
 
 ## The API docs
 

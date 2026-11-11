@@ -61,7 +61,7 @@ pub use line_id::{
     Line, LineId, NARRATION_SPEAKER, REPLY_SPEAKER, caption_key, line_hash, scene_of,
 };
 pub use parse::{Lines, ParsedScene, PartLines, bad_id, char_problem, is_id, parse_dlg};
-pub use present::Present;
+pub use present::{Present, TextBoxAt};
 
 use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};

@@ -40,6 +40,8 @@ pub(super) fn cx(name: &str, target: &str) -> ExportCx {
         features: Vec::new(),
         turned_on: Vec::new(),
         beside: Vec::new(),
+        wasm_opt: WasmOptRule::Required,
+        edition: None,
     }
 }
 
@@ -72,25 +74,62 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
                     );
                 }
                 assert_eq!(args.iter().any(|a| a == "--release"), release, "{args:?}");
-                assert_eq!(no_live_link(args), Ok(()));
+                assert_eq!(no_debug_features(args), Ok(()));
             }
         }
     }
-    let args = |items: &[&str]| items.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
-    for linked in [
-        &["build", "--features", "link"][..],
-        &["build", "--features", "capture,link"],
-        &["build", "-F", "game/link"],
-        &["build", "--features=link"],
-    ] {
-        let refused = no_live_link(&args(linked)).unwrap_err();
-        assert_eq!(refused.code(), codes::PROJECT_FILE, "{linked:?}");
-    }
-    assert_eq!(
-        no_live_link(&args(&["build", "--features", "linked"])),
-        Ok(())
-    );
     fs::remove_dir_all(&cx.out).unwrap();
+}
+
+/// The arguments `items`, owned.
+fn args(items: &[&str]) -> Vec<String> {
+    items.iter().map(|s| (*s).to_owned()).collect()
+}
+
+#[test]
+fn each_debug_feature_is_refused_by_name_however_it_is_turned_on() {
+    for (feature, what) in DEBUG_FEATURES {
+        let dependency = format!("game/{feature}");
+        let equals = format!("--features={feature}");
+        let listed = format!("a,{feature}");
+        for (asked, named) in [
+            (args(&["build", "--features", feature]), feature),
+            (args(&["build", "--features", &listed]), feature),
+            (args(&["build", "-F", &dependency]), dependency.as_str()),
+            (args(&["build", &equals]), feature),
+        ] {
+            let refused = no_debug_features(&asked).unwrap_err();
+            assert_eq!(refused.code(), codes::PROJECT_FILE, "{asked:?}");
+            assert_eq!(
+                refused.message(),
+                format!("an export never turns on `{named}`, {what}")
+            );
+        }
+    }
+}
+
+#[test]
+fn the_ticket_s_cases_and_a_clean_list() {
+    for (asked, named) in [
+        (&["build", "--features", "a,debug-tools"][..], "debug-tools"),
+        (&["build", "-F", "game/capture"], "game/capture"),
+        (&["build", "--features=sound-probe"], "sound-probe"),
+    ] {
+        let refused = no_debug_features(&args(asked)).unwrap_err();
+        assert!(
+            refused
+                .message()
+                .contains(&format!("never turns on `{named}`")),
+            "{refused:?}"
+        );
+    }
+    for clean in [
+        &["build", "--features", "linked,art,debug-toolsy"][..],
+        &["build", "-F", "game/captured"],
+        &["build"],
+    ] {
+        assert_eq!(no_debug_features(&args(clean)), Ok(()), "{clean:?}");
+    }
 }
 
 /// What ships beside the program, as `shuyi.ron` writes it.
@@ -114,7 +153,13 @@ fn a_build_turns_on_the_export_parts_features_but_those_left_off() {
         .unwrap()
         .export
         .unwrap();
-    cx.turned_on = turned_on(Some(&part), &[]).unwrap();
+    let choice = Choice::of(Some(&part), &desktop::WINDOWS).unwrap();
+    let on = |without: &[&str], with: &[&str]| {
+        let owned = |names: &[&str]| names.iter().map(|&n| n.to_owned()).collect::<Vec<_>>();
+        let package = owned(&["a", "b", "bench"]);
+        choice.turned_on(&owned(without), &owned(with), "game", &package)
+    };
+    cx.turned_on = on(&[], &[]).unwrap();
     for exporter in [
         &desktop::WINDOWS as &dyn Exporter,
         &desktop::MACOS,
@@ -129,20 +174,88 @@ fn a_build_turns_on_the_export_parts_features_but_those_left_off() {
             assert_eq!(on, ["a", "b"], "{args:?}");
         }
     }
-    assert_eq!(turned_on(Some(&part), &["a".to_owned()]).unwrap(), ["b"]);
-    assert_eq!(turned_on(None, &[]).unwrap(), Vec::<String>::new());
-    let unknown = turned_on(Some(&part), &["c".to_owned()]).unwrap_err();
-    assert!(unknown.message().starts_with("--without c:"), "{unknown:?}");
+    assert_eq!(on(&["a"], &[]).unwrap(), ["b"]);
+    assert_eq!(on(&["a"], &["bench", "b"]).unwrap(), ["b", "bench"]);
+    let none = Choice::of(None, &desktop::WINDOWS).unwrap();
+    assert_eq!(
+        none.turned_on(&[], &[], "game", &[]).unwrap(),
+        Vec::<String>::new()
+    );
+    let unknown = on(&["c"], &[]).unwrap_err();
+    assert_eq!(
+        unknown.message(),
+        "--without c: `export.features` in shuyi.ron doesn't list it"
+    );
+    let unknown = on(&[], &["c"]).unwrap_err();
+    assert_eq!(
+        unknown.message(),
+        "--with c: the package `game` has no such feature"
+    );
+    assert_eq!(unknown.code(), codes::PROJECT_FILE);
     assert!(!playdate::PLAYDATE.takes_export_part());
     fs::remove_dir_all(&cx.out).unwrap();
 }
 
 #[test]
-fn link_in_the_export_parts_features_is_refused() {
+fn a_targets_own_entry_names_its_package_and_features() {
+    let part = |text: &str| crate::project::Config::parse(text).unwrap().export.unwrap();
+    let owned = |names: &[&str]| names.iter().map(|&n| n.to_owned()).collect::<Vec<_>>();
+    // No entry: the Playdate takes nothing of the part, a desktop its
+    // features.
+    let plain = part(r#"(export: (package: "jumper-app", features: ["art"]))"#);
+    let playdate = Choice::of(Some(&plain), &playdate::PLAYDATE).unwrap();
+    assert_eq!(playdate.package, None);
+    assert_eq!(playdate.features, Vec::<String>::new());
+    let windows = Choice::of(Some(&plain), &desktop::WINDOWS).unwrap();
+    assert_eq!(
+        (windows.package, windows.features),
+        (None, &owned(&["art"])[..])
+    );
+    // An entry replaces the package and the features.
+    let split = part(
+        r#"(export: (package: "jumper-app", features: ["art"], targets: {
+            "playdate": (package: "jumper-playdate", features: ["demo", "art"]),
+            "linux": (package: "jumper-linux"),
+        }))"#,
+    );
+    let playdate = Choice::of(Some(&split), &playdate::PLAYDATE).unwrap();
+    assert_eq!(playdate.package.as_deref(), Some("jumper-playdate"));
+    assert_eq!(playdate.features, owned(&["demo", "art"]));
+    let package = owned(&["playdate", "demo", "art", "bench"]);
+    let on = playdate
+        .turned_on(
+            &owned(&["art"]),
+            &owned(&["bench"]),
+            "jumper-playdate",
+            &package,
+        )
+        .unwrap();
+    assert_eq!(on, ["demo", "bench"]);
+    let refused = playdate
+        .turned_on(&owned(&["sound"]), &[], "jumper-playdate", &package)
+        .unwrap_err();
+    assert_eq!(
+        refused.message(),
+        "--without sound: `export.targets.playdate.features` in shuyi.ron doesn't list it"
+    );
+    // An entry with no features keeps the part's.
+    let linux = Choice::of(Some(&split), &desktop::LINUX).unwrap();
+    assert_eq!(linux.package.as_deref(), Some("jumper-linux"));
+    assert_eq!(linux.features, owned(&["art"]));
+    let windows = Choice::of(Some(&split), &desktop::WINDOWS).unwrap();
+    assert_eq!(windows.package, None);
+    // A target with no exporter is refused by name.
+    let typo = part(r#"(export: (targets: {"playdat": ()}))"#);
+    let refused = Choice::of(Some(&typo), &desktop::WINDOWS).unwrap_err();
+    assert!(refused.message().contains("names `playdat`"), "{refused:?}");
+}
+
+#[test]
+fn a_debug_feature_in_the_export_parts_features_is_refused() {
     let mut cx = cx("link-part", "windows");
     cx.turned_on = vec!["art".to_owned(), "link".to_owned()];
     for args in desktop::WINDOWS.cargo_args(&cx) {
-        let refused = no_live_link(&args).unwrap_err();
+        let refused = no_debug_features(&args).unwrap_err();
         assert_eq!(refused.code(), codes::PROJECT_FILE);
     }
     fs::remove_dir_all(&cx.out).unwrap();
@@ -199,16 +312,16 @@ fn a_missing_beside_path_refuses_the_export_by_name_unless_it_is_optional() {
         part
     };
     let missing = part(beside("no-such-folder", None, false));
-    let refused = present(&root, Some(&missing)).unwrap_err();
+    let refused = present(&root, &missing.beside).unwrap_err();
     assert_eq!(refused.code(), codes::PROJECT_FILE);
     assert!(refused.message().contains("no-such-folder"), "{refused:?}");
     let optional = part(beside("no-such-folder", None, true));
-    assert_eq!(present(&root, Some(&optional)).unwrap(), []);
+    assert_eq!(present(&root, &optional.beside).unwrap(), []);
     let there = part(beside("capture", None, false));
-    assert_eq!(present(&root, Some(&there)).unwrap().len(), 1);
+    assert_eq!(present(&root, &there.beside).unwrap().len(), 1);
     let path_name = part(beside("capture", Some("../up"), false));
     assert!(
-        present(&root, Some(&path_name))
+        present(&root, &path_name.beside)
             .unwrap_err()
             .message()
             .contains("plain name")
@@ -455,14 +568,15 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 }
 
 /// What a web build of [`web_build`]'s game makes.
-const WEB_FILES: [&str; 10] = [
+const WEB_FILES: [&str; 11] = [
     "NOTICES.txt",
-    "download.js",
     "gamepad.js",
     "hello-grid.wasm",
     "index.html",
     "mq_js_bundle.js",
     "music/a.ogg",
+    "page-files.js",
+    "player-files.js",
     "quad-storage.js",
     "sapp_jsutils.js",
     "sound.js",
@@ -578,3 +692,5 @@ fn a_release_package_with_a_build_path_is_refused_by_name() {
     assert_eq!(cx.search(&file), Ok(()));
     fs::remove_dir_all(&cx.out).unwrap();
 }
+
+mod editions;

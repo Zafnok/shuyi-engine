@@ -114,14 +114,14 @@ None.
   pictures; a test fails when one is stale"), each at `--scale 1`.
   Find each script with the MCP session tools (`start`, `step`,
   `frame_png` on `examples/hello-grid`). At least:
-  - `title`: the title screen (the quick start, chapter 2);
+  - `title`: the title screen (the quick start, chapter 6);
   - `stage`: the stage after a few moves, your piece and the foe on the
-    grid (chapters 2 and 6);
+    grid (chapters 5 and 6);
   - `menu`: a menu open over the stage, the stage still drawn below it
-    (chapter 2, screens on a stack);
-  - `dialogue`: the intro's text box (chapter 2 or 4);
-  - `options`: the options screen, a key being rebound (chapter 3);
-  - `tiles`: the stage of `stage`, in the tile look (chapter 4, one
+    (chapter 6, screens on a stack);
+  - `dialogue`: the intro's text box (chapter 6 or 2);
+  - `options`: the options screen, a key being rebound (chapter 4);
+  - `tiles`: the stage of `stage`, in the tile look (chapter 2, one
     view and two skins);
   - `playdate`: the stage of `stage` with `--target playdate`
     (chapter 9).

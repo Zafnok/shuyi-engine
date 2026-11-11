@@ -5,14 +5,19 @@
 use std::fs;
 use std::path::Path;
 
-use game::stages::top_down_grid::{StageRecord, StageScreen, Tools, crash_record};
+use game::stages::top_down_grid::{
+    AREA, GLYPHS, Piece, StageRecord, StageScreen, Tools, crash_record,
+};
 use rules::{Command, Outcome, Stage};
 use shuyi::core::{Dir, Pos, TurnRules};
 use shuyi::platform::harness::Harness;
+use shuyi::ui::frame::GizmoShape;
+use shuyi::ui::grid::GridSkin;
+use shuyi::ui::grid::debug::GRID;
 use shuyi_cli::GameTools;
-use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::import::{ImportInput, import};
+use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, scene};
 use shuyi_cli::contract::target::engine_profiles;
@@ -110,23 +115,48 @@ fn run_and_scene_show_the_stage_after_a_script() {
 }
 
 #[test]
-fn the_bots_play_to_an_end_and_their_records_replay() {
-    let mut input = BotsInput::default();
-    input.games = 20;
-    let answer = bots(&tools(), &input);
+fn scene_reads_one_value_by_pointer_and_the_shape_of_its_data() {
+    let mut input = RunInput::default();
+    input.script = keys("Enter Right");
+    input.path = Some("/hero/x".to_owned());
+    let answer = scene(&tools(), &input);
     assert!(answer.ok, "{answer:?}");
-    let out = answer.result.unwrap();
-    assert_eq!(out.games, 20);
-    assert_eq!(out.outcomes.values().sum::<u32>(), 20);
+    assert_eq!(answer.result.unwrap().value, Some(2.into()));
+    input.path = Some("/hero/z".to_owned());
+    assert_eq!(scene(&tools(), &input).code.as_deref(), Some("SH0005"));
+    input.path = None;
+    input.shape = true;
+    let shape = scene(&tools(), &input).result.unwrap().shape.unwrap();
+    for key in ["turn", "hero", "wanderer", "outcome", "seed", "commands"] {
+        assert!(
+            shape["properties"].get(key).is_some(),
+            "no {key} in {shape}"
+        );
+    }
+}
+
+#[test]
+fn the_bots_play_to_an_end_and_their_records_replay() {
+    let mut input = PlaytestInput::default();
+    input.tries = Some(20);
+    let answer = playtest(&tools(), &input);
+    assert!(answer.ok, "{answer:?}");
+    let out = answer.result.unwrap().remove(0);
+    let bot = &out.entrants[0];
+    assert_eq!(bot.tries.len(), 20);
+    assert_eq!(bot.outcomes.values().sum::<u32>(), 20);
+    // A plain bot run: no checks, nothing judged.
+    assert_eq!(out.report.checks, Vec::new());
     let dir = std::env::temp_dir().join(format!("game-replay-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
-    let record = out.plays[0].record.clone().unwrap();
+    let record = bot.tries[0].record.clone().unwrap();
     fs::write(dir.join("play.ron"), &record).unwrap();
     let input = ReplayInput::new("play.ron");
     let answer = replay(&tools(), &dir, &input);
     assert!(answer.ok, "{answer:?}");
     let run = &answer.result.unwrap().runs[0];
     let parsed: StageRecord = ron::from_str(&record).unwrap();
+    assert_eq!(parsed.commands.len(), bot.tries[0].commands as usize);
     // The bots stamp their records with this build, and replay runs them.
     assert_eq!(parsed.made, Some(game::made()));
     assert_eq!(run.made, parsed.made);
@@ -141,6 +171,7 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
         run.outcome,
         stage.outcome().map(|o: Outcome| format!("{o:?}"))
     );
+    assert_eq!(run.outcome, out.report.entrants[0].tries[0].outcome);
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -210,4 +241,35 @@ fn the_title_and_the_stage_declare_their_actions_and_they_fit_every_target() {
     input.target = Some("all".to_owned());
     let answer = targets(&project.config, &project.root, &input, Some(&tools()));
     assert!(answer.ok, "{answer:?}");
+}
+
+/// The game in the Harness, on its first stage, with the debug view's
+/// `grid` channel on or off from the start.
+fn on_stage_with_grid(on: bool) -> Harness<game::Data> {
+    let game = game::game();
+    let mut ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
+    ctx.debug_tools = true;
+    ctx.debug_view.set(GRID.id(), on);
+    let mut h = Harness::new(game.game(ctx).unwrap_or_else(|e| panic!("{e}")));
+    h.keys("Enter");
+    h
+}
+
+#[test]
+fn the_stage_offers_the_grid_channel_and_draws_its_layout_with_it_on() {
+    let h = on_stage_with_grid(true);
+    let drawn = h.game().buffer().gizmos();
+    assert!(drawn.iter().all(|g| g.channel == GRID.id()));
+    let scene = stage(&h).scene(StageScreen::view_tiles());
+    let grid = GridSkin::<Piece>::grid(&GLYPHS, &scene, AREA);
+    // The stage has no cursor: your piece's cell is outlined instead.
+    let hero = GizmoShape::Rect {
+        rect: grid.rect(stage(&h).stage.hero()).unwrap(),
+    };
+    assert!(drawn.iter().any(|g| g.shape == hero), "{drawn:?}");
+    assert!(h.ctx().debug_view.offered().contains(&GRID));
+
+    let off = on_stage_with_grid(false);
+    assert_eq!(off.game().buffer().gizmos(), []);
+    assert!(off.ctx().debug_view.offered().contains(&GRID));
 }

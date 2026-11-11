@@ -4,9 +4,10 @@
 #
 #   site/check-build.sh                 checks the book's sources, writes
 #                                       the problem codes' pages
-#                                       (errors.sh), builds the site twice,
-#                                       with two base URLs, and checks both
-#                                       outputs
+#                                       (errors.sh), copies the playground's
+#                                       files (copy-playground.sh), builds
+#                                       the site twice, with two base URLs,
+#                                       and checks both outputs
 #   site/check-build.sh hosts DIR BASE  checks a built site in DIR, served
 #                                       at BASE, loads nothing from another
 #                                       host (pages.yml, after the examples
@@ -63,12 +64,21 @@ if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*(rust|rs)([^[:alnum:]_-]|$)' "$b
   fail "the book has a fenced Rust block: write it in site/snippets/ and show it with the snippet shortcode"
 fi
 
-# So does every code block of the tutorial, from its step's folder, which
-# CI builds and tests: only the commands to type are written in a page.
-tutorial="$site_dir/content/learn/tutorial"
-if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*($|[^b[:space:]]|b[^a])' "$tutorial" | grep -vE ':[0-9]+:[[:space:]]*(```|~~~)[[:space:]]*$'; then
-  fail "the tutorial has a code block of its own: show its step's file with the snippet shortcode"
-fi
+# The book's projects (ADR-0090): each folder of the book whose _index.md
+# has `project = true`, its steps' code in site/<its `code`>/<step>/.
+projects=()
+for index in "$book"/*/_index.md; do
+  [ -f "$index" ] && grep -qxF 'project = true' "$index" && projects+=("$(dirname "$index")")
+done
+[ "${#projects[@]}" -gt 0 ] || fail "the book has no project: no folder of it has an _index.md with project = true"
+
+# Every code block of a project comes from its step's folder, which CI
+# builds and tests: only the commands to type are written in a page.
+for project in "${projects[@]}"; do
+  if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*($|[^b[:space:]]|b[^a])' "$project" | grep -vE ':[0-9]+:[[:space:]]*(```|~~~)[[:space:]]*$'; then
+    fail "the project $(basename "$project") has a code block of its own: show its step's file with the snippet shortcode"
+  fi
+done
 
 # Learn links each engine crate's API docs: data/api.toml has a row for
 # each `shuyi*` package under crates/, by rustdoc's name for it.
@@ -80,6 +90,7 @@ for manifest in "$site_dir"/../crates/*/Cargo.toml; do
 done
 
 bash "$site_dir/errors.sh"
+bash "$site_dir/copy-playground.sh"
 
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
@@ -110,19 +121,107 @@ for chapter in "$book"/*.md; do
   [ "$name" = _index ] && continue
   [ -f "$out/one/learn/book/$name/index.html" ] || fail "the build has no learn/book/$name/"
 done
-# Each step of the tutorial has a page, which links its playable build.
-for step in "$site_dir"/tutorial/*/; do
-  name="$(basename "$step")"
-  page="$out/one/learn/tutorial/$name/index.html"
-  [ -f "$page" ] || fail "the build has no learn/tutorial/$name/"
-  grep -qF "${one}learn/tutorial/$name/play/" "$page" || fail "learn/tutorial/$name/ doesn't link its play/"
+# Each step of a project has a page, which links its playable build, and
+# follows a chapter of the book, so the book's order holds it.
+for project in "${projects[@]}"; do
+  folder="$(basename "$project")"
+  code="$(sed -nE 's/^code = "(.*)"$/\1/p' "$project/_index.md")"
+  [ -n "$code" ] && [ -d "$site_dir/$code" ] || fail "learn/book/$folder/_index.md: its code, site/$code/, isn't there"
+  for step in "$site_dir/$code"/*/; do
+    [ -d "$step" ] || continue
+    name="$(basename "$step")"
+    page="$out/one/learn/book/$folder/$name/index.html"
+    [ -f "$page" ] || fail "the build has no learn/book/$folder/$name/"
+    grep -qF "${one}learn/book/$folder/$name/play/" "$page" || fail "learn/book/$folder/$name/ doesn't link its play/"
+  done
+  for step in "$project"/*.md; do
+    [ "$(basename "$step")" = _index.md ] && continue
+    chapter="$(sed -nE 's/^follows = "(.*)"$/\1/p' "$step")"
+    grep -qxF 'part = "chapters"' "$book/$chapter.md" 2>/dev/null ||
+      fail "${step#"$site_dir"/}: follows = \"$chapter\" names no chapter of the book"
+  done
 done
-# The chapters are numbered 1 to the last, none twice and none missing.
+# Each old address of a page (its `aliases`) sends the reader to the page.
+while IFS= read -r source; do
+  url="${source#"$site_dir"/content/}"
+  url="${url%.md}"
+  url="${url%_index}"
+  url="${url%/}/"
+  for alias in $(sed -nE 's/^aliases = \[(.*)\]$/\1/p' "$source" | tr -d '",'); do
+    grep -qF "${one}$url" "$out/one/$alias/index.html" 2>/dev/null ||
+      fail "/$alias doesn't redirect to /$url (${source#"$site_dir"/})"
+  done
+done < <(grep -rlE '^aliases = ' "$site_dir/content")
+# The chapters are numbered 1 to the last, none twice and none missing, and
+# the appendices are lettered from A the same way.
 chapters="$(sed -nE 's/^chapter = ([0-9]+)$/\1/p' "$book"/*.md | sort -n | tr '\n' ' ')"
 expected="$(seq 1 "$(echo "$chapters" | wc -w)" | tr '\n' ' ')"
 [ "$chapters" = "$expected" ] || fail "the book's chapters are numbered ${chapters}rather than $expected"
+appendices="$(sed -nE 's/^appendix = "([A-Z])"$/\1/p' "$book"/*.md | sort | tr -d '\n')"
+[ -z "$appendices" ] || [ "$appendices" = "$(echo ABCDEFGHIJKLMNOPQRSTUVWXYZ | cut -c "1-${#appendices}")" ] ||
+  fail "the book's appendices are lettered $appendices rather than from A, none twice and none missing"
+# Every page of the book loads the reader's filter (ticket 2826), and every
+# passage's mark names an audience the filter knows: one in the script's
+# AUDIENCES, which the stylesheet folds.
+audiences=" $(sed -nE 's/^ *const AUDIENCES = \[(.*)\];$/\1/p' "$site_dir/static/book-filter.js" | tr -d '",') "
+[ "$audiences" != "  " ] || fail "site/static/book-filter.js has no AUDIENCES line"
+while IFS= read -r page; do
+  grep -qE '<script src="[^"]*/book-filter\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-filter.js"
+  # A page with a quick check (ticket 2827) loads the script that answers it.
+  if grep -qF 'class="check-choices"' "$page"; then
+    grep -qE '<script src="[^"]*/book-check\.js' "$page" || fail "${page#"$out"/one/} has a quick check and doesn't load book-check.js"
+  fi
+done < <(find "$out/one/learn/book" -name index.html)
+for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sort -u | sed -E 's/^data-newcomer="(.*)"$/\1/'); do
+  [[ "$audiences" == *" $audience "* ]] || fail "a passage is marked $audience, which book-filter.js's AUDIENCES doesn't have"
+  grep -qF "[data-book-fold~=\"$audience\"] .newcomer[data-newcomer=\"$audience\"]" "$site_dir/static/style.css" ||
+    fail "a passage is marked $audience, which style.css doesn't fold"
+done
 grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
   fail "/hello-grid/ doesn't redirect to /examples/hello-grid/"
+# The playground (ticket 2814): the build holds each file its page names,
+# the same as Hello, Grid's, and the page loads its script and frames the
+# game.
+playground="$out/one/learn/playground/index.html"
+if [ -f "$playground" ]; then
+  grep -qE '<script [^>]*src="[^"]*/playground\.js' "$playground" || fail "learn/playground/ doesn't load playground.js"
+  grep -qF "<iframe src=\"${one}examples/hello-grid/\"" "$playground" || fail "learn/playground/ doesn't frame ${one}examples/hello-grid/"
+else
+  fail "the build has no learn/playground/"
+fi
+names="$(sed -nE 's/^files = \[(.*)\]$/\1/p' "$site_dir/content/learn/playground.md" | tr -d '",')"
+[ "$(echo "$names" | wc -w)" = 5 ] || fail "the playground names $(echo "$names" | wc -w) files rather than Hello, Grid's five"
+for name in $names; do
+  cmp -s "$site_dir/../examples/hello-grid/files/$name" "$out/one/playground/files/$name" ||
+    fail "the build's playground/files/$name isn't Hello, Grid's files/$name"
+  grep -qF "data-file=\"$name\"" "$playground" 2>/dev/null || fail "learn/playground/ has no editor of $name"
+done
+# Each step's playground (ticket 2820): a step whose page names files has
+# them in the build beside its page, the same as its project's own, an
+# editor of each, and frames its play/.
+for project in "${projects[@]}"; do
+  folder="$(basename "$project")"
+  code="$(sed -nE 's/^code = "(.*)"$/\1/p' "$project/_index.md")"
+  game_files="$(sed -nE 's/^game_files = "(.*)"$/\1/p' "$project/_index.md")"
+  for step in "$project"/*.md; do
+    [ "$(basename "$step")" = _index.md ] && continue
+    names="$(sed -nE 's/^files = \[(.*)\]$/\1/p' "$step" | tr -d '",')"
+    [ -n "$names" ] || continue
+    name="$(basename "$step" .md)"
+    page="$out/one/learn/book/$folder/$name/index.html"
+    [ -f "$page" ] || continue
+    grep -qE '<script [^>]*src="[^"]*/playground\.js' "$page" || fail "learn/book/$folder/$name/ has a playground and doesn't load playground.js"
+    grep -qF "<iframe src=\"${one}learn/book/$folder/$name/play/\"" "$page" ||
+      fail "learn/book/$folder/$name/'s playground doesn't frame its play/"
+    # Zola writes the `/` of `levels/1.map` as `&#x2F;`.
+    decoded="$(sed -e 's/&#x2F;/\//g' "$page")"
+    for file in $names; do
+      cmp -s "$site_dir/$code/$name/$game_files/$file" "$out/one/learn/book/$folder/$name/files/$file" ||
+        fail "the build's learn/book/$folder/$name/files/$file isn't site/$code/$name/$game_files/$file"
+      grep -qF "data-file=\"$file\"" <<<"$decoded" || fail "learn/book/$folder/$name/ has no editor of $file"
+    done
+  done
+done
 
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"

@@ -1,11 +1,14 @@
 //! A game and a session made up for the contract's tests: each answer is
 //! what the test sets.
 
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use shuyi_assets::ContentError;
+use shuyi_assets::audio::{AudioManifest, Bytes as AudioBytes, CreditRef, Files, SoundCue};
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::format::Formats;
@@ -17,19 +20,18 @@ use shuyi_ui::input::KeymapDef;
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::toy::Action;
 
-use shuyi_core::bots::playtest::{Band, Check, Condition, Tried, Tries, Want};
+use shuyi_core::bots::playtest::{Band, Check, Condition, PlayedTry, Tried, Tries, Want};
 use shuyi_core::{ContentHash, Knob, Made};
 
 use super::autobalance::AutobalanceInput;
-use super::bots::{BotsInput, BotsOutput, tally};
 use super::perf::PerfRead;
 use super::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{
-    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
-    Tunable,
+    AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
+    PlaytestChecks, PlaytestPlan, Tunable, unsupported,
 };
 use shuyi_platform::script::wait_frames;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PerfRing};
@@ -73,6 +75,7 @@ impl FakeSession {
                 kind: "grid map".to_owned(),
                 text: text.to_owned(),
                 data: serde_json::json!({ "turn": 1 }),
+                shape: None,
             }),
             log: Vec::new(),
             log_dropped: 0,
@@ -205,8 +208,6 @@ pub struct Fake {
     pub replay: Result<(), String>,
     /// This build's stamp, or none.
     pub made: Option<Made>,
-    /// `bots`'s plays, or why there are none.
-    pub bots: Result<BotsOutput, String>,
     /// Its playtest, or why its plan doesn't load.
     pub playtest: Result<FakePlaytest, String>,
     /// The inputs its playtest plans were asked for with, in turn.
@@ -233,6 +234,9 @@ pub struct Fake {
     /// one. An empty atlas by default, which the empty text needs nothing
     /// of.
     pub font_atlas: Option<Result<FontAtlasDef, String>>,
+    /// The sound files it ships on every target that bakes its audio, by
+    /// name, a cue each, and no music; `None`: it doesn't offer audio.
+    pub sounds: Option<Vec<(String, Vec<u8>)>>,
 }
 
 /// A game's sources: a names table, a palette and a picture.
@@ -249,7 +253,6 @@ impl Default for Fake {
             session: Ok(FakeSession::on("stage", "map")),
             replay: Ok(()),
             made: None,
-            bots: Ok(tally(Vec::new())),
             playtest: Ok(FakePlaytest::default()),
             planned: Mutex::new(Vec::new()),
             balance: Ok(FakeBalance::default()),
@@ -260,6 +263,7 @@ impl Default for Fake {
             one_bit: None,
             lang: Ok(Lang::default()),
             font_atlas: Some(Ok(FontAtlasDef::default())),
+            sounds: None,
         }
     }
 }
@@ -270,8 +274,10 @@ impl Default for Fake {
 /// turns be lower than `walk`'s. Each try ends `outcome` (unfinished if
 /// `None`), `walk`'s at the turn limit and `run`'s a turn sooner, won
 /// unless its stage's name starts with `hard`; the try of seed `fail`
-/// fails, and each takes `sleep`. `walk`'s summary is the sum of `won`
-/// and the median of `turns`; `run` has none.
+/// fails, and each takes `sleep`. A try applies two commands a turn, and
+/// `walk` keeps a record of each, `(seed: N)`; `run` keeps none. `walk`'s
+/// summary is the sum of `won` and the median of `turns`; `run` has none.
+/// With `unchecked`, it has no checks: a plain bot run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakePlaytest {
     /// Its stages.
@@ -286,6 +292,8 @@ pub struct FakePlaytest {
     pub fail: Option<u64>,
     /// How long each try takes.
     pub sleep: Duration,
+    /// Whether it has no checks.
+    pub unchecked: bool,
 }
 
 impl Default for FakePlaytest {
@@ -297,6 +305,7 @@ impl Default for FakePlaytest {
             outcome: Some("Won"),
             fail: None,
             sleep: Duration::ZERO,
+            unchecked: false,
         }
     }
 }
@@ -439,10 +448,6 @@ impl GameTools for Fake {
         self.made.clone()
     }
 
-    fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {
-        self.bots.clone()
-    }
-
     fn playtest_stages(&self) -> Vec<String> {
         self.playtest
             .as_ref()
@@ -465,6 +470,11 @@ impl GameTools for Fake {
         let fake = self.playtest.clone()?;
         let won = i64::from(!stage.is_some_and(|s| s.starts_with("hard")));
         let (outcome, fail, sleep) = (fake.outcome, fake.fail, fake.sleep);
+        let checks: PlaytestChecks = if fake.unchecked {
+            Box::new(|_| Vec::new())
+        } else {
+            Box::new(fake_checks)
+        };
         Ok(PlaytestPlan {
             title: format!("the fake on {}", stage.unwrap_or("its stage")),
             entrants: vec![
@@ -473,7 +483,7 @@ impl GameTools for Fake {
             ],
             groups: [("all".to_owned(), vec!["walk".to_owned(), "run".to_owned()])].into(),
             default_entrants: fake.default_entrants,
-            checks: Box::new(fake_checks),
+            checks,
             play: Box::new(move |entrant, seed, turns| {
                 std::thread::sleep(sleep);
                 if fail == Some(seed) {
@@ -481,12 +491,17 @@ impl GameTools for Fake {
                 }
                 // `run` ends a turn sooner than `walk`.
                 let turns = turns.saturating_sub(u32::try_from(entrant).unwrap_or(0));
-                Ok(Tried {
+                let tried = Tried {
                     seed,
                     outcome: outcome.map(str::to_owned),
                     turns,
                     measures: [("won".to_owned(), won), ("turns".to_owned(), turns.into())].into(),
-                })
+                };
+                let mut one = PlayedTry::new(tried, turns * 2);
+                if entrant == 0 {
+                    one.record = Some(format!("(seed: {seed})"));
+                }
+                Ok(one)
             }),
             summary: vec![vec![Summary::sum("won"), Summary::median("turns")]],
         })
@@ -520,13 +535,14 @@ impl GameTools for Fake {
                     let turns = turns.saturating_sub(u32::try_from(entrant).unwrap_or(0));
                     let won = i64::from(seed % 10 >= u64::from(hard));
                     let outcome = if won == 1 { "Won" } else { "Lost" };
-                    Ok(Tried {
+                    let tried = Tried {
                         seed,
                         outcome: (!unfinished).then(|| outcome.to_owned()),
                         turns,
                         measures: [("won".to_owned(), won), ("turns".to_owned(), turns.into())]
                             .into(),
-                    })
+                    };
+                    Ok(PlayedTry::new(tried, turns * 2))
                 }),
                 write: Box::new(move |&hard| {
                     if let Some(e) = fails {
@@ -561,6 +577,35 @@ impl GameTools for Fake {
 
     fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
         self.font_atlas.clone()
+    }
+
+    /// Its sounds, read from a copy of them kept for the rest of the test
+    /// run, since `GameAudio` reads with `'static` functions.
+    fn audio(&self, _target: &str) -> Result<GameAudio, String> {
+        fn shown(file: &str) -> String {
+            format!("sounds/{file}")
+        }
+        fn kept(_: &str) -> bool {
+            false
+        }
+        let sounds = self
+            .sounds
+            .clone()
+            .ok_or_else(|| unsupported("audio for a target that bakes it", "audio"))?;
+        let mut manifest = AudioManifest::default();
+        for (name, _) in &sounds {
+            let cue = SoundCue::new(vec![name.clone()], 100, CreditRef::Own);
+            manifest.sounds.insert(name.clone(), cue);
+        }
+        let table: &'static BTreeMap<String, Vec<u8>> =
+            Box::leak(Box::new(sounds.into_iter().collect()));
+        let read: &'static dyn Fn(&str) -> AudioBytes = Box::leak(Box::new(|file: &str| {
+            table.get(file).map(|b| Cow::Owned(b.clone()))
+        }));
+        Ok(GameAudio::new(
+            manifest,
+            Files::new(read, &shown, &kept, "music"),
+        ))
     }
 
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {

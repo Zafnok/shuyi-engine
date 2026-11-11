@@ -1,19 +1,22 @@
 +++
 title = "Actions, never keys"
 description = "Screens react to actions; the keymap file gives their keys and buttons; text names a key through the player's keymap."
-weight = 30
+weight = 40
 
 [extra]
-chapter = 3
+part = "chapters"
+chapter = 4
 +++
 
+{% newcomer(to="shuyi", topic="why a game never names a key") %}
 The first thing you would write in a game is "if Enter was pressed, plant a seed". It
 works, and it is a bug waiting to happen. Players rebind every key and button, a
 controller has no Enter, and two keyboard layouts already use different keys. A key
 written into a game's code, or into text a player reads, stops working after a rebind,
 or it lies: the help line says "press Enter", and Enter does nothing.
+{% end %}
 
-So the code never asks about keys. A screen reacts to the game's **actions**, the things
+The code never asks about keys. A screen reacts to the game's **actions**, the things
 a player can ask for (Up, Confirm, Plant). The **keymap** file says which keys and
 buttons give them, and text names a key through the player's keymap. Then every player
 can change their keys, a controller just works, and the help line is always right:
@@ -32,14 +35,20 @@ key presses itself. When the game comes back from a suspend (the device slept, o
 player switched apps), or its window loses focus, nothing is held any more: a key let go
 while it was away doesn't stay held, and one still down counts once it is pressed again.
 While the window has no focus the controllers do nothing. The garden's `update`, in
-[chapter 2](@/learn/book/games-and-screens.md#asking-the-screen-below), turns each action
+[chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below), turns each action
 into a command of its rules.
 
 Each screen declares the actions it reads, in `Screen::actions`. `cargo shuyi check
 --target all` checks that the required ones bind to distinct inputs of each target the
-game ships on (a **target** is a kind of machine a game runs on, and "distinct" means no
-two need the same button), and in tests the Harness hands a screen only the actions it
-declares. A screen that declares none (`None`) counts as reading every action, and the
+game ships on, and in tests the Harness hands a screen only the actions it
+declares.
+
+{% newcomer(to="shuyi", topic="a target") %}
+A **target** is a kind of machine a game runs on, and "distinct" means no
+two need the same button.
+{% end %}
+
+A screen that declares none (`None`) counts as reading every action, and the
 check warns about it.
 
 ## The keymap file
@@ -74,9 +83,15 @@ a key with `key_name`, and passes it in as an argument:
 
 {{ snippet(file="src/actions.rs", anchor="key_name") }}
 
-> **Rust:** `&Ctx<Data>` lends the function the context, to look at. `&[("key", &key)]`
-> lends a list of pairs, each a **tuple**, values side by side: here the placeholder's
-> name, and what to put there.
+{% newcomer(to="rust", topic="lending with `&`, and a tuple") %}
+`&Ctx<Data>` lends the function the context, to look at. `&[("key", &key)]`
+lends a list of pairs, each a **tuple**, values side by side: here the placeholder's
+name, and what to put there.
+{% end %}
+
+So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
+action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
+passes. `cargo shuyi check` fails on a capitalized name that is no action.
 
 Both follow the device the player pressed last: keys on the keyboard, the pad's own
 button names on a controller. An optional action may have no key; the text then shows the
@@ -99,8 +114,12 @@ You don't write any of this. It works since your code only ever asked for action
 
 The short path plays with `UiAction`'s six moves, which the engine's menus and screens
 react to too. A game that needs more (a watering can, a debug key) writes its own action
-**enum**, a type that is one of a fixed list, and implements `ActionSet` for it. A
-**trait** like `ActionSet` is a list of functions that a type promises to have:
+enum, and implements `ActionSet` for it.
+
+{% newcomer(to="rust", topic="an enum and a trait") %}
+An **enum** is a type that is one of a fixed list. A
+**trait** like `ActionSet` is a list of functions that a type promises to have.
+{% end %}
 
 {{ snippet(file="src/actions.rs", anchor="action_set") }}
 
@@ -113,15 +132,19 @@ react to too. A game that needs more (a watering can, a debug key) writes its ow
 - `fixed_keys` gives keys no player can move. `UiAction` has one, plain Escape for Cancel;
   this game has none.
 
-> **Rust:** `Self` is the type this `impl` is for, so `Self::Left` is `GardenAction::Left`.
-> `const ALL: &'static [Self]` is a fixed list, kept for as long as the program runs.
-> `self` with no `&` takes the value itself, which is cheap here, as `Copy` in the
-> `derive` line says a value this small is simply copied.
->
-> `match` handles every possibility. `matches!(self, Self::Left | Self::Right)` is a short
-> way to ask "is it one of these?". `type Group = ();` fills in one of the trait's blanks,
-> with `()`, a value holding nothing. So `fn group(self) {}` has nothing to give back, and
-> an empty body does it.
+{% newcomer(to="rust", topic="`Self`, `&'static` and `Copy`") %}
+`Self` is the type this `impl` is for, so `Self::Left` is `GardenAction::Left`.
+`const ALL: &'static [Self]` is a fixed list, kept for as long as the program runs.
+`self` with no `&` takes the value itself, which is cheap here, as `Copy` in the
+`derive` line says a value this small is simply copied.
+{% end %}
+
+{% newcomer(to="rust", topic="`matches!` and `type Group = ()`") %}
+`match` handles every possibility. `matches!(self, Self::Left | Self::Right)` is a short
+way to ask "is it one of these?". `type Group = ();` fills in one of the trait's blanks,
+with `()`, a value holding nothing. So `fn group(self) {}` has nothing to give back, and
+an empty body does it.
+{% end %}
 
 The game's data becomes `BasicData<GardenAction, Plan>` and its game `BasicGame<GardenAction,
 Plan>`, and its keymap file names every action of `ALL`:
@@ -140,7 +163,8 @@ new key.
 
 ## When it goes wrong
 
-`cargo shuyi check` reads the keymap, and these are its real answers.
+`cargo shuyi check` reads the keymap and the language file, and these are its real
+answers.
 
 A misspelled action. It says what it knows, and that the real one is now missing:
 
@@ -163,6 +187,15 @@ A key the rebinding screen keeps:
   files/keymap.ron:18: layout "Arrows": action "Cancel": "Escape" can't be bound here: Esc and Delete are fixed, see controls.md
 ```
 
+An action misspelled in the language file. `check` lists the actions and
+`{Cursor}`, as the names a capitalized placeholder may use:
+
+```text
+check: 1 error(s)
+  files/en.ron:15: error[SH2008]: "title.help": unknown action "{Confirn}"; known actions: Up, Down, Left, Right, Confirm, Cancel, and {Cursor} for the cursor keys
+help[SH2008]: use one of the names the message lists, or fix the spelling
+```
+
 `cargo shuyi lint` reads your code and your text, and finds a key named in either:
 
 ```text
@@ -171,7 +204,7 @@ lint: 1 finding(s)
 help[SH2101]: react to an action instead, and name a key in text through the player's keymap
 ```
 
-Two more reach neither:
+One more reaches neither:
 
 **A screen reads an action it didn't declare.** Take `UiAction::Left` off the garden's
 `actions`, keep reading it in `update`, and in a test the Harness holds it back, so Left
@@ -185,5 +218,31 @@ assertion `left == right` failed
 
 If a key does nothing in a test, look at the screen's `actions` first.
 
-**An action's name misspelled in text.** `{Confirn}` isn't an error: the player reads
-`{Confirn}` on the screen. Look at the line you changed.
+## Check yourself
+
+{% check() %}
+The language file has a help line with `{Confirm}` in it. What does the player read in
+its place?
+
+- [x] The key or button the player has for Confirm, from the device they pressed last. — A capitalized name in braces names an action, and the text asks the player's keymap for its key ([naming a key in text](#naming-a-key-in-text)).
+- [ ] The word "Confirm". — The braces are filled in: a capitalized name shows the player's own key for that action ([naming a key in text](#naming-a-key-in-text)).
+- [ ] Always the default key, Enter. — It shows the key the player bound, so the line stays right after a rebind ([naming a key in text](#naming-a-key-in-text)).
+- [ ] A value the screen passes in as an argument. — That is a lowercase placeholder, such as `{seeds}`; a capital names a key ([naming a key in text](#naming-a-key-in-text)).
+{% end %}
+
+{% check() %}
+The player holds Right down. How does a screen move the cursor once per repeat?
+
+- [x] It does nothing extra: the held action comes again in `input.actions` at the keymap's repeat rate. — The keymap file gives the repeat timings, so a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
+- [ ] It reads the clock and moves again once enough time has passed. — The repeats come with the actions at the keymap's rate, and a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
+- [ ] It checks `input.is_held(action)` and moves on every frame it is held. — That would move once a frame, far faster than a repeat; repeats already arrive in `input.actions` ([reacting to an action](#reacting-to-an-action)).
+{% end %}
+
+{% check() %}
+A screen's `update` reads `UiAction::Left`, but its `actions` leaves Left out. In a
+Harness test, what happens when Left is pressed?
+
+- [x] Left does nothing, since the Harness hands a screen only the actions it declares. — So a test that walks left fails on the plot it stayed on ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] Left works as usual, since `actions` is only read by `cargo shuyi check`. — In tests the Harness holds back every action a screen doesn't declare ([reacting to an action](#reacting-to-an-action)).
+- [ ] The test stops at once with an error naming the undeclared action. — Nothing names it: Left is held back, and the test fails later on what didn't change ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}

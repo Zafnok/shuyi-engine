@@ -1,0 +1,32 @@
+---
+source: crates/ui/src/dialogue/preview/glyph/tests.rs
+expression: "painted(&ctx, &v, 40, 10)"
+---
+  Scenes   Switches   Lines   Problems  
+                                        
+ lonely.dlg:2: "mentor" speaks but is   
+ not on screen, nor anywhere near it    
+     place them with @left or @right    
+     first, before the line             
+ all: too many scenes                   
+                                        
+                                        
+               keys here                
+--- colours ---
+abbbbbbbbabbbbbbbbbbabbbbbbbacccccccccca
+dddddddddddddddddddddddddddddddddddddddd
+dccccccccccccccccccccccccccccccccccccddd
+deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedddd
+deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedddd
+deeeeeeeeeeeeeeeeeeeeeeeeeeddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddd
+dddddddddddddddfffffffffdddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:text bg:panel
+c = fg:panel bg:focus
+d = fg:text bg:background
+e = fg:highlight bg:background
+f = fg:text_dim bg:background

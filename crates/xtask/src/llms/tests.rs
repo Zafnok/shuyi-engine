@@ -208,22 +208,30 @@ fn options_full_only_take_out_and_no_public() {
 
 #[test]
 fn the_front_matter_gives_each_key() {
-    let text = "+++\ntitle = \"A\"\ndescription = \"B\"\nweight = 30\ndraft = true\n\n[extra]\nchapter = 3\n+++\n\nBody\n";
+    let text = "+++\ntitle = \"A\"\ndescription = \"B\"\nweight = 30\ndraft = true\n\n[extra]\nchapter = 3\nproject = true\nnewcomer = \"rust\"\n+++\n\nBody\n";
     let front = front_matter("a.md", text).unwrap();
     assert_eq!(front.title, "A");
     assert_eq!(front.description.as_deref(), Some("B"));
     assert_eq!(front.weight, 30);
     assert!(front.draft);
+    assert!(front.project);
+    assert_eq!(front.newcomer.as_deref(), Some("rust"));
     assert_eq!(&text[front.body..], "\nBody\n");
-    assert_eq!(front.body_line, 10);
+    assert_eq!(front.body_line, 12);
 }
 
 #[test]
 fn the_front_matter_has_defaults_but_a_title() {
     let front = front_matter("a.md", "+++\ntitle = \"A\"\n+++\n").unwrap();
     assert_eq!(
-        (front.description, front.weight, front.draft),
-        (None, 0, false)
+        (
+            front.description,
+            front.weight,
+            front.draft,
+            front.project,
+            front.newcomer
+        ),
+        (None, 0, false, false, None)
     );
     let e = front_matter("a.md", "+++\nweight = 1\n+++\n").unwrap_err();
     assert!(e.starts_with("a.md:1: no `title`"), "{e}");
@@ -844,7 +852,7 @@ fn git_dates_a_commit_of_this_repository() {
     assert!(git_date(&root)("not-a-commit").is_err());
 }
 
-// -- the tutorial's pictures, and the file it stays out of (ticket 2818) --
+// -- the tutorial's pictures (ticket 2818) --
 
 /// A site with the list of tries, `tries`, and the pictures in `pictures`.
 fn tries_site(name: &str, tries: &str, pictures: &[&str]) -> PathBuf {
@@ -873,6 +881,19 @@ fn a_try_is_its_edits_as_a_diff_and_its_pictures_as_images() {
 }
 
 #[test]
+fn a_try_of_the_rust_code_says_it_needs_a_build() {
+    let list = BLUE.replace("files/palette.ron", "src/title.rs");
+    let root = tries_site("rust", &list, &["blue/before.png", "blue/after.png"]);
+    let text = try_it("name=\"blue\"", &root.join("snippets")).unwrap();
+    assert!(
+        text.ends_with(&format!("after.png)\n\n{TRY_RUST}")),
+        "{text}"
+    );
+    assert!(TRY_RUST.contains("on your own machine"), "{TRY_RUST}");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn a_try_with_no_edits_is_one_picture() {
     let list = "[title]\nstep = \"01-new\"\nalt = \"The title\"\n";
     let root = tries_site("one", list, &["title/before.png"]);
@@ -897,34 +918,209 @@ fn a_try_s_missing_picture_unknown_name_or_argument_fails() {
     assert!(argument.contains("no argument `color`"), "{argument}");
     fs::remove_dir_all(&root).unwrap();
 }
+// -- the book's projects, and the pages for newcomers (ADR-0090 §3, §5) --
+
+/// The fixture with a project of the book, `book/box-pusher/`, its landing
+/// page and a step that keeps its old address as an alias.
+fn with_project(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/box-pusher/_index.md",
+        "+++\ntitle = \"Project: a box-pushing puzzle\"\naliases = [\"learn/tutorial/\"]\n\n[extra]\nproject = true\ncode = \"tutorial\"\n+++\n\nFrom nothing.\n",
+    );
+    put(
+        &fixture.root,
+        "site/content/learn/book/box-pusher/01-new.md",
+        "+++\ntitle = \"A new game\"\nweight = 1\naliases = [\"learn/tutorial/01-new/\"]\n\n[extra]\nstep = 1\nfollows = \"start\"\n+++\n\nFirst steps.\n",
+    );
+    put(&fixture.public, "learn/book/box-pusher/index.html", "");
+    put(
+        &fixture.public,
+        "learn/book/box-pusher/01-new/index.html",
+        "",
+    );
+    fixture
+}
 
 #[test]
-fn the_tutorial_has_its_twin_and_its_line_but_stays_out_of_the_full_file() {
-    let fixture = Fixture::new("for-people");
-    put(
-        &fixture.root,
-        "site/content/learn/tutorial/_index.md",
-        "+++\ntitle = \"The tutorial\"\n+++\n\nFrom nothing.\n",
-    );
-    put(
-        &fixture.root,
-        "site/content/learn/tutorial/01-new.md",
-        "+++\ntitle = \"A new game\"\nweight = 1\n+++\n\nFirst steps.\n",
-    );
-    put(&fixture.public, "learn/tutorial/index.html", "");
-    put(&fixture.public, "learn/tutorial/01-new/index.html", "");
+fn a_project_has_its_twins_and_lines_but_stays_out_of_the_full_file() {
+    let fixture = with_project("project");
     fixture.passes();
+    let llms = fixture.read("llms.txt");
+    assert!(llms.contains("learn/book/box-pusher/index.md"), "{llms}");
     assert!(
-        fixture
-            .read("learn/tutorial/01-new/index.md")
-            .contains("First steps.")
-    );
-    assert!(
-        fixture
-            .read("llms.txt")
-            .contains("learn/tutorial/01-new/index.md")
+        llms.contains("learn/book/box-pusher/01-new/index.md"),
+        "{llms}"
     );
     let full = fixture.read("llms-full.txt");
     assert!(!full.contains("First steps."), "{full}");
     assert!(!full.contains("From nothing."), "{full}");
+    assert!(full.contains("leaves out the book's projects"), "{full}");
+}
+
+#[test]
+fn an_aliased_page_gets_one_twin_at_its_new_address() {
+    let fixture = with_project("aliased");
+    fixture.passes();
+    assert!(
+        fixture
+            .read("learn/book/box-pusher/01-new/index.md")
+            .contains("First steps.")
+    );
+    assert!(
+        !fixture
+            .public
+            .join("learn/tutorial/01-new/index.md")
+            .exists()
+    );
+    assert!(!fixture.public.join("learn/tutorial/index.md").exists());
+}
+
+#[test]
+fn a_page_for_a_newcomer_to_programming_stays_out_of_the_full_file() {
+    let fixture = Fixture::new("newcomer");
+    for (file, to, text) in [
+        ("before.md", "programming", "What a program is."),
+        ("engine.md", "shuyi", "What a screen is."),
+    ] {
+        put(
+            &fixture.root,
+            &format!("site/content/learn/book/{file}"),
+            &format!("+++\ntitle = \"{file}\"\n\n[extra]\nnewcomer = \"{to}\"\n+++\n\n{text}\n"),
+        );
+        put(
+            &fixture.public,
+            &format!("learn/book/{}/index.html", file.trim_end_matches(".md")),
+            "",
+        );
+    }
+    fixture.passes();
+    assert!(
+        fixture
+            .read("learn/book/before/index.md")
+            .contains("What a program is.")
+    );
+    let full = fixture.read("llms-full.txt");
+    assert!(!full.contains("What a program is."), "{full}");
+    assert!(full.contains("What a screen is."), "{full}");
+}
+
+/// The fixture with a page whose passages are marked for each newcomer, a
+/// snippet inside the `rust` one (ADR-0090 §5).
+fn with_marks(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/marked.md",
+        "+++\ntitle = \"Marked\"\n+++\n\nFor everyone.\n\n{% newcomer(to=\"programming\", topic=\"a file\") %}\nA file holds text.\n{% end %}\n\n{% newcomer(to=\"rust\", topic=\"`struct`\") %}\nA `struct` holds fields:\n\n{{ snippet(file=\"src/garden.rs\", anchor=\"rows\") }}\n{% end %}\n\n{% newcomer(to=\"games\", topic=\"a frame\") %}\nA game draws a frame many times a second.\n{% end %}\n\n{% newcomer(to=\"shuyi\", topic=\"a screen\") %}\nA screen draws the game.\n{% end %}\n\nThe end.\n",
+    );
+    put(&fixture.public, "learn/book/marked/index.html", "");
+    fixture
+}
+
+#[test]
+fn a_marked_passage_is_a_blockquote_under_its_label_in_the_twin() {
+    let fixture = with_marks("marks-twin");
+    fixture.passes();
+    let twin = fixture.read("learn/book/marked/index.md");
+    assert!(
+        twin.contains(
+            "For everyone.\n\n> **New to programming?** a file\n>\n> A file holds text.\n\n\
+             > **New to Rust?** `struct`\n>\n> A `struct` holds fields:\n>\n> ```rust\n>     pub rows: u8,\n> ```\n\n\
+             > **New to making games?** a frame\n>\n> A game draws a frame many times a second.\n\n\
+             > **New to Shuyi?** a screen\n>\n> A screen draws the game.\n\nThe end.\n"
+        ),
+        "{twin}"
+    );
+}
+
+#[test]
+fn the_full_file_leaves_out_the_programming_games_and_rust_passages() {
+    let fixture = with_marks("marks-full");
+    fixture.passes();
+    let full = fixture.read("llms-full.txt");
+    assert!(
+        full.contains(
+            "For everyone.\n\n> **New to Shuyi?** a screen\n>\n> A screen draws the game.\n\nThe end.\n"
+        ),
+        "{full}"
+    );
+    for gone in ["A file holds text.", "holds fields", "A game draws a frame"] {
+        assert!(!full.contains(gone), "{gone}: {full}");
+    }
+}
+
+/// The fixture with a page holding a quick check for everyone and one for
+/// a newcomer to Rust (ticket 2827).
+fn with_checks(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/checked.md",
+        "+++\ntitle = \"Checked\"\n+++\n\nText.\n\n## Check yourself\n\n{% check() %}\nWhat does `apply` do with a refused command?\n\n- [ ] It panics. — Nothing stops ([refusals](#refusals)).\n- [x] It returns the refusal. — The state is untouched.\n{% end %}\n\n{% check(to=\"rust\") %}\nWhat does `?` do?\n\n- [x] It returns an `Err` early. — That is its job.\n- [ ] It ignores the error. — `let _ =` does that.\n{% end %}\n",
+    );
+    put(&fixture.public, "learn/book/checked/index.html", "");
+    fixture
+}
+
+#[test]
+fn a_check_is_its_question_and_answers_as_text_in_the_twin() {
+    let fixture = with_checks("checks-twin");
+    fixture.passes();
+    let twin = fixture.read("learn/book/checked/index.md");
+    assert!(
+        twin.contains(
+            "## Check yourself\n\n**Quick check.** What does `apply` do with a refused command?\n\n\
+             - Wrong: It panics. — Nothing stops ([refusals](#refusals)).\n\
+             - Right: It returns the refusal. — The state is untouched.\n\n\
+             > **New to Rust?** a quick check\n>\n> **Quick check.** What does `?` do?\n>\n\
+             > - Right: It returns an `Err` early. — That is its job.\n\
+             > - Wrong: It ignores the error. — `let _ =` does that.\n"
+        ),
+        "{twin}"
+    );
+}
+
+#[test]
+fn the_full_file_leaves_out_a_check_for_a_newcomer_to_rust() {
+    let fixture = with_checks("checks-full");
+    fixture.passes();
+    let full = fixture.read("llms-full.txt");
+    assert!(full.contains("- Right: It returns the refusal."), "{full}");
+    assert!(!full.contains("What does `?` do?"), "{full}");
+}
+
+#[test]
+fn a_page_marked_whole_has_its_label_under_its_source_line() {
+    let fixture = Fixture::new("whole");
+    put(
+        &fixture.root,
+        "site/content/learn/book/before.md",
+        "+++\ntitle = \"Before\"\n\n[extra]\nnewcomer = \"programming\"\n+++\n\nWhat a program is.\n",
+    );
+    put(&fixture.public, "learn/book/before/index.html", "");
+    fixture.passes();
+    let twin = fixture.read("learn/book/before/index.md");
+    assert!(
+        twin.contains("\n\n> **New to programming?** This whole page.\n\nWhat a program is.\n"),
+        "{twin}"
+    );
+}
+
+#[test]
+fn a_mark_that_doesn_t_close_fails_the_twin() {
+    let fixture = Fixture::new("unclosed");
+    put(
+        &fixture.root,
+        "site/content/learn/book/open.md",
+        "+++\ntitle = \"Open\"\n+++\n\n{% newcomer(to=\"rust\", topic=\"x\") %}\nText.\n",
+    );
+    put(&fixture.public, "learn/book/open/index.html", "");
+    let outcome = fixture.run();
+    assert!(
+        has(&outcome.errors, "open.md:5: a mark with no `{% end %}`"),
+        "{:?}",
+        outcome.errors
+    );
 }

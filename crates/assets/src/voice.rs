@@ -8,6 +8,24 @@
 //! **stale** and is left out of the [`Playable`] set. A line whose words
 //! change with something the player picks (a hero's pronouns, say) has one
 //! clip per [`ClipVariant`] the game names.
+//!
+//! The cast is written for the tool that makes the voices: each entry
+//! names the voice (what a clip's `voice` records: a reference clip's name
+//! for a generated voice, an actor's for a recorded one) and the settings
+//! only that tool knows, of the tool's own type `S` (`()` for none, written
+//! `settings: ()`). A key is a speaker, or a speaker followed by a
+//! variant's [`suffix`](ClipVariant::suffix) for that variant's clips:
+//!
+//! ```ron
+//! (voices: {
+//!     ">": (voice: "narrator", settings: (reader: Kokoro)),
+//!     "hero": (voice: "hero_deep", settings: (reader: Kokoro)),
+//!     "hero.light": (voice: "hero_light", settings: (reader: Piper)),
+//! })
+//! ```
+//!
+//! A voice tool plans its work with [`plan`]: which clips to make, record
+//! again or remove, and each voice's recording script.
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -19,6 +37,8 @@ use serde::de::DeserializeOwned;
 use crate::dialogue::{DialogueTable, LineId, NARRATION_SPEAKER, Scene};
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
+
+pub mod plan;
 
 /// Which recording of a line a clip is: the game's type, with its default
 /// for a line's only clip.
@@ -35,6 +55,15 @@ pub trait ClipVariant: Copy + Ord + Default + Debug + DeserializeOwned + 'static
     /// The variants that go together, every one of them or none: the clips
     /// of a line whose words change.
     fn split() -> &'static [Self];
+
+    /// Every variant a clip may be: the default and the
+    /// [`split`](Self::split) ones. A game with other variants too lists
+    /// them all.
+    fn variants() -> Vec<Self> {
+        let mut all = vec![Self::default()];
+        all.extend(Self::split().iter().copied().filter(|v| !v.is_only()));
+        all
+    }
 
     /// What a line with some of the [`split`](Self::split) variants but not
     /// all is told.
@@ -92,7 +121,7 @@ pub struct VoiceClip<V> {
     pub spoken: String,
     /// The direction the line had when the clip was made, if any.
     pub direction: Option<String>,
-    /// The cast voice that says it (a value of the [`Cast`]).
+    /// The cast voice that says it (a [`CastVoice::voice`]).
     pub voice: String,
     /// Who or what made it.
     pub made_by: MadeBy,
@@ -111,12 +140,64 @@ impl<V> Default for VoiceManifest<V> {
     }
 }
 
-/// Which voice says each speaker's lines.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Cast {
-    /// Voice ids by speaker: a character id, or
-    /// [`NARRATION_SPEAKER`] for narration.
-    pub voices: BTreeMap<String, String>,
+/// Which voice says each speaker's lines, with the settings of the tool
+/// that makes them (`S`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Cast<S> {
+    /// Voices by key: a speaker (a character id, or
+    /// [`NARRATION_SPEAKER`] for narration), or a speaker followed by a
+    /// variant's [`suffix`](ClipVariant::suffix).
+    pub voices: BTreeMap<String, CastVoice<S>>,
+}
+
+impl<S> Default for Cast<S> {
+    fn default() -> Self {
+        Self {
+            voices: BTreeMap::new(),
+        }
+    }
+}
+
+impl<S> Cast<S> {
+    /// A cast of `voices`, by key.
+    pub fn new(voices: BTreeMap<String, CastVoice<S>>) -> Self {
+        Self { voices }
+    }
+
+    /// The voice that says `speaker`'s clips of `variant`: the entry for
+    /// the speaker and the variant's suffix if there is one, else the
+    /// speaker's.
+    pub fn voice_for<V: ClipVariant>(&self, speaker: &str, variant: V) -> Option<&CastVoice<S>> {
+        let suffix = variant.suffix();
+        (!suffix.is_empty())
+            .then(|| self.voices.get(&format!("{speaker}{suffix}")))
+            .flatten()
+            .or_else(|| self.voices.get(speaker))
+    }
+}
+
+/// One voice of the [`Cast`].
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct CastVoice<S> {
+    /// What a clip's [`voice`](VoiceClip::voice) records: a reference
+    /// clip's name for a generated voice, an actor's for a recorded one.
+    pub voice: String,
+    /// What only the tool that makes the voice knows: which program reads,
+    /// or the sample it copies.
+    pub settings: S,
+}
+
+impl<S> CastVoice<S> {
+    /// A voice named `voice`, made with `settings`.
+    pub fn new(voice: impl Into<String>, settings: S) -> Self {
+        Self {
+            voice: voice.into(),
+            settings,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -142,8 +223,9 @@ struct RawClip<V> {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RawCast {
-    voices: BTreeMap<String, String>,
+#[serde(bound = "S: DeserializeOwned")]
+struct RawCast<S> {
+    voices: BTreeMap<String, CastVoice<S>>,
 }
 
 /// A clip's file, relative to its language's folder:
@@ -234,29 +316,59 @@ pub fn from_source<V: ClipVariant, D>(
     Ok(VoiceManifest { clips })
 }
 
-/// Parses and validates cast `source`, attributing errors to `file`: no
-/// voice id is empty, and every speaker is [`NARRATION_SPEAKER`] or one
-/// that `can_speak`.
-pub fn cast_from_source(
+/// Parses and validates cast `source`, attributing errors to `file` at
+/// each entry's line: no voice is empty, every key is a speaker that is
+/// [`NARRATION_SPEAKER`] or one that `can_speak`, or such a speaker
+/// followed by the [`suffix`](ClipVariant::suffix) of one of `V`'s
+/// [`variants`](ClipVariant::variants). A key that is a speaker is the
+/// speaker's, whatever it ends with. Settings `S` rejects are a parse
+/// error.
+pub fn cast_from_source<S: DeserializeOwned, V: ClipVariant>(
     file: &str,
     source: &str,
     can_speak: impl Fn(&str) -> bool,
-) -> Result<Cast, Vec<ContentError>> {
-    let raw: RawCast = parse_ron(file, source).map_err(|e| vec![e])?;
+) -> Result<Cast<S>, Vec<ContentError>> {
+    let raw: RawCast<S> = parse_ron(file, source).map_err(|e| vec![e])?;
+    let speaks = |speaker: &str| speaker == NARRATION_SPEAKER || can_speak(speaker);
+    let suffixes: Vec<&str> = V::variants()
+        .into_iter()
+        .map(V::suffix)
+        .filter(|s| !s.is_empty())
+        .collect();
     let mut errors = Vec::new();
-    for (speaker, voice) in &raw.voices {
+    for (key, entry) in &raw.voices {
         let mut err = |message: String| {
             let e = ContentError::new(file, message);
-            errors.push(match line_of(source, &format!("\"{speaker}\"")) {
+            errors.push(match line_of(source, &format!("\"{key}\"")) {
                 Some(l) => e.at(l, None),
                 None => e,
             });
         };
-        if voice.trim().is_empty() {
-            err(format!("\"{speaker}\" has no voice"));
+        if entry.voice.trim().is_empty() {
+            err(format!("\"{key}\" has no voice"));
         }
-        if speaker != NARRATION_SPEAKER && !can_speak(speaker) {
-            err(format!("\"{speaker}\" is not a character that speaks"));
+        if speaks(key) {
+            continue;
+        }
+        let mut speakers = suffixes.iter().filter_map(|s| key.strip_suffix(s));
+        if let Some(speaker) = speakers.clone().find(|s| speaks(s)).or(speakers.next()) {
+            if !speaks(speaker) {
+                err(format!(
+                    "\"{key}\": \"{speaker}\" is not a character that speaks"
+                ));
+            }
+        } else if let Some(at) = (1..key.len())
+            .filter(|&at| key.is_char_boundary(at))
+            .find(|&at| speaks(&key[..at]))
+        {
+            let known: Vec<String> = suffixes.iter().map(|s| format!("\"{s}\"")).collect();
+            err(format!(
+                "\"{key}\": \"{}\" is not a variant's suffix (those are: {})",
+                &key[at..],
+                known.join(", ")
+            ));
+        } else {
+            err(format!("\"{key}\" is not a character that speaks"));
         }
     }
     if errors.is_empty() {

@@ -106,6 +106,11 @@ make a shared instruction work.
 11. **Never write a bare `@word` on GitHub** (PR title or body, commit
     message, comment, release notes). GitHub turns it into a mention of
     that user. Put it in backticks or drop the `@`.
+12. **Never open a PR or an issue on another project** ([decision of 2026-11-10](docs/decisions.md#2026-11-10-no-prs-or-issues-on-other-projects)).
+    A bug in a dependency is fixed or worked around here, in this
+    repository, and stays so until a release of the dependency fixes it
+    on its own. No ticket plans a PR or an issue upstream, or waits on
+    one.
 
 ## Working with the game repository
 

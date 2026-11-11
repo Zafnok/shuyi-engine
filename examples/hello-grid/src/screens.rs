@@ -220,14 +220,19 @@ pub struct Talk {
 
 impl Talk {
     /// Characters a line of the box holds.
-    const WIDTH: usize = 42;
+    pub const WIDTH: usize = 42;
     /// Lines a page holds.
-    const LINES: usize = 3;
+    pub const LINES: usize = 3;
 
     /// The game's scene `id` (an empty one if it has none).
     pub fn new(ctx: &HelloCtx, id: &str) -> Self {
         let scene = ctx.game.dialogue.get(id).cloned().unwrap_or_default();
-        let player = DialoguePlayer::new(&scene, Plain, &Present::Everyone);
+        Self::playing(ctx, DialoguePlayer::new(&scene, Plain, &Present::Everyone))
+    }
+
+    /// The scene `player` plays, from where it is: what the writer's
+    /// preview shows ([`crate::preview`]).
+    pub fn playing(ctx: &HelloCtx, player: DialoguePlayer<Plain>) -> Self {
         let text = Self::text_of(&player, ctx);
         Self { player, text }
     }

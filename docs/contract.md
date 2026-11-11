@@ -19,15 +19,14 @@ is another way to reach them.
 | `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
 | `modules` | The catalog of the engine the game builds with ([`modules.md`](modules.md)), by concern: each answer, who gives it (`default` or a module's crate), its status and its tickets; every module the engine builds, with its feature of `shuyi` and its metadata (what it answers, serves and sits beside); and the modules the game has on, from its `Cargo.toml` | the game's `Cargo.toml` and its engine |
 | `add <module>` | Turns a module of the engine on (`physics` or `shuyi-physics`): its feature of `shuyi` in the game's `Cargo.toml`, its layout kept; its skill copied into `.claude/skills/` if the game keeps one; its README's first paragraph. It warns of an alternative already on, with the README's section on using both; gives the line to add if the game's code never installs `shuyi::enabled_modules`, and the line for its `formats()` if the module adds formats. A second run changes nothing (`changed: false`); a name that isn't built fails with `SH0003` and the names that are | the game's `Cargo.toml` and its engine |
-| `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>] [--session <file> [--any-stamp]]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `--session` starts from a session record instead of the game's start options ([Session records](#session-records)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
-| `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
+| `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>] [--session <file> [--any-stamp]]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the sounds the game added at run time and hadn't removed at the end (`sounds_added`, in cue order: each one's cue, rate, channels, frames and milliseconds, never its samples; left out when there are none), the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `--session` starts from a session record instead of the game's start options ([Session records](#session-records)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
+| `scene [steps] [--path <pointer>] [--shape]` | The same, answering with the scene or stage on screen and the log. `--path` answers one value of the scene's data instead, `--shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) | the game |
 | `replay <record> [<other>] [--any-stamp]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ. A record stamped with what made it (`made`: the engine's version, the game's word for its build, the fingerprint of its content) by another build is refused with `SH3007`, naming each part that differs, before anything is compared; `--any-stamp` runs it anyway, with a limit that a difference may come from the stamp. A record with no stamp, or a game whose tools give none, runs with a limit saying so. The text shows each record's stamp | the game |
-| `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
-| `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>] [--history <dir> \| --no-history] [--brief]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. Each entrant's line carries the plan's summary items (`won 83/100 · turns median 12`, its `summary`). Every run is kept as a JSON line in a history file per stage, entrants and game options (`<stage>-<entrants joined by +>[-<options>].jsonl` in `target/playtest-history/` under the project, or `--history`'s folder; `--no-history` keeps none, and a folder that can't be written fails the answer with `SH3004`), and the next run says what the last one found: after each entrant's line `· was 47/100 succeed` (its first rate check, else its first summary item; `was` in JSON) and a line `previous <date> · commit <hash>` (`previous`). `--brief` leaves out the line per try. It fails only when a bot falls under a check's floor | the game |
+| `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>] [--history <dir> \| --no-history] [--brief]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. Each entrant's line carries the plan's summary items (`won 83/100 · turns median 12`, its `summary`). Every run is kept as a JSON line in a history file per stage, entrants and game options (`<stage>-<entrants joined by +>[-<options>].jsonl` in `target/playtest-history/` under the project, or `--history`'s folder; `--no-history` keeps none, and a folder that can't be written fails the answer with `SH3004`), and the next run says what the last one found: after each entrant's line `· was 47/100 succeed` (its first rate check, else its first summary item; `was` in JSON) and a line `previous <date> · commit <hash>` (`previous`). `--brief` leaves out the line per try. It fails only when a bot falls under a check's floor. A plan with no checks is a plain bot run (the grid template's, one bot): it judges nothing, passes when every try played, and its text adds each bot's outcomes counted and the spread of its turns and measures after the line per try. In JSON each entrant has `outcomes` (its tries counted by the outcome's name, its `Debug` up to its fields, `unfinished` for those the turn limit stopped), `turns` and `measures` (each a `min`, `max`, `total` and `mean`), and `tries`: each try's `seed`, `commands` (how many were applied) and `record`, in the game's record format for `replay`, left out when the game's plan keeps none. The history keeps no try's `commands` or `record` | the game |
 | `autobalance [--stage <id>] [--entrant <name>]... [--tries N] [--quick N] [--budget N] [--time <seconds>] [--seed N] [--turns N] [--threads N] [--apply]` | The game's knobs change one of its stages, never its bots, until each of its entrants succeeds as often as its checks' bands want (`shuyi_core::autobalance_by`): the smallest change the search finds, each in the knob's own words, why it stopped, and the reports before and after. The stage as authored and the one found play `--tries` tries; the search's own runs play `--quick` (a fifth of them). Each setting's tries run on every core and are judged once in seed order, so what it finds never depends on `--threads`. It stops at `--budget` evaluations (100) or, with `--time`, after that many seconds, with the best setting seen: a limit says so, since that depends on the machine. `--apply` has the game write the changed stage to its files, and the answer lists them. It fails while a rate is outside its band | the game |
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
-| `bake [--target <id>] [--out <file>] [--sheet <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors. For a one-bit target, the pictures it dithered (`dithered`, for an artist to check) and those the target's own files replaced (`replaced`); `--sheet` writes a PNG of each dithered picture beside its source | the game |
-| `export <target> [--out <dir>] [--release] [--run] [--without <feature>]` | Runs `check --target` with the target's profile (`desktop` for `windows`, `linux` and `macos`, `web` for `web`, `playdate` for `playdate`) and refuses on any error (`SH3008`, listing them); then builds the game's program with the target's Rust triple and `shuyi.ron`'s `export.features` but those `--without` names (the live link's `link` never), and writes its package into `--out` (from the game's folder; `dist/export/<target>` by default): `windows` a zip, `linux` a `tar.gz`, `macos` a folder with one universal `.app` signed ad hoc, `web` the web build's folder and its zip with `index.html` at the root, refusing a file the build didn't make (`SH3011`, by its path) and an export folder inside `web.dist` (`SH1002`). Every package carries `NOTICES.txt`, the `windows` and `macos` ones `HOW-TO-OPEN.txt` for players, and each but `playdate`'s what `export.beside` names (`SH1002` for one missing, by its path, unless `optional`). `export-report.json` beside it holds the answer's result: the target, the profile, the version (`shuyi.ron`'s `app.version`, else the package's), the sizes, what `export.beside` copied, the check's warnings, the signing (`none`, or `ad-hoc` for `macos`) and the debug file. `exposure-report.json` beside it (its shape is `export.exposure.json` in the schemas) lists what the final package holds, read back after every copy: each file with its kind, source, size and SHA-256, each file of each pack, the debug file, whatever else is beside the package, the features and what it was built from. A game with a `disclosure` part in `shuyi.ron` is held to it: a file or a pack's file the part doesn't allow, a path it forbids, one of its canaries, or a file beside the package that this export didn't make refuses the export (`SH3012`, naming each with its source) and removes the package, and a line of the part that can't match refuses it before any build (`SH1002`). `--release` remaps the build's paths and refuses a program that still holds one of the build machine's (`SH3009`); on `windows` and `linux` it keeps `<package>.debug` beside the package, its line tables, and ships a copy stripped of them. A missing Rust target or tool answers how to install it (`SH1003`); a desktop target builds on its own system. `--run` runs the package after writing it, on its own system; a target with no run step answers `SH3010`, as a target with no exporter does ([`targets-and-export`](../site/content/learn/book/targets-and-export.md)) | the project file and cargo; the game for the check's controls |
+| `bake [--target <id>] [--out <file>] [--sheet <file>] [--content <folder>] [--audio <folder>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors. For a one-bit target, the pictures it dithered (`dithered`, for an artist to check) and those the target's own files replaced (`replaced`); `--sheet` writes a PNG of each dithered picture beside its source. `--content` bakes a folder of the project (an edition's content root) in place of the files the game's tools embed: the game's tool program (`shuyi.ron`'s `game`) is built with it as `SHUYI_CONTENT`, in the Cargo profile `shuyi-content`, and bakes; its answer is the answer, with a line in `limits` naming the folder (ADR-0101). A folder that isn't one of the project answers `SH3004`, a project with no `game` part `SH1002`, and a program that gives no answer `SH3005`. `--audio` (with `--target`, else `SH0001`) empties a folder of the project and writes there the sounds and music the game ships on the target (`GameTools::audio`), baked as the Playdate plays them, under `audio/` and `music/`, and `audio_files` counts them; no folder is made when the game's tools offer no audio, and a sound that can't be read or decoded answers `SH3004`. With `--content`, the program built with the folder writes them (ADR-0102) | the game; with `--content`, the game's tool program and cargo |
+| `export <target> [--out <dir>] [--release] [--run] [--edition <name>] [--without <feature>] [--with <feature>]` | Runs `check --target` with the target's profile (`desktop` for `windows`, `linux` and `macos`, `web` for `web`, `playdate` for `playdate`) and refuses on any error (`SH3008`, listing them); then builds the game's program with the target's Rust triple and `shuyi.ron`'s `export.features` but those `--without` names, plus those `--with` names that the package has (never a debug feature in the arguments, `link`, `debug-tools`, `capture` or the sound gates' probe, which answers `SH1002` naming it; nor however else it is reached: before anything is prepared or built, each build is resolved by Cargo (`cargo tree`, its package, target and feature flags, normal and build dependencies) and refused (`SH1002`, naming each feature, what it is and how it was reached) if one of the package's debug features is on, or the engine's (`shuyi-app/link`, `shuyi-platform/link`, `shuyi-ui/debug-tools`, `shuyi-app/capture`, `shuyi-platform/capture` and `shuyi-app`'s probe), by the arguments, a `default` list, a feature listing it or a dependency, and a resolution that fails refuses it too; `export.targets.<target>` replaces the package and the features for one target, and is all the `playdate` target reads of the part; an id with no exporter, a `--with` the package lacks or a `--without` the list lacks answers `SH1002`), and writes its package into `--out` (from the game's folder; `dist/export/<target>` by default): `windows` a zip, `linux` a `tar.gz`, `macos` a folder with one universal `.app` signed ad hoc, `web` the web build's folder and its zip with `index.html` at the root, refusing a file the build didn't make (`SH3011`, by its path) and an export folder inside `web.dist` (`SH1002`). `--edition <name>` builds one of `shuyi.ron`'s `editions` instead, on any target: its `package` and `bin`, its `features` in place of the part's and the target's list (`--without` leaves out one of those), `--no-default-features` unless it says `default_features: true` (it always says), its `content` folder handed to the build as `SHUYI_CONTENT` (a build of no such edition runs without the variable), its `beside` and its `disclosure` in place of the project's; into `dist/export/<edition>/<target>` by default, named `<program>-<version>-<edition>-<target>`. An edition it doesn't have, a content root that isn't a folder of the project, a `bin` the package lacks or a feature it both turns on and lists in `never_features` answers `SH1002`; so does a build in which Cargo turns on one of its `never_features`, by a default, a feature or a dependency, naming it and how it was reached, before anything is built; and `playdate`, whose library never keeps its default features, refuses an edition with `default_features: true` (`SH1002`); an edition's `content` there is the folder its pack is baked from (`bake --content`). Every package carries `NOTICES.txt`, the `windows` and `macos` ones `HOW-TO-OPEN.txt` for players, and each but `playdate`'s what `export.beside` names (`SH1002` for one missing, by its path, unless `optional`). `export-report.json` beside it holds the answer's result: the target, the profile, the version (`shuyi.ron`'s `app.version`, else the package's), the sizes, what `export.beside` copied, the check's warnings, the signing (`none`, or `ad-hoc` for `macos`), the debug file and the edition. `exposure-report.json` beside it (its shape is `export.exposure.json` in the schemas) lists what the final package holds, read back after every copy: each file with its kind, source, size and SHA-256, each file of each pack, the debug file, whatever else is beside the package, the features and what it was built from (the edition and its content root among it), with whether the shipped program has no symbol table (`stripped`) and what a panic does in it (`panic`: `unwind`, or `abort` on `playdate`). A game with a `disclosure` part in `shuyi.ron` is held to it: a file or a pack's file the part doesn't allow, a path it forbids, one of its canaries, or a file beside the package that this export didn't make refuses the export (`SH3012`, naming each with its source) and removes the package, and a line of the part that can't match refuses it before any build (`SH1002`). `--release` remaps the build's paths and refuses a program that still holds one of the build machine's (`SH3009`); on `windows` and `linux` it keeps `<package>.debug` beside the package, its symbols and line tables, and ships a copy stripped of both (`objcopy --strip-all`); on `macos` and `web` the program is built stripped. A release `web` export runs `wasm-opt` and refuses a binary that still holds a `name` or `producers` section (`SH3011`); without `wasm-opt` it answers `SH1003` with how to install it, unless `export.wasm_opt` is `optional`. A missing Rust target or tool answers how to install it (`SH1003`); a desktop target builds on its own system. `--run` runs the package after writing it, on its own system; a target with no run step answers `SH3010`, as a target with no exporter does ([`targets-and-export`](../site/content/learn/book/targets-and-export.md)) | the project file and cargo; the game for the check's controls |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker and `objcopy` (for `export --release`) on the Windows GNU toolchain, on Linux the C linker, `pkg-config` and the system libraries the backend links and opens, and the web target, and says how to fix each | nothing |
 | `explain [<code>]` | Every problem code, or one code's page: what it means and how to fix it ([below](#problem-codes)) | nothing |
 | `attach <host:port> --token <t> [steps] [--frames N] [--screenshot <file.png>] [--log-since N] [--perf-since N] [--perf-follow <file.jsonl> [--for S]] [--perf-snapshot]` | Reaches a debug build already running in its window ([below](#attaching-to-a-running-build)): plays the steps as a player's input, lets N frames pass, then answers with its frames, phase, screens, top screen, whether it is suspended, focused or quit, its frame as text, its [log](#the-log) lines numbered N or more, each with its `seq`, and `log_next`, the next `--log-since`; `--screenshot` writes the window's picture; `--perf-since` adds its frames' records numbered N or more, `perf`, with `perf_next` and `perf_summary`; `--perf-follow` writes each new frame's record to the file as the build runs, for S seconds (10), and answers their summary ([Perf traces](#perf-traces)) | a running build |
@@ -47,12 +46,17 @@ reads the same ones, and in JSON they are `{"keys": "Enter Up"}`,
 debug tools on, and the debug view's channels of those comma-separated
 ids (`"all"`: every channel), from there on, and draws the frame again
 (headless only, as the crank; ADR-0085). `frame-png --debug grid` puts it
-first, so the picture shows the channels a person would see. Key and button names are the Harness's test-script
+first, so the picture shows the channels a person would see. `--drop
+levels/one.txt` (`{"drop": "levels/one.txt"}`) drops that file, from the
+game's folder, on the window in one frame: the game's system hook hears
+it by its name, as the player's drop (`frame-png`, `run`, `scene` and
+`step` only, the live link and capture plans refuse it); a file that
+isn't there is refused before anything plays. Key and button names are the Harness's test-script
 names. An action the game has no key or button for is refused before
 anything plays (`SH0001`), and the error lists the game's actions; one
 wait is at most 33.3 seconds headless (the Harness's 2000 frames) and
 half an hour over the live link. The game's own start options (`frame-png --help` lists them, such
-as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
+as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`,
 `playtest` and `autobalance` too.
 An option the game doesn't offer, one missing its value and one given a value it
 doesn't take are refused with `SH0001` on every path, MCP's `start` among them.
@@ -67,7 +71,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 37,
+  "contract": 46,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
@@ -84,7 +88,7 @@ Every operation answers with the same shape, `Answer<T>`:
   ran.
 - `result` is what the operation found or made. It is absent when the
   operation could not run, and `error` says why ("the game's tools don't
-  offer bots (GameTools::bots)").
+  offer playtest (GameTools::playtest_plan)").
 - `code` is the error's problem code (`SH3001`), and `help` how to fix
   it ([Problem codes](#problem-codes)). An answer that ran and failed on
   the setup has them too (`doctor` with a failed check: `SH1003`). A
@@ -120,6 +124,50 @@ manifest it refused, a game's own lines), oldest first. Each line is:
 The log keeps the last 500 lines. When it dropped older ones, `limits`
 says how many. For people, `shuyi run` and `shuyi scene` print the
 warnings and errors.
+
+## The scene's data
+
+`run` and `scene` answer the scene on screen, `scene`: its `screen`, its
+`kind` (`grid map`), its `text` (a grid map's tiles, units and cursor,
+for people and snapshots) and its `data`, the value the game names as
+serde writes it, by default its stage's whole state
+([ADR-0084](adr/0084-one-description-of-a-games-types.md)
+§8). Hello, Grid's, after `--script "Enter"`:
+
+```json
+{
+  "map": { "width": 12, "height": 10, "cells": [1, 1, 1, "…"] },
+  "goal": { "x": 10, "y": 1 }, "hero": { "x": 1, "y": 8 }, "foe": { "x": 9, "y": 7 },
+  "side": "Hero", "turn": 1, "rng": { "state": 11161317672047027862, "inc": 109 },
+  "outcome": null, "commands": 0
+}
+```
+
+An enum is written as serde writes it: `"side": "Hero"`, and an ended
+stage's `"outcome": { "Won": { "turn": 3 } }`.
+
+- `scene --path <pointer>` answers only the value at that JSON Pointer
+  (RFC 6901) in the data, `value`: `--path /hero/x` answers `1`, and
+  `/outcome/Won/turn` the turn a won stage ended on. The answer leaves
+  the scene out. A pointer that names nothing fails with `SH0005`, and
+  its message names the pointer and the keys of the deepest object it
+  reached (``no value at `/hero/z`: /hero has the keys x, y``).
+- `scene --shape` answers the data's JSON Schema, `shape`, in serialize
+  mode, as the game derived it (`schemars::JsonSchema`): every key the
+  data may hold, and each enum's variants. A game that builds its data
+  without `Scene::with_data` answers no shape, and the limits say so.
+
+Both work with the other options of `scene` and with `--json`, and
+MCP's session `scene` takes them as `path` and `shape`. `run` takes
+neither: it answers the whole scene.
+
+A game names its data with `Scene::new(screen, kind, text).with_data(&value)`,
+where `value` is `Serialize` and `JsonSchema`. To add what lives on its
+screen and not in its state, it names a small struct of its own that
+holds the state with `#[serde(flatten)]` beside them (Hello, Grid's
+`StageData` adds `commands`). Its types derive `JsonSchema` under its
+`tools` feature, which turns on `shuyi/schema`, so a shipped game builds
+no schema.
 
 ## Perf traces
 
@@ -413,7 +461,8 @@ fingerprint is not the one
 1. change the type;
 2. `cargo shuyi schema --out crates/cli/schemas` from the repository's
    root;
-3. raise `contract::VERSION` by one;
+3. raise `contract::VERSION` by one over `main`'s, after merging `main`
+   last (CI's `api` job fails a PR that raises it by more, ticket 2052);
 4. add the line the test asks for to `versions.json`.
 
 ## The MCP server
@@ -444,9 +493,9 @@ A **session** keeps one game running headless between calls:
 | ---- | ----- | ---- |
 | `start` | `project`, `start` (the game's start options), or `session` (`file`, `any_stamp`) in their place | builds the game's tool program and starts its game; the answer lists the options it offers. From a [session record](#session-records), the game is on the frame it stopped on, and `reset` plays the record again. A game already running is stopped |
 | `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start. A script naming an action the game can't press is refused (`SH0001`), and the game keeps running |
-| `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
+| `scene` | `path` (a JSON Pointer), `shape` (false) | the scene on screen now, and the log, as `scene` answers; `path` answers one value of its data instead, and `shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
-| `events` | nothing | what happened since the start, and the sounds |
+| `events` | nothing | what happened since the start, the sounds, and the sounds the game added and hasn't removed (`sounds_added`, as `run`'s) |
 | `perf` | `since` (0), `max` (120, 1 to 600), `snapshot` (false), `diff_from` | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered; with `snapshot`, a heap snapshot taken now, `snapshot`; with `diff_from`, a kept snapshot's frame, the `diff` from it; and `kept`, the frames of the snapshots the session keeps ([Perf traces](#perf-traces)) |
 | `reset` | nothing | the game started again as `start` started it |
 | `stop` | nothing | the game stopped |
@@ -561,13 +610,12 @@ doesn't offer it:
 | ------ | --- | ------------------ |
 | `check` | `check` | its loader's errors (`ContentError`s) |
 | `font_atlas` | `check` | its loaded font atlas (`FontAtlasDef`), which `check` checks its text against |
-| `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
+| `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text, and its state by `Scene::with_data`), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
 | `session_on` | `bench` on a one-bit target | its `Harness` on the target's console, with `set_present_hook` running `to_one_bit` on each frame presented, as the device's backend converts it; left out, `bench` measures `session` there and says so |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)`, its `made` set to the record's stamp |
-| `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its `bots` writes carry it |
-| `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
-| `playtest_plan`, `playtest_stages`, `playtest_defaults` | `playtest` | a `PlaytestPlan` for a stage: a title, its entrants by name (each with a label, a mode, if it has one), named groups of them (`"all"`), the default ones, its checks over the entrants that play (a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's, keeping those whose `Check::entrants` all play), a `Sync` function playing one try of one entrant from one seed, most simply `playtest::play_tries` over that seed, and each entrant's `summary` items (`Sum`, `Spread`, `Most`, `Median`, `Max` over its measures, serde so they may live in a data file); its stages' ids, if it has several; and its own default tries, seed and turn limit, if not the engine's |
-| `autobalance_plan` | `autobalance` | an `AutobalancePlan` for a stage: a title, its entrants, groups, default entrants and checks as its `PlaytestPlan` has them, and the stage it may change, a boxed `Tunable` over the game's own stage type `S`: the stage as authored, its knobs (`shuyi_core::Knob<S>`, in the order the search tries them), a `Sync` function playing one try of one entrant from one seed on a given stage (most simply `playtest::play_tries` over that seed), and one writing a changed stage to the game's files, giving the files it wrote. Its stages and tries are `playtest`'s |
+| `made` | `replay`, `playtest` | this build's stamp, `shuyi_core::Made::new(its word for its build, bundle.fingerprint())`: `replay` refuses a record stamped otherwise, and `playtest` keeps it in each line of its history. The records its playtest's tries keep carry it |
+| `playtest_plan`, `playtest_stages`, `playtest_defaults` | `playtest` | a `PlaytestPlan` for a stage: a title, its entrants by name (each with a label, a mode, if it has one), named groups of them (`"all"`), the default ones, its checks over the entrants that play (a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's, keeping those whose `Check::entrants` all play), a `Sync` function playing one try of one entrant from one seed and giving a `PlayedTry` (the try, the commands applied and its record for `replay`, if it keeps one), most simply `playtest::play_try`, whose entrant gives the record from the try's seed and commands (`Entrant::record`), and each entrant's `summary` items (`Sum`, `Spread`, `Most`, `Median`, `Max` over its measures, serde so they may live in a data file); its stages' ids, if it has several; and its own default tries, seed and turn limit, if not the engine's. A game's bot run is a plan with one entrant and no checks |
+| `autobalance_plan` | `autobalance` | an `AutobalancePlan` for a stage: a title, its entrants, groups, default entrants and checks as its `PlaytestPlan` has them, and the stage it may change, a boxed `Tunable` over the game's own stage type `S`: the stage as authored, its knobs (`shuyi_core::Knob<S>`, in the order the search tries them), a `Sync` function playing one try of one entrant from one seed on a given stage (most simply `playtest::play_try`), and one writing a changed stage to the game's files, giving the files it wrote. Its stages and tries are `playtest`'s |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
@@ -575,7 +623,7 @@ A game on the short path (a `shuyi_platform::BasicGame`) gives
 `shuyi_cli::BasicTools::new(game)`: `frame` and `frame-png`, `lang`,
 `check` (its files' errors), `font_atlas` (its loaded atlas), `session` (`Headless` over its Harness, with
 no scene) and `controls` (its keymap and every screen it can show). A
-game that adds a scene, a record, bots, importers or a bake writes its
+game that adds a scene, a record, a playtest, importers or a bake writes its
 own `GameTools` and calls `BasicTools`' methods for the rest.
 
 Hello, Grid's `src/tools.rs` writes every one. A game made with `shuyi
@@ -583,7 +631,8 @@ new --template grid` writes every one but `bake`, which a new game
 leaves out until it chooses a pack, and `autobalance_plan`, which needs
 knobs of its own stage: its stage's `Tools`
 (`crates/game/src/stages/top_down_grid/tools.rs`) adds a scene, records,
-bots and the map's importer, and calls `BasicTools` for the rest.
+a playtest plan that is a plain bot run (one bot, no checks) and the
+map's importer, and calls `BasicTools` for the rest.
 
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.
@@ -621,7 +670,7 @@ jobs:
 | `system-packages` | the macroquad libraries the templates' CI installs | The apt packages the game builds with, space-separated |
 | `build` | none | A command run before the playtest, to build what it runs (a release build of the tool program) |
 | `command` | `cargo shuyi playtest --every-stage --brief` | The playtest; the workflow adds `--report <file>` and reads the file to say why it failed |
-| `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`). The grid template's game sets it, since it has no plan until it writes one (the `shuyi-balance-bots` skill); drop it then, so a plan that stops working fails |
+| `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`): for a game whose tools don't give one yet. Drop it once they do, so a plan that stops working fails. The grid template's game has a plan, its bot run, so it doesn't set it |
 | `timeout-minutes` | 120 | The playtest job's timeout |
 
 The changed files are a pull request's (its merge commit against the
@@ -665,8 +714,9 @@ which `add` copies), CI with the gates (`fmt`, `clippy`, the tests, `check`, `ch
 `check-keys` and `lint`), and the `cargo shuyi` alias. The grid game also
 has `.github/workflows/playtest.yml`, which calls the engine's playtest
 workflow ([The playtest in CI](#the-playtest-in-ci)) at the engine's
-commit it builds with: a 40-digit `--engine-rev`, else `main`. It has
-no playtest plan yet, so it passes `allow-no-plan` until it writes one.
+commit it builds with: a 40-digit `--engine-rev`, else `main`. Its
+playtest plan is its bot run, with no checks, until it writes a
+`playtest.ron` (the `shuyi-balance-bots` skill).
 Who the game is, its name and its id `com.example.<crate>`, is
 `shuyi.ron`'s `app`, and `crates/game/src/app_info.rs` is the file
 `cargo shuyi app-info` writes from it: its saves are kept under the id,

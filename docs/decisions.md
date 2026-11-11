@@ -1588,3 +1588,165 @@ below. Nick:
   comes after the playground they are done in.
 - This sharpens "no real version before the engine is stable"
   (2026-10-21): stable means the tickets above are done.
+
+## 2026-11-08: the book's project folds into its chapters, and a fourth kind of reader
+
+Source: Nick, in a session of this repository, reading a mock of 2823's
+welcome page and contents in the browser:
+
+> "we have 3 sections devoted to where to start now. The starting
+> questions, the where to start, and start here. This is entirely
+> redundant. The onboarding questions should be a modal popup on first
+> visit, with the skip option on the modal. Additionally, we have no
+> question currently for the Coming from Godot, Unity... etc on the
+> questions onboarding section so should add that. That would affect
+> stuff like Game Design sections like if they don't know about game
+> loops or ECS or sprites. Additionally, I am not a fan of the current
+> folding of book and tutorial, it looks like you appended when it
+> should be a fold. For instance, many tutorial books for lets say Rust
+> Book will have an end of chapter project or something or a keystone
+> project or followup project after finishing the whole book. This is
+> what I'm envisioning when I say fold tutorial and book."
+
+Asked how the project folds in, he chose **"Both"**: each chapter ends
+with the project's step that uses its idea, and a second, bigger
+follow-up project comes after the whole book. Asked how to ask about
+making games, he chose **"One game question"**: "Have you made a game
+before?", answered No, Yes in another engine, or Yes with Shuyi. Shown
+the revised mock, he signed it off: **"Yes, signed off"**.
+
+**Rules:**
+
+- **The project is folded into the chapters.** The chapters go in the
+  project's order, and each ends with the steps that use its idea. A
+  follow-up project, a new game, comes after the whole book (2830).
+- **Four kinds of reader:** new to programming, new to making games, new
+  to Rust, new to Shuyi. Game loops, sprites and ECS are notes for a
+  reader new to making games (2825).
+- **The questions open as a popup on a first visit,** with the skip in
+  the popup. Nothing else on the page says where to start (2826).
+- ADR-0090 holds the design.
+
+## 2026-11-08: the export targets in tiers, and PICO-8 as tier 3
+
+Source: Nick, in a session of this repository:
+
+> "lets add PICO-8 support parked for after all tier 1 and tier 2
+> release targets PICO-8 can be a tier 3 release target"
+
+Asked which targets are tier 1 and which tier 2, he chose **"Desktop/web,
+then devices"**. Then:
+
+> "yes even tho I am working on playdate support concurrently it still
+> is tier 2 its just the first tier 2 consideration."
+
+**Rules:**
+
+- **Tier 1:** Windows, Linux, macOS and the web (3004).
+- **Tier 2:** the Steam Deck, the Playdate, the Switch, Android and iOS,
+  PlayStation and Xbox, the GBA and the DS. The Playdate is the first of
+  them being worked, alongside tier 1, and is still tier 2.
+- **Tier 3:** PICO-8. Its ticket (3098, a research ticket) is parked
+  until Nick unparks it, and not before every tier 1 and tier 2 target
+  is done.
+- A tier orders the targets; it doesn't unpark any. The parked tier 2
+  targets (2026-10-15 and 2026-10-17) stay parked until Nick says.
+
+## 2026-11-08: Rhai for mods' scripts, with one license exception
+
+Source: Nick, in the session working ticket 2101. Rhai, the scripting
+language 2101 planned, always brings the crate `smartstring`, under
+MPL-2.0, which ADR-0002 §8 denies. With Rhai's `compact_str` switch, none
+of its code goes into a game: it is downloaded and built only (checked
+on 2026-11-08 in Windows release, debug and web builds). Asked whether
+to allow it, he said:
+
+> "if Rhai license is unclear then run a research agent to figure it out.
+> I rather not work on our own language as well as our own engine that's
+> major feature bloat. Also check about Lua support?"
+
+> "check more about Rhai 2.0 release date rumors. Also, aren't there other
+> Rust scripting langs like Rune and stuff? im just concerned cuz Rhai
+> seems individually maintained and can be a liability. Why not like
+> Python or something thats more popular... are you sure Lua wont work...????????"
+
+> "tell me why we cant use emscripten or the c toolchain for lua or
+> cpython needing c why is that a problem"
+
+> "do a more in depth comparsion on rhai vs rune and why bevy swapped"
+
+Shown the research (ADR-0093 holds it: Lua and Python need C or
+emscripten, which the web build doesn't have, and aren't deterministic as
+they come; Rune's maps iterate in a different order from one build to
+another and it can't drop floats; Bevy's scripting plugin swapped for the
+speed of its own reflection glue), he chose **"Yes, Rhai
+(Recommended)"**.
+
+**Rules:**
+
+- **`shuyi-script` is Rhai** (ADR-0093). No language of our own.
+- **`smartstring` is the one exception to ADR-0002 §8**, in `deny.toml`,
+  for version 1.0.1 alone, while Rhai's `compact_str` feature keeps its
+  code out of every program (a test checks the feature). Its RustSec
+  advisory (unmaintained, RUSTSEC-2026-0249) is ignored for the same
+  reason.
+- **The exception goes when Rhai drops `smartstring`** (its 2.0, or a
+  release that makes it optional). Not legal advice: MPL-2.0's duties
+  come with distributing its code, and no game does.
+
+## 2026-11-09: the reader's filter leaves out what a reader knows
+
+Source: Nick, signing off ticket 2826 in the desktop app's browser. He
+answered the popup, read a page, and opened a folded note:
+
+> "notes should have both show and hide, right now they only have show
+> button and not hide / collapse button."
+
+Shown hide on every note, he wrote:
+
+> "in onboarding / global toggles, the notes should then not even have
+> the notes hidden when the user selects they know something, since a
+> hidden note still takes up a lot of space. Instead if user selects for
+> instance they know Rust, we should trust them, and outright not render
+> even hidden Rust notes to them. Show/Hide should be only for notes user
+> is manually interacting with within their comfort level"
+
+Shown the filter built that way, he answered **"Yes, signed off"**.
+
+**Rules:**
+
+- **A note of an audience the reader knows is left out whole,** with no
+  line in its place. The popup's answers and the bar's toggles decide
+  which.
+- **Every note the reader sees has hide,** which folds it to a line, and
+  the line has show.
+- The bar still says how many notes it leaves out, and **Show all** shows
+  them for the visit.
+- ADR-0098 holds the design; it amends ADR-0090 §6.
+
+## 2026-11-10: no PRs or issues on other projects
+
+Source: ticket 3307, which asked for a fix "upstream in miniquad (a PR
+there)". The session that worked it offered to open the PRs; Nick
+answered:
+
+> "we will never open any upstream PRs so any approach that necessitates
+> that is out of the question. I don't want to vibecode upstream PRs ok.
+> Make sure to never do that and rethink how we do these tickets."
+
+**Rules:**
+
+Asked whether the same holds for filing issues upstream (tickets 2061
+and 2028 planned one), he answered **"Yes, issues too"**.
+
+- **No PR and no issue on another project, ever** (`AGENTS.md`, rule
+  12), from any session, on any account, whatever a ticket says.
+- **A bug in a dependency is fixed here:** a workaround in our own code,
+  a vendored file with a local patch, or a backend that does the work
+  itself. A ticket names that fix, never a PR upstream.
+- **The workaround stays** until a release of the dependency fixes the
+  bug on its own. The bump that brings that release checks it (the
+  `dependency-upkeep` skill), and takes the workaround out then.
+- **A tool's wrong finding** is argued with here, where the gate says
+  (a `Breaking:` line saying why, for the `api` job: ADR-0105), with no
+  issue upstream.

@@ -13,15 +13,21 @@ their file and line. Fix a failure in the code, never by loosening
 `clippy.toml` or the test (a test that must use a float writes
 `#[expect(clippy::disallowed_types, reason = "...")]`).
 
+`Stage` is the scene's data in the tools, as serde writes it, and its
+shape: a type the rules add to it derives
+`#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]` beside
+`Serialize`, or the game's tools don't build.
+
 The stage that plays these rules is `crates/game/src/stages/top_down_grid.rs`,
 and its tools (`top_down_grid/tools.rs`) give `cargo shuyi scene`,
-`replay`, `bots` and `import` for it:
+`replay`, `playtest` and `import` for it:
 
 | Command | What it tells you |
 | ------- | ----------------- |
 | `cargo shuyi run --script "Enter Right Down" --frames 30` | the screens, the scene, what happened and the sounds |
 | `cargo shuyi scene --script "Enter Right"` | the stage's map and state |
-| `cargo shuyi bots 20` | how 20 games played by bots ended, with a record of each |
+| `cargo shuyi scene --script "Enter Right" --path /hero/x` | one value of the state, by JSON Pointer; `--shape` gives every key it may hold |
+| `cargo shuyi playtest --tries 20` | how 20 tries played by the stage's bot ended, the spread of their turns and measures, and with `--json` a record of each for `replay` |
 | `cargo shuyi replay record.ron` | a hash of the state at every step of a record |
 | `cargo shuyi frame-png stage.png --script "Enter Right"` | a picture of a frame, with no window |
 | `cargo shuyi import crates/game/files/stage.map` | what a file reads as, or its errors |

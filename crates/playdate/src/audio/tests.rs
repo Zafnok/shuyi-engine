@@ -9,7 +9,8 @@ use alloc::vec::Vec;
 use shuyi_assets::audio::{AudioManifest, CreditRef, MusicCue, SoundCue};
 use shuyi_platform::audio::player::{Backend, Player};
 use shuyi_platform::{Audio, AudioFrame, Millis, SoundRequest};
-use shuyi_ui::audio::{MusicCommand, SoundId};
+use shuyi_ui::audio::groups::SFX;
+use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SoundGroups, SoundId};
 
 use super::{SAMPLE_PLAYERS, Speaker, player};
 use crate::fake::FakeSdk;
@@ -30,6 +31,7 @@ fn manifest() -> AudioManifest {
         looped,
         length_ms: 60_000,
         credit: CreditRef::Own,
+        group: None,
     };
     m.music.insert("theme".into(), track("theme.ogg", 80, true));
     m.music
@@ -108,14 +110,17 @@ fn id(n: u32) -> SoundId {
 }
 
 #[test]
-fn a_cue_plays_at_its_volume_times_the_request_and_the_players() {
+fn a_cue_plays_at_its_volume_times_the_request_and_its_gain() {
     let mut rig = Rig::new();
     rig.frame(&[sound("click", 0.5)], &[], 0.0);
     assert_eq!(
         rig.sdk.sounding_samples(),
         [("audio/sfx/click".to_owned(), 0.25)]
     );
-    rig.player.set_volumes(&mut rig.speaker, 1.0, 0.5);
+    let groups = SoundGroups::default();
+    let half = GroupGains::full(&groups).with(&groups, SFX, Gain::new(2048));
+    let gains = Gains::new(&groups, &half);
+    rig.player.set_gains(&mut rig.speaker, gains);
     rig.frame(&[sound("click", 1.0)], &[], 0.0);
     assert_eq!(
         rig.sdk.sounding_samples(),
@@ -450,12 +455,12 @@ fn the_device_is_the_players_warnings_in_the_console() {
     let sdk = sdk();
     let mut device = shuyi_platform::audio::player::PlayerDevice::new(Speaker::new(sdk.clone()));
     let requests = [sound("nope", 1.0), sound("click", 1.0)];
+    let groups = SoundGroups::default();
+    let full = GroupGains::full(&groups);
     let frame = AudioFrame {
         requests: &requests,
         music: &[],
-        music_volume: 1.0,
-        sound_volume: 1.0,
-        voice_volume: 1.0,
+        gains: Gains::new(&groups, &full),
     };
     device.play(&frame, Millis(0));
     assert_eq!(
@@ -573,5 +578,92 @@ fn a_file_player_that_refuses_is_in_the_console() {
     assert_eq!(
         rig.sdk.logs().last().map(String::as_str),
         Some("audio: the SDK could not start a track")
+    );
+}
+
+/// `samples` at 11,025 a second, mono or stereo, as the queue hands them on.
+fn made(samples: &[i16], stereo: bool) -> shuyi_ui::audio::SharedSamples {
+    let channels = if stereo { 2 } else { 1 };
+    let samples = shuyi_ui::audio::Samples::new(11_025, channels, samples.to_vec());
+    shuyi_ui::audio::SharedSamples::new(samples.unwrap_or_else(|e| panic!("{e}")))
+}
+
+#[test]
+fn an_added_sound_is_a_sample_the_sdk_makes_from_its_samples() {
+    let mut rig = Rig::new();
+    let samples = [0, 256, -256, i16::MAX, i16::MIN, 7];
+    let add = SoundRequest::add("made", made(&samples, false));
+    rig.frame(&[add, sound("made", 0.5)], &[], 0.0);
+    let sounding = rig.sdk.sounding_sample_ids();
+    assert_eq!(sounding.len(), 1);
+    let made_sample = sounding[0];
+    assert_eq!(
+        rig.sdk.made_sample(made_sample),
+        Some((11_025, false, samples.to_vec()))
+    );
+    // At the volume asked times its own, full; as recorded.
+    assert_eq!(rig.sdk.sounding_samples(), [("made".to_owned(), 0.5)]);
+    assert_eq!(rig.sdk.last_sample_rate(), Some(1.0));
+    // Removed, its players stop and the SDK frees it; a play of it then
+    // plays nothing.
+    rig.frame(&[SoundRequest::Remove { cue: "made".into() }], &[], 0.1);
+    let found = rig.sdk.sounding_samples();
+    assert!(found.is_empty(), "{found:?}");
+    assert_eq!(rig.sdk.made_sample(made_sample), None);
+    rig.frame(&[sound("made", 1.0)], &[], 0.2);
+    let found = rig.sdk.sounding_samples();
+    assert!(found.is_empty(), "{found:?}");
+    assert_eq!(rig.player.take_warnings(), ["unknown sound cue \"made\""]);
+}
+
+#[test]
+fn an_added_sound_replaced_frees_the_old_sample_and_a_stereo_one_says_so() {
+    let mut rig = Rig::new();
+    rig.frame(&[SoundRequest::add("made", made(&[1, 2], false))], &[], 0.0);
+    rig.frame(&[sound("made", 1.0)], &[], 0.0);
+    let first = rig.sdk.sounding_sample_ids()[0];
+    let again = SoundRequest::add("made", made(&[3, 4, 5, 6], true));
+    rig.frame(&[again, sound("made", 1.0)], &[], 0.1);
+    assert_eq!(rig.sdk.made_sample(first), None, "the old one is freed");
+    let second = rig.sdk.sounding_sample_ids()[0];
+    assert_eq!(
+        rig.sdk.made_sample(second),
+        Some((11_025, true, vec![3, 4, 5, 6]))
+    );
+    assert_eq!(rig.player.take_warnings(), [] as [String; 0]);
+}
+
+#[test]
+fn an_empty_sound_is_no_sample_and_a_warning() {
+    let mut rig = Rig::new();
+    rig.frame(&[SoundRequest::add("made", made(&[], false))], &[], 0.0);
+    let warnings = rig.player.take_warnings();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("no samples"), "{warnings:?}");
+}
+
+#[test]
+fn removing_a_made_sound_leaves_the_other_players_alone() {
+    let mut rig = Rig::new();
+    let add = SoundRequest::add("made", made(&[1, 2], false));
+    rig.frame(&[add, sound("click", 1.0), sound("made", 1.0)], &[], 0.0);
+    rig.frame(&[SoundRequest::Remove { cue: "made".into() }], &[], 0.1);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [("audio/sfx/click".to_owned(), 0.5)]
+    );
+    // The click's player still knows its sample: its volume reaches it.
+    let files = shuyi_assets::audio::Files::new(
+        &|_| None,
+        &super::shown,
+        &|_| false,
+        shuyi_assets::audio::BAKED_MUSIC_DIR,
+    );
+    let click = super::ready_now(rig.speaker.load_sound_file("sfx/click.wav", &files));
+    let click = click.unwrap_or_else(|e| panic!("{e}"));
+    rig.speaker.set_volume(&click, 0.25);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [("audio/sfx/click".to_owned(), 0.25)]
     );
 }
