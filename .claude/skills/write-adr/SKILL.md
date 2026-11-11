@@ -12,6 +12,9 @@ description: Record a technical/architecture decision as an ADR in docs/adr/. Us
    check-docs` fails two ADRs with one number, so on the merge ref the
    second PR to take it fails: renumber yours with `next-id` again.
 2. Copy `docs/adr/0000-template.md` to `docs/adr/NNNN-kebab-title.md`.
+   The file name is a few words, not the whole title: `cargo xtask
+   check-paths` fails a path over 150 characters, as a game's Windows
+   checkout by Cargo adds about 80 and libgit2 stops at 260 (ticket 2071).
 3. Fill in four sections:
    - **Context**: the facts and forces, with sources;
    - **Decision**: concrete enough to follow without guessing, naming

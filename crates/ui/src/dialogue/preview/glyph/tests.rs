@@ -40,7 +40,7 @@ fn the_background_is_cleared() {
 }
 
 #[test]
-fn the_scenes_tab_marks_the_scene_picked_and_files_with_problems() {
+fn scenes_tab_marks_picked_and_broken_files() {
     let ctx = toy::ctx();
     let mut v = view(Tab::Scenes);
     let mut gate = SceneRow::new("gate.dlg".into(), "gate".into());
@@ -75,7 +75,7 @@ fn the_switches_tab_puts_each_value_in_its_column() {
 }
 
 #[test]
-fn the_lines_tab_shows_the_line_box_and_the_text_box_playing() {
+fn lines_tab_shows_line_box_and_text_box() {
     let ctx = toy::ctx();
     let mut v = view(Tab::Lines);
     let mut go_to = GoToView::new("Go to line".into());
@@ -91,7 +91,7 @@ fn the_lines_tab_shows_the_line_box_and_the_text_box_playing() {
 }
 
 #[test]
-fn a_note_goes_under_the_line_box_and_at_the_top_of_an_empty_list() {
+fn note_under_line_box_and_atop_empty_list() {
     let ctx = toy::ctx();
     let mut lines = view(Tab::Lines);
     lines.note = Some("Pick a scene first".into());
