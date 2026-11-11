@@ -662,8 +662,10 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
     let pr_branch = pr_branch_words(&branch);
     let root_text = root.display().to_string().replace('\\', "/");
 
+    // `--fast` shows only the fast gates: the others are the full run's.
     let mut rows: Vec<(&Gate, Plan, Option<Outcome>)> = GATES
         .iter()
+        .filter(|gate| !options.fast || gate.fast != Fast::No)
         .map(|gate| (gate, plan(gate, &outputs, &paths, options.fast), None))
         .collect();
     let mut failed = false;
