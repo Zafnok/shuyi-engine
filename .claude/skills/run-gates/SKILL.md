@@ -351,7 +351,11 @@ box under *Acceptance criteria*: tick it, or write `- [x] ~~…~~ (not
 done: why)`. It fails a clause in an
 open ticket that names another open ticket, not in its `blocked_by`,
 whose text never names it back: write the other side there (the
-`write-ticket` skill, *Check the dependency chain*).
+`write-ticket` skill, *Check the dependency chain*). It fails an open,
+non-parked `status: blocked` ticket whose blockers are all done. In the
+ticket the PR moves to `done/`, it warns on a promise of later work that
+names no ticket, and fails a `game#NNNN` with no `Game:` line (the
+`work-ticket` skill, §5).
 
 ## The engine's own input and text rules (CI's `test` job)
 
