@@ -948,7 +948,7 @@ fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
 /// The `try_it` shortcode (`site/templates/shortcodes/try_it.md`, ticket
 /// 2818): the try `name` of `site/tutorial/tries.toml`, each edit as a diff
 /// and each picture as an image, from `site/static/tutorial-tries/<name>/`,
-/// which must be there.
+/// which must be there; a try of the Rust code ends with [`TRY_RUST`].
 fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
     let mut name = None;
     for (key, value) in arguments(args).map_err(|e| format!("try_it: {e}"))? {
@@ -986,8 +986,17 @@ fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
         }
         let _ = write!(out, "![{alt}](/{path})\n\n");
     }
+    let rust = |file: &str| Path::new(file).extension().is_some_and(|e| e == "rs");
+    if one.edits.iter().any(|edit| rust(&edit.file)) {
+        out.push_str(TRY_RUST);
+    }
     Ok(out.trim_end().to_owned())
 }
+
+/// What a try of the Rust code says under its pictures, as the shortcode
+/// says it (ticket 2820): a page can try only the data files.
+const TRY_RUST: &str = "This change is to the Rust code: try it on your own machine, where \
+    `cargo run` builds the game again with it. A web page can't build Rust.";
 
 /// Every line of `source`, without the anchors' lines, as the shortcode
 /// shows a file named with no anchor. The empty line after its last

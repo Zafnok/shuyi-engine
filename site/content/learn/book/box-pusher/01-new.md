@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/01-new/", "learn/tutorial/01-new/play/"]
 
 [extra]
 step = 1
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["palette.ron", "en.ron", "keymap.ron"]
 follows = "quick-start"
 +++
 

@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/02-board/", "learn/tutorial/02-board/play/"]
 
 [extra]
 step = 2
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels/1.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "assets-and-formats"
 +++
 

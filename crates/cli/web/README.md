@@ -209,7 +209,9 @@ Dependabot's `backend` group too.
   says), the files over `in_all` (1 MiB) together, or a bad path, and the
   game gets an error naming it. A page with storage turned off holds no
   files. Hello, Grid lays the layer over its own files when its data loads
-  with it, and plays its own files otherwise.
+  with it, and plays its own files otherwise; so does every game on the
+  short path, in `shuyi_app::run_game` (ticket 2820), which reports for
+  it.
 - **What comes back:** `page::report(text)`, the game's problems with the
   files, one a line (`files/stage.map:11:6: 'X' is not in the legend`),
   or the empty text when they load. In a frame whose parent has the page's

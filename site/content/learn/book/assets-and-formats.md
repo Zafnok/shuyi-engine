@@ -215,7 +215,9 @@ there are no folders, `shuyi::app::page::page_layer` reads the text files the ga
 page hands it (a page that edits the game's data beside it, and runs it again, as the
 [playground](@/learn/playground.md) does with Hello, Grid), and `page::report` tells the
 page what was wrong with them: load your data with the layer laid first, and lay it only
-if that works.
+if that works. A game started with `run_game`, as the project's is, does all that with no
+code of its own, which is how each step of the project plays in its own page's
+playground.
 
 {{ snippet(file="src/assets.rs", anchor="layers") }}
 
