@@ -280,6 +280,10 @@ players keep after a patch.
   `shuyi_assets::ron` gain items; `PlayerKeys::from_ron` and
   `Profiles::from_ron` keep their signatures. The engine writes new
   `-refused` keys in a player's storage. Say so in the PR.
+- **Either order with 2138:** if 2138 is done, its `FormatCheck` uses
+  `read_save` and gains `Verdict::Migratable { from, to }` for an older
+  version inside the chain, and its `apply` writes the migrated text; if
+  not, nothing to do (2138 adds them when it lands).
 
 **Out (do not do):**
 - Packs: ADR-0023 §5 keeps them refused; bake again.
