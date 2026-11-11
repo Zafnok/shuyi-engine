@@ -215,3 +215,30 @@ key to action to command to state.
 
 [Chapter 4](@/learn/book/actions.md) explains actions in more detail, and
 [chapter 5](@/learn/book/rules-as-commands.md) the rules. Next, it becomes a game.
+
+## Check yourself
+
+{% check() %}
+The board's `send` is `let _ = self.puzzle.apply(&command);`. What happens when the
+player walks into a wall?
+
+- [x] `check` refuses with `Refusal::Wall`, so `apply` changes nothing, and the board ignores the refusal. — A refused command changes nothing, and walking into a wall isn't a problem the board has to report ([from actions to commands](#from-actions-to-commands)).
+- [ ] The player steps into the wall, and the next frame moves them back. — `apply` calls `check` first, and a refused command changes nothing, not even part of the state ([the rules](#the-rules)).
+- [ ] The game stops, since the `Result` holding the refusal is never handled. — `let _ =` says the result was thought about and dropped; nothing stops ([from actions to commands](#from-actions-to-commands)).
+{% end %}
+
+{% check() %}
+A player wants to walk up with `k`. What has to change in `board.rs`?
+
+- [x] Nothing: the board reacts to `UiAction::Up`, and the keys are in `files/keymap.ron`. — The board never reads a key; the keymap is the one place that says what Up means ([from actions to commands](#from-actions-to-commands)).
+- [ ] A new arm in `update`'s `match` for the `k` key. — `update` matches actions, never keys, and the keymap gives each action its keys ([from actions to commands](#from-actions-to-commands)).
+- [ ] `actions` has to list `k` beside `UiAction::Up`. — `actions` lists the actions the board listens to, never keys ([from actions to commands](#from-actions-to-commands)).
+{% end %}
+
+{% check() %}
+What does `legal_commands` give back?
+
+- [x] Each of the four steps that `check` accepts right now. — It turns each direction into a `Command::Step`, and keeps those that pass `check` ([the rules](#the-rules)).
+- [ ] All four steps, and `apply` refuses the bad ones later. — The list keeps only those `check` accepts, so a bot can pick from it ([the rules](#the-rules)).
+- [ ] The steps the player has taken so far. — It lists what is allowed now, not what happened ([the rules](#the-rules)).
+{% end %}

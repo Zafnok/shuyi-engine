@@ -177,3 +177,30 @@ the placeholder `com.example.…` id share them. `cargo shuyi check --target` wa
 **On the web.** A player who clears their browser's site data loses their saves, as
 `localStorage` belongs to the browser. So on the web, as anywhere, `load` must handle
 `Ok(None)`.
+
+## Check yourself
+
+{% check() %}
+Why does a game save through `ctx.storage` and never open a file itself?
+
+- [ ] Writing a file is slower than writing to storage. — Speed isn't the reason. Not every target has files a game can write ([storage](#storage)).
+- [x] The platform hands it storage that fits the target, so the same code saves everywhere and a test needs no disk. — Files on desktop, `localStorage` on the web, a console's own saves and memory in tests, all behind one trait ([storage](#storage)).
+- [ ] Storage keeps one save for every player who shares the computer. — `ctx.storage` is the storage of the profile in use, so each player keeps their own ([profiles](#profiles)).
+{% end %}
+
+{% check() %}
+A field is added to `Garden`, and `VERSION` stays as it was. What does the new build do
+with a player's old save?
+
+- [ ] It refuses it as a save of another version. — The old save names the same version, so the refusal can't tell ([a save](#a-save)).
+- [x] The version matches but the save doesn't parse, so `load` says `Damaged` to a player whose save was fine. — No tool catches this, so raise `VERSION` whenever a saved type changes ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] It reads the save and fills the new field with a default. — The old text lacks the new field, so it doesn't parse at all ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}
+
+{% check() %}
+What is the difference between `ctx.change_settings` and `ctx.preview_settings`?
+
+- [x] `change_settings` changes the settings and saves them in the profile, and `preview_settings` changes them without saving. — An options screen previews a change before the player keeps it ([settings](#settings)).
+- [ ] `preview_settings` only reads the settings, and `change_settings` writes them. — `ctx.settings()` reads them. `preview_settings` changes them too, but doesn't save ([settings](#settings)).
+- [ ] `change_settings` saves for every profile, and `preview_settings` for the one in use. — Settings are kept in the profile in use, and only `change_settings` saves them ([settings](#settings)).
+{% end %}

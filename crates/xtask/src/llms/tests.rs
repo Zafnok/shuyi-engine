@@ -1038,6 +1038,46 @@ fn the_full_file_leaves_out_the_programming_games_and_rust_passages() {
     }
 }
 
+/// The fixture with a page holding a quick check for everyone and one for
+/// a newcomer to Rust (ticket 2827).
+fn with_checks(name: &str) -> Fixture {
+    let fixture = Fixture::new(name);
+    put(
+        &fixture.root,
+        "site/content/learn/book/checked.md",
+        "+++\ntitle = \"Checked\"\n+++\n\nText.\n\n## Check yourself\n\n{% check() %}\nWhat does `apply` do with a refused command?\n\n- [ ] It panics. — Nothing stops ([refusals](#refusals)).\n- [x] It returns the refusal. — The state is untouched.\n{% end %}\n\n{% check(to=\"rust\") %}\nWhat does `?` do?\n\n- [x] It returns an `Err` early. — That is its job.\n- [ ] It ignores the error. — `let _ =` does that.\n{% end %}\n",
+    );
+    put(&fixture.public, "learn/book/checked/index.html", "");
+    fixture
+}
+
+#[test]
+fn a_check_is_its_question_and_answers_as_text_in_the_twin() {
+    let fixture = with_checks("checks-twin");
+    fixture.passes();
+    let twin = fixture.read("learn/book/checked/index.md");
+    assert!(
+        twin.contains(
+            "## Check yourself\n\n**Quick check.** What does `apply` do with a refused command?\n\n\
+             - Wrong: It panics. — Nothing stops ([refusals](#refusals)).\n\
+             - Right: It returns the refusal. — The state is untouched.\n\n\
+             > **New to Rust?** a quick check\n>\n> **Quick check.** What does `?` do?\n>\n\
+             > - Right: It returns an `Err` early. — That is its job.\n\
+             > - Wrong: It ignores the error. — `let _ =` does that.\n"
+        ),
+        "{twin}"
+    );
+}
+
+#[test]
+fn the_full_file_leaves_out_a_check_for_a_newcomer_to_rust() {
+    let fixture = with_checks("checks-full");
+    fixture.passes();
+    let full = fixture.read("llms-full.txt");
+    assert!(full.contains("- Right: It returns the refusal."), "{full}");
+    assert!(!full.contains("What does `?` do?"), "{full}");
+}
+
 #[test]
 fn a_page_marked_whole_has_its_label_under_its_source_line() {
     let fixture = Fixture::new("whole");

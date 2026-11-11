@@ -217,3 +217,32 @@ assertion `left == right` failed
 ```
 
 If a key does nothing in a test, look at the screen's `actions` first.
+
+## Check yourself
+
+{% check() %}
+The language file has a help line with `{Confirm}` in it. What does the player read in
+its place?
+
+- [x] The key or button the player has for Confirm, from the device they pressed last. — A capitalized name in braces names an action, and the text asks the player's keymap for its key ([naming a key in text](#naming-a-key-in-text)).
+- [ ] The word "Confirm". — The braces are filled in: a capitalized name shows the player's own key for that action ([naming a key in text](#naming-a-key-in-text)).
+- [ ] Always the default key, Enter. — It shows the key the player bound, so the line stays right after a rebind ([naming a key in text](#naming-a-key-in-text)).
+- [ ] A value the screen passes in as an argument. — That is a lowercase placeholder, such as `{seeds}`; a capital names a key ([naming a key in text](#naming-a-key-in-text)).
+{% end %}
+
+{% check() %}
+The player holds Right down. How does a screen move the cursor once per repeat?
+
+- [x] It does nothing extra: the held action comes again in `input.actions` at the keymap's repeat rate. — The keymap file gives the repeat timings, so a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
+- [ ] It reads the clock and moves again once enough time has passed. — The repeats come with the actions at the keymap's rate, and a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
+- [ ] It checks `input.is_held(action)` and moves on every frame it is held. — That would move once a frame, far faster than a repeat; repeats already arrive in `input.actions` ([reacting to an action](#reacting-to-an-action)).
+{% end %}
+
+{% check() %}
+A screen's `update` reads `UiAction::Left`, but its `actions` leaves Left out. In a
+Harness test, what happens when Left is pressed?
+
+- [x] Left does nothing, since the Harness hands a screen only the actions it declares. — So a test that walks left fails on the plot it stayed on ([when it goes wrong](#when-it-goes-wrong)).
+- [ ] Left works as usual, since `actions` is only read by `cargo shuyi check`. — In tests the Harness holds back every action a screen doesn't declare ([reacting to an action](#reacting-to-an-action)).
+- [ ] The test stops at once with an error naming the undeclared action. — Nothing names it: Left is held back, and the test fails later on what didn't change ([when it goes wrong](#when-it-goes-wrong)).
+{% end %}

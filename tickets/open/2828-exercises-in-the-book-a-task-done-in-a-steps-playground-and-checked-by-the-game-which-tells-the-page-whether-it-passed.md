@@ -32,8 +32,24 @@ What there is once the blockers are done:
   problems to the parent frame as `{ kind: "shuyi-report", text }`.
 - 2820: each project step's page has a playground of that step's data
   files beside its game, reusing 2814's `playground.js`.
-- 2827: a quick check's shortcode, its script and its expansion in the
-  twins.
+- **From 2827 (done):** a quick check is the body shortcode
+  `site/templates/shortcodes/check.html`, answered by
+  `site/static/book-check.js`, and written as text in the twins by
+  `llms.rs`'s `checked` (`site/README.md`, *Quick checks*).
+  - Every step and concept chapter ends with `## Check yourself`, its
+    last `## ` section, holding two or three checks. `cargo xtask
+    check-book` (`book.rs`'s `check_section`) fails a heading after it, so
+    an exercise goes in that section after the checks, with no heading
+    of its own.
+  - `book.rs`'s `kind()` knows two body openers, `newcomer` and `check`,
+    and takes every `{% end %}` as the close of one of them. An
+    `exercise` body shortcode adds its opener there (an `Opened` variant),
+    or its `{% end %}` fails as one with no mark open.
+  - A check with `to` is an `aside.check.newcomer` with a
+    `.newcomer-label`, so 2826's filter folds it and the bar counts it as
+    a check ("6 notes and 1 check hidden", `counted` in
+    `book-filter.js`). An exercise with `to` can do the same, and adds
+    its own word there.
 - **From 2823 (done):** [ADR-0090](../../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md) §8 says only where an exercise sits:
   in the step's `## Check yourself` section, after its quick checks. On
   2026-11-05 the exercises' design moved here (`docs/decisions.md`, *the

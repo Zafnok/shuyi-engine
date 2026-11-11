@@ -445,6 +445,99 @@ h3 {
   margin-bottom: 0;
 }
 
+/* A quick check (ticket 2827, ADR-0090 §8): a box with its question and
+   its answers. One marked for a newcomer keeps the newcomer's rule at its
+   side and label, and folds as a passage does. `book-check.js` shows the
+   answers as buttons; with no JavaScript they are in a `<details>`. */
+.check {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.check.newcomer {
+  border-left: 3px solid var(--newcomer);
+}
+
+.check-label {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.check-question > :first-child {
+  margin-top: 0;
+}
+
+.check-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.check-choices[hidden] {
+  display: none;
+}
+
+/* An answer: the whole width, at least 44 px tall to hit at 375 px. */
+.check-choice {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.check-choice:hover {
+  border-color: var(--accent);
+}
+
+.check-choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.check-choice.is-right {
+  border: 2px solid var(--ready);
+}
+
+.check-choice.is-wrong {
+  border: 2px solid var(--code-deleted);
+}
+
+.check-result {
+  margin: 0.25rem 0 0;
+}
+
+.check-result:empty {
+  display: none;
+}
+
+.check-result.is-right strong {
+  color: var(--ready);
+}
+
+.check-result.is-wrong strong {
+  color: var(--code-deleted);
+}
+
+.check-answers summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.check-answers ul {
+  margin-bottom: 0;
+}
+
 /* The reader's filter (ADR-0090 §6, `book-filter.js`). The script sets
    `data-book` on `<html>`, which shows the bar, and `data-book-fold` to the
    audiences the reader knows, whose passages it leaves out. With no

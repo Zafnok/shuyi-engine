@@ -61,11 +61,12 @@ python -m http.server --directory public 1111
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, and the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)); `shortcodes/snippet.md` shows the book's code, and `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, and the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), and `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)) |
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
+| `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
 | `templates/playground.html`, `static/playground.js` | The playground's page and its script ([The playground](#the-playground)) |
 | `copy-playground.sh`, `static/playground/` | `copy-playground.sh` copies the playground's files from `examples/hello-grid/files/` into `static/playground/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
-| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
@@ -110,6 +111,8 @@ python -m http.server --directory public 1111
   the chapter that says more.
 - A passage that only a newcomer needs is marked with who it is for
   ([Marking a passage](#marking-a-passage)), a new one too.
+- Every chapter and every step of a project ends with two or three quick
+  checks on what it taught ([Quick checks](#quick-checks)), a new one too.
 - Each chapter stands on its own: it says what an idea is for before its
   name, explains each word of Rust or of the engine its code uses, or links
   where a step does, and has a section *When it goes wrong* with real
@@ -184,6 +187,47 @@ four, one with no `topic`, one not closed, one inside another or not on
 lines of its own, and a callout of the old hand-made form
 (`> **Rust:**`, `> **Shuyi:**`, `> **Game idea:**`).
 
+## Quick checks
+
+Every concept chapter (`[extra] chapter`) and every step of a project
+(`[extra] step`) ends with a section `## Check yourself` holding two or
+three quick checks (ticket 2827, ADR-0090 §8): a question, its answers, and
+why each is right or wrong. A chapter's line naming its steps comes after
+it, from the template. *Before you start* and the appendices have none.
+
+```text
+{% check(to="rust") %}
+What does the `?` at the end of `garden.apply(command)?` do when the rules refuse?
+
+- [ ] It stops the game. — Nothing stops: the refusal is a value ([refusals](#refusals)).
+- [x] It returns the refusal at once. — `?` hands an `Err` back to the caller.
+{% end %}
+```
+
+- The opener and `{% end %}` stand as a mark's do, and a check is never
+  inside a mark, nor a mark inside a check.
+- The lines before the list are the question. Then two to four answers,
+  one line each: `- [x] ` a right one, `- [ ] ` a wrong one, at least one
+  right, then ` — ` and why. Nothing comes after them.
+- Why says why without "Yes" or "No" (the page says "Right." or "Not
+  quite."), and links the passage that explains it. An answer holds no
+  link: it becomes a button. A check holds no shortcode.
+- Ask what a line of code does, quoted in `code`, never to recall a name.
+- `to` is optional, an audience as a mark's is. Give it only to a check on
+  what a passage for that newcomer taught: the reader's filter leaves the
+  check out, and its hide folds it to a stub, as it does a passage. The
+  bar counts it as a check, not a note.
+
+In the page `static/book-check.js` shows the answers as buttons. Choosing
+one says whether it is right, and why, in the check's `role="status"`
+line. With no JavaScript the answers and why are in a `<details>`. Nothing
+is kept or sent anywhere. `cargo xtask check-book` fails a check with no
+question, no right answer, an answer with no reason, fewer than two or
+more than four answers, an audience not among the four, and a chapter or
+step without its section; the shortcode fails the build on the same
+mistakes. `cargo xtask llms` writes each check in the twins as text, its
+answers marked Right or Wrong.
+
 ## The reader's filter
 
 Every page of the book has a bar at its top, and a first visit to any of
@@ -210,8 +254,8 @@ book's contents tag it.
   throws, the popup opens on every page and the page still works.
 - With no JavaScript there is no bar and no popup, and every passage
   shows.
-- An audience is in three places: the `newcomer` shortcode and `cargo xtask
-  check-book`, `book-filter.js`'s `AUDIENCES`, and `style.css`'s
+- An audience is in three places: the `newcomer` and `check` shortcodes and
+  `cargo xtask check-book`, `book-filter.js`'s `AUDIENCES`, and `style.css`'s
   `data-book-fold` rules. The build checks fail a page's mark that the
   last two don't have.
 

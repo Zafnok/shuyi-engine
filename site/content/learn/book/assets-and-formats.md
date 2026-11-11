@@ -303,3 +303,31 @@ the target's folder has its own. `cargo shuyi bake --target playdate --sheet she
 names the pictures it dithered and draws each beside its source, so you see which ones
 are worth drawing by hand. The formats page says [what each dither
 does](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-onebit-section).
+
+## Check yourself
+
+{% check() %}
+`Plan` has `#[serde(deny_unknown_fields)]`, and someone adds `rain: 3` to `garden.ron`.
+What does `cargo shuyi check` say?
+
+- [x] An `SH2001` error at the file, line and column of `rain`, naming the fields `Plan` does have. — `deny_unknown_fields` makes a field the type doesn't have an error, which catches a typo ([when a file is wrong](#when-a-file-is-wrong)).
+- [ ] Nothing: the field is ignored and the plan loads. — That would happen without `deny_unknown_fields`, which asks for the error ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [ ] Nothing, but the game crashes when it starts. — A broken file never crashes a game: the format finds the problem and says where it is ([when a file is wrong](#when-a-file-is-wrong)).
+{% end %}
+
+{% check() %}
+`garden.ron` says `grow_percent: 150`. `grow_percent` is a `u8`. What catches it?
+
+- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
+- [ ] The RON format, with "Integer is out of bounds". — A `u8` goes up to 255, so 150 reads fine ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [ ] Nothing: the game reads it, and every seed grows. — `read_plan` gives back an error when `plan.grow_percent > 100` ([reading it through the registry](#reading-it-through-the-registry)).
+{% end %}
+
+{% check() %}
+A test makes `Bundle::new(vec![layer, game().bundle().layers()[0]])`, where `layer` holds
+only a `garden.ron`. Where do `garden.ron` and `en.ron` come from?
+
+- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
+- [ ] Both from the game's layer, since the game's files come first. — The order of the list decides, and `layer` is first ([layers](#layers)).
+- [ ] `garden.ron` from the mod's layer, and no `en.ron` at all. — A layer laid over the game's files only replaces the ones it has, and the test checks `bundle.has("en.ron")` ([layers](#layers)).
+{% end %}
