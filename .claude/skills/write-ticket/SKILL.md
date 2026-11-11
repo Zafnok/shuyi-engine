@@ -23,7 +23,13 @@ them without asking questions.
    (`gh pr list --state open`) before taking the number. A ticket lint
    on the merge ref fails two tickets with one id.
 3. Copy `tickets/TEMPLATE.md` to `tickets/open/NNNN-short-kebab-title.md`.
-   Keep a bare `@word` out of the title.
+   Keep a bare `@word` out of the title. **The file name is a few words,
+   not the title:** the path from the repository's root stays at 150
+   characters or fewer, so the name at about 60. A game's Cargo checks
+   this repository out on Windows under about 80 characters of its own,
+   and libgit2 refuses a path over 260: one long name failed every
+   Windows build of the game (ticket 2071). `cargo xtask ticket-lint`
+   and `cargo xtask check-paths` fail a longer one.
 4. **Fill in every section:**
    - **Model/effort:** copy one complete Claude/OpenAI pair and choose effort
      from `tickets/README.md`; never use a category or swap the pairs.

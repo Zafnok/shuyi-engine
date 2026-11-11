@@ -221,14 +221,22 @@ pub(crate) fn read_ticket_files(dir: &Path) -> std::io::Result<Vec<(String, Stri
     Ok(files)
 }
 
-fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &str) -> Ticket {
+/// What is wrong with a ticket's file name: its shape, and a path from the
+/// repository's root too long for a game's Windows checkout (ticket 2071).
+fn filename_errors(folder: Folder, filename: &str) -> Vec<String> {
     let mut errors = Vec::new();
-
     if !is_valid_ticket_filename(filename) {
         errors.push(format!(
             "filename `{filename}` must match `^\\d{{4}}-[a-z0-9-]+\\.md$`"
         ));
     }
+    let repo_path = format!("tickets/{}/{filename}", folder.dirname());
+    errors.extend(crate::paths::path_error(&repo_path));
+    errors
+}
+
+fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &str) -> Ticket {
+    let mut errors = filename_errors(folder, filename);
 
     let mut fields = TicketFields::default();
     // A checkout with CRLF line endings reads the same as one with LF.
@@ -1094,6 +1102,25 @@ mod tests {
         assert!(!is_valid_ticket_filename("0106-.md")); // empty slug
         assert!(!is_valid_ticket_filename("0106-branch-protection.txt")); // wrong ext
         assert!(!is_valid_ticket_filename("readme.md"));
+    }
+
+    #[test]
+    fn a_file_name_too_long_for_a_windows_checkout_is_flagged() {
+        // `tickets/open/` is 13 characters, so a name of 138 is 151 in all.
+        let long = format!("2106-{}.md", "x".repeat(130));
+        let ticket = parse_ticket("p".to_string(), Folder::Open, &long, VALID_FRONTMATTER);
+        assert!(
+            ticket.errors.iter().any(|e| e.contains("over 150")),
+            "{:?}",
+            ticket.errors
+        );
+        let short = format!("2106-{}.md", "x".repeat(129));
+        let ticket = parse_ticket("p".to_string(), Folder::Open, &short, VALID_FRONTMATTER);
+        assert!(
+            !ticket.errors.iter().any(|e| e.contains("over 150")),
+            "{:?}",
+            ticket.errors
+        );
     }
 
     // -- frontmatter extraction --

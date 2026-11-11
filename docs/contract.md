@@ -131,7 +131,7 @@ warnings and errors.
 `kind` (`grid map`), its `text` (a grid map's tiles, units and cursor,
 for people and snapshots) and its `data`, the value the game names as
 serde writes it, by default its stage's whole state
-([ADR-0084](adr/0084-one-description-of-a-games-types-serde-for-values-schemars-for-shapes-in-the-tools-names-given-at-registration-and-views-as-the-games-own-types.md)
+([ADR-0084](adr/0084-one-description-of-a-games-types.md)
 §8). Hello, Grid's, after `--script "Enter"`:
 
 ```json
