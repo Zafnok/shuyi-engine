@@ -31,7 +31,7 @@ a8fe621a136f7156 crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
-41ed1249a956f9a5 scripts/setup-linux.sh
+4563f6c879dcbc50 scripts/setup-linux.sh
 cec8c4b0490e8d90 shuyi.ron
 
 [grid] base, stage-top-down-grid
@@ -72,5 +72,5 @@ df741fbc5c3d017e crates/rules/src/lib.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
-41ed1249a956f9a5 scripts/setup-linux.sh
+4563f6c879dcbc50 scripts/setup-linux.sh
 96fe8467adc062cf shuyi.ron
