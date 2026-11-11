@@ -158,6 +158,10 @@ Deviations:
   `web-render`, `bench`, `coverage`, `zizmor`, `api`, the sound jobs and
   `playtest`. `modules` runs `run-gates`' three commands, not CI's build
   of each feature alone.
+- A test holds the template's `setup-linux.sh` equal to the engine's,
+  so the template's copy has the hooks clause too. In a new game it does
+  nothing until the game adds a `scripts/git-hooks` folder of its own;
+  then it sets it up (game#0145 may use that).
 - `tools/sound-parity/footprint.ron` covers the three sound gates and
   the `-p shuyi-sound` of the no-std step, so giving up takes them out
   with the jobs.
