@@ -37,8 +37,8 @@ None.
   `git worktree add` or `git archive` path handed to a tool as an MSYS
   path, a path over `MAX_PATH`, or a `\\?\` prefix.
 - If `cargo-semver-checks` itself crashes, record the version and the
-  backtrace, and either work around it in xtask or file the upstream
-  issue and say so.
+  backtrace in the notes, and work around it in xtask. No issue
+  upstream (`AGENTS.md`, rule 12).
 - `run-gates`' *The public API* section says it works from a worktree.
 
 **Out (do not do):**
@@ -58,8 +58,8 @@ None.
 
 - [ ] `cargo xtask api --base origin/main` completes from a worktree
       under `.claude/worktrees/` on Windows (output pasted in the notes).
-- [ ] The `cargo-semver-checks` crash is fixed, worked around, or filed
-      upstream with a link.
+- [ ] The `cargo-semver-checks` crash, if there is one, is worked
+      around in xtask, its version and backtrace in the notes.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 
