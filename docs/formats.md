@@ -288,8 +288,7 @@ assets loaded, with the functions that were there before the registry:
   against who speaks and the game's clip variants
   (`voice::cast_from_source`, with the voice tool's own settings type), tips against the
   game's placeholders and faces (`tip::from_source`), a pattern map
-  against its palette (`onebit::check`, [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)), a one-bit palette
-  against the base one (`PaletteDef::from_ink_source`), a theme against
+  against its palette (`onebit::check`, [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)), a theme against
   the default (`palette::theme_problems`), and the credits merged with the
   audio manifest (`credits::merge`);
 - every language at once, with its directory's other rules:

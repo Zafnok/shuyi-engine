@@ -31,7 +31,7 @@ use shuyi_platform::harness::Harness;
 use shuyi_platform::headless::HeadlessPlatform;
 use shuyi_platform::{Frame, Show};
 use shuyi_ui::frame::ConsoleSpec;
-use shuyi_ui::frame::onebit::{self, FRAME_BYTES, Font};
+use shuyi_ui::frame::onebit::{self, FRAME_BYTES, Font, PatternMap};
 use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy, ToyCtx};
 use shuyi_ui::{Game, GameData};
@@ -181,7 +181,15 @@ impl GameTools for ToyTools {
         let bits = one_bit_boxes(&atlas);
         let font = Font::new(&atlas, &bits)?;
         let mut frame = Box::new([0; FRAME_BYTES]);
-        onebit::render(h.game().buffer(), &font, &(), &mut frame);
+        // The toy has no pattern map: every colour is of no role, dithered
+        // by its luminance.
+        onebit::render(
+            h.game().buffer(),
+            &font,
+            &(),
+            &PatternMap::default(),
+            &mut frame,
+        );
         Ok(Shot {
             image: one_bit_picture(&frame, scale.unwrap_or(1)),
             shows: format!("{} on {target}", h.top_screen()),
@@ -222,13 +230,14 @@ impl GameTools for ToyTools {
         let bits: &'static [u8] = Box::leak(bits.into_boxed_slice());
         let font = Font::new(atlas, bits)?;
         let mut frame = Box::new([0; FRAME_BYTES]);
+        let map = PatternMap::default();
         let mut h = Harness::on(game_on(ctx, options), HeadlessPlatform::new());
         h.set_present_hook(Some(Box::new(move |presented: &Frame<'_>| {
             if let Some(fixture) = &mut fixture {
                 fixture();
             }
             if let Show::Game { buffer, .. } = presented.show {
-                onebit::render(buffer, &font, &(), &mut frame);
+                onebit::render(buffer, &font, &(), &map, &mut frame);
             }
         })));
         Ok(Box::new(Headless::new(h)))

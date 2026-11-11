@@ -110,7 +110,7 @@ pub struct Look<'a> {
 }
 
 /// A game's look on a one-bit display (ADR-0062): what
-/// [`render_with`](shuyi_ui::frame::onebit::render_with) needs beside the
+/// [`render`](shuyi_ui::frame::onebit::render) needs beside the
 /// frame. The game's load makes it from its pack, once.
 #[derive(Clone, Copy)]
 #[non_exhaustive]
