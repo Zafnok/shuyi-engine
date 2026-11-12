@@ -20,7 +20,7 @@ one root cause. Its limits were first set from three runs, and nothing
 checked the recordings' integrity:
 
 - 2042 and 2044–2048, and 3088 (closed);
-- 2049, 2050 and 3089 (still open).
+- 2049, 2050 and 3089 (done since).
 
 Each calibration ticket built its own repeat-the-job workflow on a
 scratch branch, and six `t*-calibration` branches are left on the
@@ -45,6 +45,11 @@ other failures are 3089's (`windows-in-house` gaps, jobs 6, 10 and 17) and 2068'
 (three timing cells: `browser-chromium perf:cpu_ms` and `perf:file_io_ms`,
 `windows-in-house old-new:cpu_ms`). They are the entries to list, under those two
 tickets.
+
+**From 3089 (done):** the `windows-in-house` gaps were the output's own, and are
+fixed, so 3089 needs no entry. It left three scratch branches for step 5:
+`t3089-calibration`, `t3089-calibration-2` and `t3089-baseline` (the last doesn't
+match `t*-calibration*`).
 
 ## Nick input
 
@@ -93,8 +98,8 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `tools/flaky.ron` lists the sound-parity cells of 3089 and 2068 that are
-      still open (2049 and 2050 are done).
+- [ ] `tools/flaky.ron` lists the sound-parity cells of 2068 that are still open
+      (2049, 2050 and 3089 are done).
 - [ ] An entry whose ticket is in `done/` fails `ticket-lint`.
 - [ ] `calibrate.yml`, dispatched with a count of 5 on one job, produces
       one summary of 5 runs (link in the notes).
