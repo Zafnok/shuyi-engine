@@ -17,6 +17,7 @@
         "crates/sound-out",
         "crates/xtask/src/sound_parity",
         "crates/xtask/src/sound_parity.rs",
+        ".github/workflows/sound-parity.yml",
         "tools/sound-parity",
     ],
     // A `find` must be there exactly once, and a `Cut` removes from `from` up to,
@@ -193,6 +194,39 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
             from: "| `shuyi-sound` | `crates/sound` |",
             to: "| `shuyi-cli` | `crates/cli` |",
         ),
+        // Ticket 2064: the flaky gates' ledger and the calibration workflow keep
+        // working, with nothing to calibrate or judge from a matrix.
+        Cut(
+            file: "tools/flaky.ron",
+            from: "        // The sound gate (sound-parity.yml)",
+            to: "    ],
+    entries: [",
+        ),
+        Cut(
+            file: "tools/flaky.ron",
+            from: "        // The sound gate's timing cells (2068).",
+            to: "    ],
+)",
+        ),
+        Replace(
+            file: ".github/workflows/calibrate.yml",
+            find: "          jobs=\"sound-parity\"
+",
+            with: "          jobs=\"\"
+",
+        ),
+        Cut(
+            file: ".github/workflows/calibrate.yml",
+            from: "  # The sound gate's runs (sound-parity.yml).",
+            to: "  summary:",
+        ),
+        Replace(
+            file: ".github/workflows/calibrate.yml",
+            find: "    needs: [runs, sound-parity]
+",
+            with: "    needs: [runs]
+",
+        ),
         Cut(
             file: ".github/workflows/ci.yml",
             from: "  # The first gate on leaving quad-snd",
@@ -200,7 +234,7 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
         ),
         Replace(
             file: ".github/workflows/ci.yml",
-            find: "web-render, sound-parity-windows, sound-parity, sound-give-up, templates,",
+            find: "web-render, sound-parity, sound-give-up, templates,",
             with: "web-render, templates,",
         ),
         Cut(
@@ -694,10 +728,9 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/xtask/src/gates.rs",
-            find: r##"    gate("sound parity", "sound-parity", Filter::Output("sound"))
-        .ci_only("records the backend's output from PulseAudio and Chromium"),
-    gate("sound parity (Windows)", "sound-parity-windows", Filter::Output("sound"))
-        .ci_only("records the backend's output on a Windows runner"),
+            find: r##"    gate("sound parity", "sound-parity", Filter::Output("sound")).ci_only(
+        "records the backend's output from PulseAudio, Chromium and a Windows runner",
+    ),
     gate("sound give-up", "sound-give-up", Filter::Output("sound"))
         .ci_only("takes the sound replacement out of a checkout and builds what is left"),
 "##,

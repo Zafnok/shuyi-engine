@@ -34,8 +34,14 @@ for `browser-chromium`, 3031 and 2044 for `old_new`. Its rule is to find the lea
 and fix its cause, never to widen a limit to pass, and to name the runs beside a
 limit that moves.
 
-The flaky-gates ledger (2064) lists a sound cell under an open ticket. These
-three cells are this ticket's.
+These three cells are this ticket's.
+
+**From 2064 (done):** `tools/flaky.ron` lists this ticket's six cells (these
+three and 3089's three below), so CI re-runs a run once by itself when they are
+all it failed on, and warns which. The PR that fixes a cell removes its entry:
+`ticket-lint` fails an entry whose ticket is done. The twenty runs are one
+dispatch of `calibrate.yml` (`-f job=sound-parity -f count=20`), whose
+`summary` job tabulates each cell's failures.
 
 **From 3089 (done):** its three twenty-job runs showed more of these timing cells,
 each of two runs of one build:
@@ -66,7 +72,8 @@ None.
 - If it is noise, the rule `budget.ron` already applies: more runs, judged as
   2042 and 2046 did, and each limit that moves names its runs and raises
   `version`.
-- Twenty `sound-parity` runs on one revision, with the result in the notes.
+- Twenty `sound-parity` runs on one revision (`calibrate.yml`), with the result
+  in the notes.
 
 **Out (do not do):**
 - A limit raised without runs named beside it.

@@ -6,3 +6,10 @@ rules:
       # 2021) is at `@{{engine_ref}}`, a placeholder: `shuyi new` puts the
       # game's engine commit there (or `main` when the game follows main).
       - playtest.yml:35
+  dangerous-triggers:
+    ignore:
+      # The flaky gates' re-run (ticket 2064) must run after a CI run ends, as
+      # a run can't re-run itself. It checks out main's code, never the run's,
+      # runs nothing of it, and reads its logs and matrix.json as data; its
+      # token may only re-run that run (`actions: write`, `contents: read`).
+      - flaky-rerun.yml:11

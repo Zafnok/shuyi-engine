@@ -246,6 +246,15 @@ cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
 ```
 
+**Setting or moving a limit** (#258, #312): find the lean, fix its cause,
+never widen a limit; name the runs beside each limit. A cell that fails
+now and then is measured, not argued: run the pair N times on one commit
+with the calibration workflow (*When CI fails but local passes*,
+`-f job=sound-parity`), find where the loss fell in the failing runs'
+artifacts (`sound-parity-run-<n>`), and fix that. A limit that still moves
+names the calibration run beside it in `tools/sound-parity/budget.ron` and
+raises its `version`.
+
 ## Golden tables (CI's `determinism` job)
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build
@@ -326,17 +335,21 @@ Two more steps of the job run only in CI: that the rules crate's fence
 holds, and that `shuyi lint` finds what breaks the game's code (both on the
 `grid` game, with code written to break them).
 
-## The tutorial's steps (CI's `tutorial` job, CI only)
+## The tutorial's steps (CI's `tutorial` job; the locks run locally)
 
 Each step in `site/tutorial/` is a whole game with its own `Cargo.lock`
 and a path dependency on the engine's crates. CI builds and tests each
 with `--locked`, then fails if the job changed a file of the step
 (ticket 2062). So **a change to the engine's dependencies** (a crate
 added, removed or moved, an engine crate's version) refreshes the ten
-locks in the same PR, without moving anything else in them:
+locks in the same PR, without moving anything else in them. The local
+`tutorial locks` gate (ticket 2073) finds a stale lock in seconds: it runs
+`cargo metadata --locked` in each step when the diff touches a `Cargo.toml`
+or `Cargo.lock` under `crates/`, the root's, or `site/tutorial/`, and fails
+naming the step. Building and testing the steps stays CI's.
 
 ```bash
-for d in site/tutorial/*/; do (cd "$d" && cargo metadata --format-version 1 > /dev/null); done
+for step in site/tutorial/*/; do (cd "$step" && cargo metadata --format-version 1 > /dev/null); done
 git status --short site/tutorial
 ```
 
@@ -520,3 +533,33 @@ interactive and won't work here.
 build with MSVC and Nick's machine with GNU, and a red `main` may be
 `main`'s own break: check the latest `main` run before blaming your
 branch.
+
+**A flake is written down, never just re-run** (ticket 2064):
+
+- `tools/flaky.ron` lists the cells known to fail now and then, each with
+  its open ticket, the day it was seen, its measured rate and the runs
+  that measured it. When every failed job of a CI run failed on listed
+  cells, CI re-runs it **once** by itself (`flaky-rerun.yml`), and the
+  re-run's `ci-result` names the entries in a warning. A cell not listed
+  gets no re-run.
+- A re-run you start by hand goes in the PR body with its run link and
+  what failed. The re-run's `ci-result` warns with what the attempt
+  before it failed on.
+- A second sighting of the same flake gets an entry in `tools/flaky.ron`
+  and a ticket (the `write-ticket` skill), with its rate measured.
+  `ticket-lint` fails an entry whose ticket is done: the PR that fixes a
+  flake removes its entry.
+- To measure a rate, or calibrate a limit, run the job N times on one
+  commit with `calibrate.yml`, never a scratch branch:
+
+  ```bash
+  gh workflow run calibrate.yml --ref <branch> -f job=<job> -f count=20
+  ```
+
+  It runs on the dispatched branch's tip (push the commit to measure
+  there first); it takes no other ref, so that no run from `main` builds
+  unreviewed code. Each run uploads its artifacts as `<job>-run-<n>`, and
+  the `summary` job
+  writes one table: each run's jobs and failed cells, and each cell's rate.
+  Put the run's link in the notes. A job is offered once its jobs live in a
+  reusable workflow that `ci.yml` calls.

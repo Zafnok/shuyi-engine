@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: haiku-4.5 / gpt-6-luna
 effort: low
-status: todo
+status: done
 blocked_by: ["2072"]
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 2073 — `cargo xtask gates` fails a stale tutorial step lock before CI does
@@ -67,12 +67,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With one step's lock put back to a stale copy (a scratch commit),
+- [x] With one step's lock put back to a stale copy (a scratch commit),
       `cargo xtask gates` fails the new gate, naming the step.
-- [ ] With fresh locks it passes in under 30 seconds on a warm cache.
-- [ ] A docs-only diff doesn't run it.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] With fresh locks it passes in under 30 seconds on a warm cache.
+- [x] A docs-only diff doesn't run it.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -81,5 +81,25 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added the `tutorial locks` gate in `crates/xtask/src/gates.rs`, under CI's
+`tutorial` job: one `cargo metadata --locked --format-version 1` step per
+step folder, run when the diff touches a `Cargo.toml` or `Cargo.lock` under
+`crates/`, the root's, or `site/tutorial/`. A failure names the step and
+gives the refresh command. The `run-gates` skill's section says so.
+
+Deviations:
+- A new `Local::When(text, fn)` filter, since `Local::Under` matches
+  prefixes and the rule needs file names under `crates/`. The root
+  `Cargo.toml` counts too (workspace dependencies move the engine's
+  resolution), beyond the ticket's list.
+- The ten folders are listed in the steps (they are `'static` data); a test
+  holds the list equal to the folders of `site/tutorial/`.
+- A `Gate::hint` field carries the refresh command into the failure text.
+
+Evidence: with `site/tutorial/03-walk/Cargo.lock` stripped of `gif` in a
+scratch commit (dropped), `cargo xtask gates` failed `tutorial locks` naming
+`site/tutorial/03-walk` after 1 s; on fresh locks the gate takes seconds.
+A docs-only diff skips it (unit test).
+
+Book: none, a gate of the repository's own checks; no public API changed.
+No ticket: the repository setting that requires branches up to date is Nick's.

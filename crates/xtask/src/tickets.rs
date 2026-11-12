@@ -229,6 +229,19 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
     }
 
     report.errors.extend(check_mirrors(&tickets));
+    // The flaky gates' ledger names open tickets only (ticket 2064).
+    let ids_in = |folder: Folder| -> HashSet<&str> {
+        tickets
+            .iter()
+            .filter(|t| t.folder == folder)
+            .filter_map(|t| t.fields.id.as_deref())
+            .collect()
+    };
+    report.errors.extend(crate::flaky::lint(
+        repo_root,
+        &ids_in(Folder::Open),
+        &ids_in(Folder::Done),
+    ));
     match read_docs(repo_root) {
         Ok(docs) => report.warnings.extend(check_clauses(&tickets, &docs)),
         Err(e) => {
