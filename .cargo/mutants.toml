@@ -57,6 +57,12 @@ exclude_re = [
     'replace Output::stats -> \(u32, u32\) with \(0, 0\)',
     # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
+    # Hello, Grid's pack beside the program, read only in a build with its
+    # `packed` feature, which a run with the default features doesn't turn
+    # on (there `pack_problem` is `None`, its own mutant). CI's `render` job
+    # plays its capture plan on the packed build, and `web-render` boots the
+    # packed release page (ticket 3300).
+    'hello-grid/src/lib.rs.*replace (packed|pack_problem) ->',
     # `NoDirective` has no values, so its `print` can never run.
     "<impl Directive for NoDirective>::print",
     # The default `scene_problems` is `Vec::new()`: its only viable mutant,
