@@ -40,7 +40,7 @@
 //!
 //! A release build of a desktop or web target whose package has a `packed`
 //! feature ([`PACKED`]) ships its files baked into one pack beside the program
-//! (ADR-0109): the export bakes it with the game's tools for the target's
+//! (ADR-0110): the export bakes it with the game's tools for the target's
 //! profile (of its edition's content root, if it has one), proves it equal to
 //! its sources (`bake --check`), searches it for the build machine's paths,
 //! and builds the program with `packed`, which reads it in place of the files
@@ -81,7 +81,7 @@ use crate::project::{
 pub const CONTENT: &str = "SHUYI_CONTENT";
 
 /// The feature of a game's package whose build reads its files from the pack
-/// beside the program in place of embedding them (ADR-0109): a release export
+/// beside the program in place of embedding them (ADR-0110): a release export
 /// of a desktop or web target turns it on, and bakes the pack.
 pub const PACKED: &str = "packed";
 

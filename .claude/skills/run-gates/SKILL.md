@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing, with `cargo xtask gates` (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map, the pinned Rust and the website). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -12,6 +12,41 @@ pwsh -File scripts/sync-agent-skills.ps1 -Check
 ```
 
 These mirror CI. Run them fast to slow, and stop at the first failure.
+
+## Start with `cargo xtask gates`
+
+```bash
+cargo xtask gates            # the gates the diff from origin/main needs, fast to slow
+cargo xtask gates --list     # what would run, and why the others don't
+cargo xtask gates --fast     # the seconds-long ones: what the pre-push hook runs
+cargo xtask gates --base <rev>
+```
+
+It decides from the diff (committed, and anything uncommitted) which
+gates apply, with CI's own rules: it reads the classifier in
+`.github/workflows/changes.yml`, and each gate follows its `ci.yml` job's
+filter. It runs them with the commands of the sections below, stops at
+the first failure, and prints on stdout a summary block: `HEAD`, each
+gate's result and each gate left to CI with why. Paste the block into
+the PR's body (the `work-ticket` skill, §6). The table of gates is in
+`crates/xtask/src/gates.rs`; a test fails when `ci.yml` gains a job it
+doesn't name. The sections below stay the reference for what each gate
+checks, how to run one alone, and the gates it leaves out (the
+tutorial's steps, the wasm32 golden run, the API check).
+
+The pre-push hook, `scripts/git-hooks/pre-push`, runs `cargo xtask gates
+--fast` (fmt, typos, the ticket lint, the engine lint when Rust changed)
+and refuses the push when one fails. Set it up once per clone:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
+branch, as CI does: until the ticket is in `tickets/done/`, a push is
+refused. Archive the ticket first (the `work-ticket` skill, §5), or push
+a work-in-progress with `git push --no-verify` and run the gates before
+the PR.
 
 What holds for every game on the engine is the shipped skill
 [`shuyi-gates`](../../../skills/shuyi-gates/SKILL.md): the gates a game
@@ -364,6 +399,23 @@ non-parked `status: blocked` ticket whose blockers are all done. In the
 ticket the PR moves to `done/`, it warns on a promise of later work that
 names no ticket, and fails a `game#NNNN` with no `Game:` line (the
 `work-ticket` skill, §5).
+
+## The website (CI's `site` job)
+
+CI runs it on every PR; `cargo xtask gates` runs it when the diff
+touches `site/`, the problem codes (`crates/cli/errors/`), Hello, Grid
+(the playground's files) or `tickets/` (the feature cards). It needs
+[Zola](https://www.getzola.org/) on `PATH` and, on Windows, Git's
+`bash`:
+
+```bash
+bash site/errors.sh          # the problem codes' pages, which the book links
+cargo xtask site-data --site site
+bash site/copy-playground.sh
+(cd site && zola check --skip-external-links)
+cargo xtask check-book
+bash site/check-build.sh    # builds twice, with two base URLs, and checks both
+```
 
 ## The engine's own input and text rules (CI's `test` job)
 

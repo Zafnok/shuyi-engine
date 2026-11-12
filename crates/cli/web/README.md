@@ -240,7 +240,7 @@ Dependabot's `backend` group too.
   takes the bytes (`shuyi_pack_file_bytes`), or, when the page has none,
   what the fetch said (`shuyi_pack_file_problem`: an HTTP status, or that
   the page named no pack), as its error. A packed game shows it in place of
-  the game ([ADR-0109](../../../docs/adr/0109-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md)).
+  the game ([ADR-0110](../../../docs/adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md)).
 - A page that fills in `index.html` by hand (CI's render card and sound
   probe) writes nothing for `%PACK%`.
 

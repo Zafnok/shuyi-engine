@@ -161,12 +161,15 @@ fn the_budget_in_tools_reads() {
 fn options_read_their_values() {
     let args = |s: &str| -> Vec<String> { s.split_whitespace().map(str::to_owned).collect() };
     assert_eq!(
-        Options::parse(&args("--json --budget b.ron --summary s.md --dir d")),
+        Options::parse(&args(
+            "--json --budget b.ron --summary s.md --dir d --count-only"
+        )),
         Some(Options {
             json: true,
             budget: Some(PathBuf::from("b.ron")),
             summary: Some(PathBuf::from("s.md")),
             dir: Some(PathBuf::from("d")),
+            count_only: true,
         })
     );
     assert_eq!(Options::parse(&[]), Some(Options::default()));
@@ -232,6 +235,31 @@ fn a_run_times_builds_and_checks_after_each_change() {
     assert!(calls[1].contains("--template blank"));
     assert_eq!(calls[3], "build --color never");
     assert_eq!(calls[10], "check --color never");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_count_makes_the_blank_game_and_times_nothing() {
+    let root = std::env::temp_dir().join(format!("xtask-compile-count-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    fs::write(
+        root.join("Cargo.lock"),
+        "# the engine's lock
+",
+    )
+    .unwrap();
+    let fake = Fake::default();
+    assert_eq!(count(&root, &root.join("games"), &fake, &fake), Ok(2));
+    let calls = fake.calls.borrow();
+    assert_eq!(calls.len(), 2, "{calls:?}");
+    assert!(calls[0].contains("--template blank"));
+    assert!(calls[1].starts_with("metadata"));
+    let budget = budget(3.0, 2);
+    assert_eq!(check_count(2, &budget, "b.ron"), Verdict::default());
+    assert_eq!(check_count(3, &budget, "b.ron").errors.len(), 1);
+    assert_eq!(check_count(1, &budget, "b.ron").warnings.len(), 1);
+    drop(calls);
     let _ = fs::remove_dir_all(&root);
 }
 

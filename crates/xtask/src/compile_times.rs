@@ -57,6 +57,8 @@ pub struct Options {
     pub summary: Option<PathBuf>,
     /// `--dir <dir>`: make the games here, not in `target/compile-times`.
     pub dir: Option<PathBuf>,
+    /// `--count-only`: count the crates of a new game, and time nothing.
+    pub count_only: bool,
 }
 
 impl Options {
@@ -70,6 +72,7 @@ impl Options {
                 "--budget" => options.budget = Some(PathBuf::from(rest.next()?)),
                 "--summary" => options.summary = Some(PathBuf::from(rest.next()?)),
                 "--dir" => options.dir = Some(PathBuf::from(rest.next()?)),
+                "--count-only" => options.count_only = true,
                 _ => return None,
             }
         }
@@ -208,19 +211,45 @@ pub fn check(times: &Times, budget: &Budget, file: &str) -> Verdict {
             .errors
             .push(format!("{file} has no rebuild budget for {}", times.os)),
     }
-    match times.dependencies.cmp(&budget.dependencies) {
+    let count = check_count(times.dependencies, budget, file);
+    verdict.errors.extend(count.errors);
+    verdict.warnings.extend(count.warnings);
+    verdict
+}
+
+/// Holds a new game's crate count, `dependencies`, to `budget`.
+pub fn check_count(dependencies: usize, budget: &Budget, file: &str) -> Verdict {
+    let mut verdict = Verdict::default();
+    match dependencies.cmp(&budget.dependencies) {
         std::cmp::Ordering::Greater => verdict.errors.push(format!(
-            "a new game depends on {} crates, more than the {} of {file}: a new dependency \
-             is a choice, so raise the number there in the same change, or drop the crate",
-            times.dependencies, budget.dependencies
+            "a new game depends on {dependencies} crates, more than the {} of {file}: a new \
+             dependency is a choice, so raise the number there in the same change, or drop the \
+             crate",
+            budget.dependencies
         )),
         std::cmp::Ordering::Less => verdict.warnings.push(format!(
-            "a new game depends on {} crates, fewer than the {} of {file}: lower it",
-            times.dependencies, budget.dependencies
+            "a new game depends on {dependencies} crates, fewer than the {} of {file}: lower it",
+            budget.dependencies
         )),
         std::cmp::Ordering::Equal => {}
     }
     verdict
+}
+
+/// The crates a new `blank` game, made in `games` with the engine at
+/// `root`, depends on: [`run`]'s count, without the timings.
+pub fn count(
+    root: &Path,
+    games: &Path,
+    maker: &dyn Runner,
+    game: &dyn Runner,
+) -> Result<usize, String> {
+    let blank = games.join("blank");
+    make_game(root, &blank, "blank", "blank", maker)?;
+    fs::copy(root.join("Cargo.lock"), blank.join("Cargo.lock"))
+        .map_err(|e| format!("{}: {e}", blank.display()))?;
+    let metadata = cargo(game, &blank, &["metadata", "--format-version", "1"])?;
+    dependencies(&metadata.stdout)
 }
 
 /// The seconds of cargo's `Finished … in 2.34s` (or `in 1m 05s`) line in

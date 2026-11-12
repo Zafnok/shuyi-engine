@@ -135,7 +135,7 @@ pub struct Options {
     /// variable.
     pub content: Option<PathBuf>,
     /// The pack of the game's files a packed build reads (a release export's,
-    /// ADR-0109), copied beside the page as [`pack_file`] names it and fetched
+    /// ADR-0110), copied beside the page as [`pack_file`] names it and fetched
     /// by the page before the game starts; none for a build that embeds its
     /// files.
     pub pack: Option<PathBuf>,

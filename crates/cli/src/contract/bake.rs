@@ -23,7 +23,7 @@
 //! `--check` bakes nothing: it reads the pack at `--out` and proves it equal
 //! to the sources ([`Bake::check`]), every difference an error naming its
 //! file; with `--content`, against the content root's files. A release export
-//! that ships a pack runs it on the pack it ships (ADR-0109).
+//! that ships a pack runs it on the pack it ships (ADR-0110).
 //!
 //! `--audio <folder>` also writes the target's sounds and music there, baked
 //! as the target plays them ([`GameTools::audio`]; the Playdate's form,

@@ -708,7 +708,7 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
 
 A release export of the desktop or the web ships the game's files as a pack
 beside the program, `<package>.pack`, when the game's package has a `packed`
-feature ([ADR-0109](adr/0109-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md));
+feature ([ADR-0110](adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md));
 the Playdate's ships one in its `.pdx`. A development build (`cargo run`,
 `shuyi run`) embeds the files and needs no pack.
 

@@ -1,6 +1,6 @@
 # ADR-0101: An edition's pack is baked by the game's tool program built with its content root
 
-- **Status:** Accepted; extended by ADR-0109 (§4: the packed desktop and web exports bake through it)
+- **Status:** Accepted; extended by ADR-0110 (§4: the packed desktop and web exports bake through it)
 - **Date:** 2026-11-10
 - **Related tickets:** 3304, 3082, 3300
 

@@ -1,4 +1,4 @@
-//! The pack beside the program (ADR-0023, ADR-0109): the game's files baked
+//! The pack beside the program (ADR-0023, ADR-0110): the game's files baked
 //! into one file, `<name>.pack`, which a release export ships beside the
 //! program in place of the files embedded as text. [`pack_beside_program`]
 //! reads it and opens it with the game's stamp; the game lays it in its

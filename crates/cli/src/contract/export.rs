@@ -141,7 +141,7 @@ pub struct ExportOutput {
     /// The pack of the game's files the program reads, from the export's
     /// folder with its size, if the build is packed (a release desktop or web
     /// export of a package with a `packed` feature): beside the program, or in
-    /// a `.app`'s `Contents/Resources` (ADR-0109).
+    /// a `.app`'s `Contents/Resources` (ADR-0110).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pack: Option<FileSize>,
 }

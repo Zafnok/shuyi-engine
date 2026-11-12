@@ -1,4 +1,4 @@
-# ADR-0109: Desktop and web exports ship a baked pack beside the program
+# ADR-0110: Desktop and web exports ship a baked pack beside the program
 
 - **Status:** Accepted
 - **Date:** 2026-11-11

@@ -84,7 +84,7 @@ None.
   never needs a pack to play.
 - Measurements in `docs/formats.md`: package bytes and load time of
   `hello-grid`, embedded against packed, native and web.
-- An ADR extending ADR-0023 (ADR-0109): packs are the shipping form on
+- An ADR extending ADR-0023 (ADR-0110): packs are the shipping form on
   every target; the embedded folder is the development form. ADR-0023's
   status line names it.
 
@@ -182,8 +182,9 @@ None.
 - **Checked by hand on this machine**, on this branch over `b6dc5c22`.
   The merges of `main` after them brought ticket 2066's xtask and docs
   changes (`1eacb69e`), then 2514's `frame-png` frames and 2057's
-  Dependabot list (`d1ded901`), none in what they ran; the contract
-  became 48 after 2514's 47:
+  Dependabot list (`d1ded901`), then 3310's storage folder and 2054's
+  `cargo xtask gates` (`234de697`), none in what they ran; the contract
+  became 48 after 2514's 47, and this ticket's ADR 0110 after 3310's 0109:
   - `cargo shuyi export windows --release` of Hello, Grid: the zip holds
     `hello-grid.pack`, the exposure gate passes, and
     `tools/export-check/check.sh windows` passes, its new check included
@@ -214,7 +215,7 @@ Deviations:
 
 - **The ticket, fixed before the code:** step 4 named `export.rs:370-376`,
   which had moved (`ExportCx::search`); the scope's "ADR-0023 gains a
-  paragraph" became ADR-0109, which extends it, since an accepted ADR's
+  paragraph" became ADR-0110, which extends it, since an accepted ADR's
   decision isn't edited (the `write-adr` skill); ADR-0023's status line
   names it.
 - **The pack's name** is `<package>.pack` (the ticket said `<name>.pack`):
@@ -222,7 +223,7 @@ Deviations:
   exporter knows it, while a program's name can differ by edition.
 - **The web's pack is fetched by the page**, not by the Rust program
   through macroquad's asynchronous `load_file`: one synchronous call on
-  every target, before `BasicGame` is built (ADR-0109's alternatives).
+  every target, before `BasicGame` is built (ADR-0110's alternatives).
 - **A short-path game's keymap is not baked.** `UiAction`, the template's
   action set, has no serde form, and baking `KeymapDef<A>` in `BasicData`
   would bound every game's `A`. It ships as its own bytes in the pack, out
@@ -281,7 +282,7 @@ build ships and that `cargo run` still embeds the files.
 
 Docs: `docs/formats.md`, `docs/contract.md`, `docs/targets/desktop.md`,
 `crates/cli/web/README.md`, the `shuyi-ship` skill and its worked example,
-the template's `AGENTS.md` and `README.md`, ADR-0109 and the status lines
+the template's `AGENTS.md` and `README.md`, ADR-0110 and the status lines
 of ADR-0023, ADR-0058 and ADR-0101.
 
 Behaviour: shuyi-cli: every web build ships `pack-file.js` beside `index.html`, whose last line now starts the game through `shuyi_fetch_pack("<pack, or empty>", …)`; a list of the web build's files (the game's `scripts/check-release-package.sh`) adds `pack-file.js`.

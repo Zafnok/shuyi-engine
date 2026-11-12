@@ -26,7 +26,7 @@ tools are that system's. On another one, `export` says where it builds.
   in `Contents/Resources`, the game's files baked for the `desktop`
   profile and proven equal to them; the program is built with `packed` and
   reads it in place of embedding the files
-  ([ADR-0109](../adr/0109-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md),
+  ([ADR-0110](../adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md),
   [`formats.md`](../formats.md#the-pack-a-release-ships)). `export-report.json`'s
   `pack` names it.
 - **`NOTICES.txt`**: every crate compiled in, as Cargo resolves the
