@@ -2,9 +2,10 @@
 //! (ADR-0036), from its `BasicGame`: `frame-png`, `lang-status`, the
 //! contract's `check`, `run` and `scene` (a session with no scene, or one
 //! played from a session record), the font atlas `check` checks the text
-//! against, and the controls `check --target` checks. A game that adds a scene, a
-//! record, bots, importers or a bake writes its own `GameTools` and calls
-//! these methods for the rest.
+//! against, the controls `check --target` checks, and the bake of its files
+//! that `bake` and a release export write (`BasicGame::bake`). A game that
+//! adds a scene, a record, bots or importers writes its own `GameTools` and
+//! calls these methods for the rest.
 
 use std::fmt::Debug;
 
@@ -21,7 +22,7 @@ use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 
 use crate::contract::session::{Headless, Session};
 use crate::frame_png::{Image, Painter, Script, Shot};
-use crate::game::{GameArg, GameLang, GameOption, GameTools};
+use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools};
 
 /// The tools of a game on the short path.
 #[derive(Debug)]
@@ -157,6 +158,17 @@ impl<A: ActionSet, T: Debug + 'static> GameTools for BasicTools<A, T> {
             Box::new(game) as Box<dyn Controls>
         });
         Some(controls)
+    }
+
+    /// Its files, baked as `BasicGame::bake` says and read back with
+    /// `BasicData::formats`, the same on every target.
+    fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
+        let _ = target;
+        Ok(GameBake::new(
+            self.game.bake(),
+            self.game.bundle(),
+            BasicData::<A, T>::formats(),
+        ))
     }
 }
 

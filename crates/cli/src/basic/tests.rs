@@ -214,3 +214,18 @@ fn a_session_recorded_from_the_real_start_plays_through_the_tools() {
     assert_eq!(session.frame_count(), played.of);
     assert_eq!(session.screens(), ["hello"]);
 }
+
+#[test]
+fn its_bake_is_stamped_with_the_game_and_proven_equal_to_its_files() {
+    let tools = tools(GOOD);
+    let made = tools
+        .bake(Some("desktop"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(made.bake.stamp(), "com.example.demo 0.1.0");
+    assert_eq!(made.bake.kinds(), ["english", "palette", "font atlas"]);
+    assert_eq!(
+        crate::contract::bake::check_baked(&tools),
+        Ok(Vec::new()),
+        "the pack reads as its files"
+    );
+}

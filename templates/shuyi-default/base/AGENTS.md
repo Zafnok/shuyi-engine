@@ -27,7 +27,8 @@ the engine this game builds with, read:
   `Every`): advance it by one each turn in `apply`, or once per step of
   `input.ticks()`. Never time a rule with `input.dt()`, which is for
   what only looks.
-- `crates/game` is everything else: the game's data (`files/`, embedded),
+- `crates/game` is everything else: the game's data (`files/`, embedded;
+  a release export ships them baked into a pack beside the program),
   its screens, its look, its tools. Only the engine's `shuyi-app`
   touches the window, the files, the audio device and the clock.
 - **Graphics are a skin.** A screen builds plain data (a view) and a

@@ -704,6 +704,51 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   check, and those the target's files replaced; `--sheet <file>` draws
   each dithered picture beside its source in one PNG.
 
+### The pack a release ships
+
+A release export of the desktop or the web ships the game's files as a pack
+beside the program, `<package>.pack`, when the game's package has a `packed`
+feature ([ADR-0109](adr/0109-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md));
+the Playdate's ships one in its `.pdx`. A development build (`cargo run`,
+`shuyi run`) embeds the files and needs no pack.
+
+- **The export** bakes the pack for the target's profile with the game's
+  tools, proves it equal to its sources (`bake --check`), and builds the
+  program with `packed`: in a `.app` the pack is in `Contents/Resources`, on
+  the web beside `index.html`.
+- **The game** reads it with `shuyi_app::pack_beside_program(name, stamp)`
+  and lays it in its bundle (`Pack::into_layer`). On the web the page fetches
+  it before the game starts and hands it over, so the call is the same on
+  every target. A pack that is missing, of another version or another stamp,
+  is refused with a message to bake it again.
+- **A game on the short path** (`BasicGame`) bakes its English, palette and
+  font atlas (`BasicData::bake`), with its id and version as the stamp
+  (`AppInfo::pack_stamp`); its keymap, pictures and its stages' files go in
+  as their own bytes. `BasicData::formats` reads either form.
+
+Measured on 2026-11-11 on Nick's machine (Windows 11, x86-64), Hello, Grid's
+release builds, embedded against packed. Load is reading every baked asset
+through the registry (`shuyi bake`'s own timing, the fastest of five runs, in
+a release build of the game's tool program): from the embedded files, or by
+opening the pack and reading from it. The pack read from disk or fetched by
+the page isn't in it.
+
+| Hello, Grid | Embedded | Packed |
+| ----------- | -------- | ------ |
+| Windows program (stripped) | 4,935,168 bytes | 4,912,640 bytes, and the pack, 22,342 bytes |
+| Windows package (zip) | 2,183,336 bytes | 2,192,856 bytes |
+| Web program (stripped, before `wasm-opt`) | 3,436,862 bytes | 3,413,053 bytes, and the pack, 22,338 bytes |
+| Load, native | 0.180 ms | 0.078 ms (2.3× faster) |
+
+- **The program** is smaller by about the pack's size: the 45,342 bytes of
+  sources were in it as text, and the pack holds them in half that.
+- **The zip** is 9,520 bytes bigger: deflate shrinks text more than it
+  shrinks the pack's LZ4 and postcard bytes. A game whose files are mostly
+  pictures and sounds, which neither compresses again, would not see this.
+- **The web's load time** wasn't measured again. The pack's open and read are
+  the same code as in 2204's measurement above, which found the web 4×
+  faster from a pack.
+
 ### A target's own files
 
 A folder `assets@<target>/` beside `assets/` holds files that target

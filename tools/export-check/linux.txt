@@ -2,3 +2,4 @@
 {base}/NOTICES.txt
 {base}/capture/frames.ron
 {base}/hello-grid
+{base}/hello-grid.pack

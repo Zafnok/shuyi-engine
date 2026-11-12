@@ -34,9 +34,10 @@ use crate::export::paths;
 use crate::notices::{self, EngineFile, Section, Work};
 use crate::project::Web;
 
-/// The shell's files: name and contents. `index.html` has `%TITLE%` and
-/// `%WASM%` in it, for the game's title and binary.
-const SHELL: [(&str, &str); 8] = [
+/// The shell's files: name and contents. `index.html` has `%TITLE%`,
+/// `%WASM%` and `%PACK%` in it, for the game's title, its binary and the
+/// pack beside it (empty for a build that embeds its files).
+const SHELL: [(&str, &str); 9] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
@@ -45,6 +46,7 @@ const SHELL: [(&str, &str); 8] = [
     ("sound.js", include_str!("../web/sound.js")),
     ("player-files.js", include_str!("../web/player-files.js")),
     ("page-files.js", include_str!("../web/page-files.js")),
+    ("pack-file.js", include_str!("../web/pack-file.js")),
 ];
 
 /// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
@@ -57,7 +59,7 @@ enum Origin {
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
-const SHELL_NOTICES: [(&str, Origin); 8] = [
+const SHELL_NOTICES: [(&str, Origin); 9] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
@@ -66,6 +68,7 @@ const SHELL_NOTICES: [(&str, Origin); 8] = [
     ("sound.js", Origin::Engine),
     ("player-files.js", Origin::Engine),
     ("page-files.js", Origin::Engine),
+    ("pack-file.js", Origin::Engine),
 ];
 
 /// The row of [`notices::FILES`] of the shell's file `name`.
@@ -131,6 +134,18 @@ pub struct Options {
     /// as [`crate::export::CONTENT`]; without it, the build runs without that
     /// variable.
     pub content: Option<PathBuf>,
+    /// The pack of the game's files a packed build reads (a release export's,
+    /// ADR-0109), copied beside the page as [`pack_file`] names it and fetched
+    /// by the page before the game starts; none for a build that embeds its
+    /// files.
+    pub pack: Option<PathBuf>,
+}
+
+/// The name of the pack beside the page of the web build `rules`:
+/// `<package>.pack`, which the game's `packed` build asks for
+/// (`shuyi_app::pack_file_name`).
+pub fn pack_file(rules: &Web) -> String {
+    format!("{}.pack", rules.package)
 }
 
 /// The usage line, with `command` as the tool's name.
@@ -431,11 +446,21 @@ fn fill(
     let wasm_dst = dist.join(&wasm_name);
     fs::copy(wasm_src, &wasm_dst)
         .map_err(|e| format!("copy {} to {}: {e}", wasm_src.display(), wasm_dst.display()))?;
+    let pack_name = match &options.pack {
+        Some(pack) => {
+            let name = pack_file(rules);
+            fs::copy(pack, dist.join(&name))
+                .map_err(|e| format!("copy the pack {}: {e}", pack.display()))?;
+            name
+        }
+        None => String::new(),
+    };
 
     for (name, text) in SHELL {
         let text = if name == "index.html" {
             text.replace("%TITLE%", &rules.title)
                 .replace("%WASM%", &wasm_name)
+                .replace("%PACK%", &pack_name)
         } else {
             shipped_shell_file(name, text)
         };
@@ -772,6 +797,9 @@ mod tests {
     /// The Rust side of `web/page-files.js`: the files from the page.
     const PAGE: &str = include_str!("../../app/src/page.rs");
 
+    /// The Rust side of `web/pack-file.js`: the pack beside the page.
+    const PACK_FILE: &str = include_str!("../../app/src/pack_file.rs");
+
     struct FakeWasmOpt<F>(F);
 
     impl<F: Fn(&Path, &Path) -> Result<bool, String>> WasmOpt for FakeWasmOpt<F> {
@@ -975,6 +1003,9 @@ mod tests {
         assert!(html.contains("<title>The Game</title>"), "{html}");
         assert!(html.contains(r#"load("the-game.wasm");"#), "{html}");
         assert!(!html.contains("%TITLE%") && !html.contains("%WASM%"));
+        // A build that embeds its files names no pack: the game starts at once.
+        assert!(html.contains(r#"shuyi_fetch_pack("", "#), "{html}");
+        assert!(!dist.join("game-app.pack").exists());
         assert!(
             html.contains(r#"<link rel="license" href="NOTICES.txt">"#),
             "{html}"
@@ -996,6 +1027,7 @@ mod tests {
             ("sound.js", ""),
             ("player-files.js", ""),
             ("page-files.js", ""),
+            ("pack-file.js", ""),
         ] {
             assert_eq!(
                 fs::read_to_string(dist.join(name)).unwrap(),
@@ -1819,6 +1851,73 @@ version = "1.2.3"
             ]
         );
         assert_eq!(provided, imported);
+    }
+
+    #[test]
+    fn pack_file_js_provides_exactly_the_functions_the_app_imports() {
+        let js = shell("pack-file.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_pack_file_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(PACK_FILE, "safe fn shuyi_pack_file_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
+        assert_eq!(
+            imported,
+            ["shuyi_pack_file_bytes", "shuyi_pack_file_problem"]
+        );
+        assert_eq!(provided, imported);
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(PACK_FILE, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_pack_file""#));
+        assert!(PACK_FILE.contains("fn shuyi_pack_file_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn index_html_fetches_the_pack_after_its_plugin_loads_and_then_starts_the_game() {
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let jsutils = at(r#"<script src="sapp_jsutils.js">"#);
+        let plugin = at(r#"<script src="pack-file.js">"#);
+        let fetch = at(r#"shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); });"#);
+        assert!(jsutils < plugin && plugin < fetch);
+        assert_eq!(html.matches("load(").count(), 1, "the game starts once");
+    }
+
+    #[test]
+    fn a_packed_build_ships_its_pack_beside_the_page_and_names_it() {
+        let root = fixture("package-pack");
+        write_wasm(&root, &debug(), b"w");
+        let pack = root.join("baked.pack");
+        fs::write(&pack, b"SHUYIPAK the pack").unwrap();
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
+        let options = Options {
+            pack: Some(pack),
+            ..debug()
+        };
+        package(&opt, &rules(), &root, &root.join("target"), &options, &[]).unwrap();
+        let dist = root.join("dist/web");
+        assert_eq!(pack_file(&rules()), "game-app.pack");
+        assert_eq!(
+            fs::read(dist.join("game-app.pack")).unwrap(),
+            b"SHUYIPAK the pack"
+        );
+        let html = fs::read_to_string(dist.join("index.html")).unwrap();
+        assert!(
+            html.contains(
+                r#"shuyi_fetch_pack("game-app.pack", function () { load("the-game.wasm"); });"#
+            ),
+            "{html}"
+        );
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

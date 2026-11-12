@@ -669,6 +669,9 @@ impl Inspector<'_> {
                     self.found(seen, entry, FindingKind::UndeclaredPackEntry, None);
                 }
             }
+            // A pack hides nothing from the gate: its index's path as well as
+            // what the file unpacks to.
+            self.scan(seen, entry, file.path.as_bytes());
             self.scan(seen, entry, &file.bytes);
         }
     }

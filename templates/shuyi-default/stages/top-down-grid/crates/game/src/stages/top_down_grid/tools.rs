@@ -6,8 +6,8 @@
 //! stage's own: `run` and `scene` with its map scene and state, `replay`
 //! (a [`StageRecord`], stamped with what made it: [`crate::made`]),
 //! `playtest` (the engine's random bot, each try recorded:
-//! [`playtest_plan`]) and `import` (the stage's `.map` besides the
-//! engine's kinds). `examples/tools.rs` is the
+//! [`playtest_plan`]), `import` (the stage's `.map` besides the
+//! engine's kinds) and `bake`, the engine's. `examples/tools.rs` is the
 //! tool program that runs them; the tests use them too.
 
 use rules::{Feature, Player, Stage};
@@ -25,7 +25,7 @@ use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Script, Shot};
-use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools, PlaytestPlan};
+use shuyi_cli::{BasicTools, GameArg, GameBake, GameLang, GameOption, GameTools, PlaytestPlan};
 
 use super::{Own, StageRecord, StageScreen, Terrain};
 use crate::Data;
@@ -259,5 +259,11 @@ impl GameTools for Tools {
 
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
         self.basic().controls()
+    }
+
+    /// The engine's bake of the game's files, its stage's maps among them as
+    /// they are: what a release export ships beside the program.
+    fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
+        self.basic().bake(target)
     }
 }

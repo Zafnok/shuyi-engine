@@ -21,7 +21,7 @@ cargo shuyi web              # its web page, in dist/web/ (serve it over HTTP)
 | `crates/game/src/title.rs` | The title, the first screen: Confirm starts the first stage |
 | `crates/game/src/stages.rs` | The stages, in order, and each one's part of the data (`stages/`) |
 | `crates/game/examples/tools.rs` | The program `cargo shuyi` runs the game's tools in |
-| `crates/game/files/` | Embedded: the keys, the palette, the English text and the font |
+| `crates/game/files/` | Embedded: the keys, the palette, the English text and the font; a release export (`cargo shuyi export <target> --release`) ships them baked into `<package>.pack` beside the program |
 | `files-src/ter-u16n.bdf` | The font the atlas in `crates/game/files/font/` is made from (`cargo shuyi font-atlas`) |
 | `crates/game/tests/` | The game played through the engine's Harness, and through its tools |
 | `shuyi.ron` | The project file of the engine's tools |

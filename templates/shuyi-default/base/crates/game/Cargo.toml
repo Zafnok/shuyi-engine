@@ -30,6 +30,11 @@ tools = ["dep:shuyi-cli"]
 # in its window: `SHUYI_LINK=0 cargo run --features link`, in a debug
 # build. Off by default.
 link = ["shuyi-app/link"]
+# `packed`: the game's files are read from the pack beside the program
+# (`<package>.pack`), which `cargo shuyi export` bakes, in place of being
+# embedded. A release export of the desktop or the web turns it on;
+# `cargo run` and `cargo shuyi run` embed the files.
+packed = []
 
 [dependencies]
 # The engine: what the game names (`shuyi::prelude`), how it starts, the

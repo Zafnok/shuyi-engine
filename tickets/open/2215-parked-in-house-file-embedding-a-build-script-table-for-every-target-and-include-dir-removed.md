@@ -37,12 +37,11 @@ Related: 2204 (the optimized pack) is a different way to ship files and
 doesn't change. 2207 (done) added layers from outside the binary
 (`Files::Owned`); it doesn't touch how embedded layers are built.
 
-**Either order with 3300:** if 3300 is done, the template's game crate has
-a `packed` feature whose path reads a pack beside the program and an
-unpacked path that still uses `include_dir!`; replace only the unpacked
-path with the table and leave the packed one alone. If not, replace
-`include_dir!` as written here, and 3300 adds its packed path beside the
-table.
+**From 3300 (done):** the template's game crate has a `packed` feature
+whose path reads a pack beside the program (`files()` in its `lib.rs`,
+through `shuyi::app::pack_beside_program`) and an unpacked path that still
+uses `include_dir!`; Hello, Grid's `layer()` is the same. Replace only the
+unpacked path with the table and leave the packed one alone.
 
 ## Nick input
 

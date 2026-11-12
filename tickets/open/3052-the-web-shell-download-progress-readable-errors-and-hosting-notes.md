@@ -32,6 +32,13 @@ What Shuyi has today (checked 2026-10-20):
 - **The page.** `crates/cli/web/index.html` is a black full-window
   `<canvas id="glcanvas">`, the audio unlock, the plugins, and a last
   line `load("%WASM%");`. It shows nothing else.
+
+  **From 3300 (done):** the last line is now
+  `shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); });`
+  (`crates/cli/web/pack-file.js`): a release export's page fetches
+  `<package>.pack` first, then loads the game; with no pack named it loads
+  at once. A progress bar counts the pack's download too, and a failed
+  fetch is a readable error the game shows (`PackFileError`).
 - **The loader.** The vendored `mq_js_bundle.js` (macroquad 0.4.16)
   defines `load(url)`: `fetch(url)`, then `WebAssembly.compileStreaming`,
   `WebAssembly.instantiate` and the game's `main()`. Every failure goes

@@ -11,7 +11,9 @@
 //! stage, the font atlas and the tileset. It reads them through the
 //! engine's format registry ([`formats`]), so the same loader reads them
 //! from a pack that `cargo shuyi bake` made of them ([`Hello::from_pack`],
-//! [`bake`]). On the Playdate, `files@playdate/` is laid over them
+//! [`bake`]). Built with `packed`, as a release export builds it, it embeds
+//! none of them and reads the pack the export bakes beside the program
+//! (`hello-grid.pack`, [`layer`]) in their place. On the Playdate, `files@playdate/` is laid over them
 //! ([`bundle`]): its tileset drawn in black and white, which
 //! `cargo shuyi bake --target playdate` takes in place of dithering the
 //! colour one ([`one_bit_bake`]). There the device has no standard library,
@@ -50,7 +52,7 @@ use alloc::collections::BTreeMap;
 #[cfg(feature = "std")]
 use std::sync::OnceLock;
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "packed")))]
 use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::ContentError;
@@ -92,9 +94,33 @@ use prelude::*;
 use rules::Feature;
 pub use settings::{MapLook, Prefs};
 
-/// The game's files, embedded.
-#[cfg(feature = "std")]
+/// The game's files, embedded: in every build but a packed one, which
+/// reads them from the pack beside the program ([`layer`]).
+#[cfg(all(feature = "std", not(feature = "packed")))]
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+
+/// The pack beside the program a packed build reads its files from, opened
+/// once: its layer, or why it couldn't be read ([`pack_problem`]).
+#[cfg(feature = "packed")]
+fn packed() -> &'static Result<Layer, String> {
+    static PACKED: OnceLock<Result<Layer, String>> = OnceLock::new();
+    PACKED.get_or_init(|| {
+        shuyi::app::pack_beside_program(env!("CARGO_PKG_NAME"), PACK_STAMP)
+            .map(|pack| pack.into_layer("files"))
+            .map_err(|e| e.to_string())
+    })
+}
+
+/// Why a packed build has no files: its pack beside the program is missing,
+/// of another version or broken, each saying to bake it again. `None` in a
+/// build that embeds its files, and in a packed one that read its pack.
+#[cfg(feature = "std")]
+pub fn pack_problem() -> Option<String> {
+    #[cfg(feature = "packed")]
+    return packed().as_ref().err().cloned();
+    #[cfg(not(feature = "packed"))]
+    None
+}
 
 /// The files laid over the game's for good ([`lay_over_files`]): the
 /// page's, on the web.
@@ -107,7 +133,7 @@ static OVER: OnceLock<Bundle> = OnceLock::new();
 pub fn file(path: &str) -> Option<&'static [u8]> {
     OVER.get()
         .and_then(|over| over.bytes(path))
-        .or_else(|| FILES.get_file(path).map(include_dir::File::contents))
+        .or_else(|| Bundle::new(vec![layer()]).bytes(path))
 }
 
 /// Lays `over` over the game's files for [`file()`] from now on, as
@@ -130,21 +156,33 @@ pub fn problems_over(over: Layer) -> Option<String> {
 }
 
 /// The game's files as a bundle layer, shown under `files`
-/// (`files/palette.ron`).
+/// (`files/palette.ron`): embedded, or in a packed build the pack beside the
+/// program, baked for the target it runs on (an empty layer if it couldn't
+/// be read: [`pack_problem`] says why).
 #[cfg(feature = "std")]
 pub fn layer() -> Layer {
-    Layer::dir("files", &FILES)
+    #[cfg(not(feature = "packed"))]
+    return Layer::dir("files", &FILES);
+    #[cfg(feature = "packed")]
+    packed()
+        .as_ref()
+        .copied()
+        .unwrap_or(Layer::table("files", &[]))
 }
 
 /// The game's files drawn for the Playdate, embedded.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "packed")))]
 static PLAYDATE_FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files@playdate");
 
 /// The game's layers for its targets, each over `files/` on its target
-/// alone: `files@playdate`, its tileset drawn in black and white.
+/// alone: `files@playdate`, its tileset drawn in black and white. A packed
+/// build has none: its pack was baked for its target, with its layer.
 #[cfg(feature = "std")]
 pub fn target_layers() -> [Layer; 1] {
-    [Layer::dir("files@playdate", &PLAYDATE_FILES)]
+    #[cfg(not(feature = "packed"))]
+    return [Layer::dir("files@playdate", &PLAYDATE_FILES)];
+    #[cfg(feature = "packed")]
+    [Layer::table("files@playdate", &[])]
 }
 
 /// The game's files on `target` (by its profile's id; `None` for every
@@ -173,8 +211,9 @@ impl AssetKind for English {
 }
 
 /// The game's formats: the engine's standard ones, its palette with the
-/// engine's colours and its font atlas with the glyphs it draws, and its
-/// own kinds (its keys, its stage and its English).
+/// engine's colours and its font atlas with the glyphs it draws, its own
+/// kinds (its keys, its stage and its English), and the baked form of each
+/// kind it bakes ([`bake`]), so the same loader reads its pack.
 pub fn formats() -> Formats {
     let mut formats = Formats::standard();
     let colors: Vec<&str> = EngineColor::ALL.iter().map(|c| c.name()).collect();
@@ -188,6 +227,8 @@ pub fn formats() -> Formats {
         rules::terrain_named,
     ));
     let _ = formats.register(Ron::<English>::new());
+    // The game's own kinds have serde both ways: none is refused.
+    let _ = bake().register(&mut formats);
     formats
 }
 
@@ -619,9 +660,13 @@ pub fn start_over(over: Option<Layer>) -> Start<Hello> {
 /// The game on the platform's `setup`, at its title, with its files as
 /// the target the platform names has them. The stages' luck is seeded
 /// from the clock (the platform's music seed), so each launch plays
-/// differently. With `over`, its palette reloads as its file changes.
+/// differently. With `over`, its palette reloads as its file changes. A
+/// packed build whose pack couldn't be read shows why, in place of the game.
 #[cfg(feature = "std")]
 fn load(setup: Setup, over: Option<Layer>) -> Result<Game<Hello>, String> {
+    if let Some(problem) = pack_problem() {
+        return Err(problem);
+    }
     let target = setup.platform.target.clone();
     let bundle = bundle_over(over, &target);
     let mut ctx = setup.ctx(ctx_from(&bundle, &target, 0));

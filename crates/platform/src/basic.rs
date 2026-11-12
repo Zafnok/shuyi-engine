@@ -15,6 +15,7 @@ use core::fmt::{self, Debug};
 use shuyi_assets::ContentError;
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
+use shuyi_assets::pack::Bake;
 use shuyi_core::Made;
 use shuyi_ui::basic::{BasicData, Own};
 use shuyi_ui::dialogue::preview::{DialogueFolder, DialoguePreview, PreviewGame};
@@ -45,6 +46,8 @@ pub const BASIC_CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
 pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     app: AppInfo,
     files: Layer,
+    /// Why its files couldn't be read, if they couldn't.
+    unreadable: Option<&'static str>,
     /// A layer laid over `files`, if it has one.
     over: Option<Layer>,
     own: Own<T>,
@@ -79,6 +82,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         Self {
             app,
             files,
+            unreadable: None,
             over: None,
             own,
             first,
@@ -158,6 +162,16 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         self.console
     }
 
+    /// The same game, whose files couldn't be read, for `why`: its data is
+    /// that one problem, which the platform shows in place of the game. A
+    /// packed build whose pack beside the program is missing says so here
+    /// (`shuyi_app::pack_beside_program`).
+    #[must_use]
+    pub fn files_unreadable(mut self, why: &'static str) -> Self {
+        self.unreadable = Some(why);
+        self
+    }
+
     /// The same game with `layer` laid over its files: a folder on disk
     /// (`shuyi_app::watched_layer`, `cargo shuyi run --watch`), or a mod.
     #[must_use]
@@ -172,8 +186,13 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         Bundle::new(self.over.into_iter().chain([self.files]).collect())
     }
 
-    /// Its data from its files, or every problem of every file.
+    /// Its data from its files, or every problem of every file; or why its
+    /// files couldn't be read at all
+    /// ([`files_unreadable`](Self::files_unreadable)).
     pub fn data(&self) -> Result<BasicData<A, T>, Vec<ContentError>> {
+        if let Some(why) = self.unreadable {
+            return Err(vec![ContentError::new(self.files.name, why)]);
+        }
         BasicData::load(self.bundle(), self.console, self.own)
     }
 
@@ -221,8 +240,22 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     /// What made this build, for its records: its id and version as the
     /// game's word, and the fingerprint of its files.
     pub fn made(&self) -> Made {
-        let build = format!("{} {}", self.app.id, self.app.version);
-        Made::new(build, self.bundle().fingerprint())
+        Made::new(self.pack_stamp(), self.bundle().fingerprint())
+    }
+
+    /// The stamp of a pack of its files (ADR-0023): its id and version,
+    /// since the shapes of its own kinds change only with it. A pack baked
+    /// with another stamp is refused, with "bake it again".
+    pub fn pack_stamp(&self) -> String {
+        self.app.pack_stamp()
+    }
+
+    /// What a pack of its files bakes ([`BasicData::bake`]), stamped
+    /// [`pack_stamp`](Self::pack_stamp): what `cargo shuyi bake` and a
+    /// release export write, and what its data reads back
+    /// ([`BasicData::formats`]).
+    pub fn bake(&self) -> Bake {
+        BasicData::<A, T>::bake(self.pack_stamp())
     }
 
     /// How a backend starts it: a card with its name, then its context on

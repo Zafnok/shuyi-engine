@@ -1,6 +1,6 @@
 # ADR-0058: Export packages carry nothing of the build machine: paths remapped and searched, the Linux floor in the sniper SDK, and a checked package per target
 
-- **Status:** Accepted; extends ADR-0008 (export targets); amended by ADR-0096 (§2: each build resolved by Cargo for the live link)
+- **Status:** Accepted; extends ADR-0008 (export targets); amended by ADR-0096 (§2: each build resolved by Cargo for the live link); extended by ADR-0109 (the search reaches a pack's index and every file it unpacks to)
 - **Date:** 2026-10-29
 - **Related tickets:** 3004 (this), 2520 (crash reports from the debug
   file), 3008 (the bench reads the report), 3010, 3012 and 3015 (the

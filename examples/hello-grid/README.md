@@ -31,7 +31,7 @@ cargo run -p hello-grid --bin hello-grid-preview -- files   # the writer's dialo
 | `src/preview.rs`, `src/bin/preview.rs` | The dialogue preview a writer is handed (`hello-grid-preview`): the scenes of a folder's `.dlg` files in the game's text box, read again when one is saved; the tools start it with `--preview` |
 | `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
-| `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
+| `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset. A release export of the desktop or the web builds with `packed` and ships them baked into `hello-grid.pack` beside the program in place (`hello_grid::layer`) |
 | `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |

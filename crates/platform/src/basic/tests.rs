@@ -524,3 +524,23 @@ fn the_previews_start_hears_a_drop() {
         .unwrap_or_default();
     assert_eq!(names, ["dusk.dlg"]);
 }
+
+#[test]
+fn files_that_couldnt_be_read_are_its_one_problem_and_its_pack_has_its_stamp() {
+    let game = demo(GOOD);
+    assert_eq!(game.pack_stamp(), "com.example.demo 0.1.0");
+    assert_eq!(game.bake().stamp(), game.pack_stamp());
+    assert_eq!(game.made().game, game.pack_stamp());
+    let why = "the game's files, demo.pack, aren't beside the program";
+    let unread = game.files_unreadable(why);
+    let errors = unread.data().unwrap_err();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(
+        (errors[0].file.as_str(), errors[0].message.as_str()),
+        ("files", why)
+    );
+    assert_eq!(
+        unread.ctx().err().as_deref(),
+        Some(format!("files: {why}").as_str())
+    );
+}

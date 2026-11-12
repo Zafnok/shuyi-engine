@@ -13,6 +13,10 @@
 //! --watch` names (ADR-0071); `read_watched_folder` reads one watched in
 //! every build.
 //!
+//! A shipped build reads its files from the pack a release export bakes
+//! beside the program, [`pack_beside_program`] (ADR-0109): on the web the
+//! page fetches it before the game starts.
+//!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
 //!
@@ -120,7 +124,7 @@
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
 //! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `player-files.js`'s,
-//! `page-files.js`'s, `quad-storage`'s) are
+//! `page-files.js`'s, `pack-file.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
 //! (`crates/cli/web/README.md` shows how).
@@ -147,6 +151,7 @@ pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
 mod pacing;
+mod pack_file;
 pub mod pads;
 pub mod page;
 mod painted;
@@ -188,6 +193,7 @@ pub(crate) use crate::folder::watched_file;
 #[cfg(not(target_arch = "wasm32"))]
 pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_layer};
 use crate::pacing::{Pacer, WebFrame};
+pub use crate::pack_file::{PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name};
 
 /// The web has no folders to watch.
 #[cfg(target_arch = "wasm32")]

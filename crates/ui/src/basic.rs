@@ -19,6 +19,7 @@ use shuyi_assets::format::Formats;
 use shuyi_assets::image::ImageTable;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, KeymapRon};
 use shuyi_assets::lang::{English, Lang};
+use shuyi_assets::pack::{Bake, Packed};
 use shuyi_assets::palette::{PaletteDef, PaletteRon};
 use shuyi_assets::ron::Ron;
 
@@ -73,7 +74,9 @@ fn gather<T>(errors: &mut Vec<ContentError>, loaded: Result<T, Vec<ContentError>
 impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
     /// The formats it reads with: the engine's standard ones, the palette
     /// with the engine's colours and the font atlas with
-    /// [`BASIC_GLYPHS`] in their place, the keymap of `A` and the English.
+    /// [`BASIC_GLYPHS`] in their place, the keymap of `A` and the English;
+    /// and the baked form of each kind [`bake`](Self::bake) bakes, so the
+    /// same loader reads a pack of the files ([`Packed`]).
     pub fn formats() -> Formats {
         let mut formats = Formats::standard();
         let colors: Vec<&str> = EngineColor::ALL.iter().map(|c| c.name()).collect();
@@ -83,7 +86,23 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
         let _ = formats.replace(FontAtlasRon::requiring(BASIC_GLYPHS));
         let _ = formats.register(KeymapRon::<A>::new());
         let _ = formats.register(Ron::<English>::new());
+        let _ = formats.register(Packed::<English>::new());
+        let _ = formats.register(Packed::<PaletteDef>::new());
+        let _ = formats.register(Packed::<FontAtlasDef>::new());
         formats
+    }
+
+    /// What a pack of the files bakes, stamped `stamp` (ADR-0023): the
+    /// English, the palette and the font atlas, read from their binary
+    /// form with no text parsed. Every other file goes in as its own bytes:
+    /// the pictures, which the platform draws; the keymap, whose actions
+    /// `A` need not have a binary form; and the game's own part, whose
+    /// kinds are its own.
+    pub fn bake(stamp: impl Into<String>) -> Bake {
+        Bake::new(stamp)
+            .asset::<English>(ENGLISH_RON)
+            .asset::<PaletteDef>(PALETTE_RON)
+            .asset::<FontAtlasDef>(FONT_RON)
     }
 
     /// The data in `bundle`, on `console`, with the game's own part read

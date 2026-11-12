@@ -1,7 +1,7 @@
 // The worked example of shuyi-ship, a script of contract commands run on
 // a game made with `shuyi new <dir> --template grid` (named after the
 // skill: its crate is `shuyi-ship`): a target added and its controls made
-// to fit, the web build, and the credits.
+// to fit, the web build, the credits, and the pack a release ships.
 Example(
     template: "grid",
     steps: [
@@ -54,8 +54,15 @@ Example(
             Is("/result/read_as/0/kind", "credits"),
             Is("/result/errors", "[]"),
         ]),
-        // A game with no pack: `bake` isn't offered.
-        Shuyi(args: ["bake"], ok: false, expect: [Is("/code", "SH3001")]),
+        // Its pack, which a release export of the desktop or the web ships
+        // beside the program: its text baked, and proven equal to its files.
+        Shuyi(args: ["bake", "--target", "desktop", "--out", "target/shuyi/desktop.pack"], expect: [
+            Is("/result/errors", "[]"),
+            Is("/result/pack/kinds/0", "english"),
+        ]),
+        Shuyi(args: ["bake", "--target", "desktop", "--out", "target/shuyi/desktop.pack", "--check"], expect: [
+            Is("/result/errors", "[]"),
+        ]),
         // The gates still pass, the build script's included.
         Shuyi(args: ["check"]),
         Cargo(args: ["fmt", "--all", "--check"]),

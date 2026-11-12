@@ -10,7 +10,10 @@ itself, so a game needs no copy of its own.
 - `index.html`: the page. A full-window black `<canvas id="glcanvas">`,
   no margins or scrollbars, focused on load and on click; it loads the
   bundle, then the game's `.wasm`. `shuyi web` writes the game's title
-  (`web.title`) for `%TITLE%` and its binary (`web.bin`) for `%WASM%`.
+  (`web.title`) for `%TITLE%`, its binary (`web.bin`) for `%WASM%`, and
+  for `%PACK%` the pack a packed build reads (`<package>.pack`, a release
+  export's), or nothing for a build that embeds its files. It starts the
+  game through `shuyi_fetch_pack`, which fetches that pack first.
   Before the bundle it declares a global `var register_plugin;`: the
   bundle is strict-mode JS and its unused `quad_net` plugin assigns to that
   undeclared global, which otherwise throws an uncaught `ReferenceError`
@@ -40,6 +43,10 @@ itself, so a game needs no copy of its own.
   `sessionStorage` and `postMessage`: the text files a page hands the
   game, which it lays over its own, and the game's problems with them
   sent back. The engine's own code, not vendored. See below.
+- `pack-file.js`: the pack beside the page, a miniquad JS plugin that
+  fetches the pack a release export ships (`<package>.pack`) before the
+  game starts and hands its bytes to the game. The engine's own code, not
+  vendored. See below.
 
 In `dist`, each vendored script starts with one line naming its work
 and pointing at the notices, then the committed file:
@@ -218,6 +225,24 @@ Dependabot's `backend` group too.
   origin, the parent gets `{ kind: "shuyi-report", text }` by
   `postMessage`, at that origin only; with no such parent, the console
   gets `text` with `console.info`.
+
+## The engine's own `pack-file.js`
+
+- It and `crates/app/src/pack_file.rs` list the same `shuyi_pack_file_*`
+  functions and the same plugin version: `shuyi-cli`'s tests fail
+  otherwise. Bytes and strings cross as `sapp_jsutils.js`'s objects, so
+  `index.html` loads it after that file.
+- **Before the game starts:** `index.html` ends with
+  `shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); })`. With no
+  name the game starts at once; otherwise once the fetch is done, whatever
+  came of it.
+- **What the game reads:** `shuyi_app::pack_beside_program(name, stamp)`
+  takes the bytes (`shuyi_pack_file_bytes`), or, when the page has none,
+  what the fetch said (`shuyi_pack_file_problem`: an HTTP status, or that
+  the page named no pack), as its error. A packed game shows it in place of
+  the game ([ADR-0109](../../../docs/adr/0109-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md)).
+- A page that fills in `index.html` by hand (CI's render card and sound
+  probe) writes nothing for `%PACK%`.
 
 ## The engine's own `gamepad.js`
 
