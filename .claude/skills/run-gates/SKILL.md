@@ -326,14 +326,18 @@ Two more steps of the job run only in CI: that the rules crate's fence
 holds, and that `shuyi lint` finds what breaks the game's code (both on the
 `grid` game, with code written to break them).
 
-## The tutorial's steps (CI's `tutorial` job, CI only)
+## The tutorial's steps (CI's `tutorial` job; the locks run locally)
 
 Each step in `site/tutorial/` is a whole game with its own `Cargo.lock`
 and a path dependency on the engine's crates. CI builds and tests each
 with `--locked`, then fails if the job changed a file of the step
 (ticket 2062). So **a change to the engine's dependencies** (a crate
 added, removed or moved, an engine crate's version) refreshes the ten
-locks in the same PR, without moving anything else in them:
+locks in the same PR, without moving anything else in them. The local
+`tutorial locks` gate (ticket 2073) finds a stale lock in seconds: it runs
+`cargo metadata --locked` in each step when the diff touches a `Cargo.toml`
+or `Cargo.lock` under `crates/`, the root's, or `site/tutorial/`, and fails
+naming the step. Building and testing the steps stays CI's.
 
 ```bash
 for d in site/tutorial/*/; do (cd "$d" && cargo metadata --format-version 1 > /dev/null); done

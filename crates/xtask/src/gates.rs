@@ -54,6 +54,9 @@ pub enum Local {
     AsCi,
     /// Only when a changed path starts with one of these.
     Under(&'static [&'static str]),
+    /// Only when a changed path satisfies the test; the text says what the
+    /// test looks for, for the summary.
+    When(&'static str, fn(&str) -> bool),
 }
 
 /// Whether `--fast` runs a gate.
@@ -89,6 +92,8 @@ pub struct Gate {
     pub steps: &'static [&'static str],
     /// Why CI alone runs it, when it does.
     pub ci_only: Option<&'static str>,
+    /// What to say after a failure: how to fix it.
+    pub hint: Option<&'static str>,
 }
 
 const fn gate(name: &'static str, job: &'static str, filter: Filter) -> Gate {
@@ -101,6 +106,7 @@ const fn gate(name: &'static str, job: &'static str, filter: Filter) -> Gate {
         fresh: &[],
         steps: &[],
         ci_only: None,
+        hint: None,
     }
 }
 
@@ -125,6 +131,11 @@ impl Gate {
         self
     }
 
+    const fn hint(mut self, hint: &'static str) -> Self {
+        self.hint = Some(hint);
+        self
+    }
+
     const fn ci_only(mut self, why: &'static str) -> Self {
         self.ci_only = Some(why);
         self
@@ -135,6 +146,15 @@ impl Gate {
 /// that read other jobs' results.
 #[cfg(test)]
 pub const NOT_GATES: &[&str] = &["changes", "api-label", "ci-result"];
+
+/// Whether a changed path can make a tutorial step's lock stale: a
+/// manifest or lock of the engine's crates, the root's, or the steps.
+fn touches_tutorial_locks(path: &str) -> bool {
+    let file = path.rsplit('/').next().unwrap_or(path);
+    let manifest = file == "Cargo.toml" || file == "Cargo.lock";
+    (manifest && (path.starts_with("crates/") || !path.contains('/')))
+        || path.starts_with("site/tutorial/")
+}
 
 /// Every gate, fast to slow: a run stops at the first failure.
 pub const GATES: &[Gate] = &[
@@ -179,6 +199,29 @@ pub const GATES: &[Gate] = &[
             "site: zola check --skip-external-links",
             "cargo xtask check-book",
             "bash site/check-build.sh",
+        ]),
+    // CI's `tutorial` job builds and tests the ten steps; whether a lock is
+    // stale takes seconds: `cargo metadata --locked` fails on a lock it
+    // would have to change (ticket 2073).
+    gate("tutorial locks", "tutorial", CODE)
+        .local(Local::When(
+            "no Cargo.toml or Cargo.lock under crates/, no root Cargo.toml or Cargo.lock, nothing under site/tutorial/",
+            touches_tutorial_locks,
+        ))
+        .hint(
+            "refresh the locks: for d in site/tutorial/*/; do (cd \"$d\" && cargo metadata --format-version 1 > /dev/null); done (the run-gates skill, \"The tutorial's steps\")",
+        )
+        .steps(&[
+        "site/tutorial/01-new: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/02-board: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/03-walk: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/04-push: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/05-undo: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/06-levels: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/07-save: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/08-polish: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/09-test: cargo metadata --locked --format-version 1 >null",
+        "site/tutorial/10-ship: cargo metadata --locked --format-version 1 >null",
         ]),
     gate("clippy", "clippy", CODE).steps(&[
         "cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings",
@@ -452,6 +495,11 @@ pub fn plan(gate: &Gate, outputs: &BTreeMap<String, bool>, paths: &[String], fas
     {
         return Plan::NotNeeded(format!("nothing changed under {}", prefixes.join(", ")));
     }
+    if let Local::When(what, test) = gate.local
+        && !paths.iter().any(|p| test(p))
+    {
+        return Plan::NotNeeded(format!("nothing changed: {what}"));
+    }
     if fast {
         match gate.fast {
             Fast::No => return Plan::NotNeeded("not a fast gate (--fast)".into()),
@@ -706,7 +754,8 @@ fn run_gate(root: &Path, gate: &Gate, root_text: &str, pr_branch: &[String]) -> 
         match status {
             Ok(status) if status.success() => {}
             Ok(status) => {
-                return Outcome::Failed(start.elapsed(), format!("{shown} ({status})"));
+                let hint = gate.hint.map_or_else(String::new, |h| format!("; {h}"));
+                return Outcome::Failed(start.elapsed(), format!("{step} ({status}){hint}"));
             }
             Err(e) => return Outcome::Failed(start.elapsed(), format!("{shown}: {e}")),
         }
@@ -842,6 +891,47 @@ mod tests {
             assert!(gates.contains(&name), "{name} missing from {gates:?}");
         }
         assert!(!gates.contains(&"site"), "{gates:?}");
+    }
+
+    #[test]
+    fn the_tutorial_locks_run_for_a_manifest_and_not_for_docs() {
+        let gates = running(&["crates/cli/Cargo.toml"], false);
+        assert!(gates.contains(&"tutorial locks"), "{gates:?}");
+        let gates = running(&["Cargo.lock"], false);
+        assert!(gates.contains(&"tutorial locks"), "{gates:?}");
+        let gates = running(&["site/tutorial/03-walk/Cargo.lock"], false);
+        assert!(gates.contains(&"tutorial locks"), "{gates:?}");
+        let gates = running(&["crates/cli/src/main.rs"], false);
+        assert!(!gates.contains(&"tutorial locks"), "{gates:?}");
+        let gates = running(&["docs/x.md"], false);
+        assert!(!gates.contains(&"tutorial locks"), "{gates:?}");
+    }
+
+    #[test]
+    fn the_tutorial_locks_name_each_step_folder() {
+        let steps = GATES
+            .iter()
+            .find(|g| g.name == "tutorial locks")
+            .unwrap()
+            .steps;
+        let mut folders: Vec<String> = std::fs::read_dir(repo().join("site/tutorial"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| e.path().is_dir())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        folders.sort();
+        let named: Vec<String> = steps
+            .iter()
+            .map(|s| {
+                s.strip_prefix("site/tutorial/")
+                    .and_then(|r| r.split_once(": "))
+                    .unwrap()
+                    .0
+                    .to_owned()
+            })
+            .collect();
+        assert_eq!(named, folders);
     }
 
     #[test]
