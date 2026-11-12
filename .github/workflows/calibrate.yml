@@ -1,12 +1,17 @@
 name: Calibrate
 
-# One job of CI run N times on one commit (ticket 2064), to measure a gate's
+# One job of CI run N times on the commit it is dispatched on (ticket 2064),
+# to measure a gate's
 # limits or a flake's rate: the run-gates skill says when. It replaces the
 # per-ticket scratch branches that each copied the job into a loop. Each run
 # uploads its artifacts as `<job>-run-<n>`, and the `summary` job writes one
 # table of the runs: each run's jobs and failed cells, and each cell's rate.
 #
-#   gh workflow run calibrate.yml -f job=<job> -f count=20 -f ref=<branch or sha>
+#   gh workflow run calibrate.yml --ref <branch> -f job=<job> -f count=20
+#
+# The branch is the dispatch's own, never an input: a run from main that built
+# another ref would run unreviewed code with main's cache scope (CodeQL's cache
+# poisoning, #382). The branch needs this file, as any branch from main has.
 #
 # A job is offered here once its jobs live in a reusable workflow that ci.yml
 # calls (as the sound gate's do): a block below calls it, and `runs` lists it.
@@ -23,33 +28,24 @@ on:
         type: number
         default: 20
         required: true
-      ref:
-        description: "The branch, tag or commit to run on; the dispatched one by default"
-        type: string
-        default: ""
 
 permissions: {}
 
 jobs:
-  # The commit, fixed once so that every run checks out the same one, and the
-  # list of runs for the matrix.
+  # The list of runs for the matrix.
   runs:
     name: runs
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      sha: ${{ steps.runs.outputs.sha }}
       list: ${{ steps.runs.outputs.list }}
     steps:
-      - name: The commit and the runs
+      - name: The runs
         id: runs
         env:
-          GH_TOKEN: ${{ github.token }}
           JOB: ${{ inputs.job }}
           COUNT: ${{ inputs.count }}
-          REF: ${{ inputs.ref }}
-          DISPATCHED: ${{ github.sha }}
         run: |
           # The jobs this workflow can run, each a block below.
           jobs="sound-parity"
@@ -61,12 +57,6 @@ jobs:
             echo "::error::count is $COUNT: give 1 to 40"
             exit 1
           fi
-          if [ -n "$REF" ]; then
-            sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$REF" --jq .sha)
-          else
-            sha=$DISPATCHED
-          fi
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "list=$(jq -nc --argjson n "$COUNT" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
 
   # The sound gate's runs (sound-parity.yml).
@@ -83,7 +73,6 @@ jobs:
       actions: read
     uses: ./.github/workflows/sound-parity.yml
     with:
-      ref: ${{ needs.runs.outputs.sha }}
       suffix: -run-${{ matrix.run }}
 
   summary:
@@ -109,7 +98,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           JOB: ${{ inputs.job }}
-          SHA: ${{ needs.runs.outputs.sha }}
+          SHA: ${{ github.sha }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" --paginate \
             --jq '.jobs[] | {name, conclusion}' | jq -s . > target/calibration/jobs.json

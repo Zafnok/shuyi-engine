@@ -2,17 +2,16 @@ name: Sound parity
 
 # The sound gates (ticket 2573, ADR-0066), callable (ticket 2064): ci.yml's
 # `sound-parity` job runs them when `changes.yml` says the sound path changed,
-# and calibrate.yml runs them N times on one commit. The jobs API names these
+# and calibrate.yml runs them N times on the commit it was dispatched on. A
+# call never checks out another ref than its run's: a dispatch from main that
+# built another ref would run unreviewed code with main's cache scope (CodeQL's
+# cache poisoning, #382). The jobs API names these
 # jobs `<caller> / sound-parity` and `<caller> / sound-parity-windows`, as
 # tools/flaky.ron does.
 
 on:
   workflow_call:
     inputs:
-      ref:
-        description: "The commit to check out; the caller's by default"
-        type: string
-        default: ""
       suffix:
         description: "Appended to the artifacts' names, so that the runs of one calibration keep theirs apart"
         type: string
@@ -39,17 +38,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref }}
-      # What the evidence names, the commit checked out (a calibration's `ref`).
+      # What the evidence names: the commit checked out.
       - name: The revision
         run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - run: rustup show
-      # A call with a `ref` (calibrate.yml, dispatched from main) builds code
-      # main hasn't reviewed: it restores the cache and never saves one, so it
-      # can't poison main's.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          save-if: ${{ inputs.ref == '' }}
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the capture's tools and Chromium
@@ -200,17 +193,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref }}
-      # What the evidence names, the commit checked out (a calibration's `ref`).
+      # What the evidence names: the commit checked out.
       - name: The revision
         run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - run: rustup show
-      # A call with a `ref` (calibrate.yml, dispatched from main) builds code
-      # main hasn't reviewed: it restores the cache and never saves one, so it
-      # can't poison main's.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          save-if: ${{ inputs.ref == '' }}
       - name: The output and the backend, with the null output
         run: |
           cargo test -p shuyi-sound-out --locked

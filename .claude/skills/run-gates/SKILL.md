@@ -549,10 +549,13 @@ branch.
   commit with `calibrate.yml`, never a scratch branch:
 
   ```bash
-  gh workflow run calibrate.yml -f job=<job> -f count=20 -f ref=<branch or sha>
+  gh workflow run calibrate.yml --ref <branch> -f job=<job> -f count=20
   ```
 
-  Each run uploads its artifacts as `<job>-run-<n>`, and the `summary` job
+  It runs on the dispatched branch's tip (push the commit to measure
+  there first); it takes no other ref, so that no run from `main` builds
+  unreviewed code. Each run uploads its artifacts as `<job>-run-<n>`, and
+  the `summary` job
   writes one table: each run's jobs and failed cells, and each cell's rate.
   Put the run's link in the notes. A job is offered once its jobs live in a
   reusable workflow that `ci.yml` calls.

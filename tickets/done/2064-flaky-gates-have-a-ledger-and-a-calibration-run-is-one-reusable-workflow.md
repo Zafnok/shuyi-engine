@@ -135,11 +135,11 @@ None.
   by it or by hand, `ci-result` runs `cargo xtask flaky report` on the attempt
   before: a warning names the entries, or the failure no entry lists.
 - The sound pair moved to `.github/workflows/sound-parity.yml`
-  (`workflow_call`, with `ref` and an artifact `suffix`); `ci.yml`'s
+  (`workflow_call`, with an artifact `suffix`); `ci.yml`'s
   `sound-parity` job calls it.
-- `.github/workflows/calibrate.yml` (`workflow_dispatch`: `job`, `count` 1 to 40,
-  `ref`) fixes the commit once, runs the job's reusable workflow as a matrix
-  over the count, and its `summary` job writes one table
+- `.github/workflows/calibrate.yml` (`workflow_dispatch`: `job` and `count`,
+  1 to 40, on the dispatched branch) runs the job's reusable workflow as a
+  matrix over the count, and its `summary` job writes one table
   (`cargo xtask flaky calibration`): each run's jobs and failed cells, and each
   cell's rate. It is in the step summary and the `calibration-summary`
   artifact. Dispatched with a count of 5 on `sound-parity`: CALIBRATION_LINK.
@@ -168,10 +168,13 @@ None.
   `calibrate.yml`'s sound block, and owns `sound-parity.yml`. `gates.rs` lost
   its `sound parity (Windows)` gate: that job is no longer `ci.yml`'s, and the
   `sound parity` gate names both platforms.
-- A call of `sound-parity.yml` with a `ref` (every calibration run) restores
-  `rust-cache` and never saves it (`save-if`): `calibrate.yml` is dispatched
-  from main and builds a ref main hasn't reviewed, so a saved cache could
-  poison main's (CodeQL's cache-poisoning alerts on #382).
+- No `ref` input, though the ticket named one: a dispatch from main that
+  checked out another ref would run unreviewed code with main's cache scope,
+  which CodeQL flagged on #382 (cache poisoning; restoring only, with
+  `rust-cache`'s `save-if`, didn't answer it, as any step can write a cache).
+  A calibration runs on the branch it is dispatched on
+  (`gh workflow run calibrate.yml --ref <branch>`), whose own scope its
+  caches go to, and `github.sha` fixes its commit for every run.
 - The jobs' names on GitHub are now `sound-parity / sound-parity` and
   `sound-parity / sound-parity-windows`. Branch protection requires
   `ci-result` alone, so nothing else moves.
