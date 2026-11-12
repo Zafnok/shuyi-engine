@@ -322,6 +322,12 @@ sound-probe = []
     "replace Output::preferred_rate -> Option<u32> with None",
     # Off Windows `Output::stats` is `(0, 0)`, its only viable mutant there.
     'replace Output::stats -> \(u32, u32\) with \(0, 0\)',
+    # Off Windows `dry_callbacks` is 0 and `raised_priority` false, their only
+    # viable mutants there.
+    "replace Output::dry_callbacks -> u32 with 0",
+    "replace Output::raised_priority -> bool with false",
+    # The audio thread's priority in `sys.rs`, built only for Windows.
+    "sound-out/src/sys.rs.*raised",
     # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
 "##,
