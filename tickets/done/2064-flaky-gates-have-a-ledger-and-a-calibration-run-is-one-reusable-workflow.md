@@ -168,6 +168,10 @@ None.
   `calibrate.yml`'s sound block, and owns `sound-parity.yml`. `gates.rs` lost
   its `sound parity (Windows)` gate: that job is no longer `ci.yml`'s, and the
   `sound parity` gate names both platforms.
+- A call of `sound-parity.yml` with a `ref` (every calibration run) restores
+  `rust-cache` and never saves it (`save-if`): `calibrate.yml` is dispatched
+  from main and builds a ref main hasn't reviewed, so a saved cache could
+  poison main's (CodeQL's cache-poisoning alerts on #382).
 - The jobs' names on GitHub are now `sound-parity / sound-parity` and
   `sound-parity / sound-parity-windows`. Branch protection requires
   `ci-result` alone, so nothing else moves.

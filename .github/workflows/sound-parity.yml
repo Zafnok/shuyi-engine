@@ -44,7 +44,12 @@ jobs:
       - name: The revision
         run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - run: rustup show
+      # A call with a `ref` (calibrate.yml, dispatched from main) builds code
+      # main hasn't reviewed: it restores the cache and never saves one, so it
+      # can't poison main's.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ inputs.ref == '' }}
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the capture's tools and Chromium
@@ -200,7 +205,12 @@ jobs:
       - name: The revision
         run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - run: rustup show
+      # A call with a `ref` (calibrate.yml, dispatched from main) builds code
+      # main hasn't reviewed: it restores the cache and never saves one, so it
+      # can't poison main's.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ inputs.ref == '' }}
       - name: The output and the backend, with the null output
         run: |
           cargo test -p shuyi-sound-out --locked
