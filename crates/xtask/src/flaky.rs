@@ -19,7 +19,8 @@
 //! for a job the ledger's `matrices` name, its `matrix.json`.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::fmt;
+use std::fmt::{self, Write as _};
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -442,19 +443,16 @@ pub fn rerun(ledger: &Ledger, jobs: &[Job], attempt: u32) -> (Rerun, Vec<String>
         ));
         return (Rerun::None, notes);
     }
-    match jobs.iter().find(|j| j.name == recorder) {
-        Some(job) => {
-            notes.push(format!(
-                "re-running `{recorder}` once, which records anew for its judge: {named}"
-            ));
-            (Rerun::Job(job.id), notes)
-        }
-        None => {
-            notes.push(format!(
-                "no re-run: no `{recorder}` job in the run: {named}"
-            ));
-            (Rerun::None, notes)
-        }
+    if let Some(job) = jobs.iter().find(|j| j.name == recorder) {
+        notes.push(format!(
+            "re-running `{recorder}` once, which records anew for its judge: {named}"
+        ));
+        (Rerun::Job(job.id), notes)
+    } else {
+        notes.push(format!(
+            "no re-run: no `{recorder}` job in the run: {named}"
+        ));
+        (Rerun::None, notes)
     }
 }
 
@@ -549,7 +547,7 @@ pub fn calibration(
     );
     out.push_str("| Run |");
     for inner in &inner_jobs {
-        out.push_str(&format!(" `{inner}` |"));
+        let _ = write!(out, " `{inner}` |");
     }
     out.push_str(" Failed cells |\n|---|");
     for _ in &inner_jobs {
@@ -560,10 +558,11 @@ pub fn calibration(
     for (n, conclusions) in &runs {
         let mut row = format!("| {n} |");
         for inner in &inner_jobs {
-            row.push_str(&format!(
+            let _ = write!(
+                row,
                 " {} |",
                 conclusions.get(inner).map_or("-", String::as_str)
-            ));
+            );
         }
         let matrix = dir.join(format!("{job}-run-{n}")).join("matrix.json");
         let failed = match std::fs::read_to_string(&matrix) {
@@ -591,23 +590,21 @@ pub fn calibration(
         if conclusions.values().all(|c| c == "success") {
             passed += 1;
         }
-        row.push_str(&format!(" {failed} |\n"));
+        let _ = writeln!(row, " {failed} |");
         out.push_str(&row);
     }
-    out.push_str(&format!(
-        "\n{passed} of {} runs passed every job.\n",
-        runs.len()
-    ));
+    let _ = writeln!(out, "\n{passed} of {} runs passed every job.", runs.len());
     if !cells.is_empty() {
         out.push_str("\n| Cell | Failed | Runs |\n|---|---|---|\n");
         for (cell, failed_in) in &cells {
             let list: Vec<String> = failed_in.iter().map(ToString::to_string).collect();
-            out.push_str(&format!(
-                "| `{cell}` | {} in {} | {} |\n",
+            let _ = writeln!(
+                out,
+                "| `{cell}` | {} in {} | {} |",
                 failed_in.len(),
                 runs.len(),
                 list.join(", ")
-            ));
+            );
         }
     }
     Ok(out)
@@ -646,8 +643,10 @@ fn command(repo_root: &Path, args: &[String]) -> Result<Vec<String>, Vec<String>
             Ok(notes)
         }
         "matrices" => {
+            let mut stdout = std::io::stdout().lock();
             for matrix in &read_ledger(repo_root)?.matrices {
-                println!("{}	{}", matrix.job, matrix.artifact);
+                writeln!(stdout, "{}\t{}", matrix.job, matrix.artifact)
+                    .map_err(|e| vec![format!("stdout: {e}")])?;
             }
             Ok(Vec::new())
         }
