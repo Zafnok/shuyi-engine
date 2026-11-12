@@ -1,8 +1,8 @@
 //! The project file, `shuyi.ron`, at a game's root: who the game is (its
 //! `app` part), which paths each check scans, the game's tool program (for the commands that run the game),
 //! the font atlas's rules, the web build's package, the game's own license
-//! texts and the private repository's settings, and the targets the game
-//! ships on. A command
+//! texts and the private repository's settings, the game's preview, and the
+//! targets the game ships on. A command
 //! whose part is missing says so.
 //!
 //! Every path is relative to the project's root (the folder holding
@@ -115,6 +115,9 @@ pub struct Config {
     pub editions: BTreeMap<String, Edition>,
     /// `glyph-tiles`.
     pub glyph_tiles: Option<GlyphTiles>,
+    /// `frame-png --preview`: the animated `preview.png` a README and the
+    /// website's Examples card show ([`crate::frame_png::preview`]).
+    pub preview: Option<Preview>,
     /// `private-assets`.
     pub private_assets: Option<PrivateAssets>,
     /// `check --target`: the targets the game ships on, by the id of
@@ -400,6 +403,26 @@ pub struct GlyphTile {
     /// The square's color, by its palette name; `None` leaves it clear.
     #[serde(default)]
     pub bg: Option<String>,
+}
+
+/// `frame-png --preview`: the game's preview, an APNG of its first seconds
+/// in `preview.png` at the project's root
+/// ([`crate::frame_png::preview::FILE`]). Build it with [`Preview::new`]
+/// (ADR-0039).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Preview {
+    /// `frame-png`'s arguments, as typed after the output path: the steps,
+    /// `--every`, `--count`, `--apng` and the game's own options.
+    pub args: Vec<String>,
+}
+
+impl Preview {
+    /// The preview `frame-png` makes with `args`.
+    pub fn new(args: Vec<String>) -> Self {
+        Self { args }
+    }
 }
 
 /// The web build.
@@ -777,6 +800,22 @@ mod tests {
         );
         assert_eq!(part.targets["linux"], TargetExport::default());
         assert!(Config::parse(r#"(export: (targets: {"playdate": (beside: [])}))"#).is_err());
+    }
+
+    #[test]
+    fn the_preview_part_holds_frame_pngs_args() {
+        let text = r#"(preview: (args: ["--stage", "--every", "0.1", "--count", "2", "--apng"]))"#;
+        let preview = Config::parse(text).unwrap().preview.unwrap();
+        assert_eq!(
+            preview,
+            Preview::new(
+                ["--stage", "--every", "0.1", "--count", "2", "--apng"]
+                    .map(str::to_owned)
+                    .to_vec()
+            )
+        );
+        assert_eq!(Config::parse("()").unwrap().preview, None);
+        assert!(Config::parse(r#"(preview: (args: [], out: "a.png"))"#).is_err());
     }
 
     #[test]

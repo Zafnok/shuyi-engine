@@ -312,6 +312,22 @@ h3 {
   font-size: 0.95rem;
 }
 
+/* An example's preview (ticket 2811): its pixels kept square at any width,
+   and no moving picture for a reader who asks for less motion. */
+.card-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 0.9rem;
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-preview {
+    display: none;
+  }
+}
+
 .status {
   display: inline-block;
   padding: 0.05rem 0.55rem;

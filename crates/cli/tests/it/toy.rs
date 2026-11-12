@@ -4,10 +4,11 @@
 use std::fs;
 use std::path::Path;
 
-use shuyi_cli::codec::{decode_png, encode_png};
+use shuyi_cli::codec::{decode_apng, decode_png, encode_apng, encode_png};
 use shuyi_cli::contract::perf;
 use shuyi_cli::contract::run::{self as run_op, RunInput, RunOutput};
-use shuyi_cli::frame_png::{self, Capture};
+use shuyi_cli::frame_png::{self, Capture, Image, preview};
+use shuyi_cli::project::Preview;
 use shuyi_cli::toy::ToyTools;
 use shuyi_cli::{GameTools, Project, run};
 use shuyi_ui::perf::PerfLine;
@@ -160,6 +161,103 @@ fn frame_png_writes_a_gif_of_exactly_the_captured_frames() {
         frames += 1;
     }
     assert_eq!(frames, 8);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The toy's preview: `frame-png --preview` writes `preview.png` from the
+/// project's `preview` part, which `check` passes, and `check` names what
+/// differs in a file that is no longer what the part makes, ending with
+/// the command that remakes it. The same frames written with another
+/// compression pass.
+#[test]
+fn frame_png_writes_the_preview_and_check_names_what_differs() {
+    let dir = scratch("toy-preview");
+    let mut project = toy_project(&dir);
+    let part = [
+        "--scale",
+        "1",
+        "--lobby",
+        "--keys",
+        "Down Down f",
+        "--every",
+        "0.05",
+        "--count",
+        "4",
+        "--apng",
+    ];
+    project.config.preview = Some(Preview::new(part.map(str::to_owned).to_vec()));
+    let file = dir.join(preview::FILE);
+    assert!(
+        preview::check(&project, &ToyTools)
+            .unwrap_err()
+            .contains("preview.png")
+    );
+    assert_eq!(
+        run(
+            &project,
+            &args(&["frame-png", "--preview"]),
+            Some(&ToyTools)
+        ),
+        0
+    );
+    assert_eq!(preview::check(&project, &ToyTools), Ok(()));
+    // `--preview` takes no other argument.
+    let mixed = args(&["frame-png", "--preview", "--scale", "2"]);
+    assert_eq!(run(&project, &mixed, Some(&ToyTools)), 2);
+
+    let made = decode_apng(&fs::read(&file).unwrap()).unwrap();
+    let remake = "\nremake it: shuyi frame-png --preview";
+    let failed = |frames: &[&Image], every: u16| {
+        fs::write(&file, encode_apng(frames, every).unwrap()).unwrap();
+        let error = preview::check(&project, &ToyTools).unwrap_err();
+        assert!(error.ends_with(remake), "{error}");
+        error
+    };
+    let frames: Vec<&Image> = made.frames.iter().collect();
+    // One pixel of one frame.
+    let mut changed = made.frames[2].clone();
+    changed.rgba[4 * 7] ^= 0xff;
+    let mut with_change = frames.clone();
+    with_change[2] = &changed;
+    let error = failed(&with_change, 3);
+    assert!(
+        error.starts_with("preview.png is stale: frame 3's pixels differ from what shuyi.ron's `preview` makes, first at (7, 0)"),
+        "{error}"
+    );
+    // One frame fewer.
+    let error = failed(&frames[..3], 3);
+    assert!(
+        error.contains("it has 3 frames, and shuyi.ron's `preview` makes 4"),
+        "{error}"
+    );
+    // Another delay.
+    let error = failed(&frames, 4);
+    assert!(error.contains("frame 1 is shown 4/60 s"), "{error}");
+
+    // The same frames at another compression: other bytes, and they pass.
+    let mut other = Vec::new();
+    {
+        let first = &made.frames[0];
+        let mut encoder = png::Encoder::new(&mut other, first.width, first.height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Fastest);
+        encoder.set_animated(4, 0).unwrap();
+        encoder.set_frame_delay(3, 60).unwrap();
+        let mut writer = encoder.write_header().unwrap();
+        for frame in &made.frames {
+            writer.write_image_data(&frame.rgba).unwrap();
+        }
+        writer.finish().unwrap();
+    }
+    assert_ne!(other, encode_apng(&frames, 3).unwrap());
+    fs::write(&file, &other).unwrap();
+    assert_eq!(preview::check(&project, &ToyTools), Ok(()));
+
+    // No file.
+    fs::remove_file(&file).unwrap();
+    let error = preview::check(&project, &ToyTools).unwrap_err();
+    assert!(error.ends_with(remake), "{error}");
     fs::remove_dir_all(&dir).unwrap();
 }
 

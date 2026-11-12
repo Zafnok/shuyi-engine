@@ -20,6 +20,11 @@
 //! as an APNG (`--apng`) or a GIF of an exact palette (`--gif`).
 //! [`GameTools::frames`] paints them.
 //!
+//! With `--preview` alone, it takes its arguments from `shuyi.ron`'s
+//! `preview` part and writes the game's [`preview`], `preview.png`: an
+//! APNG a README and the website's Examples card show, which a test of the
+//! game keeps equal to what the part makes ([`preview::check`]).
+//!
 //! [`Painter`] decodes a game's font atlas and images from PNG and paints
 //! with the raster, `shuyi_ui::frame::raster`: the reference picture of a
 //! frame, which `shuyi-app` must match. Its module docs say what it draws.
@@ -41,6 +46,7 @@ use shuyi_ui::frame::{GlyphBuffer, Rgb};
 use crate::codec::{decode_png, encode_apng, encode_gif, encode_png, gif_delay};
 use crate::game::{GameArg, GameOption, GameTools, game_arg};
 
+pub mod preview;
 pub mod sheet;
 
 /// Largest `--scale`.
@@ -154,10 +160,15 @@ pub fn usage(command: &str, options: &[GameOption], notes: &str) -> String {
     let mut out = format!(
         "\
 usage: {command} frame-png <out.png> [steps] [options]
+       {command} frame-png --preview
 
 Starts the game in the test Harness, runs the steps in the order given,
 and writes the frame to <out.png> (a relative path is from the project's
 root).
+
+--preview, alone, writes the game's preview, {preview} in the project's
+root: an APNG of the steps and options in shuyi.ron's `preview` part
+(`args`, as typed after <out.png>), which a README and the website show.
 
 steps (each may repeat):
   --keys \"F2 Up f\"   press and release each key chord in turn
@@ -188,7 +199,8 @@ frames over time (with --count; without it, one frame):
   --apng               an animated PNG that loops forever
   --gif                a GIF that loops forever, its colours exact (at most 256
                        a frame; each frame shown in whole 1/100 s, at least 2)
-"
+",
+        preview = preview::FILE,
     );
     for option in options {
         let name = match option.value {

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2514", "2801"]
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 2811 — Animated previews on the website's Examples cards
@@ -257,30 +257,33 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `examples/hello-grid/preview.png` is an APNG of at most 512 KiB
+- [x] `examples/hello-grid/preview.png` is an APNG of at most 512 KiB
       that loops forever and shows your piece walk and the foe's step.
       It is reviewed by eye in the PR.
-- [ ] In `examples/hello-grid`, `cargo shuyi frame-png --preview`
+- [x] In `examples/hello-grid`, `cargo shuyi frame-png --preview`
       remakes it, and `check` passes on the result.
-- [ ] Hello, Grid's preview test passes on Windows, Linux and macOS in
-      CI's `test` job.
-- [ ] On the toy, `check` fails, naming the frame, when one pixel of
+- [x] ~~Hello, Grid's preview test passes on Windows, Linux and macOS in
+      CI's `test` job.~~ (not done here: CI's `test` job on the PR checks
+      it; it passes on Windows locally)
+- [x] On the toy, `check` fails, naming the frame, when one pixel of
       one frame differs, and it fails when the frame count or a delay
       differs. Each failure gives the command that remakes the file.
-- [ ] The same frames written with another `png` compression (other
+- [x] The same frames written with another `png` compression (other
       bytes) pass `check`.
-- [ ] Each error of `preview::options` names the problem: no part, no
+- [x] Each error of `preview::options` names the problem: no part, no
       `--count`, no `--apng`, an output path, `--target`.
-- [ ] Hello, Grid's README shows the preview under its first paragraph
+- [x] Hello, Grid's README shows the preview under its first paragraph
       and lists `preview.png` under *Files made by the tools*.
-- [ ] In the site built by CI on the pull request,
+- [x] In the site built by CI on the pull request,
       `public/previews/hello-grid.png` is the same file as
       `examples/hello-grid/preview.png`, and the Examples page's HTML
       names it in Hello, Grid's card.
-- [ ] On the live site, Hello, Grid's card plays the preview, and with
-      reduced motion turned on it shows no moving picture.
-- [ ] The clauses with 2738 and 2739, and with 2565, are settled.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~On the live site, Hello, Grid's card plays the preview, and with
+      reduced motion turned on it shows no moving picture.~~ (not done
+      here: the live site has it only after the merge; a local build
+      served over HTTP plays it, and its reduced-motion rule is loaded)
+- [x] The clauses with 2738 and 2739, and with 2565, are settled.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -303,5 +306,55 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi.ron` has a `preview` part (`Config::preview`, `Preview { args }`,
+  `#[non_exhaustive]`, built with `Preview::new`). `Config` was already
+  `#[non_exhaustive]`, so the new field is an addition, not a break.
+- `codec::decode_apng` and `Animation` read back the APNGs
+  `encode_apng` writes (8-bit RGBA, every frame whole), and refuse
+  anything else. 2514's round-trip test now calls it.
+- `frame_png::preview` (`FILE`, `MAX_BYTES`, `options`, `check`), and
+  `frame-png --preview` in `lib.rs` and in `usage`. `check` compares
+  decoded frames, delays (as fractions, so 1/10 s equals 6/60 s) and
+  plays, never bytes.
+- Hello, Grid: its `preview` part, `preview.png` (40 frames 0.05 s apart,
+  384 × 384, 144 KiB), the test in `tests/it/files.rs`, and the README's
+  picture and line under *Files made by the tools*.
+- The site: `site/copy-previews.sh` (run by `check-build.sh`, by CI's
+  `site` job and by `pages.yml` before `zola build`),
+  `site/static/previews/` git-ignored, and the card shows the preview
+  through `get_image_metadata(…, allow_missing = true)`, which Zola 0.21
+  has. `check-build.sh` compares each example's preview with the build's
+  `previews/<name>.png` (`cmp`) and greps the Examples page for it.
+- Docs: rustdoc, `site/README.md`, the book's *Testing* chapter (a
+  paragraph on keeping a README's picture current) and the `shuyi-ship`
+  skill.
+
+Deviations:
+
+- Hello, Grid's preview is 40 frames 0.05 s apart, not 20 frames 0.1 s
+  apart. The walk and the foe's step last about 0.5 s after the script,
+  and frames 0.1 s apart showed the piece jump. 2 s in all, as the ticket
+  asks; the last 1.5 s hold before the loop.
+- Under reduced motion the preview is hidden by CSS
+  (`@media (prefers-reduced-motion: reduce)`). Checked in a local build
+  served over HTTP: Chromium decodes the card's picture as an animated
+  PNG of 40 frames that repeats forever, drawn pixelated, and the media
+  rule is loaded. The live site is checked after the merge, and CI's
+  `test` job on three systems on the PR: those two boxes stay open here.
+- The clauses: 2565, 2738, 2739 and 2813 are open, so each took its
+  *if not* branch here. Each now says what holds (`From 2811 (done)`):
+  2565 rewrites `codec.rs`'s docs around `decode_apng`; 2738 and 2739
+  make their README pictures their previews; 2813 moves what
+  `preview::check` and its still check share into `frame_png/kept.rs`.
+- `crates/cli/tests/formats/shuyi.ron` doesn't exist, so no fixture
+  changed.
+
+No break.
+
+Behaviour: shuyi-cli: `frame-png --help` and the command list name
+`--preview`, and `frame-png` refuses `--preview` beside any other
+argument (exit 2, with the usage).
+
+Nick input: none.

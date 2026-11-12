@@ -211,12 +211,12 @@ None.
     the lines of its own code without tests and data (`cargo xtask
     template-lines` if 2512 is done; counted and said how if not).
     **From 2514 (done):** an animated picture of its first seconds,
-    made with `frame-png --every 0.05 --count 40 --apng`. **Either order with 2811:** if 2811 is done, that
+    made with `frame-png --every 0.05 --count 40 --apng`. **From 2811 (done):** that
     picture is the example's preview: `preview.png` in its folder, made
     by a `preview` part in its `shuyi.ron` (`cargo shuyi frame-png
     --preview`), checked by a test in `tests/it/` as hello-grid's is,
-    and shown on its card on the Examples page. If not, nothing to do
-    (2811 makes the picture its preview).
+    and shown on its card on the Examples page (`site/copy-previews.sh`
+    finds it with no change).
 - **Tests of the example** (`tests/it/`):
   - a Harness playthrough of seed 1 through actions only
     (`Harness::act` and `Harness::wait`): from the title, steer to the

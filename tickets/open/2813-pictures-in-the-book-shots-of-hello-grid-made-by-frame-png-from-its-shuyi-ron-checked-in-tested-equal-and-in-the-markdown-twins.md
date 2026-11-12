@@ -36,8 +36,8 @@ What there is:
 - Files the tools make are checked in, with a test that fails when one
   is stale: `files/tiles.png` from `glyph_tiles`, checked by
   `the_tileset_is_what_glyph_tiles_makes_of_the_codes_looks`
-  (`examples/hello-grid/tests/it/files.rs`). 2811 does the same for an
-  animated `preview.png` on the Examples cards, and says why a checked-in
+  (`examples/hello-grid/tests/it/files.rs`). 2811 (done) did the same for
+  an animated `preview.png` on the Examples cards, and says why a checked-in
   file beats one made at deploy: the reviewer sees the new picture in
   the PR, and a stale one fails its own PR, not `main`. The same holds
   here.
@@ -49,12 +49,13 @@ What there is:
   A new shortcode needs its expansion there, or the deploy fails. That
   is why 2808 comes first.
 
-**Either order with 2811:** if 2811 is done, `frame_png/preview.rs`
-already compares a kept file with what its args make; move the parts
-both checks share (decoding, the pixel comparison, the message that
-ends with the command remaking the file) into `frame_png/kept.rs`, and
-have both call it. If not, write `frame_png/kept.rs` with the still
-check alone.
+**From 2811 (done):** `frame_png/preview.rs` already compares a kept
+file with what its args make: `check` reads the file, `compare` names
+the first difference (frame count, size, the first pixel that differs,
+delay), and each message of the file's ends with the command remaking
+it. Move the parts both checks share (the pixel comparison, the message
+that ends with the command) into `frame_png/kept.rs`, and have both call
+it; `codec::decode_apng` stays in `codec.rs`.
 
 **From 2818 (done):** the tutorial's pictures are `cargo xtask
 tutorial-tries`'s and stay so (their edits have no home in `shuyi.ron`). Share
@@ -176,11 +177,12 @@ None.
    `GameTools`), `crates/cli/src/project.rs`,
    `examples/hello-grid/tests/it/files.rs`, the `snippet` shortcode,
    `crates/xtask/src/llms.rs` and its tests, `site/README.md`,
-   `pages.yml` and the CI job that builds the site. If 2811 is done,
-   read `frame_png/preview.rs` too.
+   `pages.yml` and the CI job that builds the site, and
+   `frame_png/preview.rs` (2811).
 2. Add `Shot` and `Config::shots`, with parse tests (a good part, an
    unknown field, a bad name).
-3. Write `frame_png/kept.rs` (settle the clause with 2811), then
+3. Write `frame_png/kept.rs` (over what it shares with
+   `frame_png/preview.rs`), then
    `--shot` and `--shots` in `lib.rs` and the usage.
 4. Write the toy's tests (below).
 5. Find Hello, Grid's shot scripts with the MCP tools, add the part,

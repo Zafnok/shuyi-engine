@@ -72,6 +72,10 @@ jobs:
       # the game's own text (ticket 2814).
       - name: Copy the playground's files
         run: bash site/copy-playground.sh
+      # Each example's preview.png, checked in and kept current by the
+      # example's tests, which its Examples card plays (ticket 2811).
+      - name: Copy the examples' previews
+        run: bash site/copy-previews.sh
       - name: Build the site
         working-directory: site
         env:

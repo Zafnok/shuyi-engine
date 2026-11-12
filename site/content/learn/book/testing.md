@@ -104,6 +104,14 @@ that take only a GIF; its colours are exact, so a frame of more than 256 colours
 rather than dithered. In the MCP session, `frame_png` takes
 the same `every` and `count` and answers the sheet.
 
+An animated picture in your README can be kept current like any other file a tool makes.
+Write the arguments in a `preview` part of `shuyi.ron`, as you would type them after the
+file's name (`preview: (args: ["--keys", "Enter", "--every", "0.05", "--count", "40",
+"--apng"])`), and `cargo shuyi frame-png --preview` writes `preview.png` beside it. One test,
+`shuyi_cli::frame_png::preview::check(&project, &MyTools)`, then fails when what your game
+shows has changed and the picture hasn't, and says the command that remakes it. Hello,
+Grid's README shows its own.
+
 That picture is the raster's, painted in software. To check that your window draws the same
 pixels, give your game a `capture` feature (`capture = ["shuyi-app/capture"]`) and a plan, a
 RON file of the same steps with captures between them:

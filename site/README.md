@@ -69,6 +69,7 @@ python -m http.server --directory public 1111
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
 | `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script ([The playground](#the-playground)) |
+| `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `copy-playground.sh`, `static/playground/`, `static/learn/` | `copy-playground.sh` copies the playgrounds' files: Hello, Grid's from `examples/hello-grid/files/` into `static/playground/files/`, and each step's from its project into `static/learn/book/box-pusher/<step>/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
@@ -87,6 +88,14 @@ python -m http.server --directory public 1111
   page reads in full without them.
 - A new example gets its page in `content/examples/`, or the Pages build
   fails.
+- An example's card plays its preview, if it has one: an animated
+  `preview.png` in its folder (`examples/<name>/preview.png`), which
+  `cargo shuyi frame-png --preview` makes from a `preview` part in its
+  `shuyi.ron` (Hello, Grid's is the model), and a test line of the example
+  keeps current (`frame_png::preview::check`). `copy-previews.sh` copies
+  each to `static/previews/<name>.png`, and the card shows it with no
+  setting here. Under `zola serve`, run `bash copy-previews.sh` first to
+  see them. A reader who asks for less motion sees no preview.
 - The book's code comes from `snippets/`, never written in a page: CI
   builds and tests that crate, so a change to the engine that breaks the
   book fails. In the crate, mark the lines with `// ANCHOR: <name>` and
@@ -412,6 +421,7 @@ CI's `site` job, on every pull request:
 ```bash
 bash errors.sh
 bash copy-playground.sh
+bash copy-previews.sh
 cargo xtask check-book
 zola check --skip-external-links
 bash check-build.sh
@@ -436,7 +446,8 @@ a passage is marked for an audience the filter's `AUDIENCES` or
 `style.css` doesn't have, and fails if
 a page loads anything from another host, if a code block's language is
 unknown, or if a page with a Rust block has no `z-keyword`, which is
-highlighting turned off. The `test` job builds and
+highlighting turned off, or if an example's preview isn't in the build as
+the example has it, or isn't in its card. The `test` job builds and
 tests `snippets/`.
 `cargo xtask check-links` reads `content/` like the rest of the
 repository's Markdown, and leaves the `@/` links to Zola.

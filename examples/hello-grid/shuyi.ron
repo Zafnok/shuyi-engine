@@ -64,6 +64,19 @@
         ],
     ),
 
+    // `cargo shuyi frame-png --preview`: `preview.png`, the animated picture
+    // the README and the website's Examples card show. These are
+    // `frame-png`'s arguments after the output path: the stage, your piece
+    // picked up, steered up and right and sent, then 40 frames 0.05 s apart
+    // (2 s): it walks, the foe steps, and it holds before it loops. An APNG
+    // of 384 × 384, at most 512 KiB; a test fails when the file is stale
+    // (`tests/it/files.rs`).
+    preview: (
+        args: ["--stage", "--keys", "Enter Up Right Right Enter",
+               "--every", "0.05", "--count", "40", "--scale", "1",
+               "--apng"],
+    ),
+
     // `cargo shuyi check --target all`: the targets it ships on, each with
     // its frame (48 × 24 cells of 8 × 16; on the Playdate 50 × 15, its
     // `hello_grid::PLAYDATE_CONSOLE`), its scale and its smallest text (the

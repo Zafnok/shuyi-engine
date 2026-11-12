@@ -79,11 +79,11 @@ None.
   (`Formats::decode::<image::Image>`): replace only the PNG branch's
   call with `png_pixels` and keep the registry branch; if not, nothing
   to do (2234 decodes the other formats beside `png_pixels`).
-- **Either order with 2811:** if 2811 is done, `codec.rs` also holds
-  `decode_apng`, which reads back only the RGBA8 APNGs `encode_apng`
-  writes: it stays, and `codec.rs`'s docs say it encodes PNG and APNG
-  files and reads back only its own APNGs, any other PNG being read
-  with `png_pixels`; if not, nothing to do (2811 writes those docs).
+- **From 2811 (done):** `codec.rs` also holds `decode_apng` (and its
+  `Animation`), which reads back only the RGBA8 APNGs `encode_apng`
+  writes, for `frame_png::preview::check`: it stays, and `codec.rs`'s
+  docs say it encodes PNG and APNG files and reads back only its own
+  APNGs, any other PNG being read with `png_pixels`.
 - **From 3072 (done):** `app_info::icon` (`crates/cli/src/app_info.rs`,
   the icon `check --target` checks and `app-info` downscales) decodes
   with `codec::decode_png`: move it onto `png_pixels` with the other
@@ -142,7 +142,8 @@ None.
       only `palette::grey`.
 - [ ] Every existing test of lights, dimmed colours, one-bit conversion
       and `frame-png` passes unchanged.
-- [ ] The clauses with 2234 and 2811 are settled.
+- [ ] The clause with 2234 is settled, and `codec.rs`'s docs say what
+      2811's `decode_apng` reads.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

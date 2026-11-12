@@ -5,7 +5,9 @@
 #   site/check-build.sh                 checks the book's sources, writes
 #                                       the problem codes' pages
 #                                       (errors.sh), copies the playground's
-#                                       files (copy-playground.sh), builds
+#                                       files (copy-playground.sh) and the
+#                                       examples' previews
+#                                       (copy-previews.sh), builds
 #                                       the site twice, with two base URLs,
 #                                       and checks both outputs
 #   site/check-build.sh hosts DIR BASE  checks a built site in DIR, served
@@ -91,6 +93,7 @@ done
 
 bash "$site_dir/errors.sh"
 bash "$site_dir/copy-playground.sh"
+bash "$site_dir/copy-previews.sh"
 
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
@@ -221,6 +224,17 @@ for project in "${projects[@]}"; do
       grep -qF "data-file=\"$file\"" <<<"$decoded" || fail "learn/book/$folder/$name/ has no editor of $file"
     done
   done
+done
+
+# Each example's preview (ticket 2811): the build holds it as the example
+# has it, and the Examples page names it in the example's card.
+for preview in "$site_dir"/../examples/*/preview.png; do
+  [ -f "$preview" ] || continue
+  name="$(basename "$(dirname "$preview")")"
+  cmp -s "$preview" "$out/one/previews/$name.png" ||
+    fail "the build's previews/$name.png isn't examples/$name/preview.png"
+  grep -qF "src=\"${one}previews/$name.png\"" "$out/one/examples/index.html" ||
+    fail "the Examples page doesn't show previews/$name.png in $name's card"
 done
 
 check_hosts "$out/one" "$one"
