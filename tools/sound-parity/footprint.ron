@@ -540,7 +540,7 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/xtask/Cargo.toml",
-            find: "\n# `sound-parity`: the SHA-256 that pins the corpus and the evidence.\nsha2 = { version = \"0.10\", default-features = false }\n",
+            find: "\n# `sound-parity`: the SHA-256 that pins the corpus and the evidence.\nsha2 = { version = \"0.11\", default-features = false }\n",
             with: "",
         ),
         Cut(
