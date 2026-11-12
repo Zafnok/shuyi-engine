@@ -10,6 +10,8 @@ up to four tiles a turn, while a foe (`&`) steps one tile toward you after
 each of your moves, and sometimes trips; and a screen that says how it
 ended.
 
+![Hello, Grid's stage: your blue @ walks up and right along the maze, then the red & steps toward it](preview.png)
+
 ```
 cargo run -p hello-grid              # from the repository's root
 cargo shuyi run --watch              # from here: a colour saved in files/palette.ron shows, and a picture saved in files/tiles.png
@@ -50,6 +52,9 @@ Never edit these by hand; a test fails when one is stale.
   `cargo shuyi check` names one the atlas lacks.
 - `files/tiles.png` (the tileset, from the font and the palette's colors;
   `shuyi.ron` lists the tiles): `cargo shuyi glyph-tiles`.
+- `preview.png` (the picture above, which the website's Examples card
+  plays too: an APNG of 2 s of the stage, made from `shuyi.ron`'s
+  `preview` part): `cargo shuyi frame-png --preview`.
 - A picture of a frame, to look at: `cargo shuyi frame-png stage.png
   --stage --keys "Enter Up Right"` (`--tiles` for the other look).
 

@@ -8,6 +8,11 @@
 <ul class="cards">
   {%- for example in section.pages %}
   <li class="card">
+    {%- set preview = "previews/" ~ example.slug ~ ".png" %}
+    {%- set meta = get_image_metadata(path=preview, allow_missing=true) %}
+    {%- if meta %}
+    <img class="card-preview" src="{{ get_url(path=preview) | safe }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy" alt="{{ example.title }}, playing">
+    {%- endif %}
     <h2><a href="{{ example.permalink | safe }}">{{ example.title }}</a></h2>
     <p>{{ example.description }}</p>
     <p class="card-foot">

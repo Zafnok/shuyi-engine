@@ -46,6 +46,87 @@ pub fn encode_apng(frames: &[&Image], every: u16) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
+/// An animated PNG read back: what [`decode_apng`] returns. A set of
+/// fields that may grow (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Animation {
+    /// The frames, in order, each RGBA8 and the whole picture.
+    pub frames: Vec<Image>,
+    /// Each frame's delay, as a fraction of a second: (numerator,
+    /// denominator), as the file writes it.
+    pub delays: Vec<(u16, u16)>,
+    /// How many times it plays: 0 is forever.
+    pub plays: u32,
+}
+
+/// Decodes an animated PNG as [`encode_apng`] writes it: 8-bit RGBA, every
+/// frame the whole picture at (0, 0).
+///
+/// # Errors
+/// Bytes that aren't a PNG, a PNG that isn't animated, another colour type
+/// or depth than 8-bit RGBA, or a frame that isn't the whole picture.
+pub fn decode_apng(bytes: &[u8]) -> Result<Animation, String> {
+    let decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+    let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
+    let info = reader.info();
+    let (width, height) = (info.width, info.height);
+    if (info.color_type, info.bit_depth) != (png::ColorType::Rgba, png::BitDepth::Eight) {
+        return Err(format!(
+            "not 8-bit RGBA but {:?} of {} bits: not an APNG frame-png writes",
+            info.color_type, info.bit_depth as u8
+        ));
+    }
+    let control = info
+        .animation_control()
+        .ok_or("not an animated PNG: it has no acTL chunk")?;
+    let (count, plays) = (control.num_frames, control.num_plays);
+    let size = reader
+        .output_buffer_size()
+        .ok_or("the picture is too large to decode")?;
+    let mut animation = Animation {
+        frames: Vec::new(),
+        delays: Vec::new(),
+        plays,
+    };
+    for i in 0..count {
+        let mut buf = vec![0; size];
+        let shown = reader
+            .next_frame(&mut buf)
+            .map_err(|e| format!("frame {}: {e}", i + 1))?;
+        buf.truncate(shown.buffer_size());
+        let control = reader
+            .info()
+            .frame_control()
+            .ok_or_else(|| format!("frame {} has no fcTL chunk", i + 1))?;
+        if (
+            control.x_offset,
+            control.y_offset,
+            control.width,
+            control.height,
+        ) != (0, 0, width, height)
+        {
+            return Err(format!(
+                "frame {} is {}×{} at ({}, {}), not the whole {width}×{height} picture",
+                i + 1,
+                control.width,
+                control.height,
+                control.x_offset,
+                control.y_offset
+            ));
+        }
+        animation
+            .delays
+            .push((control.delay_num, control.delay_den));
+        animation.frames.push(Image {
+            width,
+            height,
+            rgba: buf,
+        });
+    }
+    Ok(animation)
+}
+
 /// Checks that `frames` has a frame and all are the size of the first;
 /// returns that size.
 fn one_size(frames: &[&Image]) -> Result<(u32, u32), String> {
@@ -244,18 +325,18 @@ mod tests {
         };
         let frames = [frame(10), frame(20), frame(30)];
         let apng = encode_apng(&frames.iter().collect::<Vec<_>>(), 3).unwrap();
-        let mut reader = png::Decoder::new(std::io::Cursor::new(&apng))
-            .read_info()
-            .unwrap();
-        let control = *reader.info().animation_control().unwrap();
-        assert_eq!((control.num_frames, control.num_plays), (3, 0));
-        for want in &frames {
-            let mut buf = vec![0; reader.output_buffer_size().unwrap()];
-            reader.next_frame(&mut buf).unwrap();
-            let shown = reader.info().frame_control().unwrap();
-            assert_eq!((shown.delay_num, shown.delay_den), (3, 60));
-            assert_eq!(buf, want.rgba);
-        }
+        let animation = decode_apng(&apng).unwrap();
+        assert_eq!(animation.frames, frames);
+        assert_eq!(animation.delays, [(3, 60); 3]);
+        assert_eq!(animation.plays, 0);
+        // A still PNG, or no PNG, is no APNG.
+        let still = encode_png(2, 1, &frames[0].rgba).unwrap();
+        assert!(
+            decode_apng(&still)
+                .unwrap_err()
+                .contains("not an animated PNG")
+        );
+        assert!(decode_apng(b"nope").is_err());
         // No frame, or frames of two sizes, are errors.
         assert!(encode_apng(&[], 3).is_err());
         let wide = Image {
@@ -265,6 +346,47 @@ mod tests {
         };
         let error = encode_apng(&[&frames[0], &wide], 3).unwrap_err();
         assert_eq!(error, "frame 2 is 3×1, not 2×1 as the first");
+    }
+
+    /// A two-frame APNG of a 2 × 2 picture, colour type `color`, whose
+    /// second frame is the 1 × 1 pixel at (1, 1) if `part` is set.
+    fn apng_of(color: png::ColorType, part: bool) -> Vec<u8> {
+        let channels = color.samples();
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, 2, 2);
+            encoder.set_color(color);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder.set_animated(2, 0).unwrap();
+            let mut writer = encoder.write_header().unwrap();
+            writer.write_image_data(&vec![7; 4 * channels]).unwrap();
+            if part {
+                writer.set_frame_dimension(1, 1).unwrap();
+                writer.set_frame_position(1, 1).unwrap();
+                writer.write_image_data(&vec![9; channels]).unwrap();
+            } else {
+                writer.write_image_data(&vec![9; 4 * channels]).unwrap();
+            }
+            writer.finish().unwrap();
+        }
+        out
+    }
+
+    #[test]
+    fn an_apng_that_isnt_whole_rgba_frames_is_refused() {
+        let whole = decode_apng(&apng_of(png::ColorType::Rgba, false)).unwrap();
+        assert_eq!(whole.frames.len(), 2);
+        assert_eq!(whole.frames[1].rgba, [9; 16]);
+        assert_eq!(
+            decode_apng(&apng_of(png::ColorType::Rgba, true)).unwrap_err(),
+            "frame 2 is 1×1 at (1, 1), not the whole 2×2 picture"
+        );
+        assert!(
+            decode_apng(&apng_of(png::ColorType::Rgb, false))
+                .unwrap_err()
+                .starts_with("not 8-bit RGBA but Rgb of 8 bits")
+        );
+        assert!(decode_apng(&apng_of(png::ColorType::Grayscale, false)).is_err());
     }
 
     /// An opaque frame of `n` pixels in a row, colours `first` to

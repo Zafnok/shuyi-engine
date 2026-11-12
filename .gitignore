@@ -39,3 +39,6 @@ lcov.info
 # project (ticket 2820).
 /site/static/playground/
 /site/static/learn/
+# The Examples cards' previews, which site/copy-previews.sh copies from each
+# examples/<name>/preview.png (ticket 2811).
+/site/static/previews/

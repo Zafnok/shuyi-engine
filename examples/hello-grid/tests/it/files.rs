@@ -1,18 +1,20 @@
 //! The game's files: they load, and the generated ones are what the
 //! engine's tools make from their sources and `shuyi.ron` (the font atlas
-//! from the BDF, the tileset from the font and the palette), so an edit
-//! that forgets to regenerate them fails here.
+//! from the BDF, the tileset from the font and the palette, the preview
+//! from its `frame-png` arguments), so an edit that forgets to regenerate
+//! them fails here.
 
 use std::path::Path;
 
 use hello_grid::map::{FOE_TILE, HERO_TILE, TERRAIN_LOOKS, TILE_COLUMNS, TILE_PX, piece_look};
 use hello_grid::rules::Side;
+use hello_grid::tools::HelloTools;
 use hello_grid::{FONT_PNG, FONT_RON, Hello, REQUIRED_GLYPHS};
 use shuyi::ui::GameData;
 use shuyi_cli::Project;
 use shuyi_cli::codec::decode_png;
 use shuyi_cli::font_atlas::{AtlasChars, atlas_ron, build_atlas, read_font};
-use shuyi_cli::glyph_tiles;
+use shuyi_cli::{frame_png, glyph_tiles};
 
 /// The example's folder, which holds its `shuyi.ron`.
 fn root() -> &'static Path {
@@ -89,6 +91,11 @@ fn the_tileset_is_what_glyph_tiles_makes_of_the_codes_looks() {
     let (width, height, rgba) = decode_png(embedded("tiles.png")).unwrap();
     assert_eq!((width, height), (drawn.width, drawn.height));
     assert!(rgba == drawn.rgba, "files/tiles.png is stale");
+}
+
+#[test]
+fn the_preview_is_what_frame_png_makes_of_its_part() {
+    frame_png::preview::check(&project(), &HelloTools).unwrap_or_else(|e| panic!("{e}"));
 }
 
 #[test]

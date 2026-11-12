@@ -154,8 +154,9 @@ commands:
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
   frame-png <out.png> [steps]        render a scripted game frame to a PNG; with --every and
-                                     --count, frames over time as a sheet or an APNG
-                                     (frame-png --help)
+                                     --count, frames over time as a sheet, an APNG or a
+                                     GIF; --preview: the game's preview.png from its
+                                     {file}'s `preview` (frame-png --help)
   bench [--target <id>] [--scenario <name>] [--out <dir>] [--no-instructions]
                                      play the game's *.bench.ron scenarios headless and gate
                                      instructions per frame (Valgrind), the heap's peak and
@@ -659,7 +660,14 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
         println!("{}", usage());
         return 0;
     }
-    let options = match frame_png::parse_args(args, game.frame_options()) {
+    let parsed = match args {
+        [only] if only == "--preview" => frame_png::preview::options(project, game.frame_options()),
+        _ if args.iter().any(|a| a == "--preview") => {
+            Err("--preview takes no other argument".to_owned())
+        }
+        _ => frame_png::parse_args(args, game.frame_options()),
+    };
+    let options = match parsed {
         Ok(options) => options,
         Err(e) => {
             eprintln!("{e}\n\n{}", usage());

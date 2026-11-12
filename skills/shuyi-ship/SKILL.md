@@ -241,6 +241,19 @@ Ship only what `check --target` passes.
    cargo shuyi frame-png moving.png --keys "Enter" --every 0.05 --count 40 --apng
    ```
 
+   To keep the README's own picture current, write those arguments
+   (after the file's name) in a `preview` part of `shuyi.ron`:
+
+   ```ron
+   preview: (args: ["--keys", "Enter", "--every", "0.05", "--count", "40", "--apng"]),
+   ```
+
+   `cargo shuyi frame-png --preview` then writes `preview.png` at the
+   project's root, at most 512 KiB, and a test that calls
+   `shuyi_cli::frame_png::preview::check(&project, &tools)` fails when
+   the game shows something else, naming the frame and the command that
+   remakes it.
+
    Where only a GIF is taken (a forum, a chat, an older store page),
    `--gif` writes the same frames as a GIF that loops forever. Its
    colours are exact, never dithered: a frame of more than 256 colours
