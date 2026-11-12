@@ -1763,3 +1763,41 @@ until the MVP, he chose **"Unpark 3033 only"**.
 - **3033 is unparked** and worked now.
 - **The rest of the in-house platform layer stays parked** until the
   MVP, as decided on 2026-10-19: unparking 3033 unparks no other ticket.
+
+## 2026-11-12: `shuyi new` sets up a game's repositories
+
+Source: Nick, in a session on 2026-11-12, after Visions of Shuyi spent
+many commits setting up its private assets repository:
+
+> "we're spending a lot of commits lately on setting up private assets
+> repos, to hold scripts (the writing), sprites, sounds, etc to limit AI
+> copying capability. But I wonder if this can be part of new project
+> setup. It can ask when you do shuyi new if you want to make a git repo
+> setup, and automatically setup i.e. if you name game "Visions of
+> Shuyi" the base repo will be "visions-of-shuyi" and assets repo
+> "visions-of-shuyi-assets" (append *-assets) and automatically generate
+> all tokens and secrets we had to manually setup, and make the base
+> repo public by default and assets private by default, or ask the user
+> on the setup steps how they prefer (this is preferred by default since
+> CI is free on GH on public repo and assets don't require CI). The
+> assets repo can be setup in the opinionated way we have now with
+> folders for scripts and sounds and sprites and such. Or they can
+> specify folders / which things they want there. And we can ship the
+> skill that works with assets from the game where it is now as part of
+> the template for shuyi new."
+
+**Rules:**
+
+- `shuyi new` asks whether to put the game on GitHub. The game's
+  repository is named from the game (`visions-of-shuyi`), the private
+  files' repository the same with `-assets`.
+- **Defaults:** the game's repository public, the files' private; the
+  developer is asked and may choose otherwise.
+- Every key and secret the game's builds need to read the private
+  repository is made by the engine's tools, not by hand.
+- The private repository has an opinionated layout (writing, sprites,
+  sounds…), or the folders the developer names.
+- The skill for working with the private files ships with the
+  template.
+
+Tickets 2590–2593.

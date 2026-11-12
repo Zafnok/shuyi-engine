@@ -335,6 +335,15 @@ if 2005 has moved it.
     before `cargo fmt`, and leave `--locked` out of the template's
     `AGENTS.md` list; if not, nothing to do (2033's test is written that
     way).
+  - **Either order with 2590** (a game's private files, checked out over
+    its files): if 2590 is done, every package job of the release
+    workflow runs 2590's checkout step when the game has `private.rev`:
+    a release from the game's own repository fails without the
+    `PRIVATE_ASSETS_KEY` secret (game ADR-0040 §6), a dry run or a fork
+    warns and builds on the public files; and the release section of
+    the template's `README.md` says a release ships the private files
+    inside the program. If not, nothing to do (2590 adds the step when
+    it lands: its clause says so).
 
 **Out (do not do):**
 - the exporters and their packages (3004, 3010, 3012). Which glibc the

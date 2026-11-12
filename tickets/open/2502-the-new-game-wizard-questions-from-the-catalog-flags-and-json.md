@@ -177,6 +177,13 @@ asked is missing.
   beside `--template hex` in `docs/guides/hex-grid.md`'s *what starts
   it*. If not, nothing to do: 2771 names the command and adds the test
   when it lands (its clause says so).
+- **Either order with 2592** (`shuyi new` asks about the game's GitHub
+  repositories and its private files): if 2592 is done, move its six
+  questions into the wizard, after the catalog's and the template's, in
+  the wizard's prompt style; `--questions --json` lists them with a
+  field saying an agent must not answer `github: yes` itself, and
+  `--no-input` means `--no-github`. If not, nothing to do: 2592 asks
+  them in the wizard when it lands (its clause says so).
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give
