@@ -209,7 +209,7 @@ pub const GATES: &[Gate] = &[
             touches_tutorial_locks,
         ))
         .hint(
-            "refresh the locks: for d in site/tutorial/*/; do (cd \"$d\" && cargo metadata --format-version 1 > /dev/null); done (the run-gates skill, \"The tutorial's steps\")",
+            "refresh the locks: for step in site/tutorial/*/; do (cd \"$step\" && cargo metadata --format-version 1 > /dev/null); done (the run-gates skill, \"The tutorial's steps\")",
         )
         .steps(&[
         "site/tutorial/01-new: cargo metadata --locked --format-version 1 >null",

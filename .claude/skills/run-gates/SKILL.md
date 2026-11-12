@@ -340,7 +340,7 @@ or `Cargo.lock` under `crates/`, the root's, or `site/tutorial/`, and fails
 naming the step. Building and testing the steps stays CI's.
 
 ```bash
-for d in site/tutorial/*/; do (cd "$d" && cargo metadata --format-version 1 > /dev/null); done
+for step in site/tutorial/*/; do (cd "$step" && cargo metadata --format-version 1 > /dev/null); done
 git status --short site/tutorial
 ```
 
