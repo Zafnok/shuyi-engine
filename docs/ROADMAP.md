@@ -185,7 +185,7 @@ the release's `blocked_by` is Nick's call.
 | 2059 (done) | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
 | 2066 | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
 | 2584 (done) | The ticket skills check a ticket against the code before trusting it |
-| 2057 | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
+| 2057 (done) | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
 | 2064 | Flaky gates have a ledger, and a calibration run is one reusable workflow |
 | 2058 | A migration block's `since` is the workspace's version |
 | 2065 | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
