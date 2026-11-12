@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2066 — A `Behaviour:` line for a change a game sees without a break
@@ -78,13 +78,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A done ticket with `Behaviour: shuyi-assets: …` shows in `cargo
+- [x] A done ticket with `Behaviour: shuyi-assets: …` shows in `cargo
       xtask changelog`'s output under its own heading.
-- [ ] The payload `notify-dependents` sends includes the line (shown by
-      a dry run or a test of the payload builder).
-- [ ] `work-ticket` §5 has the game-search rule.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~The payload `notify-dependents` sends includes the line (shown by
+      a dry run or a test of the payload builder).~~ (not done: the
+      payload is only the sha, ADR-0045 §2; the watcher reads the line
+      from the PR body and the ticket's notes, see Deviations)
+- [x] `work-ticket` §5 has the game-search rule.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass (those this change reaches;
+      see the PR body).
 
 ## Tests required
 
@@ -92,5 +95,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `behaviour_lines` in `crates/xtask/src/tickets.rs`, beside
+  `breaking_lines`, on the same `notes_lines` helper.
+- `cargo xtask changelog` lists the lines in a *Behaviour changes*
+  section after *Breaking changes*, and as `**Behaviour:**` items under
+  *Changed* in the Keep a Changelog shape. The fake ticket 2402 of the
+  changelog's tests now carries a `Behaviour: shuyi-input: …` line, and
+  the three snapshots show it under its own heading.
+- The `work-ticket` skill (§5) describes the line and the rule: "nothing
+  in the game must change" is written only after a `gh search code
+  --repo Zafnok/visions-of-shuyi` for the rule touched, named in the
+  notes. §6 has the PR body repeat the `Behaviour:` lines.
+- `tickets/README.md`'s *Breaking changes* section describes the line.
+- [ADR-0108](../../docs/adr/0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md)
+  amends ADR-0038 §6; ADR-0038's status line and the index name it.
+
+Deviations:
+
+- **`notify-dependents.yml` is unchanged** (step 3, and the second
+  acceptance criterion). The ticket assumed it passes `Breaking:` lines
+  to the game; it doesn't. Its payload is only `engine_sha` (ADR-0045
+  §2), and the game's watcher reads `Breaking:` lines itself from each
+  PR's body and its ticket's completion notes (`breaking_lines` in the
+  game's `crates/engine-watch/src/lib.rs`). A `Behaviour:` line travels
+  the same way: in the done ticket's notes and in the PR body, which §6
+  now has repeat it. ADR-0108 §5 records this. No payload builder exists
+  to test.
+- The `document` skill doesn't describe `Breaking:` lines, so it is
+  unchanged.
+
+The game search for this change: none needed for the game's code, as
+this changes only `xtask` and the docs; game#1254 is the game's reader.
+
+Game: game#1254 (its "Either order with engine#2066" clause now takes
+the first branch: read the `Behaviour:` lines from the PR body and the
+ticket's notes, as `breaking_lines` reads `Breaking:`).
+
+Book: none, the book has no chapter on ticket notes or the changelog;
+this changes only `xtask` and the workflow docs, not the public API.
+
+No break. No `Behaviour:` line: no game-visible behaviour changes.
+
+Nick input: none.

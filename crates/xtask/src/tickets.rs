@@ -1274,6 +1274,13 @@ pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {
     notes_lines(body, "Breaking:")
 }
 
+/// The `Behaviour:` lines of a ticket (ticket 2066), read as [`breaking_lines`]
+/// reads the `Breaking:` lines: a change a game sees with no break of the
+/// public API (a validation, a default, an error's text, a label, an order).
+pub(crate) fn behaviour_lines(body: &str) -> Vec<&str> {
+    notes_lines(body, "Behaviour:")
+}
+
 /// The `Book:` lines of a ticket (ticket 2815), read as [`breaking_lines`]
 /// reads the `Breaking:` lines: why a change to the public API needs no
 /// change to the book.
@@ -2057,6 +2064,23 @@ README.md
                 "Breaking: shuyi-core: `Grid::new`: pass the size.",
                 "Breaking: shuyi-ui, shuyi-app: `Frame`: build it with `Frame::new`.",
             ]
+        );
+    }
+
+    #[test]
+    fn behaviour_lines_read_the_completion_notes_and_not_the_breaking_lines() {
+        let body = "# 2100 — A\n\n## Scope\n\nBehaviour: shuyi-ui: not here\n\n\
+                    ## Completion notes\n\n\
+                    Breaking: shuyi-core: `Grid::new`: pass the size.\n\
+                    - Behaviour: shuyi-assets: a `.dlg` line may hold any printable text.\r\n\
+                    Not Behaviour: this one.\n";
+        assert_eq!(
+            behaviour_lines(body),
+            vec!["Behaviour: shuyi-assets: a `.dlg` line may hold any printable text."]
+        );
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `Grid::new`: pass the size."]
         );
     }
 

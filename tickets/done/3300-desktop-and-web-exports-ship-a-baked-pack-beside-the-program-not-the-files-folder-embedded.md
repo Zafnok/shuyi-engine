@@ -179,8 +179,9 @@ None.
   entries, as it did the Playdate's, and now also scans each entry's path
   for the canaries: a canary in an entry's path fails with the pack's path
   and the entry's.
-- **Checked by hand on this machine**, at this branch's commit on
-  `b6dc5c22` (origin/main's tip when the work began; no merge since):
+- **Checked by hand on this machine**, on this branch over `b6dc5c22`.
+  The merge of `main` at `1eacb69e` after them brought only ticket 2066's
+  xtask and docs changes (the `Behaviour:` line), none in what they ran:
   - `cargo shuyi export windows --release` of Hello, Grid: the zip holds
     `hello-grid.pack`, the exposure gate passes, and
     `tools/export-check/check.sh windows` passes, its new check included
@@ -281,8 +282,20 @@ Docs: `docs/formats.md`, `docs/contract.md`, `docs/targets/desktop.md`,
 the template's `AGENTS.md` and `README.md`, ADR-0109 and the status lines
 of ADR-0023, ADR-0058 and ADR-0101.
 
-Game: nothing to adopt, the game exports with a package that has no
-`packed` feature and keeps embedding its files; adopting the pack is its
-own change when it wants one.
+Behaviour: shuyi-cli: every web build ships `pack-file.js` beside `index.html`, whose last line now starts the game through `shuyi_fetch_pack("<pack, or empty>", …)`; a list of the web build's files (the game's `scripts/check-release-package.sh`) adds `pack-file.js`.
+
+Behaviour: shuyi-cli: a `--release` export of `windows`, `linux`, `macos` or `web` whose package has a `packed` feature bakes and ships `<package>.pack` beside the program and builds with `packed`; a package without the feature exports as before.
+
+Behaviour: shuyi-ui, shuyi-cli: `BasicData::formats` also registers the baked forms of the English, the palette and the font atlas, and `BasicTools` offers `bake`, which answered `SH3001` before.
+
+Behaviour: shuyi-cli: the contract is version 47 (`bake`'s `check`, `export`'s `pack`), and the disclosure gate also finds a canary in a pack entry's path, naming the pack and the entry.
+
+Searched the game (`gh search code --repo Zafnok/visions-of-shuyi`) for
+`BasicData`, `BasicTools`, `packed`, `web::Options`, `ExportOutput`,
+`pack_beside_program`, `SH3001`, `index.html` and `page-files.js`: hits
+only in its copies of the skill pack, `docs/engine/pins.md` and
+`scripts/check-release-package.sh`, whose web file list the first
+`Behaviour:` line names. Its game package has no `packed` feature, so its
+exports otherwise build as before; adopting the pack is its own change.
 
 Nick input: none.

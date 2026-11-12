@@ -24,6 +24,7 @@ All notable changes to Shuyi Engine are in this file, written from `tickets/done
 ### Changed
 
 - **Breaking:** shuyi-core: `Timer::new`: pass the step as a `Step` ([Fixed-step timers](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2101-fixed-step-timers.md) ([#38](https://github.com/Zafnok/shuyi-engine/pull/38)))
+- **Behaviour:** shuyi-input: a key held at rebinding no longer fires. ([Rebind keys at run time](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2402-rebind-keys-at-run-time.md) ([#37](https://github.com/Zafnok/shuyi-engine/pull/37)))
 - 2 Sonar fixes
 - 1 other pull request
 
