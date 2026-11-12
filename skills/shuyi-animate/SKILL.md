@@ -117,7 +117,9 @@ let y = POP.value_at(ms_since_the_score_changed);
 4. **Test a moment, not a run.** Give the screen's draw a time and read
    what it built: the view, the cells, or the buffer's `sprites()` for
    a look. `cargo shuyi frame-png` draws a frame after a script with
-   waits (`--wait 0.5`), to look at.
+   waits (`--wait 0.5`), to look at. To see the motion itself, draw a
+   sheet of frames at known times: `--every 0.05 --count 8` (or the MCP
+   `frame_png` with `every` and `count`), each frame under its time.
 
 ## Particles
 

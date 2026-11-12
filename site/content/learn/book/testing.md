@@ -96,6 +96,12 @@ That command makes this:
 `--keys`, `--pad`, `--act` (an action by name, pressed by its key) and `--wait` are the steps, `--scale` the size, and `--target <id>` a
 target's display. The picture is for people; tests read the state.
 
+Motion needs more than one picture. `--every 0.05 --count 8` paints 8 frames, the first
+right after the steps and then one every 0.05 seconds, as one sheet with each frame under
+its time (`+50ms`); `--columns` sets how many go in a row. `--apng` writes them as an
+animated PNG instead, for a README or a store page. In the MCP session, `frame_png` takes
+the same `every` and `count` and answers the sheet.
+
 That picture is the raster's, painted in software. To check that your window draws the same
 pixels, give your game a `capture` feature (`capture = ["shuyi-app/capture"]`) and a plan, a
 RON file of the same steps with captures between them:

@@ -1,9 +1,38 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FramePngInput",
-  "description": "How `frame_png` paints the frame.",
+  "description": "How `frame_png` paints the frame, or frames over time.",
   "type": "object",
   "properties": {
+    "columns": {
+      "description": "The sheet's cells in a row, 1 to `count`; as square as it can be\nif none.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "count": {
+      "description": "How many frames to paint, 1 to 64, the first now: the session runs\n`every` idle frames between two, and stays after the last. More\nthan 1 answers one sheet of them, each labelled with its time.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "every": {
+      "description": "With `count` above 1, the seconds between two frames, in whole\nframes of 1/60 s.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "float",
+      "default": null
+    },
     "scale": {
       "description": "Pixels per console pixel, 1 to 8; the game's choice if none.",
       "type": [

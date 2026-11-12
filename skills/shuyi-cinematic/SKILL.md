@@ -117,7 +117,10 @@ music, jump or loop, and a test can draw any moment.
    ```
 
    `run` answers with the frame as text (`/result/frame`); `frame-png`
-   draws it (its steps are `--keys`, `--pad`, `--act` and `--wait`). In a test,
+   draws it (its steps are `--keys`, `--pad`, `--act` and `--wait`).
+   A shot's motion is checked with a sheet: `--every 0.25 --count 8`
+   after the steps draws 8 frames a quarter second apart, each under
+   its time (the MCP `frame_png` takes `every` and `count` too). In a test,
    the Harness's `wait(seconds)` does the same, and `music_clock()` says
    where the music is.
 

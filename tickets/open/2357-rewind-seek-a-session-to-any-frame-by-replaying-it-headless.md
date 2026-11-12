@@ -169,16 +169,17 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   Result<Shot, String>` (default: `unsupported("frame-png --session",
   "frame_from_session")`), implemented beside 2519's `session_from` by
   hello-grid's tools, the grid template's and 2511's `BasicTools`.
-- **Either order with 2514** (frames over time): if 2514 is done,
-  `frame-png --session <file> --until N` also takes its `--every` and
-  `--count`, with its output flags: capture i is frame N + i × every of
-  the record, played on with the record's own input (a capture past
-  the record's end is an error that gives its length), painted as
-  above, and the output is 2514's sheet, APNG or GIF. With steps after
-  `--until`, the captures come after them, as 2514's do. A test on
-  hello-grid's golden session: with `--count 4`, the sheet's first
-  cell equals the one frame `--until` alone writes. If not, 2514 adds
-  it (its clause says so).
+- **From 2514 (done):** `frame-png --session <file> --until N` also
+  takes 2514's `--every` and `--count` (`frame_png::Capture`), with its
+  output flags (`frame_png::Output`: `--sheet`, `--apng`): capture i
+  is frame N + i × every of the record, played on with the record's own
+  input (a capture past the record's end is an error that gives its
+  length), painted as above, and written as 2514's `run` writes a
+  capture (`sheet::build`, `codec::encode_apng`). With steps after
+  `--until`, the captures come after them, as 2514's do
+  (`frame_png::then_frames`). A test on hello-grid's golden session:
+  with `--count 4`, the sheet's first cell equals the one frame
+  `--until` alone writes.
 - **MCP `seek { frame }`** in 1133's session. **From 1133 (done):**
   the server runs no game. It forwards each session tool to the host
   (`mcp::host::Host`, in the game's tool program), which keeps the
@@ -362,7 +363,7 @@ A frame number here counts `App::frame` calls from 1, as 2518's
 - a history of gizmos to scrub through: the target frame's gizmos are
   built again, which is enough;
 - captures of a record's own frames in MCP's `frame_png`: after `seek`,
-  2514's `every` and `count` idle on the branch;
+  2514's `every` and `count` (done) idle on the branch;
 - the editor's timeline over `seek`: 2506's research decides whether
   the live view has one (its panels say so);
 - seeking a running windowed build over 2521's link;

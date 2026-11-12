@@ -71,7 +71,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 46,
+  "contract": 47,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
@@ -494,7 +494,7 @@ A **session** keeps one game running headless between calls:
 | `start` | `project`, `start` (the game's start options), or `session` (`file`, `any_stamp`) in their place | builds the game's tool program and starts its game; the answer lists the options it offers. From a [session record](#session-records), the game is on the frame it stopped on, and `reset` plays the record again. A game already running is stopped |
 | `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start. A script naming an action the game can't press is refused (`SH0001`), and the game keeps running |
 | `scene` | `path` (a JSON Pointer), `shape` (false) | the scene on screen now, and the log, as `scene` answers; `path` answers one value of its data instead, and `shape` its data's JSON Schema ([The scene's data](#the-scenes-data)) |
-| `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
+| `frame_png` | `scale` (1 to 8), `every` (seconds), `count` (1 to 64), `columns` | a picture of the frame now, as an image, with its size. With `every` and `count`, frames over time: one sheet of `count` frames, the first now and then one every `every` seconds (whole frames, `every` × (`count` − 1) at most 2 000), `columns` in a row, each under its time since the first (`+50ms`); `cells` gives each one's `millis`, `frame` and `top_screen`. The session runs `every` idle frames between two and stays after the last |
 | `events` | nothing | what happened since the start, the sounds, and the sounds the game added and hasn't removed (`sounds_added`, as `run`'s) |
 | `perf` | `since` (0), `max` (120, 1 to 600), `snapshot` (false), `diff_from` | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered; with `snapshot`, a heap snapshot taken now, `snapshot`; with `diff_from`, a kept snapshot's frame, the `diff` from it; and `kept`, the frames of the snapshots the session keeps ([Perf traces](#perf-traces)) |
 | `reset` | nothing | the game started again as `start` started it |
@@ -514,7 +514,7 @@ build and another link version answer `attach`'s codes (`SH0004`,
 | ---- | ------------- |
 | `step` | plays the script as a player's input (waits in seconds, played as the build's frames at 60 a second, rounded up; an action pressed as the build's keymap says), then `frames` as a wait; answers as `run` does from the build's screens, frame and log, with no scene, events or sounds |
 | `scene` | the frame's text in place of a scene (`kind` `frame`), and the log |
-| `frame_png` | the window's picture, at the window's size; `scale` is refused |
+| `frame_png` | the window's picture, at the window's size; `scale`, `every`, `count` and `columns` are refused (one picture at a time over the link) |
 | `events` | none: the limit says so |
 | `perf` | the build's frames' records, as a headless session answers them: the same input and answer; the heap snapshots it takes are kept by the session, for `diff_from` |
 | `reset` | refused (`SH0001`): the link never changes a running build |

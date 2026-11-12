@@ -112,11 +112,20 @@ colours or the frame's text.
    options (`--seed`) follow (`cargo shuyi frame-png --help` lists
    them). The picture is for review: tests read state.
 
+   Motion is checked with a sheet: `--every <seconds> --count <n>`
+   paints `n` frames, the first right after the steps, as one picture
+   with each frame under its time (`+50ms`):
+
+   ```bash
+   cargo shuyi frame-png walk.png --keys "Enter Right" --every 0.05 --count 8
+   ```
+
 7. **Play it live, headless.** The engine's MCP server keeps one game
    running between calls: `start` (with the game's options), `step` (a
    script, then idle frames), `scene` (the scene and the log; `path`
    reads one value of its data by JSON Pointer, `shape` its shape),
-   `frame_png` (a picture of the frame now), `events`, `perf` (the
+   `frame_png` (a picture of the frame now; with `every` and `count`,
+   a sheet of frames over time, the session left after the last), `events`, `perf` (the
    frames' times, `shuyi-perf`), `reset` and `stop`. Call `start` again after changing the game's code.
    `cargo shuyi run --script "Enter Right" --frames 30` gives the same
    answer once, for a script.

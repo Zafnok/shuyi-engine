@@ -17,8 +17,8 @@ use shuyi_ui::perf::HeapSnapshot;
 
 use super::server::{Launch, Link};
 use super::{
-    EventsOutput, FramePngInput, FramePngOutput, KEPT_SNAPSHOTS, NoInput, PerfInput, PerfOutput,
-    SceneInput, StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
+    EventsOutput, FramePngCell, FramePngInput, FramePngOutput, KEPT_SNAPSHOTS, NoInput, PerfInput,
+    PerfOutput, SceneInput, StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
 use crate::contract::attach::Failed;
@@ -31,7 +31,7 @@ use crate::contract::{
     Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay,
 };
-use crate::frame_png::MAX_SCALE;
+use crate::frame_png::{Capture, Image, MAX_SCALE, Shot, every_frames, sheet};
 use crate::game::{GameArg, GameTools, check_start, code_of};
 use crate::project::{FILE, Project};
 
@@ -277,8 +277,8 @@ impl<'a> Host<'a> {
                 Some(live) => Reply::of(answered(op, input, |i: PerfInput| perf_read(live, &i))),
                 None => Reply::of(no_session(op)),
             },
-            Op::FramePng => match self.live.as_ref() {
-                Some(live) => frame_png(&*live.game, input),
+            Op::FramePng => match self.live.as_mut() {
+                Some(live) => frame_png(&mut *live.game, input),
                 None => Reply::of(no_session(op)),
             },
             Op::Stop => match (read::<NoInput>(input), self.live.take()) {
@@ -522,37 +522,87 @@ pub(crate) fn perf_answer(
     Ok(Answer::new(Op::Perf, true, output, limits))
 }
 
-/// `frame_png`: `game`'s frame painted as `input` says.
-fn frame_png(game: &dyn Session, input: Value) -> Reply {
+/// `frame_png`: `game`'s frame painted as `input` says; with `count`
+/// above 1, that many frames, `every` idle frames apart, as one sheet.
+fn frame_png(game: &mut dyn Session, input: Value) -> Reply {
     let op = Op::FramePng;
-    let input: FramePngInput = match read(input) {
-        Ok(input) => input,
-        Err(e) => return Reply::of(failed(op, codes::WRONG_ARGUMENTS, e)),
-    };
-    if let Some(scale) = input.scale.filter(|s| !(1..=MAX_SCALE).contains(s)) {
-        let error = format!("scale: 1 to {MAX_SCALE}, not {scale}");
-        return Reply::of(failed(op, codes::WRONG_ARGUMENTS, error));
+    match frame_png_of(game, input) {
+        Ok((output, png)) => Reply {
+            answer: Some(to_json(&Answer::new(op, true, output, Vec::new()))),
+            png: Some(base64(&png)),
+            error: None,
+        },
+        Err((code, e)) => Reply::of(failed(op, code, e)),
     }
-    let image = match game.picture(input.scale) {
-        Ok(image) => image,
-        Err(e) => return Reply::of(failed(op, code_of(&e), e)),
+}
+
+/// `frame_png`'s answer and its PNG.
+fn frame_png_of(game: &mut dyn Session, input: Value) -> Result<(FramePngOutput, Vec<u8>), Failed> {
+    let input: FramePngInput = read(input).map_err(wrong)?;
+    if let Some(scale) = input.scale.filter(|s| !(1..=MAX_SCALE).contains(s)) {
+        return Err(wrong(format!("scale: 1 to {MAX_SCALE}, not {scale}")));
+    }
+    let top = |game: &dyn Session| game.screens().last().cloned().unwrap_or_default();
+    let paint = |game: &dyn Session| game.picture(input.scale).map_err(|e| (code_of(&e), e));
+    let encode = |image: &Image| {
+        encode_png(image.width, image.height, &image.rgba)
+            .map_err(|e| (codes::GAME_ERROR, format!("the picture: {e}")))
     };
-    let png = match encode_png(image.width, image.height, &image.rgba) {
-        Ok(png) => png,
-        Err(e) => return Reply::of(failed(op, codes::GAME_ERROR, format!("the picture: {e}"))),
+    let Some(capture) = capture_of(&input).map_err(wrong)? else {
+        let image = paint(game)?;
+        let output = FramePngOutput {
+            frames: game.frame_count(),
+            top_screen: top(game),
+            width: image.width,
+            height: image.height,
+            cells: Vec::new(),
+        };
+        return Ok((output, encode(&image)?));
     };
-    let screens = game.screens();
+    let (mut shots, mut cells) = (Vec::new(), Vec::new());
+    for i in 0..capture.count {
+        if i > 0 {
+            game.idle(capture.every);
+        }
+        shots.push(Shot::new(paint(game)?, top(game)));
+        cells.push(FramePngCell {
+            millis: capture.millis_of(i),
+            frame: game.frame_count(),
+            top_screen: top(game),
+        });
+    }
+    let sheet = sheet::build(&shots, capture.every, input.columns).map_err(wrong)?;
     let output = FramePngOutput {
         frames: game.frame_count(),
-        top_screen: screens.last().cloned().unwrap_or_default(),
-        width: image.width,
-        height: image.height,
+        top_screen: top(game),
+        width: sheet.width,
+        height: sheet.height,
+        cells,
     };
-    Reply {
-        answer: Some(to_json(&Answer::new(op, true, output, Vec::new()))),
-        png: Some(base64(&png)),
-        error: None,
+    Ok((output, encode(&sheet)?))
+}
+
+/// The frames over time `input` asks for: `None` for one picture (no
+/// `count`, or 1 with no `every`).
+fn capture_of(input: &FramePngInput) -> Result<Option<Capture>, String> {
+    match (input.every, input.count) {
+        (None, None | Some(1)) if input.columns.is_none() => Ok(None),
+        (None, None | Some(1)) => Err("columns: only with every and count".to_owned()),
+        (Some(_), None) => Err("every needs count".to_owned()),
+        (None, Some(_)) => Err("count needs every".to_owned()),
+        (Some(seconds), Some(count)) => {
+            let capture = Capture::new(every_frames(seconds)?, count)?;
+            if let Some(columns) = input.columns.filter(|c| !(1..=count).contains(c)) {
+                return Err(format!("columns: 1 to {count} (count), not {columns}"));
+            }
+            Ok(Some(capture))
+        }
     }
+}
+
+/// A wrong input's failure: `error`, with [`codes::WRONG_ARGUMENTS`].
+fn wrong(error: String) -> Failed {
+    (codes::WRONG_ARGUMENTS, error)
 }
 
 /// `shuyi mcp-host`: answers each request line of `input` on `output`

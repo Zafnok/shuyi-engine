@@ -219,6 +219,7 @@ fn parses_steps_in_order_and_the_games_options() {
             scale: Some(3),
             target: None,
             game: vec![game("--light", Some("dusk")), game("--map", None)],
+            capture: None,
         }
     );
     let on = parse_args(&args(&["a.png", "--target", "playdate"]), &GAME).unwrap();
@@ -748,3 +749,5 @@ fn a_drop_step_is_read_and_its_file_must_be_there() {
     );
     assert!(check(&Script::new(vec![Step::Drop("src".into())])).is_err());
 }
+
+mod capture;
