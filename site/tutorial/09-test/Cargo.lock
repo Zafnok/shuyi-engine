@@ -942,11 +942,13 @@ dependencies = [
  "macroquad",
  "quad-snd",
  "quad-storage",
+ "sapp-jsutils",
  "serde_json",
  "shuyi-alloc-count",
  "shuyi-assets",
  "shuyi-platform",
  "shuyi-ui",
+ "winapi",
 ]
 
 [[package]]

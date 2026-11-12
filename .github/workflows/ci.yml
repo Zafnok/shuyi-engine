@@ -485,7 +485,11 @@ jobs:
   # Each step of the tutorial, a whole game project and no member of the
   # workspace (ticket 2803): it builds against the engine's code at this
   # commit, so a change to the API that breaks a step fails here. Each keeps
-  # its own Cargo.lock, whose engine crates are moved first.
+  # its own Cargo.lock, checked in as `cargo test` writes it at this commit
+  # (ticket 2062): every step runs `--locked`, so a stale lock (the engine
+  # gained a dependency, or moved a version) fails here instead of being
+  # rewritten, and the last step fails on anything else the job changed.
+  # A dependency change in the engine refreshes the ten locks (`run-gates`).
   tutorial:
     name: tutorial (${{ matrix.step }})
     needs: changes
@@ -515,18 +519,17 @@ jobs:
           workspaces: site/tutorial/${{ matrix.step }}
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - name: Move the engine's crates in its lock
-        working-directory: site/tutorial/${{ matrix.step }}
-        run: cargo update -p shuyi -p shuyi-cli -p shuyi-app
       - name: Format
         working-directory: site/tutorial/${{ matrix.step }}
         run: cargo fmt --all --check
       - name: Lint
         working-directory: site/tutorial/${{ matrix.step }}
-        run: cargo clippy --workspace --all-targets --features box-pusher/tools -- -D warnings
+        run: cargo clippy --workspace --all-targets --features box-pusher/tools --locked -- -D warnings
       - name: Test
         working-directory: site/tutorial/${{ matrix.step }}
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
+      - name: The step's files are as checked in
+        run: git diff --exit-code -- site/tutorial/${{ matrix.step }}
 
   # The tutorial's pictures (ticket 2818): each edit a page tells the reader
   # to make still applies, builds and draws what its checked-in picture shows.
