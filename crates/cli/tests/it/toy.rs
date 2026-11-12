@@ -113,6 +113,56 @@ fn frame_png_writes_a_sheet_of_the_talk_typing_on() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The same 8 frames as a GIF: it decodes to exactly the captured pixels,
+/// loops forever, and shows each frame 5 hundredths of a second.
+#[test]
+fn frame_png_writes_a_gif_of_exactly_the_captured_frames() {
+    let dir = scratch("toy-gif");
+    let project = toy_project(&dir);
+    let all = args(&[
+        "frame-png",
+        "out.gif",
+        "--scale",
+        "1",
+        "--lobby",
+        "--keys",
+        "Down Down f",
+        "--every",
+        "0.05",
+        "--count",
+        "8",
+        "--gif",
+    ]);
+    assert_eq!(run(&project, &all, Some(&ToyTools)), 0);
+    let options = frame_png::parse_args(&all[1..], ToyTools.frame_options()).unwrap();
+    let shots = ToyTools
+        .frames(
+            &options.game,
+            &options.script,
+            Some(1),
+            Capture::new(3, 8).unwrap(),
+        )
+        .unwrap();
+    let mut decode = gif::DecodeOptions::new();
+    decode.set_color_output(gif::ColorOutput::RGBA);
+    let bytes = fs::read(dir.join("out.gif")).unwrap();
+    let mut decoder = decode.read_info(&bytes[..]).unwrap();
+    assert_eq!(decoder.repeat(), gif::Repeat::Infinite);
+    let mut frames = 0;
+    while let Some(frame) = decoder.read_next_frame().unwrap() {
+        let shot = &shots[frames].image;
+        assert_eq!(
+            (u32::from(frame.width), u32::from(frame.height)),
+            (shot.width, shot.height)
+        );
+        assert_eq!(frame.delay, 5);
+        assert!(*frame.buffer == shot.rgba[..], "frame {frames}");
+        frames += 1;
+    }
+    assert_eq!(frames, 8);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 /// The toy's grid field with the debug view's `grid` channel on
 /// (ADR-0085): the cell lines, the map's bounds, the cursor's cell and the
 /// pieces' over it, a golden picture (the `.png` beside the `.snap`).

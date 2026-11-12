@@ -1,4 +1,5 @@
-//! PNG files as RGBA8 pixels, for the tools that read and write pictures.
+//! PNG files as RGBA8 pixels, for the tools that read and write pictures,
+//! and frames over time as an APNG or a GIF.
 
 use std::io::BufWriter;
 
@@ -21,19 +22,7 @@ pub fn encode_png(width: u32, height: u32, rgba: &[u8]) -> Result<Vec<u8>, Strin
 /// Encodes `frames`, all of one size, as an animated PNG that loops
 /// forever, each frame shown for `every` frames of 1/60 s.
 pub fn encode_apng(frames: &[&Image], every: u16) -> Result<Vec<u8>, String> {
-    let first = frames.first().ok_or("an animation needs a frame")?;
-    let (width, height) = (first.width, first.height);
-    if let Some(i) = frames
-        .iter()
-        .position(|f| (f.width, f.height) != (width, height))
-    {
-        return Err(format!(
-            "frame {} is {}×{}, not {width}×{height} as the first",
-            i + 1,
-            frames[i].width,
-            frames[i].height
-        ));
-    }
+    let (width, height) = one_size(frames)?;
     let count = u32::try_from(frames.len()).map_err(|_| "too many frames")?;
     let mut out = Vec::new();
     {
@@ -55,6 +44,162 @@ pub fn encode_apng(frames: &[&Image], every: u16) -> Result<Vec<u8>, String> {
         writer.finish().map_err(|e| e.to_string())?;
     }
     Ok(out)
+}
+
+/// Checks that `frames` has a frame and all are the size of the first;
+/// returns that size.
+fn one_size(frames: &[&Image]) -> Result<(u32, u32), String> {
+    let first = frames.first().ok_or("an animation needs a frame")?;
+    let (width, height) = (first.width, first.height);
+    if let Some(i) = frames
+        .iter()
+        .position(|f| (f.width, f.height) != (width, height))
+    {
+        return Err(format!(
+            "frame {} is {}×{}, not {width}×{height} as the first",
+            i + 1,
+            frames[i].width,
+            frames[i].height
+        ));
+    }
+    Ok((width, height))
+}
+
+/// Most colours a GIF's palette holds.
+const GIF_COLOURS: usize = 256;
+
+/// The palettes of a GIF: one for every frame, or one per frame. Each
+/// lists the RGB colours in the order a scan of the pixels first meets
+/// them.
+#[derive(Debug, PartialEq, Eq)]
+enum Palettes {
+    /// All frames together have at most 256 colours.
+    Global(Vec<[u8; 3]>),
+    /// Each frame's own colours, at most 256 each.
+    PerFrame(Vec<Vec<[u8; 3]>>),
+}
+
+/// The colours of `frames`, in scan order.
+fn scan_colours<'a>(frames: impl IntoIterator<Item = &'a Image>) -> Vec<[u8; 3]> {
+    let mut seen = std::collections::HashSet::new();
+    let mut order = Vec::new();
+    for frame in frames {
+        for &[r, g, b, _] in frame.rgba.as_chunks::<4>().0 {
+            let colour = [r, g, b];
+            if seen.insert(colour) {
+                order.push(colour);
+            }
+        }
+    }
+    order
+}
+
+/// The exact palettes of `frames`: one global palette if they have at
+/// most 256 colours together, else one per frame. A pixel not opaque, or
+/// a frame of more than 256 colours, is an error naming the frame (from
+/// 1): a GIF of them would not be exact, and we never quantize.
+fn palettes(frames: &[&Image]) -> Result<Palettes, String> {
+    for (i, frame) in frames.iter().enumerate() {
+        if frame
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|pixel| pixel[3] != 255)
+        {
+            return Err(format!(
+                "frame {} has pixels that are not opaque, which a GIF can't show \
+                 exactly: write it with --apng",
+                i + 1
+            ));
+        }
+    }
+    let all = scan_colours(frames.iter().copied());
+    if all.len() <= GIF_COLOURS {
+        return Ok(Palettes::Global(all));
+    }
+    frames
+        .iter()
+        .enumerate()
+        .map(|(i, frame)| {
+            let colours = scan_colours([*frame]);
+            if colours.len() > GIF_COLOURS {
+                Err(format!(
+                    "frame {} has {} colours, more than the {GIF_COLOURS} of a GIF: \
+                     write it with --apng",
+                    i + 1,
+                    colours.len()
+                ))
+            } else {
+                Ok(colours)
+            }
+        })
+        .collect::<Result<_, _>>()
+        .map(Palettes::PerFrame)
+}
+
+/// A GIF frame's delay for `every` frames of 1/60 s: hundredths of a
+/// second, to the nearest, at least 2 (browsers slow a GIF whose delay is
+/// under 2).
+pub fn gif_delay(every: u32) -> u32 {
+    (every.saturating_mul(100).saturating_add(30) / 60).max(2)
+}
+
+/// Encodes `frames`, all of one size, as a GIF that loops forever, each
+/// frame shown for `every` frames of 1/60 s ([`gif_delay`]). Its palette
+/// is exact: the colours of the frames, global if they have at most 256
+/// together, else one per frame; never quantized or dithered.
+///
+/// # Errors
+/// No frame, frames of two sizes, a frame larger than 65 535 pixels a
+/// side, a pixel not opaque, or a frame of more than 256 colours (the
+/// error names the frame and suggests `--apng`).
+pub fn encode_gif(frames: &[&Image], every: u32) -> Result<Vec<u8>, String> {
+    let (width, height) = one_size(frames)?;
+    let side = |n: u32| {
+        u16::try_from(n).map_err(|_| format!("a GIF is at most 65535 pixels a side, not {n}"))
+    };
+    let (width, height) = (side(width)?, side(height)?);
+    let delay = u16::try_from(gif_delay(every)).map_err(|_| "--every: too long for a GIF")?;
+    let palettes = palettes(frames)?;
+    let flat = |colours: &[[u8; 3]]| colours.concat();
+    let global = match &palettes {
+        Palettes::Global(colours) => flat(colours),
+        Palettes::PerFrame(_) => Vec::new(),
+    };
+    let mut encoder =
+        gif::Encoder::new(Vec::new(), width, height, &global).map_err(|e| e.to_string())?;
+    encoder
+        .set_repeat(gif::Repeat::Infinite)
+        .map_err(|e| e.to_string())?;
+    for (i, frame) in frames.iter().enumerate() {
+        let colours = match &palettes {
+            Palettes::Global(colours) => colours,
+            Palettes::PerFrame(each) => &each[i],
+        };
+        // At most 256 colours (`palettes`): each has an index.
+        let index: std::collections::HashMap<[u8; 3], u8> = colours
+            .iter()
+            .zip(0..=u8::MAX)
+            .map(|(colour, i)| (*colour, i))
+            .collect();
+        let pixels: Vec<u8> = frame
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|&[r, g, b, _]| index[&[r, g, b]])
+            .collect();
+        let mut gif_frame = match &palettes {
+            Palettes::Global(_) => gif::Frame::from_indexed_pixels(width, height, pixels, None),
+            Palettes::PerFrame(_) => {
+                gif::Frame::from_palette_pixels(width, height, pixels, flat(colours), None)
+            }
+        };
+        gif_frame.delay = delay;
+        encoder.write_frame(&gif_frame).map_err(|e| e.to_string())?;
+    }
+    encoder.into_inner().map_err(|e| e.to_string())
 }
 
 /// Decodes a PNG to (width, height, RGBA8 pixels).
@@ -120,5 +265,113 @@ mod tests {
         };
         let error = encode_apng(&[&frames[0], &wide], 3).unwrap_err();
         assert_eq!(error, "frame 2 is 3×1, not 2×1 as the first");
+    }
+
+    /// An opaque frame of `n` pixels in a row, colours `first` to
+    /// `first + n − 1` (each a different RGB).
+    fn colours(first: u32, n: u32) -> Image {
+        let rgba = (first..first + n)
+            .flat_map(|c| {
+                let [_, r, g, b] = c.to_be_bytes();
+                [r, g, b, 255]
+            })
+            .collect();
+        Image {
+            width: n,
+            height: 1,
+            rgba,
+        }
+    }
+
+    #[test]
+    fn the_palette_is_global_per_frame_or_too_many() {
+        // 256 together: one global palette, in scan order.
+        let (a, b) = (colours(0, 200), colours(56, 200));
+        let Palettes::Global(global) = palettes(&[&a, &b]).unwrap() else {
+            panic!("not global");
+        };
+        assert_eq!(global.len(), 256);
+        assert_eq!((global[0], global[255]), ([0, 0, 0], [0, 0, 255]));
+        // 200 each, 300 together: one palette each.
+        let c = colours(100, 200);
+        let b = colours(300, 200);
+        let Palettes::PerFrame(each) = palettes(&[&c, &b]).unwrap() else {
+            panic!("not per frame");
+        };
+        assert_eq!((each[0].len(), each[1].len()), (200, 200));
+        assert_eq!(each[1][0], [0, 1, 44]);
+        // 257 in frame 2: an error naming it.
+        let many = colours(0, 257);
+        assert_eq!(
+            palettes(&[&c, &many]).unwrap_err(),
+            "frame 2 has 257 colours, more than the 256 of a GIF: write it with --apng"
+        );
+        // A pixel not opaque.
+        let mut clear = colours(0, 2);
+        clear.rgba[7] = 128;
+        assert!(
+            palettes(&[&clear])
+                .unwrap_err()
+                .starts_with("frame 1 has pixels that are not opaque")
+        );
+    }
+
+    #[test]
+    fn a_gif_delay_is_hundredths_to_the_nearest_at_least_2() {
+        let delays = [1, 3, 6, 2000].map(gif_delay);
+        assert_eq!(delays, [2, 5, 10, 3333]);
+        assert_eq!(gif_delay(2), 3);
+    }
+
+    /// The frames, delays and repeat of `bytes`, decoded as RGBA, and
+    /// whether each frame has its own palette.
+    fn decode_gif(bytes: &[u8]) -> (Vec<Vec<u8>>, Vec<u16>, gif::Repeat, Vec<bool>) {
+        let mut options = gif::DecodeOptions::new();
+        options.set_color_output(gif::ColorOutput::RGBA);
+        let mut decoder = options.read_info(bytes).unwrap();
+        let (mut frames, mut delays, mut local) = (Vec::new(), Vec::new(), Vec::new());
+        while let Some(frame) = decoder.read_next_frame().unwrap() {
+            frames.push(frame.buffer.to_vec());
+            delays.push(frame.delay);
+            local.push(frame.palette.is_some());
+        }
+        (frames, delays, decoder.repeat(), local)
+    }
+
+    #[test]
+    fn a_gif_decodes_to_its_frames_and_their_delays_looping_forever() {
+        let shape = |mut image: Image| {
+            // 2 rows of 100.
+            image.width = 100;
+            image.height = 2;
+            image
+        };
+        let frames = [shape(colours(0, 200)), shape(colours(56, 200))];
+        let refs: Vec<&Image> = frames.iter().collect();
+        let (decoded, delays, repeat, local) = decode_gif(&encode_gif(&refs, 3).unwrap());
+        assert_eq!(decoded, [frames[0].rgba.clone(), frames[1].rgba.clone()]);
+        assert_eq!(
+            (delays, repeat, local),
+            (vec![5, 5], gif::Repeat::Infinite, vec![false, false])
+        );
+        // 300 together: a palette each, and still exact.
+        let frames = [shape(colours(0, 200)), shape(colours(100, 200))];
+        let refs: Vec<&Image> = frames.iter().collect();
+        let (decoded, delays, _, local) = decode_gif(&encode_gif(&refs, 1).unwrap());
+        assert_eq!(decoded, [frames[0].rgba.clone(), frames[1].rgba.clone()]);
+        assert_eq!((delays, local), (vec![2, 2], vec![true, true]));
+        // No frame, two sizes, or too many colours are errors.
+        assert!(encode_gif(&[], 3).is_err());
+        let wide = colours(0, 3);
+        assert_eq!(
+            encode_gif(&[&colours(0, 2), &wide], 3).unwrap_err(),
+            "frame 2 is 3×1, not 2×1 as the first"
+        );
+        assert!(encode_gif(&[&colours(0, 257)], 3).is_err());
+        assert!(
+            encode_gif(&[&colours(0, 70_000)], 3)
+                .unwrap_err()
+                .contains("65535")
+        );
     }
 }

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2514"]
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2589 — frame-png --gif: frames over time as a GIF with an exact palette
@@ -97,20 +97,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `frame-png out.gif --every 0.05 --count 8 --gif` on the toy
+- [x] `frame-png out.gif --every 0.05 --count 8 --gif` on the toy
       writes a GIF that decodes (with `gif`) to exactly the captured
       pixels, looping forever, each delay 5.
-- [ ] A frame with 257 colours is an error naming the frame and 257,
+- [x] A frame with 257 colours is an error naming the frame and 257,
       suggesting `--apng`; nothing is written.
-- [ ] Frames of 200 colours each, 300 together, get a palette each;
+- [x] Frames of 200 colours each, 300 together, get a palette each;
       frames of 256 together get one global palette.
-- [ ] `--gif` with `--apng` or `--sheet`, and `--gif` with `--columns`,
+- [x] `--gif` with `--apng` or `--sheet`, and `--gif` with `--columns`,
       are errors with the usage.
-- [ ] `cargo deny check` passes with the `gif` crate, and its
+- [x] `cargo deny check` passes with the `gif` crate, and its
       `color_quant` isn't in `Cargo.lock` for `shuyi-cli` (`cargo tree
       -p shuyi-cli -e features -i color_quant` finds none).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -123,5 +123,44 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Done.** `frame-png --gif` (`Output::Gif`, an additive variant of
+  the `#[non_exhaustive]` enum) writes the frames over time with
+  `codec::encode_gif`: an exact RGB palette in scan order, global when
+  all frames have at most 256 colours together, else one per frame; a
+  frame of more than 256 is an error naming it and its count and
+  suggesting `--apng`, and nothing is written. Delays are
+  `codec::gif_delay` (hundredths to the nearest, at least 2), the GIF
+  loops forever, and frames must be one size (`one_size`, now shared
+  with `encode_apng`). The summary adds `the GIF shows each frame 0.02
+  seconds (every is 0.017 seconds)` when the delay isn't exact (units
+  written in full: the engine's lint reads a lone `s` as a key).
+- **Dependency.** `gif` 0.14.2 with `default-features = false` and
+  `std` only; `gif` and its LZW crate `weezl` 0.1.12 are both
+  `MIT OR Apache-2.0` in their `Cargo.toml`s; `cargo deny check`
+  passes. `cargo tree -p shuyi-cli -e features -i color_quant` finds no
+  `color_quant` for `shuyi-cli`. `color_quant` is still in `Cargo.lock`,
+  through `image` 0.24 elsewhere in the workspace, as before this PR.
+- **Compile budget.** A new `blank` game depends on `shuyi-cli`, so
+  `gif` and `weezl` are 2 more crates in its tree: 146, measured with
+  `cargo metadata` on a game fresh from `shuyi new --template blank`
+  and the engine's `Cargo.lock`. `tools/compile-budget.ron`'s
+  `dependencies` goes from 144 to 146 with the reason beside it.
+- **Deviation.** `encode_gif` also refuses a frame with a pixel that
+  isn't opaque, naming the frame and suggesting `--apng`: the raster
+  paints opaque pixels, and a GIF of partial alpha wouldn't be exact,
+  which the ticket's "exact or refused" rules out.
+- **Handoffs.** 2248's clause on the `gif` crate now says what holds
+  (the crate is in, its licenses checked: add it with the reader's
+  features); 2357's capture paragraph names `--gif` and `encode_gif`
+  beside the APNG.
+- **Docs.** `skills/shuyi-ship/SKILL.md` step 7 and the book's testing
+  chapter (`site/content/learn/book/testing.md`) name `--gif`.
+
+No break: `Output` is `#[non_exhaustive]` (ADR-0039), and
+`codec::encode_gif` and `codec::gif_delay` are new. Searched the game
+for `apng` and `frame_png::Output` (`gh search code --repo
+Zafnok/visions-of-shuyi`): no hit.
+
+Behaviour: shuyi-cli: `frame-png`'s usage text lists `--gif` under frames over time.
+
+Game: nothing to adopt, the game names no game ticket here and uses `frame-png` as a tool only.

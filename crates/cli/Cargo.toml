@@ -50,6 +50,9 @@ serde = { workspace = true, features = ["std"] }
 # The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
 ron = { workspace = true, features = ["std"] }
 png = "0.18"
+# `frame-png --gif`: frames over time as a GIF, written with an exact
+# palette. Without the default `color_quant`: we never quantize.
+gif = { version = "0.14", default-features = false, features = ["std"] }
 # The contract's answers as JSON (`--json`), and their JSON schemas.
 serde_json = "1"
 schemars = { version = "1", default-features = false, features = ["derive", "std"] }

@@ -40,10 +40,10 @@ derived from them and tested equal:
 - **GIF**, through the `gif` crate. It is new: check its license is
   `MIT OR Apache-2.0` on crates.io and in its `Cargo.toml` at the
   version taken, and that `cargo deny check` passes (ADR-0002 §8).
-  **Either order with 2589:** if 2589 is done, `gif` is already in
-  `Cargo.lock` (for `shuyi-cli`'s writer) with its licenses checked:
-  add it to `shuyi-assets` with the reader's features only. If not, add
-  it here, and 2589 adds it to `shuyi-cli` with the writer's;
+  **From 2589 (done):** `gif` 0.14 is in `Cargo.lock` (for
+  `shuyi-cli`'s writer, `default-features = false` with `std`), its
+  licenses checked (`gif` and `weezl` are `MIT OR Apache-2.0`): add it
+  to `shuyi-assets` with the reader's features only;
 - **`.flip`**, our own: made by `shuyi bake` from either.
 
 A colour frame is made one-bit with the picture's import settings'

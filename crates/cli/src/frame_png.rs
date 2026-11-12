@@ -17,7 +17,8 @@
 //! With `--every <seconds> --count <n>`, it writes frames over time
 //! instead ([`Capture`]): `n` frames, the first right after the script,
 //! as one [`sheet`] of cells labelled with their times (the default), or
-//! as an APNG (`--apng`). [`GameTools::frames`] paints them.
+//! as an APNG (`--apng`) or a GIF of an exact palette (`--gif`).
+//! [`GameTools::frames`] paints them.
 //!
 //! [`Painter`] decodes a game's font atlas and images from PNG and paints
 //! with the raster, `shuyi_ui::frame::raster`: the reference picture of a
@@ -37,7 +38,7 @@ use shuyi_ui::frame::raster;
 pub use shuyi_ui::frame::raster::{Image, one_bit_picture};
 use shuyi_ui::frame::{GlyphBuffer, Rgb};
 
-use crate::codec::{decode_png, encode_apng, encode_png};
+use crate::codec::{decode_png, encode_apng, encode_gif, encode_png, gif_delay};
 use crate::game::{GameArg, GameOption, GameTools, game_arg};
 
 pub mod sheet;
@@ -141,6 +142,10 @@ pub enum Output {
     /// An animated PNG that loops forever, each frame shown `every`
     /// frames.
     Apng,
+    /// A GIF that loops forever, each frame shown `every` frames in
+    /// hundredths of a second, to the nearest and at least 2; its palette
+    /// is exact (never quantized), or the GIF is refused.
+    Gif,
 }
 
 /// The usage text, with `command` as the tool's name and the game's own
@@ -181,6 +186,8 @@ frames over time (with --count; without it, one frame):
   --columns N          the sheet's cells in a row (as square as it can be by
                        default)
   --apng               an animated PNG that loops forever
+  --gif                a GIF that loops forever, its colours exact (at most 256
+                       a frame; each frame shown in whole 1/100 s, at least 2)
 "
     );
     for option in options {
@@ -310,6 +317,7 @@ impl CaptureFlags {
             "--columns" => self.columns = Some(whole(value()?)?),
             "--sheet" => self.outputs.push("--sheet"),
             "--apng" => self.outputs.push("--apng"),
+            "--gif" => self.outputs.push("--gif"),
             _ => return Ok(false),
         }
         Ok(true)
@@ -335,8 +343,11 @@ impl CaptureFlags {
             [] | ["--sheet"] => Output::Sheet {
                 columns: self.columns,
             },
-            ["--apng"] if self.columns.is_none() => Output::Apng,
-            ["--apng"] => return Err("--columns is for the sheet only".to_owned()),
+            [_] if self.columns.is_some() => {
+                return Err("--columns is for the sheet only".to_owned());
+            }
+            ["--apng"] => Output::Apng,
+            ["--gif"] => Output::Gif,
             _ => {
                 return Err(format!(
                     "one output only, not {}",
@@ -487,12 +498,41 @@ pub fn run(
             let first = images.first().map_or((0, 0), |i| (i.width, i.height));
             (png, first.0, first.1)
         }
+        Output::Gif => {
+            let images: Vec<&Image> = shots.iter().map(|shot| &shot.image).collect();
+            let gif = encode_gif(&images, capture.every)?;
+            let first = images.first().map_or((0, 0), |i| (i.width, i.height));
+            (gif, first.0, first.1)
+        }
     };
     write(root, &options.out, &png)?;
-    Ok(capture_summary(
+    let mut said = capture_summary(
         capture,
         &format!("{} ({width}×{height})", options.out.display()),
         &shots,
+    );
+    if output == Output::Gif
+        && let Some(speed) = gif_speed(capture.every)
+    {
+        said.push('\n');
+        said.push_str(&speed);
+    }
+    Ok(said)
+}
+
+/// What the summary says of a GIF whose frames are `every` frames of
+/// 1/60 s apart, when its delay ([`gif_delay`]) isn't exactly that: the
+/// time it shows each frame for, beside `every`'s.
+fn gif_speed(every: u32) -> Option<String> {
+    let delay = gif_delay(every);
+    if delay * 60 == every * 100 {
+        return None;
+    }
+    Some(format!(
+        "the GIF shows each frame {}.{:02} seconds (every is {:.3} seconds)",
+        delay / 100,
+        delay % 100,
+        f64::from(every) / 60.0
     ))
 }
 

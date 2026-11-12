@@ -171,11 +171,12 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   hello-grid's tools, the grid template's and 2511's `BasicTools`.
 - **From 2514 (done):** `frame-png --session <file> --until N` also
   takes 2514's `--every` and `--count` (`frame_png::Capture`), with its
-  output flags (`frame_png::Output`: `--sheet`, `--apng`): capture i
+  output flags (`frame_png::Output`: `--sheet`, `--apng`, and `--gif`
+  from 2589, done): capture i
   is frame N + i × every of the record, played on with the record's own
   input (a capture past the record's end is an error that gives its
   length), painted as above, and written as 2514's `run` writes a
-  capture (`sheet::build`, `codec::encode_apng`). With steps after
+  capture (`sheet::build`, `codec::encode_apng`, `codec::encode_gif`). With steps after
   `--until`, the captures come after them, as 2514's do
   (`frame_png::then_frames`). A test on hello-grid's golden session:
   with `--count 4`, the sheet's first cell equals the one frame
