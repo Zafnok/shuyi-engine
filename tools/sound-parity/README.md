@@ -72,7 +72,10 @@ unless every mandatory cell passed. On a machine with one platform's capture
 it fails on the others': only CI, with all of them, can pass.
 
 The Windows half is CI's `sound-parity-windows` job, whose recordings go to this one
-to be judged. On a person's machine it refuses to record unless the default endpoint
+to be judged. Both live in `.github/workflows/sound-parity.yml`, which `ci.yml`
+calls, so GitHub names them `sound-parity / sound-parity` and `sound-parity /
+sound-parity-windows`; `calibrate.yml` runs the pair N times on one commit (the
+`run-gates` skill). On a person's machine it refuses to record unless the default endpoint
 already runs at 44,100 Hz, and it would play the test signals out loud: nothing makes
 that needed. A recording the loopback lost frames from is never judged, so `capture.py` plays that scenario or timing
 again, up to three times, and fails the step if each loses frames (ticket 2047).
@@ -97,7 +100,8 @@ recorded, and GitHub's "Re-run failed jobs" re-runs `sound-parity` alone, with t
 passed `sound-parity-windows` and its artifact carried over: the same recording
 fails again on every attempt. To record anew, re-run `sound-parity-windows` (its
 "Re-run job", or `gh run rerun --job <its id>`), which runs `sound-parity` after it.
-A failed Windows cell's log in `sound-parity` says so, with the job's id.
+A failed Windows cell's log in `sound-parity` says so, with the job's id. A Windows cell that `tools/flaky.ron` lists is
+re-run this way once by itself (ticket 2064).
 
 To see only the timings of a recording:
 

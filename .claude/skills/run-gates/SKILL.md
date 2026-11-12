@@ -246,6 +246,15 @@ cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
 ```
 
+**Setting or moving a limit** (#258, #312): find the lean, fix its cause,
+never widen a limit; name the runs beside each limit. A cell that fails
+now and then is measured, not argued: run the pair N times on one commit
+with the calibration workflow (*When CI fails but local passes*,
+`-f job=sound-parity`), find where the loss fell in the failing runs'
+artifacts (`sound-parity-run-<n>`), and fix that. A limit that still moves
+names the calibration run beside it in `tools/sound-parity/budget.ron` and
+raises its `version`.
+
 ## Golden tables (CI's `determinism` job)
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build
@@ -520,3 +529,30 @@ interactive and won't work here.
 build with MSVC and Nick's machine with GNU, and a red `main` may be
 `main`'s own break: check the latest `main` run before blaming your
 branch.
+
+**A flake is written down, never just re-run** (ticket 2064):
+
+- `tools/flaky.ron` lists the cells known to fail now and then, each with
+  its open ticket, the day it was seen, its measured rate and the runs
+  that measured it. When every failed job of a CI run failed on listed
+  cells, CI re-runs it **once** by itself (`flaky-rerun.yml`), and the
+  re-run's `ci-result` names the entries in a warning. A cell not listed
+  gets no re-run.
+- A re-run you start by hand goes in the PR body with its run link and
+  what failed. The re-run's `ci-result` warns with what the attempt
+  before it failed on.
+- A second sighting of the same flake gets an entry in `tools/flaky.ron`
+  and a ticket (the `write-ticket` skill), with its rate measured.
+  `ticket-lint` fails an entry whose ticket is done: the PR that fixes a
+  flake removes its entry.
+- To measure a rate, or calibrate a limit, run the job N times on one
+  commit with `calibrate.yml`, never a scratch branch:
+
+  ```bash
+  gh workflow run calibrate.yml -f job=<job> -f count=20 -f ref=<branch or sha>
+  ```
+
+  Each run uploads its artifacts as `<job>-run-<n>`, and the `summary` job
+  writes one table: each run's jobs and failed cells, and each cell's rate.
+  Put the run's link in the notes. A job is offered once its jobs live in a
+  reusable workflow that `ci.yml` calls.

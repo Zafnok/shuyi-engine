@@ -1,0 +1,248 @@
+name: Sound parity
+
+# The sound gates (ticket 2573, ADR-0066), callable (ticket 2064): ci.yml's
+# `sound-parity` job runs them when `changes.yml` says the sound path changed,
+# and calibrate.yml runs them N times on one commit. The jobs API names these
+# jobs `<caller> / sound-parity` and `<caller> / sound-parity-windows`, as
+# tools/flaky.ron does.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "The commit to check out; the caller's by default"
+        type: string
+        default: ""
+      suffix:
+        description: "Appended to the artifacts' names, so that the runs of one calibration keep theirs apart"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  sound-parity:
+    name: sound-parity
+    needs: sound-parity-windows
+    # Pinned, as its performance budget is measured on this image.
+    runs-on: ubuntu-24.04
+    # `actions: read` finds `sound-parity-windows`' id for a failed Windows cell.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      # What the evidence names, the commit checked out (a calibration's `ref`).
+      - name: The revision
+        run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install the capture's tools and Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils libasound2-plugins libpulse0 vorbis-tools
+          python3 -m venv "$RUNNER_TEMP/capture"
+          "$RUNNER_TEMP/capture/bin/pip" install --require-hashes -r tools/web-check/requirements.txt
+          "$RUNNER_TEMP/capture/bin/python" -m playwright install --with-deps chromium
+      - name: The gates' own tests
+        run: cargo test -p xtask --locked sound_parity
+      - name: The web sound ring's indices
+        run: node tools/sound-parity/ring_test.js
+      - name: The sound core, without std and for the web
+        run: |
+          rustup target add thumbv7em-none-eabihf
+          cargo test -p shuyi-sound --all-features --locked
+          cargo test -p shuyi-sound --no-default-features --locked
+          cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
+          cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
+          cargo test -p shuyi-sound-out --locked
+          cargo build -p shuyi-sound-out --target wasm32-unknown-unknown --locked
+      - name: The corpus and what a separate decoder makes of it
+        run: cargo xtask sound-parity corpus --out target/sound-parity --oracle
+      - name: Build the probe, natively and for the web
+        run: |
+          start=$SECONDS
+          cargo build -p shuyi-app --example sound_probe --features sound-probe --release --locked
+          echo "NATIVE_BUILD=$((SECONDS - start))" >> "$GITHUB_ENV"
+          start=$SECONDS
+          cargo build -p shuyi-app --example sound_probe --features sound-probe \
+            --target wasm32-unknown-unknown --release --locked
+          echo "WEB_BUILD=$((SECONDS - start))" >> "$GITHUB_ENV"
+          page=target/sound-parity-page
+          rm -rf "$page"
+          mkdir -p "$page"
+          cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
+          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
+          cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound \
+            --target wasm32-unknown-unknown --release --locked
+          page=target/sound-parity-page-new
+          rm -rf "$page"
+          mkdir -p "$page"
+          cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
+          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
+      # A scenario quad-snd underran in is refused and made again (ticket 2048).
+      - name: Which recordings are made again
+        run: python3 tools/sound-parity/capture_test.py
+      - name: Record the native backend
+        run: |
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir target/sound-parity \
+            --probe target/release/examples/sound_probe --revision "$REVISION" --build-seconds "$NATIVE_BUILD"
+      - name: Record the web backend on its real loader
+        run: |
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
+            --page target/sound-parity-page --new-page target/sound-parity-page-new --revision "$REVISION" --build-seconds "$WEB_BUILD"
+      - name: What Windows recorded
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sound-parity-windows${{ inputs.suffix }}
+          path: target/sound-parity
+      # A noisy machine's timings say nothing either way, so they are measured
+      # again, up to twice; a failed cell stands, as a slowdown shows in the median
+      # however often it is measured. Every attempt's samples stay in the artifact.
+      # Only this job's platforms are measured here (`retry.py`): Windows' timings were
+      # measured again in their own job, so an inconclusive Windows cell stands, and
+      # its samples stay where they are.
+      - name: Which platforms the gate measures again
+        run: python3 tools/sound-parity/retry_test.py
+      - name: The gate
+        run: |
+          dir=target/sound-parity
+          for attempt in 1 2 3; do
+            if cargo xtask sound-parity gate --dir "$dir" --revision "$REVISION"; then
+              exit 0
+            fi
+            if [ "$attempt" = 3 ] || jq -e '[.cells[] | select(.mandatory and .status != "passed" and .status != "inconclusive")] | length > 0' "$dir/matrix.json" > /dev/null; then
+              exit 1
+            fi
+            platforms=$(python3 tools/sound-parity/retry.py "$dir/matrix.json") || exit 1
+            for platform in $platforms; do
+              echo "::notice::$platform's timings were inconclusive: measuring again"
+              mv "$dir/$platform/perf.jsonl" "$dir/$platform/perf-attempt-$attempt.jsonl"
+              case "$platform" in
+                linux-native) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir "$dir" \
+                  --probe target/release/examples/sound_probe --revision "$REVISION" --perf-only ;;
+                browser-chromium|browser-in-house) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir "$dir" \
+                  --page target/sound-parity-page --new-page target/sound-parity-page-new --revision "$REVISION" --perf-only --only "$platform" ;;
+              esac
+            done
+          done
+      - name: A port without capture evidence isn't ready, and the captured ones are
+        run: |
+          if cargo xtask sound-parity port-ready macos --matrix target/sound-parity/matrix.json; then
+            echo "::error::macos was called ready without capture evidence"
+            exit 1
+          fi
+          for platform in linux-native browser-chromium windows windows-in-house browser-in-house; do
+            cargo xtask sound-parity port-ready "$platform" --matrix target/sound-parity/matrix.json
+          done
+      # Windows' cells judge what `sound-parity-windows` recorded, and "Re-run failed
+      # jobs" re-runs this job alone on that same recording, which fails again
+      # (ticket 3089). A failed Windows cell says how to record anew.
+      - name: The matrix in the summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUFFIX: ${{ inputs.suffix }}
+        run: |
+          matrix=target/sound-parity/matrix.json
+          if [ -f "$matrix" ]; then
+            {
+              echo '```text'
+              jq -r '.cells[] | "\(.platform) \(.check): \(.status) \(.detail)"' "$matrix"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            failed=$(jq '[.cells[] | select((.platform == "windows" or .platform == "windows-in-house") and .mandatory and .status != "passed")] | length' "$matrix")
+            if [ "$failed" -gt 0 ] && [ -z "$SUFFIX" ]; then
+              job=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" --jq '.jobs[] | select(.name == "sound-parity / sound-parity-windows") | .id' || true)
+              echo "::error::$failed Windows cells failed. They judge the recording sound-parity-windows made, so re-running this job, or the failed jobs, judges that same recording again. To record anew, re-run sound-parity-windows (job ${job:-unknown, see the run page}), which runs this job after it: gh run rerun --job ${job:-<its id>}"
+            fi
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: sound-parity${{ inputs.suffix }}
+          path: |
+            target/sound-parity/matrix.json
+            target/sound-parity/linux-native/
+            target/sound-parity/browser-chromium/
+            target/sound-parity/browser-in-house/
+            target/sound-parity/windows/
+            target/sound-parity/windows-in-house/
+          if-no-files-found: ignore
+
+  # The same on Windows (ticket 3031): a hosted runner has no sound device, so it gets
+  # a virtual one, and the job records both backends through WASAPI loopback. The
+  # recordings go to `sound-parity`, which has the oracle and judges them with the
+  # rest. Timings that are too noisy to say anything are measured again here.
+  sound-parity-windows:
+    name: sound-parity-windows
+    # Pinned, as its performance budget is measured on this image.
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      # What the evidence names, the commit checked out (a calibration's `ref`).
+      - name: The revision
+        run: echo "REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: The output and the backend, with the null output
+        run: |
+          cargo test -p shuyi-sound-out --locked
+          cargo test -p shuyi-app --features in-house-sound --locked in_house
+      - name: A real render endpoint
+        shell: pwsh
+        run: tools/sound-parity/install-endpoint.ps1
+      - name: The corpus
+        run: cargo xtask sound-parity corpus --out target/sound-parity
+      - name: Build the probe of each backend
+        run: |
+          cargo build -p shuyi-app --example sound_probe --features sound-probe --release --locked
+          cp target/release/examples/sound_probe.exe target/sound-parity/probe-old.exe
+          cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked
+          cp target/release/examples/sound_probe.exe target/sound-parity/probe-new.exe
+      # A recording the loopback lost frames from is refused and made again (ticket 2047).
+      - name: Which recordings are made again
+        run: python tools/sound-parity/capture_test.py
+      - name: Record both backends
+        run: |
+          python tools/sound-parity/capture.py windows --set-endpoint --dir target/sound-parity \
+            --probe target/sound-parity/probe-old.exe --new-probe target/sound-parity/probe-new.exe --revision "$REVISION" \
+            --take-device
+      - name: Measure noisy timings again
+        run: |
+          dir=target/sound-parity
+          for platform in windows windows-in-house; do
+            for attempt in 1 2; do
+              out=$(cargo xtask sound-parity perf "$platform" --dir "$dir" 2>&1) && break
+              echo "$out"
+              echo "$out" | grep -q inconclusive || break
+              echo "::notice::$platform's timings were inconclusive: measuring again"
+              mv "$dir/$platform/perf.jsonl" "$dir/$platform/perf-attempt-$attempt.jsonl"
+              python tools/sound-parity/capture.py windows --dir "$dir" --probe "$dir/probe-old.exe" \
+                --new-probe "$dir/probe-new.exe" --revision "$REVISION" --perf-only --only "$platform"
+            done
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: sound-parity-windows${{ inputs.suffix }}
+          path: |
+            target/sound-parity/windows/
+            target/sound-parity/windows-in-house/
+          if-no-files-found: error
