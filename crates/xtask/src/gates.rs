@@ -48,7 +48,7 @@ impl Filter {
 }
 
 /// A narrower rule a local run adds to CI's filter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub enum Local {
     /// As CI.
     AsCi,
