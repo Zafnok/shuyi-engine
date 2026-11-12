@@ -163,9 +163,8 @@ None. When it unparks is his call (above).
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
     template-lines` if 2512 is done; counted, and said how, if not).
-    **Either order with 2514:** if 2514 is done, an animated picture of
-    its first seconds made with `frame-png`; if not, 2514 adds it (its
-    clause says so). **Either order with 2811:** if 2811 is done, that
+    **From 2514 (done):** an animated picture of its first seconds,
+    made with `frame-png --every 0.05 --count 40 --apng`. **Either order with 2811:** if 2811 is done, that
     picture is the example's preview: `preview.png` in its folder, made
     by a `preview` part in its `shuyi.ron` (`cargo shuyi frame-png
     --preview`), checked by a test in `tests/it/` as hello-grid's is,

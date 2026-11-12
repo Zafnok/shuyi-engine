@@ -153,7 +153,9 @@ commands:
   app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
-  frame-png <out.png> [steps]        render a scripted game frame to a PNG (frame-png --help)
+  frame-png <out.png> [steps]        render a scripted game frame to a PNG; with --every and
+                                     --count, frames over time as a sheet or an APNG
+                                     (frame-png --help)
   bench [--target <id>] [--scenario <name>] [--out <dir>] [--no-instructions]
                                      play the game's *.bench.ron scenarios headless and gate
                                      instructions per frame (Valgrind), the heap's peak and

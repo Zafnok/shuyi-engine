@@ -169,7 +169,7 @@ None.
   it in the package, and searches it for the build machine's paths
   (`paths::check_pack`: its bytes, every index path, every file it unpacks
   to). `export-report.json` names it (`ExportOutput::pack`). A package
-  without the feature exports as before. Contract 47.
+  without the feature exports as before. Contract 48.
 - **A game on the short path** bakes its English, palette and font atlas
   (`BasicData::bake`, `BasicGame::bake`, `BasicTools::bake`), stamped
   `AppInfo::pack_stamp` (its id and version, which `BasicGame::made`
@@ -180,8 +180,10 @@ None.
   for the canaries: a canary in an entry's path fails with the pack's path
   and the entry's.
 - **Checked by hand on this machine**, on this branch over `b6dc5c22`.
-  The merge of `main` at `1eacb69e` after them brought only ticket 2066's
-  xtask and docs changes (the `Behaviour:` line), none in what they ran:
+  The merges of `main` after them brought ticket 2066's xtask and docs
+  changes (`1eacb69e`), then 2514's `frame-png` frames and 2057's
+  Dependabot list (`d1ded901`), none in what they ran; the contract
+  became 48 after 2514's 47:
   - `cargo shuyi export windows --release` of Hello, Grid: the zip holds
     `hello-grid.pack`, the exposure gate passes, and
     `tools/export-check/check.sh windows` passes, its new check included
@@ -288,7 +290,7 @@ Behaviour: shuyi-cli: a `--release` export of `windows`, `linux`, `macos` or `we
 
 Behaviour: shuyi-ui, shuyi-cli: `BasicData::formats` also registers the baked forms of the English, the palette and the font atlas, and `BasicTools` offers `bake`, which answered `SH3001` before.
 
-Behaviour: shuyi-cli: the contract is version 47 (`bake`'s `check`, `export`'s `pack`), and the disclosure gate also finds a canary in a pack entry's path, naming the pack and the entry.
+Behaviour: shuyi-cli: the contract is version 48 (`bake`'s `check`, `export`'s `pack`), and the disclosure gate also finds a canary in a pack entry's path, naming the pack and the entry.
 
 Searched the game (`gh search code --repo Zafnok/visions-of-shuyi`) for
 `BasicData`, `BasicTools`, `packed`, `web::Options`, `ExportOutput`,

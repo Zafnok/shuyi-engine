@@ -1,0 +1,78 @@
+name: Dependabot waiting
+
+# The daily list of Dependabot PRs nobody has picked up (ticket 2057,
+# ADR-0037): one open issue labelled `dependabot-waiting` lists every
+# Dependabot PR open more than 24 hours, with its failing jobs. The run closes
+# the issue when the list is empty. The `work-ticket` skill reads it before it
+# chooses a ticket, and the `dependency-upkeep` skill works each PR.
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # daily, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-waiting
+  cancel-in-progress: false
+
+jobs:
+  list:
+    name: list
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: read
+      issues: write
+      pull-requests: read
+      statuses: read
+    steps:
+      # Nothing is checked out: the script reads GitHub only, and every value
+      # it gets from there goes through files and jq, never into the script.
+      - name: Write or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          label=dependabot-waiting
+          cutoff=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh pr list --author app/dependabot --state open --limit 100 \
+            --json number,title,createdAt,statusCheckRollup > prs.json
+          # One line per PR, then one per failing job. A title goes in
+          # backticks, so a scoped package's name mentions nobody.
+          jq -r --arg cutoff "$cutoff" '
+            map(select(.createdAt < $cutoff)) | sort_by(.number) | .[]
+            | "- #\(.number) `\(.title | gsub("`"; "'"'"'"))`, open since \(.createdAt[:10])",
+              ([.statusCheckRollup[]?
+                | select((.conclusion // .state // "") | IN("FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"))
+                | "  - failing: `\(.name // .context)`" + (if .workflowName then " (\(.workflowName))" else "" end)]
+               | unique | if length == 0 then ["  - no failing job"] else . end | .[])
+          ' prs.json > list.md
+          number=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty')
+          if [ ! -s list.md ]; then
+            echo "No Dependabot PR has waited more than 24 hours."
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "No Dependabot PR has waited more than 24 hours: $RUN_URL"
+            fi
+            exit 0
+          fi
+          {
+            echo "Dependabot PRs open more than 24 hours, as of $(date -u +%Y-%m-%d) ($RUN_URL):"
+            echo
+            cat list.md
+            echo
+            echo "Work each with the \`dependency-upkeep\` skill (ADR-0037), one PR at a time. This issue is rewritten daily by \`.github/workflows/dependabot-waiting.yml\`, and closed once the list is empty."
+          } > body.md
+          cat body.md
+          gh label create "$label" --force --color FBCA04 \
+            --description "Dependabot PRs open more than a day (dependabot-waiting.yml)"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --label "$label" \
+              --title "Dependabot PRs waiting more than a day" --body-file body.md
+          fi

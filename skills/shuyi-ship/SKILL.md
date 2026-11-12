@@ -234,6 +234,13 @@ Ship only what `check --target` passes.
    cargo shuyi frame-png shot.png --keys "Enter" --scale 3
    ```
 
+   An animated picture of the game moving, for a README or a store
+   page, is an APNG that loops forever:
+
+   ```bash
+   cargo shuyi frame-png moving.png --keys "Enter" --every 0.05 --count 40 --apng
+   ```
+
    The store pages themselves, their text and their prices are the
    game's owner's.
 

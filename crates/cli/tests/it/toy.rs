@@ -4,11 +4,12 @@
 use std::fs;
 use std::path::Path;
 
-use shuyi_cli::codec::decode_png;
+use shuyi_cli::codec::{decode_png, encode_png};
 use shuyi_cli::contract::perf;
 use shuyi_cli::contract::run::{self as run_op, RunInput, RunOutput};
+use shuyi_cli::frame_png::{self, Capture};
 use shuyi_cli::toy::ToyTools;
-use shuyi_cli::{Project, run};
+use shuyi_cli::{GameTools, Project, run};
 use shuyi_ui::perf::PerfLine;
 
 use crate::{args, scratch};
@@ -67,6 +68,51 @@ fn frame_png_renders_the_toy() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The lobby's Talk opened, as 8 frames 50 ms apart: a sheet of labelled
+/// cells in which the line types on, and a summary of each cell's time
+/// and screen.
+#[test]
+fn frame_png_writes_a_sheet_of_the_talk_typing_on() {
+    let dir = scratch("toy-sheet");
+    let project = toy_project(&dir);
+    let all = args(&[
+        "frame-png",
+        "toy.png",
+        "--scale",
+        "1",
+        "--lobby",
+        "--keys",
+        "Down Down f",
+        "--every",
+        "0.05",
+        "--count",
+        "8",
+    ]);
+    assert_eq!(run(&project, &all, Some(&ToyTools)), 0);
+    let options = frame_png::parse_args(&all[1..], ToyTools.frame_options()).unwrap();
+    let said = frame_png::run(&dir, &options, &ToyTools, None).unwrap();
+    let times = [0, 50, 100, 150, 200, 250, 300, 350];
+    for ms in times {
+        assert!(said.contains(&format!("\n  +{ms}ms talk")), "{said}");
+    }
+    let shots = ToyTools
+        .frames(
+            &options.game,
+            &options.script,
+            Some(1),
+            Capture::new(3, 8).unwrap(),
+        )
+        .unwrap();
+    for pair in shots[..6].windows(2) {
+        assert_ne!(pair[0].image, pair[1].image, "the line types on");
+    }
+    // 8 cells, 3 in a row: 3 rows, each cell under a 14-pixel strip.
+    let (width, height, _) = decode_png(&fs::read(dir.join("toy.png")).unwrap()).unwrap();
+    let (w, h) = (shots[0].image.width, shots[0].image.height);
+    assert_eq!((width, height), (2 + 3 * (w + 2), 2 + 3 * (14 + h + 2)));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 /// The toy's grid field with the debug view's `grid` channel on
 /// (ADR-0085): the cell lines, the map's bounds, the cursor's cell and the
 /// pieces' over it, a golden picture (the `.png` beside the `.snap`).
@@ -86,7 +132,37 @@ fn frame_png_draws_the_grid_channel_over_the_field() {
     // A channel no screen offers draws nothing.
     assert_eq!(png("none.png", &["--debug", "collision"]), plain);
     assert_eq!(png("all.png", &["--debug", "all"]), grid);
-    insta::assert_binary_snapshot!("field_debug_grid.png", grid);
+    insta::assert_binary_snapshot!("field_debug_grid.png", grid.clone());
+    // On every frame of a sheet: each cell of a two-frame sheet differs
+    // from the plain one's, and the first is the one picture's.
+    let frames = |extra: &[&str]| {
+        let mut all = vec!["out.png", "--field", "--every", "0.05", "--count", "2"];
+        all.extend_from_slice(extra);
+        let options = frame_png::parse_args(&args(&all), ToyTools.frame_options()).unwrap();
+        let (capture, _) = options.capture.unwrap();
+        ToyTools
+            .frames(&options.game, &options.script, Some(1), capture)
+            .unwrap()
+    };
+    let (plain, debug) = (frames(&[]), frames(&["--debug", "grid"]));
+    assert_eq!(debug.len(), 2);
+    for (plain, debug) in plain.iter().zip(&debug) {
+        assert_ne!(plain.image, debug.image);
+    }
+    let first = encode_png(
+        debug[0].image.width,
+        debug[0].image.height,
+        &debug[0].image.rgba,
+    );
+    assert_eq!(first.unwrap(), grid);
+    let sheet = png(
+        "sheet.png",
+        &["--debug", "grid", "--every", "0.05", "--count", "2"],
+    );
+    assert_ne!(
+        sheet,
+        png("plain-sheet.png", &["--every", "0.05", "--count", "2"])
+    );
     fs::remove_dir_all(&dir).unwrap();
 }
 

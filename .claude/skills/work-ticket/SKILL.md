@@ -36,6 +36,13 @@ so discipline here is the whole quality system.
 - If the user named a ticket, use it, and read neither file below.
 - A Dependabot PR or an `advisory` issue is worked with the
   `dependency-upkeep` skill instead (ADR-0037 §5).
+- Otherwise, first check for waiting Dependabot PRs: `gh issue list
+  --label dependabot-waiting --state open`. The daily run
+  `.github/workflows/dependabot-waiting.yml` keeps that one issue, listing
+  each Dependabot PR open more than a day (ticket 2057). If it is open,
+  work its oldest PR with `dependency-upkeep` before any ticket, and tell
+  the user so. Why: at the retro of 2026-11-08, four Dependabot PRs had
+  sat red two days, because nothing chose them.
 - Otherwise read `tickets/README.md` and `docs/ROADMAP.md`, and list
   ready tickets: `status: todo`, every `blocked_by` done.
   - A plain id is done when it is in this repository's `tickets/done/`.

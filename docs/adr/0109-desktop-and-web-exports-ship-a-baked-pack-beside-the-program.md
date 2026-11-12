@@ -102,7 +102,7 @@ The forces:
   embedded its files when it was built. The check still proves the file that
   ships against the sources the bake read.
 - The template's unpacked path keeps `include_dir!` until ticket 2215.
-- Contract 47: `bake`'s `check` and `export`'s `pack`.
+- Contract 48: `bake`'s `check` and `export`'s `pack`.
 
 ## Alternatives considered
 

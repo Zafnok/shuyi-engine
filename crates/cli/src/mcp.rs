@@ -18,7 +18,7 @@
 //! | `start` | builds the game's tool program and starts its game as its options say | [`StartOutput`] |
 //! | `step` | plays a script, then runs idle frames | `run`'s answer |
 //! | `scene` | the scene on screen now; with `path` one value of its data, with `shape` its shape | `scene`'s answer |
-//! | `frame_png` | a picture of the frame now, as an image | [`FramePngOutput`] and the PNG |
+//! | `frame_png` | a picture of the frame now, or with `every` and `count` a sheet of frames over time, as an image | [`FramePngOutput`] and the PNG |
 //! | `events` | what happened since the start | [`EventsOutput`] |
 //! | `perf` | the frames' records since a number, and their summary; a heap snapshot and a diff between two | [`PerfOutput`] |
 //! | `reset` | the game started again as `start` started it | [`StartOutput`] |
@@ -191,12 +191,22 @@ pub struct StepInput {
     pub frames: u32,
 }
 
-/// How `frame_png` paints the frame.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+/// How `frame_png` paints the frame, or frames over time.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
 pub struct FramePngInput {
     /// Pixels per console pixel, 1 to 8; the game's choice if none.
     pub scale: Option<u32>,
+    /// With `count` above 1, the seconds between two frames, in whole
+    /// frames of 1/60 s.
+    pub every: Option<f32>,
+    /// How many frames to paint, 1 to 64, the first now: the session runs
+    /// `every` idle frames between two, and stays after the last. More
+    /// than 1 answers one sheet of them, each labelled with its time.
+    pub count: Option<u32>,
+    /// The sheet's cells in a row, 1 to `count`; as square as it can be
+    /// if none.
+    pub columns: Option<u32>,
 }
 
 /// What `frame_png` painted (the picture itself is the tool's image).
@@ -211,6 +221,23 @@ pub struct FramePngOutput {
     pub width: u32,
     /// Its height in pixels.
     pub height: u32,
+    /// With `count`, each cell of the sheet, in order; left out for one
+    /// picture.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cells: Vec<FramePngCell>,
+}
+
+/// A cell of `frame_png`'s sheet.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FramePngCell {
+    /// Its time since the first, in whole milliseconds, as its label
+    /// says.
+    pub millis: u64,
+    /// The frames run in all when it was painted.
+    pub frame: u32,
+    /// The top screen's name then.
+    pub top_screen: String,
 }
 
 /// What `events` saw.
@@ -334,6 +361,12 @@ const ATTACH: &str = "Reach a game's debug build already running in its window, 
      frames' records and their summary; with `perf_follow` (a file), each new frame's \
      record written to the file for `follow_for` seconds, then their summary.";
 
+/// What `frame_png`'s tool does.
+const FRAME_PNG: &str = "A picture of the session's frame now, as the game paints it, as an \
+     image. With `every` (seconds) and `count`, frames over time: one sheet of `count` frames, \
+     the first now, each labelled with its time; the session runs `every` idle frames between \
+     two and stays where the last left it.";
+
 /// What `start`'s tool does.
 const START: &str = "Build the game's tool program and start its game headless in the session, as \
      its start options say (the answer lists them); a game already running is stopped. \
@@ -440,9 +473,7 @@ fn description(op: Op, session: bool) -> &'static str {
             "Play on in the session: a script of keys, pad buttons and waits, then `frames` idle \
              frames. Answers as `run` does, for everything since the start."
         }
-        (Op::FramePng, _) => {
-            "A picture of the session's frame now, as the game paints it, as an image."
-        }
+        (Op::FramePng, _) => FRAME_PNG,
         (Op::Events, _) => {
             "What happened in the session since the start: screens opened and closed, music, \
              voices, the quit, the game's own events, and the sounds."

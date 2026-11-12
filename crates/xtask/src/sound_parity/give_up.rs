@@ -57,26 +57,116 @@ impl Edit {
     }
 
     /// `text` with this edit made, or why it can't be: what it looks for must
-    /// be there exactly once, so a list that has drifted fails loudly.
+    /// be there exactly once, so a list that has drifted fails loudly. What it
+    /// looks for is read by key (`Pattern`), so a Dependabot bump of a pin or
+    /// a version doesn't make it drift.
     pub(crate) fn apply(&self, text: &str) -> Result<String, String> {
-        let once = |wanted: &str| match text.matches(wanted).count() {
-            1 => Ok(text.find(wanted).unwrap_or(0)),
-            count => Err(format!("{wanted:?} is there {count} times, not once")),
+        let once = |wanted: &str| {
+            let found = Pattern::new(wanted).find_all(text);
+            match found.as_slice() {
+                [one] => Ok(*one),
+                _ => Err(format!(
+                    "{wanted:?} is there {} times, not once",
+                    found.len()
+                )),
+            }
         };
         match self {
             Self::Replace { find, with, .. } => {
-                once(find)?;
-                Ok(text.replacen(find.as_str(), with, 1))
+                let (start, end) = once(find)?;
+                Ok(format!("{}{with}{}", &text[..start], &text[end..]))
             }
             Self::Cut { from, to, .. } => {
-                let start = once(from)?;
-                let end = once(to)?;
+                let (start, _) = once(from)?;
+                let (end, _) = once(to)?;
                 if end < start {
                     return Err(format!("{to:?} comes before {from:?}"));
                 }
                 Ok(format!("{}{}", &text[..start], &text[end..]))
             }
         }
+    }
+}
+
+/// What an edit looks for, with the parts a Dependabot bump moves left open,
+/// so the footprint names an action or a dependency by its key alone (ticket
+/// 2057):
+/// - in a `uses: owner/action@` line, the pin and its comment after the `@`,
+///   up to the end of the line;
+/// - in `version = "…"`, what is between the quotes.
+///
+/// The footprint writes those parts empty. What fills them in the file is
+/// kept as it is: nothing but the edit's own span changes.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Pattern(Vec<Piece>);
+
+#[derive(Debug, PartialEq, Eq)]
+enum Piece {
+    Text(String),
+    /// Anything up to, not including, the next line break or the end.
+    RestOfLine,
+    /// Anything up to, not including, the next `"`.
+    Quoted,
+}
+
+impl Pattern {
+    pub(crate) fn new(wanted: &str) -> Self {
+        const USES: &str = "uses: ";
+        const VERSION: &str = "version = \"";
+        let mut pieces = Vec::new();
+        let mut text = String::new();
+        let mut rest = wanted;
+        while !rest.is_empty() {
+            let line_end = rest.find('\n').unwrap_or(rest.len());
+            let pin = rest
+                .strip_prefix(USES)
+                .and_then(|_| rest[..line_end].find('@'));
+            if let Some(at) = pin {
+                text.push_str(&rest[..=at]);
+                pieces.push(Piece::Text(std::mem::take(&mut text)));
+                pieces.push(Piece::RestOfLine);
+                rest = &rest[line_end..];
+            } else if let Some(after) = rest.strip_prefix(VERSION) {
+                text.push_str(VERSION);
+                pieces.push(Piece::Text(std::mem::take(&mut text)));
+                pieces.push(Piece::Quoted);
+                rest = &after[after.find('"').unwrap_or(after.len())..];
+            } else {
+                let next = rest.chars().next().map_or(1, char::len_utf8);
+                text.push_str(&rest[..next]);
+                rest = &rest[next..];
+            }
+        }
+        if !text.is_empty() {
+            pieces.push(Piece::Text(text));
+        }
+        Self(pieces)
+    }
+
+    /// Where it starts and ends in `text`, each place it is.
+    pub(crate) fn find_all(&self, text: &str) -> Vec<(usize, usize)> {
+        let first = match self.0.first() {
+            Some(Piece::Text(first)) => first.as_str(),
+            _ => return Vec::new(),
+        };
+        text.match_indices(first)
+            .filter_map(|(start, _)| self.end_at(text, start).map(|end| (start, end)))
+            .collect()
+    }
+
+    /// Where it ends, if it is in `text` from `start`. An open part ends at its
+    /// terminator, so there is one way to match at most.
+    fn end_at(&self, text: &str, start: usize) -> Option<usize> {
+        let mut at = start;
+        for piece in &self.0 {
+            let rest = &text[at..];
+            at += match piece {
+                Piece::Text(wanted) => rest.starts_with(wanted.as_str()).then_some(wanted.len())?,
+                Piece::RestOfLine => rest.find('\n').unwrap_or(rest.len()),
+                Piece::Quoted => rest.find('"')?,
+            };
+        }
+        Some(at)
     }
 }
 
