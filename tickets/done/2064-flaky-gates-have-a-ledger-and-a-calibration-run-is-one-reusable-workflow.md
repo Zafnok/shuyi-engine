@@ -142,7 +142,15 @@ None.
   matrix over the count, and its `summary` job writes one table
   (`cargo xtask flaky calibration`): each run's jobs and failed cells, and each
   cell's rate. It is in the step summary and the `calibration-summary`
-  artifact. Dispatched with a count of 5 on `sound-parity`: CALIBRATION_LINK.
+  artifact. Five runs of `sound-parity`, one summary of 5 runs, all passed:
+  https://github.com/Zafnok/shuyi-engine/actions/runs/43251721663 (artifact
+  `calibration-summary`). GitHub dispatches a workflow only once it is on
+  main, so this run is of `2f435bc4` plus one test-only commit (`7fd5c78d`, on
+  a scratch branch `t2064-calibrate-test`, deleted after) that added a `push`
+  trigger and defaulted `job` and `count` for it. A first test (run
+  43246253019) failed in the gate's own tests on that commit's wording and
+  showed that the `summary` job failed when no run had uploaded: fixed, the
+  table now says `no matrix` for such a run.
 - `run-gates`: the flake rules under *When CI fails but local passes*, and #258's
   calibration rule in the sound parity section. `docs/README.md` has a row for
   the ledger, and `tools/sound-parity/README.md` names the jobs' new names.
