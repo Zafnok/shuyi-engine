@@ -20,7 +20,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
-use crate::tickets::{breaking_lines, extract_frontmatter, read_ticket_files};
+use crate::tickets::{behaviour_lines, breaking_lines, extract_frontmatter, read_ticket_files};
 
 /// The repository, for the links to a ticket and a PR.
 const REPO_URL: &str = "https://github.com/Zafnok/shuyi-engine";
@@ -171,6 +171,9 @@ struct Entry {
     /// The PR that merged it, if the history has one.
     pr: Option<u64>,
     breaking: Vec<String>,
+    /// Its `Behaviour:` lines (ticket 2066): what a game sees change with no
+    /// break.
+    behaviour: Vec<String>,
     migrations: Vec<Migration>,
 }
 
@@ -204,6 +207,10 @@ fn read_entry(file: &str, content: &str) -> Result<Entry, String> {
         breaking: breaking_lines(body)
             .into_iter()
             .map(|l| l.trim_start_matches("Breaking:").trim().to_string())
+            .collect(),
+        behaviour: behaviour_lines(body)
+            .into_iter()
+            .map(|l| l.trim_start_matches("Behaviour:").trim().to_string())
             .collect(),
         migrations: migrations(&path, &content)?,
     })
@@ -604,6 +611,15 @@ fn notes(release: &Release, style: Format, level: usize) -> String {
                 }
                 out.push('\n');
             }
+            if release.tickets.iter().any(|t| !t.behaviour.is_empty()) {
+                out.push_str(&heading(level, "Behaviour changes"));
+                for t in &release.tickets {
+                    for b in &t.behaviour {
+                        let _ = writeln!(out, "- {} ({})", escape_md(b), ticket_line(t));
+                    }
+                }
+                out.push('\n');
+            }
             out.push_str(&migration_guide(release, level));
             let mut current = None;
             for t in &release.tickets {
@@ -637,6 +653,15 @@ fn notes(release: &Release, style: Format, level: usize) -> String {
                 for b in &t.breaking {
                     changed.push(format!(
                         "**Breaking:** {} ({})",
+                        escape_md(b),
+                        ticket_line(t)
+                    ));
+                }
+            }
+            for t in &release.tickets {
+                for b in &t.behaviour {
+                    changed.push(format!(
+                        "**Behaviour:** {} ({})",
                         escape_md(b),
                         ticket_line(t)
                     ));
@@ -681,7 +706,7 @@ fn markdown(releases: &[Release], title: bool) -> String {
     }
     out.push_str(
         "Every ticket done, by release and then by area, with the engine's breaking \
-         changes first. Written from `tickets/done/` and the merges by `cargo xtask \
+         changes and the behaviour a game sees change first. Written from `tickets/done/` and the merges by `cargo xtask \
          changelog`.\n\n",
     );
     for release in releases {
@@ -909,7 +934,7 @@ mod tests {
                 "Rebind keys at run time",
                 "bug",
                 "2026-11-20",
-                "Done.",
+                "- Behaviour: shuyi-input: a key held at rebinding no longer fires.",
             ),
             ticket(
                 "2101",
@@ -1019,6 +1044,30 @@ mod tests {
         assert_eq!(entry.migrations.len(), 1);
         assert_eq!(entry.migrations[0].since, "0.2.0");
         assert_eq!(entry.migrations[0].find, ["Timer::new(60)"]);
+    }
+
+    #[test]
+    fn behaviour_lines_get_their_own_section() {
+        let releases = built();
+        let entry = releases[1].tickets.iter().find(|t| t.id == "2402").unwrap();
+        assert_eq!(
+            entry.behaviour,
+            ["shuyi-input: a key held at rebinding no longer fires."]
+        );
+        assert_eq!(entry.breaking, Vec::<String>::new());
+        let text = notes(&releases[1], Format::Markdown, 3);
+        let section = text
+            .split("### Behaviour changes\n\n")
+            .nth(1)
+            .expect("a Behaviour changes section");
+        assert!(section.starts_with("- shuyi-input: a key held at rebinding no longer fires. ("));
+        assert!(text.find("### Breaking changes") < text.find("### Behaviour changes"));
+        // A release with no `Behaviour:` line has no such section.
+        assert!(!notes(&releases[0], Format::Markdown, 3).contains("Behaviour changes"));
+        let kac = notes(&releases[1], Format::KeepAChangelog, 3);
+        assert!(
+            kac.contains("- **Behaviour:** shuyi-input: a key held at rebinding no longer fires.")
+        );
     }
 
     #[test]

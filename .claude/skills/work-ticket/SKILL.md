@@ -186,6 +186,34 @@ the PR.
    the break, written in YAML in a fenced block (the fields are in
    `tickets/README.md`, *Breaking changes*). The changelog's migration
    guide is made from it (`cargo xtask changelog`, ticket 2804).
+
+   Add one `Behaviour:` line per change a game sees **without** a break
+   (ADR-0108): a validation loosened or tightened, a default changed, an
+   error's code or text, a label or output a game might test, a timing or
+   an order.
+
+   ```text
+   Behaviour: <crate>[, <crate>…]: <what a game sees change>
+   ```
+
+   No gate finds these: you are the check. The changelog lists them in
+   their own section, and the game's pin review reads them as it reads
+   `Breaking:` lines.
+
+   **"Nothing in the game must change" is earned, not assumed.** Before
+   writing it (or "no break", or no `Behaviour:` line for a change to a
+   rule), search the game's code and ADRs for the rule the change
+   touches, and name the search in the notes:
+
+   ```bash
+   gh search code --repo Zafnok/visions-of-shuyi '<the rule, type or text>'
+   ```
+
+   A hit becomes a `Behaviour:` line (or a `Breaking:` line) saying what
+   the game sees. Why: 2350 said "nothing in the game must change" while
+   game ADR-0045 keeps `.dlg` text ASCII, and the game's pin PR wrote
+   about 45–80 lines to keep its rule; #276 said "no break" and changed
+   labels and panic text the game tested.
 3. Set `status: done` and `completed: YYYY-MM-DD`.
 4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 5. **Settle what named this ticket.** Run `grep -rnw "<NNNN>"
@@ -220,8 +248,9 @@ the PR.
   `write-ticket` skill). **No bare `@word`** in a title, body, commit
   message or comment. Use backticks.
 - Body: summary bullets, the acceptance criteria (checked), follow-up
-  tickets, the ticket's `Breaking:` lines (or "No break"), and a `Nick
-  input:` line.
+  tickets, the ticket's `Breaking:` lines (or "No break"), its
+  `Behaviour:` lines, and a `Nick input:` line. The game's watcher
+  reads both kinds of line from the body and from the ticket's notes.
 - If the game must change too (a pin bump, a call site), write or link
   the game ticket. Say in both PRs which merges first: the engine's.
 - **After the last merge of `main`** into the branch, re-read the PR

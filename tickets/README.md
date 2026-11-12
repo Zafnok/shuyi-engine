@@ -126,6 +126,20 @@ there, in the PR that breaks:
    A ticket may have several blocks. A block that doesn't parse fails the
    changelog with its file and line.
 
+A change a game sees **without** a break gets a `Behaviour:` line in the
+same place, one for each change ([ADR-0108](../docs/adr/0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md)):
+
+```text
+Behaviour: <crate>[, <crate>…]: <what a game sees change>
+```
+
+It is for a validation loosened or tightened, a changed default, an
+error's code or text, a label or output a game might test, and a changed
+timing or order. No gate finds one, and none needs a `migration` block.
+`cargo xtask changelog` lists them in a *Behaviour changes* section
+after the breaking changes, and the game's pin review reads them from
+the PR body and the ticket's notes as it reads `Breaking:` lines.
+
 ## Pull requests
 
 CI reads the ticket a PR is for from its **title** first, then its branch
