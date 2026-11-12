@@ -120,5 +120,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0105](0105-a-wrong-finding-of-the-api-gate-is-argued-with-here-alone-with-no-issue-upstream.md) | A wrong finding of the API gate is argued with here alone, with no issue upstream | Accepted; amends ADR-0038 §7 |
 | [0106](0106-files-the-player-keeps-requests-queued-on-ctx-three-platform-methods-and-answers-as-recorded-system-events.md) | Files the player keeps: requests queued on Ctx, three Platform methods, and answers as recorded system events | Accepted; builds on ADR-0050, ADR-0072 and ADR-0103 |
 | [0107](0107-the-inks-removed-one-bit-screens-draw-only-by-roles.md) | The inks removed: one-bit screens draw only by roles' patterns | Accepted; amends ADR-0026 §4 |
+| [0108](0108-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md) | A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

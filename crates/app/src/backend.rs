@@ -55,7 +55,8 @@ type Sound = PlayerDevice<audio::Chosen>;
 
 /// The macroquad backend.
 pub(crate) struct Macroquad {
-    storage_name: &'static str,
+    /// Where the storage is.
+    storage_at: storage::StorageAt,
     files: fn(&str) -> Option<&'static [u8]>,
     font_png: &'static str,
     /// What draws the game's frames, from the first one's look.
@@ -102,13 +103,19 @@ impl Macroquad {
     /// describe. Closing the window asks the game first
     /// ([`SystemEvent::QuitRequested`]) on native, where a window can be
     /// closed.
-    pub(crate) fn new(config: &mut AppConfig, facts: PlatformFacts) -> Self {
+    /// The storage is the one at `storage_at`.
+    pub(crate) fn new(
+        config: &mut AppConfig,
+        facts: PlatformFacts,
+        storage_at: storage::StorageAt,
+    ) -> Self {
         if !cfg!(target_arch = "wasm32") {
             prevent_quit();
         }
         Self {
-            storage_name: config.storage_name,
-            player_files: PlayerFiles::new(config.storage_name),
+            player_files: PlayerFiles::new(&storage_at),
+            facts: player_files::facts(facts, &storage_at),
+            storage_at,
             files: config.files,
             font_png: config.font_png,
             renderer: None,
@@ -120,7 +127,6 @@ impl Macroquad {
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
-            facts: player_files::facts(facts, config.storage_name),
             frame_cap: (FrameCap::DEFAULT, 0),
             held: Held::default(),
             #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
@@ -408,7 +414,7 @@ impl Platform for Macroquad {
     }
 
     fn storage(&mut self) -> Box<dyn Storage> {
-        let mut storage = storage::platform(self.storage_name);
+        let mut storage = self.storage_at.open();
         if cfg!(debug_assertions) {
             storage::smoke_check(&mut *storage);
         }

@@ -159,7 +159,11 @@ async fn play<G: GameData>(
     facts: PlatformFacts,
 ) {
     let mut platform = Capturing {
-        backend: Macroquad::new(config, facts),
+        backend: Macroquad::new(
+            config,
+            facts,
+            crate::storage::StorageAt::find(config.storage_name, config.desktop_folder),
+        ),
         files: config.files,
         font_png: config.font_png,
         tolerance: plan.tolerance(),

@@ -60,7 +60,7 @@ pub(crate) struct PlayerFiles {
 impl PlayerFiles {
     /// The player's files of the game whose storage is called `_name`: its
     /// storage is the page's, and has no folder.
-    pub(crate) fn new(_name: &str) -> Self {
+    pub(crate) fn new(_at: &crate::storage::StorageAt) -> Self {
         Self::default()
     }
 

@@ -41,11 +41,11 @@ pub(crate) struct Kept {
 impl Kept {
     /// Turns `app`'s recording on with debug tools on, before its first
     /// frame, with `voice_manifest` the text the backend put into the game's
-    /// setup. `name` is the game's storage's name, which finds its data
-    /// folder on a desktop.
+    /// setup. `at` is where the game's storage is: its data folder on a
+    /// desktop.
     pub(crate) fn start<G: GameData>(
         app: &mut App<G>,
-        name: &str,
+        at: &crate::storage::StorageAt,
         voice_manifest: Option<String>,
     ) -> Self {
         let on = records(shuyi_ui::DEBUG_TOOLS) && app.record();
@@ -54,12 +54,12 @@ impl Kept {
         }
         #[cfg(not(target_arch = "wasm32"))]
         return Self {
-            dir: on.then(|| disk::folder(name)).flatten(),
+            dir: on.then(|| disk::folder(at.dir())).flatten(),
             start: disk::unix_ms(),
         };
         #[cfg(target_arch = "wasm32")]
         {
-            let _ = (on, name);
+            let _ = (on, at);
             Self {
                 start: web::unix_ms(),
             }

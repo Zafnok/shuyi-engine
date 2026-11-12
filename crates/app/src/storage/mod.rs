@@ -1,6 +1,9 @@
 //! Platform [`Storage`] backends (ticket 0207, game ADR-0009): files in the OS
-//! data directory on native, `localStorage` on web.
+//! data directory on native, `localStorage` on web. Which folder a desktop
+//! keeps them in is the game's [`DesktopFolder`] (ticket 3310, ADR-0108).
 
+#[cfg(not(target_arch = "wasm32"))]
+mod desktop;
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(target_arch = "wasm32")]
@@ -12,17 +15,107 @@ pub use native::FileStorage;
 pub use web::WebStorage;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub use desktop::desktop_dir;
+#[cfg(not(target_arch = "wasm32"))]
 pub use native::data_dir;
+
+use std::path::PathBuf;
 
 use shuyi_ui::StoragePlace;
 use shuyi_ui::storage::Storage;
 
+/// Which folder a desktop build keeps the storage in
+/// ([`AppConfig::desktop_folder`](crate::AppConfig)). The web keeps it in
+/// `localStorage` whatever this says.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DesktopFolder {
+    /// The storage's name in the OS's data folder ([`data_dir`]):
+    /// `%APPDATA%` on Windows, `~/Library/Application Support` on macOS,
+    /// `$XDG_DATA_HOME` (or `~/.local/share`) elsewhere.
+    #[default]
+    Data,
+    /// On Windows, `<Documents>\My Games\<folder>`, where the player finds
+    /// PC games' saves: Documents is the system's known folder, wherever it
+    /// was moved (to `OneDrive`). Elsewhere, [`Data`](Self::Data): macOS and
+    /// Linux have no such place. On the first launch whose folder holds no
+    /// key yet, everything in the [`Data`](Self::Data) folder moves there;
+    /// if the move fails, that launch keeps the old folder and logs why.
+    MyGames(&'static str),
+}
+
+/// Where a game's storage is, found once as it starts
+/// ([`find`](Self::find)): its name, and its folder on a desktop.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct StorageAt {
+    /// The storage's name: the `localStorage` prefix on the web.
+    name: &'static str,
+    /// The folder on a desktop; `None` on the web, or where the system has
+    /// no data folder.
+    dir: Option<PathBuf>,
+}
+
+impl StorageAt {
+    /// The storage of the game whose storage is called `name`, in the
+    /// folder `desktop` says, its old storage moved there first on a
+    /// desktop ([`DesktopFolder::MyGames`]).
+    pub(crate) fn find(name: &'static str, desktop: DesktopFolder) -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
+        let dir = desktop::find(name, desktop);
+        #[cfg(target_arch = "wasm32")]
+        let dir = {
+            let _ = desktop;
+            None
+        };
+        Self { name, dir }
+    }
+
+    /// The folder on a desktop, if there is one.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn dir(&self) -> Option<&std::path::Path> {
+        self.dir.as_deref()
+    }
+
+    /// The storage backend there ([`platform`]).
+    pub(crate) fn open(&self) -> Box<dyn Storage> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(dir) = &self.dir {
+                Box::new(FileStorage::in_folder(dir.clone()))
+            } else {
+                macroquad::prelude::error!(
+                    "storage: could not determine an OS data directory; saves and settings will not persist"
+                );
+                Box::new(shuyi_ui::storage::MemoryStorage::new())
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            Box::new(WebStorage::new(self.name))
+        }
+    }
+
+    /// Where it is, to tell the player ([`place`]).
+    pub(crate) fn place(&self) -> StoragePlace {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = self.name;
+            folder_place(self.dir.as_deref())
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            browser_place(self.name)
+        }
+    }
+}
+
 /// The storage backend for this platform, for the game whose storage is
-/// called `name` ([`AppConfig::storage_name`](crate::AppConfig)). Native
-/// falls back to an in-memory store (nothing persists) if the OS has no
-/// usable data directory (the relevant environment variable is unset,
-/// which only happens on unsupported or misconfigured systems); it logs an
-/// error when that happens.
+/// called `name` ([`AppConfig::storage_name`](crate::AppConfig)), in its
+/// [`DesktopFolder::Data`] folder on a desktop. Native falls back to an
+/// in-memory store (nothing persists) if the OS has no usable data
+/// directory (the relevant environment variable is unset, which only
+/// happens on unsupported or misconfigured systems); it logs an error when
+/// that happens.
 pub fn platform(name: &str) -> Box<dyn Storage> {
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -47,8 +140,9 @@ pub fn web_prefix(name: &str) -> String {
 }
 
 /// Where the game whose storage is called `name` keeps it, to tell the
-/// player (`shuyi_ui::PlatformFacts::storage_place`): its data folder on
-/// native ([`data_dir`]), unknown where the system has none; the browser's
+/// player (`shuyi_ui::PlatformFacts::storage_place`): its
+/// [`DesktopFolder::Data`] folder on native ([`data_dir`]), unknown where
+/// the system has none; the browser's
 /// site storage under [`web_prefix`] on the web.
 pub fn place(name: &str) -> StoragePlace {
     #[cfg(not(target_arch = "wasm32"))]
