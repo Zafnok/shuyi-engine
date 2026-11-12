@@ -28,11 +28,11 @@ use shuyi_ui::{FilePicker, PlatformFacts};
 use crate::storage;
 
 /// `facts` with what this backend says of the player's files, for the game
-/// whose storage is called `name`: where its storage is
-/// ([`storage::place`]), and a file picker on the web alone.
-pub(crate) fn facts(facts: PlatformFacts, name: &str) -> PlatformFacts {
+/// whose storage is at `at`: where it is, and a file picker on the web
+/// alone.
+pub(crate) fn facts(facts: PlatformFacts, at: &storage::StorageAt) -> PlatformFacts {
     facts
-        .with_storage_place(storage::place(name))
+        .with_storage_place(at.place())
         .with_file_picker(if cfg!(target_arch = "wasm32") {
             FilePicker::Opens
         } else {
@@ -48,7 +48,8 @@ mod tests {
 
     #[test]
     fn a_desktop_says_its_storage_folder_and_has_no_picker() {
-        let said = facts(PlatformFacts::default(), "some-game");
+        let at = storage::StorageAt::find("some-game", storage::DesktopFolder::Data);
+        let said = facts(PlatformFacts::default(), &at);
         assert!(!said.can_pick_files());
         let StoragePlace::Folder(folder) = &said.storage_place else {
             panic!("{:?}", said.storage_place);

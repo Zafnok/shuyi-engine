@@ -69,9 +69,8 @@ impl FileStorage {
         Ok(Self::at(dir, Box::new(StdDisk), log_warning))
     }
 
-    /// A storage in `dir`, for tests outside this module.
-    #[cfg(test)]
-    pub(crate) fn in_dir(dir: PathBuf) -> Self {
+    /// A storage in the folder `dir` (made on the first write).
+    pub(crate) fn in_folder(dir: PathBuf) -> Self {
         Self::at(dir, Box::new(StdDisk), log_warning)
     }
 

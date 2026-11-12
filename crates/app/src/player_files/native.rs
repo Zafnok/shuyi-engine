@@ -23,10 +23,10 @@ pub(crate) struct PlayerFiles {
 }
 
 impl PlayerFiles {
-    /// The player's files of the game whose storage is called `name`.
-    pub(crate) fn new(name: &str) -> Self {
+    /// The player's files of the game whose storage is at `at`.
+    pub(crate) fn new(at: &storage::StorageAt) -> Self {
         Self {
-            dir: storage::data_dir(name),
+            dir: at.dir().map(Path::to_path_buf),
         }
     }
 
