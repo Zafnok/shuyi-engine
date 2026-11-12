@@ -10,6 +10,8 @@ on:
   schedule:
     - cron: "0 7 * * *" # daily, 07:00 UTC
   workflow_dispatch:
+  push: # TEMPORARY: ticket 2057's test run, removed before merge
+    branches: [t2057-dependabot-waiting]
 
 permissions:
   contents: read
@@ -39,8 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           label=dependabot-waiting
-          cutoff=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          gh pr list --author app/dependabot --state open --limit 100 \
+          cutoff=2026-11-11T00:00:00Z # TEMPORARY
+          gh pr list --author app/dependabot --state all --limit 6 \
             --json number,title,createdAt,statusCheckRollup > prs.json
           # One line per PR, then one per failing job. A title goes in
           # backticks, so a scoped package's name mentions nobody.
