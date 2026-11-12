@@ -1,6 +1,6 @@
 # ADR-0038: The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break
 
-- **Status:** Accepted
+- **Status:** Accepted; §6 amended by ADR-0108 (a `Behaviour:` line beside the `Breaking:` line)
 - **Date:** 2026-10-23
 - **Related tickets:** 2010; 2005 (the version policy, which cites this
   ADR), 2013 (`#[non_exhaustive]` and constructors), 2804 (the changelog
