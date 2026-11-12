@@ -55,7 +55,7 @@ Each report is the storage key `crash-<when>`:
 - **Windows:** `%APPDATA%\<storage name>\crash-<when>.ron`, or
   `<Documents>\My Games\<folder>\crash-<when>.ron` for a game whose
   `AppConfig::desktop_folder` is `DesktopFolder::MyGames(<folder>)`
-  ([ADR-0108](adr/0108-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md));
+  ([ADR-0109](adr/0109-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md));
 - **macOS:** `~/Library/Application Support/<storage name>/crash-<when>.ron`;
 - **Linux and the Steam Deck:** `$XDG_DATA_HOME/<storage name>/crash-<when>.ron`,
   or `~/.local/share/<storage name>/` without it;

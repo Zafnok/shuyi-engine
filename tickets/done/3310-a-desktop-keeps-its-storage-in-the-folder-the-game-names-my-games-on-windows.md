@@ -34,7 +34,7 @@ completed: 2026-11-11
 **In:** `AppConfig::desktop_folder` and `storage::DesktopFolder`; the
 Documents known folder on Windows; the folder found once at start and
 handed to the storage, crash reports, kept sessions, the player's files
-and the storage place; the move; `storage::desktop_dir`; ADR-0108; the
+and the storage place; the move; `storage::desktop_dir`; ADR-0109; the
 crash-reports doc.
 
 **Out:** the short path's `shuyi.ron` (`AppInfo`) naming the folder; the
@@ -65,8 +65,15 @@ and function). The game's PR that moves the pin follows this one.
 - The short path (`BasicGame`, `shuyi.ron`'s `app`) can't name the folder
   yet. No ticket: no short-path game has asked; it is one more field of
   `AppInfo` when one does.
-- Docs: ADR-0108 and `docs/crash-reports.md`.
+- Docs: ADR-0109 and `docs/crash-reports.md`.
 - Game: game#0875.
+- No break and no `Behaviour:` line: `DesktopFolder::Data`, the default,
+  keeps every game's folder, and `storage::platform` and `storage::place`
+  keep meaning it. Searched the game (`gh search code --repo
+  Zafnok/visions-of-shuyi 'storage::platform'`, `'storage::place'`,
+  `'data_dir'`): it calls only `data_dir` and `web_prefix`, in tests, and
+  both are unchanged. The game sees the move only through game#0875,
+  which opts in.
 
 Book: none, a desktop storage folder is a shipping detail the book's
-chapters don't cover; ADR-0108 and `docs/crash-reports.md` say it.
+chapters don't cover; ADR-0109 and `docs/crash-reports.md` say it.

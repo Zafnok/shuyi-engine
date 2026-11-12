@@ -1,5 +1,5 @@
 //! Which folder a desktop keeps the storage in ([`DesktopFolder`], ticket
-//! 3310, ADR-0108), and the move of the old storage into a new folder on
+//! 3310, ADR-0109), and the move of the old storage into a new folder on
 //! the first launch that uses it.
 //!
 //! The move copies every file under the old folder into the new one, each
@@ -224,7 +224,7 @@ fn documents() -> Option<PathBuf> {
 
 /// The Documents known folder (`SHGetKnownFolderPath`).
 #[cfg(windows)]
-#[allow(unsafe_code)] // The one Win32 call that names the folder (ADR-0108).
+#[allow(unsafe_code)] // The one Win32 call that names the folder (ADR-0109).
 fn known_documents() -> Option<PathBuf> {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt as _;

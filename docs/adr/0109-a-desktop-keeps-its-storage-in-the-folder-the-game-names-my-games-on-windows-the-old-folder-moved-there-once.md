@@ -1,4 +1,4 @@
-# ADR-0108: A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once
+# ADR-0109: A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once
 
 - **Status:** Accepted
 - **Date:** 2026-11-11

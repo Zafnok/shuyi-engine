@@ -97,7 +97,7 @@ getrandom = { version = "0.4", default-features = false, optional = true }
 
 # Drops on Windows, read by the backend itself (ticket 3307, ADR-0104): the
 # version and features miniquad already builds, and `processthreadsapi`. The
-# Documents folder of `DesktopFolder::MyGames` (ticket 3310, ADR-0108):
+# Documents folder of `DesktopFolder::MyGames` (ticket 3310, ADR-0109):
 # `shlobj`, `knownfolders`, `combaseapi` and `winerror`.
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "shellapi", "processthreadsapi", "shlobj", "knownfolders", "combaseapi", "winerror"] }

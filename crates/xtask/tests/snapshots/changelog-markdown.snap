@@ -1,6 +1,6 @@
 # Changelog
 
-Every ticket done, by release and then by area, with the engine's breaking changes first. Written from `tickets/done/` and the merges by `cargo xtask changelog`.
+Every ticket done, by release and then by area, with the engine's breaking changes and the behaviour a game sees change first. Written from `tickets/done/` and the merges by `cargo xtask changelog`.
 
 ## Unreleased
 
@@ -18,6 +18,10 @@ Every ticket done, by release and then by area, with the engine's breaking chang
 ### Breaking changes
 
 - shuyi-core: `Timer::new`: pass the step as a `Step` ([Fixed-step timers](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2101-fixed-step-timers.md) ([#38](https://github.com/Zafnok/shuyi-engine/pull/38)))
+
+### Behaviour changes
+
+- shuyi-input: a key held at rebinding no longer fires. ([Rebind keys at run time](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2402-rebind-keys-at-run-time.md) ([#37](https://github.com/Zafnok/shuyi-engine/pull/37)))
 
 ### Migration guide
 

@@ -47,6 +47,22 @@ never flagged a packet silent in 2049's twenty jobs (CI run 42455240426), where
 zeros: a run of zeros in a recording is what the engine mixed, so these are the
 in-house backend's output, not the capture's. No in-house hole came in those twenty.
 
+**From PR 368 (ticket 2054):** the gap came again, on a change that touches no
+sound code. `windows-in-house perf:underruns` failed with `1 gaps while everything
+played` in CI run 43068380206, recorded by its `sound-parity-windows` job at
+17:28 UTC on 2026-11-11 (artifact `sound-parity-windows`, id 13878925661, kept
+until 2027-02-09). The same commit's other jobs all passed, and the same day
+`main`'s code (a5354c89) passed both sound jobs at the first try (CI run
+43102931198, a probe PR closed unmerged).
+
+That run also shows a trap. `sound-parity` only judges the recordings that
+`sound-parity-windows` makes. "Re-run failed jobs" re-runs `sound-parity` alone:
+the passed `sound-parity-windows` and its artifact are carried over, so the same
+recording, with its gap, fails again on every attempt. Attempts 1 to 4 of that
+run judged one recording four times. A re-run that can pass re-runs
+`sound-parity-windows` (GitHub's "Re-run job" on it, or `gh run rerun --job
+<its id>`), which runs `sound-parity` after it.
+
 ## Nick input
 
 None.
@@ -60,6 +76,10 @@ None.
   `sound-parity-windows-10`, while they last) and new runs.
 - If it is the backend's, fix it. If it is the capture's, make the capture
   report it apart from the backend's gaps, so it doesn't pass as one either way.
+- When a cell of a Windows platform fails, the `sound-parity` job's error says
+  that re-running it alone judges the same recording again, and how to record
+  anew (re-run `sound-parity-windows`), and `tools/sound-parity/README.md`
+  says the same.
 
 **Out (do not do):**
 - allowing gaps in `perf:underruns`;
@@ -73,12 +93,17 @@ None.
 2. Decide which side it is, and fix that side.
 3. Run the `sound-parity` job 20 times on one revision (as 2042's completion
    notes say), and keep the numbers in the completion notes.
-4. Run the `document` skill, then the gates.
+4. In the `sound-parity` job's step that holds the matrix (ci.yml), print after a
+   failed Windows cell that a re-run must re-run `sound-parity-windows`, with the
+   job's id; write the same in `tools/sound-parity/README.md`.
+5. Run the `document` skill, then the gates.
 
 ## Acceptance criteria
 
 - [ ] Whose gap it was, and why, is in the completion notes.
 - [ ] No `windows-in-house perf:underruns` failure in 20 runs on one revision.
+- [ ] A failed Windows cell's log in `sound-parity` says to re-run
+      `sound-parity-windows`, not the failed jobs alone, and the README says so.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 

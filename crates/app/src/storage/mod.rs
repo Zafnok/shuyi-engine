@@ -1,6 +1,6 @@
 //! Platform [`Storage`] backends (ticket 0207, game ADR-0009): files in the OS
 //! data directory on native, `localStorage` on web. Which folder a desktop
-//! keeps them in is the game's [`DesktopFolder`] (ticket 3310, ADR-0108).
+//! keeps them in is the game's [`DesktopFolder`] (ticket 3310, ADR-0109).
 
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop;
