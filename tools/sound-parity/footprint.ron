@@ -680,6 +680,23 @@ pub(crate) mod device {
             find: "        Some(\"sound-parity\") => report(\"sound-parity\", &sound_parity::run(&root, &args[1..]), &[]),\n",
             with: "",
         ),
+        // Ticket 2054: the local gates mirror CI's jobs.
+        Replace(
+            file: "crates/xtask/src/gates.rs",
+            find: " -p shuyi-platform -p shuyi-sound --no-default-features",
+            with: " -p shuyi-platform --no-default-features",
+        ),
+        Replace(
+            file: "crates/xtask/src/gates.rs",
+            find: r##"    gate("sound parity", "sound-parity", Filter::Output("sound"))
+        .ci_only("records the backend's output from PulseAudio and Chromium"),
+    gate("sound parity (Windows)", "sound-parity-windows", Filter::Output("sound"))
+        .ci_only("records the backend's output on a Windows runner"),
+    gate("sound give-up", "sound-give-up", Filter::Output("sound"))
+        .ci_only("takes the sound replacement out of a checkout and builds what is left"),
+"##,
+            with: "",
+        ),
         // Ticket 2057: the dependency-upkeep skill's step for the footprint.
         Replace(
             file: ".claude/skills/dependency-upkeep/SKILL.md",
