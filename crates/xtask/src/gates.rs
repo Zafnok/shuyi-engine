@@ -245,7 +245,7 @@ pub const GATES: &[Gate] = &[
         .steps(&["cargo xtask tutorial-tries --check"]),
     // CI's alone, with why.
     gate("tutorial", "tutorial", CODE).ci_only(
-        "builds and tests the ten steps of the tutorial's game, each from its own lock moved to this engine",
+        "builds and tests the ten steps of the tutorial's game, each from its own checked-in lock, `--locked`",
     ),
     gate("determinism", "determinism", CODE)
         .ci_only("the tests on wasm32 under wasmtime; natively, `test` runs the golden tables"),

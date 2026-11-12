@@ -326,6 +326,28 @@ Two more steps of the job run only in CI: that the rules crate's fence
 holds, and that `shuyi lint` finds what breaks the game's code (both on the
 `grid` game, with code written to break them).
 
+## The tutorial's steps (CI's `tutorial` job, CI only)
+
+Each step in `site/tutorial/` is a whole game with its own `Cargo.lock`
+and a path dependency on the engine's crates. CI builds and tests each
+with `--locked`, then fails if the job changed a file of the step
+(ticket 2062). So **a change to the engine's dependencies** (a crate
+added, removed or moved, an engine crate's version) refreshes the ten
+locks in the same PR, without moving anything else in them:
+
+```bash
+for d in site/tutorial/*/; do (cd "$d" && cargo metadata --format-version 1 > /dev/null); done
+git status --short site/tutorial
+```
+
+To run one step as CI does, from its folder:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --features box-pusher/tools --locked -- -D warnings
+cargo test --workspace --locked
+```
+
 ## The skill pack's worked examples (CI's `skills` job)
 
 Each skill in `skills/` has a worked example, `example.ron`, that runs on
