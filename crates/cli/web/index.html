@@ -59,9 +59,10 @@
   })();
 </script>
 <script src="mq_js_bundle.js"></script>
-<!-- Storage (0207): register the localStorage plugin before it's needed. -->
+<!-- The JS objects some of our plugins hand strings and bytes across with. -->
 <script src="sapp_jsutils.js"></script>
-<script src="quad-storage.js"></script>
+<!-- Saves (3033): our own plugin over the browser's localStorage. -->
+<script src="storage.js"></script>
 <!-- Controllers (0219): our own plugin over the browser's Gamepad API. -->
 <script src="gamepad.js"></script>
 <!-- Sound output (3031): our own plugin over Web Audio, for the in-house sound. -->

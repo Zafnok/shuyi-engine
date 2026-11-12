@@ -103,7 +103,7 @@ pub struct EngineFile {
 /// vendored scripts, and the controller database `gilrs` compiles into
 /// native builds (which the crates' walk misses, in a subfolder of its
 /// package).
-pub const FILES: [EngineFile; 4] = [
+pub const FILES: [EngineFile; 3] = [
     EngineFile {
         file: "crates/cli/web/mq_js_bundle.js",
         work: "macroquad",
@@ -126,19 +126,6 @@ pub const FILES: [EngineFile; 4] = [
         text: (
             "crates/cli/web/sapp_jsutils-LICENSE-MIT.txt",
             include_str!("../web/sapp_jsutils-LICENSE-MIT.txt"),
-        ),
-        builds: &[Build::Web],
-        within: None,
-    },
-    EngineFile {
-        file: "crates/cli/web/quad-storage.js",
-        work: "quad-storage",
-        version: "0.1.3",
-        source: "https://github.com/optozorax/quad-storage",
-        license: "MIT",
-        text: (
-            "crates/cli/web/quad-storage-LICENSE-MIT.txt",
-            include_str!("../web/quad-storage-LICENSE-MIT.txt"),
         ),
         builds: &[Build::Web],
         within: None,

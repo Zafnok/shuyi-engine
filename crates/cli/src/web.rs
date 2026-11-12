@@ -3,9 +3,10 @@
 //! with the web shell into the project's `web.dist` folder: the page
 //! (`web/index.html`, with the game's title and binary written in), the
 //! vendored JS loaders (`web/mq_js_bundle.js`, and `web/sapp_jsutils.js`
-//! with `web/quad-storage.js` for `localStorage`) and the engine's own
-//! plugins (`web/gamepad.js` for controllers, `web/page-files.js` for the
-//! files the page hands the game, and the rest). The shell is built into this tool; see
+//! for the JS objects some plugins hand across) and the engine's own
+//! plugins (`web/storage.js` for `localStorage`, `web/gamepad.js` for
+//! controllers, `web/page-files.js` for the files the page hands the game,
+//! and the rest). The shell is built into this tool; see
 //! `web/README.md`, which also says how a game's binary gets the link
 //! argument these plugins need. Each `--<feature>` turns on a feature of
 //! the game's package that `web.features` lists (a debug build's tools,
@@ -41,7 +42,7 @@ const SHELL: [(&str, &str); 9] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
-    ("quad-storage.js", include_str!("../web/quad-storage.js")),
+    ("storage.js", include_str!("../web/storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
     ("sound.js", include_str!("../web/sound.js")),
     ("player-files.js", include_str!("../web/player-files.js")),
@@ -63,7 +64,7 @@ const SHELL_NOTICES: [(&str, Origin); 9] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
-    ("quad-storage.js", Origin::Vendored),
+    ("storage.js", Origin::Engine),
     ("gamepad.js", Origin::Engine),
     ("sound.js", Origin::Engine),
     ("player-files.js", Origin::Engine),
@@ -788,6 +789,10 @@ mod tests {
 
     /// The Rust side of `web/gamepad.js`: the engine's web pads.
     const PADS_WEB: &str = include_str!("../../app/src/pads/web.rs");
+    /// The Rust side of `web/storage.js`: the engine's web saves.
+    const STORAGE_WEB: &str = include_str!("../../app/src/storage/web.rs");
+    /// The error codes `web/storage.js` answers.
+    const LOCAL_STORAGE: &str = include_str!("../../app/src/storage/local_storage.rs");
     /// The Rust side of `web/sound.js`: the engine's web sound output.
     const SOUND_WEB: &str = include_str!("../../sound-out/src/sys.rs");
 
@@ -1019,10 +1024,7 @@ mod tests {
                 "sapp_jsutils.js",
                 "/*! sapp_jsutils.js: sapp-jsutils 0.1.7, MIT. See NOTICES.txt. */\n",
             ),
-            (
-                "quad-storage.js",
-                "/*! quad-storage.js: quad-storage 0.1.3, MIT. See NOTICES.txt. */\n",
-            ),
+            ("storage.js", ""),
             ("gamepad.js", ""),
             ("sound.js", ""),
             ("player-files.js", ""),
@@ -1594,37 +1596,6 @@ mod tests {
         fs::remove_dir_all(&root).unwrap();
     }
 
-    /// The version `quad_storage_crate_version()` reports for the
-    /// `quad-storage-sys` version pinned in `Cargo.lock`:
-    /// `(major << 24) + (minor << 16) + patch`.
-    fn locked_quad_storage_sys_version(lock: &str) -> u32 {
-        let version = lock
-            .split("[[package]]")
-            .find(|pkg| pkg.contains("name = \"quad-storage-sys\""))
-            .and_then(|pkg| pkg.lines().find_map(|l| l.strip_prefix("version = \"")))
-            .and_then(|v| v.strip_suffix('"'))
-            .expect("quad-storage-sys is in Cargo.lock");
-        let parts: Vec<u32> = version.split('.').map(|p| p.parse().unwrap()).collect();
-        (parts[0] << 24) + (parts[1] << 16) + parts[2]
-    }
-
-    #[test]
-    fn locked_quad_storage_sys_version_encodes_major_minor_patch() {
-        let lock = r#"
-[[package]]
-name = "quad-storage"
-version = "9.9.9"
-
-[[package]]
-name = "quad-storage-sys"
-version = "1.2.3"
-"#;
-        assert_eq!(
-            locked_quad_storage_sys_version(lock),
-            (1 << 24) + (2 << 16) + 3
-        );
-    }
-
     #[test]
     fn index_html_declares_register_plugin_before_the_bundle() {
         // The strict-mode bundle assigns to `register_plugin`, which throws
@@ -1947,23 +1918,79 @@ version = "1.2.3"
     }
 
     #[test]
-    fn quad_storage_js_version_matches_the_locked_crate() {
-        // The loader logs a version-mismatch error unless the JS plugin's
-        // `version` equals `quad_storage_crate_version()`.
-        let lock = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .ancestors()
-            .map(|dir| dir.join("Cargo.lock"))
-            .find(|lock| lock.is_file())
-            .expect("the workspace has a Cargo.lock");
-        let lock = fs::read_to_string(lock).unwrap();
-        let expected = format!("version: {}", locked_quad_storage_sys_version(&lock));
-        assert!(
-            shell("quad-storage.js")
-                .lines()
-                .any(|line| line.trim() == expected),
-            "web/quad-storage.js must declare `{}`",
-            expected.trim_end()
+    fn storage_js_provides_exactly_the_functions_the_app_imports() {
+        // A function missing on either side only shows up in the browser,
+        // as a warning and saves that never happen.
+        let js = shell("storage.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_storage_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(STORAGE_WEB, "safe fn shuyi_storage_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
+        assert_eq!(
+            imported,
+            [
+                "shuyi_storage_get",
+                "shuyi_storage_key",
+                "shuyi_storage_len",
+                "shuyi_storage_remove",
+                "shuyi_storage_set"
+            ]
         );
+        assert_eq!(provided, imported);
+    }
+
+    #[test]
+    fn storage_js_version_matches_the_app() {
+        // The loader logs a version-mismatch error unless the JS plugin's
+        // `version` equals what `shuyi_storage_crate_version()` returns.
+        let js = shell("storage.js");
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(STORAGE_WEB, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_storage""#));
+        assert!(STORAGE_WEB.contains("fn shuyi_storage_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn storage_js_answers_the_error_codes_the_app_reads() {
+        // A code that differs reads as another error, or as a length.
+        let js = shell("storage.js");
+        for name in ["ABSENT", "BLOCKED", "FULL", "FAILED"] {
+            let in_js = js
+                .lines()
+                .find_map(|l| l.trim().strip_prefix(&format!("var {name} = ")))
+                .unwrap_or_else(|| panic!("storage.js has no `var {name}`"));
+            let in_rust = LOCAL_STORAGE
+                .lines()
+                .find_map(|l| {
+                    l.trim()
+                        .strip_prefix(&format!("pub(crate) const {name}: i32 = "))
+                })
+                .unwrap_or_else(|| panic!("local_storage.rs has no `{name}`"));
+            assert_eq!(in_js, in_rust, "{name}");
+        }
+    }
+
+    #[test]
+    fn index_html_loads_storage_js_between_the_bundle_and_the_game() {
+        // The plugin registers itself with the bundle's
+        // `miniquad_add_plugin`, and must have done so before `load(...)`.
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
+        let storage = at(r#"<script src="storage.js">"#);
+        let load = at(r#"load("%WASM%")"#);
+        assert!(bundle < storage && storage < load);
+        assert!(!html.contains("quad-storage.js"));
     }
 
     #[test]
