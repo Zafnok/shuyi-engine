@@ -60,6 +60,10 @@ fn every_and_count_read_as_a_capture_and_an_output() {
         capture(&["--every", "0.1", "--count", "2", "--apng"]),
         Ok(Some((Capture { every: 6, count: 2 }, Output::Apng)))
     );
+    assert_eq!(
+        capture(&["--every", "0.05", "--count", "8", "--gif"]),
+        Ok(Some((Capture { every: 3, count: 8 }, Output::Gif)))
+    );
     // The game's options and the steps are read as before.
     let parsed = parse_args(
         &args(&[
@@ -79,10 +83,23 @@ fn each_capture_flag_alone_or_wrong_is_an_error() {
         all.extend_from_slice(extra);
         parse_args(&args(&all), &GAME).unwrap_err()
     };
-    let cases: [(&[&str], &str); 13] = [
+    let cases: [(&[&str], &str); 17] = [
         (&["--every", "0.1"], "--every needs --count"),
         (&["--count", "3"], "--count needs --every"),
         (&["--apng"], "--apng needs --count"),
+        (&["--gif"], "--gif needs --count"),
+        (
+            &["--every", "0.1", "--count", "3", "--gif", "--apng"],
+            "one output only, not --gif and --apng",
+        ),
+        (
+            &["--every", "0.1", "--count", "3", "--sheet", "--gif"],
+            "one output only, not --sheet and --gif",
+        ),
+        (
+            &["--every", "0.1", "--count", "3", "--gif", "--columns", "2"],
+            "--columns is for the sheet only",
+        ),
         (&["--sheet"], "--sheet needs --count"),
         (&["--columns", "2"], "--columns needs --count"),
         (
@@ -213,6 +230,109 @@ fn run_writes_an_apng_of_the_frames() {
     assert_eq!((control.num_frames, control.num_plays), (2, 0));
     let shown = reader.info().frame_control().unwrap();
     assert_eq!((shown.delay_num, shown.delay_den), (6, 60));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn run_writes_a_gif_of_the_frames_and_says_its_speed() {
+    let dir = temp_dir("gif");
+    let options = parse_args(
+        &args(&["a.gif", "--every", "0.1", "--count", "2", "--gif"]),
+        &GAME,
+    )
+    .unwrap();
+    // 6 frames is 10 hundredths: exact, no speed line.
+    let said = run(&dir, &options, &Snapshot, None).unwrap();
+    assert_eq!(
+        said,
+        "frame-png: 2 frames, every 0.100 s (6 frames) → a.gif (2×1)\n  \
+         +0ms 0 steps\n  +100ms 6 steps"
+    );
+    let bytes = fs::read(dir.join("a.gif")).unwrap();
+    let mut decoder = gif::DecodeOptions::new().read_info(&bytes[..]).unwrap();
+    assert_eq!(decoder.repeat(), gif::Repeat::Infinite);
+    let mut delays = Vec::new();
+    while let Some(frame) = decoder.read_next_frame().unwrap() {
+        delays.push(frame.delay);
+    }
+    assert_eq!(delays, [10, 10]);
+    // 1 frame shows for 2 hundredths, not 1/60 s: said.
+    let options = parse_args(
+        &args(&["a.gif", "--every", "0.0167", "--count", "2", "--gif"]),
+        &GAME,
+    )
+    .unwrap();
+    let said = run(&dir, &options, &Snapshot, None).unwrap();
+    assert!(
+        said.ends_with(
+            "+16ms 1 steps\nthe GIF shows each frame 0.02 seconds (every is 0.017 seconds)"
+        ),
+        "{said}"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_summary_says_a_gifs_speed_only_when_it_differs() {
+    assert_eq!(gif_speed(3), None);
+    assert_eq!(gif_speed(6), None);
+    assert_eq!(gif_speed(60), None);
+    assert_eq!(
+        gif_speed(2).as_deref(),
+        Some("the GIF shows each frame 0.03 seconds (every is 0.033 seconds)")
+    );
+    assert_eq!(
+        gif_speed(2000).as_deref(),
+        Some("the GIF shows each frame 33.33 seconds (every is 33.333 seconds)")
+    );
+}
+
+/// A game whose every frame has `width` colours, one a pixel.
+struct Colours(u32);
+
+impl GameTools for Colours {
+    fn frame_options(&self) -> &[crate::GameOption] {
+        &GAME
+    }
+
+    fn frame(&self, _: &[GameArg], _: &Script, _: Option<u32>) -> Result<Shot, String> {
+        let rgba = (0..self.0)
+            .flat_map(|c| {
+                let [_, r, g, b] = c.to_be_bytes();
+                [r, g, b, 255]
+            })
+            .collect();
+        Ok(Shot::new(
+            Image {
+                width: self.0,
+                height: 1,
+                rgba,
+            },
+            "colours",
+        ))
+    }
+
+    fn lang(&self) -> Result<crate::GameLang, String> {
+        Err("no languages".to_owned())
+    }
+}
+
+#[test]
+fn a_gif_of_too_many_colours_is_refused_and_nothing_written() {
+    let dir = temp_dir("gif-colours");
+    let options = parse_args(
+        &args(&["a.gif", "--every", "0.05", "--count", "2", "--gif"]),
+        &GAME,
+    )
+    .unwrap();
+    assert_eq!(
+        run(&dir, &options, &Colours(257), None).unwrap_err(),
+        "frame 1 has 257 colours, more than the 256 of a GIF: write it with --apng"
+    );
+    assert!(!dir.join("a.gif").exists());
+    // 256 is a GIF.
+    run(&dir, &options, &Colours(256), None).unwrap();
+    assert!(dir.join("a.gif").exists());
     fs::remove_dir_all(&dir).unwrap();
 }
 

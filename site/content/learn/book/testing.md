@@ -99,7 +99,9 @@ target's display. The picture is for people; tests read the state.
 Motion needs more than one picture. `--every 0.05 --count 8` paints 8 frames, the first
 right after the steps and then one every 0.05 seconds, as one sheet with each frame under
 its time (`+50ms`); `--columns` sets how many go in a row. `--apng` writes them as an
-animated PNG instead, for a README or a store page. In the MCP session, `frame_png` takes
+animated PNG instead, for a README or a store page, and `--gif` as a GIF, for the places
+that take only a GIF; its colours are exact, so a frame of more than 256 colours is refused
+rather than dithered. In the MCP session, `frame_png` takes
 the same `every` and `count` and answers the sheet.
 
 That picture is the raster's, painted in software. To check that your window draws the same

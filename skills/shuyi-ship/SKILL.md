@@ -241,6 +241,11 @@ Ship only what `check --target` passes.
    cargo shuyi frame-png moving.png --keys "Enter" --every 0.05 --count 40 --apng
    ```
 
+   Where only a GIF is taken (a forum, a chat, an older store page),
+   `--gif` writes the same frames as a GIF that loops forever. Its
+   colours are exact, never dithered: a frame of more than 256 colours
+   is refused, and the APNG is the answer then.
+
    The store pages themselves, their text and their prices are the
    game's owner's.
 
