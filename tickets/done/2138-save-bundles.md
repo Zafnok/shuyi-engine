@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2138 — Save bundles: export a storage's keys as one file, import them with a verdict per entry
@@ -119,21 +119,25 @@ Expected size: about 700–900 changed lines with tests.
 
 ## Acceptance criteria
 
-- [ ] `write_bundle` of the same storage twice gives the same text; the
+- [x] `write_bundle` of the same storage twice gives the same text; the
       fixture round-trips byte for byte.
-- [ ] `plan_import` of a bundle holding one current save, one of another
+- [x] `plan_import` of a bundle holding one current save, one of another
       version, one that doesn't parse and one unknown key gives `Ready`,
       `Incompatible { found, wants }`, `Unreadable` and `Unknown`, and
       marks `replaces` for a key the storage holds.
-- [ ] A bundle written by another engine version or game stamp reports
+- [x] A bundle written by another engine version or game stamp reports
       the `Mismatch` and still plans (the verdicts decide).
-- [ ] `apply` writes only taken `Ready` entries; a storage that fails the
+- [x] `apply` writes only taken `Ready` entries; a storage that fails the
       third write leaves every key as it was (a test with a failing
       storage).
-- [ ] The power-cut case passes.
-- [ ] `shuyi check` reads a `.ron` bundle file and reports a broken one.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The power-cut case passes.
+- [x] ~~`shuyi check` reads a `.ron` bundle file and reports a broken one.~~
+      (not done as written: `check` takes no file, it checks the game's
+      own content; `shuyi import <file>` is the operation that reads one
+      file, and it reads a bundle and reports a broken one with its line,
+      as the notes say)
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -146,5 +150,94 @@ Expected size: about 700–900 changed lines with tests.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi_ui::storage::bundle` (`crates/ui/src/storage/bundle.rs`). It is
+  in `shuyi-ui`, not `shuyi-platform`: `shuyi-ui` already depends on
+  `shuyi-core` (`Made`, `SaveFormat`, `SaveHeader`) and `shuyi-assets`
+  (`Format`), and `Storage` is its own.
+  - `SaveBundle { version, made, entries }`, `SAVE_BUNDLE_VERSION = 1`,
+    and `to_text`: RON with its type's names, four spaces, `\n` line
+    ends, entries in key order.
+  - `write_bundle`, `read_bundle`, `plan_import`, `apply`.
+  - `EntryCheck` (a closure `|key, text| …` is one), `Verdict`,
+    `FormatCheck::<F>::new(|key| …)` over `SaveHeader`, and `Checks`
+    (the first verdict that isn't `Unknown` wins).
+  - `ImportPlan` (`made`, `mismatch: Option<Mismatch>`, `entries`,
+    with `entry` and `ready`), `PlanEntry` (`key`, `verdict`,
+    `replaces`, `text`), `Applied` (`written`, `replaced`),
+    `BundleError`.
+  - The format `SaveBundleRon` (`save-bundle`, `.ron`, 4 MiB, with
+    `Encode`).
+- **ADR-0039:** `SaveBundle` is `#[non_exhaustive]` with `SaveBundle::new`;
+  `Verdict`, `BundleError`, `PlanEntry`, `ImportPlan` and `Applied` are
+  `#[non_exhaustive]` and built by the module only (answers, like
+  `Mismatch`), so `Verdict::Migratable` (2110) is no break.
+- **All or nothing, and the power cut.** The ticket's steps (back up,
+  write, put the backups back on failure, delete the backups) can't
+  survive a power cut alone: nothing runs to put the backups back. So
+  `apply` writes a journal key after the backups and before the first
+  new value, and deletes it once every value is written: that delete is
+  the moment the import is done. A new `pub fn recover(storage)` undoes
+  an interrupted import from the journal and deletes leftover backups;
+  `apply` calls it first, and a game calls it at start. Keys starting
+  with `_bundle-` (`RESERVED_PREFIX`) are the bundle's own:
+  `write_bundle` leaves them out, `read_bundle` refuses them as
+  `BadKey`. A torn journal is harmless: the journal is written before
+  any value, so a storage that writes in place keeps the promise too (a
+  test says so).
+- **The power-cut suite** gained promise 8 (`power_cut.rs`): an import
+  cut after every number of operations of the medium reads, once
+  `recover` has run after the restart, every old value or every new one,
+  and the new ones if `apply` returned `Ok`, with no reserved key left.
+  It runs in every backend's rig: the app's fake disk and the Playdate's
+  pass.
+- **A bundle of another version** is refused by its version alone
+  (`SaveHeader<SaveBundle>`, read first), whatever the rest holds:
+  `BundleError::Version { found, reads }`, for any version other than
+  1, older or newer.
+- **Registered:** `Importers::standard()` (`shuyi-cli`) registers
+  `SaveBundleRon` beside `Formats::standard()`, as the kind `save
+  bundle`, with its text for `--print`. `Formats::standard()` itself is
+  `shuyi-assets`', which can't depend on `shuyi-ui`.
+- **Tests:** unit tests of each verdict, each `BundleError`, the text's
+  determinism and the fixture's byte-for-byte round trip
+  (`crates/ui/tests/fixtures/bundle_v1.ron`); a test with a storage
+  that fails each of the six writes in turn; `recover`; the format
+  through the registry with lines and codes; the property test (any
+  bundle plans every entry `Ready` against an accept-all check, and
+  `apply` gives the source's chosen keys over what the target held);
+  fuzz-style tests on any text, text shaped like a bundle, and any
+  bytes; the golden row `save bundle: save-bundle` in the new table
+  `crates/ui/tests/golden/bundle.ron` (a `golden` test, so it runs on
+  wasm32 in the `determinism` job with the rest of `shuyi-ui`'s).
+- **Docs:** the book's chapter 7 has a section *Bundles* with its code
+  in `site/snippets/src/saves.rs` (anchors `bundle` and `test_bundle`);
+  `docs/formats.md` has the format's row; the skill pack's
+  `shuyi-screen` points at bundles beside its files the player keeps.
+
+**Deviations.**
+
+- `shuyi check` takes no file: it checks the game's own content through
+  the game's validators. The file check is `shuyi import <file>`, which
+  reads a bundle (`save bundle: 1 entry, made with …`) and reports a
+  broken one with its file, line and `SH2001` (a test in
+  `crates/cli/src/contract/import/tests.rs`). A game whose own content
+  holds a bundle (a shipped starting save, say) registers
+  `SaveBundleRon` in its `Formats`, and its `check` then reads it.
+- `recover`, the journal and the reserved `_bundle-` keys are new (see
+  above): the power-cut criterion needs them.
+- 2110 is open, so no `Migratable` here. 2110's clause is rewritten as
+  what holds: it adds the variant to `FormatCheck` and `apply`.
+
+**For the game.** game#0872 and game#0873 use this after the game's
+next pin bump: `write_bundle` with the keys it picks, handed to the
+player with `Ctx::offer_file`; `plan_import` on the `FileChosen` text
+with a `FormatCheck` per save format; `apply` on the player's yes; and
+`bundle::recover` at start. The game PR that moves the pin is written
+by those game tickets.
+
+No break: everything is new. The golden table is new, so its row is
+not a break.
+
+Nick input: none.

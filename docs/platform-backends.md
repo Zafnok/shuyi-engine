@@ -525,8 +525,10 @@ for either without `wasm-bindgen`, so it reaches the browser through a
 miniquad JS plugin of the engine's, beside the page: `page-files.js` here,
 as `gamepad.js` reaches the Gamepad API and `player-files.js` offers a file
 ([`crates/cli/web/README.md`](../crates/cli/web/README.md) lists them and
-what each needs). Off the web, `page_layer` is always `None`. A device
-with nothing to hand in offers neither.
+what each needs). Off the web, `page_layer` is always `None`. A game on
+the short path gets the page's files with no code of its own:
+`run_game` lays them over the game's when its data loads with them, and
+reports either way. A device with nothing to hand in offers neither.
 
 ## Files the player keeps (optional)
 

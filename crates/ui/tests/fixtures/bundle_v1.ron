@@ -1,0 +1,12 @@
+SaveBundle(
+    version: 1,
+    made: Made(
+        engine: "0.1.0",
+        game: "demo 1.0",
+        content: "1a2b3c4d5e6f7a8b",
+    ),
+    entries: {
+        "save-slot-1": "(version:3,gold:10)",
+        "settings": "(volume:80)",
+    },
+)

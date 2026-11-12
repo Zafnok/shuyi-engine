@@ -3,8 +3,10 @@
 //! folder of files, a flash chip) in a [`PowerCutRig`] that can lose the
 //! power after any operation, and runs [`power_cut_suite`] over it.
 
-use super::{Storage, StorageError};
+use super::bundle::{Verdict, apply, plan_import, recover, write_bundle};
+use super::{MemoryStorage, Storage, StorageError};
 use crate::prelude::*;
+use shuyi_core::made::{ContentHash, Made};
 
 /// A [`Storage`] over a fake of its medium, which can lose the power: what
 /// a backend writes to run [`power_cut_suite`].
@@ -35,8 +37,29 @@ const AFTER: &str = "(slot: 1, gold: 0)";
 /// The most operations of the medium a write or a delete may take.
 const MAX_OPS: u32 = 10_000;
 
+/// The keys of the save bundle the suite imports: each with its value
+/// before the import, if any, and the bundle's.
+// check-text: not player text (storage keys and values)
+const IMPORT: [(&str, Option<&str>, &str); 3] = [
+    (
+        "slot-a",
+        Some("(slot: a, gold: 1)"),
+        "(slot: a, gold: 100, items: [lamp])",
+    ),
+    (
+        "slot-b",
+        Some("(slot: b, gold: 2)"),
+        "(slot: b, gold: 200, items: [rope])",
+    ),
+    ("slot-c", None, "(slot: c, gold: 300)"),
+];
+
+/// The import, as the suite's panics name it.
 // check-text: not player text (the suite's panics)
-const PROMISES: [&str; 7] = [
+const AN_IMPORT: &str = "an import of a save bundle";
+
+// check-text: not player text (the suite's panics)
+const PROMISES: [&str; 8] = [
     "a write over an old value reads the old value or the new one",
     "a first write reads nothing or the new value",
     "a delete reads the old value or nothing",
@@ -44,6 +67,7 @@ const PROMISES: [&str; 7] = [
     "another key reads the same after every restart",
     "list() names exactly the keys that read Some",
     "with the power on, a write after the cut works and reads back",
+    "an import of a save bundle, once recovered, reads every old value or every new one",
 ];
 
 /// One of the operations the suite cuts the power in.
@@ -112,7 +136,11 @@ impl Op {
 /// 5. another key, written once at the start, reads the same after every
 ///    restart;
 /// 6. `list()` names exactly the keys that read `Some`;
-/// 7. with the power on, a write after the cut works and reads back.
+/// 7. with the power on, a write after the cut works and reads back;
+/// 8. an import of a save bundle ([`super::bundle::apply`]) cut anywhere
+///    reads, once [`recover`] has run after the restart, every old value
+///    of its keys or every new one, and the new ones if it returned `Ok`;
+///    no key of the bundle's own is left.
 ///
 /// An operation that needs more than 10 000 operations of the medium fails
 /// the suite.
@@ -124,11 +152,12 @@ pub fn power_cut_suite(rig: &mut dyn PowerCutRig) {
     for op in [Op::Overwrite, Op::FirstWrite, Op::Delete] {
         check_op(rig, op);
     }
+    check_import(rig);
 }
 
 fn check_op(rig: &mut dyn PowerCutRig, op: Op) {
     for ops in 0..=MAX_OPS {
-        let cut = Some((op, ops));
+        let cut = Some((op.name(), ops));
         let set_back = match op.before() {
             Some(value) => rig.storage().write(KEY, value),
             None => rig.storage().delete(KEY),
@@ -171,12 +200,106 @@ fn check_op(rig: &mut dyn PowerCutRig, op: Op) {
     );
 }
 
+/// Cuts the power in an import of a save bundle after each number of
+/// operations of the medium in turn, until it finishes, and checks what
+/// its keys read once [`recover`] has run after the restart (promise 8).
+// check-text: not player text (the suite's panics and its bundle's stamp)
+fn check_import(rig: &mut dyn PowerCutRig) {
+    let made = Made::new("power-cut suite", ContentHash(0));
+    let mut source = MemoryStorage::new();
+    for (key, _, new) in IMPORT {
+        if let Err(e) = source.write(key, new) {
+            fail(8, None, &format!("writing the bundle's {key} failed: {e}"));
+        }
+    }
+    let text = match write_bundle(&source, &made, |_| true) {
+        Ok(text) => text,
+        Err(e) => fail(8, None, &format!("writing the bundle failed: {e}")),
+    };
+    let old: Vec<Option<String>> = IMPORT
+        .iter()
+        .map(|(_, old, _)| old.map(ToOwned::to_owned))
+        .collect();
+    let new: Vec<Option<String>> = IMPORT
+        .iter()
+        .map(|(_, _, new)| Some((*new).to_owned()))
+        .collect();
+    let mut keys = vec![KEY, OTHER];
+    keys.extend(IMPORT.iter().map(|(key, _, _)| *key));
+    let accept = |_: &str, _: &str| Verdict::Ready;
+    for ops in 0..=MAX_OPS {
+        let cut = Some((AN_IMPORT, ops));
+        if let Err(e) = set_back_import(rig.storage()) {
+            fail(
+                8,
+                cut,
+                &format!("setting the bundle's keys back failed: {e}"),
+            );
+        }
+        rig.restart();
+        let plan = match plan_import(&text, rig.storage(), &accept, &made) {
+            Ok(plan) => plan,
+            Err(e) => fail(8, cut, &format!("planning the import failed: {e}")),
+        };
+
+        rig.cut_after(ops);
+        let result = apply(&plan, rig.storage(), |_| true);
+        rig.restart();
+        if let Err(e) = recover(rig.storage()) {
+            fail(8, cut, &format!("recover failed: {e}"));
+        }
+
+        let storage = rig.storage();
+        let mut read = Vec::new();
+        for (key, _, _) in IMPORT {
+            match storage.read(key) {
+                Ok(value) => read.push(value),
+                Err(e) => fail(8, cut, &format!("reading {key} failed: {e}")),
+            }
+        }
+        if read != old && read != new {
+            fail(
+                8,
+                cut,
+                &format!("the keys read {read:?}, a mix of old and new"),
+            );
+        }
+        if result.is_ok() && read != new {
+            fail(
+                8,
+                cut,
+                &format!("it returned Ok, but the keys read {read:?}"),
+            );
+        }
+        expect_read(rig, OTHER, Some(OTHER_VALUE), 5, cut, "");
+        check_list_of(rig, &keys, 8, cut);
+
+        if result.is_ok() {
+            return;
+        }
+    }
+    // check-text: not player text (the suite's panics)
+    panic!("power-cut suite: {AN_IMPORT} still fails after {MAX_OPS} operations of the medium");
+}
+
+/// Gives the import's keys their values before it, with the power on.
+fn set_back_import(storage: &mut dyn Storage) -> Result<(), StorageError> {
+    recover(storage)?;
+    for (key, old, _) in IMPORT {
+        match old {
+            Some(value) => storage.write(key, value)?,
+            None => storage.delete(key)?,
+        }
+    }
+    Ok(())
+}
+
 fn expect_read(
     rig: &mut dyn PowerCutRig,
     key: &str,
     expected: Option<&str>,
     promise: usize,
-    cut: Option<(Op, u32)>,
+    cut: Option<(&str, u32)>,
     when: &str,
 ) {
     let read = rig.storage().read(key);
@@ -189,22 +312,34 @@ fn expect_read(
     }
 }
 
-fn check_list(rig: &mut dyn PowerCutRig, cut: Option<(Op, u32)>) {
+fn check_list(rig: &mut dyn PowerCutRig, cut: Option<(&str, u32)>) {
+    check_list_of(rig, &[KEY, OTHER], 6, cut);
+}
+
+/// Checks that `list()` names exactly those of `keys` that read `Some`, as
+/// promise `promise` says.
+fn check_list_of(
+    rig: &mut dyn PowerCutRig,
+    keys: &[&str],
+    promise: usize,
+    cut: Option<(&str, u32)>,
+) {
     let storage = rig.storage();
     let mut reading = Vec::new();
-    for key in [KEY, OTHER] {
+    for key in keys {
         if matches!(storage.read(key), Ok(Some(_))) {
-            reading.push(key.to_owned());
+            reading.push((*key).to_owned());
         }
     }
+    reading.sort();
     let mut listed = match storage.list() {
         Ok(keys) => keys,
-        Err(e) => fail(6, cut, &format!("list() failed: {e}")),
+        Err(e) => fail(promise, cut, &format!("list() failed: {e}")),
     };
     listed.sort();
     if listed != reading {
         fail(
-            6,
+            promise,
             cut,
             &format!("list() named {listed:?}, but the keys that read are {reading:?}"),
         );
@@ -212,12 +347,11 @@ fn check_list(rig: &mut dyn PowerCutRig, cut: Option<(Op, u32)>) {
 }
 
 // check-text: not player text (the suite's panics)
-fn fail(promise: usize, cut: Option<(Op, u32)>, what: &str) -> ! {
+fn fail(promise: usize, cut: Option<(&str, u32)>, what: &str) -> ! {
     let text = PROMISES[promise - 1];
     match cut {
         Some((op, ops)) => panic!(
-            "power-cut suite, promise {promise} ({text}): {}, power cut after {ops} operations: {what}",
-            op.name()
+            "power-cut suite, promise {promise} ({text}): {op}, power cut after {ops} operations: {what}"
         ),
         None => panic!("power-cut suite, promise {promise} ({text}): {what}"),
     }
@@ -368,6 +502,40 @@ mod tests {
         let mut rig = MemoryRig::new(Mode::InPlace);
         rig.write(OTHER, OTHER_VALUE).unwrap();
         check_op(&mut rig, Op::Delete);
+    }
+
+    /// An import on a storage that loses its writes at the restart reads
+    /// neither its old values nor its new ones.
+    #[test]
+    #[should_panic(
+        expected = "promise 8 (an import of a save bundle, once recovered, reads every old value or every new one): an import of a save bundle, power cut after 0 operations"
+    )]
+    fn an_import_on_a_storage_that_forgets_its_writes_fails_promise_8() {
+        check_import(&mut MemoryRig::new(Mode::Forgetful));
+    }
+
+    /// A storage that writes in place keeps promise 8 all the same: the
+    /// journal is written before any value, so a torn one has nothing to
+    /// undo, and a torn value is put back from its backup.
+    #[test]
+    fn an_import_on_a_storage_that_writes_in_place_keeps_promise_8() {
+        let mut rig = MemoryRig::new(Mode::InPlace);
+        rig.write(OTHER, OTHER_VALUE).unwrap();
+        check_import(&mut rig);
+    }
+
+    /// The suite imports the bundle's keys, and leaves none of the
+    /// bundle's own.
+    #[test]
+    fn the_suite_imports_a_bundle() {
+        let mut rig = MemoryRig::new(Mode::Atomic);
+        power_cut_suite(&mut rig);
+        for (key, _, new) in IMPORT {
+            let asked = (key.to_owned(), Some(new.to_owned()));
+            assert!(rig.asked.contains(&asked), "{asked:?}");
+        }
+        assert!(rig.asked.iter().any(|(key, _)| key == "_bundle-journal"));
+        assert!(rig.values.keys().all(|key| !key.starts_with('_')));
     }
 
     #[test]

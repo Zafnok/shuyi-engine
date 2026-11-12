@@ -6,6 +6,8 @@ aliases = ["learn/tutorial/08-polish/", "learn/tutorial/08-polish/play/"]
 
 [extra]
 step = 8
+# The files its playground edits, in their tabs' order (ticket 2820).
+files = ["levels.ron", "levels/1.map", "levels/2.map", "levels/3.map", "levels/4.map", "levels/5.map", "palette.ron", "en.ron", "keymap.ron"]
 follows = "saves-and-settings"
 +++
 

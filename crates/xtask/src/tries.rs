@@ -465,7 +465,7 @@ impl Renderer {
         // A step has `cargo shuyi`, as a new game does. The book's game runs
         // its tool program by hand.
         let tools: &[&str] = if one.step == BOOK {
-            &["run", "-q", "--example", "tools", "--"]
+            &["run", "-q", "--example", "snippet-tools", "--"]
         } else {
             &["shuyi"]
         };

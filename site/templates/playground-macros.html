@@ -1,0 +1,53 @@
+{#- The playground (tickets 2814, 2820): a game's web build in a frame
+    beside an editor for each of its files, and the problems the game sends
+    back. `static/playground.js` runs it; each page that shows one loads it
+    in its head (`script`), before the frame can report. One playground a
+    page.
+
+    `game` names the game ("Hello, Grid"); `frame` is its web build's
+    address; `files_url` the folder its own text is copied to
+    (`copy-playground.sh`); `files` the names the editors hold, in their
+    tabs' order, each a path under the game's `files/`. `lazy` loads the
+    frame only when it is shown: a step's playground is folded until the
+    reader opens it. With no JavaScript the game plays its own files and the
+    editors stay hidden. -#}
+
+{% macro script() -%}
+{#- Not deferred: its listener must be there before the game reports, and
+    it hands this page's files to the game before the frame loads. #}
+<script src="{{ get_url(path='playground.js', cachebust=true) }}"></script>
+{%- endmacro script %}
+
+{% macro playground(game, frame, files_url, files, lazy=false) -%}
+<section class="playground" aria-label="{{ game }} and its files" data-files="{{ files_url | safe }}">
+  <div class="playground-game">
+    <iframe src="{{ frame | safe }}" title="{{ game }}, playing with the files beside it" width="384" height="384"{% if lazy %} loading="lazy"{% endif %}></iframe>
+  </div>
+  <div class="playground-files">
+    <noscript><p>The editors need JavaScript. The game plays its own files without it.</p></noscript>
+    <div class="playground-editors" hidden>
+      <div class="playground-tabs" role="tablist" aria-label="{{ game }}'s files">
+        {%- for name in files %}
+        {%- set id = name | replace(from=".", to="-") | replace(from="/", to="-") %}
+        <button type="button" role="tab" id="playground-tab-{{ id }}" aria-controls="playground-panel-{{ id }}"
+          aria-selected="{% if loop.first %}true{% else %}false{% endif %}" tabindex="{% if loop.first %}0{% else %}-1{% endif %}">{{ name }}</button>
+        {%- endfor %}
+      </div>
+      {%- for name in files %}
+      {%- set id = name | replace(from=".", to="-") | replace(from="/", to="-") %}
+      <div class="playground-panel" role="tabpanel" id="playground-panel-{{ id }}" aria-labelledby="playground-tab-{{ id }}"{% if not loop.first %} hidden{% endif %}>
+        <label for="playground-file-{{ id }}">files/{{ name }}</label>
+        <textarea id="playground-file-{{ id }}" data-file="{{ name }}" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" rows="16"></textarea>
+      </div>
+      {%- endfor %}
+      <div class="playground-actions">
+        <button type="button" class="playground-run">Run</button>
+        <button type="button" class="playground-reset">Reset this file</button>
+        <button type="button" class="playground-reset-all">Reset all</button>
+      </div>
+      <h2 class="playground-problems-title" id="playground-problems-title">Problems</h2>
+      <pre class="playground-problems" role="status" aria-labelledby="playground-problems-title"></pre>
+    </div>
+  </div>
+</section>
+{%- endmacro playground %}

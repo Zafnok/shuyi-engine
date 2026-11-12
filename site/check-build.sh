@@ -196,6 +196,32 @@ for name in $names; do
     fail "the build's playground/files/$name isn't Hello, Grid's files/$name"
   grep -qF "data-file=\"$name\"" "$playground" 2>/dev/null || fail "learn/playground/ has no editor of $name"
 done
+# Each step's playground (ticket 2820): a step whose page names files has
+# them in the build beside its page, the same as its project's own, an
+# editor of each, and frames its play/.
+for project in "${projects[@]}"; do
+  folder="$(basename "$project")"
+  code="$(sed -nE 's/^code = "(.*)"$/\1/p' "$project/_index.md")"
+  game_files="$(sed -nE 's/^game_files = "(.*)"$/\1/p' "$project/_index.md")"
+  for step in "$project"/*.md; do
+    [ "$(basename "$step")" = _index.md ] && continue
+    names="$(sed -nE 's/^files = \[(.*)\]$/\1/p' "$step" | tr -d '",')"
+    [ -n "$names" ] || continue
+    name="$(basename "$step" .md)"
+    page="$out/one/learn/book/$folder/$name/index.html"
+    [ -f "$page" ] || continue
+    grep -qE '<script [^>]*src="[^"]*/playground\.js' "$page" || fail "learn/book/$folder/$name/ has a playground and doesn't load playground.js"
+    grep -qF "<iframe src=\"${one}learn/book/$folder/$name/play/\"" "$page" ||
+      fail "learn/book/$folder/$name/'s playground doesn't frame its play/"
+    # Zola writes the `/` of `levels/1.map` as `&#x2F;`.
+    decoded="$(sed -e 's/&#x2F;/\//g' "$page")"
+    for file in $names; do
+      cmp -s "$site_dir/$code/$name/$game_files/$file" "$out/one/learn/book/$folder/$name/files/$file" ||
+        fail "the build's learn/book/$folder/$name/files/$file isn't site/$code/$name/$game_files/$file"
+      grep -qF "data-file=\"$file\"" <<<"$decoded" || fail "learn/book/$folder/$name/ has no editor of $file"
+    done
+  done
+done
 
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"

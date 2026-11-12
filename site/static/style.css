@@ -987,3 +987,51 @@ h3 {
   margin: 0;
   white-space: pre-wrap;
 }
+
+/* A step's playground (ticket 2820): folded under the step's links until
+   the reader opens it or a try's button does, and in the page's column,
+   so always the game above its files. */
+.playground-fold {
+  margin: 1rem 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.playground-fold summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.playground-fold[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+.playground-fold .playground {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 1rem 0 0.5rem;
+}
+
+.playground-fold .playground-panel textarea {
+  background: var(--bg);
+}
+
+/* A try's "Try this here" (shown by playground.js), and the line under a
+   try of the Rust code, which a page can't build. */
+.try-here button.button {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.try-here button.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.try-rust {
+  color: var(--muted);
+  font-size: 0.95em;
+}

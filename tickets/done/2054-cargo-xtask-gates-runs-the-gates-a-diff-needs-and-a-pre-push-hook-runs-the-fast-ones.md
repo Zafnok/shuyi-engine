@@ -177,4 +177,8 @@ hook and the skills); no public API or game-facing behaviour changed.
 
 No break.
 
-Follow-up tickets: none.
+Game: nothing to adopt, the game's own gates command and hook are its twin
+ticket game#0145; a new game's `setup-linux.sh` sets git's hooks only once
+the game adds a `scripts/git-hooks` folder.
+
+No ticket: this ticket leaves no work behind.

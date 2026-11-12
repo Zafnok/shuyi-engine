@@ -1,19 +1,32 @@
-// The playground (ticket 2814, site/templates/playground.html): an editor
-// for each of Hello, Grid's files beside the game in a frame. Plain
-// JavaScript with no build step, loading nothing from another host.
+// The playground (tickets 2814 and 2820, site/templates/playground-macros.html):
+// an editor for each of a game's files beside the game in a frame, and the
+// buttons of the tries (`try_it`) that make their edit in it. Plain
+// JavaScript with no build step, loading nothing from another host. One
+// playground a page.
 //
 // The game's web build reads each `sessionStorage` key
 // `shuyi-page-file:files/<name>` as a file laid over its own, and sends its
 // problems to this page with `postMessage({ kind: "shuyi-report", text })`,
 // "" when it loaded (crates/cli/web/page-files.js, ticket 3069). The frame
 // is this page's origin, so both share the tab's `sessionStorage`.
+//
+// Every page of the site is one origin, and so shares those keys with every
+// other playground, and with a game played on its own page in the same tab.
+// So each page keeps its files under keys of its own, by its path, hands
+// them to the game's keys as it loads, before its frame does, and takes
+// them back as it goes: the game's keys hold this page's files only while
+// this page is open.
 (function () {
     "use strict";
 
-    // The game's key of a file, and this page's key of what the reader has
-    // typed in its editor, run or not, so a reload of the page keeps it.
-    var GAME = "shuyi-page-file:files/";
-    var DRAFT = "shuyi-playground-draft:files/";
+    // The game's key of a file; this page's key of a file it ran; and its
+    // key of what the reader has typed in its editor, run or not, so a
+    // reload of the page keeps it.
+    var GAME = "shuyi-page-file:";
+    var GAME_FILES = GAME + "files/";
+    var PAGE = window.location.pathname;
+    var RUN = "shuyi-playground-run:" + PAGE + ":files/";
+    var DRAFT = "shuyi-playground-draft:" + PAGE + ":files/";
 
     var LOADED = "Loaded with your files.";
 
@@ -52,6 +65,53 @@
             return false;
         }
     }
+
+    // Every key of the tab's storage starting with `prefix`.
+    function keys(prefix) {
+        var s = storage();
+        var found = [];
+        if (s === null) {
+            return found;
+        }
+        try {
+            for (var i = 0; i < s.length; i++) {
+                var key = s.key(i);
+                if (key !== null && key.indexOf(prefix) === 0) {
+                    found.push(key);
+                }
+            }
+        } catch (e) {
+            return found;
+        }
+        return found;
+    }
+
+    // Empties the game's keys, then, unless `away`, fills them with the
+    // files this page ran.
+    function hand_over(away) {
+        keys(GAME).forEach(function (key) {
+            put(key, null);
+        });
+        if (away) {
+            return;
+        }
+        keys(RUN).forEach(function (key) {
+            put(GAME_FILES + key.slice(RUN.length), get(key));
+        });
+    }
+
+    // Now, in the page's head, before its frame is there; again when the
+    // page comes back from the browser's cache; and away as it goes, so a
+    // game played on its own page plays its own files.
+    hand_over(false);
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            hand_over(false);
+        }
+    });
+    window.addEventListener("pagehide", function () {
+        hand_over(true);
+    });
 
     // The game's problems: only from the frame, at this page's origin. The
     // listener is there before the frame loads, since a game in the cache
@@ -119,6 +179,34 @@
             back = null;
         });
 
+        // A folded playground (a step's) loads its game only once it is
+        // opened: from then on, whether or not the browser sees the frame.
+        var fold = root.closest("details");
+        function unfold() {
+            fold.open = true;
+            frame.loading = "eager";
+        }
+        if (fold !== null) {
+            fold.addEventListener("toggle", function () {
+                if (fold.open) {
+                    unfold();
+                }
+            });
+            if (fold.open) {
+                unfold();
+            }
+        }
+
+        // Whether the frame holds its game yet, not the blank page a frame
+        // starts on.
+        function started() {
+            try {
+                return frame.contentWindow.location.href !== "about:blank";
+            } catch (e) {
+                return true;
+            }
+        }
+
         // The tabs: a click or the arrow keys, Home and End select one.
         function select(index, focus) {
             tabs.forEach(function (tab, i) {
@@ -164,17 +252,23 @@
         });
 
         // Run: each file whose text differs from the game's goes to the
-        // game's key, the rest are removed, and the frame loads again.
+        // game's key and this page's, the rest are removed, and the frame
+        // loads again.
         function run() {
             back = document.activeElement;
             var kept = true;
             areas.forEach(function (area) {
                 var name = area.dataset.file;
                 var changed = area.value !== own[name];
-                kept = put(GAME + name, changed ? area.value : null) && kept;
+                kept = put(GAME_FILES + name, changed ? area.value : null) && kept;
+                put(RUN + name, changed ? area.value : null);
                 put(DRAFT + name, changed ? area.value : null);
             });
             say(kept ? "" : "Your browser wouldn't keep the files (session storage is off or full), so the game plays its own.");
+            if (!started()) {
+                // Not loaded yet: it reads the files as it does.
+                return;
+            }
             try {
                 frame.contentWindow.location.reload();
             } catch (e) {
@@ -212,7 +306,8 @@
         var base = root.dataset.files;
         Promise.all(areas.map(function (area) {
             var name = area.dataset.file;
-            return fetch(base + encodeURIComponent(name), { cache: "no-cache" }).then(function (response) {
+            var path = name.split("/").map(encodeURIComponent).join("/");
+            return fetch(base + path, { cache: "no-cache" }).then(function (response) {
                 if (!response.ok) {
                     throw new Error(name + ": " + response.status);
                 }
@@ -220,17 +315,80 @@
             }).then(function (text) {
                 own[name] = text;
                 var draft = get(DRAFT + name);
-                var ran = get(GAME + name);
+                var ran = get(RUN + name);
                 area.value = draft !== null ? draft : ran !== null ? ran : text;
             });
         })).then(function () {
             buttons.forEach(function (button) {
                 button.disabled = false;
             });
+            tries();
         }, function (error) {
             say("The game's files didn't load (" + error.message + "), so there is nothing to edit. " +
                 "On a local build, run copy-playground.sh first (site/README.md).");
         });
+
+        // A try's button (the `try_it` shortcode, ticket 2820): each of its
+        // edits made to the game's own text of its file, the playground
+        // shown on the first file it edits, and run. Shown once the game's
+        // text is here, and only when the playground holds every file the
+        // try edits.
+        function tries() {
+            Array.prototype.slice.call(document.querySelectorAll(".try-here")).forEach(function (holder) {
+                var button = holder.querySelector("button");
+                var edits;
+                try {
+                    edits = JSON.parse(button.dataset.edits);
+                } catch (e) {
+                    return;
+                }
+                // Each edit's file in its step's project, named in the
+                // playground by its path after the first `files/`.
+                var made = edits.map(function (edit) {
+                    var at = edit.file.indexOf("files/");
+                    var name = at < 0 ? null : edit.file.slice(at + "files/".length);
+                    var area = areas.filter(function (a) {
+                        return a.dataset.file === name;
+                    })[0];
+                    return { area: area, find: edit.find, replace: edit.replace };
+                });
+                var held = made.every(function (m) {
+                    return m.area !== undefined;
+                });
+                if (made.length === 0 || !held) {
+                    return;
+                }
+                holder.hidden = false;
+                button.addEventListener("click", function () {
+                    var missed = [];
+                    made.forEach(function (m) {
+                        m.area.value = own[m.area.dataset.file];
+                    });
+                    made.forEach(function (m) {
+                        var text = m.area.value;
+                        var at = text.indexOf(m.find);
+                        if (at < 0) {
+                            missed.push("files/" + m.area.dataset.file);
+                            return;
+                        }
+                        m.area.value = text.slice(0, at) + m.replace + text.slice(at + m.find.length);
+                    });
+                    select(areas.indexOf(made[0].area), false);
+                    run();
+                    if (fold !== null) {
+                        unfold();
+                    }
+                    if (missed.length > 0) {
+                        say("This try's change isn't in " + missed.join(", ") + " as this page has it, so it wasn't made there.");
+                    }
+                    root.scrollIntoView({ block: "start" });
+                    made[0].area.focus({ preventScroll: true });
+                    // The game takes the focus as it starts: it goes back to
+                    // the editor, not to the button far above.
+                    back = made[0].area;
+                });
+            });
+        }
     }
 
     if (document.readyState === "loading") {
