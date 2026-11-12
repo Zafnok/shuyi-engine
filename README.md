@@ -115,7 +115,7 @@ and a game that needs more than that doesn't export there
 | `.claude/skills/`, `.agents/skills/` | Shared skills for developing the engine, with Codex discovery loaders: tickets and ADRs, gates, input rules, the Sonar queue, dependency upkeep, the pinned Rust (see `AGENTS.md`) |
 | `crates/` | The engine's crates ([below](#the-crates)) |
 | `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
-| `.github/dependabot.yml`, `.github/workflows/security.yml`, `codeql.yml`, `scorecard.yml` | Dependency upkeep: Dependabot for the crates and the actions' pins (the templates' too), the weekly advisory check that files `advisory` issues, CodeQL and Scorecard; zizmor audits the workflows in `ci.yml` (ADR-0037) |
+| `.github/dependabot.yml`, `.github/workflows/security.yml`, `dependabot-waiting.yml`, `codeql.yml`, `scorecard.yml` | Dependency upkeep: Dependabot for the crates and the actions' pins (the templates' too), the weekly advisory check that files `advisory` issues, the daily `dependabot-waiting` issue listing the Dependabot PRs open over a day, CodeQL and Scorecard; zizmor audits the workflows in `ci.yml` (ADR-0037) |
 | `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
 | `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |

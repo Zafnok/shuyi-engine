@@ -21,6 +21,10 @@
     ],
     // A `find` must be there exactly once, and a `Cut` removes from `from` up to,
     // not including, `to`: one that no longer matches fails the check and CI.
+    // An action and a dependency are named by key, so a Dependabot bump leaves
+    // the list right: a `uses: owner/action@` line stops at the `@` (its pin and
+    // comment match anything), and a `version = ""` matches any version (ticket
+    // 2057).
     edits: [
         // Ticket 2210: the sound core and what names it.
         Replace(
@@ -540,7 +544,7 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/xtask/Cargo.toml",
-            find: "\n# `sound-parity`: the SHA-256 that pins the corpus and the evidence.\nsha2 = { version = \"0.11\", default-features = false }\n",
+            find: "\n# `sound-parity`: the SHA-256 that pins the corpus and the evidence.\nsha2 = { version = \"\", default-features = false }\n",
             with: "",
         ),
         Cut(
@@ -643,14 +647,14 @@ pub(crate) mod device {
     name: mutants (full, sound adapters)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: Swatinem/rust-cache@
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@
         with:
           tool: cargo-mutants,cargo-nextest
       - name: Run cargo mutants on the sound adapters
@@ -663,7 +667,7 @@ pub(crate) mod device {
           --test-tool=nextest -vV
       - name: Upload mutants.out
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@
         with:
           name: mutants-weekly-adapters-${{ github.run_id }}
           path: mutants.out
@@ -692,6 +696,21 @@ pub(crate) mod device {
         .ci_only("takes the sound replacement out of a checkout and builds what is left"),
 "##,
             with: "",
+        ),
+        // Ticket 2057: the dependency-upkeep skill's step for the footprint.
+        Replace(
+            file: ".claude/skills/dependency-upkeep/SKILL.md",
+            find: r##"Three are known:
+   - **The sound give-up footprint** (`sound-give-up`, and the xtask
+     test `giving_up_covers_all_the_chain_added`):
+     `tools/sound-parity/footprint.ron` names actions and dependencies
+     by key (a `uses: owner/action@` line stops at the `@`, a
+     `version = ""` matches any version), so a bump of a pin or a
+     version leaves it right. If it fails, the bump moved other text an
+     edit quotes: run `cargo xtask sound-parity give-up`, and change the
+     quoted text it names to the new text, on the PR's branch.
+"##,
+            with: "Two are known:\n",
         ),
     ],
 )
