@@ -39,6 +39,7 @@ fn backend() -> (InHouse, AudioSide) {
     (
         InHouse {
             engine: Some(engine),
+            framing: false,
             said: Vec::new(),
         },
         side,
@@ -90,6 +91,30 @@ fn a_sound_loaded_after_the_mixer_moved_plays_at_once() {
     let second = effect(&mut backend, &wav(3));
     backend.play(&second, 1.0, false);
     assert_eq!(left(&mut side, 4), [1, 2, 3, 0]);
+}
+
+/// The audio thread may run between two plays of a frame: what the frame starts
+/// reaches it only when the frame closes, all at once (ticket 3089).
+#[test]
+fn a_frames_plays_reach_the_mix_together_when_it_closes() {
+    let (mut backend, mut side) = backend();
+    let clip = effect(&mut backend, &wav(100));
+    backend.play(&clip, 1.0, false);
+    left(&mut side, 1);
+    backend.frame(true);
+    let a = backend.play(&clip, 1.0, true);
+    assert_eq!(left(&mut side, 1), [2], "the first play goes on alone");
+    let b = backend.play(&clip, 1.0, true);
+    assert!(a.is_some() && b.is_some());
+    assert_eq!(left(&mut side, 1), [3]);
+    backend.frame(false);
+    assert_eq!(
+        left(&mut side, 1),
+        [4 + 1 + 1],
+        "both copies from their first frame"
+    );
+    backend.stop_playing(a);
+    assert_eq!(left(&mut side, 1), [5 + 2], "out of a frame, sent at once");
 }
 
 #[test]

@@ -153,6 +153,14 @@ pub trait Backend {
         let _ = on;
     }
 
+    /// A frame of the player's opens (`open`) or has closed: what the backend is
+    /// told in between is one frame's, and a backend whose output runs on a thread
+    /// of its own sends it there together, so that what a frame starts starts at
+    /// once. By default nothing is done.
+    fn frame(&mut self, open: bool) {
+        let _ = open;
+    }
+
     /// Says a problem of the player's in the backend's log, by default
     /// nowhere.
     fn warn(&mut self, _line: &str) {}
@@ -530,6 +538,7 @@ impl<B: Backend> Player<B> {
         if !self.suspended {
             self.release_clocks(now);
         }
+        backend.frame(true);
         for request in requests {
             self.sound(backend, request);
             self.voices
@@ -539,6 +548,7 @@ impl<B: Backend> Player<B> {
             self.music(backend, command, now);
         }
         self.poll(backend, now);
+        backend.frame(false);
     }
 
     /// After a resume, moves the clocks that held on by the time away.
@@ -1099,6 +1109,8 @@ mod tests {
         pub(crate) broken: Vec<String>,
         pub(crate) length: Option<f64>,
         pub(crate) plays: u32,
+        /// Logs the frames' opening and closing too.
+        pub(crate) frames: bool,
     }
 
     impl Backend for Fake {
@@ -1166,6 +1178,13 @@ mod tests {
 
         fn warn(&mut self, line: &str) {
             self.log.borrow_mut().push(format!("warn {line}"));
+        }
+
+        fn frame(&mut self, open: bool) {
+            if self.frames {
+                let what = if open { "frame" } else { "end" };
+                self.log.borrow_mut().push(what.to_owned());
+            }
         }
     }
 
@@ -1447,6 +1466,34 @@ mod tests {
         let mut audio = audio(&mut fake);
         audio.hear(&mut fake, &[sound("rain", 1.0)], &[], 0.0);
         assert_eq!(fake.calls(), ["play wav100 0.50"]);
+    }
+
+    /// What one frame starts, the backend hears between a frame's opening and its
+    /// closing, so that it can start it all at once (ticket 3089).
+    #[test]
+    fn a_frames_plays_come_between_its_opening_and_its_closing() {
+        let mut fake = Fake {
+            frames: true,
+            ..Fake::default()
+        };
+        let mut audio = audio(&mut fake);
+        fake.calls();
+        audio.hear(
+            &mut fake,
+            &[sound("beep", 1.0), sound("beep", 0.5)],
+            &[],
+            0.0,
+        );
+        assert_eq!(
+            fake.calls(),
+            ["frame", "play wav100 0.50", "play wav100 0.25", "end"]
+        );
+        audio.hear(&mut fake, &[], &[], 0.1);
+        assert_eq!(
+            fake.calls(),
+            ["frame", "end"],
+            "every frame, even an empty one"
+        );
     }
 
     #[test]

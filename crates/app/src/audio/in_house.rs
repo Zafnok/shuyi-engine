@@ -516,6 +516,9 @@ fn level(volume: f32) -> u16 {
 #[derive(Default)]
 pub struct InHouse {
     engine: Option<Engine>,
+    /// Whether a frame of the player's is open: its commands are held back until
+    /// it closes, so that what it starts starts at one block (ticket 3089).
+    framing: bool,
     #[cfg(test)]
     said: Vec<String>,
 }
@@ -541,6 +544,9 @@ impl InHouse {
                 self.say(&format!("the game runs silent: {problem}"));
             }
             engine.output = Some(output);
+            if self.framing {
+                engine.remote.hold();
+            }
             self.engine = Some(engine);
         }
         match &mut self.engine {
@@ -840,6 +846,17 @@ impl Backend for InHouse {
                 output.suspend();
             } else {
                 output.resume();
+            }
+        }
+    }
+
+    fn frame(&mut self, open: bool) {
+        self.framing = open;
+        if let Some(engine) = &mut self.engine {
+            if open {
+                engine.remote.hold();
+            } else {
+                engine.remote.publish();
             }
         }
     }
