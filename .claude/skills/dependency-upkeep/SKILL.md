@@ -35,7 +35,7 @@ the bot (`AGENTS.md` rule 11). An `ignore` entry in
 2. **The `backend` group** (macroquad, miniquad, `quad-*`, `sapp-jsutils`,
    `gilrs*`):
    - re-vendor the JS as [`crates/cli/web/README.md`](../../../crates/cli/web/README.md)
-     says, its local patches to `quad-storage.js` and `mq_js_bundle.js`
+     says, its local patches to `mq_js_bundle.js`
      included;
    - when miniquad moves, check its `WM_DROPFILES` in
      `src/native/windows.rs`: once it skips a path it can't read and

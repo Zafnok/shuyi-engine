@@ -9,6 +9,6 @@ mq_js_bundle.js
 pack-file.js
 page-files.js
 player-files.js
-quad-storage.js
 sapp_jsutils.js
 sound.js
+storage.js

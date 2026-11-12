@@ -1750,3 +1750,16 @@ and 2028 planned one), he answered **"Yes, issues too"**.
 - **A tool's wrong finding** is argued with here, where the gate says
   (a `Breaking:` line saying why, for the `api` job: ADR-0105), with no
   issue upstream.
+
+## 2026-11-12: in-house web saves unparked
+
+Source: Nick, asking a session to do ticket 3033 (our own `localStorage`
+plugin, replacing `quad-storage`), parked with the in-house platform
+layer on 2026-10-19. Asked whether to unpark it alone or keep it parked
+until the MVP, he chose **"Unpark 3033 only"**.
+
+**Rules:**
+
+- **3033 is unparked** and worked now.
+- **The rest of the in-house platform layer stays parked** until the
+  MVP, as decided on 2026-10-19: unparking 3033 unparks no other ticket.

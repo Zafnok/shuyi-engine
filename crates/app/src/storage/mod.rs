@@ -4,6 +4,8 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop;
+#[cfg(any(target_arch = "wasm32", test))]
+mod local_storage;
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(target_arch = "wasm32")]

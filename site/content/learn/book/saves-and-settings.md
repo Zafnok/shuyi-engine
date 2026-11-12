@@ -257,7 +257,9 @@ the placeholder `com.example.…` id share them. `cargo shuyi check --target` wa
 
 **On the web.** A player who clears their browser's site data loses their saves, as
 `localStorage` belongs to the browser. So on the web, as anywhere, `load` must handle
-`Ok(None)`.
+`Ok(None)`. A browser can also refuse storage: turned off, in some private windows, or
+full. Then each call answers `StorageError::Backend` saying which, so warn the player and
+play on, as on a full disk.
 
 ## Check yourself
 

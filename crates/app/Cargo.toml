@@ -12,7 +12,8 @@ repository.workspace = true
 # because one differs and Cargo can't override a single inherited lint:
 # `unsafe_code` is `deny` here instead of `forbid`, so the web build's
 # plugins can declare the JS functions they import (`src/pads/web.rs`,
-# `src/sessions/web.rs` and `src/page.rs`, the only `#[allow(unsafe_code)]`; game ADR-0034, and
+# `src/storage/web.rs`, `src/page.rs` and the other web plugins', the only
+# `#[allow(unsafe_code)]` with the Windows calls; game ADR-0034, and
 # game ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
 # keeps the rest equal to the workspace's.
 [lints.rust]
@@ -81,8 +82,9 @@ shuyi-sound-out = { path = "../sound-out", optional = true }
 # pictures with it on the web too (ticket 2019).
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
-# Storage on the web (ticket 0207): `localStorage`. Native resolves its
-# data directory by hand (see storage/native.rs) rather than pulling in the
+# Storage on the web (ticket 0207) is `localStorage`, through the engine's own
+# `crates/cli/web/storage.js` (ticket 3033). Native resolves its data
+# directory by hand (see storage/native.rs) rather than pulling in the
 # `directories` crate, which drags in MPL-2.0 (denied by game ADR-0013).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
@@ -103,9 +105,9 @@ getrandom = { version = "0.4", default-features = false, optional = true }
 winapi = { version = "0.3.9", features = ["winuser", "shellapi", "processthreadsapi", "shlobj", "knownfolders", "combaseapi", "winerror"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-quad-storage = "0.1"
-# Strings from the page's own plugin, `crates/cli/web/page-files.js` (ticket
-# 3069): the JS objects `quad-storage` already hands strings across with.
+# Strings and bytes from the engine's own plugins (`crates/cli/web/page-files.js`,
+# `player-files.js`, `pack-file.js`; ticket 3069), as `sapp_jsutils.js`'s JS
+# objects.
 sapp-jsutils = "0.1"
 
 [dev-dependencies]

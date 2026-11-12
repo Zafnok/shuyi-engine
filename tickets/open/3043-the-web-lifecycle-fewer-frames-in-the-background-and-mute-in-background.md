@@ -56,10 +56,10 @@ What Shuyi has today (checked 2026-10-21):
   (`crates/platform/src/app/tests.rs`) has a hook that writes its save
   on `Suspend`.
 - **Saves are synchronous.** `WebStorage::write`
-  (`crates/app/src/storage/web.rs`) calls `quad_storage`, whose
-  `quad_storage_set` (`crates/cli/web/quad-storage.js:25`) is
-  `localStorage.setItem`, so a write made inside the event has landed
-  when the event returns.
+  (`crates/app/src/storage/web.rs`) calls `shuyi_storage_set` in
+  `crates/cli/web/storage.js` (3033, done), which is
+  `localStorage.setItem` inside the call, so a write made inside the
+  event has landed when the event returns.
 - **The JS plugin pattern exists:** `crates/cli/web/gamepad.js` (ours)
   and `crates/app/src/pads/web.rs` (its `extern` block and version
   export; the only file in `shuyi-app` with `#[allow(unsafe_code)]`),
@@ -239,9 +239,8 @@ Visions of Shuyi.
   `pacing::seconds()` (the `start` it hands the pacer), and the
   synchronous frame for a lifecycle code hands `App::frame` that same
   reading, not a second clock.
-- **Either order with 3033** (parked): if its `storage.js` is done,
-  the lifecycle plugin sits beside it and nothing else changes; its
-  writes are synchronous too.
+- **From 3033 (done):** the lifecycle plugin sits beside its
+  `storage.js`, and nothing else changes; its writes are synchronous.
 - **Either order with 2408** (parked, rumble): if 2408 is done, its
   rule stops the motors on the `Suspend` a hidden tab now sends, and
   this ticket adds nothing for it; if not, nothing to do (2408 needs
@@ -292,7 +291,7 @@ Visions of Shuyi.
    2511's `impl GameSettings for ()`, `gamepad.js`, `pads/web.rs`,
    `crates/cli/src/web.rs` and its tests, `index.html`, the web README,
    and `crates/app/src/lib.rs`'s `run`. Check whether 2019, 2110, 2351,
-   2519, 3033 and 3052 are done.
+   2519 and 3052 are done.
 2. Write `lifecycle.js`, `lifecycle.rs` and `lifecycle/web.rs`, wire
    `system_events`, and make `run` drain the queue before the web skip.
 3. The `shuyi-cli` changes and tests; `index.html`; the README.
