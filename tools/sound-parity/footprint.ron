@@ -680,5 +680,20 @@ pub(crate) mod device {
             find: "        Some(\"sound-parity\") => report(\"sound-parity\", &sound_parity::run(&root, &args[1..]), &[]),\n",
             with: "",
         ),
+        // Ticket 2057: the dependency-upkeep skill's step for the footprint.
+        Replace(
+            file: ".claude/skills/dependency-upkeep/SKILL.md",
+            find: r##"Three are known:
+   - **The sound give-up footprint** (`sound-give-up`, and the xtask
+     test `giving_up_covers_all_the_chain_added`):
+     `tools/sound-parity/footprint.ron` names actions and dependencies
+     by key (a `uses: owner/action@` line stops at the `@`, a
+     `version = ""` matches any version), so a bump of a pin or a
+     version leaves it right. If it fails, the bump moved other text an
+     edit quotes: run `cargo xtask sound-parity give-up`, and change the
+     quoted text it names to the new text, on the PR's branch.
+"##,
+            with: "Two are known:\n",
+        ),
     ],
 )
