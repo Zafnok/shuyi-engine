@@ -138,6 +138,12 @@ pub struct ExportOutput {
     /// `exposure-report.json` says what it was built from.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edition: Option<String>,
+    /// The pack of the game's files the program reads, from the export's
+    /// folder with its size, if the build is packed (a release desktop or web
+    /// export of a package with a `packed` feature): beside the program, or in
+    /// a `.app`'s `Contents/Resources` (ADR-0110).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack: Option<FileSize>,
 }
 
 /// `export` on `project`: the target's check, with the game's tools
@@ -326,6 +332,9 @@ pub fn text(output: &ExportOutput) -> String {
     }
     for size in &output.beside {
         let _ = writeln!(text, "  beside: {}: {} bytes", size.file, size.bytes);
+    }
+    if let Some(pack) = &output.pack {
+        let _ = writeln!(text, "  pack: {}: {} bytes", pack.file, pack.bytes);
     }
     if let Some(debug) = &output.debug {
         let _ = writeln!(text, "  debug file: {}", out.join(debug).display());

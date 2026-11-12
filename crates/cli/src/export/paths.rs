@@ -200,6 +200,31 @@ pub fn check_file(file: &Path, needles: &[PathBuf]) -> Result<(), String> {
     }
 }
 
+/// Refuses the pack at `file` if it holds a path of the build machine: in
+/// its own bytes (its index, the files it stores as they are), in a path of
+/// its index, or in a file it unpacks to (one it compresses).
+pub fn check_pack(file: &Path, needles: &[PathBuf]) -> Result<(), String> {
+    check_file(file, needles)?;
+    let bytes = std::fs::read(file).map_err(|e| format!("read {}: {e}", file.display()))?;
+    let stamp = shuyi_assets::pack::info(&bytes)
+        .map_err(|e| format!("{}: {e}", file.display()))?
+        .stamp;
+    let pack = shuyi_assets::pack::Pack::open(&bytes, &stamp)
+        .map_err(|e| format!("{}: {e}", file.display()))?;
+    for entry in pack.files() {
+        let found =
+            search(entry.path.as_bytes(), needles).or_else(|| search(&entry.bytes, needles));
+        if let Some(found) = found {
+            return Err(format!(
+                "{FOUND}: {} holds {found} in {}; the package is refused",
+                file.display(),
+                entry.path
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,5 +343,46 @@ mod tests {
             remaps.last().unwrap(),
             &(PathBuf::from("/w/target"), "/target".to_owned())
         );
+    }
+
+    #[test]
+    fn a_pack_is_searched_in_its_index_and_in_what_it_unpacks_to() {
+        use shuyi_assets::pack::{Content, PackInfo, write};
+        let dir = std::env::temp_dir().join(format!("shuyi-paths-pack-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("game.pack");
+        let needles = [PathBuf::from("/home/runner/")];
+        let pack = |files: &[(&str, Vec<u8>)]| {
+            let info = PackInfo {
+                stamp: "game 1".to_owned(),
+                ..PackInfo::default()
+            };
+            let files = files
+                .iter()
+                .map(|(path, bytes)| ((*path).to_owned(), Content::Raw(bytes.clone())))
+                .collect();
+            std::fs::write(&file, write(&info, &files)).unwrap();
+        };
+        pack(&[("en.ron", b"{}".to_vec())]);
+        assert_eq!(check_pack(&file, &needles), Ok(()));
+        pack(&[("home/runner/work/en.ron", b"{}".to_vec())]);
+        assert!(
+            check_pack(&file, &needles).is_ok(),
+            "no leading slash, no path"
+        );
+        // In the index: a path of the build machine.
+        pack(&[("/home/runner/work/en.ron", b"{}".to_vec())]);
+        let found = check_pack(&file, &needles).unwrap_err();
+        assert!(found.starts_with(FOUND), "{found}");
+        // In a file the pack compresses, which its bytes hide.
+        let text = "runner/home/".repeat(50).into_bytes();
+        pack(&[("log.txt", text)]);
+        assert!(search(&std::fs::read(&file).unwrap(), &needles).is_none());
+        let found = check_pack(&file, &needles).unwrap_err();
+        assert!(
+            found.ends_with("in log.txt; the package is refused"),
+            "{found}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

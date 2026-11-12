@@ -2,9 +2,11 @@ ABOUT.md
 NOTICES.txt
 capture/frames.ron
 gamepad.js
+hello-grid.pack
 hello-grid.wasm
 index.html
 mq_js_bundle.js
+pack-file.js
 page-files.js
 player-files.js
 quad-storage.js

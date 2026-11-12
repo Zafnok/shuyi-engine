@@ -126,3 +126,41 @@ fn the_games_own_part_is_read_and_its_problems_join_the_rest() {
         ["files/keymap.ron", "files/stage.ron"]
     );
 }
+
+#[test]
+fn a_pack_of_the_files_loads_the_same_data_with_no_text_parsed() {
+    let formats = Data::formats();
+    let bake = Data::bake("blank 1");
+    let source = bundle(GOOD);
+    let baked = bake
+        .bake(&formats, &source, None)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let pack =
+        shuyi_assets::pack::Pack::open(&baked.bytes, "blank 1").unwrap_or_else(|e| panic!("{e}"));
+    let packed = Bundle::new(vec![pack.into_owned().into_layer("files")]);
+    assert_eq!(bake.check(&formats, &source, &packed), []);
+    let kinds: Vec<(&str, &[&str])> = baked
+        .files
+        .iter()
+        .map(|file| (file.path.as_str(), &file.kinds[..]))
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            ("en.ron", &["english"][..]),
+            ("font/atlas.png", &[][..]),
+            ("font/atlas.ron", &["font atlas"][..]),
+            ("keymap.ron", &[][..]),
+            ("palette.ron", &["palette"][..]),
+        ]
+    );
+    let from_pack = Data::load(packed, CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
+    let from_text = Data::load(bundle(GOOD), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(
+        from_pack.lang().source_text("title.subtitle"),
+        from_text.lang().source_text("title.subtitle")
+    );
+    assert_eq!(from_pack.palette_def(), from_text.palette_def());
+    assert_eq!(from_pack.font, from_text.font);
+    assert_eq!(from_pack.keymap_def(), from_text.keymap_def());
+}

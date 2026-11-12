@@ -722,3 +722,59 @@ proptest! {
         let _ = fs::remove_dir_all(&dir);
     }
 }
+
+#[test]
+fn a_packed_desktop_package_ships_its_pack_as_one_entry_whose_files_are_read() {
+    let mut cx = cx("disclosure-packed", "linux");
+    cx.features = vec!["packed".to_owned()];
+    cx.turned_on = vec!["packed".to_owned()];
+    let pack = pack_of(&[("en.ron", b"{}"), ("maps/first.ron", b"a map")]);
+    fs::write(cx.baked_pack(), &pack).unwrap();
+    let built = program(&cx, "hello-grid", b"");
+    let report = desktop::pack(&cx, System::Linux, "x86_64-unknown-linux-gnu", &built).unwrap();
+    let placed = report.pack.clone().unwrap();
+    assert_eq!(placed.file, "hello-grid-0.1.0-linux/hello-grid.pack");
+    assert_eq!(placed.bytes, pack.len() as u64);
+    assert!(!cx.baked_pack().exists(), "the package took it");
+    let shipped = exporter("linux").unwrap().shipped(&cx, &report);
+    assert_eq!(
+        shipped.sources.get("hello-grid.pack"),
+        Some(&(FileKind::Pack, "the game's files, baked".to_owned()))
+    );
+    let manifest = part(r#"(allowed_pack_entries: ["en.ron", "maps/first.ron"])"#);
+    let exposed = inspected(&cx, Some(&manifest), &shipped);
+    assert_eq!(exposed.findings, []);
+    let entries: Vec<(&str, &str)> = exposed
+        .pack_entries
+        .iter()
+        .map(|e| (e.file.as_str(), e.path.as_str()))
+        .collect();
+    assert_eq!(
+        entries,
+        [
+            ("hello-grid.pack", "en.ron"),
+            ("hello-grid.pack", "maps/first.ron")
+        ]
+    );
+    clean(&cx);
+}
+
+#[test]
+fn a_canary_in_the_path_of_a_pack_entry_fails_with_the_pack_and_the_entry() {
+    let path = format!("maps/{CANARY}.ron");
+    let pack = pack_of(&[(path.as_str(), b"a map")]);
+    let (cx, shipped) = pack_package("disclosure-pack-path", &pack);
+    let manifest = part(&format!(
+        r"(allowed_pack_entries: [{path:?}], canaries: [{CANARY:?}])"
+    ));
+    let report = inspected(&cx, Some(&manifest), &shipped);
+    // The pack's own bytes hold its index, as written; the entry names where.
+    assert_eq!(
+        kinds(&report),
+        [
+            (FindingKind::Canary, "game.pack", None),
+            (FindingKind::Canary, "game.pack", Some(path.as_str()))
+        ]
+    );
+    clean(&cx);
+}

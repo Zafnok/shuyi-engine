@@ -4,4 +4,5 @@
 {base}/hello-grid.app/Contents/Info.plist
 {base}/hello-grid.app/Contents/MacOS/hello-grid
 {base}/hello-grid.app/Contents/Resources/capture/frames.ron
+{base}/hello-grid.app/Contents/Resources/hello-grid.pack
 {base}/hello-grid.app/Contents/_CodeSignature/CodeResources

@@ -8,7 +8,8 @@ use std::fs;
 
 use super::disclosure::{FileKind, Shipped};
 use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
-use crate::project::{WasmOptRule, Web};
+use crate::game::GameTools;
+use crate::project::{Project, WasmOptRule, Web};
 use crate::web::{self as build, Options};
 
 /// The web exporter.
@@ -19,16 +20,18 @@ pub struct WebExporter;
 
 impl WebExporter {
     /// The web build's options: release or not, the `export` part's
-    /// features (or the edition's), whether `wasm-opt` must run (unless the
-    /// part says `wasm_opt: optional`), and the edition's default features and
-    /// content root.
+    /// features (or the edition's) with `packed` for a packed build, whether
+    /// `wasm-opt` must run (unless the part says `wasm_opt: optional`), the
+    /// edition's default features and content root, and the pack the bake
+    /// wrote for a packed build.
     fn options(cx: &ExportCx) -> Options {
         Options {
             release: cx.release,
-            features: cx.turned_on.clone(),
+            features: cx.features_on(),
             require_wasm_opt: cx.wasm_opt == WasmOptRule::Required,
             no_default_features: !cx.default_features(),
             content: cx.content(),
+            pack: cx.packs().then(|| cx.baked_pack()),
         }
     }
 }
@@ -51,6 +54,17 @@ impl Exporter for WebExporter {
             .iter()
             .map(|rules| build::cargo_args(rules, &Self::options(cx)))
             .collect()
+    }
+
+    /// Bakes the pack a packed build reads, and proves it equal to its
+    /// sources ([`ExportCx::bake_pack`]).
+    fn prepare(
+        &self,
+        cx: &ExportCx,
+        project: &Project,
+        game: Option<&dyn GameTools>,
+    ) -> Result<(), ExportError> {
+        cx.bake_pack(project, game)
     }
 
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError> {
@@ -121,13 +135,14 @@ impl Exporter for WebExporter {
             }
         }
         cx.mark_beside(report, &mut shipped);
+        cx.mark_pack(report, &mut shipped);
         shipped
     }
 }
 
-/// Copies the web build in `dist` into `<base>/` and zips it. A file there
-/// that this build doesn't make is refused by its path, with no package
-/// left behind.
+/// Copies the web build in `dist` into `<base>/` and zips it, with the pack
+/// beside the page for a packed build. A file there that this build doesn't
+/// make is refused by its path, with no package left behind.
 pub fn pack(
     cx: &ExportCx,
     rules: &Web,
@@ -139,7 +154,9 @@ pub fn pack(
     fresh(&folder)?;
     build::copy_tree(dist, &folder, &|_| true).map_err(ExportError::Build)?;
     let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
-    let current = build::current_files(rules, &cx.root).map_err(ExportError::Build)?;
+    let mut current = build::current_files(rules, &cx.root).map_err(ExportError::Build)?;
+    let pack = cx.packs().then(|| build::pack_file(rules));
+    current.extend(pack.clone());
     let unexpected: Vec<&str> = entries
         .iter()
         .map(|entry| entry.name.as_str())
@@ -154,6 +171,21 @@ pub fn pack(
         let _ = fs::remove_file(cx.out.join(&zip));
         return Err(refused);
     }
+    let pack = match pack {
+        Some(name) => {
+            let file = folder.join(name);
+            if !file.is_file() {
+                return Err(ExportError::Build(format!(
+                    "the web build has no {}, which its packed program reads",
+                    build::pack_file(rules)
+                )));
+            }
+            cx.search_pack(&file)?;
+            let _ = fs::remove_file(cx.baked_pack());
+            Some(cx.size(&file)?)
+        }
+        None => None,
+    };
     let beside = cx.copy_beside(&|_| folder.clone())?;
     let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
     archive::zip(&cx.out.join(&zip), &entries).map_err(ExportError::Build)?;
@@ -161,5 +193,6 @@ pub fn pack(
     let sizes = vec![cx.size(&cx.out.join(&zip))?, cx.size(&folder.join(&wasm))?];
     let mut report = cx.report(&zip, sizes, Signing::None, None);
     report.beside = beside;
+    report.pack = pack;
     Ok(report)
 }

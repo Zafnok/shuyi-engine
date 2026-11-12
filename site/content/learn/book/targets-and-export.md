@@ -201,6 +201,15 @@ unless the `export` part says `wasm_opt: optional`.
 `export-report.json` beside it gives the version, the sizes, the check's warnings and the signing,
 and `--run` runs the package.
 
+A release build of the desktop or the web also ships the game's files as one *pack* beside the
+program, `<package>.pack`: every file of `files/`, its text read and stored in a binary form, so the
+game loads faster and its program holds none of your files as text. The export bakes it with the
+game's tools (`cargo shuyi bake`), checks that every asset in it reads the same as from its file, and
+builds the program with the `packed` feature a new game has, which reads the pack in place of the files
+it would embed. In a `.app` the pack is in `Contents/Resources`; on the web the page fetches it before
+the game starts. `cargo run` and `cargo shuyi run` still embed the files, so you never need a pack to
+play. A player who copies the program without its pack sees why the game can't start.
+
 A game whose build needs a feature, or whose soundtrack ships as loose files, says so in the `export`
 part of `shuyi.ron`:
 
@@ -304,7 +313,8 @@ An edition says, before anything is compiled:
 
 - `content`: the folder of files its program embeds. The export hands it to the build as
   `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
-  only that folder. Without it, the build embeds `files/`, as `cargo run` does.
+  only that folder. Without it, the build embeds `files/`, as `cargo run` does. A release build's pack
+  is baked from that folder too.
 - `default_features`, always written: whether the build keeps the package's `default` features. The full
   game's code can sit behind a feature that is on by default, so `cargo run` plays all of it; the demo
   says `false`, and that code isn't compiled in.

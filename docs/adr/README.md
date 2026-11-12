@@ -122,5 +122,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0107](0107-the-inks-removed-one-bit-screens-draw-only-by-roles.md) | The inks removed: one-bit screens draw only by roles' patterns | Accepted; amends ADR-0026 §4 |
 | [0108](0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md) | A `Behaviour:` line for a change a game sees without a break | Accepted; amends ADR-0038 §6 |
 | [0109](0109-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md) | A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once | Accepted |
+| [0110](0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md) | Desktop and web exports ship a baked pack beside the program | Accepted; extends ADR-0023, ADR-0058 and ADR-0101 §4 |
 
 Template: [`0000-template.md`](0000-template.md).

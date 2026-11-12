@@ -12,6 +12,11 @@
       ],
       "default": null
     },
+    "check": {
+      "description": "Bake nothing: read the pack at `out` (its default file without one)\nand prove it equal to the sources, as `Bake::check` does. Every\ndifference is an error of the answer, naming its file, and no pack is\nmade. With `content`, the sources are that folder's.",
+      "type": "boolean",
+      "default": false
+    },
     "content": {
       "description": "A folder of the project, from its root with `/`, to bake in place of\nthe files the game's tools embed: an edition's content root. The\ngame's tool program is built with it as `SHUYI_CONTENT` and bakes;\nnone bakes the files of the tools running now.",
       "type": [

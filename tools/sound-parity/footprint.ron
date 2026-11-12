@@ -453,8 +453,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL: [(&str, &str); 8] = [",
-            with: "const SHELL: [(&str, &str); 7] = [",
+            find: "const SHELL: [(&str, &str); 9] = [",
+            with: "const SHELL: [(&str, &str); 8] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -463,8 +463,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL_NOTICES: [(&str, Origin); 8] = [",
-            with: "const SHELL_NOTICES: [(&str, Origin); 7] = [",
+            find: "const SHELL_NOTICES: [(&str, Origin); 9] = [",
+            with: "const SHELL_NOTICES: [(&str, Origin); 8] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -497,8 +497,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",
-            find: "const WEB_FILES: [&str; 11] = [",
-            with: "const WEB_FILES: [&str; 10] = [",
+            find: "const WEB_FILES: [&str; 12] = [",
+            with: "const WEB_FILES: [&str; 11] = [",
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",

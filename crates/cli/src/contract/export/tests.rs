@@ -141,11 +141,16 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         signing: Signing::None,
         debug: Some("g-0.1.0-windows.debug".to_owned()),
         edition: Some("public-demo".to_owned()),
+        pack: Some(FileSize {
+            file: "g-0.1.0-windows/g.pack".to_owned(),
+            bytes: 7,
+        }),
     };
     let said = text(&output).replace('\\', "/");
     for line in [
         "export windows: dist/export/windows/g-0.1.0-windows.zip (0.1.0, check --target desktop)\n",
         "  g-0.1.0-windows.zip: 12 bytes\n",
+        "  pack: g-0.1.0-windows/g.pack: 7 bytes\n",
         "  debug file: dist/export/windows/g-0.1.0-windows.debug\n",
         "  signing: none\n",
         "  edition: public-demo\n",

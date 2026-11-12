@@ -4,7 +4,8 @@
 # `<target>.txt` beside this script (`{base}` is the package's name
 # without its extension), then that the program holds no engine function's
 # name and no `SHUYI_PERF` (on Windows and Linux no symbol table, its debug
-# file one), then by target:
+# file one), that it holds no text of the game's files, which ship baked in
+# the pack beside it (ticket 3300), then by target:
 #
 # - web: the Wasm binary has no `name` or `producers` section;
 # - windows: the program imports no MinGW runtime DLL, has no `.debug_*`
@@ -97,6 +98,19 @@ hygiene() {
   echo "check: no function names, no SHUYI_PERF"
 }
 hygiene "$program"
+
+# The game's files ship baked in the pack beside the program (ticket 3300),
+# not as text in it: no line of `files/keymap.ron` is in the program, and
+# the report names the pack.
+packed() {
+  local program="$1"
+  if strings -a "$program" | grep -qF 'layout.arrows'; then
+    echo "check: $program holds the text of files/keymap.ron"; exit 1
+  fi
+  grep -q '"pack": {' "$report" || { echo "check: the report names no pack"; exit 1; }
+  echo "check: the program holds no text of files/; the pack is beside it"
+}
+packed "$program"
 
 case "$target" in
   web)

@@ -20,6 +20,11 @@
 //! process. The game's code says what the folder replaces, as it does for
 //! the program it ships.
 //!
+//! `--check` bakes nothing: it reads the pack at `--out` and proves it equal
+//! to the sources ([`Bake::check`]), every difference an error naming its
+//! file; with `--content`, against the content root's files. A release export
+//! that ships a pack runs it on the pack it ships (ADR-0110).
+//!
 //! `--audio <folder>` also writes the target's sounds and music there, baked
 //! as the target plays them ([`GameTools::audio`]; the Playdate's form,
 //! [`playdate::audio`]), by the same program: with a content root, the one
@@ -92,6 +97,12 @@ pub struct BakeInput {
     /// program built with that folder writes it.
     #[serde(default)]
     pub audio: Option<String>,
+    /// Bake nothing: read the pack at `out` (its default file without one)
+    /// and prove it equal to the sources, as `Bake::check` does. Every
+    /// difference is an error of the answer, naming its file, and no pack is
+    /// made. With `content`, the sources are that folder's.
+    #[serde(default)]
+    pub check: bool,
 }
 
 /// What `bake` made.
@@ -279,6 +290,9 @@ fn content_args(input: &BakeInput, out: &str) -> Vec<String> {
     if let Some(audio) = &input.audio {
         args.extend(["--audio".to_owned(), audio.clone()]);
     }
+    if input.check {
+        args.push("--check".to_owned());
+    }
     args.push("--json".to_owned());
     args
 }
@@ -414,6 +428,9 @@ pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answe
     {
         return Answer::failed(Op::Bake, code, why);
     }
+    if input.check {
+        return check_file(game, project, input);
+    }
     let GameBake {
         bake,
         bundle,
@@ -494,6 +511,37 @@ pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answe
     Answer::new(Op::Bake, true, output, vec![limit.to_owned()])
 }
 
+/// `bake --check`: the pack at `input`'s file, read and proven equal to the
+/// sources `game` bakes for `input`'s target ([`Bake::check`]). Every
+/// difference is an error of the answer, which makes no pack.
+fn check_file(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answer<BakeOutput> {
+    let GameBake {
+        bake,
+        bundle,
+        formats,
+    } = match prepared(game, input.target.as_deref()) {
+        Ok(prepared) => prepared,
+        Err(e) => return Answer::failed(Op::Bake, code_of(&e), e),
+    };
+    let file = out_file(input);
+    let pack = fs::read(project.root.join(&file))
+        .map_err(|e| e.to_string())
+        .and_then(|bytes| opened(&bytes, bake.stamp()));
+    let pack = match pack {
+        Ok(pack) => pack,
+        Err(e) => return Answer::failed(Op::Bake, codes::FILE, format!("{file}: {e}")),
+    };
+    let errors: Vec<Problem> = bake
+        .check(&formats, &bundle, &pack)
+        .iter()
+        .map(Problem::from)
+        .collect();
+    let ok = errors.is_empty();
+    let output = BakeOutput { errors, pack: None };
+    let limit = format!("{file} was checked against the sources, not baked");
+    Answer::new(Op::Bake, ok, output, vec![limit])
+}
+
 /// `check --baked`'s part: every way the pack `game` bakes (for no
 /// target) differs from its sources ([`Bake::check`]), or why it could
 /// not be baked.
@@ -527,6 +575,7 @@ pub fn parse_args(args: &[String]) -> Result<BakeInput, String> {
             "--sheet" => input.sheet = Some(value()?),
             "--content" => input.content = Some(value()?),
             "--audio" => input.audio = Some(value()?),
+            "--check" => input.check = true,
             other => return Err(format!("unknown argument: {other}")),
         }
     }
@@ -537,7 +586,7 @@ pub fn parse_args(args: &[String]) -> Result<BakeInput, String> {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} bake [--target <id>] [--out <file>] [--sheet <file>] \
-         [--content <folder>] [--audio <folder>] [--json]"
+         [--content <folder>] [--audio <folder>] [--check] [--json]"
     )
 }
 
@@ -572,6 +621,12 @@ pub fn text(output: &BakeOutput) -> String {
             let _ = writeln!(out, "  {error}");
         }
         out.push_str(&codes::help_lines(&output.errors));
+    }
+    if output.errors.is_empty() && output.pack.is_none() {
+        out.push_str(
+            "bake --check: the pack reads as its sources
+",
+        );
     }
     if let Some(pack) = &output.pack {
         let target = pack

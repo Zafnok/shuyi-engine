@@ -132,6 +132,14 @@ impl AppInfo {
             ..self
         }
     }
+
+    /// The stamp of a pack of its files (ADR-0023), and its build's word in
+    /// its records: its id and version (`com.example.moon-garden 0.1.0`),
+    /// since the shapes of its own kinds change only with it. A pack baked
+    /// with another stamp is refused, with "bake it again".
+    pub fn pack_stamp(&self) -> alloc::string::String {
+        alloc::format!("{} {}", self.id, self.version)
+    }
 }
 
 #[cfg(test)]

@@ -38,6 +38,14 @@
 //! `never_features` are refused in the build as Cargo resolves it, as the
 //! debug features are.
 //!
+//! A release build of a desktop or web target whose package has a `packed`
+//! feature ([`PACKED`]) ships its files baked into one pack beside the program
+//! (ADR-0110): the export bakes it with the game's tools for the target's
+//! profile (of its edition's content root, if it has one), proves it equal to
+//! its sources (`bake --check`), searches it for the build machine's paths,
+//! and builds the program with `packed`, which reads it in place of the files
+//! it would embed ([`ExportCx::packs`]).
+//!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part, or its edition's, if it has one ([`disclosure`]).
 
@@ -71,6 +79,11 @@ use crate::project::{
 /// what embeds its files (`include_dir!`). A build of no such edition runs
 /// without it, whatever the shell has.
 pub const CONTENT: &str = "SHUYI_CONTENT";
+
+/// The feature of a game's package whose build reads its files from the pack
+/// beside the program in place of embedding them (ADR-0110): a release export
+/// of a desktop or web target turns it on, and bakes the pack.
+pub const PACKED: &str = "packed";
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -449,6 +462,130 @@ impl ExportCx {
         };
     }
 
+    /// The features its builds turn on: [`turned_on`](Self::turned_on), and
+    /// [`PACKED`] for a release build of a desktop or web target whose package
+    /// has it.
+    pub fn features_on(&self) -> Vec<String> {
+        let mut on = self.turned_on.clone();
+        let shipping = self.release && matches!(self.profile.as_str(), "desktop" | "web");
+        let has = self.features.iter().any(|feature| feature == PACKED);
+        if shipping && has && !on.iter().any(|feature| feature == PACKED) {
+            on.push(PACKED.to_owned());
+        }
+        on
+    }
+
+    /// Whether its program reads its files from a pack beside it, which the
+    /// export bakes and ships: whether its builds turn [`PACKED`] on.
+    pub fn packs(&self) -> bool {
+        self.features_on().iter().any(|feature| feature == PACKED)
+    }
+
+    /// The pack's file name: `<package>.pack`, which the game's `packed`
+    /// build asks for (`shuyi_app::pack_file_name`).
+    pub fn pack_name(&self) -> String {
+        format!("{}.pack", self.package)
+    }
+
+    /// Where the bake writes the pack, in the export's folder, before the
+    /// package takes it.
+    pub fn baked_pack(&self) -> PathBuf {
+        self.out.join(self.pack_name())
+    }
+
+    /// Bakes the pack its packed build reads ([`packs`](Self::packs)) for its
+    /// profile with `game`'s tools, of its edition's content root if it has
+    /// one, into [`baked_pack`](Self::baked_pack); then reads it back and
+    /// proves it equal to its sources (`bake --check`). Nothing for a build
+    /// that embeds its files.
+    pub fn bake_pack(
+        &self,
+        project: &Project,
+        game: Option<&dyn GameTools>,
+    ) -> Result<(), ExportError> {
+        use crate::contract::bake::{BakeInput, bake};
+        if !self.packs() {
+            return Ok(());
+        }
+        let game = game.ok_or_else(|| {
+            ExportError::Setup(format!(
+                "{} has no `game` part: the pack a `{PACKED}` build reads is baked by the \
+                 game's tools",
+                crate::project::FILE
+            ))
+        })?;
+        let mut input = BakeInput {
+            target: Some(self.profile.clone()),
+            out: Some(format!(
+                "{}/{}",
+                self.shown.replace('\\', "/"),
+                self.pack_name()
+            )),
+            content: self
+                .edition
+                .as_ref()
+                .and_then(|edition| edition.content.clone()),
+            ..BakeInput::default()
+        };
+        let baked = bake(game, project, &input);
+        if !baked.ok {
+            return Err(ExportError::Build(format!(
+                "the pack: {}",
+                problems_of(&baked).join("; ")
+            )));
+        }
+        input.check = true;
+        let checked = bake(game, project, &input);
+        if checked.ok {
+            return Ok(());
+        }
+        let problems = problems_of(&checked);
+        let first = problems.first().cloned().unwrap_or_default();
+        Err(ExportError::Build(format!(
+            "the pack differs from its sources ({} difference(s)), the first: {first}",
+            problems.len()
+        )))
+    }
+
+    /// Moves the pack the bake wrote ([`baked_pack`](Self::baked_pack)) into
+    /// the package's folder `into`, and searches it ([`search_pack`](
+    /// Self::search_pack)): its name and size from the export's folder, or
+    /// none for a build that embeds its files.
+    pub fn place_pack(&self, into: &Path) -> Result<Option<FileSize>, ExportError> {
+        if !self.packs() {
+            return Ok(None);
+        }
+        fs::create_dir_all(into)
+            .map_err(|e| ExportError::Build(format!("create {}: {e}", into.display())))?;
+        let from = self.baked_pack();
+        let to = into.join(self.pack_name());
+        fs::rename(&from, &to)
+            .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", from.display())))?;
+        self.search_pack(&to)?;
+        self.size(&to).map(Some)
+    }
+
+    /// Says in `shipped` that the pack `report` lists is the game's files,
+    /// baked, for the exposure report: one entry, whose files the inspection
+    /// reads.
+    pub fn mark_pack(&self, report: &ExportReport, shipped: &mut Shipped) {
+        if let Some(pack) = &report.pack {
+            let prefix = format!("{}/", report.folder);
+            let name = pack.file.strip_prefix(&prefix).unwrap_or(&pack.file);
+            shipped.source(name, disclosure::FileKind::Pack, "the game's files, baked");
+        }
+    }
+
+    /// Refuses the pack at `file` if its index or a file it unpacks to holds
+    /// a path of the build machine (a release build only): ADR-0058's search,
+    /// through what the pack compresses.
+    pub fn search_pack(&self, file: &Path) -> Result<(), ExportError> {
+        if !self.release {
+            return Ok(());
+        }
+        paths::check_pack(file, &self.needles()).map_err(ExportError::BuildPath)
+    }
+
     /// `cargo build`'s arguments for the program and `triple`.
     pub fn cargo_args(&self, triple: &str) -> Vec<String> {
         let mut args: Vec<String> = ["build", "-p", &self.package, "--bin", &self.bin]
@@ -461,8 +598,9 @@ impl ExportCx {
         if !self.default_features() {
             args.push("--no-default-features".to_owned());
         }
-        if !self.turned_on.is_empty() {
-            args.extend(["--features".to_owned(), self.turned_on.join(",")]);
+        let features = self.features_on();
+        if !features.is_empty() {
+            args.extend(["--features".to_owned(), features.join(",")]);
         }
         args
     }
@@ -565,6 +703,7 @@ impl ExportCx {
             debug,
             beside: Vec::new(),
             edition: self.edition.as_ref().map(|edition| edition.name.clone()),
+            pack: None,
         }
     }
 
@@ -641,6 +780,18 @@ impl ExportCx {
         works.extend(self.game.iter().cloned());
         notices::write(dir, &self.title, &works).map_err(ExportError::Build)
     }
+}
+
+/// Every problem of a `bake` answer, as messages with their files: its
+/// errors, then its own error.
+fn problems_of(answer: &crate::contract::Answer<crate::contract::bake::BakeOutput>) -> Vec<String> {
+    answer
+        .result
+        .iter()
+        .flat_map(|output| &output.errors)
+        .map(ToString::to_string)
+        .chain(answer.error.clone())
+        .collect()
 }
 
 /// The package an export of target `id` builds: the web build's on `web`;

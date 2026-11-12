@@ -70,6 +70,16 @@ Ship only what `check --target` passes.
      still holds one of this machine's. On `windows` and `linux` it
      keeps `<package>.debug` beside the package: keep it with the
      release for crash reports, and never ship it.
+   - `--release` on `windows`, `linux`, `macos` and `web` ships the game's
+     files baked into `<package>.pack` beside the program (in a `.app`, in
+     `Contents/Resources`; on the web beside `index.html`), when the
+     game's package has a `packed` feature, as a new game's has: the
+     export bakes it (step 6), proves it equal to the files, and builds the
+     program with `packed`, which reads it in place of embedding them.
+     `cargo run` keeps the embedded files. A game of its own shape adds the
+     feature, a `GameTools::bake`, and opens
+     `shuyi::app::pack_beside_program(env!("CARGO_PKG_NAME"), stamp)` under
+     it (Hello, Grid's `layer` does).
    - `export-report.json` beside it gives the version, the sizes, the
      check's warnings and the signing; `--run` runs the package, on its
      own system.
@@ -205,9 +215,11 @@ Ship only what `check --target` passes.
    cargo shuyi check --baked
    ```
 
-   say what went in and prove the pack equal to its sources. A game made
-   with `shuyi new` has no pack, and `bake` says it isn't offered
-   (`SH3001`). For a black-and-white target, its tools bake every picture
+   say what went in and prove the pack equal to its sources;
+   `bake --out <file> --check` proves a pack file already made. A game made
+   with `shuyi new` bakes its English, palette and font atlas
+   (`BasicTools::bake`), and a release export bakes it for you (step 2).
+   For a black-and-white target, its tools bake every picture
    as a one-bit picture (`Bake::under_as("", OneBitFile)`) from the
    bundle `Bundle::for_target` lays out, its `assets@<target>/` folder
    over `assets/`. `cargo shuyi bake --target playdate --sheet sheet.png`
@@ -257,8 +269,8 @@ with `cargo shuyi explain <code>`:
   profiles don't load. The message lists the ids there are.
 - `SH1002`: `shuyi.ron` has no `web` entry, or lacks another part a
   command needs.
-- `SH3001`: the game's tools don't offer the operation (`bake` without
-  a pack).
+- `SH3001`: the game's tools don't offer the operation (`bake` with no
+  `GameTools::bake`).
 - `export`: `SH3008`, the target's check found errors (listed); `SH3009`,
   the program holds a path of this machine (code writes one in as a
   value, such as `env!("CARGO_MANIFEST_DIR")`); `SH3010`, no exporter or

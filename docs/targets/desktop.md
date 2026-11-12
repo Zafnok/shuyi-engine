@@ -21,6 +21,14 @@ tools are that system's. On another one, `export` says where it builds.
 - **The program.** Built with the features of `shuyi.ron`'s `export` part
   (below), and none without one; never a debug feature (`link`,
   `debug-tools`, `capture` or the sound gates' probe).
+- **The pack**, in a release build of a package with a `packed` feature
+  (a new game has one): `<package>.pack` beside the program, in a `.app`
+  in `Contents/Resources`, the game's files baked for the `desktop`
+  profile and proven equal to them; the program is built with `packed` and
+  reads it in place of embedding the files
+  ([ADR-0110](../adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md),
+  [`formats.md`](../formats.md#the-pack-a-release-ships)). `export-report.json`'s
+  `pack` names it.
 - **`NOTICES.txt`**: every crate compiled in, as Cargo resolves the
   package's build (its features, and its defaults only when the edition
   keeps them), the engine's data compiled
@@ -48,7 +56,8 @@ tools are that system's. On another one, `export` says where it builds.
   rustup's to `/rustup`, the target folder to `/target`. A panic then
   names `/cargo/registry/…`, not the builder's home folder. The program
   is then searched for the home folder, Cargo's home and the game's
-  folders; one found refuses the package (`SH3009`). The renaming goes
+  folders, and so is the pack beside it: its index, and every file it
+  unpacks to; one found refuses the package (`SH3009`). The renaming goes
   through `CARGO_ENCODED_RUSTFLAGS`, after the flags already in it or in
   `RUSTFLAGS`, so a game's `rustflags` in `.cargo/config.toml` don't
   reach these builds.

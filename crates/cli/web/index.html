@@ -72,6 +72,9 @@
 <!-- Files from the page (3069): its sessionStorage's files laid over the
      game's, and its problems sent back; our own plugin, after sapp_jsutils.js. -->
 <script src="page-files.js"></script>
+<!-- The pack beside the page (3300): a release export's files, baked, fetched
+     once before the game starts; our own plugin, after sapp_jsutils.js. -->
+<script src="pack-file.js"></script>
 <script>
   // Note: `mq_js_bundle.js` already declares a top-level `canvas` (and runs
   // in strict mode), so re-declaring it here — even as a plain `var` — would
@@ -91,7 +94,9 @@
       event.preventDefault();
     }
   }, false);
-  load("%WASM%");
+  // A release export names its pack (`%PACK%`); a build that embeds its
+  // files names none, and the game starts at once.
+  shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); });
 </script>
 </body>
 </html>

@@ -36,6 +36,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         sheet: None,
         content: None,
         audio: None,
+        check: false,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     assert!(answer.ok, "{answer:?}");
@@ -66,6 +67,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         sheet: None,
         content: None,
         audio: None,
+        check: false,
     };
     assert!(bake(&Fake::default(), &project(&dir), &input).ok);
     assert!(dir.join("out/p.shuyipak").is_file());
@@ -118,6 +120,7 @@ fn bake_refuses_a_target_with_no_profile() {
         sheet: None,
         content: None,
         audio: None,
+        check: false,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     let error = answer.error.unwrap_or_default();
@@ -207,6 +210,7 @@ fn bakes_arguments_are_a_target_and_a_file() {
             sheet: Some("s.png".to_owned()),
             content: None,
             audio: None,
+            check: false,
         })
     );
     assert_eq!(
@@ -219,6 +223,14 @@ fn bakes_arguments_are_a_target_and_a_file() {
     );
     assert_eq!(parse_args(&[]), Ok(BakeInput::default()));
     assert_eq!(
+        parse_args(&args(&["--out", "g.pack", "--check"])),
+        Ok(BakeInput {
+            out: Some("g.pack".to_owned()),
+            check: true,
+            ..BakeInput::default()
+        })
+    );
+    assert_eq!(
         parse_args(&args(&["--target"])),
         Err("--target needs a value".to_owned())
     );
@@ -229,7 +241,7 @@ fn bakes_arguments_are_a_target_and_a_file() {
     assert_eq!(
         usage("shuyi"),
         "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--content <folder>] \
-         [--audio <folder>] [--json]"
+         [--audio <folder>] [--check] [--json]"
     );
     assert_eq!(bytes(1_234_567), "1,234,567");
     assert_eq!(bytes(123_456), "123,456");
@@ -373,6 +385,15 @@ fn a_content_root_is_baked_by_the_tool_program_built_with_it() {
             "--json",
         ]
     );
+    // A check of a pack through it is the same, with `--check`.
+    let check = BakeInput {
+        check: true,
+        ..BakeInput::default()
+    };
+    assert_eq!(
+        content_args(&check, "g.pack"),
+        ["--out", "g.pack", "--check", "--json"]
+    );
 }
 
 #[test]
@@ -513,5 +534,58 @@ fn the_audio_is_baked_for_the_target_into_its_folder_emptied_first() {
     };
     let answer = bake(&game, &project(&dir), &untargeted);
     assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn check_proves_the_pack_file_equal_to_the_sources_and_names_a_changed_one() {
+    // The sources with the names table changed after the bake.
+    static CHANGED: &[(&str, &[u8])] = &[
+        ("data/names.ron", br#"{"hero": "Bea"}"#),
+        ("data/palette.ron", br##"{"black": "#000000"}"##),
+        ("images/a.png", b"not really a picture"),
+    ];
+    let dir = folder("check");
+    let input = BakeInput {
+        target: Some("desktop".to_owned()),
+        out: Some("out/game.pack".to_owned()),
+        ..BakeInput::default()
+    };
+    let checked = BakeInput {
+        check: true,
+        ..input.clone()
+    };
+    // Nothing baked yet: no file to check.
+    let answer = bake(&Fake::default(), &project(&dir), &checked);
+    assert_eq!(answer.code.as_deref(), Some(codes::FILE.0), "{answer:?}");
+    assert!(answer.error.unwrap().starts_with("out/game.pack: "));
+    let answer = bake(&Fake::default(), &project(&dir), &input);
+    assert!(answer.ok, "{answer:?}");
+    let answer = bake(&Fake::default(), &project(&dir), &checked);
+    assert!(answer.ok, "{answer:?}");
+    let output = answer.result.unwrap();
+    assert_eq!((output.errors.len(), output.pack.is_none()), (0, true));
+    assert_eq!(
+        text(&output),
+        "bake --check: the pack reads as its sources\n"
+    );
+    // A source changed after the bake: the check names it.
+    let changed = Fake {
+        sources: Some(CHANGED),
+        ..Fake::default()
+    };
+    let answer = bake(&changed, &project(&dir), &checked);
+    assert!(!answer.ok, "{answer:?}");
+    let files: Vec<String> = answer
+        .result
+        .unwrap()
+        .errors
+        .iter()
+        .map(|problem| problem.file.clone())
+        .collect();
+    assert!(
+        files.iter().any(|file| file.ends_with("data/names.ron")),
+        "{files:?}"
+    );
     fs::remove_dir_all(&dir).unwrap();
 }

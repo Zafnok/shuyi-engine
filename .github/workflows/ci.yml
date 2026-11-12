@@ -332,6 +332,17 @@ jobs:
               exit 1
             fi
           done
+      # Ticket 3300: the build a release export ships reads its files from the
+      # pack baked beside the program, and plays the same plan.
+      - name: Hello, Grid's plan on its packed build
+        run: |
+          cargo build -p hello-grid --features capture,packed --locked
+          (cd examples/hello-grid && cargo shuyi bake --target desktop --out ../../target/debug/hello-grid.pack)
+          SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron SHUYI_CAPTURE_OUT=target/capture/hello-grid-packed \
+            xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid
+          for file in target/capture/hello-grid/*.raster.png; do
+            cmp "$file" "target/capture/hello-grid-packed/$(basename "$file")"
+          done
       - name: The captures in the summary
         if: always()
         run: |
@@ -443,6 +454,23 @@ jobs:
             echo "::error::check.py didn't fail the page without var register_plugin;"
             exit 1
           fi
+      # Ticket 3300: the release export reads its files from the pack beside
+      # the page, which the page fetches before the game starts. A release
+      # web export needs wasm-opt (ticket 3099).
+      - name: Hello, Grid's packed web export boots
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binaryen
+          (cd examples/hello-grid && cargo shuyi export web --release --out dist/export/web-packed)
+          page=$(ls -d examples/hello-grid/dist/export/web-packed/hello-grid-*-web)
+          test -f "$page/hello-grid.pack"
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "$page" \
+            --out target/web-check/boot-hello-grid-packed
+          if grep -qF 'bake it again' target/web-check/boot-hello-grid-packed/console.txt; then
+            cat target/web-check/boot-hello-grid-packed/console.txt
+            echo "::error::the packed page didn't read its pack"
+            exit 1
+          fi
       - name: Hello, Grid's plan in the browser
         working-directory: examples/hello-grid
         run: |
@@ -460,7 +488,7 @@ jobs:
           rm -rf "$page"
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/render_card.wasm crates/cli/web/*.js "$page/"
-          sed -e 's/%TITLE%/Render card/' -e 's/%WASM%/render_card.wasm/' crates/cli/web/index.html > "$page/index.html"
+          sed -e 's/%TITLE%/Render card/' -e 's/%WASM%/render_card.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
           "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py capture "$page" --size 768x576 \
             --out target/web-check/capture-render-card
       - name: The consoles in the summary
@@ -607,14 +635,14 @@ jobs:
           rm -rf "$page"
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
-          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' crates/cli/web/index.html > "$page/index.html"
+          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
           cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound \
             --target wasm32-unknown-unknown --release --locked
           page=target/sound-parity-page-new
           rm -rf "$page"
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
-          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' crates/cli/web/index.html > "$page/index.html"
+          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
       # A scenario quad-snd underran in is refused and made again (ticket 2048).
       - name: Which recordings are made again
         run: python3 tools/sound-parity/capture_test.py

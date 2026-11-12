@@ -568,13 +568,14 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 }
 
 /// What a web build of [`web_build`]'s game makes.
-const WEB_FILES: [&str; 11] = [
+const WEB_FILES: [&str; 12] = [
     "NOTICES.txt",
     "gamepad.js",
     "hello-grid.wasm",
     "index.html",
     "mq_js_bundle.js",
     "music/a.ogg",
+    "pack-file.js",
     "page-files.js",
     "player-files.js",
     "quad-storage.js",
@@ -694,3 +695,92 @@ fn a_release_package_with_a_build_path_is_refused_by_name() {
 }
 
 mod editions;
+
+#[test]
+fn a_release_desktop_or_web_build_of_a_packed_package_turns_packed_on() {
+    let mut cx = cx("packed-args", "windows");
+    let features = |cx: &ExportCx| {
+        let args = cx.cargo_args("x86_64-pc-windows-gnu");
+        args.windows(2)
+            .find(|w| w[0] == "--features")
+            .map(|w| w[1].clone())
+    };
+    // A package without the feature embeds its files in every build.
+    cx.release = true;
+    assert_eq!((cx.packs(), features(&cx)), (false, None));
+    cx.features = vec!["packed".to_owned(), "packaged".to_owned()];
+    cx.turned_on = vec!["packaged".to_owned()];
+    assert!(cx.packs());
+    assert_eq!(features(&cx).as_deref(), Some("packaged,packed"));
+    assert_eq!(cx.pack_name(), "hello-grid.pack");
+    assert_eq!(cx.baked_pack(), cx.out.join("hello-grid.pack"));
+    // A development build embeds them; so does a target that isn't a
+    // desktop or the web, whose exporter bakes its own pack.
+    cx.release = false;
+    assert_eq!(
+        (cx.packs(), features(&cx).as_deref()),
+        (false, Some("packaged"))
+    );
+    cx.release = true;
+    cx.profile = "playdate".to_owned();
+    assert!(!cx.packs());
+    // Listed for every build, it is on in every build.
+    cx.release = false;
+    cx.turned_on = vec!["packed".to_owned()];
+    assert!(cx.packs());
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn a_packed_build_without_the_games_tools_is_refused_before_it_bakes() {
+    let mut cx = cx("packed-no-tools", "linux");
+    cx.features = vec!["packed".to_owned()];
+    cx.turned_on = vec!["packed".to_owned()];
+    let project = crate::project::Project {
+        root: cx.root.clone(),
+        config: crate::project::Config::default(),
+    };
+    let refused = cx.bake_pack(&project, None).unwrap_err();
+    assert!(
+        matches!(&refused, ExportError::Setup(m) if m.contains("baked by the game's tools")),
+        "{refused:?}"
+    );
+    // A build that embeds its files bakes nothing.
+    cx.turned_on.clear();
+    cx.features.clear();
+    assert_eq!(cx.bake_pack(&project, None), Ok(()));
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn a_packed_build_bakes_the_pack_and_proves_it_against_its_sources() {
+    use crate::contract::fake::Fake;
+    let mut cx = cx("packed-bake", "linux");
+    cx.features = vec!["packed".to_owned()];
+    cx.turned_on = vec!["packed".to_owned()];
+    let project = crate::project::Project {
+        root: cx.out.clone(),
+        config: crate::project::Config::default(),
+    };
+    cx.shown = ".".to_owned();
+    cx.bake_pack(&project, Some(&Fake::default()))
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let bytes = fs::read(cx.baked_pack()).unwrap();
+    let info = shuyi_assets::pack::info(&bytes).unwrap();
+    assert_eq!(
+        info.target.as_deref(),
+        Some("desktop"),
+        "baked for the profile"
+    );
+    // A game whose tools can't bake has no pack to ship.
+    let none = Fake {
+        sources: None,
+        ..Fake::default()
+    };
+    let refused = cx.bake_pack(&project, Some(&none)).unwrap_err();
+    assert!(
+        matches!(&refused, ExportError::Build(m) if m.starts_with("the pack: no bake")),
+        "{refused:?}"
+    );
+    fs::remove_dir_all(&cx.out).unwrap();
+}

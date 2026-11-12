@@ -41,6 +41,17 @@ who got which, and a detector. It pairs with per-recipient Steam keys
 or override keys, which do the account-side half for free. It never
 calls a match proof.
 
+**From 3300 (done):** a release desktop or web export ships the pack as
+`<package>.pack` beside the program (in a `.app`'s `Contents/Resources`,
+beside `index.html` on the web), baked by `ExportCx::bake_pack` and proven
+by `bake --check` before the build; the exposure report lists it as one
+`pack` file and each of its entries. `Pack::open` refuses entries out of
+path order and any byte after the last file, and the checksum covers every
+byte after the header ([ADR-0023](../../docs/adr/0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md)
+§1, §3): the overlay's (b), the pack's entry order and padding, is a change
+of the pack's format (`pack::VERSION`, a `Breaking:` line), or moves to a
+place the reader ignores.
+
 ## Nick input
 
 None.

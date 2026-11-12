@@ -17,7 +17,9 @@ use super::disclosure::{FileKind, Shipped};
 use super::{
     ExportCx, ExportError, ExportReport, Exporter, RunCx, Signing, archive, fresh, tool, write,
 };
+use crate::game::GameTools;
 use crate::notices;
+use crate::project::Project;
 
 /// The Windows exporter.
 pub static WINDOWS: Desktop = Desktop {
@@ -125,6 +127,17 @@ impl Exporter for Desktop {
             .collect()
     }
 
+    /// Bakes the pack a packed build reads, and proves it equal to its
+    /// sources ([`ExportCx::bake_pack`]).
+    fn prepare(
+        &self,
+        cx: &ExportCx,
+        project: &Project,
+        game: Option<&dyn GameTools>,
+    ) -> Result<(), ExportError> {
+        cx.bake_pack(project, game)
+    }
+
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError> {
         if System::here() != Some(self.system) {
             return Err(ExportError::MissingTool(format!(
@@ -175,6 +188,7 @@ impl Exporter for Desktop {
             shipped.source(NOTE, FileKind::Written, "written by the export");
         }
         cx.mark_beside(report, &mut shipped);
+        cx.mark_pack(report, &mut shipped);
         shipped
     }
 
@@ -223,10 +237,11 @@ impl Desktop {
 }
 
 /// Writes the Windows or Linux package of `program` (built for `triple`):
-/// the folder `<base>/` with the program, `NOTICES.txt` and on Windows the
-/// players' note, then its zip or `tar.gz`. In a release build the
-/// program keeps its symbols and line tables in `<base>.debug`, and the
-/// package's copy is stripped of both (`objcopy --strip-all`).
+/// the folder `<base>/` with the program, its pack if it is packed,
+/// `NOTICES.txt` and on Windows the players' note, then its zip or
+/// `tar.gz`. In a release build the program keeps its symbols and line
+/// tables in `<base>.debug`, and the package's copy is stripped of both
+/// (`objcopy --strip-all`).
 pub fn pack(
     cx: &ExportCx,
     system: System,
@@ -252,6 +267,7 @@ pub fn pack(
         None
     };
     cx.search(&shipped)?;
+    let pack = cx.place_pack(&folder)?;
     cx.native_notices(triple, &folder)?;
     if system == System::Windows {
         write(&folder.join(NOTE), WINDOWS_NOTE)?;
@@ -276,12 +292,14 @@ pub fn pack(
     let sizes = vec![cx.size(&written)?, cx.size(&shipped)?];
     let mut report = cx.report(&package, sizes, Signing::None, debug);
     report.beside = beside;
+    report.pack = pack;
     Ok(report)
 }
 
 /// Writes the macOS package of the program's `slices`: the folder
 /// `<base>/` with `<program>.app` (the slices joined by `lipo`, a minimal
-/// `Info.plist`, signed ad hoc), `NOTICES.txt` and the players' note.
+/// `Info.plist`, its pack in `Contents/Resources` if it is packed, signed ad
+/// hoc), `NOTICES.txt` and the players' note.
 fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportReport, ExportError> {
     let base = cx.base();
     let folder = cx.out.join(&base);
@@ -301,6 +319,7 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
     cx.native_notices(MACOS.triples[0], &folder)?;
     write(&folder.join(NOTE), MACOS_NOTE)?;
     let resources = contents.join("Resources");
+    let pack = cx.place_pack(&resources)?;
     let beside = cx.copy_beside(&|is_dir| {
         if is_dir {
             resources.clone()
@@ -325,6 +344,7 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
     let sizes = vec![cx.size(&folder)?, cx.size(&program)?];
     let mut report = cx.report(&base, sizes, Signing::AdHoc, None);
     report.beside = beside;
+    report.pack = pack;
     Ok(report)
 }
 
