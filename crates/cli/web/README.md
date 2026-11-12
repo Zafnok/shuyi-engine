@@ -26,10 +26,12 @@ itself, so a game needs no copy of its own.
   own `canvas.onkeydown` handler; `index.html` adds a small backstop
   `keydown` listener for browser shortcuts it doesn't cover (Page Up/Down,
   Home/End).
-- `sapp_jsutils.js`, `quad-storage.js`: miniquad JS plugins backing
-  `shuyi-app`'s storage on the web (`localStorage`). `quad-storage` exposes
-  `localStorage` to Rust and needs `sapp_jsutils` (its JS↔Rust
-  string/object marshalling) loaded first. Both vendored, see below.
+- `sapp_jsutils.js`: a miniquad JS plugin that hands strings and bytes
+  between Rust and JS as JS objects, which `player-files.js`,
+  `page-files.js` and `pack-file.js` use. Vendored, see below.
+- `storage.js`: saves, a miniquad JS plugin over the browser's
+  `localStorage`, behind `shuyi-app`'s `WebStorage`. The engine's own code,
+  not vendored. See below.
 - `gamepad.js`: controllers, a miniquad JS plugin over the browser's
   Gamepad API. The engine's own code, not vendored. See below.
 - `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
@@ -140,38 +142,50 @@ bump comes as Dependabot's `backend` group, which moves macroquad,
 miniquad, the `quad-*` crates, `sapp-jsutils` and `gilrs` together (the
 `dependency-upkeep` skill, ADR-0037).
 
-## Vendored `sapp_jsutils.js` and `quad-storage.js`
+## Vendored `sapp_jsutils.js`
 
-- `sapp_jsutils.js`: source https://github.com/not-fl3/sapp-jsutils,
-  `js/sapp_jsutils.js`. Version matches the `sapp-jsutils` crate pulled in
-  transitively by `quad-storage` (currently `0.1.7`); the file ships inside
-  the published crate itself (`js/sapp_jsutils.js`), so it was copied
-  straight from there rather than from GitHub. License: dual MIT/Apache-2.0
-  per the crate's `Cargo.toml`; upstream ships no `LICENSE` file at all, so
-  the standard MIT text was reconstructed with the crate's declared author
-  as copyright holder, committed at
-  [`sapp_jsutils-LICENSE-MIT.txt`](sapp_jsutils-LICENSE-MIT.txt).
-- `quad-storage.js`: source https://github.com/optozorax/quad-storage,
-  `js/quad-storage.js`. Version matches the `quad-storage` crate (`0.1.3`),
-  vendored from the exact commit crates.io recorded for that release,
-  `3760b953aec17d65cc4ca8edfa39c38e7337ec3a` (from the published crate's
-  `.cargo_vcs_info.json`). License: MIT (dual MIT/Apache-2.0; text committed
-  at [`quad-storage-LICENSE-MIT.txt`](quad-storage-LICENSE-MIT.txt), copied
-  from the crate's own `LICENSE-MIT`).
-  **Local patch:** the plugin's `version` is changed from upstream's
-  `"0.1.2"` to `65536`, the number `quad_storage_crate_version()` in the
-  `quad-storage-sys` crate (0.1.0) actually reports
-  (`(major << 24) + (minor << 16) + patch`); otherwise the loader logs a
-  version-mismatch error on every load. Re-apply it when re-vendoring; the
-  test `quad_storage_js_version_matches_the_locked_crate` fails if it is
-  lost.
-- `index.html` loads `sapp_jsutils.js` before `quad-storage.js`, both before
+- Source https://github.com/not-fl3/sapp-jsutils, `js/sapp_jsutils.js`.
+  Version matches the `sapp-jsutils` crate `shuyi-app` depends on
+  (currently `0.1.7`); the file ships inside the published crate itself
+  (`js/sapp_jsutils.js`), so it was copied straight from there rather than
+  from GitHub. License: dual MIT/Apache-2.0 per the crate's `Cargo.toml`;
+  upstream ships no `LICENSE` file at all, so the standard MIT text was
+  reconstructed with the crate's declared author as copyright holder,
+  committed at [`sapp_jsutils-LICENSE-MIT.txt`](sapp_jsutils-LICENSE-MIT.txt).
+- `index.html` loads it before the engine's plugins that use it, and before
   `mq_js_bundle.js`'s `load(...)` call.
 
-When bumping the `quad-storage` crate version, re-vendor `quad-storage.js`
-from the matching commit/tag and update this note; `sapp_jsutils.js` can
-just be re-copied from the new version of the crate. Both come in
-Dependabot's `backend` group too.
+When the `sapp-jsutils` crate moves, re-copy `sapp_jsutils.js` from the new
+version of the crate and update this note. It comes in Dependabot's
+`backend` group.
+
+## The engine's own `storage.js`
+
+- Written from MDN's Web Storage API pages (`Window.localStorage`, and
+  `Storage`'s `getItem`, `setItem`, `removeItem`, `key` and `length`) and
+  its `TextEncoder` and `TextDecoder` pages (ticket 3033, ADR-0021 §2). It
+  replaced the vendored `quad-storage.js`.
+- It and `crates/app/src/storage/web.rs` list the same `shuyi_storage_*`
+  functions and the same plugin version, and it answers the error codes
+  `crates/app/src/storage/local_storage.rs` reads: `shuyi-cli`'s tests fail
+  otherwise. Bump both versions when the functions change.
+- **Strings cross as UTF-8 bytes** in the wasm memory. Rust passes a
+  pointer and a length for each string it gives. For a string it asks for,
+  it lends a buffer: the plugin writes the string there if it fits and
+  answers its length either way, so a length larger than the buffer means
+  "ask again with one this big".
+- **`localStorage` that throws** (storage turned off, a sandboxed frame,
+  the quota full) never throws through the frame: each function answers a
+  code below 0 (`-2` blocked, `-3` full, `-4` anything else; `-1` is "no
+  such key"), and the game gets a `StorageError::Backend` saying which, and
+  plays on.
+- **Writes are synchronous:** `setItem` and `removeItem` run inside the
+  call, so a save made in a `pagehide` or `visibilitychange` handler is
+  kept.
+- Keys are stored as they always were, the game's prefix and the key
+  (`<name>/<key>`), so saves made through `quad-storage` still load.
+- `index.html` loads it after `mq_js_bundle.js` (it calls the bundle's
+  `miniquad_add_plugin`) and before `load(...)`.
 
 ## The engine's own `player-files.js`
 

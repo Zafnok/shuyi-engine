@@ -47,7 +47,6 @@ extend-exclude = [
     "templates/shuyi-default/base/crates/game/files/font/atlas.ron",
     # Vendored JavaScript (THIRD_PARTY_ASSETS.md), never edited by hand.
     "crates/cli/web/mq_js_bundle.js",
-    "crates/cli/web/quad-storage.js",
     "crates/cli/web/sapp_jsutils.js",
     # The engine's template's plans: hashes, written by a test.
     "crates/cli/src/template/plans.golden",

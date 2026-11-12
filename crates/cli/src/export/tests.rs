@@ -578,9 +578,9 @@ const WEB_FILES: [&str; 12] = [
     "pack-file.js",
     "page-files.js",
     "player-files.js",
-    "quad-storage.js",
     "sapp_jsutils.js",
     "sound.js",
+    "storage.js",
 ];
 
 /// A context on a game in the export's folder with a stand-in binary and
