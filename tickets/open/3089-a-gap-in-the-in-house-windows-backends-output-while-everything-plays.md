@@ -63,6 +63,18 @@ run judged one recording four times. A re-run that can pass re-runs
 `sound-parity-windows` (GitHub's "Re-run job" on it, or `gh run rerun --job
 <its id>`), which runs `sound-parity` after it.
 
+A new recording, attempt 5 of the same run (`sound-parity-windows` re-run at
+22:08 UTC), had the gap too. In both recordings the gap is in the same row of
+`windows-in-house/perf.jsonl`: row 16, side `a`, pair 8, the last `a` run, whose
+recording the gate keeps as `windows-in-house/perf-a.pcm` (in the `sound-parity`
+artifact: ids 13882695572 and 13896844974). The gap is one run of 353 quiet
+frames (8.0 ms at 44,100 Hz) both times, 2.278 s after the onset in the first
+and 0.619 s in the second, counted by `sound_facts` in `capture.py`. `main`'s
+probe run (artifact 13895935078) has no quiet run in its `perf-a.pcm` and no gap
+in any row. The same length at two places looks like one lost block of the
+in-house output, not a slow mixer, which would vary; whether the same pair both
+times means anything is for this ticket to find.
+
 ## Nick input
 
 None.
