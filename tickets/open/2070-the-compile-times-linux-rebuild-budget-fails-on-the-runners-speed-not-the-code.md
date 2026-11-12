@@ -40,7 +40,13 @@ real slowdown as well as this one (ADR-0049: "a slower rebuild is found and
 fixed, not budgeted").
 
 2064 (a ledger of flaky gates) is about recording and re-running flakes in
-general. This ticket fixes this gate's cause. Neither waits for the other.
+general. This ticket fixes this gate's cause.
+
+**From 2064 (done):** a calibration is one dispatch of `calibrate.yml`, never a
+scratch branch (the `run-gates` skill, *When CI fails but local passes*). It runs
+a job whose jobs live in a reusable workflow `ci.yml` calls, as
+`sound-parity.yml`: this ticket moves the `compile-times` job into one, adds its
+block to `calibrate.yml` and its name to the `runs` job's list, before measuring.
 
 ## Nick input
 
@@ -59,8 +65,8 @@ None.
   choice in ADR-0049's successor (the `write-adr` skill), not by editing
   ADR-0049.
 - Measure the new gate over at least 20 runs of the job on unchanged `main`
-  (a repeat workflow on a scratch branch, deleted after), and name the runs
-  beside the new numbers in `tools/compile-budget.ron`.
+  with `calibrate.yml`, and name the runs beside the new numbers in
+  `tools/compile-budget.ron`.
 
 **Out (do not do):**
 - Raising `rebuild.linux` alone.

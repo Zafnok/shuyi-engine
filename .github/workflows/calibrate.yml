@@ -1,0 +1,118 @@
+name: Calibrate
+
+# One job of CI run N times on the commit it is dispatched on (ticket 2064),
+# to measure a gate's
+# limits or a flake's rate: the run-gates skill says when. It replaces the
+# per-ticket scratch branches that each copied the job into a loop. Each run
+# uploads its artifacts as `<job>-run-<n>`, and the `summary` job writes one
+# table of the runs: each run's jobs and failed cells, and each cell's rate.
+#
+#   gh workflow run calibrate.yml --ref <branch> -f job=<job> -f count=20
+#
+# The branch is the dispatch's own, never an input: a run from main that built
+# another ref would run unreviewed code with main's cache scope (CodeQL's cache
+# poisoning, #382). The branch needs this file, as any branch from main has.
+#
+# A job is offered here once its jobs live in a reusable workflow that ci.yml
+# calls (as the sound gate's do): a block below calls it, and `runs` lists it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "The job of CI to run: one of `runs`' list"
+        type: string
+        required: true
+      count:
+        description: "How many runs (1 to 40)"
+        type: number
+        default: 20
+        required: true
+
+permissions: {}
+
+jobs:
+  # The list of runs for the matrix.
+  runs:
+    name: runs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      list: ${{ steps.runs.outputs.list }}
+    steps:
+      - name: The runs
+        id: runs
+        env:
+          JOB: ${{ inputs.job }}
+          COUNT: ${{ inputs.count }}
+        run: |
+          # The jobs this workflow can run, each a block below.
+          jobs="sound-parity"
+          if ! [[ " $jobs " == *" $JOB "* ]]; then
+            echo "::error::No job '$JOB' to calibrate: give one of $jobs"
+            exit 1
+          fi
+          if ! [ "$COUNT" -ge 1 ] 2>/dev/null || [ "$COUNT" -gt 40 ]; then
+            echo "::error::count is $COUNT: give 1 to 40"
+            exit 1
+          fi
+          echo "list=$(jq -nc --argjson n "$COUNT" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
+
+  # The sound gate's runs (sound-parity.yml).
+  sound-parity:
+    name: sound-parity (${{ matrix.run }})
+    needs: runs
+    if: inputs.job == 'sound-parity'
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(needs.runs.outputs.list) }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/sound-parity.yml
+    with:
+      suffix: -run-${{ matrix.run }}
+
+  summary:
+    name: summary
+    needs: [runs, sound-parity]
+    if: always() && needs.runs.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # Runs that failed before uploading have none: the table says "no matrix"
+      # for them, so their absence doesn't stop it.
+      - name: Each run's artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ inputs.job }}-run-*
+          path: target/calibration
+      - name: The table
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB: ${{ inputs.job }}
+          SHA: ${{ github.sha }}
+        run: |
+          mkdir -p target/calibration
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" --paginate \
+            --jq '.jobs[] | {name, conclusion}' | jq -s . > target/calibration/jobs.json
+          cargo xtask flaky calibration --job "$JOB" --jobs target/calibration/jobs.json \
+            --dir target/calibration --revision "$SHA" --summary target/calibration/summary.md
+          cat target/calibration/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: calibration-summary
+          path: |
+            target/calibration/summary.md
+            target/calibration/jobs.json
+          if-no-files-found: error

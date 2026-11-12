@@ -1,0 +1,75 @@
+// The flaky gates' ledger (ticket 2064): each cell CI is known to fail now
+// and then without a change to blame. `cargo xtask flaky`
+// (crates/xtask/src/flaky.rs) reads it.
+//
+// - CI re-runs a failed run once when every failed job failed on cells listed
+//   here (.github/workflows/flaky-rerun.yml), and the re-run attempt's
+//   `ci-result` names them in a warning. A cell not listed gets no re-run.
+// - Each entry names its open ticket, and `ticket-lint` fails one whose ticket
+//   is done: fixing a flake removes its entry.
+// - A cell: `Job("<job>")` is any failure of that job; `Test(job, name)` one
+//   test `cargo test` reports FAILED in it; `Matrix(platform, check)` a
+//   mandatory cell that didn't pass in the `matrix.json` of a job `matrices`
+//   names. Jobs are named as the jobs API names them (a reusable workflow's
+//   job is `<caller> / <job>`).
+// - `rate` is what the runs named beside it measured (a calibration run,
+//   .github/workflows/calibrate.yml). A second sighting of a flake gets an
+//   entry and a ticket (the run-gates skill, *When CI fails but local passes*).
+(
+    matrices: [
+        // The sound gate (sound-parity.yml) judges every platform's cells, and
+        // Windows' from what its own job recorded (3089).
+        (
+            job: "sound-parity / sound-parity",
+            artifact: "sound-parity",
+            recorded: [(platforms: "windows", job: "sound-parity / sound-parity-windows")],
+        ),
+        // End of the sound gate's matrix.
+    ],
+    entries: [
+        // The sound gate's timing cells (2068).
+        (
+            cell: Matrix(platform: "browser-chromium", check: "perf:cpu_ms"),
+            ticket: "2068",
+            seen: "2026-11-08",
+            rate: (failed: 1, runs: 20),
+            runs: ["CI run 42507044770 (2050's calibration), job 2: median 1.051 over 1.05"],
+        ),
+        (
+            cell: Matrix(platform: "windows-in-house", check: "old-new:cpu_ms"),
+            ticket: "2068",
+            seen: "2026-11-08",
+            rate: (failed: 1, runs: 20),
+            runs: ["CI run 42507044770 (2050's calibration), job 13: median 4.093 over 4.0"],
+        ),
+        (
+            cell: Matrix(platform: "browser-chromium", check: "perf:file_io_ms"),
+            ticket: "2068",
+            seen: "2026-11-08",
+            rate: (failed: 1, runs: 20),
+            runs: ["CI run 42507044770 (2050's calibration), job 15: median 1.333 over 1.25"],
+        ),
+        (
+            cell: Matrix(platform: "linux-native", check: "perf:peak_kib"),
+            ticket: "2068",
+            seen: "2026-11-12",
+            rate: (failed: 2, runs: 20),
+            runs: ["CI run 43131815627 (3089's baseline), jobs 3 and 14: medians 1.056 and 1.057"],
+        ),
+        (
+            cell: Matrix(platform: "browser-in-house", check: "perf:file_io_ms"),
+            ticket: "2068",
+            seen: "2026-11-12",
+            rate: (failed: 1, runs: 20),
+            runs: ["CI run 43143877256 (3089's calibration), job 8: median 1.316"],
+        ),
+        (
+            cell: Matrix(platform: "windows-in-house", check: "perf:cpu_ms"),
+            ticket: "2068",
+            seen: "2026-11-12",
+            rate: (failed: 1, runs: 20),
+            runs: ["CI run 43143877256 (3089's calibration), job 10: median 1.195 over 1.15"],
+        ),
+        // End of the sound gate's timing cells.
+    ],
+)

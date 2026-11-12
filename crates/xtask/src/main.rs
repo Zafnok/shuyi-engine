@@ -16,6 +16,7 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
+//! - `cargo xtask flaky rerun|report|calibration …`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
@@ -33,6 +34,7 @@ mod changelog;
 mod compile_times;
 mod contract;
 mod docs;
+mod flaky;
 mod gates;
 mod golden;
 mod ids;
@@ -139,6 +141,15 @@ usage:
       body on stdout: HEAD, each gate's result, each gate left to CI and why.
       With --fast, only the quick gates (the pre-push hook's); with --list,
       say what would run and run nothing.
+  cargo xtask flaky rerun --failures <file> --attempt <n> --decision <file>
+  cargo xtask flaky report --failures <file> --attempt <n>
+  cargo xtask flaky calibration --job <name> --jobs <file> --dir <dir> --revision <sha> --summary <file>
+      The flaky gates' ledger, tools/flaky.ron (ticket 2064). `rerun` judges a
+      failed CI attempt's jobs (scripts/flaky-failures.sh's JSON) and writes
+      `none`, `failed` or a job's id to <file>: a first attempt whose every
+      failure is a listed cell is re-run once. `report` warns what attempt <n>
+      failed on, for its re-run. `calibration` writes a calibration run's table
+      (.github/workflows/calibrate.yml) to <file>.
   cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]
       Write the changelog from tickets/done/ and the first-parent history
       (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
@@ -219,6 +230,10 @@ fn main() -> ExitCode {
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
+        Some("flaky") => {
+            let (errors, warnings) = flaky::run(&root, &args[1..]);
+            report("flaky", &errors, &warnings)
+        }
         Some("changelog") => changelog(&root, &args[1..]),
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),

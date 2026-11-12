@@ -259,10 +259,9 @@ pub const GATES: &[Gate] = &[
         .ci_only("cargo llvm-cov and the SonarCloud scan"),
     gate("zizmor", "zizmor", CODE).ci_only("the zizmor action audits the workflows"),
     gate("api", "api", CRATES).ci_only("needs a nightly and two tools"),
-    gate("sound parity", "sound-parity", Filter::Output("sound"))
-        .ci_only("records the backend's output from PulseAudio and Chromium"),
-    gate("sound parity (Windows)", "sound-parity-windows", Filter::Output("sound"))
-        .ci_only("records the backend's output on a Windows runner"),
+    gate("sound parity", "sound-parity", Filter::Output("sound")).ci_only(
+        "records the backend's output from PulseAudio, Chromium and a Windows runner",
+    ),
     gate("sound give-up", "sound-give-up", Filter::Output("sound"))
         .ci_only("takes the sound replacement out of a checkout and builds what is left"),
     gate("playtest", "playtest", Filter::Always).ci_only("a bot plays Hello, Grid"),
