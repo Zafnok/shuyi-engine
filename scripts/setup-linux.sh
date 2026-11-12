@@ -3,7 +3,8 @@
 # build this project: the C linker, pkg-config and the system libraries the
 # engine's backend links and opens, then rustup and the Rust that
 # rust-toolchain.toml pins, with the web target. `shuyi doctor` checks the
-# same list. Safe to run again: what is there is left alone.
+# same list. In a git checkout with a scripts/git-hooks folder, it also sets
+# git's hooks to it. Safe to run again: what is there is left alone.
 #
 # Run it as `bash scripts/setup-linux.sh`, as root or as a user with sudo.
 
@@ -100,6 +101,16 @@ fi
 if ! rustup target list --installed | grep -qx wasm32-unknown-unknown; then
   rustup target add wasm32-unknown-unknown
   did+=("added the web target, wasm32-unknown-unknown")
+fi
+
+# The project's git hooks (engine ticket 2054; the engine's pre-push hook runs
+# its fast gates): only in a git checkout that has them, and never on CI,
+# which runs every gate itself.
+if [ -d scripts/git-hooks ] && [ -z "${CI:-}" ] && command -v git > /dev/null &&
+  git rev-parse --is-inside-work-tree > /dev/null 2>&1 &&
+  [ "$(git config core.hooksPath || true)" != scripts/git-hooks ]; then
+  git config core.hooksPath scripts/git-hooks
+  did+=("set git's hooks to scripts/git-hooks")
 fi
 
 if [ -n "${GITHUB_PATH:-}" ]; then

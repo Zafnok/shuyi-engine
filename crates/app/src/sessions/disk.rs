@@ -15,7 +15,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use macroquad::prelude::{info, warn};
 
 use super::{SUFFIX, file_name};
-use crate::storage::data_dir;
 
 /// How many sessions a build keeps: older ones are deleted.
 const KEEP_SESSIONS: usize = 10;
@@ -67,10 +66,10 @@ pub(super) fn unix_ms() -> u64 {
     })
 }
 
-/// The folder of the sessions of the game called `name`. With no data
-/// folder, a warning, and none.
-pub(super) fn folder(name: &str) -> Option<PathBuf> {
-    let dir = data_dir(name).map(|dir| dir.join(FOLDER));
+/// The folder of the sessions of the game whose data folder is `data`.
+/// With no data folder, a warning, and none.
+pub(super) fn folder(data: Option<&Path>) -> Option<PathBuf> {
+    let dir = data.map(|dir| dir.join(FOLDER));
     if dir.is_none() {
         // check-text: not player text (a warning for the log)
         warn!("storage: no data folder: this session won't be kept");
@@ -147,7 +146,7 @@ mod tests {
     #[test]
     fn a_kept_session_is_not_among_the_games_keys() {
         let tmp = tempfile::tempdir().unwrap();
-        let mut storage = FileStorage::in_dir(tmp.path().to_path_buf());
+        let mut storage = FileStorage::in_folder(tmp.path().to_path_buf());
         storage.write("save", "1").unwrap();
         write(&tmp.path().join(FOLDER), 5, "a record").unwrap();
         assert_eq!(storage.list().unwrap(), ["save"]);

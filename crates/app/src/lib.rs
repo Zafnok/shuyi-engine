@@ -314,6 +314,10 @@ pub struct AppConfig {
     /// ([`storage::data_dir`]), the prefix of every `localStorage` key on
     /// the web ([`storage::web_prefix`]). Changing it loses every save.
     pub storage_name: &'static str,
+    /// Which folder a desktop keeps the storage in: the storage's name in
+    /// the OS's data folder until the game assigns another
+    /// ([`storage::DesktopFolder`]).
+    pub desktop_folder: storage::DesktopFolder,
     /// The game's embedded files by path: the images, the font atlas's
     /// picture and a loading card's picture are read with it. Under `cargo
     /// shuyi run --watch` the folder of its files on disk lies over it
@@ -351,6 +355,7 @@ impl AppConfig {
         Self {
             window,
             storage_name,
+            desktop_folder: storage::DesktopFolder::Data,
             files,
             font_png,
             sounds,
@@ -446,13 +451,14 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
-    let storage_name = config.storage_name;
-    crash::install(config.crash, move || storage::platform(storage_name));
+    let storage_at = storage::StorageAt::find(config.storage_name, config.desktop_folder);
+    let crash_storage = storage_at.clone();
+    crash::install(config.crash, move || crash_storage.open());
     let panic_at = crash::panic_at_frame(config.crash);
     let records_play = config.crash.records_play();
-    let mut platform = Macroquad::new(&mut config, facts);
+    let mut platform = Macroquad::new(&mut config, facts, storage_at.clone());
     let mut app = App::new(start);
-    let kept = sessions::Kept::start(&mut app, config.storage_name, recorded_manifest);
+    let kept = sessions::Kept::start(&mut app, &storage_at, recorded_manifest);
     let mut pacer = Pacer::new(config.window.vsync);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     let mut link = link::start(config.window.title);

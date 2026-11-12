@@ -35,7 +35,7 @@ use crate::contract::import::Importers;
 use crate::contract::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use crate::contract::replay::{Record, ReplayRun};
 use crate::contract::session::Session;
-use crate::frame_png::{Script, Shot};
+use crate::frame_png::{Capture, Script, Shot, then_frames};
 use crate::project::Project;
 
 /// An option a game adds to `frame-png`. Build it with
@@ -486,6 +486,22 @@ pub trait GameTools {
         script: &Script,
         scale: Option<u32>,
     ) -> Result<Shot, String>;
+
+    /// `frame-png --every --count`: as [`frame`](Self::frame), the frames
+    /// of `capture` after the script, in order. The default plays the
+    /// game again for each ([`then_frames`]); a game whose `frame` is slow
+    /// gives its own that plays it once.
+    fn frames(
+        &self,
+        options: &[GameArg],
+        script: &Script,
+        scale: Option<u32>,
+        capture: Capture,
+    ) -> Result<Vec<Shot>, String> {
+        (0..capture.count)
+            .map(|i| self.frame(options, &then_frames(script, capture.frame_of(i)), scale))
+            .collect()
+    }
 
     /// `frame-png --target <id>` on a one-bit target: as
     /// [`frame`](Self::frame), but painted as the target's display shows

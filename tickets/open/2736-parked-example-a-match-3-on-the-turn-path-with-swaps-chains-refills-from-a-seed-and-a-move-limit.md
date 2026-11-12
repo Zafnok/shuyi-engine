@@ -280,7 +280,7 @@ each part is one PR.
   named `cleared` for a beat, falling gems one row a beat, then the new
   gems. Input waits while it plays, and `Confirm` skips to the settled
   board. A `frame-png` picture of a chain mid-way, and an animated one
-  if 2514 is done;
+  (`frame-png --every --count --apng`, 2514, done);
 - a hint: after 5 seconds with no input (`Harness::wait` in its test),
   the first legal swap's two gems in a range named `hint`;
 - the eval: if 2524 is done, `evals/tasks/match-three.ron` with

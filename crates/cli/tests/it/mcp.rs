@@ -216,6 +216,7 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         "{events}"
     );
 
+    frames_over_time_as_a_sheet(&mut client, (width, height));
     read_perf_as_a_stream(&mut client);
 
     let ended = client.call("stop", &json!({}));
@@ -303,6 +304,41 @@ fn perf_frames(answer: &Value) -> Vec<u64> {
 /// The session's game started again and read as a stream with `perf`,
 /// then `run --perf` with a trace file, then heap snapshots and a diff:
 /// the session is left just reset.
+/// `frame_png` with `every` and `count`: one sheet of the frames, each
+/// cell's time and screen, the session left after the last. A frame is
+/// `frame` (width, height) at scale 1.
+fn frames_over_time_as_a_sheet(client: &mut Client, frame: (u32, u32)) {
+    let sheet = client.call(
+        "frame_png",
+        &json!({ "scale": 1, "every": 0.05, "count": 4, "columns": 2 }),
+    );
+    assert_eq!(sheet["isError"], false, "{sheet}");
+    let result = &sheet["structuredContent"]["result"];
+    let cells = result["cells"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no cells: {result}"));
+    let times: Vec<_> = cells.iter().map(|c| c["millis"].as_u64()).collect();
+    assert_eq!(times, [Some(0), Some(50), Some(100), Some(150)]);
+    let frames: Vec<_> = cells.iter().map(|c| c["frame"].as_u64()).collect();
+    assert_eq!(frames, [Some(4), Some(7), Some(10), Some(13)]);
+    // Nothing is pressed between the frames: the screen the step left.
+    let top = &result["top_screen"];
+    assert!(top.as_str().is_some_and(|s| !s.is_empty()), "{result}");
+    assert!(cells.iter().all(|c| &c["top_screen"] == top), "{result}");
+    assert_eq!(result["frames"], 13, "{result}");
+    // Two by two cells, each under its 14-pixel strip, 2 pixels apart.
+    let (w, h) = frame;
+    let data = sheet["content"][1]["data"].as_str().unwrap_or_default();
+    let (width, height, _) = decode_png(&unbase64(data)).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!((width, height), (2 + 2 * (w + 2), 2 + 2 * (14 + h + 2)));
+    assert_eq!(
+        (result["width"].as_u64(), result["height"].as_u64()),
+        (Some(u64::from(width)), Some(u64::from(height)))
+    );
+    let wrong = client.call("frame_png", &json!({ "count": 4 }));
+    assert_eq!(wrong["structuredContent"]["code"], "SH0001", "{wrong}");
+}
+
 fn read_perf_as_a_stream(client: &mut Client) {
     let reset = client.call("reset", &json!({}));
     assert_eq!(reset["isError"], false, "{reset}");

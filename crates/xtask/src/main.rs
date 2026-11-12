@@ -14,7 +14,8 @@
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
-//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]`
+//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
+//! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
@@ -32,6 +33,7 @@ mod changelog;
 mod compile_times;
 mod contract;
 mod docs;
+mod gates;
 mod golden;
 mod ids;
 mod layers;
@@ -122,12 +124,21 @@ usage:
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
       named, or of every <n>th from the <i>th: a verdict per step. The games
       build in this repository's target folder unless CARGO_TARGET_DIR is set.
-  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]
+  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, and count a new `blank` game's
       crates, on games made in <dir> (target/compile-times). With --budget,
       fail over its numbers (tools/compile-budget.ron); with --summary, append
-      the table's Markdown to <file>.
+      the table's Markdown to <file>. With --count-only, only count the crates
+      (and hold the count to the budget): seconds, not minutes.
+  cargo xtask gates [--base <rev>] [--fast] [--list]
+      Run the local gates the diff from <rev> (by default origin/main's merge
+      base) needs, fast to slow, stopping at the first failure (ticket 2054).
+      Which apply comes from .github/workflows/changes.yml's rules; the
+      commands are the run-gates skill's. Prints a summary block for the PR's
+      body on stdout: HEAD, each gate's result, each gate left to CI and why.
+      With --fast, only the quick gates (the pre-push hook's); with --list,
+      say what would run and run nothing.
   cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]
       Write the changelog from tickets/done/ and the first-parent history
       (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
@@ -207,6 +218,7 @@ fn main() -> ExitCode {
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
+        Some("gates") => gates(&root, &args[1..]),
         Some("changelog") => changelog(&root, &args[1..]),
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
@@ -352,6 +364,23 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
     let game = compile_times::Game {
         target_dir: games.join("timed").join("target"),
     };
+    if options.count_only {
+        let count = match compile_times::count(root, &games, &maker, &game) {
+            Ok(count) => count,
+            Err(e) => return report("compile-times", &[e], &[]),
+        };
+        // A count that can't be printed is still held to the budget.
+        let _ = writeln!(
+            std::io::stdout().lock(),
+            "a new game depends on {count} crates"
+        );
+        let verdict = budget
+            .as_ref()
+            .map_or_else(compile_times::Verdict::default, |(file, budget)| {
+                compile_times::check_count(count, budget, file)
+            });
+        return report("compile-times", &verdict.errors, &verdict.warnings);
+    }
     let times = match compile_times::run(root, &games, &maker, &game) {
         Ok(times) => times,
         Err(e) => return report("compile-times", &[e], &[]),
@@ -381,6 +410,24 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         verdict.warnings.extend(found.warnings);
     }
     report("compile-times", &verdict.errors, &verdict.warnings)
+}
+
+fn gates(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = gates::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    match gates::run(root, &options) {
+        Ok((summary, passed)) => {
+            // The summary is the answer: one that can't be printed fails.
+            if writeln!(std::io::stdout().lock(), "{summary}").is_err() || !passed {
+                ExitCode::FAILURE
+            } else {
+                ExitCode::SUCCESS
+            }
+        }
+        Err(e) => report("gates", &[e], &[]),
+    }
 }
 
 fn changelog(root: &Path, args: &[String]) -> ExitCode {

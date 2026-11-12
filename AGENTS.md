@@ -157,6 +157,11 @@ make a shared instruction work.
   scripts/setup-linux.sh` installs the C linker, `pkg-config`, the
   system libraries and the pinned Rust, and `shuyi doctor` checks the
   same list.
+- Set git's hooks once per clone: `git config core.hooksPath
+  scripts/git-hooks` (`setup-linux.sh` does it on Linux). Its pre-push
+  hook runs `cargo xtask gates --fast` (fmt, typos, the ticket lint, the
+  engine lint) and refuses a push that fails one; git runs it, whatever
+  the harness.
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`

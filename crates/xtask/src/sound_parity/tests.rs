@@ -919,3 +919,51 @@ fn an_edit_that_no_longer_matches_is_an_error() {
     assert!(cut("d", "b").apply("abcde").is_err());
     assert!(cut("z", "b").apply("abcde").is_err());
 }
+
+#[test]
+fn an_edit_reads_an_action_by_its_name_whatever_its_pin() {
+    let job = "      - uses: actions/checkout@\n        with:\n";
+    let edit = give_up::Edit::Replace {
+        file: "f".to_owned(),
+        find: format!("before\n{job}"),
+        with: String::new(),
+    };
+    for pin in [
+        "3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+        "0000000000000000000000000000000000000000 # v8.0.0",
+    ] {
+        let file = format!("before\n      - uses: actions/checkout@{pin}\n        with:\nafter");
+        assert_eq!(edit.apply(&file), Ok("after".to_owned()), "{pin}");
+    }
+    // Another action is not the same key.
+    let other = "before\n      - uses: actions/cache@3d3c42e5 # v4\n        with:\n";
+    assert!(edit.apply(other).is_err());
+}
+
+#[test]
+fn an_edit_reads_a_dependency_by_its_name_whatever_its_version() {
+    let edit = give_up::Edit::Replace {
+        file: "f".to_owned(),
+        find: "\nsha2 = { version = \"\", default-features = false }\n".to_owned(),
+        with: "\n".to_owned(),
+    };
+    for version in ["0.10", "0.11", "1.0.0-rc.1"] {
+        let file = format!(
+            "[deps]\nsha2 = {{ version = \"{version}\", default-features = false }}\nron = 1\n"
+        );
+        assert_eq!(
+            edit.apply(&file),
+            Ok("[deps]\nron = 1\n".to_owned()),
+            "{version}"
+        );
+    }
+    // Another dependency, or other features, is not a match.
+    assert!(
+        edit.apply("\nsha3 = { version = \"0.11\", default-features = false }\n")
+            .is_err()
+    );
+    assert!(
+        edit.apply("\nsha2 = { version = \"0.11\", default-features = true }\n")
+            .is_err()
+    );
+}

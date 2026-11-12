@@ -7,7 +7,7 @@ use hello_grid::MapLook;
 use hello_grid::tools::{HelloTools, Start};
 use shuyi_cli::GameTools;
 use shuyi_cli::codec::encode_png;
-use shuyi_cli::frame_png::{Script, Step};
+use shuyi_cli::frame_png::{Capture, Script, Step, sheet};
 use shuyi_cli::{GameArg, frame_png};
 
 /// The stage in `look`, your piece picked up and steered up and right.
@@ -32,6 +32,24 @@ fn the_stage_in_glyphs() {
 #[test]
 fn the_stage_in_tiles() {
     insta::assert_binary_snapshot!("stage_tiles.png", picture(MapLook::Tiles));
+}
+
+/// Your piece picked up, steered up and right and sent, as 8 frames 3
+/// frames apart (`frame-png --every 0.05 --count 8 --columns 4`): it on
+/// its way, each frame under its time.
+#[test]
+fn the_walk_as_a_sheet() {
+    let script = Script::new(vec![Step::Keys("Enter Up Right Right Enter".to_owned())]);
+    let options = [GameArg {
+        flag: "--stage".to_owned(),
+        value: None,
+    }];
+    let capture = Capture::new(3, 8).unwrap();
+    let shots = HelloTools.frames(&options, &script, None, capture).unwrap();
+    assert!(shots.iter().all(|shot| shot.shows == "stage"));
+    let sheet = sheet::build(&shots, capture.every, Some(4)).unwrap();
+    let png = encode_png(sheet.width, sheet.height, &sheet.rgba).unwrap();
+    insta::assert_binary_snapshot!("walk_sheet.png", png);
 }
 
 #[test]

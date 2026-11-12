@@ -1,0 +1,28 @@
+#!/bin/sh
+# Runs the fast local gates before a push (ticket 2054): `cargo xtask gates
+# --fast` (fmt, typos, the ticket lint and, when Rust changed, the engine's
+# lint). Git runs it, so it works whatever harness or terminal pushes.
+#
+# Set it up once per clone, from the repository's root:
+#
+#   git config core.hooksPath scripts/git-hooks
+#
+# `bash scripts/setup-linux.sh` does it on Linux. The slower gates are
+# `cargo xtask gates`' (the run-gates skill).
+set -eu
+
+# Git hands one line per ref: `<local ref> <local sha> <remote ref> <remote sha>`.
+# A push that only deletes refs sends no commit, so it needs no gate.
+pushes=
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) pushes=1 ;;
+  esac
+done
+[ -n "$pushes" ] || exit 0
+
+cd "$(git rev-parse --show-toplevel)"
+if ! cargo xtask gates --fast; then
+  echo "pre-push: a fast gate failed, so the push is refused. Fix it and push again." >&2
+  exit 1
+fi

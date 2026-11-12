@@ -67,10 +67,45 @@
     "limits"
   ],
   "$defs": {
+    "FramePngCell": {
+      "description": "A cell of `frame_png`'s sheet.",
+      "type": "object",
+      "properties": {
+        "frame": {
+          "description": "The frames run in all when it was painted.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "millis": {
+          "description": "Its time since the first, in whole milliseconds, as its label\nsays.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "top_screen": {
+          "description": "The top screen's name then.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "millis",
+        "frame",
+        "top_screen"
+      ]
+    },
     "FramePngOutput": {
       "description": "What `frame_png` painted (the picture itself is the tool's image).",
       "type": "object",
       "properties": {
+        "cells": {
+          "description": "With `count`, each cell of the sheet, in order; left out for one\npicture.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FramePngCell"
+          }
+        },
         "frames": {
           "description": "The frames run in all.",
           "type": "integer",
