@@ -557,6 +557,10 @@ jobs:
     if: needs.changes.outputs.sound == 'true'
     # Pinned, as its performance budget is measured on this image.
     runs-on: ubuntu-24.04
+    # `actions: read` finds `sound-parity-windows`' id for a failed Windows cell.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -669,15 +673,26 @@ jobs:
           for platform in linux-native browser-chromium windows windows-in-house browser-in-house; do
             cargo xtask sound-parity port-ready "$platform" --matrix target/sound-parity/matrix.json
           done
+      # Windows' cells judge what `sound-parity-windows` recorded, and "Re-run failed
+      # jobs" re-runs this job alone on that same recording, which fails again
+      # (ticket 3089). A failed Windows cell says how to record anew.
       - name: The matrix in the summary
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -f target/sound-parity/matrix.json ]; then
+          matrix=target/sound-parity/matrix.json
+          if [ -f "$matrix" ]; then
             {
               echo '```text'
-              jq -r '.cells[] | "\(.platform) \(.check): \(.status) \(.detail)"' target/sound-parity/matrix.json
+              jq -r '.cells[] | "\(.platform) \(.check): \(.status) \(.detail)"' "$matrix"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
+            failed=$(jq '[.cells[] | select((.platform == "windows" or .platform == "windows-in-house") and .mandatory and .status != "passed")] | length' "$matrix")
+            if [ "$failed" -gt 0 ]; then
+              job=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" --jq '.jobs[] | select(.name == "sound-parity-windows") | .id' || true)
+              echo "::error::$failed Windows cells failed. They judge the recording sound-parity-windows made, so re-running this job, or the failed jobs, judges that same recording again. To record anew, re-run sound-parity-windows (job ${job:-whose id the run's page shows}), which runs this job after it: gh run rerun --job ${job:-<its id>}"
+            fi
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

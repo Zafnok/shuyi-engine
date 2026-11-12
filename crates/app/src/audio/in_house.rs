@@ -639,6 +639,18 @@ impl InHouse {
             .map_or((0, 0), Output::stats)
     }
 
+    /// How often the output's buffer ran dry, a gap heard, and whether its thread
+    /// runs above the game's (ticket 3089). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_dry(&self) -> (u32, bool) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, false), |output| {
+                (output.dry_callbacks(), output.raised_priority())
+            })
+    }
+
     /// How long a play takes to reach the mix going to the device's buffer, in
     /// milliseconds: the time to the callback that has it, at no volume so that
     /// nothing is heard. For the probe's `latency` order.

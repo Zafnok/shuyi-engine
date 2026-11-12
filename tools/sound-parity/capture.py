@@ -583,10 +583,18 @@ def one_perf(player: Native | Windows | Browser, base: Path, side: str, pair: in
             metrics[event["metric"]] = event["value"]
         if event["event"] == "step":
             wall = event["wall"]
+        # The in-house output's own count of the times its buffer ran dry (ticket
+        # 3089): beside a gap, it says whether the gap is the output's.
+        if event["event"] == "output" and "dry_callbacks" in event:
+            metrics["dry_callbacks"] = float(event["dry_callbacks"])
         if event["event"] == "failed":
             raise SystemExit(f"the perf run failed: {line}")
     metrics.update({k: v for k, v in perf.items() if not k.startswith("_")})
     metrics.update(sound_facts(record, perf["_start"], wall))
+    if metrics["underruns"]:
+        dry = metrics.get("dry_callbacks")
+        whose = "" if dry is None else f"; the output's buffer ran dry {dry:.0f} times"
+        print(f"{record.name} (pair {pair}): {metrics['underruns']:.0f} gaps{whose}", file=sys.stderr, flush=True)
     return {"side": side, "pair": pair, "metrics": metrics}
 
 

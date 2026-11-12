@@ -742,6 +742,25 @@ fn status_of<'a>(cells: &'a [Value], check: &str) -> &'a str {
         .unwrap_or("missing")
 }
 
+/// The output's own count says whose a gap is, and changes no verdict.
+#[test]
+fn a_gap_says_whether_the_outputs_buffer_ran_dry() {
+    assert_eq!(gaps_detail(0.0, &[]), "0 gaps while everything played");
+    assert_eq!(gaps_detail(1.0, &[]), "1 gaps while everything played");
+    assert_eq!(
+        gaps_detail(1.0, &[0.0, 2.0, 0.0]),
+        "1 gaps while everything played; the output's buffer ran dry 2 times"
+    );
+    assert_eq!(
+        gaps_detail(1.0, &[0.0, 0.0]),
+        "1 gaps while everything played; the output's buffer never ran dry, so not the output's"
+    );
+    assert_eq!(
+        gaps_detail(0.0, &[0.0, 0.0]),
+        "0 gaps while everything played; the output's buffer ran dry 0 times"
+    );
+}
+
 #[test]
 fn a_new_backend_is_held_to_the_old_ones_speed_and_to_no_gaps() {
     let budget = new_backend_budget();

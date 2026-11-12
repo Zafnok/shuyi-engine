@@ -196,6 +196,31 @@ impl Output {
         (0, 0)
     }
 
+    /// How many times the system's stream found the device's buffer empty: its
+    /// callback came late, and the device played silence until it did, a gap a
+    /// player hears. Nothing asks this but a probe, to tell a gap in a recording
+    /// that is the output's from one that isn't: 0 where there is no stream.
+    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    pub fn dry_callbacks(&self) -> u32 {
+        #[cfg(windows)]
+        if let Inner::Windows(output) = &self.inner {
+            return output.dry_callbacks();
+        }
+        0
+    }
+
+    /// Whether the system's audio thread runs above the game's, as a buffer of a
+    /// few tens of milliseconds needs on a busy machine: false where there is no
+    /// such thread, or the system refused.
+    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    pub fn raised_priority(&self) -> bool {
+        #[cfg(windows)]
+        if let Inner::Windows(output) = &self.inner {
+            return output.raised_priority();
+        }
+        false
+    }
+
     /// Stops calling the callback, for as long as the system suspends the game.
     pub fn suspend(&self) {
         self.hold(true);
@@ -249,6 +274,8 @@ mod tests {
         let output = Output::null(CONFIG, callback);
         assert_eq!(output.rate(), 48_000);
         assert_eq!(output.stats(), (0, 0), "it has no stream to build or lose");
+        assert_eq!(output.dry_callbacks(), 0, "nor a buffer to run dry");
+        assert!(!output.raised_priority(), "nor a system thread");
         assert!(format!("{output:?}").contains("48000"));
         wait_for(&count, 0);
         assert_eq!(

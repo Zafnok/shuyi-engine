@@ -592,7 +592,7 @@ fn old_new_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
     } else {
         "failed"
     };
-    let detail = format!("{gaps} gaps while everything played");
+    let detail = gaps_detail(gaps, &side("new", "dry_callbacks"));
     let mut cells = vec![cell(platform, "old-new:underruns", true, status, &detail)];
     for (metric, limit) in limits {
         let (old, new) = (side("old", metric), side("new", metric));
@@ -897,6 +897,23 @@ pub(crate) fn judge(ratios: &Ratios, limit: Limit) -> &'static str {
     }
 }
 
+/// What an `underruns` cell says: the gaps a recording showed and, where the output
+/// counts the callbacks that found its buffer empty (`dry`, one sample a run), whose
+/// they are (ticket 3089). A gap with no dry callback isn't the output's: the loopback,
+/// or what the mix was given.
+fn gaps_detail(gaps: f64, dry: &[f64]) -> String {
+    let said = format!("{gaps} gaps while everything played");
+    if dry.is_empty() {
+        return said;
+    }
+    let times: f64 = dry.iter().sum();
+    if gaps > 0.0 && times == 0.0 {
+        format!("{said}; the output's buffer never ran dry, so not the output's")
+    } else {
+        format!("{said}; the output's buffer ran dry {times} times")
+    }
+}
+
 /// The performance verdicts from `base/perf.jsonl`: old against old, which
 /// must pass, and old against a slowed old, which must not.
 fn performance_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
@@ -929,7 +946,11 @@ fn performance_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value>
     } else {
         "failed"
     };
-    let detail = format!("{underruns} gaps while everything played");
+    let dry: Vec<f64> = ["a", "b"]
+        .iter()
+        .flat_map(|name| side(name, "dry_callbacks"))
+        .collect();
+    let detail = gaps_detail(underruns, &dry);
     let mut cells = vec![cell(platform, "perf:underruns", true, status, &detail)];
     for (metric, limit) in limits {
         let before = side("a", metric);
