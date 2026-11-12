@@ -516,6 +516,9 @@ fn level(volume: f32) -> u16 {
 #[derive(Default)]
 pub struct InHouse {
     engine: Option<Engine>,
+    /// Whether a frame of the player's is open: its commands are held back until
+    /// it closes, so that what it starts starts at one block (ticket 3089).
+    framing: bool,
     #[cfg(test)]
     said: Vec<String>,
 }
@@ -541,6 +544,9 @@ impl InHouse {
                 self.say(&format!("the game runs silent: {problem}"));
             }
             engine.output = Some(output);
+            if self.framing {
+                engine.remote.hold();
+            }
             self.engine = Some(engine);
         }
         match &mut self.engine {
@@ -637,6 +643,18 @@ impl InHouse {
             .as_ref()
             .and_then(|engine| engine.output.as_ref())
             .map_or((0, 0), Output::stats)
+    }
+
+    /// How often the output's buffer ran dry, a gap heard, and whether its thread
+    /// runs above the game's (ticket 3089). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_dry(&self) -> (u32, bool) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, false), |output| {
+                (output.dry_callbacks(), output.raised_priority())
+            })
     }
 
     /// How long a play takes to reach the mix going to the device's buffer, in
@@ -828,6 +846,17 @@ impl Backend for InHouse {
                 output.suspend();
             } else {
                 output.resume();
+            }
+        }
+    }
+
+    fn frame(&mut self, open: bool) {
+        self.framing = open;
+        if let Some(engine) = &mut self.engine {
+            if open {
+                engine.remote.hold();
+            } else {
+                engine.remote.publish();
             }
         }
     }

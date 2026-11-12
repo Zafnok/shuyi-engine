@@ -159,6 +159,98 @@ pub(crate) mod web {
     }
 }
 
+/// The audio thread above the rest (ticket 3089). A stream's buffer holds about 20
+/// ms, and a thread of normal priority can wait longer than that for a core on a
+/// busy machine: the device then plays nothing until it runs again, and the player
+/// hears a gap. Windows' multimedia scheduler is what the system documents for an
+/// audio thread; where it refuses, the thread asks for the highest priority of its
+/// class instead.
+#[cfg(windows)]
+pub(crate) mod raised {
+    use std::ptr;
+
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Threading::{
+        AvRevertMmThreadCharacteristics, AvSetMmThreadCharacteristicsW, GetCurrentThread,
+        SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
+    };
+    use windows::core::w;
+
+    /// How the thread that made it was raised, until it is dropped.
+    #[derive(Debug)]
+    pub(crate) enum Raised {
+        /// The multimedia scheduler's "Pro Audio" task: the handle's value, a token
+        /// the system reads and nothing here dereferences.
+        Scheduled(usize),
+        /// The time-critical priority, which lasts as long as the thread.
+        Critical,
+        /// Neither was granted.
+        Not,
+    }
+
+    impl Raised {
+        /// Raises the calling thread.
+        pub(crate) fn current() -> Self {
+            let mut task = 0u32;
+            // SAFETY: the task name is a static wide string with its terminator, and
+            // `task` a live `u32` the call writes the task's index to before returning.
+            let scheduled =
+                unsafe { AvSetMmThreadCharacteristicsW(w!("Pro Audio"), &raw mut task) };
+            if let Ok(handle) = scheduled
+                && !handle.is_invalid()
+            {
+                return Self::Scheduled(handle.0.addr());
+            }
+            // SAFETY: `GetCurrentThread` returns a pseudo handle for this thread,
+            // valid for as long as the thread and needing no closing, which
+            // `SetThreadPriority` only reads.
+            let critical =
+                unsafe { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL) };
+            if critical.is_ok() {
+                Self::Critical
+            } else {
+                Self::Not
+            }
+        }
+
+        /// Whether the thread runs above normal.
+        pub(crate) const fn is_raised(&self) -> bool {
+            !matches!(self, Self::Not)
+        }
+    }
+
+    impl Drop for Raised {
+        fn drop(&mut self) {
+            if let Self::Scheduled(handle) = *self {
+                // SAFETY: `handle` is the value `AvSetMmThreadCharacteristicsW` gave,
+                // reverted only here and once, as `self` goes. A stream's callback,
+                // which holds this, is dropped on the thread it raised.
+                let _ = unsafe {
+                    AvRevertMmThreadCharacteristics(HANDLE(ptr::without_provenance_mut(handle)))
+                };
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn a_thread_is_raised_and_let_go_on_its_own() {
+            let raised = std::thread::spawn(|| {
+                let raised = Raised::current();
+                let is = raised.is_raised();
+                drop(raised);
+                is
+            })
+            .join();
+            assert_eq!(raised.ok(), Some(true), "neither way was granted");
+            assert!(!Raised::Not.is_raised());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::AtomicUsize;

@@ -37,6 +37,20 @@ limit that moves.
 The flaky-gates ledger (2064) lists a sound cell under an open ticket. These
 three cells are this ticket's.
 
+**From 3089 (done):** its three twenty-job runs showed more of these timing cells,
+each of two runs of one build:
+
+- `linux-native perf:peak_kib`: jobs 3 and 14 of CI run 43131815627, medians 1.056
+  and 1.057.
+- `browser-in-house perf:file_io_ms`: job 8 of CI run 43143877256, median 1.316.
+- `windows-in-house perf:cpu_ms`: job 10 of CI run 43143877256, median 1.195
+  against 1.15, its spread 0.265, the process's cycles rising in both sides partway
+  through. The same job's `perf:decode_ogg_ms` was inconclusive (spread 0.102).
+
+3089 raised the in-house output's audio thread on Windows. Its runs'
+`windows-in-house perf:cpu_ms` medians were 0.951 to 1.128 before that and 0.947
+to 1.195 after, centred on 1. They are this ticket's cells too.
+
 ## Nick input
 
 None.

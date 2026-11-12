@@ -14,6 +14,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, ErrorKind, SampleFormat, SizedSample, Stream, StreamConfig};
 
 use crate::convert_impl::{Boundary, DeviceSample};
+use crate::sys::raised::Raised;
 use crate::{Callback, OutputConfig, OutputError};
 
 /// How often the thread looks at the default device: well under the second a player
@@ -46,6 +47,30 @@ pub(crate) struct Stats {
     pub(crate) rebuilds: AtomicU32,
     /// How many callbacks were silence, the mix's lock held elsewhere.
     pub(crate) silent: AtomicU32,
+    /// How many callbacks found the device's buffer empty ([`Dry`]).
+    pub(crate) dry: AtomicU32,
+    /// Whether the latest stream's thread runs above normal (`sys::raised`).
+    pub(crate) raised: AtomicBool,
+}
+
+/// Tells when a callback finds the device's buffer empty: the device has played all
+/// of it, and nothing more, since the callback before, so a gap is heard (ticket
+/// 3089). CPAL asks each time for the buffer's room, which is all of it only at the
+/// first callback and after it ran dry: at its pace a callback finds about one
+/// period's room.
+#[derive(Debug, Default)]
+struct Dry {
+    /// The most room a callback was given, in samples: the whole buffer.
+    whole: usize,
+}
+
+impl Dry {
+    /// Whether a callback given `room` samples found the buffer empty.
+    fn ran_dry(&mut self, room: usize) -> bool {
+        let dry = self.whole > 0 && room >= self.whole;
+        self.whole = self.whole.max(room);
+        dry
+    }
 }
 
 fn device_error(error: &cpal::Error) -> OutputError {
@@ -86,10 +111,22 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
         ErrorKind::DeviceChanged | ErrorKind::Xrun | ErrorKind::RealtimeDenied => {}
         _ => lost.store(true, Ordering::Release),
     };
+    // Raised at the first callback, the only way onto CPAL's thread, and let go with
+    // the callback, which CPAL drops on that thread.
+    let mut raised: Option<Raised> = None;
+    let mut dry = Dry::default();
     device
         .build_output_stream::<T, _, _>(
             stream,
             move |out: &mut [T], _| {
+                if raised.is_none() {
+                    let now = Raised::current();
+                    stats.raised.store(now.is_raised(), Ordering::Relaxed);
+                    raised = Some(now);
+                }
+                if dry.ran_dry(out.len()) {
+                    stats.dry.fetch_add(1, Ordering::Relaxed);
+                }
                 if let Ok(mut callback) = callback.try_lock() {
                     boundary.fill(out, &mut *callback);
                 } else {
@@ -170,6 +207,14 @@ impl WindowsOutput {
             self.stats.rebuilds.load(Ordering::Relaxed),
             self.stats.silent.load(Ordering::Relaxed),
         )
+    }
+
+    pub(crate) fn dry_callbacks(&self) -> u32 {
+        self.stats.dry.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn raised_priority(&self) -> bool {
+        self.stats.raised.load(Ordering::Relaxed)
     }
 }
 
@@ -277,5 +322,32 @@ impl Quiet {
                 callback(&mut self.block);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// As CPAL asks on a buffer of 1,000 samples played 400 at a time.
+    #[test]
+    fn only_a_callback_given_the_whole_buffer_after_the_first_ran_dry() {
+        let mut dry = Dry::default();
+        assert!(!dry.ran_dry(1_000), "the first fills an empty buffer");
+        for room in [400, 400, 600, 400] {
+            assert!(!dry.ran_dry(room), "{room} is a callback at its pace");
+        }
+        assert!(dry.ran_dry(1_000), "late: the device played it all");
+        assert!(!dry.ran_dry(400));
+    }
+
+    /// A first callback given less than the buffer: the empty buffer later is larger.
+    #[test]
+    fn more_room_than_ever_is_dry_too() {
+        let mut dry = Dry::default();
+        assert!(!dry.ran_dry(400));
+        assert!(dry.ran_dry(1_000));
+        assert!(dry.ran_dry(1_000));
+        assert!(!dry.ran_dry(999));
     }
 }

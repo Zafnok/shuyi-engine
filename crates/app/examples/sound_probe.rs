@@ -276,14 +276,24 @@ async fn play_scenario(plan: &Plan, scenario: &Scenario) -> Result<(), String> {
         tick().await;
     }
     player.stop_all(&mut backend);
+    say_output(&backend);
+    Ok(())
+}
+
+/// What the in-house output went through natively: streams built again, callbacks
+/// silent for the lock, callbacks that found the buffer empty, and whether its
+/// thread was raised. A gap in a recording with no dry callback isn't the output's.
+fn say_output(backend: &SoundProbeBackend) {
     #[cfg(all(feature = "in-house-sound", not(target_arch = "wasm32")))]
     {
         let (rebuilds, silent) = backend.output_stats();
+        let (dry, raised) = backend.output_dry();
         say(&format!(
-            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent}}}"#
+            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised}}}"#
         ));
     }
-    Ok(())
+    #[cfg(not(all(feature = "in-house-sound", not(target_arch = "wasm32"))))]
+    let _ = backend;
 }
 
 /// The handles the plan's numbers stand for. Only a queue makes a [`SoundId`]
@@ -437,6 +447,7 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
         tick().await;
     }
     player.stop_all(&mut backend);
+    say_output(&backend);
     // Before the decodes: quad-snd frees each on its mixer thread, so how many
     // pile up in the allocator depends on that thread's timing, and identical runs
     // peaked anywhere from 33 to 82 MB. This is what playing holds.

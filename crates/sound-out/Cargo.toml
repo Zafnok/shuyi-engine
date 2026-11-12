@@ -38,6 +38,9 @@ thiserror.workspace = true
 # with ticket 3032; until then they have only the output that discards.
 [target.'cfg(windows)'.dependencies]
 cpal = { version = "0.18.2", default-features = false }
+# The audio thread's priority (ticket 3089): CPAL's own needs its `realtime` feature,
+# whose crate is MPL-2.0. The same `windows` CPAL already builds on.
+windows = { version = "0.62.2", default-features = false, features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [dev-dependencies]
 # The null output against the mixer's golden table.

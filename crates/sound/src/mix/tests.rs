@@ -974,6 +974,45 @@ fn a_remote_commands_the_mixer_through_its_inbox() {
     assert!(!remote.is_playing(voice));
 }
 
+/// A frame's plays start together, however the audio thread falls between them
+/// (ticket 3089): held, the mixer sees none; published, all at one block.
+#[test]
+fn what_a_remote_holds_back_arrives_together_when_published() {
+    let mut mixer = stereo_mixer(2);
+    let sound = mixer.add_sound(ramp(100)).unwrap_or_else(|e| panic!("{e}"));
+    let (mut remote, mut inbox) = mixer.remote(2);
+    remote.hold();
+    let first = remote
+        .play(sound, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    inbox.apply(&mut mixer);
+    assert!(!mixer.is_playing(first), "held back");
+    let second = remote
+        .play(sound, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        remote.set_volume(first, 0),
+        Err(Full),
+        "what is held takes room"
+    );
+    inbox.apply(&mut mixer);
+    assert!(!mixer.is_playing(second), "still held back");
+    remote.publish();
+    inbox.apply(&mut mixer);
+    assert!(
+        mixer.is_playing(first) && mixer.is_playing(second),
+        "both at once"
+    );
+    assert_eq!(
+        left(&render(&mut mixer, 1)),
+        [2],
+        "the ramp's first frame from each, at one block"
+    );
+    assert_eq!(remote.stop(first), Ok(()));
+    inbox.apply(&mut mixer);
+    assert!(!mixer.is_playing(first), "sent at once after a publish");
+}
+
 #[test]
 fn a_remote_says_full_when_its_voices_are_taken_until_it_hears_one_ended() {
     let mut mixer = stereo_mixer(1);

@@ -5,7 +5,8 @@
 //! has to be shared but atomics. The writer stores a slot's words and then the head
 //! with `Release`, the reader loads the head with `Acquire` and then the words, and
 //! the same the other way for the tail. Only loads and stores: they are what the
-//! smallest targets have.
+//! smallest targets have. The writer may hold slots back, written but not yet in the
+//! head, and publish them together ([`Remote::hold`], ticket 3089).
 //!
 //! [`Mixer::remote`] makes the two ends. The [`Remote`] on the game's side decides
 //! which voice a play goes to, so it can answer [`Full`] on the spot, and the
@@ -33,8 +34,11 @@ pub(super) struct Ring {
     width: usize,
     /// A power of two less one: a slot's index from a counter that runs on.
     mask: u32,
-    /// How many slots were ever written. Only the writer stores it.
+    /// How many slots the reader may read. Only the writer stores it.
     head: AtomicU32,
+    /// How many slots were ever written: `head` and those held back. Only the writer
+    /// touches it.
+    written: AtomicU32,
     /// How many slots were ever read. Only the reader stores it.
     tail: AtomicU32,
 }
@@ -52,6 +56,7 @@ impl Ring {
             width,
             mask: slots - 1,
             head: AtomicU32::new(0),
+            written: AtomicU32::new(0),
             tail: AtomicU32::new(0),
         }
     }
@@ -64,7 +69,7 @@ impl Ring {
     /// How many slots are free, as the writer sees it.
     pub(super) fn room(&self) -> usize {
         let used = self
-            .head
+            .written
             .load(Ordering::Relaxed)
             .wrapping_sub(self.tail.load(Ordering::Acquire));
         usize::try_from(self.capacity().wrapping_sub(used)).unwrap_or(0)
@@ -75,17 +80,27 @@ impl Ring {
         usize::try_from(at & self.mask).unwrap_or(0) * self.width + word
     }
 
-    /// Writes one slot, if one is free.
-    fn push(&self, slot: &[u32]) -> bool {
+    /// Writes one slot, if one is free, and publishes it with every slot held back
+    /// before it unless `held`.
+    fn push(&self, slot: &[u32], held: bool) -> bool {
         if self.room() == 0 {
             return false;
         }
-        let head = self.head.load(Ordering::Relaxed);
+        let at = self.written.load(Ordering::Relaxed);
         for (word, value) in slot.iter().enumerate() {
-            self.words[self.index(head, word)].store(*value, Ordering::Relaxed);
+            self.words[self.index(at, word)].store(*value, Ordering::Relaxed);
         }
-        self.head.store(head.wrapping_add(1), Ordering::Release);
+        self.written.store(at.wrapping_add(1), Ordering::Relaxed);
+        if !held {
+            self.publish();
+        }
         true
+    }
+
+    /// Lets the reader read every slot written.
+    fn publish(&self) {
+        self.head
+            .store(self.written.load(Ordering::Relaxed), Ordering::Release);
     }
 
     /// Reads one slot, if one is there.
@@ -104,13 +119,13 @@ impl Ring {
     /// Writes `count` one-word slots, each from `word`; the caller checked the
     /// room. They appear to the reader together.
     pub(super) fn write_words(&self, count: usize, mut word: impl FnMut(usize) -> u32) {
-        let head = self.head.load(Ordering::Relaxed);
-        let mut at = head;
+        let mut at = self.written.load(Ordering::Relaxed);
         for slot in 0..count {
             self.words[self.index(at, 0)].store(word(slot), Ordering::Relaxed);
             at = at.wrapping_add(1);
         }
-        self.head.store(at, Ordering::Release);
+        self.written.store(at, Ordering::Relaxed);
+        self.publish();
     }
 
     /// Reads up to `count` one-word slots, handing each to `word`, and says how
@@ -280,6 +295,7 @@ pub(super) fn ends(
             voices: alloc::vec![(0, false); voices],
             sounds,
             streams,
+            held: false,
         },
         Inbox { commands, ended },
     )
@@ -321,6 +337,8 @@ pub struct Remote {
     /// The same of the bank's places and the stream slots, which this end hands out.
     sounds: Vec<(u32, bool)>,
     streams: Vec<(u32, bool)>,
+    /// Whether what is sent is held back until [`publish`](Self::publish).
+    held: bool,
 }
 
 impl Remote {
@@ -338,11 +356,27 @@ impl Remote {
     }
 
     fn send(&self, command: Command) -> Result<(), Full> {
-        if self.commands.push(&command.encode()) {
+        if self.commands.push(&command.encode(), self.held) {
             Ok(())
         } else {
             Err(Full)
         }
+    }
+
+    /// Holds back what is sent from here, until [`publish`](Self::publish): the
+    /// audio thread may apply commands between any two that are sent, so the plays
+    /// of one frame would start in different blocks, a few milliseconds apart, and
+    /// copies meant to sound as one wouldn't (ticket 3089). What is held takes room
+    /// in the queue as before.
+    pub fn hold(&mut self) {
+        self.held = true;
+    }
+
+    /// Sends everything held back since [`hold`](Self::hold) at once, and sends at
+    /// once from here on: the audio thread applies it all before one block.
+    pub fn publish(&mut self) {
+        self.held = false;
+        self.commands.publish();
     }
 
     /// A free voice's next id, the voice left free until the play has gone.
@@ -472,7 +506,7 @@ impl Inbox {
         }
         for (index, voice) in (0u32..).zip(mixer.voices.iter_mut()) {
             // Room for every voice at once, so the next pass is only a precaution.
-            if voice.ended && self.ended.push(&[index, voice.generation]) {
+            if voice.ended && self.ended.push(&[index, voice.generation], false) {
                 voice.ended = false;
             }
         }
@@ -489,10 +523,10 @@ mod tests {
         let ring = Ring::new(3, 2);
         assert_eq!(ring.room(), 4);
         for n in 0..4 {
-            assert!(ring.push(&[n, n + 10]));
+            assert!(ring.push(&[n, n + 10], false));
         }
         assert_eq!(ring.room(), 0);
-        assert!(!ring.push(&[9, 9]));
+        assert!(!ring.push(&[9, 9], false));
         let mut slot = [0; 2];
         for n in 0..4 {
             assert!(ring.pop(&mut slot));
@@ -512,11 +546,12 @@ mod tests {
     fn a_rings_counters_wrap_past_their_width() {
         let ring = Ring::new(4, 1);
         ring.head.store(u32::MAX - 1, Ordering::Relaxed);
+        ring.written.store(u32::MAX - 1, Ordering::Relaxed);
         ring.tail.store(u32::MAX - 1, Ordering::Relaxed);
         let mut slot = [0; 1];
         for n in 0..16 {
-            assert!(ring.push(&[n]), "{n}");
-            assert!(ring.push(&[n + 100]), "{n}");
+            assert!(ring.push(&[n], false), "{n}");
+            assert!(ring.push(&[n + 100], false), "{n}");
             assert_eq!(ring.room(), 2);
             assert!(ring.pop(&mut slot));
             assert_eq!(slot[0], n);

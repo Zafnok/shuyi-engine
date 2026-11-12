@@ -85,6 +85,20 @@ Each run of packets the loopback flags silent is a line in the log too (ticket
 quad-snd's own: on Windows it is none, 127 or 441 frames, as its mixing blocks fall.
 So it is never refused, and the scenario marks its joins as `Boundary`s.
 
+The in-house output counts the callbacks that found the device's buffer empty, as
+`dry_callbacks` in each run's `output` line and in each timing's metrics (ticket
+3089). A gap is then said with whose it is: `perf:underruns` and `old-new:underruns`
+add that the output's buffer ran dry so many times, or that it never did, so the gap
+isn't the output's. A gap the output made delays what follows by its own length,
+and nothing of the sound is lost; one the loopback made loses the sound instead.
+
+**Re-running a failed Windows cell.** The gate judges what `sound-parity-windows`
+recorded, and GitHub's "Re-run failed jobs" re-runs `sound-parity` alone, with the
+passed `sound-parity-windows` and its artifact carried over: the same recording
+fails again on every attempt. To record anew, re-run `sound-parity-windows` (its
+"Re-run job", or `gh run rerun --job <its id>`), which runs `sound-parity` after it.
+A failed Windows cell's log in `sound-parity` says so, with the job's id.
+
 To see only the timings of a recording:
 
 ```bash
