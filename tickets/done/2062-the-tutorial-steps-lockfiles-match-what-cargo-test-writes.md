@@ -75,7 +75,10 @@ None.
   engine's dependencies refreshes the ten locks, with the command.
   `site/README.md` and the gate's line in `crates/xtask/src/gates.rs` say
   `--locked`.
-- Shown failing: SCRATCH.
+- Shown failing: scratch commit `b9ef6d4f` put back `main`'s `01-new` lock,
+  and CI's `tutorial (01-new)` failed at Lint: "cannot update the lock
+  file … because --locked was passed" (run 43160958228, job 130993658597).
+  The next commit put the fresh lock back.
 
 Deviations:
 - The ticket named nine locks, `01-new` to `09-test`; `10-ship` (added
