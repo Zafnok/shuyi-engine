@@ -101,6 +101,18 @@ fn each_session_tool_reads_or_plays_the_running_build() {
             .unwrap()
             .contains("the window's size")
     );
+    // Frames over time are a session's: the link sends one picture.
+    let (over_time, _) = called(
+        &mut server,
+        "frame_png",
+        &json!({ "every": 0.05, "count": 4 }),
+    );
+    assert_eq!(over_time["code"], "SH0001");
+    let error = over_time["error"].as_str().unwrap();
+    assert!(
+        error.contains("one picture at a time over the link"),
+        "{error}"
+    );
 
     let (scene, _) = called(&mut server, "scene", &json!({}));
     assert_eq!(scene["ok"], true, "{scene}");

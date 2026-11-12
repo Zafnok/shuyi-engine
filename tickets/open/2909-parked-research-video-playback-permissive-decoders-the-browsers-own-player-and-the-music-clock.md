@@ -159,8 +159,8 @@ skill), not a choice made here.
   desktop (and the Steam Deck if one is at hand; say so if not); what
   each adds to a native binary and to the web build's `.wasm`; peak
   memory, with the frames in flight. **The test clip** is ours or CC0:
-  for example frames of `examples/hello-grid` taken with `frame-png`
-  (or 2514's `--every`, if it is done), encoded by a tool run on the
+  for example frames of `examples/hello-grid` taken with `frame-png
+  --every` (2514, done), encoded by a tool run on the
   side and never shipped. It is credited in the report, and is never
   anything of Visions of Shuyi.
 - **The web build**: the browser's own `<video>` element through a

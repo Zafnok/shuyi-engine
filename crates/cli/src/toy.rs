@@ -29,6 +29,7 @@ use std::collections::BTreeMap;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_platform::harness::Harness;
 use shuyi_platform::headless::HeadlessPlatform;
+use shuyi_platform::script::FRAME_DT;
 use shuyi_platform::{Frame, Show};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::frame::onebit::{self, FRAME_BYTES, Font, PatternMap};
@@ -39,7 +40,7 @@ use shuyi_ui::{Game, GameData};
 use crate::codec::encode_png;
 use crate::contract::session::{Headless, Session};
 use crate::font_atlas::{AtlasChars, BitmapFont, build_atlas};
-use crate::frame_png::{Painter, Script, Shot, one_bit_picture};
+use crate::frame_png::{Capture, Painter, Script, Shot, one_bit_picture};
 use crate::game::{GameArg, GameLang, GameOption, GameTools};
 
 /// The toy's own `frame-png` options.
@@ -152,15 +153,38 @@ impl GameTools for ToyTools {
     ) -> Result<Shot, String> {
         let mut h = Harness::new(game_on(toy::ctx(), options));
         script.play(&mut h);
-        let ctx = h.ctx();
-        let (atlas, png) = box_atlas()?;
-        let clear = ctx.game.blank_cell(&ctx.palette).bg;
-        let painter = Painter::new(atlas, &png, &ctx.game.images, |_| None, clear)?;
-        Ok(Shot {
-            image: painter.render(h.game().buffer(), scale.unwrap_or(2)),
-            shows: h.top_screen().to_owned(),
-            warning: None,
-        })
+        let painter = painter(&h)?;
+        Ok(Shot::new(
+            painter.render(h.game().buffer(), scale.unwrap_or(2)),
+            h.top_screen(),
+        ))
+    }
+
+    /// Plays the toy once: the painter built once, a frame painted after
+    /// the script, then after each `every` frames.
+    fn frames(
+        &self,
+        options: &[GameArg],
+        script: &Script,
+        scale: Option<u32>,
+        capture: Capture,
+    ) -> Result<Vec<Shot>, String> {
+        let mut h = Harness::new(game_on(toy::ctx(), options));
+        script.play(&mut h);
+        let painter = painter(&h)?;
+        let mut shots = Vec::new();
+        for i in 0..capture.count {
+            if i > 0 {
+                for _ in 0..capture.every {
+                    h.frame(&[], FRAME_DT);
+                }
+            }
+            shots.push(Shot::new(
+                painter.render(h.game().buffer(), scale.unwrap_or(2)),
+                h.top_screen(),
+            ));
+        }
+        Ok(shots)
     }
 
     /// The toy on the Playdate's console (50 × 15 cells of 8 × 16
@@ -249,6 +273,15 @@ impl GameTools for ToyTools {
             variants: Vec::new(),
         })
     }
+}
+
+/// The painter of the toy in `h`: its box font, its images as the
+/// missing colour, its blank cell's background as the clear colour.
+fn painter(h: &Harness<Toy>) -> Result<Painter, String> {
+    let ctx = h.ctx();
+    let (atlas, png) = box_atlas()?;
+    let clear = ctx.game.blank_cell(&ctx.palette).bg;
+    Painter::new(atlas, &png, &ctx.game.images, |_| None, clear)
 }
 
 /// Whether pixel `(x, y)` of an 8 × 16 cell is on the box every letter of

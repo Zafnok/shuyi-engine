@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["1133"]
 nick_input: none
-completed:
+completed: 2026-11-11
 ---
 
 # 2514 — Frames over time from frame-png: a sheet, an APNG or a GIF
@@ -289,14 +289,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On the toy, `frame-png toy.png --scale 1 --lobby --keys "Down Down
+- [x] On the toy, `frame-png toy.png --scale 1 --lobby --keys "Down Down
       f" --every 0.05 --count 8` (the lobby's Talk opened) writes a
       sheet of 8 labelled cells, and each of the first five cells
       differs from the next as the line types on. The summary lists
       each cell's time and screen (`talk`).
-- [ ] Without `--count`, `frame-png` writes the same PNG as before (the
+- [x] Without `--count`, `frame-png` writes the same PNG as before (the
       existing tests pass unchanged).
-- [ ] `examples/hello-grid/tests/it/snapshot.rs` has a binary snapshot
+- [x] `examples/hello-grid/tests/it/snapshot.rs` has a binary snapshot
       `walk_sheet.png`: `--stage`, the keys `Enter Up Right Right
       Enter` (your piece picked up, steered and sent), `every` 3 frames,
       `count` 8, 4 columns, through `HelloTools.frames` (the default
@@ -305,21 +305,22 @@ None.
       `test` job. If it differs between OSes, the painter's float step
       that differs is fixed, or a bug ticket is written and this PR
       waits; the test is never loosened.
-- [ ] The toy's `frames` override gives the same images and screens as
+- [x] The toy's `frames` override gives the same images and screens as
       the default.
-- [ ] An APNG decodes (with `png`) to the same frames, each with delay
+- [x] An APNG decodes (with `png`) to the same frames, each with delay
       `every/60`, looping forever.
-- [ ] If the GIF is in this PR: a GIF decodes (with `gif`) to exactly
+- [x] If the GIF is in this PR: a GIF decodes (with `gif`) to exactly
       the same pixels; a frame with 257 colours is an error naming the
       frame and the count; `cargo deny check` passes with the `gif`
-      crate. If it isn't, its ticket is in `tickets/open/`.
-- [ ] Each cap is an error that names it: `--count` over 64,
+      crate. If it isn't, its ticket is in `tickets/open/`. (It isn't:
+      2589.)
+- [x] Each cap is an error that names it: `--count` over 64,
       `every × (count − 1)` over `MAX_FRAMES`, a sheet over 16 384 px.
-- [ ] The MCP `frame_png` with `every` and `count` returns a sheet and
+- [x] The MCP `frame_png` with `every` and `count` returns a sheet and
       the cells' times, in 1133's scripted client test.
-- [ ] `session.frame_png.input.json` and `.output.json`, `VERSION` and
+- [x] `session.frame_png.input.json` and `.output.json`, `VERSION` and
       `versions.json` agree (the schema test passes).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -337,4 +338,90 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, without the GIF: the PR passed the scope's 600 changed
+lines (about 1 400 with the tests, the sheet and the MCP step), so
+`--gif` isn't added and **2589** does it (written in this PR, with
+`shuyi-ship`'s `--gif` line; the skill lines here name only `--apng`).
+
+- `frame_png::then_frames` (a free function, the 2566 clause), `Capture`
+  (`#[non_exhaustive]`, `Capture::new` checks the caps), `Output`
+  (`Sheet { columns }` and `Apng`, `#[non_exhaustive]`), `MAX_CAPTURES`,
+  `every_frames` and `Options::capture`.
+- `GameTools::frames`, a provided method; the toy overrides it, playing
+  once and running `Harness::frame(&[], FRAME_DT)` between captures.
+  A wrapper that keeps the default gives the same shots.
+- `frame-png --every --count --columns --sheet --apng`, matched before
+  the game's options. `--every` is rounded to the nearest frame, as
+  "a value that rounds to 0 frames is an error" implies (a `--wait` is
+  rounded up). `every` is also capped at `MAX_FRAMES` alone, so a
+  `--count 1` capture still fits the APNG's `u16` delay.
+- `frame_png::sheet::build` with its 3 × 5 font; only `build` is public
+  (the layout and the font are the module's own). `codec::encode_apng`.
+- `run` with a capture on a one-bit target paints each frame with
+  `frame_one_bit` and `then_frames` (the scope didn't say; this keeps
+  `--target playdate` working with `--count`).
+- The MCP session's `frame_png` takes `every`, `count` and `columns`
+  and answers one sheet with `cells` (each `millis`, `frame`,
+  `top_screen`); `cells` is left out for one picture, so a plain call
+  answers as before. Over the link, `every`, `count` and `columns` are
+  refused (2560 clause). Contract `VERSION` 46 → 47.
+- `--debug` (2315 clause): the `Step::Debug` stays first, so the
+  channels are on in every capture; a two-frame sheet of the toy's
+  field with `--debug grid` differs cell by cell from the plain one.
+- `walk_sheet.png` was looked at: the piece goes up at +150ms, then
+  right at +250ms and +300ms, each cell under its time.
+- Either-order clauses: 2357, 2736, 2738 and 2739 are open, so nothing
+  to do here; their clauses now say what holds (2514 done). 2909's test
+  clip line says the same. 2248 and 2589 name each other for the `gif`
+  crate.
+- The ticket was 21 days old: checked against `main`; every type,
+  file and ticket it names is where it says, and 2566's and 2332's
+  clauses already said how `then_frames` and `Image` had moved. No
+  fix to the ticket.
+- `proptest` was already a dev-dependency of `shuyi-cli` (step 5).
+- Checked through MCP by 1133's scripted client
+  (`crates/cli/tests/it/mcp.rs`), which runs this branch's server on
+  hello-grid: a 2 × 2 sheet, the cells at frames 4, 7, 10 and 13. The
+  session's own MCP server was `main`'s, whose `frame_png` schema has no
+  `every` yet, so it couldn't be driven from the agent's side.
+- One full `cargo test --workspace` run failed
+  `mcp::forward::tests::dropping_a_forwarded_server_ends_it` (a
+  process's end checked right after a drop, under load); it passed
+  alone and nothing here touches it.
+
+Follow-up: 2589 (the GIF).
+
+Game: nothing to adopt, the game builds none of the changed types
+(`gh search code --repo Zafnok/visions-of-shuyi` for `FramePngInput`,
+`FramePngOutput` and `frame_png::Options` finds nothing, at the pin
+85e8d5c5); a game's `GameTools` gets `frames` by default.
+
+Breaking: shuyi-cli: frame_png::Options: a new public field, `capture`; a literal of it adds `capture: None`.
+
+```migration
+since: 0.2.0
+what: frame-png's options hold frames over time, so a literal of Options names the new field.
+old: Options { out, script, scale, target, game }
+new: Options { out, script, scale, target, game, capture }
+before: |
+  let options = Options { out, script, scale: None, target: None, game: Vec::new() };
+after: |
+  let options = Options { out, script, scale: None, target: None, game: Vec::new(), capture: None };
+```
+
+Breaking: shuyi-cli: mcp::FramePngInput, mcp::FramePngOutput: `FramePngInput` gains `every`, `count` and `columns` and is no longer `Eq` (`every` is an `f32`); `FramePngOutput` gains `cells`. A literal of either names them.
+
+```migration
+since: 0.2.0
+what: The MCP session's frame_png takes frames over time and answers their cells.
+old: FramePngInput { scale }, FramePngOutput { frames, top_screen, width, height }
+new: FramePngInput { scale, every, count, columns }, FramePngOutput { frames, top_screen, width, height, cells }
+before: |
+  let output = FramePngOutput { frames, top_screen, width, height };
+after: |
+  let output = FramePngOutput { frames, top_screen, width, height, cells: Vec::new() };
+```
+
+Book: `testing.md`'s section on a look has a paragraph on `--every`,
+`--count`, `--columns`, `--apng` and the MCP `frame_png`'s `every` and
+`count`.

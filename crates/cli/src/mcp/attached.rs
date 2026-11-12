@@ -255,6 +255,11 @@ impl Attached {
                 "scale: the window's picture has the window's size".to_owned(),
             ));
         }
+        if input.every.is_some() || input.count.is_some() || input.columns.is_some() {
+            return Err(wrong(
+                "every, count and columns: one picture at a time over the link".to_owned(),
+            ));
+        }
         let status = attach::status(&mut self.link)?;
         let shot = attach::picture(&mut self.link)?;
         let output = FramePngOutput {
@@ -262,6 +267,7 @@ impl Attached {
             top_screen: status.top_screen,
             width: shot.width,
             height: shot.height,
+            cells: Vec::new(),
         };
         let limits = shot
             .limit
