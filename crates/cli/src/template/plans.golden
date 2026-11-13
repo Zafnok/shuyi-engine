@@ -11,7 +11,7 @@
 b9876f4aea9d9805 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-b226a9ad3a6bc4f1 README.md
+f3457954aa86c390 README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -43,7 +43,7 @@ cec8c4b0490e8d90 shuyi.ron
 b9876f4aea9d9805 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 53d946a8036df89c Cargo.toml
-b226a9ad3a6bc4f1 README.md
+f3457954aa86c390 README.md
 b7bf83dcce2fb717 clippy.toml
 4d23fce37ed457d0 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -81,10 +81,10 @@ d269a8a87c41fdb0 rust-toolchain.toml
 949443fec874c9d5 .github/actions/private-files/action.yml
 27cd10e8198654c7 .github/workflows/ci.yml
 49ee40e211c25cec .gitignore
-84281f59df0e7cac AGENTS.md
+e796f8e7d3ac8cfd AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-e4e2734021d860a4 README.md
+97e371fab4f3ea4f README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs

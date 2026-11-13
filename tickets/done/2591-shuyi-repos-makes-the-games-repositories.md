@@ -282,7 +282,30 @@ they change; none reaches the network.
   that grows; `doctor::Probe` gains `starts`, with a default body, for a
   program with no flag that succeeds (`ssh-keygen`).
 
-**Real run.** REAL-RUN-PENDING
+**Real run** (2026-11-13, this branch's `shuyi` at 9cef4db8, owner
+`Zafnok`, with Nick's go-ahead). `shuyi new repo-test --template blank
+--name "Repo Test" --set private-files=yes --private-url
+https://github.com/Zafnok/repo-test-assets.git` in a scratch folder, then
+`shuyi repos --dry-run` (ten steps planned, nothing made) and `shuyi
+repos`: every step made. GitHub then held `Zafnok/repo-test` (public,
+two commits: "First commit", "Pin the private files"),
+`Zafnok/repo-test-assets` (private, described "Private files of Repo
+Test. Must stay private.", its README, `.gitattributes`, `.gitignore`
+and a `.gitkeep` in each of `files/text`, `sprites`, `sounds`, `music`,
+`data`, `docs/` and `library/`), two deploy keys there, both
+`read_only=true`, `PRIVATE_ASSETS_KEY` as an Actions and a Dependabot
+secret of the game, and the ruleset "Protect main", active (this account
+takes rulesets on a private repository, so the warning didn't show); no
+`shuyi-repos-*` folder was left in the temporary folder. The game's
+first CI run on `main` (run 43369532073) passed, its private step
+checking out `files/` at the pin with the key ("Private files: 5").
+A second run made nothing ("everything is there"). With the Dependabot
+secret deleted by `gh secret delete`, a run made only that key and
+secret and deleted the stale key of its title. `--new-keys` replaced
+both keys (new ids) and both secrets, and the CI run re-run with them
+passed (attempt 2). The two repositories are left for Nick's sign-off,
+which deletes them: deleting needs the `delete_repo` scope this sign-in
+lacks.
 
 **For Nick.** The sign-off is as the ticket says. A free personal
 account's private repository can't have a ruleset: the run says so as a
