@@ -230,7 +230,7 @@ The kept frame names its colors by role, as `fg:box`. You change the box's color
 {% check(to="rust") %}
 In `lib.rs`, what does `#[cfg(feature = "tools")]` above `pub mod tools;` do?
 
-- [x] It includes the `tools` module only when the crate is built with its `tools` feature. — So the module never ends up in the game you ship ([the game's own tools](#the-game-s-own-tools)).
 - [ ] It always builds the module, and hides it from players while the game runs. — `#[cfg]` decides while compiling: without the feature, the module isn't part of the build at all ([the game's own tools](#the-game-s-own-tools)).
 - [ ] It turns the `tools` feature on for every build. — A feature is turned on by the build, as the `shuyi` alias does with `--features tools`, and `#[cfg]` only asks whether it is on ([the game's own tools](#the-game-s-own-tools)).
+- [x] It includes the `tools` module only when the crate is built with its `tools` feature. — So the module never ends up in the game you ship ([the game's own tools](#the-game-s-own-tools)).
 {% end %}

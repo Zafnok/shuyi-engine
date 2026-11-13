@@ -587,8 +587,8 @@ up the screen?
 `update` starts with `if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel)`.
 In the browser, the player presses Backspace on the title. What happens?
 
-- [x] Nothing: `can_quit()` is false on the web, so `update` answers `Transition::None`. — A game in a browser can't quit, as the player closes the tab, which is also why its help line is empty ([a screen](#a-screen-title-rs)).
 - [ ] The game quits, since Backspace gives Cancel. — `&&` needs both sides true, and on the web the game can't quit ([the screen's jobs](#the-screen-s-jobs)).
+- [x] Nothing: `can_quit()` is false on the web, so `update` answers `Transition::None`. — A game in a browser can't quit, as the player closes the tab, which is also why its help line is empty ([a screen](#a-screen-title-rs)).
 - [ ] The title is popped off the stack, leaving it empty. — `update` only answers `Quit`, `Push` or `None` here, never `Pop` ([the screen's jobs](#the-screen-s-jobs)).
 {% end %}
 
@@ -596,7 +596,7 @@ In the browser, the player presses Backspace on the title. What happens?
 `en.ron`'s help says `{Cancel} leave`. A player changes their Cancel key to Escape. What
 does the help line show?
 
-- [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
 - [ ] `Backspace leave`, until `en.ron` is changed. — The text names an action, never a key, so it follows the player's keymap ([the keys](#the-keys-keymap-ron)).
 - [ ] `{Cancel} leave`, as written. — `{Cancel}` is filled in, and on screen it came out as `Backspace` for the default keys ([the words](#the-words-en-ron)).
+- [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
 {% end %}

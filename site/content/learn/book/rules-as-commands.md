@@ -298,8 +298,8 @@ The garden's `apply` starts with `self.check(command)?;`. What does that line do
 A `History` holds the state a game started in and every command since. How does it give
 back an earlier point of the game?
 
-- [x] It replays the commands up to that point from the first state. — The rules are deterministic, so the same commands always rebuild the same state ([history and undo](#history-and-undo)).
 - [ ] It keeps a copy of the state after each command, and hands back one of those. — There's no need to keep a copy for each move: replaying rebuilds any point ([history and undo](#history-and-undo)).
+- [x] It replays the commands up to that point from the first state. — The rules are deterministic, so the same commands always rebuild the same state ([history and undo](#history-and-undo)).
 - [ ] It applies the opposite of each later command, from the last one back. — It doesn't undo commands one by one; it starts again from the first state and replays ([history and undo](#history-and-undo)).
 {% end %}
 
@@ -307,7 +307,7 @@ back an earlier point of the game?
 A real-time game wants a seed to sprout two seconds after it is planted. How should its
 rules count that time?
 
-- [x] With a timer in the state, advanced by one in each step, set to 120 steps. — Rules have no clock, so they count steps, and a timer fires on the same step at 30 and at 60 frames a second ([time in rules](#time-in-rules)).
 - [ ] By adding up `input.dt()`, the seconds since the last frame, until it reaches two. — A rule timed by `input.dt()` changes with the frame rate, and replays stop agreeing; it is for what only looks ([time in rules](#time-in-rules)).
 - [ ] By reading the clock when the seed is planted, and again in each step. — The rules have no clock: a replay could never give the same answers ([TurnRules](#turnrules)).
+- [x] With a timer in the state, advanced by one in each step, set to 120 steps. — Rules have no clock, so they count steps, and a timer fires on the same step at 30 and at 60 frames a second ([time in rules](#time-in-rules)).
 {% end %}

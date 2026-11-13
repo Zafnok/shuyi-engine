@@ -379,8 +379,8 @@ luck: something outside the state got in, such as a clock or a hash map's order
 {% check() %}
 In a game like the garden, a test passes one run and fails the next. What does that tell you?
 
-- [ ] It was bad luck, so run it again until it passes. — In a deterministic game a flaky test isn't luck: the same seed and commands always give the same state ([the rules](#the-rules)).
 - [x] Something outside the state got into the rules, such as a clock or a hash map's order. — The rules are functions of their state alone, so a result that changes means something else reached them ([when a test fails](#when-a-test-fails)).
+- [ ] It was bad luck, so run it again until it passes. — In a deterministic game a flaky test isn't luck: the same seed and commands always give the same state ([the rules](#the-rules)).
 - [ ] The Harness skipped some frames because the machine was busy. — The Harness runs headless in frames of 1/60 of a second, whatever the machine is doing ([the Harness](#the-harness)).
 {% end %}
 
@@ -395,7 +395,7 @@ Each frame of a session record holds a hash. What does that hash cover?
 {% check(to="rust") %}
 In the property test, `commands in prop::collection::vec(0..3_u8, 0..40)` makes lists of numbers. Which numbers can be in them?
 
-- [x] 0, 1 or 2. — A range like `0..3` includes its start and not its end ([the rules](#the-rules)).
 - [ ] 0, 1, 2 or 3. — The end of `0..3` isn't in the range, which is why `n` can pick item 0, 1 or 2 of a list of three commands ([the rules](#the-rules)).
 - [ ] Any number from 0 to 40. — `0..40` is how long each list may be, up to 39 items, not the numbers in it ([the rules](#the-rules)).
+- [x] 0, 1 or 2. — A range like `0..3` includes its start and not its end ([the rules](#the-rules)).
 {% end %}

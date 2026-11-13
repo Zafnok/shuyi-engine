@@ -155,8 +155,8 @@ Next: the game can test itself.
 The counter shows `("n", &self.history.len())`. The player presses Up into a wall, then
 Undo after a move. What does it count?
 
-- [ ] One more for each key pressed, the wall and the Undo too. — It counts commands in the history, and a key isn't a command ([a moves counter](#a-moves-counter)).
 - [x] Nothing for the wall, and one fewer for the Undo. — A refused step is never recorded, and undo takes a command out of the history ([a moves counter](#a-moves-counter)).
+- [ ] One more for each key pressed, the wall and the Undo too. — It counts commands in the history, and a key isn't a command ([a moves counter](#a-moves-counter)).
 - [ ] Nothing for the wall, but the Undo counts as a move. — Undo already takes one command away, so the count goes down ([a moves counter](#a-moves-counter)).
 {% end %}
 
@@ -164,8 +164,8 @@ Undo after a move. What does it count?
 A player changes their Undo key on the Key bindings screen. Why does the board's help
 line name the new key, with no change to the game?
 
-- [x] The line says `{Undo}`, which is filled with the player's own key for the action each time it's shown. — Text never names a key, so a rebound key shows everywhere ([options and rebinding](#options-and-rebinding)).
 - [ ] The Key bindings screen writes the new key into `en.ron`. — The game's words don't change. The key bindings are saved apart ([options and rebinding](#options-and-rebinding)).
+- [x] The line says `{Undo}`, which is filled with the player's own key for the action each time it's shown. — Text never names a key, so a rebound key shows everywhere ([options and rebinding](#options-and-rebinding)).
 - [ ] `option_rows` tells the board which key is bound to Undo. — `option_rows` only lists the rows of the options screen ([options and rebinding](#options-and-rebinding)).
 {% end %}
 
@@ -174,6 +174,6 @@ In `OptionsScreen::new(option_rows)`, there are no `()` after `option_rows`. Wha
 screen get?
 
 - [ ] The rows, made once when the line runs. — Without `()` the function isn't called here ([options and rebinding](#options-and-rebinding)).
-- [x] The function itself, which the screen calls when it needs its rows. — A function can be passed by name, without calling it ([options and rebinding](#options-and-rebinding)).
 - [ ] Nothing, as the line doesn't compile without `()`. — Passing a function by name is plain Rust ([options and rebinding](#options-and-rebinding)).
+- [x] The function itself, which the screen calls when it needs its rows. — A function can be passed by name, without calling it ([options and rebinding](#options-and-rebinding)).
 {% end %}

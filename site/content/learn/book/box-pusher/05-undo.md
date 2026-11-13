@@ -194,15 +194,15 @@ moves less one. Where does that state come from?
 `send` pushes a command onto the history only if `apply` gave `Ok`. The player walks one
 step, bumps into a wall, then presses Undo. What does Undo take back?
 
-- [x] The step, since the bump into the wall was never recorded. — A refused command changes nothing and isn't kept, so a walk into a wall is no move ([history](#history)).
 - [ ] The bump into the wall, so nothing seems to happen until Undo is pressed again. — Only commands the rules accepted go into the history ([history](#history)).
+- [x] The step, since the bump into the wall was never recorded. — A refused command changes nothing and isn't kept, so a walk into a wall is no move ([history](#history)).
 {% end %}
 
 {% check() %}
 `is_repeatable` is `!matches!(self, Self::Confirm | Self::Cancel)`. Which actions repeat
 while their key is held?
 
-- [x] Every action but Confirm and Cancel, Undo included. — The `!` turns "is Confirm or Cancel" around, so that a held key never confirms ten times ([the game's own actions](#the-game-s-own-actions)).
 - [ ] Only Confirm and Cancel. — `matches!` asks whether it is Confirm or Cancel, and the `!` in front means not ([the game's own actions](#the-game-s-own-actions)).
 - [ ] None, since a game's own actions don't repeat. — `is_repeatable` decides for each action of the game's own enum ([the game's own actions](#the-game-s-own-actions)).
+- [x] Every action but Confirm and Cancel, Undo included. — The `!` turns "is Confirm or Cancel" around, so that a held key never confirms ten times ([the game's own actions](#the-game-s-own-actions)).
 {% end %}

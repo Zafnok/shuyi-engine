@@ -320,8 +320,8 @@ What does `cargo shuyi check` say?
 {% check() %}
 `garden.ron` says `grow_percent: 150`. `grow_percent` is a `u8`. What catches it?
 
-- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
 - [ ] The RON format, with "Integer is out of bounds". — A `u8` goes up to 255, so 150 reads fine ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
 - [ ] Nothing: the game reads it, and every seed grows. — `read_plan` gives back an error when `plan.grow_percent > 100` ([reading it through the registry](#reading-it-through-the-registry)).
 {% end %}
 
@@ -329,7 +329,7 @@ What does `cargo shuyi check` say?
 A test makes `Bundle::new(vec![layer, game().bundle().layers()[0]])`, where `layer` holds
 only a `garden.ron`. Where do `garden.ron` and `en.ron` come from?
 
-- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
 - [ ] Both from the game's layer, since the game's files come first. — The order of the list decides, and `layer` is first ([layers](#layers)).
 - [ ] `garden.ron` from the mod's layer, and no `en.ron` at all. — A layer laid over the game's files only replaces the ones it has, and the test checks `bundle.has("en.ron")` ([layers](#layers)).
+- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
 {% end %}

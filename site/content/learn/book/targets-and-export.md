@@ -460,6 +460,6 @@ You ran `cargo shuyi web --release` and double-clicked `dist/web/index.html`. Th
 A public web demo must not hold chapter two. What keeps it out?
 
 - [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
-- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
 - [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
+- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
 {% end %}

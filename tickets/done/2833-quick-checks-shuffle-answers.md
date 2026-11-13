@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-13
 ---
 
 # 2833 — A quick check's right answer isn't always first
@@ -73,12 +73,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On a built page, reloading a few times shows a check's buttons in different orders, and choosing the right one still says **Right.** with its own why; a wrong one says **Not quite.** with its own why.
-- [ ] With JavaScript off, the `<details>` list is in the written order.
-- [ ] After step 2, no place holds more than half of the single-right checks; `cargo xtask check-book` passes.
-- [ ] A test fails `check-book` when 3 of 4 single-right checks have it first, and passes at 2 of 4.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] On a built page, reloading a few times shows a check's buttons in different orders, and choosing the right one still says **Right.** with its own why; a wrong one says **Not quite.** with its own why.
+- [x] With JavaScript off, the `<details>` list is in the written order.
+- [x] After step 2, no place holds more than half of the single-right checks; `cargo xtask check-book` passes.
+- [x] A test fails `check-book` when 3 of 4 single-right checks have it first, and passes at 2 of 4.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -89,5 +89,31 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `site/static/book-check.js` pairs each button with its why, shuffles the
+  pairs (Fisher–Yates, `Math.random`) and puts the buttons back before the
+  `role="status"` line; the click handlers come from the pairs.
+- The answers of the 20 chapters' and steps' checks were reordered (whole
+  lines only; each file's lines are the same set as before): of the 60
+  checks with one right answer, it is now first in 20, second in 21 and
+  third in 19. The one check with two right answers is unchanged.
+- `cargo xtask check-book` reads all of Learn's pages, then fails when one
+  place holds the right answer of more than half of the single-right
+  checks: `the right answer is first in 43 of 60 quick checks, second in
+  16, third in 1: spread them (2833)` on `main`'s pages. `book::check_pages`
+  is the new entry the tests use; the rule is in the module's doc comment,
+  `check.html`'s comment and `site/README.md`, *Quick checks*.
+- Tests: `the_right_answers_are_spread_across_the_book` (3 of 4 first
+  fails, 2 of 4 passes, a check with two right answers counts for neither).
+- Manual, in the built-in browser on `zola serve` at a434b973 (`main`'s
+  tip, nothing newer to merge) plus this diff: on *Walking*, two loads
+  gave the checks' right answers at places `Rww/wRw/wwR` and
+  `wRw/wwR/Rww`; clicking every button gave **Right.** or **Not quite.**
+  with the why its list item holds (9 of 9). The served `<details>` list
+  is in the written order (it is never moved; only the buttons are).
+- Deviation: the ticket counted 61 checks; the rule counts 60, those with
+  exactly one right answer.
+
+No break. No `Behaviour:` line: the site and `xtask` aren't API a game uses.
+
+Book: none, the change is to the book's checks themselves and its authors'
+guide (`site/README.md`), not to an engine item a chapter teaches.
