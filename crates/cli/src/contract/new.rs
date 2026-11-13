@@ -445,6 +445,19 @@ pub fn plan(
     Ok((plan, limits))
 }
 
+/// The game's name and its crate's name for `input` under `cwd`: `--name`,
+/// else its folder's name; or why the name can't be one.
+fn name_of(cwd: &Path, input: &NewInput) -> Result<(String, String), String> {
+    let folder = std::path::absolute(cwd.join(&input.dir))
+        .ok()
+        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_default();
+    let name = input.name.clone().unwrap_or(folder);
+    check_name(&name)?;
+    let krate = crate_name(&name)?;
+    Ok((name, krate))
+}
+
 /// `new`: the game `input` asks for, made under `cwd`.
 pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
     match make(cwd, input) {
@@ -460,13 +473,7 @@ pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
 fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code, String)> {
     let refused = |e| (codes::WRONG_ARGUMENTS, e);
     let dir = cwd.join(&input.dir);
-    let folder = std::path::absolute(&dir)
-        .ok()
-        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
-        .unwrap_or_default();
-    let name = input.name.clone().unwrap_or(folder);
-    check_name(&name).map_err(refused)?;
-    let krate = crate_name(&name).map_err(refused)?;
+    let (name, krate) = name_of(cwd, input).map_err(refused)?;
     let template = template::built_in().map_err(|e| (codes::FILE, e.to_string()))?;
     let (plan, mut limits) = plan(cwd, &template, input, &name, &krate)?;
     let applied = template::apply(&plan, &dir, input.force).map_err(|e| {
@@ -503,13 +510,23 @@ pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
          \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
-         \x20          [--force] [--json]\n\n\
+         \x20          [--force] [--json]\n\
+         \x20          [--github | --no-github] [--owner LOGIN] [--visibility public|private]\n\
+         \x20          [--assets-visibility private|public] [--private KINDS | --private none]\n\
+         \x20          [--private-folder PATH]...\n\n\
          Makes a new game in <dir> (missing or empty, or any with --force) from the engine's\n\
          template, its parts picked by the answers: --template's short name ({names}),\n\
          then --answers' file, then each --set. The game depends on the engine's repository\n\
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\
-         --private-url names (https://github.com/<owner>/<repo>.git)."
+         --private-url names (https://github.com/<owner>/<repo>.git).\n\n\
+         In a terminal, it then asks whether to put the game on GitHub (gh, signed in):\n\
+         --github makes <owner>/<crate name> (public by default) and, unless --private\n\
+         none, <owner>/<crate name>-assets (private by default) for the KINDS of files\n\
+         kept private and each --private-folder, with `{command} repos`. The KINDS are\n\
+         {kinds} (all by default). Each flag answers its question. Run elsewhere, or with --json,\n\
+         it asks nothing and makes no repository unless --github is given (not with --json).",
+        kinds = questions::KINDS.map(|(kind, _)| kind).join(",")
     )
 }
 
@@ -580,6 +597,8 @@ pub fn text(output: &NewOutput) -> String {
     }
     out
 }
+
+pub(crate) mod questions;
 
 #[cfg(test)]
 mod tests;

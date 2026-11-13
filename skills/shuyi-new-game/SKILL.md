@@ -55,6 +55,12 @@ game one part at a time.
    the stages and the skills. A folder that isn't empty is refused
    (`SH0001`); `--force` writes into it.
 
+   In a terminal, `new` also asks whether to put the game on GitHub;
+   run by an agent (no terminal, `--json` or the MCP `new` tool) it asks
+   nothing and makes no repository. `--github`, like `cargo shuyi repos`
+   later, creates repositories, keys and secrets on the developer's
+   account: ask them first, and pass their answers as flags.
+
 3. **Read the game's `AGENTS.md`.** It holds the rules a game on the
    engine keeps (the layers, skins, actions), the tools, the short path
    and the gates. It names the engine's own rules and docs. Every later

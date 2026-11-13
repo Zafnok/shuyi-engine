@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2590", "2591"]
 nick_input: sign-off
-completed:
+completed: 2026-11-13
 ---
 
 # 2592 — `shuyi new` asks about the game's repositories
@@ -126,22 +126,25 @@ ones you want. Then delete the two repositories it made.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new "Moon Garden"` in a terminal, with every default taken,
+- [x] ~~`shuyi new "Moon Garden"` in a terminal, with every default taken,
       makes the game, `<you>/moon-garden` (public) and
       `<you>/moon-garden-assets` (private, with `files/text`,
       `files/sprites`, `files/sounds`, `files/music`, `files/data`,
-      `docs`, `library`), and the game's first CI run passes.
-- [ ] `--no-github` asks nothing and makes only the folder, as today.
-- [ ] `--private none --github` makes only the public repository, with
+      `docs`, `library`), and the game's first CI run passes.~~ (not
+      done: checked against 2591's fake GitHub, which makes both
+      repositories and those folders; a real run on the account is
+      Nick's sign-off)
+- [x] `--no-github` asks nothing and makes only the folder, as today.
+- [x] `--private none --github` makes only the public repository, with
       no `private_assets` in `shuyi.ron`.
-- [ ] `--private sprites --private-folder files/levels` makes only
+- [x] `--private sprites --private-folder files/levels` makes only
       `files/sprites` and `files/levels` (with `docs` and `library`).
-- [ ] A run with stdin not a terminal, `--json` and the MCP `new` tool
+- [x] A run with stdin not a terminal, `--json` and the MCP `new` tool
       ask nothing and make no repository.
-- [ ] A `repos` failure leaves the game folder and names `cargo shuyi
+- [x] A `repos` failure leaves the game folder and names `cargo shuyi
       repos`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -154,5 +157,63 @@ ones you want. Then delete the two repositories it made.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** `crates/cli/src/contract/new/questions.rs` (crate-private):
+the flags (`--github`/`--no-github`, `--owner`, `--visibility`,
+`--assets-visibility`, `--private <kinds>|none`, repeatable
+`--private-folder`) peeled off before `new::parse_args`, whose public
+signature is unchanged; the six questions, each a function over a
+`Terminal` (a `BufRead` and a `Write`), re-asked on a wrong answer, the
+default on an empty line, an error (nothing written) when input ends;
+`new_with`, which settles the answers, composes `private-files=yes` with
+`https://github.com/<owner>/<crate name>-assets.git` (the owner from
+`--owner` or `gh api user --jq .login`), writes the game, then runs
+`repos::repos` in its folder with the same owner, visibilities and
+folders. A `repos` failure keeps the game and says to run `cargo shuyi repos`
+in its folder to finish, with the flags that differ from `repos`'
+defaults. The terminal check is `on_a_terminal()`, false under
+`cfg(test)` (a test's stdin may be a terminal). `crates/cli/src/contract/cli.rs`
+calls it; `repos::check_owner` and `Visibility::parse` became `pub`
+(crate-private module).
+
+**Deviations.**
+- The first acceptance criterion (a real run, and the game's first CI
+  run passing) is left unticked: it was checked against 2591's fake
+  GitHub only, and the real run is Nick's sign-off (below).
+- 2502 is still open, so the questions are plain prompts in `new`; 2502's
+  clause now says what holds and moves them into its wizard.
+- Decisions the ticket left open: `--github` with `--json` is refused
+  (SH0001) rather than ignored; `--owner`/`--visibility`/`--assets-visibility`
+  without `--github` (off a terminal or with `--no-github`) are refused;
+  `--private none` with `--private-folder` or `--set private-files=yes` is
+  refused; question 4 needs one kind at least (no private files is
+  question 3's no); an answer of `public` to question 6 is the consent
+  `repos`' `--yes` asks for. Without `--github`, `--private`/`--private-folder`
+  add the part only with `--private-url`, as the ticket says; `--private-url`
+  alone keeps today's behaviour (it still needs `--set private-files=yes`).
+- `gh` signed out (or not installed) with `--github` and no `--owner`
+  stops before anything is written (SH3014), naming `gh auth login`.
+- The box-pusher tutorial's step 1 now passes `--no-github`, so a reader
+  isn't asked to make repositories on their first command; the shipped
+  `shuyi-new-game` skill says an agent's `new` asks nothing and that
+  `--github` needs the developer's yes. 2593's skill clause got the same
+  handoff.
+- Step 5 (one real run on GitHub, then deleting what it made) was not
+  done by the agent: it creates repositories on Nick's account. It is
+  the sign-off's run.
+
+Book: updated, `site/content/learn/book/quick-start.md` (*Make a game*,
+*On GitHub*) and `box-pusher/01-new.md`.
+
+Behaviour: shuyi-cli: `shuyi new` run in a terminal asks whether to put the game on GitHub (default yes when `gh` is installed) before writing it; off a terminal, with `--json` and from the MCP `new` tool nothing changes. `new`'s usage text lists the new flags.
+
+No break: `contract::new`'s public items keep their signatures, and the
+contract's schema is unchanged. Searched the game (`gh search code --repo
+Zafnok/visions-of-shuyi 'shuyi new'`, `'private-url'`): it only names
+`shuyi new` in its copies of the skill pack; it calls no `NewInput`.
+Game: nothing to adopt, the game never runs `shuyi new`.
+
+**Nick input:** the sign-off is still to do: run `shuyi new "Repo Test"`
+in a terminal, take or change the answers, and say whether the wording
+and defaults are right; then delete `<you>/repo-test` and
+`<you>/repo-test-assets` (`gh repo delete <you>/repo-test --yes`, which
+needs `gh auth refresh -s delete_repo`).

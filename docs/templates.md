@@ -37,6 +37,21 @@ the files made, the parts, the modules turned on, the stages, the skills
 part serves, but a question's default, which adds nothing by design:
 `private-files` = `no`).
 
+In a terminal, after the template's answers, `shuyi new` asks whether
+to put the game on GitHub (with `gh`, signed in), each repository's
+visibility, and which kinds of files go in a private repository
+(`files/text`, `files/sprites`, `files/sounds`, `files/music`,
+`files/data`, and folders of the developer's own). With a private
+repository it answers `private-files` = `yes` and sets `--private-url` to
+`https://github.com/<owner>/<crate name>-assets.git` itself, writes the
+game, then runs `shuyi repos` in it ([ADR-0112](adr/0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md)).
+Each question has its flag (`--github`/`--no-github`, `--owner`,
+`--visibility`, `--assets-visibility`, `--private <kinds>|none`,
+`--private-folder <path>`). Off a terminal, with `--json` and from the
+MCP server's `new` tool, nothing is asked and no repository is made
+(`--github` is refused with `--json`); there `--private` adds the part
+only with `--private-url`.
+
 An answers file maps each question to the ids of its answers:
 
 ```ron
