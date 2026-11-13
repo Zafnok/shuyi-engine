@@ -69,6 +69,7 @@ python -m http.server --directory public 1111
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
 | `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script ([The playground](#the-playground)) |
+| `static/ron-paint.js`, `tests/ron-paint.mjs` | The playground's RON colors: a tokenizer by `syntaxes/ron.sublime-syntax`'s rules, and its test against Zola's own output, which CI's `site` job runs with Node ([The playground](#the-playground)) |
 | `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `copy-playground.sh`, `static/playground/`, `static/learn/` | `copy-playground.sh` copies the playgrounds' files: Hello, Grid's from `examples/hello-grid/files/` into `static/playground/files/`, and each step's from its project into `static/learn/book/box-pusher/<step>/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
@@ -368,6 +369,18 @@ the tab's storage. It edits data, never Rust: a page can't build Rust.
   got no file reports nothing.
 - With no JavaScript, the game plays its own files and the editors and the
   buttons are hidden.
+- Each editor is a `<textarea>` over an `aria-hidden` `<pre>` holding the
+  same text (ticket 2832), in one grid cell with the same box, font and
+  spacing, its scrolling mirrored. Once `playground.js` has painted it, the
+  textarea's text is transparent and the reader sees the copy, a `.ron`
+  file's (`data-lang="ron"`) colored by `static/ron-paint.js` with the
+  classes Zola writes for a `ron` code block, so `style.css` colors both
+  alike. A `.map` or `.dlg` file stays plain, as its `text` block is. The
+  tokenizer follows `syntaxes/ron.sublime-syntax`: change one and change
+  the other, and `node tests/ron-paint.mjs [<a built site>]` (Zola on
+  `PATH`) checks they agree, on Hello, Grid's and the project's `.ron`
+  files, its own cases, and each `ron` block of a build. Whatever sets an
+  editor's text calls `set`, which paints it.
 
 `copy-playground.sh` copies each list's files, and fails one that isn't
 there. `check-build.sh` checks that each page with a playground loads

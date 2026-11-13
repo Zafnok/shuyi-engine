@@ -10,11 +10,19 @@
     tabs' order, each a path under the game's `files/`. `lazy` loads the
     frame only when it is shown: a step's playground is folded until the
     reader opens it. With no JavaScript the game plays its own files and the
-    editors stay hidden. -#}
+    editors stay hidden.
+
+    Each editor is a `<textarea>` over a `<pre>` the script paints with the
+    same text, colored when the file is RON (`data-lang`, ticket 2832): the
+    reader types in the textarea, whose own text is transparent, and sees
+    the painted copy under it, which a screen reader skips. -#}
 
 {% macro script() -%}
 {#- Not deferred: its listener must be there before the game reports, and
-    it hands this page's files to the game before the frame loads. #}
+    it hands this page's files to the game before the frame loads.
+    `ron-paint.js` colors the RON editors (ticket 2832), first, so the
+    playground's script finds it. #}
+<script src="{{ get_url(path='ron-paint.js', cachebust=true) }}"></script>
 <script src="{{ get_url(path='playground.js', cachebust=true) }}"></script>
 {%- endmacro script %}
 
@@ -37,7 +45,10 @@
       {%- set id = name | replace(from=".", to="-") | replace(from="/", to="-") %}
       <div class="playground-panel" role="tabpanel" id="playground-panel-{{ id }}" aria-labelledby="playground-tab-{{ id }}"{% if not loop.first %} hidden{% endif %}>
         <label for="playground-file-{{ id }}">files/{{ name }}</label>
-        <textarea id="playground-file-{{ id }}" data-file="{{ name }}" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" rows="16"></textarea>
+        <div class="playground-code">
+          <pre class="playground-paint" aria-hidden="true"><code></code></pre>
+          <textarea id="playground-file-{{ id }}" data-file="{{ name }}"{% if name is ending_with(".ron") %} data-lang="ron"{% endif %} spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" rows="16"></textarea>
+        </div>
       </div>
       {%- endfor %}
       <div class="playground-actions">
