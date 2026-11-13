@@ -126,14 +126,11 @@ ones you want. Then delete the two repositories it made.
 
 ## Acceptance criteria
 
-- [x] ~~`shuyi new "Moon Garden"` in a terminal, with every default taken,
+- [x] `shuyi new "Moon Garden"` in a terminal, with every default taken,
       makes the game, `<you>/moon-garden` (public) and
       `<you>/moon-garden-assets` (private, with `files/text`,
       `files/sprites`, `files/sounds`, `files/music`, `files/data`,
-      `docs`, `library`), and the game's first CI run passes.~~ (not
-      done: checked against 2591's fake GitHub, which makes both
-      repositories and those folders; a real run on the account is
-      Nick's sign-off)
+      `docs`, `library`), and the game's first CI run passes.
 - [x] `--no-github` asks nothing and makes only the folder, as today.
 - [x] `--private none --github` makes only the public repository, with
       no `private_assets` in `shuyi.ron`.
@@ -176,9 +173,6 @@ calls it; `repos::check_owner` and `Visibility::parse` became `pub`
 (crate-private module).
 
 **Deviations.**
-- The first acceptance criterion (a real run, and the game's first CI
-  run passing) is left unticked: it was checked against 2591's fake
-  GitHub only, and the real run is Nick's sign-off (below).
 - 2502 is still open, so the questions are plain prompts in `new`; 2502's
   clause now says what holds and moves them into its wizard.
 - Decisions the ticket left open: `--github` with `--json` is refused
@@ -197,9 +191,9 @@ calls it; `repos::check_owner` and `Visibility::parse` became `pub`
   `shuyi-new-game` skill says an agent's `new` asks nothing and that
   `--github` needs the developer's yes. 2593's skill clause got the same
   handoff.
-- Step 5 (one real run on GitHub, then deleting what it made) was not
-  done by the agent: it creates repositories on Nick's account. It is
-  the sign-off's run.
+- Step 5 (one real run on GitHub) was Nick's: the agent's run was
+  refused by the session's permission check, so he ran it in his
+  terminal (below). He deletes what it made.
 
 Book: updated, `site/content/learn/book/quick-start.md` (*Make a game*,
 *On GitHub*) and `box-pusher/01-new.md`.
@@ -212,8 +206,23 @@ Zafnok/visions-of-shuyi 'shuyi new'`, `'private-url'`): it only names
 `shuyi new` in its copies of the skill pack; it calls no `NewInput`.
 Game: nothing to adopt, the game never runs `shuyi new`.
 
-**Nick input:** the sign-off is still to do: run `shuyi new "Repo Test"`
-in a terminal, take or change the answers, and say whether the wording
-and defaults are right; then delete `<you>/repo-test` and
-`<you>/repo-test-assets` (`gh repo delete <you>/repo-test --yes`, which
-needs `gh auth refresh -s delete_repo`).
+**The real run** (2026-11-13, Nick, in his terminal, on cf6f36b4, the
+branch at `main`'s 4a56e985): `shuyi new repo-test-2592 --name "Repo
+Test 2592"`, Enter at all six questions. It made the game (79 files,
+parts `base, private-files`), `Zafnok/repo-test-2592` (public) and
+`Zafnok/repo-test-2592-assets` (private, `files/` with `text`,
+`sprites`, `sounds`, `music`, `data`, and `docs/`, `library/`), both
+deploy keys, the Actions and Dependabot secrets, the ruleset, and pushed
+`main`. The game's first CI run (`CI`, run 43471649527) passed, its
+step *The private files* among the gates' (success). `Zafnok/repo-test`
+and `repo-test-assets`, made earlier that day, were left alone.
+
+**Nick's sign-off** and what it changed:
+- "it's unclear that Y is default": each question now ends with a line
+  of its choices and what Enter picks (`yes or no, or press Enter for
+  yes:`), in place of `[Y/n]` and `[public]`; the questions were
+  reworded to read as questions (`Should <repo> be public or
+  private?`).
+- The example files a new game gets (the skills' `bots.rs`,
+  `playtest.ron`…) should be optional, on by default: recorded in
+  `docs/decisions.md` (2026-11-13) and written as ticket 2597.

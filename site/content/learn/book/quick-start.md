@@ -97,8 +97,8 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. In a terminal it first asks whether to put the game on GitHub too: press Enter to
-take each answer in brackets, or answer no and do it later ([On GitHub](#on-github),
+it. In a terminal it first asks whether to put the game on GitHub too: each question
+says what pressing Enter picks, or answer no and do it later ([On GitHub](#on-github),
 below). A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.

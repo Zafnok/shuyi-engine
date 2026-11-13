@@ -181,16 +181,20 @@ pub fn on_a_terminal() -> bool {
     !cfg!(test) && io::stdin().is_terminal() && io::stdout().is_terminal()
 }
 
-/// Asks `question` until `parse` takes the line typed (trimmed; empty for
-/// the default), saying why it didn't each time. No line left is an
-/// error.
+/// Asks `question`, then on a line of its own the `choices` and what
+/// pressing Enter picks, `default`; until `parse` takes the line typed
+/// (trimmed; empty for the default), saying why it didn't each time. No
+/// line left is an error.
 fn ask<T>(
     terminal: &mut Terminal<'_>,
     question: &str,
+    choices: &str,
+    default: &str,
     parse: impl Fn(&str) -> Result<T, String>,
 ) -> io::Result<T> {
+    writeln!(terminal.out, "{question}")?;
     loop {
-        write!(terminal.out, "{question} ")?;
+        write!(terminal.out, "  {choices}, or press Enter for {default}: ")?;
         terminal.out.flush()?;
         let mut line = String::new();
         if terminal.input.read_line(&mut line)? == 0 {
@@ -240,25 +244,36 @@ fn public_or_private(default: Visibility) -> impl Fn(&str) -> Result<Visibility,
     }
 }
 
+/// `yes` or `no`, as a default's name.
+fn word(yes: bool) -> &'static str {
+    if yes { "yes" } else { "no" }
+}
+
 /// Question 1: whether to put the game `name` on GitHub; no by default
 /// when `gh` isn't installed.
 pub fn github(terminal: &mut Terminal<'_>, name: &str, gh: bool) -> io::Result<bool> {
     let question = if gh {
-        format!("Put {name} on GitHub? It needs the GitHub CLI (gh), signed in. [Y/n]")
+        format!("Put {name} on GitHub? It needs the GitHub CLI (gh), signed in.")
     } else {
         format!(
             "Put {name} on GitHub? It needs the GitHub CLI (gh), signed in, and gh isn't \
-             installed (https://cli.github.com). [y/N]"
+             installed (https://cli.github.com)."
         )
     };
-    ask(terminal, &question, yes_or_no(gh))
+    ask(terminal, &question, "yes or no", word(gh), yes_or_no(gh))
 }
 
 /// Question 2: the game's repository `repo`'s visibility.
 pub fn game_visibility(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<Visibility> {
     let question =
-        format!("{repo}: public (GitHub's CI is free on a public repository) or private? [public]");
-    ask(terminal, &question, public_or_private(Visibility::Public))
+        format!("Should {repo} be public or private? GitHub's CI is free on a public repository.");
+    ask(
+        terminal,
+        &question,
+        "public or private",
+        "public",
+        public_or_private(Visibility::Public),
+    )
 }
 
 /// Question 3: whether to keep some files in the private repository
@@ -266,42 +281,50 @@ pub fn game_visibility(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<Vi
 pub fn private(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<bool> {
     let question = format!(
         "Keep some files in a second, private repository, {repo}, so they aren't in the public \
-         code? [Y/n]"
+         code?"
     );
-    ask(terminal, &question, yes_or_no(true))
+    ask(terminal, &question, "yes or no", "yes", yes_or_no(true))
 }
 
 /// Question 4: which kinds of files to keep private, at least one.
 pub fn which_kinds(terminal: &mut Terminal<'_>) -> io::Result<Vec<String>> {
-    let mut question = String::from("Which kinds? Pick by number or name, several with commas:\n");
+    let mut question = String::from("Which kinds of files go there?");
     for (at, (kind, holds)) in KINDS.iter().enumerate() {
         // Writing to a `String` can't fail.
-        let _ = writeln!(
+        let _ = write!(
             question,
-            "  {}. {:<16} {holds}",
+            "\n  {}. {:<16} {holds}",
             at + 1,
             format!("files/{kind}/")
         );
     }
-    let _ = write!(question, "[{}]", KINDS.map(|(kind, _)| kind).join(", "));
-    ask(terminal, &question, |line| {
-        if line.is_empty() {
-            return Ok(DEFAULT_FOLDERS.map(str::to_owned).to_vec());
-        }
-        match kinds(line)? {
-            picked if picked.is_empty() => Err(
-                "pick one kind at least: to keep none, answer no to the question before".to_owned(),
-            ),
-            picked => Ok(picked),
-        }
-    })
+    ask(
+        terminal,
+        &question,
+        "numbers or names, several with commas",
+        "all five",
+        |line| {
+            if line.is_empty() {
+                return Ok(DEFAULT_FOLDERS.map(str::to_owned).to_vec());
+            }
+            match kinds(line)? {
+                picked if picked.is_empty() => Err(
+                    "pick one kind at least: to keep none, answer no to the question before"
+                        .to_owned(),
+                ),
+                picked => Ok(picked),
+            }
+        },
+    )
 }
 
 /// Question 5: the developer's own folders under `files/`.
 pub fn other_folders(terminal: &mut Terminal<'_>) -> io::Result<Vec<String>> {
     ask(
         terminal,
-        "Other folders under files/? (comma list, empty for none) []",
+        "Any other folders under files/ to keep there?",
+        "folders, several with commas (levels, maps)",
+        "none",
         own_folders,
     )
 }
@@ -309,8 +332,14 @@ pub fn other_folders(terminal: &mut Terminal<'_>) -> io::Result<Vec<String>> {
 /// Question 6: the private repository `repo`'s visibility.
 pub fn assets_visibility(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<Visibility> {
     let question =
-        format!("{repo}: private or public? Public makes these files anyone's. [private]");
-    ask(terminal, &question, public_or_private(Visibility::Private))
+        format!("Should {repo} be private or public? Public makes these files anyone's.");
+    ask(
+        terminal,
+        &question,
+        "private or public",
+        "private",
+        public_or_private(Visibility::Private),
+    )
 }
 
 /// What `new` made, and what `repos` did after it.

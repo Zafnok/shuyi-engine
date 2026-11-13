@@ -1801,3 +1801,22 @@ many commits setting up its private assets repository:
   template.
 
 Tickets 2590–2593.
+
+## 2026-11-13: a new game's example files are optional
+
+Source: Nick, in the sign-off of ticket 2592 on 2026-11-13, after a run
+of `shuyi new` listed every file it wrote:
+
+> "there's a lot of crap included in a default setup, probably should be
+> an option ticked by default to include example stuff, otherwise a more
+> skilled person might not want all this default stuff like bots.rs,
+> playtest.ron, etc"
+
+**Rules:**
+
+- `shuyi new` asks whether to include the example files; the answer is
+  yes by default, so a newcomer gets them as today.
+- Answering no leaves them out, and the game it makes still builds,
+  passes its gates and keeps its skills.
+
+Ticket 2597.

@@ -133,23 +133,26 @@ fn the_yes_or_no_questions_take_an_empty_line_as_their_default_and_ask_again() {
     assert!(answer.unwrap());
     assert_eq!(
         out,
-        "Put Moon Garden on GitHub? It needs the GitHub CLI (gh), signed in. [Y/n] "
+        "Put Moon Garden on GitHub? It needs the GitHub CLI (gh), signed in.\n  yes or no, or \
+         press Enter for yes: "
     );
     // Without gh the default is no, and the question says why.
     let (answer, out) = answered("\n", |t| github(t, "Moon Garden", false));
     assert!(!answer.unwrap());
     assert!(out.contains("gh isn't installed"), "{out}");
-    assert!(out.ends_with("[y/N] "), "{out}");
+    assert!(out.ends_with("press Enter for no: "), "{out}");
     let (answer, out) = answered("maybe\nNo\n", |t| github(t, "G", true));
     assert!(!answer.unwrap());
-    assert_eq!(out.matches("Put G on GitHub?").count(), 2);
+    // The question once, its choices again after a wrong answer.
+    assert_eq!(out.matches("Put G on GitHub?").count(), 1);
+    assert_eq!(out.matches("press Enter for yes").count(), 2);
     assert!(out.contains("  `maybe`: yes or no\n"), "{out}");
     let (answer, out) = answered("\n", |t| private(t, "you/g-assets"));
     assert!(answer.unwrap());
     assert_eq!(
         out,
         "Keep some files in a second, private repository, you/g-assets, so they aren't in the \
-         public code? [Y/n] "
+         public code?\n  yes or no, or press Enter for yes: "
     );
     assert!(!answered("n\n", |t| private(t, "r")).0.unwrap());
 }
@@ -160,14 +163,15 @@ fn the_visibility_questions_default_to_public_then_private() {
     assert_eq!(answer.unwrap(), Visibility::Public);
     assert_eq!(
         out,
-        "you/g: public (GitHub's CI is free on a public repository) or private? [public] "
+        "Should you/g be public or private? GitHub's CI is free on a public repository.\n  \
+         public or private, or press Enter for public: "
     );
     let (answer, out) = answered("p\nPRIV\n", |t| game_visibility(t, "you/g"));
     assert_eq!(answer.unwrap(), Visibility::Private);
     assert!(out.contains("  `p`: public or private\n"), "{out}");
     let (answer, out) = answered("\n", |t| assets_visibility(t, "you/g-assets"));
     assert_eq!(answer.unwrap(), Visibility::Private);
-    assert!(out.ends_with("[private] "), "{out}");
+    assert!(out.ends_with("press Enter for private: "), "{out}");
     assert_eq!(
         answered("public\n", |t| assets_visibility(t, "r"))
             .0
@@ -184,10 +188,7 @@ fn the_kinds_question_shows_each_folder_and_takes_numbers_or_names() {
         out.contains("  1. files/text/      writing: dialogue, scripts…\n"),
         "{out}"
     );
-    assert!(
-        out.ends_with("[text, sprites, sounds, music, data] "),
-        "{out}"
-    );
+    assert!(out.ends_with("press Enter for all five: "), "{out}");
     let (answer, out) = answered("art\nnone\n2, music\n", which_kinds);
     assert_eq!(answer.unwrap(), ["sprites", "music"]);
     assert!(out.contains("  `art` is no kind"), "{out}");
@@ -200,7 +201,8 @@ fn the_folders_question_takes_a_comma_list_or_nothing() {
     assert_eq!(answer.unwrap(), Vec::<String>::new());
     assert_eq!(
         out,
-        "Other folders under files/? (comma list, empty for none) [] "
+        "Any other folders under files/ to keep there?\n  folders, several with commas (levels, \
+         maps), or press Enter for none: "
     );
     let (answer, out) = answered("a b\nfiles/levels, maps\n", other_folders);
     assert_eq!(answer.unwrap(), ["levels", "maps"]);
@@ -290,21 +292,39 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
     assert_eq!(made.exit_code(), 0);
     assert!(made.finish.is_none());
     // The six questions, in order.
+    // A line typed isn't echoed, so each question follows the prompt
+    // before it, "…press Enter for <default>: ".
     let asked: Vec<&str> = out
-        .split("] ")
+        .split("press Enter for ")
+        .enumerate()
+        .filter_map(|(at, piece)| match at {
+            0 => Some(piece),
+            _ => piece.split_once(": ").map(|(_, rest)| rest),
+        })
         .filter_map(|q| q.lines().next())
         .filter(|q| !q.is_empty())
         .collect();
+    // Each question says what Enter picks.
+    let defaults: Vec<&str> = out
+        .split("press Enter for ")
+        .skip(1)
+        .filter_map(|q| q.split(':').next())
+        .collect();
+    assert_eq!(
+        defaults,
+        ["yes", "public", "yes", "all five", "none", "private"],
+        "{out}"
+    );
     assert_eq!(asked.len(), 6, "{out}");
     assert!(asked[0].starts_with("Put Moon Garden on GitHub?"));
-    assert!(asked[1].starts_with("you/moon-garden: public"));
+    assert!(asked[1].starts_with("Should you/moon-garden be public or private?"));
     assert!(
         asked[2]
             .starts_with("Keep some files in a second, private repository, you/moon-garden-assets")
     );
-    assert!(asked[3].starts_with("Which kinds?"));
-    assert!(asked[4].starts_with("Other folders"));
-    assert!(asked[5].starts_with("you/moon-garden-assets: private or public?"));
+    assert!(asked[3].starts_with("Which kinds of files go there?"));
+    assert!(asked[4].starts_with("Any other folders"));
+    assert!(asked[5].starts_with("Should you/moon-garden-assets be private or public?"));
     assert!(
         scratch
             .shuyi_ron()
@@ -419,12 +439,12 @@ fn chosen_kinds_and_own_folders_are_all_the_private_repository_holds() {
     );
     assert!(made.repos.as_ref().unwrap().ok, "{:?}", made.repos);
     // Only what no flag answered was asked: the two visibilities.
-    assert!(out.contains("you/moon-garden: public"), "{out}");
+    assert!(out.contains("Should you/moon-garden be public"), "{out}");
     assert!(
-        out.contains("you/moon-garden-assets: private or public?"),
+        out.contains("Should you/moon-garden-assets be private or public?"),
         "{out}"
     );
-    assert!(!out.contains("Which kinds?"), "{out}");
+    assert!(!out.contains("Which kinds"), "{out}");
     assert!(!out.contains("Put Moon Garden"), "{out}");
     let folders: Vec<&String> = fake.repos["you/moon-garden-assets"]
         .files
