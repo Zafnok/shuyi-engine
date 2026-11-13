@@ -177,13 +177,19 @@ asked is missing.
   beside `--template hex` in `docs/guides/hex-grid.md`'s *what starts
   it*. If not, nothing to do: 2771 names the command and adds the test
   when it lands (its clause says so).
-- **Either order with 2592** (`shuyi new` asks about the game's GitHub
-  repositories and its private files): if 2592 is done, move its six
-  questions into the wizard, after the catalog's and the template's, in
-  the wizard's prompt style; `--questions --json` lists them with a
-  field saying an agent must not answer `github: yes` itself, and
-  `--no-input` means `--no-github`. If not, nothing to do: 2592 asks
-  them in the wizard when it lands (its clause says so).
+- **From 2592 (done):** `shuyi new` asks six questions about the
+  game's GitHub repositories and its private files, as plain prompts in
+  `crates/cli/src/contract/new/questions.rs` (each a function over a
+  `Terminal`, a flag answering each, nothing asked off a terminal or
+  with `--json`). Move them into the wizard, after the catalog's and
+  the template's, in the wizard's prompt style; `--questions --json`
+  lists them with a field saying an agent must not answer `github: yes`
+  itself, and `--no-input` means `--no-github`.
+- **Either order with 2597** (whether a new game gets the skills'
+  worked examples): if 2597 is done, its `examples` question is one of
+  the template's, asked in the wizard with the others, and `new`'s
+  terminal prompt for it moves into the wizard; if not, nothing to do
+  (2597 asks it in the wizard when it lands).
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give

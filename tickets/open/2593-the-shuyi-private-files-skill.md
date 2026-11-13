@@ -83,7 +83,11 @@ None.
   7. *Setting up*: `cargo shuyi repos` (2591) makes or repairs the
      repositories, keys and secrets; it acts on the developer's GitHub
      account, so **ask the developer before running it**, and never run
-     it on your own.
+     it on your own. **From 2592 (done):** the same holds for `shuyi new
+     --github`: the MCP `new` tool and `new --json` never make a
+     repository (`--github` is refused with `--json`), so an agent that
+     wants one asks the developer, then runs the CLI's `new --github`
+     (or `repos` in the game) with their answers.
 - **A worked example** (`example.ron`, the pack's script of contract
   commands) if the contract can show part of it (a file laid in a
   fixture checkout changing what `scene` shows); else

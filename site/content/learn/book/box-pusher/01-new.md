@@ -23,13 +23,15 @@ everything in it comes back in every later step.
 In your terminal, go to the folder where you want your game to live, and run:
 
 ```bash
-shuyi new box-pusher --template blank --name "Box Pusher"
+shuyi new box-pusher --template blank --name "Box Pusher" --no-github
 cd box-pusher
 ```
 
 `shuyi new` writes a new game in a new folder called `box-pusher`, and `cd` moves
 you into it. Use this name: the rest of the project expects it. `--template
-blank` asks for the smallest game there is, one screen with a title on it.
+blank` asks for the smallest game there is, one screen with a title on it. `--no-github`
+keeps it on your machine: without it, `shuyi new` asks whether to put the game on
+GitHub too.
 
 Now open that folder in your editor, and leave your terminal open beside it.
 

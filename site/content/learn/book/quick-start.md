@@ -97,7 +97,9 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. A **template** is what the game starts from. `blank` is one screen, a title.
+it. In a terminal it first asks whether to put the game on GitHub too: each question
+says what pressing Enter picks, or answer no and do it later ([On GitHub](#on-github),
+below). A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
@@ -382,6 +384,14 @@ pinned to it, and the read-only key and secret its CI reads them with. It create
 these on your account, so a coding agent should ask you before running it. Run it
 again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
 and `ssh-keygen` as optional, since only this command needs them.
+
+`shuyi new` asks the same when you make the game, and runs it for you: whether to
+put the game on GitHub, whether its repository is public, and which kinds of files
+(writing, sprites, sounds, music, data, or folders you name) go in a second, private
+repository, `<you>/moon-garden-assets`. Each answer has its flag (`--github`,
+`--no-github`, `--visibility`, `--private sprites,music` or `--private none`,
+`--private-folder files/levels`), and `--no-github` asks nothing. If a step fails, the
+game is still written: fix what it says, and run `cargo shuyi repos` in its folder.
 
 {% newcomer(to="programming", topic="a repository") %}
 A **repository** is a project's folder with the history of every change, kept by

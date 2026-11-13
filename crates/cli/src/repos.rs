@@ -75,7 +75,7 @@ impl Visibility {
         }
     }
 
-    fn parse(flag: &str, value: &str) -> Result<Self, String> {
+    pub fn parse(flag: &str, value: &str) -> Result<Self, String> {
         match value {
             "public" => Ok(Self::Public),
             "private" => Ok(Self::Private),
@@ -150,7 +150,7 @@ pub fn check_name(name: &str) -> Result<(), String> {
 
 /// Whether `owner` can be a GitHub login or organization: letters, digits
 /// and single `-` between them, at most 39.
-fn check_owner(owner: &str) -> Result<(), String> {
+pub fn check_owner(owner: &str) -> Result<(), String> {
     let ok = !owner.is_empty()
         && owner.len() <= 39
         && owner.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')

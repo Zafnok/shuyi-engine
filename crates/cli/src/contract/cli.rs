@@ -108,8 +108,13 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
     }
     let (json, args) = split_json(args);
     Some(match name {
-        "new" => match new::parse_args(&args) {
-            Ok(input) => print(json, &new::new(cwd, &input), new::text),
+        "new" => match new::questions::parse(&args) {
+            Ok((input, flags)) => {
+                let made = new::questions::main(cwd, input, &flags, json);
+                print(json, &made.answer, new::text);
+                new::questions::print_repos(&made);
+                made.exit_code()
+            }
             Err(e) => wrong(json, Op::New, &e, &new::usage(command)),
         },
         "doctor" => {
