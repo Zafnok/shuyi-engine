@@ -173,7 +173,9 @@ fn tokens(text: &str) -> Vec<Token<'_>> {
             parted = false;
             len
         };
-        rest = &rest[len..];
+        // Every piece is at least its first char: the walk always moves
+        // on, whatever a length says.
+        rest = &rest[len.max(c.len_utf8())..];
     }
     tokens
 }
