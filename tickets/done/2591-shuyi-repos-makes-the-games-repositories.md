@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2590"]
 nick_input: sign-off
-completed:
+completed: 2026-11-13
 ---
 
 # 2591 — `shuyi repos`: a game's repositories, keys and secrets
@@ -199,7 +199,7 @@ hand for Visions of Shuyi missing? Then delete both repositories.
 
 ## Acceptance criteria
 
-- [ ] In a game made by `shuyi new … --set private-files=yes
+- [x] In a game made by `shuyi new … --set private-files=yes
       --private-url https://github.com/<o>/<n>-assets.git`, `shuyi repos`
       makes `<o>/<n>` (public) holding the game, `<o>/<n>-assets`
       (private) holding the README and the folders, two read-only deploy
@@ -208,20 +208,20 @@ hand for Visions of Shuyi missing? Then delete both repositories.
       the private repository's commit and the `private/` checkout; the
       game's CI run on `main` passes with the private step taking the
       key.
-- [ ] A second run makes nothing and says everything is there.
-- [ ] With the Dependabot secret deleted by hand, a run makes only that
+- [x] A second run makes nothing and says everything is there.
+- [x] With the Dependabot secret deleted by hand, a run makes only that
       key and secret.
-- [ ] `--new-keys` replaces both deploy keys and both secrets.
-- [ ] `--dry-run` prints the plan and runs no command that changes
+- [x] `--new-keys` replaces both deploy keys and both secrets.
+- [x] `--dry-run` prints the plan and runs no command that changes
       anything (the test host sees only read-only calls).
-- [ ] The private half of a key appears in no argument, output, JSON or
+- [x] The private half of a key appears in no argument, output, JSON or
       file left behind (a test over the recorded calls and the
       temporary folder).
-- [ ] A refused ruleset is a warning and the command succeeds.
-- [ ] Without `gh`, or signed out, it fails with its code and says how
+- [x] A refused ruleset is a warning and the command succeeds.
+- [x] Without `gh`, or signed out, it fails with its code and says how
       to fix it.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -236,5 +236,80 @@ hand for Visions of Shuyi missing? Then delete both repositories.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** `shuyi repos` (`crates/cli/src/repos.rs`, ADR-0112,
+which extends ADR-0111): the flags, `observe` (read-only calls only),
+the pure `plan(&Inputs, &State) -> Vec<Step>`, the `Host` trait with the
+real host (`repos/host.rs`, `GIT_TERMINAL_PROMPT=0`,
+`GH_PROMPT_DISABLED=1`) and the temporary-folder guard (`TempDir`,
+removed on drop), the steps in the ticket's order, and the report as
+text or `--json`. The private repository's first commit is written from
+text in the binary (`crates/cli/src/repos/*.txt`). Six new problem codes
+with their pages: `SH0006` `repo-name`, `SH1007` `no-gh`, `SH1008`
+`gh-signed-out`, `SH1009` `gh-scope`, `SH3013` `not-yours`, `SH3014`
+`github`. `doctor` lists `gh` and `ssh-keygen` as optional checks.
+Docs: the usage and `repos --help`, the template's `README.md`
+(*Putting the game on GitHub*) and the private part's `AGENTS.md`, the
+book's quick start (*On GitHub*), `contract.md`'s `doctor` row, and
+ADR-0112 (ADR-0111's status names it). 27 tests in
+`crates/cli/src/repos/tests.rs` run every case the ticket lists against
+`repos/fake.rs`, a scripted `gh`, `git` and `ssh-keygen` that keeps what
+they change; none reaches the network.
+
+**Deviations.**
+
+- `gh api` reads whether a repository is there and who may administer
+  it (`repos/<o>/<r>`, its `permissions.admin`), and the private
+  repository's `main` commit (`…/commits/main`), in place of `gh repo
+  view` and `git ls-remote`: it uses `gh`'s own sign-in, where git over
+  HTTPS may have none, and answers JSON (ADR-0112, *Alternatives*).
+- When a key is made, the old deploy keys of its title are deleted first,
+  not only with `--new-keys`: a key whose secret is gone has lost its
+  private half, so it is only a risk (ADR-0112 §2.6).
+- A checkout `shuyi private-assets` can't make (git without access to
+  GitHub over HTTPS) is a warning naming `gh auth setup-git`, not a
+  failure: the keys, the ruleset and the push don't need it.
+- A folder that already has commits on another branch than `main` gets
+  that branch pushed; `repos` makes `main` itself.
+- A missing `git` or `ssh-keygen` answers `SH1003` (`toolchain`), as
+  every other missing tool does; a name that is taken (a repository with
+  the folder's branch and no `origin` naming it) is `SH0006`.
+- `repos` is a private module of `shuyi-cli`: its types are no public
+  API (it is CLI only, ticket's Scope). The ticket's "command's page in
+  the CLI reference" is the usage line and `repos --help`: the engine has
+  no other page per command (`private-assets` has none either).
+- `doctor::Check` gains `optional` (contract version 50, its schema
+  regenerated) and becomes `#[non_exhaustive]` as ADR-0039 asks of a type
+  that grows; `doctor::Probe` gains `starts`, with a default body, for a
+  program with no flag that succeeds (`ssh-keygen`).
+
+**Real run.** REAL-RUN-PENDING
+
+**For Nick.** The sign-off is as the ticket says. A free personal
+account's private repository can't have a ruleset: the run says so as a
+warning, and pushing to its `main` isn't blocked there.
+
+Breaking: shuyi-cli: contract::doctor::Check: it is `#[non_exhaustive]` and has a new field, `optional`; code outside `shuyi-cli` can't build one with a literal, and reads it as before
+
+```migration
+since: 0.1.0
+what: doctor's Check gained the field optional and is non-exhaustive, so it can't be built with a struct literal outside shuyi-cli.
+old: "Check { name, ok, found, help }"
+new: "#[non_exhaustive] Check { name, ok, optional, found, help }"
+before: |
+  let check = Check { name: "gh".into(), ok: true, found: None, help: None };
+after: |
+  // A Check comes from doctor::checks(&probe); read its fields.
+  let output = doctor::checks(&probe);
+  let gh = output.checks.iter().find(|c| c.name == "gh");
+find: ["Check { name"]
+```
+
+Behaviour: shuyi-cli: `doctor`'s answer lists two more checks, `gh` and `ssh-keygen`, each `optional`: a missing one never fails `doctor`, and its text marks it `--` with how to install it
+
+Behaviour: shuyi-cli: the contract's version is 50 (`doctor.output.json` gains `optional`)
+
+Game: nothing to adopt, Visions of Shuyi keeps the repositories, keys and secrets it set up by hand (the ticket's *Out*); it builds no `doctor::Check` and implements no `Probe` (searched: `gh search code --repo Zafnok/visions-of-shuyi "doctor::Check"` and `"impl Probe"`, no hit; its `docs/engine/pins.md` says the same of `Probe`)
+
+Book: the quick start gains *On GitHub*.
+
+No ticket: nothing is left over; 2592 (`shuyi new` runs it) and 2593 (the skill) have their *From 2591* notes.

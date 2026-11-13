@@ -1,7 +1,9 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
 //! and Cargo, rustup's targets, MSYS2's linker and `objcopy` on the
 //! Windows GNU toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
-//! system libraries the backend links and opens, and the web target.
+//! system libraries the backend links and opens, and the web target; and,
+//! as optional checks that never fail it, `gh` and `ssh-keygen`, which only
+//! `shuyi repos` needs.
 //! Each check says what it found and, if it failed, how to fix it (its
 //! help): on Linux, the install command for the distribution's package
 //! manager (`/etc/os-release`), and `scripts/setup-linux.sh`, which
@@ -39,11 +41,16 @@ pub struct DoctorInput {}
 /// One check.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Check {
     /// What it checks (`rust`, `wasm-target`…).
     pub name: String,
     /// Whether it passed.
     pub ok: bool,
+    /// Whether it is optional: a tool only one command needs, whose
+    /// check failing doesn't fail `doctor`.
+    #[serde(default)]
+    pub optional: bool,
     /// What it found, if anything.
     pub found: Option<String>,
     /// How to fix it, if it failed.
@@ -71,6 +78,13 @@ pub trait Probe {
 
     /// The text of the file at `path`, if it can be read.
     fn read(&self, path: &Path) -> Option<String>;
+
+    /// Whether `program` with `args` starts, whatever it then exits with:
+    /// for a program with no flag that succeeds, as `ssh-keygen`. By
+    /// default, whether it runs and succeeds ([`Probe::output`]).
+    fn starts(&self, program: &str, args: &[&str]) -> bool {
+        self.output(program, args).is_some()
+    }
 }
 
 /// The machine `doctor` runs on.
@@ -92,6 +106,10 @@ impl Probe for ThisMachine {
     fn read(&self, path: &Path) -> Option<String> {
         fs::read_to_string(path).ok()
     }
+
+    fn starts(&self, program: &str, args: &[&str]) -> bool {
+        Command::new(program).args(args).output().is_ok()
+    }
 }
 
 /// A check that passed, having found `found`.
@@ -99,6 +117,7 @@ fn pass(name: &str, found: impl Into<String>) -> Check {
     Check {
         name: name.to_owned(),
         ok: true,
+        optional: false,
         found: Some(found.into()),
         help: None,
     }
@@ -110,9 +129,51 @@ fn fail(name: &str, found: Option<String>, help: impl Into<String>) -> Check {
     Check {
         name: name.to_owned(),
         ok: false,
+        optional: false,
         found,
         help: Some(help.into()),
     }
+}
+
+/// `check`, made optional.
+fn optional(check: Check) -> Check {
+    Check {
+        optional: true,
+        ..check
+    }
+}
+
+/// What the optional checks' help says first.
+const ONLY_REPOS: &str = "optional: only `shuyi repos` needs it, to put the game on GitHub";
+
+/// The optional checks: `gh` and `ssh-keygen`, which only `shuyi repos`
+/// needs.
+fn repos_checks(probe: &dyn Probe) -> [Check; 2] {
+    let gh = match probe.output("gh", &["--version"]) {
+        Some(text) => pass("gh", first_line(&text)),
+        None => fail(
+            "gh",
+            None,
+            format!(
+                "{ONLY_REPOS}. Install GitHub's CLI from https://cli.github.com (on Windows \
+                 `winget install -e --id GitHub.cli`), then `gh auth login`"
+            ),
+        ),
+    };
+    let ssh_keygen = if probe.starts("ssh-keygen", &["-?"]) {
+        pass("ssh-keygen", "on PATH")
+    } else {
+        fail(
+            "ssh-keygen",
+            None,
+            format!(
+                "{ONLY_REPOS}, to make its deploy keys. It comes with OpenSSH: on Windows the \
+                 optional feature OpenSSH Client, or Git for Windows' usr/bin on PATH; on Linux \
+                 the package openssh-client"
+            ),
+        )
+    };
+    [optional(gh), optional(ssh_keygen)]
 }
 
 /// The first line of `text`, trimmed.
@@ -212,13 +273,14 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
             format!("for the web build: `rustup target add {WASM_TARGET}`"),
         )
     });
+    checks.extend(repos_checks(probe));
     DoctorOutput { host, checks }
 }
 
 /// `doctor` on the machine `probe` looks at.
 pub fn doctor(probe: &dyn Probe, _input: &DoctorInput) -> Answer<DoctorOutput> {
     let output = checks(probe);
-    let ok = output.checks.iter().all(|c| c.ok);
+    let ok = output.checks.iter().all(|c| c.ok || c.optional);
     let mut limits = Vec::new();
     if output.host.is_none() {
         limits.push(
@@ -243,7 +305,11 @@ pub fn text(output: &DoctorOutput) -> String {
         output.host.as_deref().unwrap_or("unknown")
     );
     for check in &output.checks {
-        let mark = if check.ok { "ok  " } else { "FAIL" };
+        let mark = match (check.ok, check.optional) {
+            (true, _) => "ok  ",
+            (false, true) => "--  ",
+            (false, false) => "FAIL",
+        };
         // Writing to a `String` can't fail.
         let _ = write!(out, "  {mark} {}", check.name);
         if let Some(found) = &check.found {
@@ -313,13 +379,57 @@ mod tests {
             .with("cargo --version", "cargo 1.98.1 (def 2026-09-01)\n")
     }
 
+    /// The names of the checks that are `ok`, or not, but the optional
+    /// ones.
     fn names(output: &DoctorOutput, ok: bool) -> Vec<&str> {
         output
             .checks
             .iter()
-            .filter(|c| c.ok == ok)
+            .filter(|c| c.ok == ok && !c.optional)
             .map(|c| c.name.as_str())
             .collect()
+    }
+
+    #[test]
+    fn gh_and_ssh_keygen_are_optional_and_never_fail_doctor() {
+        let targets = "x86_64-pc-windows-msvc\nwasm32-unknown-unknown\n";
+        let machine =
+            rust("x86_64-pc-windows-msvc").with("rustup target list --installed", targets);
+        let answer = doctor(&machine, &DoctorInput::default());
+        assert!(answer.ok, "{answer:?}");
+        let output = answer.result.unwrap();
+        let optional: Vec<(&str, bool)> = output
+            .checks
+            .iter()
+            .filter(|c| c.optional)
+            .map(|c| (c.name.as_str(), c.ok))
+            .collect();
+        assert_eq!(optional, [("gh", false), ("ssh-keygen", false)]);
+        let said = text(&output);
+        assert!(
+            said.contains("  --   gh\n       help: optional: only `shuyi repos` needs it"),
+            "{said}"
+        );
+        assert!(said.contains("https://cli.github.com"), "{said}");
+        assert!(said.contains("openssh-client"), "{said}");
+        // Installed, they pass.
+        let with = machine
+            .with(
+                "gh --version",
+                "gh version 2.103.0 (2026-10-21)\nhttps://github.com/cli\n",
+            )
+            .with("ssh-keygen -?", "");
+        let found = checks(&with);
+        let gh = found.checks.iter().find(|c| c.name == "gh").unwrap();
+        assert_eq!(
+            (gh.ok, gh.found.as_deref()),
+            (true, Some("gh version 2.103.0 (2026-10-21)"))
+        );
+        assert!(found.checks.iter().all(|c| c.ok));
+        // The machine's own ssh-keygen starts or not; a program that
+        // isn't there never does.
+        assert!(!ThisMachine.starts("no-such-program-anywhere", &[]));
+        assert!(ThisMachine.starts("cargo", &["--no-such-flag"]));
     }
 
     #[test]
@@ -406,7 +516,11 @@ mod tests {
             check.found.as_deref(),
             Some("GNU objcopy (GNU Binutils) 2.45")
         );
-        let wasm = output.checks.last().unwrap();
+        let wasm = output
+            .checks
+            .iter()
+            .find(|c| c.name == "wasm-target")
+            .unwrap();
         assert_eq!(
             wasm.help.as_deref(),
             Some("for the web build: `rustup target add wasm32-unknown-unknown`")
@@ -459,7 +573,8 @@ mod tests {
         );
         assert!(text(output).starts_with("doctor: host unknown\n"));
         // Another host's MSVC toolchain needs no MSYS2.
-        assert_eq!(checks(&rust("x86_64-pc-windows-msvc")).checks.len(), 4);
+        let msvc = checks(&rust("x86_64-pc-windows-msvc"));
+        assert_eq!(msvc.checks.iter().filter(|c| !c.optional).count(), 4);
     }
 
     #[test]

@@ -22,7 +22,9 @@ and its workflows' artifacts, are anyone's.
   then one here moving `private.rev` with `cargo shuyi private-assets
   --pin` once the first is merged into its `main`.
 - CI checks them out before the gates (`.github/actions/private-files`),
-  with the secret `PRIVATE_ASSETS_KEY`: the gates read the real game. A
+  with the secret `PRIVATE_ASSETS_KEY` (`cargo shuyi repos` makes it, with
+  the repositories: it acts on the developer's GitHub account, so ask
+  them before running it): the gates read the real game. A
   playtest workflow passes the secret to the engine's, by name, so the
   bots play them too. A fork's pull request builds on the public files.
   No workflow may upload an artifact that embeds them.

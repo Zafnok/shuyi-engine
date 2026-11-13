@@ -32,6 +32,24 @@ cargo shuyi web              # its web page, in dist/web/ (serve it over HTTP)
 
 It is on the engine's short path; `AGENTS.md` says how it grows past it.
 
+## Putting the game on GitHub
+
+```
+cargo shuyi repos --dry-run  # what it would make, changing nothing
+cargo shuyi repos            # make it
+```
+
+`cargo shuyi repos` puts the game on GitHub with [`gh`](https://cli.github.com),
+GitHub's command-line tool, signed in to your account (`gh auth login`). It
+creates a repository on your account named from the game, public by default
+(GitHub's CI is free there; `--visibility private` otherwise), and pushes the
+game to it. A game with private files also gets the private repository
+`shuyi.ron`'s `private_assets` names, with a README and its folders, the game
+pinned to it and its files checked out, and the read-only deploy keys and the
+secret `PRIVATE_ASSETS_KEY` its CI reads them with. What is there already is
+left alone: run it again to finish what a failure left, or with `--new-keys`
+to replace the keys. `cargo shuyi repos --help` says the rest.
+
 ## Art and licenses
 
 The font is Terminus Font 4.49.1, under the SIL Open Font License 1.1
