@@ -8,6 +8,13 @@
 //! loaded, so a line's clip is ready when the line is shown. A clip that
 //! still isn't loaded [`LATE_SECS`] after it was asked for is not played:
 //! a voice starting in the middle of a line is worse than none.
+//!
+//! The coming list suits a script read line by line. Lines said at
+//! moments the player decides (a guide's tips, a shopkeeper's barks) are
+//! a set a screen keeps instead ([`SoundRequest::KeepVoices`], from
+//! `Ctx::keep_voices`): every clip of it stays loaded until the screen
+//! names another set, so whichever is asked for plays at once. A clip in
+//! both is loaded once.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -35,6 +42,8 @@ pub(crate) struct Voices<B: Backend> {
     /// How many of `coming` are behind us: the clip asked for last, and
     /// those before it.
     passed: usize,
+    /// The clips a screen keeps loaded, whichever is asked for next.
+    kept: Vec<String>,
     /// The clip asked for and not yet started, and when it was asked for.
     asked: Option<(String, f64)>,
     /// The clip that is playing.
@@ -65,6 +74,7 @@ impl<B: Backend> Voices<B> {
             clips: BTreeMap::new(),
             coming: Vec::new(),
             passed: 0,
+            kept: Vec::new(),
             asked: None,
             playing: None,
         }
@@ -93,6 +103,7 @@ impl<B: Backend> Voices<B> {
                 self.coming.clone_from(clips);
                 self.passed = 0;
             }
+            SoundRequest::KeepVoices { clips } => self.kept.clone_from(clips),
             // The sounds', and any request this player doesn't know.
             _ => return,
         }
@@ -109,12 +120,13 @@ impl<B: Backend> Voices<B> {
         }
     }
 
-    /// Whether `file` is wanted in memory: asked for, playing, or one of
-    /// the next [`AHEAD`] coming.
+    /// Whether `file` is wanted in memory: asked for, playing, kept, or
+    /// one of the next [`AHEAD`] coming.
     fn wanted(&self, file: &str) -> bool {
         let is = |f: &String| f == file;
         self.asked.as_ref().is_some_and(|(f, _)| is(f))
             || self.playing.as_ref().is_some_and(|s| is(&s.file))
+            || self.kept.iter().any(is)
             || self.coming.iter().skip(self.passed).take(AHEAD).any(is)
     }
 
@@ -136,10 +148,15 @@ impl<B: Backend> Voices<B> {
         let asked = self.asked.iter().map(|(file, _)| file);
         let missing: Vec<String> = asked
             .chain(ahead)
+            .chain(&self.kept)
             .filter(|file| !self.clips.contains_key(*file))
             .cloned()
             .collect();
         for file in missing {
+            // A file named twice (kept and coming) is loaded once.
+            if self.clips.contains_key(&file) {
+                continue;
+            }
             let loading = backend.load_music(&format!("{}/{file}", self.dir));
             self.clips.insert(file, Clip::Loading(loading));
         }
@@ -256,6 +273,7 @@ impl<B: Backend> Voices<B> {
         self.stop(backend);
         self.coming.clear();
         self.passed = 0;
+        self.kept.clear();
         self.keep_wanted(backend, abandoned);
     }
 
@@ -301,6 +319,12 @@ mod tests {
 
     fn preload(lines: &[usize]) -> Request {
         Request::PreloadVoices {
+            lines: lines.iter().map(|&i| (line(i), Take::Only)).collect(),
+        }
+    }
+
+    fn keep(lines: &[usize]) -> Request {
+        Request::KeepVoices {
             lines: lines.iter().map(|&i| (line(i), Take::Only)).collect(),
         }
     }
@@ -489,6 +513,59 @@ mod tests {
         );
         // The list's place is unchanged: its clips stay loaded.
         assert_eq!(held(&audio), sorted(&[0, 1, 4]));
+    }
+
+    /// Acceptance (3213): a kept set stays loaded however far the coming
+    /// list moves on, plays at once when asked for, and an empty set lets
+    /// it go (but not a clip coming next, asked for or playing).
+    #[test]
+    fn a_kept_set_stays_loaded_until_another_is_named() {
+        let mut fake = all_ready();
+        let mut audio = audio(&mut fake);
+        let loads = |files: &[usize]| -> Vec<String> {
+            files.iter().map(|&i| format!("load {}", path(i))).collect()
+        };
+        // Kept 0 and 1; coming 1, 2, 3, 4: clip 1 is in both, loaded once.
+        audio.hear(
+            &mut fake,
+            &[keep(&[0, 1]), preload(&[1, 2, 3, 4])],
+            &[],
+            0.0,
+        );
+        let mut calls = fake.calls();
+        calls.sort_unstable();
+        let mut expected = loads(&[0, 1, 2, 3]);
+        expected.sort_unstable();
+        assert_eq!(calls, expected);
+        assert_eq!(held(&audio), sorted(&[0, 1, 2, 3]));
+        // The window moves past every kept file: they stay.
+        audio.hear(&mut fake, &[play(4)], &[], 1.0);
+        assert_eq!(held(&audio), sorted(&[0, 1, 4]));
+        fake.calls();
+        // Asking for a kept clip plays it on the next poll, with no load.
+        audio.hear(&mut fake, &[play(0)], &[], 2.0);
+        assert_eq!(
+            fake.calls(),
+            [
+                format!("stop {}", path(4)),
+                format!("play {} 1.00", path(0))
+            ]
+        );
+        assert_eq!(held(&audio), sorted(&[0, 1]), "0 is kept and playing");
+        // An empty set lets them go, but not the clip playing nor those
+        // coming next.
+        audio.hear(&mut fake, &[preload(&[2, 3])], &[], 3.0);
+        fake.calls();
+        audio.hear(&mut fake, &[keep(&[])], &[], 4.0);
+        let found = fake.calls();
+        assert!(found.is_empty(), "nothing to load or stop: {found:?}");
+        assert_eq!(held(&audio), sorted(&[0, 2, 3]));
+        // Nor the clip asked for and still loading.
+        let mut slow = Fake::default();
+        let mut audio = super::super::tests::audio(&mut slow);
+        audio.hear(&mut slow, &[keep(&[0]), play(0)], &[], 0.0);
+        audio.hear(&mut slow, &[keep(&[])], &[], 0.1);
+        assert_eq!(held(&audio), [LINES[0]], "asked for");
     }
 
     #[test]

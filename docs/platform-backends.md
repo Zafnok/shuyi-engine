@@ -330,7 +330,8 @@ The sound device:
   started with a handle, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the
-  clips coming, to load ahead; `PauseSounds` pauses every sound started
+  clips coming, to load ahead; the clips kept, loaded whichever is asked
+  for; `PauseSounds` pauses every sound started
   with a handle playing now, and `ResumeSounds` resumes them, ADR-0056),
   then apply the `MusicCommand`s (load, start at a gain, fade, stop), and
   check on what is still loading. Every track started and not stopped

@@ -307,6 +307,36 @@ fn preload_lists_the_playable_clips_in_script_order() {
     assert!(c.audio.pending().is_empty(), "nothing playable: no request");
 }
 
+/// Acceptance (3213): the kept set leaves out unplayable lines, is sent
+/// even empty (it lets the clips go), and isn't sent with voices off.
+#[test]
+fn keep_voices_sends_the_playable_set_even_empty_but_not_with_voices_off() {
+    let mut c = ctx();
+    let lines = c.game.lines();
+    let manifest = c.game.manifest(&[(0, "Only")]);
+    c.set_voice_manifest(&manifest);
+    c.keep_voices(&lines);
+    c.keep_voices(&lines[1..2]);
+    c.keep_voices(&[]);
+    assert_eq!(
+        c.audio.take(),
+        [
+            AudioRequest::KeepVoices {
+                lines: vec![(lines[0].clone(), Voice::Only)]
+            },
+            AudioRequest::KeepVoices { lines: vec![] },
+            AudioRequest::KeepVoices { lines: vec![] },
+        ],
+        "line 1 has no clip; an empty set is still sent"
+    );
+    assert!(c.preview_settings(|s| s.voices = false));
+    c.audio.take();
+    c.keep_voices(&lines);
+    c.keep_voices(&[]);
+    let found = c.audio.pending();
+    assert!(found.is_empty(), "voices off: nothing sent, {found:?}");
+}
+
 #[test]
 fn a_manifest_the_game_refuses_leaves_no_voices_and_a_warning() {
     let mut c = ctx();

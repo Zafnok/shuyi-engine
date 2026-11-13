@@ -879,6 +879,7 @@ fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice
         | AudioRequest::PreloadVoices { .. }
+        | AudioRequest::KeepVoices { .. }
         | AudioRequest::AddSound { .. }
         | AudioRequest::RemoveSound { .. } => true,
     }

@@ -75,6 +75,13 @@ pub enum SoundRequest {
         /// Their files, in the order they are expected.
         clips: Vec<String>,
     },
+    /// The clips to keep loaded until the next such request, whichever is
+    /// asked for, beside the [`PreloadVoices`](Self::PreloadVoices) list.
+    /// Replaces the set sent before; an empty one lets them go.
+    KeepVoices {
+        /// Their files, in no particular order.
+        clips: Vec<String>,
+    },
     /// Make `samples` the sound cue `cue`, which the manifest doesn't have:
     /// [`Sound`](Self::Sound) and [`Start`](Self::Start) of it play it at its
     /// own volume, full, once. A cue added before is replaced. Build it with
@@ -148,6 +155,9 @@ impl SoundRequest {
             AudioRequest::ResumeSounds => Self::ResumeSounds,
             AudioRequest::StopVoice => Self::StopVoice,
             AudioRequest::PreloadVoices { lines } => Self::PreloadVoices {
+                clips: lines.iter().map(|(l, v)| clip_file(l, *v)).collect(),
+            },
+            AudioRequest::KeepVoices { lines } => Self::KeepVoices {
                 clips: lines.iter().map(|(l, v)| clip_file(l, *v)).collect(),
             },
             AudioRequest::AddSound { cue, samples, .. } => Self::add(cue.clone(), samples.clone()),
@@ -279,13 +289,27 @@ mod tests {
         );
         assert_eq!(
             play(AudioRequest::PreloadVoices {
-                lines: vec![(hello.clone(), Voice::Only), (hello, Voice::Low)]
+                lines: vec![(hello.clone(), Voice::Only), (hello.clone(), Voice::Low)]
             })
             .map(|r| match r {
                 SoundRequest::PreloadVoices { clips } => clips.len(),
                 _ => 0,
             }),
             Some(2)
+        );
+        let low = clip_file(&hello, Voice::Low);
+        assert_eq!(
+            play(AudioRequest::KeepVoices {
+                lines: vec![(hello.clone(), Voice::Only), (hello.clone(), Voice::Low)]
+            }),
+            Some(SoundRequest::KeepVoices {
+                clips: vec![only.clone(), low]
+            })
+        );
+        assert_eq!(
+            play(AudioRequest::KeepVoices { lines: vec![] }),
+            Some(SoundRequest::KeepVoices { clips: vec![] }),
+            "an empty set is passed on: it lets the clips go"
         );
         assert_eq!(play(AudioRequest::StopVoice), Some(SoundRequest::StopVoice));
         let mut queue = shuyi_ui::audio::AudioQueue::<Voice>::default();

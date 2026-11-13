@@ -899,6 +899,7 @@ fn cues_must_be_of_the_right_kind() {
         },
         AudioRequest::StopVoice,
         AudioRequest::PreloadVoices { lines: vec![] },
+        AudioRequest::KeepVoices { lines: vec![] },
     ] {
         assert!(is_known(audio, &request), "{request:?}");
     }
