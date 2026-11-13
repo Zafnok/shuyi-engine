@@ -139,8 +139,8 @@ Why should a game's id never change after you hand out a build?
 {% check() %}
 A screen needs a control that one of the game's targets doesn't have. Which gate tells you?
 
-- [x] `cargo shuyi check --target all`. — It holds the game to each target it lists: its frame fits, its text can be read, and every screen's controls exist there ([check it](#check-it)).
 - [ ] `cargo shuyi lint`. — `lint` reads your code for what breaks Shuyi's rules, such as a key named in text, not for what a target has ([check it](#check-it)).
+- [x] `cargo shuyi check --target all`. — It holds the game to each target it lists: its frame fits, its text can be read, and every screen's controls exist there ([check it](#check-it)).
 - [ ] `cargo test --workspace`. — The tests run what you and `shuyi new` wrote, and they don't hold the game to its targets ([check it](#check-it)).
 {% end %}
 

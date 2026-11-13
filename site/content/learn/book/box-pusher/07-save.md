@@ -165,8 +165,8 @@ make it pleasant.
 The text under `progress` was written by a build whose `Progress` has another version.
 What does `furthest` answer?
 
-- [ ] An error that says the save is from another version. — `furthest` never fails: it returns a plain number ([what is kept](#what-is-kept)).
 - [x] 0, the first level, as if nothing were saved. — The match guard `header.is_current()` doesn't hold, so `_ => 0` answers ([what is kept](#what-is-kept)).
+- [ ] An error that says the save is from another version. — `furthest` never fails: it returns a plain number ([what is kept](#what-is-kept)).
 - [ ] The level it holds, read as well as it can be. — Reading a save of another shape is how a game reads it wrong. `SaveHeader` reads the version first ([what is kept](#what-is-kept)).
 {% end %}
 
@@ -174,8 +174,8 @@ What does `furthest` answer?
 In `uncovered`, `let _ = progress::reached(&mut ctx.storage, self.focus);` drops the
 `Result`. Why?
 
-- [x] If saving fails, the player loses only their progress, which is no reason to stop their game. — The comment says so, and the `let _ =` is a decision ([using it](#using-it)).
 - [ ] `reached` can't fail, so there is nothing to handle. — Writing can fail, for instance on a full disk, which is why `reached` returns a `Result` ([what is kept](#what-is-kept)).
+- [x] If saving fails, the player loses only their progress, which is no reason to stop their game. — The comment says so, and the `let _ =` is a decision ([using it](#using-it)).
 - [ ] The Harness has no storage, and the `Result` would stop the tests. — The Harness has a storage of its own, in memory ([the test](#the-test)).
 {% end %}
 
@@ -184,6 +184,6 @@ In `uncovered`, `let _ = progress::reached(&mut ctx.storage, self.focus);` drops
 guard against?
 
 - [ ] A save from another version of the format. — `furthest` already answers 0 for that ([what is kept](#what-is-kept)).
-- [x] A save that names a level past the last one, from a version of the game with more levels. — An old save can't point past the end of a shorter list ([using it](#using-it)).
 - [ ] A player who has won every level. — Winning the last level keeps the furthest on the list already. `.min(last)` is for what's read ([using it](#using-it)).
+- [x] A save that names a level past the last one, from a version of the game with more levels. — An old save can't point past the end of a shorter list ([using it](#using-it)).
 {% end %}

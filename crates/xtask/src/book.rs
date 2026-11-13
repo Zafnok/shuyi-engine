@@ -20,7 +20,11 @@
 //!   ` — ` and why after it, and at least one right;
 //! - every concept chapter (`[extra] chapter`) and project step (`[extra]
 //!   step`) ends with a `## Check yourself` section holding two or three,
-//!   and no other page has one.
+//!   and no other page has one;
+//! - across the book, no one place (first, second…) holds the right answer
+//!   of more than half of the checks with one right answer (ticket 2833):
+//!   the page shuffles its buttons, but the `<details>` list and the twins
+//!   show the written order.
 //!
 //! [`parts`] splits a page at its marks and checks for `llms.rs`, which
 //! writes each passage in the twins as a blockquote under its label, and
@@ -115,6 +119,7 @@ pub fn run(root: &Path) -> Vec<String> {
     }
     files.sort();
     let mut errors = Vec::new();
+    let mut pages = Vec::new();
     for file in files {
         let shown = file
             .strip_prefix(root)
@@ -122,11 +127,78 @@ pub fn run(root: &Path) -> Vec<String> {
             .to_string_lossy()
             .replace('\\', "/");
         match fs::read_to_string(&file) {
-            Ok(text) => errors.extend(check(&shown, &text)),
+            Ok(text) => pages.push((shown, text)),
             Err(e) => errors.push(format!("{shown}: {e}")),
         }
     }
+    errors.extend(check_pages(&pages));
     errors
+}
+
+/// What is wrong with `pages`, each its shown path and its whole text: each
+/// page's own problems, then the spread of the right answers across them.
+pub fn check_pages(pages: &[(String, String)]) -> Vec<String> {
+    let mut errors = Vec::new();
+    let mut places = Vec::new();
+    for (shown, text) in pages {
+        errors.extend(check(shown, text));
+        places.extend(right_places(shown, text));
+    }
+    errors.extend(spread(&places));
+    errors
+}
+
+/// The place (0-based) of the right answer in each check of the page that
+/// has exactly one; a check that doesn't read counts for nothing.
+fn right_places(shown: &str, text: &str) -> Vec<usize> {
+    let Ok((body, first_line, _, _)) = front_matter(shown, text) else {
+        return Vec::new();
+    };
+    parts(shown, body, first_line)
+        .0
+        .iter()
+        .filter_map(|part| part.check.as_ref())
+        .filter_map(|check| {
+            let mut rights = check.answers.iter().enumerate().filter(|(_, a)| a.right);
+            match (rights.next(), rights.next()) {
+                (Some((place, _)), None) => Some(place),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// The places' names in an error, first to fourth: a check has two to four
+/// answers.
+const PLACES: [&str; 4] = ["first", "second", "third", "fourth"];
+
+/// What is wrong with where the right answers are (ticket 2833): no one
+/// place holds more than half of the checks with one right answer, so a
+/// reader with no JavaScript, or of the twins, can't learn to pick a place
+/// without reading.
+fn spread(places: &[usize]) -> Option<String> {
+    let mut counts = [0usize; PLACES.len()];
+    for place in places {
+        if let Some(count) = counts.get_mut(*place) {
+            *count += 1;
+        }
+    }
+    let total = places.len();
+    let (most, &held) = counts.iter().enumerate().max_by_key(|(_, count)| **count)?;
+    if held * 2 <= total {
+        return None;
+    }
+    let others: Vec<String> = counts
+        .iter()
+        .enumerate()
+        .filter(|(place, count)| *place != most && **count > 0)
+        .map(|(place, count)| format!(", {} in {count}", PLACES[place]))
+        .collect();
+    let others = others.concat();
+    Some(format!(
+        "{LEARN}: the right answer is {} in {held} of {total} quick checks{others}: spread them (2833)",
+        PLACES[most]
+    ))
 }
 
 /// Every `.md` file under `dir`.

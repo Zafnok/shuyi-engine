@@ -412,6 +412,49 @@ fn another_page_has_no_checks() {
     );
 }
 
+/// A check whose one right answer is second.
+const SECOND: &str =
+    "- [ ] It panics. — Nothing stops.\n- [x] It returns early. — `?` hands the `Err` back.\n";
+
+/// A check with two right answers, which the spread doesn't count.
+const BOTH: &str =
+    "- [x] It returns early. — `?` hands the `Err` back.\n- [x] It converts. — `From` runs.\n";
+
+/// Two chapters, a.md and b.md, holding `checks` two to a page.
+fn chapters(checks: &[&str]) -> Vec<(String, String)> {
+    checks
+        .chunks(2)
+        .zip(["a.md", "b.md"])
+        .map(|(two, shown)| {
+            let body = format!(
+                "\n## Check yourself\n{}{}",
+                a_check("", two[0]),
+                a_check("", two[1])
+            );
+            (shown.to_owned(), kind_page("chapter = 1", &body))
+        })
+        .collect()
+}
+
+#[test]
+fn the_right_answers_are_spread_across_the_book() {
+    // 2 of 4 first: half is spread enough.
+    let half = chapters(&[GOOD, SECOND, GOOD, SECOND]);
+    assert_eq!(check_pages(&half), Vec::<String>::new());
+    // 3 of 4 first, across two pages.
+    let most = chapters(&[GOOD, GOOD, SECOND, GOOD]);
+    assert_eq!(
+        check_pages(&most),
+        [
+            "site/content/learn: the right answer is first in 3 of 4 quick checks, \
+             second in 1: spread them (2833)"
+        ]
+    );
+    // A check with two right answers counts for neither side.
+    let two_right = chapters(&[GOOD, BOTH, SECOND, BOTH]);
+    assert_eq!(check_pages(&two_right), Vec::<String>::new());
+}
+
 #[test]
 fn the_book_s_pages_pass() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

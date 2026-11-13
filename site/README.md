@@ -235,15 +235,20 @@ What does the `?` at the end of `garden.apply(command)?` do when the rules refus
   what a passage for that newcomer taught: the reader's filter leaves the
   check out, and its hide folds it to a stub, as it does a passage. The
   bar counts it as a check, not a note.
+- Don't put the right answer first by habit (ticket 2833). Across the
+  book, no one place may hold the right answer of more than half of the
+  checks with one right answer.
 
-In the page `static/book-check.js` shows the answers as buttons. Choosing
-one says whether it is right, and why, in the check's `role="status"`
-line. With no JavaScript the answers and why are in a `<details>`. Nothing
-is kept or sent anywhere. `cargo xtask check-book` fails a check with no
-question, no right answer, an answer with no reason, fewer than two or
-more than four answers, an audience not among the four, and a chapter or
-step without its section; the shortcode fails the build on the same
-mistakes. `cargo xtask llms` writes each check in the twins as text, its
+In the page `static/book-check.js` shows the answers as buttons, shuffled
+at each load, so a reader can't learn to pick the first. Choosing one says
+whether it is right, and why, in the check's `role="status"` line. With
+no JavaScript the answers and why are in a `<details>`, in the written
+order, as the twins have them. Nothing is kept or sent anywhere. `cargo
+xtask check-book` fails a check with no question, no right answer, an
+answer with no reason, fewer than two or more than four answers, an
+audience not among the four, a chapter or step without its section, and
+a book whose right answers are mostly in one place, saying how many are
+where; the shortcode fails the build on the same mistakes but the last. `cargo xtask llms` writes each check in the twins as text, its
 answers marked Right or Wrong.
 
 ## The reader's filter
