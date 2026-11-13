@@ -6,7 +6,7 @@
 [blank] base
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
-3ce76f6faa233980 .github/workflows/ci.yml
+27cd10e8198654c7 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
 b9876f4aea9d9805 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
@@ -37,7 +37,7 @@ cec8c4b0490e8d90 shuyi.ron
 [grid] base, stage-top-down-grid
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
-3ce76f6faa233980 .github/workflows/ci.yml
+27cd10e8198654c7 .github/workflows/ci.yml
 76f61b855c33dfa7 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
 b9876f4aea9d9805 AGENTS.md
@@ -79,7 +79,7 @@ d269a8a87c41fdb0 rust-toolchain.toml
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 949443fec874c9d5 .github/actions/private-files/action.yml
-3ce76f6faa233980 .github/workflows/ci.yml
+27cd10e8198654c7 .github/workflows/ci.yml
 49ee40e211c25cec .gitignore
 84281f59df0e7cac AGENTS.md
 affd7179f0813dc2 CLAUDE.md

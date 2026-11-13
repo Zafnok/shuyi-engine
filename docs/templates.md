@@ -265,7 +265,12 @@ before every other, the folder `run --watch` lays over the files
 included. The part adds the rest: what fetches the checkout, ignores
 it, checks it out in CI before the gates (failing a run on the game's
 own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
-fork's pull request) and tells the game's agent of it. The grid stage's
+fork's pull request) and tells the game's agent of it. No workflow of
+the template uploads an artifact **or saves a cache** that embeds the
+private files (ADR-0111 §5): a pull request's run, a fork's too, may
+restore its base branch's caches, so with the part's action there the
+base's `ci.yml` caches only the cargo registry, not `target/`
+(`rust-cache`'s `cache-targets`). The grid stage's
 `playtest.yml` passes the same secret to the engine's playtest
 workflow, which runs the part's action before the bots' build when the
 game has it ([`contract.md`](contract.md), *The playtest in CI*). The private

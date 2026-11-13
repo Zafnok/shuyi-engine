@@ -37,7 +37,13 @@ jobs:
         with:
           key: ${{ secrets.PRIVATE_ASSETS_KEY }}
       - run: rustup show
+      # No cache may embed the private files either: `target/` holds builds
+      # that do, and a pull request's run, a fork's too, may restore its
+      # base branch's caches. A game with private files caches only the
+      # cargo registry, as the engine's playtest workflow does.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          cache-targets: ${{ hashFiles('.github/actions/private-files/action.yml') == '' }}
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo fmt --all --check
