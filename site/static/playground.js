@@ -2,7 +2,8 @@
 // an editor for each of a game's files beside the game in a frame, and the
 // buttons of the tries (`try_it`) that make their edit in it. Plain
 // JavaScript with no build step, loading nothing from another host. One
-// playground a page.
+// playground a page. Each editor paints its text under it, a RON file's
+// colored by ron-paint.js, which the page loads first (ticket 2832).
 //
 // The game's web build reads each `sessionStorage` key
 // `shuyi-page-file:files/<name>` as a file laid over its own, and sends its
@@ -152,6 +153,45 @@
 
         editors.hidden = false;
 
+        // Each editor's painted copy under it (ticket 2832): its text, a RON
+        // file's colored as a `ron` code block is (ron-paint.js), at its
+        // scroll. A last newline, so a text that ends in one shows its empty
+        // last line as the textarea does. Called whenever its text changes.
+        function paint(area) {
+            var holder = area.parentNode;
+            var pre = holder.querySelector(".playground-paint");
+            var colors = window.shuyiRonPaint;
+            if (pre === null || colors === undefined) {
+                return;
+            }
+            pre.firstChild.innerHTML = colors.paint(area.value, area.dataset.lang) + "\n";
+            holder.classList.add("painted");
+            follow(area);
+        }
+
+        function follow(area) {
+            var pre = area.parentNode.querySelector(".playground-paint");
+            if (pre !== null) {
+                pre.scrollTop = area.scrollTop;
+                pre.scrollLeft = area.scrollLeft;
+            }
+        }
+
+        // A text the script puts in an editor, painted.
+        function set(area, text) {
+            area.value = text;
+            paint(area);
+        }
+
+        areas.forEach(function (area) {
+            area.addEventListener("input", function () {
+                paint(area);
+            });
+            area.addEventListener("scroll", function () {
+                follow(area);
+            });
+        });
+
         function say(text) {
             problems.textContent = text;
         }
@@ -278,7 +318,7 @@
         }
 
         function reset(area) {
-            area.value = own[area.dataset.file];
+            set(area, own[area.dataset.file]);
         }
 
         buttons.forEach(function (button) {
@@ -316,7 +356,7 @@
                 own[name] = text;
                 var draft = get(DRAFT + name);
                 var ran = get(RUN + name);
-                area.value = draft !== null ? draft : ran !== null ? ran : text;
+                set(area, draft !== null ? draft : ran !== null ? ran : text);
             });
         })).then(function () {
             buttons.forEach(function (button) {
@@ -362,7 +402,7 @@
                 button.addEventListener("click", function () {
                     var missed = [];
                     made.forEach(function (m) {
-                        m.area.value = own[m.area.dataset.file];
+                        set(m.area, own[m.area.dataset.file]);
                     });
                     made.forEach(function (m) {
                         var text = m.area.value;
@@ -371,7 +411,7 @@
                             missed.push("files/" + m.area.dataset.file);
                             return;
                         }
-                        m.area.value = text.slice(0, at) + m.replace + text.slice(at + m.find.length);
+                        set(m.area, text.slice(0, at) + m.replace + text.slice(at + m.find.length));
                     });
                     select(areas.indexOf(made[0].area), false);
                     run();

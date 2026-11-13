@@ -941,10 +941,28 @@ h3 {
   font-size: 0.85rem;
 }
 
-.playground-panel textarea {
+/* An editor (ticket 2832): the textarea the reader types in, over the
+   `<pre>` playground.js paints with the same text, a RON file colored as a
+   `ron` code block is. Both in one grid cell, with the same box and text,
+   so each painted character lies under the typed one; the textarea sizes
+   the cell (`contain: size` keeps the painted text from it), and the
+   script mirrors its scrolling. Once painted, the textarea's own text and
+   background are transparent; its caret and selection stay. */
+.playground-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.playground-code > * {
+  grid-area: 1 / 1;
+}
+
+.playground-panel textarea,
+.playground-paint {
   box-sizing: border-box;
   width: 100%;
   min-height: 20rem;
+  margin: 0;
   padding: 0.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -953,8 +971,40 @@ h3 {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.85rem;
   line-height: 1.45;
+  letter-spacing: normal;
   tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.playground-panel textarea {
   resize: vertical;
+}
+
+.playground-paint {
+  overflow: hidden;
+  contain: size;
+}
+
+/* Room past the last line and column, so the painted copy, which has no
+   scrollbars, scrolls as far as the textarea does. */
+.playground-paint code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  padding: 0 3rem 3rem 0;
+  font: inherit;
+}
+
+.playground-panel .playground-code.painted textarea {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+}
+
+.playground-panel .playground-code.painted textarea::selection {
+  background: color-mix(in srgb, Highlight 40%, transparent);
+  color: transparent;
 }
 
 .playground-actions {
@@ -1030,7 +1080,8 @@ h3 {
   margin: 1rem 0 0.5rem;
 }
 
-.playground-fold .playground-panel textarea {
+.playground-fold .playground-panel textarea,
+.playground-fold .playground-paint {
   background: var(--bg);
 }
 
