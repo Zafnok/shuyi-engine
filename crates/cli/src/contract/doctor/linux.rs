@@ -258,8 +258,14 @@ mod tests {
         machine
     }
 
+    /// The names of the checks, but the optional ones (`gh`,
+    /// `ssh-keygen`), the same on every host.
     fn names(checks: &[Check]) -> Vec<&str> {
-        checks.iter().map(|c| c.name.as_str()).collect()
+        checks
+            .iter()
+            .filter(|c| !c.optional)
+            .map(|c| c.name.as_str())
+            .collect()
     }
 
     #[test]
@@ -284,7 +290,12 @@ mod tests {
                 "wasm-target"
             ]
         );
-        assert!(output.checks.iter().all(|c| c.ok && c.help.is_none()));
+        assert!(
+            output
+                .checks
+                .iter()
+                .all(|c| c.optional || (c.ok && c.help.is_none()))
+        );
         let found = |name: &str| {
             let check = output.checks.iter().find(|c| c.name == name).unwrap();
             check.found.as_deref().unwrap()
@@ -299,7 +310,11 @@ mod tests {
     fn each_row_missing_on_ubuntu_says_its_apt_command() {
         for row in ROWS {
             let output = doctor_checks(&linux(Some(UBUNTU), row.name));
-            let failed: Vec<&Check> = output.checks.iter().filter(|c| !c.ok).collect();
+            let failed: Vec<&Check> = output
+                .checks
+                .iter()
+                .filter(|c| !c.ok && !c.optional)
+                .collect();
             assert_eq!(failed.len(), 1, "{failed:?}");
             assert_eq!(
                 (failed[0].name.as_str(), &failed[0].found),
@@ -439,7 +454,7 @@ mod tests {
             "rustc -vV",
             "rustc 1.98.1\nhost: aarch64-unknown-linux-musl\n",
         );
-        assert_eq!(doctor_checks(&arm).checks.len(), 12);
+        assert_eq!(names(&doctor_checks(&arm).checks).len(), 12);
     }
 
     #[test]

@@ -32,7 +32,18 @@ bought art's credits), so it can't be copied: rule 4 of `AGENTS.md`.
 2590 sets the layout of a new game's private repository (`files/`
 laid over the game's files, `docs/`, `library/`; the checkout in
 `private/`, the pin in `private.rev`); 2591 makes it with `shuyi
-repos`. The engine's skill pack (`skills/`, `crates/cli/src/skills.rs`,
+repos`.
+
+**From 2591 (done, ADR-0112):** `cargo shuyi repos` makes, or repairs
+when run again, the game's repository, the private one with its README
+and folders, the pin and the checkout, two read-only deploy keys
+(`<name> builds (read-only)` and `<name> dependabot (read-only)`) whose
+private halves are the game's Actions and Dependabot secret
+`PRIVATE_ASSETS_KEY`, and a ruleset on the private repository's default
+branch (a warning, not a failure, on a free account's private
+repository). `--dry-run` shows the plan, and `--new-keys` replaces both
+keys. Its codes are `SH0006`, `SH1007`–`SH1009`, `SH3013` and `SH3014`
+(`shuyi explain`). The engine's skill pack (`skills/`, `crates/cli/src/skills.rs`,
 ADR-0043) is copied into every new game's `.claude/skills/` by `shuyi
 new`, and `shuyi check-skills` checks it.
 

@@ -5,7 +5,9 @@
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
-//! thin wrapper here; `bench`, which plays the game's benchmark scenarios
+//! thin wrapper here; `repos`, which puts the game on GitHub with its
+//! private files' repository, keys and secrets (its `--help`; not part
+//! of the library's API: it acts on the developer's GitHub account); `bench`, which plays the game's benchmark scenarios
 //! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
@@ -43,6 +45,7 @@ pub mod notices;
 pub mod pool;
 pub mod private_assets;
 pub mod project;
+mod repos;
 pub mod skills;
 pub mod template;
 #[cfg(feature = "toy")]
@@ -71,7 +74,7 @@ pub use shuyi_ui::frame::raster::test_card;
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
 /// ([`skills::check`]).
-pub const COMMANDS: [&str; 15] = [
+pub const COMMANDS: [&str; 16] = [
     "schema",
     "mcp",
     "mcp-host",
@@ -85,6 +88,7 @@ pub const COMMANDS: [&str; 15] = [
     "frame-png",
     "web",
     "private-assets",
+    "repos",
     "bench",
     "bench-play",
 ];
@@ -163,6 +167,9 @@ commands:
                                      the package's size against its targets' budgets
   web [--release] [--<feature>...]   build and package the web (WASM) build
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
+  repos [--dry-run] [--json] [...]   put the game on GitHub: it creates its repository, its
+                                     private files' one, their deploy keys and secrets on
+                                     your account (repos --help)
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
@@ -337,6 +344,7 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         },
         "web" => web(project, args),
         "private-assets" => private_assets(project, args),
+        "repos" => Ok(repos::main(project, args)),
         other => {
             let error = format!("unknown command: {other}");
             eprint!(

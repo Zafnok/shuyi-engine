@@ -28,6 +28,22 @@ and the layout; 2591 is `shuyi repos`, which makes the repositories,
 keys, secrets and ruleset in a game's folder. This ticket asks the
 questions in `shuyi new` and joins the two.
 
+**From 2591 (done, ADR-0112):** `shuyi repos` is the private module
+`crate::repos` of `shuyi-cli` (not public API, never an operation of the
+contract). `new` calls `repos::repos(&project, &args, &mut host)`, which
+returns a `repos::Report` (`text()`, `exit_code()`, serializable for
+`--json`); `repos::Args` holds the owner, name, both visibilities, the
+kind folders and `new_keys`, and `repos::folders(list)` is the check of a
+folder list (a comma list; `docs` and `library` are accepted and add
+nothing, `files` alone is refused). The real host is
+`repos::ThisMachine`; the tests' host is `repos::fake::Fake` (a scripted
+`gh`, `git` and `ssh-keygen` that keeps what they change, `cfg(test)`),
+whose `changes()` lists the calls that change something. `repos` reads
+the private repository from `shuyi.ron`'s `private_assets.url`, so `new`
+writes the game (with `--private-url`) before calling it, and the game's
+name from `app.name`. `shuyi doctor` already lists `gh` and `ssh-keygen`
+as optional checks.
+
 ## Nick input
 
 **Sign-off:** run `shuyi new "Repo Test"` in a terminal, answer the

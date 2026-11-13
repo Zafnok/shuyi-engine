@@ -123,6 +123,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0108](0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md) | A `Behaviour:` line for a change a game sees without a break | Accepted; amends ADR-0038 §6 |
 | [0109](0109-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md) | A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once | Accepted |
 | [0110](0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md) | Desktop and web exports ship a baked pack beside the program | Accepted; extends ADR-0023, ADR-0058 and ADR-0101 §4 |
-| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template |
+| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112 |
+| [0112](0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md) | `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again | Accepted; extends ADR-0111 §1 and §5 |
 
 Template: [`0000-template.md`](0000-template.md).

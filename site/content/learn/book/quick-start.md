@@ -362,6 +362,32 @@ and open `http://localhost:8000`. [Chapter 9](@/learn/book/targets-and-export.md
 says how it works and how to hand it out. [Hello, Grid](@/examples/hello-grid.md), the
 engine's example, plays in your browser on this site.
 
+## On GitHub
+
+When you want your game on GitHub, with its CI running the gates on every change,
+the tools set it up with [`gh`](https://cli.github.com), GitHub's own command-line
+tool, signed in to your account (`gh auth login`):
+
+```bash
+cargo shuyi repos --dry-run
+cargo shuyi repos
+```
+
+The first says what it would make and changes nothing. The second makes it: a
+repository on your account named from the game (Moon Garden's is `moon-garden`),
+public unless you say `--visibility private`, since GitHub's CI is free for a public
+one, and it pushes the game there. A game with private files also gets their
+private repository, with a README and a folder for each kind of file, the game
+pinned to it, and the read-only key and secret its CI reads them with. It creates
+these on your account, so a coding agent should ask you before running it. Run it
+again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
+and `ssh-keygen` as optional, since only this command needs them.
+
+{% newcomer(to="programming", topic="a repository") %}
+A **repository** is a project's folder with the history of every change, kept by
+git. On GitHub, others can read it, and its CI runs on each change you push.
+{% end %}
+
 ## Next
 
 A rebuild after a one-line change takes about a second: [Fast

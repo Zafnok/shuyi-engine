@@ -1,0 +1,23 @@
+# Text files are kept with LF line endings.
+* text=auto
+
+# Pictures, sounds, fonts and packs are binary: never a diff, never a line
+# ending changed.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.aseprite binary
+*.ase binary
+*.psd binary
+*.kra binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.flac binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.7z binary
