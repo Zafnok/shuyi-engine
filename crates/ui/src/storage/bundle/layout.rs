@@ -73,20 +73,21 @@ fn gap_len(rest: &str) -> Option<usize> {
 /// too; all of `rest` if it isn't closed.
 fn block_comment_len(rest: &str) -> usize {
     let mut depth = 0_usize;
-    let mut i = 0;
-    while i < rest.len() {
-        let here = &rest[i..];
-        if here.starts_with("/*") {
-            depth += 1;
-            i += 2;
-        } else if here.starts_with("*/") {
-            depth -= 1;
-            i += 2;
-            if depth == 0 {
-                return i;
+    let mut chars = rest.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        match (c, chars.peek().map(|(_, next)| *next)) {
+            ('/', Some('*')) => {
+                chars.next();
+                depth += 1;
             }
-        } else {
-            i += here.chars().next().map_or(1, char::len_utf8);
+            ('*', Some('/')) => {
+                chars.next();
+                depth -= 1;
+                if depth == 0 {
+                    return i + 2;
+                }
+            }
+            _ => {}
         }
     }
     rest.len()
@@ -201,14 +202,12 @@ pub(super) fn compact(text: &str) -> String {
 /// bracket with nothing inside stays on one line (`()`). Laying out text
 /// already laid out changes nothing, and [`compact`] undoes it.
 pub(super) fn layout(text: &str, level: usize) -> String {
-    let tokens = tokens(text);
+    let mut tokens = tokens(text).into_iter().peekable();
     let mut out = String::with_capacity(text.len() * 2);
     let mut depth = level;
     // A new line is owed before the next token.
     let mut owed = false;
-    let mut i = 0;
-    while i < tokens.len() {
-        let token = tokens[i];
+    while let Some(token) = tokens.next() {
         let opens = match token {
             Token::Punct(c) => closing(c),
             _ => None,
@@ -231,9 +230,8 @@ pub(super) fn layout(text: &str, level: usize) -> String {
             Token::Atom(atom) => out.push_str(atom),
         }
         if let Some(close) = opens {
-            if tokens.get(i + 1) == Some(&Token::Punct(close)) {
+            if tokens.next_if_eq(&Token::Punct(close)).is_some() {
                 out.push(close);
-                i += 1;
             } else {
                 depth += 1;
                 owed = true;
@@ -242,7 +240,6 @@ pub(super) fn layout(text: &str, level: usize) -> String {
         if token == Token::Punct(',') {
             owed = true;
         }
-        i += 1;
     }
     out
 }
