@@ -76,6 +76,13 @@ on:
         description: The playtest job's timeout.
         type: number
         default: 120
+    secrets:
+      PRIVATE_ASSETS_KEY:
+        description: >-
+          The game's private repository's read-only deploy key (ADR-0111
+          §5), passed by name by a game with private files; never
+          `secrets: inherit`. Empty on a fork's pull request.
+        required: false
     outputs:
       play:
         description: "'true' when a changed file is a lever (or the event always plays)"
@@ -165,8 +172,33 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # A game with private files (ADR-0111 §5, ticket 2595) checks them out
+      # over its own before it builds, so its bots play the real game: its
+      # own action, run when the game has it, fails a run on the game's own
+      # repository without the key and warns on a fork's pull request,
+      # which plays the public files. The action reads `private.rev` and
+      # checks out `private/` at the repository's root, where a game with
+      # its own CI is: a game in a subfolder that has one is refused.
+      - name: A game in a subfolder with private files
+        if: >-
+          inputs.working-directory != '.'
+          && hashFiles(format('{0}/.github/actions/private-files/action.yml', inputs.working-directory)) != ''
+        working-directory: .
+        run: |
+          echo "::error::The game's folder has private files (.github/actions/private-files), but isn't the repository's root: their action checks out private/ at the root, so the bots would play the public files."
+          exit 1
+      - name: The private files
+        if: hashFiles('.github/actions/private-files/action.yml') != ''
+        uses: ./.github/actions/private-files
+        with:
+          key: ${{ secrets.PRIVATE_ASSETS_KEY }}
       - run: rustup show
+      # Nothing that embeds the private files leaves the job (game ADR-0117
+      # §4): no step uploads an artifact, and a game with private files
+      # caches no build, which a fork's pull request could restore.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          cache-targets: ${{ hashFiles('.github/actions/private-files/action.yml') == '' }}
       - name: Install system packages
         if: inputs.system-packages != ''
         env:

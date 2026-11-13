@@ -674,6 +674,18 @@ jobs:
 | `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`): for a game whose tools don't give one yet. Drop it once they do, so a plan that stops working fails. The grid template's game has a plan, its bot run, so it doesn't set it |
 | `timeout-minutes` | 120 | The playtest job's timeout |
 
+A game with private files (ADR-0111) passes their key by name, as the
+grid template's game does, never with `secrets: inherit`:
+
+```yaml
+    secrets:
+      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+```
+
+| Secret | Means |
+| ------ | ----- |
+| `PRIVATE_ASSETS_KEY` | Optional. The private repository's read-only deploy key. When the game has its action `.github/actions/private-files` (the template's part `private-files`), the `playtest` job runs it after its checkout and before it builds, so the bots play the real game: as in the game's `ci.yml`, a run on the game's own repository without the key fails, and a fork's pull request warns and plays the public files. The action works at the repository's root, so a `working-directory` other than `.` with its own action is refused. Such a game's job caches no build (`target/`), which a fork's pull request could restore, and no job uploads an artifact |
+
 The changed files are a pull request's (its merge commit against the
 base) or a push's (`before..HEAD`, every commit pushed). A push with no
 earlier commit to compare with (a new branch, a force push) plays, and
