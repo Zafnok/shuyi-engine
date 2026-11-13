@@ -75,6 +75,105 @@ impl Skill {
     pub fn has_example(&self) -> bool {
         self.files.contains_key(EXAMPLE)
     }
+
+    /// Whether its `SKILL.md` says its game was made without the worked
+    /// examples ([`WITHOUT_EXAMPLES`]).
+    pub fn left_out_examples(&self) -> bool {
+        self.text()
+            .is_some_and(|text| text.contains(WITHOUT_EXAMPLES))
+    }
+
+    /// It without its worked examples ([`is_example`]), for a game made
+    /// without them (ADR-0113): each link of its Markdown files to one of
+    /// them made its words alone, and, if it had any, its `SKILL.md`
+    /// ending with [`WITHOUT_EXAMPLES`] and where the engine keeps them.
+    #[must_use]
+    pub fn without_examples(&self) -> Self {
+        let had = self.files.keys().any(|path| is_example(path));
+        let mut files = BTreeMap::new();
+        for (path, bytes) in &self.files {
+            if is_example(path) {
+                continue;
+            }
+            let markdown = Path::new(path)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("md"));
+            let bytes = match std::str::from_utf8(bytes) {
+                Ok(text) if markdown && had => {
+                    let mut text = unlinked_examples(text, path);
+                    if path == FILE {
+                        if !text.ends_with('\n') {
+                            text.push('\n');
+                        }
+                        text.push_str(&format!(
+                            "\n{WITHOUT_EXAMPLES}: this skill's are in the engine's repository, \
+                             in `skills/{}/`, at the version the game builds with.\n",
+                            self.name
+                        ));
+                    }
+                    text.into_bytes()
+                }
+                _ => bytes.clone(),
+            };
+            files.insert(path.clone(), bytes);
+        }
+        Self {
+            name: self.name.clone(),
+            files,
+        }
+    }
+}
+
+/// What a skill's `SKILL.md` says when `shuyi new` left its worked
+/// examples out (`--no-examples`, ADR-0113); `check` asks no example of
+/// it then.
+pub const WITHOUT_EXAMPLES: &str =
+    "This game was made without the skills' worked examples (`shuyi new --no-examples`)";
+
+/// Whether the file `path` of a skill's folder is one of its worked
+/// examples: `example.ron`, an `example-<name>.ron`, or a file of its
+/// `example/` folder.
+pub fn is_example(path: &str) -> bool {
+    path == EXAMPLE
+        || path.starts_with("example/")
+        || (path.starts_with("example-") && path.ends_with(".ron") && !path.contains('/'))
+}
+
+/// `text`, the file `path` of a skill's folder, with each link to one of
+/// the skill's worked examples (`[words](example.ron)`) made its words.
+fn unlinked_examples(text: &str, path: &str) -> String {
+    let folder = path.rsplit_once('/').map_or("", |(folder, _)| folder);
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("](") {
+        let after = &rest[at + 2..];
+        let (Some(end), Some(open)) = (after.find(')'), rest[..at].rfind('[')) else {
+            out.push_str(&rest[..at + 2]);
+            rest = after;
+            continue;
+        };
+        let target = after[..end].trim();
+        let target = target.split(['#', '?']).next().unwrap_or(target);
+        // The target from the skill's folder, if it stays in it.
+        let mut from: Vec<&str> = folder.split('/').filter(|p| !p.is_empty()).collect();
+        let mut inside = !target.contains("://");
+        for part in target.split('/') {
+            match part {
+                "" | "." => {}
+                ".." => inside &= from.pop().is_some(),
+                part => from.push(part),
+            }
+        }
+        if inside && is_example(&from.join("/")) {
+            out.push_str(&rest[..open]);
+            out.push_str(&rest[open + 1..at]);
+        } else {
+            out.push_str(&rest[..at + 2 + end + 1]);
+        }
+        rest = &after[end + 1..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// A skill pack: its skills, by name.
@@ -332,9 +431,11 @@ impl Against {
 ///    [`MAX_COMPATIBILITY`], [`MAX_LINES`]);
 /// 5. every id in its `waits_for` is an open ticket (when they are
 ///    known), and a skill of the engine's pack ([`Pack::embedded`], by
-///    name) that waits for nothing has a worked example. A project's own
-///    skill, one the embedded pack doesn't have, needs none: it teaches
-///    the project's own workflow, with nothing for a new game to run;
+///    name) that waits for nothing has a worked example, unless its
+///    `SKILL.md` says its game was made without them ([`WITHOUT_EXAMPLES`],
+///    ADR-0113). A project's own skill, one the embedded pack doesn't have,
+///    needs none: it teaches the project's own workflow, with nothing for a
+///    new game to run;
 /// 6. every problem code (`SH2003`) in its files is a row of the table
 ///    (`shuyi explain`) that isn't retired.
 ///
@@ -396,7 +497,7 @@ fn check_skill(
                     ));
                 }
             }
-            if engines && waits.is_empty() && !skill.has_example() {
+            if engines && waits.is_empty() && !skill.has_example() && !skill.left_out_examples() {
                 problems.push(problem(
                     &main,
                     None,

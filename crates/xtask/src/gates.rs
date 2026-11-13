@@ -258,13 +258,14 @@ pub const GATES: &[Gate] = &[
     gate("templates (grid)", "templates", CODE)
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
-            "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root}",
+            "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root} --no-examples",
             "target/gates/demo-grid: cargo fmt --all --check",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets -- -D warnings",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-skills .claude/skills",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
         ]),
     gate("templates (blank)", "templates", CODE)
@@ -277,6 +278,7 @@ pub const GATES: &[Gate] = &[
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-skills .claude/skills",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
         ]),
     // CI's job times the builds too; their budget is a runner's, so a

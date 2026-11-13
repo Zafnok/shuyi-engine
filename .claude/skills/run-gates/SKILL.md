@@ -313,10 +313,11 @@ golden`, its window feature off, as Hello, Grid's is.
 ## A new game from each template (CI's `templates` job)
 
 `shuyi new` makes a game from each template, and the made game runs its
-own gates. From the repository root, for `grid` and then `blank`:
+own gates. From the repository root, for `grid` (made with
+`--no-examples`, as CI makes it) and then `blank`:
 
 ```bash
-cargo run -q -p shuyi-cli --locked -- new ../demo-grid --template grid --engine-path "$PWD"
+cargo run -q -p shuyi-cli --locked -- new ../demo-grid --template grid --engine-path "$PWD" --no-examples
 cd ../demo-grid
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -324,6 +325,7 @@ cargo test --workspace
 cargo shuyi check
 cargo shuyi check --target all
 cargo shuyi check-keys
+cargo shuyi check-skills .claude/skills
 cargo shuyi lint
 ```
 

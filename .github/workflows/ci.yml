@@ -654,9 +654,10 @@ jobs:
         include:
           # The grid game has private files too (ticket 2590, ADR-0111),
           # with no checkout: its gates and its web build run on its public
-          # files, as a fork's do.
+          # files, as a fork's do. It is made without the skills' worked
+          # examples (ticket 2597, ADR-0113), and the blank game with them.
           - template: grid
-            private: --set private-files=yes --private-url https://github.com/o/demo-assets.git
+            private: --set private-files=yes --private-url https://github.com/o/demo-assets.git --no-examples
           - template: blank
             private: ""
     runs-on: ubuntu-latest
@@ -684,7 +685,7 @@ jobs:
       - run: apt-get install -y --no-install-recommends jq
       - name: Make a game with shuyi new
         run: |
-          # shellcheck disable=SC2086 # $PRIVATE is four words, or none
+          # shellcheck disable=SC2086 # $PRIVATE is five words, or none
           cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE
       - name: The game's own setup script finds nothing to do
         run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
@@ -697,6 +698,7 @@ jobs:
           cargo shuyi check
           cargo shuyi check --target all
           cargo shuyi check-keys
+          cargo shuyi check-skills .claude/skills
           cargo shuyi lint
           cargo shuyi doctor
       # Ticket 2777: a new game builds for the web as it is, with the

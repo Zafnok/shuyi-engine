@@ -1,6 +1,7 @@
-//! `shuyi new`'s questions about the game's repositories (ADR-0112): whether
-//! to put the game on GitHub, each repository's visibility, and which kinds
-//! of files stay private. Each question is a function from a [`Terminal`]
+//! `shuyi new`'s questions: whether to include the skills' worked examples
+//! (ADR-0113), then about the game's repositories (ADR-0112): whether to
+//! put the game on GitHub, each repository's visibility, and which kinds of
+//! files stay private. Each question is a function from a [`Terminal`]
 //! (its input and its writer) to its answer, so a test feeds it lines; a
 //! flag answers each one ([`Flags`]), and none is asked off a terminal
 //! ([`on_a_terminal`]).
@@ -15,11 +16,12 @@ use std::fmt::Write as _;
 use std::io::{self, BufRead, IsTerminal as _, Write};
 use std::path::Path;
 
-use super::{NewInput, NewOutput, PRIVATE_FILES, name_of, new, parse_args};
+use super::{NewInput, NewOutput, PRIVATE_FILES, answers_of, name_of, new, parse_args};
 use crate::contract::codes::{self, Code};
 use crate::contract::{Answer, Op};
 use crate::project::Project;
 use crate::repos::{self, DEFAULT_FOLDERS, Host, Report, Slug, Visibility};
+use crate::template::{self, EXAMPLES};
 
 /// The kinds of files a game may keep private, each the folder of
 /// `files/` it makes, with what it holds.
@@ -46,6 +48,8 @@ const TAKES_A_VALUE: [&str; 7] = [
 /// leaves to ask.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Flags {
+    /// `--examples` or `--no-examples`: the template's `examples` question.
+    pub examples: Option<bool>,
     /// `--github` or `--no-github`.
     pub github: Option<bool>,
     /// `--owner`: the repositories' owner; the signed-in user if none.
@@ -74,6 +78,8 @@ pub fn parse(args: &[String]) -> Result<(NewInput, Flags), String> {
                 .ok_or_else(|| format!("{arg} needs a value"))
         };
         match arg.as_str() {
+            "--examples" => flags.examples = Some(true),
+            "--no-examples" => flags.examples = Some(false),
             "--github" => flags.github = Some(true),
             "--no-github" => flags.github = Some(false),
             "--owner" => {
@@ -247,6 +253,19 @@ fn public_or_private(default: Visibility) -> impl Fn(&str) -> Result<Visibility,
 /// `yes` or `no`, as a default's name.
 fn word(yes: bool) -> &'static str {
     if yes { "yes" } else { "no" }
+}
+
+/// The first question: whether to include the engine skills' worked
+/// examples, yes by default (ADR-0113).
+pub fn examples(terminal: &mut Terminal<'_>) -> io::Result<bool> {
+    ask(
+        terminal,
+        "Include the engine skills' worked examples (bots.rs, playtest.ron…)? They show each \
+         skill at work; a game runs without them.",
+        "yes or no",
+        "yes",
+        yes_or_no(true),
+    )
 }
 
 /// Question 1: whether to put the game `name` on GitHub; no by default
@@ -432,10 +451,39 @@ fn settle(
     if json {
         terminal = None;
     }
+    let set_examples = input.set.0.get(EXAMPLES).cloned();
+    if let Some(examples) = flags.examples {
+        let answer = word(examples);
+        if set_examples.is_some_and(|set| set != [answer]) {
+            return Err(refused(&format!(
+                "--{}examples and --set {EXAMPLES}=… disagree",
+                if examples { "" } else { "no-" }
+            )));
+        }
+        input
+            .set
+            .0
+            .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
+    }
     // A name that makes no game: `new` says so, with no question first.
     let Ok((name, krate)) = name_of(cwd, input) else {
         return Ok(None);
     };
+    if let Some(terminal) = terminal.as_mut() {
+        // Asked unless the answers give it: answers that make no game
+        // (an unknown short name, a missing file) ask nothing, and `new`
+        // says what is wrong.
+        let unanswered = template::built_in().is_ok_and(|template| {
+            answers_of(cwd, &template, input).is_ok_and(|a| !a.0.contains_key(EXAMPLES))
+        });
+        if unanswered {
+            let answer = word(asked(examples(terminal))?);
+            input
+                .set
+                .0
+                .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
+        }
+    }
     let github = match (flags.github, terminal.as_mut()) {
         (Some(github), _) => github,
         (None, Some(terminal)) => {

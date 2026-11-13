@@ -37,7 +37,10 @@ the files made, the parts, the modules turned on, the stages, the skills
 part serves, but a question's default, which adds nothing by design:
 `private-files` = `no`).
 
-In a terminal, after the template's answers, `shuyi new` asks whether
+In a terminal, `shuyi new` first asks whether to include the engine
+skills' worked examples (the template's `examples` question, below),
+unless `--examples`, `--no-examples`, `--set examples=…` or the answers
+file answers it. It then asks whether
 to put the game on GitHub (with `gh`, signed in), each repository's
 visibility, and which kinds of files go in a private repository
 (`files/text`, `files/sprites`, `files/sounds`, `files/music`,
@@ -45,12 +48,14 @@ visibility, and which kinds of files go in a private repository
 repository it answers `private-files` = `yes` and sets `--private-url` to
 `https://github.com/<owner>/<crate name>-assets.git` itself, writes the
 game, then runs `shuyi repos` in it ([ADR-0112](adr/0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md)).
-Each question has its flag (`--github`/`--no-github`, `--owner`,
+Each question has its flag (`--examples`/`--no-examples`,
+`--github`/`--no-github`, `--owner`,
 `--visibility`, `--assets-visibility`, `--private <kinds>|none`,
 `--private-folder <path>`). Off a terminal, with `--json` and from the
 MCP server's `new` tool, nothing is asked and no repository is made
 (`--github` is refused with `--json`); there `--private` adds the part
-only with `--private-url`.
+only with `--private-url`, and the examples are in unless `examples` is
+`no`.
 
 An answers file maps each question to the ids of its answers:
 
@@ -249,6 +254,18 @@ not: `shuyi add` copies it when the game turns the module on) and a skill
 whose folder a part already writes. `new`'s answer lists them in
 `skills`.
 
+The composer reads one question itself, `examples`
+([ADR-0113](adr/0113-a-game-made-without-the-skills-worked-examples-says-so-in-each-skill.md)):
+no part serves it, and its `no` is no limit. With `examples` = `no` each
+skill comes without its worked examples (`example.ron`, `example-*.ron`
+and the `example/` folder), its other files kept. A link of its Markdown
+to one of them becomes the link's words, and its `SKILL.md` ends with a
+sentence saying the game was made without them and that they are in the
+engine's `skills/<name>/`, at the version the game builds with.
+`shuyi check-skills` asks no worked example of a skill whose `SKILL.md`
+says so, so the game's `cargo shuyi check-skills .claude/skills` passes
+either way.
+
 ## The engine's template
 
 | Part | When | What it writes |
@@ -263,11 +280,13 @@ Its questions:
 | -------- | ---- | ------- | ------- |
 | `perspective` | many | `top-down-grid` | none |
 | `private-files` | one | `yes`: the game's writing, art and sounds in a second, private repository; `no` | `no` |
+| `examples` | one | `yes`: each skill's worked example; `no`: the skills alone (above) | `yes` |
 
 `--template blank` is `base` alone, and `--template grid` is `base` and
 the grid stage; neither has private files. CI makes a game with each
-short name, the grid one with private files too, runs its gates and
-builds it for the web.
+short name, the grid one with private files and without the worked
+examples, runs its gates (`check-skills` among them) and builds it for
+the web.
 
 ### The private files
 

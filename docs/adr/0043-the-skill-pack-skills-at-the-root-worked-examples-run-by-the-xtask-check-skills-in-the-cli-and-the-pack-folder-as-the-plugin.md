@@ -1,6 +1,7 @@
 # ADR-0043: The skill pack: skills at the root, worked examples run by the xtask, `check-skills` in the CLI, and the pack's folder as the plugin
 
-- **Status:** Accepted
+- **Status:** Accepted; §3 amended by ADR-0113 (no worked example asked
+  of a skill whose game was made without them)
 - **Date:** 2026-10-24
 - **Related tickets:** 1134 (the skill pack), 2501 (the composer), 2003
   (`shuyi add` and a module's skill), 2524 and 2525 (the agent eval),
