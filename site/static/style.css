@@ -599,7 +599,9 @@ h3 {
 .newcomer-hide,
 .newcomer-stub .newcomer-stub-show,
 .book-bar-button,
-.book-welcome-skip button {
+.book-welcome-skip button,
+.book-fold,
+.book-side-close {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -619,12 +621,16 @@ h3 {
 .newcomer-hide:hover,
 .newcomer-stub:hover .newcomer-stub-show,
 .book-bar-button:hover,
-.book-welcome-skip button:hover {
+.book-welcome-skip button:hover,
+.book-fold:hover,
+.book-side-close:hover {
   background: var(--accent);
   color: var(--accent-text);
 }
 
-.newcomer-hide:focus-visible {
+.newcomer-hide:focus-visible,
+.book-fold:focus-visible,
+.book-side-close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -800,6 +806,329 @@ h3 {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+/* The book's contents and the page's headings beside a page of the book
+   (ticket 2834, `book-side.js`). One column below 960 px, where the
+   contents opens over the text from its button and the headings are a
+   `<details>` above it; the contents on the left from 960 px; the headings
+   on the right too from 1240 px. The text keeps its 44rem measure.
+   `book-side.js` sets `data-book-nav` on `<html>`, which shows the fold
+   buttons, and `data-book-side-shut` and `data-book-toc-shut` for the
+   columns the reader folded. With no JavaScript neither is set: both lists
+   show, the contents after the text below 960 px. */
+
+.wrap.book-wide {
+  max-width: 82rem;
+}
+
+.book-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 2.5rem;
+}
+
+.book-main {
+  min-width: 0;
+}
+
+/* A link past the contents, for the keyboard: out of sight until it has
+   the focus. */
+.skip-link {
+  position: absolute;
+  left: -100vw;
+}
+
+.skip-link:focus {
+  position: static;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.book-folds,
+.book-fold-toc,
+.book-side-close,
+.book-toc {
+  display: none;
+}
+
+[data-book-nav] .book-folds {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 44rem;
+  margin-bottom: 1rem;
+}
+
+.book-fold[aria-controls="book-side"]::before {
+  content: "☰\00a0";
+}
+
+/* The lists. */
+.book-side,
+.book-toc {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.book-side ul,
+.book-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.book-side ul ul,
+.book-toc ul ul {
+  padding-left: 0.9rem;
+}
+
+.book-side a,
+.book-toc a {
+  display: block;
+  padding: 0.25rem 0.5rem;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.book-side a:hover,
+.book-toc a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.book-side a[aria-current="page"] {
+  border-left-color: var(--accent);
+  background: var(--code-inline-bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.book-toc a[aria-current="location"],
+.book-toc-fold a[aria-current="location"] {
+  border-left-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.book-side-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  padding-left: calc(0.5rem + 2px);
+}
+
+.book-side-top a {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* A part's title, as the front page has it: Appendices. */
+.book-side-part,
+.book-toc-title {
+  margin: 1rem 0 0.25rem;
+  padding-left: calc(0.5rem + 2px);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.book-toc-title {
+  margin-top: 0;
+}
+
+.book-side-n {
+  margin-right: 0.2rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.book-side .book-tag {
+  margin: 0 0 0.25rem 0.5rem;
+  font-size: 0.7rem;
+}
+
+/* The page's headings above the text, below 1240 px. */
+.book-toc-fold {
+  max-width: 44rem;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  font-size: 0.9rem;
+}
+
+.book-toc-fold summary {
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.book-toc-fold ul {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.book-toc-fold ul ul {
+  margin: 0;
+  padding-left: 0.9rem;
+}
+
+.book-toc-fold a {
+  display: block;
+  padding: 0.2rem 0.5rem;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+/* Below 960 px: the contents after the text with no JavaScript; with it,
+   folded, and over the text when its button opens it. */
+@media (width < 960px) {
+  .book-side {
+    order: 1;
+    margin-top: 3rem;
+  }
+
+  [data-book-nav] .book-side {
+    display: none;
+  }
+
+  /* The contents' button stays in reach as the text scrolls. */
+  [data-book-nav] .book-folds {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: -0.5rem 0 0.5rem;
+    padding: 0.5rem 0;
+    background: var(--bg);
+  }
+
+  [data-book-nav] .book-side.is-open {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: block;
+    width: min(20rem, 88vw);
+    margin: 0;
+    padding: 1rem 1rem 2rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    background: var(--bg-raised);
+    box-shadow: 0 0 2rem rgb(0 0 0 / 0.3);
+    animation: book-side-in 160ms ease-out;
+  }
+
+  .book-side.is-open .book-side-close {
+    display: inline-flex;
+  }
+}
+
+@keyframes book-side-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-book-nav] .book-side.is-open {
+    animation: none;
+  }
+}
+
+.book-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.book-scrim[hidden] {
+  display: none;
+}
+
+/* From 960 px: the contents on the left, in sight as the text scrolls.
+   The columns shown are centred, so the text alone sits in the middle. */
+@media (width >= 960px) {
+  .book-layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-areas: "side main";
+    justify-content: center;
+  }
+
+  .book-side {
+    grid-area: side;
+  }
+
+  .book-main {
+    grid-area: main;
+  }
+
+  .book-side,
+  .book-toc {
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  [data-book-side-shut] .book-layout {
+    grid-template-columns: minmax(0, 44rem);
+    grid-template-areas: "main";
+  }
+
+  [data-book-side-shut] .book-side {
+    display: none;
+  }
+}
+
+/* From 1240 px: the page's headings on the right. */
+@media (width >= 1240px) {
+  .book-layout.has-toc {
+    grid-template-columns: 16rem minmax(0, 44rem) minmax(0, 13rem);
+    grid-template-areas: "side main toc";
+  }
+
+  [data-book-side-shut] .book-layout.has-toc {
+    grid-template-columns: minmax(0, 44rem) minmax(0, 13rem);
+    grid-template-areas: "main toc";
+  }
+
+  [data-book-toc-shut] .book-layout.has-toc {
+    grid-template-columns: 16rem minmax(0, 44rem);
+    grid-template-areas: "side main";
+  }
+
+  [data-book-side-shut][data-book-toc-shut] .book-layout.has-toc {
+    grid-template-columns: minmax(0, 44rem);
+    grid-template-areas: "main";
+  }
+
+  .has-toc .book-toc {
+    display: block;
+    grid-area: toc;
+  }
+
+  [data-book-toc-shut] .book-toc,
+  .book-toc-fold {
+    display: none;
+  }
+
+  [data-book-nav] .book-fold-toc {
+    display: inline-flex;
+  }
 }
 
 /* The footer. */

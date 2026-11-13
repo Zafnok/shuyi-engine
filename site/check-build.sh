@@ -170,6 +170,15 @@ audiences=" $(sed -nE 's/^ *const AUDIENCES = \[(.*)\];$/\1/p' "$site_dir/static
 [ "$audiences" != "  " ] || fail "site/static/book-filter.js has no AUDIENCES line"
 while IFS= read -r page; do
   grep -qE '<script src="[^"]*/book-filter\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-filter.js"
+  # Every page of the book but its front page has the book's contents
+  # beside it, marking the page itself (ticket 2834).
+  if [ "$page" != "$out/one/learn/book/index.html" ]; then
+    grep -qE '<script src="[^"]*/book-side\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-side.js"
+    grep -qF '<nav class="book-side" id="book-side"' "$page" || fail "${page#"$out"/one/} has no book's contents beside it"
+    here="${page#"$out"/one/}"
+    grep -qF "href=\"${one}${here%index.html}\" aria-current=\"page\"" "$page" ||
+      fail "$here: the book's contents beside it doesn't mark it"
+  fi
   # A page with a quick check (ticket 2827) loads the script that answers it.
   if grep -qF 'class="check-choices"' "$page"; then
     grep -qE '<script src="[^"]*/book-check\.js' "$page" || fail "${page#"$out"/one/} has a quick check and doesn't load book-check.js"
