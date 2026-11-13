@@ -103,4 +103,4 @@ None.
   (the contract) is unchanged.
 - Behaviour: `shuyi bench`'s web package number drops the music and
   voice folders; its table gains a column.
-- The game's PR that moves the pin: game#1249's.
+- Game: game#1249 moves the pin and drops the web package from its known-over list.
