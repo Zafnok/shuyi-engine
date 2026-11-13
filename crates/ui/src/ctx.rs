@@ -646,14 +646,42 @@ impl<G: GameData> Ctx<G> {
     /// order, so it loads their clips a few ahead. Lines without a
     /// playable clip are left out; nothing is sent when voices are off or
     /// none has one.
+    ///
+    /// For lines read one after another (a script). Lines that may be
+    /// said at any moment, in an order the player decides (a guide's tips,
+    /// a companion's remarks), go to [`keep_voices`](Self::keep_voices)
+    /// instead: only the next few of this list are loaded.
     pub fn preload_voices(&mut self, lines: &[LineId]) {
-        let clips: Vec<_> = lines
-            .iter()
-            .filter_map(|line| Some((line.clone(), self.voice_for(line)?)))
-            .collect();
+        let clips = self.playable(lines);
         if !clips.is_empty() {
             self.audio.preload_voices(clips);
         }
+    }
+
+    /// Tells the platform to keep the clips of `lines` loaded, whichever
+    /// is said next, until the next call; an empty list lets them go. Use
+    /// it for a screen's few short lines that may be said at any moment
+    /// (picking an item up, a hazard met first), beside the script read
+    /// in order that [`preload_voices`](Self::preload_voices) names. A
+    /// clip in both is loaded once.
+    ///
+    /// Lines without a playable clip are left out. Unlike
+    /// `preload_voices`, a list left empty is sent (it lets the set go);
+    /// nothing is sent while voices are off.
+    pub fn keep_voices(&mut self, lines: &[LineId]) {
+        if !self.settings.voices {
+            return;
+        }
+        let clips = self.playable(lines);
+        self.audio.keep_voices(clips);
+    }
+
+    /// The lines of `lines` with a clip that may be played, and the clip.
+    fn playable(&self, lines: &[LineId]) -> Vec<(LineId, G::Voice)> {
+        lines
+            .iter()
+            .filter_map(|line| Some((line.clone(), self.voice_for(line)?)))
+            .collect()
     }
 
     /// Whether any line has a voice clip that may be played: the platform

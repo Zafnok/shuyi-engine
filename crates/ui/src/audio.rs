@@ -219,6 +219,15 @@ pub enum AudioRequest<V> {
         /// The clips, in the order they are expected.
         lines: Vec<(LineId, V)>,
     },
+    /// The clips a screen keeps loaded, whichever is asked for next, so
+    /// each plays at once ([`Ctx::keep_voices`](crate::Ctx::keep_voices)).
+    /// Replaces the set sent before; an empty one lets them go. Beside
+    /// [`PreloadVoices`](Self::PreloadVoices): a clip kept is never freed
+    /// by that list moving on.
+    KeepVoices {
+        /// The clips, in no particular order.
+        lines: Vec<(LineId, V)>,
+    },
     /// Make `samples` the sound cue `cue` from now on, as a cue of the manifest
     /// is: [`PlaySound`](Self::PlaySound) and
     /// [`StartSound`](Self::StartSound) play it at its own volume, full, once.
@@ -272,7 +281,8 @@ impl<V> AudioRequest<V> {
             | Self::StopMusicWith { .. }
             | Self::PlayVoice { .. }
             | Self::StopVoice
-            | Self::PreloadVoices { .. } => None,
+            | Self::PreloadVoices { .. }
+            | Self::KeepVoices { .. } => None,
         }
     }
 }
@@ -397,6 +407,12 @@ impl<V> AudioQueue<V> {
     /// ([`Ctx::preload_voices`](crate::Ctx::preload_voices)).
     pub fn preload_voices(&mut self, lines: Vec<(LineId, V)>) {
         self.requests.push(AudioRequest::PreloadVoices { lines });
+    }
+
+    /// Tells the platform which clips to keep loaded, replacing the set
+    /// named last ([`Ctx::keep_voices`](crate::Ctx::keep_voices)).
+    pub fn keep_voices(&mut self, lines: Vec<(LineId, V)>) {
+        self.requests.push(AudioRequest::KeepVoices { lines });
     }
 
     /// The requests made since the last [`take`](Self::take), in order.
@@ -780,6 +796,7 @@ impl MusicState {
             | AudioRequest::PlayVoice { .. }
             | AudioRequest::StopVoice
             | AudioRequest::PreloadVoices { .. }
+            | AudioRequest::KeepVoices { .. }
             | AudioRequest::AddSound { .. }
             | AudioRequest::RemoveSound { .. } => {}
             AudioRequest::PlayMusic { cue, switch } => {
@@ -1419,6 +1436,7 @@ mod tests {
         q.play_voice(&line, Voice::High);
         q.stop_voice();
         q.preload_voices(vec![(line.clone(), Voice::Only)]);
+        q.keep_voices(vec![(line.clone(), Voice::Low)]);
         let expected = [
             AudioRequest::PlayVoice {
                 line: line.clone(),
@@ -1426,7 +1444,10 @@ mod tests {
             },
             AudioRequest::StopVoice,
             AudioRequest::PreloadVoices {
-                lines: vec![(line, Voice::Only)],
+                lines: vec![(line.clone(), Voice::Only)],
+            },
+            AudioRequest::KeepVoices {
+                lines: vec![(line, Voice::Low)],
             },
         ];
         assert_eq!(q.pending(), expected);

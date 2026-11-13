@@ -215,6 +215,14 @@ hasn't started half a second after it was asked for:
 In a test, `h.voice_length(seconds)` gives every clip that length, and `h.wait` steps past
 its end.
 
+A clip is fetched when it is asked for, so on a slow device (a web page, say) a line can be
+dropped as late. A screen tells the platform what is coming. `ctx.preload_voices(lines)`
+names a script's lines in the order they will be said, and the next few are kept loaded.
+`ctx.keep_voices(lines)` names the few short lines that may be said at any moment, in an
+order the player decides (a shopkeeper's barks, a guide's tips): all of them stay loaded
+until the screen names another set, and `ctx.keep_voices(&[])` lets them go. A screen may
+use both; a clip in both is loaded once.
+
 ## Text by key
 
 No screen writes its text in its code.

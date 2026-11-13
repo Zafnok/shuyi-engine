@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 3213 — A screen can keep a set of voice clips loaded, beside the clips coming next
@@ -97,17 +97,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A test of the voice player: with a set kept and a coming list
+- [x] A test of the voice player: with a set kept and a coming list
       whose window has moved past every file of the set, every kept file
       stays loaded; asking for one plays it on the next poll, with no
       load. An empty set frees them (unless coming next, asked for or
       playing).
-- [ ] A test of `Ctx::keep_voices`: unplayable lines left out; an empty
+- [x] A test of `Ctx::keep_voices`: unplayable lines left out; an empty
       list sent; nothing sent with voices off.
-- [ ] The request reaches the player through the platform's mapping (a
+- [x] The request reaches the player through the platform's mapping (a
       test like `PreloadVoices`'s in `crates/platform/src/audio.rs`).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -116,5 +116,38 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `Ctx::keep_voices(&[LineId])` (`crates/ui/src/ctx.rs`): the playable
+  clips of the lines, sent even when none is left (it lets the set go);
+  nothing while voices are off. `preload_voices` and it share a private
+  `playable` helper. `AudioQueue::keep_voices` and
+  `AudioRequest::KeepVoices { lines }` beside `PreloadVoices`, in each
+  `match` that lists it (`cue`, the music player, `is_known`).
+- `SoundRequest::KeepVoices { clips }` (`crates/platform/src/audio.rs`),
+  mapped by `clip_file` like `PreloadVoices`.
+- The voice player keeps a `kept` set: `wanted` counts it, `keep_wanted`
+  loads its missing files (a file both kept and coming is loaded once),
+  and `stop_all` clears it. The headless backend ignores it, as it does
+  `PreloadVoices`.
+- Tests: `a_kept_set_stays_loaded_until_another_is_named` (voice player),
+  `keep_voices_sends_the_playable_set_even_empty_but_not_with_voices_off`
+  (`Ctx`), the mapping in `SoundRequest::from_request`'s test, and the
+  request beside `PreloadVoices` in the music player's and `is_known`'s
+  tests.
+- Docs: the doc of `Ctx::preload_voices` and the voice player's module
+  doc name `keep_voices` and when to use which; the backend guide's list
+  of requests (`docs/platform-backends.md`).
+- No deviation.
+
+No break: `AudioRequest` and `SoundRequest` were already
+`#[non_exhaustive]`, so the new variants are additive. The game matches
+`AudioRequest` with a wildcard (`gh search code --repo
+Zafnok/visions-of-shuyi PreloadVoices`: `crates/ui/src/debug.rs`, its
+dialogue tests and `crates/ui/tests/it/voice.rs` build or match
+`PreloadVoices`, nothing exhaustive over the enum).
+
+Book: the chapter *Games and screens* (`site/content/learn/book/games-and-screens.md`)
+says when to use `preload_voices` and when `keep_voices`.
+
+Game: game#0494 (its PR Zafnok/visions-of-shuyi#664, or its follow-up
+after this merges, moves the pin and switches the guide's lines to
+`keep_voices`).
