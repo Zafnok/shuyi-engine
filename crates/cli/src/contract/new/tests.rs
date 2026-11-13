@@ -184,6 +184,33 @@ fn the_grid_game_calls_the_engines_playtest_workflow_at_its_engine_commit() {
 }
 
 #[test]
+fn the_grid_game_with_private_files_passes_their_key_to_the_playtest() {
+    let template = built_in();
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut input = private_input(Some("yes"), Some("https://github.com/o/g-assets.git"));
+    input.template = Some("grid".to_owned());
+    let (plan, _) = plan(cwd, &template, &input, "G", "g").unwrap_or_else(|(_, e)| panic!("{e}"));
+    assert!(
+        plan.parts.iter().any(|p| p == "private-files"),
+        "{:?}",
+        plan.parts
+    );
+    assert!(
+        plan.files
+            .contains_key(Path::new(".github/actions/private-files/action.yml"))
+    );
+    let workflow = String::from_utf8_lossy(&plan.files[Path::new(PLAYTEST_WORKFLOW)]);
+    // By name, never every secret the game has.
+    assert!(
+        workflow.contains(
+            "    secrets:\n      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}\n"
+        ),
+        "{workflow}"
+    );
+    assert!(!workflow.contains("secrets: inherit"), "{workflow}");
+}
+
+#[test]
 fn every_short_names_game_ships_on_the_desktop_and_the_web_and_fits_them() {
     let template = built_in();
     for short in ["grid", "blank"] {
