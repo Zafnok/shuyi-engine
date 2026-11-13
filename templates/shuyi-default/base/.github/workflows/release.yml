@@ -1,0 +1,219 @@
+name: Release
+
+# A pushed tag `vX.Y.Z` releases the game (README.md, "Releasing"): the
+# gates (ci.yml), then every package `cargo shuyi export --plan` says CI
+# builds, each on its own runner (export.yml), then a GitHub Release of the
+# tag with every package, its debug file, SHA256SUMS and, on a public
+# repository, attestations of where each was built. With the repository
+# variable ITCH_GAME (`user/game`) and the secret BUTLER_API_KEY, each
+# package but a prerelease's is pushed to itch.io too.
+#
+# Run it from the Actions tab (workflow_dispatch) for a dry run: the gates,
+# the plan and the packages, with no release and nothing pushed.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  gates:
+    name: gates
+    uses: ./.github/workflows/ci.yml
+    secrets:
+      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      version: ${{ steps.plan.outputs.version }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      # The plan reads shuyi.ron's `targets`: each exporter's runner, image
+      # and whether CI builds it. On a tag, it fails unless the tag is `v`
+      # and the game's version.
+      - name: Plan the packages
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          args=(export --plan --json)
+          if [ "$EVENT" = push ]; then
+            args+=(--tag "$TAG")
+          fi
+          if ! cargo shuyi "${args[@]}" > plan.json; then
+            jq -r '"::error::export --plan: \(.error // "failed")", (.help // empty)' plan.json || cat plan.json
+            exit 1
+          fi
+          matrix=$(jq -c '{include: [.result.exports[] | select(.ci == "build") | {target: .exporter, host, container: (.container // "")}]}' plan.json)
+          if [ "$(jq '.include | length' <<< "$matrix")" = 0 ]; then
+            echo "::error::export --plan lists no package CI builds: shuyi.ron's \`targets\` needs one an exporter builds (desktop, web)"
+            exit 1
+          fi
+          {
+            echo "matrix=$matrix"
+            echo "version=$(jq -r .result.version plan.json)"
+            echo "prerelease=$(jq -r .result.prerelease plan.json)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### The packages of version $(jq -r .result.version plan.json)"
+            echo
+            jq -r '.result.exports[] | if .ci == "build" then "- `\(.exporter)`: built on \(.host)" else "- `\(.exporter)`: checked only, \(.why)" end' plan.json
+            jq -r '.limits[] | "- \(.)"' plan.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  export:
+    name: export (${{ matrix.target }})
+    needs: [gates, plan]
+    strategy:
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/export.yml
+    with:
+      target: ${{ matrix.target }}
+      host: ${{ matrix.host }}
+      container: ${{ matrix.container }}
+      private-files-required: ${{ github.event_name == 'push' }}
+      upload-private: ${{ github.event_name == 'push' || github.event.repository.private }}
+    secrets:
+      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+
+  release:
+    name: release
+    needs: [plan, export]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+      CRATE: "{{crate_name}}"
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: package-*
+          path: artifacts
+      # Each package (`<crate>-<version>-<exporter>.<ext>`) and its debug
+      # file, if any: a private repository's release is private, and a public
+      # one's source is public already.
+      - name: The files and their checksums
+        run: |
+          set -euo pipefail
+          mkdir release
+          find artifacts -type f ! -name '*.json' -exec mv -n {} release/ \;
+          (cd release && sha256sum -- *) > SHA256SUMS
+          mv SHA256SUMS release/
+          cat release/SHA256SUMS
+      # Where each file was built, which `gh attestation verify <file> --repo
+      # <owner>/<repo>` checks. A private repository needs GitHub Enterprise
+      # Cloud for them.
+      - name: Attest the files
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+      - name: No attestations
+        if: ${{ github.event.repository.private }}
+        run: |
+          echo "No attestations: a private repository needs GitHub Enterprise Cloud for them." >> "$GITHUB_STEP_SUMMARY"
+      # The notes are the annotated tag's message, read through the API: a
+      # checkout can fetch an annotated tag as a plain one.
+      - name: The notes
+        run: |
+          set -euo pipefail
+          ref=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG")
+          notes=""
+          if [ "$(jq -r .object.type <<< "$ref")" = tag ]; then
+            notes=$(gh api "repos/$GH_REPO/git/tags/$(jq -r .object.sha <<< "$ref")" --jq .message)
+          fi
+          if [ -z "$notes" ]; then
+            notes="$CRATE $VERSION"
+          fi
+          printf '%s\n' "$notes" > notes.md
+      - name: Release
+        run: |
+          set -euo pipefail
+          flags=()
+          if [ "$PRERELEASE" = true ]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" --verify-tag --notes-file notes.md "${flags[@]}" release/*
+
+  itch:
+    name: itch.io
+    needs: [plan, release]
+    if: github.event_name == 'push' && vars.ITCH_GAME != '' && needs.plan.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    env:
+      ITCH_GAME: ${{ vars.ITCH_GAME }}
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: package-*
+          path: artifacts
+      # butler (MIT), from its GitHub release; the release publishes no
+      # checksum file, so the zip's SHA-256 is written here.
+      - name: Install butler
+        env:
+          BUTLER_VERSION: 15.32.0
+          BUTLER_SHA256: 5db7b053fc9b578b86ffaf3520a12b952eb95c9225171cc5720dfbc9fe4574b3
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/butler.zip" "https://github.com/itchio/butler/releases/download/v$BUTLER_VERSION/butler-linux-amd64.zip"
+          echo "$BUTLER_SHA256  $RUNNER_TEMP/butler.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/butler.zip" -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          echo "$RUNNER_TEMP/butler" >> "$GITHUB_PATH"
+      # One channel per exporter (itch.io tags `windows`, `linux` and
+      # `macos` by their names), the Steam Deck's excepted: its package is
+      # for Steam. Never a debug file.
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "::error::ITCH_GAME is set, but the secret BUTLER_API_KEY is missing: make a key with \`butler login\` (or on itch.io, API keys) and add it as a repository secret"
+            exit 1
+          fi
+          for dir in artifacts/package-*; do
+            exporter=${dir#artifacts/package-}
+            if [ "$exporter" = steam-deck ]; then
+              continue
+            fi
+            package=$(find "$dir" -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tar.gz' \) | head -n 1)
+            unpacked="$RUNNER_TEMP/itch/$exporter"
+            mkdir -p "$unpacked"
+            case "$package" in
+              *.zip) unzip -q "$package" -d "$unpacked" ;;
+              *.tar.gz) tar -xzf "$package" -C "$unpacked" ;;
+            esac
+            butler push "$unpacked" "$ITCH_GAME:$exporter" --userversion "$VERSION" --if-changed
+          done

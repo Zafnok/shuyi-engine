@@ -125,11 +125,14 @@ None. Running it on a real Deck is 3013.
 - the new-game wizard's Steam Deck part. Either order: if 2504 is done,
   add the Deck export to the built-in template's `target-steam-deck`
   part's CI matrix in this PR; if not, 2504 adds it;
-- the release from a tag. Either order with 3050: if 3050 is done, the
-  `steam-deck` exporter fills `Exporter::host()` (`linux`),
-  `container()` (the sniper SDK image) and `ci()` (`build`), so
-  `export --plan` lists it and a tag's release builds it in the
-  container through `export.yml`; if not, 3050 fills them;
+- the release from a tag. From 3050 (done): the `steam-deck` exporter
+  fills `Exporter::host()` (`Host::Linux`), `container()` (the sniper
+  SDK image, `export::SNIPER`) and `ci()` (`InCi::Build`), which the
+  trait requires, so `export --plan` lists it and a tag's release builds
+  it in the container through `export.yml` (the itch.io job skips the
+  `steam-deck` package already); the plan's tests in
+  `crates/cli/src/contract/export/tests.rs` and the `shuyi-ship`
+  example's plan (its Steam Deck is a limit today) change with it;
 - an engine-drawn keyboard (the game already has a letter grid; Nick
   chose Steam's keyboard for the Steam build, game 0903);
 - the engine's profiles screen asking the system keyboard for a name

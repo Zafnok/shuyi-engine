@@ -289,9 +289,13 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
                 contract::cli::check_targets(project, args, game)
             }
         };
+        // The plan reads the project file alone: no tool program is built.
+        let plans = name == "export" && args.iter().any(|arg| arg == "--plan");
         return match game {
             Some(game) => checked(Some(game)),
-            None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
+            None if project.config.game.is_some() && !plans => {
+                game::run_in_game_program(project, name, args)
+            }
             None => checked(None),
         };
     }

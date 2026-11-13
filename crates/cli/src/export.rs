@@ -64,10 +64,11 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+pub use self::desktop::SNIPER;
 use self::disclosure::Shipped;
 use crate::contract::codes::{self, Code};
 use crate::contract::export::ExportInput;
-pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
+pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Host, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
 use crate::project::{
@@ -85,6 +86,16 @@ pub const CONTENT: &str = "SHUYI_CONTENT";
 /// of a desktop or web target turns it on, and bakes the pack.
 pub const PACKED: &str = "packed";
 
+/// What CI does with an exporter (`export --plan`, ticket 3050).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InCi {
+    /// CI builds its package.
+    Build,
+    /// CI only checks the game against its profile, for the reason given:
+    /// the package is built elsewhere.
+    CheckOnly(&'static str),
+}
+
 /// A target's exporter.
 pub trait Exporter: Sync {
     /// The target's id: `shuyi export <id>`.
@@ -92,6 +103,16 @@ pub trait Exporter: Sync {
 
     /// The target profile its check runs with (`targets/<profile>.ron`).
     fn profile(&self) -> &'static str;
+
+    /// The runner it builds on in CI (`export --plan`).
+    fn host(&self) -> Host;
+
+    /// The image it builds in on that runner, if any (`export --plan`).
+    fn container(&self) -> Option<&'static str>;
+
+    /// Whether CI builds its package or only checks the game against its
+    /// profile (`export --plan`).
+    fn ci(&self) -> InCi;
 
     /// The Rust triples it builds for.
     fn triples(&self) -> &'static [&'static str];
@@ -1113,6 +1134,29 @@ fn beside_name(item: &Beside) -> Result<String, ExportError> {
             item.path
         ))
     })
+}
+
+/// The version `project`'s packages carry, as [`ExportCx::of`] finds it:
+/// `shuyi.ron`'s `app.version` when it sets one, else that of the package a
+/// desktop export builds (`cargo metadata --no-deps`, only then).
+pub fn version_of(project: &Project) -> Result<String, ExportError> {
+    let config = &project.config;
+    if let Some(version) = config.app.as_ref().and_then(|app| app.version.clone()) {
+        return Ok(version);
+    }
+    let named = config
+        .export
+        .as_ref()
+        .and_then(|part| part.package.as_deref());
+    let package = package_of("desktop", named, config.game.as_ref(), config.web.as_ref())
+        .ok_or_else(|| {
+            ExportError::Setup(format!(
+                "{} sets no `app.version` and names no package to read one from: its `game`                  part names the game's",
+                crate::project::FILE
+            ))
+        })?;
+    let (version, _, _) = metadata(&project.root, &package)?;
+    Ok(version)
 }
 
 /// The game's version: `app`'s, when it sets one, else its package's,

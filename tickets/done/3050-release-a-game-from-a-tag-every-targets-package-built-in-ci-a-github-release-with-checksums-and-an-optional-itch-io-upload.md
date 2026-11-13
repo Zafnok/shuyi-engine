@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["3004", "2011", "2513"]
 nick_input: none
-completed:
+completed: 2026-11-13
 ---
 
 # 3050 — Release a game from a tag
@@ -404,34 +404,34 @@ ticket (the `write-ticket` skill) and say so in the completion notes.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi export --plan --json` on a game whose `shuyi.ron`
+- [x] `cargo shuyi export --plan --json` on a game whose `shuyi.ron`
       lists `desktop` and `web` lists `windows`, `linux`, `linux-arm64`
       (once registered) and `macos`, in the order they are registered,
       then `web`, each with its host and `ci`.
-- [ ] `--tag v0.1.0` passes on a game at version 0.1.0. `--tag v0.1.1`
+- [x] `--tag v0.1.0` passes on a game at version 0.1.0. `--tag v0.1.1`
       and `--tag 0.1.0` fail, each naming the tag and the version.
-- [ ] A target with no exporter is a `limits` entry naming the target,
+- [x] A target with no exporter is a `limits` entry naming the target,
       and the answer still passes.
-- [ ] A template file holding `${{ github.ref }}` fills. One holding
+- [x] A template file holding `${{ github.ref }}` fills. One holding
       `{{other}}` still fails with its file and line.
-- [ ] The `templates` job makes a game from each template, writes its
+- [x] The `templates` job makes a game from each template, writes its
       `Cargo.lock`, runs its gates with `--locked`, and runs
       `actionlint` on its workflows with nothing reported.
-- [ ] 2011's zizmor job and `cargo xtask check-pins` pass with the new
+- [x] 2011's zizmor job and `cargo xtask check-pins` pass with the new
       workflows in place.
-- [ ] The two templates' `.github/workflows/` files are byte-equal, and
+- [x] The two templates' `.github/workflows/` files are byte-equal, and
       the engine's `export.yml` equals theirs (a test).
-- [ ] A made game's `ci.yml` fails its first step when `Cargo.lock` is
+- [x] A made game's `ci.yml` fails its first step when `Cargo.lock` is
       missing.
-- [ ] In `release.yml`, `ci.yml` and `export.yml`, every
+- [x] In `release.yml`, `ci.yml` and `export.yml`, every
       `Swatinem/rust-cache` step is off on a tag, and only the
       `release` job has write permissions.
-- [ ] The engine's PR CI exports Hello, Grid through `export.yml`.
-- [ ] Each template's `README.md` and `AGENTS.md` say how to release,
+- [x] The engine's PR CI exports Hello, Grid through `export.yml`.
+- [x] Each template's `README.md` and `AGENTS.md` say how to release,
       that the macOS app has no Developer ID signature, and how to turn
       on itch.io.
-- [ ] `docs/contract.md` describes `export --plan`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `docs/contract.md` describes `export --plan`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -456,5 +456,132 @@ ticket (the `write-ticket` skill) and say so in the completion notes.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done (2026-11-13):**
+
+- `shuyi export --plan [--tag <tag>]` (`contract::export::plan`,
+  `plan_of`): the `ExportPlan` (`version`, `prerelease`, `exports` of
+  `PlannedExport { exporter, profile, host, container, ci, why }`), a
+  target with no exporter as a limit, and the tag check (`SH0001`, naming
+  the tag and the version, with how to fix it in `help`). It reads the
+  project file alone: `lib.rs` runs it without building the game's tool
+  program, and the MCP `export` tool answers it when `plan` is true.
+  `ExportInput` gains `plan` and `tag`, and its `target` defaults to
+  empty. The op's output schema is `Answer<ExportResult>`, an untagged
+  union of the package's report and the plan, so the MCP tool's
+  `outputSchema` covers both. Contract 51.
+- The `Exporter` trait gains `host()`, `container()` and `ci()` (`InCi`),
+  required. `windows`, `linux` (in `export::SNIPER`, the sniper SDK image
+  by digest), `macos` and `web` build; `playdate` (3010, done) is
+  `check-only`, its SDK's license as `why`.
+- `new`'s limit says "and commit the Cargo.lock it writes".
+- The base part (`templates/shuyi-default/base`) gets
+  `.github/workflows/export.yml` (reusable, one target) and `release.yml`
+  (gates, plan, export, release with `SHA256SUMS` and `actions/attest`,
+  itch.io with butler 15.32.0 pinned by its zip's SHA-256), and its
+  `ci.yml` the Cargo.lock step, `--locked` on clippy and test,
+  `workflow_call` with the private files' secret, and no cache on a tag.
+  The engine's `.github/workflows/export.yml` is a byte-equal copy (a
+  test), and the engine's `export` job calls it for Hello, Grid with the
+  check script `tools/export-check/ci.sh` (`check.sh`, then the export
+  again for the same exposure report).
+- The engine's `templates` job writes the made game's `Cargo.lock`, runs
+  its gates `--locked`, installs `git`, runs actionlint 1.7.12 on the
+  game, and runs the plan with `v0.1.0` (and the release's matrix filter
+  over it) and with `v9.9.9`, which must fail. The local gates' templates
+  steps (`crates/xtask/src/gates.rs`) match.
+- ADR-0114 (the plan, the shared export workflow, and when a package
+  holding private files is uploaded), amending ADR-0111 §5.
+- Docs: the base's `README.md` and `AGENTS.md` "Releasing" sections,
+  `docs/contract.md` (`export --plan`'s row, and "The templates" naming
+  `release.yml` and `export.yml`), `docs/templates.md`, the private
+  part's `AGENTS.md`, the `shuyi-ship` skill (step 8, its failure codes,
+  and its worked example's plan) and the book's chapter 9 ("Releasing").
+- Checked locally: on a game made from each short name, actionlint 1.7.12
+  reports nothing, and the made `blank` game's `cargo shuyi export
+  --plan --tag v0.1.0 --json` lists `windows`, `linux` (in the image),
+  `macos` and `web`; `--tag v9.9.9` fails with exit 2, naming both. zizmor
+  (min-severity medium, as CI) and `cargo xtask check-pins` pass.
+
+**Either-order parts:** 2501 (done): everything went in the base part.
+3010 (done): `playdate` fills the three methods, `check-only`. 1134
+(done): `shuyi-ship` teaches the release. 2802 (done): chapter 9 has the
+section. 2590 (done): every package job runs the private files' action,
+which gains the input `required` (false on a dry run, which warns and
+builds on the public files). 3071, 3012, 2504, 2005 and 3051 are not
+done: each one's ticket now says what it does with this (rewritten as
+"From 3050 (done)"). 2033 is not done: its test is already written to
+drop `--locked`, and its ticket now says so.
+
+**Deviations:**
+- The ticket was written before 2501: there is one `base` part, not two
+  template folders, and `fill` already let `${{` through, with a test
+  allowing `${{` alone. So "the two templates' workflows are byte-equal"
+  became a test that every short name's game has the same workflows
+  (`every_games_workflows_are_the_same_and_the_engines_export_is_theirs`),
+  and step 3's `fill` change needed no code.
+- **Private files and artifacts.** ADR-0111 §5 says no workflow uploads
+  an artifact that embeds the private files, and a release's packages
+  must pass from job to job. `export.yml` uploads such a package only
+  when its caller passes `upload-private` (a tag's run, whose release
+  publishes the same files, or a private repository); a public
+  repository's dry run builds and uploads nothing, and says so. ADR-0114
+  records it and amends ADR-0111 §5.
+- `export.yml` has three inputs beyond the ticket's: `check` (a script,
+  the engine's checks of its package, so its `export` job stays one job
+  per target), `private-files-required` and `upload-private`. The engine's
+  artifacts are now `package-<target>` (the `bench` job reads
+  `package-web`).
+- **The Arm runner in a private repository** (checked on the day, as the
+  ticket asked): GitHub's runner reference lists `ubuntu-24.04-arm` in
+  the private repositories' table, billed as their other runners
+  (2026-11-13), so the plan job drops no `linux-arm64` entry.
+- actionlint is pinned by its tarball's SHA-256 (the value the release's
+  `actionlint_1.7.12_checksums.txt` lists, as GitHub's asset digest
+  gives it) instead of fetching that file in the job: a file fetched
+  from the same release can't check it.
+- zizmor reports the `container:` an input names (`unpinned-images`):
+  `.github/zizmor.yml` ignores `export.yml:69` with why (the plan's
+  images are pinned by digest, which a test holds).
+- `release.yml`'s matrix filter (`jq`) wasn't run locally (no `jq`
+  here); the `templates` job runs the same filter on the made game's
+  plan.
+
+Breaking: shuyi-cli: export::Exporter: the trait gains `host()`, `container()` and `ci()`, with no default, so an exporter outside the engine fills them.
+
+```migration
+since: 0.1.0
+what: An exporter says where CI builds its package, for `export --plan`.
+old: impl Exporter for MyExporter { fn id(&self) … }
+new: impl Exporter for MyExporter { fn host(&self) -> Host; fn container(&self) -> Option<&'static str>; fn ci(&self) -> InCi; … }
+before: |
+  impl Exporter for MyExporter {
+      fn id(&self) -> &'static str { "mine" }
+  }
+after: |
+  impl Exporter for MyExporter {
+      fn id(&self) -> &'static str { "mine" }
+      fn host(&self) -> Host { Host::Linux }
+      fn container(&self) -> Option<&'static str> { None }
+      fn ci(&self) -> InCi { InCi::Build }
+  }
+```
+
+Book: chapter 9 (`targets-and-export.md`) has the new "Releasing" section.
+
+Behaviour: shuyi-cli: `new`'s last limit adds "and commit the Cargo.lock it writes".
+Behaviour: shuyi-cli: the `export` operation's output schema is `Answer<ExportResult>` (the report or the plan); `ExportInput`'s `target` may be left out (with `plan`), and `export` refuses `plan: true` (`SH0001`: `plan` answers it).
+Behaviour: shuyi-cli: a game made with `shuyi new` fails its CI's first step until `Cargo.lock` is committed, and its private files' action warns, not fails, when its input `required` is false.
+
+Searched the game for what changed: `gh search code --repo
+Zafnok/visions-of-shuyi 'impl Exporter'`, `'ExportInput'`, `'Exporter'`
+(only its tickets' prose), `'export --plan'` and `'hello-grid-export'`:
+nothing of the game uses them. Its skill pack's `shuyi-ship` gets step 8
+when the game updates its pack.
+
+Game: nothing to adopt, the game implements no exporter and releases on Steam (game#0903).
+
+No follow-up ticket: the pieces this leaves are already tickets (3071,
+3012, 2504, 2005, 3051), each now saying what it does.
+
+Nick input: none. The itch.io job stays off until a game's own
+repository sets `ITCH_GAME` and `BUTLER_API_KEY`.

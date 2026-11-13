@@ -13,3 +13,10 @@ rules:
       # runs nothing of it, and reads its logs and matrix.json as data; its
       # token may only re-run that run (`actions: write`, `contents: read`).
       - flaky-rerun.yml:11
+  unpinned-images:
+    ignore:
+      # export.yml (ticket 3050; the engine's copy and the template's) builds
+      # in the image its caller names: the one `export --plan` gives, pinned
+      # by its digest (`shuyi_cli::export::SNIPER`, which a test holds to
+      # `@sha256:`), or the engine's CI matrix's, the same.
+      - export.yml:69

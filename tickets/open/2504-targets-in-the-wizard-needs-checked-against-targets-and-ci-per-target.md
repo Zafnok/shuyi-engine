@@ -70,7 +70,7 @@ None.
   so `target-playdate` brings its own entry (below).
 - **The new game's CI** (`.github/workflows/ci.yml` in the base part)
   gets a matrix over the picked targets (through 3050's `export.yml`
-  and plan if 3050 is done), each running `shuyi check --target <id>`
+  and plan), each running `shuyi check --target <id>`
   and `shuyi export <id>` (3004). For `desktop`, the export entries are
   3004's desktop exporters, each on the runner the engine's own CI
   uses: `windows`, `linux` inside the Steam Linux Runtime ("sniper")
@@ -83,16 +83,16 @@ None.
   nothing to do (3071 adds that line when it lands). A target whose
   exporter needs a tool CI can't have (the Playdate SDK) runs the check
   only, and the workflow says why in a comment.
-- **Either order with 3050** (release a game from a tag): if 3050 is
-  done, the new game's per-target CI job calls the template's
-  `.github/workflows/export.yml` (3050). The matrix comes from `cargo
-  shuyi export --plan --json`, so the game's targets are named once, in
-  `shuyi.ron`. The Playdate's check-only comes from the plan's `ci:
-  check-only` (or from its `limits` entry while 3010 has no Playdate
-  exporter), and no matrix is written into `ci.yml`. If the plan lists
-  `linux-arm64`, a `jq` filter on it drops that entry, and a commented
-  line keeps it for a developer who turns it on. If 3050 isn't done,
-  3050's scope says it does this when it lands.
+- **From 3050 (done)** (release a game from a tag): the new game's
+  per-target CI job calls the base's `.github/workflows/export.yml`
+  (inputs `target`, `host`, `container`; ADR-0114). The matrix comes
+  from `cargo shuyi export --plan --json`, as `release.yml`'s `plan` job
+  makes it (its `build` entries through `jq`), so the game's targets are
+  named once, in `shuyi.ron`. The Playdate's check-only comes from the
+  plan's `ci: check-only` with its `why`, and no matrix is written into
+  `ci.yml`. If the plan lists `linux-arm64`, a `jq` filter on it drops
+  that entry on pull requests, and a commented line keeps it for a
+  developer who turns it on. This ticket does it.
 - **Target parts** in the built-in template:
   - **From 3002 and 3038 (done):** the templates' tools offer their
     controls (`GameTools::controls`), and their keymaps have an empty
@@ -134,7 +134,7 @@ None.
 2. Add the check to the composer, before writing, or the `limits` entry
    if 3017 isn't done.
 3. Write the manifest entries and the CI matrix in the base part (the
-   calls to 3050's `export.yml`, from its plan, if 3050 is done).
+   calls to 3050's `export.yml`, from its plan).
 4. Write the Playdate part (its `shuyi.ron` entry, keymap table and
    pattern map, and tools that offer the map) and the Steam Deck part
    (its keymap table, and its export if 3012 is done).
@@ -145,8 +145,8 @@ None.
       game whose manifest lists three targets. Its CI checks each of
       them and has an entry per exporter of each picked target: it
       exports `windows`, `linux` (in the sniper container), `macos` and
-      `web` (from 3050's plan if 3050 is done, where `desktop` gives the
-      first three). The Playdate entry is a check only.
+      `web` (from 3050's plan, where `desktop` gives the first
+      three). The Playdate entry is a check only.
 - [ ] If 3017 is done: a fixture module with `needs.three_d =
       "software"` picked with `--targets playdate,web` passes, and with
       a fixture profile of `three_d: none` fails before writing, with

@@ -237,9 +237,9 @@ None.
     title from `web.title` (`notices::write`'s `title`, from
     `web::package`). This ticket makes the heading take the same title
     the page does (the `web.title`, else `app.name`).
-  - **3050** (releases from a tag): if it is done, its release packages
+  - **From 3050 (done)** (releases from a tag): its release packages
     come from these exporters, so they carry the identity with no change
-    there. If not, nothing.
+    there.
 - **For the game:** a `shuyi.ron` with `web.title` reads as before.
   `Web::title`'s type changes, for code that builds a `Web` by hand.
   Nothing else changes until the game adds an `app` part. Say so in the

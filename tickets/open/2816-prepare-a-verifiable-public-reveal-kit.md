@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: blocked
+status: todo
 blocked_by: ["2811", "3050"]
 nick_input: none
 completed:

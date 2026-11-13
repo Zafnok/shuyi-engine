@@ -50,6 +50,46 @@ secret `PRIVATE_ASSETS_KEY` its CI reads them with. What is there already is
 left alone: run it again to finish what a failure left, or with `--new-keys`
 to replace the keys. `cargo shuyi repos --help` says the rest.
 
+## Releasing
+
+A pushed tag `vX.Y.Z` releases the game (`.github/workflows/release.yml`):
+the gates, then a package for each target CI builds, each on its own
+system, then a GitHub Release of the tag with every package, its debug
+file and `SHA256SUMS`.
+
+1. Set the version: `app.version` in `shuyi.ron` when the game sets one,
+   else `[workspace.package]`'s `version` in `Cargo.toml`. Then run
+   `cargo shuyi app-info`, and commit.
+2. `cargo shuyi export --plan` lists the packages and where CI builds
+   them; `--tag vX.Y.Z` says whether a tag names the version.
+3. Tag it, with the release's notes as the tag's message, and push the
+   tag:
+
+   ```
+   git tag -a vX.Y.Z -m "What changed"
+   git push origin vX.Y.Z
+   ```
+
+   A version with a pre-release part (`1.2.0-beta.1`) is a prerelease.
+
+**A dry run:** in the repository's Actions tab, run the Release workflow
+on a branch: the gates and the packages, with no release.
+
+**itch.io:** set the repository variable `ITCH_GAME` to `user/game`, and
+the repository secret `BUTLER_API_KEY` to a key of your itch.io account
+(`butler login`, or the account's API keys). Each release but a
+prerelease then pushes each package to its channel (`windows`, `linux`,
+`macos`, `web`) with butler. On the game's itch.io page, set the `web`
+channel's file to "This file will be played in the browser" once.
+
+**macOS:** the `.app` is signed ad hoc, with no Developer ID, so macOS
+stops it the first time: the player opens it from System Settings,
+Privacy & Security (the package's `HOW-TO-OPEN.txt` says how).
+
+**Checking a package:** on a public repository each file is attested:
+`gh attestation verify <file> --repo <owner>/<repo>` says it was built
+by this repository's release workflow.
+
 ## Art and licenses
 
 The font is Terminus Font 4.49.1, under the SIL Open Font License 1.1

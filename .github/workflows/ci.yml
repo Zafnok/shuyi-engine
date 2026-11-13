@@ -143,15 +143,16 @@ jobs:
   # The packages (ticket 3004, ADR-0058): every example exported with
   # `shuyi export <target> --release`, which runs the target's check,
   # remaps the build's paths and refuses a program that still holds one;
-  # then tools/export-check/check.sh checks the package's files, the
+  # then tools/export-check/ci.sh runs check.sh (the package's files, the
   # debug file beside it, what the program loads, and on macOS the
-  # signature and both slices. `windows`, `linux` and `web` on every PR,
-  # `macos` on pushes to main. The Linux package builds in Valve's Steam
-  # Linux Runtime 3.0 ("sniper") SDK, Debian 11's glibc 2.31 the floor:
-  # its 3.0.20261007.263965, pinned by the digest the registry gave on
-  # 2026-10-29 (registry.gitlab.steamos.cloud/v2/steamrt/sniper/sdk/
-  # manifests/<tag>; amd64 only). One job over a matrix, each leg its
-  # runner and its toolchain's setup.
+  # signature and both slices) and exports again for the same exposure
+  # report. `windows`, `linux` and `web` on every PR, `macos` on pushes to
+  # main. Each leg runs export.yml, the byte-equal copy of the file a
+  # game's release runs (ticket 3050), so every PR runs it; the matrix is
+  # what `export --plan` says of each exporter (`host`, `container`). The
+  # Linux package builds in Valve's Steam Linux Runtime 3.0 ("sniper") SDK,
+  # Debian 11's glibc 2.31 the floor: `shuyi_cli::export::SNIPER`, which a
+  # test keeps equal to the image here.
   export:
     name: export (${{ matrix.target }})
     needs: changes
@@ -163,82 +164,21 @@ jobs:
         exclude: ${{ github.event_name == 'push' && fromJSON('[]') || fromJSON('[{"target":"macos"}]') }}
         include:
           - target: windows
-            os: windows-latest
+            host: windows
           - target: linux
-            os: ubuntu-latest
+            host: linux
             container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d
           - target: web
-            os: ubuntu-latest
+            host: linux
           - target: macos
-            os: macos-latest
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
-    defaults:
-      run:
-        shell: bash
-    env:
-      TARGET: ${{ matrix.target }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up Linux
-        if: matrix.target == 'linux' || matrix.target == 'web'
-        run: bash scripts/setup-linux.sh
-      # A release web export needs wasm-opt (ticket 3099).
-      - name: Set up Binaryen
-        if: matrix.target == 'web'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends binaryen
-          wasm-opt --version
-      - name: Set up Rust
-        if: matrix.target != 'linux' && matrix.target != 'web'
-        run: rustup show
-      # The engine's `.cargo/config.toml` links the GNU target with
-      # MSYS2's mingw-w64 GCC, whose binutils give `objcopy`.
-      - name: Set up the Windows GNU target
-        if: matrix.target == 'windows'
-        run: |
-          /c/msys64/usr/bin/pacman.exe -Sy --noconfirm --needed mingw-w64-x86_64-gcc
-          echo 'C:\msys64\mingw64\bin' >> "$GITHUB_PATH"
-          rustup target add x86_64-pc-windows-gnu
-      - name: Set up both Mac targets
-        if: matrix.target == 'macos'
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
-      - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          key: export-${{ matrix.target }}
-      - name: Export Hello, Grid
-        working-directory: examples/hello-grid
-        run: cargo shuyi export "$TARGET" --release
-      - name: Check the package
-        run: bash tools/export-check/check.sh "$TARGET" examples/hello-grid/dist/export/"$TARGET"
-      # The same input gives the same exposure report (ticket 3081): every
-      # hash in it, the program's and the archive's too.
-      - name: Export again and compare the reports
-        working-directory: examples/hello-grid
-        run: |
-          cp dist/export/"$TARGET"/exposure-report.json "$RUNNER_TEMP"/exposure-report.json
-          cargo shuyi export "$TARGET" --release
-          diff "$RUNNER_TEMP"/exposure-report.json dist/export/"$TARGET"/exposure-report.json
-      # The `.app` keeps its signature and its program's mode in a zip
-      # `ditto` writes; the artifact's own zip would drop them.
-      - name: Zip the macOS package
-        if: matrix.target == 'macos'
-        working-directory: examples/hello-grid/dist/export/macos
-        run: ditto -c -k --keepParent "$(ls -d hello-grid-*-macos)" hello-grid-macos.zip
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: hello-grid-export-${{ matrix.target }}
-          path: |
-            examples/hello-grid/dist/export/${{ matrix.target }}/*.zip
-            examples/hello-grid/dist/export/${{ matrix.target }}/*.tar.gz
-            examples/hello-grid/dist/export/${{ matrix.target }}/*.debug
-            examples/hello-grid/dist/export/${{ matrix.target }}/export-report.json
-            examples/hello-grid/dist/export/${{ matrix.target }}/exposure-report.json
-          retention-days: 7
+            host: macos
+    uses: ./.github/workflows/export.yml
+    with:
+      target: ${{ matrix.target }}
+      host: ${{ matrix.host }}
+      container: ${{ matrix.container || '' }}
+      dir: examples/hello-grid
+      check: tools/export-check/ci.sh
 
   # The real window checked (ticket 2018, ADR-0052): Hello, Grid run in its
   # window as its plan says, under Xvfb with Mesa's llvmpipe (software GL:
@@ -680,25 +620,62 @@ jobs:
           key: template-${{ matrix.template }}
       - name: The engine's doctor passes
         run: cargo run -q -p shuyi-cli --locked -- doctor
-      # `shuyi lint finds what breaks the game's code` reads its JSON with jq.
-      - run: apt-get install -y --no-install-recommends jq
+      # `shuyi lint finds what breaks the game's code` and the release's plan
+      # read JSON with jq; actionlint finds a project by its `.git`.
+      - run: apt-get install -y --no-install-recommends jq git
       - name: Make a game with shuyi new
         run: |
           # shellcheck disable=SC2086 # $PRIVATE is four words, or none
           cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE
       - name: The game's own setup script finds nothing to do
         run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
+      # Its author's first build writes Cargo.lock, which the game commits
+      # and its gates keep to (`--locked`, ticket 3050).
       - name: Run its gates
         run: |
           cd "$RUNNER_TEMP/demo"
+          cargo generate-lockfile
           cargo fmt --all --check
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo test --workspace
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --locked
           cargo shuyi check
           cargo shuyi check --target all
           cargo shuyi check-keys
           cargo shuyi lint
           cargo shuyi doctor
+      # Ticket 3050: the game's workflows (ci.yml, export.yml, release.yml)
+      # pass actionlint (MIT; its release, pinned by the tarball's SHA-256,
+      # which the release's checksums file lists), and its release plan
+      # names the template's version: the tag v0.1.0 passes, v9.9.9 fails,
+      # and the matrix release.yml makes of the plan builds the desktop's
+      # three and the web.
+      - name: Its workflows pass actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$tarball" "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$tarball"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$tarball" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/actionlint" actionlint
+          cd "$RUNNER_TEMP/demo"
+          git init -q
+          "$RUNNER_TEMP/actionlint/actionlint" -verbose
+      - name: Its release plan names its version
+        run: |
+          cd "$RUNNER_TEMP/demo"
+          cargo shuyi export --plan --tag v0.1.0 --json > plan.json
+          matrix=$(jq -c '{include: [.result.exports[] | select(.ci == "build") | {target: .exporter, host, container: (.container // "")}]}' plan.json)
+          echo "$matrix"
+          jq -e '[.include[].target] == ["windows", "linux", "macos", "web"]' <<< "$matrix"
+          jq -e '.include[1].container | test("@sha256:")' <<< "$matrix"
+          if cargo shuyi export --plan --tag v9.9.9 > wrong.txt 2>&1; then
+            echo "::error::export --plan passed the tag v9.9.9 on a game at 0.1.0"
+            exit 1
+          fi
+          cat wrong.txt
+          grep -qF 'v9.9.9' wrong.txt && grep -qF '0.1.0' wrong.txt
       # Ticket 2777: a new game builds for the web as it is, with the
       # `web` part, `build.rs` and the web target the template gives it.
       - name: Build it for the web
@@ -1026,7 +1003,7 @@ jobs:
       - name: The web package the export job made
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-grid-export-web
+          name: package-web
           path: examples/hello-grid/dist/export/web
       - name: Bench Hello, Grid
         working-directory: examples/hello-grid
