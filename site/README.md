@@ -65,14 +65,15 @@ python -m http.server --directory public 1111
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, and the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), and `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)), and the book's contents and the page's headings beside each page ([Beside each page](#beside-each-page)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), and `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)) |
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
+| `static/book-side.js` | The folds of the book's contents and of the page's headings beside each page of the book, and the heading being read: plain JavaScript ([Beside each page](#beside-each-page)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
 | `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script ([The playground](#the-playground)) |
 | `static/ron-paint.js`, `tests/ron-paint.mjs` | The playground's RON colors: a tokenizer by `syntaxes/ron.sublime-syntax`'s rules, and its test against Zola's own output, which CI's `site` job runs with Node ([The playground](#the-playground)) |
 | `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `copy-playground.sh`, `static/playground/`, `static/learn/` | `copy-playground.sh` copies the playgrounds' files: Hello, Grid's from `examples/hello-grid/files/` into `static/playground/files/`, and each step's from its project into `static/learn/book/box-pusher/<step>/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
-| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`) and the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`), the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`) and the lists beside a page of the book (`.book-layout`, `.book-side`, `.book-toc`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
@@ -282,6 +283,36 @@ book's contents tag it.
   `data-book-fold` rules. The build checks fail a page's mark that the
   last two don't have.
 
+## Beside each page
+
+Every page of the book but its front page has the book's contents on its
+left and its own headings on its right (ticket 2834). Both fold, and stay
+folded from page to page.
+
+- `book-macros.html`'s `contents(current)` writes the book's contents:
+  every page in the book's order, chapters numbered, each project's
+  landing page and steps under the chapter they follow, appendices
+  lettered, and the page being read marked `aria-current="page"`. It walks
+  `order()`, as the pager does, so no page of the order can be missing
+  from it. `page_toc(toc)` writes a page's `##` and `###` headings from
+  Zola's `toc`. `book_open` and `book_close` lay them out around the text,
+  with the fold buttons; `chapter.html` and `project.html` call both.
+- `static/book-side.js`, loaded in the `<head>` by `script()`, sets
+  `data-book-nav` on `<html>`, which shows the buttons, and
+  `data-book-side-shut` and `data-book-toc-shut` from `localStorage`
+  (`shuyi-book-side` and `shuyi-book-toc`, `"shut"` or `"open"`), before
+  the page is drawn. It marks the heading being read
+  `aria-current="location"` as the reader scrolls.
+- From 960 px the contents is a column on the left, and from 1240 px the
+  headings are one on the right; both stay in sight as the text scrolls.
+  Below 960 px the contents opens over the text from its button, and
+  closes with Close, Escape or a click beside it, the focus going back to
+  the button; below 1240 px the headings are a `<details>` above the text.
+- With no JavaScript the buttons stay hidden and both lists show; below
+  960 px the contents comes after the text.
+- The reader's filter tags the contents' links as it tags the front
+  page's.
+
 ## The book's order
 
 The book's `_index.md` lists its parts in `[extra] parts`, in order
@@ -302,8 +333,9 @@ parts = [
 - A `section` entry (the guides, 2004) holds that folder's landing page,
   then its pages.
 
-The contents (`book.html`), the pager (`book-macros.html`, through the
-whole book) and each page's top line follow it. Zola's `lower` and
+The contents (`book.html`, and beside each page), the pager
+(`book-macros.html`, through the whole book) and each page's top line
+follow it. Zola's `lower` and
 `higher` stay inside one section, so they aren't used. An old address goes
 in the page's `aliases`, and the build checks that it sends a reader on.
 
@@ -460,6 +492,7 @@ the other's or lacks a page, if a step's page doesn't link its `play/` or
 follows no chapter, if an old address (`aliases`) doesn't send the reader
 on, or if the chapters aren't numbered 1 to the last and the appendices
 lettered from A, if a page of the book doesn't load `book-filter.js`, or
+one but the front page has no book's contents beside it marking it, or
 a passage is marked for an audience the filter's `AUDIENCES` or
 `style.css` doesn't have, and fails if
 a page loads anything from another host, if a code block's language is
