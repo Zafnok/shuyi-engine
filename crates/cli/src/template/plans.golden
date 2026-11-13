@@ -6,12 +6,14 @@
 [blank] base
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
-27cd10e8198654c7 .github/workflows/ci.yml
+fcc478d8f409e313 .github/workflows/ci.yml
+3d70db920a46f189 .github/workflows/export.yml
+83c5d9477f7abb45 .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-b9876f4aea9d9805 AGENTS.md
+d4ec9cfcc4d7c47d AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-f3457954aa86c390 README.md
+82ef62457f78a82f README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -37,13 +39,15 @@ cec8c4b0490e8d90 shuyi.ron
 [grid] base, stage-top-down-grid
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
-27cd10e8198654c7 .github/workflows/ci.yml
+fcc478d8f409e313 .github/workflows/ci.yml
+3d70db920a46f189 .github/workflows/export.yml
 76f61b855c33dfa7 .github/workflows/playtest.yml
+83c5d9477f7abb45 .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-b9876f4aea9d9805 AGENTS.md
+d4ec9cfcc4d7c47d AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 53d946a8036df89c Cargo.toml
-f3457954aa86c390 README.md
+82ef62457f78a82f README.md
 b7bf83dcce2fb717 clippy.toml
 4d23fce37ed457d0 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -78,13 +82,15 @@ d269a8a87c41fdb0 rust-toolchain.toml
 [blank+private] base, private-files
 83704d78ca4c46ba .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
-949443fec874c9d5 .github/actions/private-files/action.yml
-27cd10e8198654c7 .github/workflows/ci.yml
+09b739cf2acec7d5 .github/actions/private-files/action.yml
+fcc478d8f409e313 .github/workflows/ci.yml
+3d70db920a46f189 .github/workflows/export.yml
+83c5d9477f7abb45 .github/workflows/release.yml
 49ee40e211c25cec .gitignore
-e796f8e7d3ac8cfd AGENTS.md
+766c2381547a8f93 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-97e371fab4f3ea4f README.md
+38882e246bedee52 README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs

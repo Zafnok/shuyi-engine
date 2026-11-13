@@ -819,7 +819,8 @@ impl Exporter for PlaydateExporter {
     /// fetch it (ticket 3010).
     fn ci(&self) -> InCi {
         InCi::CheckOnly(
-            "the Playdate SDK's license doesn't let CI download it: run `shuyi export              playdate` on a machine with the SDK installed",
+            "the Playdate SDK's license doesn't let CI download it: run `shuyi export \
+             playdate` on a machine with the SDK installed",
         )
     }
 

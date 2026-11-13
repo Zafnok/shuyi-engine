@@ -1151,7 +1151,8 @@ pub fn version_of(project: &Project) -> Result<String, ExportError> {
     let package = package_of("desktop", named, config.game.as_ref(), config.web.as_ref())
         .ok_or_else(|| {
             ExportError::Setup(format!(
-                "{} sets no `app.version` and names no package to read one from: its `game`                  part names the game's",
+                "{} sets no `app.version` and names no package to read one from: its `game` \
+                 part names the game's",
                 crate::project::FILE
             ))
         })?;
