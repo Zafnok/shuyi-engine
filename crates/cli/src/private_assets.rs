@@ -12,7 +12,8 @@
 //! at into the pin file, after checking that it is pushed to the
 //! repository's `main` and that every file in the credited folders has a
 //! credit ([`PrivateAssets::credits`]). A full clone made by hand is left
-//! whole.
+//! whole. With no pin yet (the pin file missing or empty), a fetch says how
+//! to make the first.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -23,6 +24,11 @@ use shuyi_assets::credits::{self, Places};
 
 use crate::project::{Credited, PrivateAssets};
 use crate::web::copy_tree;
+
+/// The folder of the checkout that a game made from the engine's template
+/// lays over its files, as a private layer (ADR-0111): its `crates/game/build.rs`
+/// embeds it, and `run --watch` watches it.
+pub const PRIVATE_FILES: &str = "files";
 
 /// The usage line, with `command` as the tool's name.
 pub fn usage(rules: &PrivateAssets, command: &str) -> String {
@@ -96,6 +102,26 @@ fn read_pin(rules: &PrivateAssets, root: &Path) -> Result<String, String> {
     Ok(pin.to_string())
 }
 
+/// Whether the project at `root` has no pin yet: its pin file missing, or
+/// empty.
+fn no_pin_yet(rules: &PrivateAssets, root: &Path) -> bool {
+    match fs::read_to_string(root.join(&rules.pin_file)) {
+        Ok(text) => text.trim().is_empty(),
+        Err(e) => e.kind() == std::io::ErrorKind::NotFound,
+    }
+}
+
+/// What a fetch with no pin yet says: how to make the first. `--pin` needs a
+/// checkout, which a fetch can't make without a pin, so the first is cloned
+/// by hand (and left whole).
+fn no_pin_message(rules: &PrivateAssets, command: &str, url: &str) -> String {
+    let (file, name) = (&rules.pin_file, &rules.checkout);
+    format!(
+        "{file}: no pin yet: push the private repository's first commit, clone it \
+         (`git clone {url} {name}`), then run `{command} private-assets --pin`"
+    )
+}
+
 /// Whether `dir` is a folder with something in it.
 fn has_entries(dir: &Path) -> bool {
     fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some())
@@ -105,8 +131,17 @@ fn has_entries(dir: &Path) -> bool {
 /// at the pinned commit. A clone made here holds only the rules' folders
 /// (and the library once asked for with `library`); a full clone made by
 /// hand is left whole. Returns a one-line summary.
-fn fetch(rules: &PrivateAssets, root: &Path, url: &str, library: bool) -> Result<String, String> {
+fn fetch(
+    rules: &PrivateAssets,
+    command: &str,
+    root: &Path,
+    url: &str,
+    library: bool,
+) -> Result<String, String> {
     let name = &rules.checkout;
+    if no_pin_yet(rules, root) {
+        return Err(no_pin_message(rules, command, url));
+    }
     let pin = read_pin(rules, root)?;
     let checkout = root.join(name);
     let (first, others) = rules
@@ -297,7 +332,7 @@ pub fn run(
     mode: Mode,
 ) -> Result<String, String> {
     match mode {
-        Mode::Fetch { library } => fetch(rules, root, url, library),
+        Mode::Fetch { library } => fetch(rules, command, root, url, library),
         Mode::Pin => pin(rules, command, root, url),
     }
 }
@@ -702,14 +737,26 @@ mod tests {
     #[test]
     fn a_fetch_says_why_it_failed() {
         let scratch = Scratch::new("fails");
-        // No pin file.
+        // No pin yet: no pin file, or an empty one.
+        let no_pin = format!(
+            "private.rev: no pin yet: push the private repository's first commit, clone it \
+             (`git clone {} private`), then run `shuyi private-assets --pin`",
+            scratch.url()
+        );
+        assert_eq!(scratch.fetch(false), Err(no_pin.clone()));
+        for empty in ["", " \n"] {
+            fs::write(scratch.public().join("private.rev"), empty).unwrap();
+            assert_eq!(scratch.fetch(false), Err(no_pin.clone()));
+        }
+        assert!(!scratch.checkout("").exists());
+        // A pin that isn't a commit id is still named as one.
+        scratch.set_pin("main");
         assert!(
             scratch
                 .fetch(false)
                 .unwrap_err()
-                .starts_with("private.rev: ")
+                .contains("expected a 40-character commit id")
         );
-        assert!(!scratch.checkout("").exists());
 
         // A folder that isn't a checkout is never cloned over.
         scratch.set_pin(&scratch.two);

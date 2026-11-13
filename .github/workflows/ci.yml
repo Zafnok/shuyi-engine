@@ -651,7 +651,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        template: [grid, blank]
+        include:
+          # The grid game has private files too (ticket 2590, ADR-0111),
+          # with no checkout: its gates and its web build run on its public
+          # files, as a fork's do.
+          - template: grid
+            private: --set private-files=yes --private-url https://github.com/o/demo-assets.git
+          - template: blank
+            private: ""
     runs-on: ubuntu-latest
     container: ubuntu:24.04
     defaults:
@@ -659,6 +666,7 @@ jobs:
         shell: bash
     env:
       TEMPLATE: ${{ matrix.template }}
+      PRIVATE: ${{ matrix.private }}
     steps:
       # The image has no git: checkout downloads the commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -675,7 +683,9 @@ jobs:
       # `shuyi lint finds what breaks the game's code` reads its JSON with jq.
       - run: apt-get install -y --no-install-recommends jq
       - name: Make a game with shuyi new
-        run: cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE"
+        run: |
+          # shellcheck disable=SC2086 # $PRIVATE is four words, or none
+          cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE
       - name: The game's own setup script finds nothing to do
         run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
       - name: Run its gates
@@ -702,6 +712,31 @@ jobs:
             echo "::error::dist/web/ doesn't hold one .wasm"
             exit 1
           fi
+      # Ticket 2590 (ADR-0111): a checkout laid in `private/files/` replaces
+      # the public file at its path and adds its own, both private (the
+      # game's own test reads every file of the checkout in its bundle); an
+      # edition with its own content root holds none of it; and with the
+      # checkout gone the build is back on the public files.
+      - name: The private files are laid over the game's
+        if: matrix.template == 'grid'
+        run: |
+          cd "$RUNNER_TEMP/demo"
+          # The pin file says "no pin yet", so the build made the empty
+          # checkout folder it watches.
+          test -f private.rev && test -d private
+          grep -qx '/private/' .gitignore
+          test -f .github/actions/private-files/action.yml
+          mkdir -p private/files/sprites private/files/font
+          cp crates/game/files/font/atlas.png private/files/sprites/x.png
+          echo "private" > private/files/font/Terminus-LICENSE.txt
+          private_test() {
+            cargo test -q -p demo --lib tests::the_private_files_are_the_checkouts 2>&1 | tee "$RUNNER_TEMP/private.txt"
+            grep -q '1 passed' "$RUNNER_TEMP/private.txt"
+          }
+          private_test
+          SHUYI_CONTENT="$PWD/crates/game/files" private_test
+          rm -r private/files
+          private_test
       # Ticket 2548: a long name lays out the same, so the game's own fmt
       # gate passes whatever it is called. It uses the older form, `new
       # <template> <dir>`, which keeps working (ticket 2501).

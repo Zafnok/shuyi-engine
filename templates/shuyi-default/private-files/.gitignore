@@ -1,0 +1,4 @@
+
+# The private repository's checkout (`cargo shuyi private-assets`): its
+# files never go in this one.
+/private/

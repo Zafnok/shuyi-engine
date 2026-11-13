@@ -305,6 +305,188 @@ fn answers_the_template_doesnt_take_are_refused() {
     assert!(plan(cwd, &template, &missing, "Moon", "moon").is_err());
 }
 
+/// A blank game, with private files if `private` and `url` as its
+/// `--private-url`.
+fn private_input(private: Option<&str>, url: Option<&str>) -> NewInput {
+    let mut input = NewInput::new("g").template("blank");
+    if let Some(answer) = private {
+        input.set = Answers::parse("set", &format!("{{ \"private-files\": [\"{answer}\"] }}"))
+            .unwrap_or_else(|e| panic!("{e}"));
+    }
+    input.private_url = url.map(str::to_owned);
+    input
+}
+
+#[test]
+fn private_files_need_the_address_of_a_github_repository_and_only_they_take_one() {
+    let template = built_in();
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let refused = |input: &NewInput| {
+        let (code, error) = plan(cwd, &template, input, "G", "g").unwrap_err();
+        assert_eq!(code, codes::WRONG_ARGUMENTS, "{error}");
+        error
+    };
+    let url = "https://github.com/o/g-assets.git";
+    assert_eq!(
+        refused(&private_input(Some("yes"), None)),
+        "private-files=yes needs --private-url https://github.com/<owner>/<repo>.git: the \
+         private repository the game's private files are kept in"
+    );
+    for answer in [None, Some("no")] {
+        assert_eq!(
+            refused(&private_input(answer, Some(url))),
+            "--private-url is for a game with private files: add --set private-files=yes"
+        );
+    }
+    for bad in [
+        "http://github.com/o/g.git",
+        "https://github.com/o/g",
+        "https://gitlab.com/o/g.git",
+        "git@github.com:o/g.git",
+        "https://github.com/o.git",
+        "https://github.com/o/g/h.git",
+        "https://github.com//g.git",
+        "https://github.com/-o/g.git",
+        "https://github.com/o--p/g.git",
+        "https://github.com/o_p/g.git",
+        "https://github.com/o/.git",
+        "https://github.com/o/...git",
+        "https://github.com/o/g.git.git",
+        "https://github.com/o/g.GIT.git",
+        "https://github.com/o/g\".git",
+        "https://github.com/o/g h.git",
+    ] {
+        assert_eq!(
+            refused(&private_input(Some("yes"), Some(bad))),
+            format!(
+                "--private-url: not a GitHub repository's address: {bad}; write it \
+                 https://github.com/<owner>/<repo>.git"
+            ),
+        );
+    }
+    for good in [
+        url,
+        "https://github.com/Zafnok/visions-of-shuyi-assets.git",
+        "https://github.com/o-p/g_h.1.git",
+    ] {
+        let (plan, _) = plan(
+            cwd,
+            &template,
+            &private_input(Some("yes"), Some(good)),
+            "G",
+            "g",
+        )
+        .unwrap_or_else(|(_, e)| panic!("{good}: {e}"));
+        assert_eq!(plan.parts, ["base", "private-files"]);
+    }
+}
+
+#[test]
+fn the_private_part_writes_the_repository_its_ignore_line_and_its_ci_step() {
+    let template = built_in();
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let url = "https://github.com/o/g-assets.git";
+    let text = |plan: &Plan, path: &str| {
+        String::from_utf8_lossy(&plan.files[Path::new(path)]).into_owned()
+    };
+    let (private, _) = plan(
+        cwd,
+        &template,
+        &private_input(Some("yes"), Some(url)),
+        "G",
+        "g",
+    )
+    .unwrap_or_else(|(_, e)| panic!("{e}"));
+    let (blank, _) = plan(cwd, &template, &private_input(None, None), "G", "g")
+        .unwrap_or_else(|(_, e)| panic!("{e}"));
+    assert_eq!(blank.parts, ["base"]);
+
+    let config = crate::project::Config::parse(&text(&private, "shuyi.ron"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let assets = config
+        .private_assets
+        .unwrap_or_else(|| panic!("no private_assets"));
+    assert_eq!(assets.url, url);
+    assert_eq!(
+        (assets.checkout.as_str(), assets.pin_file.as_str()),
+        ("private", "private.rev")
+    );
+    assert_eq!(assets.folders, ["files", "docs"]);
+    assert_eq!(assets.library.as_deref(), Some("library"));
+    assert!(
+        assets.no_access.contains("public files"),
+        "{}",
+        assets.no_access
+    );
+    assert_eq!(
+        config.app,
+        crate::project::Config::parse(&text(&blank, "shuyi.ron"))
+            .unwrap()
+            .app
+    );
+    assert!(
+        crate::project::Config::parse(&text(&blank, "shuyi.ron"))
+            .unwrap()
+            .private_assets
+            .is_none()
+    );
+
+    let ignored = |plan: &Plan| text(plan, ".gitignore").lines().any(|l| l == "/private/");
+    assert!(ignored(&private));
+    assert!(!ignored(&blank));
+    // No pin yet: an empty pin file, which `shuyi repos` fills.
+    assert_eq!(text(&private, "private.rev"), "");
+
+    // The step is the base's, run when the part's action is there.
+    let action = ".github/actions/private-files/action.yml";
+    assert!(text(&private, action).contains(&format!("URL: \"{url}\"")));
+    assert!(!blank.files.contains_key(Path::new(action)));
+    let ci = text(&private, ".github/workflows/ci.yml");
+    assert_eq!(ci, text(&blank, ".github/workflows/ci.yml"));
+    let step = ci.find("uses: ./.github/actions/private-files").unwrap();
+    let cargo = ci.find("run: cargo").unwrap();
+    assert!(step < cargo, "the step runs before the first cargo command");
+    assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
+    for plan in [&private, &blank] {
+        for (path, bytes) in &plan.files {
+            let shown = path.to_string_lossy().replace('\\', "/");
+            if shown.starts_with(".github/") {
+                let text = String::from_utf8_lossy(bytes);
+                assert!(
+                    !text.contains("upload-artifact"),
+                    "{shown} uploads an artifact"
+                );
+            }
+        }
+    }
+
+    // Its words follow the base's in AGENTS.md and README.md.
+    for doc in ["AGENTS.md", "README.md"] {
+        let (with, without) = (text(&private, doc), text(&blank, doc));
+        assert!(with.starts_with(without.trim_end()), "{doc}");
+        assert!(with.contains("## The private files"), "{doc}");
+        assert!(with.contains(url), "{doc}");
+        assert!(!without.contains("## The private files"), "{doc}");
+    }
+
+    // Every other file is the blank game's.
+    let only_private = [
+        "shuyi.ron",
+        ".gitignore",
+        "private.rev",
+        action,
+        "AGENTS.md",
+        "README.md",
+    ];
+    for (path, bytes) in &blank.files {
+        let shown = path.to_string_lossy().replace('\\', "/");
+        if !only_private.contains(&shown.as_str()) {
+            assert_eq!(private.files.get(path), Some(bytes), "{shown}");
+        }
+    }
+    assert_eq!(private.files.len(), blank.files.len() + 2);
+}
+
 #[test]
 fn new_makes_the_game_in_an_empty_folder_only_unless_forced() {
     let dir = scratch("make");
@@ -418,6 +600,8 @@ fn the_arguments_name_a_folder_and_the_answers() {
         "G",
         "--engine-rev",
         "abc1234",
+        "--private-url",
+        "https://github.com/o/g-assets.git",
         "--answers",
         "a.ron",
         "--set",
@@ -431,6 +615,10 @@ fn the_arguments_name_a_folder_and_the_answers() {
     assert_eq!(input.template.as_deref(), Some("grid"));
     assert_eq!(input.answers.as_deref(), Some("a.ron"));
     assert_eq!(input.name.as_deref(), Some("G"));
+    assert_eq!(
+        input.private_url.as_deref(),
+        Some("https://github.com/o/g-assets.git")
+    );
     assert!(input.force);
     assert_eq!(input.set.0["music"], ["none", "recorded"]);
     assert_eq!(input.set.0["perspective"], ["top-down-grid"]);

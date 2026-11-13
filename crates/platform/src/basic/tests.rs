@@ -160,6 +160,48 @@ fn every_screen_is_the_first_alone_until_said() {
     assert_eq!(names(game.every_screen(&mut ctx)), ["hello", "other"]);
 }
 
+/// A private checkout's files: one in place of a public file, one of its
+/// own.
+static PRIVATE: &[(&str, &[u8])] = &[
+    ("sprites/x.png", b"private x"),
+    ("text/only.txt", b"only private"),
+];
+
+#[test]
+fn its_private_files_are_read_before_every_other_layer() {
+    let public: &'static [(&str, &[u8])] = &[("sprites/x.png", b"public x")];
+    let game = BasicGame::<UiAction>::new(DEMO, Layer::table("files", public), |_| Box::new(Hello));
+    let shown = |bundle: &Bundle, path: &str| bundle.display_path(path);
+    assert_eq!(game.bundle().bytes("sprites/x.png"), Some(&b"public x"[..]));
+
+    // Not marked private by the game: `private` marks it.
+    let game = game.private(Layer::table("private", PRIVATE));
+    let bundle = game.bundle();
+    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"private x"[..]));
+    assert_eq!(bundle.file("text/only.txt"), Some("only private"));
+    for path in ["sprites/x.png", "text/only.txt"] {
+        assert_eq!(shown(&bundle, path), format!("private/{path}"));
+        assert!(bundle.is_private(&shown(&bundle, path)), "{path}");
+    }
+
+    // A folder laid over the files (`run --watch`'s) stays under them: its
+    // public placeholder never hides the private file.
+    let watched: &'static [(&str, &[u8])] = &[
+        ("sprites/x.png", b"public x, saved"),
+        ("palette.ron", b"public palette"),
+    ];
+    let bundle = game.over(Layer::table("files", watched)).bundle();
+    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"private x"[..]));
+    assert_eq!(bundle.file("palette.ron"), Some("public palette"));
+    assert!(!bundle.is_private(&shown(&bundle, "palette.ron")));
+
+    // A second call replaces the first's layer.
+    let empty: &'static [(&str, &[u8])] = &[];
+    let bundle = game.private(Layer::table("private", empty)).bundle();
+    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"public x"[..]));
+    assert!(!bundle.has("text/only.txt"));
+}
+
 #[test]
 fn its_modules_are_installed_in_its_game_and_its_harness() {
     let game = demo(GOOD).modules(one_marker);

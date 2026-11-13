@@ -335,15 +335,19 @@ if 2005 has moved it.
     before `cargo fmt`, and leave `--locked` out of the template's
     `AGENTS.md` list; if not, nothing to do (2033's test is written that
     way).
-  - **Either order with 2590** (a game's private files, checked out over
-    its files): if 2590 is done, every package job of the release
-    workflow runs 2590's checkout step when the game has `private.rev`:
-    a release from the game's own repository fails without the
-    `PRIVATE_ASSETS_KEY` secret (game ADR-0040 §6), a dry run or a fork
-    warns and builds on the public files; and the release section of
-    the template's `README.md` says a release ships the private files
-    inside the program. If not, nothing to do (2590 adds the step when
-    it lands: its clause says so).
+  - **From 2590 (done):** a game's private files (ADR-0111). Every
+    package job of the release workflow runs the game's own action
+    `./.github/actions/private-files` right after its checkout, guarded
+    by `if: hashFiles('.github/actions/private-files/action.yml') != ''`
+    and passed `key: ${{ secrets.PRIVATE_ASSETS_KEY }}`, as the base's
+    `ci.yml` `gates` job does. The action already fails a run on the
+    game's own repository without the key (game ADR-0040 §6) and warns
+    on a fork's pull request; a dry run must warn and build on the
+    public files instead, so give the action an input for it (a
+    `required` input, `true` but on a dry run, read before it fails).
+    The private part's `README.md` section already says a release ships
+    the private files inside the program, or in its pack; the release
+    section adds the same line only if it is far from it.
 
 **Out (do not do):**
 - the exporters and their packages (3004, 3010, 3012). Which glibc the

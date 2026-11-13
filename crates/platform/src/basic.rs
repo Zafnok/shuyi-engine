@@ -50,6 +50,8 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     unreadable: Option<&'static str>,
     /// A layer laid over `files`, if it has one.
     over: Option<Layer>,
+    /// Its private files, read before every other layer, if it has them.
+    private: Option<Layer>,
     own: Own<T>,
     first: First<A, T>,
     console: ConsoleSpec,
@@ -84,6 +86,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             files,
             unreadable: None,
             over: None,
+            private: None,
             own,
             first,
             console: BASIC_CONSOLE,
@@ -180,10 +183,25 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         self
     }
 
+    /// The same game with `layer` as its private files (ADR-0111): files it
+    /// may not hand out, kept in a second repository checked out beside its
+    /// own. `layer` is marked private ([`Layer::private`]) and read before
+    /// every other layer, so a file there replaces the public one at its
+    /// path, also the one of a folder laid [`over`](Self::over) the files
+    /// (`cargo shuyi run --watch`'s), and a file only there is added. A
+    /// second call replaces the first's layer.
+    #[must_use]
+    pub fn private(mut self, layer: Layer) -> Self {
+        self.private = Some(layer.private());
+        self
+    }
+
     /// Its files, as a bundle of their one layer, under the one laid
-    /// [`over`](Self::over) them if it has one.
+    /// [`over`](Self::over) them if it has one, under its
+    /// [`private`](Self::private) files if it has them.
     pub fn bundle(&self) -> Bundle {
-        Bundle::new(self.over.into_iter().chain([self.files]).collect())
+        let layers = self.private.into_iter().chain(self.over);
+        Bundle::new(layers.chain([self.files]).collect())
     }
 
     /// Its data from its files, or every problem of every file; or why its

@@ -1,0 +1,22 @@
+// {{name}}'s private files (the engine's ADR-0111): merged into the base's
+// project file by `shuyi new`.
+(
+    // `cargo shuyi private-assets`: the files {{name}} may not hand out (its
+    // writing, art and sounds), kept in a second repository so they can't be
+    // copied from the public code. It checks them out into `private/`
+    // (git-ignored) at the commit `private.rev` names; `--pin` writes that
+    // commit once a change there is pushed to its `main`. The build lays
+    // `private/files/` over `crates/game/files/` whenever the checkout is
+    // there; without it the game builds and runs on its public files.
+    private_assets: (
+        url: "{{private_url}}",
+        checkout: "private",
+        pin_file: "private.rev",
+        // `files/`, laid over the game's files, and `docs/`, the story and
+        // design documents, which no build reads.
+        folders: ["files", "docs"],
+        // The bought packs as they came, which `--library` brings too.
+        library: "library",
+        no_access: "{{private_url}} is the private repository of {{name}}'s files: without access to it, the game builds and runs on its public files (crates/game/files/). Ask its owner for access, or sign in to git as someone who has it.",
+    ),
+)

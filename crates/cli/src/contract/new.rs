@@ -21,6 +21,7 @@
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
 //! | `{{engine_ref}}` | the engine's commit as a workflow's `uses: …@` names it: a 40-digit `--engine-rev`, else `main` |
 //! | `{{engine.docs}}` | a Markdown list of the engine's rules and docs for the game's agent: at `main` and on the site, at a commit, or in a checkout on this machine |
+//! | `{{private_url}}` | the game's private repository, `--private-url`: only in the files of the part a `private-files` answer of `yes` picks (ADR-0111) |
 //! | `{{answer.<question>}}` | that question's answers, joined by `,` |
 //!
 //! A GitHub Actions expression, `${{ … }}`, is left as it is. The game's
@@ -53,6 +54,10 @@ pub const ENGINE_SITE: &str = "https://zafnok.github.io/shuyi-engine";
 /// The game's workflow that calls the engine's reusable playtest
 /// workflow, at `{{engine_ref}}` (the grid stage's part writes it).
 const PLAYTEST_WORKFLOW: &str = ".github/workflows/playtest.yml";
+
+/// The question whose answer `yes` gives the game private files (ADR-0111),
+/// and so needs `--private-url`.
+const PRIVATE_FILES: &str = "private-files";
 
 /// The engine's crates a template may depend on, by their folder under
 /// `crates/`: `shuyi`, the front door, and the default engine's.
@@ -110,6 +115,11 @@ pub struct NewInput {
     /// Write into a folder that isn't empty, over the files there.
     #[serde(default)]
     pub force: bool,
+    /// The game's private repository (ADR-0111),
+    /// `https://github.com/<owner>/<repo>.git`: needed when the answer to
+    /// `private-files` is `yes`, and refused otherwise.
+    #[serde(default)]
+    pub private_url: Option<String>,
 }
 
 impl NewInput {
@@ -124,6 +134,7 @@ impl NewInput {
             name: None,
             engine: Engine::Main,
             force: false,
+            private_url: None,
         }
     }
 
@@ -206,6 +217,62 @@ fn check_name(name: &str) -> Result<(), String> {
     }
 }
 
+/// Whether `url` can be a game's private repository:
+/// `https://github.com/<owner>/<repo>.git`, as `shuyi repos` makes it with
+/// `gh` (GitHub only, for now). An owner is letters, digits and single `-`
+/// inside, at most 39; a repository is letters, digits, `-`, `_` and `.`,
+/// at most 100, and not `.` or `..`.
+fn check_private_url(url: &str) -> Result<(), String> {
+    let refused = || {
+        format!(
+            "--private-url: not a GitHub repository's address: {url}; write it \
+             https://github.com/<owner>/<repo>.git"
+        )
+    };
+    let path = url
+        .strip_prefix("https://github.com/")
+        .and_then(|path| path.strip_suffix(".git"))
+        .ok_or_else(refused)?;
+    let (owner, repo) = path.split_once('/').ok_or_else(refused)?;
+    let owner_ok = (1..=39).contains(&owner.len())
+        && owner.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        && !owner.starts_with('-')
+        && !owner.ends_with('-')
+        && !owner.contains("--");
+    let repo_ok = (1..=100).contains(&repo.len())
+        && repo
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+        && repo != "."
+        && repo != ".."
+        && !repo.to_ascii_lowercase().ends_with(".git");
+    if owner_ok && repo_ok {
+        Ok(())
+    } else {
+        Err(refused())
+    }
+}
+
+/// Whether `answers` give the game private files, and `private_url` names
+/// their repository when they do and only then; or why not.
+fn check_private(answers: &Answers, private_url: Option<&str>) -> Result<(), String> {
+    let private = answers
+        .0
+        .get(PRIVATE_FILES)
+        .is_some_and(|picked| picked.iter().any(|answer| answer == "yes"));
+    match (private, private_url) {
+        (true, Some(url)) => check_private_url(url),
+        (true, None) => Err(format!(
+            "{PRIVATE_FILES}=yes needs --private-url https://github.com/<owner>/<repo>.git: \
+             the private repository the game's private files are kept in"
+        )),
+        (false, Some(_)) => Err(format!(
+            "--private-url is for a game with private files: add --set {PRIVATE_FILES}=yes"
+        )),
+        (false, None) => Ok(()),
+    }
+}
+
 /// The dependency on engine crate `krate` (a folder of `crates/`), as a
 /// TOML inline table.
 fn dependency(engine: &Engine, root: Option<&str>, krate: &str) -> String {
@@ -275,6 +342,7 @@ pub fn fill_for(name: &str, krate: &str, engine: &Engine, root: Option<&str>) ->
             .collect(),
         engine_ref: engine_ref(engine).unwrap_or("main").to_owned(),
         engine_docs: engine_docs(engine, root),
+        private_url: None,
     }
 }
 
@@ -359,7 +427,9 @@ pub fn plan(
     }
     .map_err(|e| (codes::ENGINE_DEPENDENCY, e))?;
     let answers = answers_of(cwd, template, input).map_err(refused)?;
-    let fill = fill_for(name, krate, &input.engine, root.as_deref());
+    check_private(&answers, input.private_url.as_deref()).map_err(refused)?;
+    let mut fill = fill_for(name, krate, &input.engine, root.as_deref());
+    fill.private_url.clone_from(&input.private_url);
     let plan = template::compose(template, &answers, &catalog, &fill)
         .map_err(|e| (code_of(&e), e.to_string()))?;
     limits.extend(plan.limits.iter().cloned());
@@ -432,11 +502,14 @@ pub fn usage(command: &str) -> String {
     let names = template::built_in().map_or_else(|_| String::new(), |t| short_names(&t));
     format!(
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
-         \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--force] [--json]\n\n\
+         \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
+         \x20          [--force] [--json]\n\n\
          Makes a new game in <dir> (missing or empty, or any with --force) from the engine's\n\
          template, its parts picked by the answers: --template's short name ({names}),\n\
          then --answers' file, then each --set. The game depends on the engine's repository\n\
-         at main, at --engine-rev's commit, or on the checkout at --engine-path."
+         at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
+         --set private-files=yes keeps its private files in a second repository, which\n\
+         --private-url names (https://github.com/<owner>/<repo>.git)."
     )
 }
 
@@ -463,6 +536,7 @@ pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
             "--name" => input.name = Some(value()?),
             "--engine-rev" => input.engine = Engine::Rev { rev: value()? },
             "--engine-path" => input.engine = Engine::Path { path: value()? },
+            "--private-url" => input.private_url = Some(value()?),
             "--force" => input.force = true,
             flag if flag.starts_with("--") => return Err(format!("unknown option: {flag}")),
             _ => positional.push(arg.clone()),

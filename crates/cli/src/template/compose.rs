@@ -5,9 +5,10 @@
 //! The parts whose `when` holds are picked in the template's order. Each
 //! writes its folder's files, with the placeholders filled ([`fill`]).
 //! A path more than one part writes is merged when it is a `Cargo.toml`
-//! (key by key, [`toml_edit`]) or a `.ron` file (field by field, entry by
-//! entry, item by item, keeping each file's comments); any other is
-//! [`ComposeError::SameFile`]. The modules the parts turn on become the
+//! (key by key, [`toml_edit`]), a `.ron` file (field by field, entry by
+//! entry, item by item, keeping each file's comments), a `.gitignore`
+//! (the lines it lacks added) or a Markdown file (each next part's text
+//! after a blank line); any other is [`ComposeError::SameFile`]. The modules the parts turn on become the
 //! `shuyi` crate's features in the root `Cargo.toml`, through `shuyi
 //! add`'s code ([`catalog::turn_on`]). When the template has a part with a
 //! stage, `shuyi new` writes the flow's list of stages,
@@ -56,6 +57,9 @@ pub struct Fill {
     /// `{{engine.docs}}`: the engine's rules and docs for the game's agent,
     /// a Markdown list.
     pub engine_docs: String,
+    /// `{{private_url}}`: the game's private repository (ADR-0111), if it
+    /// has one; a file that names it fails without.
+    pub private_url: Option<String>,
 }
 
 /// What a template makes for a set of answers: the new game's files and
@@ -197,8 +201,8 @@ impl fmt::Display for ComposeError {
             ),
             ComposeError::SameFile { path, parts } => write!(
                 f,
-                "{path} is written by the parts {}, and only a Cargo.toml or a .ron file is \
-                 merged",
+                "{path} is written by the parts {}, and only a Cargo.toml, a .ron file, a \
+                 .gitignore or a Markdown file is merged",
                 names(parts)
             ),
             ComposeError::Merge {
@@ -242,7 +246,8 @@ impl std::error::Error for ComposeError {}
 
 /// `text`, the file `file`, with its placeholders filled: `{{name}}`,
 /// `{{crate_name}}`, `"{{engine.<crate>}}"` (with its quotes),
-/// `{{engine_ref}}`, `{{engine.docs}}` and `{{answer.<question>}}` (the question's answers in
+/// `{{engine_ref}}`, `{{engine.docs}}`, `{{private_url}}` (when the game has
+/// one) and `{{answer.<question>}}` (the question's answers in
 /// `answers`, joined by `,`). A GitHub Actions expression, `${{ … }}`, passes through as it
 /// is. Any other `{{` is [`ComposeError::Placeholder`].
 pub fn fill(
@@ -288,6 +293,10 @@ pub fn fill(
             "crate_name" => with.crate_name.clone(),
             "engine_ref" => with.engine_ref.clone(),
             "engine.docs" => with.engine_docs.clone(),
+            "private_url" => match &with.private_url {
+                Some(url) => url.clone(),
+                None => return Err(unknown(token)),
+            },
             _ => match inner
                 .strip_prefix("answer.")
                 .and_then(|question| answers.0.get(question))
@@ -384,21 +393,64 @@ pub fn stages_rs(stages: &[String]) -> String {
 enum Merged {
     Toml,
     Ron,
+    /// A `.gitignore`: the lines it lacks added.
+    Lines,
+    /// A Markdown file: each next part's text after a blank line.
+    Markdown,
 }
 
 impl Merged {
     fn of(path: &str) -> Option<Self> {
-        if path == "Cargo.toml" || path.ends_with("/Cargo.toml") {
+        let path = Path::new(path);
+        let extension = |wanted: &str| {
+            path.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case(wanted))
+        };
+        let name = path.file_name().and_then(|name| name.to_str());
+        if name == Some("Cargo.toml") {
             Some(Merged::Toml)
-        } else if Path::new(path)
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("ron"))
-        {
+        } else if name == Some(".gitignore") {
+            Some(Merged::Lines)
+        } else if extension("ron") {
             Some(Merged::Ron)
+        } else if extension("md") {
+            Some(Merged::Markdown)
         } else {
             None
         }
     }
+}
+
+/// The ignore file `base` with each line of `other` it lacks added, in
+/// `other`'s order: a comment or a blank line only with a line it adds.
+fn merge_lines(base: &str, other: &str) -> String {
+    let mut out = base.to_owned();
+    if !out.is_empty() && !out.ends_with('\n') {
+        out.push('\n');
+    }
+    let has: Vec<&str> = base.lines().collect();
+    let mut pending = Vec::new();
+    for line in other.lines() {
+        let rule = line.trim();
+        if rule.is_empty() || rule.starts_with('#') {
+            pending.push(line);
+        } else if has.contains(&line) {
+            pending.clear();
+        } else {
+            for kept in pending.drain(..) {
+                out.push_str(kept);
+                out.push('\n');
+            }
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// The Markdown `base` with `other` after it, a blank line between.
+fn merge_markdown(base: &str, other: &str) -> String {
+    format!("{}\n\n{}", base.trim_end(), other.trim_start())
 }
 
 /// The one file that `writers` (each a part and its bytes) write at
@@ -435,6 +487,8 @@ fn merged(path: &str, writers: Vec<(String, Vec<u8>)>) -> Result<Vec<u8>, Compos
         out = match kind {
             Merged::Toml => merge_toml(&out, text),
             Merged::Ron => ron_merge::merge(&out, text),
+            Merged::Lines => Ok(merge_lines(&out, text)),
+            Merged::Markdown => Ok(merge_markdown(&out, text)),
         }
         .map_err(|(at, message)| failed(at, message))?;
     }
@@ -705,7 +759,15 @@ pub fn compose(
     }
     let mut limits = Vec::new();
     for (question, picked) in &answers.0 {
-        for answer in picked {
+        // A question's default answer that adds nothing does so by design
+        // (`private-files` = `no`): only another answer no part serves is a
+        // limit.
+        let default = template
+            .questions
+            .iter()
+            .find(|q| &q.id == question)
+            .map_or(&[][..], |q| q.default.as_slice());
+        for answer in picked.iter().filter(|a| !default.contains(a)) {
             let served = template.parts.iter().any(|p| {
                 p.when
                     .picks()

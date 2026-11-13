@@ -18,6 +18,17 @@ Template(
             ],
             default: [],
         ),
+        // `yes` needs `shuyi new --private-url <repository>` (ADR-0111).
+        Question(
+            id: "private-files",
+            text: "Keep the game's writing, art and sounds in a private repository?",
+            pick: One,
+            answers: [
+                Answer(id: "yes", text: "yes: a second, private repository, checked out over the game's files"),
+                Answer(id: "no", text: "no: every file in the game's own repository"),
+            ],
+            default: ["no"],
+        ),
     ],
     // `shuyi new <dir> --template <name>`.
     short_names: {
@@ -41,6 +52,16 @@ Template(
             when: Picked("perspective", "top-down-grid"),
             files: "stages/top-down-grid",
             stage: Some("top-down-grid"),
+            requires: ["base"],
+        ),
+        // The game's private files (ADR-0111): `shuyi.ron`'s
+        // `private_assets`, `/private/` ignored, the CI step that checks
+        // them out, and what AGENTS.md and README.md say of them. The
+        // build that lays them over the files is the base's.
+        Part(
+            id: "private-files",
+            when: Picked("private-files", "yes"),
+            files: "private-files",
             requires: ["base"],
         ),
     ],

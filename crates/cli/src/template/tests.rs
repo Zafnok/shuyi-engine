@@ -40,6 +40,13 @@ const MANIFEST_OK: &str = r#"Template(
             pick: Many,
             answers: [Answer(id: "unserved", text: "nothing serves it")],
         ),
+        Question(
+            id: "extra",
+            text: "Extras?",
+            pick: One,
+            answers: [Answer(id: "none", text: "none, by design"), Answer(id: "more", text: "more")],
+            default: ["none"],
+        ),
     ],
     short_names: { "plain": {}, "both": { "look": ["a", "b"] } },
     parts: [
@@ -100,6 +107,7 @@ fn filled() -> Fill {
         engine: BTreeMap::from([("shuyi".to_owned(), "{ path = 'e' }".to_owned())]),
         engine_ref: "main".to_owned(),
         engine_docs: "- the docs".to_owned(),
+        private_url: None,
     }
 }
 
@@ -204,7 +212,7 @@ fn each_load_check_names_the_file_and_the_field() {
         (
             broken("\"plain\": {}", "\"plain\": { \"size\": [\"big\"] }"),
             "fixtures/t/template.ron: short_names[plain]: no question `size`: the template asks \
-             `look`, `one`, `spare`",
+             `look`, `one`, `spare`, `extra`",
         ),
         (
             broken("id: \"pa\"", "id: \"base\""),
@@ -376,6 +384,15 @@ fn the_parts_whose_when_holds_are_written_with_their_placeholders_filled() {
         unserved.limits,
         ["no part of the template for `spare` = `unserved`: nothing added"]
     );
+    // A default that adds nothing does so by design, also when it is asked
+    // for; another answer no part serves is still a limit.
+    let by_design = composed(&template, &answers(&[("extra", &["none"])])).unwrap();
+    assert_eq!(by_design.limits, Vec::<String>::new());
+    let more = composed(&template, &answers(&[("extra", &["more"])])).unwrap();
+    assert_eq!(
+        more.limits,
+        ["no part of the template for `extra` = `more`: nothing added"]
+    );
 }
 
 #[test]
@@ -384,7 +401,7 @@ fn an_answer_the_template_doesnt_take_is_refused() {
     let cases = [
         (
             answers(&[("size", &["big"])]),
-            "no question `size`: the template asks `look`, `one`, `spare`",
+            "no question `size`: the template asks `look`, `one`, `spare`, `extra`",
         ),
         (
             answers(&[("look", &["c"])]),
@@ -442,20 +459,60 @@ fn with_files(extra: &[(&str, &str)]) -> Template {
 
 #[test]
 fn two_parts_writing_one_unmerged_file_fail_naming_both() {
-    let template = with_files(&[("base/notes.md", "one\n"), ("pa/notes.md", "two\n")]);
+    let template = with_files(&[("base/notes.txt", "one\n"), ("pa/notes.txt", "two\n")]);
     let error = composed(&template, &Answers::default()).unwrap_err();
     assert_eq!(
         error,
         ComposeError::SameFile {
-            path: "notes.md".to_owned(),
+            path: "notes.txt".to_owned(),
             parts: vec!["base".to_owned(), "pa".to_owned()],
         }
     );
     assert_eq!(
         error.to_string(),
-        "notes.md is written by the parts `base` and `pa`, and only a Cargo.toml or a .ron file \
-         is merged"
+        "notes.txt is written by the parts `base` and `pa`, and only a Cargo.toml, a .ron \
+         file, a .gitignore or a Markdown file is merged"
     );
+}
+
+#[test]
+fn ignore_files_gain_the_lines_they_lack_with_their_comments() {
+    let template = with_files(&[
+        ("base/.gitignore", "/target\n# Built.\n/dist"),
+        (
+            "pa/.gitignore",
+            "# Built.\n/dist\n\n# The private files' checkout.\n/private/\n/target\n",
+        ),
+        ("base/crates/x/.gitignore", "/a\n"),
+    ]);
+    let plan = composed(&template, &Answers::default()).unwrap();
+    assert_eq!(
+        text_of(&plan, ".gitignore"),
+        "/target\n# Built.\n/dist\n\n# The private files' checkout.\n/private/\n"
+    );
+    assert_eq!(text_of(&plan, "crates/x/.gitignore"), "/a\n");
+    // The same lines again add nothing.
+    let same = with_files(&[
+        ("base/.gitignore", "/target\n"),
+        ("pa/.gitignore", "/target\n"),
+    ]);
+    let plan = composed(&same, &Answers::default()).unwrap();
+    assert_eq!(text_of(&plan, ".gitignore"), "/target\n");
+}
+
+#[test]
+fn markdown_files_gain_each_next_parts_text_after_a_blank_line() {
+    let template = with_files(&[
+        ("base/AGENTS.md", "# Rules\n\nOne.\n\n"),
+        ("pa/AGENTS.md", "\n## Private files\n\nTwo.\n"),
+        ("pa/docs/NOTES.MD", "Its own.\n"),
+    ]);
+    let plan = composed(&template, &Answers::default()).unwrap();
+    assert_eq!(
+        text_of(&plan, "AGENTS.md"),
+        "# Rules\n\nOne.\n\n## Private files\n\nTwo.\n"
+    );
+    assert_eq!(text_of(&plan, "docs/NOTES.MD"), "Its own.\n");
 }
 
 #[test]
@@ -536,6 +593,21 @@ fn placeholders_fill_in_text_and_names_and_actions_expressions_pass() {
         fill("f", text, &with, &picked).unwrap(),
         "Moon Garden / moon-garden / shuyi = { path = 'e' } / a,b /  / ${{ matrix.target }} / \
          ${{github.sha}} / @main / - the docs"
+    );
+    // Only a game with a private repository fills its URL.
+    let url = "url = \"{{private_url}}\"";
+    let error = fill("shuyi.ron", url, &with, &picked).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "the template's shuyi.ron:1 has an unknown placeholder {{private_url}}"
+    );
+    let private = Fill {
+        private_url: Some("https://github.com/o/g-assets.git".to_owned()),
+        ..filled()
+    };
+    assert_eq!(
+        fill("shuyi.ron", url, &private, &picked).unwrap(),
+        "url = \"https://github.com/o/g-assets.git\""
     );
     let unknown = fill("a.rs", "one\ntwo {{nope}} three", &with, &picked).unwrap_err();
     assert_eq!(
@@ -845,16 +917,25 @@ fn fnv(bytes: &[u8]) -> u64 {
 }
 
 /// The engine's own template's plan for its short name `name`, a game
-/// called Moon Garden on the engine's `main`.
+/// called Moon Garden on the engine's `main`; `name` followed by `+private`
+/// adds the private files (ADR-0111), in a repository of its own.
 fn built_in_plan(name: &str) -> Plan {
     let template = built_in().unwrap_or_else(|e| panic!("{e}"));
-    let answers = template.short_name(name).unwrap().clone();
-    let fill = crate::contract::new::fill_for(
+    let (short, private) = match name.strip_suffix("+private") {
+        Some(short) => (short, true),
+        None => (name, false),
+    };
+    let mut answers = template.short_name(short).unwrap().clone();
+    let mut fill = crate::contract::new::fill_for(
         "Moon Garden",
         "moon-garden",
         &crate::contract::new::Engine::Main,
         None,
     );
+    if private {
+        answers = answers.and(&Answers::parse("set", "{ \"private-files\": [\"yes\"] }").unwrap());
+        fill.private_url = Some("https://github.com/you/moon-garden-assets.git".to_owned());
+    }
     compose(&template, &answers, &Catalog::embedded().unwrap(), &fill)
         .unwrap_or_else(|e| panic!("{name}: {e}"))
 }
@@ -870,7 +951,7 @@ fn the_engine_templates_plans_are_golden() {
          # --lib template`, after a change to templates/shuyi-default. The skill pack's\n\
          # files in .claude/skills/ are left out: a test checks they are the pack's.\n",
     );
-    for name in ["blank", "grid"] {
+    for name in ["blank", "grid", "blank+private"] {
         let plan = built_in_plan(name);
         assert_eq!(plan, built_in_plan(name), "{name} twice");
         // Writing to a `String` can't fail.

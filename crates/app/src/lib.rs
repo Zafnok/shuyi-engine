@@ -189,9 +189,9 @@ pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 pub use crate::crash::CrashReports;
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) use crate::folder::watched_file;
-#[cfg(not(target_arch = "wasm32"))]
 pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_layer};
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use crate::folder::{Watched, watched_file, watched_layers};
 use crate::pacing::{Pacer, WebFrame};
 pub use crate::pack_file::{PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name};
 
@@ -205,6 +205,37 @@ pub fn watched_layer() -> Option<shuyi_assets::bundle::Layer> {
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn watched_file(_: &str) -> Option<&'static [u8]> {
     None
+}
+
+/// What `cargo shuyi run --watch` named: on the web, nothing.
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Watched {
+    /// The folder of the game's files.
+    pub files: Option<shuyi_assets::bundle::Layer>,
+    /// The folder of its private files.
+    pub private: Option<shuyi_assets::bundle::Layer>,
+}
+
+/// The web has no folders to watch.
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn watched_layers() -> Watched {
+    Watched::default()
+}
+
+/// `game` with the folders `cargo shuyi run --watch` named laid over its
+/// files: its files' folder [`over`](BasicGame::over) them, and its private
+/// files' folder in place of its embedded ones (ADR-0111). `None` when it
+/// named none.
+fn watched_game<A: ActionSet, T: Debug + 'static>(
+    game: &BasicGame<A, T>,
+) -> Option<BasicGame<A, T>> {
+    let Watched { files, private } = watched_layers();
+    let game = game.over(files?);
+    Some(match private {
+        Some(private) => game.private(private),
+        None => game,
+    })
 }
 
 /// The window a game opens. Build it with [`Window::new`]: a struct
@@ -608,10 +639,12 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// embedded ones ([`watched_layer`]). On the web, the files the page holds
 /// under `files/` (the site's playground, [`page`]) are laid over them when
 /// the game's data loads with them, and the page hears the game's problems
-/// with them either way.
+/// with them either way. The game's private files (`BasicGame::private`)
+/// are read before all of them, and `run --watch` watches their folder
+/// too when the game has a checkout of them (ADR-0111).
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
-    let game = if let Some(layer) = watched_layer() {
-        game.over(layer)
+    let game = if let Some(watched) = watched_game(&game) {
+        watched
     } else {
         let page = page::page_layer(PAGE_FOLDER, page::PageLimits::default());
         let (game, heard) = lay_page(&game, page);
@@ -673,10 +706,7 @@ where
     P: PreviewGame<BasicData<A, T>>,
 {
     let scenes = preview_folder(folder);
-    let game = match watched_layer() {
-        Some(layer) => game.over(layer),
-        None => game,
-    };
+    let game = watched_game(&game).unwrap_or(game);
     let _ = shuyi_assets::bundle::install(game.bundle());
     let window = basic_window(&game);
     let start = game.preview_start(scenes, preview);
