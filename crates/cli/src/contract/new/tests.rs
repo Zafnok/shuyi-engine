@@ -464,28 +464,8 @@ fn the_private_part_writes_the_repository_its_ignore_line_and_its_ci_step() {
     // No pin yet: an empty pin file, which `shuyi repos` fills.
     assert_eq!(text(&private, "private.rev"), "");
 
-    // The step is the base's, run when the part's action is there.
     let action = ".github/actions/private-files/action.yml";
-    assert!(text(&private, action).contains(&format!("URL: \"{url}\"")));
-    assert!(!blank.files.contains_key(Path::new(action)));
-    let ci = text(&private, ".github/workflows/ci.yml");
-    assert_eq!(ci, text(&blank, ".github/workflows/ci.yml"));
-    let step = ci.find("uses: ./.github/actions/private-files").unwrap();
-    let cargo = ci.find("run: cargo").unwrap();
-    assert!(step < cargo, "the step runs before the first cargo command");
-    assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
-    for plan in [&private, &blank] {
-        for (path, bytes) in &plan.files {
-            let shown = path.to_string_lossy().replace('\\', "/");
-            if shown.starts_with(".github/") {
-                let text = String::from_utf8_lossy(bytes);
-                assert!(
-                    !text.contains("upload-artifact"),
-                    "{shown} uploads an artifact"
-                );
-            }
-        }
-    }
+    assert_the_ci_runs_the_part_and_keeps_its_files(&private, &blank, action, url);
 
     // Its words follow the base's in AGENTS.md and README.md.
     for doc in ["AGENTS.md", "README.md"] {
@@ -512,6 +492,49 @@ fn the_private_part_writes_the_repository_its_ignore_line_and_its_ci_step() {
         }
     }
     assert_eq!(private.files.len(), blank.files.len() + 2);
+}
+
+/// The CI step is the base's, run when the part's action is there, and
+/// no artifact or cache of the template's workflows embeds the files.
+fn assert_the_ci_runs_the_part_and_keeps_its_files(
+    private: &Plan,
+    blank: &Plan,
+    action: &str,
+    url: &str,
+) {
+    let text = |plan: &Plan, path: &str| {
+        String::from_utf8_lossy(&plan.files[Path::new(path)]).into_owned()
+    };
+    assert!(text(private, action).contains(&format!("URL: \"{url}\"")));
+    assert!(!blank.files.contains_key(Path::new(action)));
+    let ci = text(private, ".github/workflows/ci.yml");
+    assert_eq!(ci, text(blank, ".github/workflows/ci.yml"));
+    let step = ci.find("uses: ./.github/actions/private-files").unwrap();
+    let cargo = ci.find("run: cargo").unwrap();
+    assert!(step < cargo, "the step runs before the first cargo command");
+    assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
+    // No cache embeds them: `target/` is cached only when the action isn't
+    // there (ADR-0111 §5, 2596).
+    let cache = ci.find("Swatinem/rust-cache").unwrap();
+    assert!(
+        ci[cache..].contains(&format!(
+            "cache-targets: ${{{{ hashFiles('{action}') == '' }}}}"
+        )),
+        "the rust-cache step caches no target with the private files"
+    );
+    assert_eq!(ci.matches("rust-cache").count(), 1, "one cache, guarded");
+    for plan in [private, blank] {
+        for (path, bytes) in &plan.files {
+            let shown = path.to_string_lossy().replace('\\', "/");
+            if shown.starts_with(".github/") {
+                let text = String::from_utf8_lossy(bytes);
+                assert!(
+                    !text.contains("upload-artifact"),
+                    "{shown} uploads an artifact"
+                );
+            }
+        }
+    }
 }
 
 #[test]

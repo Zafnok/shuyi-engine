@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 2596 — A game with private files caches no build in CI, which a fork's pull request could restore
@@ -62,10 +62,10 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A game with private files saves no `target/` to the Actions cache.
-- [ ] A game without them caches as before.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A game with private files saves no `target/` to the Actions cache.
+- [x] A game without them caches as before.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -73,5 +73,23 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- The template's `ci.yml`: its `rust-cache` step sets `cache-targets`
+  to `hashFiles('.github/actions/private-files/action.yml') == ''`, as
+  the engine's reusable playtest workflow does (2595), with a comment
+  saying why. A game with private files still caches the cargo
+  registry, which holds none of them. `plans.golden` blessed.
+- Every other workflow of the template checked: the grid stage's
+  `playtest.yml` only calls the engine's reusable workflow, whose
+  `playtest` job is its one cache, guarded by 2595. No other job caches
+  a build.
+- `the_private_part_writes_the_repository_its_ignore_line_and_its_ci_step`
+  checks the guarded `cache-targets` line and that `ci.yml` has one
+  `rust-cache` step.
+- `docs/templates.md`, *The private files*: no artifact **and no
+  cache** embeds them. ADR-0111 is accepted and left as is; this
+  restates its §5 rule.
+- No deviations; the ticket is a day old.
+- Book: none, the book's quick start names the private part but not
+  what CI caches; nothing a reader does changes.
+- Game: nothing to adopt, the template's workflow only reaches new
+  games; the game's own workflows are out of this ticket's scope.
