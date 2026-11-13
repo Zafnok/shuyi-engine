@@ -180,7 +180,7 @@ pub struct ExportPlan {
 #[serde(untagged)]
 pub enum ExportResult {
     /// What `export` made.
-    Package(ExportOutput),
+    Package(Box<ExportOutput>),
     /// What `export --plan` plans.
     Plan(ExportPlan),
 }

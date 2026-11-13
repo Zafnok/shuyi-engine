@@ -249,6 +249,13 @@ fn mcp_host(project: &Project, args: &[String], game: Option<&dyn GameTools>) ->
     }
 }
 
+/// Whether op `name` with `args`, one that checks targets, runs in the game's
+/// tool program: when `project` names one, unless it is `export --plan`, which
+/// reads the project file alone.
+fn in_tools(project: &Project, name: &str, args: &[String]) -> bool {
+    project.config.game.is_some() && !(name == "export" && args.iter().any(|arg| arg == "--plan"))
+}
+
 /// Runs the command `args` on `project`, with the game's tools if they are
 /// at hand (otherwise a command that runs the game runs the game's tool
 /// program), and returns the exit code (see [`main_with`]).
@@ -289,13 +296,9 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
                 contract::cli::check_targets(project, args, game)
             }
         };
-        // The plan reads the project file alone: no tool program is built.
-        let plans = name == "export" && args.iter().any(|arg| arg == "--plan");
         return match game {
             Some(game) => checked(Some(game)),
-            None if project.config.game.is_some() && !plans => {
-                game::run_in_game_program(project, name, args)
-            }
+            None if in_tools(project, name, args) => game::run_in_game_program(project, name, args),
             None => checked(None),
         };
     }

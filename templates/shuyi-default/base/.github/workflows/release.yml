@@ -214,6 +214,10 @@ jobs:
             case "$package" in
               *.zip) unzip -q "$package" -d "$unpacked" ;;
               *.tar.gz) tar -xzf "$package" -C "$unpacked" ;;
+              *)
+                echo "::error::$dir holds no package (a zip or a tar.gz)"
+                exit 1
+                ;;
             esac
             butler push "$unpacked" "$ITCH_GAME:$exporter" --userversion "$VERSION" --if-changed
           done
