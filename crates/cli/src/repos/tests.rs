@@ -906,7 +906,7 @@ fn an_existing_origin_is_left_as_it_is() {
 }
 
 #[test]
-fn the_private_repositorys_first_commit_explains_and_keeps_its_folders() {
+fn the_private_repository_first_commit_explains_and_keeps_its_folders() {
     let scratch = Scratch::new("first-commit");
     let project = scratch.project(true);
     let mut fake = scratch.fake();
