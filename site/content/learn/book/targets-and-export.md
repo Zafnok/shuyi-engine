@@ -362,6 +362,10 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
 
+On the web, the package's size is what a player waits for before the game starts: the page and the
+program, not the `web.music` and `web.voice` folders, which the game fetches when it first plays a track
+or a line. The table shows the whole zip beside it, the size of your upload.
+
 A slow device loads slowly too. The Playdate reads a game's data hundreds of times slower than your
 computer, and its system ends a game whose frame runs for 10 seconds. A game whose load could take that
 long there starts with `Start::in_steps` instead of `Start::new`. You give it a function that takes the

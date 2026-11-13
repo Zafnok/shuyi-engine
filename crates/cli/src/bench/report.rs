@@ -112,8 +112,13 @@ pub(crate) struct Package {
     pub export: String,
     /// The package's file, from the export's folder.
     pub file: String,
-    /// Its size.
+    /// Its size against the budget: for a web package, what the page
+    /// loads before the game starts.
     pub bytes: u64,
+    /// The whole package's size, when `bytes` counts only what loads at
+    /// start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whole_bytes: Option<u64>,
 }
 
 /// What a number over its budget is.
@@ -261,7 +266,11 @@ pub(crate) fn over(budgets: &[Budget], runs: &[Run], packages: &[Package]) -> Ve
                 what: What::Package,
                 scenario: None,
                 frame: None,
-                package: Some(package.file.clone()),
+                package: Some(if package.whole_bytes.is_some() {
+                    format!("{} (what loads at start)", package.file)
+                } else {
+                    package.file.clone()
+                }),
                 value: package.bytes,
                 budget: limit,
             });
@@ -339,14 +348,23 @@ pub(crate) fn markdown(report: &Report) -> String {
         );
     }
     if !report.packages.is_empty() {
-        out.push_str("\n| Package | Export | Size |\n| --- | --- | ---: |\n");
+        out.push_str(
+            "\n| Package | Export | Size (gated) | Whole package |\n| --- | --- | ---: | ---: |\n",
+        );
         for package in &report.packages {
             let _ = writeln!(
                 out,
-                "| {} | {} | {} |",
+                "| {} | {} | {} | {} |",
                 package.file,
                 package.export,
-                bytes_text(package.bytes)
+                bytes_text(package.bytes),
+                bytes_text(package.whole_bytes.unwrap_or(package.bytes)),
+            );
+        }
+        if report.packages.iter().any(|p| p.whole_bytes.is_some()) {
+            out.push_str(
+                "\nA web package's gated size is what the page loads before the game starts: \
+                 its music and voice folders load when first played.\n",
             );
         }
     }

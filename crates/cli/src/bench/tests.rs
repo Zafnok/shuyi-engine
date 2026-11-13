@@ -357,6 +357,7 @@ fn a_number_over_a_budget_names_the_scenario_frame_target_and_both_numbers() {
         export: "playdate".to_owned(),
         file: "game.pdx.zip".to_owned(),
         bytes: 41 * MB,
+        whole_bytes: None,
     }];
     let over = report::over(&budgets, &runs, &packages);
     let texts: Vec<String> = over.iter().map(Over::text).collect();
@@ -447,6 +448,7 @@ fn toy_plan(scenario: &str, targets: &[&str]) -> Plan {
         targets: Vec::new(),
         scenarios: Vec::new(),
         limits: Vec::new(),
+        later: Vec::new(),
     };
     for id in targets {
         let options = Options {
@@ -526,6 +528,7 @@ fn a_scenario_plays_each_frame_with_the_heaps_peak_at_its_end() {
             .unwrap(),
         )],
         limits: Vec::new(),
+        later: Vec::new(),
     };
     let runs = temp_dir("late");
     let (code, e) = measure(&plan, &Ten, &runs, &runs, "shuyi").unwrap_err();
@@ -557,7 +560,7 @@ fn a_package_is_read_from_its_export_report_by_its_profile() {
         budget("desktop", 1, 1, None),
         budget("playdate", 1, 1, Some(40 * MB)),
     ];
-    let (found, limits) = packages(&root, &budgets, "cargo shuyi");
+    let (found, limits) = packages(&root, &budgets, &[], "cargo shuyi");
     assert_eq!(
         found,
         [Package {
@@ -565,18 +568,115 @@ fn a_package_is_read_from_its_export_report_by_its_profile() {
             export: "web".to_owned(),
             file: "game-0.1.0-web.zip".to_owned(),
             bytes: 30 * MB,
+            whole_bytes: None,
         }]
     );
+    // Without the export's folder, the whole zip is measured, and said so.
+    assert_eq!(limits.len(), 2, "{limits:?}");
+    assert!(
+        limits[0].starts_with(
+            "web: what loads at start isn't measured, the whole game-0.1.0-web.zip is: the report names no folder"
+        ),
+        "{limits:?}"
+    );
     assert_eq!(
-        limits,
-        [
-            "playdate: no package measured: no dist/export/*/export-report.json is for it \
+        limits[1],
+        "playdate: no package measured: no dist/export/*/export-report.json is for it \
           (`cargo shuyi export <target>` makes one)"
-        ]
     );
     let over = report::over(&budgets, &[], &found);
     assert_eq!(over[0].what, What::Package);
     fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_web_package_counts_what_loads_before_the_game_starts() {
+    let root = temp_dir("web-start");
+    let web = root.join("dist/export/web");
+    let folder = web.join("game-0.1.0-web");
+    // The page and the program: what loads before the first frame.
+    let write = |path: &str, bytes: u64| {
+        let file = folder.join(path);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, vec![0_u8; usize::try_from(bytes).unwrap()]).unwrap();
+    };
+    write("index.html", 1_000);
+    write("game.wasm", 10 * MB);
+    // The music and the voices, fetched when first played: 30 MB.
+    write("music/title.ogg", 20 * MB);
+    write("voice/en/line-1.ogg", 10 * MB);
+    write("voice/en/voice.ron", 100);
+    // A folder whose name only starts like the music's loads at start.
+    write("musicbox/notes.txt", 10);
+    let report = ExportOutput {
+        target: "web".to_owned(),
+        profile: "web".to_owned(),
+        folder: "game-0.1.0-web".to_owned(),
+        sizes: vec![crate::contract::export::FileSize {
+            file: "game-0.1.0-web.zip".to_owned(),
+            bytes: 40 * MB,
+        }],
+        ..ExportOutput::default()
+    };
+    fs::write(web.join(REPORT), serde_json::to_string(&report).unwrap()).unwrap();
+    let budgets = [budget("web", 1, 1, Some(25 * MB))];
+    let later = ["music".to_owned(), "voice".to_owned()];
+    let (found, limits) = packages(&root, &budgets, &later, "cargo shuyi");
+    assert_eq!(limits, Vec::<String>::new());
+    assert!(
+        at_start(&web.join("gone"), &later)
+            .unwrap_err()
+            .starts_with("no folder")
+    );
+    assert_eq!(
+        found,
+        [Package {
+            target: "web".to_owned(),
+            export: "web".to_owned(),
+            file: "game-0.1.0-web.zip".to_owned(),
+            bytes: 10 * MB + 1_010,
+            whole_bytes: Some(40 * MB),
+        }]
+    );
+    // Under the budget, though the zip is over it.
+    assert_eq!(report::over(&budgets, &[], &found), Vec::<Over>::new());
+    let table = report::markdown(&Report {
+        format_version: 1,
+        targets: budgets.to_vec(),
+        runs: Vec::new(),
+        packages: found.clone(),
+        over: Vec::new(),
+        limits: Vec::new(),
+    });
+    assert!(
+        table.contains("| game-0.1.0-web.zip | web | 10.0 MB | 40.0 MB |"),
+        "{table}"
+    );
+    assert!(table.contains("loads before the game starts"), "{table}");
+    // Over its budget, the line says what was measured.
+    let tight = [budget("web", 1, 1, Some(5 * MB))];
+    let over = report::over(&tight, &[], &found);
+    assert_eq!(
+        over[0].text(),
+        "web: the package game-0.1.0-web.zip (what loads at start) is 10.0 MB \
+         (10,486,770 bytes), over the budget of 5.0 MB (5,242,880 bytes)"
+    );
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_plan_leaves_the_web_music_and_voice_folders_for_later() {
+    let project = Project {
+        root: toy(),
+        config: crate::project::Config::parse(
+            "(targets: {\"desktop\": (frame: (8, 8), scale: integer, text_px: 8)}, \
+             web: (package: \"g\", bin: \"g\", title: \"G\", music: \"./assets\\\\music/\", \
+             voice: \"voice\", dist: \"dist/web\"))",
+        )
+        .unwrap(),
+    };
+    let plan = plan(&project, &parse_args(&[]).unwrap()).unwrap();
+    assert_eq!(plan.later, ["assets/music", "voice"]);
 }
 
 #[test]

@@ -20,6 +20,10 @@
 //!
 //! and, for each target with a package budget, the **package's size**
 //! from the `export-report.json` that `export` left under `dist/export`.
+//! A web package is measured by what the page loads before the game's
+//! first frame: the files of the export's folder outside `web.music` and
+//! `web.voice`, which the game fetches when it first plays a track or a
+//! line. The whole zip's size is reported beside it.
 //!
 //! The game's tool program is built in an optimized profile of its own,
 //! `shuyi-bench`: the release profile with debug assertions on, so the
@@ -311,6 +315,10 @@ pub(crate) struct Plan {
     pub scenarios: Vec<(String, Scenario)>,
     /// What the targets chosen leave out.
     pub limits: Vec<String>,
+    /// The folders of a web package the game fetches when it first plays
+    /// a file from them (`web.music`, `web.voice`), as package paths: not
+    /// counted in its size.
+    pub later: Vec<String>,
 }
 
 /// The plan of `options` on `project`: its targets' budgets and its
@@ -369,10 +377,20 @@ pub(crate) fn plan(project: &Project, options: &Options) -> Result<Plan, Failed>
         let scenario = Scenario::read(&file, &text).map_err(|e| (codes::FILE, e))?;
         scenarios.push((file, scenario));
     }
+    let later = project
+        .config
+        .web
+        .iter()
+        .flat_map(|web| [&web.music, &web.voice])
+        .flatten()
+        .map(|folder| crate::web::package_path(folder))
+        .filter(|path| !path.is_empty())
+        .collect();
     Ok(Plan {
         targets,
         scenarios,
         limits,
+        later,
     })
 }
 
@@ -635,7 +653,7 @@ pub(crate) fn measure(
         }
     }
     let budgets: Vec<Budget> = plan.targets.iter().map(|(b, _)| b.clone()).collect();
-    let (packages, mut limits) = packages(root, &budgets, command);
+    let (packages, mut limits) = packages(root, &budgets, &plan.later, command);
     limits.splice(0..0, plan.limits.iter().cloned());
     let over = report::over(&budgets, &out, &packages);
     Ok(Report {
@@ -694,8 +712,15 @@ fn run(
 
 /// The packages under `root`'s [`EXPORTS`] whose profile is one of
 /// `budgets`' with a package budget, and what isn't measured: a target
-/// with such a budget and no package (`command` is the tool's name).
-fn packages(root: &Path, budgets: &[Budget], command: &str) -> (Vec<Package>, Vec<String>) {
+/// with such a budget and no package (`command` is the tool's name). A
+/// web package counts what loads at start: its folder but `later`'s
+/// folders ([`at_start`]).
+fn packages(
+    root: &Path,
+    budgets: &[Budget],
+    later: &[String],
+    command: &str,
+) -> (Vec<Package>, Vec<String>) {
     let mut found = Vec::new();
     let mut limits = Vec::new();
     let mut dirs: Vec<PathBuf> = fs::read_dir(root.join(EXPORTS))
@@ -718,12 +743,32 @@ fn packages(root: &Path, budgets: &[Budget], command: &str) -> (Vec<Package>, Ve
             .iter()
             .any(|b| b.target == report.profile && b.package_bytes.is_some());
         if let (true, Some(package)) = (gated, report.sizes.first()) {
-            found.push(Package {
+            let mut measured = Package {
                 target: report.profile.clone(),
                 export: report.target.clone(),
                 file: package.file.clone(),
                 bytes: package.bytes,
-            });
+                whole_bytes: None,
+            };
+            if report.target == "web" {
+                let folder = Some(&report.folder)
+                    .filter(|f| !f.is_empty())
+                    .map(|f| dir.join(f));
+                match folder.map_or_else(
+                    || Err("the report names no folder".to_owned()),
+                    |f| at_start(&f, later),
+                ) {
+                    Ok(bytes) => {
+                        measured.whole_bytes = Some(package.bytes);
+                        measured.bytes = bytes;
+                    }
+                    Err(e) => limits.push(format!(
+                        "{}: what loads at start isn't measured, the whole {} is: {e}",
+                        report.profile, package.file
+                    )),
+                }
+            }
+            found.push(measured);
         }
     }
     for budget in budgets.iter().filter(|b| b.package_bytes.is_some()) {
@@ -736,6 +781,31 @@ fn packages(root: &Path, budgets: &[Budget], command: &str) -> (Vec<Package>, Ve
         }
     }
     (found, limits)
+}
+
+/// The bytes of the web build in `folder` that the page loads before the
+/// game's first frame: every file but those under `later`'s folders,
+/// which the game fetches when it first plays one.
+fn at_start(folder: &Path, later: &[String]) -> Result<u64, String> {
+    if !folder.is_dir() {
+        return Err(format!("no folder {}", folder.display()));
+    }
+    let entries = crate::export::archive::entries(folder, "", &|_| false)?;
+    let mut bytes = 0;
+    for entry in entries {
+        let fetched_later = later.iter().any(|dir| {
+            entry
+                .name
+                .strip_prefix(dir.as_str())
+                .is_some_and(|rest| rest.starts_with('/'))
+        });
+        if !fetched_later {
+            let meta = fs::metadata(&entry.path)
+                .map_err(|e| format!("stat {}: {e}", entry.path.display()))?;
+            bytes += meta.len();
+        }
+    }
+    Ok(bytes)
 }
 
 /// `bench-play`'s arguments: the scenario file, the one-bit target and

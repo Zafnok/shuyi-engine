@@ -26,6 +26,17 @@ the budgets above stay as they are until a device is measured.
 | Heap's peak | 158.5 KB (`idle-map-tiles`) | 256 MB |
 | Package (the zip, `hello-grid-0.1.0-web.zip`) | 993.4 KB | 25 MB |
 
+**What `package_bytes` counts** (ticket 3313): what a player waits for
+before the game starts, not the whole upload. `shuyi bench` adds up the
+files of the export's folder (what the zip holds) but those under
+`shuyi.ron`'s `web.music` and `web.voice`. The web build ships those as
+loose files beside the page and the game fetches each one in the
+background when it first plays it; itch.io and GitHub Pages serve an
+uploaded HTML5 zip as separate files, so they are never waited for. The
+whole zip's size is in the same table, so the upload stays visible (an
+upload limit is a store's, not this budget). Without the export's folder
+it measures the whole zip and says so.
+
 The instructions are a native program's: the browser's WebAssembly runs
 more of them, which only a measurement in a browser will say.
 

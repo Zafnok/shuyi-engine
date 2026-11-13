@@ -23,7 +23,8 @@ Each profile in [`targets/`](../../targets/) has `budgets`
 
 - `frame_instructions`: the most instructions one frame may take;
 - `peak_heap_bytes`: the most heap in use at once;
-- `package_bytes`: the biggest package;
+- `package_bytes`: the biggest package; on the web, what the page loads
+  before the game starts ([`web.md`](web.md));
 - `startup_ms`: the longest start-up, measured on the device only;
 - `load_slice_ms`: how long one frame runs a game's load in steps for, on
   a device whose system ends a game whose frame runs too long. It is no
@@ -49,7 +50,10 @@ the same on every run of the same commit instead:
   (`shuyi_alloc_count`): the bytes the game asked for, never the
   allocator's own;
 - **the package's size**, from the `export-report.json` that `shuyi
-  export` writes beside the package.
+  export` writes beside the package. A web package counts the files of
+  its folder but the `web.music` and `web.voice` folders, which the game
+  fetches when it first plays a track or a line; the table shows the
+  whole zip beside it.
 
 They are proxies: an x86-64 instruction is not a Playdate's, and a
 desktop's heap isn't a device's memory. A device ticket runs the same
