@@ -109,6 +109,14 @@ under you.
 A **commit** is one saved version of the repository's code.
 {% end %}
 
+A game whose writing, art or sounds must not be copied from its public code (a
+story not out yet, art you bought) keeps them in a second, private repository.
+`--set private-files=yes --private-url https://github.com/<you>/<repo>.git` adds
+that part: `cargo shuyi private-assets` checks the private files out into
+`private/files/`, and the build lays them over the game's own files, a private
+file in place of the public one at its path. Without access, the game still builds
+and runs on its public files. The game's `AGENTS.md` says the rest.
+
 On Linux, run the setup script the game came with before its first build. It
 installs the C linker, `pkg-config`, the system libraries the window and sound
 need, and the game's Rust, with `apt`, `dnf` or `pacman`:

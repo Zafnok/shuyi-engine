@@ -12,11 +12,12 @@ use std::sync::OnceLock;
 
 use shuyi_assets::bundle::{Bundle, Layer, LayerError};
 use shuyi_assets::format::DEFAULT_MAX_BYTES;
-use shuyi_platform::WATCH_VAR;
+use shuyi_platform::{WATCH_PRIVATE_VAR, WATCH_VAR};
 
 use crate::watch;
 
-/// The layer [`watched_layer`] read first, for the backend's pictures.
+/// The layers [`watched_layer`] or [`watched_layers`] read first, for the
+/// backend's pictures.
 static WATCHED: OnceLock<Bundle> = OnceLock::new();
 
 /// Why a folder could not be read into a layer ([`read_folder`]).
@@ -147,22 +148,52 @@ fn read(path: &Path, name: &str, max_file_bytes: u64, always: bool) -> Result<La
 /// when it is set. A folder that can't be read logs why, and the game runs
 /// on its embedded files.
 pub fn watched_layer() -> Option<Layer> {
+    let layer = watched_folder(WATCH_VAR, None)?;
+    let _ = WATCHED.set(Bundle::new(vec![layer]));
+    Some(layer)
+}
+
+/// What `cargo shuyi run --watch` named, each read as [`watched_layer`]
+/// reads its folder.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Watched {
+    /// The folder of the game's files ([`WATCH_VAR`]).
+    pub files: Option<Layer>,
+    /// The folder of its private files ([`WATCH_PRIVATE_VAR`], ADR-0111),
+    /// as a layer named `private`, marked private.
+    pub private: Option<Layer>,
+}
+
+/// The folders `cargo shuyi run --watch` named: [`watched_layer`]'s, and
+/// beside it the game's private files, if it named them. The backend reads
+/// a picture from the private folder first, then from the files' folder.
+pub(crate) fn watched_layers() -> Watched {
+    let files = watched_folder(WATCH_VAR, None);
+    let private = files.and_then(|_| watched_folder(WATCH_PRIVATE_VAR, Some("private")));
+    let private = private.map(Layer::private);
+    let layers: Vec<Layer> = private.into_iter().chain(files).collect();
+    if !layers.is_empty() {
+        let _ = WATCHED.set(Bundle::new(layers));
+    }
+    Watched { files, private }
+}
+
+/// The folder the variable `var` names, read and watched as a layer named
+/// `name`, else after the folder: in a build with debug tools, when it is
+/// set. A folder that can't be read logs why.
+fn watched_folder(var: &str, name: Option<&str>) -> Option<Layer> {
     if !shuyi_ui::DEBUG_TOOLS {
         return None;
     }
-    let path = PathBuf::from(std::env::var_os(WATCH_VAR)?);
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
+    let path = PathBuf::from(std::env::var_os(var)?);
+    let name = name
+        .or_else(|| path.file_name().and_then(|name| name.to_str()))
         .unwrap_or("watched");
     let limit = u64::try_from(DEFAULT_MAX_BYTES).unwrap_or(u64::MAX);
     match read_folder(&path, name, limit) {
-        Ok(layer) => {
-            let _ = WATCHED.set(Bundle::new(vec![layer]));
-            Some(layer)
-        }
+        Ok(layer) => Some(layer),
         Err(error) => {
-            macroquad::logging::warn!("{}: {}", WATCH_VAR, error);
+            macroquad::logging::warn!("{}: {}", var, error);
             None
         }
     }

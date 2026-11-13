@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 2590 — A new game's private files, as a part of the template
@@ -194,31 +194,33 @@ None. Nick decided the defaults (public game, private files) on
 
 ## Acceptance criteria
 
-- [ ] `shuyi new g --template blank --set private-files=yes --private-url https://github.com/o/g-assets.git`
+- [x] `shuyi new g --template blank --set private-files=yes --private-url https://github.com/o/g-assets.git`
       makes a game whose `shuyi.ron` has the `private_assets` block with
       that URL, whose ignore file has `/private/`, and whose CI has the
       checkout step; the same command without `--private-url` fails
       with a problem code, and `--private-url` without the answer too.
-- [ ] `shuyi new g --template blank` makes the same files as before but
-      the base's `build.rs` and `lib.rs`, and its gates pass.
-- [ ] In a made game, a `private/files/sprites/x.png` laid in the
+- [x] `shuyi new g --template blank` makes the same files as before but
+      the base's `build.rs` and `lib.rs`, and its gates pass (and its
+      `README.md`'s row for `build.rs`, and `ci.yml`'s guarded step: see
+      the notes).
+- [x] In a made game, a `private/files/sprites/x.png` laid in the
       checkout replaces `crates/game/files/sprites/x.png` in the bundle,
       a file only in the checkout is added, `Bundle::is_private` is true
       for both, and with `private/` removed (and a rebuild) the public
       file is back.
-- [ ] An edition with its own content root holds none of the checkout's
+- [x] An edition with its own content root holds none of the checkout's
       files.
-- [ ] A packed export of a game with a checkout holds the private files,
+- [x] A packed export of a game with a checkout holds the private files,
       and its read-back check passes.
-- [ ] `shuyi private-assets` with no pin file says *no pin yet* and how
+- [x] `shuyi private-assets` with no pin file says *no pin yet* and how
       to make one.
-- [ ] The CI step fails on the game's own repository without the key,
+- [x] The CI step fails on the game's own repository without the key,
       warns on a fork's pull request, and no workflow step of the
       template uploads an artifact.
-- [ ] The ADR is written; `docs/templates.md` lists the part, its
+- [x] The ADR is written; `docs/templates.md` lists the part, its
       question and `{{private_url}}`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -234,5 +236,121 @@ None. Nick decided the defaults (public game, private files) on
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** ADR-0111 records the decision. `shuyi new --set
+private-files=yes --private-url https://github.com/<owner>/<repo>.git`
+adds the template part `private-files`. It writes:
+
+- `shuyi.ron`'s `private_assets`, merged into the base's;
+- an empty `private.rev`;
+- `/private/` in `.gitignore`;
+- the action `.github/actions/private-files`;
+- a section appended to `AGENTS.md` and `README.md`.
+
+The base's `build.rs` embeds `private/files/` when it is there, and
+`lib.rs` hands it to the new `BasicGame::private`: a private layer
+read before every other layer. An edition with its own content root
+gets an empty folder. `run --watch` also watches the private folder
+(`SHUYI_WATCH_PRIVATE`). With no pin, `shuyi private-assets` says *no
+pin yet*. The base's `ci.yml` calls the action before cargo, guarded by
+`hashFiles`.
+
+Checked by hand on a made game (`blank` with the part, engine at this
+branch). Its gates passed: fmt, clippy (with and without `packed`),
+tests, check, check `--target all`, check-keys, lint. The following
+also held:
+
+- with a checkout laid, the replaced file and the added one came
+  from the private layer, and both were private;
+- changing a private file, and then removing `files/`, each rebuilt
+  the crate;
+- with `SHUYI_CONTENT`, the build embedded none of the checkout;
+- `cargo shuyi export windows --release` passed its read-back check,
+  and its `pg.pack` holds the private `en.ron` title and the
+  private-only file;
+- the action's decision script, run under bash, fails on the game's
+  own repository without the key, warns on a fork's pull request and
+  on a copy of the game, and fails an empty or bad pin.
+
+The real `actions/checkout` with `ssh-key` against a private
+repository runs only on GitHub: 2591 makes the first such repository.
+
+**Deviations:**
+
+- **`BasicGame::private`, added to `shuyi-platform`.** The ticket put
+  the private layer above `files` through `lib.rs` alone. `BasicGame`
+  holds one files layer and one `over` layer, and `run --watch` lays
+  the watched `files/` folder `over` everything, so the public
+  placeholder on disk would hide the private file. The private layer
+  is now a slot of its own, read before `over`. `shuyi-app`'s
+  `run_game` replaces it with the watched checkout under `run --watch`,
+  so a changed private file reloads. Nothing public was added to
+  `shuyi-assets`.
+- **The composer merges `.gitignore` and Markdown files**
+  (`template/compose.rs`). A `.gitignore` gains the lines it lacks; a
+  Markdown file gains each later part's text after a blank line. This
+  is how the part's ignore line and its `AGENTS.md`/`README.md`
+  sections reach the base's files: the second option the ticket allowed
+  ("merge … whichever the composer supports"). 2593 names its skill in
+  that section.
+- **The part writes an empty `private.rev`.** The ticket wrote no pin
+  file. Without one, a game built before its first checkout watched
+  only `build.rs`, and missed the checkout: a fixture showed this. With
+  the file there, the build makes and watches an empty `private/`
+  (game ADR-0117 §2's approach), so the first fetch rebuilds the crate.
+  The template's test `the_private_files_are_the_checkouts` catches any
+  other missed checkout, and names `cargo clean -p <crate>`. An empty
+  pin is still *no pin yet*, which 2591 fills.
+- **`actions/checkout` with `ssh-key`, not `GIT_SSH_COMMAND`.** This is
+  the game's own approach: no key file of our own to write and remove,
+  and the template already pins the action. The step is a composite
+  action the part writes, called from the base's `gates` job (ADR-0111
+  §5).
+- **The *no pin yet* message also says how to clone.** `--pin` needs a
+  checkout, and a fetch can't make one without a pin. The message now
+  says to push the first commit, clone it (`git clone <url> private`),
+  then run `--pin`.
+- **A question's default answer that no part serves is no longer a
+  limit** (`compose`). Otherwise every new game said "nothing added"
+  for `private-files` = `no`.
+- **The base's `README.md` row for `build.rs`** now names the private
+  folder, so `--template blank` changes that file too.
+- **Contract version 48 → 49.** `NewInput` gained `private_url`.
+- **CI's `templates` job.** The grid game is made with the private part
+  (no checkout: a fork's build). A step lays a fixture checkout over it
+  and runs its test three times: with the checkout, as an edition, and
+  after removing it.
+- **`export.rs` is unchanged.** The pack is baked from the tool
+  program's bundle, which now holds the private layer: a test in
+  `crates/cli/src/basic/tests.rs` bakes one and checks it.
+
+**Follow-up tickets:** 2594 (check-keys and lint read the private
+files) and 2595 (the reusable playtest workflow checks them out). Both
+are named in ADR-0111's consequences. Handoffs were written in 2591
+(the empty pin, and READMEs under `files/` are embedded), 2593 (where to
+name the skill) and 3050 (the release jobs call the action).
+
+**Search of the game** (engine pin
+`234de697e435026301a653b0963800663db1ef7f`):
+
+- `gh search code --repo Zafnok/visions-of-shuyi 'BasicGame'`,
+  `'run_game'` and `'watched_layer'` find only skills, docs and
+  tickets: no Rust file.
+- `'40-character commit'` finds only its own xtask's check of its
+  engine pin.
+- The game keeps its own `private_assets` block, and its pin file holds
+  a commit, so its `private-assets` runs as before.
+
+Breaking: none. `BasicGame` gained a method and a private field;
+`NewInput` and `Fill`, both `#[non_exhaustive]`, gained a field each.
+
+Behaviour: shuyi-cli: `private-assets` with its pin file missing or empty says *no pin yet*, how to clone the private repository and to run `private-assets --pin`, where it said the file's read error or *expected a 40-character commit id*.
+
+Behaviour: shuyi-cli: `new` refuses `--private-url` without `--set private-files=yes`, and needs it with that answer; the composer merges a `.gitignore` or a Markdown file two parts write, where it failed; a question's default answer that no part serves is no longer in `new`'s `limits`.
+
+Behaviour: shuyi-app: under `run --watch`, `run_game` also reads and watches the folder `SHUYI_WATCH_PRIVATE` names, in place of the game's private layer.
+
+Book: the quick start (`site/content/learn/book/quick-start.md`, *Make a game*) says how to add the private files.
+
+Game: nothing to adopt. The game doesn't use `BasicGame` or the template, and keeps its own private-assets setup.
+
+Nick input: none.

@@ -36,6 +36,14 @@
       ],
       "default": null
     },
+    "private_url": {
+      "description": "The game's private repository (ADR-0111),\n`https://github.com/<owner>/<repo>.git`: needed when the answer to\n`private-files` is `yes`, and refused otherwise.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "set": {
       "description": "Answers by question, in place of the short name's and the file's\n(`--set perspective=top-down-grid`).",
       "$ref": "#/$defs/Answers",

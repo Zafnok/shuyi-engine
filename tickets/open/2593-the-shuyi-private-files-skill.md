@@ -78,10 +78,11 @@ None.
   fixture checkout changing what `scene` shows); else
   `metadata.waits_for` with the reason, as the pack's README allows.
 - **The template's `AGENTS.md`** names the skill inside 2590's private
-  part's text (a game without the part doesn't see it). If the composer
-  can't do that, the skill is copied into every game, and its first
-  line says it is for a game with a `private_assets` part in
-  `shuyi.ron`.
+  part's text (a game without the part doesn't see it). **From 2590
+  (done):** the composer appends a part's Markdown to the base's, and
+  the private part's section is
+  `templates/shuyi-default/private-files/AGENTS.md` (*The private
+  files*): name the skill there.
 - `skills/README.md`'s list gains the skill; `shuyi check-skills`
   passes.
 

@@ -96,6 +96,12 @@ pub use text_input::{TextAnswer, TextAsk, TextInput};
 /// embedded ones and watches (ADR-0071).
 pub const WATCH_VAR: &str = "SHUYI_WATCH";
 
+/// The variable `cargo shuyi run --watch` sets beside [`WATCH_VAR`] when
+/// the game has a checkout of its private files (ADR-0111): their folder on
+/// disk, which a backend reads in place of the game's embedded private
+/// layer (`BasicGame::private`) and watches.
+pub const WATCH_PRIVATE_VAR: &str = "SHUYI_WATCH_PRIVATE";
+
 /// What a game on the short path names (ADR-0036), and the start types a
 /// game names when it leaves it. Anything else is named by its module's
 /// path.

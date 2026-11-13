@@ -23,6 +23,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # A game with private files (`shuyi.ron`'s `private_assets`) checks
+      # them out over its own before any cargo command, so the gates read
+      # the real game: the build lays `private/files/` over
+      # `crates/game/files/` whenever it is there. Its action fails a run
+      # on the game's own repository without the secret, and warns on a
+      # fork's pull request, which builds on the public files. Dependabot's
+      # runs get only Dependabot secrets: `shuyi repos` sets one of the same
+      # name. No step may upload an artifact that embeds them.
+      - name: The private files
+        if: hashFiles('.github/actions/private-files/action.yml') != ''
+        uses: ./.github/actions/private-files
+        with:
+          key: ${{ secrets.PRIVATE_ASSETS_KEY }}
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux

@@ -1,7 +1,7 @@
 //! `BasicTools` on the blank template's own files: the frame, the text,
 //! `check` on good and on broken files, a session and the controls.
 
-use shuyi_assets::bundle::Layer;
+use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::UiAction;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::{Ctx, FrameInput, Screen, Transition};
@@ -213,6 +213,48 @@ fn a_session_recorded_from_the_real_start_plays_through_the_tools() {
     assert_eq!(played.first_difference, None);
     assert_eq!(session.frame_count(), played.of);
     assert_eq!(session.screens(), ["hello"]);
+}
+
+/// A private checkout's files (ADR-0111): its own English text in place of
+/// the public one, and a file only it has.
+static PRIVATE: &[(&str, &[u8])] = &[
+    (
+        "en.ron",
+        b"{\n    \"title.name\": \"Private\",\n    \"title.subtitle\": \"\",\n    \
+          \"title.help\": \"\",\n}\n",
+    ),
+    ("text/only.txt", b"only private"),
+];
+
+#[test]
+fn its_pack_holds_its_private_files_and_reads_back_as_them() {
+    let files = Layer::table("files", GOOD);
+    let app = shuyi_platform::AppInfo::new("Demo", "com.example.demo", "0.1.0");
+    let game = BasicGame::new(app, files, |_| Box::new(Hello) as Box<dyn Screen<Data>>)
+        .private(Layer::table("private", PRIVATE));
+    let tools = BasicTools::new(game);
+    let made = tools
+        .bake(Some("desktop"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let baked = made
+        .bake
+        .bake(&made.formats, &made.bundle, Some("desktop"))
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let pack = shuyi_assets::pack::Pack::open(&baked.bytes, made.bake.stamp())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let pack = Bundle::new(vec![pack.into_owned().into_layer("pack")]);
+    // The text is baked: the private one's title, not the public one's.
+    let english = pack.bytes("en.ron").unwrap_or_default();
+    let has = |words: &[u8]| english.windows(words.len()).any(|w| w == words);
+    assert!(has(b"Private"), "{english:?}");
+    assert!(!has(b"{{name}}"), "{english:?}");
+    assert_eq!(pack.file("text/only.txt"), Some("only private"));
+    assert!(pack.has("palette.ron"), "the public files are there too");
+    assert_eq!(
+        crate::contract::bake::check_baked(&tools),
+        Ok(Vec::new()),
+        "the pack reads as its files, the private ones included"
+    );
 }
 
 #[test]

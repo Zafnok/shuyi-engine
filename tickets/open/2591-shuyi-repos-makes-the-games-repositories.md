@@ -38,6 +38,18 @@ game tickets, and two of them went wrong:
   force push, no deletion, a pull request required, the owner may
   bypass) was made with `gh api`.
 
+**From 2590 (done, ADR-0111):** a game made with the private part has
+an empty `private.rev` (no pin yet, which this ticket's step 4 fills),
+and its CI step is the action `.github/actions/private-files`, called
+from `ci.yml`'s `gates` job with `PRIVATE_ASSETS_KEY`. Every file of
+the private repository's `files/` is embedded in the game, a
+`README.md` too (ADR-0111 §3): so step 3's README of `files/` and of its
+kind folders would ship inside the game. Put what explains them in the
+repository's top `README.md` (or in `docs/`), and keep each empty kind
+folder with a `.gitkeep`. ADR-0111 is accepted: the list of what `repos`
+makes goes in a new ADR that extends it (its `Status:` line naming the
+new one), not in ADR-0111's text.
+
 2590 makes the game side: `shuyi.ron`'s `private_assets` (its `url`
 names the private repository), the `private/` checkout laid over the
 game's files, `private.rev`, and the CI step that reads

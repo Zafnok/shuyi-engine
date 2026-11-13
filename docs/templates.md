@@ -17,6 +17,8 @@ embedded in the `shuyi` binary. It is the example on this page.
 shuyi new moon-garden --template grid
 shuyi new moon-garden --answers answers.ron
 shuyi new moon-garden --set perspective=top-down-grid
+shuyi new moon-garden --template blank --set private-files=yes \
+    --private-url https://github.com/you/moon-garden-assets.git
 ```
 
 The answers come from, in order, each in place of the one before for
@@ -32,7 +34,8 @@ folder that isn't empty; `--force` writes into it, and its answer lists
 the files it wrote over. Its answer (`--json`, the `new` schema) lists
 the files made, the parts, the modules turned on, the stages, the skills
 (below), and in its `limits` what the template didn't do (an answer no
-part serves).
+part serves, but a question's default, which adds nothing by design:
+`private-files` = `no`).
 
 An answers file maps each question to the ids of its answers:
 
@@ -156,6 +159,7 @@ other `{{`:
 | `"{{engine.<crate>}}"` | With its quotes: the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`), a TOML inline table: the engine's repository at `main` or a commit, or a checkout |
 | `{{engine_ref}}` | The engine's commit the game builds with, as a workflow's `uses: Zafnok/shuyi-engine/…@` names it: the 40-digit `--engine-rev`, else `main` |
 | `{{engine.docs}}` | A Markdown list of the engine's rules and docs for the game's agent. At `main`: `AGENTS.md` and the site's `llms.txt` and `llms-full.txt`. At a commit: `AGENTS.md` and the book's Markdown at that commit. In a checkout: the same two, as paths |
+| `{{private_url}}` | The game's private repository, `--private-url` (`https://github.com/<owner>/<repo>.git`). Only a game with private files has one: `new` needs the flag when `private-files` is `yes` and refuses it otherwise, and a file that holds the placeholder fails without it |
 | `{{answer.<question>}}` | That question's answers, joined by `,` |
 
 A GitHub Actions expression, `${{ … }}`, is left as it is. An unknown
@@ -179,6 +183,11 @@ parts write is merged by the engine, never by text:
   comments; a struct or a map both have is merged the same way, a list
   gains the items it lacks, and anything else both have must be the
   same;
+- **every `.gitignore`**: the first part's lines, then each line of the
+  next part's it lacks, with the comments and blank lines just above it;
+- **every Markdown file** (`.md`): the first part's text, then each next
+  part's after a blank line. The private files' part adds its section to
+  the base's `AGENTS.md` and `README.md` this way;
 - **`crates/game/src/stages.rs`**, the flow's list of stages, which
   `new` writes when the template has a part with a `stage`, from the
   parts picked. No part writes it.
@@ -231,6 +240,30 @@ whose folder a part already writes. `new`'s answer lists them in
 | ---- | ---- | -------------- |
 | `base` | always | The game crate on the short path (`BasicGame`, `BasicData`, `run_game`, `BasicTools`), its title, its files, `shuyi.ron`, `AGENTS.md`, CI with the gates, and its web build (`shuyi.ron`'s `web`, `crates/game/build.rs` and the web target in `rust-toolchain.toml`) |
 | `stage-top-down-grid` | `perspective` is `top-down-grid` | A top-down grid stage: a rules crate over `TurnRules`, the stage's map, lights and seed as `BasicData`'s own part, and its tools (`--seed`, its scene, records, bots, its map's importer) |
+| `private-files` | `private-files` is `yes` | The game's private files ([ADR-0111](adr/0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md)): `shuyi.ron`'s `private_assets` (the repository `{{private_url}}`, checked out into `private/` at the commit `private.rev` names), an empty `private.rev` (no pin yet), `/private/` in `.gitignore`, the CI step's action `.github/actions/private-files`, and a section of `AGENTS.md` and `README.md` |
 
-`--template blank` is `base` alone, and `--template grid` is both. CI
-makes a game with each short name, runs its gates and builds it for the web.
+Its questions:
+
+| Question | Pick | Answers | Default |
+| -------- | ---- | ------- | ------- |
+| `perspective` | many | `top-down-grid` | none |
+| `private-files` | one | `yes`: the game's writing, art and sounds in a second, private repository; `no` | `no` |
+
+`--template blank` is `base` alone, and `--template grid` is `base` and
+the grid stage; neither has private files. CI makes a game with each
+short name, the grid one with private files too, runs its gates and
+builds it for the web.
+
+### The private files
+
+The base's build lays the game's private files over its files in every
+game, so a game can add the part later: `crates/game/build.rs` embeds
+`private/files/` when it is there (else an empty folder, and for an
+edition with its own content root always the empty one), and
+`src/lib.rs` hands it to `BasicGame::private`, a private layer read
+before every other, the folder `run --watch` lays over the files
+included. The part adds the rest: what fetches the checkout, ignores
+it, checks it out in CI before the gates (failing a run on the game's
+own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
+fork's pull request) and tells the game's agent of it. The private
+repository's own layout (`files/`, `docs/`, `library/`) is in ADR-0111.
