@@ -1,6 +1,6 @@
 ---
 id: "2259"
-title: "The shuyi-corners module: a terrain's 15 corner pictures made from its one tile (or turned from 5 drawn pieces), checked in and tested equal"
+title: "Corner sheets made, not drawn, opt-in: a terrain's 15 corner pictures made from its one tile (or turned from 5 drawn pieces), checked in and tested equal"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2259 — The shuyi-corners module: corner sheets made from one tile
+# 2259 — Corner sheets made from one tile, opt-in
 
 ## Context
 
@@ -36,15 +36,22 @@ it is stale. A second recipe serves hand-drawn art: a dual grid needs
 only 5 pieces drawn (one corner in, two side by side, two across, three
 in, all four), and the other 10 are their quarter turns.
 
-**It is a module, opt-in** ([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)):
-the crate `shuyi-corners`, turned on with `shuyi add corners`.
+**Opt-in, and kept apart.** Hand-drawn corner layers stay the grid
+kit's way. This is something a game chooses to use, never the main way:
 
-- Hand-drawn corner layers stay the grid kit's way, and nothing in the
-  default engine changes: no default crate depends on the module
-  (ADR-0009 §4), and a game that doesn't turn it on doesn't build it.
-- A game can use it for one terrain's edges and draw the rest by hand.
+- a game that doesn't opt in sees nothing change and builds none of it
+  (or nothing beyond a few small helpers);
+- the code sits in one place that could be removed whole;
+- a game can use it for one terrain's edges and draw the rest by hand.
   A generated sheet is a plain PNG, so the game can also generate once,
   touch the sheet up by hand, and drop the recipe.
+
+Where the code lives is the session's first decision, made against those
+goals: its own module crate
+([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)),
+a feature that is off by default, or tool-only code (Scope, *Where it
+lives*). A whole crate may be more than this needs, but it isn't ruled
+out.
 
 ### Why it looks right: the field
 
@@ -79,29 +86,44 @@ None.
 ## Scope
 
 **In:**
-- **The crate** `shuyi-corners` in `crates/corners`, as ADR-0009 §4
-  says:
-  - `[package.metadata.shuyi]`: `answers = [{ concern = "pictures",
-    answer = "corner-sheets" }]`, `serves = ["top-down-grid"]`;
-  - its line in `tools/layers.ron`: engine `shuyi-core` and
-    `shuyi-assets`; outside `serde` and `png` (MIT OR Apache-2.0, already
-    in the workspace through `shuyi-assets`; `cargo deny` checks it);
-    `devices: false`, `floats: false`;
-  - `README.md` in ADR-0009 §4's order, its size measured as
-    `shuyi-script`'s README measures its own;
-  - the `shuyi` crate's feature `corners = ["dep:shuyi-corners"]`, off
-    by default (a library, so no `Module`, like `script`);
-  - its row in `docs/modules.md` and its answer in `docs/modules.ron`.
-    **Either order with 2260:** if 2260 is done, the `pictures` concern
-    ("Pictures made from data", `alternatives: false`) and its catalog
-    section exist: add `corner-sheets` (`by: "shuyi-corners"`, `status:
-    ready`, `tickets: ["2259"]`) and the row; if not, add the concern
-    with its `drawn` answer (`by: "default"`, `ready`) and this one, and
-    the catalog's section with this row;
-  - a skill `shuyi-corners` in `skills/` (`check-skills` passes);
-  - `-p shuyi-corners` in CI's `determinism` job's crate list
-    (`.github/workflows/ci.yml`).
-- **The library**, `#![no_std]` with `alloc`, pure (no I/O, no floats):
+- **Where it lives: decide first, and write down why.** Weigh the
+  options against two goals that pull against each other: **keep the
+  default engine clean** (a game that doesn't opt in builds none of it
+  and sees nothing change; no new concept in the default crates' docs)
+  and **keep it modular** (one place, removable whole; opt-in, never the
+  grid kit's main way; not more paperwork than the feature). At least:
+  - **A module crate**, `shuyi-corners`, as ADR-0009 §4 describes:
+    metadata, a README with its measured size, a `tools/layers.ron`
+    line, a feature of the `shuyi` crate off by default, a catalog row,
+    a skill. Cleanest separation; the most paperwork for a small
+    feature.
+  - **A feature off by default** of the crate the code belongs beside
+    (`shuyi-assets`, where `tileset` is), with the tool's command behind
+    a matching feature, or always on, in `shuyi-cli`. ADR-0009 §4
+    already does this for formats. Less paperwork; the code sits in a
+    default crate, gated.
+  - **Tool-only code.** The generator, the recipe and the command live
+    where tools live (`shuyi-cli`), since a game ships only the PNG it
+    makes. A game's build gains nothing; only the small layout helpers
+    (`sheet_rect`, `layer`) would sit where a game can reach them.
+  - Anything else the session finds that serves both goals better.
+
+  Whichever is chosen: the generator stays pure (no I/O, no floats;
+  files only in a tool, `AGENTS.md` rule 5); new engine edges or outside
+  crates get their `tools/layers.ron` lines; the generator's tests run
+  in CI's `determinism` job on wasm32; and the choice and the reasons
+  for it go in the completion notes, with an ADR (the `write-adr` skill)
+  if the choice sets a pattern others will follow (for example, the
+  first feature of a default crate that isn't a format).
+
+  If the choice is a module and it answers a concern in
+  `docs/modules.ron`: **Either order with 2260:** if 2260 is done and
+  added a `pictures` concern ("Pictures made from data",
+  `alternatives: false`), add this answer and its catalog row there; if
+  not, add that concern with its `drawn` answer (`by: "default"`,
+  `ready`) and this one, or no concern at all if this isn't a module.
+- **The generator**, pure (no I/O, no floats), `no_std` with `alloc` if
+  its home allows it:
   - `Wobble { strength: u8, cells: u8, seed: u64 }` and `Rim { colour:
     [u8; 3], width: u8, side: RimSide }` with `RimSide { Outside,
     Inside }`. Both `#[non_exhaustive]` with a `new` (ADR-0039).
@@ -158,7 +180,8 @@ None.
   [(0, 0), (16, 0), (32, 0), (48, 0), (64, 0)])`. Paths are relative to
   the recipe's folder. A colour is `#RRGGBB`, as the palette's
   (`crates/assets/src/palette.rs`).
-- **The `std` feature** (off by default), for tools only:
+- **The tool**, where tools may touch files (in a module, behind its
+  own `std` feature; in `shuyi-cli`, as a command):
   - `pub fn make(recipe: &Recipe, read: impl Fn(&str) -> Result<Vec<u8>,
     String>) -> Result<Image, String>`: decodes the recipe's pictures with
     `shuyi_assets::bitmap::convert::png_pixels` (`shuyi-assets`' `png`
@@ -170,23 +193,21 @@ None.
     ends with the command that remakes it. A game calls it from a test,
     as a game's test calls `preview::check`, so a stale sheet fails the
     game's CI;
-  - a binary, `shuyi-corners <recipe.corners.ron>...`
-    (`required-features = ["std"]`), which writes each recipe's `out`
-    (the `png` crate's encoder) and says which files it wrote, and with
-    `--check` writes nothing and runs `check`. The README says how a
-    game installs it (`cargo install --locked --git … shuyi-corners
-    --features std` at its engine pin). Files are touched only here and
-    in the caller's `read`: the library stays pure (`AGENTS.md` rule 5).
-- **Docs** (the `document` skill): the README, the skill, and a line in
-  the grid kit's docs pointing to the module for made corner sheets.
+  - a command that writes each recipe's `out` (a module's own binary,
+    or `shuyi corners <recipe.corners.ron>...`), says which files it
+    wrote, and with `--check` writes nothing and runs `check`. The docs
+    say how a game runs it. Files are touched only here and in the
+    caller's `read`: the generator stays pure (`AGENTS.md` rule 5).
+- **Docs** (the `document` skill): where the chosen home's docs go, and a
+  line in the grid kit's docs pointing to it for made corner sheets.
 
-Nothing breaks and the default engine doesn't change: no `Breaking:`
-line.
+Nothing breaks, and nothing changes for a game that doesn't opt in: no
+`Breaking:` line.
 
 **Out (do not do):**
-- **Any change to a default crate** (`shuyi-core`, `shuyi-assets`,
-  `shuyi-ui`, `shuyi-cli`, …) beyond the `shuyi` crate's feature. The
-  toy keeps its hand-drawn shore; `shuyi-cli` gets no command.
+- **Making it the grid kit's main way.** Nothing that exists today
+  changes how it works: hand-drawn layers, the toy's shore, the sprite
+  skin. A game opts in.
 - **Variants of a mix.** A generated edge repeats wherever the same mix
   does, as a hand-drawn sheet's does. Several pictures per mix, picked
   by position, change `CornerLayer` and its painter; a game that asks
@@ -198,17 +219,19 @@ line.
   baked into the sheet; 2335 doesn't change.
 - **The tileset format (2243).** It names each mix's picture by its
   rect; a game writes the sheet's 15 rects there, or builds the layer
-  with `shuyi_corners::layer`. No change to 2243.
-- **Finding recipes on their own** (a scan of the project). The binary
+  with `layer`. No change to 2243.
+- **Finding recipes on their own** (a scan of the project). The command
   and `check` take the files they are given.
-- **An example game.** The module's tests and its look snapshot prove
-  it; an example comes when a kind of game asks (ADR-0009 §7).
+- **An example game.** The tests and the look snapshot prove it; an
+  example comes when a kind of game asks (ADR-0009 §7).
 
 ## Implementation steps
 
-1. Create `crates/corners` with its `Cargo.toml` (metadata, `std`
-   feature, the binary), `README.md`, and its `tools/layers.ron` line.
-2. `src/field.rs`: the field `F` and the wobble `W` as two small
+1. Choose the home (*Where it lives*): read ADR-0009, `docs/modules.md`
+   and how `shuyi-assets`' format features and `shuyi-cli`'s generator
+   commands (`font-atlas`, `glyph-tiles`) are set up, then set up the
+   home with what it needs and nothing more.
+2. A `field` module: the field `F` and the wobble `W` as two small
    functions over doubled coordinates `X = 2x + 1`, `Y = 2y + 1`, so a
    test can also ask for the field on a border (`X = 0`, `X = 2w`). Use
    `i64` for the products: `4wh` with a side of 256 and a strength of
@@ -222,9 +245,11 @@ line.
    Fill the 15 mixes from the 5 pieces and their turns; mix 15 is the
    piece as drawn, never turned.
 5. `sheet_rect` and `layer`.
-6. The recipe, then the `std` feature's `make`, `check` and the binary.
-7. The `shuyi` feature, the catalog, `modules.ron`, the skill, the CI
-   step, docs. Run `cargo xtask check-modules` and `check-layers`.
+6. The recipe, then the tool's `make`, `check` and command.
+7. What the home needs (features, `tools/layers.ron`, the CI step; for a
+   module, its catalog row and skill too), docs, and the completion
+   notes' reasons. Run `cargo xtask check-layers` (and `check-modules`
+   for a module).
 
 ## Acceptance criteria
 
@@ -255,21 +280,24 @@ line.
 - [ ] `layer(of, (0, 96), (24, 24))` equals the toy's hand-built shore
   layer's mixes 1 to 15 (`crates/ui/src/toy/grid.rs`, `layered`): the
   same layout.
-- [ ] The binary writes a sheet; `--check` then passes; after the
+- [ ] The command writes a sheet; `--check` then passes; after the
   recipe's seed changes, `--check` fails, names the file and gives the
   command that remakes it; a missing `out` fails too; a bad recipe fails
   with its file and line.
-- [ ] A golden table, `crates/corners/tests/golden/corners.ron`, has rows
+- [ ] A golden table, `tests/golden/corners.ron` in the chosen crate, has rows
   `generated` and `rotated` holding the FNV hash (`shuyi_assets::fnv`)
   of a fixed recipe's sheet, and the `determinism` job runs it on
   wasm32. The sheet is an asset a tool makes, not a frame's look, so its
   hash may be golden (`shuyi_assets::golden`, *What goes in a table*).
 - [ ] A look snapshot: a 4 × 3 map with a generated shore, painted by the
   grid kit's sprite skin and the raster painter (dev-dependencies).
-- [ ] `cargo xtask check-modules` and `check-layers` pass; `shuyi
-  modules` lists the module; a game without the `corners` feature
-  builds no `shuyi-corners` (`cargo tree` in a test or the README's
-  measurement says so).
+- [ ] Opt-in: a game that doesn't opt in builds none of the generator
+  (`cargo tree` or `cargo build` timings, recorded in the completion
+  notes), and every existing snapshot, golden row and toy picture is
+  unchanged. `cargo xtask check-layers` passes (and `check-modules`, if
+  it is a module).
+- [ ] The completion notes say which home was chosen, which others were
+  weighed, and why.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 

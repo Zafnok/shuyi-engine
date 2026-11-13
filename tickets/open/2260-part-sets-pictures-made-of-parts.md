@@ -1,6 +1,6 @@
 ---
 id: "2260"
-title: "The shuyi-parts module: pictures made of grey-keyed parts (faces, figures), a look rolled from a seed with kinds that override only what they need, and a skin that composites and colours it"
+title: "Part sets, opt-in: pictures made of grey-keyed parts (faces, figures), a look rolled from a seed with kinds that override only what they need, and a skin that composites and colours it"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2260 — The shuyi-parts module: pictures made of grey-keyed parts
+# 2260 — Part sets: pictures made of grey-keyed parts, opt-in
 
 ## Context
 
@@ -51,14 +51,20 @@ What the engine has today:
   person a file of hand-drawn pictures (`"happy": "ana/smile.png"`).
   Part sets make pictures for people nobody drew.
 
-**It is a module, opt-in** ([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)):
-the crate `shuyi-parts`, turned on with `shuyi add parts`.
+**Opt-in, and kept apart.** Hand-drawn pictures stay the default. This
+is something a game chooses to use, never the main way:
 
-- Hand-drawn pictures stay the default, and nothing in the default
-  engine changes: no default crate depends on the module (ADR-0009 §4),
-  and a game that doesn't turn it on doesn't build it.
-- A game can use it for its crowds and draw its named characters by
+- a game that doesn't opt in sees nothing change and builds none of it;
+- the code sits in one place that could be removed whole;
+- a game can use it for its crowds and draw its named characters by
   hand (2246) in the same screen.
+
+Where the code lives is the session's first decision, made against those
+goals: its own module crate
+([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)),
+or features that are off by default in the crates the halves belong
+beside (Scope, *Where it lives*). A whole crate may be more than this
+needs, but it isn't ruled out.
 
 **Graphics are a skin** (`AGENTS.md` rule 9). The rules keep a person's
 seed and kind (and what they wear) in their state. The look is a pure
@@ -77,27 +83,41 @@ None.
 ## Scope
 
 **In:**
-- **The crate** `shuyi-parts` in `crates/parts`, as ADR-0009 §4 says:
-  - `[package.metadata.shuyi]`: `answers = [{ concern = "pictures",
-    answer = "part-sets" }]`, `serves = ["turns", "fixed-ticks"]`;
-  - its line in `tools/layers.ron`: engine `shuyi-core`, `shuyi-assets`,
-    and `shuyi-ui` (only through its `paint` feature, below); outside
-    `serde` and `thiserror`; `devices: false`, `floats: false`;
-  - `README.md` in ADR-0009 §4's order, its size measured as
-    `shuyi-script`'s README measures its own;
-  - the `shuyi` crate's feature `parts = ["dep:shuyi-parts"]`, off by
-    default (a library, so no `Module`, like `script`);
-  - its row in `docs/modules.md` and its answer in `docs/modules.ron`.
-    **Either order with 2259:** if 2259 is done, the `pictures` concern
-    ("Pictures made from data", `alternatives: false`) and its catalog
-    section exist: add `part-sets` (`by: "shuyi-parts"`, `status:
-    ready`, `tickets: ["2260"]`) and the row; if not, add the concern
-    with its `drawn` answer (`by: "default"`, `ready`) and this one, and
-    the catalog's section with this row;
-  - a skill `shuyi-parts` in `skills/` (`check-skills` passes);
-  - `-p shuyi-parts` in CI's `determinism` job's crate list
-    (`.github/workflows/ci.yml`).
-- **The format**, `#![no_std]` with `alloc`, as ADR-0007 asks:
+- **Where it lives: decide first, and write down why.** Weigh the
+  options against two goals that pull against each other: **keep the
+  default engine clean** (a game that doesn't opt in builds none of it
+  and sees nothing change; no new concept in the default crates' docs)
+  and **keep it modular** (one place, or two gated halves, removable
+  whole; opt-in, never the main way to draw people; not more paperwork
+  than the feature). At least:
+  - **A module crate**, `shuyi-parts`, as ADR-0009 §4 describes:
+    metadata, a README with its measured size, a `tools/layers.ron`
+    line, a feature of the `shuyi` crate off by default, a catalog row,
+    a skill; the painting half behind the module's own feature, so a
+    headless build rolls without `shuyi-ui`. Cleanest separation; the
+    most paperwork.
+  - **Features off by default** where the halves belong: the format and
+    the roll as a `parts` feature of `shuyi-assets` (ADR-0009 §4 already
+    makes formats features of `shuyi-assets`), the painting as a `parts`
+    feature of `shuyi-ui`, and one feature of the `shuyi` crate that
+    turns both on. Less paperwork; the code sits in default crates,
+    gated.
+  - Anything else the session finds that serves both goals better.
+
+  Whichever is chosen: the roll stays pure and in integers, and the
+  painting stays in the skin (`AGENTS.md` rule 9); new engine edges or
+  outside crates get their `tools/layers.ron` lines; the format's and
+  roll's tests run in CI's `determinism` job on wasm32; and the choice
+  and the reasons for it go in the completion notes and the ADR below.
+
+  If the choice is a module and it answers a concern in
+  `docs/modules.ron`: **Either order with 2259:** if 2259 is done and
+  added a `pictures` concern ("Pictures made from data",
+  `alternatives: false`), add this answer and its catalog row there; if
+  not, add that concern with its `drawn` answer (`by: "default"`,
+  `ready`) and this one, or no concern at all if this isn't a module.
+- **The format**, `no_std` with `alloc` if its home allows it, as
+  ADR-0007 asks:
   - `PartsDef`, the file as written; `PartsRon`, its format (id
     `parts`, extension `ron`, `shuyi_assets::format::TEXT_MAX_BYTES`),
     with `deny_unknown_fields`, checked alone; then `PartSet`, resolved
@@ -173,10 +193,9 @@ None.
        own `hides` don't count).
     An unknown kind or worn part, or two worn parts in one slot, is a
     `PartsError` (`thiserror`).
-- **The skin's half**, behind the module's own `paint` feature (on by
-  default; ADR-0009 §4: a part that pulls in `shuyi-ui` sits behind a
-  feature, so a headless server can roll without it):
-  `shuyi_parts::paint(set: &PartSet, look: &Appearance, pixels: impl
+- **The skin's half**, gated apart from the format and roll (a module's
+  own feature, or `shuyi-ui`'s), so a headless build can roll without
+  painting: `paint(set: &PartSet, look: &Appearance, pixels: impl
   Fn(ImageId) -> Option<&Image>, out: &mut Painted) -> Result<(),
   PaintError>`. `out` must be RGBA and the set's size. It clears `out`,
   then draws each slot's part in slot order: a pixel with alpha under
@@ -185,21 +204,20 @@ None.
   every drawn pixel is opaque. It borrows `out`'s pixels once, so the
   revision moves once (ADR-0078 §2). A part whose pixels are missing is
   an error naming it.
-- **Docs** (the `document` skill): the README, the skill, the format's
-  page (a module's format is documented in its README and listed where
-  the docs map puts formats), and a short guide: draw in keyed greys,
+- **Docs** (the `document` skill): where the chosen home's docs go (a
+  module's README and skill, or the format's row in `docs/formats.md`
+  marked as behind its feature), and a short guide: draw in keyed greys,
   roll, paint, keep the seed in the rules' state.
-- **An ADR** (the `write-adr` skill): grey keys over indexed colour or a
-  shader, rolls per slot from hashed seeds, looks worked out by the skin
-  and never stored.
+- **An ADR** (the `write-adr` skill): where it lives and why, grey keys
+  over indexed colour or a shader, rolls per slot from hashed seeds,
+  looks worked out by the skin and never stored.
 
-Nothing breaks and the default engine doesn't change: no `Breaking:`
-line.
+Nothing breaks, and nothing changes for a game that doesn't opt in: no
+`Breaking:` line.
 
 **Out (do not do):**
-- **Any change to a default crate** (`shuyi-core`, `shuyi-assets`,
-  `shuyi-ui`, …) beyond the `shuyi` crate's feature. The format and its
-  kind live in the module, not in `shuyi-assets`.
+- **Making it the main way to draw people.** Nothing that exists today
+  changes how it works; a game opts in.
 - **Palette swap on the GPU or per sprite** (2327, parked), and tints
   (2337): this composites on the CPU into a painted picture, which every
   painter already draws. Neither ticket changes.
@@ -214,15 +232,15 @@ line.
 - **A cache of painted looks.** A game keeps one `PaintedId` per place a
   face shows and repaints it when the person changes; a 32 × 32 face of
   ten parts is cheap.
-- **An example game.** The module's tests and its look snapshot prove
-  it; an example comes when a kind of game asks (ADR-0009 §7).
+- **An example game.** The tests and the look snapshot prove it; an example comes when a kind of game asks (ADR-0009 §7).
 - **Art of the game's**, or any bought art (`AGENTS.md` rule 4): the
   fixtures are the engine's own, drawn for the tests.
 
 ## Implementation steps
 
-1. Create `crates/parts` with its `Cargo.toml` (metadata, `paint`
-   feature), `README.md`, and its `tools/layers.ron` line.
+1. Choose the home (*Where it lives*): read ADR-0009, `docs/modules.md`
+   and how `shuyi-assets`' format features are set up, then set up the
+   home with what it needs and nothing more.
 2. The serde types of `PartsDef`, the checks, `PartsRon`, and the
    resolution against `ImageTable`. Follow `palette.rs` for colours and
    errors, and `docs/formats.md`'s *Checks after loading* for "checked
@@ -233,11 +251,12 @@ line.
 4. `check_pixels`.
 5. `paint`, with a one-pass lookup table from grey to colour
    (`[Option<[u8; 3]>; 256]`).
-6. Fixtures: a 4-slot set of 8 × 8 parts in `crates/parts/tests/fixtures`
-   (pictures drawn for the test, the engine's own), and a 2-kind set.
-7. The `shuyi` feature, the catalog, `modules.ron`, the skill, the CI
-   step, docs and the ADR. Run `cargo xtask check-modules` and
-   `check-layers`.
+6. Fixtures: a 4-slot set of 8 × 8 parts in the chosen crate's
+   `tests/fixtures` (pictures drawn for the test, the engine's own), and
+   a 2-kind set.
+7. What the home needs (features, `tools/layers.ron`, the CI step; for a
+   module, its catalog row and skill too), docs and the ADR. Run `cargo
+   xtask check-layers` (and `check-modules` for a module).
 
 ## Acceptance criteria
 
@@ -264,17 +283,21 @@ line.
   naming the file and pixel, and nothing for 190.
 - [ ] `PartsRon` has ADR-0007's fuzz-style test (as `PaletteRon`'s in
   `crates/assets/src/format/builtin_tests.rs`), and a golden table,
-  `crates/parts/tests/golden/parts.ron`, has a row `part set: parts`
+  `tests/golden/parts.ron` in the chosen crate, has a row `part set: parts`
   (the decoded fixture's hash) and a row `appearance` (seed 7's look of
   the fixture set), which the `determinism` job runs on wasm32.
-- [ ] With `default-features = false` the crate builds without
-  `shuyi-ui` and still rolls.
+- [ ] The format and the roll build and work without the painting half
+  (and so without `shuyi-ui`).
 - [ ] A raster-painter snapshot (`frame-png`'s painter) of three rolled
   faces of the fixture set side by side: a look test, so it reads
   pixels.
-- [ ] `cargo xtask check-modules` and `check-layers` pass; `shuyi
-  modules` lists the module; a game without the `parts` feature builds
-  no `shuyi-parts`.
+- [ ] Opt-in: a game that doesn't opt in builds none of it (`cargo
+  tree` or a build without the feature, recorded in the completion
+  notes), and every existing snapshot and golden row is unchanged.
+  `cargo xtask check-layers` passes (and `check-modules`, if it is a
+  module).
+- [ ] The completion notes say which home was chosen, which others were
+  weighed, and why.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 
