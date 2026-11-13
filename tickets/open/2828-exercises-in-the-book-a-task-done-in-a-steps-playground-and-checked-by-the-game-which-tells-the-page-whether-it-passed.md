@@ -130,6 +130,10 @@ None.
    step's web start.
 5. Write the exercise shortcode, its script in `playground.js`, its
    styles and its twin, then the exercises.
+   **From 2832 (done):** each editor paints its text in a `<pre>` under
+   it (a `.ron` file colored); code that sets an editor's text calls
+   `set(area, text)` in `playground.js`, never `area.value =` alone, or
+   the painted copy goes stale.
 6. Try three exercises in the built-in browser: done right, done wrong,
    and with a broken file.
 7. Run the `document` skill, then the gates.
