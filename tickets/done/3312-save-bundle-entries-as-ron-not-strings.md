@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-12
 ---
 
 # 3312 — A save bundle holds each RON entry as RON, not as a quoted string
@@ -147,31 +147,31 @@ above.
 
 ## Acceptance criteria
 
-- [ ] A bundle of `"slot": "(version:2,campaign:(mode:Classic,lead:(name:\"Peter\")),point:WorldMap)"`
+- [x] A bundle of `"slot": "(version:2,campaign:(mode:Classic,lead:(name:\"Peter\")),point:WorldMap)"`
       writes the slot as RON over lines, with no `\"` in the file, and
       reads back to exactly that string.
-- [ ] Values that aren't one RON value (`""`, `"two words"`, `"(unclosed"`)
+- [x] Values that aren't one RON value (`""`, `"two words"`, `"(unclosed"`)
       are written under `texts` and read back byte for byte. A bundle
       with none writes no `texts`.
-- [ ] A one-token value (`slot_07`, `Vim`, `3`) reads back byte for byte.
-- [ ] A string value containing `(`, `,`, `//`, `\"` and a newline escape
+- [x] A one-token value (`slot_07`, `Vim`, `3`) reads back byte for byte.
+- [x] A string value containing `(`, `,`, `//`, `\"` and a newline escape
       (`"(name:\"a, (b) // c\\n\")"`) reads back byte for byte, and its
       laid-out text is still one string token.
-- [ ] A hand-edited entry with a `// comment`, a `/* block */` and
+- [x] A hand-edited entry with a `// comment`, a `/* block */` and
       extra spaces reads back to the compact text of the same value.
-- [ ] `to_text` twice gives the same text. Laying out text that is
+- [x] `to_text` twice gives the same text. Laying out text that is
       already laid out changes nothing. `read_bundle(to_text(b)) == b`
       (property test over generated maps of RON-ish and arbitrary
       strings).
-- [ ] A version 1 file (the old fixture's text) is `BundleError::Version
+- [x] A version 1 file (the old fixture's text) is `BundleError::Version
       { found: 1, reads: 2 }`; a key in both `entries` and `texts` is
       `NotABundle`.
-- [ ] `write_bundle` over a storage holding `ron::to_string` output (a
+- [x] `write_bundle` over a storage holding `ron::to_string` output (a
       browser's storage holds the same text) then `plan_import` and `apply`
       into an empty storage leaves every value byte-equal to the original.
-- [ ] The public API is unchanged (CI's `api` job).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The public API is unchanged (CI's `api` job).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -185,5 +185,72 @@ above.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done. A save bundle's text is version 2: each entry that is one RON
+value is written as that value, laid out over lines with four spaces to a
+level, under `entries`; every other entry is a string under `texts`
+(written only when not empty). Reading it back compacts each RON entry,
+so a save written with `ron::to_string` comes back byte for byte, and one
+a player edited (spaces, `//` and `/* */` comments) as the same value.
+
+- Step 1: ron 0.12.3's serializer writes a `RawValue`'s text as it is
+  (`RAW_VALUE_TOKEN`, `ser/raw.rs`), so the bundle lays the value out
+  itself, at the entry's level (2), so its lines sit under its key.
+- `crates/ui/src/storage/bundle.rs`: `SAVE_BUNDLE_VERSION = 2`, a private
+  `BundleText` (serialized as `SaveBundle`, `deny_unknown_fields`) that
+  `to_text` writes and `read_bundle` reads; a key in both maps is
+  `NotABundle` at its line in `texts`; `BadKey` checks both.
+- `crates/ui/src/storage/bundle/layout.rs` (private): `compact` and
+  `layout` over one tokenizer that knows strings and chars with escapes,
+  byte strings, raw strings (`r#"…"#`, `br##"…"##`), line comments and
+  nested block comments. Unit tests for each, and property tests: a
+  laid-out value compacts back, layout is idempotent, and a laid-out
+  value parses as the same `ron::Value`.
+- Bundle tests: every acceptance case, a property test
+  `read_bundle(to_text(b)) == b` over RON-ish and arbitrary values, and
+  a game-shaped save (`ron::to_string` of a struct with an enum, a
+  string full of `"`, `,`, `(`, `//` and `\n`, chars, an `Option`, a map
+  of floats, a unit) exported and imported unchanged.
+- Fixture `bundle_v1.ron` → `bundle_v2.ron` (with a `texts` entry too),
+  golden row blessed, the CLI's `shuyi import` test's bundle moved to
+  version 2. `docs/formats.md`, `SaveBundle`'s doc example, and the
+  book's *Bundles* section (which didn't show the text before; it now
+  does, with what a player may edit).
+
+Deviations:
+
+- An entry goes under `entries` only if `RawValue::from_ron` accepts it
+  **and** compacting it changes nothing. A value that is one RON value
+  but not compact (`" 3"`, `"3 // c"`, `"( a : 1 )"`) is written under
+  `texts`, so every value, not only `ron::to_string`'s, reads back byte
+  for byte.
+- Compacting keeps one space where whitespace or a comment parted two
+  words (`a /* x */ b` → `a b`), so it never joins two tokens; a value
+  `ron::to_string` writes never has one.
+- `SaveBundle` keeps its own `Serialize`/`Deserialize` derives (the
+  in-memory shape) so the public API doesn't change; the file's shape is
+  `BundleText`'s alone.
+- `skills/shuyi-screen/SKILL.md` doesn't show a bundle's text: unchanged.
+
+Game: game ADR-0039's "RON, each entry under its key" stays true. Searched
+`gh search code --repo Zafnok/visions-of-shuyi 'SaveBundle'` and
+`'entries: {'`: the game calls only `SaveBundle::new(…).to_text()`,
+`read_bundle` and `bundle.entries`, and holds no bundle text in a test.
+Game: nothing to adopt, the game changes only its pin, which the watcher's
+`engine-pin` issue moves.
+
+Breaking: shuyi-ui: `storage::bundle` file format: `SAVE_BUNDLE_VERSION` is 2, and a version 1 bundle file is refused as `BundleError::Version { found: 1, reads: 2 }`; the golden row `save bundle: save-bundle` moved (its fixture is version 2). A game's code changes nothing; a player's version 1 file must be exported again from the game.
+
+```migration
+since: 0.1.0
+what: A save bundle's file is version 2, each RON entry written as RON over lines; version 1 files are refused.
+old: 'a bundle file of version 1, each entry a string: "slot": "(gold:10)"'
+new: 'a bundle file of version 2, each RON entry as RON over lines, others under texts'
+before: |
+  let text = SaveBundle::new(made, entries).to_text();
+after: |
+  let text = SaveBundle::new(made, entries).to_text();
+```
+
+Behaviour: shuyi-ui: `SaveBundle::to_text` and `write_bundle` write each entry that is one compact RON value as RON over lines, and any other under `texts`; a test that compares a bundle's text to a string sees the new text.
+
+Book: `site/content/learn/book/saves-and-settings.md` shows a bundle's text and what a player may edit.

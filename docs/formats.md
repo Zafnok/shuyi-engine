@@ -118,11 +118,19 @@ storage's keys): `shuyi import` reads it with the standard ones.
 | ---- | ---------------- | ------ | -- | ---------- | ----- |
 | save bundle | `storage::bundle::SaveBundle`: some of a storage's entries, its version (`SAVE_BUNDLE_VERSION`) and its `Made` stamp | `storage::bundle::SaveBundleRon` (and `Encode`) | `save-bundle` | `ron` | 4 MiB |
 
-A bundle of another version is refused by its version alone, whatever
-the rest holds (`SaveHeader`), and so is a key that isn't a valid storage
-key or starts with `_bundle-`, the bundle's own. Its golden row is in
-`crates/ui/tests/golden/bundle.ron`, over the fixture
-`crates/ui/tests/fixtures/bundle_v1.ron`.
+Version 2 (ticket 3312) writes each entry that is one RON value as that
+value, laid out over lines with four spaces to a level, under `entries`,
+and each other entry (empty, plain words, two values) as a string under
+`texts`, left out when empty; a key in both is refused. Reading it back
+compacts each RON entry (whitespace and comments outside its strings
+dropped), so a value written with `ron::to_string` comes back byte for
+byte and one a player edited as the same value. In memory,
+`SaveBundle::entries` holds every entry as text, as the storage held it.
+A bundle of another version, version 1 too, is refused by its version
+alone, whatever the rest holds (`SaveHeader`), and so is a key that isn't
+a valid storage key or starts with `_bundle-`, the bundle's own. Its
+golden row is in `crates/ui/tests/golden/bundle.ron`, over the fixture
+`crates/ui/tests/fixtures/bundle_v2.ron`.
 
 Some formats are configured with the game's rules. They replace the
 standard one of their kind:

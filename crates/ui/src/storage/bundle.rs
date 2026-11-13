@@ -4,7 +4,8 @@
 //!
 //! - [`write_bundle`] packs the keys a filter keeps into a [`SaveBundle`]'s
 //!   text: RON, its entries in key order, so the same storage gives the
-//!   same text.
+//!   same text. An entry that is one RON value is written as that value,
+//!   over lines, for a player to read and edit; any other as a string.
 //! - [`plan_import`] reads that text back into an [`ImportPlan`]: each
 //!   entry with the [`Verdict`] the game's [`EntryCheck`] gives it
 //!   ([`FormatCheck`] for a save of one [`SaveFormat`], [`Checks`] for
@@ -29,6 +30,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use core::fmt;
 use core::marker::PhantomData;
 
+use ron::value::RawValue;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::error::codes;
@@ -39,8 +41,14 @@ use shuyi_core::save::{SaveFormat, SaveHeader};
 
 use super::{Storage, StorageError, is_valid_key};
 
+mod layout;
+
 /// The version of the bundle format this build reads and writes.
-pub const SAVE_BUNDLE_VERSION: u32 = 1;
+pub const SAVE_BUNDLE_VERSION: u32 = 2;
+
+/// How many levels in a bundle's text an entry sits at: inside
+/// `SaveBundle(` and `entries: {`.
+const ENTRY_LEVEL: usize = 2;
 
 /// Keys starting with it are the bundle's own, never a game's: see the
 /// [module docs](self).
@@ -62,16 +70,30 @@ fn is_reserved(key: &str) -> bool {
 /// [`write_bundle`] (or [`to_text`](Self::to_text)), read by
 /// [`plan_import`] (or [`read_bundle`]).
 ///
+/// Its text ([`to_text`](Self::to_text)) holds each entry that is one RON
+/// value as that value, laid out over lines, under `entries`, and each
+/// other entry as a string, under `texts` (left out when there is none).
+/// In memory, [`entries`](Self::entries) holds every one as the storage
+/// held it.
+///
 /// ```ron
 /// SaveBundle(
-///     version: 1,
+///     version: 2,
 ///     made: Made(
 ///         engine: "0.1.0",
 ///         game: "demo 1.0",
 ///         content: "1a2b3c4d5e6f7a8b",
 ///     ),
 ///     entries: {
-///         "garden": "(version:1,garden:(rows:6))",
+///         "garden": (
+///             version: 1,
+///             garden: (
+///                 rows: 6
+///             )
+///         ),
+///     },
+///     texts: {
+///         "motto": "grow slowly",
 ///     },
 /// )
 /// ```
@@ -84,7 +106,7 @@ pub struct SaveBundle {
     pub version: u32,
     /// What made it.
     pub made: Made,
-    /// The entries, by storage key.
+    /// The entries, by storage key, each as the storage holds it.
     pub entries: BTreeMap<String, String>,
 }
 
@@ -99,18 +121,68 @@ impl SaveBundle {
     }
 
     /// Its text: RON, with its type's names, four spaces to a level, `\n`
-    /// line ends, its entries in key order. The same bundle always gives
-    /// the same text.
+    /// line ends, its entries in key order. An entry that is one RON
+    /// value, as `ron::to_string` writes one, is written as that value,
+    /// laid out over lines, under `entries`; any other as a string, under
+    /// `texts`. The same bundle always gives the same text.
     pub fn to_text(&self) -> String {
         let config = ron::ser::PrettyConfig::new()
             .struct_names(true)
             .new_line("\n")
             .indentor("    ");
-        // Strings, a number and a map of strings always serialize.
-        let mut text = ron::ser::to_string_pretty(self, config).unwrap_or_default();
+        // Strings, a number, RON values ron checked, and maps of them,
+        // always serialize.
+        let mut text =
+            ron::ser::to_string_pretty(&BundleText::of(self), config).unwrap_or_default();
         text.push('\n');
         text
     }
+}
+
+/// A bundle's text: [`SaveBundle`] with its entries split between those
+/// written as RON and those written as strings. The file's shape alone,
+/// never a game's.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename = "SaveBundle", deny_unknown_fields)]
+struct BundleText {
+    version: u32,
+    made: Made,
+    /// The entries that are one RON value, laid out.
+    entries: BTreeMap<String, Box<RawValue>>,
+    /// Every other entry.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    texts: BTreeMap<String, String>,
+}
+
+impl BundleText {
+    /// The text of `bundle`, each entry where it goes.
+    fn of(bundle: &SaveBundle) -> Self {
+        let mut entries = BTreeMap::new();
+        let mut texts = BTreeMap::new();
+        for (key, value) in &bundle.entries {
+            if let Some(ron) = as_ron(value) {
+                entries.insert(key.clone(), ron);
+            } else {
+                texts.insert(key.clone(), value.clone());
+            }
+        }
+        Self {
+            version: bundle.version,
+            made: bundle.made.clone(),
+            entries,
+            texts,
+        }
+    }
+}
+
+/// `value` laid out for a bundle's `entries`, if it is one RON value that
+/// [`layout::compact`] gives back as it is, so that reading it back gives
+/// `value` byte for byte.
+fn as_ron(value: &str) -> Option<Box<RawValue>> {
+    if layout::compact(value) != value || RawValue::from_ron(value).is_err() {
+        return None;
+    }
+    RawValue::from_boxed_ron(layout::layout(value, ENTRY_LEVEL).into_boxed_str()).ok()
 }
 
 impl SaveFormat for SaveBundle {
@@ -189,7 +261,9 @@ fn not_a_bundle(e: &ron::error::SpannedError) -> BundleError {
 
 /// The bundle in `text`: its version read first, so a bundle of another
 /// version is told from a broken one, then the rest, then each key
-/// checked.
+/// checked. Each RON entry is compacted (whitespace and comments outside
+/// its strings dropped): one a game wrote with `ron::to_string` reads
+/// back byte for byte, and one a player edited as the same value.
 pub fn read_bundle(text: &str) -> Result<SaveBundle, BundleError> {
     let header: SaveHeader<SaveBundle> = ron::from_str(text).map_err(|e| not_a_bundle(&e))?;
     if !header.is_current() {
@@ -198,7 +272,19 @@ pub fn read_bundle(text: &str) -> Result<SaveBundle, BundleError> {
             reads: SAVE_BUNDLE_VERSION,
         });
     }
-    let bundle: SaveBundle = ron::from_str(text).map_err(|e| not_a_bundle(&e))?;
+    let read: BundleText = ron::from_str(text).map_err(|e| not_a_bundle(&e))?;
+    let mut entries = read.texts;
+    for (key, value) in read.entries {
+        if entries.contains_key(&key) {
+            return Err(in_both(text, &key));
+        }
+        entries.insert(key, layout::compact(value.get_ron()));
+    }
+    let bundle = SaveBundle {
+        version: read.version,
+        made: read.made,
+        entries,
+    };
     if let Some(key) = bundle
         .entries
         .keys()
@@ -207,6 +293,23 @@ pub fn read_bundle(text: &str) -> Result<SaveBundle, BundleError> {
         return Err(BundleError::BadKey(key.clone()));
     }
     Ok(bundle)
+}
+
+/// [`BundleError::NotABundle`] for `key`, in both `entries` and `texts`
+/// of the bundle `text`: at its last mention, in `texts`.
+fn in_both(text: &str, key: &str) -> BundleError {
+    let quoted = ron::to_string(key).unwrap_or_default();
+    let before = &text[..text.rfind(&quoted).unwrap_or(0)];
+    let line = before.matches('\n').count() + 1;
+    let column = before[before.rfind('\n').map_or(0, |i| i + 1)..]
+        .chars()
+        .count()
+        + 1;
+    BundleError::NotABundle {
+        line: u32::try_from(line).unwrap_or(u32::MAX),
+        column: u32::try_from(column).unwrap_or(u32::MAX),
+        message: format!("the entry {quoted} is in both `entries` and `texts`"),
+    }
 }
 
 /// The text of a bundle of every key of `storage` that `keep` keeps (and

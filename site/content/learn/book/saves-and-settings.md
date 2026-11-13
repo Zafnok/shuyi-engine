@@ -227,6 +227,36 @@ the old saves and half the new. Call `bundle::recover(storage)` at start, before
 saves, and it puts the old ones back after such a cut; `apply` calls it first too. Keys
 starting with `_bundle-` are the bundle's own: never use them for a save.
 
+The file is RON a player can read and edit. Each save that is one RON value (as
+`ron::to_string` writes one) is written as that value, laid out over lines; anything
+else, such as plain words, as a string under `texts`:
+
+```ron
+SaveBundle(
+    version: 2,
+    made: Made(
+        engine: "0.1.0",
+        game: "farm 1.0",
+        content: "1a2b3c4d5e6f7a8b",
+    ),
+    entries: {
+        "save": (
+            version: 1,
+            garden: (
+                rows: 6
+            )
+        ),
+    },
+    texts: {
+        "motto": "grow slowly",
+    },
+)
+```
+
+Reading it back gives each save as the game wrote it, byte for byte. A save the player
+changed by hand, with spaces or `// comments`, comes back as the same value written
+compactly, and its `FormatCheck` reads it as any other.
+
 `shuyi import backup.ron` reads a bundle file and says what it holds, or where a broken
 one is broken.
 
