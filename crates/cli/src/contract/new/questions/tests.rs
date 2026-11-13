@@ -614,7 +614,7 @@ fn the_examples_question_defaults_to_yes_and_asks_again_after_a_wrong_answer() {
 fn has_examples(scratch: &Scratch) -> bool {
     let skills = scratch.game().join(".claude/skills");
     let pack = crate::skills::Pack::read(&skills).unwrap();
-    assert!(!pack.skills.is_empty());
+    assert!(pack.skills.len() > 1, "{:?}", pack.not_skills);
     pack.skills.iter().any(|skill| {
         skill
             .files

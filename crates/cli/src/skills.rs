@@ -17,7 +17,7 @@
 //!   worked examples, and the problem codes they name.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::fs;
 use std::path::{Component, Path};
 
@@ -105,11 +105,13 @@ impl Skill {
                         if !text.ends_with('\n') {
                             text.push('\n');
                         }
-                        text.push_str(&format!(
+                        // Writing to a `String` can't fail.
+                        let _ = write!(
+                            text,
                             "\n{WITHOUT_EXAMPLES}: this skill's are in the engine's repository, \
                              in `skills/{}/`, at the version the game builds with.\n",
                             self.name
-                        ));
+                        );
                     }
                     text.into_bytes()
                 }
@@ -136,7 +138,11 @@ pub const WITHOUT_EXAMPLES: &str =
 pub fn is_example(path: &str) -> bool {
     path == EXAMPLE
         || path.starts_with("example/")
-        || (path.starts_with("example-") && path.ends_with(".ron") && !path.contains('/'))
+        || (path.starts_with("example-")
+            && !path.contains('/')
+            && Path::new(path)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("ron")))
 }
 
 /// `text`, the file `path` of a skill's folder, with each link to one of
@@ -168,7 +174,7 @@ fn unlinked_examples(text: &str, path: &str) -> String {
             out.push_str(&rest[..open]);
             out.push_str(&rest[open + 1..at]);
         } else {
-            out.push_str(&rest[..at + 2 + end + 1]);
+            out.push_str(&rest[..=at + 2 + end]);
         }
         rest = &after[end + 1..];
     }

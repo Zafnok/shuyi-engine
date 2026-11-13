@@ -420,6 +420,56 @@ fn set_private(input: &NewInput) -> Option<bool> {
         .map(|picked| picked.iter().any(|answer| answer == "yes"))
 }
 
+/// `--examples` or `--no-examples` (`flag`) written into `input`'s `set`;
+/// refused when `--set examples=…` says otherwise.
+fn flag_examples(input: &mut NewInput, flag: Option<bool>) -> Result<(), Refused> {
+    let Some(examples) = flag else {
+        return Ok(());
+    };
+    let answer = word(examples);
+    if input
+        .set
+        .0
+        .get(EXAMPLES)
+        .is_some_and(|set| set != &[answer])
+    {
+        return Err((
+            codes::WRONG_ARGUMENTS,
+            format!(
+                "--{}examples and --set {EXAMPLES}=… disagree",
+                if examples { "" } else { "no-" }
+            ),
+        ));
+    }
+    input
+        .set
+        .0
+        .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
+    Ok(())
+}
+
+/// Asks the examples question on `terminal` unless `input`'s answers (from
+/// `cwd`) give it, and writes the answer into its `set`. Answers that make
+/// no game (an unknown short name, a missing file) ask nothing: `new` says
+/// what is wrong.
+fn ask_examples(
+    cwd: &Path,
+    input: &mut NewInput,
+    terminal: &mut Terminal<'_>,
+) -> Result<(), Refused> {
+    let unanswered = template::built_in().is_ok_and(|template| {
+        answers_of(cwd, &template, input).is_ok_and(|a| !a.0.contains_key(EXAMPLES))
+    });
+    if unanswered {
+        let answer = word(asked(examples(terminal))?);
+        input
+            .set
+            .0
+            .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
+    }
+    Ok(())
+}
+
 /// Settles the questions, asking on `terminal` those no flag answers, and
 /// sets `input`'s private part: what `repos` is to make, if anything.
 fn settle(
@@ -451,38 +501,13 @@ fn settle(
     if json {
         terminal = None;
     }
-    let set_examples = input.set.0.get(EXAMPLES).cloned();
-    if let Some(examples) = flags.examples {
-        let answer = word(examples);
-        if set_examples.is_some_and(|set| set != [answer]) {
-            return Err(refused(&format!(
-                "--{}examples and --set {EXAMPLES}=… disagree",
-                if examples { "" } else { "no-" }
-            )));
-        }
-        input
-            .set
-            .0
-            .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
-    }
+    flag_examples(input, flags.examples)?;
     // A name that makes no game: `new` says so, with no question first.
     let Ok((name, krate)) = name_of(cwd, input) else {
         return Ok(None);
     };
     if let Some(terminal) = terminal.as_mut() {
-        // Asked unless the answers give it: answers that make no game
-        // (an unknown short name, a missing file) ask nothing, and `new`
-        // says what is wrong.
-        let unanswered = template::built_in().is_ok_and(|template| {
-            answers_of(cwd, &template, input).is_ok_and(|a| !a.0.contains_key(EXAMPLES))
-        });
-        if unanswered {
-            let answer = word(asked(examples(terminal))?);
-            input
-                .set
-                .0
-                .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
-        }
+        ask_examples(cwd, input, terminal)?;
     }
     let github = match (flags.github, terminal.as_mut()) {
         (Some(github), _) => github,

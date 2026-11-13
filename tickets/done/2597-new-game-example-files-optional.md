@@ -140,7 +140,7 @@ today.
 - **`check-skills`:** that sentence is how it knows (ADR-0113, amending
   ADR-0043 §3): an engine skill without its example passes when its
   `SKILL.md` holds it. Per skill, so a module's skill that `shuyi add`
-  copies later with its example is checked as before. The engine's
+  copies with its example, after `new`, is checked as before. The engine's
   `skills/` is unchanged.
 - **The terminal question:** `questions::examples`, asked first, before
   the GitHub questions, "yes or no, or press Enter for yes", unless
