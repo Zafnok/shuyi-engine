@@ -5,8 +5,8 @@ use shuyi_assets::format::Formats;
 use shuyi_core::made::{ContentHash, Part};
 use shuyi_core::state_hash;
 
-/// The fixture: two entries, frozen for the golden table.
-const FIXTURE: &str = include_str!("../../../tests/fixtures/bundle_v1.ron");
+/// The fixture: two RON entries and a text, frozen for the golden table.
+const FIXTURE: &str = include_str!("../../../tests/fixtures/bundle_v2.ron");
 
 /// A toy save format: a slot of gold, of version 3.
 #[derive(Debug, Deserialize)]
@@ -65,6 +65,7 @@ fn plan(text: &str, storage: &dyn Storage) -> ImportPlan {
 fn the_fixture_round_trips_byte_for_byte() {
     let storage = storage_of(&[
         ("settings", "(volume:80)"),
+        ("motto", "grow slowly"),
         ("save-slot-1", "(version:3,gold:10)"),
     ]);
     let text = write_bundle(&storage, &fixture_made(), |_| true).unwrap();
@@ -219,7 +220,7 @@ fn what_isnt_a_bundle_this_build_reads_is_refused() {
     let storage = MemoryStorage::new();
     let refused = |text: &str| plan_import(text, &storage, &accept_all, &fixture_made());
     let Err(BundleError::NotABundle { line, column, .. }) =
-        refused("SaveBundle(\n  version: 1,\n  oops")
+        refused("SaveBundle(\n  version: 2,\n  oops")
     else {
         panic!("syntax");
     };
@@ -234,24 +235,205 @@ fn what_isnt_a_bundle_this_build_reads_is_refused() {
     ));
     // The version reads, the rest doesn't.
     assert!(matches!(
-        refused("SaveBundle(version: 1, entries: {})"),
+        refused("SaveBundle(version: 2, entries: {})"),
         Err(BundleError::NotABundle { .. })
     ));
-    let newer = FIXTURE.replace("version: 1", "version: 2");
+    let newer = FIXTURE.replace("version: 2,", "version: 3,");
     assert_eq!(
         refused(&newer),
-        Err(BundleError::Version { found: 2, reads: 1 })
+        Err(BundleError::Version { found: 3, reads: 2 })
     );
     // A bundle of another version is told by its version alone, whatever
     // the rest holds.
     assert_eq!(
         refused("SaveBundle(version: 7, pages: [1])"),
-        Err(BundleError::Version { found: 7, reads: 1 })
+        Err(BundleError::Version { found: 7, reads: 2 })
     );
     for bad in ["Has Space", "_bundle-journal", ""] {
         let text = FIXTURE.replace("\"settings\"", &format!("{bad:?}"));
         assert_eq!(refused(&text), Err(BundleError::BadKey(bad.to_owned())));
+        let text = FIXTURE.replace("\"motto\"", &format!("{bad:?}"));
+        assert_eq!(refused(&text), Err(BundleError::BadKey(bad.to_owned())));
     }
+}
+
+/// The text of the version 1 fixture, which held each entry as a string.
+const VERSION_1: &str = "SaveBundle(
+    version: 1,
+    made: Made(
+        engine: \"0.1.0\",
+        game: \"demo 1.0\",
+        content: \"1a2b3c4d5e6f7a8b\",
+    ),
+    entries: {
+        \"save-slot-1\": \"(version:3,gold:10)\",
+        \"settings\": \"(volume:80)\",
+    },
+)
+";
+
+#[test]
+fn a_version_1_file_is_refused_by_its_version() {
+    assert_eq!(
+        read_bundle(VERSION_1),
+        Err(BundleError::Version { found: 1, reads: 2 })
+    );
+}
+
+#[test]
+fn a_key_in_both_entries_and_texts_is_not_a_bundle() {
+    let text = FIXTURE.replace("\"motto\"", "\"settings\"");
+    let Err(BundleError::NotABundle {
+        line,
+        column,
+        message,
+    }) = read_bundle(&text)
+    else {
+        panic!("read {text}");
+    };
+    assert_eq!((line, column), (18, 9));
+    assert_eq!(
+        message,
+        "the entry \"settings\" is in both `entries` and `texts`"
+    );
+}
+
+/// A bundle of `entries`, stamped as the fixture is.
+fn bundle_of(entries: &[(&str, &str)]) -> SaveBundle {
+    SaveBundle::new(
+        fixture_made(),
+        entries
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect(),
+    )
+}
+
+#[test]
+fn a_ron_entry_is_written_as_ron_over_lines_and_reads_back_exactly() {
+    let slot = "(version:2,campaign:(mode:Classic,lead:(name:\"Peter\")),point:WorldMap)";
+    let bundle = bundle_of(&[("slot", slot)]);
+    let text = bundle.to_text();
+    assert!(!text.contains("\\\""), "{text}");
+    assert!(!text.contains("texts"), "{text}");
+    assert!(
+        text.contains(
+            "    entries: {
+        \"slot\": (
+            version: 2,
+            campaign: (
+                mode: Classic,
+                lead: (
+                    name: \"Peter\"
+                )
+            ),
+            point: WorldMap
+        ),
+    },
+"
+        ),
+        "{text}"
+    );
+    assert_eq!(read_bundle(&text).unwrap(), bundle);
+}
+
+#[test]
+fn what_isnt_one_ron_value_is_written_as_a_string_under_texts() {
+    let values = [
+        ("empty", ""),
+        ("words", "two words"),
+        ("unclosed", "(unclosed"),
+        ("spaced", " 3"),
+        ("commented", "3 // three"),
+        ("loose", "( a : 1 )"),
+        ("extension", "#![enable(implicit_some)] 3"),
+    ];
+    let bundle = bundle_of(&values);
+    let text = bundle.to_text();
+    assert!(!text.contains("    entries: {\n        \""), "{text}");
+    assert!(
+        text.contains("    texts: {\n        \"commented\": \"3 // three\",\n"),
+        "{text}"
+    );
+    assert_eq!(read_bundle(&text).unwrap(), bundle);
+}
+
+#[test]
+fn one_token_and_tricky_strings_read_back_byte_for_byte() {
+    let tricky = "(name:\"a, (b) // c\\n\")";
+    let bundle = bundle_of(&[
+        ("id", "slot_07"),
+        ("keys", "Vim"),
+        ("count", "3"),
+        ("name", tricky),
+        ("raw", "r#\"say \"hi\", (ok)\"#"),
+    ]);
+    let text = bundle.to_text();
+    assert!(text.contains("        \"id\": slot_07,\n"), "{text}");
+    assert!(text.contains("        \"count\": 3,\n"), "{text}");
+    assert!(
+        text.contains("        \"name\": (\n            name: \"a, (b) // c\\n\"\n        ),\n"),
+        "{text}"
+    );
+    assert_eq!(read_bundle(&text).unwrap(), bundle);
+}
+
+#[test]
+fn an_entry_a_player_edited_reads_back_as_the_same_value() {
+    let edited = FIXTURE.replace(
+        "            gold: 10\n",
+        "            // more gold\n            gold:   /* was 10 */ 99   \n",
+    );
+    let bundle = read_bundle(&edited).unwrap();
+    assert_eq!(bundle.entries["save-slot-1"], "(version:3,gold:99)");
+    assert_eq!(bundle.entries["settings"], "(volume:80)");
+    assert_eq!(bundle.entries["motto"], "grow slowly");
+}
+
+#[test]
+fn saves_a_game_wrote_with_ron_export_and_import_unchanged() {
+    #[derive(Serialize)]
+    struct Lead {
+        name: String,
+        level: i32,
+    }
+    #[derive(Serialize)]
+    enum Mode {
+        Classic,
+    }
+    #[derive(Serialize)]
+    struct Save {
+        version: u32,
+        mode: Mode,
+        lead: Lead,
+        party: Vec<Option<char>>,
+        notes: BTreeMap<String, f32>,
+        empty: (),
+    }
+    let save = Save {
+        version: 2,
+        mode: Mode::Classic,
+        lead: Lead {
+            name: "Pe\"ter, (the) // first\n".to_owned(),
+            level: -3,
+        },
+        party: vec![Some('\''), None, Some('(')],
+        notes: [("a b".to_owned(), 1.5), ("c".to_owned(), -0.25)]
+            .into_iter()
+            .collect(),
+        empty: (),
+    };
+    let source = storage_of(&[
+        ("save", &ron::to_string(&save).unwrap()),
+        ("unit", &ron::to_string(&()).unwrap()),
+        ("words", &ron::to_string(&"just words").unwrap()),
+    ]);
+    let text = write_bundle(&source, &fixture_made(), |_| true).unwrap();
+    assert!(!text.contains("texts"), "{text}");
+    let mut target = MemoryStorage::new();
+    let plan = plan_import(&text, &target, &accept_all, &fixture_made()).unwrap();
+    apply(&plan, &mut target, |_| true).unwrap();
+    assert_eq!(contents(&target), contents(&source));
 }
 
 /// A storage that lists nothing: fails, or holds nothing.
@@ -297,8 +479,8 @@ fn errors_say_what_is_wrong() {
         "not a save bundle: 3:7: Expected comma"
     );
     assert_eq!(
-        shown(BundleError::Version { found: 2, reads: 1 }),
-        "a save bundle of version 2; this build reads version 1"
+        shown(BundleError::Version { found: 3, reads: 2 }),
+        "a save bundle of version 3; this build reads version 2"
     );
     assert_eq!(
         shown(BundleError::BadKey("A B".to_owned())),
@@ -462,21 +644,21 @@ fn the_format_reads_a_bundle_through_the_registry_and_says_where_one_is_broken()
     assert_eq!(read(FIXTURE), Ok(read_bundle(FIXTURE).unwrap()));
     let error = |text: &str| read(text).unwrap_err().remove(0);
 
-    let broken = error(&FIXTURE.replace("version: 1,", "version: 1"));
+    let broken = error(&FIXTURE.replace("version: 2,", "version: 2"));
     assert_eq!(broken.file, "saves/backup.ron");
     assert_eq!(broken.line, Some(3));
     assert_eq!(broken.code, Some(codes::PARSE));
 
-    let newer = error(&FIXTURE.replace("version: 1", "version: 2"));
+    let newer = error(&FIXTURE.replace("version: 2,", "version: 3,"));
     assert_eq!(newer.line, Some(2));
     assert_eq!(newer.code, Some(codes::OUT_OF_RANGE));
     assert_eq!(
         newer.message,
-        "a save bundle of version 2; this build reads version 1"
+        "a save bundle of version 3; this build reads version 2"
     );
 
     let bad_key = error(&FIXTURE.replace("\"settings\"", "\"Settings\""));
-    assert_eq!(bad_key.line, Some(10));
+    assert_eq!(bad_key.line, Some(13));
     assert_eq!(bad_key.code, Some(codes::UNKNOWN_NAME));
 
     let not_text = read_bad_bytes(&formats);
@@ -509,7 +691,7 @@ fn golden_save_bundle_fixture() {
     let mut golden = shuyi_assets::golden!("tests/golden/bundle.ron");
     let bundle = SaveBundleRon
         .decode(
-            &AssetPath::new("bundle_v1.ron"),
+            &AssetPath::new("bundle_v2.ron"),
             FIXTURE.as_bytes(),
             &DecodeCx::new(),
         )
@@ -523,7 +705,38 @@ fn game_key() -> impl Strategy<Value = String> {
     "[a-z0-9][a-z0-9_-]{0,15}"
 }
 
+/// A value as a game stores one: compact RON, as `ron::to_string` writes
+/// it, or any text at all.
+fn stored_value() -> impl Strategy<Value = String> {
+    let leaf = prop_oneof![
+        any::<i32>().prop_map(|n| n.to_string()),
+        "[A-Za-z_][A-Za-z0-9_]{0,6}",
+        any::<String>().prop_map(|s| ron::to_string(&s).unwrap()),
+    ];
+    let ron = leaf.prop_recursive(3, 16, 4, |inner| {
+        prop_oneof![
+            prop::collection::vec(inner.clone(), 0..4).prop_map(|v| format!("({})", v.join(","))),
+            prop::collection::vec(inner.clone(), 0..4).prop_map(|v| format!("[{}]", v.join(","))),
+            prop::collection::vec(("[a-z_]{1,6}", inner), 0..4).prop_map(|v| {
+                let fields: Vec<String> = v.into_iter().map(|(k, v)| format!("{k}:{v}")).collect();
+                format!("({})", fields.join(","))
+            }),
+        ]
+    });
+    prop_oneof![ron, "\\PC{0,30}"]
+}
+
 proptest! {
+    #[test]
+    fn a_bundle_reads_back_from_its_text_as_it_was(
+        entries in prop::collection::btree_map(game_key(), stored_value(), 0..6),
+    ) {
+        let bundle = SaveBundle::new(fixture_made(), entries);
+        let text = bundle.to_text();
+        prop_assert_eq!(bundle.to_text(), text.clone());
+        prop_assert_eq!(read_bundle(&text).unwrap(), bundle);
+    }
+
     #[test]
     fn a_bundle_plans_every_entry_ready_and_applies_to_the_keys_chosen(
         entries in prop::collection::btree_map(game_key(), "\\PC{0,40}", 0..8),

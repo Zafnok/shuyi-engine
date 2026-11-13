@@ -194,13 +194,13 @@ fn a_file_no_kind_reads_gives_the_errors_of_those_that_claim_it() {
 #[test]
 fn a_save_bundle_reads_and_a_broken_one_says_where() {
     let dir = scratch("save-bundle");
-    let bundle = "SaveBundle(\n    version: 1,\n    made: Made(\n        engine: \"0.1.0\",\n        \
+    let bundle = "SaveBundle(\n    version: 2,\n    made: Made(\n        engine: \"0.1.0\",\n        \
                   game: \"demo 1.0\",\n        content: \"1a2b3c4d5e6f7a8b\",\n    ),\n    \
-                  entries: {\n        \"garden\": \"(version:1)\",\n    },\n)\n";
+                  entries: {\n        \"garden\": (\n            version: 1\n        ),\n    },\n)\n";
     fs::write(dir.join("backup.ron"), bundle).unwrap();
     fs::write(
         dir.join("broken.ron"),
-        bundle.replace("version: 1,", "version: 1"),
+        bundle.replace("version: 2,", "version: 2"),
     )
     .unwrap();
     let importers = Importers::standard();
