@@ -106,7 +106,7 @@ None.
   systems: the copy to another machine. `SHUYI_BLESS=1` rewrites it.
 - Docs: the `shuyi-ship` skill (step 9, `SH3015`, its worked example now
   prepares and verifies a kit on a new game), the book's chapter 9
-  (*Before the reveal*, and a quick check), the docs map's row for the
+  (*Before the reveal*), the docs map's row for the
   fixture, the README's `shuyi-cli` row, rustdoc, ADR-0115.
 
 **Deviations:**
