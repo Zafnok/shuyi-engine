@@ -1001,3 +1001,59 @@ proptest! {
         );
     }
 }
+
+#[test]
+fn a_codes_layout_is_pinned() {
+    // What a copy's pack holds: a change here leaves every copy made before
+    // unread by the detector. The values come from SplitMix64 as published,
+    // computed apart from this code.
+    assert_eq!(
+        order_of(code(0x1234_5678), 12),
+        [2, 5, 8, 1, 11, 6, 7, 4, 9, 10, 0, 3]
+    );
+    assert_eq!(gap_key(12), [28, 125, 3, 37, 254, 217, 202, 223, 116, 92]);
+    let gaps = gaps_of(code(0x1234_5678), 12);
+    let key = gap_key(12);
+    let bytes = code(0x1234_5678).to_bytes();
+    for at in 0..GAP_BYTES {
+        assert_eq!(gaps[at], [bytes[at % CODE_BYTES] ^ key[at]], "gap {at}");
+    }
+    assert!(gaps[GAP_BYTES..].iter().all(Vec::is_empty));
+}
+
+#[test]
+fn a_layout_whose_two_copies_of_the_code_differ_names_no_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let marked = Raw::read(&pack)
+        .expect("reads")
+        .write_marked(code(0x00c0_ffee))
+        .expect("has files");
+    let mut raw = Raw::read(&marked).expect("reads");
+    assert_eq!(raw.info(), &test_info());
+    raw.gaps[CODE_BYTES][0] ^= 1;
+    assert_eq!(raw.mark(), PackMark::Broken);
+}
+
+#[test]
+fn a_raw_pack_holds_at_most_max_files() {
+    let files = |count: usize| {
+        let entries = (0..count)
+            .map(|i| entry(&format!("{i:06}"), Codec::Stored, 0, 0, 0))
+            .collect();
+        let index = Index {
+            info: test_info(),
+            entries,
+        };
+        assembled(&index, b"")
+    };
+    assert_eq!(
+        Raw::read(&files(MAX_FILES)).map(|raw| raw.paths().count()),
+        Ok(MAX_FILES)
+    );
+    assert_eq!(
+        Raw::read(&files(MAX_FILES + 1)),
+        Err(PackError::Broken(format!(
+            "it has more than {MAX_FILES} files"
+        )))
+    );
+}

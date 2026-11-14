@@ -133,3 +133,24 @@ proptest! {
         prop_assert_eq!(field_code(&field_of(Some(c))), FieldRead::Code(c));
     }
 }
+
+#[test]
+fn the_check_is_crc_8_smbus() {
+    // The catalogue's check value of CRC-8/SMBUS (polynomial 0x07, nothing
+    // reflected or XOR-ed): the CRC of "123456789".
+    assert_eq!(crc8(b"123456789"), 0xf4);
+    assert_eq!(code(0x1234_5678).to_bytes(), [0x12, 0x34, 0x56, 0x78, 0x1c]);
+    assert_eq!(code(0x1234_5678).bits(), 0x1234_5678);
+}
+
+#[test]
+fn the_stream_is_splitmix64() {
+    // SplitMix64's published first outputs from the seed 0: a pack laid out
+    // by a code reads back only while they hold.
+    let mut stream = Stream::new(0);
+    assert_eq!(stream.next(), 0xe220_a839_7b1d_cdaf);
+    assert_eq!(stream.next(), 0x6e78_9e6a_a1b9_65f4);
+    assert_eq!(stream.next(), 0x06c4_5d18_8009_454f);
+    assert_eq!(Stream::new(1).below(10), 5);
+    assert_eq!(Stream::new(1).below(1000), 465);
+}

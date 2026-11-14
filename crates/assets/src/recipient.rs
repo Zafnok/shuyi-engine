@@ -103,7 +103,7 @@ impl fmt::Display for Code {
         let all = self
             .to_bytes()
             .iter()
-            .fold(0u64, |all, &byte| all << 8 | u64::from(byte));
+            .fold(0u64, |all, &byte| (all << 8) + u64::from(byte));
         for at in (0..8).rev() {
             let digit = (all >> (at * 5)) & 31;
             // A digit is under 32.
@@ -143,7 +143,7 @@ impl FromStr for Code {
                 .iter()
                 .position(|&a| char::from(a) == c)
                 .ok_or(CodeError::Shape)?;
-            all = all << 5 | digit as u64;
+            all = (all << 5) + u64::try_from(digit).unwrap_or(0);
             count += 1;
         }
         if count != 8 {

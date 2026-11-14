@@ -7,8 +7,8 @@
 # - the public package is the same for both (the release's attestation of
 #   it covers both copies), and the ledger names it for both;
 # - the copies differ (their overlays' digests);
-# - the detector names each copy's recipient from all three marks, and says
-#   "no mark found" on the public package;
+# - the detector names each copy's recipient from every mark, of all three
+#   kinds, and says "no mark found" on the public package;
 # - each copy passed the `disclosure` gate (its exposure report is ok), and
 #   on macOS its `.app` is signed.
 #
@@ -23,6 +23,11 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 
 rm -rf "$tmp" && mkdir -p "$tmp"
+# The Steam Linux Runtime's SDK image has no OpenSSH client: CI's container
+# runs as root, so add it there.
+if ! command -v ssh-keygen > /dev/null && command -v apt-get > /dev/null && [ "$(id -u)" = 0 ]; then
+  apt-get update -qq && apt-get install -y -qq openssh-client > /dev/null
+fi
 ssh-keygen -q -t ed25519 -N "" -C "ci" -f "$tmp/key"
 rm -rf "$game/dist/reveal" "$game/dist/recipients" "$game/dist/recipients.ron" "$game/dist/recipients.ron.sig"
 mkdir -p "$game/dist"
@@ -57,9 +62,16 @@ for who in press-a press-b; do
   code=$(field "$tmp/$who.json" code)
   (cd "$game" && cargo shuyi export --detect-recipient "dist/recipients/$who/$target/$package") > "$tmp/$who.found"
   cat "$tmp/$who.found"
-  grep -q "3 of 3 mark(s) name the code $code" "$tmp/$who.found" || {
-    echo "check: the detector didn't name $who's code $code from all three marks"; exit 1
+  # Every mark names the code (a universal macOS program has a field in
+  # each slice), and each of the three kinds is there.
+  grep -Eq "([0-9]+) of \1 mark\(s\) name the code $code" "$tmp/$who.found" || {
+    echo "check: the detector didn't name $who's code $code from every mark"; exit 1
   }
+  for kind in program pack picture; do
+    grep -q "^  $kind: .*($code)" "$tmp/$who.found" || {
+      echo "check: no $kind mark named $who's code $code"; exit 1
+    }
+  done
   grep -q "was given to $who " "$tmp/$who.found" || {
     echo "check: the ledger didn't name $who"; exit 1
   }

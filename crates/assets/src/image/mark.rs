@@ -115,14 +115,14 @@ pub fn capacity(image: &Image) -> usize {
 }
 
 /// The color `color` becomes carrying `bits` (six, highest first: red's,
-/// green's, blue's).
+/// green's, blue's): its group, whose two lowest bits are clear, plus them.
 fn carrying(color: [u8; 4], bits: [bool; BITS_PER_COLOR]) -> [u8; 4] {
     let [r, g, b, a] = group(color);
-    let low = |high: bool, low: bool| u8::from(high) << 1 | u8::from(low);
+    let low = |high: bool, low: bool| u8::from(high) * 2 + u8::from(low);
     [
-        r | low(bits[0], bits[1]),
-        g | low(bits[2], bits[3]),
-        b | low(bits[4], bits[5]),
+        r + low(bits[0], bits[1]),
+        g + low(bits[2], bits[3]),
+        b + low(bits[4], bits[5]),
         a,
     ]
 }
