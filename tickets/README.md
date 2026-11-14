@@ -103,7 +103,7 @@ there, in the PR that breaks:
 
    ````text
    ```migration
-   since: 0.2.0
+   since: <workspace version>
    what: A timer takes its step as a Step, not a number.
    old: Timer::new(u32)
    new: Timer::new(Step)
@@ -117,7 +117,7 @@ there, in the PR that breaks:
 
    | Field | What |
    | ----- | ---- |
-   | `since` | The engine version that first has the change, `X.Y.Z`: the workspace `version` after the PR |
+   | `since` | The engine version that first has the change, `X.Y.Z`: the workspace `version` of the root `Cargo.toml` on the PR's branch. `cargo xtask changelog` fails a ticket the PR moves to `done/` whose `since` is any other value, and names the placeholder `<workspace version>` |
    | `what` | One sentence |
    | `old`, `new` | The old and new path or signature |
    | `before`, `after` | A game's code before and after |

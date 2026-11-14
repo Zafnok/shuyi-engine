@@ -253,7 +253,7 @@ No page of `docs/` or the book names the changed items.
 Breaking: shuyi-cli: glyph_tiles::Tileset: gone; `glyph_tiles::render` and `render_files` return `shuyi_assets::image::Image`, whose `pixel` gives an `Option`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A glyph tileset is a plain Image, and its pixel outside the picture is None.
 old: glyph_tiles::Tileset, Tileset::pixel(x, y) -> [u8; 4]
 new: shuyi_assets::image::Image, Image::pixel(x, y) -> Option<[u8; 4]>
@@ -269,7 +269,7 @@ find: ["Tileset"]
 Breaking: shuyi-cli: glyph_tiles::render: takes the atlas picture as `&Image`, not a `(width, &rgba)` pair.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: glyph_tiles::render takes the font atlas's picture as an Image.
 old: render(rules, &def, (width, &rgba), &palette)
 new: render(rules, &def, &atlas_image, &palette)
@@ -283,7 +283,7 @@ find: ["(atlas.width, &atlas.rgba)"]
 Breaking: shuyi-cli: font_atlas::Atlas, font_atlas::one_bit: the atlas's picture is its `image` field, an `Image`, and `one_bit` takes it as `&Image`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A font atlas keeps its picture as one Image field.
 old: atlas.width, atlas.height, atlas.rgba; one_bit(&def, width, &rgba)
 new: atlas.image.width, atlas.image.height, atlas.image.rgba; one_bit(&def, &image)
@@ -299,7 +299,7 @@ find: ["atlas.rgba", "atlas.width", "atlas.height"]
 Breaking: shuyi-ui, shuyi-cli: frame::raster::Image::of_painted: a free function, `raster::of_painted`, since `Image` is now `shuyi_assets::image::Image`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The raster's picture of a painted picture is a free function.
 old: raster::Image::of_painted(&picture)
 new: raster::of_painted(&picture)

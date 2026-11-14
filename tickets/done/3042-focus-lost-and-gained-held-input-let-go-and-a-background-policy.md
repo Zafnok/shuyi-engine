@@ -439,7 +439,7 @@ choice, made in its own repository.
 Breaking: shuyi-app: PadInput::poll: takes whether the window has focus.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Polling the controllers takes whether the window has focus, and ignores the pads without it.
 old: "PadInput::poll(&mut self)"
 new: "PadInput::poll(&mut self, focused: bool)"

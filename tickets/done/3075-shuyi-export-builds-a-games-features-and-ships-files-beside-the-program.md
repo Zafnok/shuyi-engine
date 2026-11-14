@@ -103,7 +103,7 @@ contract's version is 34 (`export`'s `without` and `beside`).
 Breaking: shuyi-cli: export::ExportCx: two new public fields, `turned_on` and `beside`; a literal of it adds them.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: ExportCx has two new fields; ExportOutput has one.
 old: ExportCx { .. }
 new: ExportCx { turned_on, beside, .. }
