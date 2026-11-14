@@ -14,7 +14,10 @@ Budget(
     // The most crates a new `blank` game's dependency tree may hold, the
     // engine's among them (`cargo metadata`, every platform's, with the
     // engine's Cargo.lock). A change that adds one raises this number in
-    // the same PR, so each new dependency is a choice. 146: `gif` and its
-    // `weezl`, for `frame-png --gif` (ticket 2589).
-    dependencies: 146,
+    // the same PR, so each new dependency is a choice, and one that drops
+    // some lowers it. 143: 146 less `quad-storage`, `quad-storage-sys`,
+    // `nanoserde`, `nanoserde-derive` and `lazy_static`, gone with the
+    // in-house web saves (ticket 3033), plus 2 for `getrandom` in
+    // `reveal commit` (ticket 2816); set by ticket 2080.
+    dependencies: 143,
 )
