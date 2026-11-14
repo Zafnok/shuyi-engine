@@ -435,7 +435,10 @@ fn a_salted_commitment_opens_with_its_bytes_and_salt_and_nothing_else() {
     let e = more.commit(&root.join("boss.md"), "boss.md").unwrap_err();
     assert!(e.message.contains("never replaced"), "{}", e.message);
     // A salt or digest that isn't hexadecimal is refused.
-    assert!(opens(&root.join("boss.md"), "zz", &made.sha256).is_err());
+    // Too short, and not hexadecimal.
+    assert!(opens(&root.join("boss.md"), &made.salt[..62], &made.sha256).is_err());
+    let not_hex = format!("{}g", &made.salt[..63]);
+    assert!(opens(&root.join("boss.md"), &not_hex, &made.sha256).is_err());
     assert!(opens(&root.join("boss.md"), &made.salt, "abc").is_err());
 }
 

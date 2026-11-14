@@ -24,6 +24,9 @@ const LABEL: &[u8] = b"shuyi reveal commitment v1\0";
 /// The salts file's version.
 const VERSION: u32 = 1;
 
+/// The length of a salt, in bytes.
+const SALT_BYTES: usize = 32;
+
 /// The salts file: each commitment with its salt. Private: whoever holds
 /// it can test guesses at the files committed to.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,7 +51,7 @@ pub struct Salted {
 }
 
 /// The digest of the file at `path` under `salt`.
-fn digest_of(path: &Path, salt: &[u8; 32]) -> Result<String, Failed> {
+fn digest_of(path: &Path, salt: &[u8]) -> Result<String, Failed> {
     let failed =
         |e: std::io::Error| Failed::new(codes::FILE, format!("can't read {}: {e}", path.display()));
     let mut file = fs::File::open(path).map_err(failed)?;
@@ -67,7 +70,7 @@ fn digest_of(path: &Path, salt: &[u8; 32]) -> Result<String, Failed> {
 }
 
 /// `salt` read from hexadecimal, or why not.
-fn salt_of(hex: &str) -> Result<[u8; 32], Failed> {
+fn salt_of(hex: &str) -> Result<Vec<u8>, Failed> {
     let wrong = || {
         Failed::new(
             codes::WRONG_ARGUMENTS,
@@ -75,13 +78,29 @@ fn salt_of(hex: &str) -> Result<[u8; 32], Failed> {
         )
     };
     let hex = hex.trim();
-    if hex.len() != 64 || !hex.is_ascii() {
+    if hex.len() != SALT_BYTES * 2 || !hex.is_ascii() {
         return Err(wrong());
     }
-    let mut salt = [0u8; 32];
-    for (byte, pair) in salt.iter_mut().zip(hex.as_bytes().chunks(2)) {
-        let pair = std::str::from_utf8(pair).map_err(|_| wrong())?;
-        *byte = u8::from_str_radix(pair, 16).map_err(|_| wrong())?;
+    hex.as_bytes()
+        .chunks(2)
+        .map(|pair| {
+            let pair = std::str::from_utf8(pair).map_err(|_| wrong())?;
+            u8::from_str_radix(pair, 16).map_err(|_| wrong())
+        })
+        .collect()
+}
+
+/// A new salt of [`SALT_BYTES`], from the system's random source.
+fn fresh_salt() -> Result<Vec<u8>, Failed> {
+    let mut salt = Vec::with_capacity(SALT_BYTES);
+    while salt.len() < SALT_BYTES {
+        let word = getrandom::u64().map_err(|e| {
+            Failed::new(
+                codes::FILE,
+                format!("the system's random source failed: {e}"),
+            )
+        })?;
+        salt.extend(word.to_le_bytes());
     }
     Ok(salt)
 }
@@ -193,13 +212,7 @@ impl Salts {
                 ),
             ));
         }
-        let mut salt = [0u8; 32];
-        getrandom::fill(&mut salt).map_err(|e| {
-            Failed::new(
-                codes::FILE,
-                format!("the system's random source failed: {e}"),
-            )
-        })?;
+        let salt = fresh_salt()?;
         let sha256 = digest_of(path, &salt)?;
         let at = self.commitments.len();
         self.commitments.push(Salted {
