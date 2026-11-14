@@ -221,8 +221,9 @@ None.
 the site with step 2's copy built by `cargo shuyi web` as its `play/`, at
 this branch's tip on `main` at d34b6245 (no newer `main`):
 
-- *Check my work* with the files unchanged: "Not yet. Level 1 still has
-  one box: add a second to its `features`, and an `o` for it to go on."
+- *Check my work* with the files unchanged: `Not yet.` and "Level 1 still
+  has one box: add a second to its `features`, and an `o` for it to go
+  on."
 - With a second box and a target: "Done. Level 1 has two boxes and a
   target for each.", Problems "Loaded with your files.".
 - With a box and no target for it: Problems "files/levels/1.map: 2 boxes
