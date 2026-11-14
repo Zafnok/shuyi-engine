@@ -369,7 +369,7 @@ Nick input: none.
 Breaking: shuyi-cli: frame_png::Step, frame_png::Script: re-exports of `shuyi_platform::script::{Step, Script}`; `Step` gains `Act`, and `Script` is built with `Script::new` (its fields can't be named from another crate).
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The contract's script is shuyi-platform's, and a step can press an action by name.
 old: 'Script { steps: vec![Step::Keys(..)] }'
 new: 'Script::new(vec![Step::Keys(..)])'
@@ -383,7 +383,7 @@ find: ["Script { steps"]
 Breaking: shuyi-cli: frame_png::Script::parse_step, frame_png::MAX_WAIT: now `frame_png::parse_step(flag, text)`, which reads `--act` too, and `shuyi_platform::harness::MAX_WAIT`; `Script::check` no longer checks the longest wait: `frame_png::check(&script)` does.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A script flag is read by a free function, and the Harness's longest wait is checked with the script.
 old: 'Script::parse_step(flag, text); script.check()'
 new: 'frame_png::parse_step(flag, text); frame_png::check(&script)'
@@ -399,7 +399,7 @@ find: ["Script::parse_step", "script.check()"]
 Breaking: shuyi-cli: contract::attach::AttachStep, AttachStep::of, frames_of, FRAMES_PER_SECOND: gone; `AttachInput::steps` and `link_steps` are `Vec<frame_png::Step>`, waits in seconds.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: attach takes the contract's steps.
 old: 'AttachStep::Act(name)'
 new: 'Step::Act(name)'
@@ -413,7 +413,7 @@ find: ["AttachStep"]
 Breaking: shuyi-platform: link::Step, link::Press, link::press_for, link::MAX_WAIT, link::VERSION: the steps are `script::Step`, waits in seconds (`link::MAX_WAIT` is 1 800.0 seconds), `press_for` and `Press` are `script`'s, `Request` is no longer `Eq`, and the link speaks version 3.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The link's steps are a script's, with waits in seconds.
 old: 'link::Step::Wait(30)'
 new: 'script::Step::Wait(0.5)'
@@ -427,7 +427,7 @@ find: ["link::Step"]
 Breaking: shuyi-platform: capture::Step, capture::Plan::steps, capture::Plan::frames, capture::FRAME_DT, capture::wait_frames: a plan's steps are `capture::PlanStep`s (`Input(script::Step)` or `Capture`), `Plan::frames` takes the game's keymap and answers a `Result`, and the frame and wait rule are `script::FRAME_DT` and `script::wait_frames`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A capture plan's frames are planned with the game's keymap.
 old: 'plan.frames()'
 new: 'plan.frames(game.input().keymap())?'
@@ -441,7 +441,7 @@ find: ["plan.frames()"]
 Breaking: shuyi-cli, shuyi-platform: a script's wait: played as `script::wait_frames` frames (rounded up, none for 0) by `Script::play`, not by `Harness::wait`'s shorter last frame, so a `frame-png` picture after a wait that isn't whole frames, or of 0, can change; `Harness::wait` keeps its seconds.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A script's wait plays whole frames, rounded up.
 old: 'Step::Wait(0.51) as 30.6 frames'
 new: 'Step::Wait(0.51) as 31 frames'

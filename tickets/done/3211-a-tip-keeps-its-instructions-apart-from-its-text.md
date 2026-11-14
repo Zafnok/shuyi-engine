@@ -61,7 +61,7 @@ game#0475's.
 Breaking: shuyi-assets: TipLimits: a new field, `how_lines`, the most lines of a tip's `how` (0 if the game's tips have none).
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: TipLimits has a new field, how_lines, the most lines of a tip's how.
 old: TipLimits { text_lines, line_chars, title_chars }
 new: TipLimits { text_lines, line_chars, title_chars, how_lines }
@@ -74,7 +74,7 @@ after: |
 Breaking: shuyi-assets: Tip: a new field, `how`, a tip's instructions apart from its text (`None` when a tip built in code has none).
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Tip has a new field, how, the tip's instructions apart from its text.
 old: Tip { id, trigger, title, text, face }
 new: Tip { id, trigger, title, text, how, face }

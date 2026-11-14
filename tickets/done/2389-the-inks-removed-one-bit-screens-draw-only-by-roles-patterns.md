@@ -211,7 +211,7 @@ yet).
 Breaking: shuyi-assets: ink: the module, `Ink` and `PaletteDef::from_ink_source` are gone; give a one-bit target a pattern map beside its palette (ADR-0026) instead.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The one-bit inks are gone; a one-bit palette is an ordinary palette with a pattern map beside it.
 old: shuyi_assets::ink::Ink, PaletteDef::from_ink_source(file, source, base)
 new: PaletteDef::from_source and a PatternMapDef in palette@onebit.ron
@@ -227,7 +227,7 @@ find: ["from_ink_source", "shuyi_assets::ink"]
 Breaking: shuyi-ui: frame::onebit::render, render_marked, render_changed (and reference's): each takes a `Shades` before `out`; the `_with` forms, `InkShades`, `ink_of`, `ink_is_white` and `Shade::of_ink` are gone.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The one-bit renderer's functions take the Shades to draw with; the _with forms took their names.
 old: onebit::render_with(buf, font, images, shades, out)
 new: onebit::render(buf, font, images, shades, out)
@@ -243,7 +243,7 @@ find: ["render_with(", "render_changed_with("]
 Breaking: shuyi-ui: grid::GlyphStyle::draw_tiles: takes the skin's `MapColors` after the `Looks`, for an inverted flash's colour.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: GlyphStyle::draw_tiles takes the MapColors that name the flash's colour.
 old: GlyphStyle::draw_tiles(&self, looks, buf, scene, layout)
 new: GlyphStyle::draw_tiles(&self, looks, colors, buf, scene, layout)

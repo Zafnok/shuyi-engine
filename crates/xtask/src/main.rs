@@ -17,7 +17,7 @@
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask flaky rerun|report|calibration …`
-//! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
+//! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
@@ -152,12 +152,15 @@ usage:
       failure is a listed cell is re-run once. `report` warns what attempt <n>
       failed on, for its re-run. `calibration` writes a calibration run's table
       (.github/workflows/calibrate.yml) to <file>.
-  cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]
+  cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]
       Write the changelog from tickets/done/ and the first-parent history
       (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
       and a post for each release, in news/generated/) in <content dir>; with
       --format keep-a-changelog, the shape of CHANGELOG.md. Needs the tags and
-      the whole history (a full clone).
+      the whole history (a full clone). Fails a migration block, in a ticket
+      added to tickets/done/ since <rev> (default: where HEAD left
+      origin/main, else main), whose `since` is not the workspace version
+      (ticket 2058).
   cargo xtask llms --public <dir> --base-url <url> --commit <sha>
       After `zola build` into <dir> at <url>, write the docs for agents there
       (ticket 2808): a Markdown twin of each Learn page (its URL + index.md),

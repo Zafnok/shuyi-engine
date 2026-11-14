@@ -202,7 +202,7 @@ and `THIRD_PARTY_ASSETS.md` drop quad-storage's entries. Found with
 Breaking: shuyi-cli: notices::FILES: holds three files, not four: quad-storage.js left the web shell.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The web shell no longer vendors quad-storage.js; its row left the table of the engine's non-crate files.
 old: "notices::FILES: [EngineFile; 4]"
 new: "notices::FILES: [EngineFile; 3]"

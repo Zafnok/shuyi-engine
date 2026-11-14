@@ -220,7 +220,7 @@ pattern map instead of inks", Zafnok/visions-of-shuyi#578), in 2389's
 Breaking: shuyi-assets, shuyi-ui: onebit::RolePatterns: `#[non_exhaustive]` with two new fields, `edge` and `invert`; build one with `RolePatterns::new(fg, bg)` or `RolePatterns::of(fg)`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A role's patterns are built by a constructor, since they gained edge and invert.
 old: RolePatterns { fg, bg }
 new: RolePatterns::new(fg, bg), RolePatterns::of(fg), .with_edge(bool), .with_invert(bool)
@@ -234,7 +234,7 @@ find: ["RolePatterns { fg"]
 Breaking: shuyi-assets, shuyi-ui: onebit::Base: a new variant, `Dots`, and `Base::ALL` holds 11; a `match` on `Base` adds an arm.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The patterns gain Dots, one pixel in eight.
 old: "Base::ALL: [Base; 10]"
 new: "Base::ALL: [Base; 11], Base::Dots"
@@ -256,7 +256,7 @@ Breaking: shuyi-assets: formats.ron "pattern map: pattern-map": a pattern map's 
 Breaking: shuyi-assets: pack::VERSION: 10, as a pattern map's binary form gains `edge` and `invert` and `Dots`; a game bakes its pack again.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Packs are format version 10, so a pack baked before is refused.
 old: pack::VERSION 9
 new: pack::VERSION 10
