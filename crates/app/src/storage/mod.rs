@@ -124,7 +124,7 @@ pub fn platform(name: &str) -> Box<dyn Storage> {
         match FileStorage::new(name) {
             Ok(storage) => Box::new(storage),
             Err(e) => {
-                macroquad::prelude::error!("storage: {e}; saves and settings will not persist");
+                macroquad::prelude::error!("storage: {}; saves and settings will not persist", e);
                 Box::new(shuyi_ui::storage::MemoryStorage::new())
             }
         }
@@ -188,7 +188,7 @@ pub fn smoke_check(storage: &mut dyn Storage) {
             info!("storage: smoke check passed");
         }
         Err(e) => {
-            error!("storage: smoke check failed: {e}");
+            error!("storage: smoke check failed: {}", e);
         }
     }
 }
