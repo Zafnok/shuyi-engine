@@ -109,6 +109,17 @@ impl Exporter for WebExporter {
         pack(cx, rules, &dist)
     }
 
+    fn overlays(&self) -> bool {
+        true
+    }
+
+    /// The zip made again from the folder, `index.html` at its root.
+    fn repackage(&self, cx: &ExportCx, report: &ExportReport) -> Result<(), ExportError> {
+        let folder = cx.out.join(&report.folder);
+        let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
+        archive::zip(&cx.out.join(&report.package), &entries).map_err(ExportError::Build)
+    }
+
     /// A release build's, if the binary it shipped holds no `name` section.
     fn strips_symbols(&self, cx: &ExportCx) -> bool {
         let Some(rules) = cx.web.as_ref().filter(|_| cx.release) else {

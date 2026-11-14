@@ -696,6 +696,13 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   goes up whenever the binary form of an engine kind changes; a pinned
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
+- **Laid out in any order.** The index lists the files in path order, and
+  `shuyi bake` lays their bytes in that order with nothing between them.
+  From version 15 a reader takes them in any order and with bytes between
+  them, so long as no two overlap and the last ends the pack. A closed
+  build's copy (`export --recipient`) lays its pack out by its
+  recipient's code (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
+  and the game reads the same files from it.
 - **It stands for its sources.** The index holds the fingerprint of the
   bundle it was baked from (`PackInfo::content`, `Bundle::fingerprint`),
   and its layer stands for it (`Layer::standing_for`): a bundle of the

@@ -1,6 +1,6 @@
 # ADR-0023: The pack: one indexed file of baked assets, a bundle layer, proven equal to its sources
 
-- **Status:** Accepted; extended by ADR-0110 (packs are the shipping form on every target, beside the program on the desktop and the web; the embedded folder is the development form)
+- **Status:** Accepted; extended by ADR-0110 (packs are the shipping form on every target, beside the program on the desktop and the web; the embedded folder is the development form); extended by ADR-0118 (§1 and §3: a file's bytes may lie in any order, with bytes between them, so a closed build's pack carries its recipient's code in its layout; `VERSION` 15)
 - **Date:** 2026-10-20
 - **Related tickets:** 2204 (the pack); 3005 and 3010 (the Playdate,
   which loads only packs); 3001 and 3007 (targets, and a bake per

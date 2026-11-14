@@ -22,7 +22,8 @@
 //! and a game registers its own kinds and formats beside the engine's in
 //! a [`Formats`] registry, then asks it for an asset by id. A game may
 //! ship its assets baked into one [`pack`] (`.shuyipak`), proven equal to
-//! its sources. A value read through the registry can reload when its files
+//! its sources. A closed build's copy names its recipient by a code in three
+//! marks ([`recipient`]). A value read through the registry can reload when its files
 //! change on disk ([`hot`]).
 //!
 //! For tests, behind the `golden` feature: golden tables (`golden`),
@@ -63,6 +64,7 @@ pub mod names;
 pub mod onebit;
 pub mod pack;
 pub mod palette;
+pub mod recipient;
 pub mod ron;
 pub mod target;
 pub mod text;

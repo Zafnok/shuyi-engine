@@ -48,6 +48,11 @@
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part, or its edition's, if it has one ([`disclosure`]).
+//!
+//! With `--recipient`, a release export then makes a closed build's copy of
+//! the package for one recipient, marked with their code in its program, its
+//! pack and one picture, and written in a signed ledger: a deterrent with
+//! circumstantial evidence, never proof ([`recipient`], ADR-0118).
 
 pub mod archive;
 mod desktop;
@@ -55,6 +60,7 @@ pub mod disclosure;
 pub mod live_link;
 pub mod paths;
 pub mod playdate;
+pub mod recipient;
 mod web;
 
 use std::collections::BTreeMap;
@@ -173,6 +179,22 @@ pub trait Exporter: Sync {
     /// What a panic does in the program it ships: by default it unwinds.
     fn panic(&self) -> disclosure::Panic {
         disclosure::Panic::Unwind
+    }
+
+    /// Whether it makes a recipient's copy of a closed build
+    /// (`export --recipient`, [`recipient`]): by default not.
+    fn overlays(&self) -> bool {
+        false
+    }
+
+    /// Writes the package of the folder `report` names in `cx.out` again,
+    /// after a recipient's overlay changed files in it: its archive, and on
+    /// macOS its signature. By default the target has no overlay.
+    fn repackage(&self, _cx: &ExportCx, _report: &ExportReport) -> Result<(), ExportError> {
+        Err(ExportError::Setup(format!(
+            "--recipient: the {} package has no overlay",
+            self.id()
+        )))
     }
 
     /// Runs the package `export` wrote: by default there is no run step.
@@ -725,6 +747,7 @@ impl ExportCx {
             beside: Vec::new(),
             edition: self.edition.as_ref().map(|edition| edition.name.clone()),
             pack: None,
+            recipient: None,
         }
     }
 

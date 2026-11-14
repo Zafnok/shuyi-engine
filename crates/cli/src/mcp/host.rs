@@ -174,6 +174,9 @@ pub fn one_off(
             Ok(p) if input.get("plan") == Some(&Value::Bool(true)) => {
                 answered(op, input, |i| export::plan(p, &i))
             }
+            Ok(p) if input.get("detect_recipient").is_some_and(|v| !v.is_null()) => {
+                answered(op, input, |i| export::detect(p, &i))
+            }
             Ok(p) => answered(op, input, |i| export::export(p, &i, game)),
             Err((code, error)) => failed(op, *code, error.clone()),
         },

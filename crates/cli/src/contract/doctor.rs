@@ -2,8 +2,8 @@
 //! and Cargo, rustup's targets, MSYS2's linker and `objcopy` on the
 //! Windows GNU toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
 //! system libraries the backend links and opens, and the web target; and,
-//! as optional checks that never fail it, `gh` and `ssh-keygen`, which only
-//! `shuyi repos` needs.
+//! as optional checks that never fail it, `gh`, which only `shuyi repos`
+//! needs, and `ssh-keygen`, which it and `export --recipient` need.
 //! Each check says what it found and, if it failed, how to fix it (its
 //! help): on Linux, the install command for the distribution's package
 //! manager (`/etc/os-release`), and `scripts/setup-linux.sh`, which
@@ -146,8 +146,8 @@ fn optional(check: Check) -> Check {
 /// What the optional checks' help says first.
 const ONLY_REPOS: &str = "optional: only `shuyi repos` needs it, to put the game on GitHub";
 
-/// The optional checks: `gh` and `ssh-keygen`, which only `shuyi repos`
-/// needs.
+/// The optional checks: `gh`, which only `shuyi repos` needs, and
+/// `ssh-keygen`, which it and `export --recipient` need.
 fn repos_checks(probe: &dyn Probe) -> [Check; 2] {
     let gh = match probe.output("gh", &["--version"]) {
         Some(text) => pass("gh", first_line(&text)),
@@ -166,11 +166,11 @@ fn repos_checks(probe: &dyn Probe) -> [Check; 2] {
         fail(
             "ssh-keygen",
             None,
-            format!(
-                "{ONLY_REPOS}, to make its deploy keys. It comes with OpenSSH: on Windows the \
-                 optional feature OpenSSH Client, or Git for Windows' usr/bin on PATH; on Linux \
-                 the package openssh-client"
-            ),
+            "optional: only `shuyi repos` needs it, to make a game's deploy keys, and `shuyi \
+             export --recipient`, to sign its ledger. It comes with OpenSSH: on Windows the \
+             optional feature OpenSSH Client, or Git for Windows' usr/bin on PATH; on Linux the \
+             package openssh-client"
+                .to_owned(),
         )
     };
     [optional(gh), optional(ssh_keygen)]

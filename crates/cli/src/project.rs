@@ -532,6 +532,10 @@ pub struct ExportPart {
     /// Whether a release web export needs `wasm-opt` (`required` until
     /// said).
     pub wasm_opt: WasmOptRule,
+    /// The picture a closed build's copy is marked in (`export --recipient`,
+    /// ADR-0118), by its path in the pack (`tiles.png`): a picture of the
+    /// game's, not its text, with at least seven colors.
+    pub overlay_picture: Option<String>,
 }
 
 /// Whether a release web export needs Binaryen's `wasm-opt`.

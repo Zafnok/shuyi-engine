@@ -17,6 +17,10 @@
 //! beside the program, [`pack_beside_program`] (ADR-0110): on the web the
 //! page fetches it before the game starts.
 //!
+//! Every program reserves a field a closed build's overlay writes its
+//! recipient's code into (`shuyi export --recipient`, ADR-0118), which
+//! [`recipient`] reads: `None` in a public build.
+//!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
 //!
@@ -168,6 +172,7 @@ mod player_files;
     feature = "capture"
 ))]
 mod readback;
+mod recipient;
 pub mod render;
 mod sessions;
 pub mod storage;
@@ -198,6 +203,7 @@ pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_l
 pub(crate) use crate::folder::{Watched, watched_file, watched_layers};
 use crate::pacing::{Pacer, WebFrame};
 pub use crate::pack_file::{PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name};
+pub use crate::recipient::recipient;
 
 /// The web has no folders to watch.
 #[cfg(target_arch = "wasm32")]
@@ -468,6 +474,9 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// code 101; the game's system hook isn't called, so a broken game never
 /// saves.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+    // Read once, so every program keeps the recipient's field an overlay
+    // writes, whether or not the game reads it.
+    let _ = recipient();
     // Which target this build is: an unknown one is the load's error.
     let (start, facts) = facts::start_as(facts::this_target(), start);
     #[cfg(feature = "capture")]

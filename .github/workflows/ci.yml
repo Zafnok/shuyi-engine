@@ -146,7 +146,9 @@ jobs:
   # then tools/export-check/ci.sh runs check.sh (the package's files, the
   # debug file beside it, what the program loads, and on macOS the
   # signature and both slices) and exports again for the same exposure
-  # report. `windows`, `linux` and `web` on every PR, `macos` on pushes to
+  # report, then recipient.sh makes two recipients' copies (ticket 3302:
+  # the same public package for both, each copy's three marks naming its
+  # recipient, none in the public package). `windows`, `linux` and `web` on every PR, `macos` on pushes to
   # main. Each leg runs export.yml, the byte-equal copy of the file a
   # game's release runs (ticket 3050), so every PR runs it; the matrix is
   # what `export --plan` says of each exporter (`host`, `container`). The
