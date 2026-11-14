@@ -180,7 +180,7 @@ Deviations:
 - A mark inside inline code or a fenced block is not an estimate, so a
   ticket can quote the rule.
 
-Size: 1,594 counted lines, the lint rule and the CI check share the
+Size: 1,598 counted lines, the lint rule and the CI check share the
 `Size:` parser and the skills' one text, and splitting the estimate rule
 off would have left that text half true for a PR.
 
