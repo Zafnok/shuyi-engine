@@ -33,6 +33,7 @@ mod api;
 mod book;
 mod changelog;
 mod compile_times;
+mod compress;
 mod contract;
 mod docs;
 mod exercises;
