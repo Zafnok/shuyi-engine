@@ -1012,6 +1012,9 @@ fn a_codes_layout_is_pinned() {
         [2, 5, 8, 1, 11, 6, 7, 4, 9, 10, 0, 3]
     );
     assert_eq!(gap_key(12), [28, 125, 3, 37, 254, 217, 202, 223, 116, 92]);
+    // The seed takes the count by XOR: with one file, unlike twelve, an OR
+    // would give another seed.
+    assert_eq!(gap_key(1), [202, 9, 232, 150, 224, 27, 248, 176, 2, 225]);
     let gaps = gaps_of(code(0x1234_5678), 12);
     let key = gap_key(12);
     let bytes = code(0x1234_5678).to_bytes();
