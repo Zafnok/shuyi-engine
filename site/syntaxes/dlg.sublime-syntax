@@ -1,0 +1,29 @@
+%YAML 1.2
+---
+# The engine's `.dlg` dialogue format (`shuyi_assets::dialogue`) for the
+# website's code blocks and the playground's editors (ticket 2832's
+# static/ron-paint.js follows it rule for rule). Our own, under the
+# repository's license (MIT OR Apache-2.0). Line by line: a `# comment`, a
+# `@directive`, `> narration`, an option `* tone: text` inside a `@choice`,
+# or `speaker: text` (`speaker[expression] (direction): text`). The text a
+# line says stays plain.
+name: Dialogue
+file_extensions: [dlg]
+scope: source.dlg
+
+contexts:
+  main:
+    - match: '^\s*#.*$'
+      scope: comment.line.dlg
+    - match: '^\s*@[A-Za-z]+'
+      scope: keyword.control.dlg
+    - match: '^\s*>'
+      scope: keyword.operator.dlg
+    - match: '^\*'
+      scope: keyword.operator.dlg
+    - match: '(?<=^\* )[A-Za-z0-9_-]+(?=:)'
+      scope: entity.name.tag.dlg
+    - match: '^\s*[A-Za-z0-9_-]+(?=(?:\[[^\]]*\])?(?: \([^)]*\))?:)'
+      scope: entity.name.tag.dlg
+    - match: '(?<=[A-Za-z0-9_-])\[[^\]]*\](?=(?: \([^)]*\))?:)'
+      scope: constant.other.dlg

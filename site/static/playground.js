@@ -2,8 +2,8 @@
 // an editor for each of a game's files beside the game in a frame, and the
 // buttons of the tries (`try_it`) that make their edit in it. Plain
 // JavaScript with no build step, loading nothing from another host. One
-// playground a page. Each editor paints its text under it, a RON file's
-// colored by ron-paint.js, which the page loads first (ticket 2832).
+// playground a page. Each editor paints its text under it, a RON, map or
+// dialogue file's colored by ron-paint.js, which the page loads first (ticket 2832).
 //
 // The game's web build reads each `sessionStorage` key
 // `shuyi-page-file:files/<name>` as a file laid over its own, and sends its
@@ -154,9 +154,10 @@
         editors.hidden = false;
 
         // Each editor's painted copy under it (ticket 2832): its text, a RON
-        // file's colored as a `ron` code block is (ron-paint.js), at its
-        // scroll. A last newline, so a text that ends in one shows its empty
-        // last line as the textarea does. Called whenever its text changes.
+        // or dialogue file's colored as a `ron` or `dlg` code block is
+        // (ron-paint.js), at its scroll. A last newline, so a text that ends
+        // in one shows its empty last line as the textarea does. Called
+        // whenever its text changes.
         function paint(area) {
             var holder = area.parentNode;
             var pre = holder.querySelector(".playground-paint");

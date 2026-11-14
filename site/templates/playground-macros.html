@@ -13,14 +13,15 @@
     editors stay hidden.
 
     Each editor is a `<textarea>` over a `<pre>` the script paints with the
-    same text, colored when the file is RON (`data-lang`, ticket 2832): the
-    reader types in the textarea, whose own text is transparent, and sees
-    the painted copy under it, which a screen reader skips. -#}
+    same text, colored by its kind (`data-lang`, ticket 2832): RON for a
+    `.ron` or `.map` file, dialogue for a `.dlg` one. The reader types in
+    the textarea, whose own text is transparent, and sees the painted copy
+    under it, which a screen reader skips. -#}
 
 {% macro script() -%}
 {#- Not deferred: its listener must be there before the game reports, and
     it hands this page's files to the game before the frame loads.
-    `ron-paint.js` colors the RON editors (ticket 2832), first, so the
+    `ron-paint.js` colors the RON and dialogue editors (ticket 2832), first, so the
     playground's script finds it. #}
 <script src="{{ get_url(path='ron-paint.js', cachebust=true) }}"></script>
 <script src="{{ get_url(path='playground.js', cachebust=true) }}"></script>
@@ -47,7 +48,7 @@
         <label for="playground-file-{{ id }}">files/{{ name }}</label>
         <div class="playground-code">
           <pre class="playground-paint" aria-hidden="true"><code></code></pre>
-          <textarea id="playground-file-{{ id }}" data-file="{{ name }}"{% if name is ending_with(".ron") %} data-lang="ron"{% endif %} spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" rows="16"></textarea>
+          <textarea id="playground-file-{{ id }}" data-file="{{ name }}"{% if name is ending_with(".ron") or name is ending_with(".map") %} data-lang="ron"{% elif name is ending_with(".dlg") %} data-lang="dlg"{% endif %} spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" rows="16"></textarea>
         </div>
       </div>
       {%- endfor %}
