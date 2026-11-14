@@ -1308,7 +1308,7 @@ mod tests {
     #[test]
     fn a_ticket_already_on_main_is_not_checked() {
         let old = with_since("2103", "0.2.0");
-        assert!(since_errors(&[old], &[], "0.1.0").is_empty());
+        assert_eq!(since_errors(&[old], &[], "0.1.0"), Vec::<String>::new());
     }
 
     #[test]
@@ -1340,12 +1340,12 @@ mod tests {
         let (file, content) = with_since("2105", "0.2.0");
         fs::write(done.join(&file), content).unwrap();
         let diff = format!("tickets/done/{file}\n");
-        let git = |args: &[&str]| match args[0] {
-            "log" => Ok("2026-11-14\t\t[2105] A break (#30)\n".to_string()),
-            _ => {
-                assert!(args.contains(&"HEAD^1"), "{args:?}");
-                Ok(diff.clone())
+        let git = |args: &[&str]| {
+            if args[0] == "log" {
+                return Ok("2026-11-14\t\t[2105] A break (#30)\n".to_string());
             }
+            assert!(args.contains(&"HEAD^1"), "{args:?}");
+            Ok(diff.clone())
         };
         let options = Options {
             site: None,

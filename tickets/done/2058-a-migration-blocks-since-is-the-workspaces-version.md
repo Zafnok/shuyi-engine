@@ -18,9 +18,9 @@ completed: 2026-11-14
 `tickets/README.md` (*Breaking changes*) defines a `migration` block's
 `since` as "the engine version that first has the change, `X.Y.Z`: the
 workspace `version` after the PR". The workspace is at `0.1.0`. The
-README's own example says `since: 0.2.0`, and the retro of 2026-11-08
+README's own example gives `since` as `0.2.0`, and the retro of 2026-11-08
 found that copied into done tickets: #268 (3042), #295 (2391) and in
-all 28 blocks in 10 done tickets carry `since: 0.2.0`, against 54 with
+all 28 blocks in 10 done tickets carry a `since` of `0.2.0`, against 54 with
 `0.1.0`. `cargo xtask changelog`
 checks only that the value is a version. `cargo xtask changelog` (2804)
 and the book's "what changed since your version" page (2829) group by
@@ -53,14 +53,14 @@ None.
    the version compare against the workspace `version` in the root
    `Cargo.toml`, applied to tickets added to `done/` in the PR (the diff
    against the base, as `ticket-lint --pr-branch` reads it).
-2. `grep -rln "since: 0.2.0" tickets/done` and fix each one.
+2. `grep -rlnE "^ *since: 0.2.0" tickets/done` and fix each one.
 3. Fix the README example.
 
 ## Acceptance criteria
 
-- [x] A ticket moved to `done/` with `since: 0.2.0` while the workspace
+- [x] A ticket moved to `done/` with a `since` of `0.2.0` while the workspace
       is `0.1.0` fails `cargo xtask changelog`.
-- [x] `grep -rn "since: 0.2.0" tickets/done` finds nothing.
+- [x] `grep -rnE "^ *since: 0.2.0" tickets/done` finds nothing.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [x] All gates in the `run-gates` skill pass.
 
@@ -82,17 +82,17 @@ None.
 - `Migration` keeps its fence's line (`line`, not read from the YAML).
 - `tickets/README.md`'s example writes `since: <workspace version>`, and
   `check` answers that placeholder with what to write instead.
-- Every `since: 0.2.0` in `tickets/done/` is now `0.1.0`: 39 blocks in
+- Every block in `tickets/done/` whose `since` was `0.2.0` says `0.1.0`: 39 blocks in
   15 tickets (the retro counted 28 in 10; five more tickets copied it
   since).
 - `docs/ROADMAP.md` marks 2058 done.
 - Tests: the compare with an equal and a newer `since`, a ticket already
   on `main` left alone, the placeholder's message, the manifest's
   version, and `run` with a fake `git` (with `--base`, and with no merge
-  base). By hand: a probe ticket with `since: 0.2.0` added with
+  base). By hand: a probe ticket with a `since` of `0.2.0`, added with
   `git add -N` failed the command, naming its line.
 
-Deviations: none.
+Deviations: the ticket's own text named the old value as `since: 0.2.0`, so the grep of step 2 and the acceptance criteria found this ticket once it was in `done/`; the text now says "a `since` of `0.2.0`", and the grep is anchored to a block's line (`^ *since:`). No other change to the ticket.
 
 Book: none, the change is to `cargo xtask` and the tickets, no public API.
 
