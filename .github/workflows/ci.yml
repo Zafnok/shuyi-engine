@@ -1379,11 +1379,12 @@ jobs:
           out="$RUNNER_TEMP/site"
           (cd site && zola build --base-url "$BASE_URL" --output-dir "$out" --force)
           cargo xtask llms --public "$out" --base-url "$BASE_URL" --commit "$GITHUB_SHA"
-      # The playground's editors color RON as Zola colors a `ron` block
-      # (ticket 2832): ron-paint.js against Zola's output for Hello, Grid's
-      # and the book's project's RON files, its own cases, and every `ron`
-      # block of the build above. Node is on the runner.
-      - name: Check the editors' RON colors
+      # The playground's editors color RON and dialogue as Zola colors a
+      # `ron` or `dlg` block (ticket 2832): ron-paint.js against Zola's
+      # output for Hello, Grid's and the book's project's `.ron`, `.map` and
+      # `.dlg` files, the skill pack's dialogue, its own cases, and every
+      # `ron` and `dlg` block of the build above. Node is on the runner.
+      - name: Check the editors' colors
         run: node site/tests/ron-paint.mjs "$RUNNER_TEMP/site"
 
   # Single required check for this workflow. Matrix jobs skipped by `if:`
