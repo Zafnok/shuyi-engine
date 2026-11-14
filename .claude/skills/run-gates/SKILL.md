@@ -496,6 +496,14 @@ yet builds without it. That file's docs say the same.
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).
 
+It runs from a worktree under `.claude/worktrees/` on Windows, too
+(ticket 2061). The base is checked out in `target/api-base` and built in
+`target/api-base-target`; `cargo-semver-checks` builds in
+`target/api-semver`, its `CARGO_TARGET_DIR`. Left to its own folder, a
+build script's path there reached 260 characters from a long worktree's
+name, and Windows starts no program at such a path ("could not execute
+process … (never executed)"), even with long paths on.
+
 ## The game at the next pin
 
 An API change here breaks the game when it moves its pin
