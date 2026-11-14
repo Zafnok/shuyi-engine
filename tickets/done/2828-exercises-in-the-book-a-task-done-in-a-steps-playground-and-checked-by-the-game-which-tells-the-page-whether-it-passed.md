@@ -219,7 +219,9 @@ None.
 
 **By hand (step 6)**, in the built-in browser, on a local `zola build` of
 the site with step 2's copy built by `cargo shuyi web` as its `play/`, at
-this branch's tip on `main` at d34b6245 (no newer `main`):
+this branch with `main` merged (commit 25319c20, `main` at fd007140);
+first walked at d34b6245, then again after the merge with the same
+results:
 
 - *Check my work* with the files unchanged: `Not yet.` and "Level 1 still
   has one box: add a second to its `features`, and an `o` for it to go
