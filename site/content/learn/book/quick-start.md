@@ -97,9 +97,12 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. In a terminal it first asks whether to put the game on GitHub too: each question
-says what pressing Enter picks, or answer no and do it later ([On GitHub](#on-github),
-below). A **template** is what the game starts from. `blank` is one screen, a title.
+it. In a terminal it first asks whether to include the engine skills' **worked
+examples**, files that show each skill at work (`bots.rs`, `playtest.ron`…): yes keeps
+them for you and your coding agent to read, no leaves only the skills, and the game runs
+the same either way (`--examples` or `--no-examples` answers it). Then it asks whether to
+put the game on GitHub too: each question says what pressing Enter picks, or answer no
+and do it later ([On GitHub](#on-github), below). A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
@@ -390,7 +393,7 @@ put the game on GitHub, whether its repository is public, and which kinds of fil
 (writing, sprites, sounds, music, data, or folders you name) go in a second, private
 repository, `<you>/moon-garden-assets`. Each answer has its flag (`--github`,
 `--no-github`, `--visibility`, `--private sprites,music` or `--private none`,
-`--private-folder files/levels`), and `--no-github` asks nothing. If a step fails, the
+`--private-folder files/levels`), and `--no-github` asks none of these. If a step fails, the
 game is still written: fix what it says, and run `cargo shuyi repos` in its folder.
 
 {% newcomer(to="programming", topic="a repository") %}
