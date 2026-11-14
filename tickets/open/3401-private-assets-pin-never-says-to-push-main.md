@@ -1,5 +1,5 @@
 ---
-id: "2599"
+id: "3401"
 title: "`private-assets --pin` never tells you to push the private repository's main"
 type: bug
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2599 — `private-assets --pin` never tells you to push the private repository's main
+# 3401 — `private-assets --pin` never tells you to push the private repository's main
 
 ## Context
 

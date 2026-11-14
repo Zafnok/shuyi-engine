@@ -164,10 +164,10 @@ None.
   commit, so its CI reads files before the private pull request merges,
   is left out, as the ticket's scope has it: while the private pull
   request is open the game's CI reads the old pin.
-- **Follow-up:** 2599. `--pin`'s refusal on a commit that isn't on the
+- **Follow-up:** 3401. `--pin`'s refusal on a commit that isn't on the
   private `main` says to `git push origin HEAD:main`, what the skill
   forbids; changing it is out of this ticket (no change to
-  `private-assets`), so the skill warns about it, and 2599 changes the
+  `private-assets`), so the skill warns about it, and 3401 changes the
   message and drops the warning.
 
 No break. No public API changed.
