@@ -964,7 +964,7 @@ jobs:
       - run: rustup target add wasm32-wasip1
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # The run-gates skill names this version for a local run.
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
@@ -1122,7 +1122,7 @@ jobs:
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
@@ -1228,7 +1228,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: cargo-machete
       - run: cargo machete
@@ -1253,7 +1253,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage report
@@ -1322,7 +1322,7 @@ jobs:
       # characters to every path, and libgit2 stops at 260 (ticket 2071).
       - name: Check no tracked path is too long
         run: cargo xtask check-paths
-      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+      - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with:
           tool: typos
       - name: Check spelling
