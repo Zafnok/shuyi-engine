@@ -18,7 +18,7 @@
 //! and each file's path, kinds, offset and sizes) and each file's bytes,
 //! compressed with LZ4 when that makes them smaller.
 //!
-//! The index lists the files in path order, and [`write`] lays their bytes
+//! The index lists the files in path order, and [`write()`] lays their bytes
 //! in that order with nothing between them. A reader takes them in any
 //! order and with bytes between them, so long as no two overlap and the
 //! last ends the pack: a closed build's copy is laid out by its recipient's
@@ -491,7 +491,7 @@ impl RawFile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackMark {
     /// No mark: its files are in path order with nothing between them, as
-    /// [`write`] lays them (a public build's pack).
+    /// [`write()`] lays them (a public build's pack).
     None,
     /// A recipient's code, held twice between its files, and whether the
     /// order of its files is the one the code gives (a second sign).
@@ -658,7 +658,7 @@ impl Raw {
     }
 
     /// The pack's bytes, its files in path order with nothing between them,
-    /// as [`write`] lays them.
+    /// as [`write()`] lays them.
     pub fn write(&self) -> Vec<u8> {
         let order: Vec<usize> = (0..self.files.len()).collect();
         assemble(&self.info, &self.files, &order, &[])

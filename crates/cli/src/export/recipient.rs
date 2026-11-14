@@ -340,6 +340,52 @@ fn mark_pack(file: &Path, picture: &str, code: Code) -> Result<(), ExportError> 
         .map_err(|e| ExportError::Build(format!("write {}: {e}", file.display())))
 }
 
+/// Marks the copy in `copy` of the package `report` names, which `cx`
+/// exported with `exporter`: its folder copied, its program, picture and
+/// pack marked with `code`, packaged again, held to `part`, and its report
+/// written. The copy's report, and how many program fields it marked.
+fn mark_copy(
+    cx: &ExportCx,
+    copy: &ExportCx,
+    exporter: &dyn Exporter,
+    part: Option<&Disclosure>,
+    report: &ExportReport,
+    picture: &str,
+    code: Code,
+) -> Result<(ExportReport, usize), (crate::contract::codes::Code, String)> {
+    let failed = |e: ExportError| (e.code(), e.message());
+    let folder = copy.out.join(&report.folder);
+    crate::web::copy_tree(&cx.out.join(&report.folder), &folder, &|_| true)
+        .map_err(|e| failed(ExportError::Build(e)))?;
+    let program = report
+        .sizes
+        .get(1)
+        .map(|size| copy.out.join(&size.file))
+        .ok_or_else(|| failed(ExportError::Build("the report names no program".to_owned())))?;
+    let fields = mark_program(&program, code).map_err(failed)?;
+    let pack_file = report
+        .pack
+        .as_ref()
+        .map(|pack| copy.out.join(&pack.file))
+        .ok_or_else(|| failed(ExportError::Build("the report names no pack".to_owned())))?;
+    mark_pack(&pack_file, picture, code).map_err(failed)?;
+    exporter.repackage(copy, report).map_err(failed)?;
+    let copy_report = copy_report(copy, report).map_err(failed)?;
+    let mut shipped: Shipped = exporter.shipped(copy, &copy_report);
+    // The web build's folder is the public package's, not the copy's.
+    shipped.public.clear();
+    disclosure::gate(copy, exporter, part, &shipped)?;
+    let json = serde_json::to_string_pretty(&copy_report).unwrap_or_default();
+    let written = copy.out.join(crate::contract::export::REPORT);
+    fs::write(&written, format!("{json}\n")).map_err(|e| {
+        failed(ExportError::Build(format!(
+            "write {}: {e}",
+            written.display()
+        )))
+    })?;
+    Ok((copy_report, fields))
+}
+
 /// Makes `asked.recipient`'s copy of the package `report` names, which `cx`
 /// exported with `exporter`: copied, marked, packaged again, held to
 /// `part`, and written in the ledger.
@@ -377,36 +423,16 @@ pub fn overlay(
     let build = digest(&cx.out.join(&report.package)).map_err(failed)?;
     let code = draw(&asked.key, &asked.recipient, &build, ledger.as_ref()).map_err(failed)?;
     let copy = copy_cx(cx, &asked.recipient).map_err(failed)?;
-    let folder = copy.out.join(&report.folder);
-    crate::web::copy_tree(&cx.out.join(&report.folder), &folder, &|_| true)
-        .map_err(|e| failed(ExportError::Build(e)))?;
-    let program = report
-        .sizes
-        .get(1)
-        .map(|size| copy.out.join(&size.file))
-        .ok_or_else(|| failed(ExportError::Build("the report names no program".to_owned())))?;
-    let fields = mark_program(&program, code).map_err(failed)?;
-    let pack_file = report
-        .pack
-        .as_ref()
-        .map(|pack| copy.out.join(&pack.file))
-        .ok_or_else(|| failed(ExportError::Build("the report names no pack".to_owned())))?;
-    mark_pack(&pack_file, &picture, code).map_err(failed)?;
-    exporter.repackage(&copy, report).map_err(failed)?;
-    let copy_report = copy_report(&copy, report).map_err(failed)?;
-    let mut shipped: Shipped = exporter.shipped(&copy, &copy_report);
-    // The web build's folder is the public package's, not the copy's.
-    shipped.public.clear();
-    disclosure::gate(&copy, exporter, part, &shipped)?;
-    let overlay = digest(&copy.out.join(&copy_report.package)).map_err(failed)?;
-    let json = serde_json::to_string_pretty(&copy_report).unwrap_or_default();
-    let written = copy.out.join(crate::contract::export::REPORT);
-    fs::write(&written, format!("{json}\n")).map_err(|e| {
-        failed(ExportError::Build(format!(
-            "write {}: {e}",
-            written.display()
-        )))
-    })?;
+    // A copy that isn't whole, or isn't in the ledger, isn't left behind.
+    let remove = |error| {
+        let _ = fs::remove_dir_all(&copy.out);
+        error
+    };
+    let (copy_report, fields) =
+        mark_copy(cx, &copy, exporter, part, report, &picture, code).map_err(remove)?;
+    let overlay = digest(&copy.out.join(&copy_report.package))
+        .map_err(failed)
+        .map_err(remove)?;
     let entry = ledger::Entry {
         recipient: asked.recipient.clone(),
         label: asked.label.clone(),
@@ -430,7 +456,9 @@ pub fn overlay(
     if !kept.entries.iter().any(same) {
         kept.entries.push(entry);
     }
-    ledger::save(&ledger_path, &kept, &asked.key).map_err(failed)?;
+    ledger::save(&ledger_path, &kept, &asked.key)
+        .map_err(failed)
+        .map_err(remove)?;
     let program_mark = if fields > 1 {
         format!("program: its {fields} fields (one in each slice)")
     } else {
