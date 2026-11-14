@@ -1,0 +1,33 @@
+#!/bin/sh
+# Compresses a new worktree's `target/` with NTFS (LZNT1) on Windows
+# (ticket 2075). Set on the folder, the attribute is inherited by every file
+# cargo, rustc and the linker write there, rebuilt ones too: a `target/`
+# takes about half the disk, at no measured cost in build time.
+#
+# Git runs it after a checkout with `<old HEAD> <new HEAD> <branch flag>`;
+# on `git worktree add` and a clone the old HEAD is all zeros, so a branch
+# switch does nothing. Off Windows it does nothing. It never fails the
+# checkout. `cargo xtask gates` compresses a `target/` made without it.
+#
+# Set it up once per clone, from the repository's root:
+#
+#   git config core.hooksPath scripts/git-hooks
+
+case "${1:-}" in
+  *[!0]* | "") exit 0 ;;
+esac
+case "${#1}" in
+  40 | 64) ;;
+  *) exit 0 ;;
+esac
+case "$(uname -s 2>/dev/null)" in
+  MINGW* | MSYS*) ;;
+  *) exit 0 ;;
+esac
+
+# Git Bash rewrites a `/`-prefixed argument into a path: keep `compact`'s
+# switches as they are. `/s:target` marks the folder and every subfolder;
+# `/s /i target` does not.
+mkdir -p target 2>/dev/null &&
+  MSYS2_ARG_CONV_EXCL='*' compact.exe /c /s:target /i /q >/dev/null 2>&1
+exit 0

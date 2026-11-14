@@ -55,8 +55,22 @@ them without asking questions.
    - A new public type follows ADR-0039 (2013): one that may grow is
      `#[non_exhaustive]` with a constructor, and a new field on such a
      type is additive. Say which in the Scope.
-5. **Keep it small:** one PR's worth, about 1,500 changed lines or fewer
-   excluding fixtures and snapshots. Split otherwise.
+5. **Keep it small:** one PR's worth, about 1,500 counted lines or fewer,
+   as `cargo xtask pr-size` counts them (code, tests, docs and
+   hand-written data; snapshots, golden tables, schemas, lock files,
+   generated files and tickets left out). Split otherwise. A ticket that
+   would have parts each able to stand alone is several tickets.
+   - **Estimate it.** A `feature` or `infra` ticket of effort `high` or
+     above has, in its Scope, a line
+     `**Estimated size:** about 800 lines (code 400, tests 300, docs 100).`
+     Count from the steps, then double it: estimates have run 2–2.5×
+     short. The ticket lint fails such an open ticket without one.
+   - **Name the split.** Past 1,000 estimated lines, add the size valve
+     under it: `**Split:** past 900 lines, split off steps 6–8 (the
+     cache) into a new ticket.` A number of lines and what goes. The
+     lint fails a large estimate without one. Why: in the retro of
+     2026-11-08, every ticket that wrote a valve split exactly there and
+     merged within hours; those without one ran to 3,000 lines.
 6. **Check the dependency chain** (below).
 7. **Check the claims against the code** (below).
 

@@ -1,5 +1,56 @@
 {
   "env": {
     "MCP_TIMEOUT": "300000"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "Bash(git commit*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          },
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "Bash(git push*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          },
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "Bash(gh pr create*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          },
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "PowerShell(git commit*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          },
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "PowerShell(git push*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          },
+          {
+            "command": "cargo xtask pr-size --hook",
+            "if": "PowerShell(gh pr create*)",
+            "statusMessage": "Measuring the PR's size",
+            "timeout": 180,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|PowerShell"
+      }
+    ]
   }
 }

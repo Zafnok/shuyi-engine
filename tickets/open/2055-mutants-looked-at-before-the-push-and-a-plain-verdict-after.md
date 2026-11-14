@@ -59,6 +59,10 @@ None.
   or read the shards' conclusions).
 - The aggregator writes each MISSED mutant (file, line, replacement) to
   the job summary and as an annotation on the diff.
+- **From 2053 (done):** the summary also gives the PR's counted lines
+  (`cargo xtask pr-size --base HEAD^1`, the first line of its report),
+  so how missed mutants follow a PR's size can be read from the runs.
+  2053 measures; counting mutants against size is this ticket's.
 - An ADR, or a line in an existing one, saying whether `site/snippets`
   stays under the diff mutants gate.
 

@@ -236,6 +236,9 @@ pub fn export(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
     let (json, args) = split_json(args);
     match export::parse_args(&args) {
         Ok(input) if input.plan => print(json, &export::plan(project, &input), export::plan_text),
+        Ok(input) if input.detect_recipient.is_some() => {
+            print(json, &export::detect(project, &input), export::detect_text)
+        }
         Ok(input) => print(json, &export::export(project, &input, game), export::text),
         Err(e) => wrong(
             json,
@@ -329,6 +332,9 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         "export" => match export::parse_args(&args) {
             Ok(input) if input.plan => {
                 print(json, &export::plan(project, &input), export::plan_text)
+            }
+            Ok(input) if input.detect_recipient.is_some() => {
+                print(json, &export::detect(project, &input), export::detect_text)
             }
             Ok(input) => print(
                 json,

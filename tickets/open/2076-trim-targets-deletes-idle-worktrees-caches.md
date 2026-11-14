@@ -46,6 +46,13 @@ A study on 2026-11-13 measured:
 Related: 2074 (the one-off gate builds keep no incremental cache) and
 2075 (compression). This ticket writes the ADR covering all three.
 
+**From 2075 (done):** the ADR records compression as built there:
+`scripts/git-hooks/post-checkout` marks a new worktree's `target/`
+(Windows only, never failing the checkout), and a full `cargo xtask
+gates` run compresses one that lacks the attribute (`--fast` and
+`--list` skip it, not on CI). 2075's completion notes hold the measured
+ratio.
+
 ## Nick input
 
 None.

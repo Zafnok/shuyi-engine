@@ -86,7 +86,7 @@ engine's volume slider like the music's and the sound's.
 Breaking: shuyi-ui: Ctx::voices_on: gone; read and set `Settings::voices`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Whether voices play is a player setting, saved with the others.
 old: Ctx::voices_on
 new: Settings::voices
@@ -100,7 +100,7 @@ find: ["voices_on"]
 Breaking: shuyi-ui: Ctx::voice_volume, Ctx::voice_gain, MAX_VOICE_VOLUME, DEFAULT_VOICE_VOLUME: gone; the voice volume is `Settings::voice_volume`, 0 to `MAX_VOLUME`, and `Settings::voice_factor` its 0–1 factor.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The voice volume is a player setting from 0 to 100, like the music's.
 old: Ctx::voice_volume (0–10), Ctx::voice_gain
 new: Settings::voice_volume (0–100), Settings::voice_factor
@@ -116,7 +116,7 @@ find: ["voice_gain", "DEFAULT_VOICE_VOLUME"]
 Breaking: shuyi-ui: settings::Settings: two new fields, `voices` and `voice_volume`; code that builds one field by field adds them or ends with `..Settings::default()`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Settings has the voices' two fields.
 old: Settings { text_speed, fullscreen, theme, music_volume, sound_volume, frame_cap, game, .. }
 new: Settings { .., voices, voice_volume }

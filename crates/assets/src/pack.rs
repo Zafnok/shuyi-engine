@@ -18,6 +18,13 @@
 //! and each file's path, kinds, offset and sizes) and each file's bytes,
 //! compressed with LZ4 when that makes them smaller.
 //!
+//! The index lists the files in path order, and [`write()`] lays their bytes
+//! in that order with nothing between them. A reader takes them in any
+//! order and with bytes between them, so long as no two overlap and the
+//! last ends the pack: a closed build's copy is laid out by its recipient's
+//! code ([`Raw::write_marked`], ADR-0118), and [`Raw::mark`] reads the code
+//! back. What the game reads is the same either way.
+//!
 //! A pack stands for its sources: its layer ([`Pack::into_layer`]) gives a
 //! bundle the fingerprint of the bundle it was baked from
 //! ([`Bundle::fingerprint`](crate::bundle::Bundle::fingerprint)), so a
@@ -52,6 +59,7 @@ use crate::bundle::Layer;
 use crate::error::ContentError;
 use crate::fnv::Hasher;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format};
+use crate::recipient::{CODE_BYTES, Code, Stream};
 
 mod bake;
 
@@ -66,8 +74,9 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// The version of the pack format this engine reads and writes: the
 /// header, the index, and the binary form of the engine's own kinds. A
 /// change to any of them makes it the next number, and a pack of another
-/// version is refused, never migrated.
-pub const VERSION: u32 = 14;
+/// version is refused, never migrated. Version 15 reads files' bytes in any
+/// order and with bytes between them (a recipient's layout, ADR-0118).
+pub const VERSION: u32 = 15;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";
@@ -253,32 +262,51 @@ fn sections(bytes: &[u8]) -> Option<Vec<(&str, &[u8])>> {
 /// A pack of `files` (path → content), described by `info`. Each file's
 /// bytes are compressed when that makes them smaller.
 pub fn write(info: &PackInfo, files: &BTreeMap<String, Content>) -> Vec<u8> {
-    let mut entries = Vec::with_capacity(files.len());
-    let mut data = Vec::new();
-    for (path, content) in files {
-        let (kinds, bytes) = match content {
-            Content::Raw(bytes) => (Vec::new(), Cow::Borrowed(bytes.as_slice())),
-            Content::Baked(sections) => (
+    let files = files
+        .iter()
+        .map(|(path, content)| match content {
+            Content::Raw(bytes) => RawFile::kept(path.clone(), Vec::new(), bytes),
+            Content::Baked(sections) => RawFile::kept(
+                path.clone(),
                 sections.keys().map(|&kind| kind.to_owned()).collect(),
-                Cow::Owned(baked_file(sections)),
+                &baked_file(sections),
             ),
-        };
-        let packed = lz4_flex::block::compress(&bytes);
-        let (codec, kept) = if packed.len() < bytes.len() {
-            (Codec::Lz4, packed.as_slice())
-        } else {
-            (Codec::Stored, &*bytes)
-        };
-        entries.push(Entry {
-            path: path.clone(),
-            kinds,
-            codec,
-            offset: data.len() as u64,
-            stored: kept.len() as u64,
-            size: bytes.len() as u64,
-        });
-        data.extend_from_slice(kept);
+        })
+        .collect();
+    Raw {
+        info: info.clone(),
+        files,
+        order: Vec::new(),
+        gaps: Vec::new(),
     }
+    .write()
+}
+
+/// The pack of `info` and `files` (in path order), their bytes laid in the
+/// order `order` gives (each a place in `files`), each after the bytes of
+/// the same place in `gaps`.
+fn assemble(info: &PackInfo, files: &[RawFile], order: &[usize], gaps: &[Vec<u8>]) -> Vec<u8> {
+    let mut offsets = vec![0u64; files.len()];
+    let mut data = Vec::new();
+    for (place, &at) in order.iter().enumerate() {
+        if let Some(gap) = gaps.get(place) {
+            data.extend_from_slice(gap);
+        }
+        offsets[at] = data.len() as u64;
+        data.extend_from_slice(&files[at].kept);
+    }
+    let entries = files
+        .iter()
+        .zip(offsets)
+        .map(|(file, offset)| Entry {
+            path: file.path.clone(),
+            kinds: file.kinds.clone(),
+            codec: file.codec,
+            offset,
+            stored: file.kept.len() as u64,
+            size: file.size,
+        })
+        .collect();
     let index = Index {
         info: info.clone(),
         entries,
@@ -331,8 +359,10 @@ pub fn length(bytes: &[u8]) -> Result<usize, PackError> {
         postcard::from_bytes(&body[..length]).map_err(|_| broken("its index doesn't read"))?;
     let data = index
         .entries
-        .last()
-        .map_or(0, |entry| entry.offset.saturating_add(entry.stored));
+        .iter()
+        .map(|entry| entry.offset.saturating_add(entry.stored))
+        .max()
+        .unwrap_or(0);
     usize::try_from(data)
         .ok()
         .and_then(|data| (HEADER + length).checked_add(data))
@@ -353,21 +383,10 @@ fn index(bytes: &[u8]) -> Result<(Index, &[u8]), PackError> {
     Ok((index, data))
 }
 
-/// The bytes of `entry` in `data`, unpacked, after the files before it
-/// (`end` bytes of `data`) and `unpacked` bytes unpacked so far.
-fn unpack<'a>(
-    entry: &Entry,
-    data: &'a [u8],
-    end: u64,
-    unpacked: u64,
-) -> Result<Cow<'a, [u8]>, PackError> {
+/// The bytes of `entry` in `data`, unpacked, after `unpacked` bytes
+/// unpacked so far.
+fn unpack<'a>(entry: &Entry, data: &'a [u8], unpacked: u64) -> Result<Cow<'a, [u8]>, PackError> {
     let path = &entry.path;
-    if entry.offset != end {
-        return Err(broken(format!(
-            "{path} starts at {} and the file before it ends at {end}",
-            entry.offset
-        )));
-    }
     if unpacked.saturating_add(entry.size) > MAX_UNPACKED_BYTES {
         return Err(broken(format!(
             "its files add up to more than {MAX_UNPACKED_BYTES} bytes"
@@ -400,6 +419,298 @@ pub fn info(bytes: &[u8]) -> Result<PackInfo, PackError> {
     index(bytes).map(|(index, _)| index.info)
 }
 
+/// The order `entries` lay their bytes in `data_len` bytes of data (each a
+/// place in `entries`), once they hold together: in path order, none going
+/// past the end, none overlapping another, and the last ending the data.
+fn layout(entries: &[Entry], data_len: usize) -> Result<Vec<usize>, PackError> {
+    let mut spans = Vec::with_capacity(entries.len());
+    for (at, entry) in entries.iter().enumerate() {
+        if at > 0 && entries[at - 1].path >= entry.path {
+            return Err(broken(format!("{} is out of path order", entry.path)));
+        }
+        let span = usize::try_from(entry.offset)
+            .ok()
+            .zip(usize::try_from(entry.offset.saturating_add(entry.stored)).ok())
+            .filter(|&(_, end)| end <= data_len)
+            .ok_or_else(|| broken(format!("{} goes past the end of the pack", entry.path)))?;
+        spans.push((span, at));
+    }
+    spans.sort_unstable();
+    let mut end = 0;
+    for pair in spans.windows(2) {
+        let (((_, first_end), first), ((second_start, _), second)) = (pair[0], pair[1]);
+        if second_start < first_end {
+            return Err(broken(format!(
+                "{} overlaps {}",
+                entries[second].path, entries[first].path
+            )));
+        }
+    }
+    for &((_, span_end), _) in &spans {
+        end = end.max(span_end);
+    }
+    if end != data_len {
+        return Err(broken("bytes follow its last file"));
+    }
+    Ok(spans.into_iter().map(|(_, at)| at).collect())
+}
+
+/// One file of a [`Raw`] pack, as the pack keeps it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RawFile {
+    path: String,
+    kinds: Vec<String>,
+    codec: Codec,
+    /// Its bytes unpacked.
+    size: u64,
+    /// Its bytes as kept.
+    kept: Vec<u8>,
+}
+
+impl RawFile {
+    /// The file at `path` of `kinds` whose bytes are `bytes`, compressed when
+    /// that makes them smaller.
+    fn kept(path: String, kinds: Vec<String>, bytes: &[u8]) -> Self {
+        let packed = lz4_flex::block::compress(bytes);
+        let (codec, kept) = if packed.len() < bytes.len() {
+            (Codec::Lz4, packed)
+        } else {
+            (Codec::Stored, bytes.to_vec())
+        };
+        Self {
+            path,
+            kinds,
+            codec,
+            size: bytes.len() as u64,
+            kept,
+        }
+    }
+}
+
+/// What a pack's layout holds ([`Raw::mark`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackMark {
+    /// No mark: its files are in path order with nothing between them, as
+    /// [`write()`] lays them (a public build's pack).
+    None,
+    /// A recipient's code, held twice between its files, and whether the
+    /// order of its files is the one the code gives (a second sign).
+    Code {
+        /// The code.
+        code: Code,
+        /// Whether its files are in the order the code gives.
+        order_agrees: bool,
+    },
+    /// Bytes between its files, or an order, that hold no code.
+    Broken,
+}
+
+/// The bytes a code lays between a pack's files: the code twice.
+const GAP_BYTES: usize = 2 * CODE_BYTES;
+
+/// The seed of the stream the bytes between files are kept under.
+const GAP_SEED: u64 = 0x5348_5559_4741_5053;
+
+/// The seed a code's order of files is drawn from, with the code's bits.
+const ORDER_SEED: u64 = 0x5348_5559_4f52_4452;
+
+/// The order `code` lays `count` files in: each data place's file.
+fn order_of(code: Code, count: usize) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..count).collect();
+    let mut stream = Stream::new(ORDER_SEED ^ u64::from(code.bits()));
+    for at in (1..count).rev() {
+        order.swap(at, stream.below(at + 1));
+    }
+    order
+}
+
+/// The stream the bytes between `count` files are kept under.
+fn gap_key(count: usize) -> [u8; GAP_BYTES] {
+    let mut stream = Stream::new(GAP_SEED ^ count as u64);
+    let mut key = [0u8; GAP_BYTES];
+    for byte in &mut key {
+        *byte = stream.next().to_le_bytes()[0];
+    }
+    key
+}
+
+/// The bytes `code` lays between `count` files, before each data place.
+fn gaps_of(code: Code, count: usize) -> Vec<Vec<u8>> {
+    let bytes = code.to_bytes();
+    let key = gap_key(count);
+    let all: Vec<u8> = bytes
+        .iter()
+        .chain(&bytes)
+        .zip(key)
+        .map(|(byte, key)| byte ^ key)
+        .collect();
+    let each = GAP_BYTES.div_ceil(count.max(1));
+    let mut gaps: Vec<Vec<u8>> = all.chunks(each).map(<[u8]>::to_vec).collect();
+    gaps.resize(count, Vec::new());
+    gaps
+}
+
+/// A pack read as it keeps its files, without its stamp: what a tool that
+/// changes a pack after it was baked works on. A closed build's overlay
+/// replaces its picture and lays it out by a recipient's code (ADR-0118);
+/// the detector reads the code back.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Raw {
+    info: PackInfo,
+    /// Its files in path order.
+    files: Vec<RawFile>,
+    /// Each data place's file, as read; empty for a pack made here.
+    order: Vec<usize>,
+    /// The bytes before each data place, as read.
+    gaps: Vec<Vec<u8>>,
+}
+
+impl Raw {
+    /// The pack `bytes`, if it is of this engine's [`VERSION`] and holds
+    /// together as [`Pack::open`] says, whatever its stamp.
+    pub fn read(bytes: &[u8]) -> Result<Self, PackError> {
+        let (index, data) = index(bytes)?;
+        if index.entries.len() > MAX_FILES {
+            return Err(broken(format!("it has more than {MAX_FILES} files")));
+        }
+        let order = layout(&index.entries, data.len())?;
+        let mut unpacked = 0;
+        for entry in &index.entries {
+            let bytes = unpack(entry, data, unpacked)?;
+            if !entry.kinds.is_empty() && sections(&bytes).is_none() {
+                return Err(broken(format!("{} isn't a whole baked file", entry.path)));
+            }
+            unpacked = unpacked.saturating_add(entry.size);
+        }
+        let span = |entry: &Entry| {
+            // `layout` checked every span is in the data.
+            let start = usize::try_from(entry.offset).unwrap_or(0);
+            let end = usize::try_from(entry.offset.saturating_add(entry.stored)).unwrap_or(0);
+            (start, end)
+        };
+        let mut gaps = Vec::with_capacity(order.len());
+        let mut end = 0;
+        for &at in &order {
+            let (start, stop) = span(&index.entries[at]);
+            gaps.push(data[end..start].to_vec());
+            end = stop;
+        }
+        let files = index
+            .entries
+            .iter()
+            .map(|entry| {
+                let (start, end) = span(entry);
+                RawFile {
+                    path: entry.path.clone(),
+                    kinds: entry.kinds.clone(),
+                    codec: entry.codec,
+                    size: entry.size,
+                    kept: data[start..end].to_vec(),
+                }
+            })
+            .collect();
+        Ok(Self {
+            info: index.info,
+            files,
+            order,
+            gaps,
+        })
+    }
+
+    /// What the pack says of itself.
+    pub fn info(&self) -> &PackInfo {
+        &self.info
+    }
+
+    /// Its files' paths, in path order.
+    pub fn paths(&self) -> impl Iterator<Item = &str> {
+        self.files.iter().map(|file| file.path.as_str())
+    }
+
+    /// The bytes of the file at `path`, unpacked, if the pack has it and it
+    /// is kept as its own bytes (not baked).
+    pub fn file(&self, path: &str) -> Option<Vec<u8>> {
+        let file = self
+            .files
+            .iter()
+            .find(|file| file.path == path && file.kinds.is_empty())?;
+        match file.codec {
+            Codec::Stored => Some(file.kept.clone()),
+            Codec::Lz4 => {
+                let size = usize::try_from(file.size).ok()?;
+                lz4_flex::block::decompress(&file.kept, size).ok()
+            }
+        }
+    }
+
+    /// Puts `bytes` in place of the file at `path`, kept as its own bytes:
+    /// whether the pack has such a file.
+    pub fn replace(&mut self, path: &str, bytes: &[u8]) -> bool {
+        let Some(file) = self
+            .files
+            .iter_mut()
+            .find(|file| file.path == path && file.kinds.is_empty())
+        else {
+            return false;
+        };
+        *file = RawFile::kept(path.to_owned(), Vec::new(), bytes);
+        true
+    }
+
+    /// The pack's bytes, its files in path order with nothing between them,
+    /// as [`write()`] lays them.
+    pub fn write(&self) -> Vec<u8> {
+        let order: Vec<usize> = (0..self.files.len()).collect();
+        assemble(&self.info, &self.files, &order, &[])
+    }
+
+    /// The pack's bytes laid out by `code`: its files in the order the code
+    /// gives, and the code twice in bytes between the first of them. The
+    /// index is the same but for its offsets, and the game reads the same
+    /// files. None for a pack with no file.
+    pub fn write_marked(&self, code: Code) -> Option<Vec<u8>> {
+        let count = self.files.len();
+        if count == 0 {
+            return None;
+        }
+        let order = order_of(code, count);
+        let gaps = gaps_of(code, count);
+        Some(assemble(&self.info, &self.files, &order, &gaps))
+    }
+
+    /// What its layout holds: no mark, a code, or bytes that hold none.
+    pub fn mark(&self) -> PackMark {
+        let count = self.files.len();
+        let between: Vec<u8> = self.gaps.iter().flatten().copied().collect();
+        let in_order = self.order.iter().enumerate().all(|(at, &file)| at == file);
+        if between.is_empty() {
+            return if in_order {
+                PackMark::None
+            } else {
+                PackMark::Broken
+            };
+        }
+        if between.len() != GAP_BYTES {
+            return PackMark::Broken;
+        }
+        let meant: Vec<u8> = between
+            .iter()
+            .zip(gap_key(count))
+            .map(|(byte, key)| byte ^ key)
+            .collect();
+        let (first, second) = meant.split_at(CODE_BYTES);
+        let mut bytes = [0u8; CODE_BYTES];
+        bytes.copy_from_slice(first);
+        match Code::from_bytes(bytes) {
+            Some(code) if first == second => PackMark::Code {
+                code,
+                order_agrees: self.order == order_of(code, count),
+            },
+            _ => PackMark::Broken,
+        }
+    }
+}
+
 impl<'a> Pack<'a> {
     /// The pack `bytes`, every file unpacked, if it is of this engine's
     /// [`VERSION`], was baked with `stamp`, and holds together.
@@ -414,17 +725,14 @@ impl<'a> Pack<'a> {
         if index.entries.len() > MAX_FILES {
             return Err(broken(format!("it has more than {MAX_FILES} files")));
         }
+        layout(&index.entries, data.len())?;
         let mut files: Vec<PackFile<'a>> = Vec::with_capacity(index.entries.len());
-        let (mut end, mut unpacked) = (0, 0);
+        let mut unpacked = 0;
         for entry in index.entries {
-            if files.last().is_some_and(|last| last.path >= entry.path) {
-                return Err(broken(format!("{} is out of path order", entry.path)));
-            }
-            let bytes = unpack(&entry, data, end, unpacked)?;
+            let bytes = unpack(&entry, data, unpacked)?;
             if !entry.kinds.is_empty() && sections(&bytes).is_none() {
                 return Err(broken(format!("{} isn't a whole baked file", entry.path)));
             }
-            end = entry.offset.saturating_add(entry.stored);
             unpacked = unpacked.saturating_add(entry.size);
             files.push(PackFile {
                 path: entry.path,
@@ -432,9 +740,6 @@ impl<'a> Pack<'a> {
                 stored: usize::try_from(entry.stored).unwrap_or(usize::MAX),
                 bytes,
             });
-        }
-        if usize::try_from(end).ok() != Some(data.len()) {
-            return Err(broken("bytes follow its last file"));
         }
         Ok(Self {
             info: index.info,

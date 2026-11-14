@@ -290,10 +290,18 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+Shipping it packed or hidden doesn't change that. Whatever the game decodes, draws, plays or simulates
+on the player's machine can be taken from that machine as it runs, by tools anyone can download, and
+no setting of the engine changes that
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#5-runtime-extraction-on-desktop-defeats-any-at-rest-protection)).
+
 ## A public demo
 
 A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
-a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+a published copy of every file and rule it was built with: anyone can open it, and every file is a
+download its page already makes
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#4-the-web-build-is-the-cheapest-extraction-surface)).
+So a demo is built from
 less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
 builds it, on any target.
 
@@ -410,10 +418,24 @@ opens it from System Settings, Privacy & Security, as its `HOW-TO-OPEN.txt` says
 repository each file is attested, and `gh attestation verify <file> --repo <owner>/<repo>` says
 your repository's release built it.
 
+To let a few people play before the game is public, the stores' own tools are a controlled preview at
+no cost: a Steam Playtest with limited signup, or release override keys and a password-protected beta
+branch, or an itch.io page set to Restricted with download keys. What they don't give: an NDA, a key
+you can take back from one person alone, or a way to tell who leaked a copy
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#8-what-steam-and-itchio-already-give-for-free)).
+For the last, [*Closed builds*](#closed-builds) below marks each person's copy: a deterrent, not
+proof.
+
 ## Before the reveal
 
 The day you first show the game in public, its idea can be copied from the footage alone: a
-clone needs no build of yours. Nothing stops that. What helps later is evidence: which pictures
+clone needs no build of yours. Nothing stops that. Once a build is out, agents now port whole games from shipped
+programs as a matter of routine, so assume someone can rebuild yours from its files
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#6-attacker-capability-has-moved-whole-game-ports-are-routine)).
+Tools that add noise to pictures to spoil an AI's copy of a style are unproven on small sprites with
+few colors, so don't count on them for pixel art
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#10-art-style-cloning-and-asset-side-protection)).
+What helps later is evidence: which pictures
 and clips are yours, which build made them, which store page is the real one, and when each
 existed. The **reveal kit** keeps that, made before the first trailer or screenshot goes out.
 
@@ -462,6 +484,71 @@ which the next kit records. Anyone can see the fingerprint and learn nothing fro
 file and its salt open it (`cargo shuyi reveal open <file>`), and a file changed by one byte
 doesn't. Keep the salts file private and backed up, out of any public repository: without it,
 nothing opens.
+
+## Closed builds
+
+**What this can't do, first.** A mark in a copy is circumstantial evidence, never proof. It says
+which copy leaked, not who leaked it: a copy can be stolen, or passed on. Two recipients who
+compare their copies find every mark and can remove them all, and changing a copy removes some of
+them. It deters a casual leak. It doesn't stop a determined one
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#7-fingerprinting-the-build-artifact-to-trace-a-leak)).
+
+A press, playtest or publisher build is a **closed build**: a copy you give one person before the
+public has the game. Make each recipient's copy from your release build, which needs the reveal
+kit (`dist/reveal`, above) and an SSH key of yours kept outside the repository:
+
+```bash
+cargo shuyi export windows --release --recipient press-jane --label "Jane, Example Magazine" --signing-key ~/.ssh/id_ed25519
+```
+
+The export makes the ordinary package first, the same one a release publishes. Then it copies it
+into `dist/recipients/press-jane/windows/` and writes the recipient's **code** (8 characters, such
+as `7K2Q9MXA`) into three places, each holding the whole code:
+
+- the program, which reserves a field for it: `shuyi::app::recipient()` gives the code in a copy
+  and `None` in the public build, for a faint line your game may draw in a corner;
+- the pack beside the program, in the order of its files and the bytes between them;
+- the lowest bits of one picture, which `shuyi.ron`'s `export` part names, never the player's text.
+  Each of its colors changes by at most 3 in 255, and it keeps exactly as many colors:
+
+```ron
+export: (
+    overlay_picture: "tiles.png",
+),
+```
+
+The picture needs at least seven colors. The copy goes through the same disclosure check as the
+public package. Then `dist/recipients.ron`, beside the kit, gets a line: who, under what label,
+when, the code, and the fingerprints of the public package and of the copy. It is signed with your
+key, in `recipients.ron.sig`. The game is the same in every copy: the same rules, the same play,
+the same files but for that picture's lowest bits.
+
+When a copy turns up somewhere, ask what it holds:
+
+```bash
+cargo shuyi export --detect-recipient leaked/game-0.1.0-windows.zip
+```
+
+It reads a package, a folder, a program, a pack or a picture. It says which marks it found, the
+code each holds, and whom your ledger gave that code, and whether the ledger's signature still
+holds. On the public build it says "no mark found". Its answer calls a match circumstantial evidence
+every time.
+
+What each change to a copy leaves, measured on Hello, Grid:
+
+| What was done to the copy | The program | The pack | The picture |
+| ------------------------- | ----------- | -------- | ----------- |
+| nothing | names them | names them | names them |
+| the program's field overwritten or cut out | no mark | names them | names them |
+| the pack repacked | names them | no mark | names them |
+| the picture saved again at a lower quality | names them | no mark | no mark |
+| the picture cropped, every color kept | | | names them |
+| the picture cropped to half its tiles | | | no mark |
+
+Saving the picture again inside the pack means repacking it, which removes the pack's mark too.
+Two copies compared differ in 10 bytes of the program, the order of the pack's files, and one
+picture's lowest bits: every mark. Give each recipient a Steam key of their own as well. It names
+the account that played, which no mark in a file can.
 
 ## When a player's game crashes
 

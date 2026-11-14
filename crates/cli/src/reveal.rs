@@ -31,7 +31,7 @@ mod kit;
 mod text;
 
 pub use commitment::{Salts, open, opens};
-pub use kit::{Build, prepare, verify};
+pub use kit::{Build, prepare, today, verify};
 
 /// The folder of the kit when `shuyi.ron`'s `reveal` part names none.
 pub const DEFAULT_OUT: &str = "dist/reveal";

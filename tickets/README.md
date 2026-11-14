@@ -103,7 +103,7 @@ there, in the PR that breaks:
 
    ````text
    ```migration
-   since: 0.2.0
+   since: <workspace version>
    what: A timer takes its step as a Step, not a number.
    old: Timer::new(u32)
    new: Timer::new(Step)
@@ -117,7 +117,7 @@ there, in the PR that breaks:
 
    | Field | What |
    | ----- | ---- |
-   | `since` | The engine version that first has the change, `X.Y.Z`: the workspace `version` after the PR |
+   | `since` | The engine version that first has the change, `X.Y.Z`: the workspace `version` of the root `Cargo.toml` on the PR's branch. `cargo xtask changelog` fails a ticket the PR moves to `done/` whose `since` is any other value, and names the placeholder `<workspace version>` |
    | `what` | One sentence |
    | `old`, `new` | The old and new path or signature |
    | `before`, `after` | A game's code before and after |
@@ -156,6 +156,20 @@ The branch may be anything: a desktop worktree's `claude/<slug>-<hex>`
 passes when the title names the ticket. A `t<NNNN>-<slug>` branch must
 name the title's ticket. A PR whose title names no ticket on a branch
 that names none fails, but for the kinds in the last row.
+
+CI's `tickets` job also measures every PR with `cargo xtask pr-size`
+(ticket 2053): the lines added plus removed of code, tests, docs and
+hand-written data, with snapshots, golden tables, schemas, lock files,
+generated files and tickets counted apart. Past 1,000 it warns. Past
+1,500 a `[NNNN] …` PR fails unless the ticket's completion notes have a
+line `Size: <the measured number> counted lines, <why it wasn't split>`;
+a ticket-only, bot or Sonar PR is only reported. An open `feature` or
+`infra` ticket of effort `high` or above has an `**Estimated size:**`
+line, and past 1,000 estimated lines a `**Split:**` line (the
+`write-ticket` skill, step 5); the ids in
+[`tools/unestimated-tickets.txt`](../tools/unestimated-tickets.txt) were
+written before the rule and are let off until their session estimates
+them.
 
 Name the branch before the **first push**: renaming it after the PR opens
 closes the PR on GitHub. A retitle is safe, and re-runs CI's ticket

@@ -146,7 +146,9 @@ jobs:
   # then tools/export-check/ci.sh runs check.sh (the package's files, the
   # debug file beside it, what the program loads, and on macOS the
   # signature and both slices) and exports again for the same exposure
-  # report. `windows`, `linux` and `web` on every PR, `macos` on pushes to
+  # report, then recipient.sh makes two recipients' copies (ticket 3302:
+  # the same public package for both, each copy's three marks naming its
+  # recipient, none in the public package). `windows`, `linux` and `web` on every PR, `macos` on pushes to
   # main. Each leg runs export.yml, the byte-equal copy of the file a
   # game's release runs (ticket 3050), so every PR runs it; the matrix is
   # what `export --plan` says of each exporter (`host`, `container`). The
@@ -1337,12 +1339,26 @@ jobs:
       - name: Check the branch's merge commits
         if: env.EVENT_NAME == 'pull_request'
         run: cargo xtask check-merges --base HEAD^1 --head HEAD^2
+      # The PR's counted lines (ticket 2053): past 1,000 a warning, past
+      # 1,500 a failure unless its done ticket's notes have a `Size:` line.
+      # HEAD^1 is the base tip, so the diff is the PR's own.
+      - name: Measure the PR's size
+        if: github.event_name == 'pull_request'
+        run: |
+          title=$(bash scripts/pr-title.sh)
+          cargo xtask pr-size --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
       - name: Check Markdown links
         run: cargo xtask check-links
       # A `migration` block that doesn't parse fails here, not when the
-      # site is built (ticket 2804).
+      # site is built (ticket 2804), and so does one the PR moves to done/
+      # whose `since` is not the workspace version (ticket 2058).
       - name: Check the changelog can be written
-        run: cargo xtask changelog > /dev/null
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            cargo xtask changelog --base HEAD^1 > /dev/null
+          else
+            cargo xtask changelog > /dev/null
+          fi
       - name: Check the actions' pins and the templates' requirements
         run: cargo xtask check-pins
       - name: Check the pinned Rust

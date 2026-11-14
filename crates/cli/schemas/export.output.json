@@ -134,6 +134,17 @@
           "description": "The target profile its check ran with.",
           "type": "string"
         },
+        "recipient": {
+          "description": "With `recipient`, the closed build's copy made for them.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecipientCopy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "signing": {
           "description": "How the package is signed.",
           "$ref": "#/$defs/Signing"
@@ -202,7 +213,7 @@
       ]
     },
     "ExportResult": {
-      "description": "What `export` answers: a package's report, or, with `plan`, the plan.\nOnly its schema is read: [`export`] answers the one and [`plan`] the other.",
+      "description": "What `export` answers: a package's report, with `plan` the plan, or with\n`detect_recipient` the marks found. Only its schema is read: [`export`],\n[`plan`] and [`detect`] each answer one.",
       "anyOf": [
         {
           "description": "What `export` made.",
@@ -211,6 +222,10 @@
         {
           "description": "What `export --plan` plans.",
           "$ref": "#/$defs/ExportPlan"
+        },
+        {
+          "description": "What `export --detect-recipient` found.",
+          "$ref": "#/$defs/RecipientFound"
         }
       ]
     },
@@ -233,6 +248,93 @@
       "required": [
         "file",
         "bytes"
+      ]
+    },
+    "FoundMark": {
+      "description": "One mark the detector read.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "The code it holds, if it holds one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "file": {
+          "description": "The file it is in (in a package, its path there; in a pack, the\npack's and the picture's).",
+          "type": "string"
+        },
+        "mark": {
+          "description": "Which mark.",
+          "$ref": "#/$defs/MarkKind"
+        },
+        "said": {
+          "description": "What was read, in a few words.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "mark",
+        "file",
+        "said"
+      ]
+    },
+    "Given": {
+      "description": "A copy the ledger says was given.",
+      "type": "object",
+      "properties": {
+        "build": {
+          "description": "The SHA-256 of the base package.",
+          "type": "string"
+        },
+        "code": {
+          "description": "Its code.",
+          "type": "string"
+        },
+        "date": {
+          "description": "The day the copy was made.",
+          "type": "string"
+        },
+        "edition": {
+          "description": "Its edition, if one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "description": "Who they are, as the ledger says.",
+          "type": "string"
+        },
+        "overlay": {
+          "description": "The SHA-256 of the copy's package.",
+          "type": "string"
+        },
+        "recipient": {
+          "description": "The recipient's id.",
+          "type": "string"
+        },
+        "target": {
+          "description": "Its target.",
+          "type": "string"
+        },
+        "version": {
+          "description": "The game's version.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "recipient",
+        "label",
+        "date",
+        "code",
+        "target",
+        "version",
+        "build",
+        "overlay"
       ]
     },
     "Host": {
@@ -272,6 +374,26 @@
           "description": "It fits, short of what the target recommends.",
           "type": "string",
           "const": "warning"
+        }
+      ]
+    },
+    "MarkKind": {
+      "description": "Which mark a code was read from.",
+      "oneOf": [
+        {
+          "description": "The program's field.",
+          "type": "string",
+          "const": "program"
+        },
+        {
+          "description": "The pack's layout.",
+          "type": "string",
+          "const": "pack"
+        },
+        {
+          "description": "A picture's lowest bits.",
+          "type": "string",
+          "const": "picture"
         }
       ]
     },
@@ -316,6 +438,125 @@
         "profile",
         "host",
         "ci"
+      ]
+    },
+    "RecipientCopy": {
+      "description": "A recipient's copy of a closed build (`export --recipient`).",
+      "type": "object",
+      "properties": {
+        "build": {
+          "description": "The SHA-256 of the base package, the public one (a folder's: of\n`sha256sum`'s lines for its files).",
+          "type": "string"
+        },
+        "code": {
+          "description": "The code their copy carries: 8 characters of Crockford's base 32.",
+          "type": "string"
+        },
+        "ledger": {
+          "description": "The ledger it was written in, from the game's folder.",
+          "type": "string"
+        },
+        "marks": {
+          "description": "The marks it carries, each in a few words.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "note": {
+          "description": "That a mark is circumstantial evidence, never proof.",
+          "type": "string"
+        },
+        "out": {
+          "description": "The copy's folder, from the game's folder:\n`dist/recipients/<id>/<target>`, with its `export-report.json` and\n`exposure-report.json`.",
+          "type": "string"
+        },
+        "overlay": {
+          "description": "The SHA-256 of the copy's package.",
+          "type": "string"
+        },
+        "package": {
+          "description": "The copy's package, from its folder.",
+          "type": "string"
+        },
+        "recipient": {
+          "description": "The recipient's id.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "recipient",
+        "code",
+        "out",
+        "package",
+        "build",
+        "overlay",
+        "marks",
+        "ledger",
+        "note"
+      ]
+    },
+    "RecipientFound": {
+      "description": "What `export --detect-recipient` found in a file.",
+      "type": "object",
+      "properties": {
+        "codes": {
+          "description": "The codes the marks name, each once.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "file": {
+          "description": "The file read, from the game's folder.",
+          "type": "string"
+        },
+        "ledger": {
+          "description": "The ledger read, from the game's folder, if there is one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "marks": {
+          "description": "Every mark read: each program field, each pack's layout, each\npicture.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FoundMark"
+          }
+        },
+        "note": {
+          "description": "That a mark is circumstantial evidence, never proof.",
+          "type": "string"
+        },
+        "recipients": {
+          "description": "The copies the ledger says carry those codes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Given"
+          }
+        },
+        "signed": {
+          "description": "Whether the ledger's signature verifies against its signer; none when\nit has no signature or there is no ledger.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "verdict": {
+          "description": "What the marks say together: \"no mark found\", or the code they name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "marks",
+        "codes",
+        "recipients",
+        "verdict",
+        "note"
       ]
     },
     "Signing": {

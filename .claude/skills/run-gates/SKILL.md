@@ -42,6 +42,15 @@ and refuses the push when one fails. Set it up once per clone:
 git config core.hooksPath scripts/git-hooks
 ```
 
+The post-checkout hook, `scripts/git-hooks/post-checkout`, runs on
+`git worktree add` (and a clone), on Windows only: it creates `target/`
+and marks it compressed (`compact /c /s:target /i`), so every file a
+build writes there is stored about half its size; a branch switch does
+nothing, and it never fails the checkout. A full `cargo xtask gates` run
+on Windows, not on CI, compresses a `target/` that lacks the attribute
+first, saying so (minutes on a large folder, once); a failure there is a
+warning, not a failed gate. `--fast` and `--list` skip it.
+
 On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
 branch, as CI does: until the ticket is in `tickets/done/`, a push is
 refused. Archive the ticket first (the `work-ticket` skill, §5), or push

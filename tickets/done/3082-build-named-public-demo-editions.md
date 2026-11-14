@@ -147,7 +147,7 @@ Book: `targets-and-export.md`, *A public demo*, and `games-and-screens.md`,
 Breaking: shuyi-cli: export::ExportCx: a new public field, `edition`; a literal of it adds it.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: ExportCx has a new field, the edition it builds.
 old: ExportCx { .. }
 new: ExportCx { edition, .. }
@@ -161,7 +161,7 @@ find: ["ExportCx { wasm_opt, .. }"]
 Breaking: shuyi-cli: contract::export::ExportOutput: a new public field, `edition`; a literal of it adds it.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: ExportOutput, export-report.json, names the edition it built.
 old: ExportOutput { .. }
 new: ExportOutput { edition, .. }
@@ -175,7 +175,7 @@ find: ["ExportOutput { debug, .. }"]
 Breaking: shuyi-cli: export::disclosure::BuildInputs: two new public fields, `edition` and `content_root`; a literal of it adds them.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: BuildInputs, the exposure report's inputs, names the edition and its content root.
 old: BuildInputs { .. }
 new: BuildInputs { edition, content_root, .. }
@@ -189,7 +189,7 @@ find: ["BuildInputs { version, .. }"]
 Breaking: shuyi-cli: web::Options: two new public fields, `no_default_features` and `content`; a literal of it adds them, or ends with `..Options::default()`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The web build's Options can leave the default features off and name a content root.
 old: Options { release, features, require_wasm_opt }
 new: Options { release, features, require_wasm_opt, no_default_features, content }

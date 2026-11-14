@@ -17,14 +17,17 @@ completed:
 
 Research ticket 2917 ([report](../../docs/research/2917-reverse-engineering-angles-not-yet-covered.md),
 section 11) found that detection and response speed is the one lever in
-the public-demo-defenses track with case evidence behind it. In 2026 a
-code-copying clone of *Needle In A Haystack Simulator* was gone from Steam
-about nine days after it appeared, on the developer's copyright notice
-with a file comparison as evidence; Wordle's clones left the App Store in
-about two days. Valve removes a title on a facially valid notice within a
-day and restores it on counter-notice if no suit follows. A daily watch
-can plausibly see a Steam clone within a day. No technical measure the
-track measured bought a comparable delay.
+the public-demo-defenses track with any case evidence behind it.
+**From 2917 (done):** the evidence, confirmed at its sources, is thinner
+than this ticket first said. The *Needle In A Haystack Simulator* removal
+was a clone of a clone, not the original's notice; Wordle's clones left
+the App Store around 11–12 January 2022 under Apple's own rule; Steam
+removed *Allumeria* on a DMCA notice within a day, and the statute
+restores a counter-noticed title after 10 to 14 business days unless a
+suit is filed. No case shows an original developer's notice removing an
+AI clone, so "shortens the clone's life" is an inference. A daily watch
+can plausibly see a Steam clone within a day, and no technical measure
+the track measured bought a comparable delay.
 
 The reveal kit (2816) produces the inputs: approved captures, the
 canonical store URL, the game's name, artifact hashes and dated receipts.

@@ -146,6 +146,7 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
             file: "g-0.1.0-windows/g.pack".to_owned(),
             bytes: 7,
         }),
+        recipient: None,
     };
     let said = text(&output).replace('\\', "/");
     for line in [
@@ -165,6 +166,59 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
     assert_eq!(json["signing"], "none");
     let signed = serde_json::to_value(Signing::AdHoc).unwrap();
     assert_eq!(signed, "ad-hoc");
+}
+
+#[test]
+fn a_recipient_takes_a_label_and_a_key_and_detecting_takes_nothing_else() {
+    let input = parse_args(&args(&[
+        "windows",
+        "--release",
+        "--recipient",
+        "jane",
+        "--label",
+        "Jane, Example Press",
+        "--signing-key",
+        "../keys/game",
+    ]))
+    .unwrap();
+    assert_eq!(input.recipient.as_deref(), Some("jane"));
+    assert_eq!(input.label.as_deref(), Some("Jane, Example Press"));
+    assert_eq!(input.signing_key.as_deref(), Some("../keys/game"));
+    let input = parse_args(&args(&["--detect-recipient", "leak.zip"])).unwrap();
+    assert_eq!(input.detect_recipient.as_deref(), Some("leak.zip"));
+    for (wrong, why) in [
+        (
+            &["--detect-recipient", "a.zip", "web"][..],
+            "--detect-recipient takes no target",
+        ),
+        (
+            &["--detect-recipient", "a.zip", "--release"],
+            "--detect-recipient builds nothing",
+        ),
+        (&["--detect-recipient"], "--detect-recipient needs the file"),
+        (
+            &["web", "--recipient"],
+            "--recipient needs the recipient's id",
+        ),
+        (
+            &["web", "--recipient", "a", "--recipient", "b"],
+            "--recipient twice",
+        ),
+    ] {
+        let error = parse_args(&args(wrong)).unwrap_err();
+        assert!(error.starts_with(why), "{wrong:?}: {error}");
+    }
+    // A label or a key without a recipient is refused before anything is built.
+    let p = project(r#"(targets: {"web": (frame: (384, 384), scale: integer, text_px: 16)})"#);
+    let input = ExportInput {
+        label: Some("Jane".to_owned()),
+        ..ExportInput::default()
+    };
+    let error = asked_of(&p, &input).unwrap_err().message();
+    assert!(error.contains("go with --recipient"), "{error}");
+    // `export` itself never answers a detection's file without one.
+    let empty = detect(&p, &ExportInput::default());
+    assert_eq!(empty.code.as_deref(), Some("SH0001"));
 }
 
 #[test]

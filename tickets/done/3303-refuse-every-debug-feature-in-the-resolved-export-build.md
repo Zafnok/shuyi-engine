@@ -121,7 +121,7 @@ Hello, Grid's exports through every exporter still pass, and a new
 Breaking: shuyi-cli: export::live_link::FEATURE, export::live_link::ENGINE, export::live_link::Violation: the two constants are gone, replaced by `export::ENGINE_DEBUG_FEATURES`, and `Violation` has a new field, `feature`, the debug feature on.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The export's resolved-build check covers every debug feature; its live-link-only constants gave way to a table, and a violation names its feature.
 old: export::live_link::ENGINE, export::live_link::FEATURE, Violation { package, path }
 new: export::ENGINE_DEBUG_FEATURES, Violation { package, feature, path }

@@ -172,7 +172,7 @@ What slipped was mostly at the seams, where nothing checked:
 These tickets make the checks deterministic where they can be. None
 holds up the first release (2005), so they are not in the MVP. They come
 **ahead of** the MVP's remaining tickets all the same: each one saves
-redone PRs on the rest. 2051, 2052 and 2054 are done. Whether they go into
+redone PRs on the rest. 2051, 2052, 2053 and 2054 are done. Whether they go into
 the release's `blocked_by` is Nick's call.
 
 | Ticket | What |
@@ -180,14 +180,14 @@ the release's `blocked_by` is Nick's call.
 | 2051 (done) | The ticket a PR is for comes from its title, and a branch the checks can't read fails; the ticket-only PR convention |
 | 2052 (done) | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
 | 2054 (done) | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
-| 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
+| 2053 (done) | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
 | 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
 | 2059 (done) | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
 | 2066 (done) | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
 | 2584 (done) | The ticket skills check a ticket against the code before trusting it |
 | 2057 (done) | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
 | 2064 (done) | Flaky gates have a ledger, and a calibration run is one reusable workflow |
-| 2058 | A migration block's `since` is the workspace's version |
+| 2058 (done) | A migration block's `since` is the workspace's version |
 | 2065 (done) | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
 | 2060 | Nick decides how `main` is guarded: required checks, merges on green, and the `model` line |
 
@@ -198,7 +198,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307; done 2026-11-11) |
 | 2061 | `cargo xtask api` runs from a Windows worktree (done 2026-11-13) |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
-| 2063 | The MCP server's forwarding tests pass under load |
+| 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
 | 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
 | 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
 | 2257 | The text checks say cells where they count cells |
@@ -779,13 +779,13 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
-| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes (done 2026-11-14; its [report](research/2917-reverse-engineering-angles-not-yet-covered.md) is the source of 3099, 3300, 3301 and 3302) |
 | 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
-| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
-| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099; done 2026-11-11) |
+| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently (from 2917; done 2026-11-09) |
+| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (from 2917; after 3099; done 2026-11-11) |
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
-| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
-| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300) |
+| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
+| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
 
 ## Parked
 
