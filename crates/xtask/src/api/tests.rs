@@ -1334,7 +1334,7 @@ fn the_semver_check_builds_in_a_short_target_folder_of_its_own() {
     );
     let base_root = root.join(BASE_DIR);
     let findings = semver(&root, "shuyi-core", &[], &base_root, &fake).unwrap();
-    assert!(findings.is_empty());
+    assert_eq!(findings, Vec::<Finding>::new());
     let target = root
         .join("target/api-semver")
         .to_string_lossy()
