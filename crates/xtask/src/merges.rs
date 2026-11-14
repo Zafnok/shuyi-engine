@@ -164,10 +164,10 @@ fn file_changes(file: &FileDiff) -> Vec<String> {
             file.path
         )];
     }
-    let has_markers = file.hunks.iter().any(|line| {
-        line.strip_prefix(['-', ' '])
-            .is_some_and(|text| is_marker(text))
-    });
+    let has_markers = file
+        .hunks
+        .iter()
+        .any(|line| line.strip_prefix(['-', ' ']).is_some_and(is_marker));
     if !has_markers {
         // A conflict of whole files (modify/delete, rename): the file is the
         // resolution.
@@ -291,7 +291,7 @@ index 0000000..3e75765
 
     #[test]
     fn a_clean_merge_has_no_changes_of_its_own() {
-        assert!(own_changes("").is_empty());
+        assert_eq!(own_changes(""), Vec::<String>::new());
     }
 
     #[test]
@@ -330,7 +330,7 @@ remerge CONFLICT (content): Merge conflict in f
 ->>>>>>> theirs
  1
 ";
-        assert!(own_changes(diff).is_empty(), "{:?}", own_changes(diff));
+        assert_eq!(own_changes(diff), Vec::<String>::new());
     }
 
     #[test]
@@ -360,9 +360,22 @@ remerge CONFLICT (content): Merge conflict in f
         ] {
             git(&dir, args).expect("git init");
         }
-        let lines: String = (1..=12).map(|n| format!("{n}\n")).collect();
+        let lines = numbered(0, "");
         commit(&dir, "f", &lines, "base");
         dir
+    }
+
+    /// Twelve numbered lines, line `changed` reading `text` instead.
+    fn numbered(changed: u32, text: &str) -> String {
+        (1..=12)
+            .map(|n| {
+                if n == changed {
+                    text.to_owned()
+                } else {
+                    n.to_string()
+                }
+            })
+            .fold(String::new(), |all, line| all + &line + "\n")
     }
 
     /// Writes `text` to `file` in `dir` and commits it.
@@ -377,26 +390,10 @@ remerge CONFLICT (content): Merge conflict in f
     fn diverged(name: &str) -> std::path::PathBuf {
         let dir = repository(name);
         git(&dir, &["switch", "-q", "-c", "side"]).expect("switch");
-        let side: String = (1..=12)
-            .map(|n| {
-                if n == 2 {
-                    "2side\n".to_owned()
-                } else {
-                    format!("{n}\n")
-                }
-            })
-            .collect();
+        let side = numbered(2, "2side");
         commit(&dir, "f", &side, "side");
         git(&dir, &["switch", "-q", "main"]).expect("switch");
-        let main: String = (1..=12)
-            .map(|n| {
-                if n == 12 {
-                    "12main\n".to_owned()
-                } else {
-                    format!("{n}\n")
-                }
-            })
-            .collect();
+        let main = numbered(12, "12main");
         commit(&dir, "f", &main, "main");
         git(&dir, &["switch", "-q", "side"]).expect("switch");
         dir
