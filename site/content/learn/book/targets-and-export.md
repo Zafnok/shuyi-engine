@@ -290,10 +290,18 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+Shipping it packed or hidden doesn't change that. Whatever the game decodes, draws, plays or simulates
+on the player's machine can be taken from that machine as it runs, by tools anyone can download, and
+no setting of the engine changes that
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#5-runtime-extraction-on-desktop-defeats-any-at-rest-protection)).
+
 ## A public demo
 
 A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
-a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+a published copy of every file and rule it was built with: anyone can open it, and every file is a
+download its page already makes
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#4-the-web-build-is-the-cheapest-extraction-surface)).
+So a demo is built from
 less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
 builds it, on any target.
 
@@ -410,10 +418,24 @@ opens it from System Settings, Privacy & Security, as its `HOW-TO-OPEN.txt` says
 repository each file is attested, and `gh attestation verify <file> --repo <owner>/<repo>` says
 your repository's release built it.
 
+To let a few people play before the game is public, the stores' own tools are a controlled preview at
+no cost: a Steam Playtest with limited signup, or release override keys and a password-protected beta
+branch, or an itch.io page set to Restricted with download keys. What they don't give: an NDA, a key
+you can take back from one person alone, or a way to tell who leaked a copy
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#8-what-steam-and-itchio-already-give-for-free)).
+For the last, [*Closed builds*](#closed-builds) below marks each person's copy: a deterrent, not
+proof.
+
 ## Before the reveal
 
 The day you first show the game in public, its idea can be copied from the footage alone: a
-clone needs no build of yours. Nothing stops that. What helps later is evidence: which pictures
+clone needs no build of yours. Nothing stops that. Once a build is out, agents now port whole games from shipped
+programs as a matter of routine, so assume someone can rebuild yours from its files
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#6-attacker-capability-has-moved-whole-game-ports-are-routine)).
+Tools that add noise to pictures to spoil an AI's copy of a style are unproven on small sprites with
+few colors, so don't count on them for pixel art
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#10-art-style-cloning-and-asset-side-protection)).
+What helps later is evidence: which pictures
 and clips are yours, which build made them, which store page is the real one, and when each
 existed. The **reveal kit** keeps that, made before the first trailer or screenshot goes out.
 
@@ -468,7 +490,8 @@ nothing opens.
 **What this can't do, first.** A mark in a copy is circumstantial evidence, never proof. It says
 which copy leaked, not who leaked it: a copy can be stolen, or passed on. Two recipients who
 compare their copies find every mark and can remove them all, and changing a copy removes some of
-them. It deters a casual leak. It doesn't stop a determined one.
+them. It deters a casual leak. It doesn't stop a determined one
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#7-fingerprinting-the-build-artifact-to-trace-a-leak)).
 
 A press, playtest or publisher build is a **closed build**: a copy you give one person before the
 public has the game. Make each recipient's copy from your release build, which needs the reveal
@@ -533,7 +556,9 @@ If the game panics, the engine writes a crash report beside its saves: `crash-<w
 data folder on a computer, and in the browser's storage on the web. It holds the panic's message and
 place, the versions, the frame, the screen on top and the log's last lines, never the player's
 settings or saves, and it stays on the player's machine. The player sends it to you; the game's
-version in it is `shuyi.ron`'s `app.version`.
+version in it is `shuyi.ron`'s `app.version`. On Windows and Linux its `frames` are the stack as
+offsets into the program, which that version's debug file turns into functions and lines with
+`addr2line` ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
 
 At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
 anything, and in what words, is up to the game. A panic the game survived, like a sound library's on a

@@ -32,6 +32,12 @@
 //! ([`CrashReports::records_play`]): together they write a shipped game's
 //! state on demand. Without debug tools the log's lines in a report are
 //! its warnings and errors.
+//!
+//! A report's [`frames`](CrashReport::frames) are the stack as offsets into
+//! the executable, which a release's debug file names (`crash/frames.rs`,
+//! ticket 2598): on Windows and Linux.
+
+mod frames;
 
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -176,6 +182,7 @@ pub fn install(
         *lock(&INSTALLED) = None;
         return;
     }
+    frames::note_executable();
     *lock(&INSTALLED) = Some(Installed {
         reports,
         storage: Arc::new(storage),
@@ -294,6 +301,7 @@ fn build(info: &PanicHookInfo<'_>, reports: CrashReports, on_game_thread: bool) 
         .location()
         .map(|at| format!("{}:{}:{}", at.file(), at.line(), at.column()));
     report.thread = std::thread::current().name().map(ToOwned::to_owned);
+    report.frames = frames::capture();
     report.backtrace = std::backtrace::Backtrace::force_capture().to_string();
     reports.game_version.clone_into(&mut report.game);
     let build = if cfg!(debug_assertions) {

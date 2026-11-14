@@ -779,13 +779,13 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
-| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes (done 2026-11-14; its [report](research/2917-reverse-engineering-angles-not-yet-covered.md) is the source of 3099, 3300, 3301 and 3302) |
 | 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
-| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
-| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099; done 2026-11-11) |
+| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently (from 2917; done 2026-11-09) |
+| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (from 2917; after 3099; done 2026-11-11) |
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
-| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
-| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300; done 2026-11-14) |
+| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
+| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
 
 ## Parked
 

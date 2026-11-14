@@ -14,6 +14,10 @@ evidence for its findings. Its [DX-Ball case study](https://rea.tools/showcase/d
 checks one reconstructed sound-pan function against 3,205 original-function
 inputs and 63 compiled bytes; the authors say their playable game remains
 unfinished. That is strong function-level evidence, not a whole-game clone.
+Since then, agents' whole-game ports from shipped binaries have become
+routine: 2917's [section 6](2917-reverse-engineering-angles-not-yet-covered.md#6-attacker-capability-has-moved-whole-game-ports-are-routine)
+says so, and a later measurement here assumes a REA-class harness and a
+frontier model as its floor.
 
 [SRE-Bench](https://arxiv.org/abs/2608.11469) gives agents binaries and
 domain-specific auxiliary material. Its game tasks ask for six undocumented

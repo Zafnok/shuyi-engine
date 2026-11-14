@@ -5,10 +5,10 @@ type: research
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 2917 — Confirm the uncovered-angles research and write the book's plain statements
@@ -97,14 +97,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every flagged claim in sections 2–11 has a recorded keep, correct
+- [x] Every flagged claim in sections 2–11 has a recorded keep, correct
       or strike with its source.
-- [ ] The report has the standard header, a "Decision" section and the
+- [x] The report has the standard header, a "Decision" section and the
       confirmation section.
-- [ ] The five plain statements are in the book with links, and the
+- [x] The five plain statements are in the book with links, and the
       docs-map and links checks pass.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -113,4 +113,38 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done 2026-11-14.
+
+- **Confirmation.** Six source-reading agents on a smaller model (one per
+  group of sections), well under the US$10 cap, each returning keep,
+  correct or strike with the URL. The report's "What changed on
+  confirmation" entry 3 records all 53 verdicts; the sections carry the
+  corrected text and the primary links. Three claims were struck: the
+  Space Cadet Pinball cost and the 30-minute REA clone (no source found)
+  and the Half-Life 2 lore (not needed); the rest were kept or corrected. Notable corrections: `goldberg` is
+  GPL-3.0; Tkachenko et al. rank instruction substitution most resistant;
+  Valve's 2026-10-28 remarks were about AI clones on Steam, not the
+  browser ports; the reversedwithai.com counts; Freya Holmér's prototype
+  was knocked off within five hours, not a day. Some primary pages
+  refused automated reads (EUR-Lex, OpenAI's policy, the USPTO and EUIPO
+  fee pages, the Glaze site); the table says which verdicts rest on a
+  secondary page or memory.
+- **Report.** The draft header is replaced by the standard research
+  header, a Decision section lists what each angle became (3099, 3303,
+  3300, 3301, 3302, 2816's checklist, the book) and the dropped angles
+  with their reasons. Section 1 is kept as the 2026-11-08 finding, now
+  noted as fixed by 3099, 3303 and 3300.
+- **Book.** The five statements are in *Targets and export*: the web demo
+  as a published copy (*A public demo*, 3082's sentence kept and
+  linked), runtime extraction (*What a package gives away*), Steam's and
+  itch.io's own preview tools with their gaps (*Releasing*), attacker
+  capability and art perturbation (*Before the reveal*; the book has no
+  art chapter). Each links the report's section.
+- **ROADMAP and 2912.** The public-demo-defenses rows from this report
+  say "from 2917"; 2912's report points at section 6.
+- **Handover.** 3301's context restated the Needle and Wordle cases as
+  the draft had them; it now carries the confirmed facts as a
+  "From 2917 (done)" paragraph.
+- No confirmed source overturns a dropped angle, so no new ticket.
+
+Book: updated, `site/content/learn/book/targets-and-export.md`.
