@@ -30,6 +30,9 @@ pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const MESSAGE_BYTES: usize = 4 * 1024;
 /// The longest backtrace kept, in bytes.
 pub const BACKTRACE_BYTES: usize = 32 * 1024;
+/// The most frames of the stack kept ([`CrashReport::frames`]): the
+/// innermost.
+pub const FRAMES: usize = 128;
 /// The most lines of the log kept: the last ones.
 pub const LOG_LINES: usize = 200;
 /// The longest line of the log kept, in bytes.
@@ -77,6 +80,12 @@ pub struct CrashReport {
     /// [`BACKTRACE_BYTES`]. A stripped build's frames are `<unknown>`.
     #[serde(default)]
     pub backtrace: String,
+    /// The panicking thread's stack as offsets into the executable, the
+    /// innermost first, up to [`FRAMES`]: what a debug file of the same
+    /// build names (`docs/crash-reports.md`). Filled on Windows and Linux;
+    /// empty on macOS, on the web and in a report older than the field.
+    #[serde(default)]
+    pub frames: Vec<CodeFrame>,
     /// The engine's version ([`ENGINE_VERSION`]).
     #[serde(default)]
     pub engine: String,
@@ -103,6 +112,29 @@ pub struct CrashReport {
     pub record: Option<String>,
 }
 
+/// A frame of a report's stack (ticket 2598): where its call returns to,
+/// as an offset from the start of the executable in memory. The program
+/// loads at another address each run, so the offset, not the address, is
+/// what reads against its debug file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct CodeFrame {
+    /// The return address minus the executable's load address: on Windows
+    /// the address relative to the image base, on Linux the address in the
+    /// file (a PIE's first segment is at 0). `None` for a frame in another
+    /// module, such as a system library.
+    #[serde(default)]
+    pub offset: Option<u64>,
+}
+
+impl CodeFrame {
+    /// A frame at `offset` into the executable, or in another module.
+    #[must_use]
+    pub const fn new(offset: Option<u64>) -> Self {
+        Self { offset }
+    }
+}
+
 impl CrashReport {
     /// A report of `message` at `when`, cut at [`MESSAGE_BYTES`], and
     /// nothing else known yet.
@@ -117,6 +149,7 @@ impl CrashReport {
             location: None,
             thread: None,
             backtrace: String::new(),
+            frames: Vec::new(),
             engine: ENGINE_VERSION.to_owned(),
             game: String::new(),
             target: String::new(),
@@ -132,6 +165,7 @@ impl CrashReport {
     pub fn limit(&mut self) {
         cut(&mut self.message, MESSAGE_BYTES);
         cut(&mut self.backtrace, BACKTRACE_BYTES);
+        self.frames.truncate(FRAMES);
         let extra = self.log.len().saturating_sub(LOG_LINES);
         self.log.drain(..extra);
         for line in &mut self.log {
