@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: sign-off
-completed:
+completed: 2026-11-13
 ---
 
 # 2597 — `shuyi new` asks whether to include the example files
@@ -99,17 +99,17 @@ today.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new g --template blank --no-github` (and every default)
+- [x] `shuyi new g --template blank --no-github` (and every default)
       writes the same files as before this ticket.
-- [ ] `shuyi new g --template grid --set examples=no --no-github`
+- [x] `shuyi new g --template grid --set examples=no --no-github`
       writes no `example.ron`, `example-*.ron` or `example/` under
       `.claude/skills/`, and every skill's `SKILL.md` is there.
-- [ ] That game's `cargo test --workspace` and `cargo shuyi
+- [x] That game's `cargo test --workspace` and `cargo shuyi
       check-skills .claude/skills` pass.
-- [ ] In a terminal, `new` asks the question, says Enter picks yes, and
+- [x] In a terminal, `new` asks the question, says Enter picks yes, and
       a no leaves them out; `--json` and the MCP tool ask nothing.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -121,5 +121,65 @@ today.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **The question:** `examples` in `templates/shuyi-default/template.ron`
+  (`yes`/`no`, default `yes`), so `--set`, an answers file and the MCP
+  `new` tool's `set` take it and `new`'s answer lists it. No part serves
+  it: the composer reads it (`template::EXAMPLES`), and its `no` is no
+  limit.
+- **The composer:** with `examples=no`, `with_skills` copies
+  `Skill::without_examples` (`crates/cli/src/skills.rs`): every file but
+  `example.ron`, `example-*.ron` and `example/` (`skills::is_example`).
+- **The `SKILL.md` links:** made harmless by unlinking. In the copied
+  Markdown a link to a left-out example becomes its words, and a skill
+  that had examples ends its `SKILL.md` with one sentence,
+  `skills::WITHOUT_EXAMPLES`: "This game was made without the skills'
+  worked examples (`shuyi new --no-examples`): this skill's are in the
+  engine's repository, in `skills/<name>/`, at the version the game
+  builds with." No URL: a link at `main` is a `check-skills` problem,
+  and the game's `AGENTS.md` names the engine at its version.
+- **`check-skills`:** that sentence is how it knows (ADR-0113, amending
+  ADR-0043 §3): an engine skill without its example passes when its
+  `SKILL.md` holds it. Per skill, so a module's skill that `shuyi add`
+  copies with its example, after `new`, is checked as before. The engine's
+  `skills/` is unchanged.
+- **The terminal question:** `questions::examples`, asked first, before
+  the GitHub questions, "yes or no, or press Enter for yes", unless
+  `--examples`, `--no-examples`, `--set examples=…` or the answers file
+  answers it. Both the flags and `--set`: every question `new` asks in a
+  terminal has its flag (2592), and the flags write `--set examples=…`;
+  a flag and a `--set` that disagree are refused.
+- **Gates:** the templates gate (`cargo xtask gates`) and CI's
+  `templates` job make the grid game with `--no-examples` (the blank
+  one keeps them), and both run `cargo shuyi check-skills
+  .claude/skills`. The unit test
+  `a_grid_game_without_examples_has_every_skill_and_passes_check_skills`
+  holds the same on the composed plan. `plans.golden` lists files outside
+  `.claude/skills/` and no answers, so it is unchanged: a default game
+  writes the same files as before (that golden, and
+  `the_engine_templates_games_get_the_embedded_pack` for the skills).
+- **Docs:** `docs/templates.md` (making a game, the skills, the
+  questions table), the book's quick start, the `shuyi-new-game` skill,
+  the `run-gates` skill's templates steps, `new`'s usage.
+- **2502:** its *Either order with 2597* clause now says the question
+  moves into the wizard and the flags stay.
+- **Deviation:** none from the steps. The ticket was written today, so
+  no age check was needed.
+- **For Nick:** the sign-off is yours: in PowerShell, `shuyi new "Lean
+  Test" --no-github`, answer `no` to the first question, and look in
+  `.claude/skills/`; then the same with Enter at every question. (Until
+  this is released, run it from the engine's checkout:
+  `cargo run -q -p shuyi-cli -- new "Lean Test" --no-github`.)
+
+Breaking: none (`questions::Flags` is crate-private; `template::EXAMPLES`,
+`skills::WITHOUT_EXAMPLES`, `skills::is_example`,
+`Skill::without_examples` and `Skill::left_out_examples` are additions).
+
+Behaviour: shuyi-cli: `shuyi new` in a terminal asks first whether to include the skills' worked examples (Enter keeps them); `new`'s answer lists `examples` among its answers; `new`'s usage names `--examples`/`--no-examples`.
+
+Behaviour: shuyi-cli: `shuyi check-skills` passes an engine skill without its `example.ron` when its `SKILL.md` holds the `WITHOUT_EXAMPLES` sentence.
+
+Behaviour: the skill pack: `shuyi-new-game`'s `SKILL.md` names the examples question; the game copies the pack at its pin (game ADR-0097) with its examples, so its `check-skills` is unchanged (searched the game for `check-skills` and `shuyi new`).
+
+Book: `site/content/learn/book/quick-start.md` (*Make a game*, *On GitHub*) says what the question asks and that `--no-github` no longer means nothing is asked.
+
+Game: nothing to adopt, the game copies the skill pack with its examples and makes no game with `shuyi new`.

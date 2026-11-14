@@ -29,6 +29,19 @@ Template(
             ],
             default: ["no"],
         ),
+        // No part serves it: `shuyi new`'s composer copies each skill's
+        // worked examples (`example.ron`, `example-*.ron`, `example/`) into
+        // `.claude/skills/` unless the answer is `no` (ADR-0113).
+        Question(
+            id: "examples",
+            text: "Include the engine skills' worked examples (bots.rs, playtest.ron…)?",
+            pick: One,
+            answers: [
+                Answer(id: "yes", text: "yes: each skill's worked example, to read and run"),
+                Answer(id: "no", text: "no: the skills alone, their examples left in the engine"),
+            ],
+            default: ["yes"],
+        ),
     ],
     // `shuyi new <dir> --template <name>`.
     short_names: {
