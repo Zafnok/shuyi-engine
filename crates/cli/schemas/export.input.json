@@ -4,8 +4,22 @@
   "description": "What `export` makes.",
   "type": "object",
   "properties": {
+    "detect_recipient": {
+      "description": "A file to read a recipient's marks in, from the game's folder: a\npackage (zip, `tar.gz` or folder), a program, a pack or a picture. It\nbuilds nothing and takes no other field.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "edition": {
       "description": "The edition of `shuyi.ron`'s `editions` to build: its program,\nfeatures and files in place of what the target would build. Without\none, the game as `export` builds it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label": {
+      "description": "With `recipient`, who they are, for the ledger (the id if not given).",
       "type": [
         "string",
         "null"
@@ -23,6 +37,13 @@
       "description": "Whether to answer the game's [`ExportPlan`] and build nothing: what\neach target's exporters build, and where, in CI. It takes no target\nand no other field but `tag`.",
       "type": "boolean"
     },
+    "recipient": {
+      "description": "With `release`, the recipient a closed build's copy is made for: an\nid of 1 to 64 letters, digits, `.`, `_` and `-`. The package is made,\nthen the copy, marked with the recipient's code, in\n`dist/recipients/<id>/<target>`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "release": {
       "description": "Whether to build with `--release`: the build's paths remapped and\nsearched for, and on Windows and Linux the debug file kept beside\nthe package.",
       "type": "boolean",
@@ -32,6 +53,13 @@
       "description": "Whether to run the package after writing it.",
       "type": "boolean",
       "default": false
+    },
+    "signing_key": {
+      "description": "With `recipient`, the game's SSH private key the ledger is signed\nwith, from the game's folder; `SHUYI_SIGNING_KEY` if not given.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "tag": {
       "description": "With `plan`, the tag a release is made from: the answer fails unless\nit is `v` and the game's version (`v0.1.0`).",

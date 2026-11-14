@@ -14,10 +14,15 @@
 //! game registers. Its pixels are the [`Image`] kind, which `Png` reads
 //! with the `png` feature. A game that draws through `shuyi-app` needs
 //! none: the platform decodes a PNG's pixels when it uploads the picture.
+//!
+//! [`mark`] writes a recipient's code into a picture's lowest bits, and
+//! reads it back, keeping its palette (ADR-0118).
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use alloc::collections::BTreeMap;
+
+pub mod mark;
 
 use crate::bitmap::Bitmap;
 use crate::bundle::Bundle;

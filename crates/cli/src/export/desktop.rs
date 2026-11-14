@@ -219,6 +219,38 @@ impl Exporter for Desktop {
         shipped
     }
 
+    fn overlays(&self) -> bool {
+        true
+    }
+
+    /// The zip or `tar.gz` made again from the folder; on macOS the `.app`
+    /// signed again, there.
+    fn repackage(&self, cx: &ExportCx, report: &ExportReport) -> Result<(), ExportError> {
+        let folder = cx.out.join(&report.folder);
+        if self.system == System::MacOs {
+            if System::here() != Some(System::MacOs) {
+                return Err(ExportError::MissingTool(
+                    "a recipient's macOS copy is signed again on macOS (`codesign`)".to_owned(),
+                ));
+            }
+            let app = folder.join(format!("{}.app", cx.bin));
+            let program = app.join("Contents").join("MacOS").join(&cx.bin);
+            return sign_app(&program, &app);
+        }
+        let name = if self.system == System::Windows {
+            format!("{}.exe", cx.bin)
+        } else {
+            cx.bin.clone()
+        };
+        archive_folder(
+            self.system,
+            &folder,
+            &report.folder,
+            std::ffi::OsStr::new(&name),
+            &cx.out.join(&report.package),
+        )
+    }
+
     /// A release build's: Windows' and Linux' copy is stripped by
     /// `objcopy`, and macOS' is built stripped.
     fn strips_symbols(&self, cx: &ExportCx) -> bool {
@@ -300,22 +332,13 @@ pub fn pack(
         write(&folder.join(NOTE), WINDOWS_NOTE)?;
     }
     let beside = cx.copy_beside(&|_| folder.clone())?;
-    let entries = archive::entries(&folder, &format!("{base}/"), &|path| {
-        path.file_name() == Some(name)
-    })
-    .map_err(ExportError::Build)?;
     let package = if system == System::Windows {
         format!("{base}.zip")
     } else {
         format!("{base}.tar.gz")
     };
     let written = cx.out.join(&package);
-    if system == System::Windows {
-        archive::zip(&written, &entries)
-    } else {
-        archive::tar_gz(&written, &entries)
-    }
-    .map_err(ExportError::Build)?;
+    archive_folder(system, &folder, &base, name, &written)?;
     let sizes = vec![cx.size(&written)?, cx.size(&shipped)?];
     let mut report = cx.report(&package, sizes, Signing::None, debug);
     report.beside = beside;
@@ -354,9 +377,41 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
             folder.clone()
         }
     })?;
-    // Every file of the bundle is written: sign the nested code first,
-    // then the bundle (not `--deep`).
-    for code in [program.as_path(), app.as_path()] {
+    sign_app(&program, &app)?;
+    let sizes = vec![cx.size(&folder)?, cx.size(&program)?];
+    let mut report = cx.report(&base, sizes, Signing::AdHoc, None);
+    report.beside = beside;
+    report.pack = pack;
+    Ok(report)
+}
+
+/// Writes the zip (Windows) or `tar.gz` of `folder`, named `<base>/` in it,
+/// to `written`, its program `name` executable.
+fn archive_folder(
+    system: System,
+    folder: &Path,
+    base: &str,
+    name: &std::ffi::OsStr,
+    written: &Path,
+) -> Result<(), ExportError> {
+    let entries = archive::entries(folder, &format!("{base}/"), &|path| {
+        path.file_name() == Some(name)
+    })
+    .map_err(ExportError::Build)?;
+    if system == System::Windows {
+        archive::zip(written, &entries)
+    } else {
+        archive::tar_gz(written, &entries)
+    }
+    .map_err(ExportError::Build)
+}
+
+/// Signs the `.app` `app` whose program is `program`, ad hoc: every file of
+/// the bundle is written, so the nested code first, then the bundle (not
+/// `--deep`).
+fn sign_app(program: &Path, app: &Path) -> Result<(), ExportError> {
+    let xcode = "install Xcode's command line tools: `xcode-select --install`";
+    for code in [program, app] {
         tool(
             "codesign",
             &[
@@ -368,11 +423,7 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
             xcode,
         )?;
     }
-    let sizes = vec![cx.size(&folder)?, cx.size(&program)?];
-    let mut report = cx.report(&base, sizes, Signing::AdHoc, None);
-    report.beside = beside;
-    report.pack = pack;
-    Ok(report)
+    Ok(())
 }
 
 /// The minimal `Info.plist` of a bundle whose program is `bin`.

@@ -384,7 +384,12 @@ const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `maco
      removed. `release` remaps the build's paths and keeps the debug file beside the package; \
      `run` runs the package after; `without` leaves features of shuyi.ron's `export` part off. \
      With `plan` (and no target), build nothing: answer what each target of shuyi.ron packages \
-     and where CI builds it, and with `tag` (`v0.1.0`) fail unless it names the game's version.";
+     and where CI builds it, and with `tag` (`v0.1.0`) fail unless it names the game's version. \
+     With `release` and `recipient` (an id), also make a closed build's copy for that recipient \
+     in dist/recipients/<id>/<target>, its program, pack and one picture marked with their code, \
+     written in the ledger beside the reveal kit and signed with `signing_key` (an SSH key). With \
+     `detect_recipient` (a file), build nothing: say which marks a leaked copy holds and whom the \
+     ledger gave their code. A mark is circumstantial evidence, never proof.";
 
 /// `lint`'s description.
 const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \
