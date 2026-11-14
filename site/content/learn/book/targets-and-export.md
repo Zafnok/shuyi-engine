@@ -469,7 +469,9 @@ If the game panics, the engine writes a crash report beside its saves: `crash-<w
 data folder on a computer, and in the browser's storage on the web. It holds the panic's message and
 place, the versions, the frame, the screen on top and the log's last lines, never the player's
 settings or saves, and it stays on the player's machine. The player sends it to you; the game's
-version in it is `shuyi.ron`'s `app.version`.
+version in it is `shuyi.ron`'s `app.version`. On Windows and Linux its `frames` are the stack as
+offsets into the program, which that version's debug file turns into functions and lines with
+`addr2line` ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
 
 At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
 anything, and in what words, is up to the game. A panic the game survived, like a sound library's on a
