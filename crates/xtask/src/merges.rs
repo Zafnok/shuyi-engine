@@ -79,7 +79,11 @@ fn check_merge(repo_root: &Path, merge: &str) -> Vec<String> {
 
 /// Runs git in `repo_root` and returns its standard output.
 fn git(repo_root: &Path, args: &[&str]) -> Result<String, String> {
-    match Command::new("git").args(args).current_dir(repo_root).output() {
+    match Command::new("git")
+        .args(args)
+        .current_dir(repo_root)
+        .output()
+    {
         Ok(output) if output.status.success() => {
             Ok(String::from_utf8_lossy(&output.stdout).into_owned())
         }
@@ -374,12 +378,24 @@ remerge CONFLICT (content): Merge conflict in f
         let dir = repository(name);
         git(&dir, &["switch", "-q", "-c", "side"]).expect("switch");
         let side: String = (1..=12)
-            .map(|n| if n == 2 { "2side\n".to_owned() } else { format!("{n}\n") })
+            .map(|n| {
+                if n == 2 {
+                    "2side\n".to_owned()
+                } else {
+                    format!("{n}\n")
+                }
+            })
             .collect();
         commit(&dir, "f", &side, "side");
         git(&dir, &["switch", "-q", "main"]).expect("switch");
         let main: String = (1..=12)
-            .map(|n| if n == 12 { "12main\n".to_owned() } else { format!("{n}\n") })
+            .map(|n| {
+                if n == 12 {
+                    "12main\n".to_owned()
+                } else {
+                    format!("{n}\n")
+                }
+            })
             .collect();
         commit(&dir, "f", &main, "main");
         git(&dir, &["switch", "-q", "side"]).expect("switch");
