@@ -111,6 +111,9 @@ pub const DISCLOSURE: Code = Code("SH3012");
 pub const NOT_YOURS: Code = Code("SH3013");
 /// `github`: a step of `repos` on GitHub or in git failed.
 pub const GITHUB: Code = Code("SH3014");
+/// `reveal-kit`: `reveal verify` found a reveal kit changed, incomplete or
+/// holding more than its manifest lists.
+pub const REVEAL_KIT: Code = Code("SH3015");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -569,6 +572,15 @@ pub static TABLE: &[Entry] = &[
         "A step on GitHub or in git failed",
         "fix what the message says gh or git said, then run `shuyi repos` again: it makes only \
          what isn't there"
+    ),
+    row!(
+        REVEAL_KIT,
+        "reveal-kit",
+        Operation,
+        "SH3015",
+        "The reveal kit doesn't verify",
+        "each problem names a file of the kit: copy the kit again from a copy that verifies, or \
+         run `shuyi reveal prepare` for a new kit (with a new digest)"
     ),
 ];
 

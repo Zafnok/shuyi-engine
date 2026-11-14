@@ -128,5 +128,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0113](0113-a-game-made-without-the-skills-worked-examples-says-so-in-each-skill.md) | A game made without the skills' worked examples says so in each skill, and `check-skills` reads it | Accepted; amends ADR-0043 §3 |
 | [0114](0114-a-games-release-from-a-tag-one-plan-one-export-workflow.md) | A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release | Accepted; amends ADR-0111 §5 |
 | [0115](0115-moving-a-program-aside-leaves-no-gap-of-its-own.md) | Moving a program aside leaves no gap of its own; the system's replacing of a name may, rarely, and the test counts separate gaps | Accepted |
+| [0116](0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md) | The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

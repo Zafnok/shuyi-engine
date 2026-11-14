@@ -126,7 +126,7 @@ python -m http.server --directory public 1111
   the chapter that says more.
 - A passage that only a newcomer needs is marked with who it is for
   ([Marking a passage](#marking-a-passage)), a new one too.
-- Every chapter and every step of a project ends with two or three quick
+- Every chapter and every step of a project ends with two or more quick
   checks on what it taught ([Quick checks](#quick-checks)), a new one too.
 - Each chapter stands on its own: it says what an idea is for before its
   name, explains each word of Rust or of the engine its code uses, or links
@@ -210,7 +210,7 @@ lines of its own, and a callout of the old hand-made form
 
 Every concept chapter (`[extra] chapter`) and every step of a project
 (`[extra] step`) ends with a section `## Check yourself` holding two or
-three quick checks (ticket 2827, ADR-0090 §8): a question, its answers, and
+more quick checks (ticket 2827, ADR-0090 §8): a question, its answers, and
 why each is right or wrong. A chapter's line naming its steps comes after
 it, from the template. *Before you start* and the appendices have none.
 

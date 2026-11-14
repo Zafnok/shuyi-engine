@@ -1,7 +1,8 @@
-//! SHA-256 (FIPS 180-4), for the hashes of the exposure report: anyone can
-//! check one with `sha256sum`, and it needs no crate of its own in the tree
-//! of every new game (`tools/compile-budget.ron`). It only names bytes: no
-//! secret goes through it.
+//! SHA-256 (FIPS 180-4), for the hashes of the exposure report and the
+//! reveal kit: anyone can check one with `sha256sum`, and it needs no crate
+//! of its own in the tree of every new game (`tools/compile-budget.ron`).
+//! It names bytes; the reveal kit's commitments put a secret salt through
+//! it, which needs only that SHA-256 hides its input.
 
 use std::fmt::Write as _;
 
@@ -121,35 +122,97 @@ fn compress(state: &mut [u32; 8], block: &[u8; 64]) {
     }
 }
 
+/// A SHA-256 fed in pieces, for a file too big to hold whole.
+#[derive(Debug, Clone)]
+pub struct Hasher {
+    state: [u32; 8],
+    /// The bytes of a block not yet whole.
+    pending: Vec<u8>,
+    /// Every byte fed so far.
+    length: u64,
+}
+
+impl Default for Hasher {
+    fn default() -> Self {
+        Self {
+            state: START,
+            pending: Vec::with_capacity(64),
+            length: 0,
+        }
+    }
+}
+
+impl Hasher {
+    /// Feeds `bytes`.
+    pub fn update(&mut self, mut bytes: &[u8]) {
+        self.length = self.length.wrapping_add(bytes.len() as u64);
+        if !self.pending.is_empty() {
+            let take = (64 - self.pending.len()).min(bytes.len());
+            self.pending.extend_from_slice(&bytes[..take]);
+            bytes = &bytes[take..];
+            if let Ok(block) = <&[u8; 64]>::try_from(self.pending.as_slice()) {
+                compress(&mut self.state, block);
+                self.pending.clear();
+            }
+        }
+        let (blocks, rest) = bytes.as_chunks::<64>();
+        for block in blocks {
+            compress(&mut self.state, block);
+        }
+        self.pending.extend_from_slice(rest);
+    }
+
+    /// The hash of every byte fed, in lowercase hexadecimal.
+    pub fn hex(mut self) -> String {
+        // The rest, a one bit, zeros, and the length in bits in the last 8
+        // bytes.
+        let bits = self.length.wrapping_mul(8);
+        let mut last = std::mem::take(&mut self.pending);
+        last.push(0x80);
+        while last.len() % 64 != 56 {
+            last.push(0);
+        }
+        last.extend(bits.to_be_bytes());
+        for block in last.as_chunks::<64>().0 {
+            compress(&mut self.state, block);
+        }
+        let mut text = String::with_capacity(64);
+        for word in self.state {
+            // Writing to a `String` can't fail.
+            let _ = write!(text, "{word:08x}");
+        }
+        text
+    }
+}
+
 /// The SHA-256 of `bytes`, in lowercase hexadecimal.
 pub fn hex(bytes: &[u8]) -> String {
-    let mut state = START;
-    let (blocks, rest) = bytes.as_chunks::<64>();
-    for block in blocks {
-        compress(&mut state, block);
+    let mut hasher = Hasher::default();
+    hasher.update(bytes);
+    hasher.hex()
+}
+
+/// The SHA-256 of the file at `path`, in lowercase hexadecimal, and its
+/// length in bytes, read a piece at a time.
+pub fn file(path: &std::path::Path) -> std::io::Result<(String, u64)> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = Hasher::default();
+    let mut buffer = vec![0; 1 << 16];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
     }
-    // The rest, a one bit, zeros, and the length in bits in the last 8 bytes.
-    let mut last = rest.to_vec();
-    last.push(0x80);
-    while last.len() % 64 != 56 {
-        last.push(0);
-    }
-    let bits = (bytes.len() as u64).wrapping_mul(8);
-    last.extend(bits.to_be_bytes());
-    for block in last.as_chunks::<64>().0 {
-        compress(&mut state, block);
-    }
-    let mut text = String::with_capacity(64);
-    for word in state {
-        // Writing to a `String` can't fail.
-        let _ = write!(text, "{word:08x}");
-    }
-    text
+    let length = hasher.length;
+    Ok((hasher.hex(), length))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::hex;
+    use super::{Hasher, hex};
 
     #[test]
     fn it_gives_the_standards_values() {
@@ -183,5 +246,17 @@ mod tests {
             hex(&[b'a'; 64]),
             "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb"
         );
+    }
+
+    #[test]
+    fn fed_in_pieces_it_gives_the_same_hash() {
+        let bytes: Vec<u8> = (0..1000u32).map(|i| (i * 7 % 251) as u8).collect();
+        for piece in [1, 3, 63, 64, 65, 200] {
+            let mut hasher = Hasher::default();
+            for chunk in bytes.chunks(piece) {
+                hasher.update(chunk);
+            }
+            assert_eq!(hasher.hex(), hex(&bytes), "pieces of {piece}");
+        }
     }
 }

@@ -1,0 +1,47 @@
+(
+    version: 1,
+    game: "Moon Garden",
+    keywords: [
+        "moon",
+        "garden",
+        "well",
+    ],
+    store_url: "https://store.example.com/app/1/Moon_Garden/",
+    prepared: "2026-11-13",
+    build: (
+        version: Some("0.3.0"),
+        commit: Some("0123456789abcdef0123456789abcdef01234567"),
+        dirty: false,
+    ),
+    captures: [
+        (
+            what: "Hello, Grid\'s first frame, standing in for the game\'s title",
+            original: (
+                path: "captures/title.png",
+                sha256: "e7155e27a4a6bc319fb9ea7fc700526d2cd55b2568b471fc607ed4e6d0cee97e",
+                bytes: 2932,
+            ),
+            encodes: [],
+            args: [],
+        ),
+    ],
+    artifacts: [],
+    receipts: [
+        (
+            path: "receipts/registration.txt",
+            sha256: "6a0a279b3b50e28937443b97d19af3bbe3d5f7167f2527dbf62e02088095ea53",
+            bytes: 120,
+        ),
+    ],
+    commitments: [
+        (
+            label: "design/boss.txt",
+            sha256: "efe7e30b2a0b0644f89b8be98ca8f007d762519ede61cedb4a8d2c57965cd485",
+        ),
+    ],
+    index: (
+        path: "EVIDENCE.md",
+        sha256: "c1bea9be3d051fd6251148556909c7e662307e2c568dbb2b8d75666310223219",
+        bytes: 1928,
+    ),
+)

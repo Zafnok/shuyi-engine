@@ -49,7 +49,7 @@ What there is once the blockers are done:
   `site/static/book-check.js`, and written as text in the twins by
   `llms.rs`'s `checked` (`site/README.md`, *Quick checks*).
   - Every step and concept chapter ends with `## Check yourself`, its
-    last `## ` section, holding two or three checks. `cargo xtask
+    last `## ` section, holding two checks or more. `cargo xtask
     check-book` (`book.rs`'s `check_section`) fails a heading after it, so
     an exercise goes in that section after the checks, with no heading
     of its own.

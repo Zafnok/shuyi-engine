@@ -1,0 +1,2 @@
+A stand-in for a dated receipt, such as a copyright registration's
+confirmation. Fixture only: it was issued by no one.
