@@ -106,6 +106,11 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
     if name == "mcp" {
         return Some(crate::mcp::main(args, cwd));
     }
+    if name == "reveal" {
+        // The reveal kit: `verify` and `open` need no project, and the
+        // others find it from `cwd`.
+        return Some(crate::reveal::main(cwd, args));
+    }
     let (json, args) = split_json(args);
     Some(match name {
         "new" => match new::questions::parse(&args) {

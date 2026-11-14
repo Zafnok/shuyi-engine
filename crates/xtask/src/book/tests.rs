@@ -359,7 +359,7 @@ fn kind_page(kind: &str, body: &str) -> String {
 }
 
 #[test]
-fn a_chapter_or_a_step_ends_with_two_or_three_checks() {
+fn a_chapter_or_a_step_ends_with_two_checks_or_more() {
     let two = format!(
         "\n## Check yourself\n{}{}",
         a_check("", GOOD),
@@ -378,6 +378,13 @@ fn a_chapter_or_a_step_ends_with_two_or_three_checks() {
         assert!(
             has(&errors, "a.md:8: `## Check yourself` holds 1 checks"),
             "{errors:?}"
+        );
+        // No most: four are as good as two.
+        let four = format!("{two}{}{}", a_check("", GOOD), a_check("", GOOD));
+        assert_eq!(
+            check("a.md", &kind_page(kind, &four)),
+            Vec::<String>::new(),
+            "{kind}"
         );
         let after = format!("{two}\n## More\n");
         let errors = check("a.md", &kind_page(kind, &after));

@@ -1,5 +1,5 @@
 //! `cargo xtask exercises [--copy] [<step>...]`: the book's exercises
-//! (ticket 2828, ADR-0116), checked by the game of the step they are on.
+//! (ticket 2828, ADR-0117), checked by the game of the step they are on.
 //!
 //! The checks are plain Rust in `site/exercises/`, never in a step's own
 //! project, which stays as its page tells the reader to make it: one file a
@@ -114,7 +114,7 @@ pub fn page_problems(step: &str, page: &str, checks: Option<&str>) -> Vec<String
     let mut errors = Vec::new();
     if held.is_empty() {
         errors.push(format!(
-            "{file}: no `pub const CHECKS` naming its checks (ADR-0116)"
+            "{file}: no `pub const CHECKS` naming its checks (ADR-0117)"
         ));
     }
     for name in asked.iter().filter(|name| !held.contains(name)) {

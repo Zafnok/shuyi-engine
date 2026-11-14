@@ -18,7 +18,7 @@
 // them back as it goes: the game's keys hold this page's files only while
 // this page is open.
 //
-// An exercise (ticket 2828, ADR-0116, `templates/shortcodes/exercise.html`)
+// An exercise (ticket 2828, ADR-0117, `templates/shortcodes/exercise.html`)
 // asks the game for a check: **Check my work** writes its name under
 // `shuyi-page-check` and runs, and the game answers with
 // `postMessage({ kind: "shuyi-check", name, passed, text })`, after its

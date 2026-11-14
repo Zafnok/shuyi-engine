@@ -183,7 +183,7 @@ usage:
   cargo xtask exercises [--copy] [<step>...]
       Copy each step of site/tutorial/, or those named, to target/exercises/,
       with site/exercises/'s checks of its page's exercises compiled into its
-      binary (ticket 2828, ADR-0116), and check them: each page's exercises
+      binary (ticket 2828, ADR-0117), and check them: each page's exercises
       against its step's checks, and in each copy fmt, Clippy and the checks'
       tests. With --copy, only make the copies, for the steps' web builds.
   cargo xtask golden --bless

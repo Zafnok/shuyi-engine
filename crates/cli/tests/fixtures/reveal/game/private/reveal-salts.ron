@@ -1,0 +1,10 @@
+(
+    version: 1,
+    commitments: [
+        (
+            label: "design/boss.txt",
+            salt: "92c95e2046cf9daead09df253be1afaed62a4a85b35670beceeb3142f844d262",
+            sha256: "efe7e30b2a0b0644f89b8be98ca8f007d762519ede61cedb4a8d2c57965cd485",
+        ),
+    ],
+)

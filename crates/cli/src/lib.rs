@@ -7,7 +7,9 @@
 //! `web` and `private-assets`, each a module of library functions with a
 //! thin wrapper here; `repos`, which puts the game on GitHub with its
 //! private files' repository, keys and secrets (its `--help`; not part
-//! of the library's API: it acts on the developer's GitHub account); `bench`, which plays the game's benchmark scenarios
+//! of the library's API: it acts on the developer's GitHub account); `reveal`,
+//! the reveal kit, the evidence a game keeps before its first public
+//! footage (its `--help`; not part of the library's API); `bench`, which plays the game's benchmark scenarios
 //! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
@@ -46,6 +48,8 @@ pub mod pool;
 pub mod private_assets;
 pub mod project;
 mod repos;
+mod reveal;
+mod sha256;
 pub mod skills;
 pub mod template;
 #[cfg(feature = "toy")]
@@ -74,7 +78,7 @@ pub use shuyi_ui::frame::raster::test_card;
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
 /// ([`skills::check`]).
-pub const COMMANDS: [&str; 16] = [
+pub const COMMANDS: [&str; 17] = [
     "schema",
     "mcp",
     "mcp-host",
@@ -89,6 +93,7 @@ pub const COMMANDS: [&str; 16] = [
     "web",
     "private-assets",
     "repos",
+    "reveal",
     "bench",
     "bench-play",
 ];
@@ -170,11 +175,16 @@ commands:
   repos [--dry-run] [--json] [...]   put the game on GitHub: it creates its repository, its
                                      private files' one, their deploy keys and secrets on
                                      your account (repos --help)
+  reveal <prepare | verify | commit | open>
+                                     the reveal kit: the approved captures, the store page,
+                                     the builds' hashes and receipts, sealed by one digest
+                                     and checked anywhere (reveal --help)
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain, attach, schema, check-skills and mcp need none). An error has a problem
+{file} (new, doctor, explain, attach, schema, check-skills, mcp, reveal verify
+and reveal open need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
 ({command} doctor, {file}) before running it again.",

@@ -28,7 +28,7 @@
 //!
 //! [`run_game_checked`] runs it with checks a page may ask it to make of
 //! the files it was given ([`page::page_check`]), as the book's steps run
-//! their exercises' (ADR-0116).
+//! their exercises' (ADR-0117).
 //!
 //! A game of its own shape keeps macroquad's entry point, which has to be
 //! in the binary, and hands over its [`AppConfig`] and how it starts
@@ -657,7 +657,7 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
 pub type PageCheck<A, T> = (&'static str, fn(&BasicData<A, T>) -> Result<String, String>);
 
 /// [`run_game`], with checks a page may ask for (the book's exercises,
-/// ADR-0116): when the page names one ([`page::page_check`]) and its files
+/// ADR-0117): when the page names one ([`page::page_check`]) and its files
 /// load, the game's data is read with them, the check of that name in
 /// `checks` runs on it, and the page hears its result
 /// ([`page::report_check`]); a name with no check is reported failed. Files

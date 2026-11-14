@@ -240,7 +240,7 @@ version of the crate and update this note. It comes in Dependabot's
   origin, the parent gets `{ kind: "shuyi-report", text }` by
   `postMessage`, at that origin only; with no such parent, the console
   gets `text` with `console.info`.
-- **A check the page asks for** (ticket 2828, ADR-0116): a page writes a
+- **A check the page asks for** (ticket 2828, ADR-0117): a page writes a
   check's name under `shuyi-page-check`, and `page::page_check()` reads it
   (`None` for none, and on every other target). `page::report_check(&report)`
   sends the parent `{ kind: "shuyi-check", name, passed, text }` the same

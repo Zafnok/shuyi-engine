@@ -19,14 +19,14 @@
 //!   `- [x] ` for a right one and `- [ ] ` for a wrong one, each with
 //!   ` — ` and why after it, and at least one right;
 //! - every concept chapter (`[extra] chapter`) and project step (`[extra]
-//!   step`) ends with a `## Check yourself` section holding two or three,
-//!   and no other page has one;
+//!   step`) ends with a `## Check yourself` section holding two or more
+//!   (no most: Nick, 2026-11-13), and no other page has one;
 //! - across the book, no one place (first, second…) holds the right answer
 //!   of more than half of the checks with one right answer (ticket 2833):
 //!   the page shuffles its buttons, but the `<details>` list and the twins
 //!   show the written order.
 //!
-//! And the exercises (ticket 2828, ADR-0116), `{% exercise(check="…",
+//! And the exercises (ticket 2828, ADR-0117), `{% exercise(check="…",
 //! file="…", to="rust") %}` … `{% end %}`, placed as a check is:
 //!
 //! - `check` is a name, lowercase letters, digits and `-`, once a page;
@@ -112,7 +112,7 @@ pub struct Answer {
 pub const EXERCISE_TOPIC: &str = "an exercise";
 
 /// An exercise: a task done in the page's playground, and the check the
-/// game makes of it (ADR-0116).
+/// game makes of it (ADR-0117).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Exercise {
     /// The check's name, which the step's checks know.
@@ -893,8 +893,8 @@ fn read_answer(right: bool, rest: &str) -> Result<Answer, String> {
 }
 
 /// What is wrong with where the checks and exercises of `shown` are: a
-/// chapter or a step ends with [`CHECK_SECTION`] holding two or three
-/// checks, and every check is in it; a step whose playground holds files
+/// chapter or a step ends with [`CHECK_SECTION`] holding two checks or
+/// more, and every check is in it; a step whose playground holds files
 /// (`with_files`) has one or two exercises there, after its checks; another
 /// page has none of either.
 fn check_section(
@@ -955,7 +955,7 @@ fn check_section(
     };
     let Some(section) = section else {
         errors.push(format!(
-            "{shown}: a {what} ends with `{CHECK_SECTION}`, holding two or three checks"
+            "{shown}: a {what} ends with `{CHECK_SECTION}`, holding two checks or more"
         ));
         return errors;
     };
@@ -970,9 +970,9 @@ fn check_section(
         ));
     }
     let count = checks.iter().filter(|line| **line > section).count();
-    if !(2..=3).contains(&count) {
+    if count < 2 {
         errors.push(format!(
-            "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or three"
+            "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or more"
         ));
     }
     if wants_exercises {

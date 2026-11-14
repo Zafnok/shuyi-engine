@@ -16,7 +16,7 @@
 // frame, at the page's own origin.
 //
 // A page may also ask the game to check the files it was given (the book's
-// exercises, ADR-0116): it writes the check's name under `shuyi-page-check`,
+// exercises, ADR-0117): it writes the check's name under `shuyi-page-check`,
 // and the game sends back `{ kind: "shuyi-check", name, passed, text }` the
 // same way.
 (function () {

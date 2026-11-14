@@ -1,4 +1,4 @@
-//! The game's binary as the book's site plays it (ADR-0116): the step's
+//! The game's binary as the book's site plays it (ADR-0117): the step's
 //! own `main.rs`, but with the checks its page's exercises ask for. `cargo
 //! xtask exercises` puts this file in a copy of each step, and that step's
 //! checks beside it in `src/exercises/`.

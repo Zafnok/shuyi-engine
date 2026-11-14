@@ -49,7 +49,7 @@ What there is once the blockers are done:
   `site/static/book-check.js`, and written as text in the twins by
   `llms.rs`'s `checked` (`site/README.md`, *Quick checks*).
   - Every step and concept chapter ends with `## Check yourself`, its
-    last `## ` section, holding two or three checks. `cargo xtask
+    last `## ` section, holding two checks or more. `cargo xtask
     check-book` (`book.rs`'s `check_section`) fails a heading after it, so
     an exercise goes in that section after the checks, with no heading
     of its own.
@@ -166,7 +166,7 @@ None.
 
 **What was done**
 
-- **The design:** [ADR-0116](../../docs/adr/0116-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
+- **The design:** [ADR-0117](../../docs/adr/0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
   extending ADR-0090 §8. The checks live in `site/exercises/`, never in a
   step's project: one file a step (`<step>.rs`), the binary every step runs
   with them (`main.rs`) and shared helpers (`solve.rs`, a breadth-first
@@ -208,8 +208,8 @@ None.
   `CheckReport` with the name: a check doesn't repeat its own name. The
   ticket's `page_check` goes in `run_game_checked`, a new public function,
   because a step's `main.rs` stays as the page says and the checks can't be
-  in `run_game` (ADR-0116 §3).
-- The site's `play/` of each step is now built from its copy (ADR-0116
+  in `run_game` (ADR-0117 §3).
+- The site's `play/` of each step is now built from its copy (ADR-0117
   §2), in `pages.yml` and in CI's boot check of the steps.
 - Each exercise also has an **Open `files/<file>`** button: the exercises
   sit at the page's end and the playground at its top.

@@ -1820,3 +1820,18 @@ of `shuyi new` listed every file it wrote:
   passes its gates and keeps its skills.
 
 Ticket 2597.
+
+## 2026-11-13: a chapter's quick checks have no most
+
+Source: Nick, during ticket 2816 on 2026-11-13, after `check-book`
+refused a fourth quick check in chapter 9:
+
+> "imo, quick checks don't need to be limited to 3. Go ahead and alter
+> that restriction and add your quick check"
+
+**Rules:**
+
+- A concept chapter or a project step ends with `## Check yourself`
+  holding two quick checks or more; there is no most.
+
+Made in ticket 2816's PR, at Nick's word.

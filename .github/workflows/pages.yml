@@ -122,7 +122,7 @@ jobs:
       # Every step of the book's project (ticket 2803), at the address its page
       # links. Each builds against the engine's code at this commit, from a
       # copy of the step with its exercises' checks compiled in (ticket 2828,
-      # ADR-0116): the step's own folder is what its page shows.
+      # ADR-0117): the step's own folder is what its page shows.
       - name: Copy the project's steps with their exercises' checks
         run: cargo xtask exercises --copy
       - name: Build the project's steps for the web and put them in the site

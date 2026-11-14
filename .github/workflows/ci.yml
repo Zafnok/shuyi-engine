@@ -371,7 +371,7 @@ jobs:
           done
       # As pages.yml builds them: every step of the book's project (ticket
       # 2803), its code in site/tutorial/, from its copy with its exercises'
-      # checks compiled in (ticket 2828, ADR-0116).
+      # checks compiled in (ticket 2828, ADR-0117).
       - name: Copy the tutorial's steps with their exercises' checks
         run: cargo xtask exercises --copy
       - name: Every tutorial step's web build boots
@@ -519,7 +519,7 @@ jobs:
         run: bash scripts/setup-linux.sh
       - run: cargo xtask tutorial-tries --check
 
-  # The book's exercises (ticket 2828, ADR-0116): each step's page asks only
+  # The book's exercises (ticket 2828, ADR-0117): each step's page asks only
   # for checks its step has in site/exercises/, and in a copy of each step
   # with them compiled in, fmt, Clippy and the checks' tests pass (each check
   # passes with its exercise's edit and fails without).

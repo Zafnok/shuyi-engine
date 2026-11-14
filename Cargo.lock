@@ -1700,6 +1700,7 @@ dependencies = [
  "crc32fast",
  "encoding_rs",
  "flate2",
+ "getrandom 0.4.3",
  "gif",
  "hound",
  "include_dir",
