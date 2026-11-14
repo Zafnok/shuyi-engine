@@ -106,7 +106,7 @@ None.
   systems: the copy to another machine. `SHUYI_BLESS=1` rewrites it.
 - Docs: the `shuyi-ship` skill (step 9, `SH3015`, its worked example now
   prepares and verifies a kit on a new game), the book's chapter 9
-  (*Before the reveal*), the docs map's row for the
+  (*Before the reveal*, and a quick check), the docs map's row for the
   fixture, the README's `shuyi-cli` row, rustdoc, ADR-0115.
 
 **Deviations:**
@@ -119,6 +119,13 @@ None.
   dated where it is published (a pushed commit or tag, a release's notes,
   3050's attestations), and `verify --digest` checks a copy against it
   (ADR-0115 §4 says why).
+- **Outside the ticket, at Nick's word:** `cargo xtask check-book`
+  allowed two or three quick checks a chapter, and refused the reveal
+  kit's as a fourth in chapter 9. Nick said (2026-11-13) there is no
+  need to limit them to three, and to change it here: `book.rs`'s
+  `check_section` now asks for two or more, with a test that four pass;
+  `site/README.md` and 2828's note say so, and `docs/decisions.md` has
+  the decision. No ticket of its own: done in this PR on his word.
 - Checked against the code (the ticket was 13 days old): 2811 and 3050
   are done and name what the steps use; nothing was renamed. No fix to
   the ticket.

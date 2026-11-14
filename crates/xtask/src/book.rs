@@ -19,8 +19,8 @@
 //!   `- [x] ` for a right one and `- [ ] ` for a wrong one, each with
 //!   ` — ` and why after it, and at least one right;
 //! - every concept chapter (`[extra] chapter`) and project step (`[extra]
-//!   step`) ends with a `## Check yourself` section holding two or three,
-//!   and no other page has one;
+//!   step`) ends with a `## Check yourself` section holding two or more
+//!   (no most: Nick, 2026-11-13), and no other page has one;
 //! - across the book, no one place (first, second…) holds the right answer
 //!   of more than half of the checks with one right answer (ticket 2833):
 //!   the page shuffles its buttons, but the `<details>` list and the twins
@@ -622,7 +622,7 @@ fn read_answer(right: bool, rest: &str) -> Result<Answer, String> {
 }
 
 /// What is wrong with where the checks of `shown` are: a chapter or a step
-/// ends with [`CHECK_SECTION`] holding two or three, and every check is in
+/// ends with [`CHECK_SECTION`] holding two or more, and every check is in
 /// it; another page has none.
 fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> Vec<String> {
     let mut errors = Vec::new();
@@ -667,7 +667,7 @@ fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> 
     };
     let Some(section) = section else {
         errors.push(format!(
-            "{shown}: a {what} ends with `{CHECK_SECTION}`, holding two or three checks"
+            "{shown}: a {what} ends with `{CHECK_SECTION}`, holding two checks or more"
         ));
         return errors;
     };
@@ -682,9 +682,9 @@ fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> 
         ));
     }
     let count = checks.iter().filter(|line| **line > section).count();
-    if !(2..=3).contains(&count) {
+    if count < 2 {
         errors.push(format!(
-            "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or three"
+            "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or more"
         ));
     }
     errors

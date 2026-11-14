@@ -551,3 +551,11 @@ A public web demo must not hold chapter two. What keeps it out?
 - [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
 - [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
 {% end %}
+
+{% check() %}
+You prepared a reveal kit on 2026-11-13. What shows a stranger it existed on that day?
+
+- [ ] The `prepared` date in `reveal.ron`. — That is your computer's clock, which anyone can set ([before the reveal](#before-the-reveal)).
+- [x] The kit's digest in a commit you pushed that day, and `reveal verify --digest` passing on the kit. — Someone else recorded the date of the digest, and the digest names every byte of the kit ([before the reveal](#before-the-reveal)).
+- [ ] `reveal verify` passing on the kit. — That shows the folder agrees with itself; a folder made later agrees with itself too ([before the reveal](#before-the-reveal)).
+{% end %}
