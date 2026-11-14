@@ -440,6 +440,7 @@ cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' work
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
+cargo xtask check-merges  # no merge commit in origin/main..HEAD changes a file or line beyond resolving its parents (ticket 2065); CI: --base HEAD^1 --head HEAD^2
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
 

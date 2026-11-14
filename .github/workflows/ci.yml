@@ -1313,10 +1313,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       # HEAD^1 is the base tip: a ticket-only PR's diff is read against it.
+      # The whole history: check-merges remerges each merge's parents.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 0
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check shared agent skill loaders
@@ -1332,6 +1333,12 @@ jobs:
           else
             cargo xtask ticket-lint
           fi
+      # A merge of main into the branch brings no change of its own (ticket
+      # 2065): HEAD is GitHub's merge of the PR, so the branch's commits are
+      # HEAD^1..HEAD^2.
+      - name: Check the branch's merge commits
+        if: env.EVENT_NAME == 'pull_request'
+        run: cargo xtask check-merges --base HEAD^1 --head HEAD^2
       # The PR's counted lines (ticket 2053): past 1,000 a warning, past
       # 1,500 a failure unless its done ticket's notes have a `Size:` line.
       # HEAD^1 is the base tip, so the diff is the PR's own.

@@ -37,6 +37,14 @@ Harness-specific hooks do not run everywhere: execute the workflow's
 required checks explicitly. Do not alter another harness's settings to
 make a shared instruction work.
 
+Each harness's shared settings for this repository are tracked:
+`.mcp.json` and `.claude/settings.json` for Claude Code, and
+`.codex/config.toml` for Codex (the same `shuyi` MCP server, and the
+timeout its first build needs). One machine's settings stay out:
+`.claude/settings.local.json`, or Codex's `~/.codex/config.toml`. A merge
+commit brings no file of its own: `cargo xtask check-merges` fails one
+that changes more than resolving its parents needs (ticket 2065).
+
 ## Who decides what
 
 - **Nick (owner)** decides the product: the name, the license, when

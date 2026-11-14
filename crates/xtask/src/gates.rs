@@ -179,6 +179,7 @@ pub const GATES: &[Gate] = &[
         "cargo xtask check-toolchain",
         "cargo xtask check-docs",
         "cargo xtask check-paths",
+        "cargo xtask check-merges",
     ]),
     gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem

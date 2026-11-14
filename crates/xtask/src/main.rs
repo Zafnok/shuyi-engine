@@ -4,6 +4,7 @@
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-paths`
+//! - `cargo xtask check-merges [--base <rev>] [--head <rev>]`
 //! - `cargo xtask check-book`
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
@@ -45,6 +46,7 @@ mod ids;
 mod layers;
 mod links;
 mod llms;
+mod merges;
 mod modules;
 mod no_std;
 mod paths;
@@ -82,6 +84,11 @@ usage:
   cargo xtask check-paths
       Check that no tracked path is over 150 characters: Cargo's git checkout
       on Windows adds about 80, and libgit2 stops at 260 (ticket 2071).
+  cargo xtask check-merges [--base <rev>] [--head <rev>]
+      Check that no merge commit in <base>..<head> (origin/main..HEAD) changes
+      more than resolving its two parents needs (`git show --remerge-diff`):
+      a file git merged without a conflict, or a line outside a conflict,
+      fails, named (ticket 2065).
   cargo xtask check-book
       Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
       audience of the four, a topic, closed, not nested, on lines of their
@@ -239,6 +246,7 @@ fn main() -> ExitCode {
             report("check-docs", &errors, &[])
         }
         Some("check-paths") if args.len() == 1 => report("check-paths", &paths::run(&root), &[]),
+        Some("check-merges") => check_merges(&root, &args[1..]),
         Some("check-book") if args.len() == 1 => report("check-book", &book::run(&root), &[]),
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
@@ -284,6 +292,23 @@ fn repo_root() -> PathBuf {
         .and_then(Path::parent)
         .unwrap_or(manifest)
         .to_path_buf()
+}
+
+fn check_merges(root: &Path, args: &[String]) -> ExitCode {
+    let mut base = "origin/main";
+    let mut head = "HEAD";
+    let mut rest = args.iter();
+    while let Some(flag) = rest.next() {
+        match (flag.as_str(), rest.next()) {
+            ("--base", Some(value)) => base = value,
+            ("--head", Some(value)) => head = value,
+            _ => {
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+    report("check-merges", &merges::run(root, base, head), &[])
 }
 
 fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
