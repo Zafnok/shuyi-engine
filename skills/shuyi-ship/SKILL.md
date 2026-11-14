@@ -1,6 +1,6 @@
 ---
 name: shuyi-ship
-description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
+description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; the credits of every third-party work it uses; and the reveal kit, its evidence before the first public footage (`cargo shuyi reveal prepare`). Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, making pictures for a store page, or before showing the game in public. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -19,6 +19,7 @@ Ship only what `check --target` passes.
 - Adding a target to the ones it ships on (the Steam Deck, the web).
 - Writing the credits of a font, a picture or vendored code.
 - Pictures for a store page or a README.
+- Before the first public footage: the reveal kit.
 
 ## When not to
 
@@ -293,6 +294,63 @@ Ship only what `check --target` passes.
    app has no Developer ID signature, so players open it from System
    Settings, Privacy & Security.
 
+9. **Before the reveal**, the first public footage of the game: a
+   gameplay idea can be copied from footage alone, and nothing stops
+   that, so keep the evidence of what is the game's, and when. List the
+   approved captures and the store page in a `reveal` part of
+   `shuyi.ron`:
+
+   ```ron
+   reveal: (
+       store_url: "https://store.steampowered.com/app/123/Moon_Garden/",
+       keywords: ["moon", "garden"],
+       captures: [
+           (file: "preview.png", what: "the walk to the well",
+            encodes: ["shots/preview-steam.webp"]),
+       ],
+       sums: "release/SHA256SUMS",
+       receipts: ["release/moon-garden-windows.zip.sigstore.json"],
+       salts: "private/reveal-salts.ron",
+   ),
+   ```
+
+   `name` is `app`'s unless it says; `encodes` are the same capture as a
+   platform re-encoded it; `artifacts` (a demo's package) are recorded by
+   hash, never copied, and a store page alone needs none; `sums` is a
+   release's `SHA256SUMS` (step 8) and `receipts` its attestations or any
+   dated receipt. Then:
+
+   ```bash
+   cargo shuyi reveal prepare
+   cargo shuyi reveal verify dist/reveal
+   ```
+
+   `prepare` writes the kit into `dist/reveal` (`out` to change it):
+   every file copied whole, `reveal.ron` with each one's SHA-256, and the
+   kit's digest, the manifest's own SHA-256, in `reveal.ron.sha256`.
+   `verify` checks a copy anywhere, with no project (`--digest <digest>`:
+   against the one published). Work through `CHECKLIST.md` before the
+   footage goes out:
+   - open the store page and check its name and media are the approved
+     captures;
+   - publish the digest where it is dated: a pushed commit or tag, a
+     release's notes (the kit's own date is the machine's clock);
+   - copyright registration of the art, music and text: in the US about
+     US$65, and statutory damages need it before the infringement or
+     within three months of first publication (17 U.S.C. 412). Whether
+     to register is the game's owner's call; the kit only reminds, and is
+     not legal advice.
+
+   To prove later what isn't shown yet (a design note, a level),
+   `cargo shuyi reveal commit <file>` keeps a salted commitment in the
+   `salts` file, whose digest the next `prepare` records; `cargo shuyi
+   reveal open <file>` shows the file opens it. Keep the salts file
+   private, and back it up: in the private files' checkout (`private/`)
+   but outside its `files/`, which the build embeds, and never in a
+   public repository. Without it nothing opens. `EVIDENCE.md` lists every hash, and ends with what a
+   report of a copied clip fills in. The kit judges nothing and sends
+   nothing.
+
 ## Licenses
 
 Every work the game ships, code or not, must be under a license that
@@ -330,6 +388,10 @@ with `cargo shuyi explain <code>`:
 - `export --plan --tag`: `SH0001`, the tag isn't `v` and the version
   (both named): tag the version the game has, or set the version and tag
   that commit.
+- `reveal verify`: `SH3015`, the kit isn't as it was sealed; each problem
+  names a file (changed, missing, or not in the manifest). Copy the kit
+  again from a copy that verifies, never edit it; captures that really
+  changed are a new kit (`reveal prepare`), with a new digest.
 - `import` answers `ok: false` with each error's file and line (and its
   code when its class has one): a credit with an empty field, a source
   that isn't a web link, a license not on the list.

@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: blocked
+status: todo
 blocked_by: ["2816"]
 nick_input: none
 completed:
@@ -36,6 +36,22 @@ anything and never judges infringement.
 
 Section 10 of the report says perceptual hashes find ripped or upscaled
 reuse of art and not a redraw; that is this ticket's picture match.
+
+**From 2816 (done):** the kit is a folder `shuyi reveal prepare` writes
+(`dist/reveal` by default) from `shuyi.ron`'s `reveal` part
+(`project::Reveal`), and `crates/cli/src/reveal/` holds it, private to
+`shuyi-cli` ([ADR-0115](../../docs/adr/0115-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)).
+Its manifest, `reveal.ron` (`reveal::kit::Manifest`, version 1, read with
+`kit::read_manifest`), gives `game`, `keywords`, `store_url`, `prepared`,
+`build`, and `captures`, each with its `original` and `encodes` (`path`
+in the kit, `sha256`, `bytes`) and `args`; `artifacts` (the builds by
+hash), `receipts`, `commitments` and `index` (`EVIDENCE.md`). The kit's
+digest, the manifest's SHA-256, is in `reveal.ron.sha256`, and `reveal
+verify` fails any file the manifest doesn't name. So the `watch` section
+goes in the `reveal` part of `shuyi.ron` and in a manifest of version 2
+(a reader of version 1 refuses it by its version), not as a file added to
+a kit. The pictures to hash are the captures' files in the kit; the
+evidence bundle copies the kit's `EVIDENCE.md` section "A public clip".
 
 ## Nick input
 

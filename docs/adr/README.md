@@ -126,5 +126,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112; §5 amended by ADR-0114 |
 | [0112](0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md) | `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again | Accepted; extends ADR-0111 §1 and §5 |
 | [0114](0114-a-games-release-from-a-tag-one-plan-one-export-workflow.md) | A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release | Accepted; amends ADR-0111 §5 |
+| [0115](0115-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md) | The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

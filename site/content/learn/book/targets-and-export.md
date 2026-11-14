@@ -410,6 +410,59 @@ opens it from System Settings, Privacy & Security, as its `HOW-TO-OPEN.txt` says
 repository each file is attested, and `gh attestation verify <file> --repo <owner>/<repo>` says
 your repository's release built it.
 
+## Before the reveal
+
+The day you first show the game in public, its idea can be copied from the footage alone: a
+clone needs no build of yours. Nothing stops that. What helps later is evidence: which pictures
+and clips are yours, which build made them, which store page is the real one, and when each
+existed. The **reveal kit** keeps that, made before the first trailer or screenshot goes out.
+
+List the approved captures and the store page in a `reveal` part of `shuyi.ron`:
+
+```ron
+reveal: (
+    store_url: "https://store.steampowered.com/app/123/Moon_Garden/",
+    keywords: ["moon", "garden"],
+    captures: [
+        (file: "preview.png", what: "the walk to the well",
+         encodes: ["shots/preview-steam.webp"]),
+    ],
+),
+```
+
+A capture is the file as you made it (with `frame-png`, or recorded), and `encodes` are the
+same capture as a platform re-encoded it. A store page with no demo needs nothing more; a
+release's `SHA256SUMS` (`sums`) and any dated receipt (`receipts`) go in too when there are some.
+Then:
+
+```bash
+cargo shuyi reveal prepare
+cargo shuyi reveal verify dist/reveal
+```
+
+`prepare` copies each file whole into `dist/reveal` and writes `reveal.ron`, which names the
+SHA-256 of every file: a fingerprint that changes if one byte changes. The fingerprint of
+`reveal.ron` itself is the kit's **digest**, in `reveal.ron.sha256`. `verify` checks a copy of the
+folder anywhere, with no project: a changed frame, a changed line of `reveal.ron`, or a file added,
+and it fails, naming the file.
+
+The kit's own date is your computer's clock, which anyone can set. So publish the digest where
+someone else records the date: a commit or a tag pushed to your repository, or a release's notes.
+`verify --digest <digest>` then checks a copy against the one you published.
+
+`CHECKLIST.md` in the kit lists what to do before the footage goes out: check the store page shows
+the approved captures, publish the digest, and consider registering the copyright of the art, music
+and text. In the US, registering before an infringement, or within three months of first
+publication, is what makes statutory damages possible (17 U.S.C. 412); the fee is about US$65.
+Whether to register is your decision: the kit only reminds, and none of this is legal advice.
+
+To show later something you haven't shown yet, a design note or a level, `cargo shuyi reveal
+commit <file>` keeps a **salted commitment**: a fingerprint of the file mixed with a random salt,
+which the next kit records. Anyone can see the fingerprint and learn nothing from it; later, the
+file and its salt open it (`cargo shuyi reveal open <file>`), and a file changed by one byte
+doesn't. Keep the salts file private and backed up, out of any public repository: without it,
+nothing opens.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
@@ -497,4 +550,12 @@ A public web demo must not hold chapter two. What keeps it out?
 - [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
 - [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
 - [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
+{% end %}
+
+{% check() %}
+You prepared a reveal kit on 2026-11-13. What shows a stranger it existed on that day?
+
+- [ ] The `prepared` date in `reveal.ron`. — That is your computer's clock, which anyone can set ([before the reveal](#before-the-reveal)).
+- [x] The kit's digest in a commit you pushed that day, and `reveal verify --digest` passing on the kit. — Someone else recorded the date of the digest, and the digest names every byte of the kit ([before the reveal](#before-the-reveal)).
+- [ ] `reveal verify` passing on the kit. — That shows the folder agrees with itself; a folder made later agrees with itself too ([before the reveal](#before-the-reveal)).
 {% end %}

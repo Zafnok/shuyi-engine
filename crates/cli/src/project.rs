@@ -1,8 +1,8 @@
 //! The project file, `shuyi.ron`, at a game's root: who the game is (its
 //! `app` part), which paths each check scans, the game's tool program (for the commands that run the game),
 //! the font atlas's rules, the web build's package, the game's own license
-//! texts and the private repository's settings, the game's preview, and the
-//! targets the game ships on. A command
+//! texts and the private repository's settings, the game's preview, its
+//! reveal kit, and the targets the game ships on. A command
 //! whose part is missing says so.
 //!
 //! Every path is relative to the project's root (the folder holding
@@ -118,6 +118,9 @@ pub struct Config {
     /// `frame-png --preview`: the animated `preview.png` a README and the
     /// website's Examples card show ([`crate::frame_png::preview`]).
     pub preview: Option<Preview>,
+    /// `reveal prepare`: what the reveal kit holds, the game's evidence
+    /// before its first public footage.
+    pub reveal: Option<Reveal>,
     /// `private-assets`.
     pub private_assets: Option<PrivateAssets>,
     /// `check --target`: the targets the game ships on, by the id of
@@ -423,6 +426,56 @@ impl Preview {
     pub fn new(args: Vec<String>) -> Self {
         Self { args }
     }
+}
+
+/// `reveal prepare`: the reveal kit, a folder of the game's approved
+/// captures, its store page, its builds' hashes and its receipts, sealed by
+/// a manifest's SHA-256 (`shuyi reveal --help`). Read from `shuyi.ron`,
+/// never built by a literal (ADR-0039).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Reveal {
+    /// The game's name as the public sees it: `app`'s `name` unless this
+    /// says.
+    pub name: Option<String>,
+    /// The canonical store page, an `https://` address.
+    pub store_url: String,
+    /// Words a copy's title or text might use (a store watch reads them).
+    pub keywords: Vec<String>,
+    /// The approved captures, each copied in whole.
+    pub captures: Vec<RevealCapture>,
+    /// Builds whose hashes the kit records (a demo's package), never
+    /// copied. None for a store page alone.
+    pub artifacts: Vec<String>,
+    /// A release's `SHA256SUMS` (its GitHub Release's): each line is a
+    /// build the kit records, and the file is kept as a receipt.
+    pub sums: Option<String>,
+    /// Dated receipts kept in whole: a release's attestations, a
+    /// registration's receipt.
+    pub receipts: Vec<String>,
+    /// The private file of the salted commitments (`reveal commit`), whose
+    /// digests the kit records. Keep it out of any public repository.
+    pub salts: Option<String>,
+    /// Where the kit is written: `dist/reveal` unless this says.
+    pub out: Option<String>,
+}
+
+/// An approved capture of the reveal kit.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct RevealCapture {
+    /// The original, as made (`frame-png`'s picture, a recorded video).
+    pub file: String,
+    /// What it shows, in a few words.
+    pub what: String,
+    /// The same capture as each platform re-encoded it (the store's
+    /// copy, a trailer's upload), each copied in whole beside it.
+    pub encodes: Vec<String>,
+    /// The `frame-png` arguments that made it, after the output path: the
+    /// `preview` part's for `preview.png` unless this says.
+    pub args: Vec<String>,
 }
 
 /// The web build.

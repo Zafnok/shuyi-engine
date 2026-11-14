@@ -19,7 +19,7 @@
 //! searched (a Playdate's program is, in the ELF `pdc` packs it from). A
 //! package that passes holds no declared text, not "nothing unreleased".
 
-mod sha256;
+use crate::sha256;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;

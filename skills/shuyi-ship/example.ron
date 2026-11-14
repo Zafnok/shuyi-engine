@@ -1,7 +1,8 @@
 // The worked example of shuyi-ship, a script of contract commands run on
 // a game made with `shuyi new <dir> --template grid` (named after the
 // skill: its crate is `shuyi-ship`): a target added and its controls made
-// to fit, the web build, the credits, and the pack a release ships.
+// to fit, the web build, the credits, the pack a release ships, and the
+// reveal kit.
 Example(
     template: "grid",
     steps: [
@@ -74,6 +75,20 @@ Example(
             Holds("/limits/0", "`steam-deck` is checked"),
         ]),
         Shuyi(args: ["export", "--plan", "--tag", "v0.2.0"], ok: false, expect: [Is("/code", "SH0001")]),
+        // Before the reveal: an approved capture and the store page, kept
+        // in the reveal kit, sealed by its digest, and checked as another
+        // machine checks it. A store page alone: no build in the kit.
+        Cargo(args: ["shuyi", "frame-png", "shot.png"]),
+        Edit(
+            file: "shuyi.ron",
+            find: "    web: (\n",
+            replace: "    reveal: (\n        store_url: \"https://store.example.com/app/1/shuyi-ship/\",\n        keywords: [\"grid\"],\n        captures: [(file: \"shot.png\", what: \"the first frame\")],\n    ),\n\n    web: (\n",
+        ),
+        Cargo(args: ["shuyi", "reveal", "prepare"]),
+        Holds(file: "dist/reveal/captures/shot.png"),
+        Holds(file: "dist/reveal/reveal.ron", text: "artifacts: [],"),
+        Holds(file: "dist/reveal/CHECKLIST.md", text: "17 U.S.C. 412"),
+        Cargo(args: ["shuyi", "reveal", "verify", "dist/reveal"]),
         // The gates still pass, the build script's included.
         Shuyi(args: ["check"]),
         Cargo(args: ["fmt", "--all", "--check"]),
