@@ -130,7 +130,8 @@ usage:
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
       named, or of every <n>th from the <i>th: a verdict per step. The games
-      build in this repository's target folder unless CARGO_TARGET_DIR is set.
+      build in target/skill-examples-build with no incremental cache, `shuyi
+      new` in this repository's target folder, unless CARGO_TARGET_DIR is set.
   cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, and count a new `blank` game's
@@ -374,14 +375,8 @@ fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    // Games share this repository's target folder unless cargo is told
-    // otherwise, so the engine builds once for all of them.
-    let runner = script::System {
-        target_dir: std::env::var_os("CARGO_TARGET_DIR")
-            .is_none()
-            .then(|| root.join("target")),
-    };
-    let outcome = skills::run(root, &skills::games_dir(root), &options, &runner);
+    let (maker, game) = skills::runners(root, std::env::var_os("CARGO_TARGET_DIR").is_some());
+    let outcome = skills::run(root, &skills::games_dir(root), &options, &maker, &game);
     eprint!("{}", outcome.report);
     report("skill-examples", &outcome.errors, &[])
 }
@@ -403,7 +398,7 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         None => None,
     };
     let games = compile_times::games_dir(root, options.dir.as_deref());
-    let maker = script::System { target_dir: None };
+    let maker = script::System::default();
     let game = compile_times::Game {
         target_dir: games.join("timed").join("target"),
     };

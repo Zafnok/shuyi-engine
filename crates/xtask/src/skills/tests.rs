@@ -111,7 +111,7 @@ fn each_example_runs_on_a_new_game_made_from_this_checkout() {
     let root = checkout("runs", &[("shuyi-gates", Some(RUNS))]);
     let games = root.join("games");
     let fake = Fake::default();
-    let outcome = run(&root, &games, &Options::default(), &fake);
+    let outcome = run(&root, &games, &Options::default(), &fake, &fake);
     assert_eq!(outcome.errors, Vec::<String>::new());
     let game = games.join("shuyi-gates");
     let calls = fake.calls.borrow();
@@ -159,7 +159,13 @@ fn a_failed_step_names_its_skill_and_a_manual_example_isnt_run() {
         ],
     );
     let fake = Fake::default();
-    let outcome = run(&root, &root.join("games"), &Options::default(), &fake);
+    let outcome = run(
+        &root,
+        &root.join("games"),
+        &Options::default(),
+        &fake,
+        &fake,
+    );
     assert_eq!(
         outcome.errors,
         [
@@ -186,7 +192,7 @@ fn only_the_named_skills_and_the_shard_run() {
     );
     let ran = |options: &Options| {
         let fake = Fake::default();
-        let outcome = run(&root, &root.join("games"), options, &fake);
+        let outcome = run(&root, &root.join("games"), options, &fake, &fake);
         let games: Vec<String> = fake
             .calls
             .borrow()
@@ -252,7 +258,7 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
         shard: None,
     };
     let fake = Fake::default();
-    let outcome = run(&root, &root.join("games"), &only, &fake);
+    let outcome = run(&root, &root.join("games"), &only, &fake, &fake);
     assert_eq!(outcome.errors, Vec::<String>::new());
     assert!(
         outcome.report.contains("shuyi-test: 3 step(s)"),
@@ -276,7 +282,13 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
         only: vec!["shuyi-test-attach".to_owned()],
         shard: None,
     };
-    let outcome = run(&root, &root.join("games"), &alone, &Fake::default());
+    let outcome = run(
+        &root,
+        &root.join("games"),
+        &alone,
+        &Fake::default(),
+        &Fake::default(),
+    );
     assert_eq!(outcome.errors, Vec::<String>::new());
     assert!(
         outcome.report.contains("shuyi-test-attach: manual"),
@@ -289,4 +301,30 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
         outcome.report
     );
     let _ = fs::remove_dir_all(&root);
+}
+
+/// The games build in their own folder with no incremental cache, `shuyi
+/// new` in the root target, and a `CARGO_TARGET_DIR` from the environment
+/// is left alone by both.
+#[test]
+fn the_games_build_in_their_own_folder_and_the_maker_in_the_root_target() {
+    let root = Path::new("repo");
+    let (maker, game) = runners(root, false);
+    assert_eq!(
+        maker,
+        script::System {
+            target_dir: Some(root.join("target")),
+            no_incremental: false,
+        }
+    );
+    assert_eq!(
+        game,
+        script::System {
+            target_dir: Some(root.join("target/skill-examples-build")),
+            no_incremental: true,
+        }
+    );
+    let (maker, game) = runners(root, true);
+    assert_eq!(maker, script::System::default());
+    assert_eq!(game, script::System::default());
 }
