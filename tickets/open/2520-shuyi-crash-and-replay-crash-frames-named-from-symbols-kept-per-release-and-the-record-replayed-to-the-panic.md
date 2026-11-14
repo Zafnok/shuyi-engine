@@ -256,6 +256,10 @@ None.
     "its session plays the whole game: `shuyi run --session <file>`".
     `docs/crash-reports.md`'s paragraph on `shuyi crash` names the
     field. If not, nothing to do (3060 adds them, its clause says so).
+  - **Either order with 2077** (dev and test programs built without
+    debug info, but shuyi-cli's): if 2077 is done, the DWARF test
+    relies on its `[profile.dev.package.shuyi-cli]` override, so keep
+    it; if not, nothing to do (2077 checks this test still passes).
 - **Docs:** `docs/contract.md`'s table gains `crash` and `replay
   --crash`. `docs/crash-reports.md` (3046) gains: reading a report with
   `shuyi crash`, keeping and passing the debug file, and reproducing
