@@ -455,7 +455,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 14: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 15: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -554,9 +554,32 @@ fn an_index_that_doesnt_hold_together_is_refused() {
         opened(vec![entry("a", stored, 0, 2, 2)], b"ab"),
         "ok: 1 file(s)"
     );
+    // A byte before a file, or files' bytes out of path order, is a layout
+    // a reader takes (a recipient's, ADR-0118).
     assert_eq!(
         opened(vec![entry("a", stored, 1, 1, 1)], b"ab"),
-        "the pack is broken: a starts at 1 and the file before it ends at 0"
+        "ok: 1 file(s)"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 2, 1, 1), entry("b", stored, 0, 1, 1)],
+            b"bxa"
+        ),
+        "ok: 2 file(s)"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 0, 2, 2), entry("b", stored, 1, 2, 2)],
+            b"abc"
+        ),
+        "the pack is broken: b overlaps a"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 1, 2, 2), entry("b", stored, 0, 2, 2)],
+            b"abc"
+        ),
+        "the pack is broken: a overlaps b"
     );
     assert_eq!(
         opened(vec![entry("a", stored, 0, 3, 3)], b"ab"),
@@ -853,4 +876,128 @@ fn a_packs_length_finds_its_end_inside_a_bigger_file() {
     ]
     .concat();
     assert!(matches!(length(&unread), Err(PackError::Broken(_))));
+}
+
+/// Twelve files, as many as Hello, Grid's pack has, some that compress.
+fn twelve() -> Vec<(String, Vec<u8>)> {
+    (0..12u8)
+        .map(|i| {
+            let bytes = if i % 3 == 0 {
+                vec![i; 200]
+            } else {
+                (0..50u8)
+                    .map(|b| b.wrapping_mul(i).wrapping_add(7))
+                    .collect()
+            };
+            (format!("file{i:02}.bin"), bytes)
+        })
+        .collect()
+}
+
+fn code(bits: u32) -> Code {
+    Code::new(bits).expect("not zero")
+}
+
+/// Each file of pack `bytes`, opened, by path.
+fn files_of(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
+    let pack = Pack::open(bytes, &test_info().stamp).expect("opens");
+    pack.files()
+        .iter()
+        .map(|file| (file.path.clone(), file.bytes.to_vec()))
+        .collect()
+}
+
+#[test]
+fn a_raw_pack_writes_the_bytes_write_gives() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let raw = Raw::read(&pack).expect("reads");
+    assert_eq!(raw.write(), pack);
+    assert_eq!(raw.mark(), PackMark::None);
+    assert_eq!(raw.paths().count(), 12);
+}
+
+#[test]
+fn a_marked_pack_opens_to_the_same_files_and_names_its_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let raw = Raw::read(&pack).expect("reads");
+    let marked = raw.write_marked(code(0x1234_5678)).expect("has files");
+    assert_ne!(marked, pack);
+    assert_eq!(files_of(&marked), files_of(&pack));
+    assert_eq!(info(&marked), info(&pack));
+    assert_eq!(length(&marked), Ok(marked.len()));
+    assert_eq!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            code: code(0x1234_5678),
+            order_agrees: true
+        }
+    );
+    // Laid out again in path order, it is the public pack.
+    assert_eq!(Raw::read(&marked).expect("reads").write(), pack);
+}
+
+#[test]
+fn a_pack_of_one_file_holds_the_code_before_it() {
+    let pack = raw_pack(&test_info(), &[("a".to_owned(), vec![1, 2, 3])]);
+    let raw = Raw::read(&pack).expect("reads");
+    let marked = raw.write_marked(code(5)).expect("one file");
+    assert_eq!(files_of(&marked), files_of(&pack));
+    assert_eq!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            code: code(5),
+            order_agrees: true
+        }
+    );
+    let empty = Raw::read(&raw_pack(&test_info(), &[])).expect("reads");
+    assert_eq!(empty.write_marked(code(5)), None);
+}
+
+#[test]
+fn a_changed_byte_between_files_names_no_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let marked = Raw::read(&pack)
+        .expect("reads")
+        .write_marked(code(0x00c0_ffee))
+        .expect("has files");
+    let mut raw = Raw::read(&marked).expect("reads");
+    raw.gaps[0][0] ^= 1;
+    assert_eq!(raw.mark(), PackMark::Broken);
+}
+
+#[test]
+fn a_replaced_file_reads_back_and_keeps_the_layout_mark() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let mut raw = Raw::read(&pack).expect("reads");
+    assert_eq!(raw.file("file01.bin"), Some(twelve()[1].1.clone()));
+    assert_eq!(raw.file("file00.bin"), Some(vec![0; 200]));
+    assert!(raw.replace("file01.bin", b"new bytes"));
+    assert!(!raw.replace("nope", b"new bytes"));
+    let marked = raw.write_marked(code(42)).expect("has files");
+    let opened = files_of(&marked);
+    assert_eq!(opened[1], ("file01.bin".to_owned(), b"new bytes".to_vec()));
+    assert!(matches!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            order_agrees: true,
+            ..
+        }
+    ));
+}
+
+proptest! {
+    #[test]
+    fn any_code_lays_a_pack_out_that_reads_back(bits in 1u32.., count in 1usize..20) {
+        let files: Vec<(String, Vec<u8>)> = twelve().into_iter().cycle().take(count)
+            .enumerate()
+            .map(|(i, (_, bytes))| (format!("f{i:03}"), bytes))
+            .collect();
+        let pack = raw_pack(&test_info(), &files);
+        let marked = Raw::read(&pack).unwrap().write_marked(code(bits)).unwrap();
+        prop_assert_eq!(files_of(&marked), files_of(&pack));
+        prop_assert_eq!(
+            Raw::read(&marked).unwrap().mark(),
+            PackMark::Code { code: code(bits), order_agrees: true }
+        );
+    }
 }

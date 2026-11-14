@@ -23,6 +23,11 @@
             (path: "capture"),
             (path: "no-such-folder", optional: true),
         ],
+        // The picture a closed build's copy (`cargo shuyi export
+        // --recipient`) is marked in: the tiles, with eight colors, not the
+        // font. A copy that leaks names its recipient by circumstantial
+        // evidence, never proof.
+        overlay_picture: "tiles.png",
     ),
 
     // The game's tool program, for the commands that run the game:

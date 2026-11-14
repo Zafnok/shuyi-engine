@@ -3,7 +3,8 @@
 # CI's `export` job hands it as its `check` script, run from the
 # repository's root: check.sh on the package (ticket 3004), then the same
 # input gives the same exposure report (ticket 3081): every hash in it, the
-# program's and the archive's too.
+# program's and the archive's too. Then recipient.sh: two recipients' copies of
+# the package, and the detector over them and over it (ticket 3302).
 #
 # Usage: bash tools/export-check/ci.sh <target> <game folder>
 
@@ -20,3 +21,5 @@ first="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/exposure-report.json"
 cp "$out/exposure-report.json" "$first"
 (cd "$game" && cargo shuyi export "$target" --release)
 diff "$first" "$out/exposure-report.json"
+
+bash "$here/recipient.sh" "$target" "$game"

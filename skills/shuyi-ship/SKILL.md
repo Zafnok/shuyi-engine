@@ -1,6 +1,6 @@
 ---
 name: shuyi-ship
-description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; the credits of every third-party work it uses; and the reveal kit, its evidence before the first public footage (`cargo shuyi reveal prepare`). Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, making pictures for a store page, or before showing the game in public. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
+description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; the credits of every third-party work it uses; the reveal kit, its evidence before the first public footage (`cargo shuyi reveal prepare`); and a closed build's copy marked for one recipient (`export --recipient`), a deterrent, never proof. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, making pictures for a store page, or before showing the game in public. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -20,6 +20,8 @@ Ship only what `check --target` passes.
 - Writing the credits of a font, a picture or vendored code.
 - Pictures for a store page or a README.
 - Before the first public footage: the reveal kit.
+- A press, playtest or publisher copy for one person, and finding whose
+  copy leaked.
 
 ## When not to
 
@@ -351,6 +353,43 @@ Ship only what `check --target` passes.
    report of a copied clip fills in. The kit judges nothing and sends
    nothing.
 
+10. **A closed build's copy for one recipient** (press, playtest,
+    publisher). The limit first: a mark is circumstantial evidence,
+    never proof. Two recipients who compare their copies find and remove
+    every mark, a repacked pack loses its mark, a picture saved again at
+    a lower quality loses its, and an overwritten program field loses
+    its. Say so whenever a match is reported. With the kit prepared
+    (step 9), name a picture of the game's with at least seven colors,
+    never its text, by its path in the pack:
+
+    ```ron
+    export: (overlay_picture: "tiles.png"),
+    ```
+
+    ```bash
+    cargo shuyi export windows --release --recipient press-jane --label "Jane, Example Magazine" --signing-key <ssh private key>
+    ```
+
+    The package is made as for a release, then copied into
+    `dist/recipients/<id>/<target>`. The copy's program, pack and that
+    picture each hold the recipient's 8-character code. The copy passes
+    the disclosure check, and `dist/recipients.ron`, beside the kit, gets
+    an entry signed with the key (`recipients.ron.sig`, `ssh-keygen -Y
+    sign`). Keep the key outside the repository; `SHUYI_SIGNING_KEY`
+    names it in place of the flag. Desktop and web only, release and
+    packed builds only. `shuyi::app::recipient()` gives the code in a
+    copy and `None` in the public build, for a faint corner line the game
+    may draw. A copy that turns up:
+
+    ```bash
+    cargo shuyi export --detect-recipient <package, folder, program, pack or png>
+    ```
+
+    It answers each mark found, the code it holds, and whom the ledger
+    gave it. On the public build it says "no mark found". Pair each copy
+    with a store key of the recipient's own: the key names the account
+    that played, which no mark in a file can.
+
 ## Licenses
 
 Every work the game ships, code or not, must be under a license that
@@ -385,6 +424,11 @@ with `cargo shuyi explain <code>`:
   tool failed; `SH3012`, the package holds what the `disclosure` part
   doesn't allow (each file named, with its source); `SH1003`, a Rust target
   or tool is missing.
+- `export --recipient`: `SH1002`, refused before anything is built: no
+  `--release`, no `packed` feature, a target with no overlay, no
+  `export.overlay_picture`, an id that isn't plain, no signing key, a
+  kit that doesn't verify, or a picture with too few colors. `SH1003`,
+  `ssh-keygen` is missing, or a macOS copy wasn't signed again on macOS.
 - `export --plan --tag`: `SH0001`, the tag isn't `v` and the version
   (both named): tag the version the game has, or set the version and tag
   that commit.
