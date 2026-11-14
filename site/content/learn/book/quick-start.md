@@ -120,7 +120,9 @@ story not out yet, art you bought) keeps them in a second, private repository.
 that part: `cargo shuyi private-assets` checks the private files out into
 `private/files/`, and the build lays them over the game's own files, a private
 file in place of the public one at its path. Without access, the game still builds
-and runs on its public files. The game's `AGENTS.md` says the rest.
+and runs on its public files. The game's `AGENTS.md` says the rest, and its
+`shuyi-private-files` skill the steps of a change to them: a pull request in the
+private repository first, then one in the game's moving the commit it builds with.
 
 On Linux, run the setup script the game came with before its first build. It
 installs the C linker, `pkg-config`, the system libraries the window and sound

@@ -59,7 +59,9 @@ runs on a new game, and every other check still holds for it.
   [`shuyi-import-art`](shuyi-import-art/SKILL.md),
   [`shuyi-animate`](shuyi-animate/SKILL.md),
   [`shuyi-cinematic`](shuyi-cinematic/SKILL.md),
-  [`shuyi-dialogue`](shuyi-dialogue/SKILL.md).
+  [`shuyi-dialogue`](shuyi-dialogue/SKILL.md),
+  [`shuyi-private-files`](shuyi-private-files/SKILL.md) (the files kept
+  in a private repository).
 - Testing and tuning: [`shuyi-test`](shuyi-test/SKILL.md),
   [`shuyi-debug-replay`](shuyi-debug-replay/SKILL.md),
   [`shuyi-perf`](shuyi-perf/SKILL.md),

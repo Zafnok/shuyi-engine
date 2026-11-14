@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2590", "2591"]
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 2593 — The `shuyi-private-files` skill
@@ -118,15 +118,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new g --template blank --set private-files=yes
+- [x] `shuyi new g --template blank --set private-files=yes
       --private-url https://github.com/o/g-assets.git` makes
       `.claude/skills/shuyi-private-files/SKILL.md`, and the game's
       `AGENTS.md` names it.
-- [ ] The skill names no game, class, character, story or game file;
+- [x] The skill names no game, class, character, story or game file;
       every `shuyi` command it names exists (`check-skills`).
-- [ ] It says to ask the developer before `cargo shuyi repos`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] It says to ask the developer before `cargo shuyi repos`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -136,5 +136,44 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **The skill**, `skills/shuyi-private-files/SKILL.md`, in the engine's
+  words, from the game's `content-change`: what is where, the checkout,
+  a branch made with `--no-track`, never a push to the private `main`,
+  the private pull request then `--pin` once merged (with the checkout
+  moved to `origin/main` first, since a squash merge leaves the branch's
+  commit on no branch), what a pin move carries, two pull requests
+  moving the pin, what never goes in public, and setting up with `cargo
+  shuyi repos` only on the developer's yes (and `new --github` the same).
+  It names no game.
+- **A worked example** (`example.ron`, `example/en.ron`) on a new
+  `blank` game: the base's build lays `private/files/` over the game's
+  files in any game, so a file laid there by hand shows the private
+  layer without a private repository. The title's subtitle is the public
+  one; then the template's test `the_private_files_are_the_checkouts`
+  fails on the build made before the file, passes after `cargo clean
+  -p`, and the title says the private file's subtitle. It ran green
+  with `cargo xtask skill-examples shuyi-private-files`.
+- **The template's `AGENTS.md`**, the private part's *The private files*,
+  names the skill. Every new game gets the skill (the pack is copied
+  whole, but the modules'); only a game with the part reads its name in
+  `AGENTS.md`. New test:
+  `a_game_with_private_files_has_their_skill_and_its_agents_md_names_it`
+  (`crates/cli/src/contract/new/questions/tests.rs`).
+- `skills/README.md` lists it; `shuyi check-skills skills` passes.
+- **Deviation:** the game's step of pointing the pin at a branch's
+  commit, so its CI reads files before the private pull request merges,
+  is left out, as the ticket's scope has it: while the private pull
+  request is open the game's CI reads the old pin.
+- **Follow-up:** 2599. `--pin`'s refusal on a commit that isn't on the
+  private `main` says to `git push origin HEAD:main`, what the skill
+  forbids; changing it is out of this ticket (no change to
+  `private-assets`), so the skill warns about it, and 2599 changes the
+  message and drops the warning.
+
+No break. No public API changed.
+
+Book: the quick start's paragraph on private files names the skill
+(`site/content/learn/book/quick-start.md`).
+
+Game: nothing to adopt, the game keeps its own `content-change` skill
+(its adoption of this one is a game ticket, if it wants it).

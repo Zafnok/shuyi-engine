@@ -594,6 +594,41 @@ fn repository_flags_without_github_are_refused_and_private_kinds_need_the_url() 
 }
 
 #[test]
+fn a_game_with_private_files_has_their_skill_and_its_agents_md_names_it() {
+    let scratch = Scratch::new("private-skill");
+    let mut fake = scratch.fake();
+    let skill = scratch
+        .game()
+        .join(".claude/skills/shuyi-private-files/SKILL.md");
+    let agents = || fs::read_to_string(scratch.game().join("AGENTS.md")).unwrap();
+    let (made, _) = scratch.run(
+        &[
+            "--template",
+            "blank",
+            "--set",
+            "private-files=yes",
+            "--private-url",
+            "https://github.com/o/g-assets.git",
+        ],
+        None,
+        &mut fake,
+    );
+    assert!(made.answer.ok, "{:?}", made.answer);
+    assert!(skill.is_file());
+    assert!(
+        agents().contains("`shuyi-private-files` skill"),
+        "{}",
+        agents()
+    );
+    // Every game has the skill; only the part's text names it.
+    let (made, _) = scratch.run(&["--force", "--template", "blank"], None, &mut fake);
+    assert!(made.answer.ok, "{:?}", made.answer);
+    assert!(skill.is_file());
+    assert!(!agents().contains("shuyi-private-files"), "{}", agents());
+    assert_eq!(fake.calls.len(), 0);
+}
+
+#[test]
 fn the_examples_question_defaults_to_yes_and_asks_again_after_a_wrong_answer() {
     let (answer, out) = answered("\n", examples);
     assert!(answer.unwrap());
