@@ -10,9 +10,11 @@
 use std::path::Path;
 
 /// `FILE_ATTRIBUTE_COMPRESSED`, as `GetFileAttributes` reports it.
+#[cfg(any(windows, test))]
 pub const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
 
 /// Whether `attributes` (a file's Windows attributes) say it is compressed.
+#[cfg(any(windows, test))]
 pub const fn is_compressed(attributes: u32) -> bool {
     attributes & FILE_ATTRIBUTE_COMPRESSED != 0
 }
