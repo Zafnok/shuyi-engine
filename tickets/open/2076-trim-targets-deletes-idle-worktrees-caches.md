@@ -79,7 +79,10 @@ None.
   never fails the gates. `SHUYI_NO_TRIM=1` turns it off.
 - An ADR (the `write-adr` skill): what a worktree's build output keeps,
   compresses and trims, with the measured numbers. Kept: incremental on
-  in the workspace. Off: in the one-off gate builds (2074). Compressed:
+  in the workspace. Off: in the one-off gate builds (2074; **from 2074
+  (done):** `target/gates/games` 2.64 to 0.95 GB, `target/tutorial`
+  2.63 to 0.97 GB, the skill games in `target/skill-examples-build`,
+  their numbers in 2074's completion notes). Compressed:
   every target (2075). Trimmed: idle worktrees (here). Rejected, with
   why:
   - one shared `CARGO_TARGET_DIR`, `build-dir` or a junction: a

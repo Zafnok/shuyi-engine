@@ -255,19 +255,23 @@ pub const GATES: &[Gate] = &[
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings",
         "examples/hello-grid: cargo shuyi web --release",
     ]),
+    // The demo games are made fresh each run and never edited, so their
+    // one target folder keeps no incremental cache: half its disk, and no
+    // slower (ticket 2074). Only these steps write there, so the flag,
+    // part of each unit's hash, never makes a second copy of a unit.
     gate("templates (grid)", "templates", CODE)
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root} --no-examples",
             "target/gates/demo-grid: cargo generate-lockfile",
             "target/gates/demo-grid: cargo fmt --all --check",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets --locked -- -D warnings",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace --locked",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-skills .claude/skills",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo test --workspace --locked",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check --target all",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-keys",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-skills .claude/skills",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi lint",
         ]),
     gate("templates (blank)", "templates", CODE)
         .fresh(&["target/gates/demo-blank"])
@@ -275,13 +279,13 @@ pub const GATES: &[Gate] = &[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-blank --template blank --engine-path {root}",
             "target/gates/demo-blank: cargo generate-lockfile",
             "target/gates/demo-blank: cargo fmt --all --check",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets --locked -- -D warnings",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace --locked",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-skills .claude/skills",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo test --workspace --locked",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check --target all",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-keys",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-skills .claude/skills",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi lint",
         ]),
     // CI's job times the builds too; their budget is a runner's, so a
     // local run holds the crates' count alone.
@@ -886,6 +890,33 @@ mod tests {
         for name in ["clippy", "fmt", "test", "templates (grid)"] {
             assert!(!gates.contains(&name), "{name} in {gates:?}");
         }
+    }
+
+    /// Every step building in the demo games' target folder builds without
+    /// an incremental cache, so none makes a second copy of a unit there.
+    #[test]
+    fn the_demo_games_build_without_an_incremental_cache() {
+        let mut seen = 0;
+        for gate in GATES {
+            for step in gate.steps {
+                let command = parse_step(step, "/r", &[]);
+                let names_games = command.env.iter().any(|(name, value)| {
+                    name == "CARGO_TARGET_DIR" && value == "/r/target/gates/games"
+                });
+                if names_games {
+                    seen += 1;
+                    assert!(
+                        command
+                            .env
+                            .iter()
+                            .any(|(name, value)| name == "CARGO_INCREMENTAL" && value == "0"),
+                        "{}: {step}",
+                        gate.name
+                    );
+                }
+            }
+        }
+        assert!(seen > 0, "no step builds in target/gates/games");
     }
 
     #[test]

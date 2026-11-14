@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 2074 — The gates' one-off games build without incremental caches, the skill examples in a target folder of their own
@@ -98,20 +98,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] After `cargo xtask gates` from a clean `target/`, these hold no
+- [x] After `cargo xtask gates` from a clean `target/`, these hold no
       incremental output: `target/gates/games/debug/incremental`,
       `target/tutorial/debug/incremental`,
       `target/skill-examples-build/debug/incremental`.
-- [ ] The root `target/debug/incremental` gets no dir of a skill game's
+- [x] The root `target/debug/incremental` gets no dir of a skill game's
       crates (none named after a skill, e.g. `shuyi_gates*`) and no
       second engine-crate dir from the skill games (compare the dir
       names before and after `cargo xtask skill-examples`).
-- [ ] With `CARGO_TARGET_DIR` set, the tutorial renderer and the skill
+- [x] With `CARGO_TARGET_DIR` set, the tutorial renderer and the skill
       examples don't set `CARGO_INCREMENTAL`.
-- [ ] The completion notes give each folder's size before and after one
+- [x] The completion notes give each folder's size before and after one
       full gates run.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -125,5 +125,67 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `crates/xtask/src/gates.rs`: every step of the two `templates` gates
+  that builds in `target/gates/games` carries `CARGO_INCREMENTAL=0`
+  beside its `CARGO_TARGET_DIR`. Test
+  `the_demo_games_build_without_an_incremental_cache`.
+- `crates/xtask/src/tries.rs`: `Renderer` records whether it chose its
+  folder (`chose_target`, from `Renderer::with_target`), and its cargo
+  commands get `CARGO_INCREMENTAL=0` only then (`Renderer::env`). Test
+  `the_renderer_drops_the_incremental_cache_only_in_its_own_folder`.
+- `crates/xtask/src/script.rs`: `System` gained `no_incremental`.
+  `crates/xtask/src/skills.rs`: `runners` gives the maker (`shuyi new`,
+  root `target/`) and the game runner (`target/skill-examples-build`,
+  no incremental cache), or two plain runners when `CARGO_TARGET_DIR` is
+  set; `run` takes both. Test
+  `the_games_build_in_their_own_folder_and_the_maker_in_the_root_target`.
+  The module doc and the usage text say where each builds.
+- `.claude/skills/run-gates/SKILL.md`: a table of the gates' target
+  folders and which keep an incremental cache, and the skill examples'
+  folder (loaders synced, nothing to change in them).
+
+Sizes, after one full `cargo xtask gates` from a fresh worktree
+(`target/` held only xtask's build), then `skill-examples`,
+`tutorial-tries --check` and `exercises` again. Logical size (the file
+lengths; NTFS compression, 2075, halves what the disk holds):
+
+| Folder | Before (study of 2026-11-13) | After |
+| --- | --- | --- |
+| `target/gates/games` | 2.64 GB, incremental 1.77 GB | 0.95 GB, incremental empty |
+| `target/tutorial` | 2.63 GB, incremental 1.72 GB | 0.97 GB, incremental empty |
+| `target/skill-examples-build` | (the games built in `target/`) | 2.35 GB, incremental empty |
+| `target/debug/incremental` | 0.9–1.2 GB of it from the skill games | 216 dirs, the same before and after a second `skill-examples` |
+| `target/` in all | 26.3 GB | 20.0 GB |
+
+Deviation: the "before" column is the study's numbers (worktree
+`release-game-tag-automation`), not a run on `main` in this worktree:
+a second full run from a clean `target/` costs about 40 minutes and the
+study measured the same gates. The skill examples' new folder is
+larger than the root incremental it saves, because their engine
+crates' builds (`deps/`) now live there instead of beside the
+workspace's in `target/debug/deps`: they were never shared (another
+workspace, other hashes), so the root `target/debug` holds that much
+less.
+
+Acceptance: the three folders' `debug/incremental` are empty (cargo
+makes the folder, writes nothing). The root `target/debug/incremental`
+names no skill game's crate (no `shuyi_gates*`, `shuyi_perf*`, …), and
+its 216 dir names were the same before and after a second
+`cargo xtask skill-examples`. The `CARGO_TARGET_DIR` cases are the unit
+tests.
+
+Gates: one full run passed every local gate up to `skill examples`,
+where `shuyi-perf`'s MCP step failed once: cargo was refused removing
+`target/skill-examples-build/debug/examples/tools.exe` (os error 5) as
+`start` relinked. It passed alone and in the next full `skill-examples`
+run, with `tutorial-tries --check` and `exercises` after it. Written as
+2599; it isn't caused by the flag (what links, and when, is the same).
+
+Book: none, no public API changed: only xtask and the run-gates skill.
+
+Game: nothing to adopt, the change is this repository's gates only.
+
+No `Breaking:` or `Behaviour:` line: a game sees nothing (no engine
+crate, template or CLI changed).
