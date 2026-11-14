@@ -196,19 +196,33 @@ pub trait Runner {
 
 /// The real commands, with `CARGO_TARGET_DIR` set to `target_dir` when
 /// there is one, so games share what they build.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct System {
     /// The target folder every command's cargo builds in.
     pub target_dir: Option<PathBuf>,
+    /// Whether every command's cargo builds without an incremental cache
+    /// (`CARGO_INCREMENTAL=0`): for games made fresh and never edited, in a
+    /// target folder no other command writes to (ticket 2074).
+    pub no_incremental: bool,
+}
+
+impl System {
+    /// Sets the variables of a command run here.
+    fn set_env(&self, command: &mut Command) {
+        if let Some(target_dir) = &self.target_dir {
+            command.env("CARGO_TARGET_DIR", target_dir);
+        }
+        if self.no_incremental {
+            command.env("CARGO_INCREMENTAL", "0");
+        }
+    }
 }
 
 impl Runner for System {
     fn run(&self, dir: &Path, program: &str, args: &[String]) -> Result<Ran, String> {
         let mut command = Command::new(program);
         command.args(args).current_dir(dir);
-        if let Some(target_dir) = &self.target_dir {
-            command.env("CARGO_TARGET_DIR", target_dir);
-        }
+        self.set_env(&mut command);
         let output = command
             .output()
             .map_err(|e| format!("`{program}` did not run ({e})"))?;
@@ -229,9 +243,7 @@ impl Runner for System {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        if let Some(target_dir) = &self.target_dir {
-            command.env("CARGO_TARGET_DIR", target_dir);
-        }
+        self.set_env(&mut command);
         let mut child = command
             .spawn()
             .map_err(|e| format!("`{program}` did not run ({e})"))?;

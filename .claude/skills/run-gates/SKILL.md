@@ -51,6 +51,22 @@ on Windows, not on CI, compresses a `target/` that lacks the attribute
 first, saying so (minutes on a large folder, once); a failure there is a
 warning, not a failed gate. `--fast` and `--list` skip it.
 
+The gates build in these target folders (ticket 2074):
+
+| Folder | What builds there | Incremental cache |
+| --- | --- | --- |
+| `target/` | the workspace, and `shuyi new` for the skill examples | on: the edit loop is about twice as fast with it |
+| `target/gates/games` | the `templates` gate's demo games | off |
+| `target/tutorial` | the tutorial tries' renderer | off, unless `CARGO_TARGET_DIR` is set |
+| `target/skill-examples-build` | the skill examples' games | off, unless `CARGO_TARGET_DIR` is set |
+| `target/compile-times/timed/target` | the timed game | on, as a real game builds |
+
+The games of the last four are made fresh each run and never edited, so
+an incremental cache there only costs disk (about half of each folder).
+`CARGO_INCREMENTAL` is part of each unit's hash: never set it for one
+command in a folder another command writes to, or every unit builds a
+second copy. A `CARGO_TARGET_DIR` from the environment is left as it is.
+
 On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
 branch, as CI does: until the ticket is in `tickets/done/`, a push is
 refused. Archive the ticket first (the `work-ticket` skill, §5), or push
@@ -389,8 +405,9 @@ template:
 cargo xtask skill-examples shuyi-gates shuyi-test   # or no names for every one
 ```
 
-The games are made in `target/skill-examples/<skill>`, and build in this
-repository's target folder.
+The games are made in `target/skill-examples/<skill>` (`shuyi new` builds
+in this repository's target folder), and build in
+`target/skill-examples-build` with no incremental cache.
 
 ## A game's compile times (CI's `compile-times` job)
 

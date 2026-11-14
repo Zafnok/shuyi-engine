@@ -10,10 +10,15 @@
 //! ([`crate::script`]), whose `Write` steps take files from the skill's
 //! folder. Each game is made in `target/skill-examples/<skill>`, named
 //! after its skill (`shuyi-gates`' crates are `shuyi-gates` and
-//! `shuyi-gates-rules`), on this checkout of the engine, and builds in this
-//! repository's target folder unless `CARGO_TARGET_DIR` names another. Two
-//! games never share a crate's name: in one target folder, cargo could take
-//! one's build for the other's. An example marked `manual` (it needs a
+//! `shuyi-gates-rules`), on this checkout of the engine, by `shuyi new` run
+//! from this repository's target folder. The games all build in one folder
+//! of their own, `target/skill-examples-build`, with no incremental cache:
+//! they are made fresh each run and never edited, and the flag, part of each
+//! unit's hash, would make a second copy of every unit in a folder another
+//! command writes to (ticket 2074). A `CARGO_TARGET_DIR` from the
+//! environment is left as it is, for both. Two games never share a crate's
+//! name: in one target folder, cargo could take one's build for the
+//! other's. An example marked `manual` (it needs a
 //! window) is listed and not run.
 
 use std::fmt::Write as _;
@@ -31,6 +36,28 @@ pub const SKILLS: &str = "skills";
 pub const EXAMPLE: &str = "example.ron";
 /// Where the games are made, from the repository's root.
 const GAMES: &str = "target/skill-examples";
+/// Where the games build, from the repository's root.
+const BUILD: &str = "target/skill-examples-build";
+
+/// The runner that makes the games (`shuyi new`, in this repository's
+/// target folder) and the one that runs their steps (in [`BUILD`], with no
+/// incremental cache), or two that leave the environment's target folder
+/// as it is when `env_target` (`CARGO_TARGET_DIR` is set).
+pub fn runners(root: &Path, env_target: bool) -> (script::System, script::System) {
+    if env_target {
+        return (script::System::default(), script::System::default());
+    }
+    (
+        script::System {
+            target_dir: Some(root.join("target")),
+            no_incremental: false,
+        },
+        script::System {
+            target_dir: Some(root.join(BUILD)),
+            no_incremental: true,
+        },
+    )
+}
 
 /// A skill's worked example.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -148,8 +175,14 @@ pub struct Outcome {
 }
 
 /// Runs the worked examples `options` pick from the pack at `root`, each on
-/// a game made in `games`, with `runner`'s commands.
-pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
+/// a game `maker` makes in `games`, its steps with `game`'s commands.
+pub fn run(
+    root: &Path,
+    games: &Path,
+    options: &Options,
+    maker: &dyn Runner,
+    game_runner: &dyn Runner,
+) -> Outcome {
     let (found, mut errors) = examples(root);
     let mut report = String::new();
     // A skill's name picks all of its examples.
@@ -190,12 +223,12 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
             example.template,
             game.display()
         );
-        if let Err(e) = make_game(root, &game, &example.template, name, runner) {
+        if let Err(e) = make_game(root, &game, &example.template, name, maker) {
             let _ = writeln!(report, "  the game wasn't made: {e}");
             errors.push(format!("{name}: the game wasn't made: {e}"));
             continue;
         }
-        let verdicts = script::run(&example.steps, dir, &game, runner);
+        let verdicts = script::run(&example.steps, dir, &game, game_runner);
         report.push_str(&script::report(&verdicts));
         for verdict in verdicts.iter().filter(|v| !v.passed) {
             errors.push(format!(
