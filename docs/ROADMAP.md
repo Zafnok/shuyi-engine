@@ -188,7 +188,7 @@ the release's `blocked_by` is Nick's call.
 | 2057 (done) | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
 | 2064 (done) | Flaky gates have a ledger, and a calibration run is one reusable workflow |
 | 2058 | A migration block's `since` is the workspace's version |
-| 2065 | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
+| 2065 (done) | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
 | 2060 | Nick decides how `main` is guarded: required checks, merges on green, and the `model` line |
 
 Bugs and follow-ups the retro found left in prose, now tickets:
