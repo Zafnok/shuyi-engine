@@ -22,6 +22,10 @@
 //! line of its completion notes that promises later work and names no ticket,
 //! and fails when its body names a `game#NNNN` and no `Game:` line says which
 //! game PR or ticket adopts it.
+//!
+//! An open `feature` or `infra` ticket of effort `high` or above has an
+//! estimate of its size, and past 1,000 lines a split point; the PR's done
+//! ticket's `Size:` line has a number and a reason (ticket 2053, `size`).
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -31,7 +35,9 @@ use std::process::Command;
 use serde_norway::Value;
 
 mod pr;
+mod size;
 pub use pr::{Pr, PrKind};
+pub(crate) use size::size_line;
 
 const REQUIRED_KEYS: &[&str] = &[
     "id",
@@ -87,6 +93,10 @@ struct TicketFields {
     id: Option<String>,
     status: Option<String>,
     completed: Option<String>,
+    /// `type` and `effort`: whether an open ticket needs an estimate
+    /// (ticket 2053).
+    kind: Option<String>,
+    effort: Option<String>,
     blocked_by: Option<Vec<String>>,
     /// Whether the title starts with `Parked:`.
     parked: bool,
@@ -212,6 +222,9 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
                         .collect();
                     report.warnings.extend(check_prose_follow_ups(done, &known));
                     report.errors.extend(check_game_adopter(done));
+                    if let Err(e) = size_line(&done.fields.body) {
+                        report.errors.push(format!("{}: {e}", done.display_path));
+                    }
                 }
                 let changed = match &kind {
                     PrKind::TicketsOnly(_) => changed_files(repo_root, base),
@@ -229,6 +242,12 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
     }
 
     report.errors.extend(check_mirrors(&tickets));
+    let unestimated = fs::read_to_string(repo_root.join(size::UNESTIMATED))
+        .map(|text| size::unestimated_ids(&text))
+        .unwrap_or_default();
+    let (errors, warnings) = size::check_estimates(&tickets, &unestimated);
+    report.errors.extend(errors);
+    report.warnings.extend(warnings);
     // The flaky gates' ledger names open tickets only (ticket 2064).
     let ids_in = |folder: Folder| -> HashSet<&str> {
         tickets
@@ -316,6 +335,8 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
                 fields.id = scalar_string(map, "id");
                 fields.status = scalar_string(map, "status");
                 fields.completed = scalar_string(map, "completed");
+                fields.kind = scalar_string(map, "type");
+                fields.effort = scalar_string(map, "effort");
                 fields.blocked_by = string_list(map, "blocked_by");
 
                 if map.contains_key(Value::from("blocked_by"))

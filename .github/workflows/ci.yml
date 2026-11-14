@@ -1330,6 +1330,14 @@ jobs:
           else
             cargo xtask ticket-lint
           fi
+      # The PR's counted lines (ticket 2053): past 1,000 a warning, past
+      # 1,500 a failure unless its done ticket's notes have a `Size:` line.
+      # HEAD^1 is the base tip, so the diff is the PR's own.
+      - name: Measure the PR's size
+        if: github.event_name == 'pull_request'
+        run: |
+          title=$(bash scripts/pr-title.sh)
+          cargo xtask pr-size --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
       - name: Check Markdown links
         run: cargo xtask check-links
       # A `migration` block that doesn't parse fails here, not when the

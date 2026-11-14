@@ -157,6 +157,20 @@ passes when the title names the ticket. A `t<NNNN>-<slug>` branch must
 name the title's ticket. A PR whose title names no ticket on a branch
 that names none fails, but for the kinds in the last row.
 
+CI's `tickets` job also measures every PR with `cargo xtask pr-size`
+(ticket 2053): the lines added plus removed of code, tests, docs and
+hand-written data, with snapshots, golden tables, schemas, lock files,
+generated files and tickets counted apart. Past 1,000 it warns. Past
+1,500 a `[NNNN] …` PR fails unless the ticket's completion notes have a
+line `Size: <the measured number> counted lines, <why it wasn't split>`;
+a ticket-only, bot or Sonar PR is only reported. An open `feature` or
+`infra` ticket of effort `high` or above has an `**Estimated size:**`
+line, and past 1,000 estimated lines a `**Split:**` line (the
+`write-ticket` skill, step 5); the ids in
+[`tools/unestimated-tickets.txt`](../tools/unestimated-tickets.txt) were
+written before the rule and are let off until their session estimates
+them.
+
 Name the branch before the **first push**: renaming it after the PR opens
 closes the PR on GitHub. A retitle is safe, and re-runs CI's ticket
 checks (`pr-title.yml`).

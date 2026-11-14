@@ -16,6 +16,7 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
+//! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
@@ -47,6 +48,7 @@ mod modules;
 mod no_std;
 mod paths;
 mod pins;
+mod pr_size;
 mod script;
 mod site_data;
 mod skills;
@@ -143,6 +145,18 @@ usage:
       body on stdout: HEAD, each gate's result, each gate left to CI and why.
       With --fast, only the quick gates (the pre-push hook's); with --list,
       say what would run and run nothing.
+  cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]
+      Count the PR's changed lines (added + removed) from <rev>'s merge base
+      (by default origin/main's) to the working tree, untracked files
+      included (ticket 2053): code, tests, docs and hand-written data, with
+      snapshots, golden tables, schemas, lock files and generated files left
+      out and totalled apart, as the tickets are. Past 1,000 lines it warns;
+      past 1,500 the PR's done ticket needs a `Size:` line with the measured
+      number and why it wasn't split. With --ticket <file>, or --pr-branch
+      (and --pr-title, CI), a missing or wrong `Size:` line fails; otherwise
+      it warns. --hook answers a Claude Code PreToolUse hook (its JSON on
+      stdin) with a warning before git commit, git push or gh pr create, or
+      nothing.
   cargo xtask flaky rerun --failures <file> --attempt <n> --decision <file>
   cargo xtask flaky report --failures <file> --attempt <n>
   cargo xtask flaky calibration --job <name> --jobs <file> --dir <dir> --revision <sha> --summary <file>
@@ -238,6 +252,7 @@ fn main() -> ExitCode {
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
+        Some("pr-size") => pr_size(&root, &args[1..]),
         Some("flaky") => {
             let (errors, warnings) = flaky::run(&root, &args[1..]);
             report("flaky", &errors, &warnings)
@@ -452,6 +467,29 @@ fn gates(root: &Path, args: &[String]) -> ExitCode {
         }
         Err(e) => report("gates", &[e], &[]),
     }
+}
+
+fn pr_size(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = pr_size::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    if options.hook {
+        let mut stdin = String::new();
+        // No input (a person running it by hand) measures this checkout.
+        let _ = std::io::Read::read_to_string(&mut std::io::stdin(), &mut stdin);
+        let answer = pr_size::hook_answer(&stdin, root, options.base.as_deref());
+        // The hook never gets in the way: it always succeeds.
+        let _ = write!(std::io::stdout().lock(), "{answer}");
+        return ExitCode::SUCCESS;
+    }
+    // The checkout it is run in, which may be another worktree or an older
+    // revision than the one xtask was built from.
+    let here = pr_size::repo_of(Path::new(".")).unwrap_or_else(|_| root.to_path_buf());
+    let outcome = pr_size::run(&here, &options);
+    // A report that can't be printed leaves the verdict as it is.
+    let _ = write!(std::io::stdout().lock(), "{}", outcome.report);
+    report("pr-size", &outcome.errors, &outcome.warnings)
 }
 
 fn changelog(root: &Path, args: &[String]) -> ExitCode {
