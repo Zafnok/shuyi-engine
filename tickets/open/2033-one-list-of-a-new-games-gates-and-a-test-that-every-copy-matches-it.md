@@ -51,8 +51,8 @@ the grid game's `AGENTS.md` names `crates/rules/clippy.toml` and
 
 Open tickets that change the list must find every copy by hand: 2543
 drops `check-keys` from all six (until 2026-10-28 it named only three),
-and 3050 adds `--locked` to `clippy` and `test` in the two `ci.yml`
-files only.
+and 3050 (done) added `--locked` to `clippy` and `test` in the base's
+`ci.yml` only.
 
 ## Nick input
 
@@ -111,11 +111,12 @@ None.
   lists as 2543 left them (no `cargo shuyi check-keys` in any of the
   six); if not, write the test on today's lists, and 2543 changes every
   copy the test reads, `shuyi-gates` and its example among them.
-- **Either order with 3050:** if 3050 is done, the two `ci.yml` files run
-  `clippy` and `test` with `--locked`, and the template's `ci.yml` has a
-  Cargo.lock step before `cargo fmt`: check that the test passes, since
-  it drops `--locked` and starts at `cargo fmt --all --check`; if not,
-  nothing to do (the test is already written that way).
+- **From 3050 (done):** the base's `ci.yml` runs `clippy` and `test`
+  with `--locked`, and has a Cargo.lock step before `cargo fmt`: the
+  test drops `--locked` and starts at `cargo fmt --all --check`. The
+  local gates' templates steps (`crates/xtask/src/gates.rs`) and the
+  engine's `templates` job run `cargo generate-lockfile` first and keep
+  `--locked` too.
 - **Either order with 2374:** if 2374 is done, the `templates` job has a
   step "An eight-way grid game passes its gates": rule 3 reads it,
   since it has a `cargo shuyi check` line. Make its lines match if they
@@ -145,7 +146,7 @@ None.
 
 **Out (do not do):**
 - Changing which gates a game runs: 2543 drops `check-keys`, and 3050
-  adds `--locked`.
+  added `--locked`.
 - Writing the copies from the source (a generator, or an include): the
   copies are a workflow, Markdown and RON, read by people and agents as
   they are. The test is enough.

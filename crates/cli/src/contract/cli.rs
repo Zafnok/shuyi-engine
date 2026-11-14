@@ -230,6 +230,7 @@ pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameT
 pub fn export(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
     let (json, args) = split_json(args);
     match export::parse_args(&args) {
+        Ok(input) if input.plan => print(json, &export::plan(project, &input), export::plan_text),
         Ok(input) => print(json, &export::export(project, &input, game), export::text),
         Err(e) => wrong(
             json,
@@ -321,6 +322,9 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
         },
         "export" => match export::parse_args(&args) {
+            Ok(input) if input.plan => {
+                print(json, &export::plan(project, &input), export::plan_text)
+            }
             Ok(input) => print(
                 json,
                 &export::export(project, &input, Some(game)),

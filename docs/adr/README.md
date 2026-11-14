@@ -123,8 +123,9 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0108](0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md) | A `Behaviour:` line for a change a game sees without a break | Accepted; amends ADR-0038 §6 |
 | [0109](0109-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md) | A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once | Accepted |
 | [0110](0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md) | Desktop and web exports ship a baked pack beside the program | Accepted; extends ADR-0023, ADR-0058 and ADR-0101 §4 |
-| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112 |
+| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112; §5 amended by ADR-0114 |
 | [0112](0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md) | `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again | Accepted; extends ADR-0111 §1 and §5 |
 | [0113](0113-a-game-made-without-the-skills-worked-examples-says-so-in-each-skill.md) | A game made without the skills' worked examples says so in each skill, and `check-skills` reads it | Accepted; amends ADR-0043 §3 |
+| [0114](0114-a-games-release-from-a-tag-one-plan-one-export-workflow.md) | A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release | Accepted; amends ADR-0111 §5 |
 
 Template: [`0000-template.md`](0000-template.md).

@@ -19,6 +19,14 @@
 //! one, or one of its edition's `never_features`, by its default features, a
 //! feature that lists it or a dependency's ([`crate::export::live_link`]):
 //! nothing is built or run.
+//!
+//! `export --plan [--tag <tag>]` builds nothing: it answers the game's
+//! [`ExportPlan`], which a release workflow reads (ticket 3050). For each
+//! target of `shuyi.ron`'s `targets` (sorted by id), each exporter that
+//! checks it (in the order they are registered): the runner it builds on in
+//! CI, the image it builds in, and whether CI builds it or only checks it.
+//! A target no exporter builds is a limit, not an error. With `--tag`, the
+//! answer fails unless the tag is `v` and the game's version.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -31,10 +39,10 @@ use super::check::{self, CheckInput};
 use super::target::{Level, TargetProblem};
 use super::{Answer, Op, codes};
 use crate::export::{
-    self as exporters, ExportCx, ExportError, Exporter, RunCx, disclosure, live_link,
+    self as exporters, ExportCx, ExportError, Exporter, InCi, RunCx, disclosure, live_link,
 };
 use crate::game::GameTools;
-use crate::project::Project;
+use crate::project::{Config, Project};
 
 /// The report's file, beside the package.
 pub const REPORT: &str = "export-report.json";
@@ -47,7 +55,9 @@ pub const REPORT: &str = "export-report.json";
 #[non_exhaustive]
 pub struct ExportInput {
     /// The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other
-    /// target's check runs, and the answer says it has no exporter yet.
+    /// target's check runs, and the answer says it has no exporter yet. None
+    /// with `plan`.
+    #[serde(default)]
     pub target: String,
     /// The folder the package goes in, from the game's folder;
     /// `dist/export/<target>` without it.
@@ -75,6 +85,104 @@ pub struct ExportInput {
     /// one, the game as `export` builds it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edition: Option<String>,
+    /// Whether to answer the game's [`ExportPlan`] and build nothing: what
+    /// each target's exporters build, and where, in CI. It takes no target
+    /// and no other field but `tag`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub plan: bool,
+    /// With `plan`, the tag a release is made from: the answer fails unless
+    /// it is `v` and the game's version (`v0.1.0`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+}
+
+/// The runner a package builds on in CI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Host {
+    /// Linux on x86-64 (`ubuntu-latest`).
+    Linux,
+    /// Linux on Arm (`ubuntu-24.04-arm`).
+    LinuxArm64,
+    /// Windows (`windows-latest`).
+    Windows,
+    /// macOS (`macos-latest`).
+    Macos,
+}
+
+/// What CI does with a target's exporter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Ci {
+    /// It builds the package.
+    Build,
+    /// It only checks the game against the target (`check --target`): the
+    /// package is built elsewhere, and `why` says why.
+    CheckOnly,
+}
+
+/// One exporter of the plan: what CI does with it, and where.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PlannedExport {
+    /// The exporter: `shuyi export <exporter>`.
+    pub exporter: String,
+    /// The target of `shuyi.ron`'s `targets` it checks (its profile).
+    pub profile: String,
+    /// The runner it builds on.
+    pub host: Host,
+    /// The image it builds in, if any (the Steam Linux Runtime's for
+    /// `linux`).
+    pub container: Option<String>,
+    /// Whether CI builds it or only checks it.
+    pub ci: Ci,
+    /// Why CI only checks it, for `check-only`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub why: Option<String>,
+}
+
+impl PlannedExport {
+    /// What the plan says of `exporter`.
+    pub fn of(exporter: &dyn Exporter) -> Self {
+        let (ci, why) = match exporter.ci() {
+            InCi::Build => (Ci::Build, None),
+            InCi::CheckOnly(why) => (Ci::CheckOnly, Some(why.to_owned())),
+        };
+        Self {
+            exporter: exporter.id().to_owned(),
+            profile: exporter.profile().to_owned(),
+            host: exporter.host(),
+            container: exporter.container().map(str::to_owned),
+            ci,
+            why,
+        }
+    }
+}
+
+/// What `export --plan` answers: the packages a release of the game makes.
+/// Each target of `shuyi.ron` no exporter builds is a limit of the answer.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPlan {
+    /// The version the packages carry, as `export-report.json` writes it:
+    /// `shuyi.ron`'s `app.version` when it sets one, else the package's.
+    pub version: String,
+    /// Whether the version has a pre-release part (`1.2.0-beta.1`).
+    pub prerelease: bool,
+    /// Each exporter of each target, targets sorted by id and a target's
+    /// exporters in the order they are registered.
+    pub exports: Vec<PlannedExport>,
+}
+
+/// What `export` answers: a package's report, or, with `plan`, the plan.
+/// Only its schema is read: [`export`] answers the one and [`plan`] the other.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum ExportResult {
+    /// What `export` made.
+    Package(Box<ExportOutput>),
+    /// What `export --plan` plans.
+    Plan(ExportPlan),
 }
 
 /// How a package is signed.
@@ -154,6 +262,10 @@ pub fn export(
     game: Option<&dyn GameTools>,
 ) -> Answer<ExportOutput> {
     let op = Op::Export;
+    if input.plan {
+        let error = "`plan` answers with the plan, which `export::plan` gives";
+        return Answer::failed(op, codes::WRONG_ARGUMENTS, error);
+    }
     let exporter = exporters::find(&input.target);
     let profile = exporter.map_or(input.target.as_str(), |exporter| exporter.profile());
     let checked = check::targets(
@@ -259,8 +371,108 @@ fn build(
 }
 
 /// An answer of `export` that failed with `error`.
-fn failed(error: &ExportError) -> Answer<ExportOutput> {
+fn failed<T>(error: &ExportError) -> Answer<T> {
     Answer::failed(Op::Export, error.code(), error.message())
+}
+
+/// `export --plan` on `project` ([`ExportPlan`]): the game's version, then
+/// [`plan_of`] with every registered exporter. It builds nothing and runs
+/// no check.
+pub fn plan(project: &Project, input: &ExportInput) -> Answer<ExportPlan> {
+    match exporters::version_of(project) {
+        Ok(version) => plan_of(
+            &project.config,
+            &version,
+            exporters::exporters(),
+            input.tag.as_deref(),
+        ),
+        Err(e) => failed(&e),
+    }
+}
+
+/// The plan of the game whose project file is `config` and whose version is
+/// `version`, with `exporters`, checked against `tag` if one is given.
+pub fn plan_of(
+    config: &Config,
+    version: &str,
+    exporters: &[&dyn Exporter],
+    tag: Option<&str>,
+) -> Answer<ExportPlan> {
+    let op = Op::Export;
+    let prerelease = match semver::Version::parse(version) {
+        Ok(parsed) => !parsed.pre.is_empty(),
+        Err(e) => {
+            let error = format!(
+                "the game's version `{version}` isn't a semantic version (`1.2.0`, \
+                 `1.2.0-beta.1`): {e}"
+            );
+            return Answer::failed(op, codes::PROJECT_FILE, error);
+        }
+    };
+    if let Some(tag) = tag
+        && tag.strip_prefix('v') != Some(version)
+    {
+        let error = format!(
+            "the tag `{tag}` doesn't name the game's version `{version}`: its tag is `v{version}`"
+        );
+        let help = format!(
+            "tag the version the game has (`git tag -a v{version} -m <notes>`), or set the \
+             version to the tag's (`app.version` in {}, else the package's) and tag that commit",
+            crate::project::FILE
+        );
+        return Answer::failed(op, codes::WRONG_ARGUMENTS, error).with_help(help);
+    }
+    let mut exports = Vec::new();
+    let mut limits = Vec::new();
+    for id in config.targets.keys() {
+        let before = exports.len();
+        exports.extend(
+            exporters
+                .iter()
+                .filter(|exporter| exporter.profile() == id)
+                .map(|exporter| PlannedExport::of(*exporter)),
+        );
+        if exports.len() == before {
+            limits.push(format!(
+                "`{id}` is checked (`check --target {id}`) but not packaged: no exporter builds \
+                 it yet"
+            ));
+        }
+    }
+    let plan = ExportPlan {
+        version: version.to_owned(),
+        prerelease,
+        exports,
+    };
+    Answer::new(op, true, plan, limits)
+}
+
+/// The plan, for people.
+pub fn plan_text(plan: &ExportPlan) -> String {
+    let pre = if plan.prerelease {
+        " (a prerelease)"
+    } else {
+        ""
+    };
+    let mut text = format!("export --plan: version {}{pre}\n", plan.version);
+    for planned in &plan.exports {
+        let _ = write!(text, "  {} ({}): ", planned.exporter, planned.profile);
+        match planned.ci {
+            Ci::CheckOnly => {
+                let why = planned.why.as_deref().unwrap_or_default();
+                let _ = write!(text, "checked only: {why}");
+            }
+            Ci::Build => {
+                let host = serde_json::to_value(planned.host).unwrap_or_default();
+                let _ = write!(text, "built on {}", host.as_str().unwrap_or_default());
+                if let Some(container) = &planned.container {
+                    let _ = write!(text, " in {container}");
+                }
+            }
+        }
+        text.push('\n');
+    }
+    text
 }
 
 /// `export`'s arguments (`--json` taken out): the target, then
@@ -300,10 +512,33 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
                 let name = rest.next().ok_or("--edition needs an edition's name")?;
                 input.edition = Some(name.clone());
             }
+            "--plan" => input.plan = once(input.plan)?,
+            "--tag" => {
+                once(input.tag.is_some())?;
+                let tag = rest.next().ok_or("--tag needs a tag (`v0.1.0`)")?;
+                input.tag = Some(tag.clone());
+            }
             flag if flag.starts_with("--") => return Err(format!("unknown option {flag}")),
             _ if target.is_none() => target = Some(arg.clone()),
             _ => return Err("one target".to_owned()),
         }
+    }
+    if input.plan {
+        if target.is_some() {
+            return Err("--plan takes no target: it plans every target of shuyi.ron".to_owned());
+        }
+        let alone = ExportInput {
+            plan: true,
+            tag: input.tag.clone(),
+            ..ExportInput::default()
+        };
+        if input != alone {
+            return Err("--plan builds nothing: it takes only --tag".to_owned());
+        }
+        return Ok(input);
+    }
+    if input.tag.is_some() {
+        return Err("--tag goes with --plan".to_owned());
     }
     input.target = target.ok_or("a target: windows, linux, macos, web or playdate")?;
     Ok(input)
@@ -313,7 +548,8 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} export <windows | linux | macos | web | playdate> [--out <dir>] [--release] \
-         [--run] [--edition <name>] [--without <feature>] [--with <feature>] [--json]"
+         [--run] [--edition <name>] [--without <feature>] [--with <feature>] [--json]\n       \
+         {command} export --plan [--tag <tag>] [--json]"
     )
 }
 

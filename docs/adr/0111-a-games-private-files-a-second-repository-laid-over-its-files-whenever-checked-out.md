@@ -1,6 +1,6 @@
 # ADR-0111: A game's private files: a second repository, laid over its files whenever it is checked out
 
-- **Status:** Accepted; extended by ADR-0112 (§1 and §5: what `shuyi repos` makes)
+- **Status:** Accepted; extended by ADR-0112 (§1 and §5: what `shuyi repos` makes); §5 amended by ADR-0114 (a release's packages may be uploaded)
 - **Date:** 2026-11-12
 - **Related tickets:** 2590, 2591, 2592, 2593, 2594, 2595, 3050
 

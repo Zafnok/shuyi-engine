@@ -330,8 +330,7 @@ account, its identity check and a certificate profile).
   the new line, and `docs/contract.md`'s `export` and `doctor` rows name
   `--sign` and `--signing`.
 - **A page for a game's owner:** `docs/signing.md`. The templates'
-  "Releasing" sections link it (the part on 3050 below says who adds
-  the link). It says:
+  "Releasing" sections link it (the part on 3050 below). It says:
   - what each option costs, checked that day;
   - the steps to get each credential;
   - the variables' table;
@@ -342,8 +341,8 @@ account, its identity check and a certificate profile).
   **From 2802 (done):** the book's chapter 9 ("Targets and export",
   `site/content/learn/book/targets-and-export.md`) gets a short
   "Signing" section that links it.
-- **Either order with 3050:**
-  - If 3050 is done, each template's `release.yml` passes `export.yml`
+- **From 3050 (done):**
+  - Each template's `release.yml` passes `export.yml`
     an input `sign`, true only on a tag push when the repository
     variable `SHUYI_SIGN` is `true` (never on a dry run). It passes the
     signing secrets by name, not with `secrets: inherit`, which zizmor
@@ -356,10 +355,8 @@ account, its identity check and a certificate profile).
     `AGENTS.md` "Releasing" sections say signing is opt-in through
     `SHUYI_SIGN` and link the engine's `docs/signing.md`, and their
     macOS line says the `.app` has no Developer ID signature unless it
-    is on.
-  - If not, `docs/signing.md` carries the step, and 3050 takes it in
-    and links the page from the "Releasing" sections (its scope says
-    so).
+    is on. The book's chapter 9 has a "Releasing" section too, whose
+    macOS paragraph changes the same way.
 - **A real run without an account, if it works:** an integration test,
   `crates/cli/tests/sign_macos.rs`, marked `#[ignore]`, and a
   `sign-macos` job in `.github/workflows/ci.yml` on `macos-latest` that
@@ -422,7 +419,7 @@ account, its identity check and a certificate profile).
    and which tools GitHub's macOS and Windows runner images carry.
 2. Read 3004's exporters, `ExportInput`, the report and
    `HOW-TO-OPEN.txt`; 3049's `Info.plist`, `.icns` and version
-   resource; 3050's `export.yml` and `release.yml` if it is done; and
+   resource; 3050's `export.yml` and `release.yml`; and
    `Probe` in `crates/cli/src/contract/doctor.rs` as it stands (2513
    added `read`).
 3. Add `base64 = "0.22"` to `crates/cli/Cargo.toml`, and
@@ -443,8 +440,7 @@ account, its identity check and a certificate profile).
 9. Write `crates/cli/tests/sign_macos.rs` and the `sign-macos` job. Keep
    them if `codesign` accepts the self-signed identity.
 10. Write `docs/signing.md`, the book's section, and
-    the workflow changes and the templates' "Releasing" link if 3050
-    is done.
+    the workflow changes and the templates' "Releasing" link.
 11. Run the gates.
 
 ## Acceptance criteria

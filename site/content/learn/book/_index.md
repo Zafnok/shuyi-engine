@@ -23,3 +23,7 @@ A note that only a newcomer needs says who it is for: new to programming, to mak
 games, to Rust or to Shuyi. The bar at the top of each page leaves out the notes you
 don't need. A note you see can be hidden, and leaves a line you can click to show it
 again.
+
+Beside each page are these contents, with the page you're on marked, and on a wide
+screen that page's headings. **Contents** and **On this page** fold them away, and they
+stay folded on the next page. On a phone, **Contents** opens the list over the text.

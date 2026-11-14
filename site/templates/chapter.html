@@ -10,15 +10,19 @@
     them, folded (ticket 2820): its game beside an editor of each of those
     files, from its project's `extra.game_files`, copied beside its page by
     `copy-playground.sh`. A chapter with steps after it ends with a line
-    naming them. The reader's filter (`book::filter`) goes above it all. -#}
+    naming them. The reader's filter (`book::filter`) goes above it all,
+    and the book's contents and the page's headings beside it
+    (`book::book_open` and `book::book_close`, ticket 2834). -#}
 {% block head %}{{ book::script() }}
 {%- if page.extra.step and page.extra.files %}
 {{ pg::script() }}
 {%- endif %}{% endblock head %}
 
+{% block main_class %} book-wide{% endblock main_class %}
+
 {% block content %}
-{{ book::filter() }}
-<article class="prose">
+{{ book::book_open(current=page.relative_path, toc=page.toc) }}
+<article class="prose" id="book-text">
   {{ book::where(p=page) }}
   <h1>{{ page.title }}</h1>
   {%- if page.extra.step %}
@@ -40,4 +44,5 @@
   {%- if page.extra.chapter %}{{ book::then_steps(p=page) }}{% endif %}
 </article>
 {{ book::pager(current=page.relative_path) }}
+{{ book::book_close(toc=page.toc) }}
 {% endblock content %}

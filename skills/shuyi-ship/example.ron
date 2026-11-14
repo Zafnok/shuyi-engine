@@ -63,6 +63,17 @@ Example(
         Shuyi(args: ["bake", "--target", "desktop", "--out", "target/shuyi/desktop.pack", "--check"], expect: [
             Is("/result/errors", "[]"),
         ]),
+        // A release: what CI packages for each target, and where, with the
+        // tag checked against the version. The Steam Deck has no exporter
+        // yet: it is checked, not packaged, and the plan still passes.
+        Shuyi(args: ["export", "--plan", "--tag", "v0.1.0"], expect: [
+            Is("/result/version", "0.1.0"),
+            Is("/result/exports/0/exporter", "windows"),
+            Is("/result/exports/1/container", "registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d"),
+            Is("/result/exports/3/exporter", "web"),
+            Holds("/limits/0", "`steam-deck` is checked"),
+        ]),
+        Shuyi(args: ["export", "--plan", "--tag", "v0.2.0"], ok: false, expect: [Is("/code", "SH0001")]),
         // The gates still pass, the build script's included.
         Shuyi(args: ["check"]),
         Cargo(args: ["fmt", "--all", "--check"]),

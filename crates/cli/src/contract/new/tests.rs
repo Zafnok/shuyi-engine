@@ -523,10 +523,26 @@ fn assert_the_ci_runs_the_part_and_keeps_its_files(
         "the rust-cache step caches no target with the private files"
     );
     assert_eq!(ci.matches("rust-cache").count(), 1, "one cache, guarded");
+    // Only export.yml uploads an artifact, and one holding the private files
+    // only when its caller says the release publishes it anyway (ticket
+    // 3050), or the repository is private.
+    let export = text(private, EXPORT_WORKFLOW);
+    let upload = export.find("upload-artifact").unwrap();
+    let guard = export[..upload].rfind("if: ").unwrap();
+    assert_eq!(
+        export[guard..].lines().next(),
+        Some(&*format!(
+            "if: inputs.upload-private || hashFiles('{action}') == ''"
+        ))
+    );
+    let release = text(private, RELEASE_WORKFLOW);
+    assert!(release.contains(
+        "upload-private: ${{ github.event_name == 'push' || github.event.repository.private }}"
+    ));
     for plan in [private, blank] {
         for (path, bytes) in &plan.files {
             let shown = path.to_string_lossy().replace('\\', "/");
-            if shown.starts_with(".github/") {
+            if shown.starts_with(".github/") && shown != EXPORT_WORKFLOW {
                 let text = String::from_utf8_lossy(bytes);
                 assert!(
                     !text.contains("upload-artifact"),
@@ -535,6 +551,117 @@ fn assert_the_ci_runs_the_part_and_keeps_its_files(
             }
         }
     }
+}
+
+/// The base's reusable workflow that builds one target's package.
+const EXPORT_WORKFLOW: &str = ".github/workflows/export.yml";
+
+/// The base's workflow that releases a game from a tag.
+const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
+
+/// The jobs of the workflow `text`, each with its text: a line indented two
+/// spaces under `jobs:` starts one.
+fn jobs_of(text: &str) -> Vec<(String, String)> {
+    let body = &text[text.find("\njobs:\n").unwrap()..];
+    let mut jobs: Vec<(String, String)> = Vec::new();
+    for line in body.lines().skip(2) {
+        let starts = line.len() > 2 && line.starts_with("  ") && !line.starts_with("   ");
+        match (starts, jobs.last_mut()) {
+            (true, _) => jobs.push((line.trim().trim_end_matches(':').to_owned(), String::new())),
+            (false, Some((_, job))) => {
+                job.push_str(line);
+                job.push('\n');
+            }
+            (false, None) => {}
+        }
+    }
+    jobs
+}
+
+/// The workflows of `plan` but the grid stage's playtest (its own, ticket
+/// 2021), by path.
+fn workflows(plan: &Plan) -> BTreeMap<String, Vec<u8>> {
+    plan.files
+        .iter()
+        .map(|(path, bytes)| (path.to_string_lossy().replace('\\', "/"), bytes))
+        .filter(|(shown, _)| {
+            shown.starts_with(".github/workflows/") && !shown.ends_with("playtest.yml")
+        })
+        .map(|(shown, bytes)| (shown, bytes.clone()))
+        .collect()
+}
+
+#[test]
+fn every_games_workflows_are_the_same_and_the_engines_export_is_theirs() {
+    let games = every_short_names_game();
+    let first = workflows(&games[0].1);
+    let names: Vec<&str> = first.keys().map(String::as_str).collect();
+    assert_eq!(
+        names,
+        [
+            ".github/workflows/ci.yml",
+            EXPORT_WORKFLOW,
+            RELEASE_WORKFLOW
+        ]
+    );
+    for (short, plan) in &games {
+        assert_eq!(workflows(plan), first, "{short}");
+    }
+    // The engine's CI runs the file a game's release runs.
+    let engine = fs::read(engine_checkout().join(EXPORT_WORKFLOW)).unwrap();
+    let base = engine_checkout()
+        .join("templates/shuyi-default/base")
+        .join(EXPORT_WORKFLOW);
+    let base = fs::read(base).unwrap();
+    assert!(engine == base, "the engine's export.yml isn't the base's");
+    assert!(
+        first[EXPORT_WORKFLOW] == base,
+        "export.yml has no placeholder"
+    );
+    // Its Linux leg builds in the image the plan names.
+    let ci = fs::read_to_string(engine_checkout().join(".github/workflows/ci.yml")).unwrap();
+    assert!(ci.contains(&format!("container: {}\n", crate::export::SNIPER)));
+    assert!(crate::export::SNIPER.contains("@sha256:"));
+}
+
+#[test]
+fn no_job_of_a_tag_reads_a_cache_and_only_the_release_writes() {
+    let (_, plan) = every_short_names_game().remove(0);
+    let text = |path: &str| String::from_utf8_lossy(&plan.files[Path::new(path)]).into_owned();
+    let tagless = "if: ${{ !startsWith(github.ref, 'refs/tags/') }}";
+    let ci_path = ".github/workflows/ci.yml";
+    for path in [ci_path, EXPORT_WORKFLOW, RELEASE_WORKFLOW] {
+        let text = text(path);
+        assert!(
+            text.contains("\npermissions:\n  contents: read\n"),
+            "{path}"
+        );
+        for (at, _) in text.match_indices("uses: Swatinem/rust-cache@") {
+            let next = text[at..].lines().nth(1).unwrap_or_default().trim();
+            assert_eq!(next, tagless, "{path}: a cache read on a tag");
+        }
+        for (job, body) in jobs_of(&text) {
+            let writes = body.contains(": write");
+            assert_eq!(writes, job == "release", "{path}: the job {job}");
+        }
+    }
+    let release = text(RELEASE_WORKFLOW);
+    let jobs: Vec<String> = jobs_of(&release).into_iter().map(|(job, _)| job).collect();
+    assert_eq!(jobs, ["gates", "plan", "export", "release", "itch"]);
+    // The values of the event reach the scripts through `env:`.
+    for line in release.lines().filter(|line| line.contains("${{")) {
+        assert!(!line.trim_start().starts_with("run:"), "{line}");
+    }
+    // ci.yml checks the lock file first, and keeps to it.
+    let ci = text(ci_path);
+    let lock = ci.find("name: Cargo.lock is committed").unwrap();
+    assert!(lock < ci.find("cargo fmt --all --check").unwrap());
+    assert!(ci.contains(
+        "commit Cargo.lock: run \\`cargo generate-lockfile\\` (or any build) and commit it"
+    ));
+    assert!(ci.contains("run: cargo clippy --workspace --all-targets --locked -- -D warnings\n"));
+    assert!(ci.contains("run: cargo test --workspace --locked\n"));
+    assert!(ci.contains("\n  workflow_call:\n"));
 }
 
 #[test]
@@ -562,6 +689,13 @@ fn new_makes_the_game_in_an_empty_folder_only_unless_forced() {
         answer.limits
     );
     assert!(answer.limits.last().unwrap().contains("not built"));
+    assert!(
+        answer
+            .limits
+            .last()
+            .unwrap()
+            .ends_with("and commit the Cargo.lock it writes")
+    );
     // Not again on top of it.
     let again = new(&dir, &input);
     let error = again.error.as_deref().unwrap();

@@ -12,7 +12,8 @@
 // - A passage the answers leave out leaves nothing behind. Every passage
 //   shown has "hide", which folds it to a stub, a button that shows it.
 // - A page whose page-level mark the reader knows is passed over by the
-//   pager and tagged in the contents.
+//   pager and tagged in the contents, the front page's and the one beside
+//   each page.
 //
 // The templates (`book-macros.html`) hold the bar, the popup and the
 // book's order as JSON; this file holds no text but what it counts. It is
@@ -265,12 +266,13 @@
 
   // The contents' tags, once the reader has answered: Start here, You can
   // skip this, and Read this first on appendix A for a reader from another
-  // engine.
+  // engine. On the front page's contents, and on the book's contents beside
+  // each page (`.book-side`, ticket 2834).
   function tags() {
     for (const tag of document.querySelectorAll(".book-tag")) tag.remove();
     if (answers === null) return;
     const start = order.find((entry) => !skipped(entry));
-    for (const a of document.querySelectorAll(".contents a")) {
+    for (const a of document.querySelectorAll(".contents a, .book-side a")) {
       const path = pathOf(a.href);
       const entry = order.find((e) => e.path === path);
       const names = [];

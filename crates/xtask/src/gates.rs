@@ -259,9 +259,10 @@ pub const GATES: &[Gate] = &[
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root} --no-examples",
+            "target/gates/demo-grid: cargo generate-lockfile",
             "target/gates/demo-grid: cargo fmt --all --check",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets -- -D warnings",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace --locked",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
@@ -272,9 +273,10 @@ pub const GATES: &[Gate] = &[
         .fresh(&["target/gates/demo-blank"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-blank --template blank --engine-path {root}",
+            "target/gates/demo-blank: cargo generate-lockfile",
             "target/gates/demo-blank: cargo fmt --all --check",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets -- -D warnings",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace --locked",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
             "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",

@@ -152,6 +152,20 @@ Grow it by adding a part, not by rewriting the start:
   settings of its own, `GameHooks`), and macroquad's entry point calling
   `shuyi::app::run` with its `AppConfig`.
 
+## Releasing
+
+A pushed tag `vX.Y.Z` releases the game (`.github/workflows/release.yml`,
+README.md's "Releasing"): every package CI builds, on its own system, in
+a GitHub Release with `SHA256SUMS`. `cargo shuyi export --plan --tag
+vX.Y.Z` lists them and fails unless the tag names the version
+(`app.version` in `shuyi.ron`, else `Cargo.toml`'s; run `cargo shuyi
+app-info` after changing it). The tag's message (`git tag -a`) is the
+notes. Pushing a tag publishes the game: ask its owner first. The Release
+workflow run from the Actions tab is a dry run. itch.io is on when the
+repository has the variable `ITCH_GAME` and the secret `BUTLER_API_KEY`.
+The macOS app has no Developer ID signature, so players open it from
+System Settings, Privacy & Security.
+
 ## The gates
 
 Tests are the review. Before every commit, run what CI runs

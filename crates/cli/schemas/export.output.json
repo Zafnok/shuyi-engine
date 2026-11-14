@@ -51,7 +51,7 @@
       "description": "What it found or made; absent when it could not run.",
       "anyOf": [
         {
-          "$ref": "#/$defs/ExportOutput"
+          "$ref": "#/$defs/ExportResult"
         },
         {
           "type": "null"
@@ -67,6 +67,21 @@
     "limits"
   ],
   "$defs": {
+    "Ci": {
+      "description": "What CI does with a target's exporter.",
+      "oneOf": [
+        {
+          "description": "It builds the package.",
+          "type": "string",
+          "const": "build"
+        },
+        {
+          "description": "It only checks the game against the target (`check --target`): the\npackage is built elsewhere, and `why` says why.",
+          "type": "string",
+          "const": "check-only"
+        }
+      ]
+    },
     "ExportOutput": {
       "description": "What `export` made: `export-report.json`.",
       "type": "object",
@@ -159,6 +174,46 @@
         "signing"
       ]
     },
+    "ExportPlan": {
+      "description": "What `export --plan` answers: the packages a release of the game makes.\nEach target of `shuyi.ron` no exporter builds is a limit of the answer.",
+      "type": "object",
+      "properties": {
+        "exports": {
+          "description": "Each exporter of each target, targets sorted by id and a target's\nexporters in the order they are registered.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlannedExport"
+          }
+        },
+        "prerelease": {
+          "description": "Whether the version has a pre-release part (`1.2.0-beta.1`).",
+          "type": "boolean"
+        },
+        "version": {
+          "description": "The version the packages carry, as `export-report.json` writes it:\n`shuyi.ron`'s `app.version` when it sets one, else the package's.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "prerelease",
+        "exports"
+      ]
+    },
+    "ExportResult": {
+      "description": "What `export` answers: a package's report, or, with `plan`, the plan.\nOnly its schema is read: [`export`] answers the one and [`plan`] the other.",
+      "anyOf": [
+        {
+          "description": "What `export` made.",
+          "$ref": "#/$defs/ExportOutput"
+        },
+        {
+          "description": "What `export --plan` plans.",
+          "$ref": "#/$defs/ExportPlan"
+        }
+      ]
+    },
     "FileSize": {
       "description": "A file of the export and its size.",
       "type": "object",
@@ -180,6 +235,31 @@
         "bytes"
       ]
     },
+    "Host": {
+      "description": "The runner a package builds on in CI.",
+      "oneOf": [
+        {
+          "description": "Linux on x86-64 (`ubuntu-latest`).",
+          "type": "string",
+          "const": "linux"
+        },
+        {
+          "description": "Linux on Arm (`ubuntu-24.04-arm`).",
+          "type": "string",
+          "const": "linux-arm64"
+        },
+        {
+          "description": "Windows (`windows-latest`).",
+          "type": "string",
+          "const": "windows"
+        },
+        {
+          "description": "macOS (`macos-latest`).",
+          "type": "string",
+          "const": "macos"
+        }
+      ]
+    },
     "Level": {
       "description": "How bad a target problem is.",
       "oneOf": [
@@ -193,6 +273,49 @@
           "type": "string",
           "const": "warning"
         }
+      ]
+    },
+    "PlannedExport": {
+      "description": "One exporter of the plan: what CI does with it, and where.",
+      "type": "object",
+      "properties": {
+        "ci": {
+          "description": "Whether CI builds it or only checks it.",
+          "$ref": "#/$defs/Ci"
+        },
+        "container": {
+          "description": "The image it builds in, if any (the Steam Linux Runtime's for\n`linux`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exporter": {
+          "description": "The exporter: `shuyi export <exporter>`.",
+          "type": "string"
+        },
+        "host": {
+          "description": "The runner it builds on.",
+          "$ref": "#/$defs/Host"
+        },
+        "profile": {
+          "description": "The target of `shuyi.ron`'s `targets` it checks (its profile).",
+          "type": "string"
+        },
+        "why": {
+          "description": "Why CI only checks it, for `check-only`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "exporter",
+        "profile",
+        "host",
+        "ci"
       ]
     },
     "Signing": {

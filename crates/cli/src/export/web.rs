@@ -7,7 +7,9 @@
 use std::fs;
 
 use super::disclosure::{FileKind, Shipped};
-use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
+use super::{
+    ExportCx, ExportError, ExportReport, Exporter, Host, InCi, Signing, archive, fresh, paths,
+};
 use crate::game::GameTools;
 use crate::project::{Project, WasmOptRule, Web};
 use crate::web::{self as build, Options};
@@ -43,6 +45,18 @@ impl Exporter for WebExporter {
 
     fn profile(&self) -> &'static str {
         "web"
+    }
+
+    fn host(&self) -> Host {
+        Host::Linux
+    }
+
+    fn container(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn ci(&self) -> InCi {
+        InCi::Build
     }
 
     fn triples(&self) -> &'static [&'static str] {
