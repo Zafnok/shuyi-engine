@@ -26,9 +26,20 @@
 //!   the page shuffles its buttons, but the `<details>` list and the twins
 //!   show the written order.
 //!
-//! [`parts`] splits a page at its marks and checks for `llms.rs`, which
-//! writes each passage in the twins as a blockquote under its label, and
-//! each check as text.
+//! And the exercises (ticket 2828, ADR-0117), `{% exercise(check="…",
+//! file="…", to="rust") %}` … `{% end %}`, placed as a check is:
+//!
+//! - `check` is a name, lowercase letters, digits and `-`, once a page;
+//!   `file` is one of the page's playground files (`extra.files`); `to` is
+//!   optional, one of [`AUDIENCES`];
+//! - the task comes first, then a paragraph starting `Hint: `, both
+//!   needed, and no shortcode;
+//! - a project step with playground files has one or two, in its `## Check
+//!   yourself` after its checks, and no other page has one.
+//!
+//! [`parts`] splits a page at its marks, checks and exercises for
+//! `llms.rs`, which writes each passage in the twins as a blockquote under
+//! its label, and each check and exercise as text.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -97,15 +108,36 @@ pub struct Answer {
     pub why: String,
 }
 
-/// A run of a page's body: plain text, or the text of a marked passage or
-/// a check without its two shortcode lines.
+/// The topic of an exercise's mark, as the shortcode's label says it.
+pub const EXERCISE_TOPIC: &str = "an exercise";
+
+/// An exercise: a task done in the page's playground, and the check the
+/// game makes of it (ADR-0117).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Exercise {
+    /// The check's name, which the step's checks know.
+    pub check: String,
+    /// The playground's file it is done in, a name of `extra.files`.
+    pub file: String,
+    /// What to do, Markdown.
+    pub task: String,
+    /// A hint, Markdown, after its `Hint: `.
+    pub hint: String,
+}
+
+/// A run of a page's body: plain text, or the text of a marked passage, a
+/// check or an exercise without its two shortcode lines.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Part<'a> {
-    /// A passage's mark, or a check's audience under [`CHECK_TOPIC`].
+    /// A passage's mark, or the audience of a check under [`CHECK_TOPIC`]
+    /// or of an exercise under [`EXERCISE_TOPIC`].
     pub mark: Option<Mark>,
     /// The check this part is, read from `text`; none for a passage, plain
     /// text, or a check that doesn't read.
     pub check: Option<Check>,
+    /// The exercise this part is, read from `text`; none for anything else,
+    /// or an exercise that doesn't read.
+    pub exercise: Option<Exercise>,
     pub text: &'a str,
     /// The number of its first line in the file.
     pub line: usize,
@@ -151,10 +183,10 @@ pub fn check_pages(pages: &[(String, String)]) -> Vec<String> {
 /// The place (0-based) of the right answer in each check of the page that
 /// has exactly one; a check that doesn't read counts for nothing.
 fn right_places(shown: &str, text: &str) -> Vec<usize> {
-    let Ok((body, first_line, _, _)) = front_matter(shown, text) else {
+    let Ok(front) = front_matter(shown, text) else {
         return Vec::new();
     };
-    parts(shown, body, first_line)
+    parts(shown, front.body, front.first_line)
         .0
         .iter()
         .filter_map(|part| part.check.as_ref())
@@ -217,12 +249,26 @@ fn markdown_under(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
 /// What is wrong with the marks of the page `shown`, whose whole text is
 /// `text`.
 pub fn check(shown: &str, text: &str) -> Vec<String> {
-    let (body, first_line, mut errors, kind) = match front_matter(shown, text) {
+    let Front {
+        body,
+        first_line,
+        mut errors,
+        kind,
+        files,
+    } = match front_matter(shown, text) {
         Ok(found) => found,
         Err(e) => return vec![e],
     };
-    errors.extend(parts(shown, body, first_line).1);
-    errors.extend(check_section(shown, body, first_line, kind));
+    let (found, part_errors) = parts(shown, body, first_line);
+    errors.extend(part_errors);
+    errors.extend(exercise_problems(shown, &found, &files));
+    errors.extend(check_section(
+        shown,
+        body,
+        first_line,
+        kind,
+        !files.is_empty(),
+    ));
     for (at, line) in body.lines().enumerate() {
         let quoted = line.trim_start().strip_prefix('>').map(str::trim_start);
         if let Some(old) = quoted.and_then(|q| OLD_CALLOUTS.iter().find(|old| q.starts_with(**old)))
@@ -246,31 +292,50 @@ enum PageKind {
     Other,
 }
 
-/// What [`front_matter`] finds: the body, its first line's number, what is
-/// wrong with a page-level mark, and what the page is.
-type FrontMatter<'a> = (&'a str, usize, Vec<String>, PageKind);
+/// What [`front_matter`] finds.
+struct Front<'a> {
+    /// The page's body, after its front matter.
+    body: &'a str,
+    /// The number of the body's first line in the file.
+    first_line: usize,
+    /// What is wrong with a page-level mark.
+    errors: Vec<String>,
+    /// What the page is.
+    kind: PageKind,
+    /// Its playground's files (`files = [...]`, ticket 2820), in order.
+    files: Vec<String>,
+}
 
 /// The body of the page `shown` after its `+++` front matter, the number of
 /// its first line, what is wrong with a page-level mark
-/// (`newcomer = "…"`), and what the page is (`chapter = …`, `step = …`).
-fn front_matter<'a>(shown: &str, text: &'a str) -> Result<FrontMatter<'a>, String> {
+/// (`newcomer = "…"`), what the page is (`chapter = …`, `step = …`), and
+/// its playground's files (`files = [...]`).
+fn front_matter<'a>(shown: &str, text: &'a str) -> Result<Front<'a>, String> {
     let mut lines = text.split_inclusive('\n');
     if lines.next().map(str::trim_end) != Some("+++") {
         return Err(format!("{shown}:1: no `+++` front matter"));
     }
     let mut errors = Vec::new();
     let mut kind = PageKind::Other;
+    let mut files = Vec::new();
     let mut at = text.find('\n').map_or(text.len(), |end| end + 1);
     for (number, line) in lines.enumerate() {
         let number = number + 2;
         at += line.len();
         let bare = line.trim();
         if bare == "+++" {
-            return Ok((&text[at..], number + 1, errors, kind));
+            return Ok(Front {
+                body: &text[at..],
+                first_line: number + 1,
+                errors,
+                kind,
+                files,
+            });
         }
         match bare.split('=').next().map(str::trim) {
             Some("chapter") => kind = PageKind::Chapter,
             Some("step") => kind = PageKind::Step,
+            Some("files") => files = listed(bare),
             _ => {}
         }
         if let Some(value) = bare
@@ -290,6 +355,72 @@ fn front_matter<'a>(shown: &str, text: &'a str) -> Result<FrontMatter<'a>, Strin
     Err(format!("{shown}: its front matter has no closing `+++`"))
 }
 
+/// The names of a front matter's line `files = ["a.ron", "b.map"]`, as
+/// `copy-playground.sh` reads it: the quoted strings between its brackets.
+pub fn listed(line: &str) -> Vec<String> {
+    let Some(inside) = line
+        .split_once('[')
+        .and_then(|(_, rest)| rest.rsplit_once(']'))
+        .map(|(inside, _)| inside)
+    else {
+        return Vec::new();
+    };
+    inside
+        .split(',')
+        .map(|name| name.trim().trim_matches('"').to_owned())
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
+/// The front matter's playground files of the page `text`, none when it has
+/// none or doesn't read.
+pub fn page_files(text: &str) -> Vec<String> {
+    front_matter("", text)
+        .map(|front| front.files)
+        .unwrap_or_default()
+}
+
+/// The exercises of the page `shown`, whose whole text is `text`, that
+/// read; none when its front matter doesn't.
+pub fn exercises(shown: &str, text: &str) -> Vec<Exercise> {
+    let Ok(front) = front_matter(shown, text) else {
+        return Vec::new();
+    };
+    parts(shown, front.body, front.first_line)
+        .0
+        .into_iter()
+        .filter_map(|part| part.exercise)
+        .collect()
+}
+
+/// What is wrong with the exercises among `parts`, the page `shown`'s,
+/// whose playground holds `files`: a file it doesn't hold, a check named
+/// twice.
+fn exercise_problems(shown: &str, parts: &[Part<'_>], files: &[String]) -> Vec<String> {
+    let mut errors = Vec::new();
+    let mut names: Vec<&str> = Vec::new();
+    for part in parts {
+        let Some(exercise) = &part.exercise else {
+            continue;
+        };
+        let opener = part.line.saturating_sub(1);
+        if !files.contains(&exercise.file) {
+            errors.push(format!(
+                "{shown}:{opener}: an exercise in `{}`, which the page's playground doesn't hold (its `files`)",
+                exercise.file
+            ));
+        }
+        if names.contains(&exercise.check.as_str()) {
+            errors.push(format!(
+                "{shown}:{opener}: a second exercise with the check `{}`: a name is once a page",
+                exercise.check
+            ));
+        }
+        names.push(&exercise.check);
+    }
+    errors
+}
+
 /// The audiences' ids, for an error.
 fn ids() -> String {
     let ids: Vec<String> = AUDIENCES.iter().map(|(id, _)| format!("`{id}`")).collect();
@@ -303,10 +434,19 @@ enum Line {
     Other,
 }
 
-/// What an opener opens: a passage's mark, or a check and its audience.
+/// What an opener opens: a passage's mark, a check and its audience, or an
+/// exercise and its opener's arguments.
 enum Opened {
     Mark(Mark),
     Check(Option<String>),
+    Exercise(ExerciseOpener),
+}
+
+/// An exercise's opener's arguments.
+struct ExerciseOpener {
+    check: String,
+    file: String,
+    to: Option<String>,
 }
 
 impl Opened {
@@ -315,6 +455,7 @@ impl Opened {
         match self {
             Opened::Mark(_) => "mark",
             Opened::Check(_) => "check",
+            Opened::Exercise(_) => "exercise",
         }
     }
 }
@@ -360,6 +501,7 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
                         out.push(Part {
                             mark: None,
                             check: None,
+                            exercise: None,
                             text: &body[from..at],
                             line: from_line,
                         });
@@ -370,32 +512,9 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
             Line::End => {
                 match open.take() {
                     Some((what, start, opened)) => {
-                        let text = &body[start..at];
-                        let (mark, check) = match what {
-                            Opened::Mark(mark) => (Some(mark), None),
-                            Opened::Check(to) => {
-                                let check = match read_check(text, opened + 1) {
-                                    Ok(check) => Some(check),
-                                    Err(found) => {
-                                        errors.extend(
-                                            found.into_iter().map(|e| format!("{shown}:{e}")),
-                                        );
-                                        None
-                                    }
-                                };
-                                let mark = to.map(|to| Mark {
-                                    to,
-                                    topic: CHECK_TOPIC.to_owned(),
-                                });
-                                (mark, check)
-                            }
-                        };
-                        out.push(Part {
-                            mark,
-                            check,
-                            text,
-                            line: opened + 1,
-                        });
+                        let (part, found) = closed(what, &body[start..at], opened + 1);
+                        errors.extend(found.into_iter().map(|e| format!("{shown}:{e}")));
+                        out.push(part);
                         from = at + raw.len();
                         from_line = number + 1;
                     }
@@ -420,11 +539,57 @@ pub fn parts<'a>(shown: &str, body: &'a str, first_line: usize) -> (Vec<Part<'a>
     out.push(Part {
         mark: None,
         check: None,
+        exercise: None,
         text: &body[from..],
         line: from_line,
     });
-    out.retain(|part| part.mark.is_some() || part.check.is_some() || !part.text.is_empty());
+    out.retain(|part| {
+        part.mark.is_some()
+            || part.check.is_some()
+            || part.exercise.is_some()
+            || !part.text.is_empty()
+    });
     (out, errors)
+}
+
+/// The part a mark, a check or an exercise `what` makes of its `text`,
+/// whose first line is `line`, and what is wrong with it, each error
+/// starting with its line's number.
+fn closed(what: Opened, text: &str, line: usize) -> (Part<'_>, Vec<String>) {
+    let mut errors = Vec::new();
+    let audience = |to: Option<String>, topic: &str| {
+        to.map(|to| Mark {
+            to,
+            topic: topic.to_owned(),
+        })
+    };
+    let (mark, check, exercise) = match what {
+        Opened::Mark(mark) => (Some(mark), None, None),
+        Opened::Check(to) => {
+            let check = read_check(text, line).map_err(|e| errors = e).ok();
+            (audience(to, CHECK_TOPIC), check, None)
+        }
+        Opened::Exercise(args) => {
+            let exercise = read_exercise(text, line)
+                .map(|(task, hint)| Exercise {
+                    check: args.check,
+                    file: args.file,
+                    task,
+                    hint,
+                })
+                .map_err(|e| errors = e)
+                .ok();
+            (audience(args.to, EXERCISE_TOPIC), None, exercise)
+        }
+    };
+    let part = Part {
+        mark,
+        check,
+        exercise,
+        text,
+        line,
+    };
+    (part, errors)
 }
 
 /// The shortcode after the `{%` at the start of `line`: its name and what
@@ -446,6 +611,7 @@ fn kind(line: &str) -> Line {
     match shortcode(line) {
         Some(("newcomer", after)) => Line::Open(opener(after).map(Opened::Mark)),
         Some(("check", after)) => Line::Open(check_opener(after).map(Opened::Check)),
+        Some(("exercise", after)) => Line::Open(exercise_opener(after).map(Opened::Exercise)),
         Some(("end", after)) if after.trim_start()["end".len()..].trim() == "%}" => Line::End,
         _ => Line::Other,
     }
@@ -494,7 +660,9 @@ fn misplaced(line: &str) -> Option<&'static str> {
     let mut first = true;
     while let Some(found) = rest.find("{%") {
         let here = &rest[found..];
-        if let Some(name @ ("newcomer" | "check" | "end")) = shortcode(here).map(|(name, _)| name) {
+        if let Some(name @ ("newcomer" | "check" | "exercise" | "end")) =
+            shortcode(here).map(|(name, _)| name)
+        {
             return Some(if first && found > 0 && rest[..found].trim().is_empty() {
                 "a mark's line starts at the line's start, with no indent"
             } else if name == "end" {
@@ -602,6 +770,109 @@ pub fn read_check(text: &str, first_line: usize) -> Result<Check, Vec<String>> {
     }
 }
 
+/// An exercise's arguments, from its opener `after` its `{%`.
+fn exercise_opener(after: &str) -> Result<ExerciseOpener, String> {
+    const SHAPE: &str = "an exercise is `{% exercise(check=\"…\", file=\"…\") %}`, with `to=\"…\"` if it is for a newcomer";
+    let call = match llms::call(after, "%}") {
+        Some(Ok(call)) => call,
+        Some(Err(e)) => return Err(e),
+        None => return Err(SHAPE.into()),
+    };
+    if !after[call.len..].trim().is_empty() {
+        return Err("an exercise stands on a line of its own".into());
+    }
+    let (mut check, mut file, mut to) = (None, None, None);
+    for (key, value) in llms::arguments(call.args)? {
+        match key {
+            "check" => check = Some(value),
+            "file" => file = Some(value),
+            "to" => to = Some(value),
+            _ => {
+                return Err(format!(
+                    "an exercise takes no argument `{key}` (it takes `check`, `file` and `to`)"
+                ));
+            }
+        }
+    }
+    let (Some(check), Some(file)) = (check, file) else {
+        return Err(SHAPE.into());
+    };
+    let named = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-';
+    if check.is_empty() || !check.chars().all(named) {
+        return Err(format!(
+            "check=\"{check}\": a check's name is lowercase letters, digits and `-`"
+        ));
+    }
+    if let Some(to) = to
+        && label(to).is_none()
+    {
+        return Err(format!("to=\"{to}\" isn't an audience: {}", ids()));
+    }
+    Ok(ExerciseOpener {
+        check: check.to_owned(),
+        file: file.to_owned(),
+        to: to.map(str::to_owned),
+    })
+}
+
+/// What an exercise's hint starts with, at the start of its paragraph.
+pub const HINT: &str = "Hint: ";
+
+/// The task and the hint of the exercise written in `text`, whose first
+/// line is `first_line`, the line after its opener, or what is wrong with
+/// it, each error starting with its line's number.
+pub fn read_exercise(text: &str, first_line: usize) -> Result<(String, String), Vec<String>> {
+    let opener = first_line.saturating_sub(1);
+    let mut errors = Vec::new();
+    let (mut task, mut hint): (Vec<&str>, Vec<&str>) = (Vec::new(), Vec::new());
+    let mut in_hint = false;
+    let mut previous_blank = true;
+    for (index, line) in text.lines().enumerate() {
+        let number = first_line + index;
+        let line = line.trim_end();
+        if line.contains("{{") || line.contains("{%") {
+            errors.push(format!(
+                "{number}: an exercise holds no shortcode: quote what it names in `code`"
+            ));
+        }
+        if let Some(rest) = line.strip_prefix(HINT) {
+            if in_hint {
+                errors.push(format!("{number}: an exercise has one hint"));
+            } else if !previous_blank {
+                errors.push(format!(
+                    "{number}: the hint is a paragraph of its own: a blank line before `{HINT}`"
+                ));
+            }
+            in_hint = true;
+            hint.push(rest);
+        } else if in_hint {
+            hint.push(line);
+        } else {
+            task.push(line);
+        }
+        previous_blank = line.trim().is_empty();
+    }
+    let (task, hint) = (
+        task.join("\n").trim().to_owned(),
+        hint.join("\n").trim().to_owned(),
+    );
+    if task.is_empty() {
+        errors.push(format!(
+            "{first_line}: an exercise with no task before its hint"
+        ));
+    }
+    if hint.is_empty() {
+        errors.push(format!(
+            "{opener}: an exercise with no hint: end it with a paragraph starting `{HINT}`"
+        ));
+    }
+    if errors.is_empty() {
+        Ok((task, hint))
+    } else {
+        Err(errors)
+    }
+}
+
 /// One answer, from the text after its `- [x] ` or `- [ ] `.
 fn read_answer(right: bool, rest: &str) -> Result<Answer, String> {
     let (text, why) = rest
@@ -621,15 +892,24 @@ fn read_answer(right: bool, rest: &str) -> Result<Answer, String> {
     })
 }
 
-/// What is wrong with where the checks of `shown` are: a chapter or a step
-/// ends with [`CHECK_SECTION`] holding two or more, and every check is in
-/// it; another page has none.
-fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> Vec<String> {
+/// What is wrong with where the checks and exercises of `shown` are: a
+/// chapter or a step ends with [`CHECK_SECTION`] holding two checks or
+/// more, and every check is in it; a step whose playground holds files
+/// (`with_files`) has one or two exercises there, after its checks; another
+/// page has none of either.
+fn check_section(
+    shown: &str,
+    body: &str,
+    first_line: usize,
+    kind: PageKind,
+    with_files: bool,
+) -> Vec<String> {
     let mut errors = Vec::new();
-    // The `## ` headings outside fenced code, and the checks' openers, by
-    // line.
+    // The `## ` headings outside fenced code, and the checks' and the
+    // exercises' openers, by line.
     let mut headings = Vec::new();
     let mut checks = Vec::new();
+    let mut exercises = Vec::new();
     let mut fenced = false;
     for (index, line) in body.lines().enumerate() {
         let number = first_line + index;
@@ -641,12 +921,20 @@ fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> 
             headings.push((number, line.trim_end()));
         } else if matches!(shortcode(line), Some(("check", _))) {
             checks.push(number);
+        } else if matches!(shortcode(line), Some(("exercise", _))) {
+            exercises.push(number);
         }
     }
     let section = headings
         .iter()
         .find(|(_, heading)| *heading == CHECK_SECTION)
         .map(|(line, _)| *line);
+    let wants_exercises = kind == PageKind::Step && with_files;
+    if !wants_exercises && let Some(line) = exercises.first() {
+        errors.push(format!(
+            "{shown}:{line}: an exercise is for a project step with a playground (`files`)"
+        ));
+    }
     if kind == PageKind::Other {
         if let Some(line) = section {
             errors.push(format!(
@@ -686,6 +974,20 @@ fn check_section(shown: &str, body: &str, first_line: usize, kind: PageKind) -> 
         errors.push(format!(
             "{shown}:{section}: `{CHECK_SECTION}` holds {count} checks: it holds two or more"
         ));
+    }
+    if wants_exercises {
+        let last_check = checks.last().copied().unwrap_or(section);
+        for line in exercises.iter().filter(|line| **line < last_check) {
+            errors.push(format!(
+                "{shown}:{line}: an exercise before a check: the exercises come after the checks of `{CHECK_SECTION}`"
+            ));
+        }
+        if !(1..=2).contains(&exercises.len()) {
+            errors.push(format!(
+                "{shown}:{section}: the step has {} exercises: a step with a playground has one or two, after its checks",
+                exercises.len()
+            ));
+        }
     }
     errors
 }

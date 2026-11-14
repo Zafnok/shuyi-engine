@@ -234,3 +234,11 @@ In `lib.rs`, what does `#[cfg(feature = "tools")]` above `pub mod tools;` do?
 - [ ] It turns the `tools` feature on for every build. — A feature is turned on by the build, as the `shuyi` alias does with `--features tools`, and `#[cfg]` only asks whether it is on ([the game's own tools](#the-game-s-own-tools)).
 - [x] It includes the `tools` module only when the crate is built with its `tools` feature. — So the module never ends up in the game you ship ([the game's own tools](#the-game-s-own-tools)).
 {% end %}
+
+{% exercise(check="cant-win", file="levels/1.map") %}
+Make level 1 a level that can't be won, but that the game still loads. The game tries every
+way of playing it, as a bot would, to check.
+
+Hint: The game refuses a level with more boxes than targets, so keep one of each. A box
+pushed into a corner can never come out.
+{% end %}

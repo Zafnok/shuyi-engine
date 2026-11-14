@@ -1092,6 +1092,33 @@ fn the_full_file_leaves_out_a_check_for_a_newcomer_to_rust() {
 }
 
 #[test]
+fn an_exercise_is_its_task_where_it_is_done_and_its_hint_in_the_twin() {
+    let fixture = Fixture::new("exercise-twin");
+    put(
+        &fixture.root,
+        "site/content/learn/book/exercised.md",
+        "+++\ntitle = \"Exercised\"\n\n[extra]\nfiles = [\"levels/1.map\"]\n+++\n\nText.\n\n\
+         {% exercise(check=\"second-box\", file=\"levels/1.map\") %}\nAdd a second box.\n\n\
+         Hint: A box is a feature.\n{% end %}\n\n\
+         {% exercise(check=\"red\", file=\"levels/1.map\", to=\"games\") %}\nMake it red.\n\n\
+         Hint: Red is `#ff0000`.\n{% end %}\n",
+    );
+    put(&fixture.public, "learn/book/exercised/index.html", "");
+    fixture.passes();
+    let twin = fixture.read("learn/book/exercised/index.md");
+    assert!(
+        twin.contains(
+            "Text.\n\n**Exercise.** Add a second box.\n\n\
+             Do it in this step's playground, in `files/levels/1.map`: **Check my work** there runs \
+             the game on your files, and says whether the exercise is done, and why.\n\n\
+             Hint: A box is a feature.\n\n\
+             > **New to making games?** an exercise\n>\n> **Exercise.** Make it red.\n"
+        ),
+        "{twin}"
+    );
+}
+
+#[test]
 fn a_page_marked_whole_has_its_label_under_its_source_line() {
     let fixture = Fixture::new("whole");
     put(

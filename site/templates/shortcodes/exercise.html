@@ -1,0 +1,63 @@
+{#- An exercise (ticket 2828, ADR-0117): a task done in the step's
+    playground, which the step's game checks. In a step's `## Check
+    yourself` section, after its quick checks, between
+    `{% exercise(check="second-box", file="levels/1.map") %}` and
+    `{% end %}`, each on a line of its own. Its first paragraphs are the
+    task, then a paragraph starting `Hint: `. `check` names the check the
+    game makes (`site/exercises/<step>.rs`), `file` the playground's file
+    it is done in, one of the page's `extra.files`. `to`, optional, is one
+    of the four audiences: the reader's filter folds the exercise as it
+    folds a passage.
+    - In the page, `static/playground.js` shows two buttons: one opens the
+      playground on the file, the other runs the game on the reader's files
+      with the check and shows whether it passed, and why, in the
+      exercise's `role="status"` line.
+    - With no JavaScript the task and the hint show, and the buttons stay
+      hidden.
+    - `cargo xtask check-book` checks the same shape and where it is,
+      `cargo xtask exercises` that its step's game has the check, and
+      `cargo xtask llms` writes it as text in the twins. -#}
+{%- set label = "" -%}
+{%- if to is defined -%}
+{%- if to == "programming" -%}{%- set label = "New to programming?" -%}
+{%- elif to == "games" -%}{%- set label = "New to making games?" -%}
+{%- elif to == "rust" -%}{%- set label = "New to Rust?" -%}
+{%- elif to == "shuyi" -%}{%- set label = "New to Shuyi?" -%}
+{%- else -%}
+{{ throw(message='exercise: to="' ~ to ~ '" is not one of programming, games, rust or shuyi') }}
+{%- endif -%}
+{%- endif -%}
+{%- if check is not defined or file is not defined -%}
+{{ throw(message='exercise: it takes check="…" and file="…"') }}
+{%- endif -%}
+{%- if page is defined and page.extra.files is defined and not page.extra.files is containing(file) -%}
+{{ throw(message="exercise: the file " ~ file ~ " is not one of the files of the page's playground") }}
+{%- endif -%}
+{%- set pieces = body | trim | split(pat="
+
+Hint: ") -%}
+{%- if pieces | length != 2 -%}
+{{ throw(message="exercise: a task, then one paragraph starting `Hint: `: " ~ check) }}
+{%- endif -%}
+{%- set task = pieces | first | trim -%}
+{%- set hint = pieces | last | trim -%}
+{%- set id = "exercise-" ~ nth -%}
+{%- if label != "" %}
+<aside class="exercise newcomer" data-newcomer="{{ to }}" aria-labelledby="{{ id }}">
+<p class="newcomer-label">{{ label }} <span>an exercise</span></p>
+{%- else %}
+<aside class="exercise" aria-labelledby="{{ id }}">
+<p class="exercise-label">Exercise</p>
+{%- endif %}
+<div class="exercise-task" id="{{ id }}">{{ task | markdown | safe }}</div>
+<p class="exercise-where">Do it in <code>files/{{ file }}</code>, in this step's playground at the top of the page.</p>
+<details class="exercise-hint">
+<summary>Hint</summary>
+{{ hint | markdown | safe }}
+</details>
+<div class="exercise-actions" data-check="{{ check }}" data-file="{{ file }}" hidden>
+<button type="button" class="button exercise-open">Open <code>files/{{ file }}</code></button>
+<button type="button" class="button exercise-run">Check my work</button>
+</div>
+<p class="exercise-result" role="status"></p>
+</aside>

@@ -522,7 +522,7 @@ fn touch_tree(dir: &Path, now: SystemTime) -> std::io::Result<()> {
 }
 
 /// Copies the folder `from` to `to`, but for [`LEFT_OUT`].
-fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+pub(crate) fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::create_dir_all(to)?;
     for entry in fs::read_dir(from)? {
         let entry = entry?;

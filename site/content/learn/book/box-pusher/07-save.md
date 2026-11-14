@@ -187,3 +187,10 @@ guard against?
 - [ ] A player who has won every level. — Winning the last level keeps the furthest on the list already. `.min(last)` is for what's read ([using it](#using-it)).
 - [x] A save that names a level past the last one, from a version of the game with more levels. — An old save can't point past the end of a shorter list ([using it](#using-it)).
 {% end %}
+
+{% exercise(check="yard-first", file="levels.ron") %}
+Make The yard, `levels/5.map`, the first level of the game, and keep all five.
+
+Hint: The order of `levels.ron`'s list is the order of play. Your progress counts levels from
+the top of that list, so a level you reached may now be a different one.
+{% end %}

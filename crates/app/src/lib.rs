@@ -26,6 +26,10 @@
 //! }
 //! ```
 //!
+//! [`run_game_checked`] runs it with checks a page may ask it to make of
+//! the files it was given ([`page::page_check`]), as the book's steps run
+//! their exercises' (ADR-0117).
+//!
 //! A game of its own shape keeps macroquad's entry point, which has to be
 //! in the binary, and hands over its [`AppConfig`] and how it starts
 //! ([`Start`]):
@@ -643,13 +647,36 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// are read before all of them, and `run --watch` watches their folder
 /// too when the game has a checkout of them (ADR-0111).
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
+    run_game_checked(game, &[]);
+}
+
+/// A check a page may ask a game on the short path to make of its files
+/// ([`run_game_checked`]): its name, and a function of the game's data as
+/// it loaded with the page's files, answering `Ok` with why they pass, or
+/// `Err` with why not, each a sentence the reader can act on.
+pub type PageCheck<A, T> = (&'static str, fn(&BasicData<A, T>) -> Result<String, String>);
+
+/// [`run_game`], with checks a page may ask for (the book's exercises,
+/// ADR-0117): when the page names one ([`page::page_check`]) and its files
+/// load, the game's data is read with them, the check of that name in
+/// `checks` runs on it, and the page hears its result
+/// ([`page::report_check`]); a name with no check is reported failed. Files
+/// with problems are reported as `run_game` reports them, with no check.
+/// Then the game plays as usual.
+pub fn run_game_checked<A: ActionSet, T: Debug + 'static>(
+    game: BasicGame<A, T>,
+    checks: &[PageCheck<A, T>],
+) {
     let game = if let Some(watched) = watched_game(&game) {
         watched
     } else {
         let page = page::page_layer(PAGE_FOLDER, page::PageLimits::default());
         let (game, heard) = lay_page(&game, page);
-        if let Some(text) = heard {
-            page::report(&text);
+        if let Some(text) = &heard {
+            page::report(text);
+        }
+        if let Some(report) = page_checked(&game, heard.as_deref(), page::page_check(), checks) {
+            page::report_check(&report);
         }
         game
     };
@@ -660,6 +687,34 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
     let window = basic_window(&game);
     // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
     macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+}
+
+/// The result of the check `asked` (the page's [`page::page_check`]) of
+/// `checks` on `game` as [`lay_page`] left it, once the page heard `heard`:
+/// none when the page asks for none, or heard problems.
+fn page_checked<A: ActionSet, T: Debug + 'static>(
+    game: &BasicGame<A, T>,
+    heard: Option<&str>,
+    asked: Option<String>,
+    checks: &[PageCheck<A, T>],
+) -> Option<page::CheckReport> {
+    let name = asked?;
+    if heard.is_some_and(|text| !text.is_empty()) {
+        return None;
+    }
+    let Some((_, check)) = checks.iter().find(|(known, _)| *known == name) else {
+        let text = format!("This game has no check named `{name}`.");
+        return Some(page::CheckReport::new(name, false, text));
+    };
+    let result = game.data().map_err(|errors| {
+        let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        lines.join("\n")
+    });
+    let report = match result.and_then(|data| check(&data)) {
+        Ok(text) => page::CheckReport::new(name, true, text),
+        Err(text) => page::CheckReport::new(name, false, text),
+    };
+    Some(report)
 }
 
 /// The folder of a short-path game's project its files are in, and the
@@ -1011,6 +1066,78 @@ mod tests {
         assert_eq!(
             game.bundle().file("palette.ron"),
             template().bundle().file("palette.ron")
+        );
+    }
+
+    /// A check of the palette's `text` colour: passes when it is blue.
+    fn text_is_blue(data: &BasicData<shuyi_assets::keymap::UiAction>) -> Result<String, String> {
+        match data.palette_def().get("text") {
+            Some([0x5a, 0x9b, 0xff]) => Ok("the text is blue".to_owned()),
+            other => Err(format!("the text is {other:?}")),
+        }
+    }
+
+    /// The checks the tests' game has.
+    const CHECKS: &[PageCheck<shuyi_assets::keymap::UiAction, ()>] = &[("text-blue", text_is_blue)];
+
+    #[test]
+    fn a_page_that_asks_no_check_gets_no_result() {
+        assert_eq!(page_checked(&template(), Some(""), None, CHECKS), None);
+        assert_eq!(page_checked(&template(), None, None, CHECKS), None);
+    }
+
+    #[test]
+    fn the_check_the_page_asks_for_runs_on_its_files() {
+        let (game, heard) = lay_page(
+            &template(),
+            Ok(Some(page_file(
+                "palette.ron",
+                &palette_with_text("#5a9bff"),
+            ))),
+        );
+        let report = page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS);
+        assert_eq!(
+            report,
+            Some(page::CheckReport::new(
+                "text-blue",
+                true,
+                "the text is blue"
+            ))
+        );
+    }
+
+    #[test]
+    fn with_no_page_files_the_check_runs_on_the_games_own() {
+        let (game, heard) = lay_page(&template(), Ok(None));
+        let report = page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS)
+            .expect("a result");
+        assert!(!report.passed);
+        assert!(report.text.starts_with("the text is"), "{report:?}");
+    }
+
+    #[test]
+    fn page_files_with_problems_get_no_check_result() {
+        let (game, heard) = lay_page(
+            &template(),
+            Ok(Some(page_file("palette.ron", &palette_with_text("blue")))),
+        );
+        assert!(heard.as_deref().is_some_and(|text| !text.is_empty()));
+        assert_eq!(
+            page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS),
+            None
+        );
+    }
+
+    #[test]
+    fn a_check_the_game_lacks_is_reported_failed_naming_it() {
+        let report = page_checked(&template(), None, Some("walls-red".into()), CHECKS);
+        assert_eq!(
+            report,
+            Some(page::CheckReport::new(
+                "walls-red",
+                false,
+                "This game has no check named `walls-red`."
+            ))
         );
     }
 

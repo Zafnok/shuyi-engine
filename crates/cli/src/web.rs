@@ -1815,10 +1815,12 @@ mod tests {
         assert_eq!(
             imported,
             [
+                "shuyi_page_check",
                 "shuyi_page_file_count",
                 "shuyi_page_file_path",
                 "shuyi_page_file_text",
-                "shuyi_page_report"
+                "shuyi_page_report",
+                "shuyi_page_report_check"
             ]
         );
         assert_eq!(provided, imported);

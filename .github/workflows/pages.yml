@@ -120,12 +120,16 @@ jobs:
             [ -f "$dest/NOTICES.txt" ] || { echo "::error::examples/$name's web build has no NOTICES.txt"; exit 1; }
           done
       # Every step of the book's project (ticket 2803), at the address its page
-      # links. Each builds against the engine's code at this commit.
+      # links. Each builds against the engine's code at this commit, from a
+      # copy of the step with its exercises' checks compiled in (ticket 2828,
+      # ADR-0117): the step's own folder is what its page shows.
+      - name: Copy the project's steps with their exercises' checks
+        run: cargo xtask exercises --copy
       - name: Build the project's steps for the web and put them in the site
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target/tutorial
         run: |
-          for dir in site/tutorial/*/; do
+          for dir in target/exercises/*/; do
             name="$(basename "$dir")"
             (cd "$dir" && cargo update -p shuyi -p shuyi-cli -p shuyi-app && cargo shuyi web --release)
             dest="site/public/learn/book/box-pusher/$name/play"

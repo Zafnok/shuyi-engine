@@ -177,3 +177,10 @@ screen get?
 - [ ] Nothing, as the line doesn't compile without `()`. — Passing a function by name is plain Rust ([options and rebinding](#options-and-rebinding)).
 - [x] The function itself, which the screen calls when it needs its rows. — A function can be passed by name, without calling it ([options and rebinding](#options-and-rebinding)).
 {% end %}
+
+{% exercise(check="yellow-player", file="palette.ron") %}
+Make the player yellow.
+
+Hint: The player's color is `player` in the game's part of the palette. Yellow is a lot of
+red and green and little blue, like `#ffe040`.
+{% end %}
