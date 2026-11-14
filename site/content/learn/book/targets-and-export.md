@@ -375,6 +375,41 @@ the web every step runs in one frame. On the Playdate a second's worth runs each
 on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
 says how long each frame took.
 
+## Releasing
+
+Your machine builds the packages its own system can. The others come from CI: a game made with
+`shuyi new` has `.github/workflows/release.yml`, and pushing a tag `vX.Y.Z` releases it. CI runs the
+gates, builds each package on its own system, and makes a GitHub Release of the tag with every
+package, its debug file and `SHA256SUMS`.
+
+What it builds is the game's own target list, `shuyi.ron`'s `targets`. Ask before you tag:
+
+```bash
+cargo shuyi export --plan --tag v0.1.0
+```
+
+It lists each package and where CI builds it, and fails unless the tag is `v` and the game's
+version (`app.version`, else the workspace's in `Cargo.toml`). A target with no exporter yet is
+checked but not packaged. The Playdate is checked only: its SDK can't be downloaded in CI, so you
+export it on a machine that has it. To release:
+
+1. set the version, run `cargo shuyi app-info`, and commit;
+2. `git tag -a v0.1.0 -m "What changed"`, the message being the release's notes;
+3. `git push origin v0.1.0`.
+
+A version with a pre-release part (`1.2.0-beta.1`) is a prerelease. Run the Release workflow from
+the repository's Actions tab for a dry run: the packages are built, and nothing is published.
+
+To push each release to itch.io too, set the repository variable `ITCH_GAME` to `user/game` and the
+secret `BUTLER_API_KEY` to a key of your account. Each package goes to its channel (`windows`,
+`linux`, `macos`, `web`); on the game's itch.io page, set the `web` file to be played in the browser
+once. A prerelease isn't pushed.
+
+The macOS app is signed ad hoc, with no Developer ID, so macOS stops it the first time: the player
+opens it from System Settings, Privacy & Security, as its `HOW-TO-OPEN.txt` says. On a public
+repository each file is attested, and `gh attestation verify <file> --repo <owner>/<repo>` says
+your repository's release built it.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its

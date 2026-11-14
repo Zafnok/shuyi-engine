@@ -19,6 +19,10 @@
       ],
       "default": null
     },
+    "plan": {
+      "description": "Whether to answer the game's [`ExportPlan`] and build nothing: what\neach target's exporters build, and where, in CI. It takes no target\nand no other field but `tag`.",
+      "type": "boolean"
+    },
     "release": {
       "description": "Whether to build with `--release`: the build's paths remapped and\nsearched for, and on Windows and Linux the debug file kept beside\nthe package.",
       "type": "boolean",
@@ -29,9 +33,17 @@
       "type": "boolean",
       "default": false
     },
+    "tag": {
+      "description": "With `plan`, the tag a release is made from: the answer fails unless\nit is `v` and the game's version (`v0.1.0`).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "target": {
-      "description": "The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
-      "type": "string"
+      "description": "The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other\ntarget's check runs, and the answer says it has no exporter yet. None\nwith `plan`.",
+      "type": "string",
+      "default": ""
     },
     "with": {
       "description": "Features of the game's package to turn on for this build only (a\nmeasuring build, say): each one the package has.",
@@ -50,8 +62,5 @@
       }
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "target"
-  ]
+  "additionalProperties": false
 }

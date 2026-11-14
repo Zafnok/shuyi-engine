@@ -282,7 +282,9 @@ it, checks it out in CI before the gates (failing a run on the game's
 own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
 fork's pull request) and tells the game's agent of it. No workflow of
 the template uploads an artifact **or saves a cache** that embeds the
-private files (ADR-0111 §5): a pull request's run, a fork's too, may
+private files (ADR-0111 §5), but `export.yml`'s package of a release,
+which the release publishes anyway, or of a private repository
+(ADR-0114): a pull request's run, a fork's too, may
 restore its base branch's caches, so with the part's action there the
 base's `ci.yml` caches only the cargo registry, not `target/`
 (`rust-cache`'s `cache-targets`). The grid stage's

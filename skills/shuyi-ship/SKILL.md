@@ -262,6 +262,37 @@ Ship only what `check --target` passes.
    The store pages themselves, their text and their prices are the
    game's owner's.
 
+8. **A release from a tag.** The game's `.github/workflows/release.yml`
+   builds every package CI can on its own system, then makes a GitHub
+   Release of the tag with them, their debug files and `SHA256SUMS`.
+   First see what it builds, and that the tag names the version:
+
+   ```bash
+   cargo shuyi export --plan --tag v0.1.0
+   ```
+
+   The version is `shuyi.ron`'s `app.version`, else the workspace's in
+   `Cargo.toml`; after changing it, run `cargo shuyi app-info` and
+   commit. A target no exporter builds (the Steam Deck, today) is a
+   limit, not an error; `playdate` is `check-only`, since its SDK can't
+   be downloaded in CI: export it on a machine with the SDK. Then tag,
+   with the notes as the tag's message, and push the tag:
+
+   ```bash
+   git tag -a v0.1.0 -m "The first release"
+   git push origin v0.1.0
+   ```
+
+   Ask the game's owner before pushing a tag: it publishes the game. A
+   dry run, the Release workflow run from the repository's Actions tab,
+   builds the packages and publishes nothing. itch.io is the owner's to
+   turn on: the repository variable `ITCH_GAME` (`user/game`) and the
+   secret `BUTLER_API_KEY`; then each release but a prerelease
+   (`1.2.0-beta.1`) is pushed to a channel per target, and the owner sets
+   the `web` channel to play in the browser once, on itch.io. The macOS
+   app has no Developer ID signature, so players open it from System
+   Settings, Privacy & Security.
+
 ## Licenses
 
 Every work the game ships, code or not, must be under a license that
@@ -296,6 +327,9 @@ with `cargo shuyi explain <code>`:
   tool failed; `SH3012`, the package holds what the `disclosure` part
   doesn't allow (each file named, with its source); `SH1003`, a Rust target
   or tool is missing.
+- `export --plan --tag`: `SH0001`, the tag isn't `v` and the version
+  (both named): tag the version the game has, or set the version and tag
+  that commit.
 - `import` answers `ok: false` with each error's file and line (and its
   code when its class has one): a credit with an empty field, a source
   that isn't a web link, a license not on the list.
@@ -307,4 +341,5 @@ with `cargo shuyi explain <code>`:
 controls' problem; a button table in the keymap fixes it. Then the web
 build as the game has it, `cargo shuyi web --release`, the
 page and the binary in `dist/web/`, a credits file that `import` reads,
-and the gates still passing.
+the release's plan (the Steam Deck a limit, a wrong tag refused), and
+the gates still passing.

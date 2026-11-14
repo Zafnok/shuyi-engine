@@ -1,0 +1,164 @@
+name: Export
+
+# One target's package, built on its own runner: `cargo shuyi export <target>
+# --release`, then uploaded as the artifact `package-<target>`. release.yml
+# calls it once for each entry `cargo shuyi export --plan` builds; the
+# engine's CI calls the same file (a byte-equal copy) to export its example
+# on every pull request.
+#
+# A package that is a folder (the macOS one) is zipped here with `ditto`,
+# which keeps the program's mode and its ad-hoc signature: the artifact's own
+# zip would drop them. The web package is already the zip `export` writes.
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: The exporter, `shuyi export <target>` (windows, linux, macos, web).
+        type: string
+        required: true
+      host:
+        description: The runner it builds on, from the plan (linux, linux-arm64, windows, macos).
+        type: string
+        required: true
+      container:
+        description: The image it builds in, from the plan, or empty.
+        type: string
+        default: ""
+      dir:
+        description: The game's folder, from the repository's root.
+        type: string
+        default: .
+      check:
+        description: >-
+          A script run after the export, from the repository's root, given
+          the target and the game's folder: the engine checks its package
+          with one. Empty: none.
+        type: string
+        default: ""
+      private-files-required:
+        description: >-
+          Whether a run without the private files' key fails: false on a
+          release's dry run, which warns and builds on the public files.
+        type: boolean
+        default: true
+      upload-private:
+        description: >-
+          Whether to upload a package that holds the game's private files:
+          a release's, which the GitHub Release publishes anyway, or a
+          private repository's. Otherwise such a package isn't uploaded,
+          since anyone signed in to GitHub can download a public
+          repository's artifacts.
+        type: boolean
+        default: false
+    secrets:
+      PRIVATE_ASSETS_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  export:
+    name: export (${{ inputs.target }})
+    runs-on: ${{ inputs.host == 'windows' && 'windows-latest' || inputs.host == 'macos' && 'macos-latest' || inputs.host == 'linux-arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    container: ${{ inputs.container }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET: ${{ inputs.target }}
+      GAME_DIR: ${{ inputs.dir }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # A game with private files checks them out over its own, as ci.yml
+      # does: the package ships them.
+      - name: The private files
+        if: hashFiles('.github/actions/private-files/action.yml') != ''
+        uses: ./.github/actions/private-files
+        with:
+          key: ${{ secrets.PRIVATE_ASSETS_KEY }}
+          required: ${{ inputs.private-files-required }}
+      - name: Set up Linux
+        if: runner.os == 'Linux'
+        run: bash scripts/setup-linux.sh
+      # A release web export needs Binaryen's wasm-opt, unless shuyi.ron's
+      # `export` part says `wasm_opt: optional`.
+      - name: Set up Binaryen
+        if: inputs.target == 'web'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binaryen
+          wasm-opt --version
+      - name: Set up Rust
+        if: runner.os != 'Linux'
+        run: rustup show
+      # .cargo/config.toml links the GNU target with MSYS2's mingw-w64 GCC,
+      # whose binutils give `objcopy`.
+      - name: Set up the Windows GNU target
+        if: inputs.target == 'windows'
+        run: |
+          /c/msys64/usr/bin/pacman.exe -Sy --noconfirm --needed mingw-w64-x86_64-gcc
+          echo 'C:\msys64\mingw64\bin' >> "$GITHUB_PATH"
+          rustup target add x86_64-pc-windows-gnu
+      - name: Set up both Mac targets
+        if: inputs.target == 'macos'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
+      # A tag's run (a release) reads no cache, and a game with private files
+      # caches only the cargo registry: `target/` holds builds that embed
+      # them.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          key: export-${{ inputs.target }}
+          cache-targets: ${{ hashFiles('.github/actions/private-files/action.yml') == '' }}
+      - name: Fetch the locked dependencies
+        working-directory: ${{ inputs.dir }}
+        run: cargo fetch --locked
+      - name: Export
+        working-directory: ${{ inputs.dir }}
+        run: cargo shuyi export "$TARGET" --release
+      - name: Check the package
+        if: inputs.check != ''
+        env:
+          CHECK: ${{ inputs.check }}
+        run: bash "$CHECK" "$TARGET" "$GAME_DIR"
+      - name: Make the package one file
+        run: |
+          set -euo pipefail
+          out="$GAME_DIR/dist/export/$TARGET"
+          # serde_json writes one field to a line; no jq in every image.
+          package=$(sed -n 's/^  "package": "\(.*\)",\{0,1\}\r\{0,1\}$/\1/p' "$out/export-report.json" | head -n 1)
+          if [ -d "$out/$package" ]; then
+            if [ "$RUNNER_OS" != macOS ]; then
+              echo "::error::the package $package is a folder, which only macOS's ditto zips here"
+              exit 1
+            fi
+            (cd "$out" && ditto -c -k --keepParent "$package" "$package.zip")
+            package="$package.zip"
+          fi
+          echo "Package: $package" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the package
+        if: inputs.upload-private || hashFiles('.github/actions/private-files/action.yml') == ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-${{ inputs.target }}
+          path: |
+            ${{ inputs.dir }}/dist/export/${{ inputs.target }}/*.zip
+            ${{ inputs.dir }}/dist/export/${{ inputs.target }}/*.tar.gz
+            ${{ inputs.dir }}/dist/export/${{ inputs.target }}/*.debug
+            ${{ inputs.dir }}/dist/export/${{ inputs.target }}/export-report.json
+            ${{ inputs.dir }}/dist/export/${{ inputs.target }}/exposure-report.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Not uploaded
+        if: ${{ !inputs.upload-private && hashFiles('.github/actions/private-files/action.yml') != '' }}
+        run: |
+          echo "Not uploaded: the package holds the game's private files, and this public repository's artifacts are anyone's to download." >> "$GITHUB_STEP_SUMMARY"

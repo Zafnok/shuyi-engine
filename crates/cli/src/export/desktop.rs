@@ -15,7 +15,8 @@ use std::process::Command;
 
 use super::disclosure::{FileKind, Shipped};
 use super::{
-    ExportCx, ExportError, ExportReport, Exporter, RunCx, Signing, archive, fresh, tool, write,
+    ExportCx, ExportError, ExportReport, Exporter, Host, InCi, RunCx, Signing, archive, fresh,
+    tool, write,
 };
 use crate::game::GameTools;
 use crate::notices;
@@ -41,6 +42,14 @@ pub static MACOS: Desktop = Desktop {
     system: System::MacOs,
     triples: &["aarch64-apple-darwin", "x86_64-apple-darwin"],
 };
+
+/// The image CI builds the Linux package in: Valve's Steam Linux Runtime 3.0
+/// ("sniper") SDK, whose glibc 2.31 (Debian 11's) is the package's floor
+/// (ADR-0058). Its 3.0.20261007.263965, pinned by the digest the registry
+/// gave on 2026-10-29 (`registry.gitlab.steamos.cloud/v2/steamrt/sniper/sdk/
+/// manifests/<tag>`; amd64 only). The engine's CI and the templates'
+/// workflows name the same.
+pub const SNIPER: &str = "registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d";
 
 /// The note for players a Windows package carries, `HOW-TO-OPEN.txt`.
 pub const WINDOWS_NOTE: &str = "\
@@ -114,6 +123,24 @@ impl Exporter for Desktop {
 
     fn profile(&self) -> &'static str {
         "desktop"
+    }
+
+    /// Each builds on its own system.
+    fn host(&self) -> Host {
+        match self.system {
+            System::Windows => Host::Windows,
+            System::Linux => Host::Linux,
+            System::MacOs => Host::Macos,
+        }
+    }
+
+    /// Linux builds in the Steam Linux Runtime's SDK ([`SNIPER`]).
+    fn container(&self) -> Option<&'static str> {
+        (self.system == System::Linux).then_some(SNIPER)
+    }
+
+    fn ci(&self) -> InCi {
+        InCi::Build
     }
 
     fn triples(&self) -> &'static [&'static str] {

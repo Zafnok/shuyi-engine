@@ -484,7 +484,8 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
         }
     })?;
     limits.push(format!(
-        "the game was made, not built: run `cargo test` in {}",
+        "the game was made, not built: run `cargo test` in {} and commit the Cargo.lock it \
+         writes",
         input.dir
     ));
     let output = NewOutput {

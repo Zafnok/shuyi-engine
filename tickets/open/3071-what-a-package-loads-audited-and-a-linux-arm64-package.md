@@ -106,10 +106,13 @@ None.
   `scripts/setup-linux.sh` installs, and `tools/export-check/` gets its
   file list. **Either order with 3049:** if 3049 is done, `linux-arm64`
   carries 3049's identity files as `linux` does; if not, nothing to do
-  (3049 gives them to every desktop package). **Either order with
-  3050:** if 3050 is done, `linux-arm64` gets its `host()`,
-  `container()` and `ci()` like the other exporters; if not, nothing to
-  do (3050 gives every exporter them). **Either order with 2504:** if
+  (3049 gives them to every desktop package). **From 3050
+  (done):** `linux-arm64` fills `host()` (`Host::LinuxArm64`),
+  `container()` and `ci()` (`InCi::Build`), which the trait requires;
+  the tests `every_registered_exporter_says_where_ci_builds_it` and the
+  templates job's plan check (`.github/workflows/ci.yml`, four entries
+  today) list it, and `export.yml` maps `linux-arm64` to
+  `ubuntu-24.04-arm` already. **Either order with 2504:** if
   2504 is done, add a commented `linux-arm64` entry (in
   `debian:bullseye` on `ubuntu-24.04-arm`) that the developer turns on
   to the new game's CI matrix (`.github/workflows/ci.yml` in the

@@ -171,6 +171,9 @@ pub fn one_off(
             })
         }
         Op::Export => match project {
+            Ok(p) if input.get("plan") == Some(&Value::Bool(true)) => {
+                answered(op, input, |i| export::plan(p, &i))
+            }
             Ok(p) => answered(op, input, |i| export::export(p, &i, game)),
             Err((code, error)) => failed(op, *code, error.clone()),
         },

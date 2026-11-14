@@ -275,13 +275,16 @@ The sign-off also:
   install --locked shuyi-cli` from crates.io (the `--git` form goes),
   and Learn adds each crate's docs.rs link beside its `/api/` link
   (`site/templates/learn.html`, over `site/data/api.toml`).
-- **Either order with 3050** (release a game from a tag): if 3050 is
-  done, the tag workflow also exports Hello, Grid through the engine's
-  `.github/workflows/export.yml` (3050) for each `build` entry of
-  `cargo shuyi export --plan`, made without `--tag` (the workflow has
-  already checked the tag). It attaches the packages, a `SHA256SUMS`
-  and attestations (`actions/attest`; the repository is public) to the
-  engine's GitHub Release. If not, 3050 adds this job when it lands.
+- **From 3050 (done)** (release a game from a tag): the tag workflow
+  also exports Hello, Grid through the engine's
+  `.github/workflows/export.yml` (a byte-equal copy of the template's;
+  its inputs `target`, `host`, `container`, `dir: examples/hello-grid`)
+  for each `build` entry of `cargo shuyi export --plan --json` in
+  `examples/hello-grid`, made without `--tag` (the workflow has already
+  checked the tag against the crates' version). It attaches the
+  packages, a `SHA256SUMS` and attestations (`actions/attest`, as the
+  templates' `release.yml` does; the repository is public) to the
+  engine's GitHub Release. This ticket adds that job.
 - **2544 is done** (`bots` folded into `playtest`, which removed the
   `bots` operation and `GameTools::bots`): its break landed before the
   first release, so nothing is left here.
