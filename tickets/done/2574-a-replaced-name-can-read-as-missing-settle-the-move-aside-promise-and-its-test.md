@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-13
 ---
 
 # 2574 — A replaced name can read as missing on Windows
@@ -84,11 +84,11 @@ do it:
 
 ## Acceptance criteria
 
-- [ ] An ADR says what `put_aside` promises and why.
-- [ ] `a_program_is_at_its_path_at_every_moment_of_a_move`, or its
+- [x] An ADR says what `put_aside` promises and why.
+- [x] `a_program_is_at_its_path_at_every_moment_of_a_move`, or its
       replacement, fails with 2561's old order.
-- [ ] 300 runs of the `mcp::aside` tests beside a workspace build pass.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] 300 runs of the `mcp::aside` tests beside a workspace build pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -96,5 +96,32 @@ do it:
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Chose the first option: the promise is what the system allows**
+  (ADR-0115). `put_aside`'s order leaves no gap of its own; the system's
+  replacing of the name may, rarely, on Windows. No call measured by 2564
+  replaces a name without a gap, and a design with no replacing at all
+  needs `unsafe` or a launcher stub, for a gap about one server start in
+  20,000 meets; the ADR says why that lost.
+- **The test** `a_program_is_at_its_path_at_every_moment_of_a_move` now
+  counts separate gaps (each time the path, there on the watcher's last
+  look, isn't), not missing looks, and allows `GAPS = 2` in `MOVES = 200`.
+  From 2564's rates (4 failed runs in 300 under load, a gap in a run about
+  one run in 75), three gaps in one run is about one in 2,500,000 if they
+  fall independently.
+- **It still fails 2561's bug:** with the old order (rename `from` to `to`,
+  then the copy to `from`) put back by hand, three runs each saw
+  `the path was missing 200 separate times in 200 moves`. The order was
+  then restored, unchanged.
+- **Under load:** the built `mcp::aside` tests ran 300 times while
+  `cargo build --workspace` compiled in a separate target folder beside
+  them: 0 failed.
+- **Code:** unchanged; only `aside.rs`'s module docs and `put_aside`'s now
+  state the promise as ADR-0115 does (and correct "one move in 40,000" to
+  2564's 25 in 900,000, about one in 36,000).
+- **Not established, still:** whether the gap is NTFS's own or a filter
+  driver's. No ticket: ADR-0115's promise holds either way, and telling
+  them apart needs Nick's real-time scanning off for no change here.
+- **Docs:** ADR-0115 and `aside.rs`'s docs; nothing a game or the docs map
+  describes changed.
+- No break.
+- Game: nothing to adopt, the change is a test and docs in `shuyi-cli`.

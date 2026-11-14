@@ -40,7 +40,7 @@ reuse of art and not a redraw; that is this ticket's picture match.
 **From 2816 (done):** the kit is a folder `shuyi reveal prepare` writes
 (`dist/reveal` by default) from `shuyi.ron`'s `reveal` part
 (`project::Reveal`), and `crates/cli/src/reveal/` holds it, private to
-`shuyi-cli` ([ADR-0115](../../docs/adr/0115-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)).
+`shuyi-cli` ([ADR-0116](../../docs/adr/0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)).
 Its manifest, `reveal.ron` (`reveal::kit::Manifest`, version 1, read with
 `kit::read_manifest`), gives `game`, `keywords`, `store_url`, `prepared`,
 `build`, and `captures`, each with its `original` and `encodes` (`path`

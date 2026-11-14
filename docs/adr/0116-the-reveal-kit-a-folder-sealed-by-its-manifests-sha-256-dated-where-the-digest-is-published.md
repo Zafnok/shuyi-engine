@@ -1,4 +1,4 @@
-# ADR-0115: The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published
+# ADR-0116: The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published
 
 - **Status:** Accepted
 - **Date:** 2026-11-13

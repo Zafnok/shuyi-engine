@@ -57,10 +57,10 @@ writes (`dist/reveal` by default), sealed by its manifest's SHA-256 in
 `reveal.ron.sha256`; `reveal verify` fails a file in the folder that its
 manifest doesn't name, so `recipients.ron` goes beside the kit's folder,
 never inside it, and may record the kit's digest
-([ADR-0115](../../docs/adr/0115-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)).
+([ADR-0116](../../docs/adr/0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)).
 There is no release signing key: 3050 attests each package with Sigstore
 (`actions/attest`, keyless, on a public repository), and the kit keeps
-those attestations as receipts. ADR-0115 §4 says why the kit has no key of
+those attestations as receipts. ADR-0116 §4 says why the kit has no key of
 its own; signing the ledger needs a key this ticket chooses and records
 in its ADR, or a Sigstore attestation of the ledger from the release
 workflow. The kit's SHA-256 is `crates/cli/src/sha256.rs` (`hex`,

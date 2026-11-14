@@ -64,7 +64,7 @@ None.
 
 **Done (2026-11-13):**
 
-- `shuyi reveal` ([ADR-0115](../../docs/adr/0115-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)),
+- `shuyi reveal` ([ADR-0116](../../docs/adr/0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md)),
   a command of the CLI only, its module `crates/cli/src/reveal/` private
   to `shuyi-cli`, as `repos` is:
   - `prepare` writes the kit from `shuyi.ron`'s new `reveal` part
@@ -107,7 +107,7 @@ None.
 - Docs: the `shuyi-ship` skill (step 9, `SH3015`, its worked example now
   prepares and verifies a kit on a new game), the book's chapter 9
   (*Before the reveal*, and a quick check), the docs map's row for the
-  fixture, the README's `shuyi-cli` row, rustdoc, ADR-0115.
+  fixture, the README's `shuyi-cli` row, rustdoc, ADR-0116.
 
 **Deviations:**
 
@@ -118,7 +118,7 @@ None.
 - Step 2's "signature": the kit has no key of its own. Its digest is
   dated where it is published (a pushed commit or tag, a release's notes,
   3050's attestations), and `verify --digest` checks a copy against it
-  (ADR-0115 §4 says why).
+  (ADR-0116 §4 says why).
 - **Outside the ticket, at Nick's word:** `cargo xtask check-book`
   allowed two or three quick checks a chapter, and refused the reveal
   kit's as a fourth in chapter 9. Nick said (2026-11-13) there is no

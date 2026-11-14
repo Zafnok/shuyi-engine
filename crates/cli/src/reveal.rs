@@ -1,5 +1,5 @@
 //! `reveal`: the reveal kit, the evidence a game keeps before its first
-//! public footage (ADR-0115). A gameplay idea shown in public can be copied
+//! public footage (ADR-0116). A gameplay idea shown in public can be copied
 //! from the footage alone, without the game; the kit can't stop that. It
 //! keeps what a person needs to show later what was theirs, and when: the
 //! approved captures in whole (originals and each platform's re-encode), the
