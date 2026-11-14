@@ -95,6 +95,13 @@ fn the_hook_writes_reports_and_calls_the_one_before() {
     assert_eq!(report.record, None);
     // On the thread that installed the hook, `run`'s: it ended the game.
     assert!(report.fatal);
+    // Its stack as offsets into this program, on Windows and Linux.
+    let in_program = report.frames.iter().filter(|f| f.offset.is_some()).count();
+    if cfg!(any(windows, all(target_os = "linux", target_env = "gnu"))) {
+        assert!(in_program > 0, "{:?}", report.frames);
+    } else {
+        assert_eq!(report.frames, Vec::new());
+    }
 
     // The record goes into the same report, still fatal.
     crash::add_record(Some("(seed: 1)".into()));

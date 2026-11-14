@@ -36,6 +36,7 @@ A report is RON (`shuyi_platform::crash::CrashReport`):
 | `location` | Where it panicked: `file:line:column` |
 | `thread` | The thread's name: `main`, or the music's worker |
 | `backtrace` | The standard library's backtrace, up to 32 KiB. A release build is stripped, so its frames are `<unknown>` |
+| `frames` | The stack as offsets into the program, innermost first, up to 128: `(offset: Some(n))`, or `(offset: None)` for a frame in a system library. On Windows and Linux; empty on macOS and the web ([below](#reading-the-frames)) |
 | `engine`, `game` | The engine's version and the game's |
 | `target` | The OS, the processor and the build: `windows x86_64 release` |
 | `frame` | The frame that was running, counted from 1 |
@@ -64,6 +65,28 @@ Each report is the storage key `crash-<when>`:
 The storage name is `AppConfig::storage_name` (`shuyi.ron`'s `app.storage`), and
 `shuyi_app::storage::desktop_dir` gives the folder. A player who reports a crash
 sends the newest `crash-*.ron` there.
+
+## Reading the frames
+
+A release build is stripped, so its `backtrace` names nothing. Its `frames` say
+where each call was, as an offset from the start of the program in memory
+(the program loads at another address each run). The debug file of the same
+build (`<game>-<version>-<target>.debug`, kept beside the package by `shuyi
+export --release`: [targets/desktop.md](targets/desktop.md)) names them:
+
+```bash
+# The image base the debug file was linked at: Windows has one, Linux 0.
+base=$(objdump -p game.debug | awk '/^ImageBase/ {print "0x" $2}')
+base=$((${base:-0}))
+grep -o 'offset: Some([0-9]*)' crash-1700000000123.ron | grep -o '[0-9]\+' |
+  while read -r offset; do printf '0x%x\n' $((base + offset - 1)); done |
+  addr2line -f -C -i -p -e game.debug
+```
+
+Each offset is where its call returns to, so 1 is taken off to land on the
+call's line, as debuggers do. `addr2line` and `objdump` are binutils
+(MSYS2's mingw-w64 on Windows). A frame with `None` is in a system library, not the program. How the
+stack is walked: `crates/app/src/crash/frames.rs` (ticket 2598).
 
 ## Telling the player
 

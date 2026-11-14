@@ -99,32 +99,17 @@ None.
 ## Scope
 
 **In:**
-- **Frames a debug file can name,** written by 3046's hook
-  (`crates/app/src/crash.rs`):
-  - `CrashReport` gains `frames: Vec<CodeFrame>` (`#[serde(default)]`),
-    `CodeFrame { offset: Option<u64> }`: the frame's address minus the
-    executable's load address, or `None` for a frame in another module
-    (a system library). The report's `version` stays 1;
-  - taken with `backtrace::Backtrace::new_unresolved()`, never resolved
-    in the hook. `backtrace` joins `shuyi-app`'s native-only
-    dependencies (`[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`),
-    in the versions of `addr2line` and `object` this ticket uses, so
-    `Cargo.lock` holds one of each. **Either order with 3071:** if
-    3071 is done, use the `object` version its library audit brought
-    (`crates/cli/Cargo.toml`); if not, nothing to do (3071 uses this
-    one);
-  - the executable's place, found once by `crash::install`:
-    - Windows: the module base of a frame of `install` itself (from
-      `backtrace::trace`); a frame is in the executable when its
-      `module_base_address` is that base;
-    - Linux (the Steam Deck too): the lines of `/proc/self/maps` whose
-      path is `std::env::current_exe()` give its mappings. A frame is
-      in the executable when its address is inside one of them, and
-      the lowest start is the load address (Rust links PIE
-      executables, whose first segment's address is 0). The parsing is
-      a pure function of the file's text;
-    - macOS and the web: `frames` stays empty, and the docs say so;
-  - the PR gives hello-grid's stripped release size before and after.
+- **From 2598 (done):** the report's frames. `CrashReport` has
+  `frames: Vec<CodeFrame>` (`shuyi_platform::crash`), `CodeFrame {
+  offset: Option<u64> }`: each return address minus the executable's
+  load address, or `None` in another module, on Windows and Linux (empty
+  on macOS and the web). 2598 took them with the system's unwinder
+  (`crates/app/src/crash/frames.rs`: `RtlCaptureStackBackTrace` and
+  glibc's `backtrace()`, the executable's range from `/proc/self/maps`),
+  not the `backtrace` crate, so `shuyi-app` gained no crate; this ticket
+  doesn't add `backtrace` either. `docs/crash-reports.md` (*Reading the
+  frames*) reads them by hand with `addr2line`; `crash --symbols` does
+  the same lookup (Windows: the image base plus the offset, minus 1).
 - **The debug file:** the executable as built before it was stripped,
   with line tables, kept beside the package as `<package>.debug` and
   never shipped. 3004's `shuyi export --release` keeps it.
@@ -166,7 +151,10 @@ None.
     name comes from the debug info, or from the symbol table
     (`find_symbol`) when the debug info gives none. `addr2line` is a
     dependency of `shuyi-cli` with `default-features = false` and the
-    features `loader` and `rustc-demangle`;
+    features `loader` and `rustc-demangle`. **Either order with
+    3071:** if 3071 is done, use the `object` version its library audit
+    brought (`crates/cli/Cargo.toml`), so `Cargo.lock` holds one; if
+    not, nothing to do (3071 uses this one);
   - `ok` when the report reads. `limits` says: no `--symbols` given (the
     frames are offsets); how many frames the file names no function
     for ("4 of 19 frames fall outside every function: the debug file
@@ -278,15 +266,13 @@ None.
   a field. Say so in the PR; the game's PR that moves the pin follows.
 - **Size, decided after step 4.** Count the changed lines of `crash`
   without `--symbols`, the panic in `turns` and `replay --crash`, with
-  their tests (schemas aside). If they pass about 350, the frames
-  (`CodeFrame`, the hook's part, the executable's place) and `--symbols`
-  (the lookup, `NamedFrame`'s names, the debug file's docs) go to a
+  their tests (schemas aside). If they pass about 350, `--symbols` (the
+  lookup, `NamedFrame`'s names, the debug file's docs) goes to a
   follow-up ticket (the `write-ticket` skill, After MVP, `blocked_by:
   ["2520"]`), written in this PR from this ticket's bullets, with their
   acceptance criteria and tests. `CrashOutput.frames` and its schema
-  then come with the follow-up too. The lines
-  of 3012, 3047 and 3050 that name 2520's debug file then name
-  the follow-up.
+  then come with the follow-up too. The lines of 3012, 3047 and 3050
+  that name 2520's debug file then name the follow-up.
 
 **Out (do not do):**
 - Keeping the debug file when a game is exported or released: 3004
@@ -313,9 +299,8 @@ None.
 3. Make `turns` catch a panic, with its hook, then add `--crash` to
    `replay`.
 4. Count the changed lines and apply **Size** above.
-5. Add the frames to the report and to the hook, with the executable's
-   place on Windows and Linux. Add `--symbols` and the lookup with
-   `addr2line`.
+5. Add `--symbols` and the lookup with `addr2line` over the frames
+   2598 writes.
 6. Regenerate the schemas, raise `VERSION`, add the line to
    `versions.json`.
 7. On the machine at hand (Windows GNU): build hello-grid for release
@@ -341,14 +326,9 @@ None.
       error.
 - [ ] A report with no `frames` reads, and `limits` says why there are
       none.
-- [ ] 3046's `crates/app/tests/crash_hook.rs`: on Windows and Linux
-      the stored report has frames, at least one of them in the
-      executable. On Linux and Windows GNU, `addr2line`'s `Loader` over
-      the test binary (a dev-dependency of `shuyi-app`) names one of
-      them as the test's function that panicked. On macOS `frames` is
-      empty.
-- [ ] The `/proc/self/maps` parser finds the executable's mappings and
-      load address in a sample text, and skips other files' lines.
+- [ ] On Linux and Windows GNU, a `shuyi-cli` test names a frame of a
+      report the hook wrote in a test binary (2598's frames) with
+      `addr2line`'s `Loader` over that binary.
 - [ ] `replay --crash` through a test game whose `GameTools::replay`
       runs `turns` over rules that panic on one command: a report whose
       record panics at step 3, with the place the replay gives, answers
@@ -372,14 +352,13 @@ None.
 ## Tests required
 
 - Unit: the lookup at `offset - 1` and an inlined frame; the symbol
-  table as the fallback name; `same_place`; the `/proc/self/maps`
-  parser; `turns` stopping at a panic with its message and place; the
+  table as the fallback name; `same_place`; `turns` stopping at a panic with its message and place; the
   quiet hook passing other threads' panics on.
 - Integration: `crash` (with and without `--symbols`) and `replay
   --crash` through the contract's command line, with the exit codes
   (`crates/cli/src/contract/cli.rs`'s tests and the fake game in
   `crates/cli/src/contract/fake.rs`); the `crash` answer as JSON against
-  its schema; the hook's frames in `crash_hook.rs`.
+  its schema.
 
 ## Completion notes
 
