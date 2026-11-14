@@ -712,6 +712,11 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
         .collect();
     let mut failed = false;
     if !options.list {
+        // A full run builds into `target/`: compress it first on Windows
+        // (ticket 2075). The pre-push hook's `--fast` doesn't wait for it.
+        if !options.fast {
+            crate::compress::ensure(root);
+        }
         for (gate, plan, outcome) in &mut rows {
             if *plan != Plan::Run {
                 continue;
