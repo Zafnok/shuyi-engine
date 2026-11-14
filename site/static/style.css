@@ -554,6 +554,82 @@ h3 {
   margin-bottom: 0;
 }
 
+/* An exercise (ticket 2828, ADR-0115): a box like a quick check's, with
+   its task, where it is done, a hint and two buttons, which
+   `playground.js` shows. The result line says whether the game's check
+   passed. One marked for a newcomer keeps the newcomer's rule and label,
+   and folds as a passage does. */
+.exercise {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.exercise.newcomer {
+  border-left: 3px solid var(--newcomer);
+}
+
+.exercise-label {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.exercise-task > :first-child {
+  margin-top: 0;
+}
+
+.exercise-where {
+  color: var(--muted);
+}
+
+.exercise-hint summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.exercise-hint > :last-child {
+  margin-bottom: 0;
+}
+
+.exercise-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.exercise-actions[hidden] {
+  display: none;
+}
+
+/* At least 44 px tall to hit at 375 px. */
+.exercise-actions button.button {
+  min-height: 44px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.exercise-result {
+  margin: 0.5rem 0 0;
+}
+
+.exercise-result:empty {
+  display: none;
+}
+
+.exercise-result.is-passed strong {
+  color: var(--ready);
+}
+
+.exercise-result.is-failed strong {
+  color: var(--code-deleted);
+}
+
 /* The reader's filter (ADR-0090 §6, `book-filter.js`). The script sets
    `data-book` on `<html>`, which shows the bar, and `data-book-fold` to the
    audiences the reader knows, whose passages it leaves out. With no

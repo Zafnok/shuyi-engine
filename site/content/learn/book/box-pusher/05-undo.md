@@ -206,3 +206,10 @@ while their key is held?
 - [ ] None, since a game's own actions don't repeat. — `is_repeatable` decides for each action of the game's own enum ([the game's own actions](#the-game-s-own-actions)).
 - [x] Every action but Confirm and Cancel, Undo included. — The `!` turns "is Confirm or Cancel" around, so that a held key never confirms ten times ([the game's own actions](#the-game-s-own-actions)).
 {% end %}
+
+{% exercise(check="undo-two-keys", file="keymap.ron") %}
+Give Undo a second key, so the player can press either.
+
+Hint: Undo's keys are the list `"Undo": ["u"]`. Add a key no other action has: `x` and `z`
+are taken, `r` isn't.
+{% end %}

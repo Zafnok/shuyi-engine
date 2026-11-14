@@ -602,3 +602,17 @@ does the help line show?
 - [ ] `{Cancel} leave`, as written. — `{Cancel}` is filled in, and on screen it came out as `Backspace` for the default keys ([the words](#the-words-en-ron)).
 - [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
 {% end %}
+
+{% exercise(check="confirm-key", file="keymap.ron", to="games") %}
+Let the player press `p` to start, as well as Enter and Space.
+
+Hint: Confirm's keys are a list in `keys`: `"Confirm": ["Enter", "Space", "z"]`. Each key is
+in quotes, with commas between them. Put `"p"` in place of `"z"`, or beside it.
+{% end %}
+
+{% exercise(check="quit-word", file="en.ron") %}
+Make the title's help line say `quit` where it says `leave`, and keep the key's name in it.
+
+Hint: The line is `title.help`. `{Cancel}` isn't a word to change: the game puts the player's
+key for Cancel there.
+{% end %}

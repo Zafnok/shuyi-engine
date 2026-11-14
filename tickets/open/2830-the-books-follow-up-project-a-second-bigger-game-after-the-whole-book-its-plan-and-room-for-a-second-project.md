@@ -52,6 +52,13 @@ ticket is about 1,500 changed lines or fewer). This ticket chooses the
 game, plans its steps, makes the room, and writes its first step. It
 then writes a ticket for each batch of the remaining steps.
 
+**From 2828 (done):** every step with a playground has one or two
+exercises, each checked by its step's game (ADR-0115). `cargo xtask
+exercises` (`crates/xtask/src/exercises.rs`) knows one project: its steps
+in `site/tutorial/`, its pages in `site/content/learn/book/box-pusher/`,
+its checks in `site/exercises/`. Room for a second project makes those
+per project too.
+
 ## Nick input
 
 **Decision:** which game the follow-up project builds. Ask with the

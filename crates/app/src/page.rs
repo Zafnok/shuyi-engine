@@ -10,6 +10,12 @@
 //! project (`files/stage.map`); [`page_layer`] takes those under one folder.
 //! The `shuyi_page_files` miniquad plugin in `crates/cli/web/page-files.js`
 //! (our own code, loaded by `crates/cli/web/index.html`) reads them.
+//!
+//! A page may also ask the game to check the files it was given (the book's
+//! exercises): it names the check under `shuyi-page-check` ([`page_check`]),
+//! and the game sends back whether they pass and why ([`report_check`],
+//! [`CheckReport`]). `crate::run_game_checked` does both for a game on the
+//! short path.
 
 use std::collections::BTreeMap;
 
@@ -19,7 +25,7 @@ use shuyi_assets::bundle::{Layer, LayerError};
 /// in `crates/cli/web/page-files.js` (a `shuyi-cli` test keeps them equal).
 /// Bump both when the functions below change.
 #[cfg(target_arch = "wasm32")]
-const PLUGIN_VERSION: u32 = 1;
+const PLUGIN_VERSION: u32 = 2;
 
 // Declaring the functions `crates/cli/web/page-files.js` provides. They take
 // numbers and strings as `sapp_jsutils.js`'s objects, and the JS answers ""
@@ -37,6 +43,15 @@ unsafe extern "C" {
     /// Sends the page `text`: to its parent frame, of its origin, or else
     /// to the console.
     safe fn shuyi_page_report(text: sapp_jsutils::JsObjectWeak);
+    /// The name of the check the page asks for; "" for none.
+    safe fn shuyi_page_check() -> sapp_jsutils::JsObject;
+    /// Sends the page a check's result, `passed` 1 or 0: to its parent
+    /// frame, of its origin, or else to the console.
+    safe fn shuyi_page_report_check(
+        name: sapp_jsutils::JsObjectWeak,
+        passed: u32,
+        text: sapp_jsutils::JsObjectWeak,
+    );
 }
 
 /// What the JS loader calls to check the plugin's version.
@@ -155,6 +170,70 @@ pub fn report(text: &str) {
     shuyi_page_report(sapp_jsutils::JsObject::string(text).weak());
     #[cfg(not(target_arch = "wasm32"))]
     let _ = text;
+}
+
+/// The name of the check the page asks the game to make of its files
+/// (`sessionStorage`'s `shuyi-page-check`, which the book's exercises
+/// write); `None` when it asks for none, and on every target but the web.
+pub fn page_check() -> Option<String> {
+    #[cfg(target_arch = "wasm32")]
+    let name = {
+        let mut name = String::new();
+        shuyi_page_check().to_string(&mut name);
+        name
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let name = String::new();
+    asked(&name)
+}
+
+/// The check a page's text `name` asks for: none when it is blank.
+fn asked(name: &str) -> Option<String> {
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_owned())
+}
+
+/// A check's result, which [`report_check`] sends the page: the check's
+/// name, whether the files passed it, and why, a sentence the reader can
+/// act on. Build it with [`CheckReport::new`]: a struct literal doesn't
+/// compile outside this crate, so a new field never breaks a game
+/// (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CheckReport {
+    /// The check, as the page named it ([`page_check`]).
+    pub name: String,
+    /// Whether the files passed it.
+    pub passed: bool,
+    /// Why they passed or didn't.
+    pub text: String,
+}
+
+impl CheckReport {
+    /// The check `name`'s result: `passed` or not, and why (`text`).
+    #[must_use]
+    pub fn new(name: impl Into<String>, passed: bool, text: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            passed,
+            text: text.into(),
+        }
+    }
+}
+
+/// Sends the page a check's result. The page's parent frame gets it as a
+/// `{ kind: "shuyi-check", name, passed, text }` message when it has the
+/// page's origin, and the console otherwise. On every target but the web it
+/// does nothing.
+pub fn report_check(result: &CheckReport) {
+    #[cfg(target_arch = "wasm32")]
+    shuyi_page_report_check(
+        sapp_jsutils::JsObject::string(&result.name).weak(),
+        u32::from(result.passed),
+        sapp_jsutils::JsObject::string(&result.text).weak(),
+    );
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = result;
 }
 
 /// The layer [`page_layer`] makes of `entries` (each a path the page names
@@ -321,5 +400,34 @@ mod tests {
         );
         assert!(page_layer("", PageLimits::default()).unwrap().is_none());
         report("files/stage.map:3: a problem");
+    }
+
+    #[test]
+    fn off_the_web_the_page_asks_no_check_and_hears_no_result() {
+        assert_eq!(page_check(), None);
+        report_check(&CheckReport::new("second-box", true, "two boxes"));
+    }
+
+    #[test]
+    fn a_blank_name_asks_no_check() {
+        assert_eq!(asked(""), None);
+        assert_eq!(asked(" \n"), None);
+        assert_eq!(asked(" second-box\n"), Some("second-box".to_owned()));
+    }
+
+    #[test]
+    fn a_check_report_holds_its_name_its_verdict_and_why() {
+        let report = CheckReport::new("second-box", false, "level 1 has 1 box");
+        assert_eq!(report.name, "second-box");
+        assert!(!report.passed);
+        assert_eq!(report.text, "level 1 has 1 box");
+        assert_eq!(
+            report,
+            CheckReport::new(
+                "second-box".to_owned(),
+                false,
+                "level 1 has 1 box".to_owned()
+            )
+        );
     }
 }

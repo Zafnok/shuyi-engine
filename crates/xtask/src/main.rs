@@ -22,6 +22,7 @@
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
 //! - `cargo xtask tutorial-tries [--check] [<name>...]`
+//! - `cargo xtask exercises [--copy] [<step>...]`
 //! - `cargo xtask golden --bless`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
@@ -34,6 +35,7 @@ mod changelog;
 mod compile_times;
 mod contract;
 mod docs;
+mod exercises;
 mod flaky;
 mod gates;
 mod golden;
@@ -178,6 +180,12 @@ usage:
       site/static/tutorial-tries/; with --check, compares with those kept and
       fails on a stale one. Fails on an edit that isn't exactly once in its
       file and, for the whole list, on an orphan or a try no page shows.
+  cargo xtask exercises [--copy] [<step>...]
+      Copy each step of site/tutorial/, or those named, to target/exercises/,
+      with site/exercises/'s checks of its page's exercises compiled into its
+      binary (ticket 2828, ADR-0115), and check them: each page's exercises
+      against its step's checks, and in each copy fmt, Clippy and the checks'
+      tests. With --copy, only make the copies, for the steps' web builds.
   cargo xtask golden --bless
       Write the golden tables (shuyi_assets::golden, ticket 2116): run every
       test with `golden` in its name with SHUYI_BLESS=1, write each table a
@@ -238,6 +246,7 @@ fn main() -> ExitCode {
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
         Some("tutorial-tries") => tutorial_tries(&root, &args[1..]),
+        Some("exercises") => exercises(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
         _ => {
@@ -497,6 +506,14 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
     };
     let errors = site_data::run(root, &options).err().unwrap_or_default();
     report("site-data", &errors, &[])
+}
+
+fn exercises(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = exercises::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    report("exercises", &exercises::run(root, &options), &[])
 }
 
 fn tutorial_tries(root: &Path, args: &[String]) -> ExitCode {

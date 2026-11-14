@@ -183,6 +183,12 @@ while IFS= read -r page; do
   if grep -qF 'class="check-choices"' "$page"; then
     grep -qE '<script src="[^"]*/book-check\.js' "$page" || fail "${page#"$out"/one/} has a quick check and doesn't load book-check.js"
   fi
+  # A page with an exercise (ticket 2828) loads the script that runs its
+  # check, and has the playground it is done in.
+  if grep -qF 'class="exercise-actions"' "$page"; then
+    grep -qE '<script src="[^"]*/playground\.js' "$page" || fail "${page#"$out"/one/} has an exercise and doesn't load playground.js"
+    grep -qF '<section class="playground"' "$page" || fail "${page#"$out"/one/} has an exercise and no playground"
+  fi
 done < <(find "$out/one/learn/book" -name index.html)
 for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sort -u | sed -E 's/^data-newcomer="(.*)"$/\1/'); do
   [[ "$audiences" == *" $audience "* ]] || fail "a passage is marked $audience, which book-filter.js's AUDIENCES doesn't have"

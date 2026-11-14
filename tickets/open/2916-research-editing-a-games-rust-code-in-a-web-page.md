@@ -32,6 +32,16 @@ his answer to what it reports. The tutorial is now the book's project
 (2824), and the book has exercises checked by the game (2828), which edit
 data files only: the code pad is what would let an exercise edit Rust.
 
+**From 2828 (done):** an exercise is the `exercise` shortcode in a step's
+`## Check yourself`, naming a check and the playground file it is done in
+([ADR-0115](../../docs/adr/0115-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md)).
+Its check is Rust in `site/exercises/<step>.rs`, compiled into a copy of the
+step (`cargo xtask exercises`), whose web build runs it through
+`shuyi_app::run_game_checked` when the page writes the check's name under
+`sessionStorage`'s `shuyi-page-check`, and answers
+`{ kind: "shuyi-check", name, passed, text }`. An exercise that edits Rust
+would need the code pad to build that copy with the reader's code in it.
+
 **Either order with 2905:** if 2905 is done, read its ADR and
 `docs/research/code-reload.md`, and measure option 4 with what it chose;
 if not, measure option 4 with `shuyi web --serve` (2528) or a rebuild by

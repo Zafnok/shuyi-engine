@@ -699,6 +699,8 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         }
         let text = if let Some(check) = &part.check {
             checked(check)
+        } else if let Some(exercise) = &part.exercise {
+            exercised(exercise)
         } else {
             let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
             errors.extend(part_errors);
@@ -743,6 +745,17 @@ fn checked(check: &book::Check) -> String {
     }
     out.push('\n');
     out
+}
+
+/// An exercise as text (ticket 2828): its task, where it is done and
+/// checked, and its hint.
+fn exercised(exercise: &book::Exercise) -> String {
+    format!(
+        "\n**Exercise.** {}\n\nDo it in this step's playground, in `files/{}`: **Check my work** \
+         there runs the game on your files, and says whether the exercise is done, and why.\n\n\
+         Hint: {}\n\n",
+        exercise.task, exercise.file, exercise.hint
+    )
 }
 
 /// A marked passage's `text` as a blockquote: its label and topic, then

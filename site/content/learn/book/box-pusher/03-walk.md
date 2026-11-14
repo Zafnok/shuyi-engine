@@ -244,3 +244,11 @@ What does `legal_commands` give back?
 - [ ] The steps the player has taken so far. — It lists what is allowed now, not what happened ([the rules](#the-rules)).
 - [x] Each of the four steps that `check` accepts right now. — It turns each direction into a `Command::Step`, and keeps those that pass `check` ([the rules](#the-rules)).
 {% end %}
+
+{% exercise(check="wall-right", file="levels/1.map") %}
+Change level 1 so that the player's first step right bumps into a wall. The game plays that
+step through your rules to check.
+
+Hint: The start is `(2, 2)`, so the tile to its right is `(3, 2)`, where the box stands now.
+Move the box in `features`, then make that tile a `#`: the fourth character of the third row.
+{% end %}

@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2820", "2827"]
 nick_input: none
-completed:
+completed: 2026-11-13
 ---
 
 # 2828 — Exercises in the book
@@ -140,19 +140,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The exercises' ADR is in `docs/adr/`.
-- [ ] Every project step with data files has one or two exercises.
-- [ ] *Check my work* on a correct edit says it passed; on a wrong one it
+- [x] The exercises' ADR is in `docs/adr/`.
+- [x] Every project step with data files has one or two exercises.
+- [x] *Check my work* on a correct edit says it passed; on a wrong one it
       says why not; on a broken file it shows the file's problems
       (3069) and no check result.
-- [ ] A message that isn't from the page's own frame and origin is
+- [x] A message that isn't from the page's own frame and origin is
       ignored, as 2814's are.
-- [ ] Each check has a test that passes on the step's own files with the
+- [x] Each check has a test that passes on the step's own files with the
       exercise's edit and fails without it.
-- [ ] On native, `page_check` is `None` and `report_check` does nothing.
-- [ ] The plugin's version test covers the new JS.
-- [ ] The book's chapter is updated (2802): this ticket is that change.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] On native, `page_check` is `None` and `report_check` does nothing.
+- [x] The plugin's version test covers the new JS.
+- [x] The book's chapter is updated (2802): this ticket is that change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -164,5 +164,87 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done**
+
+- **The design:** [ADR-0115](../../docs/adr/0115-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
+  extending ADR-0090 §8. The checks live in `site/exercises/`, never in a
+  step's project: one file a step (`<step>.rs`), the binary every step runs
+  with them (`main.rs`) and shared helpers (`solve.rs`, a breadth-first
+  search through the step's rules; `color.rs`; `edits.rs`, for the tests).
+  `cargo xtask exercises` copies each step to `target/exercises/<step>/`
+  with them compiled in (the step's manifest and lock unchanged), checks
+  each page's exercises against its step's `CHECKS`, and runs `cargo fmt
+  --check`, Clippy and the tests in each copy; `--copy` only makes the
+  copies, which `pages.yml` now builds each step's `play/` from and CI's
+  `web-render` job boots. CI has a new `exercises` job, and `cargo xtask
+  gates` an `exercises` gate.
+- **The engine:** `shuyi_app::page::{page_check, CheckReport,
+  report_check}`, and `shuyi_app::run_game_checked(game, checks)` with
+  the type `PageCheck`; `run_game` is `run_game_checked` with no checks.
+  The JS is two more functions of `page-files.js` (`shuyi_page_check`,
+  `shuyi_page_report_check`), its version and `PLUGIN_VERSION` moved to 2,
+  and `shuyi-cli`'s test lists them.
+- **The page:** the `exercise` body shortcode
+  (`site/templates/shortcodes/exercise.html`), its styles, and in
+  `playground.js` its two buttons, **Open `files/<file>`** and **Check my
+  work**, which writes `shuyi-page-check` and runs; the answer is taken only
+  from the playground's frame at the page's origin. `book.rs` reads it
+  (`Opened::Exercise`, `read_exercise`, where it sits, one or two on a step
+  with a playground), `llms.rs` writes it in the twins, the reader's filter
+  counts it as an exercise, and `check-build.sh` checks a page with one
+  loads `playground.js`.
+- **The exercises:** 13 over the ten steps, each with its check and tests
+  (the check passes on the step's files with the exercise's edit and fails
+  without): step 1 `confirm-key`, `quit-word`; 2 `second-box`,
+  `blue-walls`; 3 `wall-right` (plays a step through the rules); 4
+  `eight-moves` (searches every way of playing); 5 `undo-two-keys`; 6
+  `three-boxes` (searched); 7 `yard-first`; 8 `yellow-player`; 9
+  `cant-win` (searched); 10 `made-by`.
+
+**Deviations**
+
+- A check is `fn(&BasicData) -> Result<String, String>` (why it passes, or
+  why not), named in its step's `CHECKS`, and the engine builds the
+  `CheckReport` with the name: a check doesn't repeat its own name. The
+  ticket's `page_check` goes in `run_game_checked`, a new public function,
+  because a step's `main.rs` stays as the page says and the checks can't be
+  in `run_game` (ADR-0115 §3).
+- The site's `play/` of each step is now built from its copy (ADR-0115
+  §2), in `pages.yml` and in CI's boot check of the steps.
+- Each exercise also has an **Open `files/<file>`** button: the exercises
+  sit at the page's end and the playground at its top.
+- Formatting of `site/exercises/` is checked by `cargo fmt --check` in
+  each copy, not `rustfmt` on the folder, which can't follow the files'
+  `#[path]` modules there.
+
+**By hand (step 6)**, in the built-in browser, on a local `zola build` of
+the site with step 2's copy built by `cargo shuyi web` as its `play/`, at
+this branch's tip on `main` at d34b6245 (no newer `main`):
+
+- *Check my work* with the files unchanged: "Not yet. Level 1 still has
+  one box: add a second to its `features`, and an `o` for it to go on."
+- With a second box and a target: "Done. Level 1 has two boxes and a
+  target for each.", Problems "Loaded with your files.".
+- With a box and no target for it: Problems "files/levels/1.map: 2 boxes
+  and 1 targets", and the exercise "Not checked. Your files have problems,
+  …" with no check result.
+- The walls exercise, by real clicks: **Open** unfolded the playground on
+  `palette.ron` with its editor focused; blue walls gave "Done. Both of
+  the walls' colors are blue."
+- A `shuyi-check` and a `shuyi-report` posted by the page itself, not its
+  frame, were ignored: the line showed the game's own answer.
+- The key `shuyi-page-check` was empty after each answer.
+
+No ticket: nothing follows; 2916 (Rust exercises) and 2830 (a second
+project) now say what this leaves them.
+
+Behaviour: shuyi-app: on the web, a game run with `run_game` whose page
+writes `sessionStorage`'s `shuyi-page-check` sends the page a
+`shuyi-check` message saying it has no check of that name; a page that
+writes none sees nothing new.
+
+No break: additions only (`run_game_checked`, `PageCheck`,
+`page::{page_check, CheckReport, report_check}`). The game runs on the long
+form, not `run_game`, and uses nothing of the page plugin (`gh search code
+--repo Zafnok/visions-of-shuyi 'run_game'`, `'page_layer'`,
+`'shuyi-report'`): nothing in the game changes.

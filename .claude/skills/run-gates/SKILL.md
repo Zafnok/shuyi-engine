@@ -72,6 +72,11 @@ minutes, as it builds a copy of a step for each picture; name a try to check
 only it. After a change on purpose, `cargo xtask tutorial-tries` remakes them:
 look at each picture before you keep it.
 
+A change to a step, to the book's exercises or to `site/exercises/` also runs
+`cargo xtask exercises` (CI's `exercises` job, ticket 2828): it copies each
+step with its exercises' checks compiled in, and runs fmt, Clippy and the
+checks' tests in each copy. Name a step to check only it.
+
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings   # pedantic: the workspace's lints

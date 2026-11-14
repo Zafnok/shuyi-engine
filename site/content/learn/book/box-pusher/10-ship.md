@@ -150,3 +150,10 @@ Can you leave `NOTICES.txt` out of `dist/web/` when you publish it?
 - [ ] Yes, it is a note for you, and players never need it. — It is part of what ships, written by the tools for the game's players ([build it](#build-it)).
 - [x] No, it must ship with the game. — It credits everyone whose code and fonts your game uses, as their licenses require ([build it](#build-it)).
 {% end %}
+
+{% exercise(check="made-by", file="en.ron") %}
+Before you ship it, put your name on the title: make its subtitle say `by` and your name.
+
+Hint: The subtitle is `title.subtitle`, under the game's name. Keep it to 40 characters, so it
+fits on the title's screen.
+{% end %}

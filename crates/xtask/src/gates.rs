@@ -288,6 +288,7 @@ pub const GATES: &[Gate] = &[
     gate("skill examples", "skills", CODE).steps(&["cargo xtask skill-examples"]),
     gate("tutorial-tries", "tutorial-tries", CODE)
         .steps(&["cargo xtask tutorial-tries --check"]),
+    gate("exercises", "exercises", CODE).steps(&["cargo xtask exercises"]),
     // CI's alone, with why.
     gate("tutorial", "tutorial", CODE).ci_only(
         "builds and tests the ten steps of the tutorial's game, each from its own checked-in lock, `--locked`",

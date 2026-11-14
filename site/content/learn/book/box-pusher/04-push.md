@@ -190,3 +190,11 @@ The level is won, and the player presses Right. What happens?
 - [ ] The player walks as usual, since only the help line changes after a win. — The board's help line changes, but the rules also refuse every move with `Refusal::Over` ([winning](#winning)).
 - [x] `check` refuses with `Refusal::Over`, so nothing moves. — The start of `check` refuses every move once the level is won ([winning](#winning)).
 {% end %}
+
+{% exercise(check="eight-moves", file="levels/1.map") %}
+Make level 1 take at least 8 moves to win. The game tries every way of playing it through
+your rules, and counts the moves of the shortest win.
+
+Hint: Put the target where the box can only reach it the long way round: in a corner, with a
+wall beside it. A box can only be pushed, never pulled, so check the box can still get there.
+{% end %}

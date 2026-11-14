@@ -370,12 +370,15 @@ jobs:
               --out "target/web-check/boot-$name"
           done
       # As pages.yml builds them: every step of the book's project (ticket
-      # 2803), its code in site/tutorial/.
+      # 2803), its code in site/tutorial/, from its copy with its exercises'
+      # checks compiled in (ticket 2828, ADR-0115).
+      - name: Copy the tutorial's steps with their exercises' checks
+        run: cargo xtask exercises --copy
       - name: Every tutorial step's web build boots
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target/tutorial
         run: |
-          for dir in site/tutorial/*/; do
+          for dir in target/exercises/*/; do
             name="$(basename "$dir")"
             (cd "$dir" && cargo update -p shuyi -p shuyi-cli -p shuyi-app && cargo shuyi web --release)
             "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "$dir/dist/web" \
@@ -515,6 +518,25 @@ jobs:
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo xtask tutorial-tries --check
+
+  # The book's exercises (ticket 2828, ADR-0115): each step's page asks only
+  # for checks its step has in site/exercises/, and in a copy of each step
+  # with them compiled in, fmt, Clippy and the checks' tests pass (each check
+  # passes with its exercise's edit and fails without).
+  exercises:
+    name: exercises
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - run: cargo xtask exercises
 
   # The first gate on leaving quad-snd (ticket 2573, ADR-0066): what the
   # backend really emits, recorded from a PulseAudio null sink natively and
@@ -1390,7 +1412,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, playtest, skills, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, exercises, playtest, skills, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     # `actions: read` reads the attempt before a re-run (ticket 2064).
     permissions:

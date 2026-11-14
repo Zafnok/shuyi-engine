@@ -61,19 +61,20 @@ python -m http.server --directory public 1111
 | `content/learn/book/box-pusher/` | The book's project: `_index.md`, its landing page (`extra.project = true`, its code's folder in `extra.code`, its game's name in `extra.game` and its files' folder in a step in `extra.game_files`), and a page per step, named as its folder in `tutorial/`, its number in `extra.step`, the chapter it comes after in `extra.follows` and the files its playground edits in `extra.files` ([The playground](#the-playground)) |
 | `tutorial/` | The project's code: one folder per step, a whole game project and no member of the workspace, with its own `Cargo.lock` and a path dependency on the engine's crates. CI's `tutorial` job builds and tests each with `--locked`, so a lock `cargo test` would rewrite fails there (ticket 2062). `shuyi new`'s files for agents and CI, and the pinned Rust (the root's applies), are left out. It keeps its name while the book has one project (ADR-0090 §2) |
 | `tutorial/tries.toml`, `static/tutorial-tries/` | The pictures of the book's project and its chapters: each try names a step, or `book` for Moon Garden (`snippets/`), its keys and, for a before-and-after, the edits a page asks of the reader. `cargo xtask tutorial-tries` renders them into `static/tutorial-tries/<name>/`, where they are checked in. CI's `tutorial-tries` job renders them again and compares |
+| `exercises/` | The checks of the project's exercises, one file a step, the binary each step's copy runs and their shared helpers: `cargo xtask exercises` compiles each step's into a copy of it, and CI's `exercises` job tests them ([Exercises](#exercises)) |
 | `snippets/` | The book's code: a crate of the workspace, `book-snippets`, which CI builds and tests with the rest |
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)), and the book's contents and the page's headings beside each page ([Beside each page](#beside-each-page)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), and `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)), and the book's contents and the page's headings beside each page ([Beside each page](#beside-each-page)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)), and `shortcodes/exercise.html` an exercise ([Exercises](#exercises)) |
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
 | `static/book-side.js` | The folds of the book's contents and of the page's headings beside each page of the book, and the heading being read: plain JavaScript ([Beside each page](#beside-each-page)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
-| `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script ([The playground](#the-playground)) |
+| `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script, which runs the exercises' checks too ([The playground](#the-playground), [Exercises](#exercises)) |
 | `static/ron-paint.js`, `tests/ron-paint.mjs` | The playground's RON colors: a tokenizer by `syntaxes/ron.sublime-syntax`'s rules, and its test against Zola's own output, which CI's `site` job runs with Node ([The playground](#the-playground)) |
 | `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `copy-playground.sh`, `static/playground/`, `static/learn/` | `copy-playground.sh` copies the playgrounds' files: Hello, Grid's from `examples/hello-grid/files/` into `static/playground/files/`, and each step's from its project into `static/learn/book/box-pusher/<step>/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
-| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`), the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`) and the lists beside a page of the book (`.book-layout`, `.book-side`, `.book-toc`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`), the exercises (`.exercise`), the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`) and the lists beside a page of the book (`.book-layout`, `.book-side`, `.book-toc`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
@@ -251,6 +252,69 @@ audience not among the four, a chapter or step without its section, and
 a book whose right answers are mostly in one place, saying how many are
 where; the shortcode fails the build on the same mistakes but the last. `cargo xtask llms` writes each check in the twins as text, its
 answers marked Right or Wrong.
+
+## Exercises
+
+Every step of a project with a playground (`extra.files`) has one or two
+exercises in its `## Check yourself` section, after its quick checks
+(ticket 2828, ADR-0115): a task done in the step's playground, which the
+step's game checks.
+
+```text
+{% exercise(check="second-box", file="levels/1.map") %}
+Add a second box to level 1, and a target for it to go on.
+
+Hint: a box is a feature, like the one there: `(3, 2): Box`.
+{% end %}
+```
+
+- The opener and `{% end %}` stand as a check's do. The paragraphs before
+  the one starting `Hint: ` are the task; that one and any after it are
+  the hint. Both are needed, and neither holds a shortcode.
+- `check` is the name of the check the game makes, lowercase letters,
+  digits and `-`, once a page. `file` is the playground's file it is done
+  in, one of the page's `extra.files`. `to` is optional, an audience as a
+  check's is: the filter folds the exercise, and the bar counts it as an
+  exercise.
+- The task is a change to a data file, never to Rust: the playground can't
+  build Rust.
+
+The checks are Rust, in [`exercises/`](exercises/), never in a step's own
+project, which stays as its page tells the reader to make it:
+
+- `exercises/<step>.rs`, one file a step: functions taking what the step's
+  game loaded (its `BasicData`) and answering `Ok` with why the exercise is
+  done or `Err` with why not, in words the reader can act on; then `pub
+  const CHECKS`, each check's name and function; then tests, each check
+  passing on the step's files with its exercise's edit and failing without.
+- `exercises/main.rs`, the step's `main.rs` but for
+  `run_game_checked(game::game(), checks::CHECKS)`.
+- The helpers the steps share, each a module a step names with `#[path]`
+  and uses whole (Clippy fails dead code): `solve.rs` plays a level through
+  the step's rules and finds its shortest win, `color.rs` names a palette's
+  colors, and `edits.rs` loads the step's game with an exercise's edit for
+  the tests.
+
+`cargo xtask exercises` copies each step to `target/exercises/<step>/`,
+with `main.rs` in place of the step's and the folder's files in
+`crates/game/src/exercises/` (the step's as `checks.rs`), and checks that
+each page's exercises and its step's `CHECKS` name the same checks, and
+in each copy `cargo fmt --check`, Clippy and the tests. `--copy` only makes
+the copies: `pages.yml` builds each step's `play/` from its copy, and CI's
+`web-render` job boots them.
+
+In the page, `static/playground.js` shows each exercise's two buttons once
+the game's files are fetched: **Open `files/<file>`**, which opens the
+playground on the file, and **Check my work**, which writes the check's
+name to `sessionStorage`'s `shuyi-page-check` and runs. The game answers
+`{ kind: "shuyi-check", name, passed, text }`, taken only from the
+playground's frame at the page's own origin, and the exercise's
+`role="status"` line says *Done.* or *Not yet.* and why. A report of
+problems means no check ran: the line says to fix them, and Problems shows
+them. The key goes when the answer or the problems come, on a run that
+checks nothing, and as the page goes. With no JavaScript the task and the
+hint show, and the buttons stay hidden. `cargo xtask llms` writes each
+exercise in the twins as text: the task, where it is done, and the hint.
 
 ## The reader's filter
 
