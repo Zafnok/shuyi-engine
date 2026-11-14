@@ -19,6 +19,8 @@ completed:
 
 A client-side encrypted pack eventually exposes its decoded content. A hosted preview can keep the executable, source art and structured scene off a visitor's device while still accepting play. Shuyi's headless session can produce a picture, but its CLI/MCP host also exposes snapshots, scenes and logs and accepts scripts; it is not a safe public protocol. See ADR-0006 for the broader networking plan.
 
+**From 3302 (done):** closed builds' copies carry a recipient's code and a signed ledger ([ADR-0118](../../docs/adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)); a hosted preview's marks are 3083's, after this ticket.
+
 ## Nick input
 
 None.

@@ -463,6 +463,70 @@ file and its salt open it (`cargo shuyi reveal open <file>`), and a file changed
 doesn't. Keep the salts file private and backed up, out of any public repository: without it,
 nothing opens.
 
+## Closed builds
+
+**What this can't do, first.** A mark in a copy is circumstantial evidence, never proof. It says
+which copy leaked, not who leaked it: a copy can be stolen, or passed on. Two recipients who
+compare their copies find every mark and can remove them all, and changing a copy removes some of
+them. It deters a casual leak. It doesn't stop a determined one.
+
+A press, playtest or publisher build is a **closed build**: a copy you give one person before the
+public has the game. Make each recipient's copy from your release build, which needs the reveal
+kit (`dist/reveal`, above) and an SSH key of yours kept outside the repository:
+
+```bash
+cargo shuyi export windows --release --recipient press-jane --label "Jane, Example Magazine" --signing-key ~/.ssh/id_ed25519
+```
+
+The export makes the ordinary package first, the same one a release publishes. Then it copies it
+into `dist/recipients/press-jane/windows/` and writes the recipient's **code** (8 characters, such
+as `7K2Q9MXA`) into three places, each holding the whole code:
+
+- the program, which reserves a field for it: `shuyi::app::recipient()` gives the code in a copy
+  and `None` in the public build, for a faint line your game may draw in a corner;
+- the pack beside the program, in the order of its files and the bytes between them;
+- the lowest bits of one picture, which `shuyi.ron`'s `export` part names, never the player's text.
+  Each of its colors changes by at most 3 in 255, and it keeps exactly as many colors:
+
+```ron
+export: (
+    overlay_picture: "tiles.png",
+),
+```
+
+The picture needs at least seven colors. The copy goes through the same disclosure check as the
+public package. Then `dist/recipients.ron`, beside the kit, gets a line: who, under what label,
+when, the code, and the fingerprints of the public package and of the copy. It is signed with your
+key, in `recipients.ron.sig`. The game is the same in every copy: the same rules, the same play,
+the same files but for that picture's lowest bits.
+
+When a copy turns up somewhere, ask what it holds:
+
+```bash
+cargo shuyi export --detect-recipient leaked/game-0.1.0-windows.zip
+```
+
+It reads a package, a folder, a program, a pack or a picture. It says which marks it found, the
+code each holds, and whom your ledger gave that code, and whether the ledger's signature still
+holds. On the public build it says "no mark found". Its answer calls a match circumstantial evidence
+every time.
+
+What each change to a copy leaves, measured on Hello, Grid:
+
+| What was done to the copy | The program | The pack | The picture |
+| ------------------------- | ----------- | -------- | ----------- |
+| nothing | names them | names them | names them |
+| the program's field overwritten or cut out | no mark | names them | names them |
+| the pack repacked | names them | no mark | names them |
+| the picture saved again at a lower quality | names them | no mark | no mark |
+| the picture cropped, every color kept | | | names them |
+| the picture cropped to half its tiles | | | no mark |
+
+Saving the picture again inside the pack means repacking it, which removes the pack's mark too.
+Two copies compared differ in 10 bytes of the program, the order of the pack's files, and one
+picture's lowest bits: every mark. Give each recipient a Steam key of their own as well. It names
+the account that played, which no mark in a file can.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
