@@ -57,6 +57,7 @@ fn each_flag_parses_and_the_rest_go_to_new() {
     assert_eq!(
         flags,
         Flags {
+            examples: None,
             github: Some(true),
             owner: Some("studio".to_owned()),
             visibility: Some(Visibility::Private),
@@ -67,6 +68,8 @@ fn each_flag_parses_and_the_rest_go_to_new() {
     );
     assert_eq!(flags_of_none(), Flags::default());
     assert_eq!(self::flags(&["g", "--no-github"]).github, Some(false));
+    assert_eq!(self::flags(&["g", "--examples"]).examples, Some(true));
+    assert_eq!(self::flags(&["g", "--no-examples"]).examples, Some(false));
     assert_eq!(
         self::flags(&["g", "--private", "none"]).private,
         Some(vec![])
@@ -285,13 +288,13 @@ fn github_changes(fake: &Fake) -> Vec<String> {
 fn every_default_taken_makes_the_game_and_both_repositories() {
     let scratch = Scratch::new("defaults");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(&[], Some("\n\n\n\n\n\n"), &mut fake);
+    let (made, out) = scratch.run(&[], Some("\n\n\n\n\n\n\n"), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     let report = made.repos.as_ref().unwrap();
     assert!(report.ok, "{report:?}");
     assert_eq!(made.exit_code(), 0);
     assert!(made.finish.is_none());
-    // The six questions, in order.
+    // The seven questions, in order.
     // A line typed isn't echoed, so each question follows the prompt
     // before it, "…press Enter for <default>: ".
     let asked: Vec<&str> = out
@@ -312,19 +315,27 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
         .collect();
     assert_eq!(
         defaults,
-        ["yes", "public", "yes", "all five", "none", "private"],
+        ["yes", "yes", "public", "yes", "all five", "none", "private"],
         "{out}"
     );
-    assert_eq!(asked.len(), 6, "{out}");
-    assert!(asked[0].starts_with("Put Moon Garden on GitHub?"));
-    assert!(asked[1].starts_with("Should you/moon-garden be public or private?"));
+    assert_eq!(asked.len(), 7, "{out}");
+    assert!(asked[0].starts_with("Include the engine skills' worked examples"));
+    assert!(asked[1].starts_with("Put Moon Garden on GitHub?"));
+    assert!(asked[2].starts_with("Should you/moon-garden be public or private?"));
     assert!(
-        asked[2]
+        asked[3]
             .starts_with("Keep some files in a second, private repository, you/moon-garden-assets")
     );
-    assert!(asked[3].starts_with("Which kinds of files go there?"));
-    assert!(asked[4].starts_with("Any other folders"));
-    assert!(asked[5].starts_with("Should you/moon-garden-assets be private or public?"));
+    assert!(asked[4].starts_with("Which kinds of files go there?"));
+    assert!(asked[5].starts_with("Any other folders"));
+    assert!(asked[6].starts_with("Should you/moon-garden-assets be private or public?"));
+    // Enter took the examples: the game has them, as before.
+    assert!(
+        scratch
+            .game()
+            .join(".claude/skills/shuyi-balance-bots/example/bots.rs")
+            .is_file()
+    );
     assert!(
         scratch
             .shuyi_ron()
@@ -364,7 +375,7 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
 fn no_github_asks_nothing_and_makes_only_the_folder() {
     let scratch = Scratch::new("no-github");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(&["--no-github"], Some(""), &mut fake);
+    let (made, out) = scratch.run(&["--no-github", "--examples"], Some(""), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     assert!(made.repos.is_none());
     assert_eq!(out, "");
@@ -434,11 +445,12 @@ fn chosen_kinds_and_own_folders_are_all_the_private_repository_holds() {
             "--private-folder",
             "files/levels",
         ],
-        Some("\n\n"),
+        Some("\n\n\n"),
         &mut fake,
     );
     assert!(made.repos.as_ref().unwrap().ok, "{:?}", made.repos);
-    // Only what no flag answered was asked: the two visibilities.
+    // Only what no flag answered was asked: the examples and the two
+    // visibilities.
     assert!(out.contains("Should you/moon-garden be public"), "{out}");
     assert!(
         out.contains("Should you/moon-garden-assets be private or public?"),
@@ -579,4 +591,80 @@ fn repository_flags_without_github_are_refused_and_private_kinds_need_the_url() 
             .contains("https://github.com/o/m-assets.git")
     );
     assert_eq!(fake.calls.len(), 0);
+}
+
+#[test]
+fn the_examples_question_defaults_to_yes_and_asks_again_after_a_wrong_answer() {
+    let (answer, out) = answered("\n", examples);
+    assert!(answer.unwrap());
+    assert_eq!(
+        out,
+        "Include the engine skills' worked examples (bots.rs, playtest.ron…)? They show each \
+         skill at work; a game runs without them.\n  yes or no, or press Enter for yes: "
+    );
+    assert!(!answered("no\n", examples).0.unwrap());
+    let (answer, out) = answered("some\nn\n", examples);
+    assert!(!answer.unwrap());
+    assert_eq!(out.matches("Include the engine").count(), 1);
+    assert_eq!(out.matches("press Enter for yes").count(), 2);
+    assert!(out.contains("  `some`: yes or no\n"), "{out}");
+}
+
+/// Whether the game in `scratch` has any skill's worked example.
+fn has_examples(scratch: &Scratch) -> bool {
+    let skills = scratch.game().join(".claude/skills");
+    let pack = crate::skills::Pack::read(&skills).unwrap();
+    assert!(pack.skills.len() > 1, "{:?}", pack.not_skills);
+    pack.skills.iter().any(|skill| {
+        skill
+            .files
+            .keys()
+            .any(|path| crate::skills::is_example(path))
+    })
+}
+
+#[test]
+fn a_no_to_the_examples_question_leaves_them_out_and_a_flag_or_set_asks_nothing() {
+    let scratch = Scratch::new("examples-no");
+    let mut fake = scratch.fake();
+    let (made, out) = scratch.run(&["--no-github"], Some("no\n"), &mut fake);
+    assert!(made.answer.ok, "{:?}", made.answer);
+    assert!(
+        out.starts_with("Include the engine skills' worked examples"),
+        "{out}"
+    );
+    assert!(!has_examples(&scratch));
+    let result = made.answer.result.as_ref().unwrap();
+    assert_eq!(result.answers.0[EXAMPLES], ["no"]);
+    drop(scratch);
+    // A flag or --set answers it: nothing is asked.
+    for (items, has) in [
+        (&["--no-github", "--no-examples"][..], false),
+        (&["--no-github", "--examples"][..], true),
+        (&["--no-github", "--set", "examples=no"][..], false),
+        (
+            &["--no-github", "--set", "examples=no", "--no-examples"][..],
+            false,
+        ),
+    ] {
+        let scratch = Scratch::new("examples-flag");
+        let mut fake = scratch.fake();
+        let (made, out) = scratch.run(items, Some(""), &mut fake);
+        assert!(made.answer.ok, "{items:?}: {:?}", made.answer);
+        assert_eq!(out, "", "{items:?}");
+        assert_eq!(has_examples(&scratch), has, "{items:?}");
+    }
+    // Off a terminal (and so with --json and through the MCP tool), the
+    // template's default: the examples are there.
+    let scratch = Scratch::new("examples-off");
+    let mut fake = scratch.fake();
+    let (made, _) = scratch.run(&[], None, &mut fake);
+    assert!(made.answer.ok, "{:?}", made.answer);
+    assert!(has_examples(&scratch));
+    // A flag that disagrees with --set is refused.
+    let (made, _) = scratch.run(&["--examples", "--set", "examples=no"], None, &mut fake);
+    assert_eq!(
+        made.answer.error.as_deref(),
+        Some("--examples and --set examples=… disagree")
+    );
 }

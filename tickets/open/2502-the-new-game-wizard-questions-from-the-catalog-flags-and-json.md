@@ -185,11 +185,12 @@ asked is missing.
   the template's, in the wizard's prompt style; `--questions --json`
   lists them with a field saying an agent must not answer `github: yes`
   itself, and `--no-input` means `--no-github`.
-- **Either order with 2597** (whether a new game gets the skills'
-  worked examples): if 2597 is done, its `examples` question is one of
-  the template's, asked in the wizard with the others, and `new`'s
-  terminal prompt for it moves into the wizard; if not, nothing to do
-  (2597 asks it in the wizard when it lands).
+- **From 2597 (done):** whether a new game gets the skills' worked
+  examples is the template's `examples` question (ADR-0113), asked with
+  the others in the wizard. `new`'s terminal prompt for it
+  (`questions::examples`, asked first, before the GitHub questions, with
+  `--examples`/`--no-examples`) moves into the wizard, and its flags
+  stay.
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give

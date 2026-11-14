@@ -1030,3 +1030,121 @@ fn the_engine_template_has_blank_and_grid_and_a_stage_for_grid() {
         }
     }
 }
+
+#[test]
+fn with_examples_no_the_skills_come_without_their_examples() {
+    use crate::skills::{Pack, Skill, WITHOUT_EXAMPLES};
+    let mut catalog = catalog();
+    catalog.skills = Pack {
+        skills: vec![Skill {
+            name: "shuyi-gates".to_owned(),
+            files: BTreeMap::from([
+                ("SKILL.md".to_owned(), b"Run [it](example.ron).\n".to_vec()),
+                ("example.ron".to_owned(), b"Example()\n".to_vec()),
+                ("example/a.rs".to_owned(), b"\n".to_vec()),
+                ("references/more.md".to_owned(), b"more\n".to_vec()),
+            ]),
+        }],
+        not_skills: Vec::new(),
+    };
+    // The fixture asks `examples` too, as the engine's template does.
+    let manifest = MANIFEST_OK.replace(
+        "    ],\n    short_names",
+        "        Question(\n            id: \"examples\",\n            text: \"Examples?\",\n            \
+         pick: One,\n            answers: [Answer(id: \"yes\", text: \"yes\"), Answer(id: \"no\", \
+         text: \"no\")],\n            default: [\"yes\"],\n        ),\n    ],\n    short_names",
+    );
+    let template = Template::read("fixtures/t", fixture_files(&manifest), &engine()).unwrap();
+    let skill_files = |plan: &Plan| -> Vec<String> {
+        plan.paths()
+            .into_iter()
+            .filter(|p| p.starts_with(".claude/skills/"))
+            .collect()
+    };
+    for set in ["", "{ \"examples\": [\"yes\"] }"] {
+        let answers = if set.is_empty() {
+            Answers::default()
+        } else {
+            Answers::parse("set", set).unwrap()
+        };
+        let plan = compose(&template, &answers, &catalog, &filled()).unwrap();
+        assert_eq!(
+            skill_files(&plan),
+            [
+                ".claude/skills/shuyi-gates/SKILL.md",
+                ".claude/skills/shuyi-gates/example/a.rs",
+                ".claude/skills/shuyi-gates/example.ron",
+                ".claude/skills/shuyi-gates/references/more.md",
+            ],
+            "{set}"
+        );
+    }
+    let no = Answers::parse("set", "{ \"examples\": [\"no\"] }").unwrap();
+    let plan = compose(&template, &no, &catalog, &filled()).unwrap();
+    assert_eq!(
+        skill_files(&plan),
+        [
+            ".claude/skills/shuyi-gates/SKILL.md",
+            ".claude/skills/shuyi-gates/references/more.md",
+        ]
+    );
+    assert_eq!(plan.skills, ["shuyi-gates"]);
+    let text = text_of(&plan, ".claude/skills/shuyi-gates/SKILL.md");
+    assert!(
+        text.starts_with("Run it.\n") && text.contains(WITHOUT_EXAMPLES),
+        "{text}"
+    );
+}
+
+#[test]
+fn a_grid_game_without_examples_has_every_skill_and_passes_check_skills() {
+    use crate::skills::{self, Against, Pack, Skill};
+    let template = built_in().unwrap();
+    let with = built_in_plan("grid");
+    let answers = template
+        .short_name("grid")
+        .unwrap()
+        .clone()
+        .and(&Answers::parse("set", "{ \"examples\": [\"no\"] }").unwrap());
+    let fill = crate::contract::new::fill_for(
+        "Moon Garden",
+        "moon-garden",
+        &crate::contract::new::Engine::Main,
+        None,
+    );
+    let without = compose(&template, &answers, &Catalog::embedded().unwrap(), &fill).unwrap();
+    // No limit for the answer: the composer serves it.
+    assert_eq!(without.limits, with.limits);
+    assert_eq!(without.skills, with.skills);
+    // Every file outside the skills is the same.
+    let outside = |plan: &Plan| -> Vec<(PathBuf, Vec<u8>)> {
+        plan.files
+            .iter()
+            .filter(|(p, _)| !p.starts_with(".claude/skills"))
+            .map(|(p, b)| (p.clone(), b.clone()))
+            .collect()
+    };
+    assert_eq!(outside(&without), outside(&with));
+    // The pack as the game holds it: every skill's SKILL.md, no example.
+    let mut pack = Pack::default();
+    for name in &without.skills {
+        let folder = format!(".claude/skills/{name}/");
+        let files: BTreeMap<String, Vec<u8>> = without
+            .files
+            .iter()
+            .filter_map(|(p, b)| {
+                let p = p.to_string_lossy().replace('\\', "/");
+                p.strip_prefix(&folder)
+                    .map(|rest| (rest.to_owned(), b.clone()))
+            })
+            .collect();
+        assert!(files.contains_key(skills::FILE), "{name}");
+        assert!(!files.keys().any(|p| skills::is_example(p)), "{name}");
+        pack.skills.push(Skill {
+            name: name.clone(),
+            files,
+        });
+    }
+    let problems = skills::check(&pack, &Against::this_shuyi(None).unwrap());
+    assert!(problems.is_empty(), "{problems:#?}");
+}

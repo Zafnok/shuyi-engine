@@ -511,7 +511,7 @@ pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
          \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
-         \x20          [--force] [--json]\n\
+         \x20          [--force] [--json] [--examples | --no-examples]\n\
          \x20          [--github | --no-github] [--owner LOGIN] [--visibility public|private]\n\
          \x20          [--assets-visibility private|public] [--private KINDS | --private none]\n\
          \x20          [--private-folder PATH]...\n\n\
@@ -521,7 +521,9 @@ pub fn usage(command: &str) -> String {
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\
          --private-url names (https://github.com/<owner>/<repo>.git).\n\n\
-         In a terminal, it then asks whether to put the game on GitHub (gh, signed in):\n\
+         In a terminal, it asks whether to include the engine skills' worked examples\n\
+         (yes by default; --examples or --no-examples answers, as --set examples=yes|no\n\
+         does), then whether to put the game on GitHub (gh, signed in):\n\
          --github makes <owner>/<crate name> (public by default) and, unless --private\n\
          none, <owner>/<crate name>-assets (private by default) for the KINDS of files\n\
          kept private and each --private-folder, with `{command} repos`. The KINDS are\n\

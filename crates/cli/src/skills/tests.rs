@@ -456,3 +456,77 @@ fn a_pack_is_in_name_order_and_reads_a_skills_frontmatter() {
         Err("no SKILL.md".to_owned())
     );
 }
+
+#[test]
+fn only_examples_are_examples() {
+    for path in [
+        "example.ron",
+        "example-follow.ron",
+        "example/bots.rs",
+        "example/a/b.ron",
+    ] {
+        assert!(is_example(path), "{path}");
+    }
+    for path in [
+        "SKILL.md",
+        "references/example.ron",
+        "examples.ron",
+        "example-follow.md",
+        "references/example-x.ron",
+    ] {
+        assert!(!is_example(path), "{path}");
+    }
+}
+
+#[test]
+fn a_skill_without_its_examples_keeps_the_rest_unlinks_them_and_says_where_they_are() {
+    let body = "Run [`example.ron`](example.ron) and [the bots](example/bots.rs#L3).\n\
+                Read [more](references/more.md), and [`example-x.ron`](./example-x.ron).\n";
+    let md = skill_md("shuyi-gates", GOOD, "  version: \"1.0\"\n", body);
+    let full = skill(
+        "shuyi-gates",
+        &[
+            (FILE, &md),
+            (EXAMPLE, "Example()"),
+            ("example-x.ron", "Example()"),
+            ("example/bots.rs", "fn main() {}\n"),
+            (
+                "references/more.md",
+                "See [the example](../example.ron) and [this](../SKILL.md).\n",
+            ),
+        ],
+    );
+    let lean = full.without_examples();
+    let paths: Vec<&str> = lean.files.keys().map(String::as_str).collect();
+    assert_eq!(paths, [FILE, "references/more.md"]);
+    let text = lean.text().unwrap();
+    assert!(
+        text.contains(
+            "Run `example.ron` and the bots.\nRead [more](references/more.md), and \
+             `example-x.ron`.\n"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.ends_with(&format!(
+            "\n\n{WITHOUT_EXAMPLES}: this skill's are in the engine's repository, in \
+             `skills/shuyi-gates/`, at the version the game builds with.\n"
+        )),
+        "{text}"
+    );
+    assert!(lean.left_out_examples() && !full.left_out_examples());
+    assert_eq!(
+        String::from_utf8_lossy(&lean.files["references/more.md"]),
+        "See the example and [this](../SKILL.md).\n"
+    );
+    // It passes the checks, which ask no example of it now; without the
+    // sentence, its example is missing again.
+    assert_eq!(found(&pack(vec![lean.clone()]), None), Vec::<String>::new());
+    let mut bare = lean.clone();
+    bare.files.insert(FILE.to_owned(), md.into_bytes());
+    // The missing example, and the three links to the examples.
+    assert_eq!(found(&pack(vec![bare]), None).len(), 4);
+    // A skill with no example is copied as it is.
+    let none = skill("shuyi-gates", &[(FILE, "Run [it](example.ron).\n")]);
+    assert_eq!(none.without_examples(), none);
+}

@@ -30,7 +30,7 @@ use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 
 pub use compose::{
-    Applied, ComposeError, Fill, GENERATED_STAGES, Plan, apply, compose, fill, stages_rs,
+    Applied, ComposeError, EXAMPLES, Fill, GENERATED_STAGES, Plan, apply, compose, fill, stages_rs,
 };
 
 /// The manifest of a template, in its folder.
