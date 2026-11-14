@@ -11,17 +11,19 @@
 //! there to run (another session's `cargo run`, a test's
 //! `CARGO_BIN_EXE_shuyi`) and cargo sees it fresh.
 //!
-//! The program is never missing from its path, not even for a moment
-//! (ticket 2561): the running file is hard-linked into `.shuyi-running/`
+//! The order of the moves never leaves the program's path empty (ticket
+//! 2561, ADR-0115): the running file is hard-linked into `.shuyi-running/`
 //! and the copy renamed over the old name, rather than the file renamed
 //! away and the copy renamed in after it. Windows lets a running
 //! program's name be replaced while another name keeps the file.
 //!
 //! That replacing is the one moment left, and it is the system's: on a busy
 //! machine a name being replaced can read as not there for tens of
-//! milliseconds (ticket 2564 saw it in about one move in 40,000, inside the
+//! milliseconds (ticket 2564 saw it in about one move in 36,000, inside the
 //! call, with `fs::rename`, a POSIX-semantics rename and a replacing hard
-//! link alike). No order of the moves avoids it.
+//! link alike). No order of the moves avoids it, so the promise is what the
+//! system allows: no gap of the order's own, and rarely one of the
+//! system's (ticket 2574).
 //!
 //! Only a cargo build output has a twin: a `shuyi` installed with `cargo
 //! install` has none and is never moved.
@@ -114,12 +116,14 @@ pub fn sweep(dir: &Path) {
 /// `from`: the copy is no running program's, so a build can replace it,
 /// and until one does the program is still where cargo left it.
 ///
-/// The order keeps a program at `from` at every moment (ticket 2561):
+/// The order leaves no moment without a program at `from` (ticket 2561):
 /// the copy is made first, the running file gains its second name `to`
 /// by a hard link, and the copy is renamed over `from`, which replaces
 /// that name in one step. Renaming `from` away first would leave nothing
 /// there until the copy came, and a program started then (another test,
-/// a person's `cargo shuyi`) would fail to find it.
+/// a person's `cargo shuyi`) would fail to find it. The replacing itself
+/// can, rarely, read as missing for a moment on Windows: the system's,
+/// not the order's (ADR-0115).
 ///
 /// Each step after the copy is retried while the file is busy (ticket
 /// 2564): the copy is a new `.exe`, which a scan may hold just then, and a

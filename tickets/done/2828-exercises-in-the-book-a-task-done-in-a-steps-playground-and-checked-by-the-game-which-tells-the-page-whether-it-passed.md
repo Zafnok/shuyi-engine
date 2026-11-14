@@ -166,7 +166,7 @@ None.
 
 **What was done**
 
-- **The design:** [ADR-0115](../../docs/adr/0115-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
+- **The design:** [ADR-0116](../../docs/adr/0116-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
   extending ADR-0090 §8. The checks live in `site/exercises/`, never in a
   step's project: one file a step (`<step>.rs`), the binary every step runs
   with them (`main.rs`) and shared helpers (`solve.rs`, a breadth-first
@@ -208,8 +208,8 @@ None.
   `CheckReport` with the name: a check doesn't repeat its own name. The
   ticket's `page_check` goes in `run_game_checked`, a new public function,
   because a step's `main.rs` stays as the page says and the checks can't be
-  in `run_game` (ADR-0115 §3).
-- The site's `play/` of each step is now built from its copy (ADR-0115
+  in `run_game` (ADR-0116 §3).
+- The site's `play/` of each step is now built from its copy (ADR-0116
   §2), in `pages.yml` and in CI's boot check of the steps.
 - Each exercise also has an **Open `files/<file>`** button: the exercises
   sit at the page's end and the playground at its top.

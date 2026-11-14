@@ -183,6 +183,14 @@ const BASE_DIR: &str = "target/api-base";
 /// Where the base is built, beside its tree in the head's target folder
 /// (which CI's cache keeps).
 const BASE_TARGET_DIR: &str = "target/api-base-target";
+/// Where `cargo-semver-checks` builds, given as its `CARGO_TARGET_DIR`
+/// (ticket 2061). Without it, it builds each crate in a placeholder crate's
+/// own target folder, `target/semver-checks/local-<crate>-<version>-<host>-
+/// <hash>/target`, about 90 characters deeper. From a worktree under
+/// `.claude/worktrees/` on Windows a build script's path there passed 259
+/// characters, and Windows starts no program at a longer path, even with
+/// long paths on: the build failed with "could not execute process".
+const SEMVER_TARGET_DIR: &str = "target/api-semver";
 
 /// The folders of the book: its words and its code. A change to the public
 /// API that changes a file under one of them needs no `Book:` line.
@@ -670,7 +678,7 @@ fn listing(
 
 /// `cargo-semver-checks`'s findings on `krate`, built with `features`,
 /// against the base. Only the lints that need a major version run (ADR-0038
-/// §4).
+/// §4). Both sides build in [`SEMVER_TARGET_DIR`].
 fn semver(
     root: &Path,
     krate: &str,
@@ -692,7 +700,14 @@ fn semver(
         "never",
     ];
     args.extend(features);
-    let ran = runner.run(root, "cargo", &args)?;
+    let target_dir = root.join(SEMVER_TARGET_DIR);
+    let target_dir = target_dir.to_string_lossy();
+    let ran = runner.run_with_env(
+        root,
+        "cargo",
+        &args,
+        &[("CARGO_TARGET_DIR", target_dir.as_ref())],
+    )?;
     parse_semver(krate, &ran)
 }
 

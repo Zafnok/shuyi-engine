@@ -1,4 +1,4 @@
-# ADR-0115: Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays
+# ADR-0116: Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays
 
 - **Status:** Accepted
 - **Date:** 2026-11-13

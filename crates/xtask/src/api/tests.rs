@@ -99,11 +99,13 @@ fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String 
 /// A fake [`Runner`]. Each command is written `<where>: <program> <args>`,
 /// `<where>` being `head` (the root) or `base` (the base's tree); the last
 /// answer given whose key starts the command answers it, and any other
-/// command succeeds and prints nothing. It records every command.
+/// command succeeds and prints nothing. It records every command, and the
+/// variables each command run with some was given.
 struct Fake {
     root: PathBuf,
     answers: Vec<(String, Result<Ran, String>)>,
     ran: RefCell<Vec<String>>,
+    envs: RefCell<Vec<(String, Vec<String>)>>,
 }
 
 impl Fake {
@@ -112,6 +114,7 @@ impl Fake {
             root: root.to_path_buf(),
             answers: Vec::new(),
             ran: RefCell::new(Vec::new()),
+            envs: RefCell::new(Vec::new()),
         }
     }
 
@@ -186,6 +189,20 @@ impl Fake {
 }
 
 impl Runner for Fake {
+    fn run_with_env(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Result<Ran, String> {
+        let names: Vec<String> = env.iter().map(|(k, v)| format!("{k}={v}")).collect();
+        self.envs
+            .borrow_mut()
+            .push((format!("{program} {}", args.join(" ")), names));
+        self.run(dir, program, args)
+    }
+
     fn run(&self, dir: &Path, program: &str, args: &[&str]) -> Result<Ran, String> {
         let place = if dir == self.root {
             "head"
@@ -1306,6 +1323,45 @@ fn no_merge_base_is_an_error() {
     );
     assert_eq!(outcome.summary, "");
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn the_semver_check_builds_in_a_short_target_folder_of_its_own() {
+    let root = PathBuf::from("D:/repo/.claude/worktrees/some-worktree-name");
+    let fake = Fake::new(&root).answer(
+        "head: cargo semver-checks check-release",
+        Ok(fixture("pass")),
+    );
+    let base_root = root.join(BASE_DIR);
+    let findings = semver(&root, "shuyi-core", &[], &base_root, &fake).unwrap();
+    assert_eq!(findings, Vec::<Finding>::new());
+    let target = root
+        .join("target/api-semver")
+        .to_string_lossy()
+        .into_owned();
+    let envs = fake.envs.borrow();
+    assert_eq!(envs.len(), 1, "{envs:?}");
+    assert!(
+        envs[0]
+            .0
+            .starts_with("cargo semver-checks check-release -p shuyi-core ")
+    );
+    assert_eq!(envs[0].1, vec![format!("CARGO_TARGET_DIR={target}")]);
+
+    // Ticket 2061: Windows starts no program at a path of 260 characters or
+    // more. A build script there is `<target>/debug/build/<dependency>-<16
+    // hex>/build-script-build.exe`. With a root of 120 characters (the
+    // longest worktree seen was 77) and a dependency's name of 40 characters,
+    // it stays under.
+    let longest = 120
+        + 1
+        + SEMVER_TARGET_DIR.len()
+        + "/debug/build/".len()
+        + 40
+        + 1
+        + 16
+        + "/build-script-build.exe".len();
+    assert!(longest < 260, "{longest}");
 }
 
 #[test]

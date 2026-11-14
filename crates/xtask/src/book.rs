@@ -26,7 +26,7 @@
 //!   the page shuffles its buttons, but the `<details>` list and the twins
 //!   show the written order.
 //!
-//! And the exercises (ticket 2828, ADR-0115), `{% exercise(check="…",
+//! And the exercises (ticket 2828, ADR-0116), `{% exercise(check="…",
 //! file="…", to="rust") %}` … `{% end %}`, placed as a check is:
 //!
 //! - `check` is a name, lowercase letters, digits and `-`, once a page;
@@ -112,7 +112,7 @@ pub struct Answer {
 pub const EXERCISE_TOPIC: &str = "an exercise";
 
 /// An exercise: a task done in the page's playground, and the check the
-/// game makes of it (ADR-0115).
+/// game makes of it (ADR-0116).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Exercise {
     /// The check's name, which the step's checks know.

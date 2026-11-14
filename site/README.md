@@ -257,7 +257,7 @@ answers marked Right or Wrong.
 
 Every step of a project with a playground (`extra.files`) has one or two
 exercises in its `## Check yourself` section, after its quick checks
-(ticket 2828, ADR-0115): a task done in the step's playground, which the
+(ticket 2828, ADR-0116): a task done in the step's playground, which the
 step's game checks.
 
 ```text

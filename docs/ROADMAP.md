@@ -196,7 +196,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | Ticket | What |
 | ------ | ---- |
 | 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307; done 2026-11-11) |
-| 2061 | `cargo xtask api` runs from a Windows worktree |
+| 2061 | `cargo xtask api` runs from a Windows worktree (done 2026-11-13) |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
 | 2063 | The MCP server's forwarding tests pass under load |
 | 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |

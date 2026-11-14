@@ -554,7 +554,7 @@ h3 {
   margin-bottom: 0;
 }
 
-/* An exercise (ticket 2828, ADR-0115): a box like a quick check's, with
+/* An exercise (ticket 2828, ADR-0116): a box like a quick check's, with
    its task, where it is done, a hint and two buttons, which
    `playground.js` shows. The result line says whether the game's check
    passed. One marked for a newcomer keeps the newcomer's rule and label,

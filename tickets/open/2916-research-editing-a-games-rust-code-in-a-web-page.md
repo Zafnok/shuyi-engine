@@ -34,7 +34,7 @@ data files only: the code pad is what would let an exercise edit Rust.
 
 **From 2828 (done):** an exercise is the `exercise` shortcode in a step's
 `## Check yourself`, naming a check and the playground file it is done in
-([ADR-0115](../../docs/adr/0115-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md)).
+([ADR-0116](../../docs/adr/0116-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md)).
 Its check is Rust in `site/exercises/<step>.rs`, compiled into a copy of the
 step (`cargo xtask exercises`), whose web build runs it through
 `shuyi_app::run_game_checked` when the page writes the check's name under

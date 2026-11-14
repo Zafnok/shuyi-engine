@@ -156,27 +156,44 @@ fn sweep_deletes_what_it_can_and_skips_what_it_cannot() {
     fs::remove_dir_all(dir.parent().unwrap().parent().unwrap()).unwrap();
 }
 
+/// The separate gaps a watcher may see in [`MOVES`] moves: the system's own
+/// replacing of a name, never the order of the moves (ADR-0115).
+///
+/// Ticket 2564 measured that replacing open a gap in about one move in
+/// 36,000 (25 in 900,000), and this test fail 4 runs in 300 under load: a
+/// gap in a run about one run in 75, so two in one run about one in
+/// 11,000 and three about one in 2,500,000. The old order opened one in
+/// every move, 200 a run.
+const GAPS: u32 = 2;
+const MOVES: u32 = 200;
+
 #[test]
 fn a_program_is_at_its_path_at_every_moment_of_a_move() {
     let dir = scratch("never-missing");
     let from = dir.join("shuyi.exe");
     fs::write(&from, b"program").unwrap();
     let done = std::sync::atomic::AtomicBool::new(false);
-    let missing = std::thread::scope(|scope| {
+    let gaps = std::thread::scope(|scope| {
         let watcher = scope.spawn(|| {
-            let mut missing = 0_u32;
+            // A gap starts each time the path, there before, isn't.
+            let (mut gaps, mut there) = (0_u32, true);
             while !done.load(std::sync::atomic::Ordering::Relaxed) {
-                missing += u32::from(!from.exists());
+                let now = from.exists();
+                gaps += u32::from(there && !now);
+                there = now;
             }
-            missing
+            gaps
         });
-        for n in 0..200 {
+        for n in 0..MOVES {
             put_aside(&from, &dir.join(format!("aside-{n}.exe"))).unwrap();
         }
         done.store(true, std::sync::atomic::Ordering::Relaxed);
         watcher.join().unwrap()
     });
-    assert_eq!(missing, 0);
+    assert!(
+        gaps <= GAPS,
+        "the path was missing {gaps} separate times in {MOVES} moves"
+    );
     assert_eq!(fs::read(&from).unwrap(), b"program");
     fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
