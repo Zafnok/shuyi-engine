@@ -10,8 +10,12 @@ Budget(
     // while this ratio stayed within 1.069 to 1.171 on Linux and 1.136 to
     // 1.232 on Windows (calibration run 43775373036, 20 runs of each on
     // 9ac070d6). Each number is the highest measured plus 20 %, about twice
-    // the ratio's spread. A slower rebuild is found and fixed, not budgeted.
-    // Checked over 20 more runs: calibration run <second>.
+    // the ratio's spread. Checked over 20 more runs, calibration run
+    // 43776381949 on 0f8c48fa: every run passed, at 1.066 to 1.174 on Linux
+    // and 1.153 to 1.235 on Windows, while the seconds spread 0.76 to 1.35
+    // and 1.39 to 2.84. `debug = true` in the template's `dev` profile
+    // failed every run (calibration run 43776383981: 2.395 to 2.986). A
+    // slower rebuild is found and fixed, not budgeted.
     rebuild_over_reference: {
         "linux": 1.40,
         "windows": 1.48,

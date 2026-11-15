@@ -216,9 +216,11 @@ compiles](https://zafnok.github.io/shuyi-engine/learn/book/fast-compiles/)
 has the numbers and the setup behind them, and the nightly-only options.
 `cargo xtask compile-times`, in this repository, measures it: a new
 `grid` game's clean build, its rebuild and `check` after a one-line
-change, and a new game's dependency count. CI runs it on Linux and
-Windows, and fails a rebuild over the budget in `tools/compile-budget.ron`
-or a new game that depends on more crates than it says.
+change, a fixed reference build, and a new game's dependency count, and
+names the CPU. CI runs it on Linux and Windows, and fails a rebuild that
+takes longer, against the reference build on the same runner, than
+`tools/compile-budget.ron` allows, or a new game that depends on more
+crates than it says.
 
 ## The first example: Hello, Grid
 

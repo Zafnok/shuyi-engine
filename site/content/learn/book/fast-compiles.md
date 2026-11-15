@@ -36,7 +36,9 @@ MSVC and GNU are Rust's two toolchains on Windows
 
 Linux and Windows (MSVC) are GitHub's 4-core runners; Windows (GNU) is a 24-core desktop.
 The engine's CI measures a new game's rebuild on every change to the engine, and fails one
-that goes over its budget.
+that goes over its budget. The runners' CPUs differ, and the same rebuild takes from 0.9 to
+1.3 seconds on Linux depending on which one a run gets, so the budget is the rebuild's time
+over that of a fixed reference build on the same runner, not seconds.
 
 ## The setup
 

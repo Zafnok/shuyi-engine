@@ -1,6 +1,6 @@
 # ADR-0049: Fast compiles: a new game's rebuild timed in CI against a budget, no debug info in `dev`, and no dynamic engine
 
-- **Status:** Accepted
+- **Status:** Accepted; §2 superseded by ADR-0120 (the rebuild budgeted as a ratio of a reference build, not in seconds)
 - **Date:** 2026-10-27
 - **Related tickets:** 2009; 2905 and 2907 (they time builds with its
   tool), 2512 (a second budget under `tools/`)

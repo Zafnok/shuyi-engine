@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-15
 ---
 
 # 2070 — The compile-times job's Linux rebuild budget fails on the runner's speed, not the code
@@ -71,6 +71,8 @@ None.
 **Out (do not do):**
 - Raising `rebuild.linux` alone.
 - The Windows budget, unless the same measures show the same problem there.
+  (They did: PR #443 measured 2.94 s against Windows' 2.9 s, and the
+  first calibration spread Windows from 1.54 to 2.72 s. Windows is in.)
 - The `dependencies` count.
 - 2064's ledger and re-run rule.
 
@@ -90,14 +92,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The job's summary names the runner's CPU model and core count.
-- [ ] The gate passes 20 runs of 20 on unchanged `main`, and those runs are
+- [x] The job's summary names the runner's CPU model and core count.
+- [x] The gate passes 20 runs of 20 on unchanged `main`, and those runs are
       named in `tools/compile-budget.ron`.
-- [ ] The gate fails a branch with a real slowdown (step 4).
-- [ ] No budget number was raised without step 2's measures behind it.
-- [ ] An ADR supersedes ADR-0049's budget rule.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The gate fails a branch with a real slowdown (step 4).
+- [x] No budget number was raised without step 2's measures behind it.
+- [x] An ADR supersedes ADR-0049's budget rule.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -107,5 +109,56 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `cargo xtask compile-times` names the runner's CPU model
+  (`/proc/cpuinfo`, or the registry's `ProcessorNameString` on Windows)
+  and its cores in the table and the JSON, and writes the JSON to a file
+  with `--out`. It also builds a fixed reference crate
+  (`compile_times::reference_source`, no dependencies) clean, just before
+  each of the three rebuilds.
+- The job moved to `.github/workflows/compile-times.yml`, which `ci.yml`
+  calls and `calibrate.yml` offers (`-f job=compile-times`). Each run
+  uploads its JSON as `compile-times<suffix>-<os>`.
+- First calibration, on unchanged code: run 43775373036 at 9ac070d6, 20
+  runs, all passing the old budget. Every runner had 4 cores. The CPU
+  model explains the spread. On Linux the rebuild took 0.87 to 0.98 s on
+  an EPYC 9V45, 1.00 to 1.16 s on an EPYC 9V74 and 1.30 to 1.33 s on an
+  EPYC 7763; on Windows, from 1.54 s (9V45) to 2.72 s (Xeon 8573C). The
+  rebuild over the reference build stayed within ×1.10 on both OSes
+  (median of each pair: Linux 1.069 to 1.171, Windows 1.136 to 1.232).
+  The rebuild over the clean build spread ×1.13 and ×1.31, and over the
+  `check` rebuild ×1.27 and ×1.28. The order of the builds didn't matter:
+  within a run the three rebuilds agree within a few hundredths.
+- The gate now holds the median of each rebuild over its reference to
+  `tools/compile-budget.ron`'s `rebuild_over_reference`: the highest
+  measured plus 20 %, 1.40 on Linux and 1.48 on Windows. The seconds are
+  gone. ADR-0120 records it and supersedes ADR-0049 §2.
+- Second calibration of the new gate: run 43776381949 at 0f8c48fa, 20 of
+  20 passed. Ratios were 1.066 to 1.174 on Linux and 1.153 to 1.235 on
+  Windows, while the seconds spread 0.76 to 1.35 and 1.39 to 2.84, on
+  two CPU models the first run hadn't drawn.
+- A real slowdown, `debug = true` in the template's `dev` profile, failed
+  every run on both OSes: run 43776383981, 3 runs, ratios 2.395 to 2.986.
+  The calibrations ran from the plain branches `calibrate-2070` and
+  `calibrate-2070-slowdown`, because the pre-push hook's ticket lint
+  refuses a `t2070-` branch until the ticket is in `done/`.
+- Docs: `README.md`'s *Fast compiles*, the docs map's row, the book's
+  *Fast compiles* chapter, ADR-0049's status and the ADR index.
+
+Deviations:
+
+- Windows is in scope: Nick asked for it after PR #443 failed Windows'
+  2.9 s budget at 2.94 s, and the first calibration showed the same
+  problem there. The title still names Linux, as it was filed.
+- The first calibration already timed the reference build, so that one
+  set of 20 runs could compare every candidate ratio (step 2 with step
+  3's measure in it). "Unchanged `main`" means the engine and templates
+  of `main` at d32945ca, with only the xtask and the workflows changed.
+
+Book: the *Fast compiles* chapter says the budget is a ratio to a reference
+build on the same runner, and why.
+
+No break: `xtask` is not published, and no engine crate changed.
+`tools/compile-budget.ron`'s format changed (`rebuild` became
+`rebuild_over_reference`): only this repository's CI reads it.
