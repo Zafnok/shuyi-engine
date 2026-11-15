@@ -146,6 +146,7 @@ fn everything() -> State {
         }),
         pin: Pin::Committed,
         checkout: true,
+        hooks: Hooks::Absent,
     }
 }
 
@@ -277,6 +278,28 @@ fn without_private_assets_the_plan_is_the_games_repository_alone() {
     let steps = plan(&inputs(false), &State::default());
     let ids: Vec<&str> = steps.iter().map(|s| s.thing.id()).collect();
     assert_eq!(ids, ["git", "game-repository", "push"]);
+}
+
+#[test]
+fn a_game_with_hooks_plans_setting_them_after_git_unless_they_are_set() {
+    let ids = |state: &State| -> Vec<(&'static str, bool)> {
+        plan(&inputs(false), state)
+            .iter()
+            .map(|s| (s.thing.id(), s.make))
+            .collect()
+    };
+    let mut state = everything();
+    assert_eq!(
+        ids(&state)[..2],
+        [("git", false), ("game-repository", false)]
+    );
+    state.hooks = Hooks::Unset;
+    assert_eq!(ids(&state)[..2], [("git", false), ("hooks", true)]);
+    state.hooks = Hooks::Set;
+    assert_eq!(ids(&state)[..2], [("git", false), ("hooks", false)]);
+    // A hooks path of the developer's own is left alone.
+    state.hooks = Hooks::Elsewhere(".githooks".to_owned());
+    assert_eq!(ids(&state)[..2], [("git", false), ("hooks", false)]);
 }
 
 // The inputs.
@@ -876,6 +899,108 @@ fn without_private_assets_it_makes_only_the_games_repository() {
     assert_eq!(report.private, None);
     assert!(report.warnings[0].contains("this game has no private files"));
     assert!(report.warnings[0].contains("--set private-files=yes"));
+}
+
+/// A game with the template's hooks folder, holding `post-checkout`.
+fn with_hooks(scratch: &Scratch) {
+    let hooks = scratch.root().join(HOOKS);
+    fs::create_dir_all(&hooks).unwrap();
+    fs::write(
+        hooks.join("post-checkout"),
+        "#!/bin/sh
+exit 0
+",
+    )
+    .unwrap();
+}
+
+#[test]
+fn a_new_game_gets_its_hooks_set_and_committed_executable() {
+    let scratch = Scratch::new("hooks");
+    with_hooks(&scratch);
+    let project = scratch.project(false);
+    let mut fake = scratch.fake();
+    let report = repos(&project, &Args::default(), &mut fake);
+    assert!(report.ok, "{report:?}");
+    assert_eq!(
+        statuses(&report),
+        [
+            ("git", Status::Made),
+            ("hooks", Status::Made),
+            ("game-repository", Status::Made),
+            ("push", Status::Made)
+        ]
+    );
+    assert_eq!(
+        fake.changes()[..5],
+        [
+            "git init --quiet -b main",
+            "git add --all",
+            "git update-index --chmod=+x -- scripts/git-hooks/post-checkout",
+            "git commit --quiet -m First commit",
+            "git config core.hooksPath scripts/git-hooks",
+        ]
+    );
+    assert_eq!(fake.hooks_path.as_deref(), Some(HOOKS));
+    assert_eq!(fake.executable, ["scripts/git-hooks/post-checkout"]);
+    assert_eq!(
+        report.steps[1].about,
+        "git's hooks: core.hooksPath set to scripts/git-hooks"
+    );
+
+    // A second run finds them set, and changes nothing.
+    fake.calls.clear();
+    let again = repos(&project, &Args::default(), &mut fake);
+    assert!(again.ok, "{again:?}");
+    assert_eq!(again.steps[1].status, Status::There);
+    assert_eq!(fake.changes(), Vec::<String>::new());
+}
+
+#[test]
+fn a_rerun_sets_hooks_a_checkout_lacks_and_leaves_its_own_path() {
+    let scratch = Scratch::new("hooks-rerun");
+    with_hooks(&scratch);
+    let project = scratch.project(false);
+    let mut fake = scratch.fake();
+    let first = repos(&project, &Args::default(), &mut fake);
+    assert!(first.ok, "{first:?}");
+    // A clone, say: committed and pushed, its hooks unset.
+    fake.hooks_path = None;
+    fake.calls.clear();
+    let report = repos(&project, &Args::default(), &mut fake);
+    assert!(report.ok, "{report:?}");
+    assert_eq!(
+        (report.steps[1].step, report.steps[1].status),
+        ("hooks", Status::Made)
+    );
+    assert_eq!(
+        fake.changes(),
+        ["git config core.hooksPath scripts/git-hooks"]
+    );
+    // A path of the developer's own stays.
+    fake.hooks_path = Some(".githooks".to_owned());
+    fake.calls.clear();
+    let report = repos(&project, &Args::default(), &mut fake);
+    assert!(report.ok, "{report:?}");
+    assert_eq!(report.steps[1].status, Status::There);
+    assert_eq!(
+        report.steps[1].about,
+        "git's hooks: core.hooksPath is .githooks, left as it is"
+    );
+    assert_eq!(fake.changes(), Vec::<String>::new());
+    assert_eq!(fake.hooks_path.as_deref(), Some(".githooks"));
+}
+
+#[test]
+fn a_game_without_hooks_neither_sets_nor_marks_any() {
+    let scratch = Scratch::new("no-hooks");
+    let project = scratch.project(false);
+    let mut fake = scratch.fake();
+    let report = repos(&project, &Args::default(), &mut fake);
+    assert!(report.ok, "{report:?}");
+    assert!(report.steps.iter().all(|l| l.step != "hooks"));
+    assert!(fake.calls.iter().all(|c| !c.line().contains("hooksPath")));
+    assert_eq!(fake.executable, Vec::<String>::new());
 }
 
 #[test]

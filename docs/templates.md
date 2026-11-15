@@ -5,8 +5,12 @@ A template is what `shuyi new` makes a game from: a folder of data with a
 choose the parts, and the composer turns the template and the answers
 into the new game's files ([ADR-0013](adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §3, [ADR-0042](adr/0042-the-template-format-merged-ron-and-cargo-files-a-generated-list-of-stages-and-short-names.md)).
-No template runs code: there are no hooks and no scripts, and `new` only
-writes files.
+No template runs code: `new` only writes files, and runs nothing while it
+makes a game. A file a template ships may be a program the developer or
+git runs later: `scripts/setup-linux.sh`, which they run, and a git hook
+(`scripts/git-hooks/post-checkout`), which git runs only once the game's
+`core.hooksPath` names its folder. `new` sets nothing in git; `shuyi
+repos`, which makes the game's git repository, sets it (ticket 3402).
 
 The engine's own template is [`templates/shuyi-default`](../templates/shuyi-default/),
 embedded in the `shuyi` binary. It is the example on this page.

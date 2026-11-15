@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 3402 — New games keep their worktrees small: the compression hook in the template, `repos` setting git's hooks, and `doctor` saying when either is missing
@@ -138,25 +138,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A game fresh from `shuyi new` has
+- [x] A game fresh from `shuyi new` has
       `scripts/git-hooks/post-checkout`, and `cargo xtask check-paths`
       passes.
-- [ ] After `shuyi repos` (its fake host in the tests), `core.hooksPath`
+- [x] After `shuyi repos` (its fake host in the tests), `core.hooksPath`
       is `scripts/git-hooks` and the hook is committed as `100755`. A
       second run on a checkout without the setting sets it, and does
       nothing when the setting is there.
-- [ ] On Windows, `git worktree add` in a game whose hooks are set gives
+- [x] On Windows, `git worktree add` in a game whose hooks are set gives
       a `target/` with the compressed attribute. Checked by hand on
       Nick's machine; `compact /q` output in the notes.
-- [ ] `doctor` reports both new checks as optional. Unset hooks and an
+- [x] `doctor` reports both new checks as optional. Unset hooks and an
       uncompressed `target/` each give their help line, and neither
       makes `doctor` fail or exit non-zero.
-- [ ] The notes give the alias's unit count and the `objdump` check,
+- [x] The notes give the alias's unit count and the `objdump` check,
       and say what changed, if anything.
-- [ ] `docs/templates.md` says what a hook file is under "no template
+- [x] `docs/templates.md` says what a hook file is under "no template
       runs code".
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -172,5 +172,83 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `templates/shuyi-default/base/scripts/git-hooks/post-checkout`: the
+  engine's hook, its comments naming `cargo shuyi doctor` and `shuyi
+  repos`. It is committed `100755` here too. The composer's golden list
+  (`crates/cli/src/template/plans.golden`) takes it, and `check-paths`
+  passes.
+- `shuyi repos`: a new step, `hooks`, after `git`, planned only when the
+  game has `scripts/git-hooks`. `observe` reads `git config --get
+  core.hooksPath` (`State::hooks`: absent, unset, set, or elsewhere). The
+  step sets the path when it is unset. The `git` step marks each hook
+  `--chmod=+x` between `git add` and the first commit. A path of the
+  developer's own is left alone and reported as left.
+- `doctor`: two optional checks, `git-hooks` and `target-compression`,
+  run in the git checkout `doctor` is run in (`git rev-parse
+  --show-toplevel`). `Probe` gains two default methods, `is_folder` and
+  `compressed` (`FILE_ATTRIBUTE_COMPRESSED`, `0x800`, now a public
+  const of `doctor`). `ThisMachine` implements both, and the tests' `Fake`
+  scripts both. An absolute `core.hooksPath` that ends in
+  `scripts/git-hooks` passes too, because a worktree shares its main
+  checkout's setting, which may name that checkout's folder in full (the
+  engine's own setting does).
+- Docs: `docs/templates.md` (what a hook file is under "no template runs
+  code"), `docs/contract.md`'s `doctor` row, the template's `AGENTS.md`
+  (a section on git's hooks) and `README.md` (its file list, and setting
+  the hooks once per clone), and `repos --help`.
+
+Measured on a game fresh from `shuyi new --template grid --engine-path
+<this worktree>`, on Nick's machine (Windows 11, GNU toolchain), at
+`c528e7b2` plus this branch:
+
+- **The alias.** `cargo test --workspace` compiled 112 units. Then
+  `cargo run -p moon-garden --example tools --features tools -- check`
+  (the alias without `-q`, so cargo prints its `Compiling` lines)
+  compiled 2: `shuyi-cli` and `moon-garden`. Both are the workspace's or
+  the engine's own crates, with a different feature set (`tools`). No
+  third-party unit was built twice, so no form of the alias can build
+  fewer. The alias is kept.
+- **Debug info.** `objdump -h` on each test program in
+  `target/debug/deps` (game, it, layers, moon_garden ×2, rules, stage)
+  and on `target/debug/examples/tools.exe` shows no `.debug_*` section.
+  The sections of `tools.exe` are `.text .data .rdata .pdata .xdata
+  .bss .idata .rsrc .reloc`. `strip = "debuginfo"` would add nothing, so
+  the template's profiles are unchanged.
+- **Compression.** I ran `git init`, `git add`, `git update-index
+  --chmod=+x`, the commit and `git config core.hooksPath
+  scripts/git-hooks` by hand in that game (`repos`' own steps), then
+  `git worktree add ../moon-wt`. `git ls-files -s` shows the hook as
+  `100755`. `compact /q target` in the new worktree said:
+
+  ```text
+  Of 1 files within 1 directories
+  1 are compressed and 0 are not compressed.
+  ```
+
+  With `core.autocrlf=true` (Git for Windows' default), the worktree's
+  copy of the hook is checked out with CRLF, because the game has no
+  `.gitattributes`. Git for Windows' `sh` runs it anyway: `sh -x` on
+  the CRLF copy made and compressed `target/` and exited 0. A clone on
+  Linux or macOS gets LF.
+
+Deviations:
+
+- The ticket says `observe` should see an unset `core.hooksPath`. It also
+  sees one set to another folder, and leaves that one alone. That keeps
+  `repos` from overwriting hooks the developer chose.
+- The manual check ran on Nick's machine, in this session, not by Nick.
+
+Breaking: none. `Probe`'s two new methods have defaults, and `State`
+and `Thing` gain a field and a variant. `State` is built by `observe`
+and `Thing` is matched only inside `repos`. The api job will say if it
+disagrees.
+
+Behaviour: shuyi-cli: `shuyi repos` on a game with `scripts/git-hooks` reports a step `hooks` after `git`, and sets `core.hooksPath`; `shuyi doctor` in a git checkout lists the optional checks `git-hooks` and, on Windows, `target-compression`.
+
+Book: the quick start's "On GitHub" (`site/content/learn/book/quick-start.md`) says `repos` sets the hooks and how to set them in a clone.
+
+Game: nothing to adopt. The game has its own hooks and xtask, and neither
+`repos` nor the template reaches it. `doctor`'s new checks are optional,
+and pass in the game's checkout once its hooks are set.
