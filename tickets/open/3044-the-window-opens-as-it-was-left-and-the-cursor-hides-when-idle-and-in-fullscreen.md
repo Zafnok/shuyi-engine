@@ -2,7 +2,7 @@
 id: "3044"
 title: "The window opens as it was left: its size and mode kept per computer, a start size in whole multiples of the console, and the cursor hidden when idle and in fullscreen"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo

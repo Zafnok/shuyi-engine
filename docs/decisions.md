@@ -1835,3 +1835,40 @@ refused a fourth quick check in chapter 9:
   holding two quick checks or more; there is no most.
 
 Made in ticket 2816's PR, at Nick's word.
+
+## 2026-11-14: no run of breaking versions after the MVP
+
+Source: Nick, in a session of this repository on 2026-11-14:
+
+> "I want to ensure we're not gonna have a thousand version bumps after
+> mvp. We'll follow semver. So I want all major feature plans to be
+> surfaced to me now if they will require a ver bump. Some that I know of
+> that I am fine to have a ver bump are things like 3D game support and
+> such. But maybe sound backend and controller backend should be worked
+> out now."
+
+An audit of every open ticket found about 120 that would break a game's
+code as planned. Shown the result, he chose "Write them": the tickets
+that remove those breaks come before the first release.
+
+**Rules:**
+
+- The engine follows semver. Before the first release (2005), every
+  planned break that a release can't soften is done, or its shape is
+  settled:
+  - every exhaustive public type an open ticket plans to grow moves
+    under ADR-0039 (2082–2086);
+  - pad events carry their pad (2412);
+  - no outside crate's type is in a game's way in (2087);
+  - the contract's version says what a client may rely on (2088);
+  - the assets' lifetimes are decided (2906);
+  - the breaks no attribute softens land: 2347, 2348, 2405, 2409, 2133,
+    2136, 2239, 3041 and 3044.
+- The sound backend's swap and the controllers' swap stay internal
+  after the release: games never see quad-snd or gilrs. The
+  `in-house-sound` feature keeps its name for good, and no feature is
+  named for quad-snd (2084). The release ships with quad-snd as the
+  default.
+- A breaking release after the MVP is fine for 3D (31xx) and other work
+  of that size. Parked work that would break stays parked; when it is
+  unparked, its ticket says whether it needs a breaking release.

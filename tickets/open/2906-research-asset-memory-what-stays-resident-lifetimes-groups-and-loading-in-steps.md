@@ -2,7 +2,7 @@
 id: "2906"
 title: "Research: asset memory: measure what stays resident, decide lifetimes, asset groups and loading in steps in an ADR, and write the build tickets the numbers call for"
 type: research
-milestone: After MVP
+milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
@@ -128,6 +128,12 @@ is that ticket.
 None. This is technical.
 
 ## Scope
+
+**Before the first release** (Nick, 2026-11-14: no run of breaking
+versions after the MVP): 2005 waits for this ticket. Each build ticket
+it writes that changes the bundle's or the formats' public API goes in
+2005's `blocked_by` in the same PR, and its milestone is MVP. A build
+ticket that only adds stays after the MVP.
 
 **In:**
 - **A measuring program**, `examples/hello-grid/examples/asset_memory.rs`

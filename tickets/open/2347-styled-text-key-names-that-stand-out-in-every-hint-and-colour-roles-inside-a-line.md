@@ -2,7 +2,7 @@
 id: "2347"
 title: "Styled text: key names that stand out in every hint, and colour roles inside a line"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo

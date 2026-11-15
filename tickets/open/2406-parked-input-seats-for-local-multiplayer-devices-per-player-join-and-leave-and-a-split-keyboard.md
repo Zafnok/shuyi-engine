@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["2010", "2013"]
+blocked_by: ["2010", "2013", "2412", "2082", "2083", "2085"]
 nick_input: none
 completed:
 ---
@@ -16,6 +16,14 @@ completed:
 > **Parked** (Nick, 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): this is real-time work, so it waits until Visions of Shuyi launches, unless the game needs it first (its ticket 0053, which picks the multiplayer modes after the single-player launch, chooses hotseat played over Steam Remote Play Together, or co-op skirmishes, and wants each player's pad to act only for that player; hotseat with one shared pad works today and needs nothing here). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
+
+**Split out to 2412 (2026-11-14):** the pad ids on the raw events
+(`PadDown` and `PadUp` with their pad, `PadRemoved`, `Pads::update` per
+pad, `kind_holding` gone, `from_crank`'s pad, and the merge of pads in
+`Game`) come before the first release, so this ticket's break isn't one
+after it. 2412 is in `blocked_by`. This ticket starts from its events,
+and moves its merge in `Game` from every pad to each seat's pads. The
+Scope's bullet *Pad ids on the raw events* and step 3 below are 2412's.
 
 Found by the 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6
 and Unreal 5.8. Each of them gives every local player their own
@@ -167,9 +175,8 @@ online)?
     - an unseated device's other presses are dropped (under `Fixed`,
       each gives one `Unseated`).
   - `Ctx::seats() -> &Seats<A>` and the setters above.
-- **Pad ids on the raw events. This breaks the API:** the PR's
-  `Breaking:` line (2010) names it, and the game's PR that moves the pin
-  follows it.
+- **Pad ids on the raw events: 2412 does this, in `blocked_by`.** Kept
+  here as what this ticket starts from:
   - `RawInputEvent::PadDown(Button, PadKind, PadId)`,
     `PadUp(Button, PadId)`, and a new `PadRemoved(PadId)`.
   - `Pads::update` reports each pad's own changes and no longer merges:
@@ -366,7 +373,8 @@ online)?
    `fit.rs`, `target.rs` and 2137's `tick.rs`. Check which of 1120,
    1121, 2405 and 2408 are done.
 2. Write the ADR.
-3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,
+3. Check 2412's pad ids are in place (it is in `blocked_by`), and move
+   its merge in `Game` to each seat's pads. 2412 did this: `Pads::update` per pad, `PadRemoved`,
    `from_crank`'s pad. Move `two_pads_holding_one_button_are_one_press`
    and `a_removed_pad_releases_what_it_held` (`pad/tests.rs`) to the
    level of `Game`, where the merge now is. Delete
@@ -426,11 +434,10 @@ online)?
       and no error; a split keyboard missing a required action in one
       half gives a `SplitKeyboard` error on `desktop`.
 - [ ] The PR has a `Breaking:` line naming every break 2010's check
-      reports: `RawInputEvent`'s pad variants and `PadRemoved`,
-      `Pads::update`, `kind_holding`, `from_crank`, and any new field or
-      variant on a type 2013 left exhaustive (`KeymapDef`,
-      `target::Input`, `FitRule`). It says what the game's Playdate front
-      end changes (pad 0).
+      reports. The pad events are 2412's, and `KeymapDef`,
+      `target::Input` and `FitRule` take new fields and variants
+      without a break since 2083, 2085 and 2082, so the line is empty
+      unless the check finds one.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.
 
