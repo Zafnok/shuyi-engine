@@ -8,13 +8,13 @@ Example(
         // The game's own shot kinds are serde types.
         Edit(
             file: "Cargo.toml",
-            find: "include_dir = \"0.7\"\n",
-            replace: "include_dir = \"0.7\"\n# The game's own data types, read from its files.\nserde = { version = \"1\", features = [\"derive\"] }\n",
+            find: "\n\n[workspace.lints.rust]\n",
+            replace: "\n# The game's own data types, read from its files.\nserde = { version = \"1\", features = [\"derive\"] }\n\n[workspace.lints.rust]\n",
         ),
         Edit(
             file: "crates/game/Cargo.toml",
-            find: "include_dir.workspace = true\n",
-            replace: "include_dir.workspace = true\n# The cinematic's shots, read from its file.\nserde.workspace = true\n",
+            find: "shuyi-app = { workspace = true, optional = true }\n",
+            replace: "shuyi-app = { workspace = true, optional = true }\n# The cinematic's shots, read from its file.\nserde.workspace = true\n",
         ),
         // The cinematic, and the stage that reads and plays it.
         Write(to: "crates/game/files/intro.ron", from: "example/intro.ron"),

@@ -16,7 +16,7 @@ use crate::focus::Heard;
 ///
 /// On the web, miniquad 0.4 reports neither `'` nor `/`, and reports the
 /// `` ` `` key as `'` (its JS key table); they work on native.
-pub fn to_key(code: KeyCode) -> Option<Key> {
+pub(crate) fn to_key(code: KeyCode) -> Option<Key> {
     Some(match code {
         KeyCode::A => Key::A,
         KeyCode::B => Key::B,

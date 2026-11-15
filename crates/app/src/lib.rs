@@ -1,7 +1,7 @@
 //! Shuyi Engine's macroquad backend (ADR-0008 §2, game ADR-0004): the
 //! window, blitting the frame ([`render`]), the keyboard ([`keys`]) and
 //! controllers ([`pads`]), the audio player and storage ([`storage`]),
-//! behind `shuyi_platform`'s `Platform`, and the loop ([`run`]) that calls
+//! behind `shuyi_platform`'s `Platform`, and the loop ([`run_app`]) that calls
 //! `shuyi_platform::App::frame` once per frame of macroquad's, on desktop,
 //! the web and the Steam Deck.
 //!
@@ -34,27 +34,50 @@
 //! the files it was given ([`page::page_check`]), as the book's steps run
 //! their exercises' (ADR-0117).
 //!
-//! A game of its own shape keeps macroquad's entry point, which has to be
-//! in the binary, and hands over its [`AppConfig`] and how it starts
-//! ([`Start`]):
+//! A game of its own shape runs from a plain `main` too, with [`run_app`]:
+//! its [`AppConfig`] (the window, its storage, its files and sounds) and how
+//! it starts ([`Start`]), its own data, its look and its first screen:
 //!
-//! ```ignore
-//! fn window_conf() -> macroquad::window::Conf {
-//!     shuyi_app::window_conf(&WINDOW)
+//! ```no_run
+//! # use shuyi_assets::audio::{Bytes, Files};
+//! # use shuyi_assets::font::FontAtlasDef;
+//! # use shuyi_assets::image::ImageTable;
+//! # use shuyi_ui::Ctx;
+//! # use shuyi_ui::toy::{self, Home as Title, Toy as MyGame};
+//! use shuyi_app::{AppConfig, Window};
+//! use shuyi_platform::{Card, Look, Start};
+//! use shuyi_ui::{Game, GameHooks};
+//!
+//! const WINDOW: Window = Window::new("My Game", 640, 480);
+//!
+//! fn config() -> AppConfig {
+//!     AppConfig::new(WINDOW, "my-game", my_file, "font/atlas.png", my_sounds())
 //! }
 //!
 //! fn look(game: &MyGame) -> Look<'_> {
-//!     Look::new(&game.font, &game.images)
+//!     Look::new(my_font(game), &game.images)
 //! }
 //!
-//! #[macroquad::main(window_conf)]
-//! async fn main() {
+//! fn main() {
 //!     let start = Start::new(Card::text("My Game"), look, |setup| {
-//!         let ctx = setup.ctx(my_ctx()?);
-//!         Ok(Game::new(ctx, Box::new(Title), GameHooks::default()))
+//!         let ctx = setup.ctx(my_ctx());
+//!         Ok(Game::new(ctx, Box::new(Title::default()), GameHooks::default()))
 //!     });
-//!     shuyi_app::run(config(), start).await;
+//!     shuyi_app::run_app(config(), start);
 //! }
+//! # fn my_file(_: &str) -> Option<&'static [u8]> { None }
+//! # fn no_sound(_: &str) -> Bytes { None }
+//! # fn shown(name: &str) -> String { name.to_owned() }
+//! # fn not_left_out(_: &str) -> bool { false }
+//! # fn my_sounds() -> Files<'static> { Files::new(&no_sound, &shown, &not_left_out, "music") }
+//! # fn my_font(_: &MyGame) -> &'static FontAtlasDef {
+//! #     static FONT: std::sync::OnceLock<FontAtlasDef> = std::sync::OnceLock::new();
+//! #     FONT.get_or_init(|| FontAtlasDef {
+//! #         cell_w: 8, cell_h: 16, columns: 16,
+//! #         glyphs: Default::default(), wide: Default::default(), wide_sets: Default::default(),
+//! #     })
+//! # }
+//! # fn my_ctx() -> Ctx<MyGame> { toy::ctx() }
 //! ```
 //!
 //! With the `link` feature, a debug build listens for the live link
@@ -413,9 +436,8 @@ impl AppConfig {
     }
 }
 
-/// The window settings for macroquad's entry point
-/// (`#[macroquad::main(window_conf)]`).
-pub fn window_conf(window: &Window) -> Conf {
+/// The window settings macroquad opens `window` with.
+fn window_conf(window: &Window) -> Conf {
     Conf {
         window_title: window.title.to_owned(),
         window_width: window.width,
@@ -448,11 +470,24 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
     })
 }
 
-/// Runs a game until it quits, as `start` says: the first frame shows its
-/// loading card, the next loads it (or shows why it can't: a wrong command
-/// line, a broken asset), and each frame after, `App` reads the keyboard
-/// and controllers, steps the game, plays its sounds, music and voices and
-/// draws its frame. Closing the window lets the game save first.
+/// Opens `window` and runs `main` in it until `main` ends: for the engine's
+/// own programs that draw without a game (the render card's capture). Not
+/// part of the API: semver doesn't cover it (ADR-0119).
+#[doc(hidden)]
+pub fn open_window(window: &Window, main: impl Future<Output = ()> + 'static) {
+    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
+    macroquad::Window::from_config(window_conf(window), main);
+}
+
+/// Runs a game of its own shape until it quits, from a plain `fn main`: it
+/// opens the game's window ([`AppConfig::window`]), and runs it as `start`
+/// says. The first frame shows its loading card, the next loads it (or
+/// shows why it can't: a wrong command line, a broken asset), and each
+/// frame after, `App` reads the keyboard and controllers, steps the game,
+/// plays its sounds, music and voices and draws its frame. Closing the
+/// window lets the game save first. A game on the short path runs with
+/// [`run_game`] instead, which makes its `AppConfig` and its `Start` of its
+/// `BasicGame`.
 ///
 /// The game's context gets this build's target's facts
 /// (`shuyi_ui::PlatformFacts`): the target is `SHUYI_TARGET` when the
@@ -473,7 +508,13 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// game's record of its play to the report and ends the process with exit
 /// code 101; the game's system hook isn't called, so a broken game never
 /// saves.
-pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+pub fn run_app<G: GameData>(config: AppConfig, start: Start<G>) {
+    let window = config.window;
+    open_window(&window, run(config, start));
+}
+
+/// The loop of [`run_app`], in the window it opened.
+async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     // Read once, so every program keeps the recipient's field an overlay
     // writes, whether or not the game reads it.
     let _ = recipient();
@@ -693,9 +734,7 @@ pub fn run_game_checked<A: ActionSet, T: Debug + 'static>(
     // the one the game's data holds, since one test process runs many
     // games. A bundle installed before (none is) would stay.
     let _ = shuyi_assets::bundle::install(game.bundle());
-    let window = basic_window(&game);
-    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
-    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+    run_app(basic_config(&game), game.start());
 }
 
 /// The result of the check `asked` (the page's [`page::page_check`]) of
@@ -772,9 +811,7 @@ where
     let scenes = preview_folder(folder);
     let game = watched_game(&game).unwrap_or(game);
     let _ = shuyi_assets::bundle::install(game.bundle());
-    let window = basic_window(&game);
-    let start = game.preview_start(scenes, preview);
-    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), start));
+    run_app(basic_config(&game), game.preview_start(scenes, preview));
 }
 
 /// The name of the layer a dialogue preview reads its folder into.

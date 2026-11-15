@@ -67,6 +67,11 @@ None.
   and cinematic files keep loading.
 - `SoundProbeBackend` under `#[doc(hidden)]`, with a doc comment that it
   is for the engine's sound gates and not covered by semver.
+  **From 2087 (done):** its methods are the one path of `quad_snd` left
+  in the public API listing (ADR-0119, §3), so hiding it leaves none.
+  **Either order with 2089:** if 2089 is done, take the `quad_snd` line
+  for `shuyi-app` out of its allowed outside crates
+  (`crates/xtask/src/api.rs`); if not, nothing to do (2089 allows none).
 - A paragraph in [ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md):
   - `in-house-sound` stays a feature of `shuyi-app` for good, and does
     nothing once it is the only backend;

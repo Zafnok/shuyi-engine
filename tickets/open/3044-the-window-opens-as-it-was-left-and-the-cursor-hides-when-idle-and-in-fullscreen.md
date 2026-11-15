@@ -150,6 +150,17 @@ None.
     reports 1 × 1 for a minimized window (`update_dimensions`);
   - a record that doesn't parse, or has another `version`, is ignored
     with one warning line, and the window opens at the game's `Window`.
+- **From 2087 (done):** `window_conf` is private, and no game calls it:
+  a game of its own shape (hello-grid, the game) calls
+  `shuyi_app::run_app(config, start)` from a plain `main`, and
+  `run_app` opens the window with `window_conf(&config.window)` before
+  `run` starts. So below, `run_app` calls `window_conf(&config.window,
+  config.storage_name)`, `run_game` and `run_dialogue_preview` go
+  through `run_app`, hello-grid and the game change nothing for it, and
+  the change to `window_conf` is no break. Where the text says
+  `macroquad::main` calls `window_conf` before the game's `main`, read
+  `run_app` calls it before `run`; the private `static` still carries
+  what it decided.
 - **Opening as it was left:**
   - `window_conf(window: &Window, storage_name: &str) -> Conf` reads the
     record on native. The grid template and hello-grid call

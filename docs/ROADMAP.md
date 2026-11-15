@@ -160,6 +160,7 @@ These tickets, in order:
 | 2412 | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2089 | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |

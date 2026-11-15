@@ -123,7 +123,6 @@ dependencies = [
 name = "book-snippets"
 version = "0.1.0"
 dependencies = [
- "include_dir",
  "proptest",
  "ron",
  "serde",
@@ -653,9 +652,7 @@ name = "hello-grid"
 version = "0.1.0"
 dependencies = [
  "hello-grid",
- "include_dir",
  "insta",
- "macroquad",
  "ron",
  "schemars",
  "serde",
