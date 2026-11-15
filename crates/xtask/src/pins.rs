@@ -44,7 +44,9 @@ pub fn run(root: &Path) -> Vec<String> {
         let display = display_path(root, file);
         if is_workflow(&display) {
             workflows.push((display, file));
-        } else if display.starts_with("templates/") && display.ends_with("/Cargo.toml") {
+        } else if display.starts_with("templates/")
+            && (display.ends_with("/Cargo.toml.tmpl") || display.ends_with("/Cargo.toml"))
+        {
             templates.push((display, file));
         }
     }
@@ -803,7 +805,7 @@ serde = { version = \"1\", features = [\"derive\"] }
         )
         .unwrap();
         fs::write(
-            root.join("templates/blank/Cargo.toml"),
+            root.join("templates/blank/Cargo.toml.tmpl"),
             "[workspace.dependencies]\ninclude_dir = \"0.6\"\n",
         )
         .unwrap();
@@ -824,7 +826,7 @@ serde = { version = \"1\", features = [\"derive\"] }
                 ".github/dependabot.yml: the github-actions update's `directories` doesn't list \
                  `/templates/blank/.github/workflows`, so Dependabot never moves its pins"
                     .to_string(),
-                "templates/blank/Cargo.toml:2: `include_dir` requires \"0.6\", but the root's \
+                "templates/blank/Cargo.toml.tmpl:2: `include_dir` requires \"0.6\", but the root's \
                  Cargo.toml:8 requires \"0.7\""
                     .to_string(),
             ]
