@@ -143,11 +143,13 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
             errors.push(format!("{STEPS}: no step `{step}`"));
         }
     }
-    let chosen: Vec<&String> = steps
+    // Each with its place among every step, which names its own build.
+    let chosen: Vec<(usize, &String)> = steps
         .iter()
-        .filter(|step| options.steps.is_empty() || options.steps.contains(step))
+        .enumerate()
+        .filter(|(_, step)| options.steps.is_empty() || options.steps.contains(step))
         .collect();
-    for step in &chosen {
+    for (_, step) in &chosen {
         let page = fs::read_to_string(root.join(PAGES).join(format!("{step}.md")));
         let checks = fs::read_to_string(root.join(EXERCISES).join(format!("{step}.rs"))).ok();
         match page {
@@ -158,7 +160,7 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
     if !errors.is_empty() {
         return errors;
     }
-    for step in &chosen {
+    for (_, step) in &chosen {
         if let Err(e) = copy(root, step) {
             return vec![e];
         }
@@ -167,15 +169,17 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
         return errors;
     }
     let build = root.join(BUILD);
-    for step in chosen {
+    for (index, step) in chosen {
         let dir = root.join(COPIES).join(step);
+        let own = own_build(index);
         eprintln!("exercises: {step}");
         for args in [
             &["fmt", "--all", "--check"][..],
             &[
-                "clippy", "--locked", "-q", "--bin", BIN, "--tests", "--", "-D", "warnings",
+                "clippy", "--config", &own, "--locked", "-q", "--bin", BIN, "--tests", "--", "-D",
+                "warnings",
             ],
-            &["test", "--locked", "-q", "--bin", BIN],
+            &["test", "--config", &own, "--locked", "-q", "--bin", BIN],
         ] {
             if let Err(e) = cargo(&dir, &build, args) {
                 errors.push(format!("{step}: {e}"));
@@ -183,6 +187,23 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
         }
     }
     errors
+}
+
+/// The `--config` that gives the game of the step at `index` (in the order
+/// of [`steps`]) a build of its own in the one target folder (ticket 2836).
+///
+/// Every step is the same package, `box-pusher` at `crates/game` in a
+/// workspace of its own, so cargo gives every copy's units the same hash and
+/// output files, and tells the copies apart only by their fingerprints: the
+/// newest file's time and path, and the sources' times. Two steps whose
+/// files share them (one script that writes every step at once, a checkout
+/// within one tick of the clock) would be checked with whichever built last.
+/// A package's profile is part of its units' hash, so a `codegen-units` of
+/// its own for each step's game gives each its own units, and the engine's,
+/// whose profile it leaves alone, are still built once. The count barely
+/// matters to a debug build: the default is 256.
+pub fn own_build(index: usize) -> String {
+    format!("profile.dev.package.{BIN}.codegen-units={}", 257 + index)
 }
 
 /// Every step's folder name, in order.
