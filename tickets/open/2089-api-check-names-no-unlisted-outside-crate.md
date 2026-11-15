@@ -76,7 +76,7 @@ None.
 
 - [ ] A faked listing with `pub fn shuyi_app::x(gilrs::GamepadId)` fails
       the run, naming `shuyi-app`, the line and ADR-0119.
-- [ ] A faked listing with `serde_core::ser::Serialize` in `shuyi-core`
+- [ ] A faked listing with `serde_core::de::Deserialize` in `shuyi-core`
       passes, and `serde_json::value::Value` passes in `shuyi-cli` and
       fails in `shuyi-ui`.
 - [ ] `shuyi_assets::image::ImageTable` is not read as the `image` crate.
