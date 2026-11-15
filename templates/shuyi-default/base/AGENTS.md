@@ -53,6 +53,16 @@ the engine this game builds with, read:
 - `.devcontainer/devcontainer.json` runs it in a dev container or a
   GitHub Codespace.
 
+## Git's hooks and worktrees
+
+Set git's hooks once per clone, from the game's root: `git config
+core.hooksPath scripts/git-hooks` (`cargo shuyi repos` does it when it
+makes the repository). Its `post-checkout` hook, on Windows, compresses a
+new worktree's `target/` with NTFS: about half the disk, no slower. An
+agent working in many worktrees makes many `target/` folders.
+`cargo shuyi doctor` reports, as optional checks, hooks that aren't set
+and a `target/` without the compression, each with the line that fixes it.
+
 ## The tools
 
 `cargo shuyi <command>` runs the engine's tools on this game, in its own

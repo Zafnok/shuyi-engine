@@ -92,7 +92,10 @@ pub fn meter_fill(cells: u32, filled: u32, of: u32) -> u32 {
 
 /// How a [`GlyphBuffer::panel`] looks: its border's style and colour, its
 /// title's colour, and the text colour and background it is cleared to.
+///
+/// Kind 2 of ADR-0039: build it with [`PanelLook::new`] and its `with_` methods.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub struct PanelLook {
     /// The border's lines.
     pub style: BoxStyle,
@@ -120,13 +123,13 @@ impl PanelLook {
 
     /// This look with its border in `border`.
     #[must_use]
-    pub const fn border(self, border: Rgb) -> Self {
+    pub const fn with_border(self, border: Rgb) -> Self {
         Self { border, ..self }
     }
 
     /// This look with its title in `title`.
     #[must_use]
-    pub const fn title(self, title: Rgb) -> Self {
+    pub const fn with_title(self, title: Rgb) -> Self {
         Self { title, ..self }
     }
 }

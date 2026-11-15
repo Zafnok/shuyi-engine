@@ -82,11 +82,11 @@ None.
   `Layer::Under` overlays after the tiles, in `looks.range(kind)`, and
   never at the view's edge. Each listed range is drawn on its own,
   whatever the `RangeLook`.
-- **Breaking:** `GlyphStyle` gains two fields (a game that writes it out
-  adds `edges: None, outline: None`). `with_edge_marks` and
-  `edge_tiles` are additive. Write the `Breaking:` line and its
-  `migration` block. The game's PR that moves the pin (game#1213)
-  follows this one.
+- **Additive:** `GlyphStyle` gains two fields, `None` in
+  `GlyphStyle::PLAIN`, each with a `const fn with_<field>` (**from 2082
+  (done):** `GlyphStyle` is `#[non_exhaustive]`, kind 2 of ADR-0039).
+  `with_edge_marks` and `edge_tiles` are additive too. The game's PR
+  that moves the pin (game#1213) follows this one.
 - The book's `site/content/learn/book/frame-and-skins.md` and
   `skills/shuyi-stage-grid/SKILL.md`: a line on each option.
 
@@ -103,9 +103,9 @@ None.
    `glyph.rs`, `sprite.rs` and `playdate/marks.rs` as the reference.
 2. `edge_tiles` and `EdgeShow::strength`, with their tests.
 3. The glyph arrows and the outline in `GlyphStyle`. Update every
-   `GlyphStyle` literal in the engine and its examples.
+   `GlyphStyle` literal left in `shuyi-ui`'s own code and tests.
 4. `EdgeMarks` and `with_edge_marks`.
-5. The docs, the `Breaking:` line and the migration block.
+5. The docs.
 
 Expected size: about 150 production lines and 200 of tests. Past 600
 lines, split: this ticket keeps the arrows, and a follow-up written in

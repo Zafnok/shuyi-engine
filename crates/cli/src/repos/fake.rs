@@ -65,6 +65,10 @@ pub struct Fake {
     /// The pin file's text at the last commit.
     pub committed_pin: String,
     pub commits: Vec<String>,
+    /// The game's `core.hooksPath`.
+    pub hooks_path: Option<String>,
+    /// The files `git update-index --chmod=+x` marked, by their path.
+    pub executable: Vec<String>,
     /// A call whose line holds this fails.
     pub fail: Option<String>,
     pub calls: Vec<Call>,
@@ -89,6 +93,8 @@ impl Fake {
             origin: None,
             committed_pin: String::new(),
             commits: Vec::new(),
+            hooks_path: None,
+            executable: Vec::new(),
             fail: None,
             calls: Vec::new(),
             root: root.to_path_buf(),
@@ -357,6 +363,22 @@ impl Fake {
                 self.git = Git::NoCommit;
                 ok("")
             }
+            ["config", "--get", "core.hooksPath"] => match &self.hooks_path {
+                Some(path) => ok(&format!(
+                    "{path}
+"
+                )),
+                None => failed(""),
+            },
+            ["config", "core.hooksPath", path] => {
+                self.hooks_path = Some((*path).to_owned());
+                ok("")
+            }
+            ["update-index", "--chmod=+x", "--", files @ ..] => {
+                self.executable
+                    .extend(files.iter().map(|f| (*f).to_owned()));
+                ok("")
+            }
             ["add", ..] => ok(""),
             ["commit", "--quiet", "-m", message, ..] => {
                 self.git = Git::Committed;
@@ -387,6 +409,7 @@ pub fn is_read(line: &str) -> bool {
         "git symbolic-ref",
         "git remote get-url",
         "git status",
+        "git config --get",
     ];
     if reads.iter().any(|r| line.starts_with(r)) {
         return true;

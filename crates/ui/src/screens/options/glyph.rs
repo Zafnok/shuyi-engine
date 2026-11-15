@@ -76,8 +76,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let panel = panel(view, buf);
     let look = PanelLook::new(BoxStyle::Single, text, bg)
-        .border(c(EngineColor::Border))
-        .title(c(EngineColor::Highlight));
+        .with_border(c(EngineColor::Border))
+        .with_title(c(EngineColor::Highlight));
     buf.panel(panel, &look, Some(&view.title));
 
     let mut y = panel.y + 2;

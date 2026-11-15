@@ -390,6 +390,12 @@ these on your account, so a coding agent should ask you before running it. Run i
 again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
 and `ssh-keygen` as optional, since only this command needs them.
 
+It also sets git's hooks to the game's `scripts/git-hooks`: on Windows, its
+`post-checkout` hook compresses the build folder (`target/`) of each new worktree,
+which takes about half the disk, no slower. In a clone of the game, set them once
+with `git config core.hooksPath scripts/git-hooks`; `shuyi doctor` says when they
+aren't set.
+
 `shuyi new` asks the same when you make the game, and runs it for you: whether to
 put the game on GitHub, whether its repository is public, and which kinds of files
 (writing, sprites, sounds, music, data, or folders you name) go in a second, private

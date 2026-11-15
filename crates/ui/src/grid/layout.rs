@@ -25,7 +25,10 @@ pub fn px_rect(cells: Rect) -> PxRect {
 /// How map tiles are laid on the screen: where a tile goes, from where it
 /// is in the view. Every skin and every drawing across tiles asks it,
 /// rather than assume squares in rows (ADR-0003 §6).
+///
+/// Kind 6 of ADR-0039: more projections may come, so a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Projection {
     /// Seen from above: tiles in rows and columns, each the tile's size
     /// right of and below the one before.
@@ -45,7 +48,10 @@ impl Projection {
 }
 
 /// The tiles of a scene laid out on the console.
+///
+/// Kind 3 of ADR-0039: build it with [`Grid::top_down`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Grid {
     /// The map tile in the top-left corner.
     pub origin: Pos,

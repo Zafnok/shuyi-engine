@@ -22,7 +22,10 @@ pub const FLASH_SHOWN: f32 = 0.5;
 
 /// How the glyph skin shows ranges, flashes, the cursor and the threat
 /// marks, and how many cells it leaves at the sides of its area.
+///
+/// Kind 2 of ADR-0039: start from [`GlyphStyle::PLAIN`] and change it with its `with_` methods.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct GlyphStyle {
     /// How a range shows on its tiles.
     pub range: RangeLook,
@@ -106,6 +109,41 @@ impl GlyphStyle {
         threat: ThreatLook::Highlighted,
         side_cells: 0,
     };
+
+    /// This style with its ranges shown as `range`.
+    #[must_use]
+    pub const fn with_range(mut self, range: RangeLook) -> Self {
+        self.range = range;
+        self
+    }
+
+    /// This style with its flashes shown as `flash`.
+    #[must_use]
+    pub const fn with_flash(mut self, flash: FlashLook) -> Self {
+        self.flash = flash;
+        self
+    }
+
+    /// This style with its cursor shown as `cursor`.
+    #[must_use]
+    pub const fn with_cursor(mut self, cursor: CursorLook) -> Self {
+        self.cursor = cursor;
+        self
+    }
+
+    /// This style with its threat marks in `threat`'s colors.
+    #[must_use]
+    pub const fn with_threat(mut self, threat: ThreatLook) -> Self {
+        self.threat = threat;
+        self
+    }
+
+    /// This style leaving `side_cells` cells clear at each side.
+    #[must_use]
+    pub const fn with_side_cells(mut self, side_cells: i32) -> Self {
+        self.side_cells = side_cells;
+        self
+    }
 
     /// How many tiles, across × down, fit in an area of `area` cells
     /// between its side cells: two cells to a tile across, one down. An
