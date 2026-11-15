@@ -41,8 +41,10 @@ impl PadMerge {
     /// pads had ids. A release no pad held is heard, as it was.
     pub(super) fn merge(&mut self, events: &[RawInputEvent]) -> Vec<RawInputEvent> {
         let mut heard = Vec::with_capacity(events.len());
-        for (i, &event) in events.iter().enumerate() {
-            let later = &events[i + 1..];
+        let mut rest = events;
+        while let [event, later @ ..] = rest {
+            rest = later;
+            let event = *event;
             match event {
                 RawInputEvent::PadDown(button, _, pad) => {
                     self.held.entry(pad).or_default().insert(button);
