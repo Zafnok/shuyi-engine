@@ -2069,6 +2069,9 @@ fn a_summary_file_that_cannot_be_written_is_an_error() {
 
 // -- outside crates (ticket 2089, ADR-0119) --
 
+/// No line found.
+const NONE: [(String, String); 0] = [];
+
 fn outside_in(krate: &str, line: &str, deps: &[&str]) -> Vec<(String, String)> {
     let deps: Vec<String> = deps.iter().map(|dep| (*dep).to_string()).collect();
     unlisted_outside(krate, &lines(&[line]), &deps)
@@ -2092,21 +2095,27 @@ fn an_unlisted_outside_crate_is_found() {
 #[test]
 fn serde_core_is_allowed_everywhere() {
     let line = "impl serde_core::de::Deserialize<'de> for shuyi_core::Pos";
-    assert!(outside_in("shuyi-core", line, &["serde_core", "serde"]).is_empty());
+    assert_eq!(
+        outside_in("shuyi-core", line, &["serde_core", "serde"]),
+        NONE
+    );
 }
 
 #[test]
 fn serde_json_is_allowed_in_the_cli_alone() {
     let line = "pub fn shuyi_x::f() -> serde_json::value::Value";
-    assert!(outside_in("shuyi-cli", line, &["serde_json"]).is_empty());
+    assert_eq!(outside_in("shuyi-cli", line, &["serde_json"]), NONE);
     assert_eq!(outside_in("shuyi-ui", line, &["serde_json"]).len(), 1);
 }
 
 #[test]
 fn an_engine_module_named_like_a_crate_is_not_the_crate() {
     let line = "pub struct shuyi_assets::image::ImageTable";
-    assert!(outside_in("shuyi-assets", line, &["image"]).is_empty());
-    assert!(outside_in("shuyi-assets", "pub fn my_image::f()", &["image"]).is_empty());
+    assert_eq!(outside_in("shuyi-assets", line, &["image"]), NONE);
+    assert_eq!(
+        outside_in("shuyi-assets", "pub fn my_image::f()", &["image"]),
+        NONE
+    );
 }
 
 #[test]
@@ -2127,7 +2136,10 @@ fn a_crate_at_the_start_of_a_path_is_found_anywhere_on_the_line() {
 
 #[test]
 fn a_crate_that_is_no_dependency_is_not_looked_for() {
-    assert!(outside_in("shuyi-app", "pub fn shuyi_app::x(gilrs::GamepadId)", &[]).is_empty());
+    assert_eq!(
+        outside_in("shuyi-app", "pub fn shuyi_app::x(gilrs::GamepadId)", &[]),
+        NONE
+    );
 }
 
 #[test]
