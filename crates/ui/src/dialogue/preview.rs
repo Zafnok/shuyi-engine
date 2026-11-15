@@ -504,15 +504,27 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
         self.focus[self.tab.index()]
     }
 
-    /// The scene of row `row` of the Scenes tab: its file and id.
-    fn scene_at(&self, row: usize) -> Option<Picked> {
-        let mut scenes = self.files.iter().flat_map(|f| {
+    /// The scenes of the Scenes tab, its rows in order: each one's file
+    /// and id.
+    fn scenes(&self) -> impl Iterator<Item = Picked> + '_ {
+        self.files.iter().flat_map(|f| {
             f.scenes.iter().map(|s| Picked {
                 file: f.file.clone(),
                 scene: s.scene.id.clone(),
             })
-        });
-        scenes.nth(row)
+        })
+    }
+
+    /// The scene of row `row` of the Scenes tab: its file and id.
+    fn scene_at(&self, row: usize) -> Option<Picked> {
+        self.scenes().nth(row)
+    }
+
+    /// The row of the Scenes tab of the scene picked, if it is still
+    /// there.
+    fn picked_row(&self) -> Option<usize> {
+        let picked = self.picked.as_ref()?;
+        self.scenes().position(|scene| &scene == picked)
     }
 
     /// One frame with the tabs shown.
@@ -716,10 +728,15 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
         let declared: Vec<G::Action> = declared.into_iter().filter(|a| !cancel(a)).collect();
         let (input, _) = input.declared(screen.name(), &declared);
         match screen.update(ctx, &input) {
+            // The scene is over: back to the scenes, on this one, so
+            // Confirm plays it again (ticket 3214).
             Transition::Pop | Transition::PopWith(_) => {
                 self.playing = None;
                 self.open = true;
-                self.tab = Tab::Lines;
+                self.tab = Tab::Scenes;
+                if let Some(row) = self.picked_row() {
+                    self.focus[Tab::Scenes.index()] = row;
+                }
             }
             Transition::Quit => return Transition::Quit,
             // A screen it would open over the scene, or put in its place,

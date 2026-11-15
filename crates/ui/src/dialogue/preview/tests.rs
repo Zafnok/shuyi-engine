@@ -415,18 +415,44 @@ fn the_line_box_needs_a_scene() {
     assert_eq!(view.note.as_deref(), Some("Pick a scene first"));
 }
 
+/// Reads on until the scene playing is over and the tabs show again.
+fn read_to_the_end(p: &mut Preview, ctx: &mut ToyCtx) {
+    for _ in 0..20 {
+        if p.view(ctx).open {
+            return;
+        }
+        press(p, ctx, &[Action::Confirm]);
+    }
+    panic!("the scene never ended");
+}
+
 #[test]
-fn the_scene_over_shows_the_lines_tab() {
+fn the_scene_over_shows_the_scenes_tab_on_it() {
     let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
     let ctx = game.ctx_mut();
+    // The second scene of the list, "second".
+    press(&mut p, ctx, &[Action::CursorDown]);
+    assert_eq!(p.view(ctx).focus, 1);
     press(&mut p, ctx, &[Action::Confirm]);
-    for _ in 0..4 {
-        read_on(&mut p, ctx);
-    }
+    assert_eq!(
+        p.view(ctx).playing.map(|p| p.scene).as_deref(),
+        Some("second")
+    );
+    read_to_the_end(&mut p, ctx);
     let view = p.view(ctx);
-    assert!(view.open);
-    assert_eq!(view.tab, Tab::Lines);
+    assert_eq!(view.tab, Tab::Scenes);
+    assert_eq!(view.focus, 1, "the cursor on the scene just played");
     assert!(view.playing.as_ref().unwrap().finished);
+    // Confirm plays it again.
+    press(&mut p, ctx, &[Action::Confirm]);
+    let view = p.view(ctx);
+    assert!(!view.open);
+    assert_eq!(view.playing.map(|p| p.scene).as_deref(), Some("second"));
+    // The Lines tab still says the scene is over.
+    read_to_the_end(&mut p, ctx);
+    press(&mut p, ctx, &[Action::CursorRight, Action::CursorRight]);
+    let view = p.view(ctx);
+    assert_eq!(view.tab, Tab::Lines);
     assert_eq!(view.current_line(), None);
     assert_eq!(
         view.note.as_deref(),
