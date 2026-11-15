@@ -258,4 +258,4 @@ were on the template's `include_dir` lines.
 
 **For Nick:** a game starts from a plain `main` now, whatever its shape,
 and names neither macroquad nor the crate that embeds its files, so
-replacing either later doesn't break it.
+replacing either (3034, 2215) doesn't break it.

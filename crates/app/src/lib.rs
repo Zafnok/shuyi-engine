@@ -687,7 +687,7 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 
 /// Runs a game on the short path until it quits, in a window of its
 /// console at twice its size: its files become the process's bundle, and
-/// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
+/// [`run_app`] starts it as [`BasicGame::start`] says, with no sounds, no
 /// voices and no system keyboard. Called from a plain `fn main`. Under
 /// `cargo shuyi run --watch` the game's files on disk are laid over the
 /// embedded ones ([`watched_layer`]). On the web, the files the page holds
