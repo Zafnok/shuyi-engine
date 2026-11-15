@@ -39,6 +39,11 @@
 //! @endif
 //! @end
 //! ```
+//!
+//! Narration that opens with `(` and holds `):`, such as `(soft): word`,
+//! would read as a direction; it is written after an empty one,
+//! `> (): (soft): word`, which [`print_scene`] does. Narration that opens
+//! with a bracket and holds no `):` is text as it is.
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -655,6 +660,10 @@ fn print_step<D: Directive>(out: &mut String, step: &Step<D>, indent: &str) {
             direction: Some(d),
             ..
         } => format!("> ({d}): {text}"),
+        // Text that would read as a direction goes after an empty one.
+        Step::Narrate { text, .. } if text.starts_with('(') && text.contains("):") => {
+            format!("> (): {text}")
+        }
         Step::Narrate { text, .. } => format!("> {text}"),
         Step::Music(music) => format!("@music {}", music.arg()),
         Step::Directive(directive) => format!("@{}", directive.print()),
