@@ -273,6 +273,19 @@ fn text_that_starts_with_a_bracket_prints_and_parses_back_as_text() {
         assert_eq!(errors, [], "{printed}");
         assert_eq!(bare(&parsed[0].scene.steps), scene.steps, "{printed}");
     }
+    // Only text that would read as a direction gets the empty one.
+    let printed = |text: &str| {
+        print_scene(&Scene::<Cue> {
+            id: "s".into(),
+            steps: vec![narrate(text)],
+        })
+    };
+    assert_eq!(
+        printed("(soft): word"),
+        "@scene s\n> (): (soft): word\n@end\n"
+    );
+    assert_eq!(printed("(soft) word"), "@scene s\n> (soft) word\n@end\n");
+    assert_eq!(printed("soft): word"), "@scene s\n> soft): word\n@end\n");
 }
 
 #[test]
