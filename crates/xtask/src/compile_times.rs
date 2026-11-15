@@ -12,8 +12,12 @@
 //! - the rebuild after a one-line change in the game's `main.rs`, three
 //!   times, and their median;
 //! - the same for `cargo check`, which is what an editor runs;
+//! - a fixed reference build ([`reference_source`]), three times, each
+//!   just before a rebuild, so that a runner's own speed reads beside the
+//!   game's times (ticket 2070);
 //!
-//! and counts the crates in a new game's dependency tree (`cargo metadata`
+//! names the machine, its CPU model and its cores ([`Machine`]), and
+//! counts the crates in a new game's dependency tree (`cargo metadata`
 //! on a game from `shuyi new blank`). With `--budget`, the median rebuild
 //! and the count are held to `tools/compile-budget.ron`, which CI's
 //! `compile-times` job does on its runners.
@@ -59,6 +63,8 @@ pub struct Options {
     pub dir: Option<PathBuf>,
     /// `--count-only`: count the crates of a new game, and time nothing.
     pub count_only: bool,
+    /// `--out <file>`: write the JSON to this file too.
+    pub out: Option<PathBuf>,
 }
 
 impl Options {
@@ -73,6 +79,7 @@ impl Options {
                 "--summary" => options.summary = Some(PathBuf::from(rest.next()?)),
                 "--dir" => options.dir = Some(PathBuf::from(rest.next()?)),
                 "--count-only" => options.count_only = true,
+                "--out" => options.out = Some(PathBuf::from(rest.next()?)),
                 _ => return None,
             }
         }
@@ -80,11 +87,65 @@ impl Options {
     }
 }
 
+/// The machine a run measured on.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Machine {
+    /// Its CPU's model, as the OS names it, or `unknown`.
+    pub cpu: String,
+    /// The cores (hardware threads) the run may use.
+    pub cores: usize,
+}
+
+impl Machine {
+    /// The machine this runs on.
+    pub fn here() -> Self {
+        let cpu = if cfg!(target_os = "windows") {
+            Command::new("reg")
+                .args([
+                    "query",
+                    r"HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+                    "/v",
+                    "ProcessorNameString",
+                ])
+                .output()
+                .ok()
+                .and_then(|out| cpu_from_registry(&String::from_utf8_lossy(&out.stdout)))
+        } else {
+            fs::read_to_string("/proc/cpuinfo")
+                .ok()
+                .and_then(|text| cpu_from_cpuinfo(&text))
+        };
+        Self {
+            cpu: cpu.unwrap_or_else(|| "unknown".to_owned()),
+            cores: std::thread::available_parallelism().map_or(0, std::num::NonZero::get),
+        }
+    }
+}
+
+/// The CPU's model in Linux's `/proc/cpuinfo`: its first `model name`.
+pub fn cpu_from_cpuinfo(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let (key, value) = line.split_once(':')?;
+        (key.trim() == "model name").then(|| value.trim().to_owned())
+    })
+}
+
+/// The CPU's model in `reg query`'s answer for Windows'
+/// `ProcessorNameString`.
+pub fn cpu_from_registry(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let (key, value) = line.split_once("REG_SZ")?;
+        (key.trim() == "ProcessorNameString").then(|| value.trim().to_owned())
+    })
+}
+
 /// What one run measured, in seconds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Times {
     /// The OS it ran on, as `std::env::consts::OS` names it.
     pub os: String,
+    /// The machine it ran on.
+    pub machine: Machine,
     /// The clean `cargo build`.
     pub clean: f64,
     /// Each `cargo build` after a one-line change.
@@ -95,6 +156,9 @@ pub struct Times {
     pub check_rebuilds: Vec<f64>,
     /// The crates in a new game's dependency tree.
     pub dependencies: usize,
+    /// Each clean build of the reference crate, each timed just before
+    /// the rebuild of the same index.
+    pub references: Vec<f64>,
 }
 
 impl Times {
@@ -108,10 +172,17 @@ impl Times {
         median(&self.check_rebuilds)
     }
 
+    /// The median reference build.
+    pub fn reference(&self) -> f64 {
+        median(&self.references)
+    }
+
     /// The numbers as JSON.
     pub fn json(&self) -> Value {
         json!({
             "os": self.os,
+            "cpu": self.machine.cpu,
+            "cores": self.machine.cores,
             "clean_build": self.clean,
             "rebuild": self.rebuild(),
             "rebuilds": self.rebuilds,
@@ -119,6 +190,8 @@ impl Times {
             "check_rebuild": self.check_rebuild(),
             "check_rebuilds": self.check_rebuilds,
             "dependencies": self.dependencies,
+            "reference": self.reference(),
+            "references": self.references,
         })
     }
 
@@ -132,10 +205,10 @@ impl Times {
                 .join(", ")
         };
         let mut table = format!(
-            "Compile times of a new `grid` game on {}\n\n\
+            "Compile times of a new `grid` game on {}, {} with {} cores\n\n\
              | What | Seconds |\n\
              | ---- | ------- |\n",
-            self.os
+            self.os, self.machine.cpu, self.machine.cores
         );
         // Writing to a `String` can't fail.
         let _ = writeln!(table, "| Clean build | {:.2} |", self.clean);
@@ -151,6 +224,12 @@ impl Times {
             "| `check` after a one-line change (median of {}) | {:.2} |",
             all(&self.check_rebuilds),
             self.check_rebuild()
+        );
+        let _ = writeln!(
+            table,
+            "| The reference build (median of {}) | {:.2} |",
+            all(&self.references),
+            self.reference()
         );
         let _ = writeln!(
             table,
@@ -338,38 +417,102 @@ pub fn run(
     }
     let metadata = cargo(game, &blank, &["metadata", "--format-version", "1"])?;
     let dependencies = dependencies(&metadata.stdout)?;
-    let clean = time(game, &timed, "build")?;
-    let rebuilds = time_rebuilds(game, &timed, "build")?;
-    let check_clean = time(game, &timed, "check")?;
-    let check_rebuilds = time_rebuilds(game, &timed, "check")?;
+    let reference = games.join("reference");
+    write_reference(&reference)?;
+    let clean = time(game, &timed, &["build"])?;
+    // Each reference build just before a rebuild: the runner's speed of
+    // that moment.
+    let mut references = Vec::with_capacity(REBUILDS);
+    let mut rebuilds = Vec::with_capacity(REBUILDS);
+    for n in 1..=REBUILDS {
+        let target = reference.join(format!("target-{n}"));
+        let target = target.to_string_lossy();
+        references.push(time(game, &reference, &["build", "--target-dir", &target])?);
+        rebuilds.push(rebuild(game, &timed, "build", n)?);
+    }
+    let check_clean = time(game, &timed, &["check"])?;
+    let check_rebuilds = (1..=REBUILDS)
+        .map(|n| rebuild(game, &timed, "check", n))
+        .collect::<Result<_, _>>()?;
     Ok(Times {
         os: std::env::consts::OS.to_owned(),
+        machine: Machine::here(),
         clean,
         rebuilds,
         check_clean,
         check_rebuilds,
         dependencies,
+        references,
     })
 }
 
-/// `cargo <command>` in `dir` after a new line in the game's `main.rs`,
-/// [`REBUILDS`] times.
-fn time_rebuilds(runner: &dyn Runner, dir: &Path, command: &str) -> Result<Vec<f64>, String> {
-    let main = dir.join(MAIN);
-    (1..=REBUILDS)
-        .map(|n| {
-            let mut text =
-                fs::read_to_string(&main).map_err(|e| format!("{}: {e}", main.display()))?;
-            let _ = writeln!(text, "// compile-times: {command} {n}");
-            fs::write(&main, text).map_err(|e| format!("{}: {e}", main.display()))?;
-            time(runner, dir, command)
-        })
-        .collect()
+/// How many items the reference crate holds.
+const REFERENCE_ITEMS: usize = 120;
+
+/// The reference crate's `main.rs`: the same code every run, so its clean
+/// build's time follows the machine and the toolchain only.
+pub fn reference_source() -> String {
+    let mut source = String::from(
+        "//! compile-times' reference build (ticket 2070): fixed code, timed to\n\
+         //! read the machine's speed.\n\
+         use std::collections::BTreeMap;\n\n",
+    );
+    for n in 0..REFERENCE_ITEMS {
+        let _ = writeln!(
+            source,
+            "#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]\n\
+             struct Item{n} {{\n    a: u64,\n    b: String,\n    c: Vec<u32>,\n    \
+             d: BTreeMap<u32, String>,\n}}\n\n\
+             impl Item{n} {{\n    fn new(x: u32) -> Self {{\n        Self {{\n            \
+             a: u64::from(x) * {n},\n            b: format!(\"{{x}}-{n}\"),\n            \
+             c: (0..x).collect(),\n            \
+             d: (0..x).map(|k| (k, k.to_string())).collect(),\n        }}\n    }}\n}}\n"
+        );
+    }
+    source.push_str("fn main() {\n    let mut total = 0usize;\n");
+    for n in 0..REFERENCE_ITEMS {
+        let _ = writeln!(
+            source,
+            "    let item = Item{n}::new({n});\n    \
+             total += format!(\"{{item:?}}\").len() + usize::from(item.clone() == item);"
+        );
+    }
+    source.push_str("    println!(\"{total}\");\n}\n");
+    source
 }
 
-/// The seconds `cargo <command>` takes in `dir`.
-fn time(runner: &dyn Runner, dir: &Path, command: &str) -> Result<f64, String> {
-    let ran = cargo(runner, dir, &[command, "--color", "never"])?;
+/// Writes the reference crate in `dir`: its own workspace, built as the
+/// template builds a game (`debug = false`).
+fn write_reference(dir: &Path) -> Result<(), String> {
+    let src = dir.join("src");
+    fs::create_dir_all(&src).map_err(|e| format!("{}: {e}", src.display()))?;
+    let manifest = "[package]\nname = \"reference\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\
+                    publish = false\n\n[workspace]\n\n[profile.dev]\ndebug = false\n";
+    for (file, text) in [
+        (dir.join("Cargo.toml"), manifest.to_owned()),
+        (src.join("main.rs"), reference_source()),
+    ] {
+        fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
+    }
+    Ok(())
+}
+
+/// `cargo <command>` in `dir` after the `n`th new line in the game's
+/// `main.rs`.
+fn rebuild(runner: &dyn Runner, dir: &Path, command: &str, n: usize) -> Result<f64, String> {
+    let main = dir.join(MAIN);
+    let mut text = fs::read_to_string(&main).map_err(|e| format!("{}: {e}", main.display()))?;
+    let _ = writeln!(text, "// compile-times: {command} {n}");
+    fs::write(&main, text).map_err(|e| format!("{}: {e}", main.display()))?;
+    time(runner, dir, &[command])
+}
+
+/// The seconds `cargo <args>` takes in `dir`.
+fn time(runner: &dyn Runner, dir: &Path, args: &[&str]) -> Result<f64, String> {
+    let command = args[0];
+    let mut args = args.to_vec();
+    args.extend(["--color", "never"]);
+    let ran = cargo(runner, dir, &args)?;
     finished_in(&ran.stderr).ok_or_else(|| {
         format!(
             "`cargo {command}` in {} said no `Finished … in` time",

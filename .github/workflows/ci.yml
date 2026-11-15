@@ -896,34 +896,17 @@ jobs:
         run: cargo xtask skill-examples --shard "$SHARD"
 
   # What a game's developer waits for (ticket 2009, ADR-0049): a new `grid`
-  # game's rebuild after a one-line change, timed with the template's own
-  # setup in its own target folder, and a new game's dependency count, held
-  # to tools/compile-budget.ron. The table is in the job's summary. The
-  # games are made outside the target folder rust-cache keeps, so each
-  # build starts clean.
+  # game's rebuild after a one-line change, held to tools/compile-budget.ron
+  # beside a fixed reference build on the same runner, and a new game's
+  # dependency count. compile-times.yml holds its job, on Linux and Windows;
+  # calibrate.yml runs the same job N times (ticket 2070).
   compile-times:
-    name: compile-times (${{ matrix.os }})
+    name: compile-times
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: rustup show
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - name: Set up Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: bash scripts/setup-linux.sh
-      - name: Time a new game against the budget
-        run: cargo xtask compile-times --budget tools/compile-budget.ron --summary "$GITHUB_STEP_SUMMARY" --dir "$RUNNER_TEMP/compile-times"
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compile-times.yml
 
   # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
   # 3005): built for a target that has no `std` at all, their tests run

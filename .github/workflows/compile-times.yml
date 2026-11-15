@@ -1,0 +1,61 @@
+name: Compile times
+
+# What a game's developer waits for (ticket 2009, ADR-0049), callable (ticket
+# 2070): ci.yml's `compile-times` job runs it when the code changed, and
+# calibrate.yml runs it N times on the commit it was dispatched on. A new
+# `grid` game's rebuild after a one-line change, timed with the template's own
+# setup in its own target folder beside a fixed reference build, and a new
+# game's dependency count, held to tools/compile-budget.ron. The table, with
+# the runner's CPU and cores, is in the job's summary, and its JSON in the
+# `compile-times<suffix>-<os>` artifact. The games are made outside the target
+# folder rust-cache keeps, so each build starts clean. A call never checks out
+# another ref than its run's: a dispatch from main that built another ref would
+# run unreviewed code with main's cache scope (CodeQL's cache poisoning, #382).
+
+on:
+  workflow_call:
+    inputs:
+      suffix:
+        description: "Appended to the artifacts' names, so that the runs of one calibration keep theirs apart"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # The xtask's own; the timed games drop it (`compile_times::Game`).
+  RUSTFLAGS: -D warnings
+
+jobs:
+  compile-times:
+    name: compile-times (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: bash scripts/setup-linux.sh
+      - name: Time a new game against the budget
+        run: |
+          mkdir -p target/compile-times-out
+          cargo xtask compile-times --budget tools/compile-budget.ron --summary "$GITHUB_STEP_SUMMARY" \
+            --out target/compile-times-out/times.json --dir "$RUNNER_TEMP/compile-times"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: compile-times${{ inputs.suffix }}-${{ matrix.os }}
+          path: target/compile-times-out/times.json
+          if-no-files-found: warn

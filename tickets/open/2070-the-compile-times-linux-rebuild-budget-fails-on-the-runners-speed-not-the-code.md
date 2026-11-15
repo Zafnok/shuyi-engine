@@ -5,7 +5,7 @@ type: bug
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:

@@ -48,7 +48,7 @@ jobs:
           COUNT: ${{ inputs.count }}
         run: |
           # The jobs this workflow can run, each a block below.
-          jobs="sound-parity"
+          jobs="sound-parity compile-times"
           if ! [[ " $jobs " == *" $JOB "* ]]; then
             echo "::error::No job '$JOB' to calibrate: give one of $jobs"
             exit 1
@@ -75,9 +75,25 @@ jobs:
     with:
       suffix: -run-${{ matrix.run }}
 
+  # A new game's compile times (compile-times.yml), each run on Linux and
+  # Windows: the artifacts are `compile-times-run-<n>-<os>`.
+  compile-times:
+    name: compile-times (${{ matrix.run }})
+    needs: runs
+    if: inputs.job == 'compile-times'
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(needs.runs.outputs.list) }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compile-times.yml
+    with:
+      suffix: -run-${{ matrix.run }}
+
   summary:
     name: summary
-    needs: [runs, sound-parity]
+    needs: [runs, sound-parity, compile-times]
     if: always() && needs.runs.result == 'success'
     runs-on: ubuntu-latest
     permissions:

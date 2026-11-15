@@ -5,11 +5,16 @@ use super::*;
 fn times(rebuilds: &[f64], dependencies: usize) -> Times {
     Times {
         os: "linux".to_owned(),
+        machine: Machine {
+            cpu: "AMD EPYC 7763 64-Core Processor".to_owned(),
+            cores: 4,
+        },
         clean: 60.0,
         rebuilds: rebuilds.to_vec(),
         check_clean: 20.0,
         check_rebuilds: vec![0.5, 0.4, 0.6],
         dependencies,
+        references: vec![1.2, 1.0, 1.1],
     }
 }
 
@@ -162,7 +167,7 @@ fn options_read_their_values() {
     let args = |s: &str| -> Vec<String> { s.split_whitespace().map(str::to_owned).collect() };
     assert_eq!(
         Options::parse(&args(
-            "--json --budget b.ron --summary s.md --dir d --count-only"
+            "--json --budget b.ron --summary s.md --dir d --count-only --out o.json"
         )),
         Some(Options {
             json: true,
@@ -170,6 +175,7 @@ fn options_read_their_values() {
             summary: Some(PathBuf::from("s.md")),
             dir: Some(PathBuf::from("d")),
             count_only: true,
+            out: Some(PathBuf::from("o.json")),
         })
     );
     assert_eq!(Options::parse(&[]), Some(Options::default()));
@@ -202,7 +208,11 @@ impl Runner for Fake {
         } else if joined.starts_with("metadata") {
             ran.stdout = r#"{"workspace_members": ["g"], "resolve": {"nodes": [{"id": "g"}, {"id": "a"}, {"id": "b"}]}}"#.to_owned();
         } else {
-            assert!(dir.ends_with("timed"), "{joined} in {}", dir.display());
+            assert!(
+                dir.ends_with("timed") || dir.ends_with("reference"),
+                "{joined} in {}",
+                dir.display()
+            );
             ran.stderr = format!("    Finished `dev` profile target(s) in {n}.00s\n");
         }
         Ok(ran)
@@ -218,12 +228,18 @@ fn a_run_times_builds_and_checks_after_each_change() {
     let games = root.join("games");
     let fake = Fake::default();
     let times = run(&root, &games, &fake, &fake).unwrap();
-    // Two `shuyi new`, `metadata`, then build ×4 and check ×4.
+    // Two `shuyi new`, `metadata`, the clean build, a reference build before
+    // each rebuild, then check ×4.
     assert_eq!(times.dependencies, 2);
     assert!((times.clean - 4.0).abs() < f64::EPSILON);
-    assert_eq!(times.rebuilds, vec![5.0, 6.0, 7.0]);
-    assert!((times.check_clean - 8.0).abs() < f64::EPSILON);
-    assert_eq!(times.check_rebuilds, vec![9.0, 10.0, 11.0]);
+    assert_eq!(times.references, vec![5.0, 7.0, 9.0]);
+    assert_eq!(times.rebuilds, vec![6.0, 8.0, 10.0]);
+    assert!((times.check_clean - 11.0).abs() < f64::EPSILON);
+    assert_eq!(times.check_rebuilds, vec![12.0, 13.0, 14.0]);
+    assert_eq!(
+        fs::read_to_string(games.join("reference/src/main.rs")).unwrap(),
+        reference_source()
+    );
     assert_eq!(
         fs::read_to_string(games.join("blank/Cargo.lock")).unwrap(),
         "# the engine's lock\n"
@@ -234,6 +250,11 @@ fn a_run_times_builds_and_checks_after_each_change() {
     assert!(calls[0].contains("new") && calls[0].contains("--template grid"));
     assert!(calls[1].contains("--template blank"));
     assert_eq!(calls[3], "build --color never");
+    let target = games.join("reference").join("target-1");
+    assert_eq!(
+        calls[4],
+        format!("build --target-dir {} --color never", target.display())
+    );
     assert_eq!(calls[10], "check --color never");
     let _ = fs::remove_dir_all(&root);
 }
@@ -291,10 +312,37 @@ fn the_table_names_every_number() {
         "| Clean `check` | 20.00 |",
         "(median of 0.50, 0.40, 0.60) | 0.50 |",
         "depends on 120 crates",
+        "on linux, AMD EPYC 7763 64-Core Processor with 4 cores",
+        "| The reference build (median of 1.20, 1.00, 1.10) | 1.10 |",
     ] {
         assert!(table.contains(needle), "{needle} not in {table}");
     }
     let json = times(&[1.0, 2.0, 1.5], 120).json();
     assert_eq!(json["rebuild"], 1.5);
     assert_eq!(json["dependencies"], 120);
+    assert_eq!(json["cpu"], "AMD EPYC 7763 64-Core Processor");
+    assert_eq!(json["cores"], 4);
+    assert_eq!(json["reference"], 1.1);
+}
+
+#[test]
+fn the_cpu_is_named_from_linux_or_windows() {
+    let cpuinfo = "processor\t: 0\nvendor_id\t: AuthenticAMD\n\
+                   model name\t: AMD EPYC 7763 64-Core Processor\nprocessor\t: 1\n\
+                   model name\t: AMD EPYC 7763 64-Core Processor\n";
+    assert_eq!(
+        cpu_from_cpuinfo(cpuinfo).as_deref(),
+        Some("AMD EPYC 7763 64-Core Processor")
+    );
+    assert_eq!(cpu_from_cpuinfo("processor\t: 0\n"), None);
+    let reg = "\r\nHKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0\r\n    \
+               ProcessorNameString    REG_SZ    Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz\r\n\r\n";
+    assert_eq!(
+        cpu_from_registry(reg).as_deref(),
+        Some("Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz")
+    );
+    assert_eq!(cpu_from_registry("ERROR: not found\r\n"), None);
+    let here = Machine::here();
+    assert!(here.cores >= 1, "{here:?}");
+    assert!(!here.cpu.is_empty(), "{here:?}");
 }
