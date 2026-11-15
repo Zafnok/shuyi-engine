@@ -48,13 +48,15 @@ link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
 # build.
 capture = ["shuyi-platform/capture", "shuyi-ui/raster", "dep:image"]
 # `sound-probe`: names the sound backend for the example `sound_probe`, the
-# parity gates' probe (ticket 2573, ADR-0066). Off by default; never in a
-# shipped build.
+# parity gates' probe (ticket 2573, ADR-0066). The gates' own: what it
+# names is hidden and not covered by semver (ADR-0068). Off by default;
+# never in a shipped build, and no game turns it on.
 sound-probe = []
 # `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
 # `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
 # by default. A game that turns it on needs the root Cargo.toml's patch of `alsa-sys`
-# (ADR-0075).
+# (ADR-0075). The name stays for good, and does nothing once it is the only
+# backend (ADR-0068); no feature is ever named for quad-snd.
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 
 [dependencies]

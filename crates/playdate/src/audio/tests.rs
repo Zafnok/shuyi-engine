@@ -25,13 +25,8 @@ fn manifest() -> AudioManifest {
     m.sounds
         .insert("hum".into(), sound("sfx/hum.ogg", 100).with_looped(true));
     m.sounds.insert("step".into(), sound("sfx/hum.ogg", 100));
-    let track = |file: &str, volume, looped| MusicCue {
-        file: file.into(),
-        volume,
-        looped,
-        length_ms: 60_000,
-        credit: CreditRef::Own,
-        group: None,
+    let track = |file: &str, volume, looped| {
+        MusicCue::new(file.into(), volume, 60_000, CreditRef::Own).with_looped(looped)
     };
     m.music.insert("theme".into(), track("theme.ogg", 80, true));
     m.music
@@ -75,10 +70,7 @@ impl Rig {
 }
 
 fn sound(cue: &str, volume: f32) -> SoundRequest {
-    SoundRequest::Sound {
-        cue: cue.into(),
-        volume,
-    }
+    SoundRequest::sound(cue, volume)
 }
 
 fn load(cue: &str) -> MusicCommand {
@@ -457,11 +449,7 @@ fn the_device_is_the_players_warnings_in_the_console() {
     let requests = [sound("nope", 1.0), sound("click", 1.0)];
     let groups = SoundGroups::default();
     let full = GroupGains::full(&groups);
-    let frame = AudioFrame {
-        requests: &requests,
-        music: &[],
-        gains: Gains::new(&groups, &full),
-    };
+    let frame = AudioFrame::new(&requests, &[], Gains::new(&groups, &full));
     device.play(&frame, Millis(0));
     assert_eq!(
         sdk.sounding_samples(),

@@ -61,9 +61,8 @@ Missing mandatory automated evidence still blocks removal.
   `native_music.rs` paths, obsolete imports/plugins/features, web copied
   scripts/requests and notices. **But keep the `in-house-sound` feature**,
   doing nothing: a game may name it, and removing it would be a breaking
-  release (Nick, 2026-11-14: no breaking runs after the MVP). **Either order
-  with 2084:** if 2084 is done, ADR-0068 says so and this follows it; if not,
-  keep the feature all the same, and 2084 writes the rule. Current test dependencies must not retain
+  release (Nick, 2026-11-14: no breaking runs after the MVP). **From 2084
+  (done):** ADR-0068 §8 says so, and this follows it. Current test dependencies must not retain
   the old stack. Hound/lewton and CPAL's intentional dependencies remain.
 - Audit source/manifests and `cargo tree` for native/wasm targets and all
   relevant features; build exports and verify browser requests. Keep owned

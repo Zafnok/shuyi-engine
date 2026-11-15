@@ -122,7 +122,10 @@ None.
     not a `VnSettings` field. A volume per voiced character is a group
     under `voice`, declared in the audio manifest (2258). 2342 plays
     every clip in `voice`, so this ticket adds the clip's group to
-    `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
+    `AudioRequest::PlayVoice` and `SoundRequest::Voice` (additive:
+    **from 2084 (done)** both are `#[non_exhaustive]` variants, built
+    with `AudioRequest::play_voice` and `SoundRequest::voice`, which
+    leave the group at `None`), and the player
     plays it at that group's gain (`Gains::group`). The quick menu gets
     a row for `voice` and one for each character's group.
   - **From 2343 (done):** ducking under a voice (ADR-0099). The

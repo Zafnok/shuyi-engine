@@ -229,8 +229,10 @@ None.
 - **Public types (ADR-0039):** `WhenFull` may grow (a "stop quietest"
   rule), so it is `#[non_exhaustive]`; `CopyId` is a plain value.
 - **For the game:** the API breaks. `SoundRequest::Sound` gains `copy`
-  (match it with `..`), `SoundRequest` gains `StopCopy` (an exhaustive
-  match breaks), `AudioManifest` gains `max_voices` (a literal without
+  and `SoundRequest` gains `StopCopy`, which are additive: **from 2084
+  (done)** `Sound` is a `#[non_exhaustive]` variant built with
+  `SoundRequest::sound`, and `SoundRequest` is `#[non_exhaustive]`.
+  `AudioManifest` gains `max_voices` (a literal without
   `..` breaks), and the `Sound` kind gains `length_ms`. Each break gets
   a `Breaking:` line in the completion notes (ADR-0038). The pack's
   version goes up, so a pack baked before this is refused and rebaked.

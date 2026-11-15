@@ -226,13 +226,12 @@ fn a_moment_is_its_shot_how_far_into_it_and_the_wrapped_time() {
 #[test]
 fn the_timeline_of_a_cinematic_is_its_shots_starts_and_its_length() {
     use shuyi_assets::cinematic::ShotDef;
-    let shot = |at_ms| ShotDef { at_ms, shot: () };
-    let def = CinematicDef {
-        id: "t".to_owned(),
-        music: None,
-        length_ms: 20_000,
-        shots: vec![shot(0), shot(6000), shot(10_000)],
-    };
+    let shot = |at_ms| ShotDef::new(at_ms, ());
+    let def = CinematicDef::new(
+        "t".to_owned(),
+        20_000,
+        vec![shot(0), shot(6000), shot(10_000)],
+    );
     assert_eq!(
         Timeline::of(&def),
         Timeline::new(vec![0, 6000, 10_000], 20_000)

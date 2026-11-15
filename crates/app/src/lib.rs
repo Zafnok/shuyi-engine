@@ -105,8 +105,9 @@
 //! line to the browser's console instead (ticket 2019).
 //!
 //! With the `sound-probe` feature, `SoundProbeBackend` names the sound
-//! backend, for the example `sound_probe` that the parity gates record. No
-//! game turns it on.
+//! backend, for the example `sound_probe` that the parity gates record. It
+//! is the gates' own: hidden from these docs, not covered by semver, and
+//! no game turns it on.
 //!
 //! With the `in-house-sound` feature, sound goes through `shuyi-sound`'s mixer and
 //! `shuyi-sound-out` instead of quad-snd.
@@ -215,7 +216,11 @@ use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::dialogue::preview::PreviewGame;
 use shuyi_ui::log::{LogLevel, LogLine};
 
+/// The sound backend this build plays on, for the engine's own sound gates
+/// (the example `sound_probe`, ADR-0066). Not for games, and not covered by
+/// semver: its type changes when the backend does (ADR-0068).
 #[cfg(feature = "sound-probe")]
+#[doc(hidden)]
 pub use crate::audio::Chosen as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;

@@ -56,10 +56,7 @@ fn beeper() -> Harness<Toy> {
 }
 
 fn click() -> AudioRequest<Voice> {
-    AudioRequest::PlaySound {
-        cue: "click".into(),
-        volume: 1.0,
-    }
+    AudioRequest::play_sound("click", 1.0)
 }
 
 fn load(cue: &str) -> MusicCommand {

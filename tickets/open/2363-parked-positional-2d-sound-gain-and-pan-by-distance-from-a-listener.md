@@ -281,11 +281,14 @@ None.
   promise. ADR-0004's `Status:` line gains "its §6 promise of positional
   sound is kept by ADR-NNNN". In `docs/adr/README.md`, ADR-0004's row
   changes and the new ADR's row is added.
-- **For the game:** this changes the API. `AudioRequest::PlaySound` and
-  `SoundRequest::Sound` gain `pan`, `AudioRequest` gains a variant,
-  `SoundCue` gains a field, and `run`'s `Sound` gains two. `Backend` is
-  public, and a provided method breaks no game. The PR's `Breaking:` line (2010)
-  says so, and the game's PR that moves the pin follows it. The game's
+- **For the game:** this changes the API, additively. `AudioRequest::PlaySound` and
+  `SoundRequest::Sound` gain `pan`: **from 2084 (done)** both are
+  `#[non_exhaustive]` variants, built with `AudioRequest::play_sound`
+  and `SoundRequest::sound`, which set a `pan` of 0. `AudioRequest`
+  gains a variant (it is `#[non_exhaustive]`), `SoundCue` gains a
+  field (built with `SoundCue::new`), and `run`'s `Sound` gains two.
+  `Backend` is public, and a provided method breaks no game. No
+  `Breaking:` line is planned; the game's PR that moves the pin follows this one. The game's
   own manifest reads unchanged; a pack baked before is refused and
   baked again.
 

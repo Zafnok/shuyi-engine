@@ -316,12 +316,14 @@ impl Speaker {
     fn apply(&mut self, command: &MusicCommand, now: Millis) {
         match command {
             MusicCommand::Start { cue, .. } => self.started = Some((cue.clone(), now)),
-            MusicCommand::Stop { cue } | MusicCommand::Load { cue } => {
-                if self.started.as_ref().is_some_and(|(c, _)| c == cue) {
-                    self.started = None;
-                }
+            MusicCommand::Stop { cue } | MusicCommand::Load { cue }
+                if self.started.as_ref().is_some_and(|(c, _)| c == cue) =>
+            {
+                self.started = None;
             }
-            MusicCommand::Gain { .. } => {}
+            // A gain, another track's stop or load, and a command this
+            // speaker doesn't know yet.
+            _ => {}
         }
     }
 }

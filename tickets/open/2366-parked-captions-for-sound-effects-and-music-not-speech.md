@@ -254,12 +254,9 @@ None.
     `StartSound` of a captioned cue as a `PlaySound`: its line is added
     once when it starts, never again per loop, with a test.
   - **Public types (ADR-0039):** `SoundCue` is under it (2024), and its
-    `new` leaves `caption` at `None`. `MusicCue` moves under it in this
-    PR if it isn't already, as its *When* rule says of a type that next
-    gains a field: `#[non_exhaustive]`, with a `new` that leaves
-    `caption` at `None`. **Either order with 2365 (parked, beats):** if
-    2365 is done, it moved `MusicCue` already, so only add `caption` to
-    its `new`; if not, 2365 adds its `tempo` to the `new` written here.
+    `new` leaves `caption` at `None`. **From 2084 (done):** so is
+    `MusicCue`, with `MusicCue::new`, which leaves `caption` at `None`
+    too.
   - **2218:** if it is done, its `AudioManifestRon` writer writes
     `caption` only when it is `Some`, in the implicit-`Some` form, and
     its round trip covers a captioned cue. If not, 2218 does it.
@@ -267,9 +264,8 @@ None.
   - `SoundCue` and `MusicCue` gain a public field. `SoundCue`'s breaks
     no game: it is `#[non_exhaustive]` since 2024, and the game moves
     its `SoundCue {` literals to `SoundCue::new` when its pin passes
-    2024. `MusicCue` becoming `#[non_exhaustive]` here breaks a game
-    that builds it by literal: the PR says so in a `Breaking:` line
-    (2010).
+    2024. `MusicCue`'s breaks none either: it is `#[non_exhaustive]`
+    since 2084.
   - `Settings` gains a field (additive); `GameData` gains a defaulted
     method (additive); old manifests read as before. The game's
     `GameSettings` saves the field if it wants the setting kept.

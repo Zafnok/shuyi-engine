@@ -294,10 +294,7 @@ fn an_added_sound_mixes_as_the_same_samples_as_a_cue_of_the_manifest() {
         &|_: &str| false,
         "music",
     );
-    let play = |cue: &str| SoundRequest::Sound {
-        cue: cue.to_owned(),
-        volume: 0.5,
-    };
+    let play = |cue: &str| SoundRequest::sound(cue, 0.5);
     let mut heard = Vec::new();
     for requests in [
         vec![play("filed")],
