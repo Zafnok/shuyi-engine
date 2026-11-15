@@ -106,8 +106,8 @@ own build, which the test build doesn't relink; without it, 1.99 to
 
 Manual checks (Windows GNU, on `34960150`, `main`'s tip):
 
-- `objdump -h`: `shuyi_cli-*.exe` (unit tests) has `.debug_aranges
-  .debug_info .debug_abbrev .debug_line .debug_str .debug_ranges`;
+- `objdump -h`: `shuyi_cli-*.exe` (unit tests) has `.debug_line`,
+  `.debug_info` and four other `.debug_*` sections;
   `shuyi_core-*.exe` has no `.debug_*` section. `crash_hook-*.exe`
   had them before and has none after.
 - A throwaway failing test (`panic!` in an `#[inline(never)]` function,
