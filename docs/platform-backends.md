@@ -225,13 +225,17 @@ Add the input since the last call, in the order it happened:
 - keys as `Down(Chord)` and `Up(Key)` (the engine's `Key` names, with
   Shift in the chord), and typed characters as `Text(char)` after the
   key's `Down`;
-- controller buttons by position: read every pad's state and give it to
-  `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`, which gives
-  releases then presses and holds the rules (sticks as directions, the
-  Switch-style swap, several pads as one);
+- controller buttons by position: read every pad's state, with the
+  platform's own number for the pad (`PadId`, stable while it is plugged
+  in; 0 on a device with one pad), and give it to
+  `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`. It holds the
+  rules (sticks as directions, the Switch-style swap) and gives each
+  pad's own events with its id: every pad's releases, then
+  `PadRemoved` for each pad left out, then every pad's presses. `Game`
+  merges them, so several pads drive the game as one;
 - a crank through `RawInputEvent::from_crank`, or, where the device gives
   a float, `from_crank_steps` with whole steps (256 to the turn) made at
-  the backend's boundary.
+  the backend's boundary, each with the pad the crank is on.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home

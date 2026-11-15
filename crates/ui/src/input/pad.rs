@@ -10,16 +10,20 @@
 //! - **Switch-style pads swap Confirm and Cancel.** Bindings name button
 //!   *positions*; on a [`PadKind::Nintendo`] pad the bottom and right face
 //!   buttons trade places before the keymap sees them.
-//! - **Several pads drive the game as one.** A button held on two pads is
-//!   one press, released when the last pad lets go; unplugging a pad
-//!   releases what it held.
+//! - **Each pad's events are its own.** Every event names its pad
+//!   ([`PadId`]), and unplugging a pad releases what it held, then says it
+//!   is gone ([`RawInputEvent::PadRemoved`]). [`Game`] merges them so that
+//!   several pads drive the game as one: a button held on two pads is one
+//!   press, released when the last pad lets go.
 //!
 //! [`InputState`]: super::InputState
+//! [`Game`]: crate::Game
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 
 use super::{Button, ButtonChord, StickDef};
+use crate::RawInputEvent;
 
 /// USB vendor ids of the pad makers the game tells apart.
 const MICROSOFT: u16 = 0x045e;
@@ -378,11 +382,12 @@ fn resolve(was: ButtonSet, kind: PadKind, state: &PadState, stick: StickDef) -> 
 }
 
 /// What tells one connected pad from another: the platform's own number for
-/// it, stable while the pad stays plugged in.
+/// it, stable while the pad stays plugged in. A plain number (ADR-0039,
+/// kind 1); a front end with one pad calls it 0.
 pub type PadId = usize;
 
-/// Every connected pad, merged into one stream of button presses and
-/// releases (see the [module docs](self)).
+/// Every connected pad, each pad's button presses and releases reported
+/// on their own (see the [module docs](self)).
 #[derive(Debug, Clone)]
 pub struct Pads {
     stick: StickDef,
@@ -400,44 +405,47 @@ impl Pads {
     }
 
     /// Takes this frame's pads (`connected`: every pad plugged in, with its
-    /// kind and state; a pad left out was removed) and returns what changed
-    /// since the last call as `(button, pressed)`, releases first, each in
-    /// [`Button::ALL`] order. Buttons are binding positions: feed them to
-    /// [`InputState::pad_down`] and [`pad_up`].
+    /// kind and state; a pad left out was removed, and a pad listed twice
+    /// is its last entry) and returns what changed since the last call,
+    /// each pad's own changes with its id:
     ///
-    /// [`InputState::pad_down`]: super::InputState::pad_down
-    /// [`pad_up`]: super::InputState::pad_up
-    pub fn update(&mut self, connected: &[(PadId, PadKind, PadState)]) -> Vec<(Button, bool)> {
-        let before = self.down();
-        let mut held = BTreeMap::new();
-        for (id, kind, state) in connected {
-            let was = self.held.get(id).copied().unwrap_or_default();
-            held.insert(*id, resolve(was, *kind, state, self.stick));
+    /// 1. every pad's releases ([`RawInputEvent::PadUp`]), a removed pad's
+    ///    among them, in [`Button::ALL`] order and then by pad id;
+    /// 2. then each removed pad's [`RawInputEvent::PadRemoved`], by pad id;
+    /// 3. then every pad's presses ([`RawInputEvent::PadDown`], with the
+    ///    pad's kind), in the same order as the releases.
+    ///
+    /// Buttons are binding positions. Nothing is merged here: a button two
+    /// pads hold is pressed on each ([`Game`](crate::Game) makes it one
+    /// press). Button order first keeps a poll's presses from several pads
+    /// in the order one merged pad gave them.
+    pub fn update(&mut self, connected: &[(PadId, PadKind, PadState)]) -> Vec<RawInputEvent> {
+        let mut now: BTreeMap<PadId, (PadKind, ButtonSet)> = BTreeMap::new();
+        for &(id, kind, ref state) in connected {
+            let was = self.held.get(&id).copied().unwrap_or_default();
+            now.insert(id, (kind, resolve(was, kind, state, self.stick)));
         }
-        self.held = held;
-        let after = self.down();
-        let released = before.iter().filter(|&b| !after.contains(b));
-        let pressed = after.iter().filter(|&b| !before.contains(b));
-        released
-            .map(|b| (b, false))
-            .chain(pressed.map(|b| (b, true)))
-            .collect()
-    }
-
-    /// The kind of the pad holding `button` (a binding position), the
-    /// first of `connected` if several do: for a button [`update`] has
-    /// just reported pressed, the pad that pressed it. `connected` is what
-    /// `update` was given. `None` if no pad holds it.
-    ///
-    /// [`update`]: Self::update
-    pub fn kind_holding(
-        &self,
-        button: Button,
-        connected: &[(PadId, PadKind, PadState)],
-    ) -> Option<PadKind> {
-        let holds = |id| self.held.get(id).is_some_and(|set| set.contains(button));
-        let pad = connected.iter().find(|(id, _, _)| holds(id));
-        pad.map(|&(_, kind, _)| kind)
+        let was = |id| self.held.get(&id).copied().unwrap_or_default();
+        let held = |id| now.get(&id).map_or(ButtonSet::EMPTY, |&(_, set)| set);
+        let mut events = Vec::new();
+        for &button in Button::ALL {
+            for &id in self.held.keys() {
+                if was(id).contains(button) && !held(id).contains(button) {
+                    events.push(RawInputEvent::PadUp(button, id));
+                }
+            }
+        }
+        let removed = self.held.keys().filter(|id| !now.contains_key(id));
+        events.extend(removed.map(|&id| RawInputEvent::PadRemoved(id)));
+        for &button in Button::ALL {
+            for (&id, &(kind, set)) in &now {
+                if set.contains(button) && !was(id).contains(button) {
+                    events.push(RawInputEvent::PadDown(button, kind, id));
+                }
+            }
+        }
+        self.held = now.into_iter().map(|(id, (_, set))| (id, set)).collect();
+        events
     }
 
     /// The buttons held on any pad, by binding position.

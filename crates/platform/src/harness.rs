@@ -52,7 +52,7 @@ use crate::dropped::DroppedFile;
 use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
 use crate::player_files::ChosenFile;
-use crate::script::{self, Planned};
+use crate::script::{self, Planned, SCRIPT_PAD};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
 #[cfg(feature = "std")]
@@ -483,7 +483,7 @@ impl<G: GameData> Harness<G> {
     /// it: a press and a release of a crank button for each whole notch,
     /// the rest of a notch kept for the next call (ticket 1035).
     pub fn crank(&mut self, degrees: f32) -> &mut Self {
-        let events = RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind);
+        let events = RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind, SCRIPT_PAD);
         self.frame(&events, FRAME_DT)
     }
 
@@ -570,8 +570,8 @@ impl<G: GameData> Harness<G> {
     /// On a button [`Button::parse`] rejects.
     pub fn hold_pad(&mut self, button: &str, seconds: f32) -> &mut Self {
         let button = parse_button(button);
-        self.advance(&[RawInputEvent::PadDown(button, self.pad_kind)], seconds);
-        self.frame(&[RawInputEvent::PadUp(button)], FRAME_DT);
+        self.advance(&[RawInputEvent::PadDown(button, self.pad_kind, SCRIPT_PAD)], seconds);
+        self.frame(&[RawInputEvent::PadUp(button, SCRIPT_PAD)], FRAME_DT);
         self
     }
 

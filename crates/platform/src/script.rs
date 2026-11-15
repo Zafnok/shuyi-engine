@@ -22,10 +22,14 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi_ui::RawInputEvent;
-use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap, PadKind};
+use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap, PadId, PadKind};
 
 /// How long each frame of a script is: a 60th of a second.
 pub const FRAME_DT: f32 = 1.0 / 60.0;
+
+/// The pad a script's controller buttons and crank are on: a step names no
+/// pad, so it is pad 0, as a front end with one pad calls its pad.
+pub(crate) const SCRIPT_PAD: PadId = 0;
 
 /// One step of a script, played in the order written.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -407,10 +411,10 @@ fn pad_press(buttons: &[Button], pad: PadKind) -> [Planned; 2] {
         Planned::Events(
             buttons
                 .iter()
-                .map(|&b| RawInputEvent::PadDown(b, pad))
+                .map(|&b| RawInputEvent::PadDown(b, pad, SCRIPT_PAD))
                 .collect(),
         ),
-        Planned::Events(buttons.iter().map(|&b| RawInputEvent::PadUp(b)).collect()),
+        Planned::Events(buttons.iter().map(|&b| RawInputEvent::PadUp(b, SCRIPT_PAD)).collect()),
     ]
 }
 

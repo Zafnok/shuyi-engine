@@ -1,8 +1,9 @@
 //! Controllers (ticket 0219, game ADR-0034): reads every connected pad's raw
 //! state each frame, with gilrs on native and the browser's Gamepad API
 //! (through `crates/cli/web/gamepad.js`) on web, and hands it to `shuyi-ui`'s [`Pads`],
-//! which holds all the rules (sticks as directions, the Switch-style swap,
-//! several pads as one). Like `keys.rs`, this only translates, and ignores
+//! which holds all the rules (sticks as directions, the Switch-style swap)
+//! and gives each pad's events with its id (`Game` merges them into one).
+//! Like `keys.rs`, this only translates, and ignores
 //! the pads while the window has no focus (`pad_events`).
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -53,9 +54,10 @@ impl PadInput {
 /// The controller events of a frame `connected` describes, the window's
 /// focus at the last frame and at this one being `focus`. A window without
 /// focus hears no pad: every held button and stick direction goes up, and
-/// nothing goes down. On the frame focus comes back, its presses are
-/// dropped, so a button held across the change counts once it is let go
-/// and pressed again, as a key does.
+/// nothing goes down: every pad counts as removed (ADR-0076 §4), so its
+/// releases come with its `PadRemoved`. On the frame focus comes back, its
+/// presses are dropped, so a button held across the change counts once it
+/// is let go and pressed again, as a key does.
 pub(crate) fn pad_events(
     pads: &mut Pads,
     connected: &[(PadId, PadKind, PadState)],
@@ -109,8 +111,40 @@ mod tests {
         assert_eq!(
             up,
             [
-                RawInputEvent::PadUp(Button::LeftStickRight),
-                RawInputEvent::PadUp(Button::South),
+                RawInputEvent::PadRemoved(0),
+                RawInputEvent::PadUp(Button::LeftStickRight, 0),
+                RawInputEvent::PadUp(Button::South, 0),
+            ]
+        );
+        assert_eq!(pad_events(&mut p, &held, AWAY), []);
+    }
+
+    /// Ticket 2412: the path from a pad to its events on desktop and the
+    /// web carries the pad's id, and a pad unplugged is removed after its
+    /// releases.
+    #[test]
+    fn events_carry_their_pads_id_and_an_unplugged_pad_is_removed() {
+        let mut p = pads();
+        let state = |buttons: &[Button]| PadState {
+            buttons: buttons.iter().copied().collect(),
+            ..PadState::default()
+        };
+        let two = [
+            (2, PadKind::Xbox, state(&[Button::South])),
+            (5, PadKind::Nintendo, state(&[Button::West])),
+        ];
+        assert_eq!(
+            pad_events(&mut p, &two, FOCUSED),
+            [
+                RawInputEvent::PadDown(Button::South, PadKind::Xbox, 2),
+                RawInputEvent::PadDown(Button::West, PadKind::Nintendo, 5),
+            ]
+        );
+        assert_eq!(
+            pad_events(&mut p, &two[..1], FOCUSED),
+            [
+                RawInputEvent::PadUp(Button::West, 5),
+                RawInputEvent::PadRemoved(5),
             ]
         );
     }
@@ -120,7 +154,11 @@ mod tests {
         let mut p = pads();
         assert_eq!(pad_events(&mut p, &pad(&[], (0.0, 0.0)), FOCUSED), []);
         let pressed = pad(&[Button::East], (0.0, 0.0));
-        assert_eq!(pad_events(&mut p, &pressed, LOST), []);
+        // The pad counts as removed while unheard (ADR-0076 §4).
+        assert_eq!(
+            pad_events(&mut p, &pressed, LOST),
+            [RawInputEvent::PadRemoved(0)]
+        );
         assert_eq!(pad_events(&mut p, &pressed, AWAY), []);
     }
 
@@ -135,8 +173,8 @@ mod tests {
         assert_eq!(pad_events(&mut p, &held, FOCUSED), []);
         let free = pad(&[], (0.0, 0.0));
         let up = pad_events(&mut p, &free, FOCUSED);
-        assert_eq!(up, [RawInputEvent::PadUp(Button::South)]);
+        assert_eq!(up, [RawInputEvent::PadUp(Button::South, 0)]);
         let down = pad_events(&mut p, &held, FOCUSED);
-        assert_eq!(down, [RawInputEvent::PadDown(Button::South, PadKind::Xbox)]);
+        assert_eq!(down, [RawInputEvent::PadDown(Button::South, PadKind::Xbox, 0)]);
     }
 }

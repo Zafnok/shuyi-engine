@@ -32,6 +32,7 @@ use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
+use pads::PadMerge;
 use crate::log::{LogCategory, LogLevel};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::perf::{self, TagClass};
@@ -49,11 +50,17 @@ pub enum RawInputEvent {
     /// layout and Shift applied), for text boxes such as a name. Comes with
     /// the key's own `Down`.
     Text(#[serde(with = "one_char")] char),
-    /// A controller button went down on a pad of this kind (its binding
-    /// position, from [`Pads::update`]).
-    PadDown(Button, PadKind),
-    /// A controller button went up on every pad.
-    PadUp(Button),
+    /// A controller button went down on a pad of this kind: its binding
+    /// position, the kind, and the pad ([`Pads::update`]). A record or a
+    /// file that leaves the pad out means pad 0.
+    PadDown(Button, PadKind, #[serde(default)] PadId),
+    /// A controller button went up on this pad. A record or a file that
+    /// leaves the pad out means pad 0.
+    PadUp(Button, #[serde(default)] PadId),
+    /// This pad was unplugged, or is no longer heard (a desktop window
+    /// without focus hears no pad): it comes after the pad's releases
+    /// ([`Pads::update`]), and lets go of anything it still held.
+    PadRemoved(PadId),
 }
 
 /// A typed character in a file, as a string of one character: RON escapes a
@@ -85,32 +92,31 @@ mod one_char {
 
 impl RawInputEvent {
     /// This frame's controller events: what [`Pads::update`] reports for
-    /// the pads `connected` now, releases first, each press with the kind
-    /// of the pad that pressed it.
+    /// the pads `connected` now, each with its pad's id: every pad's
+    /// releases, then the removed pads, then every pad's presses, each
+    /// press with its pad's kind.
     pub fn from_pads(pads: &mut Pads, connected: &[(PadId, PadKind, PadState)]) -> Vec<Self> {
-        let changes = pads.update(connected);
-        let event = |(button, pressed)| {
-            if pressed {
-                let kind = pads.kind_holding(button, connected).unwrap_or_default();
-                Self::PadDown(button, kind)
-            } else {
-                Self::PadUp(button)
-            }
-        };
-        changes.into_iter().map(event).collect()
+        pads.update(connected)
     }
 
     /// This frame's crank events: the crank turned `degrees` since the
-    /// last frame (forwards positive), on a pad of `kind`; `docked` if it
-    /// is folded away (then nothing, and a part notch is forgotten). Each
-    /// notch is a press and a release of [`Button::CrankBack`] or
-    /// [`Button::CrankForward`] ([`Crank`]).
-    pub fn from_crank(crank: &mut Crank, degrees: f32, docked: bool, kind: PadKind) -> Vec<Self> {
+    /// last frame (forwards positive), on the pad `pad` of `kind`; `docked`
+    /// if it is folded away (then nothing, and a part notch is forgotten).
+    /// Each notch is a press and a release of [`Button::CrankBack`] or
+    /// [`Button::CrankForward`] ([`Crank`]). A front end with one pad
+    /// passes pad 0.
+    pub fn from_crank(
+        crank: &mut Crank,
+        degrees: f32,
+        docked: bool,
+        kind: PadKind,
+        pad: PadId,
+    ) -> Vec<Self> {
         if docked {
             crank.dock();
             return Vec::new();
         }
-        Self::crank_notches(crank.turn(degrees), kind)
+        Self::crank_notches(crank.turn(degrees), kind, pad)
     }
 
     /// [`from_crank`](Self::from_crank) of a turn in whole `steps`
@@ -121,21 +127,22 @@ impl RawInputEvent {
         steps: i32,
         docked: bool,
         kind: PadKind,
+        pad: PadId,
     ) -> Vec<Self> {
         if docked {
             crank.dock();
             return Vec::new();
         }
-        Self::crank_notches(crank.turn_steps(steps), kind)
+        Self::crank_notches(crank.turn_steps(steps), kind, pad)
     }
 
-    /// A press and a release for each of `notches`.
-    fn crank_notches(notches: Notches, kind: PadKind) -> Vec<Self> {
+    /// A press and a release on `pad` for each of `notches`.
+    fn crank_notches(notches: Notches, kind: PadKind, pad: PadId) -> Vec<Self> {
         let Some((button, times)) = Crank::presses(notches) else {
             return Vec::new();
         };
         (0..times)
-            .flat_map(|_| [Self::PadDown(button, kind), Self::PadUp(button)])
+            .flat_map(|_| [Self::PadDown(button, kind, pad), Self::PadUp(button, pad)])
             .collect()
     }
 }
@@ -227,6 +234,8 @@ impl<G: GameData> Default for GameHooks<G> {
 pub struct Game<G: GameData> {
     stack: ScreenStack<G>,
     input: InputState<G::Action>,
+    /// The buttons each pad holds, merged before `input` hears them.
+    pads: PadMerge,
     ctx: Ctx<G>,
     hooks: GameHooks<G>,
     buffer: GlyphBuffer,
@@ -272,6 +281,7 @@ impl<G: GameData> Game<G> {
         let mut game = Self {
             stack,
             input,
+            pads: PadMerge::default(),
             buffer: GlyphBuffer::with_spec(ctx.console, blank).with_widths(ctx.widths().clone()),
             ctx,
             hooks,
@@ -559,6 +569,9 @@ impl<G: GameData> Game<G> {
         let mut text = Vec::new();
         let mut buttons_down = Vec::new();
         let mut buttons_up = Vec::new();
+        // Several pads as one: what the input hears of the pads.
+        let events = self.pads.merge(events);
+        let events = events.as_slice();
         // Until a layout is chosen no key acts: the first one opens the
         // game's first-key screen over whatever is showing and does nothing
         // else; that screen then takes the keys. Without a keyboard, never.
@@ -586,7 +599,7 @@ impl<G: GameData> Game<G> {
                 // platforms) are keys, not text.
                 RawInputEvent::Text(c) if !c.is_control() => text.push(c),
                 RawInputEvent::Text(_) => {}
-                RawInputEvent::PadDown(button, kind) => {
+                RawInputEvent::PadDown(button, kind, _) => {
                     self.input.pad_down(button, kind);
                     if ends_wait {
                         // The wait takes it: nothing when let go either
@@ -595,10 +608,12 @@ impl<G: GameData> Game<G> {
                     }
                     buttons_down.push(button);
                 }
-                RawInputEvent::PadUp(button) => {
+                RawInputEvent::PadUp(button, _) => {
                     self.input.pad_up(button);
                     buttons_up.push(button);
                 }
+                // The merge has turned it into its releases.
+                RawInputEvent::PadRemoved(_) => {}
             }
         }
         self.ctx.clock_s += f64::from(dt);
@@ -892,5 +907,6 @@ fn plays_a_loop<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool 
         if manifest.sounds.get(cue).is_some_and(|s| s.looped))
 }
 
+mod pads;
 #[cfg(test)]
 mod tests;
