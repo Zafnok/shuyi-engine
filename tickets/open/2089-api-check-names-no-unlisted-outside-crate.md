@@ -69,8 +69,9 @@ None.
 3. Call it where the head's listing is made, add its findings to the
    summary, and fail the run on one, with the line and "ADR-0119 lists
    the outside crates the public API may name".
-4. The `api` gate's line in the `run-gates` skill and ADR-0038's
-   summary of what the job checks: one sentence each.
+4. The `api` gate's section of the `run-gates` skill: one sentence on
+   the check. ADR-0038 and ADR-0119 are accepted and stay as they are
+   (ADR-0119's *Consequences* already names this ticket).
 
 ## Acceptance criteria
 
