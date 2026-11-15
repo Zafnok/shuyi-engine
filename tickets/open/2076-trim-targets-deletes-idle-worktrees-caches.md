@@ -91,6 +91,16 @@ None.
   - a plain hard-link copy: it corrupted 31 metadata files in the
     donor;
   - incremental off everywhere: about 7 minutes per ticket.
+- **For 3403:** 3403 gives a game the same command (`cargo shuyi
+  trim-targets`). So the walk goes in `shuyi-cli`
+  (`crates/cli/src/worktrees/trim.rs`, public as
+  `shuyi_cli::worktrees::trim`), and xtask's command is a thin wrapper
+  over it. Write it once there now; moving it later would count every
+  line twice in `pr-size`. The places `incremental/` is looked for
+  are a parameter: xtask passes the engine's (`debug`, `gates/games`,
+  `tutorial`, `skill-examples*`), and 3403 passes a game's. If
+  `check-layers` asks for it, the edge from xtask to `shuyi-cli` gets
+  its line in `tools/layers.ron`.
 
 **Out (do not do):**
 - Removing, archiving or pruning a worktree, or deleting anything
@@ -100,8 +110,8 @@ None.
 
 ## Implementation steps
 
-1. New `crates/xtask/src/trim.rs`, wired in `main.rs` and its usage
-   text.
+1. New `crates/cli/src/worktrees/trim.rs` (the **For 3403** item), and
+   xtask's `trim-targets` wired in its `main.rs` and usage text over it.
 2. Worktrees: parse `git worktree list --porcelain` (skip `prunable`
    and missing folders). Skip the current one.
 3. Idle: the newest mtime of the files directly inside each

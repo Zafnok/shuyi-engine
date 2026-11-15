@@ -57,14 +57,25 @@ None.
 ## Scope
 
 **In:**
-- `cargo xtask seed-target [--from <worktree>]`, default the main
-  worktree (the first line of `git worktree list --porcelain`), into
-  this worktree's `target/`, which must be absent or empty.
+- `cargo xtask seed-target --into <worktree>`, run in the warm donor
+  (usually the main worktree, the first line of `git worktree list
+  --porcelain`), into the new worktree's `target/`, which must be absent
+  or empty. Not a `--from` run inside the new worktree: there, `cargo
+  xtask` first builds xtask into the very `target/` it must find empty,
+  so it would always refuse. The donor's xtask is already built.
 - Only `debug/` (`deps`, `build`, `.fingerprint`) of the host triple.
   No `incremental/`, no other triple, no `gates/`, `tutorial/` or
   `skill-examples*`.
-- The `work-ticket` skill's start: in a new worktree, run it once
-  before the first build.
+- The `work-ticket` skill's start: in a new worktree, before the first
+  build, run it once from the main worktree with `--into` this one (the
+  command spelled out, in Bash and PowerShell).
+- **For 3403:** 3403 gives a game the same command (`cargo shuyi
+  seed-target --into`). So the seed goes in `shuyi-cli`
+  (`crates/cli/src/worktrees/seed.rs`, public as
+  `shuyi_cli::worktrees::seed`), and xtask's command is a thin wrapper
+  over it. Write it once there now; moving it later would count every
+  line twice in `pr-size`. If `check-layers` asks for it, the edge from
+  xtask to `shuyi-cli` gets its line in `tools/layers.ron`.
 
 **Out (do not do):**
 - Seeding from a target with a cargo build running (refuse).
@@ -75,7 +86,8 @@ None.
 
 ## Implementation steps
 
-1. New `crates/xtask/src/seed.rs`, wired in `main.rs`.
+1. New `crates/cli/src/worktrees/seed.rs` (the **For 3403** item), and
+   xtask's `seed-target` wired in its `main.rs` over it.
 2. Refuse when the donor's `.cargo-lock` can't be locked
    (`File::try_lock`), when this `target/` isn't empty, or when donor
    and target are on different volumes (hard links can't cross them).
@@ -85,9 +97,13 @@ None.
    - set each folder's mtime to the donor's after filling it.
 4. In copied `build/*/output` and `build/*/root-output`, replace the
    donor's root path with this worktree's.
-5. Delete `.fingerprint/<pkg>-*` for every workspace member (`cargo
-   metadata --no-deps`, `workspace_members`), so they rebuild with their
-   own paths.
+5. Delete `.fingerprint/<pkg>-*` for every path package, so each
+   rebuilds with its own paths. A path package is one whose `source` is
+   null in `cargo metadata`'s `packages`. Cargo hashes such a package's
+   path relative to the workspace root, so it gets the same hash in
+   every worktree. In the engine these are the workspace members. In a
+   game (3403) they also include an engine checked out inside the game
+   (the game's `cargo xtask engine`).
 6. The `work-ticket` skill and the run-gates skill's notes (`pwsh -File
    scripts/sync-agent-skills.ps1`).
 
