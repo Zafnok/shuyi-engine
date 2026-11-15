@@ -120,7 +120,8 @@ None.
 - [x] Every type in the table is `#[non_exhaustive]`, and a test outside
       its crate builds it through its constructor (a doc test does).
 - [x] `cargo xtask api` lists each change, and the completion notes'
-      `Breaking:` line names each type.
+      `Breaking:` line names each type (`api` runs in CI only: the PR's
+      `api` job is the check).
 - [x] The templates' job, the tutorial steps and the examples pass.
 - [x] ADR-0039's **When** says what moves before a first release.
 - [x] No open ticket still plans a `Breaking:` line for one of these
@@ -394,8 +395,10 @@ old: GlyphSkin { colors, walk, foot_px, style }, GlyphSkin::styled
 new: GlyphSkin::new(colors, walk, foot_px).with_style(style)
 before: |
   const ONE_BIT: GlyphSkin = GlyphSkin { colors, walk, foot_px: 2, style: STYLE };
+  const FLAT: GlyphSkin = GLYPH.styled(STYLE);
 after: |
   const ONE_BIT: GlyphSkin = GlyphSkin::new(colors, walk, 2).with_style(STYLE);
+  const FLAT: GlyphSkin = GLYPH.with_style(STYLE);
 find: ["GlyphSkin {", ".styled("]
 ```
 
@@ -444,11 +447,11 @@ Breaking: shuyi-ui: ScreenActions: #[non_exhaustive]; build it with of, declared
 ```migration
 since: 0.1.0
 what: ScreenActions is built with of, declared or the new undeclared, not by a literal.
-old: ScreenActions { screen, actions: None }
+old: "ScreenActions { screen, actions: None }"
 new: ScreenActions::undeclared(screen)
 before: |
   let title = ScreenActions::<Action> { screen: "title", actions: None };
 after: |
   let title = ScreenActions::<Action>::undeclared("title");
-find: ["ScreenActions {"]
+find: ["actions: None }"]
 ```
