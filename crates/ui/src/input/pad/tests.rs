@@ -700,14 +700,20 @@ fn each_pad_keeps_its_own_stick_state() {
     assert_eq!(changes(&mut p, &[a(0.6), b(0.0)]), [(LeftStickRight, true)]);
     // Pad 1 at 0.4 never pressed, so it isn't held; pad 0 at 0.4 still is.
     assert_eq!(changes(&mut p, &[a(0.4), b(0.4)]), []);
-    assert_eq!(changes(&mut p, &[a(0.0), b(0.4)]), [(LeftStickRight, false)]);
+    assert_eq!(
+        changes(&mut p, &[a(0.0), b(0.4)]),
+        [(LeftStickRight, false)]
+    );
 }
 
 #[test]
 fn a_nintendo_pad_reports_its_right_button_as_south() {
     let mut p = pads();
     let switch = |state| (0, PadKind::Nintendo, state);
-    assert_eq!(changes(&mut p, &[switch(holding(&[East]))]), [(South, true)]);
+    assert_eq!(
+        changes(&mut p, &[switch(holding(&[East]))]),
+        [(South, true)]
+    );
     assert_eq!(
         changes(&mut p, &[switch(holding(&[South]))]),
         [(South, false), (East, true)]

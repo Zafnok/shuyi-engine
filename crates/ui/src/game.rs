@@ -32,11 +32,11 @@ use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
-use pads::PadMerge;
 use crate::log::{LogCategory, LogLevel};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
+use pads::PadMerge;
 use shuyi_assets::font::CellWidths;
 
 /// A keyboard or controller event as the platform reports it.

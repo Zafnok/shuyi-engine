@@ -175,6 +175,9 @@ mod tests {
         let up = pad_events(&mut p, &free, FOCUSED);
         assert_eq!(up, [RawInputEvent::PadUp(Button::South, 0)]);
         let down = pad_events(&mut p, &held, FOCUSED);
-        assert_eq!(down, [RawInputEvent::PadDown(Button::South, PadKind::Xbox, 0)]);
+        assert_eq!(
+            down,
+            [RawInputEvent::PadDown(Button::South, PadKind::Xbox, 0)]
+        );
     }
 }

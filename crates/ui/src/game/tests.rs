@@ -50,7 +50,8 @@ fn a_pad_events_text_names_its_pad_and_text_without_one_is_pad_0() {
         r#"[PadDown("South",Nintendo,3),PadUp("DpadUp",1),PadRemoved(2)]"#
     );
     assert_eq!(ron::from_str::<Vec<RawInputEvent>>(&text).unwrap(), events);
-    let old: Vec<RawInputEvent> = ron::from_str(r#"[PadDown("East", Xbox), PadUp("East")]"#).unwrap();
+    let old: Vec<RawInputEvent> =
+        ron::from_str(r#"[PadDown("East", Xbox), PadUp("East")]"#).unwrap();
     assert_eq!(
         old,
         [
@@ -1226,8 +1227,14 @@ fn crank_notches_become_presses_and_releases_of_the_crank_buttons() {
         ]
     );
     // 20 wound forwards, then docked: forgotten.
-    assert_eq!(RawInputEvent::from_crank(&mut crank, -25.0, true, kind, pad), []);
-    assert_eq!(RawInputEvent::from_crank(&mut crank, 20.0, false, kind, pad), []);
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, -25.0, true, kind, pad),
+        []
+    );
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, 20.0, false, kind, pad),
+        []
+    );
 }
 
 /// Ticket 1035: an action from outside the keys (a platform's own menu)

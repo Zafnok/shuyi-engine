@@ -68,11 +68,23 @@ fn two_pads_holding_one_button_are_one_press() {
     let mut pads = Pads::new(stick());
     let a = |state| (3, PadKind::Xbox, state);
     let b = |state| (7, PadKind::PlayStation, state);
-    poll(&mut game, &mut pads, &[a(holding(&[South])), b(holding(&[]))]);
+    poll(
+        &mut game,
+        &mut pads,
+        &[a(holding(&[South])), b(holding(&[]))],
+    );
     // The second pad joins in: no second press.
-    poll(&mut game, &mut pads, &[a(holding(&[South])), b(holding(&[South]))]);
+    poll(
+        &mut game,
+        &mut pads,
+        &[a(holding(&[South])), b(holding(&[South]))],
+    );
     // The first lets go: still held by the second.
-    poll(&mut game, &mut pads, &[a(holding(&[])), b(holding(&[South]))]);
+    poll(
+        &mut game,
+        &mut pads,
+        &[a(holding(&[])), b(holding(&[South]))],
+    );
     poll(&mut game, &mut pads, &[a(holding(&[])), b(holding(&[]))]);
     // Different buttons on different pads are separate presses, and
     // unplugging one pad releases only what the other doesn't hold.
@@ -87,7 +99,14 @@ fn two_pads_holding_one_button_are_one_press() {
     let released: Vec<Vec<Button>> = seen.iter().map(|f| f.released_buttons().to_vec()).collect();
     assert_eq!(
         pressed,
-        [vec![South], vec![], vec![], vec![], vec![South, West, North], vec![]]
+        [
+            vec![South],
+            vec![],
+            vec![],
+            vec![],
+            vec![South, West, North],
+            vec![]
+        ]
     );
     assert_eq!(
         released,
@@ -135,7 +154,10 @@ fn a_removal_lets_go_of_what_only_that_pad_held() {
     let down = |b, pad| RawInputEvent::PadDown(b, PadKind::Xbox, pad);
     game.frame(&[down(South, 1), down(West, 1), down(South, 2)], 0.0);
     game.frame(&[RawInputEvent::PadRemoved(1)], 0.0);
-    game.frame(&[RawInputEvent::PadRemoved(2), RawInputEvent::PadRemoved(2)], 0.0);
+    game.frame(
+        &[RawInputEvent::PadRemoved(2), RawInputEvent::PadRemoved(2)],
+        0.0,
+    );
     let seen = seen.borrow();
     assert_eq!(seen[0].pressed_buttons(), [South, West]);
     assert_eq!(seen[1].released_buttons(), [West]);
@@ -150,7 +172,11 @@ fn a_removal_lets_go_of_what_only_that_pad_held() {
 fn a_button_passed_from_pad_to_pad_in_one_poll_stays_held() {
     let (mut game, seen) = spied();
     let mut pads = Pads::new(stick());
-    poll(&mut game, &mut pads, &[(0, PadKind::Xbox, holding(&[South]))]);
+    poll(
+        &mut game,
+        &mut pads,
+        &[(0, PadKind::Xbox, holding(&[South]))],
+    );
     let swapped = [
         (0, PadKind::Xbox, holding(&[])),
         (1, PadKind::Xbox, holding(&[South])),

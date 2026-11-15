@@ -414,7 +414,12 @@ fn pad_press(buttons: &[Button], pad: PadKind) -> [Planned; 2] {
                 .map(|&b| RawInputEvent::PadDown(b, pad, SCRIPT_PAD))
                 .collect(),
         ),
-        Planned::Events(buttons.iter().map(|&b| RawInputEvent::PadUp(b, SCRIPT_PAD)).collect()),
+        Planned::Events(
+            buttons
+                .iter()
+                .map(|&b| RawInputEvent::PadUp(b, SCRIPT_PAD))
+                .collect(),
+        ),
     ]
 }
 

@@ -157,7 +157,7 @@ These tickets, in order:
 | 2084 | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
 | 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
 | 2086 | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
-| 2412 | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
+| 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |

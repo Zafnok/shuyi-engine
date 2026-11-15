@@ -483,7 +483,8 @@ impl<G: GameData> Harness<G> {
     /// it: a press and a release of a crank button for each whole notch,
     /// the rest of a notch kept for the next call (ticket 1035).
     pub fn crank(&mut self, degrees: f32) -> &mut Self {
-        let events = RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind, SCRIPT_PAD);
+        let events =
+            RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind, SCRIPT_PAD);
         self.frame(&events, FRAME_DT)
     }
 
@@ -570,7 +571,10 @@ impl<G: GameData> Harness<G> {
     /// On a button [`Button::parse`] rejects.
     pub fn hold_pad(&mut self, button: &str, seconds: f32) -> &mut Self {
         let button = parse_button(button);
-        self.advance(&[RawInputEvent::PadDown(button, self.pad_kind, SCRIPT_PAD)], seconds);
+        self.advance(
+            &[RawInputEvent::PadDown(button, self.pad_kind, SCRIPT_PAD)],
+            seconds,
+        );
         self.frame(&[RawInputEvent::PadUp(button, SCRIPT_PAD)], FRAME_DT);
         self
     }
