@@ -598,7 +598,8 @@ impl<G: GameData> Game<G> {
                 // Control characters (Enter, Backspace, Escape on some
                 // platforms) are keys, not text.
                 RawInputEvent::Text(c) if !c.is_control() => text.push(c),
-                RawInputEvent::Text(_) => {}
+                // A removed pad: the merge has turned it into its releases.
+                RawInputEvent::Text(_) | RawInputEvent::PadRemoved(_) => {}
                 RawInputEvent::PadDown(button, kind, _) => {
                     self.input.pad_down(button, kind);
                     if ends_wait {
@@ -612,8 +613,6 @@ impl<G: GameData> Game<G> {
                     self.input.pad_up(button);
                     buttons_up.push(button);
                 }
-                // The merge has turned it into its releases.
-                RawInputEvent::PadRemoved(_) => {}
             }
         }
         self.ctx.clock_s += f64::from(dt);

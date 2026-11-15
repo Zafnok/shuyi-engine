@@ -142,7 +142,7 @@ fn a_removed_pad_releases_what_it_held() {
     assert_eq!(seen[0].pressed_buttons(), all);
     assert_eq!(seen[1].released_buttons(), all);
     assert!(!seen[1].is_held(Action::Confirm));
-    assert!(seen[2].released_buttons().is_empty());
+    assert_eq!(seen[2].released_buttons(), []);
     assert_eq!(seen[3].pressed_buttons(), all);
 }
 
@@ -186,8 +186,8 @@ fn a_button_passed_from_pad_to_pad_in_one_poll_stays_held() {
     let seen = seen.borrow();
     assert_eq!(seen[0].actions, [Action::Confirm]);
     assert!(seen[1].actions.is_empty(), "{:?}", seen[1].actions);
-    assert!(seen[1].pressed_buttons().is_empty());
-    assert!(seen[1].released_buttons().is_empty());
+    assert_eq!(seen[1].pressed_buttons(), []);
+    assert_eq!(seen[1].released_buttons(), []);
     assert!(seen[1].is_held(Action::Confirm));
     assert_eq!(seen[2].released_buttons(), [South]);
 }
