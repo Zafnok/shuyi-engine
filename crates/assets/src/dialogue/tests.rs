@@ -250,6 +250,57 @@ fn narration_with_a_bracket_that_is_no_direction_stays_text() {
 }
 
 #[test]
+fn text_that_starts_with_a_bracket_prints_and_parses_back_as_text() {
+    // `():0` is the game's shrunk case (game#0759).
+    for text in ["()", "():0", "(soft) word", "(soft): word", "(a) b): c"] {
+        let scene = Scene {
+            id: "s".into(),
+            steps: vec![
+                narrate(text),
+                say("m", None, text),
+                Step::Choice {
+                    options: vec![ChoiceOption {
+                        tone: "t".into(),
+                        text: text.into(),
+                        line: LineId::default(),
+                        steps: vec![narrate(text)],
+                    }],
+                },
+            ],
+        };
+        let printed = print_scene(&scene);
+        let (parsed, errors) = parse_dlg::<Cue>("t.dlg", &printed);
+        assert_eq!(errors, [], "{printed}");
+        assert_eq!(bare(&parsed[0].scene.steps), scene.steps, "{printed}");
+    }
+    // Only text that would read as a direction gets the empty one.
+    let printed = |text: &str| {
+        print_scene(&Scene::<Cue> {
+            id: "s".into(),
+            steps: vec![narrate(text)],
+        })
+    };
+    assert_eq!(
+        printed("(soft): word"),
+        "@scene s\n> (): (soft): word\n@end\n"
+    );
+    assert_eq!(printed("(soft) word"), "@scene s\n> (soft) word\n@end\n");
+    assert_eq!(printed("soft): word"), "@scene s\n> soft): word\n@end\n");
+}
+
+#[test]
+fn narration_after_an_empty_bracket_is_all_text_under_the_delivery_in_force() {
+    let src = "@scene a\n> (): (soft): word\n@delivery low\n> ():(x)\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let lines = parsed[0].scene.lines();
+    assert_eq!(lines[0].text, "(soft): word");
+    assert_eq!(lines[0].direction, None);
+    assert_eq!(lines[1].text, "(x)");
+    assert_eq!(lines[1].direction, Some("low"));
+}
+
+#[test]
 fn delivery_holds_until_cleared_and_a_lines_own_wins() {
     let src = "@scene a\n@left m neutral\nm: One.\n@delivery low, tired\nm: Two.\nm (loud): Three.\n\
                > Four.\n@delivery calm\nm: Five.\n@delivery clear\nm: Six.\n@end\n\
@@ -1697,8 +1748,14 @@ fn arb_id() -> impl Strategy<Value = String> {
     "[a-z][a-z0-9_]{0,6}"
 }
 
+/// Printable ASCII, brackets and colons included, with no space at either
+/// end (the parser trims a line); often opening with a bracket, as a
+/// direction does (game#0759).
 fn arb_text() -> impl Strategy<Value = String> {
-    "[A-Za-z][A-Za-z ,.!?]{0,20}[A-Za-z.!?]"
+    prop_oneof![
+        "[!-~]([ -~]{0,20}[!-~])?",
+        r"\([ -~]{0,6}\)(:[ -~]{0,10}[!-~])?",
+    ]
 }
 
 fn arb_side() -> impl Strategy<Value = Side> {

@@ -211,8 +211,12 @@ impl<D: Directive> Parser<'_, D> {
         } else if let Some(rest) = body.strip_prefix('>') {
             let rest = rest.trim();
             // `> (direction): text`; other narration may open with a bracket.
+            // `> (): text` writes no direction: what follows it is all text,
+            // for text that would read as one (`print_scene` writes it).
             let directed = rest.strip_prefix('(').and_then(|r| r.split_once("):"));
-            let (own, text) = directed.map_or((None, rest), |(own, text)| (Some(own), text.trim()));
+            let (own, text) = directed.map_or((None, rest), |(own, text)| {
+                (Some(own).filter(|own| !own.is_empty()), text.trim())
+            });
             if text.is_empty() {
                 self.err(n, "narration has no text");
             } else {
