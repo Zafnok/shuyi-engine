@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 2081 — The repository's MCP server command runs the shuyi binary with `--bin`, reusing the workspace's build
@@ -60,11 +60,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] After `cargo build --workspace`, the new command compiles nothing
+- [x] After `cargo build --workspace`, the new command compiles nothing
       (notes).
-- [ ] A new session's `shuyi` MCP server starts and answers `doctor`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A new session's `shuyi` MCP server starts and answers `doctor`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -72,5 +72,39 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+The repository's own MCP server now runs as `cargo run -q --bin shuyi --
+mcp`, in `.mcp.json`, `.codex/config.toml` and the dev container's
+`postCreateCommand` (its `--command`, and the `mcp install` it runs).
+
+Measured on a target of its own (`CARGO_TARGET_DIR=target/fresh-2081`),
+after `cargo build --workspace`, counting the `Compiling` lines of each
+command run without `-q` (which hides them; the units are the same):
+
+- `cargo run --bin shuyi -- mcp --help`: 0 units;
+- `cargo run -p shuyi-cli -- mcp --help`: 8 units (`memchr`,
+  `serde_json`, `schemars`, `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
+  `shuyi-platform`, `shuyi-cli`).
+
+The MCP start: `cargo run -q --bin shuyi -- mcp`, read from the new
+`.mcp.json` and run from the root as a new session's client runs it, was
+sent `initialize` and a `tools/call` of `doctor` over stdin; it answered
+both, `doctor` with `"ok": true`.
+
+Deviations:
+
+- `crates/cli/tests/it/mcp.rs`'s `ENGINE_COMMAND` changed with
+  `.mcp.json`: its test checks that `.mcp.json` is what `mcp install`
+  writes for that command. Only the constant changed, not the install
+  tests the **Out** line keeps. So did the engine's command in
+  `crates/cli/src/contract/new/tests.rs`
+  (`every_dev_container_is_set_up_as_the_engines`), which pins the dev
+  container's `postCreateCommand`.
+- The dev container's own first `cargo run` (the `mcp install` it runs)
+  also uses `--bin shuyi`, so the container builds one copy, not two.
+- `docs/README.md`'s row for the MCP server names the new command.
+
+No break; no `Behaviour:` line: only this repository's own settings
+changed, which no game reads (a game's `mcp install` writes its own).
+
+Book: none, no public API, contract or game-facing command changed; the
+book never names this repository's own MCP settings.

@@ -993,7 +993,7 @@ fn every_dev_container_is_set_up_as_the_engines() {
     assert_eq!(
         engine_command,
         format!(
-            "{setup}cargo run -q -p shuyi-cli -- mcp install --yes --command \"cargo run -q -p shuyi-cli --\""
+            "{setup}cargo run -q --bin shuyi -- mcp install --yes --command \"cargo run -q --bin shuyi --\""
         )
     );
     for (short, plan) in every_short_names_game() {
