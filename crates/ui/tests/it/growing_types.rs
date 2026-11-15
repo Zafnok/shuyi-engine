@@ -113,9 +113,9 @@ fn screen_actions_are_built_through_their_constructors() {
     let open = ScreenActions::<Action>::undeclared("title");
     assert_eq!(declared.actions, Some(vec![Action::Confirm]));
     assert_eq!(open.actions, None);
-    let error = match FitRule::Undeclared {
-        FitRule::Undeclared => false,
-        _ => true,
+    let kind = match FitRule::Undeclared {
+        FitRule::Undeclared => "warning",
+        _ => "error",
     };
-    assert!(!error);
+    assert_eq!(kind, "warning");
 }
