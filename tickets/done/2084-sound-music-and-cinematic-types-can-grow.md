@@ -69,9 +69,9 @@ None.
   is for the engine's sound gates and not covered by semver.
   **From 2087 (done):** its methods are the one path of `quad_snd` left
   in the public API listing (ADR-0119, §3), so hiding it leaves none.
-  **Either order with 2089:** if 2089 is done, take the `quad_snd` line
-  for `shuyi-app` out of its allowed outside crates
-  (`crates/xtask/src/api.rs`); if not, nothing to do (2089 allows none).
+  **From 2089 (done):** take the `quad_snd` line for `shuyi-app` out of
+  `OUTSIDE_CRATES` (`crates/xtask/src/api.rs`), and its comment; `cargo
+  xtask api` then fails any `quad_snd` path left in the listing.
 - A paragraph in [ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md):
   - `in-house-sound` stays a feature of `shuyi-app` for good, and does
     nothing once it is the only backend;
@@ -167,8 +167,10 @@ What was done:
 - ADR-0068 gains §8: `in-house-sound` stays for good and does nothing
   once it is the only backend, no feature is named for quad-snd, and
   `sound-probe` is the gates' own.
-- Either-order clauses: 2089 is not done, so nothing to do in
-  `crates/xtask/src/api.rs` (2089 now says 2084 hid the item). 3084 and
+- 2089 landed while this PR was open (#444): the merge of `main` took
+  the `quad_snd` line for `shuyi-app`, and its comment, out of
+  `OUTSIDE_CRATES` (`crates/xtask/src/api.rs`), so `cargo xtask api` now
+  fails any `quad_snd` path in the listing. 3084 and
   3079 are not done; their clauses now say "From 2084 (done)".
 - The planned `Breaking:` lines of 2345, 2378, 2379, 2363, 2725, 2397,
   2366, 2365 and 2364 for these types are now additive. 2378 keeps its
@@ -192,7 +194,7 @@ Deviations:
 
 Tickets written:
 
-- 2090: giving up the sound replacement still takes the `in-house-sound`
+- 2091: giving up the sound replacement still takes the `in-house-sound`
   feature out (the footprint and CI's `sound-give-up` grep), which
   ADR-0068 §8 now forbids after the first release.
 

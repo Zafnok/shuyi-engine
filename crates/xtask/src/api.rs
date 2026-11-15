@@ -180,9 +180,6 @@ pub const OUTSIDE_CRATES: &[(&str, &[&str])] = &[
     ("schemars", &[]),
     ("serde_json", &["shuyi-cli"]),
     ("semver", &["shuyi-cli"]),
-    // The methods of `shuyi-app`'s probe backend, until 2084 hides it; 2084
-    // takes this line out.
-    ("quad_snd", &["shuyi-app"]),
 ];
 
 /// The `cargo-semver-checks` this check runs, the one CI installs. It reads
