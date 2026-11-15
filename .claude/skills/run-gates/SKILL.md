@@ -189,13 +189,14 @@ cargo build -p shuyi-platform --no-default-features --features capture --target 
 RUSTFLAGS="--cfg shuyi_playdate_sdk" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
 cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
-RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
+CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 ```
 
 The last runs their tests without `std` on the host, the headless
-backend's included. The tests bring `std` in, and with it `std`'s float
-methods, so the `Float` imports the `no_std` code needs are unused there
-only; the target build denies every warning.
+backend's included, and fails on a warning in them. It denies warnings
+with cargo's `build.warnings` setting, not `RUSTFLAGS`: the flags are
+part of every unit's hash, so a `RUSTFLAGS` of its own built each
+dependency again (ticket 2079).
 
 Code that needs `std` goes behind `cfg(feature = "std")`: on the line
 with its `std::` path, or in a module whose file starts with

@@ -78,8 +78,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",
-            find: "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
-            with: "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast",
+            find: "CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
+            with: "CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast",
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",
