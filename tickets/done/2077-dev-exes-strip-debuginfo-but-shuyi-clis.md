@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 2077 — Dev and test programs are built without debug info, but shuyi-cli's
@@ -66,12 +66,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi-cli`'s test program still carries DWARF (`objdump -h`
+- [x] `shuyi-cli`'s test program still carries DWARF (`objdump -h`
       shows `.debug_line`), and another crate's test program doesn't.
-- [ ] A failing test still prints its panic's `file:line`.
-- [ ] The notes give the `.exe` total before and after.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A failing test still prints its panic's `file:line`.
+- [x] The notes give the `.exe` total before and after.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -80,5 +80,51 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- Root `Cargo.toml`: `strip = "debuginfo"` under `[profile.dev]` (the
+  `test` profile inherits it), with a comment on what it keeps and
+  drops, and `[profile.dev.package.shuyi-cli]` with `strip = "none"`.
+  Cargo takes `strip` in a package override, so no other way was needed;
+  it is a link setting, so it applies to the programs `shuyi-cli` links
+  (its unit tests, its `it` tests, the `shuyi` binary), on Windows GNU
+  and Linux alike.
+- 2520 was still open: its "either order" clause now says the override
+  is there and its DWARF test relies on it (**From 2077 (done)**).
+
+Sizes, `target/debug/deps/*.exe` after one `cargo test --workspace
+--no-run` in this worktree (logical size, before NTFS compression):
+
+| | Programs | Total |
+| --- | --- | --- |
+| Before | 48 | 2.06 GB |
+| After | 47 relinked | 1.23 GB |
+
+The 48th before (`shuyi-*.exe`, 65.6 MB) was the `shuyi` MCP server's
+own build, which the test build doesn't relink; without it, 1.99 to
+1.23 GB, 38 % less. `shuyi_cli`'s test program stays 112 MB.
+
+Manual checks (Windows GNU, on `34960150`, `main`'s tip):
+
+- `objdump -h`: `shuyi_cli-*.exe` (unit tests) has `.debug_line`,
+  `.debug_info` and four other `.debug_*` sections;
+  `shuyi_core-*.exe` has no `.debug_*` section. `crash_hook-*.exe`
+  had them before and has none after.
+- A throwaway failing test (`panic!` in an `#[inline(never)]` function,
+  deleted after) in `shuyi-core` and in `shuyi-cli`, run with
+  `RUST_BACKTRACE=1`. Both print the panic's place:
+  `panicked at crates\core\tests\zz_2077_probe.rs:8:5`. The backtrace
+  of `shuyi-core`'s names its frames (`zz_2077_probe::inner`) with no
+  `at file:line`; `shuyi-cli`'s names them with `at
+  .\tests\zz_2077_probe.rs:9:5`.
+
+Deviations: none.
+
+Book: none, no public API changed; the book's fast-compiles chapter is
+about a game's own `Cargo.toml` (the templates, left out by this
+ticket), not the engine's workspace.
+
+Game: nothing to adopt, the root profile only builds this repository;
+a game's build reads its own `Cargo.toml`.
+
+Nick input: none.
