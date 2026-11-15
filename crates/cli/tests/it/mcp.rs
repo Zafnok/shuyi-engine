@@ -535,4 +535,4 @@ fn this_repository_mcp_json_is_what_install_writes_for_claude_code() {
 }
 
 /// How this repository runs `shuyi`, which has none installed.
-const ENGINE_COMMAND: &str = "cargo run -q -p shuyi-cli --";
+const ENGINE_COMMAND: &str = "cargo run -q --bin shuyi --";
