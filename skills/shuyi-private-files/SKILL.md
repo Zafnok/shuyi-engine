@@ -119,10 +119,10 @@ cargo shuyi private-assets --pin
 `--pin` writes the checkout's commit into `private.rev`, after checking
 it has no uncommitted change and is on the private `main` (a squash
 merge leaves the branch's own commit on no branch: that is why the
-checkout moves to `origin/main` first). If it refuses with "isn't on the
-private repository's main branch", the private pull request isn't
-merged yet: wait for it, and **don't push `main` as its message
-suggests.** Commit `private.rev` in the game's pull request, push, and
+checkout moves to `origin/main` first). If it refuses with "isn't
+merged into the private repository's main branch yet", the private pull
+request isn't merged: wait for it, then fetch, switch to `origin/main`
+and run `--pin` again, as the refusal says. Commit `private.rev` in the game's pull request, push, and
 merge it once CI is green.
 
 Moving the pin brings in every commit on the private `main` since the
