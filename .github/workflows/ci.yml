@@ -953,14 +953,13 @@ jobs:
           RUSTFLAGS: --cfg shuyi_playdate_sdk
       - run: cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
       - run: cargo xtask check-no-std
-      # The same tests as with `std`, the headless backend's included. The
-      # test harness and the dev-dependencies bring `std` into the build,
-      # and with it `std`'s own float methods, which win over the `Float`
-      # trait the `no_std` code imports: those imports are unused here
-      # only. The target build above denies every warning.
+      # The same tests as with `std`, the headless backend's included, their
+      # warnings denied by cargo's `build.warnings` as the local gate does:
+      # a `RUSTFLAGS` of their own would build every dependency again under
+      # another hash (ticket 2079). The workflow's `-D warnings` stays.
       - name: The tests without std
         env:
-          RUSTFLAGS: -D warnings -A unused-imports
+          CARGO_BUILD_WARNINGS: deny
         run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 
   # The same state on every platform (ADR-0002 §2, ticket 2116). x64 and

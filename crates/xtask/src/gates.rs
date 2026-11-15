@@ -235,6 +235,9 @@ pub const GATES: &[Gate] = &[
     gate("machete", "machete", CODE).steps(&["cargo-machete"]),
     gate("test", "test", CODE)
         .steps(&["cargo test --workspace --locked --no-fail-fast"]),
+    // The host test denies its warnings through cargo's `build.warnings`,
+    // not `RUSTFLAGS`: the flags are part of every unit's hash, so they
+    // built each dependency again; the setting is not (ticket 2079).
     gate("no-std", "no-std", CODE).steps(&[
         "cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked",
@@ -243,7 +246,7 @@ pub const GATES: &[Gate] = &[
         "RUSTFLAGS=\"--cfg shuyi_playdate_sdk\" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked",
         "cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked",
         "cargo xtask check-no-std",
-        "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
+        "CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
     ]),
     gate("modules", "modules", CODE).steps(&[
         "cargo xtask check-modules",
@@ -918,6 +921,31 @@ mod tests {
             }
         }
         assert!(seen > 0, "no step builds in target/gates/games");
+    }
+
+    /// The no-std gate's host test denies its warnings with cargo's
+    /// `build.warnings`, and sets no `RUSTFLAGS`: those are part of each
+    /// unit's hash, and built every dependency a second time (ticket 2079).
+    #[test]
+    fn the_no_std_host_test_denies_warnings_without_rustflags() {
+        let gate = GATES
+            .iter()
+            .find(|gate| gate.name == "no-std")
+            .expect("the no-std gate");
+        let tests: Vec<_> = gate
+            .steps
+            .iter()
+            .map(|step| parse_step(step, "/r", &[]))
+            .filter(|command| command.words.get(1).is_some_and(|word| word == "test"))
+            .collect();
+        assert_eq!(tests.len(), 1, "{:?}", gate.steps);
+        let env = &tests[0].env;
+        assert!(
+            env.iter()
+                .any(|(name, value)| name == "CARGO_BUILD_WARNINGS" && value == "deny"),
+            "{env:?}"
+        );
+        assert!(env.iter().all(|(name, _)| name != "RUSTFLAGS"), "{env:?}");
     }
 
     #[test]
