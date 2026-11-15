@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use super::*;
 
+/// Times whose references are each 1 s, so each rebuild is its ratio.
 fn times(rebuilds: &[f64], dependencies: usize) -> Times {
     Times {
         os: "linux".to_owned(),
@@ -14,13 +15,13 @@ fn times(rebuilds: &[f64], dependencies: usize) -> Times {
         check_clean: 20.0,
         check_rebuilds: vec![0.5, 0.4, 0.6],
         dependencies,
-        references: vec![1.2, 1.0, 1.1],
+        references: vec![1.0; rebuilds.len()],
     }
 }
 
 fn budget(linux: f64, dependencies: usize) -> Budget {
     Budget {
-        rebuild: BTreeMap::from([("linux".to_owned(), linux)]),
+        rebuild_over_reference: BTreeMap::from([("linux".to_owned(), linux)]),
         dependencies,
     }
 }
@@ -112,7 +113,8 @@ fn a_slow_rebuild_fails() {
     assert_eq!(verdict.errors.len(), 1, "{verdict:?}");
     assert!(
         verdict.errors[0].starts_with(
-            "the median rebuild took 3.50 seconds on linux, over the 3.00 seconds of b.ron"
+            "the rebuild took 3.500 times the reference build on linux (3.50 seconds against 1.00 \
+             on AMD EPYC 7763 64-Core Processor), over the 3.000 of b.ron"
         ),
         "{verdict:?}"
     );
@@ -155,11 +157,20 @@ fn an_os_without_a_budget_fails() {
 fn the_budget_in_tools_reads() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let text = fs::read_to_string(root.join("tools/compile-budget.ron")).unwrap();
-    let budget = parse_budget(&text).unwrap();
+    let tools = parse_budget(&text).unwrap();
     for os in ["linux", "windows"] {
-        assert!(budget.rebuild.contains_key(os), "no budget for {os}");
+        assert!(
+            tools.rebuild_over_reference.contains_key(os),
+            "no budget for {os}"
+        );
     }
-    assert!(parse_budget("Budget(rebuild: {}, dependencies: 1, more: 2)").is_err());
+    assert!(parse_budget("Budget(rebuild_over_reference: {}, dependencies: 1, more: 2)").is_err());
+    // The seconds of ADR-0049's budget are gone: they followed the runner.
+    assert!(parse_budget(r#"Budget(rebuild: {"linux": 1.6}, dependencies: 1)"#).is_err());
+    assert_eq!(
+        parse_budget(r#"Budget(rebuild_over_reference: {"linux": 1.4}, dependencies: 7)"#),
+        Ok(budget(1.4, 7))
+    );
 }
 
 #[test]
@@ -305,7 +316,9 @@ fn a_failed_build_says_why() {
 
 #[test]
 fn the_table_names_every_number() {
-    let table = times(&[1.0, 2.0, 1.5], 120).table();
+    let mut times = times(&[1.0, 2.0, 1.5], 120);
+    times.references = vec![1.2, 1.0, 1.1];
+    let table = times.table();
     for needle in [
         "| Clean build | 60.00 |",
         "(median of 1.00, 2.00, 1.50) | 1.50 |",
@@ -314,15 +327,43 @@ fn the_table_names_every_number() {
         "depends on 120 crates",
         "on linux, AMD EPYC 7763 64-Core Processor with 4 cores",
         "| The reference build (median of 1.20, 1.00, 1.10) | 1.10 |",
+        "(median of each pair's) | 1.364 |",
     ] {
         assert!(table.contains(needle), "{needle} not in {table}");
     }
-    let json = times(&[1.0, 2.0, 1.5], 120).json();
+    let json = times.json();
     assert_eq!(json["rebuild"], 1.5);
     assert_eq!(json["dependencies"], 120);
     assert_eq!(json["cpu"], "AMD EPYC 7763 64-Core Processor");
     assert_eq!(json["cores"], 4);
     assert_eq!(json["reference"], 1.1);
+    assert_eq!(json["ratio"], 1.5 / 1.1);
+}
+
+#[test]
+fn the_ratio_is_the_median_of_each_rebuild_over_its_reference() {
+    let mut t = times(&[2.0, 3.0, 9.0], 1);
+    t.references = vec![1.0, 2.0, 3.0];
+    // 2, 1.5 and 3: each pair's own, not 3 (median rebuild) over 2.
+    assert!((t.ratio() - 2.0).abs() < f64::EPSILON);
+    // A reference of 0 s is no pair; none at all is a ratio of 0.
+    t.references = vec![0.0, 2.0, 3.0];
+    assert!((t.ratio() - 2.25).abs() < f64::EPSILON);
+    t.references.clear();
+    assert!(t.ratio().abs() < f64::EPSILON);
+}
+
+#[test]
+fn the_gate_follows_the_code_not_the_runner() {
+    let budget = budget(1.4, 1);
+    // PR #347's Linux runner, slow: 1.70 s, still under the ratio.
+    let mut slow_runner = times(&[1.74, 1.70, 1.68], 1);
+    slow_runner.references = vec![1.55, 1.53, 1.52];
+    assert_eq!(check(&slow_runner, &budget, "b.ron"), Verdict::default());
+    // A fast runner whose rebuild grew by half against its reference.
+    let mut slower_code = times(&[1.35, 1.38, 1.36], 1);
+    slower_code.references = vec![0.91, 0.92, 0.91];
+    assert_eq!(check(&slower_code, &budget, "b.ron").errors.len(), 1);
 }
 
 #[test]

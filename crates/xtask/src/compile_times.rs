@@ -18,9 +18,11 @@
 //!
 //! names the machine, its CPU model and its cores ([`Machine`]), and
 //! counts the crates in a new game's dependency tree (`cargo metadata`
-//! on a game from `shuyi new blank`). With `--budget`, the median rebuild
-//! and the count are held to `tools/compile-budget.ron`, which CI's
-//! `compile-times` job does on its runners.
+//! on a game from `shuyi new blank`). With `--budget`, the rebuild's ratio
+//! to the reference build ([`Times::ratio`]) and the count are held to
+//! `tools/compile-budget.ron`, which CI's `compile-times` job does on its
+//! runners: the ratio follows the code, where the seconds followed the
+//! runner's CPU (ticket 2070, ADR-0120).
 //!
 //! Every cargo call goes through [`Runner`], which the tests fake.
 
@@ -177,6 +179,19 @@ impl Times {
         median(&self.references)
     }
 
+    /// What the gate holds: the median, over each rebuild, of its time
+    /// over the reference build's timed just before it. 0 with no pair.
+    pub fn ratio(&self) -> f64 {
+        let ratios: Vec<f64> = self
+            .rebuilds
+            .iter()
+            .zip(&self.references)
+            .filter(|&(_, &reference)| reference > 0.0)
+            .map(|(rebuild, reference)| rebuild / reference)
+            .collect();
+        median(&ratios)
+    }
+
     /// The numbers as JSON.
     pub fn json(&self) -> Value {
         json!({
@@ -192,6 +207,7 @@ impl Times {
             "dependencies": self.dependencies,
             "reference": self.reference(),
             "references": self.references,
+            "ratio": self.ratio(),
         })
     }
 
@@ -233,6 +249,11 @@ impl Times {
         );
         let _ = writeln!(
             table,
+            "| The rebuild over the reference build (median of each pair's) | {:.3} |",
+            self.ratio()
+        );
+        let _ = writeln!(
+            table,
             "\nA new `blank` game depends on {} crates.",
             self.dependencies
         );
@@ -255,8 +276,9 @@ pub fn median(times: &[f64]) -> f64 {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Budget {
-    /// The most the median rebuild may take, in seconds, by OS.
-    pub rebuild: BTreeMap<String, f64>,
+    /// The most [`Times::ratio`] may be, by OS: a rebuild's time over the
+    /// reference build's on the same runner.
+    pub rebuild_over_reference: BTreeMap<String, f64>,
     /// The most crates a new game's dependency tree may hold.
     pub dependencies: usize,
 }
@@ -278,12 +300,16 @@ pub struct Verdict {
 /// Holds `times` to `budget` (`file` names it in the messages).
 pub fn check(times: &Times, budget: &Budget, file: &str) -> Verdict {
     let mut verdict = Verdict::default();
-    match budget.rebuild.get(&times.os) {
-        Some(&most) if times.rebuild() > most => verdict.errors.push(format!(
-            "the median rebuild took {:.2} seconds on {}, over the {most:.2} seconds of {file}: \
-             find what made it slower (`cargo build --timings`) before raising it",
+    match budget.rebuild_over_reference.get(&times.os) {
+        Some(&most) if times.ratio() > most => verdict.errors.push(format!(
+            "the rebuild took {:.3} times the reference build on {} ({:.2} seconds against {:.2} \
+             on {}), over the {most:.3} of {file}: find what made it slower (`cargo build \
+             --timings`) before raising it",
+            times.ratio(),
+            times.os,
             times.rebuild(),
-            times.os
+            times.reference(),
+            times.machine.cpu
         )),
         Some(_) => {}
         None => verdict
