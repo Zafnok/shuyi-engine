@@ -236,7 +236,7 @@ Then it gathers the data files:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="files") }}
 
-`include_dir!` takes the whole `files` folder and puts it **inside** the program
+`shuyi::files!` takes the whole `files` folder and puts it **inside** the program
 when it compiles. That is why your game needs no installer and works in a browser:
 it carries its files in itself.
 
@@ -245,11 +245,10 @@ The `!` means it's a **macro**, a kind of function that runs while compiling and
 writes code for you. `println!` and `vec!`, which you'll meet, are macros too.
 
 `static` makes a value that exists for as long as the program runs. `FILES` is its
-name, and `: Dir<'static>` says what **type** it is. A type says what kind of
-thing a value is: a number, some text, a list. Rust checks every type while
-compiling, which catches a whole family of mistakes, like handing a function text
-where it wants a number. (The `'static` you can ignore: it says this lasts for the
-whole program.)
+name, and `: Embedded` says what **type** it is: a folder embedded in the program.
+A type says what kind of thing a value is: a number, some text, a list. Rust checks
+every type while compiling, which catches a whole family of mistakes, like handing a
+function text where it wants a number.
 {% end %}
 
 Next, your game's data:

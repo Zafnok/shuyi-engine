@@ -1,13 +1,12 @@
-//! Hello, Grid's binary: macroquad's entry point, which must be in the
-//! binary, and what the engine's macroquad backend (`shuyi-app`) needs to
-//! know about the game. How it starts is the library's (`hello_grid::start`).
+//! Hello, Grid's binary: what the engine's macroquad backend (`shuyi-app`)
+//! needs to know about the game, handed to it from a plain `main`. How it
+//! starts is the library's (`hello_grid::start`).
 
 // A release build on Windows is a GUI program: no console window.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 use hello_grid::app_info::APP;
 use hello_grid::{FONT_PNG, TITLE, sound};
-use macroquad::window::Conf;
 use shuyi::app::page::{self, PageLimits};
 use shuyi::app::{AppConfig, CrashReports, Window};
 use shuyi::assets::bundle::Layer;
@@ -32,10 +31,6 @@ fn config() -> AppConfig {
     config
 }
 
-fn window_conf() -> Conf {
-    shuyi::app::window_conf(&WINDOW)
-}
-
 /// The files the page holds, laid over the game's on the web (the site's
 /// playground): when the game's data loads with them. Else the page hears
 /// every problem, and the game plays its own files. Off the web the page
@@ -57,9 +52,7 @@ fn page_over() -> Option<Layer> {
     Some(page)
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
+fn main() {
     let over = shuyi::app::watched_layer().or_else(page_over);
-    let start = hello_grid::start_over(over);
-    shuyi::app::run(config(), start).await;
+    shuyi::app::run_app(config(), hello_grid::start_over(over));
 }

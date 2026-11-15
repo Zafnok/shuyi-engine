@@ -140,6 +140,7 @@ These tickets, in order:
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
 | 2820 | The project's steps in the playground: each page edits its step's data files, and tries its before-and-afters there |
 | 2828 | Exercises in the book: a task done in a step's playground and checked by the game |
+| 2836 | `cargo xtask exercises` can check a step with the step before it's build, when their newest files share a timestamp |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -160,6 +161,7 @@ These tickets, in order:
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2089 | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |

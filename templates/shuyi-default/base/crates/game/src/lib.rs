@@ -17,8 +17,6 @@ pub mod title;
 
 use std::sync::OnceLock;
 
-#[cfg(not(feature = "packed"))]
-use include_dir::{Dir, include_dir};
 use shuyi::core::Made;
 use shuyi::prelude::*;
 
@@ -27,7 +25,7 @@ use shuyi::prelude::*;
 /// (`build.rs`). A packed build embeds none ([`files`]).
 // check-text: not player text, a folder
 #[cfg(not(feature = "packed"))]
-static FILES: Dir<'static> = include_dir!("$SHUYI_FILES");
+static FILES: Embedded = shuyi::files!("$SHUYI_FILES");
 
 /// The game's private files, embedded (the engine's ADR-0111): the
 /// checkout's `private/files/` when the build had one, laid over [`FILES`]
@@ -36,14 +34,14 @@ static FILES: Dir<'static> = include_dir!("$SHUYI_FILES");
 /// packed build embeds none: the pack holds them.
 // check-text: not player text, a folder
 #[cfg(not(feature = "packed"))]
-static PRIVATE: Dir<'static> = include_dir!("$SHUYI_PRIVATE_FILES");
+static PRIVATE: Embedded = shuyi::files!("$SHUYI_PRIVATE_FILES");
 
 /// The game's files as its layer, and why they couldn't be read if they
 /// couldn't: embedded.
 #[cfg(not(feature = "packed"))]
 fn files() -> (Layer, Option<&'static str>) {
     // check-text: not player text, a folder
-    (Layer::dir("files", &FILES), None)
+    (Layer::dir("files", FILES), None)
 }
 
 /// The game's files as its layer, and why they couldn't be read if they
@@ -88,7 +86,7 @@ pub fn game() -> BasicGame<UiAction, stages::Own> {
     // A packed build's pack holds its private files already.
     #[cfg(not(feature = "packed"))]
     // check-text: not player text, a folder
-    let game = game.private(Layer::dir("private", &PRIVATE));
+    let game = game.private(Layer::dir("private", PRIVATE));
     let game = match unreadable {
         Some(why) => game.files_unreadable(why),
         None => game,
@@ -160,7 +158,7 @@ mod tests {
         // An edition with its own content root holds none; nor does a build
         // with no checkout.
         if option_env!("SHUYI_CONTENT").is_some() || !checkout.is_dir() {
-            assert_eq!(PRIVATE.entries().len(), 0, "{:?}", PRIVATE.entries());
+            assert!(PRIVATE.is_empty(), "{PRIVATE:?}");
             return;
         }
         let mut paths = Vec::new();

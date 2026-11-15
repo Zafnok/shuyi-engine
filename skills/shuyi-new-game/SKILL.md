@@ -144,8 +144,9 @@ Grow a game by adding a part, never by rewriting its start:
   adds what it has and calls `BasicTools`' methods for the rest. A
   `grid` game's stage has one.
 - **The long form:** a `GameData` of its own (sounds, voices, themes,
-  settings, `GameHooks`), and macroquad's entry point calling
-  `shuyi::app::run` with its `AppConfig`. Only when a part can't do it.
+  settings, `GameHooks`), and a plain `main` calling
+  `shuyi::app::run_app` with its `AppConfig` and its `Start`. Only when a
+  part can't do it.
 
 ## When it fails
 

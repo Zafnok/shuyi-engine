@@ -26,7 +26,7 @@ use image::codecs::png::PngEncoder;
 use macroquad::prelude::{error, info, next_frame};
 use shuyi_app::capture::{self, read_window, window_layout};
 use shuyi_app::render::Renderer;
-use shuyi_app::{Window, window_conf};
+use shuyi_app::{Window, open_window};
 use shuyi_ui::frame::raster::card::{self, RenderCard};
 use shuyi_ui::frame::raster::{self, Tolerance};
 
@@ -48,8 +48,7 @@ fn main() {
         bounds.w * SCALE,
         bounds.h * SCALE,
     );
-    // What `#[macroquad::main]` expands to.
-    macroquad::Window::from_config(window_conf(&window), show(card));
+    open_window(&window, show(card));
 }
 
 /// Draws and captures the card, then finishes with the run's code (on the

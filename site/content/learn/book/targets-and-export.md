@@ -320,7 +320,7 @@ editions: {
 An edition says, before anything is compiled:
 
 - `content`: the folder of files its program embeds. The export hands it to the build as
-  `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
+  `SHUYI_CONTENT`, and a new game's `build.rs` points `shuyi::files!` at it, so the demo's program holds
   only that folder. Without it, the build embeds `files/`, as `cargo run` does. A release build's pack
   is baked from that folder too.
 - `default_features`, always written: whether the build keeps the package's `default` features. The full

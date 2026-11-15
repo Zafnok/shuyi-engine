@@ -10,6 +10,8 @@
 //!   `std` turns the default features off);
 //! - [`prelude`]: what a game on the short path names, with
 //!   [`run_game`](prelude::run_game);
+//! - [`files!`]: a folder of the game's files, embedded in the program
+//!   (with `std`);
 //! - [`enabled_modules`]: the [`Module`] of each module turned on, which
 //!   the game installs once.
 //! - `script` (feature `script`): `shuyi-script`, rules from scripts,
@@ -21,6 +23,11 @@ extern crate alloc;
 #[cfg(all(feature = "app", not(target_os = "wasi")))]
 pub use shuyi_app as app;
 pub use shuyi_assets as assets;
+/// Embeds a folder of the game's files in the program: `shuyi-assets`'
+/// [`files!`](shuyi_assets::files), which [`Layer::dir`](shuyi_assets::Layer::dir)
+/// makes a layer of.
+#[cfg(feature = "std")]
+pub use shuyi_assets::files;
 pub use shuyi_core as core;
 pub use shuyi_platform as platform;
 #[cfg(feature = "script")]

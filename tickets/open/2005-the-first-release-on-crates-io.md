@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2412", "2906", "2347", "2348", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
+blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
 nick_input: sign-off
 completed:
 ---
@@ -71,6 +71,8 @@ open ticket that day added a fourth group:
     contract);
   - 2412 gives each pad event its pad;
   - 2087 takes outside crates' types out of a game's way in;
+  - 2089 checks, on each PR, that the public API names no outside crate
+    ADR-0119 doesn't list;
   - 2088 decides what the contract's version promises;
   - 2906 decides the assets' lifetimes before the bundle's API is
     published. Any build ticket it writes that changes the bundle's

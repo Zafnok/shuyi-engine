@@ -57,16 +57,113 @@ pub(crate) use fingerprint::tests::fixed as fixed_fingerprint_bundle;
 use include_dir::Dir;
 use once_cell::race::OnceBox;
 
+/// A folder embedded in the program by [`files!`](crate::files): its files
+/// by path, `&'static`, which [`Layer::dir`] makes a layer of. Copying it
+/// copies a reference.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy)]
+pub struct Embedded(&'static Dir<'static>);
+
+#[cfg(feature = "std")]
+impl Embedded {
+    /// The folder `include_dir!` embedded: what [`files!`](crate::files)
+    /// expands to. Not part of the API: semver doesn't cover it, and it
+    /// changes when the engine embeds files its own way.
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn __from_include_dir(dir: &'static Dir<'static>) -> Self {
+        Self(dir)
+    }
+
+    /// Whether the folder holds no file (a folder the build made empty, as a
+    /// game's private files are without a checkout of them).
+    #[must_use]
+    pub fn is_empty(self) -> bool {
+        let mut pending = vec![self.0];
+        while let Some(dir) = pending.pop() {
+            if dir.files().next().is_some() {
+                return false;
+            }
+            pending.extend(dir.dirs());
+        }
+        true
+    }
+
+    /// The contents of the file at `path`.
+    fn get(self, path: &str) -> Option<&'static [u8]> {
+        self.0.get_file(path).map(include_dir::File::contents)
+    }
+
+    /// Adds the paths of the files inside `dir` to `paths`, as
+    /// [`Files::list`] does.
+    fn list(self, dir: &str, deep: bool, paths: &mut Vec<&'static str>) {
+        let root = if dir.is_empty() {
+            Some(self.0)
+        } else {
+            self.0.get_dir(dir)
+        };
+        let mut pending: Vec<&'static Dir<'static>> = root.into_iter().collect();
+        while let Some(dir) = pending.pop() {
+            paths.extend(dir.files().filter_map(|f| f.path().to_str()));
+            if deep {
+                pending.extend(dir.dirs());
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl core::fmt::Debug for Embedded {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut paths = Vec::new();
+        self.list("", true, &mut paths);
+        f.debug_struct("Embedded")
+            .field("files", &paths.len())
+            .finish()
+    }
+}
+
+/// Embeds the folder at `path` in the program, as an
+/// [`Embedded`](crate::bundle::Embedded), which
+/// [`Layer::dir`](crate::bundle::Layer::dir) makes a
+/// layer of. `path` is a string literal, and may start with an environment
+/// variable the build sets: `$CARGO_MANIFEST_DIR`, or one a build script
+/// sets (a new game's `$SHUYI_FILES`). A change to a file under it rebuilds
+/// the crate. A game names it `shuyi::files!`.
+///
+/// ```
+/// use shuyi_assets::bundle::{Bundle, Embedded, Layer};
+///
+/// static FILES: Embedded = shuyi_assets::files!("$CARGO_MANIFEST_DIR/tests/fixtures/embedded");
+///
+/// let bundle = Bundle::new(vec![Layer::dir("files", FILES)]);
+/// assert_eq!(bundle.file("data/a.ron"), Some("embedded a\n"));
+/// assert!(!FILES.is_empty());
+/// ```
+///
+/// It needs `std`: a build without it embeds a table a build script writes
+/// ([`Layer::table`](crate::bundle::Layer::table)).
+#[cfg(feature = "std")]
+#[macro_export]
+macro_rules! files {
+    ($path:tt) => {{
+        // `include_dir!` names its crate as `include_dir`: this is it.
+        use $crate::__embed::include_dir;
+        static DIR: include_dir::Dir<'static> = include_dir::include_dir!($path);
+        $crate::bundle::Embedded::__from_include_dir(&DIR)
+    }};
+}
+
 /// Where a layer's files are.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum Files {
-    /// A directory embedded by `include_dir!`.
+    /// A folder embedded by [`files!`](crate::files).
     #[cfg(feature = "std")]
-    Dir(&'static Dir<'static>),
+    Dir(Embedded),
     /// A table of `(path, contents)` sorted by path (relative to the
     /// layer's root, `/`-separated): what a build script writes where
-    /// `include_dir` does not build (without `std`).
+    /// [`files!`](crate::files) does not build (without `std`).
     Table(&'static [(&'static str, &'static [u8])]),
     /// Files handed in at run time ([`Layer::owned`]): a player's mod, a
     /// folder read from disk.
@@ -139,7 +236,7 @@ impl Files {
     fn get(self, path: &str) -> Option<&'static [u8]> {
         match self {
             #[cfg(feature = "std")]
-            Self::Dir(dir) => dir.get_file(path).map(include_dir::File::contents),
+            Self::Dir(dir) => dir.get(path),
             Self::Table(files) => table_get(files, path),
             Self::Owned(files) => files.with(|table| table_get(table, path)),
         }
@@ -150,20 +247,7 @@ impl Files {
     fn list(self, dir: &str, deep: bool, paths: &mut Vec<&'static str>) {
         match self {
             #[cfg(feature = "std")]
-            Self::Dir(root) => {
-                let root = if dir.is_empty() {
-                    Some(root)
-                } else {
-                    root.get_dir(dir)
-                };
-                let mut pending: Vec<&'static Dir<'static>> = root.into_iter().collect();
-                while let Some(dir) = pending.pop() {
-                    paths.extend(dir.files().filter_map(|f| f.path().to_str()));
-                    if deep {
-                        pending.extend(dir.dirs());
-                    }
-                }
-            }
+            Self::Dir(root) => root.list(dir, deep, paths),
             Self::Table(files) => table_list(files, dir, deep, paths),
             Self::Owned(files) => files.with(|table| table_list(table, dir, deep, paths)),
         }
@@ -271,9 +355,10 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// A layer of the directory `dir`, shown as `name`.
+    /// A layer of the folder `dir` embedded by [`files!`](crate::files),
+    /// shown as `name`.
     #[cfg(feature = "std")]
-    pub const fn dir(name: &'static str, dir: &'static Dir<'static>) -> Self {
+    pub const fn dir(name: &'static str, dir: Embedded) -> Self {
         Self::of(name, Files::Dir(dir))
     }
 
@@ -952,6 +1037,86 @@ mod tests {
 
     use super::*;
 
+    /// `dir` as [`files!`](crate::files) gives it.
+    const fn embedded(dir: &'static Dir<'static>) -> Embedded {
+        Embedded::__from_include_dir(dir)
+    }
+
+    /// `tests/fixtures/embedded`, embedded by the macro a game uses.
+    static EMBEDDED_FOLDER: Embedded = crate::files!("$CARGO_MANIFEST_DIR/tests/fixtures/embedded");
+
+    /// The same folder, built by hand as `include_dir!` builds it.
+    static FOLDER_BY_HAND: Dir<'static> = Dir::new(
+        "",
+        &[
+            DirEntry::Dir(Dir::new(
+                "data",
+                &[
+                    entry("data/a.ron", "embedded a\n"),
+                    entry("data/b.ron", "embedded b\n"),
+                    DirEntry::Dir(Dir::new(
+                        "data/deep",
+                        &[entry("data/deep/c.txt", "embedded c\n")],
+                    )),
+                ],
+            )),
+            entry("top.txt", "embedded top\n"),
+        ],
+    );
+
+    /// The same folder as a table.
+    static FOLDER_TABLE: &[(&str, &[u8])] = &[
+        ("data/a.ron", b"embedded a\n"),
+        ("data/b.ron", b"embedded b\n"),
+        ("data/deep/c.txt", b"embedded c\n"),
+        ("top.txt", b"embedded top\n"),
+    ];
+
+    #[test]
+    fn the_macros_folder_reads_as_the_folder_does() {
+        let from_macro = Bundle::new(vec![Layer::dir("files", EMBEDDED_FOLDER)]);
+        let by_hand = Bundle::new(vec![Layer::dir("files", embedded(&FOLDER_BY_HAND))]);
+        let table = Bundle::new(vec![Layer::table("files", FOLDER_TABLE)]);
+        for bundle in [&by_hand, &table] {
+            assert_eq!(from_macro.files_under(""), bundle.files_under(""));
+            assert_eq!(from_macro.files_in("data"), bundle.files_in("data"));
+            assert_eq!(from_macro.files_in(""), bundle.files_in(""));
+            assert_eq!(from_macro.fingerprint(), bundle.fingerprint());
+        }
+        assert_eq!(
+            from_macro.files_under(""),
+            ["data/a.ron", "data/b.ron", "data/deep/c.txt", "top.txt"]
+        );
+        for (path, bytes) in FOLDER_TABLE {
+            assert_eq!(from_macro.bytes(path), Some(*bytes), "{path}");
+            assert_eq!(from_macro.display_path(path), format!("files/{path}"));
+        }
+        assert_eq!(from_macro.bytes("data"), None);
+        assert_eq!(from_macro.bytes("missing.ron"), None);
+        assert_eq!(from_macro.files_in("missing"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn a_folder_is_empty_when_no_folder_under_it_holds_a_file() {
+        static EMPTY: Dir<'static> = Dir::new("", &[]);
+        static ONLY_FOLDERS: Dir<'static> = Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "a",
+                &[DirEntry::Dir(Dir::new("a/b", &[]))],
+            ))],
+        );
+        static DEEP_FILE: Dir<'static> = Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new("a", &[entry("a/x.txt", "x")]))],
+        );
+        assert!(embedded(&EMPTY).is_empty());
+        assert!(embedded(&ONLY_FOLDERS).is_empty());
+        assert!(!embedded(&DEEP_FILE).is_empty());
+        assert!(!EMBEDDED_FOLDER.is_empty());
+        assert_eq!(format!("{EMBEDDED_FOLDER:?}"), "Embedded { files: 4 }");
+    }
+
     const fn entry(path: &'static str, contents: &'static str) -> DirEntry<'static> {
         DirEntry::File(File::new(path, contents.as_bytes()))
     }
@@ -1029,12 +1194,12 @@ mod tests {
         ],
     );
 
-    const PRIVATE: Layer = Layer::dir("bought", &PRIVATE_FIXTURE).private();
-    const PUBLIC: Layer = Layer::dir("base", &PUBLIC_FIXTURE);
-    const PRIVATE_TEST: Layer = Layer::dir("bought-tests", &PRIVATE_TEST_FIXTURE)
+    const PRIVATE: Layer = Layer::dir("bought", embedded(&PRIVATE_FIXTURE)).private();
+    const PUBLIC: Layer = Layer::dir("base", embedded(&PUBLIC_FIXTURE));
+    const PRIVATE_TEST: Layer = Layer::dir("bought-tests", embedded(&PRIVATE_TEST_FIXTURE))
         .private()
         .test();
-    const TEST: Layer = Layer::dir("tests", &TEST_FIXTURE).test();
+    const TEST: Layer = Layer::dir("tests", embedded(&TEST_FIXTURE)).test();
 
     /// The private layer laid over the public one.
     fn merged() -> Bundle {

@@ -58,7 +58,6 @@ name = "box-pusher"
 version = "0.1.0"
 dependencies = [
  "box-pusher",
- "include_dir",
  "ron",
  "serde",
  "shuyi",

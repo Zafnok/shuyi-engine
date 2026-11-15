@@ -3,7 +3,7 @@
 //! window's pixels of the frames it names compared with the raster's
 //! picture of the same frame (`shuyi_ui::frame::raster`).
 //!
-//! [`run`](crate::run) reads `SHUYI_CAPTURE` on native: the path of a
+//! [`run_app`](crate::run_app) reads `SHUYI_CAPTURE` on native: the path of a
 //! plan. Unset, nothing changes. Set, the run follows the plan, then exits
 //! ([`PASSED`], [`FAILED`] or [`CANNOT_RUN`]):
 //!

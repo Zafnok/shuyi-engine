@@ -137,7 +137,12 @@ when (dropping a platform for a while, say), it asks Nick with the
     `Window::from_config`, and a long-form game's `main` is
     `#[macroquad::main]`. The plan gives the new backend a `run_game`
     of the same signature, so a short-path game changes nothing at the
-    switch, and says how a long-form game's entry moves;
+    switch, and says how a long-form game's entry moves. **From 2087
+    (done):** a long-form game's `main` is a plain `fn` calling
+    `shuyi_app::run_app(config, start)`, and `run_game` calls it; no
+    public item of `shuyi-app` names a macroquad type (ADR-0119). The
+    plan keeps `run_app`'s signature too, so neither kind of game
+    changes at the switch;
   - keyboard and mouse to the engine's `RawInputEvent`s
     (`crates/app/src/keys.rs` today);
   - text input: the IME as winit gives it (its composing text with a
