@@ -179,7 +179,10 @@ each of the 30 outside crates the engine crates depend on, as
   §1), not in the ticket's list.
 
 **Follow-ups:** 2089 checks the rule on each PR in `cargo xtask api`
-(the sweep here was by hand). Handoffs written in 2084 (the `quad_snd`
+(the sweep here was by hand). 2836: `cargo xtask exercises` checked step 09
+with step 08's build locally, because this ticket's script wrote their
+manifests within one tick of Windows' clock; the steps' manifests were
+given distinct times (not committed), and the run passed. Handoffs written in 2084 (the `quad_snd`
 line), 3044 (`window_conf` is private, `run_app` calls it), 3034
 (`run_app`'s signature kept at the switch), 2215 (`files!`, `Embedded`
 and `Layer::dir` kept over its embedding) and 2005 (blocked by 2089).

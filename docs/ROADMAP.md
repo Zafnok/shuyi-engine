@@ -140,6 +140,7 @@ These tickets, in order:
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
 | 2820 | The project's steps in the playground: each page edits its step's data files, and tries its before-and-afters there |
 | 2828 | Exercises in the book: a task done in a step's playground and checked by the game |
+| 2836 | `cargo xtask exercises` can check a step with the step before it's build, when their newest files share a timestamp |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
