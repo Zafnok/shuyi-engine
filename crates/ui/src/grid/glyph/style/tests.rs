@@ -63,8 +63,30 @@ fn the_plain_style_is_the_default_and_the_glyph_skins_own() {
         style: GlyphStyle::PLAIN,
     };
     assert_eq!(GLYPH, skin);
-    assert_eq!(GLYPH.styled(ONE), ONE_BIT);
-    assert_eq!(ONE_BIT.styled(GlyphStyle::PLAIN), GLYPH);
+    assert_eq!(GLYPH.with_style(ONE), ONE_BIT);
+    assert_eq!(ONE_BIT.with_style(GlyphStyle::PLAIN), GLYPH);
+}
+
+#[test]
+fn a_styles_with_methods_build_what_a_literal_did() {
+    let literal = GlyphStyle {
+        range: RangeLook::Fill {
+            glyphs: "text",
+            skip: &[RangeName("danger")],
+        },
+        flash: FlashLook::Invert,
+        cursor: CursorLook::Flat,
+        threat: ThreatLook::Plain { edge: "text" },
+        side_cells: 1,
+    };
+    assert_eq!(ONE, literal);
+    let built = GlyphStyle::PLAIN
+        .with_range(literal.range)
+        .with_flash(literal.flash)
+        .with_cursor(literal.cursor)
+        .with_threat(literal.threat)
+        .with_side_cells(literal.side_cells);
+    assert_eq!(built, literal);
 }
 
 #[test]

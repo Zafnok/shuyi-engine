@@ -5,7 +5,9 @@
 //! and checks it out; makes the two read-only deploy keys whose private
 //! halves are the game's secret `PRIVATE_ASSETS_KEY`, for Actions and for
 //! Dependabot; puts a ruleset on the private repository's default branch;
-//! and pushes the game, last, so its first CI run has the key.
+//! and pushes the game, last, so its first CI run has the key. A game
+//! with `scripts/git-hooks` (the template's) gets git's hooks set to it,
+//! its hooks committed executable (ticket 3402).
 //!
 //! Each step is skipped when what it makes is there, so a second run makes
 //! nothing and a run after a failure finishes the rest. It acts on the
@@ -46,6 +48,10 @@ pub const DEFAULT_FOLDERS: [&str; 5] = ["text", "sprites", "sounds", "music", "d
 /// The scopes `gh`'s sign-in needs: `repo` for the repositories, keys,
 /// secrets and ruleset, `workflow` to push the game's workflows.
 pub const SCOPES: [&str; 2] = ["repo", "workflow"];
+
+/// The game's folder of git hooks, from its root: what `core.hooksPath`
+/// is set to.
+pub const HOOKS: &str = "scripts/git-hooks";
 
 /// The private repository's folder of story and design documents.
 const DOCS: &str = "docs";
@@ -258,7 +264,8 @@ REPOSITORIES, DEPLOY KEYS AND SECRETS ON YOUR ACCOUNT: run it with
 --dry-run first to see what it would make.
 
 It makes the game's repository (named from shuyi.ron's app name, public by
-default) unless the folder already has an `origin`; for a game with private
+default) unless the folder already has an `origin`, and sets git's hooks to
+the game's scripts/git-hooks when it has one; for a game with private
 files (shuyi.ron's private_assets), the private repository its url names
 (private by default) with a README and the folders of files/, pins the game
 to its commit and checks it out; two read-only deploy keys there, whose
@@ -399,6 +406,23 @@ pub struct State {
     pub pin: Pin,
     /// Whether the private files are checked out.
     pub checkout: bool,
+    /// The game's git hooks.
+    pub hooks: Hooks,
+}
+
+/// The game's git hooks ([`HOOKS`]), and whether git runs them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Hooks {
+    /// The game has no such folder.
+    #[default]
+    Absent,
+    /// It has, and `core.hooksPath` is unset (or the folder isn't a
+    /// repository yet).
+    Unset,
+    /// `core.hooksPath` names it.
+    Set,
+    /// `core.hooksPath` names another folder: left as it is.
+    Elsewhere(String),
 }
 
 impl Default for State {
@@ -411,6 +435,7 @@ impl Default for State {
             private_repo: None,
             pin: Pin::Missing,
             checkout: false,
+            hooks: Hooks::Absent,
         }
     }
 }
@@ -475,6 +500,8 @@ impl Use {
 pub enum Thing {
     /// The game's folder as a git repository, with its first commit.
     Git,
+    /// `core.hooksPath` set to [`HOOKS`].
+    Hooks,
     /// The game's repository on GitHub, as `origin`.
     GameRepo,
     /// The private repository, with its first commit.
@@ -498,6 +525,7 @@ impl Thing {
     pub fn id(self) -> &'static str {
         match self {
             Self::Git => "git",
+            Self::Hooks => "hooks",
             Self::GameRepo => "game-repository",
             Self::PrivateRepo => "private-repository",
             Self::Pin => "pin",
@@ -535,10 +563,11 @@ impl Step {
 /// The steps, in order, from what was asked and what is there: each to be
 /// made, or there.
 pub fn plan(inputs: &Inputs, state: &State) -> Vec<Step> {
-    let mut steps = vec![
-        Step::new(Thing::Git, state.git != Git::Committed),
-        Step::new(Thing::GameRepo, state.origin.is_none()),
-    ];
+    let mut steps = vec![Step::new(Thing::Git, state.git != Git::Committed)];
+    if state.hooks != Hooks::Absent {
+        steps.push(Step::new(Thing::Hooks, state.hooks == Hooks::Unset));
+    }
+    steps.push(Step::new(Thing::GameRepo, state.origin.is_none()));
     if inputs.private.is_some() {
         let private = state.private_repo.as_ref();
         steps.push(Step::new(Thing::PrivateRepo, private.is_none()));
@@ -811,6 +840,45 @@ fn local_git(host: &mut dyn Host, root: &Path) -> Result<(Git, String, Option<St
     Ok((git, branch, origin))
 }
 
+/// The game's git hooks: whether it has [`HOOKS`], and whether
+/// `core.hooksPath` names it.
+fn hooks_state(host: &mut dyn Host, root: &Path, git: Git) -> Result<Hooks, Failure> {
+    if !root.join(HOOKS).is_dir() {
+        return Ok(Hooks::Absent);
+    }
+    if git == Git::None {
+        return Ok(Hooks::Unset);
+    }
+    // `--get` exits 1 when it is unset.
+    let ran = run(
+        host,
+        "git",
+        &["config", "--get", "core.hooksPath"],
+        root,
+        None,
+    )?;
+    let path = ran.stdout.trim().trim_end_matches('/');
+    Ok(match (ran.ok, path) {
+        (false, _) | (true, "") => Hooks::Unset,
+        (true, HOOKS) => Hooks::Set,
+        (true, other) => Hooks::Elsewhere(other.to_owned()),
+    })
+}
+
+/// The files of [`HOOKS`], by their path from the game's root with `/`,
+/// sorted.
+fn hook_files(root: &Path) -> Vec<String> {
+    let mut files: Vec<String> = fs::read_dir(root.join(HOOKS))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|entry| entry.path().is_file())
+        .map(|entry| format!("{HOOKS}/{}", entry.file_name().to_string_lossy()))
+        .collect();
+    files.sort();
+    files
+}
+
 /// The game's repository: `origin`'s, else the owner and name asked (the
 /// signed-in user, and the crate name of `shuyi.ron`'s `app.name`).
 fn game_slug(
@@ -965,10 +1033,12 @@ pub fn observe(
     let login = check_tools(host, root, rules.is_some())?;
     let (git, branch, origin) = local_git(host, root)?;
     let game = game_slug(project, args, &login, origin.as_deref())?;
+    let hooks = hooks_state(host, root, git)?;
     let mut state = State {
         git,
         branch,
         origin,
+        hooks,
         ..State::default()
     };
     state.game_repo = observe_game(host, root, &game, &state)?;
@@ -1212,6 +1282,12 @@ fn about(step: &Step, inputs: &Inputs, state: &State, rules: Option<&PrivateAsse
     let pin_file = rules.map_or("private.rev", |r| r.pin_file.as_str());
     match step.thing {
         Thing::Git => "the game's folder as a git repository, with a first commit".to_owned(),
+        Thing::Hooks => match &state.hooks {
+            Hooks::Elsewhere(path) => {
+                format!("git's hooks: core.hooksPath is {path}, left as it is")
+            }
+            _ => format!("git's hooks: core.hooksPath set to {HOOKS}"),
+        },
         Thing::GameRepo => match (&state.origin, step.make) {
             (Some(origin), _) => format!("origin: {origin}, left as it is"),
             (None, _) => format!("{} ({}), as origin", game.url(), inputs.visibility.name()),
@@ -1305,11 +1381,20 @@ fn make(ctx: &mut Ctx, step: &Step) -> Result<Option<String>, Failure> {
                 ctx.git("git init", &["init", "--quiet", "-b", "main"])?;
             }
             ctx.git("git add", &["add", "--all"])?;
+            // Executable in the commit, so a clone on Linux or macOS runs
+            // them without a warning.
+            let hooks = hook_files(ctx.root());
+            if !hooks.is_empty() {
+                let mut args = vec!["update-index", "--chmod=+x", "--"];
+                args.extend(hooks.iter().map(String::as_str));
+                ctx.git("marking the hooks executable", &args)?;
+            }
             ctx.git(
                 "the first commit",
                 &["commit", "--quiet", "-m", "First commit"],
             )?;
         }
+        Thing::Hooks => ctx.git("setting git's hooks", &["config", "core.hooksPath", HOOKS])?,
         Thing::GameRepo => make_game_repo(ctx)?,
         Thing::PrivateRepo => make_private_repo(ctx)?,
         Thing::Pin => make_pin(ctx)?,

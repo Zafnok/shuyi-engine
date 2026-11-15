@@ -132,7 +132,11 @@ in one call.
 existing type moves under it in the PR that next adds to it, or in its
 follow-up (2024 for `shuyi-ui`, `shuyi-platform`, `shuyi-assets` and
 `shuyi-core`; 2025 for `shuyi-cli`), once, with a `Breaking:` line in
-2010's form.
+2010's form. Before a crate's first release, though, every exhaustive
+type an open ticket plans to grow moves under this ADR at once (2082 to
+2086, Nick's decision of 2026-11-14), not in the PR that next adds to
+it: a break then costs nothing, and after the release each would be a
+major version.
 
 **How it is held.**
 

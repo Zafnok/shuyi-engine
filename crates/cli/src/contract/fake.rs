@@ -562,10 +562,7 @@ impl GameTools for Fake {
         if let Err(e) = offered {
             return Some(Err(e));
         }
-        let title = ScreenActions::<Action> {
-            screen: "title",
-            actions: None,
-        };
+        let title = ScreenActions::<Action>::undeclared("title");
         Some(Ok(Box::new(
             GameControls::new(KeymapDef::default()).with(title),
         )))

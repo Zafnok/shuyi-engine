@@ -522,7 +522,7 @@ mod tests {
             assert_eq!(answer.ok, ok, "{:?}", answer.result);
             let errors = &answer.result.as_ref().unwrap().errors;
             let messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
-            let over = ["tip \"a\": the title must be 1 to 6 characters"];
+            let over = ["tip \"a\": the title must be 1 to 6 cells"];
             assert_eq!(messages, if ok { &[][..] } else { &over[..] });
         }
     }

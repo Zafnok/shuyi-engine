@@ -276,17 +276,16 @@ None.
     (`crates/ui/src/input/fit.rs`) and every target's fit test don't
     change.
 13. **Public types** (ADR-0039): the new functions and methods are
-    additive. `AskView` and `GridView` are views a skin reads, and they
-    gain a field, so they move under the ADR here (its *When*):
-    `#[non_exhaustive]`, with `AskView::new(text)` and
-    `GridView::new(title)`, the rest assigned.
+    additive. **From 2082 (done):** `AskView` and `GridView` are
+    already `#[non_exhaustive]`, built with `AskView::new(text,
+    answers)` and `GridView::new(title, spelled, rows, focus)`; their
+    new fields start empty in `new`. A painter whose signature changes
+    is a new function beside the old one.
 14. No new dependency.
 
-**For the game:** `AskView` and `GridView` gain a field and become
-`#[non_exhaustive]`, which breaks a struct literal of either. The
-completion notes say so with a `Breaking:` line (ADR-0038), and the
-game's PR that moves its pin follows this one. The rest is additive,
-and the game's screens behave as before with no pointer.
+**For the game:** additive. `AskView` and `GridView` gain a field
+(**from 2082 (done):** both are `#[non_exhaustive]`), and the game's
+screens behave as before with no pointer.
 
 **Out (do not do):**
 - The pointer on the typing box (`NameBox`), on the options' volume box
@@ -332,7 +331,7 @@ and the game's screens behave as before with no pointer.
    `name_entry` and `list`, and of the four screens, say which hits
    their glyph painters record and under which key, so a game's own
    painter (`painted_by`) records the same.
-8. Write the `Breaking:` line and run the gates.
+8. Run the gates.
 
 ## Acceptance criteria
 
@@ -374,8 +373,7 @@ and the game's screens behave as before with no pointer.
 - [ ] With no pointer events, every existing test and snapshot passes
       unchanged, and the targets' fit tests don't change.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] The completion notes have a `Breaking:` line for `AskView` and
-      `GridView`.
+- [ ] `cargo xtask api` reports no break of `AskView` or `GridView`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

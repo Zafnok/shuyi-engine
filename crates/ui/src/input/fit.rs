@@ -37,7 +37,11 @@ use crate::ctx::GameData;
 use crate::screen::Screen;
 
 /// One screen's actions, as the check sees them.
+///
+/// Kind 3 of ADR-0039: build it with [`ScreenActions::of`], [`ScreenActions::declared`] or
+/// [`ScreenActions::undeclared`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ScreenActions<A> {
     /// The screen's [`name`](Screen::name).
     pub screen: &'static str,
@@ -63,6 +67,15 @@ impl<A: ActionSet> ScreenActions<A> {
         }
     }
 
+    /// The screen named `screen`, declaring no actions: every action
+    /// counts as its ([`FitRule::Undeclared`]).
+    pub fn undeclared(screen: &'static str) -> Self {
+        Self {
+            screen,
+            actions: None,
+        }
+    }
+
     /// Its required actions, each once, in [`ActionSet::ALL`] order.
     fn required(&self) -> impl Iterator<Item = A> + '_ {
         A::ALL.iter().copied().filter(|a| {
@@ -76,7 +89,10 @@ impl<A: ActionSet> ScreenActions<A> {
 }
 
 /// Which rule a [`FitProblem`] breaks.
+///
+/// Kind 6 of ADR-0039: more rules may come, so a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum FitRule {
     /// The keymap has no buttons for a target that has no keyboard.
     NoLayout,

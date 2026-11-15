@@ -9,8 +9,8 @@ command = "cargo"
 args = [
     "run",
     "-q",
-    "-p",
-    "shuyi-cli",
+    "--bin",
+    "shuyi",
     "--",
     "mcp",
 ]
