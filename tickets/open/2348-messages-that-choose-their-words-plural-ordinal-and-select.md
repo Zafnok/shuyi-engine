@@ -2,7 +2,7 @@
 id: "2348"
 title: "Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat, and typed label arguments"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo

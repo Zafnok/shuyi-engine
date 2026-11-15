@@ -64,8 +64,14 @@ version view before going public, with the playground's chain (3069,
 2026-11-05 he made the first release (2005) the public launch: it comes
 after every other ticket of this phase but the blog (2805) and sponsors
 (2806), and after the breaks already planned (2544, 2391, 2388 and
-2389), which joined the phase ([`decisions.md`](decisions.md)). These
-tickets, in order:
+2389), which joined the phase ([`decisions.md`](decisions.md)). On
+2026-11-14 he asked for no run of breaking versions after the MVP: an
+audit of every open ticket put the types that can grow (2082–2086), pad
+events with their pad (2412), outside crates' types (2087), the
+contract's version (2088), the assets' lifetimes (2906) and the breaks
+no attribute softens (2347, 2348, 2405, 2409, 2133, 2136, 2239, 3041,
+3044) in the phase, before the release ([`decisions.md`](decisions.md)).
+These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
@@ -146,6 +152,24 @@ tickets, in order:
 | 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
 | 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
 | 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1253) |
+| 2082 | The frame's and the widgets' types that open tickets grow move under ADR-0039, and the ADR says every such type moves before a release |
+| 2083 | The input and controller types that open tickets grow move under ADR-0039, and `PadKind::ALL` becomes a slice |
+| 2084 | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
+| 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
+| 2086 | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
+| 2412 | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
+| 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
+| 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
+| 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
+| 2348 | Messages that choose their words, and typed label arguments |
+| 2405 | Mouse and touch for menus and grid maps |
+| 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
+| 2133 | The bots' data made alike: the settings refuse unknown fields |
+| 2136 | The motions written by hand moved onto `shuyi_core::ease` |
+| 2239 | Translated dialogue lines get the text box's page check |
+| 3041 | Log sinks in shipped builds |
+| 3044 | The window opens as it was left |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP

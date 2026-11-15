@@ -2,7 +2,7 @@
 id: "2136"
 title: "The motions written by hand moved onto shuyi_core::ease: the grid cursor's pulse, music fades and Pan, with no snapshot moving, and why the rest stay"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo

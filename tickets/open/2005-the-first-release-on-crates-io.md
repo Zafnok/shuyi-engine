@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389"]
+blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2412", "2906", "2347", "2348", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
 nick_input: sign-off
 completed:
 ---
@@ -58,6 +58,34 @@ groups:
   (done: the `bots` operation and MCP tool are gone, folded into
   `playtest`), 2391 (one picture type), and 2389 with 2388 before it
   (the inks go).
+
+Nick, 2026-11-14 (`docs/decisions.md`, *no run of breaking versions
+after the MVP*): every planned break a release can't soften comes before
+it, so later features ship as compatible releases. An audit of every
+open ticket that day added a fourth group:
+
+- **Types that can grow, and shapes that must be right the first time:**
+  - 2082–2086 move every exhaustive type an open ticket plans to grow
+    under ADR-0039 (the frame and widgets; input and controllers; sound,
+    music and cinematics; the assets' and platform's data; the
+    contract);
+  - 2412 gives each pad event its pad;
+  - 2087 takes outside crates' types out of a game's way in;
+  - 2088 decides what the contract's version promises;
+  - 2906 decides the assets' lifetimes before the bundle's API is
+    published. Any build ticket it writes that changes the bundle's
+    public API joins this list.
+- **Breaks no attribute softens,** done before the release: 2347
+  (styled text) and 2348 (typed label arguments), 2405 and 2409 (mouse
+  and touch on the engine's widgets), 2133 (the bots' settings files),
+  2136 (motions moved onto `ease`), 2239 (a check on translated lines),
+  3041 (macroquad's `log-rs`) and 3044 (the window kept as it was left).
+
+The release ships with quad-snd as the default sound backend. While
+quad-snd is in the graph, the in-house backend needs the root
+`Cargo.toml`'s `[patch.crates-io]` of `alsa-sys` (ADR-0075), which a
+published crate can't carry. Making the in-house backend the default
+later (3084) breaks no game's code (2084, ADR-0068).
 
 ## Nick input
 

@@ -2,7 +2,7 @@
 id: "2409"
 title: "Mouse and touch on the engine's other widgets and screens, and wheel scrolling: questions, the options rows, the key bindings table, the name grid, the profiles screen, the layout picker and the grid template's stage"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo

@@ -2,7 +2,7 @@
 id: "3041"
 title: "Log sinks in shipped builds: a log file with the last three runs kept, the panic message in it, the browser console on the web, and a SHUYI_LOG filter"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
