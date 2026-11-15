@@ -87,7 +87,7 @@ fcc478d8f409e313 .github/workflows/ci.yml
 3d70db920a46f189 .github/workflows/export.yml
 83c5d9477f7abb45 .github/workflows/release.yml
 49ee40e211c25cec .gitignore
-766c2381547a8f93 AGENTS.md
+fc7b6f3b95a9396f AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 38882e246bedee52 README.md

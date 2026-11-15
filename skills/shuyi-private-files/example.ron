@@ -1,0 +1,31 @@
+// The worked example of shuyi-private-files, a script of contract commands
+// run on a game made with `shuyi new <dir> --template blank` (its crate is
+// `shuyi-private-files`), with no private repository: a file laid in
+// `private/files/` by hand, as a checkout would, replaces the public one at
+// its path, and a build made before it is caught by the game's test until
+// `cargo clean -p`.
+Example(
+    template: "blank",
+    steps: [
+        // No checkout: the title says the public files' subtitle, and the
+        // game's test of its private files has nothing to check.
+        Shuyi(args: ["run", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+            Holds("/result/frame", "made with Shuyi Engine"),
+        ]),
+        Cargo(args: ["test", "-p", "shuyi-private-files", "--lib", "the_private_files_are_the_checkouts"]),
+        // A private file at the path the public one has in
+        // `crates/game/files/`.
+        Write(to: "private/files/en.ron", from: "example/en.ron"),
+        // The build was made before it: the test says so, and names the fix.
+        Cargo(args: ["test", "-p", "shuyi-private-files", "--lib", "the_private_files_are_the_checkouts"], ok: false),
+        Cargo(args: ["clean", "-p", "shuyi-private-files"]),
+        Cargo(args: ["test", "-p", "shuyi-private-files", "--lib", "the_private_files_are_the_checkouts"]),
+        // Now the private file is the game's, and the public one is as it was.
+        Shuyi(args: ["run", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+            Holds("/result/frame", "the private subtitle"),
+        ]),
+        Holds(file: "crates/game/files/en.ron", text: "made with Shuyi Engine"),
+    ],
+)
