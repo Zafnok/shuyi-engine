@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9275fa95df21c9a44d4ec0a7836893f4f8b79106ba8e57e5d34a713084c40982 # shrinks to frames = [([(0, Xbox, PadState { buttons: ButtonSet(0), left_stick: (0.0, 0.0), right_stick: (0.0, 0.90716904) }), (1, Xbox, PadState { buttons: ButtonSet(1), left_stick: (0.0, 0.0), right_stick: (0.0, 0.0) })], 0)]

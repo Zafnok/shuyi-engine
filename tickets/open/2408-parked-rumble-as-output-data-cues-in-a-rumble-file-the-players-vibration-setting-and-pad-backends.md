@@ -248,9 +248,8 @@ if he wants rumble in the game.
   - **Which pad.** With several pads as one player, the pad pressed
     last. `Pads::last_pressed() -> Option<PadId>`
     (`crates/ui/src/input/pad.rs`): the pad holding the newest press
-    `Pads::update` reported, found as `Pads::kind_holding` finds a pad
-    (or, if 2406 removed `kind_holding`, from the newest `PadDown`'s
-    pad id).
+    `Pads::update` reported: the newest `PadDown`'s pad id (2412 gave
+    each event its pad and removed `kind_holding`).
     `Pads` keeps it in a new field that `update` sets. Before any
     press, every connected pad.
   - **`PadInput` implements `Motors`** (`crates/app/src/pads.rs`): it

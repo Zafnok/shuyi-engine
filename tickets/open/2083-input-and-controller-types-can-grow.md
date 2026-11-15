@@ -40,7 +40,7 @@ see is exhaustive, and nine open tickets grow them.
 type even with the attribute. It becomes a `&'static [PadKind]`.
 `ButtonSet` (`pad.rs:195`, a `u64` of bits) is a plain value and stays
 as it is. Which pad an event came from is a change of the events'
-payload, which no attribute softens: 2412 does it.
+payload, which no attribute softens: 2412 (done) did it.
 
 ## Nick input
 

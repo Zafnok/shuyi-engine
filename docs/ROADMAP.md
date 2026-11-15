@@ -157,7 +157,7 @@ These tickets, in order:
 | 2084 | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
 | 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
 | 2086 | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
-| 2412 | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
+| 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
@@ -224,7 +224,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
 | 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
 | 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency (done 2026-11-14: they are `Cargo.toml.tmpl`) |
-| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
+| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759; done 2026-11-14) |
 | 2257 | The text checks say cells where they count cells (done 2026-11-14) |
 | 2583 | The debug step plays over the live link and in a capture plan |
 | 3097 | A game's load runs over several update callbacks on the Playdate (game#1170) |
