@@ -12,7 +12,7 @@ use shuyi_assets::keymap::{CrankDef, StickDef};
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::input::Button;
 use shuyi_ui::input::crank::{Crank, STEPS_PER_TURN};
-use shuyi_ui::input::pad::{PadKind, PadState, Pads};
+use shuyi_ui::input::pad::{PadId, PadKind, PadState, Pads};
 
 /// The SDK's `PDButtons` bits (`pd_api_sys.h`; `shim/shim.c` checks this
 /// copy against the header), each with the binding position it reports.
@@ -35,13 +35,14 @@ pub fn menu_button(slot: u8) -> Option<Button> {
 pub fn menu_press(slot: u8) -> Option<[RawInputEvent; 2]> {
     let button = menu_button(slot)?;
     Some([
-        RawInputEvent::PadDown(button, PadKind::Playdate),
-        RawInputEvent::PadUp(button),
+        RawInputEvent::PadDown(button, PadKind::Playdate, PAD),
+        RawInputEvent::PadUp(button, PAD),
     ])
 }
 
-/// The Playdate's one pad: never unplugged, no sticks.
-const PAD: usize = 0;
+/// The Playdate's one pad: never unplugged, no sticks. Its buttons, its
+/// crank and its system menu are all on it.
+const PAD: PadId = 0;
 
 /// The pad state of the buttons whose bits are set in `bits`.
 fn state(bits: u32) -> PadState {
@@ -127,6 +128,7 @@ impl PadInput {
             steps,
             docked,
             PadKind::Playdate,
+            PAD,
         ));
         events
     }
@@ -155,11 +157,11 @@ mod tests {
     }
 
     fn down(button: Button) -> RawInputEvent {
-        RawInputEvent::PadDown(button, PadKind::Playdate)
+        RawInputEvent::PadDown(button, PadKind::Playdate, PAD)
     }
 
     fn up(button: Button) -> RawInputEvent {
-        RawInputEvent::PadUp(button)
+        RawInputEvent::PadUp(button, PAD)
     }
 
     /// The presses and releases of `button`, `times` times.

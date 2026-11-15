@@ -272,8 +272,8 @@ fn a_crank_turn_of_90_degrees_gives_two_forward_presses() {
     sdk.queue_crank(90.0);
     let forward = Button::CrankForward;
     let (down, up) = (
-        shuyi_ui::RawInputEvent::PadDown(forward, PadKind::Playdate),
-        shuyi_ui::RawInputEvent::PadUp(forward),
+        shuyi_ui::RawInputEvent::PadDown(forward, PadKind::Playdate, 0),
+        shuyi_ui::RawInputEvent::PadUp(forward, 0),
     );
     assert_eq!(polled(&mut platform), [down, up, down, up]);
 }
@@ -287,8 +287,8 @@ fn a_menu_choice_is_a_press_of_its_button_and_only_of_a_slot_it_has() {
     assert_eq!(
         polled(&mut platform),
         [
-            shuyi_ui::RawInputEvent::PadDown(button, PadKind::Playdate),
-            shuyi_ui::RawInputEvent::PadUp(button),
+            shuyi_ui::RawInputEvent::PadDown(button, PadKind::Playdate, 0),
+            shuyi_ui::RawInputEvent::PadUp(button, 0),
         ]
     );
     assert_eq!(polled(&mut platform), []);

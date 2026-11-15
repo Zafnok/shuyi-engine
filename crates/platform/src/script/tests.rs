@@ -207,31 +207,31 @@ fn each_step_becomes_frames_of_events() {
         events(&[RawInputEvent::Up(Key::F)]),
         events(&[RawInputEvent::Down(shift_space)]),
         events(&[RawInputEvent::Up(Key::Space)]),
-        events(&[RawInputEvent::PadDown(Button::South, kind)]),
-        events(&[RawInputEvent::PadUp(Button::South)]),
+        events(&[RawInputEvent::PadDown(Button::South, kind, 0)]),
+        events(&[RawInputEvent::PadUp(Button::South, 0)]),
         events(&[
-            RawInputEvent::PadDown(Button::East, kind),
-            RawInputEvent::PadDown(Button::DpadDown, kind),
+            RawInputEvent::PadDown(Button::East, kind, 0),
+            RawInputEvent::PadDown(Button::DpadDown, kind, 0),
         ]),
         events(&[
-            RawInputEvent::PadUp(Button::East),
-            RawInputEvent::PadUp(Button::DpadDown),
+            RawInputEvent::PadUp(Button::East, 0),
+            RawInputEvent::PadUp(Button::DpadDown, 0),
         ]),
         // The wait of 0 is no frame; 0.05 s is 3.
         Planned::Idle(3),
         // An action by two buttons together, by a key, by a button.
         events(&[
-            RawInputEvent::PadDown(Button::South, kind),
-            RawInputEvent::PadDown(Button::East, kind),
+            RawInputEvent::PadDown(Button::South, kind, 0),
+            RawInputEvent::PadDown(Button::East, kind, 0),
         ]),
         events(&[
-            RawInputEvent::PadUp(Button::South),
-            RawInputEvent::PadUp(Button::East),
+            RawInputEvent::PadUp(Button::South, 0),
+            RawInputEvent::PadUp(Button::East, 0),
         ]),
         events(&[RawInputEvent::Down(Chord::plain(Key::F))]),
         events(&[RawInputEvent::Up(Key::F)]),
-        events(&[RawInputEvent::PadDown(Button::East, kind)]),
-        events(&[RawInputEvent::PadUp(Button::East)]),
+        events(&[RawInputEvent::PadDown(Button::East, kind, 0)]),
+        events(&[RawInputEvent::PadUp(Button::East, 0)]),
     ];
     assert_eq!(frames, expected);
     assert_eq!(super::frames(&[], &keymap(), kind), Ok(Vec::new()));
@@ -244,7 +244,7 @@ fn buttons_are_pressed_on_the_pad_given() {
     let frames = frames(&[pad("South")], &keymap(), other).unwrap();
     assert_eq!(
         frames[0],
-        Planned::Events(vec![RawInputEvent::PadDown(Button::South, other)])
+        Planned::Events(vec![RawInputEvent::PadDown(Button::South, other, 0)])
     );
 }
 

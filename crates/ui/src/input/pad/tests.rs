@@ -1,5 +1,5 @@
 //! Tests of controller state handling: pad kinds and the Nintendo swap,
-//! sticks as 4-way buttons with hysteresis, and merging several pads.
+//! sticks as 4-way buttons with hysteresis, and each pad's own events.
 
 use proptest::prelude::*;
 
@@ -40,6 +40,17 @@ fn xbox(state: PadState) -> (PadId, PadKind, PadState) {
 
 fn pads() -> Pads {
     Pads::new(stick())
+}
+
+/// What [`Pads::update`] reports for `connected`, as `(button, pressed)`,
+/// whatever the pad: for tests of one pad. A removal is left out.
+fn changes(p: &mut Pads, connected: &[(PadId, PadKind, PadState)]) -> Vec<(Button, bool)> {
+    let change = |event| match event {
+        RawInputEvent::PadDown(button, _, _) => Some((button, true)),
+        RawInputEvent::PadUp(button, _) => Some((button, false)),
+        _ => None,
+    };
+    p.update(connected).into_iter().filter_map(change).collect()
 }
 
 const KINDS: [PadKind; 6] = PadKind::ALL;
@@ -283,31 +294,6 @@ fn the_sets_of_directions_are_each_up_down_left_right() {
 }
 
 #[test]
-fn the_pad_holding_a_button_is_the_first_connected_that_does() {
-    let mut p = pads();
-    let sony = PadKind::PlayStation;
-    let connected = [
-        (4, PadKind::Nintendo, holding(&[West])),
-        (2, sony, holding(&[South, West])),
-        (9, PadKind::Xbox, left_at(-1.0, 0.0)),
-    ];
-    p.update(&connected);
-    // A Nintendo pad's left button is still `West`; its `South` would be
-    // its right button.
-    assert_eq!(p.kind_holding(West, &connected), Some(PadKind::Nintendo));
-    assert_eq!(p.kind_holding(South, &connected), Some(sony));
-    assert_eq!(
-        p.kind_holding(LeftStickLeft, &connected),
-        Some(PadKind::Xbox)
-    );
-    assert_eq!(p.kind_holding(North, &connected), None);
-    // A pad `update` hasn't seen holds nothing yet.
-    let late = [(5, PadKind::Xbox, holding(&[North]))];
-    assert_eq!(p.kind_holding(North, &late), None);
-    assert_eq!(pads().kind_holding(South, &connected), None);
-}
-
-#[test]
 fn usb_ids_give_the_pad_kind() {
     // Other makers: the product doesn't matter (DualShock 4 ids included).
     for product in [0, 0x05c4, 0x09cc, 0x0ba0, 0x0ce6, 0x02e0, 0x2009] {
@@ -407,25 +393,25 @@ fn the_standard_mapping_fills_a_pad_state() {
 #[test]
 fn a_press_and_a_release_are_one_event_each() {
     let mut p = pads();
-    assert_eq!(p.update(&[xbox(holding(&[]))]), []);
-    assert_eq!(p.update(&[xbox(holding(&[South]))]), [(South, true)]);
+    assert_eq!(changes(&mut p, &[xbox(holding(&[]))]), []);
+    assert_eq!(changes(&mut p, &[xbox(holding(&[South]))]), [(South, true)]);
     assert_eq!(p.down().iter().collect::<Vec<_>>(), [South]);
     // Still held: nothing new.
-    assert_eq!(p.update(&[xbox(holding(&[South]))]), []);
-    assert_eq!(p.update(&[xbox(holding(&[]))]), [(South, false)]);
+    assert_eq!(changes(&mut p, &[xbox(holding(&[South]))]), []);
+    assert_eq!(changes(&mut p, &[xbox(holding(&[]))]), [(South, false)]);
     assert_eq!(p.down(), ButtonSet::EMPTY);
-    assert_eq!(p.update(&[xbox(holding(&[]))]), []);
+    assert_eq!(changes(&mut p, &[xbox(holding(&[]))]), []);
 }
 
 #[test]
 fn releases_come_before_presses_each_in_button_order() {
     let mut p = pads();
     assert_eq!(
-        p.update(&[xbox(holding(&[Start, West, South]))]),
+        changes(&mut p, &[xbox(holding(&[Start, West, South]))]),
         [(South, true), (West, true), (Start, true)]
     );
     assert_eq!(
-        p.update(&[xbox(holding(&[DpadUp, East, West]))]),
+        changes(&mut p, &[xbox(holding(&[DpadUp, East, West]))]),
         [(South, false), (Start, false), (East, true), (DpadUp, true)]
     );
 }
@@ -441,7 +427,7 @@ fn the_stick_presses_at_the_press_threshold() {
     ] {
         let mut p = pads();
         assert_eq!(
-            p.update(&[xbox(left_at(x, y))]),
+            changes(&mut p, &[xbox(left_at(x, y))]),
             [(button, true)],
             "{x} {y}"
         );
@@ -455,7 +441,7 @@ fn the_stick_presses_at_the_press_threshold() {
         (0.0, 0.0),
     ] {
         let mut p = pads();
-        assert_eq!(p.update(&[xbox(left_at(x, y))]), [], "{x} {y}");
+        assert_eq!(changes(&mut p, &[xbox(left_at(x, y))]), [], "{x} {y}");
     }
 }
 
@@ -472,7 +458,7 @@ fn the_right_stick_has_its_own_direction_buttons() {
             right_stick: (x, y),
             ..PadState::default()
         };
-        assert_eq!(p.update(&[xbox(state)]), [(button, true)], "{x} {y}");
+        assert_eq!(changes(&mut p, &[xbox(state)]), [(button, true)], "{x} {y}");
     }
     // Both sticks at once: one direction each.
     let mut p = pads();
@@ -482,7 +468,7 @@ fn the_right_stick_has_its_own_direction_buttons() {
         ..PadState::default()
     };
     assert_eq!(
-        p.update(&[xbox(state)]),
+        changes(&mut p, &[xbox(state)]),
         [(LeftStickUp, true), (RightStickRight, true)]
     );
 }
@@ -491,24 +477,24 @@ fn the_right_stick_has_its_own_direction_buttons() {
 fn a_held_stick_direction_lasts_until_below_the_release_threshold() {
     let mut p = pads();
     assert_eq!(
-        p.update(&[xbox(left_at(0.6, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.6, 0.0))]),
         [(LeftStickRight, true)]
     );
     // Between release and press: no flicker, whichever way it wobbles.
     for x in [0.49, 0.36, 0.45, 0.35, 0.5, 0.4] {
-        assert_eq!(p.update(&[xbox(left_at(x, 0.0))]), [], "{x}");
+        assert_eq!(changes(&mut p, &[xbox(left_at(x, 0.0))]), [], "{x}");
     }
     assert_eq!(
-        p.update(&[xbox(left_at(0.34, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.34, 0.0))]),
         [(LeftStickRight, false)]
     );
     // Released, the same wobble doesn't press it again...
     for x in [0.36, 0.45, 0.49, 0.35] {
-        assert_eq!(p.update(&[xbox(left_at(x, 0.0))]), [], "{x}");
+        assert_eq!(changes(&mut p, &[xbox(left_at(x, 0.0))]), [], "{x}");
     }
     // ...until it reaches the press threshold.
     assert_eq!(
-        p.update(&[xbox(left_at(0.5, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.5, 0.0))]),
         [(LeftStickRight, true)]
     );
 }
@@ -519,14 +505,14 @@ fn the_thresholds_come_from_the_keymap() {
         press_percent: 80,
         release_percent: 10,
     });
-    assert_eq!(p.update(&[xbox(left_at(0.79, 0.0))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.79, 0.0))]), []);
     assert_eq!(
-        p.update(&[xbox(left_at(0.8, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.8, 0.0))]),
         [(LeftStickRight, true)]
     );
-    assert_eq!(p.update(&[xbox(left_at(0.1, 0.0))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.1, 0.0))]), []);
     assert_eq!(
-        p.update(&[xbox(left_at(0.09, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.09, 0.0))]),
         [(LeftStickRight, false)]
     );
 }
@@ -546,7 +532,7 @@ fn a_diagonal_push_is_one_direction_the_one_pushed_furthest() {
     ] {
         let mut p = pads();
         assert_eq!(
-            p.update(&[xbox(left_at(x, y))]),
+            changes(&mut p, &[xbox(left_at(x, y))]),
             [(button, true)],
             "{x} {y}"
         );
@@ -557,22 +543,22 @@ fn a_diagonal_push_is_one_direction_the_one_pushed_furthest() {
 fn a_held_direction_gives_way_only_to_one_pushed_clearly_further() {
     let mut p = pads();
     assert_eq!(
-        p.update(&[xbox(left_at(0.6, 0.0))]),
+        changes(&mut p, &[xbox(left_at(0.6, 0.0))]),
         [(LeftStickRight, true)]
     );
     // Up is now pushed further, but not by the gap between the thresholds
     // (0.15): right stays, so a wobbling diagonal doesn't flicker.
-    assert_eq!(p.update(&[xbox(left_at(0.6, -0.74))]), []);
-    assert_eq!(p.update(&[xbox(left_at(0.6, -0.6))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.6, -0.74))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.6, -0.6))]), []);
     // Clearly further: up takes over in one frame.
     assert_eq!(
-        p.update(&[xbox(left_at(0.6, -0.76))]),
+        changes(&mut p, &[xbox(left_at(0.6, -0.76))]),
         [(LeftStickRight, false), (LeftStickUp, true)]
     );
     // And back the same way.
-    assert_eq!(p.update(&[xbox(left_at(0.9, -0.76))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.9, -0.76))]), []);
     assert_eq!(
-        p.update(&[xbox(left_at(0.92, -0.76))]),
+        changes(&mut p, &[xbox(left_at(0.92, -0.76))]),
         [(LeftStickUp, false), (LeftStickRight, true)]
     );
 }
@@ -581,18 +567,18 @@ fn a_held_direction_gives_way_only_to_one_pushed_clearly_further() {
 fn rolling_the_stick_round_changes_direction_without_centring() {
     let mut p = pads();
     assert_eq!(
-        p.update(&[xbox(left_at(1.0, 0.0))]),
+        changes(&mut p, &[xbox(left_at(1.0, 0.0))]),
         [(LeftStickRight, true)]
     );
     // Rolled from right to up: right has fallen below release.
     assert_eq!(
-        p.update(&[xbox(left_at(0.2, -0.98))]),
+        changes(&mut p, &[xbox(left_at(0.2, -0.98))]),
         [(LeftStickRight, false), (LeftStickUp, true)]
     );
     // A held direction that falls below release while nothing else is
     // pushed far enough just ends.
     assert_eq!(
-        p.update(&[xbox(left_at(0.3, -0.3))]),
+        changes(&mut p, &[xbox(left_at(0.3, -0.3))]),
         [(LeftStickUp, false)]
     );
 }
@@ -601,14 +587,14 @@ fn rolling_the_stick_round_changes_direction_without_centring() {
 fn a_broken_stick_reading_presses_nothing() {
     for (x, y) in [(f32::NAN, 0.0), (0.0, f32::NAN), (f32::NAN, f32::NAN)] {
         let mut p = pads();
-        assert_eq!(p.update(&[xbox(left_at(x, y))]), [], "{x} {y}");
+        assert_eq!(changes(&mut p, &[xbox(left_at(x, y))]), [], "{x} {y}");
         // And it ends a held direction.
         assert_eq!(
-            p.update(&[xbox(left_at(1.0, 0.0))]),
+            changes(&mut p, &[xbox(left_at(1.0, 0.0))]),
             [(LeftStickRight, true)]
         );
         assert_eq!(
-            p.update(&[xbox(left_at(x, y))]),
+            changes(&mut p, &[xbox(left_at(x, y))]),
             [(LeftStickRight, false)],
             "{x} {y}"
         );
@@ -616,57 +602,94 @@ fn a_broken_stick_reading_presses_nothing() {
 }
 
 #[test]
-fn a_removed_pad_releases_what_it_held() {
+fn a_removed_pad_releases_what_it_held_then_is_removed() {
     let mut p = pads();
     let held = PadState {
         buttons: [South, Start].into_iter().collect(),
         left_stick: (0.0, 1.0),
         ..PadState::default()
     };
+    let other = (4, PadKind::PlayStation, holding(&[South]));
     assert_eq!(
-        p.update(&[xbox(held)]),
-        [(South, true), (Start, true), (LeftStickDown, true)]
+        p.update(&[xbox(held), other]),
+        [
+            RawInputEvent::PadDown(South, PadKind::Xbox, 0),
+            RawInputEvent::PadDown(South, PadKind::PlayStation, 4),
+            RawInputEvent::PadDown(Start, PadKind::Xbox, 0),
+            RawInputEvent::PadDown(LeftStickDown, PadKind::Xbox, 0),
+        ]
     );
-    // Unplugged mid-press.
+    // Unplugged mid-press: its releases, then its removal. The other pad's
+    // `South` is its own.
+    assert_eq!(
+        p.update(&[other]),
+        [
+            RawInputEvent::PadUp(South, 0),
+            RawInputEvent::PadUp(Start, 0),
+            RawInputEvent::PadUp(LeftStickDown, 0),
+            RawInputEvent::PadRemoved(0),
+        ]
+    );
+    assert_eq!(p.down().iter().collect::<Vec<_>>(), [South]);
+    assert_eq!(p.update(&[other]), []);
     assert_eq!(
         p.update(&[]),
-        [(South, false), (Start, false), (LeftStickDown, false)]
+        [RawInputEvent::PadUp(South, 4), RawInputEvent::PadRemoved(4)]
     );
-    assert_eq!(p.down(), ButtonSet::EMPTY);
+    assert_eq!(p.update(&[]), []);
+    // A pad removed holding nothing is still removed, once.
+    assert_eq!(p.update(&[(9, PadKind::Xbox, holding(&[]))]), []);
+    assert_eq!(p.update(&[]), [RawInputEvent::PadRemoved(9)]);
     assert_eq!(p.update(&[]), []);
     // Plugged back in still holding: pressed again, and the stick starts
     // from scratch (it needs the press threshold, not the release one).
-    assert_eq!(p.update(&[xbox(left_at(0.0, 0.4))]), []);
+    assert_eq!(changes(&mut p, &[xbox(left_at(0.0, 0.4))]), []);
     assert_eq!(
-        p.update(&[xbox(held)]),
+        changes(&mut p, &[xbox(held)]),
         [(South, true), (Start, true), (LeftStickDown, true)]
     );
 }
 
+/// Every pad's releases, then the removed pads, then every pad's presses,
+/// the releases and presses in button order and then by pad id, whatever
+/// order the pads come in: once merged, a poll's presses from several pads
+/// come in the order one pad gave them.
 #[test]
-fn two_pads_holding_one_button_are_one_press() {
+fn releases_then_removals_then_presses_each_by_button_then_pad() {
+    let mut p = pads();
+    let pad = |id, buttons: &[Button]| (id, PadKind::Xbox, holding(buttons));
+    let _ = p.update(&[pad(5, &[North]), pad(2, &[West, East]), pad(8, &[])]);
+    assert_eq!(
+        p.update(&[pad(5, &[South]), pad(2, &[Start, East])]),
+        [
+            RawInputEvent::PadUp(West, 2),
+            RawInputEvent::PadUp(North, 5),
+            RawInputEvent::PadRemoved(8),
+            RawInputEvent::PadDown(South, PadKind::Xbox, 5),
+            RawInputEvent::PadDown(Start, PadKind::Xbox, 2),
+        ]
+    );
+}
+
+#[test]
+fn two_pads_holding_one_button_press_it_each() {
     let mut p = pads();
     let a = |state| (3, PadKind::Xbox, state);
     let b = |state| (7, PadKind::PlayStation, state);
     assert_eq!(
         p.update(&[a(holding(&[South])), b(holding(&[]))]),
-        [(South, true)]
+        [RawInputEvent::PadDown(South, PadKind::Xbox, 3)]
     );
-    // The second pad joins in: no second press.
-    assert_eq!(p.update(&[a(holding(&[South])), b(holding(&[South]))]), []);
-    // The first lets go: still held by the second.
-    assert_eq!(p.update(&[a(holding(&[])), b(holding(&[South]))]), []);
+    // The second pad joins in: a press of its own (`Game` merges them).
     assert_eq!(
-        p.update(&[a(holding(&[])), b(holding(&[]))]),
-        [(South, false)]
+        p.update(&[a(holding(&[South])), b(holding(&[South]))]),
+        [RawInputEvent::PadDown(South, PadKind::PlayStation, 7)]
     );
-    // Different buttons on different pads are separate presses, and
-    // unplugging one pad releases only what the other doesn't hold.
     assert_eq!(
-        p.update(&[a(holding(&[South, West])), b(holding(&[South, North]))]),
-        [(South, true), (West, true), (North, true)]
+        p.update(&[a(holding(&[])), b(holding(&[South]))]),
+        [RawInputEvent::PadUp(South, 3)]
     );
-    assert_eq!(p.update(&[b(holding(&[South, North]))]), [(West, false)]);
+    assert_eq!(p.down().iter().collect::<Vec<_>>(), [South]);
 }
 
 #[test]
@@ -674,33 +697,43 @@ fn each_pad_keeps_its_own_stick_state() {
     let mut p = pads();
     let a = |x| (0, PadKind::Xbox, left_at(x, 0.0));
     let b = |x| (1, PadKind::Xbox, left_at(x, 0.0));
-    assert_eq!(p.update(&[a(0.6), b(0.0)]), [(LeftStickRight, true)]);
+    assert_eq!(changes(&mut p, &[a(0.6), b(0.0)]), [(LeftStickRight, true)]);
     // Pad 1 at 0.4 never pressed, so it isn't held; pad 0 at 0.4 still is.
-    assert_eq!(p.update(&[a(0.4), b(0.4)]), []);
-    assert_eq!(p.update(&[a(0.0), b(0.4)]), [(LeftStickRight, false)]);
+    assert_eq!(changes(&mut p, &[a(0.4), b(0.4)]), []);
+    assert_eq!(
+        changes(&mut p, &[a(0.0), b(0.4)]),
+        [(LeftStickRight, false)]
+    );
 }
 
 #[test]
 fn a_nintendo_pad_reports_its_right_button_as_south() {
     let mut p = pads();
     let switch = |state| (0, PadKind::Nintendo, state);
-    assert_eq!(p.update(&[switch(holding(&[East]))]), [(South, true)]);
     assert_eq!(
-        p.update(&[switch(holding(&[South]))]),
+        changes(&mut p, &[switch(holding(&[East]))]),
+        [(South, true)]
+    );
+    assert_eq!(
+        changes(&mut p, &[switch(holding(&[South]))]),
         [(South, false), (East, true)]
     );
     assert_eq!(
-        p.update(&[switch(holding(&[South, West, North, Start]))]),
+        changes(&mut p, &[switch(holding(&[South, West, North, Start]))]),
         [(West, true), (North, true), (Start, true)]
     );
-    // Its right button and an Xbox pad's bottom button are the same press.
+    // Its right button and an Xbox pad's bottom button are the same
+    // binding position.
     let mut p = pads();
     assert_eq!(
         p.update(&[
             switch(holding(&[East])),
             (1, PadKind::Xbox, holding(&[South]))
         ]),
-        [(South, true)]
+        [
+            RawInputEvent::PadDown(South, PadKind::Nintendo, 0),
+            RawInputEvent::PadDown(South, PadKind::Xbox, 1),
+        ]
     );
 }
 
@@ -715,7 +748,7 @@ fn actions_of(kind: PadKind, buttons: &[Button]) -> Vec<Vec<Action>> {
     let mut input = default_input();
     let mut p = pads();
     let mut frame = |state: PadState| {
-        for (button, pressed) in p.update(&[(0, kind, state)]) {
+        for (button, pressed) in changes(&mut p, &[(0, kind, state)]) {
             if pressed {
                 input.pad_down(button, kind);
             } else {
@@ -770,7 +803,7 @@ fn the_left_stick_moves_the_cursor_and_the_right_stick_does_nothing() {
     let mut input = default_input();
     let mut p = pads();
     let mut frame = |state: PadState, dt: f32| {
-        for (button, pressed) in p.update(&[xbox(state)]) {
+        for (button, pressed) in changes(&mut p, &[xbox(state)]) {
             if pressed {
                 input.pad_down(button, PadKind::Xbox);
             } else {
@@ -807,35 +840,60 @@ fn arb_kind() -> impl Strategy<Value = PadKind> {
 }
 
 proptest! {
-    /// Whatever the pads do, the events are exactly the changes of
-    /// [`Pads::down`]: replaying them tracks it, no button is pressed while
-    /// down or released while up, and each stick holds at most one
-    /// direction per pad.
+    /// Whatever the pads do, each pad's events are exactly the changes of
+    /// what that pad holds: replaying them tracks it, no button is pressed
+    /// on a pad while down on it or released while up, a pad is removed
+    /// once, holding nothing, when it is left out, every release comes
+    /// before every removal and every removal before every press, each by
+    /// button then pad id, and each stick holds at most one direction per
+    /// pad.
     #[test]
-    fn events_track_what_is_down(
+    fn events_track_what_each_pad_holds(
         frames in prop::collection::vec(
-            prop::collection::vec((0usize..3, arb_kind(), arb_state()), 0..3),
+            prop::collection::vec((0usize..4, arb_kind(), arb_state()), 0..4),
             0..40,
         ),
     ) {
         let mut p = pads();
-        let mut down = alloc::collections::BTreeSet::new();
+        let mut down: BTreeMap<PadId, alloc::collections::BTreeSet<Button>> = BTreeMap::new();
         for connected in &frames {
-            for (button, pressed) in p.update(connected) {
-                if pressed {
-                    prop_assert!(down.insert(button), "{button} pressed twice");
-                } else {
-                    prop_assert!(down.remove(&button), "{button} released while up");
-                }
+            // A pad listed twice is its last entry.
+            let kinds: BTreeMap<PadId, PadKind> =
+                connected.iter().map(|&(id, kind, _)| (id, kind)).collect();
+            let mut last = (0, None);
+            for event in p.update(connected) {
+                let (phase, at) = match event {
+                    RawInputEvent::PadUp(button, id) => {
+                        let held = down.get_mut(&id);
+                        prop_assert!(held.is_some_and(|set| set.remove(&button)), "{button} released while up on {id}");
+                        (0, (button as usize, id))
+                    }
+                    RawInputEvent::PadRemoved(id) => {
+                        prop_assert!(!kinds.contains_key(&id), "{id} removed while plugged in");
+                        let held = down.remove(&id);
+                        prop_assert!(held.is_some_and(|set| set.is_empty()), "{id} removed holding something, or twice");
+                        (1, (0, id))
+                    }
+                    RawInputEvent::PadDown(button, kind, id) => {
+                        prop_assert_eq!(Some(&kind), kinds.get(&id));
+                        prop_assert!(down.entry(id).or_default().insert(button), "{button} pressed twice on {id}");
+                        (2, (button as usize, id))
+                    }
+                    other => panic!("not a pad's: {other:?}"),
+                };
+                prop_assert!((last.0, last.1) < (phase, Some(at)), "out of order: {event:?}");
+                last = (phase, Some(at));
             }
-            prop_assert_eq!(p.down().iter().collect::<Vec<_>>(), down.iter().copied().collect::<Vec<_>>());
-            if connected.is_empty() {
-                prop_assert!(down.is_empty());
+            for &id in kinds.keys() {
+                down.entry(id).or_default();
             }
-            if let [(_, _, _)] = connected.as_slice() {
+            prop_assert_eq!(down.keys().copied().collect::<Vec<_>>(), kinds.keys().copied().collect::<Vec<_>>());
+            let all: alloc::collections::BTreeSet<Button> = down.values().flatten().copied().collect();
+            prop_assert_eq!(p.down().iter().collect::<Vec<_>>(), all.into_iter().collect::<Vec<_>>());
+            for held in down.values() {
                 for buttons in [LEFT_STICK, RIGHT_STICK] {
-                    let held = buttons.iter().filter(|b| down.contains(b)).count();
-                    prop_assert!(held <= 1, "{held} directions on one stick");
+                    let on = buttons.iter().filter(|b| held.contains(b)).count();
+                    prop_assert!(on <= 1, "{on} directions on one stick");
                 }
             }
         }

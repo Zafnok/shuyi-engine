@@ -34,6 +34,42 @@ fn a_typed_character_reads_back_from_its_text() {
     }
 }
 
+/// Ticket 2412: a pad event's text names its pad, and one written before
+/// pads had ids (a session record's) reads as pad 0, which is what it meant:
+/// every pad's events merged into one.
+#[test]
+fn a_pad_events_text_names_its_pad_and_text_without_one_is_pad_0() {
+    let events = vec![
+        RawInputEvent::PadDown(Button::South, PadKind::Nintendo, 3),
+        RawInputEvent::PadUp(Button::DpadUp, 1),
+        RawInputEvent::PadRemoved(2),
+    ];
+    let text = ron::to_string(&events).unwrap();
+    assert_eq!(
+        text,
+        r#"[PadDown("South",Nintendo,3),PadUp("DpadUp",1),PadRemoved(2)]"#
+    );
+    assert_eq!(ron::from_str::<Vec<RawInputEvent>>(&text).unwrap(), events);
+    let old: Vec<RawInputEvent> =
+        ron::from_str(r#"[PadDown("East", Xbox), PadUp("East")]"#).unwrap();
+    assert_eq!(
+        old,
+        [
+            RawInputEvent::PadDown(Button::East, PadKind::Xbox, 0),
+            RawInputEvent::PadUp(Button::East, 0),
+        ]
+    );
+    for wrong in [
+        r#"PadDown("East")"#,
+        "PadUp()",
+        "PadRemoved()",
+        r#"PadUp("East", 1, 2)"#,
+    ] {
+        let read = ron::from_str::<RawInputEvent>(wrong);
+        assert!(read.is_err(), "{wrong}: {read:?}");
+    }
+}
+
 fn tap(game: &mut Game<Toy>, key: Key) -> bool {
     let quit = game.frame(&[down(key)], 0.0).quit;
     game.frame(&[RawInputEvent::Up(key)], 0.0);
@@ -42,9 +78,9 @@ fn tap(game: &mut Game<Toy>, key: Key) -> bool {
 
 fn pad_tap(game: &mut Game<Toy>, button: Button) -> bool {
     let quit = game
-        .frame(&[RawInputEvent::PadDown(button, PadKind::Xbox)], 0.0)
+        .frame(&[RawInputEvent::PadDown(button, PadKind::Xbox, 0)], 0.0)
         .quit;
-    game.frame(&[RawInputEvent::PadUp(button)], 0.0);
+    game.frame(&[RawInputEvent::PadUp(button, 0)], 0.0);
     quit
 }
 
@@ -340,11 +376,11 @@ fn screens_see_the_keys_pressed_and_the_text_typed() {
 #[test]
 fn screens_see_the_buttons_that_went_down_and_up() {
     let (mut game, seen) = spied();
-    let press = |b| RawInputEvent::PadDown(b, PadKind::Xbox);
+    let press = |b| RawInputEvent::PadDown(b, PadKind::Xbox, 0);
     game.frame(&[press(Button::RightStickUp), press(Button::South)], 0.0);
     let ups = [
-        RawInputEvent::PadUp(Button::South),
-        RawInputEvent::PadUp(Button::RightStickUp),
+        RawInputEvent::PadUp(Button::South, 0),
+        RawInputEvent::PadUp(Button::RightStickUp, 0),
     ];
     game.frame(&ups, 0.0);
     let seen = seen.borrow();
@@ -370,14 +406,14 @@ fn screens_see_the_buttons_that_went_down_and_up() {
 #[test]
 fn a_frame_is_pad_input_when_a_button_went_down_or_a_pad_acted() {
     let (mut game, seen) = spied();
-    let press = |b| RawInputEvent::PadDown(b, PadKind::Xbox);
+    let press = |b| RawInputEvent::PadDown(b, PadKind::Xbox, 0);
     // An unbound button: no action, but a button went down.
     game.frame(&[press(Button::RightStickPress)], 0.0);
-    game.frame(&[RawInputEvent::PadUp(Button::RightStickPress)], 0.0);
+    game.frame(&[RawInputEvent::PadUp(Button::RightStickPress, 0)], 0.0);
     // Held down on the D-pad: it repeats with no button going down.
     game.frame(&[press(Button::DpadDown)], 0.0);
     game.frame(&[], 0.5);
-    game.frame(&[RawInputEvent::PadUp(Button::DpadDown)], 0.0);
+    game.frame(&[RawInputEvent::PadUp(Button::DpadDown, 0)], 0.0);
     // Held down on the keyboard: its repeat is the keyboard's.
     game.frame(&[down(Key::Down)], 0.0);
     game.frame(&[], 0.5);
@@ -395,7 +431,7 @@ fn the_context_knows_the_device_pressed_last() {
     let mut game = home(ctx());
     assert_eq!(game.ctx().device, Device::Keyboard);
     let sony = PadKind::PlayStation;
-    game.frame(&[RawInputEvent::PadDown(Button::DpadDown, sony)], 0.0);
+    game.frame(&[RawInputEvent::PadDown(Button::DpadDown, sony, 0)], 0.0);
     assert_eq!(game.ctx().device, Device::Pad(sony));
     game.frame(&[down(Key::Up)], 0.0);
     assert_eq!(game.ctx().device, Device::Keyboard);
@@ -412,7 +448,7 @@ fn the_context_knows_the_device_pressed_last() {
 fn a_press_moves_the_key_prompt_on() {
     for press in [
         down(Key::Z),
-        RawInputEvent::PadDown(Button::RightStickPress, PadKind::Xbox),
+        RawInputEvent::PadDown(Button::RightStickPress, PadKind::Xbox, 0),
     ] {
         let mut waiting = ctx();
         waiting.key_prompt = KeyPrompt::Waiting;
@@ -420,7 +456,7 @@ fn a_press_moves_the_key_prompt_on() {
         game.frame(
             &[
                 RawInputEvent::Up(Key::Z),
-                RawInputEvent::PadUp(Button::South),
+                RawInputEvent::PadUp(Button::South, 0),
             ],
             0.0,
         );
@@ -1097,8 +1133,14 @@ fn hooks_say_which_screens() {
     assert_eq!((hook.open)(&ctx()).name(), "tools");
 }
 
+/// Ticket 2412: each pad's changes are its own events, with its id:
+/// every pad's releases (in button order, then by pad id), then the removed
+/// pads, then every pad's presses with the pad's kind. Nothing is merged.
+/// It is the path from the pads to the events of every backend that reads
+/// pads (`shuyi-app`'s `pads.rs` on desktop and the web, `shuyi-playdate`'s
+/// `input.rs`).
 #[test]
-fn pad_changes_become_pad_events_with_the_pressing_pads_kind() {
+fn pad_changes_become_events_of_each_pad_with_its_id() {
     let mut pads = Pads::new(StickDef {
         press_percent: 50,
         release_percent: 35,
@@ -1108,62 +1150,91 @@ fn pad_changes_become_pad_events_with_the_pressing_pads_kind() {
         ..PadState::default()
     };
     let pad = |id, kind, buttons: &[Button]| (id, kind, holding(buttons));
-    let sony = PadKind::PlayStation;
+    let (xbox, sony) = (PadKind::Xbox, PadKind::PlayStation);
     let both = [
-        pad(3, PadKind::Xbox, &[Button::Start]),
         pad(7, sony, &[Button::South]),
+        pad(3, xbox, &[Button::Start]),
     ];
     assert_eq!(
         RawInputEvent::from_pads(&mut pads, &both),
         [
-            RawInputEvent::PadDown(Button::South, sony),
-            RawInputEvent::PadDown(Button::Start, PadKind::Xbox),
+            RawInputEvent::PadDown(Button::South, sony, 7),
+            RawInputEvent::PadDown(Button::Start, xbox, 3),
         ]
     );
-    // Releases come first and carry no kind.
+    // Pad 3 presses the button pad 7 holds: a press of its own.
     let next = [
-        pad(3, PadKind::Xbox, &[Button::South]),
+        pad(3, xbox, &[Button::South]),
         pad(7, sony, &[Button::South, Button::North]),
     ];
     assert_eq!(
         RawInputEvent::from_pads(&mut pads, &next),
         [
-            RawInputEvent::PadUp(Button::Start),
-            RawInputEvent::PadDown(Button::North, sony),
+            RawInputEvent::PadUp(Button::Start, 3),
+            RawInputEvent::PadDown(Button::South, xbox, 3),
+            RawInputEvent::PadDown(Button::North, sony, 7),
         ]
     );
-    assert_eq!(RawInputEvent::from_pads(&mut pads, &[]).len(), 2);
+    // Pad 7 unplugged and pad 3 pressing: the releases, the removal, then
+    // the press.
+    let last = [pad(3, xbox, &[Button::South, Button::East])];
+    assert_eq!(
+        RawInputEvent::from_pads(&mut pads, &last),
+        [
+            RawInputEvent::PadUp(Button::South, 7),
+            RawInputEvent::PadUp(Button::North, 7),
+            RawInputEvent::PadRemoved(7),
+            RawInputEvent::PadDown(Button::East, xbox, 3),
+        ]
+    );
+    assert_eq!(
+        RawInputEvent::from_pads(&mut pads, &[]),
+        [
+            RawInputEvent::PadUp(Button::South, 3),
+            RawInputEvent::PadUp(Button::East, 3),
+            RawInputEvent::PadRemoved(3),
+        ]
+    );
+    assert_eq!(RawInputEvent::from_pads(&mut pads, &[]), []);
 }
 
 /// Ticket 1035: each notch of the crank is a press and a release of a
-/// crank button, from the pad of the kind given; a docked crank gives
+/// crank button, on the pad given, of the kind given; a docked crank gives
 /// nothing and forgets a part notch.
 #[test]
 fn crank_notches_become_presses_and_releases_of_the_crank_buttons() {
     let mut crank = crate::input::Crank::new(shuyi_assets::keymap::CrankDef { notch_degrees: 30 });
     let kind = PadKind::Playdate;
+    // Ticket 2412: the crank's pad comes with each event.
+    let pad = 2;
     let back = [
-        RawInputEvent::PadDown(Button::CrankBack, kind),
-        RawInputEvent::PadUp(Button::CrankBack),
+        RawInputEvent::PadDown(Button::CrankBack, kind, pad),
+        RawInputEvent::PadUp(Button::CrankBack, pad),
     ];
     assert_eq!(
-        RawInputEvent::from_crank(&mut crank, -20.0, false, kind),
+        RawInputEvent::from_crank(&mut crank, -20.0, false, kind, pad),
         []
     );
     assert_eq!(
-        RawInputEvent::from_crank(&mut crank, -50.0, false, kind),
+        RawInputEvent::from_crank(&mut crank, -50.0, false, kind, pad),
         [back, back].concat()
     );
     assert_eq!(
-        RawInputEvent::from_crank(&mut crank, 40.0, false, kind),
+        RawInputEvent::from_crank(&mut crank, 40.0, false, kind, pad),
         [
-            RawInputEvent::PadDown(Button::CrankForward, kind),
-            RawInputEvent::PadUp(Button::CrankForward),
+            RawInputEvent::PadDown(Button::CrankForward, kind, pad),
+            RawInputEvent::PadUp(Button::CrankForward, pad),
         ]
     );
     // 20 wound forwards, then docked: forgotten.
-    assert_eq!(RawInputEvent::from_crank(&mut crank, -25.0, true, kind), []);
-    assert_eq!(RawInputEvent::from_crank(&mut crank, 20.0, false, kind), []);
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, -25.0, true, kind, pad),
+        []
+    );
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, 20.0, false, kind, pad),
+        []
+    );
 }
 
 /// Ticket 1035: an action from outside the keys (a platform's own menu)
@@ -1274,24 +1345,24 @@ fn a_crank_turned_in_steps_presses_as_one_turned_in_degrees() {
     let kind = PadKind::Playdate;
     let forward = Button::CrankForward;
     let (down, up) = (
-        RawInputEvent::PadDown(forward, kind),
-        RawInputEvent::PadUp(forward),
+        RawInputEvent::PadDown(forward, kind, 0),
+        RawInputEvent::PadUp(forward, 0),
     );
     assert_eq!(
-        RawInputEvent::from_crank_steps(&mut crank, 64, false, kind),
+        RawInputEvent::from_crank_steps(&mut crank, 64, false, kind, 0),
         [down, up, down, up]
     );
     assert_eq!(
-        RawInputEvent::from_crank_steps(&mut crank, 31, false, kind),
+        RawInputEvent::from_crank_steps(&mut crank, 31, false, kind, 0),
         []
     );
     // Docked: nothing, and what was wound is forgotten.
     assert_eq!(
-        RawInputEvent::from_crank_steps(&mut crank, 1, true, kind),
+        RawInputEvent::from_crank_steps(&mut crank, 1, true, kind, 0),
         []
     );
     assert_eq!(
-        RawInputEvent::from_crank_steps(&mut crank, 1, false, kind),
+        RawInputEvent::from_crank_steps(&mut crank, 1, false, kind, 0),
         []
     );
 }
