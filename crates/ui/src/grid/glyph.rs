@@ -33,7 +33,10 @@ pub const OVERLAY_BLEND: f32 = 0.75;
 
 /// A grid map as colored glyphs: each tile its terrain's two glyphs, the
 /// ranges tinting their background (in its [plain style](GlyphStyle::PLAIN)).
+///
+/// Kind 2 of ADR-0039: build it with [`GlyphSkin::new`] and [`GlyphSkin::with_style`].
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct GlyphSkin {
     /// The palette's names of the path's, the cursor's and the threat
     /// arrows' colors.
@@ -114,7 +117,7 @@ impl GlyphSkin {
 
     /// The same skin in `style`.
     #[must_use]
-    pub const fn styled(mut self, style: GlyphStyle) -> Self {
+    pub const fn with_style(mut self, style: GlyphStyle) -> Self {
         self.style = style;
         self
     }

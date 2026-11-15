@@ -152,7 +152,7 @@ These tickets, in order:
 | 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
 | 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
 | 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1253) |
-| 2082 | The frame's and the widgets' types that open tickets grow move under ADR-0039, and the ADR says every such type moves before a release |
+| 2082 (done) | The frame's and the widgets' types that open tickets grow move under ADR-0039, and the ADR says every such type moves before a release |
 | 2083 | The input and controller types that open tickets grow move under ADR-0039, and `PadKind::ALL` becomes a slice |
 | 2084 | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
 | 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |

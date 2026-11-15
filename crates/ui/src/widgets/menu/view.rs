@@ -7,7 +7,10 @@ use crate::prelude::*;
 use crate::text::Label;
 
 /// The whole menu, as it is this frame.
+///
+/// Kind 3 of ADR-0039: build it with [`MenuView::new`] and assign the rest.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MenuView {
     /// The items, top to bottom: all of them, also those scrolled out of
     /// the box.

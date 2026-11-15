@@ -202,10 +202,9 @@ None.
    open ticket that uses `Screen::widget_focus` (2330 implements it;
    2322 reads it), and names the follow-up where they mention it.
 
-**For the game:** `MenuView` gains a field, so code that builds one with
-a struct literal adds `active: true` (`MenuView::new` sets it). The PR
-says so, with a `Breaking:` line (2010), and the game's PR that
-moves its pin follows it. The rest is additive.
+**For the game:** additive. `MenuView` gains a field that
+`MenuView::new` sets (`active: true`); **from 2082 (done)**, it is
+`#[non_exhaustive]`, so no game builds it by literal.
 
 **Out (do not do):**
 - The `.ui.ron` fields for kept directions, neighbours and wrap,

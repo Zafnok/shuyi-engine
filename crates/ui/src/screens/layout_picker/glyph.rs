@@ -139,8 +139,8 @@ fn paint_panel<G: GameData>(
         )
     };
     let look = PanelLook::new(style, c(EngineColor::Text), bg)
-        .border(border)
-        .title(title_fg);
+        .with_border(border)
+        .with_title(title_fg);
     buf.panel(rect, &look, Some(&title));
 
     let cap_fg = |key| c(role_colour(layout.role(key)));

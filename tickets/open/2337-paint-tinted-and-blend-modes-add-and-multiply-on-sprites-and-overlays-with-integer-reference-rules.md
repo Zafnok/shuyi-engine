@@ -251,18 +251,12 @@ None.
   with a tinted sprite and an additive one, its code in
   `site/snippets/`.
 - **Public types (ADR-0039):** `Blend` (a set that may grow) is
-  `#[non_exhaustive]`. `Paint`, `Sprite` and `Overlay` aren't under the
-  ADR yet, and neither its table nor 2024 moves them, so they move
-  under it in this PR, which adds to them, as its *When* says. Then a
-  game builds `Sprite` and `Overlay` with `new`, not with `..`.
+  `#[non_exhaustive]`. **From 2082 (done):** `Paint`, `Sprite` and
+  `Overlay` are already under the ADR (`#[non_exhaustive]`, built with
+  `new`).
 - **For the game:** its frames don't change. `Overlay` and `Sprite`
-  gain fields that `new` sets; the game builds them with `new` or with
-  `..` (its `crates/ui/src/map_view/sprite.rs`, checked 2026-10-20). A
-  search of its code found no exhaustive `match` on `Paint`; if one
-  exists, it gets a `Tinted` arm in the game's PR that moves the pin.
-  The new variant and fields are still breaks of `shuyi-ui` to
-  cargo-semver-checks (2010's `api` job): the completion notes carry a
-  `Breaking:` line, and the PR says the game's pin bump follows.
+  gain fields that `new` sets, and `Paint` a variant: all additive,
+  since 2082 made the three `#[non_exhaustive]`. No `Breaking:` line.
 
 **Out (do not do):**
 - **Screen**, subtract, min and max blending: a follow-up if a game
@@ -294,8 +288,8 @@ None.
    and the property tests. Re-export `Blend` from `frame.rs`.
 3. Add `Paint::Tinted`, `Sprite.blend`, `Overlay.opacity` and
    `Overlay.blend` with their builders and doc comments, and the `fade`
-   rule. Add `blend: Blend::Alpha` to the one full `Sprite` literal in
-   `glyph_buffer/sprite_tests.rs`.
+   rule. Add `blend: Blend::Alpha` to any full `Sprite` literal left in
+   `shuyi-ui`'s own tests.
 4. Add the snapshot words and their tests.
 5. Move `frame-png`'s pixel path onto `frame::blend` and draw the new
    fields. Run the existing tests in `crates/cli/src/frame_png/tests.rs`

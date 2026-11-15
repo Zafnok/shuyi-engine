@@ -93,7 +93,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
     let (w, h) = size_with(view, &labels, buf.widths());
     let rect = Rect::new(x, y, w, h);
     let look = PanelLook::new(BoxStyle::Single, color(EngineColor::Text), bg)
-        .border(color(EngineColor::Border));
+        .with_border(color(EngineColor::Border));
     buf.panel(rect, &look, None);
     let first = view.first_shown.min(view.items.len());
     let shown = view.shown_items().iter().zip(&labels[first..]);

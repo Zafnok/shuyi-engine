@@ -127,9 +127,8 @@ None.
 - **In the frame** (`crates/ui/src/frame/glyph_buffer.rs`):
   - `TextRunId(u32)`: a run's index in `texts()`, `Copy + Eq + Hash`;
   - `Sprite` gains `text: Option<TextRunId>`. `Sprite::new` sets `None`,
-    and clipping and cutting keep it. Code that writes out every field
-    of a `Sprite` must add it: say so in the PR (its `Breaking:` line,
-    2010);
+    and clipping and cutting keep it. **From 2082 (done):** `Sprite` is
+    `#[non_exhaustive]`, so the field is additive for a game;
   - `GlyphBuffer::add_text(&mut self, face: &Face, text: &str, at:
     (i32, i32), style: &TextStyle) -> Option<TextRunId>`, where `face`
     is the `Face` of `style.font`. It lays the text out and adds its

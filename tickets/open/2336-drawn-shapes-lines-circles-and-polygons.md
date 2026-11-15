@@ -246,12 +246,11 @@ not parked.
 - **Either order with 2744:** if 2744 is done, nothing to do (its
   automap may move onto these shapes later); if not, nothing to do
   (2744 draws its automap with these shapes when they exist).
-- **What changes for the game:** `Item` gains a variant, so an
-  exhaustive `match` on `Item` breaks. The game has a few, in its map
-  drawing and its tests, so its PR that moves the pin adds the arm. Say
-  so in this PR. The completion notes carry 2010's
-  `Breaking:` line (`Breaking: shuyi-ui: Item: a new variant, Shape;
-  add an arm to an exhaustive match`). No game snapshot changes.
+- **What changes for the game:** additive. `Item` gains a variant, but
+  it is `#[non_exhaustive]`, so a game's `match` on it already has a
+  `_` arm and still compiles (corrected by 2082). The completion notes
+  carry a `Behaviour:` line: a game's `_` arm now also meets
+  `Item::Shape`. No game snapshot changes.
 
 **Out (do not do):**
 - anti-aliased edges and points between pixels;
