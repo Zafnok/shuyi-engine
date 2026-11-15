@@ -553,7 +553,9 @@ and says how long the build took.
 On Windows the server, and the game's tool program it starts, move their
 own program into `.shuyi-running/` beside it as they start, and leave a
 copy in its place, so a build while they run writes a fresh program
-instead of waiting for them to stop.
+instead of waiting for them to stop. The copy is one file under the
+program's name and its twin's, as cargo leaves them, so a `cargo run`
+that finds the program fresh touches neither.
 
 The entry builds the server from the project's own engine (a game's
 moves with its pin). `<command> mcp --ready` builds the server and the
