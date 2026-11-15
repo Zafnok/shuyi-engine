@@ -511,7 +511,11 @@ ticket (its title's, else its branch's) has no `Breaking:` line for (the `work-t
 fails a change to the public API that changes no file of the book
 (`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
 `Book:` line saying why (ticket 2815), and a change to the contract's
-`VERSION` other than one over the base's (ticket 2052). Before pushing a change you think
+`VERSION` other than one over the base's (ticket 2052). And it fails a
+line of the head's listing that names an outside crate (a normal
+dependency of that crate) ADR-0119 doesn't allow there, as
+`OUTSIDE_CRATES` in `crates/xtask/src/api.rs` holds it (ticket 2089).
+Before pushing a change you think
 breaks, run it from the repository root:
 
 ```bash
