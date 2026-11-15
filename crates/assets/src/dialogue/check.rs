@@ -483,17 +483,14 @@ impl<R> Checker<'_, R> {
             let len = self.len(text);
             let limit = self.limits.max_text;
             if len > limit {
-                self.err(
-                    line,
-                    format!("text is {len} characters; the limit is {limit}"),
-                );
+                self.err(line, format!("text is {len} cells; the limit is {limit}"));
             } else if self.pages(text) > self.limits.box_lines {
                 let lines = self.pages(text);
                 let box_lines = self.limits.box_lines;
                 self.err(
                     line,
                     format!(
-                        "text takes {lines} lines of {} characters; the box shows {box_lines}",
+                        "text takes {lines} lines of {} cells; the box shows {box_lines}",
                         self.limits.box_width
                     ),
                 );
@@ -611,7 +608,7 @@ impl<R> Checker<'_, R> {
                 self.err(
                     at,
                     format!(
-                        "option text is {len} characters; the limit is {max_option}, so it fits the menu"
+                        "option text is {len} cells; the limit is {max_option}, so it fits the menu"
                     ),
                 );
             }

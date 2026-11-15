@@ -76,15 +76,15 @@ fn every_problem_is_reported() {
         errors(source),
         [
             "tip \"Bad\": the id must be lowercase letters, digits and `_`",
-            "tip \"Bad\": the title must be 1 to 6 characters",
+            "tip \"Bad\": the title must be 1 to 6 cells",
             "tip \"Bad\": the text must have 1 to 2 lines",
             "tip \"Bad\": the id must be lowercase letters, digits and `_`",
             "tip \"Bad\": the id is used twice",
             "tip \"Bad\": Jumped already has a tip",
-            "tip \"Bad\": the title must be 1 to 6 characters",
+            "tip \"Bad\": the title must be 1 to 6 cells",
             "tip \"Bad\": the text must have 1 to 2 lines",
-            "tip \"c\": a text line is over 10 characters: \"much too long\"",
-            "tip \"c\": a text line is over 10 characters: \"{Run} {Jump}\"",
+            "tip \"c\": a text line is over 10 cells: \"much too long\"",
+            "tip \"c\": a text line is over 10 cells: \"{Run} {Jump}\"",
             "tip \"c\": unknown placeholder {Run}",
             "tip \"c\": no face \"sad\"",
         ]
@@ -151,8 +151,8 @@ fn a_wide_character_is_two_cells_of_the_title_and_the_lines() {
     assert_eq!(
         errors,
         [
-            "tip \"a\": the title must be 1 to 6 characters",
-            "tip \"a\": a text line is over 10 characters: \"あいうえおか\"",
+            "tip \"a\": the title must be 1 to 6 cells",
+            "tip \"a\": a text line is over 10 cells: \"あいうえおか\"",
         ]
     );
 }
@@ -182,7 +182,7 @@ fn a_tips_how_is_checked_like_its_text() {
             "tip \"a\": the how must have 1 to 1 lines",
             "tip \"a\": unknown placeholder {Run}",
             "tip \"b\": the how must have 1 to 1 lines",
-            "tip \"c\": a text line is over 10 characters: \"much too long\"",
+            "tip \"c\": a text line is over 10 cells: \"much too long\"",
         ]
     );
 }
