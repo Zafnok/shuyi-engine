@@ -364,6 +364,8 @@ impl Renderer {
             Paint::Solid(color) => (Some(Recolour::Silhouette), color),
             Paint::Dimmed => (Some(Recolour::Dimmed), Rgb::new(255, 255, 255)),
             Paint::Shaded(light) => (Some(Recolour::Shaded(light)), Rgb::new(255, 255, 255)),
+            // A paint newer than this backend: the image's own colours.
+            _ => (None, Rgb::new(255, 255, 255)),
         };
         let source = self.sources.get(&sprite.image).copied();
         let texture = match recolour {

@@ -145,7 +145,10 @@ impl Rect {
 pub type PxRect = Rect;
 
 /// When an [`Item`] is drawn relative to the cells' glyphs.
+///
+/// Kind 6 of ADR-0039: more layers may come, so a `match` on it has a `_` arm.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[non_exhaustive]
 pub enum Layer {
     /// After cell backgrounds, before glyphs (e.g. the path line).
     Under,
@@ -164,7 +167,10 @@ impl Layer {
 }
 
 /// A solid rectangle drawn on top of the cell grid (game ADR-0018).
+///
+/// Kind 3 of ADR-0039: build it with [`Overlay::new`].
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[non_exhaustive]
 pub struct Overlay {
     /// Where, in console pixels.
     pub rect: PxRect,
@@ -183,7 +189,10 @@ impl Overlay {
 
 /// How a [`Sprite`]'s pixels are coloured (game ADR-0049). Whichever it is, a
 /// pixel is as see-through as the image has it.
+///
+/// Kind 6 of ADR-0039: more paints may come, so a `match` on it has a `_` arm.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
+#[non_exhaustive]
 pub enum Paint {
     /// The image's own colours.
     #[default]
@@ -215,7 +224,10 @@ impl Paint {
 /// A picture on top of the cell grid (game ADR-0038): part of an image file,
 /// scaled into a rectangle of console pixels. `app` draws it from a texture
 /// with nearest-pixel sampling, so whole-number scales stay sharp.
+///
+/// Kind 3 of ADR-0039: build it with [`Sprite::new`] and assign the rest.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[non_exhaustive]
 pub struct Sprite {
     /// Which image (`ImageTable::id`).
     pub image: ImageId,

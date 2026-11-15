@@ -7,6 +7,7 @@ mod cinematic;
 mod controller;
 mod debug_view;
 mod grid;
+mod growing_types;
 mod key_bindings;
 mod layout_picker;
 mod memory_tags;

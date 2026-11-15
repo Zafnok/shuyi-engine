@@ -61,9 +61,24 @@ fn a_meter_keeps_its_cells_colours_and_fills_every_row() {
 }
 
 #[test]
+fn a_panel_looks_new_and_with_methods_build_what_a_literal_did() {
+    const LOOK: PanelLook = PanelLook::new(BoxStyle::Double, WHITE, BLUE)
+        .with_border(RED)
+        .with_title(BLUE);
+    let literal = PanelLook {
+        style: BoxStyle::Double,
+        border: RED,
+        title: BLUE,
+        text: WHITE,
+        bg: BLUE,
+    };
+    assert_eq!(LOOK, literal);
+}
+
+#[test]
 fn a_panel_clears_frames_and_sets_its_title_in_the_top_border() {
     let mut buf = GlyphBuffer::new(12, 4, BLANK);
-    let look = PanelLook::new(BoxStyle::Double, WHITE, BLUE).title(RED);
+    let look = PanelLook::new(BoxStyle::Double, WHITE, BLUE).with_title(RED);
     buf.panel(buf.bounds(), &look, Some("Shop"));
     assert_eq!(row(&buf, 0), "╔═ Shop ═══╗");
     assert_eq!(row(&buf, 1), "║          ║");
@@ -71,7 +86,7 @@ fn a_panel_clears_frames_and_sets_its_title_in_the_top_border() {
     assert_eq!(buf.get(3, 0), Some(&Cell::new('S', RED, BLUE)));
     assert_eq!(buf.get(1, 0), Some(&Cell::new('═', WHITE, BLUE)));
     assert_eq!(buf.get(5, 2), Some(&Cell::new(' ', WHITE, BLUE)));
-    let look = look.border(RED);
+    let look = look.with_border(RED);
     buf.panel(buf.bounds(), &look, None);
     assert_eq!(buf.get(0, 0), Some(&Cell::new('╔', RED, BLUE)));
     assert_eq!(buf.get(5, 2), Some(&Cell::new(' ', WHITE, BLUE)));

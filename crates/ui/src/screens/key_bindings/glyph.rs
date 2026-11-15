@@ -287,8 +287,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     let at = Layout::new(view, buf.width(), buf.height(), buf.widths());
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let look = PanelLook::new(BoxStyle::Single, text, bg)
-        .border(c(EngineColor::Border))
-        .title(c(EngineColor::Highlight));
+        .with_border(c(EngineColor::Border))
+        .with_title(c(EngineColor::Highlight));
     buf.panel(at.panel, &look, Some(&view.title));
     if let Some(switch) = &view.switch {
         paint_switch(ctx, buf, switch, at.label_x);
@@ -485,7 +485,7 @@ fn paint_choices<G: GameData>(
     };
     let x = at.slot_x(choices.slot).min(at.right() - CHOICE_W);
     let rect = Rect::new(x, y, CHOICE_W, CHOICE_H);
-    let look = PanelLook::new(BoxStyle::Double, c(EngineColor::Text), bg).border(bar);
+    let look = PanelLook::new(BoxStyle::Double, c(EngineColor::Text), bg).with_border(bar);
     buf.panel(rect, &look, None);
     let inner = usize::try_from(CHOICE_W - 3).unwrap_or(0);
     for (i, choice) in (0..).zip(&choices.lines) {

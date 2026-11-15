@@ -168,7 +168,10 @@ const LETTER_ROWS: [&str; 4] = [
 const DIGIT_ROW: &str = "0123456789";
 
 /// One cell of the name grid.
+///
+/// Kind 6 of ADR-0039: more cells may come, so a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GridCell {
     /// Types this character.
     Char(char),
@@ -334,7 +337,10 @@ pub struct TypingView {
 }
 
 /// The letter grid.
+///
+/// Kind 3 of ADR-0039: build it with [`GridView::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct GridView {
     /// The grid's title.
     pub title: String,
@@ -344,6 +350,24 @@ pub struct GridView {
     pub rows: Vec<Vec<String>>,
     /// The focused cell: row, column.
     pub focus: (usize, usize),
+}
+
+impl GridView {
+    /// The grid titled `title`, with `spelled` so far, its `rows` of
+    /// labels and the cell at `focus` (row, column) focused.
+    pub fn new(
+        title: impl Into<String>,
+        spelled: impl Into<String>,
+        rows: Vec<Vec<String>>,
+        focus: (usize, usize),
+    ) -> Self {
+        Self {
+            title: title.into(),
+            spelled: spelled.into(),
+            rows,
+            focus,
+        }
+    }
 }
 
 #[cfg(test)]

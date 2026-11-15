@@ -235,7 +235,8 @@ None.
    `Harness::typing()` and on `shuyi-app`'s IME function. The PR says
    so.
 
-**For the game:** mostly additive. `GridCell` gains a variant;
+**For the game:** mostly additive. `GridCell` gains a variant, which
+is additive (**from 2082 (done):** it is `#[non_exhaustive]`).
 `LangInfo`, `Presented::Game` and `FrameOutput` gain a field, so code
 that matches them exhaustively or builds them adds the new one (`Frame`
 gains one too, but it is `#[non_exhaustive]`). Unless 2351 is done, the

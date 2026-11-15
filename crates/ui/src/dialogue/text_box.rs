@@ -233,12 +233,25 @@ impl TextView {
 }
 
 /// The question asked before skipping the scene.
+///
+/// Kind 3 of ADR-0039: build it with [`SkipView::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SkipView {
     /// The question.
     pub question: String,
     /// How to answer, with the keys.
     pub answers: String,
+}
+
+impl SkipView {
+    /// The question `question`, answered as `answers` says.
+    pub fn new(question: impl Into<String>, answers: impl Into<String>) -> Self {
+        Self {
+            question: question.into(),
+            answers: answers.into(),
+        }
+    }
 }
 
 /// What shows while a page waits for the key that goes on. Build it with

@@ -237,10 +237,9 @@ and follow the MVP.
     "after 2335";
   - search `tickets/open/` once more for a sprite angle sent to 2703 or
     a sine table sent to 1119, and point any new one here.
-- **What changes for the game:** `Sprite` gains three fields. Only code
-  that builds a `Sprite` with a struct literal and no `..` breaks. Say
-  so in the PR; the game's PR that moves the pin follows it. No game
-  snapshot changes.
+- **What changes for the game:** `Sprite` gains three fields, which
+  is additive: **from 2082 (done)**, `Sprite` is `#[non_exhaustive]`
+  and a game builds it with `Sprite::new`. No game snapshot changes.
 - **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]`, constructors).
 - **The render card:** add rotated and `flip_y` sprites from this
