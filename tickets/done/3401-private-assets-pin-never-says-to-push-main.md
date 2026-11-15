@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: ["2593"]
 nick_input: none
-completed:
+completed: 2026-11-14
 ---
 
 # 3401 — `private-assets --pin` never tells you to push the private repository's main
@@ -58,12 +58,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `--pin` on a commit that isn't on the private `main` refuses with
+- [x] `--pin` on a commit that isn't on the private `main` refuses with
       words that name a pull request and `switch --detach origin/main`,
       and no `push … HEAD:main`.
-- [ ] The skill's step 4 no longer warns about the message.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The skill's step 4 no longer warns about the message.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -72,5 +72,22 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `pin`'s refusal for a commit that isn't on `origin/main` now reads
+  "commit <sha> isn't merged into the private repository's main branch
+  yet: open or merge its pull request there, then run `git -C <checkout>
+  fetch origin` and `git -C <checkout> switch --detach origin/main`, and
+  run this again". It names no push to `main`.
+- `pin_writes_the_commit_once_it_is_pushed` reads the whole message for
+  the commit not pushed, and its prefix for the one pushed to another
+  branch.
+- `skills/shuyi-private-files/SKILL.md`, step 4: the warning not to push
+  `main` "as its message suggests" is gone; the refusal is quoted as it
+  now reads.
+- Deviations: none.
+- Game: searched `gh search code --repo Zafnok/visions-of-shuyi` for
+  "main branch: push it" and "private-assets --pin": no test or doc of
+  the game reads the refusal's text.
+
+Behaviour: shuyi-cli: `private-assets --pin`'s refusal for a commit not on the private repository's `main` names its pull request and `switch --detach origin/main`, no longer `push origin HEAD:main`.
+
+Book: none, the book's chapter (`quick-start.md`) names `--pin` and the skill but never quotes this refusal.

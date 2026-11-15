@@ -310,8 +310,10 @@ fn pin(rules: &PrivateAssets, command: &str, root: &Path, url: &str) -> Result<S
     let pushed = git(&checkout, &["branch", "--remotes", "--contains", &head])?;
     if !pushed.lines().any(|branch| branch.trim() == "origin/main") {
         return Err(format!(
-            "commit {head} isn't on the private repository's main branch: push it \
-             (`git -C {name} push origin HEAD:main`), then run this again"
+            "commit {head} isn't merged into the private repository's main branch \
+             yet: open or merge its pull request there, then run \
+             `git -C {name} fetch origin` and `git -C {name} switch --detach \
+             origin/main`, and run this again"
         ));
     }
     let file = &rules.pin_file;
@@ -826,14 +828,17 @@ mod tests {
         );
         assert!(error.contains("game/portraits/b.portrait"), "{error}");
 
-        // Committed, not pushed.
+        // Committed, not pushed. The refusal names the pull request and
+        // the move to `origin/main`, never a push to `main`.
         let new = commit(&checkout, "b");
-        let error = scratch.pin().unwrap_err();
-        assert!(
-            error.starts_with(&format!(
-                "commit {new} isn't on the private repository's main branch"
-            )),
-            "{error}"
+        assert_eq!(
+            scratch.pin(),
+            Err(format!(
+                "commit {new} isn't merged into the private repository's main branch \
+                 yet: open or merge its pull request there, then run \
+                 `git -C private fetch origin` and `git -C private switch --detach \
+                 origin/main`, and run this again"
+            ))
         );
         assert_eq!(
             read_pin(&rules(), &scratch.public()),
@@ -846,7 +851,7 @@ mod tests {
         let error = scratch.pin().unwrap_err();
         assert!(
             error.starts_with(&format!(
-                "commit {new} isn't on the private repository's main branch"
+                "commit {new} isn't merged into the private repository's main branch"
             )),
             "{error}"
         );
