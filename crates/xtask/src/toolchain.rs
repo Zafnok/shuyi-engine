@@ -2,7 +2,7 @@
 //! (ticket 2012, the `bump-rust` skill).
 //!
 //! It reads the root `rust-toolchain.toml` and `Cargo.toml`, every
-//! `rust-toolchain.toml` and `Cargo.toml` under `templates/`, the members'
+//! `rust-toolchain.toml` and `Cargo.toml.tmpl` under `templates/`, the members'
 //! `crates/*/Cargo.toml` and `examples/*/Cargo.toml`, and
 //! `.github/dependabot.yml`, and fails when:
 //!
@@ -28,6 +28,9 @@ use crate::links::{SKIPPED_DIRS, display_path};
 
 const TOOLCHAIN: &str = "rust-toolchain.toml";
 const MANIFEST: &str = "Cargo.toml";
+/// A manifest in a template, which `shuyi new` writes as `Cargo.toml`
+/// (ticket 2067).
+const TEMPLATE_MANIFEST: &str = "Cargo.toml.tmpl";
 const TEMPLATES: &str = "templates";
 const DEPENDABOT: &str = ".github/dependabot.yml";
 /// The folders whose crates are the workspace's members.
@@ -226,7 +229,8 @@ fn normalize_dir(dir: &str) -> String {
     format!("/{}", dir.trim_matches('/'))
 }
 
-/// Every `rust-toolchain.toml` and `Cargo.toml` under `dir`, at any depth,
+/// Every `rust-toolchain.toml` and manifest (`Cargo.toml.tmpl`, or a plain
+/// `Cargo.toml`) under `dir`, at any depth,
 /// skipping build folders.
 fn template_files(
     dir: &Path,
@@ -242,7 +246,7 @@ fn template_files(
             }
         } else if entry.file_name() == TOOLCHAIN {
             toolchains.push(path);
-        } else if entry.file_name() == MANIFEST {
+        } else if entry.file_name() == TEMPLATE_MANIFEST || entry.file_name() == MANIFEST {
             manifests.push(path);
         }
     }
@@ -390,9 +394,16 @@ mod tests {
                     &format!("templates/{template}/{TOOLCHAIN}"),
                     TEMPLATE_TOOLCHAIN,
                 );
-                fixture.write(&format!("templates/{template}/{MANIFEST}"), WORKSPACE);
+                // A plain `Cargo.toml` in one, as templates had before
+                // ticket 2067, still checked.
+                let manifest = if template == "grid" {
+                    TEMPLATE_MANIFEST
+                } else {
+                    MANIFEST
+                };
+                fixture.write(&format!("templates/{template}/{manifest}"), WORKSPACE);
                 fixture.write(
-                    &format!("templates/{template}/crates/game/{MANIFEST}"),
+                    &format!("templates/{template}/crates/game/{manifest}"),
                     MEMBER,
                 );
             }
@@ -566,12 +577,12 @@ mod tests {
         let written_out =
             MEMBER.replace("rust-version.workspace = true", "rust-version = \"1.98\"");
         fixture.write("crates/core/Cargo.toml", &written_out);
-        fixture.write("templates/grid/crates/game/Cargo.toml", &written_out);
+        fixture.write("templates/grid/crates/game/Cargo.toml.tmpl", &written_out);
         assert_eq!(
             fixture.run(),
             [
                 "crates/core/Cargo.toml: `[package]` has no `rust-version.workspace = true`; write it so the crate takes the workspace's `rust-version`",
-                "templates/grid/crates/game/Cargo.toml: `[package]` has no `rust-version.workspace = true`; write it so the crate takes the workspace's `rust-version`",
+                "templates/grid/crates/game/Cargo.toml.tmpl: `[package]` has no `rust-version.workspace = true`; write it so the crate takes the workspace's `rust-version`",
             ]
         );
     }
