@@ -29,6 +29,7 @@ cargo shuyi web              # its web page, in dist/web/ (serve it over HTTP)
 | `.claude/skills/` | The engine's skills for coding agents: how to do each kind of task on the game |
 | `scripts/setup-linux.sh` | Sets up Linux to build the game: the C linker, `pkg-config`, the system libraries and the pinned Rust (`bash scripts/setup-linux.sh`) |
 | `.devcontainer/` | A dev container (or a GitHub Codespace) set up by that script |
+| `scripts/git-hooks/post-checkout` | Git's hook: on Windows, compresses a new worktree's `target/` with NTFS, about half the disk, no slower |
 
 It is on the engine's short path; `AGENTS.md` says how it grows past it.
 
@@ -49,6 +50,18 @@ pinned to it and its files checked out, and the read-only deploy keys and the
 secret `PRIVATE_ASSETS_KEY` its CI reads them with. What is there already is
 left alone: run it again to finish what a failure left, or with `--new-keys`
 to replace the keys. `cargo shuyi repos --help` says the rest.
+
+It also sets git's hooks to `scripts/git-hooks`. In a clone, set them once,
+from the game's root:
+
+```
+git config core.hooksPath scripts/git-hooks
+```
+
+On Windows its `post-checkout` hook then compresses each new worktree's
+`target/` (`git worktree add`), which halves the disk a coding agent's many
+worktrees take. `cargo shuyi doctor` says when the hooks or the compression
+are missing, and how to add them.
 
 ## Releasing
 

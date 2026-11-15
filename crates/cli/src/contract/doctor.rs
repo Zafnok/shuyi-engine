@@ -3,7 +3,12 @@
 //! Windows GNU toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
 //! system libraries the backend links and opens, and the web target; and,
 //! as optional checks that never fail it, `gh`, which only `shuyi repos`
-//! needs, and `ssh-keygen`, which it and `export --recipient` need.
+//! needs, `ssh-keygen`, which it and `export --recipient` need, and, in a
+//! git checkout, the disk its worktrees take (ticket 3402): whether git's
+//! hooks are set to its `scripts/git-hooks`, and on Windows whether its
+//! `target/` carries NTFS compression, which the `post-checkout` hook
+//! gives a new worktree. `doctor` only reads that attribute: it never
+//! compresses anything.
 //! Each check says what it found and, if it failed, how to fix it (its
 //! help): on Linux, the install command for the distribution's package
 //! manager (`/etc/os-release`), and `scripts/setup-linux.sh`, which
@@ -85,7 +90,24 @@ pub trait Probe {
     fn starts(&self, program: &str, args: &[&str]) -> bool {
         self.output(program, args).is_some()
     }
+
+    /// Whether `path` is a folder. By default, never.
+    fn is_folder(&self, path: &Path) -> bool {
+        let _ = path;
+        false
+    }
+
+    /// Whether the folder at `path` carries NTFS compression (Windows'
+    /// `FILE_ATTRIBUTE_COMPRESSED`), or `None` when it can't be read or
+    /// the system has no such attribute. By default, `None`.
+    fn compressed(&self, path: &Path) -> Option<bool> {
+        let _ = path;
+        None
+    }
 }
+
+/// `FILE_ATTRIBUTE_COMPRESSED`, as Windows reports a file's attributes.
+pub const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
 
 /// The machine `doctor` runs on.
 #[derive(Debug, Clone, Copy, Default)]
@@ -109,6 +131,25 @@ impl Probe for ThisMachine {
 
     fn starts(&self, program: &str, args: &[&str]) -> bool {
         Command::new(program).args(args).output().is_ok()
+    }
+
+    fn is_folder(&self, path: &Path) -> bool {
+        path.is_dir()
+    }
+
+    fn compressed(&self, path: &Path) -> Option<bool> {
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt as _;
+            fs::metadata(path)
+                .ok()
+                .map(|m| m.file_attributes() & FILE_ATTRIBUTE_COMPRESSED != 0)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = path;
+            None
+        }
     }
 }
 
@@ -174,6 +215,86 @@ fn repos_checks(probe: &dyn Probe) -> [Check; 2] {
         )
     };
     [optional(gh), optional(ssh_keygen)]
+}
+
+/// The game's folder of git hooks, from its root (`shuyi repos` sets
+/// `core.hooksPath` to it).
+const HOOKS: &str = "scripts/git-hooks";
+
+/// What a worktree check's help says first.
+const ONLY_DISK: &str = "optional: it only saves disk, in each worktree";
+
+/// The optional checks of the git checkout `doctor` runs in, if any: its
+/// hooks, when it has [`HOOKS`], and on Windows its `target/`'s
+/// compression.
+fn worktree_checks(probe: &dyn Probe, windows: bool) -> Vec<Check> {
+    let Some(top) = probe.output("git", &["rev-parse", "--show-toplevel"]) else {
+        return Vec::new();
+    };
+    let root = Path::new(top.trim());
+    let mut checks = Vec::new();
+    if probe.is_folder(&root.join(HOOKS)) {
+        let git_dir = root.to_string_lossy();
+        let set = probe
+            .output(
+                "git",
+                &["-C", &git_dir, "config", "--get", "core.hooksPath"],
+            )
+            .map(|path| path.trim().to_owned());
+        checks.push(optional(match set {
+            Some(path) if names_hooks(&path) => {
+                pass("git-hooks", format!("core.hooksPath is {path}"))
+            }
+            found => fail(
+                "git-hooks",
+                found.map(|path| format!("core.hooksPath is {path}")),
+                format!(
+                    "{ONLY_DISK}: git runs {HOOKS}'s post-checkout, which compresses a new \
+                     worktree's target/ on Windows, only once it is set. Set it once per clone, \
+                     from the game's root: `git config core.hooksPath {HOOKS}`"
+                ),
+            ),
+        }));
+    }
+    if windows {
+        let target = root.join("target");
+        let there = probe.is_folder(&target);
+        let compact = "`compact /c /s:target /i /q` from the game's root (in Git Bash, \
+                       `MSYS2_ARG_CONV_EXCL='*' compact.exe /c /s:target /i /q`)";
+        let check = match (there, probe.compressed(&target)) {
+            (true, Some(true)) => Some(pass("target-compression", "target/ is compressed")),
+            (true, Some(false)) => Some(fail(
+                "target-compression",
+                Some("target/ is not compressed".to_owned()),
+                format!(
+                    "{ONLY_DISK}: NTFS compression takes about half a target/'s disk, at no \
+                     measured cost in build time. {compact} compresses it, and every file a build \
+                     writes there after"
+                ),
+            )),
+            (false, _) => Some(fail(
+                "target-compression",
+                Some("no target/ yet".to_owned()),
+                format!(
+                    "{ONLY_DISK}: `mkdir target`, then {compact}, before the first build so \
+                     that it compresses every file the build writes there"
+                ),
+            )),
+            // An attribute it can't read: nothing to say.
+            (true, None) => None,
+        };
+        checks.extend(check.map(optional));
+    }
+    checks
+}
+
+/// Whether a `core.hooksPath` names [`HOOKS`]: as it is, or by a path
+/// ending in it (a worktree shares its main checkout's setting, which may
+/// be that checkout's folder in full).
+fn names_hooks(path: &str) -> bool {
+    let path = path.replace('\\', "/");
+    let path = path.trim_end_matches('/');
+    path == HOOKS || path.ends_with(&format!("/{HOOKS}"))
 }
 
 /// The first line of `text`, trimmed.
@@ -274,6 +395,8 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
         )
     });
     checks.extend(repos_checks(probe));
+    let windows = host.as_deref().is_some_and(|h| h.contains("-windows-"));
+    checks.extend(worktree_checks(probe, windows));
     DoctorOutput { host, checks }
 }
 
@@ -337,11 +460,19 @@ mod tests {
         pub(super) programs: BTreeMap<String, String>,
         pub(super) files: Vec<PathBuf>,
         texts: BTreeMap<PathBuf, String>,
+        /// Its folders, each compressed or not (`None`: unreadable).
+        folders: BTreeMap<PathBuf, Option<bool>>,
     }
 
     impl Fake {
         pub(super) fn with(mut self, command: &str, output: &str) -> Self {
             self.programs.insert(command.to_owned(), output.to_owned());
+            self
+        }
+
+        /// The machine, with a folder at `path`, `compressed` or not.
+        fn folder(mut self, path: &str, compressed: Option<bool>) -> Self {
+            self.folders.insert(PathBuf::from(path), compressed);
             self
         }
 
@@ -367,6 +498,14 @@ mod tests {
 
         fn read(&self, path: &Path) -> Option<String> {
             self.texts.get(path).cloned()
+        }
+
+        fn is_folder(&self, path: &Path) -> bool {
+            self.folders.contains_key(path)
+        }
+
+        fn compressed(&self, path: &Path) -> Option<bool> {
+            self.folders.get(path).copied().flatten()
         }
     }
 
@@ -430,6 +569,187 @@ mod tests {
         // isn't there never does.
         assert!(!ThisMachine.starts("no-such-program-anywhere", &[]));
         assert!(ThisMachine.starts("cargo", &["--no-such-flag"]));
+    }
+
+    /// A Windows GNU machine with all it needs, in a git checkout at
+    /// `D:/games/moon`.
+    fn in_a_checkout() -> Fake {
+        let mut machine = rust("x86_64-pc-windows-gnu")
+            .with(
+                "rustup target list --installed",
+                "x86_64-pc-windows-gnu
+wasm32-unknown-unknown
+",
+            )
+            .with(
+                "objcopy --version",
+                "GNU objcopy (GNU Binutils) 2.45
+",
+            )
+            .with(
+                "git rev-parse --show-toplevel",
+                "D:/games/moon
+",
+            );
+        machine.files.push(PathBuf::from(MSYS2_GCC));
+        machine
+    }
+
+    /// The optional checks of the worktree: name, ok, found and help.
+    fn worktree(machine: &Fake) -> Vec<(String, bool, Option<String>, Option<String>)> {
+        let answer = doctor(machine, &DoctorInput::default());
+        // Never counted in the verdict.
+        assert!(answer.ok, "{answer:?}");
+        assert_eq!(answer.exit_code(), 0);
+        let output = answer.result.unwrap();
+        output
+            .checks
+            .into_iter()
+            .filter(|c| c.name == "git-hooks" || c.name == "target-compression")
+            .inspect(|c| assert!(c.optional, "{c:?}"))
+            .map(|c| (c.name, c.ok, c.found, c.help))
+            .collect()
+    }
+
+    #[test]
+    fn set_hooks_and_a_compressed_target_pass() {
+        let machine = in_a_checkout()
+            .folder("D:/games/moon/scripts/git-hooks", None)
+            .folder("D:/games/moon/target", Some(true))
+            .with(
+                "git -C D:/games/moon config --get core.hooksPath",
+                "scripts/git-hooks
+",
+            );
+        assert_eq!(
+            worktree(&machine),
+            [
+                (
+                    "git-hooks".to_owned(),
+                    true,
+                    Some("core.hooksPath is scripts/git-hooks".to_owned()),
+                    None
+                ),
+                (
+                    "target-compression".to_owned(),
+                    true,
+                    Some("target/ is compressed".to_owned()),
+                    None
+                ),
+            ]
+        );
+        // A worktree's setting, shared with its main checkout, may name
+        // that checkout's folder in full.
+        let shared = machine.with(
+            "git -C D:/games/moon config --get core.hooksPath",
+            "D:\\games\\moon-main\\scripts\\git-hooks\\\n",
+        );
+        assert!(worktree(&shared)[0].1);
+        assert!(!names_hooks("scripts/git-hooks-old"));
+        assert!(!names_hooks("myscripts/git-hooks/x"));
+    }
+
+    #[test]
+    fn unset_hooks_and_an_uncompressed_target_each_give_their_help() {
+        let machine = in_a_checkout()
+            .folder("D:/games/moon/scripts/git-hooks", None)
+            .folder("D:/games/moon/target", Some(false));
+        let found = worktree(&machine);
+        assert_eq!(found.len(), 2);
+        let (name, ok, seen, help) = &found[0];
+        assert_eq!((name.as_str(), *ok, seen), ("git-hooks", false, &None));
+        assert!(
+            help.as_deref()
+                .unwrap()
+                .ends_with("`git config core.hooksPath scripts/git-hooks`"),
+            "{help:?}"
+        );
+        let (name, ok, seen, help) = &found[1];
+        assert_eq!(
+            (name.as_str(), *ok, seen.as_deref()),
+            (
+                "target-compression",
+                false,
+                Some("target/ is not compressed")
+            )
+        );
+        assert!(
+            help.as_deref()
+                .unwrap()
+                .contains("`compact /c /s:target /i /q`"),
+            "{help:?}"
+        );
+        let said = text(&doctor(&machine, &DoctorInput::default()).result.unwrap());
+        assert!(
+            said.contains(
+                "  --   git-hooks
+       help: optional: it only saves disk"
+            ),
+            "{said}"
+        );
+        // Another hooks path of the developer's own is named.
+        let other = machine.with(
+            "git -C D:/games/moon config --get core.hooksPath",
+            ".githooks
+",
+        );
+        assert_eq!(
+            worktree(&other)[0].2.as_deref(),
+            Some("core.hooksPath is .githooks")
+        );
+        // No target/ yet: the help makes one first.
+        let bare = in_a_checkout().folder("D:/games/moon/scripts/git-hooks", None);
+        let found = worktree(&bare);
+        assert_eq!(found[1].2.as_deref(), Some("no target/ yet"));
+        assert!(
+            found[1]
+                .3
+                .as_deref()
+                .unwrap()
+                .contains("`mkdir target`, then")
+        );
+    }
+
+    #[test]
+    fn the_worktree_checks_are_skipped_where_they_mean_nothing() {
+        // Outside a git checkout: neither.
+        let mut outside = in_a_checkout();
+        outside.programs.remove("git rev-parse --show-toplevel");
+        assert_eq!(worktree(&outside), []);
+        // A checkout with no hooks folder: no hooks check.
+        let no_hooks = in_a_checkout().folder("D:/games/moon/target", Some(true));
+        let names: Vec<String> = worktree(&no_hooks).into_iter().map(|c| c.0).collect();
+        assert_eq!(names, ["target-compression"]);
+        // Off Windows: no compression check.
+        let linux = rust("x86_64-unknown-linux-gnu")
+            .with(
+                "git rev-parse --show-toplevel",
+                "/home/you/moon
+",
+            )
+            .folder("/home/you/moon/scripts/git-hooks", None)
+            .folder("/home/you/moon/target", Some(false));
+        let names: Vec<String> = checks(&linux)
+            .checks
+            .into_iter()
+            .filter(|c| c.optional)
+            .map(|c| c.name)
+            .collect();
+        assert_eq!(names, ["gh", "ssh-keygen", "git-hooks"]);
+        // An attribute it can't read says nothing.
+        let unread = in_a_checkout().folder("D:/games/moon/target", None);
+        assert_eq!(worktree(&unread), []);
+    }
+
+    #[test]
+    fn this_machine_reads_a_folders_compression() {
+        let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert!(ThisMachine.is_folder(here));
+        assert!(!ThisMachine.is_folder(&here.join("Cargo.toml")));
+        let missing = ThisMachine.compressed(&here.join("no-such-folder"));
+        assert_eq!(missing, None);
+        // On Windows the attribute is read; elsewhere there is none.
+        assert_eq!(ThisMachine.compressed(here).is_some(), cfg!(windows));
     }
 
     #[test]

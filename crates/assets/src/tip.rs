@@ -153,7 +153,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
             err(format!("{:?} already has a tip", tip.trigger));
         }
         if tip.title.is_empty() || text_width(&tip.title, rules.widths) > title_chars {
-            err(format!("the title must be 1 to {title_chars} characters"));
+            err(format!("the title must be 1 to {title_chars} cells"));
         }
         let lines: Vec<&str> = tip.text.lines().collect();
         if lines.is_empty() || lines.len() > text_lines {
@@ -168,9 +168,7 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
         }
         for line in lines.into_iter().chain(how) {
             if text_width(line, rules.widths) > line_chars {
-                err(format!(
-                    "a text line is over {line_chars} characters: {line:?}"
-                ));
+                err(format!("a text line is over {line_chars} cells: {line:?}"));
             }
         }
         for text in core::iter::once(&tip.text).chain(&tip.how) {
