@@ -950,7 +950,7 @@ mod tests {
 
     #[test]
     fn a_template_change_runs_the_templates_and_the_skill_examples() {
-        let gates = running(&["templates/shuyi-default/base/Cargo.toml"], false);
+        let gates = running(&["templates/shuyi-default/base/Cargo.toml.tmpl"], false);
         for name in [
             "templates (grid)",
             "templates (blank)",

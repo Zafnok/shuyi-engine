@@ -140,7 +140,7 @@ These tickets, in order:
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
 | 2820 | The project's steps in the playground: each page edits its step's data files, and tries its before-and-afters there |
 | 2828 | Exercises in the book: a task done in a step's playground and checked by the game |
-| 2836 | `cargo xtask exercises` can check a step with the step before it's build, when their newest files share a timestamp |
+| 2836 (done) | `cargo xtask exercises` can check a step with the step before it's build, when their newest files share a timestamp |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -162,7 +162,8 @@ These tickets, in order:
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
-| 2089 | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
+| 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
+| 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
 | 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |
@@ -226,7 +227,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | 2061 | `cargo xtask api` runs from a Windows worktree (done 2026-11-13) |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
 | 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
-| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
+| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency (done 2026-11-14: they are `Cargo.toml.tmpl`) |
 | 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759; done 2026-11-14) |
 | 2257 | The text checks say cells where they count cells (done 2026-11-14) |
 | 2583 | The debug step plays over the live link and in a capture plan |

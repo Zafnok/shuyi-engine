@@ -191,6 +191,18 @@ placeholder fails, naming its file and line. There are no conditions
 and no loops: a condition is a part. That keeps every file valid Rust,
 TOML or RON.
 
+## Manifests are `Cargo.toml.tmpl`
+
+A part's manifest is named `Cargo.toml.tmpl` in the template's folder,
+and the game gets it as `Cargo.toml`: everything below, and `new`'s
+output, names it `Cargo.toml`. Why: a game that depends on the engine
+by git makes cargo read every `Cargo.toml` of the engine's repository,
+and a template's `name = "{{crate_name}}"` printed errors in each of the
+game's builds (ticket 2067). A template that names its manifests
+`Cargo.toml` still reads; a folder that holds both fails, naming the
+`.tmpl`. `cargo xtask check-pins` and `check-toolchain` read the
+template's `Cargo.toml.tmpl` files.
+
 ## Merged files
 
 Each file is written by the parts whose folders hold it. A file two

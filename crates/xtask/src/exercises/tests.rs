@@ -81,3 +81,77 @@ fn a_step_with_a_playground_needs_its_checks_file() {
         Vec::<String>::new()
     );
 }
+
+/// Makes at `dir` a stand-in step: a workspace with the game's package at
+/// `crates/game`, a build script, and a binary that prints `name`.
+fn stand_in(dir: &Path, name: &str) {
+    let game = dir.join("crates/game");
+    fs::create_dir_all(game.join("src")).unwrap();
+    let write = |file: &str, text: &str| fs::write(dir.join(file), text).unwrap();
+    write(
+        "Cargo.toml",
+        "[workspace]\nmembers = [\"crates/game\"]\nresolver = \"3\"\n",
+    );
+    write(
+        "crates/game/Cargo.toml",
+        &format!("[package]\nname = \"{BIN}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n"),
+    );
+    write("crates/game/build.rs", "fn main() {}\n");
+    write(
+        "crates/game/src/main.rs",
+        &format!("fn main() {{\n    print!(\"{name}\");\n}}\n"),
+    );
+}
+
+/// Sets the time of every file under `dir` to `time`.
+fn set_times(dir: &Path, time: std::time::SystemTime) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            set_times(&path, time);
+        } else {
+            fs::File::options()
+                .write(true)
+                .open(&path)
+                .unwrap()
+                .set_modified(time)
+                .unwrap();
+        }
+    }
+}
+
+/// What the game of the copy at `dir` prints, built in `build` with `config`.
+fn printed(dir: &Path, build: &Path, config: &str) -> String {
+    let output = Command::new("cargo")
+        .args(["run", "-q", "--config", config])
+        .current_dir(dir)
+        .env("CARGO_TARGET_DIR", build)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+#[test]
+fn two_steps_whose_files_share_their_times_each_build_their_own_game() {
+    let root = std::env::temp_dir().join(format!("xtask-exercises-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let (first, second) = (root.join("copies/08-a"), root.join("copies/09-b"));
+    stand_in(&first, "08");
+    stand_in(&second, "09");
+    // Both steps written by one script, within one tick of the clock: the
+    // same time on every file, the newest too.
+    let time = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+    set_times(&first, time);
+    set_times(&second, time);
+    let build = root.join("build");
+    assert_eq!(printed(&first, &build, &own_build(7)), "08");
+    assert_eq!(printed(&second, &build, &own_build(8)), "09");
+    // And back, as the next run checks them again.
+    assert_eq!(printed(&first, &build, &own_build(7)), "08");
+    let _ = fs::remove_dir_all(&root);
+}

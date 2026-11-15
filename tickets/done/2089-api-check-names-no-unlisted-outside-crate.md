@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-15
 ---
 
 # 2089 — `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list
@@ -74,15 +74,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A faked listing with `pub fn shuyi_app::x(gilrs::GamepadId)` fails
+- [x] A faked listing with `pub fn shuyi_app::x(gilrs::GamepadId)` fails
       the run, naming `shuyi-app`, the line and ADR-0119.
-- [ ] A faked listing with `serde_core::de::Deserialize` in `shuyi-core`
+- [x] A faked listing with `serde_core::de::Deserialize` in `shuyi-core`
       passes, and `serde_json::value::Value` passes in `shuyi-cli` and
       fails in `shuyi-ui`.
-- [ ] `shuyi_assets::image::ImageTable` is not read as the `image` crate.
-- [ ] `cargo xtask api` passes on `main`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi_assets::image::ImageTable` is not read as the `image` crate.
+- [x] `cargo xtask api` passes on `main`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -91,5 +91,35 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `OUTSIDE_CRATES` in `crates/xtask/src/api.rs`: `serde_core`, `serde` and
+  `schemars` for every crate, `serde_json` and `semver` for `shuyi-cli`,
+  and `quad_snd` for `shuyi-app` with a comment naming 2084 (2084 isn't
+  done: `SoundProbeBackend`'s three methods name `quad_snd::mixer::Playback`
+  in `main`'s listing). 2084's step now says to take that line out.
+- `cargo metadata --no-deps`, already read for the features, now gives each
+  package its normal dependencies that are no engine crate, as paths (`-` as
+  `_`, a rename's name when renamed). `unlisted_outside` finds the head's
+  listing lines naming one `OUTSIDE_CRATES` doesn't allow in that crate; a
+  path is `<name>::` with no `::` or word character before it.
+- Each crate's lines are in `CrateApi::outside`; the run fails with one
+  error per crate, naming the crate, each line, its crate path and "ADR-0119
+  lists the outside crates the public API may name", and the summary has a
+  `**Outside crate, fail:**` line for each. The base's listing isn't read.
+- Tests: the line filter (the ticket's cases, a path anywhere on a line, a
+  `my_image::`, a crate that is no dependency), the dependencies read from
+  `cargo metadata` (dev-dependencies and engine crates left out, a crate of
+  two `cfg` targets once), and two faked runs through `Runner`.
+- `cargo xtask api --base origin/main` on the branch: `api: ok`, no
+  outside-crate line, every crate 0 removed, 0 added.
+- The `run-gates` skill's `api` section says what the check fails.
+- Deviation: none from the steps. The check reads only an engine crate's
+  direct dependencies, as the ticket says, so a crate an outside dependency
+  re-exports isn't looked for: `miniquad` through `macroquad`, which
+  ADR-0119's table found in `shuyi-app`. Follow-up: 2090 reads the crates
+  the dependencies reach.
+
+No break: `xtask` is no engine crate, and no public item changed.
+
+Book: none, the check is a gate of the engine's own CI, not a thing a game uses.
+
+Game: nothing to adopt, the change is to the engine's `xtask` only.

@@ -51,9 +51,9 @@ the bot (`AGENTS.md` rule 11). An `ignore` entry in
    - build Hello, Grid for the web (`cd examples/hello-grid && cargo shuyi
      web --release`) and open it.
 3. **A requirement change:**
-   - make the template's requirement follow (every `Cargo.toml` under
+   - make the template's requirement follow (every `Cargo.toml.tmpl` under
      `templates/shuyi-default/`, the parts' pieces too: the grid part's
-     `stages/top-down-grid/Cargo.toml` holds `serde` and `ron`;
+     `stages/top-down-grid/Cargo.toml.tmpl` holds `serde` and `ron`;
      `cargo xtask check-pins` fails until it does);
    - build the game against the branch (`run-gates`, *The game at the
      next pin*);
