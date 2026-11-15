@@ -7,7 +7,7 @@
 //! player and asks for ([`player_files`]), the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
 //! memory tags and its snapshots, in debug builds. It keeps the frame cap
-//! the last frame asked for, for [`run`](crate::run)'s pacer, and the input
+//! the last frame asked for, for [`run_app`](crate::run_app)'s pacer, and the input
 //! of the web's skipped frames for the next that runs.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,

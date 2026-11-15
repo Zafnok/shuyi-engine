@@ -83,7 +83,7 @@ use crate::project::{
 
 /// The variable an export of an edition with a content root sets for its
 /// builds: the folder's absolute path, which the game's build script hands to
-/// what embeds its files (`include_dir!`). A build of no such edition runs
+/// what embeds its files (`shuyi::files!`). A build of no such edition runs
 /// without it, whatever the shell has.
 pub const CONTENT: &str = "SHUYI_CONTENT";
 

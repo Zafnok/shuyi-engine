@@ -227,8 +227,8 @@ like this, a player gets one program:
 {% newcomer(to="rust", topic="comments, `static` and a macro") %}
 `///` is a comment for the thing below it, and `//` an ordinary one. The
 computer ignores both. `static` makes a value that
-lasts as long as the program, `Dir<'static>` is its type, and `'static` is that
-lifetime written down. `include_dir!` is a
+lasts as long as the program, and `Embedded`, an embedded folder, is its type.
+`shuyi::files!` is a
 [macro](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
 and writes more code while compiling: here, code that holds your whole folder.
 {% end %}

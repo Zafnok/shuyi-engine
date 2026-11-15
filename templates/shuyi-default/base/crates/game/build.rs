@@ -64,7 +64,7 @@ fn private_files(root: &Path) -> Option<PathBuf> {
     None
 }
 
-/// An empty folder of the build's own: an `include_dir!` path must exist.
+/// An empty folder of the build's own: a `shuyi::files!` path must exist.
 fn no_private_files() -> PathBuf {
     let out = std::env::var("OUT_DIR").unwrap_or_default();
     let empty = Path::new(&out).join("no-private-files");

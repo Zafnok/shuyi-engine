@@ -10,7 +10,6 @@
 
 use hello_grid::app_info::APP;
 use hello_grid::{FONT_PNG, TITLE, sound};
-use macroquad::window::Conf;
 use shuyi::app::{AppConfig, Window};
 use shuyi::assets::bundle::Layer;
 
@@ -28,10 +27,6 @@ fn config() -> AppConfig {
         FONT_PNG,
         sound::files(),
     )
-}
-
-fn window_conf() -> Conf {
-    shuyi::app::window_conf(&WINDOW)
 }
 
 /// The folder named on the command line (else `files/`), read to be
@@ -56,12 +51,6 @@ fn folder() -> Result<Layer, String> {
     Layer::owned("files".to_owned(), files.into_iter().collect()).map_err(|e| e.to_string())
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    match folder() {
-        Ok(layer) => shuyi::app::run(config(), hello_grid::preview::start(layer)).await,
-        Err(error) => {
-            macroquad::logging::error!("{TITLE}: {error}");
-        }
-    }
+fn main() {
+    shuyi::app::run_app(config(), hello_grid::preview::start(folder()));
 }

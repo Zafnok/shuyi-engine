@@ -5,7 +5,7 @@
 //!
 //! The stand-in has no dependency: its build script embeds the files of its
 //! content root (`SHUYI_CONTENT`, else `files`) as the template's
-//! `include_dir!` does, and its `full` feature, on by default, adds a line of
+//! `shuyi::files!` does, and its `full` feature, on by default, adds a line of
 //! code only the full game has.
 
 use std::collections::BTreeMap;
@@ -64,7 +64,7 @@ const PROJECT: &str = r#"(
 const MANIFEST: &str = "[features]\ndefault = [\"full\"]\nfull = []\ndemo = []\npackaged = []\n";
 
 /// Its build script: the files of its content root, embedded, as the
-/// template's `include_dir!` embeds them.
+/// template's `shuyi::files!` embeds them.
 const BUILD: &str = r#"use std::path::{Path, PathBuf};
 fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, PathBuf)>) {
     let mut entries: Vec<_> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()).collect();

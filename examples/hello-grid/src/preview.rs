@@ -94,9 +94,12 @@ pub fn game(ctx: Ctx<Hello>, folder: Layer) -> Result<Game<Hello>, ModuleError> 
 /// How the preview starts, over the folder read as `folder`
 /// (`shuyi_app::read_watched_folder`, so a saved file is read again in an
 /// optimized build too): the game's card, then the preview, with the
-/// game's own files as the platform's target has them.
-pub fn start(folder: Layer) -> Start<Hello> {
+/// game's own files as the platform's target has them. A folder that
+/// couldn't be read shows why in the window, as a file that doesn't load
+/// does.
+pub fn start(folder: Result<Layer, String>) -> Start<Hello> {
     Start::new(Card::text(TITLE), Hello::look, move |setup| {
+        let folder = folder?;
         let target = setup.platform.target.clone();
         let ctx = setup.ctx(ctx_from(&bundle(Some(&target)), &target, 0));
         game(ctx, folder).map_err(|e| e.to_string())

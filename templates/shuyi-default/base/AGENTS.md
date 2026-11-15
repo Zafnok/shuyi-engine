@@ -159,8 +159,8 @@ Grow it by adding a part, not by rewriting the start:
   which calls `BasicTools`' methods for the rest. `shuyi new --template
   grid` shows one.
 - **The long form:** its own `GameData` (sounds, voices, themes,
-  settings of its own, `GameHooks`), and macroquad's entry point calling
-  `shuyi::app::run` with its `AppConfig`.
+  settings of its own, `GameHooks`), and a plain `main` calling
+  `shuyi::app::run_app` with its `AppConfig` and its `Start`.
 
 ## Releasing
 

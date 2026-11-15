@@ -138,7 +138,7 @@ switch to a different level editor later, and only the format changes.
 {% end %}
 
 {% newcomer(to="shuyi", topic="the bundle") %}
-The **bundle** is your game's files, the ones `include_dir!` put inside it.
+The **bundle** is your game's files, the ones `shuyi::files!` put inside it.
 {% end %}
 
 {% newcomer(to="rust", topic="`Result`") %}

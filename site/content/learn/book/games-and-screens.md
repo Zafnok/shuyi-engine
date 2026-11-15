@@ -475,8 +475,9 @@ this game has none of its own.
 {% end %}
 
 Such a game makes its context with `Ctx::new(data)`, its game with `Game::new(ctx,
-first_screen, GameHooks::default())`, and its binary calls `shuyi::app::run` with its
-own window settings. The API docs of `shuyi_ui` and `shuyi_app` have the details.
+first_screen, GameHooks::default())`, and its binary's plain `main` calls
+`shuyi::app::run_app` with its own `AppConfig`, the window and its files, and how it
+starts, a `Start`. The API docs of `shuyi_ui` and `shuyi_app` have the details.
 
 ## Check yourself
 

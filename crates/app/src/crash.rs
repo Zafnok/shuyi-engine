@@ -1,11 +1,11 @@
 //! Crash reports (ADR-0079): a panic hook that writes a
 //! `shuyi_platform::crash::CrashReport` through the game's storage, which
-//! [`run`](crate::run) installs before its first frame
+//! [`run_app`](crate::run_app) installs before its first frame
 //! ([`AppConfig::crash`](crate::AppConfig::crash)).
 //!
 //! The hook takes the one before it and calls it after writing, so the
 //! standard library's message in a terminal and miniquad's console line on
-//! the web stay. It reads the frame and the top screen [`run`](crate::run)
+//! the web stay. It reads the frame and the top screen [`run_app`](crate::run_app)
 //! set ([`set_frame`]) and the last lines of the log ([`note_log`]), from
 //! statics, so a panic on another thread (the music's worker) gets them too.
 //! A panic caught on purpose runs in [`quiet`] and writes nothing.

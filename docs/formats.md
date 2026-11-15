@@ -772,12 +772,12 @@ dithering spoils it, a settings file. It is a layer laid right above its
 own, used only when baking or running for that target:
 
 ```rust
-static ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets");
-static PLAYDATE: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets@playdate");
+static ASSETS: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/assets");
+static PLAYDATE: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/assets@playdate");
 
-let targets = [Layer::dir("assets@playdate", &PLAYDATE)];
+let targets = [Layer::dir("assets@playdate", PLAYDATE)];
 // `target` is what `GameTools::bake` gets, or `ctx.platform.target`.
-let bundle = Bundle::for_target(vec![Layer::dir("assets", &ASSETS)], &targets, target);
+let bundle = Bundle::for_target(vec![Layer::dir("assets", ASSETS)], &targets, target);
 ```
 
 Any file may be replaced so, a settings file too

@@ -43,6 +43,18 @@ through `shuyi::app::pack_beside_program`) and an unpacked path that still
 uses `include_dir!`; Hello, Grid's `layer()` is the same. Replace only the
 unpacked path with the table and leave the packed one alone.
 
+**From 2087 (done):** a game no longer names `include_dir`. It embeds a
+folder with `shuyi::files!("<folder>")`, which gives a
+`shuyi_assets::bundle::Embedded`, an engine type that `Files::Dir` holds
+and `Layer::dir(name, Embedded)` takes; `files!` expands to
+`include_dir!` through the hidden `shuyi_assets::__embed`, and the
+template, Hello, Grid, the book's snippets and its steps have no
+`include_dir` dependency. ADR-0119 §3 keeps `files!`, `Embedded` and
+`Layer::dir` for good, so this ticket changes what `files!` expands to and
+what `Embedded` wraps, and the removals below of `Files::Dir` and
+`Layer::dir`, and the game's `build.rs` calls, are read as that change
+instead: no break for a game.
+
 ## Nick input
 
 None.

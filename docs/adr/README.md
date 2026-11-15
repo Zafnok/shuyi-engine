@@ -131,5 +131,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0116](0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md) | The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published | Accepted |
 | [0117](0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md) | Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays | Accepted; extends ADR-0090 §8 |
 | [0118](0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md) | A closed build's recipient overlay: one code in three marks, a ledger signed with the game's SSH key, never proof | Accepted; extends ADR-0023 §1 and §3 |
+| [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).
