@@ -71,6 +71,16 @@ fn metadata_json(packages: &[&str]) -> String {
 /// [`metadata_json`], but `missing` (a crate and a feature) not in that
 /// crate's manifest.
 fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String {
+    metadata_json_with(packages, missing, &[])
+}
+
+/// [`metadata_json_without`], with each crate of `deps` depending on its
+/// list: a name `dev:<name>` as a dev-dependency, any other as a normal one.
+fn metadata_json_with(
+    packages: &[&str],
+    missing: &[(&str, &str)],
+    deps: &[(&str, &[&str])],
+) -> String {
     let list: Vec<String> = packages
         .iter()
         .map(|name| {
@@ -87,9 +97,19 @@ fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String 
                 .filter(|feature| !missing.contains(&(*name, **feature)))
                 .map(|feature| format!("\"{feature}\":[]"))
                 .collect();
+            let dependencies: Vec<String> = deps
+                .iter()
+                .filter(|(krate, _)| krate == name)
+                .flat_map(|(_, list)| list.iter())
+                .map(|dep| match dep.strip_prefix("dev:") {
+                    Some(dep) => format!("{{\"name\":\"{dep}\",\"kind\":\"dev\"}}"),
+                    None => format!("{{\"name\":\"{dep}\",\"kind\":null}}"),
+                })
+                .collect();
             format!(
-                "{{\"name\":\"{name}\",\"features\":{{{}}}}}",
-                features.join(",")
+                "{{\"name\":\"{name}\",\"features\":{{{}}},\"dependencies\":[{}]}}",
+                features.join(","),
+                dependencies.join(",")
             )
         })
         .collect();
@@ -2044,5 +2064,191 @@ fn a_summary_file_that_cannot_be_written_is_an_error() {
     // A folder can't be opened as a file to append to.
     let error = write_summary("## Public API", Some(&root), &mut Vec::new()).unwrap();
     assert!(error.starts_with(&root.display().to_string()), "{error}");
+    let _ = fs::remove_dir_all(&root);
+}
+
+// -- outside crates (ticket 2089, ADR-0119) --
+
+fn outside_in(krate: &str, line: &str, deps: &[&str]) -> Vec<(String, String)> {
+    let deps: Vec<String> = deps.iter().map(|dep| (*dep).to_string()).collect();
+    unlisted_outside(krate, &lines(&[line]), &deps)
+}
+
+#[test]
+fn an_unlisted_outside_crate_is_found() {
+    assert_eq!(
+        outside_in(
+            "shuyi-app",
+            "pub fn shuyi_app::x(gilrs::GamepadId)",
+            &["gilrs"]
+        ),
+        vec![(
+            "pub fn shuyi_app::x(gilrs::GamepadId)".to_string(),
+            "gilrs".to_string()
+        )]
+    );
+}
+
+#[test]
+fn serde_core_is_allowed_everywhere() {
+    let line = "impl serde_core::de::Deserialize<'de> for shuyi_core::Pos";
+    assert!(outside_in("shuyi-core", line, &["serde_core", "serde"]).is_empty());
+}
+
+#[test]
+fn serde_json_is_allowed_in_the_cli_alone() {
+    let line = "pub fn shuyi_x::f() -> serde_json::value::Value";
+    assert!(outside_in("shuyi-cli", line, &["serde_json"]).is_empty());
+    assert_eq!(outside_in("shuyi-ui", line, &["serde_json"]).len(), 1);
+}
+
+#[test]
+fn an_engine_module_named_like_a_crate_is_not_the_crate() {
+    let line = "pub struct shuyi_assets::image::ImageTable";
+    assert!(outside_in("shuyi-assets", line, &["image"]).is_empty());
+    assert!(outside_in("shuyi-assets", "pub fn my_image::f()", &["image"]).is_empty());
+}
+
+#[test]
+fn a_crate_at_the_start_of_a_path_is_found_anywhere_on_the_line() {
+    for line in [
+        "image::RgbaImage",
+        "pub fn shuyi_assets::f(&image::RgbaImage)",
+        "pub fn shuyi_assets::f() -> Vec<image::RgbaImage>",
+        "pub fn shuyi_assets::f(shuyi_assets::image::X, image::Y)",
+    ] {
+        assert_eq!(
+            outside_in("shuyi-assets", line, &["image"]).len(),
+            1,
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn a_crate_that_is_no_dependency_is_not_looked_for() {
+    assert!(outside_in("shuyi-app", "pub fn shuyi_app::x(gilrs::GamepadId)", &[]).is_empty());
+}
+
+#[test]
+fn every_allowed_crate_names_engine_crates_of_the_catalog() {
+    let catalog = catalog_names();
+    for (path, crates) in OUTSIDE_CRATES {
+        for krate in *crates {
+            assert!(catalog.contains(krate), "{path}: {krate}");
+        }
+    }
+}
+
+#[test]
+fn outside_dependencies_are_the_normal_ones_that_are_no_engine_crate() {
+    let root = temp_root("outside-deps");
+    let fake = Fake::new(&root).answer(
+        "head: cargo metadata --no-deps --format-version 1",
+        Ok(ok(&metadata_json_with(
+            &["shuyi-app"],
+            &[],
+            &[(
+                "shuyi-app",
+                &["quad-snd", "gilrs", "gilrs", "shuyi-ui", "dev:tempfile"],
+            )],
+        ))),
+    );
+    let packages = packages(&root, &fake).unwrap();
+    assert_eq!(packages["shuyi-app"].outside, lines(&["gilrs", "quad_snd"]));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_fails_on_an_unlisted_outside_crate() {
+    let root = temp_root("outside-run");
+    let options = Options {
+        base: Some("HEAD^1".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_with(
+                &catalog_names(),
+                &[],
+                &[("shuyi-app", &["gilrs"]), ("shuyi-ui", &["serde_json"])],
+            ))),
+        )
+        .with_listing(
+            "head",
+            "shuyi-app",
+            "pub mod shuyi_app\npub fn shuyi_app::x(gilrs::GamepadId)\n",
+        )
+        .with_listing(
+            "head",
+            "shuyi-ui",
+            "pub fn shuyi_ui::f() -> serde_json::value::Value\n",
+        )
+        // The base's lines don't count.
+        .with_listing(
+            "base",
+            "shuyi-core",
+            "pub mod shuyi_core\npub fn shuyi_core::state_hash(gilrs::GamepadId)\n",
+        );
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 2, "{:?}", outcome.errors);
+    // In the catalog's order: `shuyi-ui` before `shuyi-app`.
+    assert!(
+        outcome.errors[0].starts_with("shuyi-ui's"),
+        "{:?}",
+        outcome.errors
+    );
+    let app = &outcome.errors[1];
+    assert!(app.starts_with("shuyi-app's public API"), "{app}");
+    assert!(
+        app.contains("pub fn shuyi_app::x(gilrs::GamepadId)"),
+        "{app}"
+    );
+    assert!(app.contains("names `gilrs`"), "{app}");
+    assert!(
+        app.contains("ADR-0119 lists the outside crates the public API may name"),
+        "{app}"
+    );
+    assert!(
+        outcome.summary.contains(
+            "**Outside crate, fail:** `shuyi-app` names `gilrs`, which ADR-0119 doesn't allow \
+             there: `pub fn shuyi_app::x(gilrs::GamepadId)`"
+        ),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_passes_an_allowed_outside_crate() {
+    let root = temp_root("outside-allowed");
+    let options = Options {
+        base: Some("HEAD^1".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_with(
+                &catalog_names(),
+                &[],
+                &[("shuyi-cli", &["serde_json", "semver"])],
+            ))),
+        )
+        .with_listing(
+            "head",
+            "shuyi-cli",
+            "pub mod shuyi_cli\npub use shuyi_cli::serde_json\n\
+             pub fn shuyi_cli::f(serde_json::value::Value) -> semver::Version\n",
+        );
+    let outcome = run(&root, &options, &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(
+        !outcome.summary.contains("Outside crate"),
+        "{}",
+        outcome.summary
+    );
     let _ = fs::remove_dir_all(&root);
 }
