@@ -10,10 +10,10 @@ fcc478d8f409e313 .github/workflows/ci.yml
 3d70db920a46f189 .github/workflows/export.yml
 83c5d9477f7abb45 .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-d4ec9cfcc4d7c47d AGENTS.md
+9c149c9e9ae4cb3a AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-82ef62457f78a82f README.md
+ccc3cc9eb75d2e66 README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -33,6 +33,7 @@ a8fe621a136f7156 crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
+80f5f765cdace3d9 scripts/git-hooks/post-checkout
 4563f6c879dcbc50 scripts/setup-linux.sh
 cec8c4b0490e8d90 shuyi.ron
 
@@ -44,10 +45,10 @@ fcc478d8f409e313 .github/workflows/ci.yml
 76f61b855c33dfa7 .github/workflows/playtest.yml
 83c5d9477f7abb45 .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-d4ec9cfcc4d7c47d AGENTS.md
+9c149c9e9ae4cb3a AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 53d946a8036df89c Cargo.toml
-82ef62457f78a82f README.md
+ccc3cc9eb75d2e66 README.md
 b7bf83dcce2fb717 clippy.toml
 4d23fce37ed457d0 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -76,6 +77,7 @@ df741fbc5c3d017e crates/rules/src/lib.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
+80f5f765cdace3d9 scripts/git-hooks/post-checkout
 4563f6c879dcbc50 scripts/setup-linux.sh
 96fe8467adc062cf shuyi.ron
 
@@ -87,10 +89,10 @@ fcc478d8f409e313 .github/workflows/ci.yml
 3d70db920a46f189 .github/workflows/export.yml
 83c5d9477f7abb45 .github/workflows/release.yml
 49ee40e211c25cec .gitignore
-fc7b6f3b95a9396f AGENTS.md
+e856b7117999068e AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
-38882e246bedee52 README.md
+46fb49ccbf09cc1d README.md
 b7bf83dcce2fb717 clippy.toml
 514595d7498b2572 crates/game/Cargo.toml
 0e3957135e09c88f crates/game/build.rs
@@ -111,5 +113,6 @@ a8fe621a136f7156 crates/game/tests/it/main.rs
 cbf29ce484222325 private.rev
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
+80f5f765cdace3d9 scripts/git-hooks/post-checkout
 4563f6c879dcbc50 scripts/setup-linux.sh
 45fdb3e0fe64b2f7 shuyi.ron
