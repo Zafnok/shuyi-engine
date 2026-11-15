@@ -15,12 +15,13 @@ completed:
 
 ## Context
 
-Ticket 2079 moved the `.cargo/config.toml` aliases from `run -q -p
-shuyi-cli --` to `run -q --bin shuyi --`. With `-p`, cargo unifies that
-package's features alone, so the dependencies it shares with the
-workspace build again under other hashes; it measured 7 units for
-`cargo run -p shuyi-cli -- --help` after `cargo build --workspace`, and
-none for `--bin shuyi`.
+Ticket 2079 measured `cargo run -p shuyi-cli -- --help` at 7 units after
+`cargo build --workspace`, and `cargo run --bin shuyi -- --help` at none:
+with `-p`, cargo unifies that package's features alone, so the
+dependencies it shares with the workspace build again under other
+hashes. The `cargo shuyi` alias kept `-p shuyi-cli`, because it runs from
+a member's folder (`examples/hello-grid`), where `--bin` looks only in
+that folder's package. A command run from the root can use `--bin`.
 
 The repository's own MCP server is started the old way:
 
@@ -39,14 +40,14 @@ None.
 
 **In:**
 - The three commands above with `--bin shuyi` instead of `-p
-  shuyi-cli`, if measuring confirms they add no unit after `cargo build
-  --workspace`.
+  shuyi-cli`, if each runs from the workspace's root and measuring
+  confirms they add no unit after `cargo build --workspace`.
 
 **Out (do not do):**
 - The command `shuyi mcp install` writes into a game's settings
   (`crates/cli/src/mcp/install`, its tests, `crates/cli/tests/it/mcp.rs`):
   a game's workspace is another one, with its own features.
-- The game templates' aliases.
+- The game templates' aliases, and the `cargo shuyi` alias (2079).
 
 ## Implementation steps
 

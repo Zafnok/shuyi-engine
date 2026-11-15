@@ -1,15 +1,15 @@
 [alias]
 # The engine's tools (`crates/cli`, binary `shuyi`), on the project of the
-# `shuyi.ron` in the working folder or above it.
-#
-# Both aliases name the binary, not the package: `-p` unifies that package's
-# features alone, so the dependencies it shares with the workspace build
-# again under other hashes. `--bin` keeps the workspace's features and
-# reuses `cargo build --workspace`'s units (ticket 2079).
-shuyi = "run -q --bin shuyi --"
+# `shuyi.ron` in the working folder or above it. It names the package, so it
+# works from a member's folder (`examples/hello-grid`): `--bin` looks only in
+# that folder's package there (ticket 2079).
+shuyi = "run -q -p shuyi-cli --"
 
 # The repository's own tools (`crates/xtask`, ticket 2002): `ticket-lint`
-# and `check-links`.
+# and `check-links`, run from the root. It names the binary, not the
+# package: `-p` unifies that package's features alone, so the dependencies
+# it shares with the workspace built again under other hashes (13 units);
+# `--bin` reuses `cargo build --workspace`'s (ticket 2079).
 xtask = "run -q --bin xtask --"
 
 # rustup's self-contained x86_64-pc-windows-gnu linker ships without a full

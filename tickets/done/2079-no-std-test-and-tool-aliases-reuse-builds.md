@@ -90,8 +90,8 @@ What was done:
   `RUSTFLAGS` of their own. The setting is cargo's, outside every unit's
   hash. In CI the workflow's own `RUSTFLAGS: -D warnings` now applies to
   the step too, as to the job's other steps.
-- The aliases in `.cargo/config.toml` are `run -q --bin shuyi --` and
-  `run -q --bin xtask --`, with a comment on why.
+- The `xtask` alias in `.cargo/config.toml` is `run -q --bin xtask --`,
+  with a comment on why.
 - The run-gates skill's no-std block names the new step and why.
 - `tools/sound-parity/footprint.ron` (the sound give-up's edits) finds
   the skill's new line.
@@ -138,6 +138,15 @@ Deviations:
   build. `cargo build --workspace` alone builds no dev-dependency, so
   the `test` gate's build is the fair baseline. The 41 units the old
   form added over that were all `RUSTFLAGS`'s.
+- The `shuyi` alias stays `run -q -p shuyi-cli --`: with `--bin`, the
+  `wasm` gate's `examples/hello-grid: cargo shuyi check` failed ("no bin
+  target named `shuyi` in default-run packages"). From a member's
+  folder, cargo looks for the binary in that folder's package only, and
+  `cargo shuyi` is meant to run from a game's folder. Its 7 units stay.
+  No ticket: removing them would mean giving `shuyi-cli` alone the
+  workspace's features, a larger change than 7 small units. The `xtask`
+  alias now needs the root, where every gate, hook, CI step and skill
+  runs it; from a member's folder cargo names the problem.
 - The docs and skills name `-p shuyi-cli` and `-p xtask` only as direct
   commands (`cargo run -q -p shuyi-cli -- lint`, `cargo test -p
   xtask`), none as what the alias is; left as they are.
