@@ -74,7 +74,10 @@ over" note.
 **Tests:** `the_scene_over_shows_the_scenes_tab_on_it` (it replaces
 `the_scene_over_shows_the_lines_tab`): the second scene played to its
 end shows Scenes on row 1, Confirm plays it again, and the Lines tab
-still says it is over.
+still says it is over. And
+`the_scene_over_brings_the_cursor_back_to_it`: the cursor moved to
+another scene during the first one comes back to it when it ends (CI's
+mutants found `picked_row` untested by the first test alone).
 
 Game: game#0770 adopts it (moves the pin to this change). The game's own
 preview test was not run on this branch: the engine's `main` is past the

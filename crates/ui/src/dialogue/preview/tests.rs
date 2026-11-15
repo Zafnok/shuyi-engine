@@ -427,6 +427,23 @@ fn read_to_the_end(p: &mut Preview, ctx: &mut ToyCtx) {
 }
 
 #[test]
+fn the_scene_over_brings_the_cursor_back_to_it() {
+    let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
+    let ctx = game.ctx_mut();
+    // The first scene, "gate"; during it the cursor moves to "second".
+    press(&mut p, ctx, &[Action::Confirm]);
+    press(&mut p, ctx, &[Action::Cancel]);
+    press(&mut p, ctx, &[Action::CursorDown]);
+    assert_eq!((p.view(ctx).tab, p.view(ctx).focus), (Tab::Scenes, 1));
+    press(&mut p, ctx, &[Action::Cancel]);
+    assert!(!p.view(ctx).open, "back to the scene");
+    read_to_the_end(&mut p, ctx);
+    let view = p.view(ctx);
+    assert_eq!(view.tab, Tab::Scenes);
+    assert_eq!(view.focus, 0, "the cursor back on the scene just played");
+}
+
+#[test]
 fn the_scene_over_shows_the_scenes_tab_on_it() {
     let (mut game, _, _, mut p) = preview(&[("gate.dlg", GATE)]);
     let ctx = game.ctx_mut();
