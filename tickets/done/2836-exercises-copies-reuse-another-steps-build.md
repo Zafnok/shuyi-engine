@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-15
 ---
 
 # 2836 — `cargo xtask exercises` can check a step with the step before it's build
@@ -87,12 +87,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Steps 08 and 09 with the same time on their newest file pass
+- [x] Steps 08 and 09 with the same time on their newest file pass
       `cargo xtask exercises` in one run.
-- [ ] A warm run of `cargo xtask exercises` takes no more than a tenth
+- [x] A warm run of `cargo xtask exercises` takes no more than a tenth
       longer than before (the notes give both times).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -100,5 +100,38 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done with the fix Scope prefers first. `cargo xtask exercises` runs each
+step's Clippy and tests with a `--config` of its own,
+`profile.dev.package.box-pusher.codegen-units=<257 + the step's place>`
+(`exercises::own_build`). A package's profile is part of its units' hash,
+so each step's game gets units and output files of its own in
+`target/exercises-build`, and no fingerprint can take one step's build
+for another's. The engine's crates keep their profile and build once.
+`cargo fmt` gets no config: it builds nothing. A debug build barely sees
+the count (its default is 256).
+
+- **Reproduced** in the new test: two stand-in steps (`box-pusher` at
+  `crates/game`, a build script, a binary printing its step), every file
+  of both at the same time, built in one target folder. With one config
+  for both, the second printed the first's `08`; with `own_build`, each
+  prints its own, and again after switching back.
+- **Steps 08 and 09:** both `crates/game/Cargo.toml` set to the same time
+  (2030-01-01, so it is each copy's newest file), then `cargo xtask
+  exercises`: every step passed, three runs in a row.
+- **Time, warm target folder, this machine:** before, 1 min 40 s and
+  1 min 31 s (every run rebuilt each step's game, since the folder held
+  only the last step's). After: the first run, filling each step's own
+  units, 1 min 51 s; then 43 s and 37 s, about two and a half times
+  faster. A cold run was 5 min 46 s before. The cost is disk: ten builds
+  of the game's own crate in place of one, against one of the engine.
+- **`cargo xtask tutorial-tries` can't collide:** its `Renderer` already
+  sets every file of a copy to the current time each time the target
+  folder switches to it (`switch_to`, `touch_tree`, ticket 2822), so a
+  copy's newest file is always newer than any build before it, and its
+  sources newer than every output. It builds in its own folder
+  (`target/tutorial`), never in `target/exercises-build`. Left as it is.
+
+No break: xtask only.
+
+Book: none, the change is to `cargo xtask exercises` only, no public API
+or anything a reader runs.
