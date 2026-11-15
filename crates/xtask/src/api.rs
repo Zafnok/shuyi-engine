@@ -180,8 +180,8 @@ pub const OUTSIDE_CRATES: &[(&str, &[&str])] = &[
     ("schemars", &[]),
     ("serde_json", &["shuyi-cli"]),
     ("semver", &["shuyi-cli"]),
-    // `SoundProbeBackend`'s methods, until 2084 hides it; 2084 takes this
-    // line out.
+    // The methods of `shuyi-app`'s probe backend, until 2084 hides it; 2084
+    // takes this line out.
     ("quad_snd", &["shuyi-app"]),
 ];
 
