@@ -225,7 +225,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
 | 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
 | 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
-| 2257 | The text checks say cells where they count cells |
+| 2257 | The text checks say cells where they count cells (done 2026-11-14) |
 | 2583 | The debug step plays over the live link and in a capture plan |
 | 3097 | A game's load runs over several update callbacks on the Playdate (game#1170) |
 
