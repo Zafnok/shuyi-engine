@@ -213,7 +213,7 @@ Deviations:
 - No ADR: what a game sees doesn't change. The rule (several pads as
   one) is game ADR-0034's, and only where it is kept moved. 2406's ADR
   replaces it with seats.
-- Size: 1,142 counted lines, past the 900 estimated, mostly tests (768:
+- Size: 1,196 counted lines, past the 900 estimated, mostly tests (807:
   the property test at `Game` and its copy of the old merge are 276).
   It would split at the merge (`game/pads.rs` and its tests), but the
   variants without the merge change what a game sees, so the two parts
