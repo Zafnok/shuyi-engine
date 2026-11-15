@@ -93,6 +93,8 @@ What was done:
 - The aliases in `.cargo/config.toml` are `run -q --bin shuyi --` and
   `run -q --bin xtask --`, with a comment on why.
 - The run-gates skill's no-std block names the new step and why.
+- `tools/sound-parity/footprint.ron` (the sound give-up's edits) finds
+  the skill's new line.
 - A unit test, `the_no_std_host_test_denies_warnings_without_rustflags`,
   checks the gate's one `cargo test` step sets `CARGO_BUILD_WARNINGS=deny`
   and no `RUSTFLAGS`. No earlier test named the no-std steps; this is the
