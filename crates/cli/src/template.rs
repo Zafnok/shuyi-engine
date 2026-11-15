@@ -36,6 +36,12 @@ pub use compose::{
 /// The manifest of a template, in its folder.
 pub const MANIFEST: &str = "template.ron";
 
+/// The name of a manifest in a template's folder, which the game gets as
+/// `Cargo.toml` (ticket 2067). Cargo reads every `Cargo.toml` of a
+/// repository a game depends on by git, and a template's, with its
+/// `{{crate_name}}`, would print errors in each game's build.
+pub(crate) const CARGO_TEMPLATE: &str = "Cargo.toml.tmpl";
+
 /// The version of the template format this `shuyi` reads.
 pub const FORMAT_VERSION: u32 = 1;
 
@@ -349,7 +355,14 @@ impl Template {
         let text =
             std::str::from_utf8(&bytes).map_err(|e| error("", format!("not UTF-8 text: {e}")))?;
         let mut template: Template = ron::from_str(text).map_err(|e| error("", e.to_string()))?;
-        template.files = files;
+        template.files = manifests_named_for_the_game(files).map_err(|message| LoadError {
+            file: format!("{}/{message}", origin.trim_end_matches('/')),
+            field: String::new(),
+            message: format!(
+                "a folder holds both a `{CARGO_TEMPLATE}` and a `Cargo.toml`: keep only the \
+                 `{CARGO_TEMPLATE}`"
+            ),
+        })?;
         origin.clone_into(&mut template.origin);
         template
             .check(engine)
@@ -537,6 +550,27 @@ fn ids<'a>(ids: impl Iterator<Item = &'a str>) -> String {
     } else {
         ids.join(", ")
     }
+}
+
+/// `files` with each [`CARGO_TEMPLATE`] under the name the game gets,
+/// `Cargo.toml`. A template that names its manifests `Cargo.toml` still
+/// reads. A folder holding both is an error, naming the template's file.
+fn manifests_named_for_the_game(files: Files) -> Result<Files, String> {
+    let game_path = |path: &str| {
+        path.strip_suffix(CARGO_TEMPLATE)
+            .filter(|folder| folder.is_empty() || folder.ends_with('/'))
+            .map(|folder| format!("{folder}Cargo.toml"))
+    };
+    if let Some(path) = files
+        .keys()
+        .find(|path| game_path(path).is_some_and(|game| files.contains_key(&game)))
+    {
+        return Err(path.clone());
+    }
+    Ok(files
+        .into_iter()
+        .map(|(path, bytes)| (game_path(&path).unwrap_or(path), bytes))
+        .collect())
 }
 
 /// The engine's version, parsed.

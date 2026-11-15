@@ -71,7 +71,7 @@ fn fixture_files(manifest: &str) -> Files {
     files(&[
         (MANIFEST, manifest),
         (
-            "base/Cargo.toml",
+            "base/Cargo.toml.tmpl",
             "[workspace.dependencies]\nshuyi = { path = \"x\" }\n",
         ),
         ("base/shuyi.ron", "(\n    command: \"x\",\n)\n"),
@@ -267,6 +267,47 @@ fn each_load_check_names_the_file_and_the_field() {
     )
     .unwrap_err();
     assert!(not_text.message.starts_with("not UTF-8 text"), "{not_text}");
+}
+
+#[test]
+fn a_manifest_is_read_from_its_tmpl_under_the_name_the_game_gets() {
+    let template = fixture(MANIFEST_OK).unwrap();
+    assert!(template.files.contains_key("base/Cargo.toml"));
+    assert!(!template.files.contains_key("base/Cargo.toml.tmpl"));
+
+    // At the template's root, a plain `Cargo.toml` (as templates had
+    // before ticket 2067), and a name that only ends like one.
+    let mut more = fixture_files(MANIFEST_OK);
+    more.insert(CARGO_TEMPLATE.to_owned(), b"root".to_vec());
+    more.insert("pa/Cargo.toml".to_owned(), b"plain".to_vec());
+    more.insert("pb/xCargo.toml.tmpl".to_owned(), b"other".to_vec());
+    let template = Template::read("fixtures/t", more, &engine()).unwrap();
+    assert_eq!(template.files["Cargo.toml"], b"root");
+    assert_eq!(template.files["pa/Cargo.toml"], b"plain");
+    assert_eq!(template.files["pb/xCargo.toml.tmpl"], b"other");
+    assert!(!template.files.contains_key("pb/xCargo.toml"));
+
+    let mut both = fixture_files(MANIFEST_OK);
+    both.insert("base/Cargo.toml".to_owned(), Vec::new());
+    let clash = Template::read("fixtures/t", both, &engine()).unwrap_err();
+    assert_eq!(clash.file, "fixtures/t/base/Cargo.toml.tmpl");
+    assert_eq!(
+        clash.message,
+        "a folder holds both a `Cargo.toml.tmpl` and a `Cargo.toml`: keep only the \
+         `Cargo.toml.tmpl`"
+    );
+}
+
+#[test]
+fn the_built_in_templates_manifests_are_all_tmpl() {
+    // Cargo reads every `Cargo.toml` of the engine's repository when a
+    // game depends on it by git (ticket 2067).
+    let plain: Vec<_> = embedded_files(&BUILT_IN)
+        .into_keys()
+        .filter(|path| path == "Cargo.toml" || path.ends_with("/Cargo.toml"))
+        .collect();
+    assert!(plain.is_empty(), "{plain:?}");
+    assert!(built_in().unwrap().files.contains_key("base/Cargo.toml"));
 }
 
 #[test]

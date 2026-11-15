@@ -223,7 +223,7 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | 2061 | `cargo xtask api` runs from a Windows worktree (done 2026-11-13) |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
 | 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
-| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
+| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency (done 2026-11-14: they are `Cargo.toml.tmpl`) |
 | 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
 | 2257 | The text checks say cells where they count cells |
 | 2583 | The debug step plays over the live link and in a capture plan |
