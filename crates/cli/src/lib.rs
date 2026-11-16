@@ -15,7 +15,8 @@
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
 //! and `check-skills` checks ([`skills`]); the notices a package carries
 //! ([`notices`]); and the pool of threads the slow
-//! ones play on ([`pool`]).
+//! ones play on ([`pool`]); and the trim of a repository's idle
+//! worktrees' build output ([`worktrees`]).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
