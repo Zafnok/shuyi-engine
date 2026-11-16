@@ -119,7 +119,10 @@ What was done:
   each of the three rebuilds.
 - The job moved to `.github/workflows/compile-times.yml`, which `ci.yml`
   calls and `calibrate.yml` offers (`-f job=compile-times`). Each run
-  uploads its JSON as `compile-times<suffix>-<os>`.
+  uploads its JSON as `compile-times<suffix>-<os>`. Its block in
+  `calibrate.yml` sits before the sound block, and
+  `tools/sound-parity/footprint.ron`'s two replacements there now leave
+  `compile-times` in, so giving up the sound replacement keeps it.
 - First calibration, on unchanged code: run 43775373036 at 9ac070d6, 20
   runs, all passing the old budget. Every runner had 4 cores. The CPU
   model explains the spread. On Linux the rebuild took 0.87 to 0.98 s on

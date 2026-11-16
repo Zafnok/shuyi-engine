@@ -210,9 +210,9 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
         ),
         Replace(
             file: ".github/workflows/calibrate.yml",
-            find: "          jobs=\"sound-parity\"
+            find: "          jobs=\"compile-times sound-parity\"
 ",
-            with: "          jobs=\"\"
+            with: "          jobs=\"compile-times\"
 ",
         ),
         Cut(
@@ -222,9 +222,9 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
         ),
         Replace(
             file: ".github/workflows/calibrate.yml",
-            find: "    needs: [runs, sound-parity]
+            find: "    needs: [runs, compile-times, sound-parity]
 ",
-            with: "    needs: [runs]
+            with: "    needs: [runs, compile-times]
 ",
         ),
         Cut(
