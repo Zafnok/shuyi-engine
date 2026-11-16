@@ -15,7 +15,7 @@
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
-//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
+//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
@@ -139,12 +139,14 @@ usage:
       named, or of every <n>th from the <i>th: a verdict per step. The games
       build in target/skill-examples-build with no incremental cache, `shuyi
       new` in this repository's target folder, unless CARGO_TARGET_DIR is set.
-  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]
+  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
-      in main.rs and the same for `cargo check`, and count a new `blank` game's
-      crates, on games made in <dir> (target/compile-times). With --budget,
-      fail over its numbers (tools/compile-budget.ron); with --summary, append
-      the table's Markdown to <file>. With --count-only, only count the crates
+      in main.rs and the same for `cargo check`, a fixed reference build, and
+      count a new `blank` game's crates, on games made in <dir>
+      (target/compile-times); the table names the CPU and its cores. With
+      --budget, fail over its numbers (tools/compile-budget.ron); with
+      --summary, append the table's Markdown to <file>; with --out, write the
+      JSON to <file>. With --count-only, only count the crates
       (and hold the count to the budget): seconds, not minutes.
   cargo xtask gates [--base <rev>] [--fast] [--list]
       Run the local gates the diff from <rev> (by default origin/main's merge
@@ -466,6 +468,11 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         if let Err(e) = written {
             verdict.errors.push(format!("{}: {e}", file.display()));
         }
+    }
+    if let Some(file) = &options.out
+        && let Err(e) = std::fs::write(file, times.json().to_string())
+    {
+        verdict.errors.push(format!("{}: {e}", file.display()));
     }
     if let Some((file, budget)) = &budget {
         let found = compile_times::check(&times, budget, file);
