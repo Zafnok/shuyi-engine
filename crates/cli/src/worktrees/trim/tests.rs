@@ -366,7 +366,7 @@ fn a_run_trims_idle_worktrees_only_and_keeps_every_worktree() {
     );
     assert!(text.contains("(held): target 1 MB, locked"), "{text}");
     assert!(
-        text.contains("(busy): target 1 MB, built 24 h ago"),
+        text.contains("(busy): target 1 MB, built 24 hours ago"),
         "{text}"
     );
     assert_eq!((report.idle, report.kept, report.freed), (2, 3, 10));

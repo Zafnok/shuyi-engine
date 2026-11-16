@@ -279,7 +279,7 @@ fn idle_target(
         Some(time) if time >= trim.cutoff => {
             let _ = write!(
                 line,
-                ", built {} h ago (in the last {} days), left alone",
+                ", built {} hours ago (in the last {} days), left alone",
                 age(time),
                 options.idle_days
             );
