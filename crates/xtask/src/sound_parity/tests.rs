@@ -901,8 +901,8 @@ fn a_file_naming_the_chain_outside_the_footprint_is_caught() {
 }
 
 #[test]
-fn only_the_kept_feature_line_may_stay() {
-    let (file, line) = give_up::KEPT;
+fn only_the_kept_lines_may_stay() {
+    let (file, line) = give_up::KEPT[0];
     let files = [file.to_owned()];
     let after = |text: &str| BTreeMap::from([(file.to_owned(), text.to_owned())]);
     let owned: [String; 0] = [];
