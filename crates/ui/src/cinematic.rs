@@ -12,7 +12,7 @@
 //!
 //! The engine also gives what most shots move by: an [`ease_in_out`] (and
 //! every curve of `shuyi_core::ease`, through
-//! [`ease_f32`](crate::ease::ease_f32)), and
+//! [`ease_f32`]), and
 //! a [`Pan`] over a picture shown as the frame's backdrop (game ADR-0048,
 //! [`cinema::view`]), its frame ([`PanFrame`]) and its paint
 //! ([`paint_pan`]).
@@ -21,8 +21,10 @@ use crate::prelude::*;
 use alloc::rc::Rc;
 
 use shuyi_assets::cinematic::CinematicDef;
+use shuyi_core::Ease;
 
 use crate::ctx::{Ctx, GameData};
+use crate::ease::ease_f32;
 use crate::frame::cinema;
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
@@ -159,8 +161,8 @@ pub fn millis(t: f32) -> u64 {
 
 /// `p` (0 to 1; clamped, not a number counts as 0) eased in and out: slow
 /// at both ends, fastest in the middle. It is smoothstep, the curve of
-/// [`Ease::Smooth`](shuyi_core::Ease::Smooth), in `f32`; through
-/// [`ease_f32`](crate::ease::ease_f32) a skin has every other curve too.
+/// [`Ease::Smooth`], in `f32`; through
+/// [`ease_f32`] a skin has every other curve too.
 pub fn ease_in_out(p: f32) -> f32 {
     let p = if p.is_finite() {
         p.clamp(0.0, 1.0)
@@ -172,8 +174,8 @@ pub fn ease_in_out(p: f32) -> f32 {
 
 /// A pan over a picture shown as the frame's backdrop (game ADR-0048): the
 /// picture's pixel `from` in the middle of the screen when the shot
-/// starts, `to` when it ends, eased in and out ([`ease_in_out`]), at one
-/// whole zoom for the whole shot.
+/// starts, `to` when it ends, eased in and out ([`Ease::Smooth`], through
+/// [`ease_f32`]), at one whole zoom for the whole shot.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pan {
     /// The picture's pixel in the middle of the screen at the start.
@@ -188,7 +190,10 @@ impl Pan {
     /// The picture's pixel in the middle of the screen `progress` (0 to 1)
     /// through the shot.
     pub fn centre(&self, progress: f32) -> (f32, f32) {
-        let eased = ease_in_out(progress);
+        // Infinity counts as 0, as `ease_in_out` has it; `ease_f32` would
+        // take positive infinity as 1.
+        let progress = if progress.is_finite() { progress } else { 0.0 };
+        let eased = ease_f32(&Ease::Smooth, progress);
         let (from, to) = (self.from, self.to);
         (
             from.0 + (to.0 - from.0) * eased,
