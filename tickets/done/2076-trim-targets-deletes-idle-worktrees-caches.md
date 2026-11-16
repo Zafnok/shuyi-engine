@@ -201,7 +201,7 @@ What was done:
 - ADR-0121; the run-gates skill's trim paragraph (loaders checked with
   `sync-agent-skills.ps1 -Check`); `AGENTS.md`'s *Environment*; a docs
   map row for the build output and xtask's commands.
-- Tests: 12 in `shuyi-cli` (the porcelain parser; `incremental` at
+- Tests: 11 in `shuyi-cli` (the porcelain parser; `incremental` at
   `debug`, `release`, `gates/games/debug`, `x86_64-pc-windows-gnu/debug`,
   `tutorial/debug` and `skill-examples-build/debug`; one under
   `debug/deps`, `debug/build/…/out`, `doc`, a folder without
@@ -247,12 +247,16 @@ Evidence (Windows 11, at `bc181523`, this branch; main's tip was
   `cargo test --workspace --no-run --locked`: no `Compiling` line,
   `` Finished `test` profile [unoptimized + debuginfo] target(s) in
   0.60s ``.
-- **Nick's machine, dry run** (75 worktrees, after the gates' first
-  run): 10 idle, none with an incremental cache (Codex's worktrees
-  build without one), so `would free 0 MB`; 46 built in the last 3
-  days, 3 locked by a running build, 15 with no `target/`, and this
-  one.
-- **First run on Nick's machine:** FIRSTRUN
+- **Nick's machine, dry run** (75 worktrees, before the first run):
+  10 idle, none with an incremental cache (Codex's worktrees build
+  without one), so `would free 0 MB`; 46 built in the last 3 days, 3
+  locked by a running build, 15 with no `target/`, and this one.
+- **First run on Nick's machine:** the end of the passing `cargo xtask
+  gates` at `71da4c27`: `== trim-targets: freed 0 MB in 12 idle
+  worktree(s), left 63 alone`. **0 MB freed**: today every worktree
+  with an incremental cache was built in the last 3 days. The space
+  comes as worktrees go idle; the evidence clone above freed 2.6 GB of
+  a 5.6 GB `target/`, the study's 15 GB of 26.3 GB.
 - The current worktree, a recent one, a locked one and the merged one
   are the unit test `a_run_trims_idle_worktrees_only_and_keeps_every_worktree`
   (a held `.cargo-lock`; `git worktree list --porcelain` compared before
