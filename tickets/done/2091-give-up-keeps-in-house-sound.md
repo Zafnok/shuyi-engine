@@ -83,18 +83,27 @@ None.
   The comment itself doesn't name the feature, so the kept line is the only
   one that does.
 - CI's `sound-give-up` job: its last step greps lines, not files, and lets
-  through exactly `crates/app/Cargo.toml:in-house-sound = []`.
+  through exactly the lines `give_up::KEPT` names.
 - The give-up skill and ADR-0068 §8 say the name is kept, with no
   `Breaking:` line for it.
 - Deviation: the ticket's steps missed that `cargo xtask sound-parity
   give-up` refuses an edit that leaves any word of the chain behind (its
   `uncovered`), so the dry check failed on the kept line. `give_up::KEPT`
-  names that one line (file and text), `uncovered` skips it, and a test
-  (`only_the_kept_feature_line_may_stay`) checks that only that line, in
-  that file, passes.
-- Checked in a scratch worktree: `give-up --apply`, then `cargo check -p
-  shuyi-app --features in-house-sound` built, and CI's new grep found
-  nothing.
+  names the kept lines (file and text), `uncovered` skips them, and a test
+  (`only_the_kept_lines_may_stay`) checks that only such a line, in its
+  file, passes.
+- Deviation: the ticket missed the API check's feature lists too. The
+  footprint took the feature out of them, so after giving up `cargo test -p
+  xtask` failed (its manifest still has the feature; CI's first run of
+  `sound-give-up` on this PR). Now giving up leaves the feature in
+  `shuyi-app`'s `Features::Only` list in `crates/xtask/src/api.rs` and its
+  test's copy: empty, it builds anywhere, and the semver check then holds
+  its name. So three lines stay, not the ticket's one, and CI's grep allows
+  those three exactly.
+- Checked in a scratch worktree: `give-up --apply`, then `cargo check
+  --workspace --all-targets`, `cargo check -p shuyi-app --features
+  in-house-sound` and `cargo test -p shuyi-app -p xtask` passed, and CI's
+  new grep found nothing.
 - No break: the feature's name and the API are unchanged; only what giving
   up would do changes. The game names `in-house-sound` only in its ticket
   1241 and its docs (`gh search code --repo Zafnok/visions-of-shuyi
