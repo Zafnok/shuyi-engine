@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2076 — cargo xtask trim-targets deletes the incremental caches of idle worktrees, never a worktree, and the gates run it
@@ -69,7 +69,8 @@ None.
     deletes every `incremental` folder under its `target/`;
   - `--stale-hashes`: also deletes, in each `deps/`, the older hashes
     of a crate whose last access is older than N days. If NTFS
-    last-access updates are off, it says so and skips this;
+    last-access updates are off, it says so and skips this (split off
+    to 2092 at the size valve below);
   - `--merged`: also deletes the whole `target/` of a worktree whose
     branch is merged into `origin/main` or whose PR is merged (`gh`),
     keeping the worktree;
@@ -147,25 +148,25 @@ new ticket.
 
 ## Acceptance criteria
 
-- [ ] `--dry-run` lists each worktree with its target size, whether it
+- [x] `--dry-run` lists each worktree with its target size, whether it
       is idle or locked, and what would be deleted; it deletes nothing.
-- [ ] On an idle worktree, after `trim-targets`, `cargo test
+- [x] On an idle worktree, after `trim-targets`, `cargo test
       --workspace --no-run` there compiles 0 units (output in the
       notes).
-- [ ] The current worktree, a worktree built in the last N days, and a
+- [x] The current worktree, a worktree built in the last N days, and a
       worktree with a cargo build running are left untouched (tested
       with a held lock).
-- [ ] Nothing outside `<worktree>/target/` is deleted, and no worktree
+- [x] Nothing outside `<worktree>/target/` is deleted, and no worktree
       is removed (`git worktree list` is the same before and after).
-- [ ] `--merged` deletes the target of a merged branch's worktree and
+- [x] `--merged` deletes the target of a merged branch's worktree and
       keeps the worktree.
-- [ ] A passing local `cargo xtask gates` ends with the trim line;
+- [x] A passing local `cargo xtask gates` ends with the trim line;
       with `SHUYI_NO_TRIM=1` or `CI` set it doesn't run.
-- [ ] The notes give the space freed on Nick's machine by the first
+- [x] The notes give the space freed on Nick's machine by the first
       run.
-- [ ] The ADR is written and linked from `docs/adr/`'s index.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and linked from `docs/adr/`'s index.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -179,5 +180,96 @@ new ticket.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `crates/cli/src/worktrees.rs` and `worktrees/trim.rs`, public as
+  `shuyi_cli::worktrees::trim`: `Options` (`#[non_exhaustive]`, built by
+  `Options::new(roots)`: `idle_days`, `dry_run`, `merged`, `base`),
+  `Report` (`summary()`), `run(repo, &options, out)` and
+  `DEFAULT_IDLE_DAYS`. It parses `git worktree list --porcelain`, skips
+  the current, bare, prunable and missing worktrees, a missing or
+  linked `target/`, a held `.cargo-lock`, `.cargo-build-lock` or
+  `.cargo-artifact-lock` (`File::try_lock`), and a worktree whose newest
+  `.fingerprint/<unit>/` file is newer than the cutoff. A profile folder
+  is one holding `.fingerprint/`, found to depth 5 without entering a
+  link, `doc`, `src` or `.git`; its `incremental/` goes when it is
+  `<root>/<profile>` or `<root>/<triple>/<profile>`.
+- `crates/xtask/src/trim.rs` and `main.rs`: `cargo xtask trim-targets
+  [--idle-days N] [--dry-run] [--merged]` with the engine's roots (`""`,
+  `gates/games`, `tutorial`, `skill-examples*`), and `after_gates`,
+  which `gates::run` calls after a passing full run.
+- ADR-0121; the run-gates skill's trim paragraph (loaders checked with
+  `sync-agent-skills.ps1 -Check`); `AGENTS.md`'s *Environment*; a docs
+  map row for the build output and xtask's commands.
+- Tests: 12 in `shuyi-cli` (the porcelain parser; `incremental` at
+  `debug`, `release`, `gates/games/debug`, `x86_64-pc-windows-gnu/debug`,
+  `tutorial/debug` and `skill-examples-build/debug`; one under
+  `debug/deps`, `debug/build/…/out`, `doc`, a folder without
+  `.fingerprint/` and a profile under no root left alone; a junction
+  (Windows) or symlink never followed; a worktree inside a `target/`
+  never deleted; the last build; each lock file held and released; the
+  sizes and the summary; and a whole run on a temporary repository with
+  four worktrees: current, idle, built a day ago, locked, and merged),
+  2 in xtask (the flags, and when the gates trim).
+
+Deviations:
+
+- **Split:** `--stale-hashes` (step 6, its test) went to 2092 at the
+  size valve: the PR measured 1,371 counted lines before the ADR with
+  it, past the valve's 1,100.
+- The gates trim after a passing **full** run only: `--fast` (the
+  pre-push hook) and `--list` skip it, as they skip 2075's compression.
+  It runs before the summary block, on stderr, so the block stays the
+  PR's.
+- Two safeguards the steps didn't name, found on this machine: a
+  worktree sits inside another's `target/` (`…/target/api-base`), so no
+  folder holding `.git` is ever entered; and the base's own branch
+  (`main`, the main checkout) is never "merged", though it is an
+  ancestor of `origin/main`.
+- `--merged` deletes what is inside `target/` and keeps the folder
+  itself, so its NTFS compression stays (2075). It applies to idle,
+  unlocked worktrees only, like the rest.
+- The space is counted as the files' lengths: std has no compressed
+  size, and on a compressed `target/` the disk gets back about half.
+
+Evidence (Windows 11, at `bc181523`, this branch; main's tip was
+`4eae83e6`):
+
+- **Zero units after a trim.** A `git clone --shared` of this branch
+  with one worktree, `idle`, where `cargo test --workspace --no-run
+  --locked` built (2 min 58 s; `target/` 5.6 GB, 2.6 GB of it
+  `debug/incremental`). From the clone: `cargo xtask trim-targets
+  --idle-days 0 --dry-run` printed `target 5.6 GB, idle (last build 0
+  days ago), would delete debug\incremental (2.6 GB)` and deleted
+  nothing; then without `--dry-run`: `deleted debug\incremental
+  (2.6 GB)`, `trimmed 1 idle worktree(s), freed 2.6 GB, left 1 alone`.
+  `git worktree list` was the same before and after. Then in `idle`,
+  `cargo test --workspace --no-run --locked`: no `Compiling` line,
+  `` Finished `test` profile [unoptimized + debuginfo] target(s) in
+  0.60s ``.
+- **Nick's machine, dry run** (75 worktrees, after the gates' first
+  run): 10 idle, none with an incremental cache (Codex's worktrees
+  build without one), so `would free 0 MB`; 46 built in the last 3
+  days, 3 locked by a running build, 15 with no `target/`, and this
+  one.
+- **First run on Nick's machine:** FIRSTRUN
+- The current worktree, a recent one, a locked one and the merged one
+  are the unit test `a_run_trims_idle_worktrees_only_and_keeps_every_worktree`
+  (a held `.cargo-lock`; `git worktree list --porcelain` compared before
+  and after).
+
+Notes for Nick:
+
+- Nothing to do: each passing `cargo xtask gates` now frees the
+  incremental caches of worktrees no one built in 3 days, and keeps
+  every worktree. `cargo xtask trim-targets --merged` frees all the
+  build output of merged worktrees' idle `target/`s when you want more
+  room; `--dry-run` shows what it would do first.
+
+Book: none, the new `shuyi_cli::worktrees` module is the repository's
+own tooling that 3403 will make a game command; the book is for people
+making games and no game command changed.
+
+No break (additions only). No `Behaviour:` line: no existing command,
+format or output changed. Game: nothing to adopt, a game gets the trim
+with 3403.

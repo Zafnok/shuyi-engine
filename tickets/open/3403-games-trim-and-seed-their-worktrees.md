@@ -38,7 +38,7 @@ commands, not the logic.
 
 **From 2076 (done):** the trim is `shuyi_cli::worktrees::trim::run(repo,
 &options, out)`, writing a line per worktree to `out` and returning a
-`Report` (worktrees trimmed and kept, bytes freed, files skipped,
+`Report` (worktrees idle and kept, bytes freed, files skipped,
 notes, `summary()`). `Options::new(roots)` takes the roots: `""` is
 `target/` itself, so `[""]` covers a game's `target/debug`,
 `target/<triple>/<profile>` and the web build's

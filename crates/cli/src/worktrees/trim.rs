@@ -80,8 +80,9 @@ impl Options {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Report {
-    /// The worktrees something was deleted in (or would be, dry).
-    pub trimmed: usize,
+    /// The idle worktrees, trimmed (or that would be, dry), some with
+    /// nothing to delete.
+    pub idle: usize,
     /// The worktrees left alone: this one, missing, without `target/`,
     /// locked or built recently.
     pub kept: usize,
@@ -99,15 +100,11 @@ pub struct Report {
 impl Report {
     /// The run in one line, for the end of `cargo xtask gates`.
     pub fn summary(&self) -> String {
-        let (verb, freed) = if self.dry_run {
-            ("would trim", "would free")
-        } else {
-            ("trimmed", "freed")
-        };
+        let verb = if self.dry_run { "would free" } else { "freed" };
         let mut line = format!(
-            "trim-targets: {verb} {} idle worktree(s), {freed} {}, left {} alone",
-            self.trimmed,
+            "trim-targets: {verb} {} in {} idle worktree(s), left {} alone",
             bytes(self.freed),
+            self.idle,
             self.kept
         );
         if self.skipped > 0 {
@@ -154,7 +151,7 @@ pub fn run(repo: &Path, options: &Options, out: &mut dyn Write) -> Result<Report
         );
         match freed {
             Some(freed) => {
-                report.trimmed += 1;
+                report.idle += 1;
                 report.freed += freed.bytes;
                 report.skipped += freed.skipped;
             }

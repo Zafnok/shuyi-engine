@@ -267,7 +267,7 @@ fn sizes_read_in_gb_or_mb() {
 #[test]
 fn the_summary_names_the_freed_space_and_the_notes() {
     let report = Report {
-        trimmed: 2,
+        idle: 2,
         kept: 5,
         freed: 30_500_000_000,
         skipped: 3,
@@ -276,7 +276,7 @@ fn the_summary_names_the_freed_space_and_the_notes() {
     };
     assert_eq!(
         report.summary(),
-        "trim-targets: trimmed 2 idle worktree(s), freed 30.5 GB, left 5 alone, \
+        "trim-targets: freed 30.5 GB in 2 idle worktree(s), left 5 alone, \
          3 file(s) in use skipped; `gh` didn't answer: merged pull requests not looked for"
     );
     let dry = Report {
@@ -285,7 +285,7 @@ fn the_summary_names_the_freed_space_and_the_notes() {
     };
     assert_eq!(
         dry.summary(),
-        "trim-targets: would trim 0 idle worktree(s), would free 0 MB, left 0 alone"
+        "trim-targets: would free 0 MB in 0 idle worktree(s), left 0 alone"
     );
 }
 
@@ -369,7 +369,7 @@ fn a_run_trims_idle_worktrees_only_and_keeps_every_worktree() {
         text.contains("(busy): target 1 MB, built 24 h ago"),
         "{text}"
     );
-    assert_eq!((report.trimmed, report.kept, report.freed), (2, 3, 10));
+    assert_eq!((report.idle, report.kept, report.freed), (2, 3, 10));
     assert!(
         [&repo, &idle, &busy, &held, &merged]
             .iter()
@@ -379,7 +379,7 @@ fn a_run_trims_idle_worktrees_only_and_keeps_every_worktree() {
 
     options.dry_run = false;
     let report = run(&repo, &options, &mut std::io::sink()).unwrap();
-    assert_eq!((report.trimmed, report.kept, report.freed), (2, 3, 10));
+    assert_eq!((report.idle, report.kept, report.freed), (2, 3, 10));
     assert!(!incremental(&idle) && !incremental(&merged));
     assert!(incremental(&repo) && incremental(&busy) && incremental(&held));
     assert!(
