@@ -209,10 +209,9 @@ None.
   `the_binary_form_of_every_engine_kind_is_pinned_by_the_pack_version`
   pins `Tempo`'s form, and the snapshot is accepted again.
 - **Either order with 2366 (parked, sound captions):** both add a field
-  to `MusicCue`, and whichever lands first moves it under 2013's ADR
-  if it isn't already. If 2366 is done, its `new` leaves the new
-  `tempo` at `None` too, and `pack::VERSION` goes one past 2366's. If
-  not, nothing more to do here: 2366 adds its `caption` to this `new`.
+  to `MusicCue`, which is under 2013's ADR since 2084 (`MusicCue::new`
+  leaves the new `tempo` at `None`). If 2366 is done, `pack::VERSION`
+  goes one past 2366's. If not, nothing more to do here.
 - **An ADR** (the `write-adr` skill) that extends 2341's ADR on music
   switches: beats are integers in `shuyi-core`; a view reads them from
   the music clock, a sim from its steps (`at_steps`), never from the
@@ -221,12 +220,14 @@ None.
   and the cinematic file hold it, no default crate depends on a module,
   and it adds no dependency and one optional field per cue. Its row
   goes in `docs/adr/README.md`.
-- **For the game:** the API breaks. `MusicCue`, `MusicClock` and
-  `TimedShot` gain or change fields, and `MusicCue` and `MusicClock`
-  move under 2013's ADR here if they aren't already. Code that builds
-  them with struct literals, or reads `TimedShot::at` as `f32`,
-  changes. The completion notes carry a `Breaking:` line in 2010's form
-  (`Breaking: shuyi-assets, shuyi-ui: ...`), the PR says so, and the
+- **For the game:** `MusicCue` and `MusicClock` gain fields, which is
+  additive: **from 2084 (done)** both are `#[non_exhaustive]`, built
+  with `MusicCue::new` and `MusicClock::new`, as are `CinematicFile`
+  and `TimedShot` (`TimedShot::new`). The one break left is
+  `TimedShot::at` changing type, from `f32` to `cinematic::At`: code
+  that reads it as `f32` changes. The completion notes carry a
+  `Breaking:` line in 2010's form for that one
+  (`Breaking: shuyi-assets: TimedShot::at: ...`), the PR says so, and the
   game's PR that moves its pin follows it. Its files need no change.
 
 **Out (do not do):**

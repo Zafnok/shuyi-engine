@@ -711,6 +711,8 @@ fn music(command: &MusicCommand) -> (&'static str, &str) {
         MusicCommand::Start { cue, .. } => ("start", cue),
         MusicCommand::Gain { cue, .. } => ("gain", cue),
         MusicCommand::Stop { cue } => ("stop", cue),
+        // A command this contract doesn't name yet.
+        _ => ("other", ""),
     }
 }
 

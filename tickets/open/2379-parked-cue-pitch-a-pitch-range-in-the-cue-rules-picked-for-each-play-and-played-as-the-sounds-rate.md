@@ -164,11 +164,12 @@ None.
   backend plays it with `set_rate`, or at 1.0 with one warning; and a
   copy lasts its length over its rate.
 - **For the game:** the API changes. `SoundRequest::Sound` and `Start`
-  have a new field (match them with `..`), and the pack's version goes
+  have a new field, which is additive: **from 2084 (done)** both are
+  `#[non_exhaustive]` variants, built with `SoundRequest::sound` and
+  `SoundRequest::start`, which set `RATE_ONE`. The pack's version goes
   up, so a pack baked before this is refused and rebaked. The game's
   manifest loads as it is. A backend of the game's own plays `rate` or
-  leaves it out. Each break gets a `Breaking:` line in the completion
-  notes, and the game's PR that moves the pin follows this one.
+  leaves it out. The game's PR that moves the pin follows this one.
 
 **Out (do not do):**
 - Filling in `set_rate` in a backend. 3029 (the Playdate) and 3031
@@ -204,8 +205,8 @@ None.
 2. The data: the two fields, their defaults, `PITCH_PERCENT`, the
    check, `CueRules::DEFAULT`, the pack version and its snapshot.
 3. `RATE_ONE`, `rate_from_percent`, and `rate` on `Sound` and `Start`.
-   Fix every literal of them (`grep -rn "SoundRequest::Sound {"` and
-   `"SoundRequest::Start {"` over `crates/` and `examples/`).
+   The constructors `SoundRequest::sound` and `SoundRequest::start` set
+   `RATE_ONE`; fix the literals left inside `shuyi-platform`.
 4. The pick in `Cues` and the copies' ends, with their tests.
 5. The player: the rate per slot and `set_rate`, and each copy kept
    for `length_at_rate` of its length, with tests against its fake

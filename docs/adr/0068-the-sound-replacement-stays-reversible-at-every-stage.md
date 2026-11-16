@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-31
-- **Related tickets:** 2573, 2210, 3030, 3031, 3032, 2397, 3084, 3079, 3034
+- **Related tickets:** 2573, 2210, 3030, 3031, 3032, 2397, 3084, 3079, 3034, 2084
 
 ## Context
 
@@ -47,6 +47,18 @@ a session would spend itself untangling them.
 7. **A test holds it.** `cargo test -p xtask` fails if `shuyi-app` loses
    `quad-snd`, the workspace's macroquad loses `audio`, or `in-house-sound`
    joins the default features. 3084 takes out the last of these; 3079 the rest.
+8. **The features' names are kept for good** (2084, Nick's decision of
+   2026-11-14: no run of breaking versions after the MVP). A feature a game
+   names that later goes away is a breaking release, so:
+   - `in-house-sound` stays a feature of `shuyi-app` for good. Once it is the
+     only backend (3079) it does nothing, and a game that names it still
+     builds.
+   - No feature is named for quad-snd. Going back to it is
+     `default-features = false`, and quad-snd is an optional dependency named
+     with `dep:`, so it makes no feature of its own (3084).
+   - `sound-probe` is the sound gates' own, and its doc in `crates/app/Cargo.toml`
+     says so. What it names, `SoundProbeBackend`, is `#[doc(hidden)]` and not
+     covered by semver: its type changes when the backend does.
 
 ## Consequences
 

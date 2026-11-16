@@ -317,10 +317,11 @@ than one PR. The last paragraph of **In** says how to split.
   example (`skills/shuyi-cinematic/example.ron`, which CI's `skills`
   job runs); `check-skills` passes.
 - **What changes for the game:** the API grows, and nothing is renamed.
-  Code that builds `CinematicDef`, `ShotDef`, `CinematicFile` or
-  `TimedShot` as a struct literal must add the new fields; follow
-  ADR-0039's rule for public types. The PR says which call
-  sites change, and the game's PR that moves its pin follows it.
+  **From 2084 (done):** `CinematicDef`, `ShotDef`, `CinematicFile` and
+  `TimedShot` are `#[non_exhaustive]`, built with their `new`, so the
+  new fields are additive: each `new` leaves them empty (no tracks,
+  cues or markers, a cut). No `Breaking:` line is planned for them;
+  the game's PR that moves its pin follows this one.
 - **The split.** Do first the part that holds what the game asked for,
   if this ticket was unparked for a game's request; otherwise part 1.
   When that part is done, count the changed lines against `main`

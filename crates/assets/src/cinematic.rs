@@ -100,8 +100,11 @@ impl<S: DeserializeOwned + 'static, P: DeserializeOwned + 'static> Format for Ci
 /// The longest a cinematic that states its own length may be, in seconds.
 pub const MAX_SECONDS: f32 = 3600.0;
 
-/// One cinematic: its shots, in order, over a length of time.
+/// One cinematic: its shots, in order, over a length of time. Data read
+/// from a file (ADR-0039, kind 5): [`check`] builds it, or
+/// [`CinematicDef::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CinematicDef<S> {
     /// The cinematic's id (its file stem).
     pub id: String,
@@ -115,8 +118,10 @@ pub struct CinematicDef<S> {
     pub shots: Vec<ShotDef<S>>,
 }
 
-/// A shot and when it starts.
+/// A shot and when it starts. Data read from a file (ADR-0039, kind 5):
+/// build it with [`ShotDef::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ShotDef<S> {
     /// Milliseconds from the cinematic's start.
     pub at_ms: u32,
@@ -126,7 +131,9 @@ pub struct ShotDef<S> {
 
 /// A cinematic file as written, before any check: `S` is a shot and `P`
 /// a list of `actions` as the game writes them (`()` for a game whose
-/// shots share none).
+/// shots share none). Data read from a file (ADR-0039, kind 5): build it
+/// with [`CinematicFile::new`], and a field added later is
+/// `#[serde(default)]`.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     deny_unknown_fields,
@@ -135,6 +142,7 @@ pub struct ShotDef<S> {
         deserialize = "S: Deserialize<'de>, P: Deserialize<'de>"
     )
 )]
+#[non_exhaustive]
 pub struct CinematicFile<S, P = ()> {
     /// The cinematic's id; it must be the file's name.
     pub id: String,
@@ -156,17 +164,70 @@ pub enum Length {
     Seconds(f32),
 }
 
-/// A shot as written, and when it starts.
+/// A shot as written, and when it starts. Data read from a file
+/// (ADR-0039, kind 5): build it with [`TimedShot::new`], and a field added
+/// later is `#[serde(default)]`.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     deny_unknown_fields,
     bound(serialize = "S: Serialize", deserialize = "S: Deserialize<'de>")
 )]
+#[non_exhaustive]
 pub struct TimedShot<S> {
     /// Seconds from the start.
     pub at: f32,
     /// The game's shot.
     pub shot: S,
+}
+
+impl<S> CinematicDef<S> {
+    /// Cinematic `id`, `length_ms` long, of `shots` (by start time, the
+    /// first at 0), following no music cue.
+    #[must_use]
+    pub const fn new(id: String, length_ms: u32, shots: Vec<ShotDef<S>>) -> Self {
+        Self {
+            id,
+            music: None,
+            length_ms,
+            shots,
+        }
+    }
+
+    /// The same cinematic, as long as music cue `music`.
+    #[must_use]
+    pub fn with_music(mut self, music: impl Into<String>) -> Self {
+        self.music = Some(music.into());
+        self
+    }
+}
+
+impl<S> ShotDef<S> {
+    /// `shot`, starting `at_ms` milliseconds in.
+    #[must_use]
+    pub const fn new(at_ms: u32, shot: S) -> Self {
+        Self { at_ms, shot }
+    }
+}
+
+impl<S, P> CinematicFile<S, P> {
+    /// Cinematic `id`, `length` long, of `shots`, sharing no `actions`.
+    #[must_use]
+    pub const fn new(id: String, length: Length, shots: Vec<TimedShot<S>>) -> Self {
+        Self {
+            id,
+            length,
+            actions: BTreeMap::new(),
+            shots,
+        }
+    }
+}
+
+impl<S> TimedShot<S> {
+    /// `shot`, starting `at` seconds in.
+    #[must_use]
+    pub const fn new(at: f32, shot: S) -> Self {
+        Self { at, shot }
+    }
 }
 
 /// How a game checks its shots `S`, one file at a time; it may keep what

@@ -24,6 +24,8 @@ use crate::platform::Millis;
 #[non_exhaustive]
 pub enum SoundRequest {
     /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.
+    /// Build it with [`SoundRequest::sound`] (ADR-0039).
+    #[non_exhaustive]
     Sound {
         /// The sound cue.
         cue: String,
@@ -63,6 +65,8 @@ pub enum SoundRequest {
     /// Resume the sounds [`PauseSounds`](Self::PauseSounds) paused.
     ResumeSounds,
     /// Say a line: play its clip once, stopping the voice that is playing.
+    /// Build it with [`SoundRequest::voice`] (ADR-0039).
+    #[non_exhaustive]
     Voice {
         /// The clip's file in the voice folder.
         clip: String,
@@ -117,6 +121,19 @@ fn samples_summary<S: serde::Serializer>(
 }
 
 impl SoundRequest {
+    /// A [`Sound`](Self::Sound) of `cue` at `volume`.
+    pub fn sound(cue: impl Into<String>, volume: f32) -> Self {
+        Self::Sound {
+            cue: cue.into(),
+            volume,
+        }
+    }
+
+    /// A [`Voice`](Self::Voice) of the clip in file `clip`.
+    pub fn voice(clip: impl Into<String>) -> Self {
+        Self::Voice { clip: clip.into() }
+    }
+
     /// A [`Start`](Self::Start) of `cue` as `id` at `volume`.
     pub fn start(id: SoundId, cue: impl Into<String>, volume: f32) -> Self {
         Self::Start {
@@ -138,19 +155,14 @@ impl SoundRequest {
     /// the frame's music commands already say.
     pub fn from_request<V: ClipVariant>(request: &AudioRequest<V>) -> Option<Self> {
         Some(match request {
-            AudioRequest::PlaySound { cue, volume } => Self::Sound {
-                cue: cue.clone(),
-                volume: *volume,
-            },
+            AudioRequest::PlaySound { cue, volume, .. } => Self::sound(cue.clone(), *volume),
             AudioRequest::StartSound { id, cue, volume } => Self::start(*id, cue.clone(), *volume),
             AudioRequest::StopSound { id } => Self::Stop { id: *id },
             AudioRequest::SoundVolume { id, volume } => Self::Volume {
                 id: *id,
                 volume: *volume,
             },
-            AudioRequest::PlayVoice { line, variant } => Self::Voice {
-                clip: clip_file(line, *variant),
-            },
+            AudioRequest::PlayVoice { line, variant, .. } => Self::voice(clip_file(line, *variant)),
             AudioRequest::PauseSounds => Self::PauseSounds,
             AudioRequest::ResumeSounds => Self::ResumeSounds,
             AudioRequest::StopVoice => Self::StopVoice,
@@ -168,8 +180,10 @@ impl SoundRequest {
     }
 }
 
-/// One frame's audio, as [`App`](crate::App) hands it to the device.
+/// One frame's audio, as [`App`](crate::App) hands it to the device. A view
+/// (ADR-0039, kind 3): build it with [`AudioFrame::new`].
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct AudioFrame<'a> {
     /// The sound and voice requests the screens made, in order.
     pub requests: &'a [SoundRequest],
@@ -179,6 +193,21 @@ pub struct AudioFrame<'a> {
     /// cue's own volume times its gain ([`Gains::sound`],
     /// [`Gains::music`], [`Gains::voice`]), one already playing too.
     pub gains: Gains<'a>,
+}
+
+impl<'a> AudioFrame<'a> {
+    /// The frame that makes `requests` and `music`, at `gains`.
+    pub const fn new(
+        requests: &'a [SoundRequest],
+        music: &'a [MusicCommand],
+        gains: Gains<'a>,
+    ) -> Self {
+        Self {
+            requests,
+            music,
+            gains,
+        }
+    }
 }
 
 /// A backend's sound device.
@@ -266,25 +295,47 @@ mod tests {
     }
 
     #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        assert_eq!(
+            SoundRequest::sound("click", 0.5),
+            SoundRequest::Sound {
+                cue: "click".into(),
+                volume: 0.5
+            }
+        );
+        assert_eq!(
+            SoundRequest::voice("intro.hello.ogg"),
+            SoundRequest::Voice {
+                clip: "intro.hello.ogg".into()
+            }
+        );
+        let groups = shuyi_ui::audio::SoundGroups::default();
+        let gains = shuyi_ui::audio::GroupGains::full(&groups);
+        let requests = [SoundRequest::StopVoice];
+        let music = [MusicCommand::start("theme", 1.0)];
+        let frame = AudioFrame::new(&requests, &music, Gains::new(&groups, &gains));
+        let literal = AudioFrame {
+            requests: &requests,
+            music: &music,
+            gains: Gains::new(&groups, &gains),
+        };
+        assert_eq!(
+            (frame.requests, frame.music),
+            (literal.requests, literal.music)
+        );
+    }
+
+    #[test]
     fn a_voice_is_its_clips_file_and_music_stays_with_the_commands() {
         let play = |request: AudioRequest<Voice>| SoundRequest::from_request(&request);
         assert_eq!(
-            play(AudioRequest::PlaySound {
-                cue: "click".into(),
-                volume: 0.5
-            }),
-            Some(SoundRequest::Sound {
-                cue: "click".into(),
-                volume: 0.5
-            })
+            play(AudioRequest::play_sound("click", 0.5)),
+            Some(SoundRequest::sound("click", 0.5))
         );
         let hello = line("intro.hello");
         let only = clip_file(&hello, Voice::Only);
         assert_eq!(
-            play(AudioRequest::PlayVoice {
-                line: hello.clone(),
-                variant: Voice::Only
-            }),
+            play(AudioRequest::play_voice(hello.clone(), Voice::Only)),
             Some(SoundRequest::Voice { clip: only.clone() })
         );
         assert_eq!(

@@ -49,10 +49,9 @@ None.
   other tests fake.
 
 **Out (do not do):**
-- Hiding any item: 2087 left none but `SoundProbeBackend`, which 2084
-  hides. **Either order with 2084:** if 2084 is done, the check passes
-  on `shuyi-app` as it is; if not, allow `quad_snd` in `shuyi-app` with
-  a comment naming 2084, and 2084 takes the line out.
+- Hiding any item: 2087 left none but `SoundProbeBackend`, which
+  **2084 (done)** hid with `#[doc(hidden)]`, so the check passes on
+  `shuyi-app` as it is, with no outside crate allowed for it.
 - Checking the base's listing: only the head's lines count.
 
 **Estimated size:** about 300 lines (code 120, tests 150, docs 30).

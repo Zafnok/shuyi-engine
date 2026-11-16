@@ -408,13 +408,12 @@ mod tests {
         m.sounds.insert("footfall".into(), sound("ambience"));
         m.sounds.insert("ui_move".into(), sound(SFX));
         m.sounds.insert("lost".into(), sound("orphan"));
-        let track = |group: Option<&str>| MusicCue {
-            file: "a.ogg".into(),
-            volume: 100,
-            looped: true,
-            length_ms: 1000,
-            credit: CreditRef::Own,
-            group: group.map(str::to_owned),
+        let track = |group: Option<&str>| {
+            let cue = MusicCue::new("a.ogg".into(), 100, 1000, CreditRef::Own);
+            match group {
+                Some(group) => cue.with_group(group),
+                None => cue,
+            }
         };
         m.music.insert("storm".into(), track(Some("weather")));
         m.music.insert("theme".into(), track(None));

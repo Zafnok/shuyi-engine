@@ -184,14 +184,7 @@ async fn player(
         bytes.insert(file.clone(), read(&format!("corpus/{file}")).await?);
     }
     for (cue, (file, length_ms)) in &plan.music {
-        let music = MusicCue {
-            file: file.clone(),
-            volume: 100,
-            looped: true,
-            length_ms: *length_ms,
-            credit: CreditRef::Own,
-            group: None,
-        };
+        let music = MusicCue::new(file.clone(), 100, *length_ms, CreditRef::Own);
         manifest.music.insert(cue.clone(), music);
     }
     let sound = |file: &str| bytes.get(file).map(|b| Cow::Owned(b.clone()));
@@ -313,10 +306,7 @@ fn request(
 ) {
     let id = |ids: &Ids, number: &u32| ids.by_number.get(number).copied();
     match action {
-        Action::Sound(cue, volume) => requests.push(SoundRequest::Sound {
-            cue: cue.clone(),
-            volume: *volume,
-        }),
+        Action::Sound(cue, volume) => requests.push(SoundRequest::sound(cue.as_str(), *volume)),
         Action::Start(number, cue, volume) => {
             let sound = ids.queue.start_sound(cue.as_str());
             ids.queue.take();

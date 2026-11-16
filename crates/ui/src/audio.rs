@@ -145,6 +145,8 @@ impl SoundId {
 #[non_exhaustive]
 pub enum AudioRequest<V> {
     /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.
+    /// Build it with [`AudioRequest::play_sound`] (ADR-0039).
+    #[non_exhaustive]
     PlaySound {
         /// The sound cue.
         cue: String,
@@ -203,7 +205,9 @@ pub enum AudioRequest<V> {
         fade_ms: u32,
     },
     /// Say a dialogue line: play its voice clip once, stopping the voice
-    /// that is playing (one voice at a time).
+    /// that is playing (one voice at a time). Build it with
+    /// [`AudioRequest::play_voice`] (ADR-0039).
+    #[non_exhaustive]
     PlayVoice {
         /// The line.
         line: LineId,
@@ -249,6 +253,19 @@ pub enum AudioRequest<V> {
 }
 
 impl<V> AudioRequest<V> {
+    /// A [`PlaySound`](Self::PlaySound) of `cue` at `volume`.
+    pub fn play_sound(cue: impl Into<String>, volume: f32) -> Self {
+        Self::PlaySound {
+            cue: cue.into(),
+            volume,
+        }
+    }
+
+    /// A [`PlayVoice`](Self::PlayVoice) of `line`'s clip `variant`.
+    pub const fn play_voice(line: LineId, variant: V) -> Self {
+        Self::PlayVoice { line, variant }
+    }
+
     /// A [`PlayMusic`](Self::PlayMusic) of `cue`, switching with `switch`
     /// (`None`: the manifest's default).
     pub fn play_music(cue: impl Into<String>, switch: Option<MusicSwitch>) -> Self {
@@ -459,8 +476,10 @@ pub fn splitmix64(seed: u64) -> u64 {
 /// read from [`Ctx::music_clock`](crate::Ctx::music_clock). The platform
 /// reports what really sounds (a track starts only once its file has
 /// loaded); [`Game::set_music_playing`](crate::Game::set_music_playing)
-/// turns that into this.
+/// turns that into this. A view (ADR-0039, kind 3): build it with
+/// [`MusicClock::new`] or [`MusicClock::from_elapsed`].
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct MusicClock {
     /// The music cue sounding.
     pub cue: String,
@@ -472,6 +491,16 @@ pub struct MusicClock {
 }
 
 impl MusicClock {
+    /// The clock of `cue`, `position` seconds into a track `length`
+    /// seconds long, taken as given.
+    pub fn new(cue: impl Into<String>, position: f32, length: f32) -> Self {
+        Self {
+            cue: cue.into(),
+            position,
+            length,
+        }
+    }
+
     /// The clock of `cue`, which started `elapsed` seconds ago (a negative
     /// time counts as 0). `None` if the cue is unknown, or isn't looped and
     /// has ended (or `elapsed` isn't a number).
@@ -507,8 +536,10 @@ impl MusicClock {
 }
 
 /// What the platform must do to the music this frame. A track is loaded, started,
-/// has its volume changed and is stopped, which also unloads it.
+/// has its volume changed and is stopped, which also unloads it. More
+/// commands may come (ADR-0039, kind 6): a match on it has a `_` arm.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[non_exhaustive]
 pub enum MusicCommand {
     /// Start loading `cue`'s file; it will be started soon.
     Load {
@@ -928,6 +959,33 @@ mod tests {
 
     type AudioRequest = super::AudioRequest<Voice>;
     type AudioQueue = super::AudioQueue<Voice>;
+
+    #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        assert_eq!(
+            AudioRequest::play_sound("click", 0.5),
+            AudioRequest::PlaySound {
+                cue: "click".into(),
+                volume: 0.5
+            }
+        );
+        let line = shuyi_assets::dialogue::LineId::new("intro.hello");
+        assert_eq!(
+            AudioRequest::play_voice(line.clone(), Voice::Low),
+            AudioRequest::PlayVoice {
+                line,
+                variant: Voice::Low
+            }
+        );
+        assert_eq!(
+            MusicClock::new("theme", 1.5, 10.0),
+            MusicClock {
+                cue: "theme".into(),
+                position: 1.5,
+                length: 10.0
+            }
+        );
+    }
 
     fn play(cue: &str) -> AudioRequest {
         AudioRequest::PlayMusic {
@@ -1551,14 +1609,7 @@ mod tests {
 
     /// A track of `cue`, `looped` or not, `length_ms` long.
     fn track(cue: &str, looped: bool, length_ms: u32) -> MusicCue {
-        MusicCue {
-            file: format!("{cue}.ogg"),
-            volume: 100,
-            looped,
-            length_ms,
-            credit: CreditRef::Own,
-            group: None,
-        }
+        MusicCue::new(format!("{cue}.ogg"), 100, length_ms, CreditRef::Own).with_looped(looped)
     }
 
     #[test]

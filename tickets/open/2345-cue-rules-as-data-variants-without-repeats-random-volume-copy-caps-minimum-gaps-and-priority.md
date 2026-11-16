@@ -260,8 +260,10 @@ None.
     through the in-house mixer.
 - **For the game:** the API changes. `SoundCue` has a new field, which
   breaks nothing (it is `#[non_exhaustive]` and built with
-  `SoundCue::new` since 2024). `SoundRequest::Sound` has new fields
-  (match it with `..`), `RunOutput` has `dropped`, and the pack's
+  `SoundCue::new` since 2024). `SoundRequest::Sound` has new fields,
+  which break nothing either: **from 2084 (done)** it is a
+  `#[non_exhaustive]` variant built with `SoundRequest::sound`, and the
+  new fields start at their defaults there. `RunOutput` has `dropped`, and the pack's
   version goes up, so a pack baked before this is refused and rebaked.
   A backend of the game's own, such as its Playdate front end
   (game#1170), plays `variant` at `cue_volume` instead of picking. The

@@ -74,7 +74,11 @@ None.
   CPU/speed and bounded-memory gates pass before selecting this behavior.
   3017 is still open and reads implemented audio features when it lands.
 - Update platform contract, format docs and book; test asset registry/pack
-  round trips. API breaks carry Breaking/migration notes and a game pin handoff.
+  round trips. **From 2084 (done):** `MusicCue` and `MusicClock` are
+  `#[non_exhaustive]` with `MusicCue::new` and `MusicClock::new`, and
+  `MusicCommand` is `#[non_exhaustive]`, so the loop fields and a new
+  command are additive: no `Breaking:` line is planned for them. Any
+  other API break carries Breaking/migration notes and a game pin handoff.
   The new fields stay optional, so a game's files load and play on quad-snd too,
   whole-file with the warning above: a game must never come to need the new
   backend ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).

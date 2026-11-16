@@ -421,14 +421,7 @@ const CARD_SIZE: ImageInfo = ImageInfo::new(16, 16);
 
 /// A track of `cue`, looped, 10 s long.
 fn track(cue: &str) -> MusicCue {
-    MusicCue {
-        file: format!("{cue}.ogg"),
-        volume: 100,
-        looped: true,
-        length_ms: 10_000,
-        credit: CreditRef::Own,
-        group: None,
-    }
+    MusicCue::new(format!("{cue}.ogg"), 100, 10_000, CreditRef::Own)
 }
 
 /// The toy's game data and state.
