@@ -48,6 +48,7 @@ None.
 - [ ] Two invitees receive distinguishable marked previews with identical game rules.
 - [ ] Supported software capture behavior is checked per target; phone recapture is documented as a bypass.
 - [ ] Ordinary public builds retain capture and accessibility behavior.
+- [ ] Anything this ticket keeps from `tools/research/` (2915's `verify_public.py`, say) is moved out of it, and the completion notes say what, or that it needs nothing there: 2093 deletes `tools/research/` after this ticket.
 - [ ] The book's chapter is updated (2802), or the completion notes have a Book: line saying why not.
 - [ ] All gates in the run-gates skill pass.
 
