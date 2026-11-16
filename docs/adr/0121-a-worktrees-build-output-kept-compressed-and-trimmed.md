@@ -1,6 +1,6 @@
 # ADR-0121: A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle
 
-- **Status:** Accepted
+- **Status:** Accepted; §4 extended by ADR-0123 (`--stale-hashes`)
 - **Date:** 2026-11-16
 - **Related tickets:** 2076 (this), 2074 (the one-off builds without an
   incremental cache), 2075 (compression), 2092 (the stale hashes in

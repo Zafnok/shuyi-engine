@@ -11,7 +11,8 @@ use shuyi_cli::worktrees::trim::{self, Options};
 /// builds (from before ticket 2074 turned their cache off).
 const ENGINE_ROOTS: [&str; 4] = ["", "gates/games", "tutorial", "skill-examples*"];
 
-/// The options of `trim-targets [--idle-days N] [--dry-run] [--merged]`, or `None` on any other argument.
+/// The options of `trim-targets [--idle-days N] [--dry-run] [--merged]
+/// [--stale-hashes]`, or `None` on any other argument.
 pub fn parse(args: &[String]) -> Option<Options> {
     let mut options = Options::new(ENGINE_ROOTS.map(str::to_owned).to_vec());
     let mut rest = args.iter();
@@ -20,6 +21,7 @@ pub fn parse(args: &[String]) -> Option<Options> {
             "--idle-days" => options.idle_days = rest.next()?.parse().ok()?,
             "--dry-run" => options.dry_run = true,
             "--merged" => options.merged = true,
+            "--stale-hashes" => options.stale_hashes = true,
             _ => return None,
         }
     }
@@ -59,11 +61,18 @@ mod tests {
     fn the_flags_set_the_options() {
         let defaults = parse(&[]).unwrap();
         assert_eq!(defaults.idle_days, trim::DEFAULT_IDLE_DAYS);
-        assert!(!defaults.dry_run && !defaults.merged);
+        assert!(!defaults.dry_run && !defaults.merged && !defaults.stale_hashes);
         assert_eq!(defaults.roots, ENGINE_ROOTS);
-        let all = parse(&args(&["--idle-days", "7", "--dry-run", "--merged"])).unwrap();
+        let all = parse(&args(&[
+            "--idle-days",
+            "7",
+            "--dry-run",
+            "--merged",
+            "--stale-hashes",
+        ]))
+        .unwrap();
         assert_eq!(all.idle_days, 7);
-        assert!(all.dry_run && all.merged);
+        assert!(all.dry_run && all.merged && all.stale_hashes);
         assert_eq!(parse(&args(&["--idle-days"])), None);
         assert_eq!(parse(&args(&["--idle-days", "three"])), None);
         assert_eq!(parse(&args(&["--force"])), None);

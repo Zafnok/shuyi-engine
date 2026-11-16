@@ -9,7 +9,10 @@
 //! deletes the `incremental` folder of every cargo profile folder under one
 //! of [`Options::roots`]: cargo still finds the build Fresh, and only the
 //! first edit there is slower. With [`Options::merged`], it deletes the
-//! whole content of `target/` of a worktree whose branch is merged.
+//! whole content of `target/` of a worktree whose branch is merged. With
+//! [`Options::stale_hashes`], it also deletes the older hashes of a crate
+//! in those profile folders' `deps/` that no build read in days
+//! (ticket 2092, ADR-0123).
 //!
 //! Nothing outside `<worktree>/target/` is ever deleted, no link is
 //! followed, no folder holding `.git` is entered, and deletes are
@@ -58,6 +61,12 @@ pub struct Options {
     pub merged: bool,
     /// The branch [`Options::merged`] compares with.
     pub base: String,
+    /// Also delete, in the `deps/` of the same profile folders, the older
+    /// hashes of a crate last accessed more than [`Options::idle_days`]
+    /// before the worktree's last build, keeping the newest-accessed one
+    /// of each crate and kind (ticket 2092). Skipped, with a note, where
+    /// the system doesn't update last access.
+    pub stale_hashes: bool,
 }
 
 impl Options {
@@ -70,6 +79,7 @@ impl Options {
             dry_run: false,
             merged: false,
             base: "origin/main".to_owned(),
+            stale_hashes: false,
         }
     }
 }
@@ -89,6 +99,9 @@ pub struct Report {
     pub freed: u64,
     /// The files that couldn't be deleted (in use), left where they are.
     pub skipped: u64,
+    /// How many of the files deleted (or that would be) were stale hashes
+    /// in `deps/` ([`Options::stale_hashes`]).
+    pub stale: u64,
     /// Whether the run deleted nothing ([`Options::dry_run`]).
     pub dry_run: bool,
     /// What was skipped in the whole run, and why (`gh` missing).
@@ -105,6 +118,9 @@ impl Report {
             self.idle,
             self.kept
         );
+        if self.stale > 0 {
+            let _ = write!(line, ", {} stale hash file(s) among it", self.stale);
+        }
         if self.skipped > 0 {
             let _ = write!(line, ", {} file(s) in use skipped", self.skipped);
         }
@@ -123,13 +139,24 @@ pub fn run(repo: &Path, options: &Options, out: &mut dyn Write) -> Result<Report
     let current = git(repo, &["rev-parse", "--show-toplevel"])?;
     let current = fs::canonicalize(current.trim()).map_err(|e| e.to_string())?;
     let worktrees = parse_porcelain(&git(repo, &["worktree", "list", "--porcelain"])?);
+    let idle = DAY.saturating_mul(u32::try_from(options.idle_days).unwrap_or(u32::MAX));
     let cutoff = SystemTime::now()
-        .checked_sub(DAY.saturating_mul(u32::try_from(options.idle_days).unwrap_or(u32::MAX)))
+        .checked_sub(idle)
         .unwrap_or(SystemTime::UNIX_EPOCH);
     let mut report = Report {
         dry_run: options.dry_run,
         ..Report::default()
     };
+    let stale_hashes = options.stale_hashes
+        && match stale::last_access_updates() {
+            Ok(()) => true,
+            Err(why) => {
+                report
+                    .notes
+                    .push(format!("{why}: stale hashes not looked for"));
+                false
+            }
+        };
     let mut gh_missing = false;
     for worktree in &worktrees {
         let mut line = format!("{}", worktree.path.display());
@@ -142,6 +169,8 @@ pub fn run(repo: &Path, options: &Options, out: &mut dyn Write) -> Result<Report
                 current: &current,
                 options,
                 cutoff,
+                idle,
+                stale_hashes,
             },
             worktree,
             &mut line,
@@ -152,6 +181,7 @@ pub fn run(repo: &Path, options: &Options, out: &mut dyn Write) -> Result<Report
                 report.idle += 1;
                 report.freed += freed.bytes;
                 report.skipped += freed.skipped;
+                report.stale += freed.stale;
             }
             None => report.kept += 1,
         }
@@ -172,6 +202,10 @@ struct Trim<'a> {
     current: &'a Path,
     options: &'a Options,
     cutoff: SystemTime,
+    /// [`Options::idle_days`] as a duration.
+    idle: Duration,
+    /// [`Options::stale_hashes`], when the system updates last access.
+    stale_hashes: bool,
 }
 
 /// Trims one worktree, describing it on `line`. `None` when it is left
@@ -183,7 +217,7 @@ fn trim_one(
     gh_missing: &mut bool,
 ) -> Option<Freed> {
     let options = trim.options;
-    let (target, profiles) = idle_target(trim, worktree, line)?;
+    let (target, profiles, last) = idle_target(trim, worktree, line)?;
     let verb = if options.dry_run {
         "would delete"
     } else {
@@ -218,7 +252,25 @@ fn trim_one(
             bytes(freed.bytes - before)
         );
     }
-    if freed.bytes == 0 && freed.skipped == 0 {
+    if trim.stale_hashes {
+        // Relative to the last build, not to now: an idle worktree's live
+        // hashes were all read last when it was last built.
+        let cutoff = last.map_or(trim.cutoff, |last| {
+            last.checked_sub(trim.idle)
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+        });
+        let before = freed;
+        delete_stale(&target, &profiles, cutoff, options, &mut freed);
+        if freed.stale > before.stale {
+            let _ = write!(
+                line,
+                ", {verb} {} stale hash file(s) in deps/ ({})",
+                freed.stale - before.stale,
+                bytes(freed.bytes - before.bytes)
+            );
+        }
+    }
+    if freed.bytes == 0 && freed.skipped == 0 && freed.stale == 0 {
         line.push_str(", nothing to delete");
     }
     if freed.skipped > 0 {
@@ -227,15 +279,15 @@ fn trim_one(
     Some(freed)
 }
 
-/// The worktree's `target/` and its profile folders, when it is to be
-/// trimmed; `None`, said on `line`, when it is left alone: this one, bare,
+/// The worktree's `target/`, its profile folders and its last build, when
+/// it is to be trimmed; `None`, said on `line`, when it is left alone: this one, bare,
 /// prunable, missing, without a `target/` of its own, locked, or built
 /// after the cutoff.
 fn idle_target(
     trim: &Trim,
     worktree: &Worktree,
     line: &mut String,
-) -> Option<(PathBuf, Vec<PathBuf>)> {
+) -> Option<(PathBuf, Vec<PathBuf>, Option<SystemTime>)> {
     let options = trim.options;
     if worktree.bare || worktree.prunable || !worktree.path.is_dir() {
         line.push_str(": bare, prunable or missing, left alone");
@@ -288,7 +340,7 @@ fn idle_target(
         }
         None => line.push_str(", idle (never built)"),
     }
-    Some((target, profiles))
+    Some((target, profiles, last))
 }
 
 /// A worktree, as `git worktree list --porcelain` lists it.
@@ -486,6 +538,8 @@ struct Freed {
     bytes: u64,
     /// The files and folders left: in use, or links.
     skipped: u64,
+    /// How many of the files deleted were stale hashes in `deps/`.
+    stale: u64,
 }
 
 /// Deletes what is in `dir` (not `dir` itself, which keeps its NTFS
@@ -515,6 +569,32 @@ fn delete_tree(dir: &Path, dry_run: bool, freed: &mut Freed) {
             freed.bytes += meta.len();
         } else {
             freed.skipped += 1;
+        }
+    }
+}
+
+/// Deletes the stale hashes of the `deps/` of each profile folder under
+/// [`Options::roots`] ([`stale::stale_files`]), best-effort as
+/// [`delete_tree`]. Dry, only counts.
+fn delete_stale(
+    target: &Path,
+    profiles: &[PathBuf],
+    cutoff: SystemTime,
+    options: &Options,
+    freed: &mut Freed,
+) {
+    let deps = profiles
+        .iter()
+        .filter(|profile| under_roots(target, profile, &options.roots))
+        .map(|profile| profile.join("deps"));
+    for deps in deps {
+        for file in stale::stale_files(&deps, cutoff) {
+            if options.dry_run || fs::remove_file(&file.path).is_ok() {
+                freed.bytes += file.len;
+                freed.stale += 1;
+            } else {
+                freed.skipped += 1;
+            }
         }
     }
 }
@@ -589,6 +669,8 @@ fn bytes(bytes: u64) -> String {
         format!("{} MB", bytes.div_ceil(MB))
     }
 }
+
+mod stale;
 
 #[cfg(test)]
 mod tests;

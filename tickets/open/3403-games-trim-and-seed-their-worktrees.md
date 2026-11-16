@@ -43,9 +43,12 @@ notes, `summary()`). `Options::new(roots)` takes the roots: `""` is
 `target/` itself, so `[""]` covers a game's `target/debug`,
 `target/<triple>/<profile>` and the web build's
 `target/wasm32-unknown-unknown/release`. `Report` has no `Serialize`
-yet: this ticket adds it for `--json`. `--stale-hashes` was split off
-to 2092: until 2092 is done, `shuyi trim-targets` leaves that flag
-out (ADR-0121).
+yet: this ticket adds it for `--json`.
+
+**From 2092 (done):** `Options::stale_hashes` deletes the stale hashes
+in the roots' `deps/` (ADR-0123), and `Report::stale` counts them:
+`shuyi trim-targets --stale-hashes` sets the one, and `--json` shows
+the other.
 
 Seeding runs **from the warm checkout, into the new one**
 (`--into <worktree>`). Run inside a new worktree, `cargo shuyi` would
