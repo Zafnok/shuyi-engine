@@ -256,82 +256,6 @@ fn a_held_cargo_lock_makes_the_target_locked() {
 }
 
 #[test]
-fn a_hash_is_sixteen_hex_digits_after_a_dash() {
-    assert_eq!(
-        split_hash("libfoo-0123456789abcdef.rlib"),
-        Some(("libfoo", ".rlib"))
-    );
-    assert_eq!(
-        split_hash("shuyi_cli-0123456789abcdef.exe"),
-        Some(("shuyi_cli", ".exe"))
-    );
-    assert_eq!(split_hash("foo-0123456789abcdef"), Some(("foo", "")));
-    assert_eq!(
-        split_hash("my-crate-0123456789abcdef.d"),
-        Some(("my-crate", ".d"))
-    );
-    assert_eq!(split_hash("foo-0123456789abcdeg.rlib"), None);
-    assert_eq!(split_hash("foo-0123456789abcdef0.rlib"), None);
-    assert_eq!(split_hash("foo.rlib"), None);
-    assert_eq!(split_hash("é-0123456789abcdé"), None);
-}
-
-#[test]
-fn stale_hashes_keep_the_newest_read_of_each_crate_and_kind() {
-    let deps = scratch("hashes").join("deps");
-    let file = |name: &str, days: u64| {
-        let path = deps.join(name);
-        write(&path, "1234");
-        touch(&path, days_ago(days));
-    };
-    // Three hashes of foo's rlib: the newest read is kept, the one read a
-    // day ago too (after the cutoff).
-    file("libfoo-000000000000000a.rlib", 9);
-    file("libfoo-000000000000000b.rlib", 7);
-    file("libfoo-000000000000000c.rlib", 1);
-    // Two old ones of bar's: the newer stays.
-    file("libbar-000000000000000a.rlib", 20);
-    file("libbar-000000000000000b.rlib", 10);
-    // One hash alone: never stale, however old.
-    file("libbaz-000000000000000a.rlib", 30);
-    // foo's rmeta is a group of its own.
-    file("libfoo-000000000000000a.rmeta", 9);
-    let mut stale: Vec<String> = stale_files(&deps, days_ago(3))
-        .into_iter()
-        .map(|(path, len)| {
-            assert_eq!(len, 4);
-            path.file_name().unwrap().to_string_lossy().into_owned()
-        })
-        .collect();
-    stale.sort();
-    assert_eq!(
-        stale,
-        [
-            "libbar-000000000000000a.rlib",
-            "libfoo-000000000000000a.rlib",
-            "libfoo-000000000000000b.rlib",
-        ]
-    );
-}
-
-#[test]
-fn fsutils_answer_says_whether_last_access_is_updated() {
-    let on = "DisableLastAccess = 2  (System Managed, Last Access Time Updates ENABLED)";
-    assert_eq!(parse_disable_last_access(on), Some(true));
-    let off = "DisableLastAccess = 1  (User Managed, Last Access Time Updates DISABLED)";
-    assert_eq!(parse_disable_last_access(off), Some(false));
-    assert_eq!(
-        parse_disable_last_access("DisableLastAccess = 0"),
-        Some(true)
-    );
-    assert_eq!(
-        parse_disable_last_access("DisableLastAccess = 3"),
-        Some(false)
-    );
-    assert_eq!(parse_disable_last_access("Access denied."), None);
-}
-
-#[test]
 fn sizes_read_in_gb_or_mb() {
     assert_eq!(bytes(0), "0 MB");
     assert_eq!(bytes(1), "1 MB");
@@ -348,12 +272,12 @@ fn the_summary_names_the_freed_space_and_the_notes() {
         freed: 30_500_000_000,
         skipped: 3,
         dry_run: false,
-        notes: vec!["--stale-hashes skipped: NTFS last-access updates are off".to_owned()],
+        notes: vec!["`gh` didn't answer: merged pull requests not looked for".to_owned()],
     };
     assert_eq!(
         report.summary(),
         "trim-targets: trimmed 2 idle worktree(s), freed 30.5 GB, left 5 alone, \
-         3 file(s) in use skipped; --stale-hashes skipped: NTFS last-access updates are off"
+         3 file(s) in use skipped; `gh` didn't answer: merged pull requests not looked for"
     );
     let dry = Report {
         dry_run: true,

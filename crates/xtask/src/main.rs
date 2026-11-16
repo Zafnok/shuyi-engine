@@ -17,7 +17,7 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
-//! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]`
+//! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]`
@@ -160,15 +160,14 @@ usage:
       say what would run and run nothing. Locally (not with CI set), a full run
       that passes ends with `trim-targets` with its defaults, in one line;
       SHUYI_NO_TRIM=1 turns it off.
-  cargo xtask trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]
+  cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged]
       Free the disk of this repository's other worktrees' target/, keeping
       every worktree (ticket 2076): in each one idle (no build in N days, by
       default 3) and not locked (no cargo running), delete the `incremental`
       folder of each profile folder of target/, target/gates/games,
-      target/tutorial and target/skill-examples*. With --stale-hashes, also
-      the older hashes of a crate in deps/ not read in N days (when NTFS
-      updates the last access); with --merged, all of target/ of a worktree
-      whose branch is merged into origin/main or whose PR is merged (`gh`).
+      target/tutorial and target/skill-examples*. With --merged, all of
+      target/ of a worktree whose branch is merged into origin/main or whose
+      PR is merged (`gh`).
       With --dry-run, list each with its target's size and delete nothing.
   cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]
       Count the PR's changed lines (added + removed) from <rev>'s merge base
