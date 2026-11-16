@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["2109"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2136 — The motions written by hand moved onto ease
@@ -220,33 +220,33 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Cursor::brightness` reads a looping, yoyo `Tween` with
+- [x] `Cursor::brightness` reads a looping, yoyo `Tween` with
       `Ease::InOut(Family::Sine)`. It is within 4/65536 of today's
       `pulse` at 4096 points of a period, and at a `blink_t` below 0
       and past the period.
-- [ ] `MusicState`'s fade-out gain comes from a `Linear` `Tween` over
+- [x] `MusicState`'s fade-out gain comes from a `Linear` `Tween` over
       whole milliseconds. Over a 500 ms fade at a `dt` of 1/60 and a
       1 s fade at a `dt` of 1/30, every frame sends today's commands,
       but for gains, which are within half a millisecond of the fade
       plus 1/65536; `Stop` comes on the same frame as today.
-- [ ] `MusicState::with_switch(MusicSwitch::after_fade(500))` and
+- [x] `MusicState::with_switch(MusicSwitch::after_fade(500))` and
       `MusicState::new(0.5)` send the same commands.
-- [ ] `Pan::centre` eases through `ease_f32(&Ease::Smooth, …)`. At
+- [x] `Pan::centre` eases through `ease_f32(&Ease::Smooth, …)`. At
       every progress in steps of 1/1000 it is within 3/65536 of the
       distance from `from` to `to` of today's centre, and it gives
       `from` for a progress that isn't finite.
-- [ ] `Rgb::lerp(a, b, k / 256)` equals `Lerp::mix(a, b, k * 256)` for
+- [x] `Rgb::lerp(a, b, k / 256)` equals `Lerp::mix(a, b, k * 256)` for
       every `k` from 0 to 256 and every pair of channel values.
-- [ ] `Rgb::lerp`'s and `type_on`'s doc comments say why they are not
+- [x] `Rgb::lerp`'s and `type_on`'s doc comments say why they are not
       tweens, and the Completion notes say why the three stay.
-- [ ] Each of 2341's fades reads a `Tween`, and its tests pass
+- [x] Each of 2341's fades reads a `Tween`, and its tests pass
       unchanged.
-- [ ] Every existing test keeps its expected values, and the PR lists
+- [x] Every existing test keeps its expected values, and the PR lists
       each tolerance it widened.
-- [ ] No snapshot in the repository changes, and no `.snap.new` file
+- [x] No snapshot in the repository changes, and no `.snap.new` file
       is left.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -265,5 +265,86 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **The grid cursor's pulse** (`crates/ui/src/grid/cursor.rs`): `pulse`
+  reads `PULSE`, a `const` looping, yoyo `Tween<i32>` from `ONE` to
+  `BLINK_MIN` in 1/65536, `Ease::InOut(Family::Sine)`, over half a
+  period, its time in 1/65536 of a period. `t` is brought into one
+  period first (infinity and not a number count as 0). It is exact at 0,
+  a quarter, a half and a whole period, and within 4/65536 of the old
+  cosine at 4097 points of a period and at times below 0 and past the
+  period (tested against `pulse_before`). A property test holds it in
+  `BLINK_MIN..=1` for any `f32`. The `TAU` import went; the
+  `crate::float::Float` import stays, as `round` needs it without `std`.
+- **Music fades** (`Ramp`, `crates/ui/src/audio.rs`): a ramp keeps its
+  fade length in whole milliseconds (`ms`, in place of `secs`), and its
+  gain is `Ramp::tween`, a `Linear` `Tween<i32>` from the gain it began
+  at, a whole fade's way toward 1 or 0 over `ms`, read at
+  `millis(elapsed)` and stopped at its end. A whole fade-out is a tween
+  from `ONE` to 0 over the fade. Every fade 2341 built goes through it:
+  the fade-out, the fade-in, an overlap's two and a fade from a gain
+  part-way. `done` is unchanged, so `Stop` comes on the same frame.
+  Tested frame by frame against `gain_before` for 500 ms at 1/60 s,
+  1 s at 1/30 s and 333 ms at 1/60 s; `with_switch(after_fade(ms))`
+  against `new` for 0 to 1000 ms; and a fade of 0 ms.
+- **`Pan::centre`** (`crates/ui/src/cinematic.rs`): eases through
+  `ease_f32(&Ease::Smooth, …)`, a progress that isn't finite first
+  becoming 0. Tested at 1001 progresses against `centre_before`, and at
+  0, 1, not a number and both infinities. `ease_in_out` keeps its body.
+- **The three that stay:**
+  - `Rgb::lerp` mixes every colour the engine draws. Its twin
+    `Lerp for Rgb` agrees with it at every whole 1/256 (now tested
+    exhaustively, every pair of channels), but not at every `t`: at
+    0.15 a channel 10 apart mixes to 2 in `f32` and to 1 in integers
+    (also tested). Moving it would move colours in a game's snapshots.
+    Its doc comment says so.
+  - `TextBox::type_on` is a rate, not a curve: the player's text speed
+    may change mid-page and holding the key speeds it up, where a tween
+    runs between two values in a set time. Its doc comment says so, and
+    that a game wanting an eased reveal tweens the count of characters.
+  - The idle and walk frames are frame cycles, which are clips (2231 and
+    2359, both parked); 2359 keeps `gait`'s arithmetic to match today's
+    frames, so moving them here would change what it matches.
+- 2364 is parked, not done, so `Pan` was moved here and nothing of
+  2364's.
+
+Deviations:
+
+- One existing test checked a float more tightly than the tween can:
+  `a_stop_with_its_own_fade_takes_that_long_from_full_gain` compared the
+  gains of a 3 s fade at 1 s and 2 s exactly with `1 - 1/3` and
+  `1 - 2/3`. It keeps those expected values and now compares within the
+  fade's bound (half a millisecond of 3 s plus 1/65536). It is the only
+  tolerance widened; every other test kept its values and its tolerance.
+- The baseline run before any change (step 2) was not clean: it was
+  started in this worktree as the first edit landed and compiled it. No
+  snapshot failed after the change, so none needed checking against
+  `main`.
+
+No snapshot moved: `cargo test --workspace` passes, and `git status`
+shows no changed `.snap` file and no `.snap.new`.
+
+Docs: the doc comments of `Cursor::brightness`, `pulse`, `Pan`,
+`Rgb::lerp` and `type_on` say what each is now. No page under `docs/` or
+the book names these curves (searched for `ease_in_out`, `cosine`,
+`BLINK_MIN`, `Pan::centre`), so none changes.
+
+No break: nothing public changes shape.
+
+Behaviour: shuyi-ui: `Cursor::brightness`, `Pan::centre` (and so
+`Pan::origin_px` and `Pan::frame`) and the music fades' `Gain` values may
+differ from before in their last bits: the cursor within 4/65536, a pan's
+centre within 3/65536 of the distance it pans, a fade's gain within half
+a millisecond of the fade plus 1/65536. Where that falls on a rounding
+edge, one channel of a colour or a tenth of a pixel in a snapshot can
+change, rarely. `Stop` comes on the same frame as before. Searched the
+game (`gh search code --repo Zafnok/visions-of-shuyi 'brightness'` and
+`'Pan'`): its `cinematic.rs` builds `Pan`s, so its pin move runs its
+snapshots and says if one moved.
+
+Game: nothing to adopt, no API changes; the game's next pin move runs its
+snapshots against the Behaviour line above. game#1228 moves the game's
+own curves onto 2109's, apart from this.
+
+Book: none, nothing public was added or changed.

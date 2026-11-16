@@ -153,6 +153,12 @@ impl TextBox {
     /// `dt` seconds of typing at `chars_per_s` (`None`: the whole page at
     /// once), faster for the part of them past [`FAST_FORWARD_DELAY`] of
     /// holding; once the page is revealed, the time it has waited.
+    ///
+    /// It is a rate, not a [`Tween`](shuyi_core::Tween): the player's text
+    /// speed may change in the middle of a page, and holding the key
+    /// speeds it up, where a tween runs from one value to another in a set
+    /// time. A game that wants a reveal eased over a set time tweens the
+    /// count of characters itself.
     pub fn type_on(&mut self, dt: f32, chars_per_s: Option<f32>) {
         if self.is_revealed() {
             self.waiting += dt;

@@ -362,9 +362,9 @@ than one PR. The last paragraph of **In** says how to split.
   a writer of the cinematic format (2218 leaves it out);
 - nested timelines, and blending one cinematic into another;
 - hot reload (2220 reloads any kind already);
-- moving `Pan` onto 2109's ease (2136 does, tested equal; this ticket
-  leaves `Pan` as it finds it, whichever lands first), and onto tracks
-  (a follow-up if a game asks).
+- moving `Pan` onto 2109's ease (2136 did: it eases through
+  `ease_f32(&Ease::Smooth, …)`; this ticket leaves `Pan` as it is), and
+  onto tracks (a follow-up if a game asks).
 
 ## Implementation steps
 
