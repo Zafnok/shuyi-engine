@@ -1,6 +1,6 @@
 //! `trim-targets`: frees the disk the build output of a repository's idle
 //! worktrees takes, and never removes, prunes or archives a worktree
-//! (ticket 2076, ADR-0125).
+//! (ticket 2076, ADR-0121).
 //!
 //! It lists the repository's worktrees (`git worktree list --porcelain`),
 //! and leaves alone the one it runs in, one with no `target/`, one whose

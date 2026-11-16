@@ -47,8 +47,8 @@ build and break the link only where something changed. A study on
   study's notes (`seed.py`: link the immutable outputs, copy the rest
   with mtimes, rewrite the donor's root in build-script output).
 
-Related: 2074, 2075 and 2076 (the target-size tickets). 2076's ADR
-names this as the safe form of sharing.
+Related: 2074, 2075 and 2076 (the target-size tickets). ADR-0121
+(2076's) names this as the safe form of sharing.
 
 ## Nick input
 
@@ -74,8 +74,11 @@ None.
   (`crates/cli/src/worktrees/seed.rs`, public as
   `shuyi_cli::worktrees::seed`), and xtask's command is a thin wrapper
   over it. Write it once there now; moving it later would count every
-  line twice in `pr-size`. If `check-layers` asks for it, the edge from
-  xtask to `shuyi-cli` gets its line in `tools/layers.ron`.
+  line twice in `pr-size`. **From 2076 (done):** xtask already
+  depends on `shuyi-cli`, and `check-layers` asks for no line (xtask is
+  no engine crate). `crates/cli/src/worktrees.rs` holds `pub mod
+  trim;`: add `pub mod seed;` beside it, and reuse `trim.rs`'s
+  porcelain parser and lock check where they fit.
 
 **Out (do not do):**
 - Seeding from a target with a cargo build running (refuse).

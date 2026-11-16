@@ -1,6 +1,6 @@
 //! `cargo xtask trim-targets`: frees the disk of this repository's idle
 //! worktrees' `target/`, over `shuyi_cli::worktrees::trim` (ticket 2076,
-//! ADR-0125), and its run at the end of a passing `cargo xtask gates`.
+//! ADR-0121), and its run at the end of a passing `cargo xtask gates`.
 
 use std::path::Path;
 

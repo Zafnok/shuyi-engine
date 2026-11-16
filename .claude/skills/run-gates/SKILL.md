@@ -67,6 +67,20 @@ an incremental cache there only costs disk (about half of each folder).
 command in a folder another command writes to, or every unit builds a
 second copy. A `CARGO_TARGET_DIR` from the environment is left as it is.
 
+A passing full run, locally (not with `CI` set), ends with `cargo xtask
+trim-targets` with its defaults, in one line on stderr (ticket 2076,
+[ADR-0121](../../../docs/adr/0121-a-worktrees-build-output-kept-compressed-and-trimmed.md)):
+in every other worktree of the repository (Claude Code's, Codex's,
+any) with no build in 3 days and no cargo running, it deletes the
+`incremental/` of each profile folder of `target/`, `target/gates/games`,
+`target/tutorial` and `target/skill-examples*`. The next build there is
+still Fresh; only its first edit is slower. It never removes a worktree,
+never touches this one, and never fails the gates. `SHUYI_NO_TRIM=1`
+turns it off; `--fast` and `--list` skip it. Run it alone with
+`--dry-run` to see each worktree's `target/` size and what it would
+delete, `--idle-days N`, and `--merged` to empty all of `target/` of an
+idle worktree whose branch or PR is merged.
+
 On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
 branch, as CI does: until the ticket is in `tickets/done/`, a push is
 refused. Archive the ticket first (the `work-ticket` skill, §5), or push
