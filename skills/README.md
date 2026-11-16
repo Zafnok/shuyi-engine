@@ -7,9 +7,9 @@ open [Agent Skills](https://agentskills.io) format. Each skill is a folder:
   tools it calls (`cargo shuyi <command>`, or the MCP server's tools),
   and what to do on each problem code an answer gives;
 - `example.ron`: its worked example, a script of the tools' commands
-  (`cargo shuyi` commands, and the MCP server's session tools in an
-  `Mcp` step) that CI runs on a game fresh from `shuyi new`. If the example fails, the
-  skill is wrong. A skill that teaches what the engine doesn't have yet
+  (`cargo shuyi` commands, the MCP server's session tools in an `Mcp`
+  step, and `git` in a `Git` step) that CI runs on a game fresh from
+  `shuyi new`. If the example fails, the skill is wrong. A skill that teaches what the engine doesn't have yet
   says so, and has none;
 - sometimes `example/` (the files its example writes into the game) and
   `references/` (detail an agent reads when it needs it).
@@ -51,7 +51,9 @@ runs on a new game, and every other check still holds for it.
 ## The skills
 
 - Starting and checking: [`shuyi-new-game`](shuyi-new-game/SKILL.md),
-  [`shuyi-gates`](shuyi-gates/SKILL.md).
+  [`shuyi-gates`](shuyi-gates/SKILL.md),
+  [`shuyi-worktrees`](shuyi-worktrees/SKILL.md) (a new worktree's first
+  build seeded, the idle ones' caches trimmed).
 - Building the game: [`shuyi-input`](shuyi-input/SKILL.md),
   [`shuyi-screen`](shuyi-screen/SKILL.md),
   [`shuyi-stage-grid`](shuyi-stage-grid/SKILL.md),

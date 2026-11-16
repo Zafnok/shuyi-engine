@@ -15,8 +15,10 @@
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
 //! and `check-skills` checks ([`skills`]); the notices a package carries
 //! ([`notices`]); and the pool of threads the slow
-//! ones play on ([`pool`]); and the trim of a repository's idle
-//! worktrees' build output ([`worktrees`]).
+//! ones play on ([`pool`]); and the seed and the trim of a repository's
+//! worktrees' build output ([`worktrees`]), as `seed-target` and
+//! `trim-targets` (not operations of the contract: they act on the
+//! repository's other worktrees).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
@@ -79,8 +81,8 @@ pub use shuyi_ui::frame::raster::test_card;
 /// The commands of `shuyi` that aren't operations of the contract
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
-/// ([`skills::check`]).
-pub const COMMANDS: [&str; 17] = [
+/// ([`skills::check`]). A slice, so that a new command changes no type.
+pub const COMMANDS: &[&str] = &[
     "schema",
     "mcp",
     "mcp-host",
@@ -98,6 +100,8 @@ pub const COMMANDS: [&str; 17] = [
     "reveal",
     "bench",
     "bench-play",
+    "trim-targets",
+    "seed-target",
 ];
 
 /// The usage text, with `command` as the tool's name.
@@ -181,6 +185,13 @@ commands:
                                      the reveal kit: the approved captures, the store page,
                                      the builds' hashes and receipts, sealed by one digest
                                      and checked anywhere (reveal --help)
+  trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]
+                                     delete the incremental caches of this repository's
+                                     idle worktrees' target/, never a worktree
+                                     (trim-targets --help)
+  seed-target --into <worktree>      in the warm checkout: start a new worktree's target/
+                                     from this one's, before its first build
+                                     (seed-target --help)
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
@@ -364,19 +375,28 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         "web" => web(project, args),
         "private-assets" => private_assets(project, args),
         "repos" => Ok(repos::main(project, args)),
-        other => {
-            let error = format!("unknown command: {other}");
-            eprint!(
-                "{}",
-                codes::said(command, codes::WRONG_ARGUMENTS.0, &error, None)
-            );
-            eprintln!("{}", usage(command));
-            Ok(2)
-        }
+        other => Ok(other_command(project, other, args)),
     };
     outcome.unwrap_or_else(|missing| {
         contract::cli::setup_failed(name, args, codes::PROJECT_FILE, &missing)
     })
+}
+
+/// The commands on the repository's worktrees, which need no game and run
+/// in either program ([`worktrees`]), or else an unknown command: its exit
+/// code.
+fn other_command(project: &Project, name: &str, args: &[String]) -> u8 {
+    if let Some(code) = worktrees::command::main(project, name, args) {
+        return code;
+    }
+    let command = project.config.command();
+    let error = format!("unknown command: {name}");
+    eprint!(
+        "{}",
+        codes::said(command, codes::WRONG_ARGUMENTS.0, &error, None)
+    );
+    eprintln!("{}", usage(command));
+    2
 }
 
 /// A command's exit code, or the error that the project file lacks its

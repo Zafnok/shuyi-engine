@@ -74,7 +74,7 @@ pub const LOCKS: [&str; 3] = [".cargo-lock", ".cargo-build-lock", ".cargo-artifa
 const BUILD_OUTPUTS: [&str; 2] = ["output", "root-output"];
 
 /// What a seed did.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
 pub struct Report {
     /// Files hard-linked to the donor's.

@@ -68,6 +68,35 @@ From a game's folder, `cargo shuyi <op>` runs them (the alias the
 templates write in `.cargo/config.toml`, or the engine's for its own
 examples).
 
+Some commands of `shuyi` act on what lies outside the game, so they are
+the CLI's only: never operations of the contract, nor tools of the MCP
+server (`shuyi --help` lists them under *commands*, and each has its
+`--help`). `repos` makes the game's repositories on the developer's
+GitHub account, and `reveal` its reveal kit. Two act on the other
+worktrees of the game's git repository, each with `--json` (an answer
+`{ok, result, code, error, help}`) and never removing a worktree
+(ticket 3403, the `shuyi-worktrees` skill):
+
+- `trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]`
+  deletes the `incremental` folders of the idle worktrees' `target/`
+  (no build in N days, 3 by default): in `debug`, `release`, a triple's
+  `<triple>/<profile>` and the web build's, never in a folder holding
+  cargo's `.rustc_info.json` (another build's target folder).
+  `--stale-hashes` also deletes the older hashes of a crate in `deps/`,
+  and `--merged` all of `target/` of a merged branch's worktree.
+  `result` is a line per worktree (`worktrees`), the counts (`idle`,
+  `kept`, `freed` in bytes, `skipped`, `stale`), `dry_run`, `notes` and
+  `summary` ([ADR-0121](adr/0121-a-worktrees-build-output-kept-compressed-and-trimmed.md)).
+- `seed-target --into <worktree>`, run in the warm checkout, starts the
+  new worktree's `target/debug/` from this one's (ticket 2078): `result`
+  names the `donor` and `into`, and counts what was `linked`, `copied`,
+  `rewritten` and `kept`, with the units left to rebuild (`rebuilt`).
+  It refuses a folder that is no worktree of the repository (`SH0007`),
+  the worktree it runs in (`SH0008`), a donor with no build (`SH1011`), a
+  build running in either (`SH3016`) and another volume (`SH3017`).
+
+Both refuse a game in no git repository of its own (`SH1010`).
+
 ## The answer
 
 Every operation answers with the same shape, `Answer<T>`:

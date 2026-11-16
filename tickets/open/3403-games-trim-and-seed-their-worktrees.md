@@ -5,7 +5,7 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2076", "2078"]
 nick_input: none
 completed:
