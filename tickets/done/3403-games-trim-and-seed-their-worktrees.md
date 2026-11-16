@@ -241,7 +241,7 @@ Deviations:
   with `idle` 0 and `kept` 1, `seed-target --into crates` refused with
   `SH0007`, `--into .` with `SH0008`); 3405 starts from it. The two
   acceptance criteria of the skill are left unticked here, and 3405
-  carries them. Size: 1,088 counted lines after the split, under 1,500;
+  carries them. Size: 1,096 counted lines after the split, under 1,500;
   no further split is clean, since the commands, their codes and their
   tests land together.
 - **The worked example needs the game in git.** The runner makes each
