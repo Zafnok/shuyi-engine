@@ -240,7 +240,7 @@ the same three lock files, and its ADR records the seed as built.
 shorter on your machine (from 2 min 15 s to 1 min 46 s). Agents run it
 at the start of each ticket.
 
-Size: about 1,330 counted lines; most of it is the module (600) and its
+Size: 1,279 counted lines; most of it is the module (600) and its
 tests (580), which can't land apart. Past 1,000 it would split at the
 skills' text (step 6), which needs the command first.
 
