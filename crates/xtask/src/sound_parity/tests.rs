@@ -901,6 +901,28 @@ fn a_file_naming_the_chain_outside_the_footprint_is_caught() {
 }
 
 #[test]
+fn only_the_kept_lines_may_stay() {
+    let (file, line) = give_up::KEPT[0];
+    let files = [file.to_owned()];
+    let after = |text: &str| BTreeMap::from([(file.to_owned(), text.to_owned())]);
+    let owned: [String; 0] = [];
+    // The kept line alone passes, with what surrounds it.
+    let kept = format!("[features]\n# Does nothing.\n{line}\n");
+    assert_eq!(give_up::uncovered(&files, &owned, &after(&kept)).len(), 0);
+    // The same line anywhere else, or anything else naming it, doesn't.
+    let elsewhere = ["crates/new/Cargo.toml".to_owned()];
+    let there = BTreeMap::from([(elsewhere[0].clone(), kept.clone())]);
+    assert_eq!(give_up::uncovered(&elsewhere, &owned, &there).len(), 1);
+    let comment = format!("# `in-house-sound` does nothing.\n{line}\n");
+    assert_eq!(
+        give_up::uncovered(&files, &owned, &after(&comment)).len(),
+        1
+    );
+    let still = "in-house-sound = [\"dep:shuyi-sound\"]\n";
+    assert_eq!(give_up::uncovered(&files, &owned, &after(still)).len(), 1);
+}
+
+#[test]
 fn an_edit_that_no_longer_matches_is_an_error() {
     let replace = |find: &str| give_up::Edit::Replace {
         file: "f".to_owned(),

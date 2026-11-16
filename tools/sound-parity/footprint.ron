@@ -151,9 +151,11 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         features: Features::Only(&["link", "capture", "sound-probe"]),
     },
 "##,
+            // Ticket 2091: the kept feature does nothing and builds anywhere, so
+            // the semver check chooses it and holds its name.
             with: r##"    ApiCrate {
         name: "shuyi-app",
-        features: Features::Only(&["link", "capture"]),
+        features: Features::Only(&["link", "capture", "in-house-sound"]),
     },
 "##,
         ),
@@ -161,7 +163,7 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
             file: "crates/xtask/src/api/tests.rs",
             find: r##"    ("shuyi-app", &["link", "capture", "sound-probe"]),
 "##,
-            with: r##"    ("shuyi-app", &["link", "capture"]),
+            with: r##"    ("shuyi-app", &["link", "capture", "in-house-sound"]),
 "##,
         ),
         Replace(
@@ -389,7 +391,13 @@ pub use crate::audio::Chosen as SoundProbeBackend;
 # backend (ADR-0068); no feature is ever named for quad-snd.
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 "##,
-            with: "",
+            // Ticket 2091: the name stays, doing nothing, so a game that turned it
+            // on still builds (ADR-0068 §8). The xtask and CI allow this line.
+            with: r##"# The next feature does nothing. The sound replacement was given up and its
+# backend is gone; the name is kept so a game that turns it on still builds
+# (ADR-0068 §8).
+in-house-sound = []
+"##,
         ),
         Replace(
             file: "crates/app/Cargo.toml",

@@ -171,7 +171,10 @@ that changes more than resolving its parents needs (ticket 2065).
   engine lint) and refuses a push that fails one; git runs it, whatever
   the harness. Its post-checkout hook, on Windows, compresses a new
   worktree's `target/` with NTFS (about half the disk, no slower), and
-  `cargo xtask gates` compresses one that lacks it.
+  `cargo xtask gates` compresses one that lacks it. A passing full
+  `cargo xtask gates` then deletes the incremental caches of the other,
+  idle worktrees (`cargo xtask trim-targets`, ADR-0121), never a
+  worktree.
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`

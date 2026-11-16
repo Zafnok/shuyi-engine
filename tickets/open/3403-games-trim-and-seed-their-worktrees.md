@@ -36,6 +36,17 @@ the game's own tool program (the template's alias, `run -q -p <game>
 `shuyi-cli` (their **For 3403** notes), so this ticket adds the
 commands, not the logic.
 
+**From 2076 (done):** the trim is `shuyi_cli::worktrees::trim::run(repo,
+&options, out)`, writing a line per worktree to `out` and returning a
+`Report` (worktrees idle and kept, bytes freed, files skipped,
+notes, `summary()`). `Options::new(roots)` takes the roots: `""` is
+`target/` itself, so `[""]` covers a game's `target/debug`,
+`target/<triple>/<profile>` and the web build's
+`target/wasm32-unknown-unknown/release`. `Report` has no `Serialize`
+yet: this ticket adds it for `--json`. `--stale-hashes` was split off
+to 2092: until 2092 is done, `shuyi trim-targets` leaves that flag
+out (ADR-0121).
+
 Seeding runs **from the warm checkout, into the new one**
 (`--into <worktree>`). Run inside a new worktree, `cargo shuyi` would
 first build the tool program there, the slow build seeding saves.
