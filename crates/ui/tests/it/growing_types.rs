@@ -89,7 +89,7 @@ fn the_widgets_views_are_built_through_their_constructors() {
     assert_eq!((menu.first_shown, menu.shown), (0, 0));
 
     let mut ask: AskView<bool> = AskView::new("Quit?", Vec::<AnswerView<bool>>::new());
-    ask.keys = Some("f yes / d no".to_owned());
+    ask.keys = Some("f yes / d no".into());
     assert_eq!((ask.text.as_str(), ask.focused()), ("Quit?", None));
 
     let grid = GridView::new("Name", "Ann", vec![vec!["A".to_owned()]], (0, 0));

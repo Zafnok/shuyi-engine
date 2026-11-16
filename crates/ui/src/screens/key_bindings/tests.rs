@@ -621,7 +621,7 @@ fn the_restore_question_can_be_backed_out_of() {
         s.restore_question(&c),
         "Restore the default keys for Right-handed?"
     );
-    assert_eq!(s.help(&c), "f yes · d no");
+    assert_eq!(s.help(&c).plain(), "f yes · d no");
     sounds(&mut c);
     // Nothing but Confirm and Cancel answers; the clear-slot key and the
     // cursor do nothing.
@@ -633,7 +633,10 @@ fn the_restore_question_can_be_backed_out_of() {
     assert!(found.is_empty(), "{found:?}");
     let question = s.view(&c).question.unwrap();
     assert_eq!(question.text, "Restore the default keys for Right-handed?");
-    assert_eq!(question.keys.as_deref(), Some("f yes / d no"));
+    assert_eq!(
+        question.keys.map(|k| k.plain()).as_deref(),
+        Some("f yes / d no")
+    );
     // Cancel closes the question, not the screen, and changes nothing;
     // what follows it that frame is dropped.
     let t = s.update(&mut c, &act(&[Cancel, Confirm, Cancel]));
@@ -641,7 +644,7 @@ fn the_restore_question_can_be_backed_out_of() {
     assert!(!s.is_asking_restore());
     assert_eq!(s.bindings(), &custom);
     assert_eq!(sounds(&mut c), [cue(MenuSound::Cancel)]);
-    assert_eq!(s.help(&c), "arrows move · f restore · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f restore · d back");
     assert_eq!(s.view(&c).question, None);
     // The left-handed question names its layout and keys.
     let left = ctx().with_layout(LEFT_HANDED);
@@ -651,10 +654,13 @@ fn the_restore_question_can_be_backed_out_of() {
         s.restore_question(&c),
         "Restore the default keys for Left-handed?"
     );
-    assert_eq!(s.help(&c), "j yes · k no");
+    assert_eq!(s.help(&c).plain(), "j yes · k no");
     let question = s.view(&left).question.unwrap();
     assert_eq!(question.text, "Restore the default keys for Left-handed?");
-    assert_eq!(question.keys.as_deref(), Some("j yes / k no"));
+    assert_eq!(
+        question.keys.map(|k| k.plain()).as_deref(),
+        Some("j yes / k no")
+    );
 }
 
 #[test]
@@ -692,20 +698,29 @@ fn other_actions_do_nothing() {
 fn help_names_the_keys_the_screen_was_opened_with() {
     let mut c = ctx();
     let mut s = screen(&c);
-    assert_eq!(s.help(&c), "arrows move · f bind · Delete clear · d back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "arrows move · f bind · Delete clear · d back"
+    );
     // Edits don't change the help: the old keys still steer the screen.
     bind(&mut s, &mut c, Info, 0, "f");
     bind(&mut s, &mut c, Info, 1, "d");
-    assert_eq!(s.help(&c), "arrows move · f bind · Delete clear · d back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "arrows move · f bind · Delete clear · d back"
+    );
     s.update(&mut c, &act(&[Confirm]));
-    assert_eq!(s.help(&c), "Press the key to put here · Escape back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "Press the key to put here · Escape back"
+    );
     s.update(&mut c, &press("Escape"));
     s.update(&mut c, &act(&[CursorUp, CursorUp, CursorUp, CursorUp]));
     focus_on_restore(&mut s, &mut c);
-    assert_eq!(s.help(&c), "arrows move · f restore · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f restore · d back");
     let left = ctx().with_layout(LEFT_HANDED);
     assert_eq!(
-        KeyBindingsScreen::new(&left, &KEY_ROWS).help(&left),
+        KeyBindingsScreen::new(&left, &KEY_ROWS).help(&left).plain(),
         "wasd move · j bind · Delete clear · k back"
     );
 }
@@ -1428,7 +1443,10 @@ fn restore_defaults_on_the_controller_side_resets_only_the_buttons() {
     assert_eq!(s.restore_question(&c), "Restore the default buttons?");
     let question = s.view(&c).question.unwrap();
     assert_eq!(question.text, "Restore the default buttons?");
-    assert_eq!(question.keys.as_deref(), Some("A yes / B no"));
+    assert_eq!(
+        question.keys.map(|k| k.plain()).as_deref(),
+        Some("A yes / B no")
+    );
     s.update(&mut c, &act(&[Confirm]));
     assert_eq!(
         s.pad_bindings(),
@@ -1456,26 +1474,35 @@ fn restore_defaults_on_the_controller_side_resets_only_the_buttons() {
 fn help_follows_the_side_and_the_device() {
     let mut c = pad_ctx();
     let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
-    assert_eq!(s.help(&c), "D-pad/L-stick move · A change · B back");
+    assert_eq!(s.help(&c).plain(), "D-pad/L-stick move · A change · B back");
     s.update(&mut c, &act(&[Confirm]));
-    assert_eq!(s.help(&c), "D-pad/L-stick move · A select · B back");
+    assert_eq!(s.help(&c).plain(), "D-pad/L-stick move · A select · B back");
     s.update(&mut c, &act(&[Confirm]));
-    assert_eq!(s.help(&c), "Press a button… · hold any button to cancel");
+    assert_eq!(
+        s.help(&c).plain(),
+        "Press a button… · hold any button to cancel"
+    );
     // The keyboard used last: its back-out key is named too.
     c.device = Device::Keyboard;
     assert_eq!(
-        s.help(&c),
+        s.help(&c).plain(),
         "Press a button… · hold any button to cancel · Escape back"
     );
     s.update(&mut c, &press("Escape"));
-    assert_eq!(s.help(&c), "arrows move · f bind · Delete clear · d back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "arrows move · f bind · Delete clear · d back"
+    );
     // A key slot waiting, on a controller and on the keyboard.
     s.side = Side::Keyboard;
     s.update(&mut c, &act(&[Confirm]));
-    assert_eq!(s.help(&c), "Press the key to put here · Escape back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "Press the key to put here · Escape back"
+    );
     c.device = XBOX;
     assert_eq!(
-        s.help(&c),
+        s.help(&c).plain(),
         "Press the key to put here · hold any button to cancel"
     );
     s.update(&mut c, &press("Escape"));
@@ -1483,27 +1510,30 @@ fn help_follows_the_side_and_the_device() {
     s.update(&mut c, &act(&[CursorUp]));
     assert!(s.is_on_switch());
     assert_eq!(
-        s.help(&c),
+        s.help(&c).plain(),
         "←/→ keyboard or controller · D-pad/L-stick move · B back"
     );
     c.device = Device::Keyboard;
     assert_eq!(
-        s.help(&c),
+        s.help(&c).plain(),
         "Left/Right keyboard or controller · arrows move · d back"
     );
     s.update(&mut c, &act(&[CursorUp]));
-    assert_eq!(s.help(&c), "arrows move · f restore · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f restore · d back");
     c.device = XBOX;
-    assert_eq!(s.help(&c), "D-pad/L-stick move · A restore · B back");
+    assert_eq!(
+        s.help(&c).plain(),
+        "D-pad/L-stick move · A restore · B back"
+    );
     s.update(&mut c, &act(&[Confirm]));
-    assert_eq!(s.help(&c), "A yes · B no");
+    assert_eq!(s.help(&c).plain(), "A yes · B no");
     // Every line fits the console on every pad.
     for kind in [PadKind::PlayStation, PadKind::Nintendo, PadKind::Generic] {
         c.device = Device::Pad(kind);
         let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
-        let mut lines = vec![s.help(&c)];
+        let mut lines = vec![s.help(&c).plain()];
         s.update(&mut c, &act(&[CursorUp]));
-        lines.push(s.help(&c));
+        lines.push(s.help(&c).plain());
         for line in lines {
             assert!(line.chars().count() <= usize::from(PC.cols), "{line}");
         }

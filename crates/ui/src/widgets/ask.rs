@@ -150,7 +150,9 @@ impl<T: Copy + PartialEq> Ask<T> {
                 Some(_) => Vec::new(),
                 None => answers.collect(),
             },
-            keys: self.keys.map(|key| ctx.text_with_keys(key, keys, &[])),
+            keys: self
+                .keys
+                .map(|key| ctx.text_styled_with_keys(key, keys, &[], &[])),
         }
     }
 }

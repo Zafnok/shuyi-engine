@@ -83,7 +83,7 @@ builds what the game's theme asks for, and changes no other game's look.
 
 **In:**
 
-- **The ADR of 2347, amended** (or a new ADR that supersedes the rule):
+- **ADR-0122 (2347's), amended** (or a new ADR that supersedes its §4):
   a key cap may take more cells than its name; a role still never
   changes the plain text (`plain()`), only how many cells it is drawn
   in. Say how widths are measured (`StyledText::width`, `cut`, word

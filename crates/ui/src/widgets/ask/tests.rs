@@ -4,6 +4,7 @@ use super::*;
 use crate::frame::color::EngineColor;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+use crate::text::StyledText;
 use crate::toy::{Action, Voice, ctx};
 use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp, Info};
 
@@ -141,7 +142,10 @@ fn the_view_is_the_text_and_the_answers_in_words_or_the_keys_line() {
     let yes_no = Ask::yes_no("options.question.restore", "options.question.answers").view(&c);
     assert_eq!(yes_no.text, "Restore every option to its default?");
     assert_eq!(yes_no.answers, []);
-    assert_eq!(yes_no.keys.as_deref(), Some("f yes / d no"));
+    assert_eq!(
+        yes_no.keys.as_ref().map(StyledText::plain).as_deref(),
+        Some("f yes / d no")
+    );
     assert_eq!(yes_no.focused(), None);
 }
 

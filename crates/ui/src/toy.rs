@@ -385,6 +385,32 @@ const ENGLISH: [(&str, &str); 20] = [
 /// screen, the layout picker, the options, the dialogue box).
 const SCREENS_ENGLISH: &str = include_str!("toy/en.ron");
 
+/// Every key of the toy's English text.
+#[cfg(test)]
+pub(crate) fn english_keys() -> Vec<String> {
+    let screens: BTreeMap<String, String> =
+        ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
+    let toy = ENGLISH.iter().map(|&(key, _)| key.to_owned());
+    screens.into_keys().chain(toy).collect()
+}
+
+/// `ctx`'s palette with `key` (`#ffc800`) and `key_bg` (`#28003c`), at
+/// colours no other name has: a key's name stands out in it.
+#[cfg(test)]
+pub(crate) fn key_palette(ctx: &ToyCtx) -> crate::frame::color::Palette {
+    use crate::frame::color::{KEY, KEY_BG, Palette};
+    let mut def = ctx.game.palette_def().clone();
+    def.colors.insert(KEY.to_owned(), [255, 200, 0]);
+    def.colors.insert(KEY_BG.to_owned(), [40, 0, 60]);
+    let palette = Palette::new::<EngineColor>(&def).unwrap();
+    assert!(
+        EngineColor::ALL
+            .iter()
+            .all(|&e| palette.engine(e) == ctx.palette.engine(e))
+    );
+    palette
+}
+
 /// The debug language's text: two keys of today's English, one of
 /// yesterday's.
 const DEBUG_UI: &str = r#"[
@@ -856,7 +882,7 @@ impl Talk {
     /// What its text box shows.
     pub fn view(&self, ctx: &ToyCtx) -> TextView {
         let waiting = self.text.is_revealed().then(|| WaitView {
-            key: ctx.text_with("talk.next", &[]),
+            key: ctx.text_styled("talk.next", &[]),
             log_hint: None,
             marker: self.text.marker_lit(),
         });

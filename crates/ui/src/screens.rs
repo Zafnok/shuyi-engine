@@ -9,8 +9,6 @@ pub mod layout_picker;
 pub mod options;
 pub mod profiles;
 
-use crate::prelude::*;
-
 use shuyi_assets::lang::text_width;
 
 pub use crate::frame::draw::cut;
@@ -19,19 +17,20 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed;
+use crate::text::{StyledText, TextRole};
+use core::fmt::Display;
 
 /// The text key of a text box's help line, with `{done}`, `{delete}` and
 /// `{cancel}`: the text box's fixed keys.
 pub const TEXT_BOX_HELP: &str = "text_box.help";
 
 /// The help line of a text box: `Enter done · Backspace delete · Escape
-/// cancel`, in `ctx`'s language.
-pub fn text_keys_help<G: GameData>(ctx: &Ctx<G>) -> String {
+/// cancel`, in `ctx`'s language, each key's name in a key span.
+pub fn text_keys_help<G: GameData>(ctx: &Ctx<G>) -> StyledText {
     let [done, delete, cancel] = fixed::text_key_names();
-    ctx.text_with(
-        TEXT_BOX_HELP,
-        &[("done", &done), ("delete", &delete), ("cancel", &cancel)],
-    )
+    let keys = [("done", &done), ("delete", &delete), ("cancel", &cancel)];
+    let keys = keys.map(|(name, key)| (name, key as &dyn Display));
+    ctx.text_styled_with_keys(TEXT_BOX_HELP, ctx.help_keys(), &[], &keys)
 }
 
 /// Column at which `width` cells are centred in `buf` (rounded left).
@@ -46,6 +45,20 @@ pub fn print_centred(buf: &mut GlyphBuffer, y: i32, text: &str, fg: Rgb, bg: Rgb
     let shown = cut(text, usize::from(buf.width()), buf.widths());
     let x = centre_x(buf, text_width(&shown, buf.widths()));
     buf.print(x, y, &shown, fg, bg);
+}
+
+/// [`print_centred`] for styled text, each span in the colours `colors`
+/// gives for its role ([`GlyphBuffer::print_styled`]): centred on row `y`,
+/// or from column 0 [`cut`](StyledText::cut) to the buffer's width.
+pub fn print_centred_styled(
+    buf: &mut GlyphBuffer,
+    y: i32,
+    text: &StyledText,
+    colors: impl Fn(Option<TextRole>) -> (Rgb, Option<Rgb>),
+) {
+    let shown = text.cut(usize::from(buf.width()), buf.widths());
+    let x = centre_x(buf, shown.width(buf.widths()));
+    buf.print_styled(x, y, &shown, colors);
 }
 
 #[cfg(test)]

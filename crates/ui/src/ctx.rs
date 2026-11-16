@@ -45,6 +45,7 @@ use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::system_keyboard::SystemKeyboard;
+use crate::text::StyledText;
 
 /// [`Storage`] key under which the player's key and controller-button
 /// bindings are saved ([`PlayerKeys::to_ron`]).
@@ -539,7 +540,51 @@ impl<G: GameData> Ctx<G> {
         keys: HelpKeys<'_, G::Action>,
         args: &[(&str, &dyn Display)],
     ) -> String {
-        crate::text::fill(self.text(key), args, |name| self.game.key_text(name, keys))
+        self.text_styled_with_keys(key, keys, args, &[]).plain()
+    }
+
+    /// [`text_with`](Self::text_with), each key's name in a
+    /// [`TextRole::Key`] span ([`text::fill_styled`]), which a skin paints
+    /// in the palette's key colours (ADR-0122). Its
+    /// [`plain`](StyledText::plain) text is `text_with`'s.
+    ///
+    /// [`TextRole::Key`]: crate::text::TextRole::Key
+    /// [`text::fill_styled`]: crate::text::fill_styled
+    pub fn text_styled(&self, key: &str, args: &[(&str, &dyn Display)]) -> StyledText {
+        self.text_styled_with_keys(key, self.help_keys(), args, &[])
+    }
+
+    /// [`text_styled`](Self::text_styled), naming the keys `keys` has
+    /// ([`text_with_keys`](Self::text_with_keys)), with each value of
+    /// `key_args` (a key's name handed in as a value, such as a text box's
+    /// fixed keys) in a key span too.
+    pub fn text_styled_with_keys(
+        &self,
+        key: &str,
+        keys: HelpKeys<'_, G::Action>,
+        args: &[(&str, &dyn Display)],
+        key_args: &[(&str, &dyn Display)],
+    ) -> StyledText {
+        let lookup = |name: &str| self.game.key_text(name, keys);
+        crate::text::fill_styled(self.text(key), args, key_args, lookup)
+    }
+
+    /// [`label`](Self::label), each key's name in a key span
+    /// ([`text_styled`](Self::text_styled)); a [`Text`] label is one plain
+    /// span.
+    ///
+    /// [`Text`]: crate::text::Label::Text
+    pub fn label_styled(&self, label: &crate::text::Label) -> StyledText {
+        match label {
+            crate::text::Label::Key { key, args } => {
+                let args: Vec<(&str, &dyn Display)> = args
+                    .iter()
+                    .map(|(name, value)| (name.as_str(), value as &dyn Display))
+                    .collect();
+                self.text_styled(key, &args)
+            }
+            crate::text::Label::Text(text) => StyledText::from(text.as_str()),
+        }
     }
 
     /// The language text is shown in: [`lang`](Self::lang), but the

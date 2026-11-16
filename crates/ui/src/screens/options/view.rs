@@ -7,6 +7,7 @@
 
 use super::LeaveChoice;
 use crate::prelude::*;
+use crate::text::StyledText;
 use crate::widgets::AskView;
 
 /// The whole screen, as it is this frame.
@@ -25,7 +26,7 @@ pub struct OptionsView {
     /// them, throw them away or stay.
     pub leaving: Option<AskView<LeaveChoice>>,
     /// The help line: what the keys do here.
-    pub help: String,
+    pub help: StyledText,
 }
 
 impl OptionsView {

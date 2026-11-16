@@ -86,11 +86,14 @@ fn a_pad_press_closes_only_the_asked_for_picker() {
 #[test]
 fn help_names_the_picker_keys() {
     assert_eq!(
-        LayoutPickerScreen::help(&first_launch_ctx()),
+        LayoutPickerScreen::help(&first_launch_ctx()).plain(),
         "w/Up s/Down choose · f/j/Enter/Space pick"
     );
     // Later (from Options) it names the chosen layout's keys.
-    assert_eq!(LayoutPickerScreen::help(&ctx()), "Up Down choose · f pick");
+    assert_eq!(
+        LayoutPickerScreen::help(&ctx()).plain(),
+        "Up Down choose · f pick"
+    );
 }
 
 #[test]
@@ -188,7 +191,10 @@ fn the_first_frame_offers_both_layouts_with_the_first_focused() {
         [true, false]
     );
     assert_eq!(view.focused().map(|l| l.layout), Some(RIGHT_HANDED));
-    assert_eq!(view.help, "w/Up s/Down choose · f/j/Enter/Space pick");
+    assert_eq!(
+        view.help.plain(),
+        "w/Up s/Down choose · f/j/Enter/Space pick"
+    );
     // Each layout's legend is read from its own keys.
     let legend = |l: usize| view.layouts[l].legend[1].keys.clone();
     assert_eq!(legend(0), "f");
@@ -218,7 +224,10 @@ fn opened_from_options_it_focuses_the_layout_in_use() {
     let c = ctx().with_layout(LEFT_HANDED);
     let view = LayoutPickerScreen::change(&c, &LEGEND).view(&c);
     assert_eq!(view.focused().map(|l| l.layout), Some(LEFT_HANDED));
-    assert_eq!(view.help, c.text_with("layout_picker.help_change", &[]));
+    assert_eq!(
+        view.help.plain(),
+        c.text_with("layout_picker.help_change", &[])
+    );
     assert_ne!(view.help, picker(&c).view(&c).help);
 }
 

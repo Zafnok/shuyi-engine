@@ -956,3 +956,54 @@ fn the_renderers_grey_is_the_dither50_pattern() {
     assert_eq!(GREY, Shade::from(Pattern::new(Base::Dither50)));
     assert_eq!(WHITE, Shade::from(Pattern::new(Base::White)));
 }
+
+/// A help line on a white panel, its words in a black `text_dim` and its
+/// key in a white `key` on a black `key_bg`: the reference renderer draws
+/// the key's glyph white on black and the word's black on white.
+#[test]
+fn a_help_lines_key_is_drawn_in_its_key_roles() {
+    use crate::frame::color::{EngineColor, KEY, KEY_BG, Palette, tests::engine_def};
+    use crate::text::StyledText;
+    let mut def = engine_def();
+    for (name, rgb) in [
+        ("text_dim", [0; 3]),
+        ("panel", [255; 3]),
+        (KEY, [255; 3]),
+        (KEY_BG, [0; 3]),
+    ] {
+        def.colors.insert(name.to_owned(), rgb);
+    }
+    let palette = Palette::new::<EngineColor>(&def).unwrap();
+    let roles = r#"(roles: {
+        "text_dim": (fg: Black), "panel": (fg: White), "key": (fg: White), "key_bg": (fg: Black),
+    })"#;
+    let map = PatternMapDef::from_source("help@onebit.ron", roles).unwrap();
+    let shades = PatternMap::new(palette.iter(), &map);
+    let (dim, panel) = (
+        palette.engine(EngineColor::TextDim),
+        palette.engine(EngineColor::Panel),
+    );
+    let mut b = GlyphBuffer::with_spec(
+        ConsoleSpec::text(50, 15).sized(3, 1),
+        Cell::new(' ', dim, panel),
+    );
+    let mut hint = StyledText::new();
+    hint.push_key("X").push_plain(" X");
+    b.print_styled(0, 0, &hint, palette.text_colors_on(dim, panel));
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    reference::render(&b, &font, &(), &shades, &mut frame);
+    // The key's X (columns 3-4, rows 6-7 of its cell) white on black.
+    assert_eq!(
+        text(&frame, 0, 5, 8, 4),
+        ["########", "###..###", "###..###", "########"]
+    );
+    // The word's X black on white.
+    assert_eq!(
+        text(&frame, 16, 5, 8, 4),
+        ["........", "...##...", "...##...", "........"]
+    );
+    // The space between them is the panel's.
+    assert_eq!(text(&frame, 8, 5, 8, 1), ["........"]);
+}
