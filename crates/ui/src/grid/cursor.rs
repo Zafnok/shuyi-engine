@@ -90,8 +90,11 @@ impl Cursor {
 /// brought into one period first (infinity and not a number count as 0),
 /// then read in 1/65536 of a period.
 fn pulse(t: f32, period: f32) -> f32 {
-    let into = if t.is_finite() { t % period } else { 0.0 };
-    let into = if into < 0.0 { into + period } else { into };
+    let into = if t.is_finite() {
+        t.rem_euclid(period)
+    } else {
+        0.0
+    };
     // 0 to 65 536, a whole period, which a `u32` holds; not a number (a
     // period of 0) counts as 0.
     #[expect(
