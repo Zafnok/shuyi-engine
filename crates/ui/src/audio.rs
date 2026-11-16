@@ -48,8 +48,11 @@ use shuyi_assets::voice::ClipVariant;
 
 #[cfg(doc)]
 use crate::GameData;
+use crate::cinematic::millis;
 use crate::input::frame_seconds;
 use alloc::collections::{BTreeMap, BTreeSet};
+use shuyi_core::Tween;
+use shuyi_core::ease::ONE;
 
 mod added;
 pub mod duck;
@@ -619,18 +622,23 @@ struct Track {
 }
 
 /// A gain moving in a straight line to 0 or 1, at one whole fade per
-/// `secs`: a fade from a gain part-way takes its share of the time.
+/// `ms`: a fade from a gain part-way takes its share of the time. The gain
+/// is a [`Tween`] in 1/65536 over whole milliseconds ([`tween`](Self::tween)),
+/// read at the time summed in seconds, turned into milliseconds.
 #[derive(Debug, Clone, PartialEq)]
 struct Ramp {
     /// The gain when it began.
     from: f32,
     /// Whether it ends at 1 (else at 0).
     rising: bool,
-    /// Seconds a fade from one end to the other takes.
-    secs: f32,
+    /// Milliseconds a fade from one end to the other takes.
+    ms: u32,
     /// Seconds it has run.
     elapsed: f32,
 }
+
+/// [`ONE`], the whole way, as an `f32`.
+const ONE_F32: f32 = 65_536.0;
 
 impl Ramp {
     /// A gain that stays at `gain`.
@@ -638,7 +646,7 @@ impl Ramp {
         Self {
             from: gain,
             rising: gain >= 1.0,
-            secs: 0.0,
+            ms: 0,
             elapsed: 0.0,
         }
     }
@@ -647,23 +655,31 @@ impl Ramp {
         if self.rising { 1.0 } else { 0.0 }
     }
 
-    /// Whether it has reached its end.
+    /// Whether it has reached its end: once `elapsed` reaches its share of
+    /// `ms` in seconds.
     fn done(&self) -> bool {
-        self.elapsed >= self.secs * (self.from - self.to()).abs()
+        self.elapsed >= secs(self.ms) * (self.from - self.to()).abs()
+    }
+
+    /// A whole fade from `from`, in 1/65536 over `ms`: from [`ONE`] to 0
+    /// for a whole fade-out. From a gain part-way it goes on past its end,
+    /// where [`gain`](Self::gain) stops it.
+    fn tween(&self) -> Tween<i32> {
+        // 0 to 65 536, which an `i32` holds.
+        #[expect(clippy::cast_possible_truncation, reason = "0 to 65 536")]
+        let from = (self.from.clamp(0.0, 1.0) * ONE_F32).round() as i32;
+        let to = if self.rising { from + ONE } else { from - ONE };
+        Tween::new(from, to, self.ms)
     }
 
     fn gain(&self) -> f32 {
         if self.done() {
             return self.to();
         }
-        // Not done, so `secs` is above 0.
-        let moved = self.elapsed / self.secs;
-        let gain = if self.rising {
-            self.from + moved
-        } else {
-            self.from - moved
-        };
-        gain.clamp(0.0, 1.0)
+        let at = u32::try_from(millis(self.elapsed)).unwrap_or(u32::MAX);
+        #[expect(clippy::cast_precision_loss, reason = "0 to 65 536")]
+        let gain = self.tween().value_at(at).clamp(0, ONE) as f32;
+        gain / ONE_F32
     }
 }
 
@@ -680,7 +696,7 @@ impl Track {
             ramp: Ramp {
                 from,
                 rising: true,
-                secs: secs(switch.in_ms),
+                ms: switch.in_ms,
                 elapsed: 0.0,
             },
         }
@@ -694,12 +710,11 @@ impl Track {
     /// Sends the gain toward 1 (`rising`) or 0, a whole fade taking `ms`.
     /// A ramp already going there at that pace keeps its progress.
     fn aim(&mut self, rising: bool, ms: u32) {
-        let secs = secs(ms);
-        if self.ramp.rising != rising || self.ramp.secs.to_bits() != secs.to_bits() {
+        if self.ramp.rising != rising || self.ramp.ms != ms {
             self.ramp = Ramp {
                 from: self.ramp.gain(),
                 rising,
-                secs,
+                ms,
                 elapsed: 0.0,
             };
         }
@@ -1147,6 +1162,85 @@ mod tests {
     }
 
     #[test]
+    fn a_switch_in_whole_milliseconds_sends_what_new_sends() {
+        for ms in [0, 1, 250, 500, 1000] {
+            #[expect(clippy::cast_precision_loss, reason = "a few thousand")]
+            let secs = ms as f32 / 1000.0;
+            let mut by_secs = MusicState::new(secs);
+            let mut by_ms = MusicState::with_switch(MusicSwitch::after_fade(ms));
+            let script: [(&[AudioRequest], f32); 6] = [
+                (&[play("title")], 0.0),
+                (&[play("battle")], 0.1),
+                (&[], 1.0 / 60.0),
+                (&[AudioRequest::StopMusic], 0.07),
+                (&[], 0.2),
+                (&[], 1.0),
+            ];
+            for (requests, dt) in script {
+                assert_eq!(
+                    frame(&mut by_secs, requests, dt),
+                    frame(&mut by_ms, requests, dt),
+                    "{ms} ms"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_fade_of_no_time_stops_at_once() {
+        let mut m = MusicState::with_switch(MusicSwitch::after_fade(0));
+        frame(&mut m, &[play("title")], 0.0);
+        assert_eq!(
+            frame(&mut m, &[AudioRequest::StopMusic], 0.0),
+            [stop("title")]
+        );
+        assert_eq!(m.current(), None);
+    }
+
+    /// A whole fade-out's gain as it was written by hand before ticket
+    /// 2136, `elapsed` seconds into a fade of `secs`.
+    fn gain_before(elapsed: f32, secs: f32) -> f32 {
+        (1.0 - elapsed / secs).clamp(0.0, 1.0)
+    }
+
+    /// A whole fade-out of `ms` at frames of `dt`, frame by frame: the
+    /// same commands as before ticket 2136, the gains within half a
+    /// millisecond of the fade plus 1/65536, and the stop on the same
+    /// frame.
+    fn fades_out_as_before(ms: u32, dt: f32) {
+        let mut m = MusicState::with_switch(MusicSwitch::after_fade(ms));
+        frame(&mut m, &[play("title")], 0.0);
+        let secs = secs(ms);
+        #[expect(clippy::cast_precision_loss, reason = "a few thousand")]
+        let bound = 0.5 / ms as f32 + 1.0 / 65_536.0;
+        let mut requests = vec![AudioRequest::StopMusic];
+        let mut elapsed = 0.0_f32;
+        loop {
+            let got = frame(&mut m, &requests, dt);
+            requests.clear();
+            elapsed += dt;
+            if elapsed >= secs {
+                assert_eq!(got, [stop("title")], "at {elapsed}");
+                break;
+            }
+            let [MusicCommand::Gain { cue, gain }] = got.as_slice() else {
+                panic!("at {elapsed}: {got:?}");
+            };
+            assert_eq!(cue, "title");
+            let off = (gain - gain_before(elapsed, secs)).abs();
+            assert!(off <= bound, "at {elapsed}: {gain}, {off}");
+        }
+        assert_eq!(m.current(), None);
+    }
+
+    #[test]
+    fn a_fade_out_stays_near_the_line_it_replaced() {
+        fades_out_as_before(500, 1.0 / 60.0);
+        fades_out_as_before(1000, 1.0 / 30.0);
+        fades_out_as_before(333, 1.0 / 60.0);
+    }
+
+    #[test]
     fn bad_frame_times_do_not_advance_a_fade() {
         let mut m = playing("title");
         frame(&mut m, &[play("battle")], 0.25);
@@ -1369,16 +1463,24 @@ mod tests {
     fn a_stop_with_its_own_fade_takes_that_long_from_full_gain() {
         // The default fade is 0.5 s; this stop asks for 3 s.
         let mut m = playing("title");
-        assert_eq!(
+        // A third isn't a whole number of 1/65536: the gain is within the
+        // fade's bound of it (ticket 2136).
+        let near = |got: Vec<MusicCommand>, want: f32| match got.as_slice() {
+            [MusicCommand::Gain { cue, gain }] => {
+                cue == "title" && (gain - want).abs() <= 0.5 / 3000.0 + 1.0 / 65_536.0
+            }
+            _ => false,
+        };
+        assert!(near(
             frame(&mut m, &[stop_with(3000)], 1.0),
-            [gain("title", 1.0 - 1.0 / 3.0)]
-        );
+            1.0 - 1.0 / 3.0
+        ));
         assert_eq!(m.target(), None);
         // Asking again doesn't restart the fade.
-        assert_eq!(
+        assert!(near(
             frame(&mut m, &[stop_with(3000), stop_with(3000)], 1.0),
-            [gain("title", 1.0 - 2.0 / 3.0)]
-        );
+            1.0 - 2.0 / 3.0
+        ));
         assert_eq!(frame(&mut m, &[], 1.0), [stop("title")]);
         assert_eq!(m.current(), None);
         assert_eq!(frame(&mut m, &[], 1.0), []);

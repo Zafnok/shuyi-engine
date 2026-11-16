@@ -272,6 +272,40 @@ fn a_pan_eases_from_its_start_to_its_end() {
     assert!(near(none, (100.0, 40.0)));
 }
 
+/// A pan's centre as it was worked out by hand before ticket 2136: by
+/// `ease_in_out`, in `f32`.
+fn centre_before(pan: &Pan, progress: f32) -> (f32, f32) {
+    let eased = ease_in_out(progress);
+    let (from, to) = (pan.from, pan.to);
+    (
+        from.0 + (to.0 - from.0) * eased,
+        from.1 + (to.1 - from.1) * eased,
+    )
+}
+
+#[test]
+fn a_pan_stays_near_the_curve_it_replaced_and_starts_at_from_for_no_number() {
+    let pan = Pan {
+        from: (100.0, 40.0),
+        to: (1300.0, -500.0),
+        zoom: 1,
+    };
+    // 3/65536 of the distance, and the `f32` rounding of a centre that
+    // big.
+    let bound = |from: f32, to: f32| (to - from).abs() * 3.0 / 65_536.0 + 1e-4;
+    for k in 0..=1000_u16 {
+        let p = f32::from(k) / 1000.0;
+        let (now, before) = (pan.centre(p), centre_before(&pan, p));
+        assert!((now.0 - before.0).abs() <= bound(100.0, 1300.0), "{p}");
+        assert!((now.1 - before.1).abs() <= bound(40.0, -500.0), "{p}");
+    }
+    assert_eq!(pan.centre(0.0), pan.from);
+    assert_eq!(pan.centre(1.0), pan.to);
+    for p in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        assert_eq!(pan.centre(p), pan.from, "{p}");
+    }
+}
+
 #[test]
 fn a_pans_frame_is_its_origin_and_zoom_and_paints_its_picture_behind_holes() {
     let pan = Pan {
