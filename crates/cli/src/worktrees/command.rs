@@ -263,8 +263,10 @@ fn trim_from(root: &Path, options: &trim::Options) -> Result<Trimmed, Refusal> {
 fn seed_from(root: &Path, into: &Path) -> Result<Seeded, Refusal> {
     let donor = repository(root)?;
     let listed = trim::worktree_paths(&donor).map_err(|e| Refusal::new(codes::NO_REPOSITORY, e))?;
-    let same = |a: &Path, b: &Path| matches!((a.canonicalize(), b.canonicalize()), (Ok(a), Ok(b)) if a == b);
-    if !listed.iter().any(|worktree| same(worktree, into)) {
+    let into_found = into.canonicalize().ok();
+    let same =
+        |worktree: &PathBuf| into_found.is_some() && worktree.canonicalize().ok() == into_found;
+    if !listed.iter().any(same) {
         let names: Vec<String> = listed.iter().map(|w| w.display().to_string()).collect();
         return Err(Refusal::new(
             codes::NOT_A_WORKTREE,

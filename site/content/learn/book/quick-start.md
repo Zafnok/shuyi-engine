@@ -397,11 +397,11 @@ with `git config core.hooksPath scripts/git-hooks`; `shuyi doctor` says when the
 aren't set.
 
 A coding agent that works in many worktrees makes many build folders, and each one's
-first build compiles every dependency. Two commands of the game's tools help, and the
-`shuyi-worktrees` skill in `.claude/skills/` says when to run them: `cargo shuyi
-seed-target --into <worktree>`, run in the main checkout, starts a new worktree's build
-from its own, so it compiles only the game's crates; `cargo shuyi trim-targets` deletes
-the caches of the worktrees idle for days. Neither ever removes a worktree.
+first build compiles every dependency. Two commands of the game's tools help: `cargo
+shuyi seed-target --into <worktree>`, run in the main checkout before the new worktree's
+first build, starts its build from the main checkout's, so it compiles only the game's
+crates; `cargo shuyi trim-targets`, after the gates pass, deletes the caches of the
+worktrees idle for days. Neither ever removes a worktree.
 
 `shuyi new` asks the same when you make the game, and runs it for you: whether to
 put the game on GitHub, whether its repository is public, and which kinds of files

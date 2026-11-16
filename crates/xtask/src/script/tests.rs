@@ -294,39 +294,6 @@ fn a_cargo_step_succeeds_or_fails_as_it_says() {
 }
 
 #[test]
-fn a_git_step_runs_git_in_the_game_and_checks_its_exit() {
-    let game = temp("git");
-    let fake = Fake::new(|args| ran(if args.starts_with("init") { 0 } else { 128 }, ""));
-    let git = |args: &str, ok: bool| Step::Git {
-        args: args.split(' ').map(str::to_owned).collect(),
-        ok,
-    };
-    let verdicts = run(
-        &[
-            git("init -q", true),
-            git("worktree add x", false),
-            git("init -q", false),
-        ],
-        &game,
-        &game,
-        &fake,
-    );
-    let passed: Vec<bool> = verdicts.iter().map(|v| v.passed).collect();
-    assert_eq!(passed, [true, true, false]);
-    assert_eq!(verdicts[0].what, "git init -q");
-    assert_eq!(verdicts[1].what, "git worktree add x (fails)");
-    let calls = fake.calls.borrow();
-    assert!(
-        calls
-            .iter()
-            .all(|(dir, program, _)| dir == &game && program == "git")
-    );
-    let step: Step = ron::from_str(r#"Git(args: ["init", "-q"])"#).unwrap();
-    assert_eq!(step, git("init -q", true));
-    let _ = fs::remove_dir_all(&game);
-}
-
-#[test]
 fn files_are_written_edited_and_read_inside_the_game() {
     let files = temp("files-from");
     let game = temp("files-game");

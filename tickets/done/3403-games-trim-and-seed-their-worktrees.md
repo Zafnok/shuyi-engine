@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: in-progress
+status: done
 blocked_by: ["2076", "2078"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 3403 — A game trims its idle worktrees and seeds a new one from a warm one: `cargo shuyi trim-targets` and `seed-target --into`, and the shuyi-worktrees skill
@@ -165,21 +165,23 @@ docs 400).
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi trim-targets --help` and `seed-target --help` work in
+- [x] `cargo shuyi trim-targets --help` and `seed-target --help` work in
       a game fresh from `shuyi new`, and neither is an MCP tool or a
       contract operation (`shuyi schema` unchanged).
-- [ ] In a game's worktree, `trim-targets` deletes only `incremental`
+- [x] In a game's worktree, `trim-targets` deletes only `incremental`
       folders under the idle worktrees' `target/`. `git worktree list`
       is the same before and after (a test with temp worktrees).
-- [ ] `seed-target --into` from a game's main checkout gives a new
+- [x] `seed-target --into` from a game's main checkout gives a new
       worktree whose first `cargo test --workspace --no-run` compiles
       only the game's own crates (the notes), with the donor's files
       unchanged.
-- [ ] `shuyi-worktrees` passes `check-skills`, and its worked example
-      passes `cargo xtask skill-examples`.
-- [ ] A new game's `.claude/skills/` has `shuyi-worktrees`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~`shuyi-worktrees` passes `check-skills`, and its worked example
+      passes `cargo xtask skill-examples`.~~ (not done: moved to 3405 by
+      the split; it passed at the PR's first commit, `96ecf2ef`)
+- [x] ~~A new game's `.claude/skills/` has `shuyi-worktrees`.~~ (not
+      done: moved to 3405 by the split)
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -192,5 +194,133 @@ docs 400).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi trim-targets [--idle-days N] [--dry-run] [--stale-hashes]
+  [--merged] [--json]` and `shuyi seed-target --into <worktree>
+  [--json]`, each with `--help`: `crates/cli/src/worktrees/command.rs`,
+  dispatched from `run` in `crates/cli/src/lib.rs` beside `repos`, so
+  they work in `shuyi` and in the game's tool program alike. Both are
+  in `COMMANDS` and the usage, and neither is in `Op::ALL` or the MCP
+  server (`shuyi schema` is unchanged: no schema names them or the new
+  codes).
+- They act on the repository of the project's root (`git rev-parse
+  --show-toplevel`), and refuse (`SH1010`) a game in none, or in one
+  that ignores its `shuyi.ron` (a game made in another repository's
+  `target/`, as the worked examples' are).
+- `seed-target` first checks that `--into` is one of the folders `git
+  worktree list` lists (`SH0007` otherwise), so it never makes a
+  `target/` in a folder that isn't a worktree. Then
+  `seed::path_packages_of` and `seed::seed`, each refusal with its code:
+  `SameWorktree` `SH0008`, `NoDonorBuild` `SH1011`, `Locked` `SH3016`,
+  `OtherVolume` `SH3017`, `Io` `SH3004`. Six new codes, each with its
+  row and page in `crates/cli/errors/`.
+- `--json` answers `{ok, result, code, error, help}`. `trim::Report` and
+  `seed::Report` derive `Serialize`, flattened into the result beside
+  the worktree's lines (`worktrees`), the `summary`, and for the seed
+  `donor` and `into`.
+- The game's target list is `trim::GAME_ROOTS`, `[""]`: `target/debug`,
+  `target/release`, `target/<triple>/<profile>` and the web build's.
+  Step 2's check: the seed covers only the host's `target/debug/`
+  (`seed::PROFILE`), the same in a game.
+- Docs: `docs/contract.md` (the CLI-only commands, beside `repos` and
+  `reveal`), the template's `AGENTS.md` (its worktrees section, the
+  two rows of the tools table, and "then `cargo shuyi trim-targets`"
+  after the gate list), and the book's quick start (a paragraph after
+  the hooks).
+
+Deviations:
+
+- **Split at the ticket's own valve.** At 1,323 counted lines the PR
+  was past the **Split:** line (1,000), so the skill, its worked example
+  (steps 5 and 6) and what only they need went to 3405: the runner's
+  `Git` step, `skills/README.md`'s entry, and the mentions of the skill
+  in the template and the book. The whole draft is in this PR's first
+  commit, `96ecf2ef`, where `cargo xtask skill-examples
+  shuyi-worktrees` passed (4 steps: `git init`, `trim-targets --dry-run`
+  with `idle` 0 and `kept` 1, `seed-target --into crates` refused with
+  `SH0007`, `--into .` with `SH0008`); 3405 starts from it. The two
+  acceptance criteria of the skill are left unticked here, and 3405
+  carries them. Size: 1,088 counted lines after the split, under 1,500;
+  no further split is clean, since the commands, their codes and their
+  tests land together.
+- **The worked example needs the game in git.** The runner makes each
+  game in the engine's `target/skill-examples/`, which is in no git
+  repository of its own, so the example the ticket planned couldn't
+  find "one worktree, the current one". The draft added a `Git` step to
+  the runner (`Git(args: ["init", "-q"])`); it moves with the example
+  to 3405.
+- **A folder inside `target/` that is a target folder of its own is not
+  a triple.** With the game's one root, `""`, the walk's
+  `<root>/<triple>/<profile>` form also matched the engine's
+  `tutorial/debug` and `skill-examples-build/debug`, which the ticket's
+  test says a game's list must not reach. `under_roots` now refuses that
+  form when the middle folder holds cargo's `.rustc_info.json`, which
+  cargo writes at the top of every target folder and never in a
+  triple's. The engine's trim is unchanged: xtask names those folders
+  as roots of their own (a test checks both lists).
+- `COMMANDS` became a slice, `&[&str]`, so the next command changes no
+  type (the ticket's option).
+- **Step 6's refusal.** The worked example refuses `--into` a folder
+  that exists and isn't a worktree (`crates`) with `SH0007`: the
+  command checks the worktree list itself, where `seed::seed` alone
+  would have seeded any folder.
+
+Manual check (step 7), on Nick's machine (Windows 11, GNU toolchain),
+at `96ecf2ef`, with that commit's `target/debug/shuyi.exe` (a game
+fresh from `shuyi new` depends on the engine's `main`, whose `cargo
+shuyi` doesn't have the commands until this merges; the binary runs
+them the same way):
+
+- `shuyi new moon --template grid --no-github`, then `git init`, `git
+  add -A` and a commit in it.
+- The main checkout's cold `cargo test --workspace --no-run`: 55 s, 112
+  `Compiling` lines.
+- `git worktree add ../moon-wt -b wt`, then from `moon`, `shuyi
+  seed-target --into ../moon-wt`: "linked 278 files (539 MiB), copied
+  811 files (1 MiB), rewrote the root in 24 build outputs, kept 0 units
+  and files already there, left out 12 fingerprints of path packages
+  (they rebuild)". Run again with `--json`, it linked nothing and kept
+  551: a second seed is harmless.
+- In `moon-wt`, the first `cargo test --workspace --no-run`: 7 s, and
+  its only `Compiling` lines are the game's own crates, `moon` and
+  `moon-rules` (against 55 s and 112 cold).
+- From `moon-wt`, `shuyi trim-targets --dry-run`: `moon` "target 752
+  MB, built 0 hours ago (in the last 3 days), left alone", `moon-wt`
+  "this worktree, left alone", "would free 0 MB in 0 idle worktree(s),
+  left 2 alone". `git worktree list` still listed both.
+- The donor's files unchanged: the new worktree's build writes new
+  files over the links (2078's `the_donors_files_are_unchanged` test
+  checks it), and the newest rlibs in `moon/target/debug/deps` were
+  still the cold build's.
+- `shuyi trim-targets --help` and `shuyi seed-target --help` print their
+  usage and flags.
+
+Follow-up tickets: 3405 (the skill and its worked example, split off).
+
+Nick input: none.
+
+Breaking: shuyi-cli: `COMMANDS`: its type is `&[&str]`, not `[&str; 17]`; a game that iterates it by value calls `.iter().copied()`
+
+```migration
+since: 0.1.0
+what: shuyi_cli::COMMANDS is a slice, so a new command changes no type.
+old: "pub const COMMANDS: [&str; 17]"
+new: "pub const COMMANDS: &[&str]"
+before: |
+  let names: Vec<&str> = names.chain(shuyi_cli::COMMANDS).collect();
+after: |
+  let names: Vec<&str> = names.chain(shuyi_cli::COMMANDS.iter().copied()).collect();
+find: ["chain(shuyi_cli::COMMANDS)"]
+```
+
+Searched the game for it: `gh search code --repo Zafnok/visions-of-shuyi
+'shuyi_cli::COMMANDS'` and `'trim-targets'` find nothing.
+
+Behaviour: shuyi-cli: `shuyi` has two new commands, `trim-targets` and `seed-target`, in its usage and `COMMANDS` (a skill may name them), and `shuyi explain` lists six new problem codes: `SH0007` (`not-a-worktree`), `SH0008` (`same-worktree`), `SH1010` (`no-repository`), `SH1011` (`no-donor-build`), `SH3016` (`build-running`) and `SH3017` (`other-volume`)
+
+Behaviour: shuyi-cli: `worktrees::trim` no longer reads `<root>/<folder>/<profile>` as a triple's profile when `<folder>` holds cargo's `.rustc_info.json`; the engine's `cargo xtask trim-targets` names such folders as roots, so it trims the same
+
+Behaviour: templates: a new game's `AGENTS.md` lists `seed-target` and `trim-targets` among its tools, and ends its gates with `cargo shuyi trim-targets`
+
+Book: the quick start's paragraph on git's hooks and worktrees is followed by one on the two commands.

@@ -75,7 +75,7 @@ server (`shuyi --help` lists them under *commands*, and each has its
 GitHub account, and `reveal` its reveal kit. Two act on the other
 worktrees of the game's git repository, each with `--json` (an answer
 `{ok, result, code, error, help}`) and never removing a worktree
-(ticket 3403, the `shuyi-worktrees` skill):
+(ticket 3403):
 
 - `trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]`
   deletes the `incremental` folders of the idle worktrees' `target/`
