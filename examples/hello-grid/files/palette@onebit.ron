@@ -17,6 +17,11 @@
         "background": (fg: Black),
         "accent": (fg: White, bg: Black),
         "bright": (fg: White, bg: Black),
+        // A key's name in a hint: black, edged in white, on the line's
+        // black, so it stands out from the white words round it. Its `bg`
+        // is never drawn (the palette has no `key_bg`), but makes it a
+        // solid pair, as text roles are.
+        "key": (fg: Black, bg: White, edge: true),
 
         // The map's. A role that shares its colour with another has its
         // patterns: the frame can't tell them apart.
@@ -39,12 +44,14 @@
     },
 
     // What the colours tell apart, which one bit must too: your piece from
-    // the foe, and the floor from the walls and the goal.
+    // the foe, the floor from the walls and the goal, and a key from the
+    // words round it.
     distinct: [
         ["hero", "foe"],
+        ["text", "key"],
         ["floor_bg", "wall_bg", "goal_bg"],
     ],
 
     // The roles text is drawn in (a highlight is a bar as well as text).
-    text: ["text", "text_dim", "warning", "accent", "bright"],
+    text: ["text", "text_dim", "warning", "accent", "bright", "key"],
 )

@@ -8,6 +8,8 @@
 //! tests of what it shows read the view.
 
 use shuyi::prelude::*;
+use shuyi::ui::screens::print_centred_styled;
+use shuyi::ui::text::StyledText;
 
 use crate::{Data, stages};
 
@@ -18,11 +20,13 @@ pub struct TitleView {
     pub title: String,
     /// The line under it.
     pub subtitle: String,
-    /// How to start the first stage, if the game has one.
-    pub play: Option<String>,
+    /// How to start the first stage, if the game has one; its key in a
+    /// key span.
+    pub play: Option<StyledText>,
     /// The help line: empty where the game can't quit, since Cancel is the
-    /// only thing it would name.
-    pub help: String,
+    /// only thing it would name. Its keys are key spans, which the
+    /// palette's `key` colour paints.
+    pub help: StyledText,
 }
 
 /// The title screen.
@@ -35,11 +39,11 @@ impl Title {
         TitleView {
             title: ctx.text("title.name").to_owned(),
             subtitle: ctx.text("title.subtitle").to_owned(),
-            play: (!stages::names().is_empty()).then(|| ctx.text_with("title.play", &[])),
+            play: (!stages::names().is_empty()).then(|| ctx.text_styled("title.play", &[])),
             help: if ctx.platform.can_quit() {
-                ctx.text_with("title.help", &[])
+                ctx.text_styled("title.help", &[])
             } else {
-                String::new()
+                StyledText::new()
             },
         }
     }
@@ -88,9 +92,11 @@ impl Screen<Data> for Title {
         print_centred(buf, 9, &view.title, c(EngineColor::Highlight), bg);
         print_centred(buf, 12, &view.subtitle, c(EngineColor::TextDim), bg);
         if let Some(play) = &view.play {
-            print_centred(buf, 15, play, c(EngineColor::Text), bg);
+            let colors = ctx.palette.text_colors_on(c(EngineColor::Text), bg);
+            print_centred_styled(buf, 15, play, colors);
         }
         let last = i32::from(buf.height()) - 1;
-        print_centred(buf, last, &view.help, c(EngineColor::TextDim), bg);
+        let colors = ctx.palette.text_colors_on(c(EngineColor::TextDim), bg);
+        print_centred_styled(buf, last, &view.help, colors);
     }
 }

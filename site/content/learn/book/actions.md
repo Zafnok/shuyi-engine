@@ -98,7 +98,9 @@ colours of each part from the palette:
 
 The palette decides how a key looks: a colour named `"key"` in `files/palette.ron` is the
 keys' text, and `"key_bg"` the cells behind them. A palette with neither prints the keys
-like the words around them. A key's name passed in as an argument, as `plant_hint` does,
+like the words around them. A game made with `shuyi new` has a `"key"` colour already,
+and its title and stage print their help with `print_styled`, so their keys stand out
+from the first run; change the colour, or add a `"key_bg"`, in `files/palette.ron`. A key's name passed in as an argument, as `plant_hint` does,
 is marked too when it goes to `ctx.text_styled_with_keys` as one of its key arguments.
 
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an

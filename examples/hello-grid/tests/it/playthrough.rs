@@ -37,6 +37,9 @@ fn the_title_opens_the_stage_with_its_scene_read_over_it() {
     let snapshot = h.snapshot();
     assert!(snapshot.contains("A small grid"), "{snapshot}");
     assert!(snapshot.contains("Turn 1"), "{snapshot}");
+    // The text box covers the stage's help: its key cells are the wait
+    // corner's, in the palette's `key`.
+    assert!(snapshot.contains("= fg:key bg:"), "{snapshot}");
     h.keys("Enter");
     let talk = h.screen::<Talk>().unwrap();
     assert!(!talk.text.is_revealed());
@@ -193,7 +196,10 @@ fn a_picked_up_piece_shows_its_reach_and_the_path_follows_the_cursor() {
     let mut h = title(1);
     h.keys("Enter Backspace");
     let help = stage(&h).view(h.ctx()).help;
-    assert_eq!(help, "arrows move · Enter pick up · Backspace leave");
+    assert_eq!(
+        help.plain(),
+        "arrows move · Enter pick up · Backspace leave"
+    );
     // Confirm on an empty tile does nothing.
     h.keys("Right Enter");
     assert!(stage(&h).selected.is_none());
@@ -209,7 +215,10 @@ fn a_picked_up_piece_shows_its_reach_and_the_path_follows_the_cursor() {
     assert_eq!(tinted, reach_tiles);
     assert_eq!(scene.path, [Pos::new(1, 8)]);
     let help = s.view(h.ctx()).help;
-    assert_eq!(help, "arrows steer · Enter walk · Backspace put down");
+    assert_eq!(
+        help.plain(),
+        "arrows steer · Enter walk · Backspace put down"
+    );
     h.keys("Up Right");
     assert_eq!(
         stage(&h).selected.as_ref().unwrap().1,
@@ -275,7 +284,7 @@ fn a_walk_is_shown_a_tile_at_a_time_then_the_foes_step() {
     assert_eq!(shown(&h, Side::Foe), Some(p(9, 7)));
     let scene = s.scene(StageScreen::view_tiles(h.ctx()));
     assert!(scene.cursor.is_none());
-    assert_eq!(s.view(h.ctx()).help, "");
+    assert!(s.view(h.ctx()).help.is_empty());
     // Eight tiles a second: two tiles on a quarter of a second later.
     h.wait(0.25);
     assert_eq!(shown(&h, Side::Hero), Some(p(2, 7)));
@@ -313,11 +322,13 @@ fn leaving_the_stage_asks_first() {
     assert!(stage(&h).leaving);
     let view = Leave::view(h.ctx());
     assert_eq!(view.question, "Leave the stage?");
-    assert_eq!(view.answers, "Enter yes / Backspace no");
+    assert_eq!(view.answers.plain(), "Enter yes / Backspace no");
     let snapshot = h.snapshot();
     assert!(snapshot.contains("Leave the stage?"), "{snapshot}");
     assert!(snapshot.contains("Turn 1"), "the stage shows: {snapshot}");
     assert!(!snapshot.contains("pick up"), "not its help: {snapshot}");
+    // Its answers' keys, the only key cells on the panel, in `key`.
+    assert!(snapshot.contains("= fg:key bg:panel"), "{snapshot}");
     let s = stage(&h);
     assert_eq!(s.scene(StageScreen::view_tiles(h.ctx())).cursor, None);
     // The cursor waits meanwhile.
