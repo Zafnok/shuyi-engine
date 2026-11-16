@@ -42,10 +42,7 @@ fn spied() -> (Game<Toy>, Seen) {
 }
 
 fn stick() -> StickDef {
-    StickDef {
-        press_percent: 50,
-        release_percent: 35,
-    }
+    StickDef::new(50, 35)
 }
 
 /// A pad holding `buttons`, sticks centred.

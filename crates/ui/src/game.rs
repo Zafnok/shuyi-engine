@@ -40,7 +40,10 @@ use pads::PadMerge;
 use shuyi_assets::font::CellWidths;
 
 /// A keyboard or controller event as the platform reports it.
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum RawInputEvent {
     /// A key went down, with the Shift state at the time.
     Down(Chord),

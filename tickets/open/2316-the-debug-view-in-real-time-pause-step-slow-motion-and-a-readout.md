@@ -48,10 +48,10 @@ None.
 **In:**
 - **`UiAction::DebugPause` and `UiAction::DebugStep`** in
   `shuyi_assets::keymap::action_set`. A game that doesn't map them
-  gets no pause, and nothing else changes. `UiAction` isn't
-  `#[non_exhaustive]`, so a game that matches it exhaustively
-  (hello-grid's `stage.rs` does) adds arms (2013 left it exhaustive); the
-  PR says so for the game's pin bump. Like `Debug`, they act
+  gets no pause, and nothing else changes. **From 2083 (done):**
+  `UiAction` is `#[non_exhaustive]`, so a game's `match` on it (hello-grid's
+  `stage.rs`) already has a `_` arm, and the new variants are additive.
+  Like `Debug`, they act
   only with debug tools on, and the sample `ActionSet`
   (`keymap/sample.rs`, `sample.ron`) marks them not rebindable.
   Map them in the sample and in the toy game. They get their arms in

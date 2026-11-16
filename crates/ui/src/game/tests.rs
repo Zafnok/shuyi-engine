@@ -1141,10 +1141,7 @@ fn hooks_say_which_screens() {
 /// `input.rs`).
 #[test]
 fn pad_changes_become_events_of_each_pad_with_its_id() {
-    let mut pads = Pads::new(StickDef {
-        press_percent: 50,
-        release_percent: 35,
-    });
+    let mut pads = Pads::new(StickDef::new(50, 35));
     let holding = |buttons: &[Button]| PadState {
         buttons: buttons.iter().copied().collect(),
         ..PadState::default()

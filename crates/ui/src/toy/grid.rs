@@ -680,7 +680,7 @@ impl Screen<Toy> for Field {
                 Some(UiAction::Right) => self.step(Dir::Right),
                 Some(UiAction::Confirm) => self.confirm(),
                 Some(UiAction::Cancel) => self.selected = None,
-                Some(UiAction::Debug) | None => {}
+                _ => {}
             }
         }
         Transition::None

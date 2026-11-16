@@ -347,9 +347,9 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   replay from the start, not snapshots; what is refused; storage in
   memory after a jump; the music restarted; the branch and its mark.
 - **For the game:** `Start` gains a field and two constructors
-  (above). `UiAction` gains a variant: a game that matches it
-  exhaustively (hello-grid's `stage.rs` shows one) adds an arm, unless
-  2316 made `UiAction` `#[non_exhaustive]` (2013 left it exhaustive).
+  (above). `UiAction` gains a variant additively (**from 2083
+  (done):** it is `#[non_exhaustive]`, so a game's `match` on it has a
+  `_` arm).
   `DebugView`, `Game` and `Session` gain items; `RunInput` gains a
   field (a new contract version). Say so in the PR; the game's PR that
   moves the pin follows.

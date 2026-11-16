@@ -12,10 +12,7 @@ use Button::{
 };
 
 fn stick() -> StickDef {
-    StickDef {
-        press_percent: 50,
-        release_percent: 35,
-    }
+    StickDef::new(50, 35)
 }
 
 /// A pad holding `buttons`, sticks centred.
@@ -53,7 +50,7 @@ fn changes(p: &mut Pads, connected: &[(PadId, PadKind, PadState)]) -> Vec<(Butto
     p.update(connected).into_iter().filter_map(change).collect()
 }
 
-const KINDS: [PadKind; 6] = PadKind::ALL;
+const KINDS: &[PadKind] = PadKind::ALL;
 
 /// `docs/design/controls.md`, *Controller → Default buttons* and *Button
 /// names on screen*: each position's name on each kind of pad.
@@ -256,7 +253,7 @@ fn a_nintendo_pads_right_button_is_its_a() {
 /// Within one kind of pad, no two buttons share a name.
 #[test]
 fn button_names_are_distinct_on_each_pad() {
-    for kind in KINDS {
+    for &kind in KINDS {
         let mut names: Vec<&str> = Button::ALL.iter().map(|&b| kind.button_name(b)).collect();
         names.sort_unstable();
         names.dedup();
@@ -501,10 +498,7 @@ fn a_held_stick_direction_lasts_until_below_the_release_threshold() {
 
 #[test]
 fn the_thresholds_come_from_the_keymap() {
-    let mut p = Pads::new(StickDef {
-        press_percent: 80,
-        release_percent: 10,
-    });
+    let mut p = Pads::new(StickDef::new(80, 10));
     assert_eq!(changes(&mut p, &[xbox(left_at(0.79, 0.0))]), []);
     assert_eq!(
         changes(&mut p, &[xbox(left_at(0.8, 0.0))]),
@@ -898,4 +892,20 @@ proptest! {
             }
         }
     }
+}
+
+/// `PadState::new` builds what a literal built (ADR-0039, ticket 2083).
+#[test]
+fn pad_states_constructor_builds_what_a_literal_built() {
+    let buttons: ButtonSet = [South, DpadUp].into_iter().collect();
+    let literal = PadState {
+        buttons,
+        left_stick: (0.25, -1.0),
+        right_stick: (-0.5, 0.75),
+    };
+    assert_eq!(PadState::new(buttons, (0.25, -1.0), (-0.5, 0.75)), literal);
+    assert_eq!(
+        PadState::new(ButtonSet::EMPTY, (0.0, 0.0), (0.0, 0.0)),
+        PadState::default()
+    );
 }

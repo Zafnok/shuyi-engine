@@ -114,7 +114,8 @@ You don't write any of this. It works since your code only ever asked for action
 
 The short path plays with `UiAction`'s six moves, which the engine's menus and screens
 react to too. A game that needs more (a watering can, a debug key) writes its own action
-enum, and implements `ActionSet` for it.
+enum, and implements `ActionSet` for it. The engine may add moves to `UiAction`, so a
+`match` on it ends with a `_` arm.
 
 {% newcomer(to="rust", topic="an enum and a trait") %}
 An **enum** is a type that is one of a fixed list. A

@@ -36,7 +36,11 @@ macro_rules! keys {
     ($($variant:ident => $name:literal,)+) => {
         /// A hardware-agnostic keyboard key. `app` translates platform key
         /// codes to these; anything without a variant is ignored.
+        ///
+        /// A set that grows (ADR-0039, kind 6): a `match` on it has a `_`
+        /// arm.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+        #[non_exhaustive]
         pub enum Key {
             $(
                 #[doc = concat!("The `` ", $name, " `` key.")]
@@ -266,7 +270,11 @@ macro_rules! buttons {
         ///
         /// The first 16 are in the order of the browser Gamepad API's
         /// "standard" mapping.
+        ///
+        /// A set that grows (ADR-0039, kind 6): a `match` on it has a `_`
+        /// arm.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[non_exhaustive]
         pub enum Button {
             $(
                 #[doc = $doc]
@@ -522,8 +530,13 @@ impl Default for RepeatDef {
 /// ([`Button::LeftStickUp`] and the rest), in percent of its full travel.
 /// `release_percent` is below `press_percent`, so a stick resting near the
 /// edge of the dead zone doesn't flicker.
+///
+/// Read from keymap files (ADR-0039, kind 5, built as kind 2): built with
+/// [`new`](Self::new) or [`Default`], and a field added later is
+/// `#[serde(default)]`, so keymap files keep loading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct StickDef {
     /// A direction starts once the stick is pushed at least this far.
     pub press_percent: u8,
@@ -531,12 +544,20 @@ pub struct StickDef {
     pub release_percent: u8,
 }
 
+impl StickDef {
+    /// The thresholds: a direction starts at `press_percent` of the stick's
+    /// travel and ends below `release_percent`.
+    pub const fn new(press_percent: u8, release_percent: u8) -> Self {
+        Self {
+            press_percent,
+            release_percent,
+        }
+    }
+}
+
 impl Default for StickDef {
     fn default() -> Self {
-        Self {
-            press_percent: 50,
-            release_percent: 35,
-        }
+        Self::new(50, 35)
     }
 }
 
@@ -694,7 +715,13 @@ pub type PadKeys<A> = BTreeMap<A, Vec<ButtonChord>>;
 /// The validated keymap: every [`Layout`]'s default keys, the layout
 /// picker's bindings, the default controller buttons, plus the key-repeat
 /// timings and stick thresholds they share.
+///
+/// Read from keymap files (ADR-0039, kind 5, built as kind 4): built by
+/// [`from_source`](Self::from_source) or [`Default`], its fields assigned,
+/// and a field added later is `#[serde(default)]`, so keymap files keep
+/// loading.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct KeymapDef<A: ActionSet> {
     /// Layout → its default keys. After
     /// [`from_source`](Self::from_source) every layout the file lists is

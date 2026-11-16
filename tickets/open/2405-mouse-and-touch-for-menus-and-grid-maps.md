@@ -350,9 +350,9 @@ MVP, not parked.
 12. The new public types follow ADR-0039.
 13. No new dependency.
 
-**For the game:** `RawInputEvent` gains variants, which breaks a
-`match` on it with no `_` arm. The PR says so, with a `Breaking:` line
-(2010), and the game's PR that moves its pin follows it. `MenuView`
+**For the game:** `RawInputEvent` gains variants additively (**from
+2083 (done):** it is `#[non_exhaustive]`, so a game's `match` on it
+already has a `_` arm), and so do `Device` and `Input`. `MenuView`
 gains a field additively (**from 2082 (done):** it is
 `#[non_exhaustive]`). The rest is additive.
 

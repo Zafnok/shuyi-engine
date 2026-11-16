@@ -79,19 +79,12 @@ mod tests {
     use super::*;
 
     fn pads() -> Pads {
-        Pads::new(StickDef {
-            press_percent: 50,
-            release_percent: 35,
-        })
+        Pads::new(StickDef::new(50, 35))
     }
 
     /// One Xbox pad holding `buttons`, its left stick at `stick`.
     fn pad(buttons: &[Button], stick: (f32, f32)) -> [(PadId, PadKind, PadState); 1] {
-        let state = PadState {
-            buttons: buttons.iter().copied().collect(),
-            left_stick: stick,
-            ..PadState::default()
-        };
+        let state = PadState::new(buttons.iter().copied().collect(), stick, (0.0, 0.0));
         [(0, PadKind::Xbox, state)]
     }
 
@@ -125,9 +118,8 @@ mod tests {
     #[test]
     fn events_carry_their_pads_id_and_an_unplugged_pad_is_removed() {
         let mut p = pads();
-        let state = |buttons: &[Button]| PadState {
-            buttons: buttons.iter().copied().collect(),
-            ..PadState::default()
+        let state = |buttons: &[Button]| {
+            PadState::new(buttons.iter().copied().collect(), (0.0, 0.0), (0.0, 0.0))
         };
         let two = [
             (2, PadKind::Xbox, state(&[Button::South])),

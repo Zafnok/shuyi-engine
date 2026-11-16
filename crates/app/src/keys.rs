@@ -205,8 +205,9 @@ impl EventHandler for WindowHeard {
 mod tests {
     use super::*;
 
-    /// A key code `app` reads as `key`. Exhaustive, so a new [`Key`]
-    /// without a key code doesn't compile.
+    /// A key code `app` reads as `key`. [`Key`] is `#[non_exhaustive]`, so a
+    /// new key without a key code here fails
+    /// `every_key_is_mapped_from_a_key_code` instead of the build.
     fn code_for(key: Key) -> KeyCode {
         match key {
             Key::A => KeyCode::A,
@@ -298,6 +299,7 @@ mod tests {
             Key::KpMultiply => KeyCode::KpMultiply,
             Key::KpDivide => KeyCode::KpDivide,
             Key::KpDecimal => KeyCode::KpDecimal,
+            _ => panic!("no key code for {key}"),
         }
     }
 
