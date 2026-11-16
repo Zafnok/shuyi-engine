@@ -243,7 +243,7 @@ fn a_held_cargo_lock_makes_the_target_locked() {
     profile(&target, "debug", 9);
     let profiles = profile_dirs(&target);
     assert!(!locked(&target, &profiles), "no lock file");
-    for name in LOCK_FILES {
+    for name in LOCKS {
         let file = target.join("debug").join(name);
         write(&file, "");
         assert!(!locked(&target, &profiles), "{name} there, not held");

@@ -223,6 +223,11 @@ What was done:
 
 Deviations:
 
+- **2078 landed first** (#453), with `crates/cli/src/worktrees.rs` and
+  `seed.rs`: the merge puts `trim` beside `seed`, the trim reads the
+  lock files from `seed::LOCKS` instead of a list of its own, and
+  ADR-0121 records seeding as built there (its point 5, with 2078's
+  measured first build), as 2078's handoff asked.
 - **Split:** `--stale-hashes` (step 6, its test) went to 2092 at the
   size valve: the PR measured 1,371 counted lines before the ADR with
   it, past the valve's 1,100.

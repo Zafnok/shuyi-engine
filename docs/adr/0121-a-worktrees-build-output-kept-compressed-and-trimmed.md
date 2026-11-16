@@ -97,8 +97,24 @@ What a worktree's build output keeps, compresses and trims:
      `SHUYI_NO_TRIM=1`, not with `--fast` or `--list`. Its output is
      one line on stderr, and it never fails the gates.
 
-The walk is in `shuyi-cli`, not xtask, so a game's `cargo shuyi
-trim-targets` (3403) calls the same code with its own roots.
+5. **Seeded: a new worktree** (2078). `cargo xtask seed-target --into
+   <worktree>`, run in a warm worktree, over `shuyi_cli::worktrees::seed`:
+   it hard-links the donor's compiled third-party output in
+   `target/debug` (`.rlib`, `.rmeta`, `.exe`, …), copies the files cargo
+   rewrites in place with their times, and leaves out every workspace
+   package's fingerprint, so those rebuild with their own paths. A
+   target that already holds a partial build (the MCP server's first
+   `cargo run`) is kept and added to, and it refuses while a build runs
+   on either side (the same three lock files as the trim, `seed::LOCKS`).
+   Measured on Nick's machine: the seed took 3.8 s (622 files, 2.7 GB
+   linked), and the first `cargo test --workspace --no-run` took
+   2 min 24 s with 17 units compiled, all workspace packages, against
+   2 min 41 s and 174 units cold. The disk saved is small; the build's
+   CPU time is what it saves.
+
+The walks are in `shuyi-cli`, not xtask, so a game's `cargo shuyi
+trim-targets` and `seed-target` (3403) call the same code with their
+own roots.
 
 ## Consequences
 

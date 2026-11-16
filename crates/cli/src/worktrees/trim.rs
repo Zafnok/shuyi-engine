@@ -23,12 +23,10 @@ use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, SystemTime};
 
+use super::seed::LOCKS;
+
 /// How many days without a build make a worktree idle, by default.
 pub const DEFAULT_IDLE_DAYS: u64 = 3;
-
-/// The files cargo locks while it builds in a profile folder: cargo
-/// 1.99 adds the last two beside `.cargo-lock`.
-const LOCK_FILES: [&str; 3] = [".cargo-lock", ".cargo-build-lock", ".cargo-artifact-lock"];
 
 /// How deep under `target/` a profile folder is looked for:
 /// `compile-times/<game>/target/debug` is at 4.
@@ -419,12 +417,12 @@ fn last_build(profiles: &[PathBuf]) -> Option<SystemTime> {
     newest
 }
 
-/// Whether cargo holds a lock in `target`: on one of [`LOCK_FILES`] in
+/// Whether cargo holds a lock in `target`: on one of [`LOCKS`] (the seed's) in
 /// `target/` itself or in one of its profile folders.
 fn locked(target: &Path, profiles: &[PathBuf]) -> bool {
     std::iter::once(target)
         .chain(profiles.iter().map(PathBuf::as_path))
-        .flat_map(|dir| LOCK_FILES.iter().map(move |name| dir.join(name)))
+        .flat_map(|dir| LOCKS.iter().map(move |name| dir.join(name)))
         .any(|file| is_locked(&file))
 }
 
