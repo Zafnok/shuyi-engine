@@ -671,6 +671,32 @@ fn the_features_are_those_asked_with_what_they_turn_on() {
     assert_eq!(resolved_features(&BTreeMap::new(), true, &[]), [""; 0]);
 }
 
+/// Whether a generated path can be written on every system: Windows
+/// refuses a component that is a device's name (`nul`, `con`, …),
+/// whatever its case.
+fn writable_everywhere(path: &str) -> bool {
+    path.split('/').all(|part| {
+        let part = part.to_ascii_lowercase();
+        let numbered = |prefix: &str| {
+            part.strip_prefix(prefix)
+                .is_some_and(|n| n.len() == 1 && matches!(n.as_bytes()[0], b'1'..=b'9'))
+        };
+        !matches!(part.as_str(), "con" | "prn" | "aux" | "nul")
+            && !numbered("com")
+            && !numbered("lpt")
+    })
+}
+
+#[test]
+fn a_device_name_on_windows_is_left_out_of_the_generated_paths() {
+    for path in ["nul/a", "a/CON", "aux", "x/lpt1", "Com9/b"] {
+        assert!(!writable_everywhere(path), "{path}");
+    }
+    for path in ["a/b", "nully", "com", "com0", "lpt10"] {
+        assert!(writable_everywhere(path), "{path}");
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(16))]
 
@@ -687,6 +713,7 @@ proptest! {
             .filter(|(name, _)| {
                 !names.iter().any(|other| other.starts_with(&format!("{name}/")))
             })
+            .filter(|(name, _)| writable_everywhere(name))
             .collect();
         let dir = std::env::temp_dir()
             .join(format!("shuyi-disclosure-same-{}", std::process::id()));
