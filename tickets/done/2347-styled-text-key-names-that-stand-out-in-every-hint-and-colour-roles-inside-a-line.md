@@ -478,6 +478,8 @@ Deviations:
 - **The 1-bit test** builds its own pattern map with `key` and `key_bg`
   rather than Hello, Grid's, whose `key` comes with 2785.
 
+Size: 1,571 counted lines, not split further: step 7 already went to 2785, and what is left lands together. The styled types alone would be unused, and the acceptance tests (569 lines of tests) read the engine hints they switch.
+
 Follow-ups:
 
 - 2785: step 7 (above).
