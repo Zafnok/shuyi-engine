@@ -947,10 +947,10 @@ impl InJapanese {
         ]
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .into();
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &NoTokens,
-            limits: DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &NoTokens,
+            DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -959,9 +959,8 @@ impl InJapanese {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &CellWidths::NARROW,
-            variants: &[],
-        };
+            &CellWidths::NARROW,
+        );
         let en_ui = r#"[(key: "home.greeting", source: "こんにちは、{name}", text: "Hi, {name}")]"#;
         let info = r#"(name: "English", made_by: Machine)"#;
         let en = pack_from_sources(("en/lang.ron", info), ("en/ui.ron", en_ui), &ui, &rules);

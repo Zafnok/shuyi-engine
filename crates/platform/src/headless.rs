@@ -43,7 +43,9 @@ pub enum Presented {
     Card(Card),
     /// Why the game couldn't start.
     Errors(String),
-    /// The game's console.
+    /// The game's console: built with [`Presented::game`], matched with
+    /// `..` (ADR-0039 kind 6).
+    #[non_exhaustive]
     Game {
         /// Its cells and pictures.
         buffer: GlyphBuffer,
@@ -55,6 +57,17 @@ pub enum Presented {
 }
 
 impl Presented {
+    /// The game's console `buffer` on `background`, filling the screen if
+    /// `fullscreen`.
+    #[must_use]
+    pub const fn game(buffer: GlyphBuffer, background: Rgb, fullscreen: bool) -> Self {
+        Self::Game {
+            buffer,
+            background,
+            fullscreen,
+        }
+    }
+
     /// The game's console, if this frame shows it.
     pub fn buffer(&self) -> Option<&GlyphBuffer> {
         match self {

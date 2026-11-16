@@ -122,10 +122,8 @@ fn write(path: &Path, bytes: &[u8]) {
 
 /// A pack of `files`.
 fn pack_of(files: &[(&str, &str)]) -> Vec<u8> {
-    let info = PackInfo {
-        stamp: "the game 1".to_owned(),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "the game 1".to_owned();
     let files: BTreeMap<String, Content> = files
         .iter()
         .map(|(path, text)| ((*path).to_owned(), Content::Raw(text.as_bytes().to_vec())))
@@ -628,11 +626,9 @@ fn main() {
         let at = args.iter().position(|arg| arg == flag).unwrap();
         args[at + 1].clone()
     };
-    let info = PackInfo {
-        stamp: "the stand-in 1".to_owned(),
-        target: Some(value("--target")),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "the stand-in 1".to_owned();
+    info.target = Some(value("--target"));
     let files: BTreeMap<String, Content> = FILES
         .iter()
         .filter(|(name, _)| !name.starts_with("audio/"))

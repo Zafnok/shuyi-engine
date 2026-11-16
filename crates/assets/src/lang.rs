@@ -169,9 +169,11 @@ pub enum MadeBy {
     Human(String),
 }
 
-/// A pack's `lang.ron`.
+/// A pack's `lang.ron`: data read from a file (ADR-0039 kind 5). A field
+/// added later is `#[serde(default)]`, so every `lang.ron` still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct LangInfo {
     /// The language's own name for itself.
     pub name: String,
@@ -192,6 +194,18 @@ pub struct LangInfo {
 }
 
 impl LangInfo {
+    /// The language `name`, its text made by `made_by`, with no wide set
+    /// of its own and narrow punctuation. Assign the other fields.
+    #[must_use]
+    pub fn new(name: impl Into<String>, made_by: MadeBy) -> Self {
+        Self {
+            name: name.into(),
+            made_by,
+            wide_font: None,
+            wide_punctuation: false,
+        }
+    }
+
     /// The width table of this language over `base`, the atlas's
     /// ([`CellWidths::of`]): its wide set and its punctuation's width
     /// ([`CellWidths::in_lang`]).
@@ -515,8 +529,10 @@ pub fn english_and_places_from_source(
 
 /// What a game's packs keep to besides matching English: the rules of its
 /// data text, its tokens, its dialogue's limits and the variants a line
-/// may have.
+/// may have. Config a game fills in (ADR-0039 kind 2): build it with
+/// [`PackRules::new`], in a `const` item if it likes.
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub struct PackRules<'a> {
     /// What is wrong with a pack's text `text` for the data key `key`, if
     /// anything (a tip over its box, say): the game's rules for the data
@@ -534,6 +550,34 @@ pub struct PackRules<'a> {
     /// `text` (`text_<variant>` fields, every one of them): one per hero
     /// a line can be said of, say. Empty for none.
     pub variants: &'a [&'a str],
+}
+
+impl<'a> PackRules<'a> {
+    /// The game's `data_problem`, its `tokens`, its dialogue's `limits`
+    /// counted in `widths`, with no variants.
+    #[must_use]
+    pub const fn new(
+        data_problem: fn(key: &str, text: &str) -> Option<String>,
+        tokens: &'a dyn Tokens,
+        limits: DialogueLimits,
+        widths: &'a CellWidths,
+    ) -> Self {
+        Self {
+            data_problem,
+            tokens,
+            limits,
+            widths,
+            variants: &[],
+        }
+    }
+
+    /// These rules, with `variants` the names of the variants a dialogue
+    /// entry may have.
+    #[must_use]
+    pub const fn with_variants(mut self, variants: &'a [&'a str]) -> Self {
+        self.variants = variants;
+        self
+    }
 }
 
 impl fmt::Debug for PackRules<'_> {
@@ -920,13 +964,12 @@ mod tests {
     const INFO: &str = r#"(name: "Test", made_by: Machine)"#;
 
     /// No data text rules of a game's, no tokens, no variants.
-    const RULES: PackRules<'static> = PackRules {
-        data_problem: |_, _| None,
-        tokens: &crate::dialogue::NoTokens,
-        limits: crate::dialogue::tests::LIMITS,
-        widths: &CellWidths::NARROW,
-        variants: &[],
-    };
+    const RULES: PackRules<'static> = PackRules::new(
+        |_, _| None,
+        &crate::dialogue::NoTokens,
+        crate::dialogue::tests::LIMITS,
+        &CellWidths::NARROW,
+    );
 
     fn english() -> BTreeMap<String, String> {
         english_from_source("en/ui.ron", ENGLISH_SOURCE).unwrap()
@@ -1318,5 +1361,50 @@ mod tests {
         let wide = &CellWidths::wide(['あ', 'い']);
         assert_eq!(text_width("あA", wide), 3);
         assert_eq!(text_width("あいう", wide), 5);
+    }
+
+    #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        let info = LangInfo {
+            name: "Test".to_owned(),
+            made_by: MadeBy::Machine,
+            wide_font: None,
+            wide_punctuation: false,
+        };
+        assert_eq!(LangInfo::new("Test", MadeBy::Machine), info);
+        let line = SourceLine {
+            scene: "gate".to_owned(),
+            text: "Hello.".to_owned(),
+            kind: LineKind::Reply,
+            file: "ch01".to_owned(),
+        };
+        assert_eq!(
+            SourceLine::new("gate", "Hello.", LineKind::Reply, "ch01"),
+            line
+        );
+    }
+
+    #[test]
+    fn the_pack_rules_constructor_builds_what_a_literal_built() {
+        use crate::dialogue::NoTokens;
+        use crate::dialogue::tests::LIMITS;
+
+        fn refuse(_: &str, _: &str) -> Option<String> {
+            Some("no".to_owned())
+        }
+        const VARIANTS: &[&str] = &["m", "f"];
+        const BUILT: PackRules<'static> =
+            PackRules::new(refuse, &NoTokens, LIMITS, &CellWidths::NARROW).with_variants(VARIANTS);
+        let literal = PackRules {
+            data_problem: refuse,
+            tokens: &NoTokens,
+            limits: LIMITS,
+            widths: &CellWidths::NARROW,
+            variants: VARIANTS,
+        };
+        assert_eq!(format!("{BUILT:?}"), format!("{literal:?}"));
+        assert_eq!((BUILT.data_problem)("k", "t"), Some("no".to_owned()));
+        let plain = PackRules::new(refuse, &NoTokens, LIMITS, &CellWidths::NARROW);
+        assert!(plain.variants.is_empty());
     }
 }

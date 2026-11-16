@@ -164,13 +164,13 @@ pub(crate) fn lang_pack() -> LangPackRon {
 
 /// The same game's rules, as [`lang::from_files`] takes them.
 fn rules(variants: &'static [&'static str]) -> PackRules<'static> {
-    PackRules {
-        data_problem: |_, _| None,
-        tokens: &NoTokens,
-        limits: LIMITS,
-        widths: &crate::font::CellWidths::NARROW,
-        variants,
-    }
+    PackRules::new(
+        |_, _| None,
+        &NoTokens,
+        LIMITS,
+        &crate::font::CellWidths::NARROW,
+    )
+    .with_variants(variants)
 }
 
 /// The tests' shots.

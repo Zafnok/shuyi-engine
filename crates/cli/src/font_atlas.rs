@@ -1277,10 +1277,10 @@ mod tests {
         use shuyi_assets::lang::{LangCode, PackRules, pack_from_sources};
         let english: BTreeMap<String, String> =
             [("menu.title".to_owned(), "Start".to_owned())].into();
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &shuyi_assets::dialogue::NoTokens,
-            limits: shuyi_assets::dialogue::DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &shuyi_assets::dialogue::NoTokens,
+            shuyi_assets::dialogue::DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -1289,9 +1289,8 @@ mod tests {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &shuyi_assets::font::CellWidths::NARROW,
-            variants: &[],
-        };
+            &shuyi_assets::font::CellWidths::NARROW,
+        );
         let packs = list
             .iter()
             .map(|&(code, extra, text)| {

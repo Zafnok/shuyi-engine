@@ -294,9 +294,10 @@ game's choice, through its `engine-change` skill.
 **For the game:** additive. `layout` and `Layout` stay;
 `GameSettings::DEFAULT_SCALE` and `GameTools::scale` have defaults;
 `Frame` is `#[non_exhaustive]`; `Settings` gains a public field but
-already has a private one, so no game builds it field by field. A test
-of the game's that matches or builds `Presented::Game` with every field
-listed (no `..`) needs `scale` added. The game's PR that moves the pin
+already has a private one, so no game builds it field by field.
+`Presented::Game` gains `scale` additively (**from 2085 (done):** it is
+a `#[non_exhaustive]` variant, built with `Presented::game`, which keeps
+its arguments and starts `scale` at `Integer`). The game's PR that moves the pin
 follows this one. 2010's `api` job shows the new items. The new public
 types follow ADR-0039.
 

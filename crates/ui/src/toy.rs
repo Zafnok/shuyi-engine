@@ -477,10 +477,10 @@ impl Toy {
         let mut english: BTreeMap<String, String> =
             ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
         english.extend(ENGLISH.iter().map(|&(k, v)| (k.to_owned(), v.to_owned())));
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &NoTokens,
-            limits: DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &NoTokens,
+            DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -489,9 +489,8 @@ impl Toy {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &shuyi_assets::font::CellWidths::NARROW,
-            variants: &[],
-        };
+            &shuyi_assets::font::CellWidths::NARROW,
+        );
         let pack = pack_from_sources(
             ("dbg/lang.ron", info),
             ("dbg/ui.ron", DEBUG_UI),

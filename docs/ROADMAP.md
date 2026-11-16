@@ -157,7 +157,7 @@ These tickets, in order:
 | 2083 (done) | The input and controller types that open tickets grow move under ADR-0039, and `PadKind::ALL` becomes a slice |
 | 2084 (done) | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
 | 2091 | Giving up the sound replacement keeps the `in-house-sound` feature, doing nothing, so a game that names it still builds |
-| 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
+| 2085 (done) | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
 | 2086 | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |

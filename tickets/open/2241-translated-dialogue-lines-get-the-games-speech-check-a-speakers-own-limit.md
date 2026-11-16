@@ -57,6 +57,9 @@ None.
   `SourceText::add_dialogue`): a character id for speech,
   `NARRATION_SPEAKER` (`">"`) for narration, `REPLY_SPEAKER` for a
   reply, and empty for a caption (`add_captions`). Its doc says so.
+  **From 2085 (done):** `SourceLine` is `#[non_exhaustive]` (ADR-0039
+  kind 3) and built with `SourceLine::new`, so `speaker` starts empty
+  there and both places assign it.
 - **`PackRules` carries the game's speech rule:** a new field
   `speech_problem: fn(speaker: &CharacterId, cells: usize) ->
   Option<String>`, a plain function as `data_problem` is, documented as
@@ -64,11 +67,12 @@ None.
   pack's speech lines. `LangPackRon` (`crates/assets/src/lang/formats.rs`)
   gets the same field, defaulting to `|_, _| None`, and a builder
   `speech_problem(self, f) -> Self` beside `data_problem`, and hands it
-  to the `PackRules` it builds. Every other `PackRules { … }` in the
-  workspace sets it to `|_, _| None` (grep `PackRules {`:
-  `crates/assets/src/format/builtin_tests.rs`, `lang/formats.rs`,
-  `lang/pack_tests.rs`, `lang.rs`'s tests, `crates/cli/src/lang_status.rs`,
-  `crates/ui/src/toy.rs`).
+  to the `PackRules` it builds. **From 2085 (done):** `PackRules` is
+  `#[non_exhaustive]` (ADR-0039 kind 2), built with the `const fn`
+  `PackRules::new` and `with_variants`: `new` sets `speech_problem` to
+  `|_, _| None`, and a `#[must_use] pub const fn
+  with_speech_problem(self, f) -> Self` sets it, so no other caller
+  changes.
 - **`add_lines` runs it** on each text of an entry (`LineText::all`, so
   every variant) whose English line is `LineKind::Speech` and whose
   speaker is not `NARRATION_SPEAKER`, as English runs it on `Say` only.
@@ -86,11 +90,9 @@ None.
   same `width`, whatever `box_fit` answered (English reports both);
   if not, run it after the `limit` check, and 2239 keeps it when it
   rewrites that check.
-- **For the game:** two breaks, each with a `Breaking:` line (ADR-0038
-  §6; CI's `api` job finds both): `PackRules` and `SourceLine` gain a
-  field, so a struct literal of either needs it (`speech_problem: |_,
-  _| None`, or the game's rule; `speaker`). A game that builds packs
-  through `LangPackRon` and never writes either literal breaks nothing.
+- **For the game:** additive. `PackRules` and `SourceLine` gain a
+  field, but both are `#[non_exhaustive]` since 2085, so no game code
+  that builds them changes and the PR has no `Breaking:` line for them.
   The game's PR that moves the pin passes its speech rule to
   `LangPackRon::speech_problem`, and fixes any pack line it then
   refuses.
@@ -99,8 +101,6 @@ None.
 - The other `SceneRules` hooks (`expression_problem`, `music_problem`,
   `scene_problems`) for packs: a pack translates text only, so there is
   no expression or music of its own to check.
-- Making `PackRules` or `SourceLine` `#[non_exhaustive]`: a larger
-  break than this bug needs; a later ticket can if more fields come.
 - The box's own limits on pack lines: 2239.
 
 ## Implementation steps
@@ -110,8 +110,8 @@ None.
    `add_lines` in `lang/lines.rs`, and `PackRules` and `LangPackRon`.
    Check whether 2239 is done (the clause above).
 2. Add `SourceLine::speaker` and fill it in both places it is built.
-3. Add `PackRules::speech_problem`, `LangPackRon`'s field and builder,
-   and set it in every `PackRules { … }` the workspace writes.
+3. Add `PackRules::speech_problem` and `with_speech_problem`, and
+   `LangPackRon`'s field and builder.
 4. Run it in `add_lines` as Scope says.
 5. The docs, then the tests below; run the gates.
 
@@ -125,8 +125,8 @@ None.
 - [ ] `SourceText::add_dialogue` fills `speaker` with the line's
       speaker, `">"` for narration and `REPLY_SPEAKER` for a reply; a
       caption's is empty.
-- [ ] `grep -rn "PackRules {" crates examples` finds no literal without
-      `speech_problem`.
+- [ ] `PackRules::new` gives a `speech_problem` that refuses nothing,
+      and `with_speech_problem` sets it, in a `const` item too.
 - [ ] The existing pack and dialogue tests pass unchanged.
 - [ ] All gates in the `run-gates` skill pass.
 

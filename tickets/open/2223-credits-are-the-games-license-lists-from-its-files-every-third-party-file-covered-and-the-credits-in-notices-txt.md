@@ -302,9 +302,11 @@ ships (rule 7, `deny.toml`) don't change.
 7. Say in the PR that the game's credits file loads unchanged, that the
    error texts changed, and that the pack version moved (rebake any
    pack). The game's PR that moves the pin follows it. The completion
-   notes carry `Breaking:` lines (2010): `CreditsFile`,
-   `FileCredit` and `AudioManifest` gain public fields, the pack
-   version, and `contract::check::check`'s new argument.
+   notes carry `Breaking:` lines (2010): `AudioManifest` gains a public
+   field, the pack version, and `contract::check::check`'s new
+   argument. `CreditsFile` and `FileCredit` gain theirs additively
+   (**from 2085 (done):** both are `#[non_exhaustive]`, built with their
+   `new`), each new field `#[serde(default)]`.
 8. Run the gates.
 
 **Size:** about 700 to 800 changed lines with tests. If the diff runs

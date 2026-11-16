@@ -390,10 +390,10 @@ mod tests {
             path,
             source: Some(source),
         });
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &shuyi_assets::dialogue::NoTokens,
-            limits: shuyi_assets::dialogue::DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &shuyi_assets::dialogue::NoTokens,
+            shuyi_assets::dialogue::DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -402,9 +402,8 @@ mod tests {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &shuyi_assets::font::CellWidths::NARROW,
-            variants: &[],
-        };
+            &shuyi_assets::font::CellWidths::NARROW,
+        );
         from_files(&files, None, str::to_owned, &rules).unwrap()
     }
 

@@ -99,8 +99,11 @@ const MAX_RATIO: u64 = 255;
 /// everything after the header (`u64`) and the index's length (`u32`).
 const HEADER: usize = 24;
 
-/// What a pack says of itself.
+/// What a pack says of itself (ADR-0039 kind 5): build it with
+/// [`PackInfo::new`]. A field it gains moves [`VERSION`], since a baked
+/// pack's index is not self-describing.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PackInfo {
     /// The game's word for the shapes of its own kinds, the ones a
     /// [`VERSION`] doesn't cover (its version, say). A game opens only a
@@ -112,6 +115,19 @@ pub struct PackInfo {
     /// ([`Bundle::fingerprint`](crate::bundle::Bundle::fingerprint)),
     /// which its layer stands for.
     pub content: ContentHash,
+}
+
+impl PackInfo {
+    /// A pack baked with the game's `stamp`, for `target` if any, from the
+    /// bundle whose fingerprint is `content`.
+    #[must_use]
+    pub fn new(stamp: impl Into<String>, target: Option<String>, content: ContentHash) -> Self {
+        Self {
+            stamp: stamp.into(),
+            target,
+            content,
+        }
+    }
 }
 
 /// How a file's bytes are kept.
