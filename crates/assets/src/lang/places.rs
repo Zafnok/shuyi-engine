@@ -165,13 +165,12 @@ mod tests {
         "title.name": "Demo",
     }"#;
 
-    const RULES: PackRules<'static> = PackRules {
-        data_problem: |_, _| None,
-        tokens: &crate::dialogue::NoTokens,
-        limits: crate::dialogue::tests::LIMITS,
-        widths: &CellWidths::NARROW,
-        variants: &[],
-    };
+    const RULES: PackRules<'static> = PackRules::new(
+        |_, _| None,
+        &crate::dialogue::NoTokens,
+        crate::dialogue::tests::LIMITS,
+        &CellWidths::NARROW,
+    );
 
     fn errors(source: &str) -> Vec<String> {
         english_and_places_from_source("en/ui.ron", source)

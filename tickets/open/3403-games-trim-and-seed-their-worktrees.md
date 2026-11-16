@@ -38,8 +38,20 @@ commands, not the logic.
 
 Seeding runs **from the warm checkout, into the new one**
 (`--into <worktree>`). Run inside a new worktree, `cargo shuyi` would
-first build the tool program into the very `target/` it must find
-empty (2078's note).
+first build the tool program there, the slow build seeding saves.
+
+**From 2078 (done):** `shuyi_cli::worktrees::seed::seed(donor, into,
+path_packages)` is the whole seed, and `path_packages_of(root)` asks
+`cargo metadata` for the packages to leave out; xtask's `seed-target`
+(`crates/xtask/src/main.rs`) is the wrapper to copy. A `target/` that
+isn't empty is **not** refused: a session's MCP server builds there as
+the session starts, so the seed keeps what the target has and adds the
+rest (`Report::kept`). Its refusals are `Error::Locked` (a build running
+in either worktree, the lock file named), `Error::OtherVolume`,
+`Error::NoDonorBuild`, `Error::SameWorktree` and `Error::NoWorktree`;
+each gets its problem code here. So step 6's worked example refuses a
+folder that isn't a worktree (`NoWorktree`) instead of one that isn't
+empty.
 
 Like `repos` (`crates/cli/src/repos.rs`), both act on folders outside
 the game: other worktrees' build output. So they are commands of the
@@ -113,8 +125,8 @@ docs 400).
    wrapper passes the engine's own list. Check that 2078's seed already
    covers only the host triple's `debug/`, which is the same in a game.
 3. Text and `--json` answers: what was deleted and the space freed;
-   for seed, what was linked, copied and left to rebuild. Each refusal
-   (a target that isn't empty, a locked donor, another volume) is an
+   for seed, what was linked, copied, kept and left to rebuild. Each
+   refusal (a locked donor or target, another volume) is an
    error with a problem code from `codes` (new codes in `shuyi
    explain`'s table, the problem-codes rule of 2509).
 4. Tests (below).
@@ -124,8 +136,8 @@ docs 400).
    new`:
    - `trim-targets --dry-run --json`: one worktree, the current one, so
      nothing to trim;
-   - `seed-target --into` a folder that isn't empty, refused with its
-     code.
+   - `seed-target --into` a folder that isn't a worktree, refused with
+     its code.
    A real seed needs a second worktree, which the runner doesn't make:
    the skill says so, and step 7 checks it by hand.
 7. By hand on Nick's machine, in the notes: in a game made with `shuyi

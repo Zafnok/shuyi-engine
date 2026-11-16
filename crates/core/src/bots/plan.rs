@@ -43,8 +43,9 @@ use super::rollout::{
 use crate::rng::SimRng;
 
 /// How a [`TurnPlan`] bot thinks: data, so a persona's settings can be a
-/// file.
+/// file. Build it with [`PlanSettings::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PlanSettings {
     /// How many partial turns are kept at each depth, to be extended at
     /// the next: the beam. 0 counts as 1.
@@ -61,6 +62,29 @@ pub struct PlanSettings {
     /// points: a command this many points below the best is half as
     /// likely. 0 always picks the best.
     pub temperature: u32,
+}
+
+impl PlanSettings {
+    /// A beam `width` wide, trying the first `candidates` commands from
+    /// each partial turn, plans at most `depth` commands long, each partial
+    /// turn played on `samples` copies, the first command's pick straying
+    /// by `temperature`.
+    #[must_use]
+    pub const fn new(
+        width: u32,
+        candidates: u32,
+        depth: u32,
+        samples: u32,
+        temperature: u32,
+    ) -> Self {
+        Self {
+            width,
+            candidates,
+            depth,
+            samples,
+            temperature,
+        }
+    }
 }
 
 /// A computer player that plans its side's turn on copies of the game: a

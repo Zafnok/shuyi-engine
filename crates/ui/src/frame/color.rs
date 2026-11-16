@@ -34,6 +34,14 @@ impl Rgb {
 
     /// Linear interpolation from `self` (`t = 0`) to `other` (`t = 1`).
     /// `t` is clamped to `0..=1`; NaN counts as 0.
+    ///
+    /// Its twin in integers is [`Lerp for Rgb`](#impl-Lerp-for-Rgb), what a
+    /// [`Tween`](shuyi_core::Tween) of a colour goes through. The two give
+    /// the same colour at every `t` that is a whole number of 1/256, where
+    /// both are exact, but not at every `t`: at 0.15, a channel 10 apart
+    /// mixes to 2 here and to 1 through `Lerp`, as `0.15_f32` is just above
+    /// 0.15 and 0.15 in 1/65536 just below. It stays in `f32`, so that the
+    /// colours a game has drawn with it don't move.
     #[must_use]
     pub fn lerp(self, other: Rgb, t: f32) -> Rgb {
         let t = if t.is_nan() { 0.0 } else { t.clamp(0.0, 1.0) };
@@ -318,6 +326,25 @@ impl Palette {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn lerp_and_its_twin_in_integers_agree_at_every_whole_256th() {
+        for k in 0..=256_u16 {
+            let t = f32::from(k) / 256.0;
+            let p = i32::from(k) * 256;
+            for a in 0..=255_u8 {
+                for b in 0..=255_u8 {
+                    let (from, to) = (Rgb::new(a, b, !a), Rgb::new(b, a, b));
+                    assert_eq!(from.lerp(to, t), Rgb::mix(from, to, p), "{k}/256");
+                }
+            }
+        }
+        // Between them they may not: at 0.15, as the doc comment says.
+        let (from, to) = (Rgb::new(0, 0, 0), Rgb::new(10, 10, 10));
+        assert_eq!(from.lerp(to, 0.15), Rgb::new(2, 2, 2));
+        // 0.15 in 1/65536 is 9830.4, which rounds to 9830.
+        assert_eq!(Rgb::mix(from, to, 9830), Rgb::new(1, 1, 1));
+    }
 
     /// A palette file of `pairs`.
     pub(crate) fn def(pairs: &[(&str, [u8; 3])]) -> PaletteDef {

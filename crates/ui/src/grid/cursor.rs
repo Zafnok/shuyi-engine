@@ -3,9 +3,8 @@
 //! and about half brightness, never off. A grid skin draws it
 //! ([`CursorView`](super::CursorView)).
 
-use core::f32::consts::TAU;
-
-use shuyi_core::{Dir, Pos};
+use shuyi_core::ease::{ONE, Repeat};
+use shuyi_core::{Dir, Ease, Family, Pos, Tween};
 
 #[cfg(not(feature = "std"))]
 use crate::float::Float;
@@ -16,6 +15,24 @@ pub const BLINK_PERIOD: f32 = 1.0;
 
 /// The dimmest the cursor gets, as a fraction of full brightness. *Tunable.*
 pub const BLINK_MIN: f32 = 0.5;
+
+/// [`ONE`], the whole way, as an `f32`.
+const ONE_F32: f32 = 65_536.0;
+
+/// [`BLINK_MIN`] in 1/65536.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a fraction of 1 in 1/65536 fits an i32"
+)]
+const DIM: i32 = (BLINK_MIN * ONE_F32) as i32;
+
+/// The pulse, its time in 1/65536 of a period: from full brightness
+/// ([`ONE`]) down to [`BLINK_MIN`] over half a period, eased in and out
+/// along a sine, then back up, for ever.
+const PULSE: Tween<i32> = Tween::new(ONE, DIM, ONE.unsigned_abs() / 2)
+    .with_ease(Ease::InOut(Family::Sine))
+    .with_repeat(Repeat::Loop)
+    .with_yoyo(true);
 
 /// The cursor: a map tile and the time into its pulse.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -39,7 +56,9 @@ impl Cursor {
     }
 
     /// Current brightness: `1` at the start of a pulse, down to
-    /// [`BLINK_MIN`] halfway through, then back up (a cosine).
+    /// [`BLINK_MIN`] halfway through, then back up: a looping, yoyo
+    /// [`Tween`] along [`Ease::InOut`]`(`[`Family::Sine`]`)`, the same on
+    /// every machine.
     pub fn brightness(&self) -> f32 {
         pulse(self.blink_t, BLINK_PERIOD)
     }
@@ -66,10 +85,27 @@ impl Cursor {
 }
 
 /// Brightness `t` seconds into a `period`-long pulse: `1` at the start,
-/// [`BLINK_MIN`] halfway, back to `1` at the end (a cosine).
+/// [`BLINK_MIN`] halfway, back to `1` at the end: [`PULSE`], a looping,
+/// yoyo [`Tween`] along [`Ease::InOut`]`(`[`Family::Sine`]`)`. `t` is
+/// brought into one period first (infinity and not a number count as 0),
+/// then read in 1/65536 of a period.
 fn pulse(t: f32, period: f32) -> f32 {
-    let wave = (TAU * t / period).cos();
-    BLINK_MIN + (1.0 - BLINK_MIN) * (1.0 + wave) / 2.0
+    let into = if t.is_finite() {
+        t.rem_euclid(period)
+    } else {
+        0.0
+    };
+    // 0 to 65 536, a whole period, which a `u32` holds; not a number (a
+    // period of 0) counts as 0.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "0 to 65 536"
+    )]
+    let at = (into / period * ONE_F32).round() as u32;
+    #[expect(clippy::cast_precision_loss, reason = "BLINK_MIN to 65 536")]
+    let value = PULSE.value_at(at) as f32;
+    value / ONE_F32
 }
 
 #[cfg(test)]
@@ -139,6 +175,45 @@ mod tests {
         assert!((pulse(2.0, 2.0) - 1.0).abs() < 1e-6);
     }
 
+    /// The pulse as it was written by hand before ticket 2136: a cosine.
+    fn pulse_before(t: f32, period: f32) -> f32 {
+        let wave = (core::f32::consts::TAU * t / period).cos();
+        BLINK_MIN + (1.0 - BLINK_MIN) * (1.0 + wave) / 2.0
+    }
+
+    /// How far the tween may be from the cosine: 4/65536.
+    const BOUND: f32 = 4.0 / 65_536.0;
+
+    #[test]
+    fn pulse_is_exact_at_its_ends_and_middle() {
+        assert_eq!(pulse(0.0, 1.0), 1.0);
+        assert_eq!(pulse(0.25, 1.0), 0.75);
+        assert_eq!(pulse(0.5, 1.0), 0.5);
+        assert_eq!(pulse(0.75, 1.0), 0.75);
+        assert_eq!(pulse(1.0, 1.0), 1.0);
+        // Below 0 and past the period it goes round.
+        assert_eq!(pulse(-0.5, 1.0), 0.5);
+        assert_eq!(pulse(-0.25, 1.0), 0.75);
+        assert_eq!(pulse(3.5, 1.0), 0.5);
+        // Infinity and not a number count as 0.
+        for t in [f32::INFINITY, f32::NEG_INFINITY, f32::NAN] {
+            assert_eq!(pulse(t, 1.0), 1.0, "{t}");
+        }
+    }
+
+    #[test]
+    fn pulse_stays_near_the_cosine_it_replaced() {
+        for k in 0..=4096_u16 {
+            let t = f32::from(k) / 4096.0;
+            let off = (pulse(t, BLINK_PERIOD) - pulse_before(t, BLINK_PERIOD)).abs();
+            assert!(off <= BOUND, "{t}: {off}");
+        }
+        for t in [-0.3, -1.7, -12.125, 1.3, 2.9, 40.6] {
+            let off = (pulse(t, BLINK_PERIOD) - pulse_before(t, BLINK_PERIOD)).abs();
+            assert!(off <= BOUND, "{t}: {off}");
+        }
+    }
+
     proptest! {
         #[test]
         fn never_leaves_the_map(
@@ -160,6 +235,13 @@ mod tests {
             c.tick(t);
             let b = c.brightness();
             prop_assert!((BLINK_MIN - 1e-6..=1.0 + 1e-6).contains(&b), "{b}");
+        }
+
+        #[test]
+        fn brightness_stays_between_min_and_full_for_any_time(t in any::<f32>()) {
+            let c = Cursor { pos: Pos::new(0, 0), blink_t: t };
+            let b = c.brightness();
+            prop_assert!((BLINK_MIN..=1.0).contains(&b), "{t}: {b}");
         }
     }
 }

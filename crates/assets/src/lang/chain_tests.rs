@@ -5,13 +5,12 @@ use super::*;
 use crate::dialogue::{DialogueTable, NoDirective, Scene, parse_dlg};
 
 /// No data text rules of a game's, no tokens, no variants.
-const RULES: PackRules<'static> = PackRules {
-    data_problem: |_, _| None,
-    tokens: &crate::dialogue::NoTokens,
-    limits: crate::dialogue::tests::LIMITS,
-    widths: &CellWidths::NARROW,
-    variants: &[],
-};
+const RULES: PackRules<'static> = PackRules::new(
+    |_, _| None,
+    &crate::dialogue::NoTokens,
+    crate::dialogue::tests::LIMITS,
+    &CellWidths::NARROW,
+);
 
 fn code(code: &str) -> LangCode {
     LangCode::new(code).unwrap()

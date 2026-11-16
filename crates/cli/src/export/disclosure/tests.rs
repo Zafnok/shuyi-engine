@@ -31,10 +31,8 @@ fn with_canary() -> Disclosure {
 
 /// A pack of `files`.
 fn pack_of(files: &[(&str, &[u8])]) -> Vec<u8> {
-    let info = PackInfo {
-        stamp: "the game 1".to_owned(),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "the game 1".to_owned();
     let files: Files<String, Content> = files
         .iter()
         .map(|(path, bytes)| ((*path).to_owned(), Content::Raw(bytes.to_vec())))

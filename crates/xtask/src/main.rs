@@ -26,6 +26,7 @@
 //! - `cargo xtask tutorial-tries [--check] [<name>...]`
 //! - `cargo xtask exercises [--copy] [<step>...]`
 //! - `cargo xtask golden --bless`
+//! - `cargo xtask seed-target --into <worktree>`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
 //! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
@@ -220,6 +221,13 @@ usage:
       failed test printed (never outside the repository), show `git diff
       --stat` over them, and run the tests again: they must pass. A changed
       or removed row needs a `Breaking:` line in the ticket.
+  cargo xtask seed-target --into <worktree>
+      Run in a warm worktree (usually the main one): start <worktree>'s
+      target/ from this one's target/debug (ticket 2078). Third-party output
+      is hard-linked, what cargo rewrites is copied, what <worktree> already
+      built is kept, and the workspace's crates are left to build fresh with
+      their own paths. Refuses while a build runs in either, and across
+      volumes.
   cargo xtask sound-parity corpus --out <dir> [--oracle]
       Write the sound gates' test signals into <dir>/corpus, each checked
       against tools/sound-parity/corpus.ron; with --oracle, what `oggdec` makes
@@ -279,6 +287,7 @@ fn main() -> ExitCode {
         Some("exercises") => exercises(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
+        Some("seed-target") => seed_target(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -294,6 +303,37 @@ fn repo_root() -> PathBuf {
         .and_then(Path::parent)
         .unwrap_or(manifest)
         .to_path_buf()
+}
+
+/// `seed-target --into <worktree>`: seeds `<worktree>`'s `target/` from
+/// this one's (`shuyi_cli::worktrees::seed`).
+fn seed_target(root: &Path, args: &[String]) -> ExitCode {
+    use shuyi_cli::worktrees::seed;
+    let [flag, into] = args else {
+        return report(
+            "seed-target",
+            &["usage: cargo xtask seed-target --into <worktree>".to_owned()],
+            &[],
+        );
+    };
+    if flag != "--into" {
+        return report(
+            "seed-target",
+            &[format!("unknown flag {flag}: use --into <worktree>")],
+            &[],
+        );
+    }
+    let packages = match seed::path_packages_of(root) {
+        Ok(packages) => packages,
+        Err(e) => return report("seed-target", &[e], &[]),
+    };
+    match seed::seed(root, Path::new(into), &packages) {
+        Ok(done) => {
+            eprintln!("{done}");
+            report("seed-target", &[], &[])
+        }
+        Err(e) => report("seed-target", &[e.to_string()], &[]),
+    }
 }
 
 fn check_merges(root: &Path, args: &[String]) -> ExitCode {

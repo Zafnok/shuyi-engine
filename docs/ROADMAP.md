@@ -157,7 +157,7 @@ These tickets, in order:
 | 2083 (done) | The input and controller types that open tickets grow move under ADR-0039, and `PadKind::ALL` becomes a slice |
 | 2084 (done) | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
 | 2091 (done) | Giving up the sound replacement keeps the `in-house-sound` feature, doing nothing, so a game that names it still builds |
-| 2085 | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
+| 2085 (done) | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
 | 2086 | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
@@ -170,7 +170,7 @@ These tickets, in order:
 | 2405 | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
-| 2136 | The motions written by hand moved onto `shuyi_core::ease` |
+| 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
 | 2239 | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
 | 3044 | The window opens as it was left |
@@ -739,7 +739,7 @@ The parked ones are under *Parked* below.
 | 2028 | Each release after the first checked against the last version on crates.io (after 2005 and 2040's complete API catalog) |
 | 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
 | 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
-| 2136 | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
+| 2136 (done) | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
 | 2234 | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
 | 2235 | Nine-slice frames in a data file, baked in the pack and read by `BasicData` (after 2338) |
 | 2236 | Frozen format fixtures: each release's copy read while the version rule covers it |

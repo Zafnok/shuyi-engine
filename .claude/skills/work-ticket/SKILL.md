@@ -80,6 +80,33 @@ title's ticket (`tickets/README.md`, *Pull requests*).
 
 Set `status: in-progress` in the ticket's frontmatter.
 
+**In a new worktree, seed its build before the first one** (ticket
+2078). The main worktree (the first line of `git worktree list
+--porcelain`) is warm: from there, `cargo xtask seed-target` hard-links
+its third-party output into this worktree's `target/` and leaves the
+workspace's crates to build fresh with this worktree's paths. The first
+`cargo test --workspace --no-run` then compiles no third-party crate,
+or few: on Nick's machine (24 cores) it took 1 min 46 s against 2 min
+15 s unseeded, after the MCP server's build. Run it once, from this
+worktree:
+
+```bash
+main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+(cd "$main" && cargo xtask seed-target --into "$OLDPWD")
+```
+
+```powershell
+$main = (git worktree list --porcelain | Select-Object -First 1) -replace '^worktree ', ''
+$here = (Get-Location).Path
+Push-Location $main; cargo xtask seed-target --into $here; Pop-Location
+```
+
+It keeps what this `target/` already has (the session's MCP server
+builds `shuyi` there as it starts), and refuses while a cargo build runs
+in either worktree: wait, and run it again. Skip it when the main
+worktree is on another volume (it says so), or when this worktree has
+built already.
+
 ## 3. Implement
 
 - Follow the **Implementation steps** in order. If a step turns out to be

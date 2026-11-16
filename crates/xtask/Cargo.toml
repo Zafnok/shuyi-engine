@@ -28,6 +28,9 @@ toml = { version = "1.1", default-features = false, features = ["parse", "serde"
 sha2 = { version = "0.11", default-features = false }
 # `sound-parity`'s decoder stage: the adapters held to the corpus (ticket 2210).
 shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
+# `seed-target`: the seed itself is `shuyi_cli::worktrees::seed`, which a
+# game's `cargo shuyi seed-target` shares (ticket 2078).
+shuyi-cli = { path = "../cli" }
 
 [dev-dependencies]
 # `llms`'s snapshots of the fixture site.
