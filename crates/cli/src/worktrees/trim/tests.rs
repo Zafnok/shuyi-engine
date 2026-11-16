@@ -197,7 +197,8 @@ fn a_link_is_never_followed_nor_deleted_through() {
         freed,
         Freed {
             bytes: 5,
-            skipped: 1
+            skipped: 1,
+            stale: 0,
         },
         "the link is skipped"
     );
@@ -219,7 +220,8 @@ fn a_worktree_inside_a_target_is_never_deleted() {
         freed,
         Freed {
             bytes: 13,
-            skipped: 1
+            skipped: 1,
+            stale: 0,
         }
     );
     assert!(target.join("api-base/src/lib.rs").exists());
@@ -271,6 +273,7 @@ fn the_summary_names_the_freed_space_and_the_notes() {
         kept: 5,
         freed: 30_500_000_000,
         skipped: 3,
+        stale: 0,
         dry_run: false,
         notes: vec!["`gh` didn't answer: merged pull requests not looked for".to_owned()],
     };
@@ -278,6 +281,16 @@ fn the_summary_names_the_freed_space_and_the_notes() {
         report.summary(),
         "trim-targets: freed 30.5 GB in 2 idle worktree(s), left 5 alone, \
          3 file(s) in use skipped; `gh` didn't answer: merged pull requests not looked for"
+    );
+    let stale = Report {
+        freed: 2_000_000_000,
+        stale: 12,
+        ..Report::default()
+    };
+    assert_eq!(
+        stale.summary(),
+        "trim-targets: freed 2.0 GB in 0 idle worktree(s), left 0 alone, \
+         12 stale hash file(s) among it"
     );
     let dry = Report {
         dry_run: true,
@@ -405,4 +418,74 @@ fn a_run_trims_idle_worktrees_only_and_keeps_every_worktree() {
     );
     assert_eq!(git_ok(&repo, &["worktree", "list", "--porcelain"]), listed);
     lock.unlock().unwrap();
+}
+
+/// Writes `deps/<name>` under `target/debug`, last accessed `days` ago.
+fn dep(target: &Path, name: &str, days: u64) -> PathBuf {
+    let path = target.join("debug/deps").join(name);
+    write(&path, "dep");
+    File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_times(FileTimes::new().set_accessed(days_ago(days)))
+        .unwrap();
+    path
+}
+
+#[test]
+fn stale_hashes_are_read_against_the_last_build_and_only_when_asked() {
+    let dir = scratch("stale");
+    let repo = dir.join("repo");
+    fs::create_dir_all(&repo).unwrap();
+    git_ok(&repo, &["init", "-q", "-b", "main"]);
+    write(&repo.join("readme.txt"), "repo");
+    git_ok(&repo, &["add", "readme.txt"]);
+    git_ok(&repo, &["commit", "-q", "-m", "first"]);
+    let idle = worktree(&repo, &dir, "idle", true, 9);
+    let target = idle.join("target");
+    // Built 9 days ago, idle after 3: what wasn't read in the 3 days
+    // before that build is stale, what was is kept.
+    let live = dep(&target, "libbar-0123456789abcdef.rlib", 9);
+    let read_before = dep(&target, "libbar-fedcba9876543210.rlib", 11);
+    let stale = dep(&target, "libbar-00112233aabbccdd.rlib", 30);
+    // A profile folder under no root keeps its stale hashes.
+    profile(&target, "compile-times/grid/target/debug", 9);
+    let elsewhere = target.join("compile-times/grid/target/debug");
+    let unrooted = elsewhere.join("deps/libbar-00112233aabbccdd.rlib");
+    write(&unrooted, "dep");
+    write(&elsewhere.join("deps/libbar-0123456789abcdef.rlib"), "dep");
+
+    let mut options = Options::new(engine_roots());
+    options.base = "main".to_owned();
+    let report = run(&repo, &options, &mut std::io::sink()).unwrap();
+    assert_eq!(report.stale, 0, "not asked");
+    assert!(stale.exists());
+
+    options.stale_hashes = true;
+    options.dry_run = true;
+    if let Err(why) = stale::last_access_updates() {
+        let report = run(&repo, &options, &mut std::io::sink()).unwrap();
+        assert_eq!(report.stale, 0);
+        assert!(
+            report.summary().contains("stale hashes not looked for"),
+            "{why}"
+        );
+        return;
+    }
+    let mut out = Vec::new();
+    let report = run(&repo, &options, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains(", would delete 1 stale hash file(s) in deps/ (1 MB)"),
+        "{text}"
+    );
+    assert_eq!((report.stale, report.freed), (1, 3));
+    assert!(stale.exists(), "dry");
+
+    options.dry_run = false;
+    let report = run(&repo, &options, &mut std::io::sink()).unwrap();
+    assert_eq!((report.stale, report.freed), (1, 3));
+    assert!(!stale.exists());
+    assert!(live.exists() && read_before.exists() && unrooted.exists());
 }

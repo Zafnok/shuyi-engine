@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2076"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2092 — cargo xtask trim-targets --stale-hashes deletes the older hashes of a crate in deps/ that no build read in days
@@ -71,15 +71,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `--dry-run --stale-hashes` lists, per idle worktree, how many
+- [x] `--dry-run --stale-hashes` lists, per idle worktree, how many
       stale hash files and how much space it would delete.
-- [ ] After a real run on an idle worktree, `cargo test --workspace
+- [x] After a real run on an idle worktree, `cargo test --workspace
       --no-run` there compiles 0 units (output in the notes).
-- [ ] With last-access updates off (a parse of fsutil's "DISABLED"
+- [x] With last-access updates off (a parse of fsutil's "DISABLED"
       line), the run says it skipped and deletes nothing in `deps/`.
-- [ ] The notes give the space freed on Nick's machine.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The notes give the space freed on Nick's machine.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -93,5 +93,55 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done:
+
+- `shuyi_cli::worktrees::trim` gained `Options::stale_hashes` and
+  `Report::stale`; the hash split, the grouping and fsutil's answer are
+  in `trim/stale.rs`. `cargo xtask trim-targets --stale-hashes` sets the
+  flag, and its usage text says so.
+- Each idle worktree's line says `would delete N stale hash file(s) in
+  deps/ (size)` (or `deleted`), and the summary line `N stale hash
+  file(s) among it`. With last-access updates off (fsutil's `DISABLED`,
+  or an odd value) or fsutil unreadable, the summary says
+  `…: stale hashes not looked for` and nothing in `deps/` is deleted
+  (unit test of the parse, and of the run on a machine where the check
+  fails).
+- ADR-0123 extends ADR-0121 §4 (its status line and the index say so);
+  the run-gates skill's trim paragraph names the flag.
+
+Deviation: **the cutoff counts back from the worktree's last build, not
+from now.** Measured: a Fresh cargo build only reads its outputs'
+metadata, which doesn't update last access (neither does this trim; Git
+Bash's `ls -l` and `stat` do). An idle worktree's live hashes were all
+last read around its last build, so a cutoff from now would delete every
+hash but the newest-read of each crate and kind (4–9 GB a worktree),
+live ones among them: a test build's `.rmeta` beside a Clippy `.rmeta`
+read later, rebuilt for a missing output. ADR-0123 records both.
+
+On Nick's machine (2026-11-16, fsutil: `DisableLastAccess = 2`, on):
+
+- `--dry-run --stale-hashes`: 15 idle worktrees, 0 stale hash files, 0
+  MB. Each idle worktree had been built within a few hours, so all its
+  hashes were read then. With `--idle-days 0` (dry, for scale only) it
+  would list 101,552 files, 426 GB with the incremental caches of 60
+  worktrees: most of it live variants.
+- A real `cargo xtask trim-targets --stale-hashes`: `freed 0 MB in 15
+  idle worktree(s), left 62 alone`. Then, in
+  `book-contents-sidebar-5545c7` (idle 3 days),
+  `cargo test --workspace --no-run` compiled 0 units:
+  ``Finished `test` profile [unoptimized + debuginfo] target(s) in 8.43s``.
+- Space freed: 0 today. The main worktree, built over weeks and not
+  idle, would give up 1,109 files (4.8 GB) by the same rule once idle,
+  counted with PowerShell against its last build.
+
+No ticket: the gates keep the defaults (the ticket's Out), and with
+nothing stale on this machine today there is nothing to add to them.
+
+Book: none, `trim-targets` is a tool over a repository's worktrees
+(the engine's xtask, and a game's with 3403), not something a game is
+built with; the book has no chapter on it.
+
+No break: `Options` and `Report` are `#[non_exhaustive]`, and gain a
+field each. No game ticket is named, so no `Game:` line.
+
+Nick input: none.

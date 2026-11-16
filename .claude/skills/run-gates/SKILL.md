@@ -88,8 +88,14 @@ still Fresh; only its first edit is slower. It never removes a worktree,
 never touches this one, and never fails the gates. `SHUYI_NO_TRIM=1`
 turns it off; `--fast` and `--list` skip it. Run it alone with
 `--dry-run` to see each worktree's `target/` size and what it would
-delete, `--idle-days N`, and `--merged` to empty all of `target/` of an
-idle worktree whose branch or PR is merged.
+delete, `--idle-days N`, `--merged` to empty all of `target/` of an
+idle worktree whose branch or PR is merged, and `--stale-hashes` to
+delete, in those profile folders' `deps/`, the older hashes of a crate
+not read in the N days before the worktree's last build (ticket 2092,
+[ADR-0123](../../../docs/adr/0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md);
+skipped, and said, where Windows doesn't update last access). Git Bash's
+`ls -l`, `du` and `find` over a `target/` refresh its last access, and the
+trim then finds less there.
 
 On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
 branch, as CI does: until the ticket is in `tickets/done/`, a push is
