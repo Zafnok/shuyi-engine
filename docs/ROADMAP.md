@@ -814,6 +814,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
 | 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
 | 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
+| 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
 
 ## Parked
 
