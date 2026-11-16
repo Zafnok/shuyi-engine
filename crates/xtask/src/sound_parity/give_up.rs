@@ -26,6 +26,21 @@ const HISTORY: [&str; 5] = [
     "docs/decisions.md",
     "docs/ROADMAP.md",
 ];
+/// The lines that name the chain and stay, file and text: `shuyi-app` keeps
+/// its feature, doing nothing, so a game that turned it on still builds, and
+/// the API check chooses it, so its name is held (ADR-0068 §8, ticket 2091).
+/// CI's `sound-give-up` job allows the same lines.
+pub(crate) const KEPT: [(&str, &str); 3] = [
+    ("crates/app/Cargo.toml", "in-house-sound = []"),
+    (
+        "crates/xtask/src/api.rs",
+        r#"        features: Features::Only(&["link", "capture", "in-house-sound"]),"#,
+    ),
+    (
+        "crates/xtask/src/api/tests.rs",
+        r#"    ("shuyi-app", &["link", "capture", "in-house-sound"]),"#,
+    ),
+];
 
 /// `tools/sound-parity/footprint.ron`.
 #[derive(Debug, Deserialize)]
@@ -264,9 +279,11 @@ pub(crate) fn uncovered(
                 .any(|path| *file == path || file.starts_with(&format!("{path}/")))
         })
         .filter(|file| {
-            edited
-                .get(*file)
-                .is_none_or(|text| words.iter().any(|word| text.contains(word)))
+            edited.get(*file).is_none_or(|text| {
+                text.lines()
+                    .filter(|line| !KEPT.contains(&(file.as_str(), *line)))
+                    .any(|line| words.iter().any(|word| line.contains(word)))
+            })
         })
         .map(|file| {
             format!(
