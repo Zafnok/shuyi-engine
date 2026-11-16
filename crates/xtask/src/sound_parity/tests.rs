@@ -914,7 +914,10 @@ fn only_the_kept_feature_line_may_stay() {
     let there = BTreeMap::from([(elsewhere[0].clone(), kept.clone())]);
     assert_eq!(give_up::uncovered(&elsewhere, &owned, &there).len(), 1);
     let comment = format!("# `in-house-sound` does nothing.\n{line}\n");
-    assert_eq!(give_up::uncovered(&files, &owned, &after(&comment)).len(), 1);
+    assert_eq!(
+        give_up::uncovered(&files, &owned, &after(&comment)).len(),
+        1
+    );
     let still = "in-house-sound = [\"dep:shuyi-sound\"]\n";
     assert_eq!(give_up::uncovered(&files, &owned, &after(still)).len(), 1);
 }
