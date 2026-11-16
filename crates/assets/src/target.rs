@@ -51,9 +51,11 @@ impl Format for TargetRon {
     }
 }
 
-/// One export target.
+/// One export target: data read from a file (ADR-0039 kind 5). A field
+/// added later is `#[serde(default)]`, so every profile still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct TargetProfile {
     /// Its id, which `shuyi check --target` and a game's `shuyi.ron` name
     /// it by: the file's name without `.ron`.
@@ -77,8 +79,10 @@ pub struct TargetProfile {
     pub backend: String,
 }
 
-/// Whether the engine runs on a target yet.
+/// Whether the engine runs on a target yet: a set that grows (ADR-0039
+/// kind 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Status {
     /// The target's example runs on the device.
     Supported,
@@ -86,9 +90,10 @@ pub enum Status {
     Planned,
 }
 
-/// A target's screen.
+/// A target's screen (ADR-0039 kind 5).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Display {
     /// The sizes it shows, in device pixels: one, or one per mode (the
     /// Switch handheld and docked). Empty for a window or a browser
@@ -126,8 +131,9 @@ pub struct Size {
     pub height: u16,
 }
 
-/// How many colours a display shows.
+/// How many colours a display shows: a set that grows (ADR-0039 kind 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Color {
     /// Full colour, 8 bits a channel and alpha.
     Rgba8,
@@ -172,9 +178,12 @@ pub struct FrameRate {
     pub floor: u16,
 }
 
-/// What the player can press on a target (ADR-0008 §3).
+/// What the player can press on a target (ADR-0008 §3), data read from a
+/// file (ADR-0039 kind 5): in code, start from `Input::default()` and
+/// assign the fields.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
 pub struct Input {
     /// The pad's buttons, by position, as [`Button`] names them. The
     /// system's own (the Playdate's Menu, the Deck's Steam button) are not
@@ -197,9 +206,11 @@ pub struct Input {
 }
 
 /// What a game may spend on a target (ADR-0008 §6). A budget left out is
-/// not measured there yet.
+/// not measured there yet. Data read from a file (ADR-0039 kind 5): in
+/// code, start from `Budgets::default()` and assign the fields.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
 pub struct Budgets {
     /// The most instructions one frame of the engine's work may take in
     /// the heaviest benchmark scenario.
@@ -217,7 +228,54 @@ pub struct Budgets {
     pub load_slice_ms: Option<u32>,
 }
 
+impl Display {
+    /// A screen of any size (no `sizes`), in `color`, whose text is an
+    /// error under `min_text_px` and a warning under `good_text_px`, with
+    /// no safe area, always full screen. Assign the other fields.
+    #[must_use]
+    pub const fn new(color: Color, min_text_px: u16, good_text_px: u16) -> Self {
+        Self {
+            sizes: Vec::new(),
+            color,
+            min_text_px,
+            good_text_px,
+            safe_area: Insets {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+            },
+            windowed: false,
+        }
+    }
+}
+
 impl TargetProfile {
+    /// The target `id`, `status`, built by `backend`, with its `display`,
+    /// `frame_rate` and `input`; quit by the game's own Quit, with no
+    /// budget measured. Assign the other fields. Unchecked:
+    /// [`from_source`](Self::from_source) is what checks a profile.
+    #[must_use]
+    pub fn new(
+        id: impl Into<String>,
+        status: Status,
+        display: Display,
+        frame_rate: FrameRate,
+        input: Input,
+        backend: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            status,
+            display,
+            frame_rate,
+            input,
+            quit: Quit::default(),
+            budgets: Budgets::default(),
+            backend: backend.into(),
+        }
+    }
+
     /// Parses and checks profile `source`, the file `stem.ron` shown as
     /// `file`. Reports every problem: an id that isn't the file's name,
     /// text sizes or frame rates out of order, an empty size, a safe area
@@ -487,5 +545,41 @@ pub(crate) mod tests {
                 let _ = TargetRon.decode(&AssetPath::new("small.ron"), bytes, &DecodeCx::new());
             }
         }
+    }
+
+    #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        let display = Display {
+            sizes: Vec::new(),
+            color: Color::OneBit,
+            min_text_px: 8,
+            good_text_px: 10,
+            safe_area: Insets::default(),
+            windowed: false,
+        };
+        assert_eq!(Display::new(Color::OneBit, 8, 10), display);
+        let frame_rate = FrameRate {
+            target: 30,
+            floor: 30,
+        };
+        let literal = TargetProfile {
+            id: "pad".to_owned(),
+            status: Status::Planned,
+            display: display.clone(),
+            frame_rate,
+            input: Input::default(),
+            quit: Quit::Game,
+            budgets: Budgets::default(),
+            backend: "shuyi-app".to_owned(),
+        };
+        let built = TargetProfile::new(
+            "pad",
+            Status::Planned,
+            display,
+            frame_rate,
+            Input::default(),
+            "shuyi-app",
+        );
+        assert_eq!(built, literal);
     }
 }

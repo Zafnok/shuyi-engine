@@ -113,7 +113,8 @@ in a store, are the game's.
     `shuyi replay` on the full build refuses a record made on the `ja`
     build as made with other content, and runs it with `any_stamp`.
     That is on purpose: the files differ. `docs/formats.md` says so.
-  - `PackInfo` becomes `#[non_exhaustive]` (ADR-0039: it has grown).
+  - `PackInfo` is `#[non_exhaustive]` already (**from 2085 (done)**,
+    built with `PackInfo::new`): its new field starts at `None` there.
   - `Bake::bake_for_language(&self, formats, bundle, target:
     Option<&str>, lang: &LangCode) -> Result<Baked, Vec<ContentError>>`
     bakes as `Bake::bake` does and records `lang`. `bake` keeps its
@@ -200,9 +201,10 @@ in a store, are the game's.
   - `pack::VERSION` up by one, so its packs are baked again.
   - A one-language build's records and saves carry that build's
     content, not the full bundle's.
-  - `PackInfo` gains a field and becomes `#[non_exhaustive]`. The
-    completion notes carry a `Breaking:` line for each break CI's `api`
-    job finds (ADR-0038).
+  - `PackInfo` gains a field, additively: it is `#[non_exhaustive]`
+    since 2085. The completion notes carry a `Breaking:` line for each
+    break CI's `api` job finds (ADR-0038), and one for the pack's
+    format (`pack::VERSION`).
   - `GameBake::with_languages` is additive. A game that bakes one
     language per build calls it in its `GameTools::bake`, and answers
     `first_language` from the pack.
@@ -238,7 +240,7 @@ in a store, are the game's.
 2. Add `Bundle::without`, with its tests in
    `crates/assets/src/bundle.rs`.
 3. Add `lang::folders_off_chain` in `crates/assets/src/lang.rs`.
-4. Add `PackInfo::lang` and `lang_code`, `#[non_exhaustive]`, the next
+4. Add `PackInfo::lang` and `lang_code`, the next
    `pack::VERSION` and `Bake::bake_for_language`. Update the snapshot
    of the binary form (`cargo insta review`) and the tests that build a
    `PackInfo` (`crates/assets/src/pack/tests.rs`).

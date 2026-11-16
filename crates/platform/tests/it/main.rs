@@ -51,6 +51,16 @@ fn each_frame_shows_the_display_what_the_screens_drew() {
 }
 
 #[test]
+fn a_game_frame_built_by_its_constructor_is_the_one_presented() {
+    let mut h = Harness::new(toy::game());
+    h.keys("f");
+    let ctx = h.ctx();
+    let blank = ctx.game.blank_cell(&ctx.palette).bg;
+    let expected = Presented::game(h.game().buffer().clone(), blank, false);
+    assert_eq!(h.platform().last_frame(), Some(&expected));
+}
+
+#[test]
 fn the_window_shortcut_asks_for_full_screen_from_the_next_frame() {
     let mut h = Harness::new(toy::game());
     h.wait(FRAME_DT);

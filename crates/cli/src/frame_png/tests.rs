@@ -674,10 +674,10 @@ fn a_character_draws_from_the_set_its_language_names() {
         path,
         source: Some(source),
     });
-    let rules = PackRules {
-        data_problem: |_, _| None,
-        tokens: &shuyi_assets::dialogue::NoTokens,
-        limits: shuyi_assets::dialogue::DialogueLimits {
+    let rules = PackRules::new(
+        |_, _| None,
+        &shuyi_assets::dialogue::NoTokens,
+        shuyi_assets::dialogue::DialogueLimits {
             box_width: 40,
             box_lines: 3,
             max_text: 200,
@@ -686,9 +686,8 @@ fn a_character_draws_from_the_set_its_language_names() {
             max_options: 4,
             max_reaction_texts: 3,
         },
-        widths: &CellWidths::NARROW,
-        variants: &[],
-    };
+        &CellWidths::NARROW,
+    );
     let lang: Lang = from_files(&files, None, str::to_owned, &rules).unwrap();
     let chars = AtlasChars::of_lang(&lang, "?");
     let atlas = build_atlas_with_sets(

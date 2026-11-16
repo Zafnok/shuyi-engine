@@ -571,3 +571,14 @@ fn past_the_most_files_of_a_name_an_offer_fails_and_keeps_nothing() {
     p.end_session();
     assert_eq!(p.ask_for_file(&[]), Some(ChosenFile::Cancelled));
 }
+
+#[test]
+fn the_game_constructor_builds_what_a_literal_built() {
+    let glyphs = buffer('x');
+    let literal = Presented::Game {
+        buffer: glyphs.clone(),
+        background: Rgb::new(1, 2, 3),
+        fullscreen: true,
+    };
+    assert_eq!(Presented::game(glyphs, Rgb::new(1, 2, 3), true), literal);
+}
