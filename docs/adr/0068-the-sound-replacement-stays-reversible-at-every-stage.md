@@ -52,7 +52,9 @@ a session would spend itself untangling them.
    names that later goes away is a breaking release, so:
    - `in-house-sound` stays a feature of `shuyi-app` for good. Once it is the
      only backend (3079) it does nothing, and a game that names it still
-     builds.
+     builds. Giving up keeps the name too: the footprint leaves
+     `in-house-sound = []`, doing nothing, and CI's `sound-give-up` job allows
+     that one line (2091).
    - No feature is named for quad-snd. Going back to it is
      `default-features = false`, and quad-snd is an optional dependency named
      with `dep:`, so it makes no feature of its own (3084).

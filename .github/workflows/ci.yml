@@ -589,10 +589,13 @@ jobs:
           cargo xtask check-docs
           cargo xtask check-links
           pwsh -File scripts/sync-agent-skills.ps1 -Check
+      # Bar one line: `shuyi-app` keeps `in-house-sound = []`, doing nothing, so
+      # a game that turned it on still builds (ADR-0068 §8, ticket 2091).
       - name: Nothing of it is left outside the record
         run: |
-          if git grep -l -I -E 'sound-parity|sound_parity|sound_probe|sound-probe|SoundProbeBackend|in-house-sound|shuyi-sound|shuyi_sound' \
-            -- . ':!tickets' ':!docs/adr' ':!docs/research' ':!docs/decisions.md' ':!docs/ROADMAP.md'; then
+          if git grep -I -E 'sound-parity|sound_parity|sound_probe|sound-probe|SoundProbeBackend|in-house-sound|shuyi-sound|shuyi_sound' \
+            -- . ':!tickets' ':!docs/adr' ':!docs/research' ':!docs/decisions.md' ':!docs/ROADMAP.md' \
+            | grep -v -x -F 'crates/app/Cargo.toml:in-house-sound = []'; then
             echo "::error::Giving up left these behind"
             exit 1
           fi

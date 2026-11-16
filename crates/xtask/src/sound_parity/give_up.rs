@@ -26,6 +26,10 @@ const HISTORY: [&str; 5] = [
     "docs/decisions.md",
     "docs/ROADMAP.md",
 ];
+/// The one line that names the chain and stays, file and text: a game that
+/// turned `shuyi-app`'s feature on still builds, as its name is kept for good
+/// (ADR-0068 §8, ticket 2091). CI's `sound-give-up` job allows the same line.
+pub(crate) const KEPT: (&str, &str) = ("crates/app/Cargo.toml", "in-house-sound = []");
 
 /// `tools/sound-parity/footprint.ron`.
 #[derive(Debug, Deserialize)]
@@ -264,9 +268,11 @@ pub(crate) fn uncovered(
                 .any(|path| *file == path || file.starts_with(&format!("{path}/")))
         })
         .filter(|file| {
-            edited
-                .get(*file)
-                .is_none_or(|text| words.iter().any(|word| text.contains(word)))
+            edited.get(*file).is_none_or(|text| {
+                text.lines()
+                    .filter(|line| (file.as_str(), *line) != KEPT)
+                    .any(|line| words.iter().any(|word| line.contains(word)))
+            })
         })
         .map(|file| {
             format!(

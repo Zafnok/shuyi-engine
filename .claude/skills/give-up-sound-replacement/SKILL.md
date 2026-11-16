@@ -33,6 +33,11 @@ going back is then a revert of that one commit, and harder.
 
    If the first says the footprint has drifted it changes nothing: fix what it
    names by hand (it is the same removal), and carry on.
+
+   `shuyi-app` keeps its `in-house-sound` feature, as `in-house-sound = []`
+   doing nothing, so a game that turned it on still builds (ADR-0068 §8). It
+   is the one line left that names the chain, and no `Breaking:` line is
+   written for it.
 3. Settle the tickets, as 2211–2214 were dropped. Each of 2210, 3030, 3031, 3032,
    2397, 3084 and 3079 still in `tickets/open/` gets `status: done`, today's
    `completed`, a `> **Closed as dropped (Nick, <date>):**` note under its heading,
