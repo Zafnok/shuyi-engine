@@ -125,6 +125,27 @@ mod tests {
     }
 
     #[test]
+    fn the_help_line_is_printed_with_its_keys_in_their_colours() {
+        let h = game().harness();
+        let ctx = h.ctx();
+        let black = Rgb::new(0, 0, 0);
+        let mut buf = GlyphBuffer::new(60, 2, Cell::new(' ', black, black));
+        paint_help(ctx, &mut buf, 1);
+        let help = ctx.text_with("garden.help", &[]);
+        let row: String = (1..=help.chars().count())
+            .map(|x| buf.get(i32::try_from(x).unwrap(), 1).unwrap().glyph)
+            .collect();
+        assert_eq!(row, help);
+        // With no `key` in the palette, keys and words are the dim text's.
+        let dim = ctx.palette.engine(EngineColor::TextDim);
+        let panel = ctx.palette.engine(EngineColor::Panel);
+        assert_eq!(
+            *buf.get(1, 1).unwrap(),
+            Cell::new(row.chars().next().unwrap(), dim, panel)
+        );
+    }
+
+    #[test]
     fn the_action_sets_keymap_file_reads_with_every_action() {
         let text = include_bytes!("../actions/keymap.ron").to_vec();
         let files = BTreeMap::from([("keymap.ron".to_owned(), text)]);
