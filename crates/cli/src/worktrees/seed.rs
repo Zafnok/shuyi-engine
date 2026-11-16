@@ -26,11 +26,21 @@
 //!   `CARGO_BIN_EXE_*`), and read the donor's files. Without a fingerprint,
 //!   each rebuilds.
 //!
-//! It refuses ([`Error`]) a `target/` that isn't empty, a donor with a build
-//! running (one of its [`LOCKS`] held), and a new worktree on another volume
-//! (a hard link can't cross one). It holds the donor's locks while it
-//! seeds, so a build there waits for it. If seeding fails part-way, what it
-//! wrote is deleted.
+//! - **Kept**: what the new worktree's `target/debug/` already has. A
+//!   session's MCP server builds `shuyi` there as the session starts
+//!   (`.mcp.json`), before the session can seed. A unit whose fingerprint
+//!   folder (or build script's folder) is there was built or started there,
+//!   so it is left whole; cargo removes a unit's fingerprint before building
+//!   it, so one interrupted there rebuilds. A file already in `deps` is
+//!   left too. A unit the target has never started has no file there, so
+//!   the donor's are added without mixing.
+//!
+//! It refuses ([`Error`]) while a build runs in either worktree (one of its
+//! [`LOCKS`] held), and a new worktree on another volume (a hard link can't
+//! cross one). It holds both worktrees' locks while it seeds, so a build
+//! started in either waits for it. Each unit's fingerprint is written under
+//! another name and renamed into place after its files, so a seed stopped
+//! part-way leaves no unit Fresh without its files.
 
 use std::fmt;
 use std::fs::{self, File, TryLockError};
@@ -78,6 +88,9 @@ pub struct Report {
     /// Build scripts' `output` and `root-output` files whose donor root was
     /// rewritten.
     pub rewritten: u64,
+    /// Units (fingerprint and build script folders) and files the new
+    /// worktree already had, left as they were.
+    pub kept: u64,
     /// The path packages' fingerprint folders left out (`<package>-<hash>`),
     /// sorted: those units rebuild.
     pub rebuilt: Vec<String>,
@@ -89,12 +102,14 @@ impl fmt::Display for Report {
         write!(
             f,
             "linked {} files ({} MiB), copied {} files ({} MiB), rewrote the root in {} build \
-             outputs, left out {} fingerprints of path packages (they rebuild)",
+             outputs, kept {} units and files already there, left out {} fingerprints of path \
+             packages (they rebuild)",
             self.linked,
             self.linked_bytes / MIB,
             self.copied,
             self.copied_bytes / MIB,
             self.rewritten,
+            self.kept,
             self.rebuilt.len()
         )
     }
@@ -108,11 +123,9 @@ pub enum Error {
     NoWorktree(PathBuf),
     /// The donor and the new worktree are the same folder.
     SameWorktree(PathBuf),
-    /// The new worktree's `target/` isn't empty.
-    NotEmpty(PathBuf),
     /// The donor has no `target/debug/`.
     NoDonorBuild(PathBuf),
-    /// A build is running in the donor: this lock file is held.
+    /// A build is running in one of the worktrees: this lock file is held.
     Locked(PathBuf),
     /// The two worktrees are on different volumes, which a hard link can't
     /// cross.
@@ -140,17 +153,12 @@ impl fmt::Display for Error {
                 "{}: that is the donor itself; run this in the warm worktree, with --into the new one",
                 path.display()
             ),
-            Self::NotEmpty(path) => write!(
-                f,
-                "{} is not empty: seed only a target that has never been built (delete it first)",
-                path.display()
-            ),
             Self::NoDonorBuild(path) => {
                 write!(f, "{}: the donor has no build to seed from", path.display())
             }
             Self::Locked(path) => write!(
                 f,
-                "{} is locked: a cargo build is running in the donor; wait for it to finish",
+                "{} is locked: a cargo build is running there; wait for it to finish",
                 path.display()
             ),
             Self::OtherVolume { donor, into } => write!(
@@ -179,9 +187,8 @@ impl std::error::Error for Error {
 ///
 /// # Errors
 ///
-/// A refusal (`into`'s `target/` not empty, a lock in the donor held,
-/// another volume, no donor build), or a file that couldn't be read or
-/// written; after that, what was written is deleted.
+/// A refusal (a build running in either worktree, another volume, no
+/// donor build), or a file that couldn't be read or written.
 pub fn seed(donor: &Path, into: &Path, path_packages: &[String]) -> Result<Report, Error> {
     let donor = std::path::absolute(donor).map_err(at(donor))?;
     let into = std::path::absolute(into).map_err(at(into))?;
@@ -191,36 +198,26 @@ pub fn seed(donor: &Path, into: &Path, path_packages: &[String]) -> Result<Repor
     if same_folder(&donor, &into) {
         return Err(Error::SameWorktree(into));
     }
-    let target = into.join("target");
-    if has_entries(&target)? {
-        return Err(Error::NotEmpty(target));
-    }
     let from = donor.join("target").join(PROFILE);
     if !from.is_dir() {
         return Err(Error::NoDonorBuild(from));
     }
-    let _locks = lock(&from)?;
-    fs::create_dir_all(&target).map_err(at(&target))?;
-    same_volume(&from, &target)?;
+    let target = into.join("target");
     let to = target.join(PROFILE);
+    let mut locks = lock(&from, false)?;
+    let had = modified_of(&to)?;
+    fs::create_dir_all(&to).map_err(at(&to))?;
+    locks.extend(lock(&to, true)?);
+    same_volume(&from, &target)?;
     let mut walk = Walk {
         donor: &donor,
         into: &into,
         path_packages,
         report: Report::default(),
     };
-    match walk.profile(&from, &to) {
-        Ok(()) => {
-            walk.report.rebuilt.sort();
-            Ok(walk.report)
-        }
-        Err(error) => {
-            // A half-seeded target could hold a unit whose files don't
-            // match its fingerprint: leave none.
-            let _ = fs::remove_dir_all(&to);
-            Err(error)
-        }
-    }
+    walk.profile(&from, &to, had)?;
+    walk.report.rebuilt.sort();
+    Ok(walk.report)
 }
 
 /// The path packages in `cargo metadata`'s answer (`--format-version 1`):
@@ -298,22 +295,26 @@ struct Walk<'a> {
 }
 
 impl Walk<'_> {
-    /// Seeds the profile folder `from` (the donor's) into `to`.
-    fn profile(&mut self, from: &Path, to: &Path) -> Result<(), Error> {
-        fs::create_dir(to).map_err(at(to))?;
+    /// Seeds the profile folder `from` (the donor's) into `to`, which
+    /// exists, its locks held; `had` is its time before the seed made it or
+    /// its locks, if it was there.
+    fn profile(&mut self, from: &Path, to: &Path, had: Option<SystemTime>) -> Result<(), Error> {
         for folder in FOLDERS {
             let source = from.join(folder);
             if source.is_dir() {
                 self.tree(&source, &to.join(folder), Place::of(folder))?;
             }
         }
-        keep_modified(from, to)
+        finish(from, to, had)
     }
 
-    /// Copies the folder `from` into `to`, which it makes, then gives `to`
-    /// the modification time of `from`. Links are never followed.
+    /// Copies the folder `from` into `to`, making it when it is missing,
+    /// and leaving what it has. Links are never followed.
     fn tree(&mut self, from: &Path, to: &Path, place: Place) -> Result<(), Error> {
-        fs::create_dir(to).map_err(at(to))?;
+        let had = modified_of(to)?;
+        if had.is_none() {
+            fs::create_dir(to).map_err(at(to))?;
+        }
         for entry in fs::read_dir(from).map_err(at(from))? {
             let entry = entry.map_err(at(from))?;
             let kind = entry.file_type().map_err(at(&entry.path()))?;
@@ -324,17 +325,25 @@ impl Walk<'_> {
             if kind.is_symlink() {
                 continue;
             }
+            let present = fs::symlink_metadata(&dest).is_ok();
             if kind.is_dir() {
                 if place == Place::Fingerprints && is_path_unit(&name, self.path_packages) {
                     self.report.rebuilt.push(name.into_owned());
-                    continue;
-                }
-                let inner = if place == Place::BuildScripts {
-                    Place::BuildUnit
+                } else if present && matches!(place, Place::Fingerprints | Place::BuildScripts) {
+                    // A unit the target has built, or started.
+                    self.report.kept += 1;
+                } else if place == Place::Fingerprints {
+                    self.unit(&source, &dest)?;
                 } else {
-                    Place::Other
-                };
-                self.tree(&source, &dest, inner)?;
+                    let inner = if place == Place::BuildScripts {
+                        Place::BuildUnit
+                    } else {
+                        Place::Other
+                    };
+                    self.tree(&source, &dest, inner)?;
+                }
+            } else if present {
+                self.report.kept += 1;
             } else if is_linked(&source) {
                 fs::hard_link(&source, &dest).map_err(at(&dest))?;
                 self.report.linked += 1;
@@ -344,7 +353,19 @@ impl Walk<'_> {
                 self.copy(&source, &dest, rewrite)?;
             }
         }
-        keep_modified(from, to)
+        finish(from, to, had)
+    }
+
+    /// Copies a unit's fingerprint folder under another name, then renames
+    /// it into place: the unit is never Fresh with part of its fingerprint.
+    fn unit(&mut self, from: &Path, to: &Path) -> Result<(), Error> {
+        let mut name = to.file_name().unwrap_or_default().to_os_string();
+        name.push(".seeding");
+        let temp = to.with_file_name(name);
+        // What a seed stopped part-way left.
+        let _ = fs::remove_dir_all(&temp);
+        self.tree(from, &temp, Place::Other)?;
+        fs::rename(&temp, to).map_err(at(to))
     }
 
     /// Copies one file, rewriting the donor's root in it when `rewrite`,
@@ -455,11 +476,11 @@ fn same_folder(one: &Path, other: &Path) -> bool {
     }
 }
 
-/// Whether `folder` exists and holds anything.
-fn has_entries(folder: &Path) -> Result<bool, Error> {
-    match fs::read_dir(folder) {
-        Ok(mut entries) => Ok(entries.next().is_some()),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+/// A folder's modification time, or `None` when it doesn't exist.
+fn modified_of(folder: &Path) -> Result<Option<SystemTime>, Error> {
+    match fs::metadata(folder) {
+        Ok(metadata) => metadata.modified().map(Some).map_err(at(folder)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(Error::Io {
             path: folder.to_path_buf(),
             error: e,
@@ -467,13 +488,30 @@ fn has_entries(folder: &Path) -> Result<bool, Error> {
     }
 }
 
-/// Locks each of the donor's [`LOCKS`] that exists, without waiting, and
-/// holds them: a build there waits for the seed.
-fn lock(profile: &Path) -> Result<Vec<File>, Error> {
+/// Gives the folder `to` its own time back when it `had` one, or else the
+/// time of the donor's `from`.
+fn finish(from: &Path, to: &Path, had: Option<SystemTime>) -> Result<(), Error> {
+    match had {
+        Some(time) => set_modified(to, time).map_err(at(to)),
+        None => keep_modified(from, to),
+    }
+}
+
+/// Locks each of a profile folder's [`LOCKS`] without waiting, and holds
+/// them: a build there waits for the seed. In the donor only those that
+/// exist (its files are never changed); in the new worktree each is made
+/// when missing (`create`), so a build starting there waits too.
+fn lock(profile: &Path, create: bool) -> Result<Vec<File>, Error> {
     let mut held = Vec::new();
     for name in LOCKS {
         let path = profile.join(name);
-        let file = match File::open(&path) {
+        let opened = File::options()
+            .read(true)
+            .write(create)
+            .create(create)
+            .truncate(false)
+            .open(&path);
+        let file = match opened {
             Ok(file) => file,
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(e) => return Err(Error::Io { path, error: e }),

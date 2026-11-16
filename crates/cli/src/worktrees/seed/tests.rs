@@ -209,7 +209,24 @@ fn only_the_debug_profiles_three_folders_are_seeded() {
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     profile.sort();
-    assert_eq!(profile, [".fingerprint", "build", "deps"]);
+    // The lock files are the seed's own, held while it seeds, as cargo
+    // makes them.
+    assert_eq!(
+        profile,
+        [
+            ".cargo-artifact-lock",
+            ".cargo-build-lock",
+            ".cargo-lock",
+            ".fingerprint",
+            "build",
+            "deps"
+        ]
+    );
+    assert_eq!(
+        fs::read(target.join("debug/.cargo-lock")).unwrap(),
+        b"",
+        "nothing of the donor's"
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -325,13 +342,87 @@ fn snapshot(dir: &Path) -> Vec<(PathBuf, Vec<u8>, SystemTime)> {
 }
 
 #[test]
-fn a_target_that_is_not_empty_is_refused() {
-    let dir = temp("not-empty");
+fn a_partly_built_target_keeps_what_it_has() {
+    let dir = temp("partly");
     donor(&dir.join("donor"));
-    write(&dir.join("into/target/debug/.cargo-lock"), "");
+    // What a session's MCP server built before the seed: `dep`'s library
+    // and its build script's run, and the path package `shuyi`.
+    let to = dir.join("into/target/debug");
+    write(&to.join("deps/libdep-0123abcd.rlib"), "its own rlib");
+    write(&to.join(".fingerprint/dep-0123abcd/lib-dep"), "its own");
+    write(&to.join("build/dep-89abcdef/output"), "its own output");
+    write(
+        &to.join(".fingerprint/shuyi-0123456789abcdef/lib-shuyi"),
+        "its own shuyi",
+    );
+    // A unit a seed stopped part-way left under its temporary name.
+    write(
+        &to.join(".fingerprint/game-extra-fedcba9876543210.seeding/half"),
+        "",
+    );
+    let fingerprints_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+    set_modified(&to.join(".fingerprint"), fingerprints_time).unwrap();
+    let report = seed(&dir.join("donor"), &dir.join("into"), &packages()).unwrap();
+    let read = |path: &str| fs::read_to_string(to.join(path)).unwrap();
+    assert_eq!(read("deps/libdep-0123abcd.rlib"), "its own rlib");
+    assert_eq!(read(".fingerprint/dep-0123abcd/lib-dep"), "its own");
+    assert!(
+        !to.join(".fingerprint/dep-0123abcd/lib-dep.json").exists(),
+        "a kept unit is whole"
+    );
+    assert_eq!(read("build/dep-89abcdef/output"), "its own output");
+    assert!(
+        !to.join("build/dep-89abcdef/root-output").exists(),
+        "a kept unit is whole"
+    );
+    assert_eq!(
+        read(".fingerprint/shuyi-0123456789abcdef/lib-shuyi"),
+        "its own shuyi"
+    );
+    assert_eq!(
+        read("deps/libdep-0123abcd.rmeta"),
+        "rmeta",
+        "what it lacks is added"
+    );
+    assert_eq!(
+        read(".fingerprint/game-extra-fedcba9876543210/lib-game-extra"),
+        "1"
+    );
+    assert!(
+        !to.join(".fingerprint/game-extra-fedcba9876543210.seeding")
+            .exists()
+    );
+    assert_eq!(
+        modified(&to.join(".fingerprint")),
+        fingerprints_time,
+        "its own folders' times"
+    );
+    assert_eq!(
+        modified(&to.join("build/dep-4567cdef")),
+        old(),
+        "the donor's folders' times"
+    );
+    // The rlib, the unit of `dep` and the build script's unit.
+    assert_eq!(report.kept, 3, "{report}");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_target_with_a_build_running_is_refused() {
+    let dir = temp("target-locked");
+    donor(&dir.join("donor"));
+    write(&dir.join("into/target/debug/.cargo-build-lock"), "");
+    let held = File::open(dir.join("into/target/debug/.cargo-build-lock")).unwrap();
+    held.lock().unwrap();
     let error = seed(&dir.join("donor"), &dir.join("into"), &packages()).unwrap_err();
-    assert!(matches!(error, Error::NotEmpty(_)), "{error}");
-    assert!(!dir.join("into/target/debug/deps").exists());
+    assert!(
+        matches!(&error, Error::Locked(path) if path.ends_with(".cargo-build-lock")),
+        "{error}"
+    );
+    assert!(
+        !dir.join("into/target/debug/deps").exists(),
+        "nothing is written"
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -383,8 +474,6 @@ fn the_donor_itself_and_a_donor_without_a_build_are_refused() {
     donor(&dir.join("donor"));
     let error = seed(&dir.join("donor"), &dir.join("donor/."), &packages()).unwrap_err();
     assert!(matches!(error, Error::SameWorktree(_)), "{error}");
-    let error = seed(&dir.join("into"), &dir.join("donor"), &packages()).unwrap_err();
-    assert!(matches!(error, Error::NotEmpty(_)), "{error}");
     fs::create_dir(dir.join("other")).unwrap();
     let error = seed(&dir.join("into"), &dir.join("other"), &packages()).unwrap_err();
     assert!(matches!(error, Error::NoDonorBuild(_)), "{error}");
@@ -483,11 +572,13 @@ fn the_report_says_what_was_done() {
         copied: 2,
         copied_bytes: 10,
         rewritten: 1,
+        kept: 4,
         rebuilt: vec!["shuyi-0".to_owned()],
     };
     assert_eq!(
         report.to_string(),
         "linked 3 files (5 MiB), copied 2 files (0 MiB), rewrote the root in 1 build outputs, \
-         left out 1 fingerprints of path packages (they rebuild)"
+         kept 4 units and files already there, left out 1 fingerprints of path packages (they \
+         rebuild)"
     );
 }
