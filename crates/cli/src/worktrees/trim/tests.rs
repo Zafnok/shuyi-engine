@@ -133,6 +133,61 @@ fn incremental_is_found_in_each_profile_folder_under_the_roots() {
 }
 
 #[test]
+fn a_games_roots_find_its_own_profiles_and_none_of_the_engines() {
+    let target = scratch("game").join("target");
+    for at in [
+        "debug",
+        "release",
+        "x86_64-pc-windows-gnu/debug",
+        "wasm32-unknown-unknown/release",
+    ] {
+        profile(&target, at, 9);
+    }
+    // The engine's own builds: target folders of their own (cargo's
+    // `.rustc_info.json` at their top), and games built deeper down.
+    for (at, top) in [
+        ("tutorial/debug", "tutorial"),
+        ("skill-examples-build/debug", "skill-examples-build"),
+        ("gates/games/debug", "gates/games"),
+        (
+            "skill-examples/grid/target/debug",
+            "skill-examples/grid/target",
+        ),
+        (
+            "compile-times/grid/target/debug",
+            "compile-times/grid/target",
+        ),
+    ] {
+        profile(&target, at, 9);
+        write(&target.join(top).join(".rustc_info.json"), "{}");
+    }
+    let roots = GAME_ROOTS.map(str::to_owned).to_vec();
+    let mut game: Vec<String> = incremental_dirs(&target, &profile_dirs(&target), &roots)
+        .iter()
+        .map(|dir| {
+            dir.strip_prefix(&target)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect();
+    game.sort();
+    assert_eq!(
+        game,
+        [
+            "debug/incremental",
+            "release/incremental",
+            "wasm32-unknown-unknown/release/incremental",
+            "x86_64-pc-windows-gnu/debug/incremental",
+        ]
+    );
+    // The engine's roots still name its own builds.
+    let engine = found(&target);
+    assert!(engine.contains(&"tutorial/debug/incremental".to_owned()));
+    assert!(engine.contains(&"skill-examples-build/debug/incremental".to_owned()));
+}
+
+#[test]
 fn a_folder_named_incremental_elsewhere_is_left_alone() {
     let target = scratch("elsewhere").join("target");
     profile(&target, "debug", 9);

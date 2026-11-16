@@ -31,6 +31,18 @@ use super::seed::LOCKS;
 /// How many days without a build make a worktree idle, by default.
 pub const DEFAULT_IDLE_DAYS: u64 = 3;
 
+/// The [`Options::roots`] of a game's worktrees (`shuyi trim-targets`,
+/// ticket 3403): `target/` itself, so `target/debug`, `target/release`,
+/// a triple's `target/<triple>/<profile>` and the web build's
+/// `target/wasm32-unknown-unknown/release`. No folder of the engine's own
+/// builds is named (its `gates/`, `tutorial/`, `skill-examples*`), and a
+/// folder that is a target folder of its own is never read as a triple.
+pub const GAME_ROOTS: [&str; 1] = [""];
+
+/// The file cargo writes at the top of each target folder, and never in a
+/// triple's folder: a folder holding it is another build's target folder.
+const TARGET_MARK: &str = ".rustc_info.json";
+
 /// How deep under `target/` a profile folder is looked for:
 /// `compile-times/<game>/target/debug` is at 4.
 const PROFILE_DEPTH: usize = 5;
@@ -85,7 +97,7 @@ impl Options {
 }
 
 /// What a run did, in all the worktrees.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
 pub struct Report {
     /// The idle worktrees, trimmed (or that would be, dry), some with
@@ -497,7 +509,9 @@ fn is_locked(file: &Path) -> bool {
 }
 
 /// Whether `profile`, a folder under `target`, is `<root>/<profile>` or
-/// `<root>/<triple>/<profile>` for one of `roots`.
+/// `<root>/<triple>/<profile>` for one of `roots`. A `<triple>` folder
+/// holding [`TARGET_MARK`] is another build's target folder (the engine's
+/// `target/tutorial/`), not a triple's.
 fn under_roots(target: &Path, profile: &Path, roots: &[String]) -> bool {
     let Ok(relative) = profile.strip_prefix(target) else {
         return false;
@@ -512,7 +526,12 @@ fn under_roots(target: &Path, profile: &Path, roots: &[String]) -> bool {
     roots.iter().any(|root| {
         let pattern: Vec<&str> = root.split('/').filter(|p| !p.is_empty()).collect();
         let extra = parts.len().checked_sub(pattern.len());
-        matches!(extra, Some(1 | 2))
+        let triple_ok = || {
+            profile
+                .parent()
+                .is_some_and(|triple| !triple.join(TARGET_MARK).exists())
+        };
+        (extra == Some(1) || (extra == Some(2) && triple_ok()))
             && pattern.iter().zip(&parts).all(|(want, part)| {
                 want.strip_suffix('*')
                     .map_or(*want == part.as_str(), |prefix| part.starts_with(prefix))
@@ -638,6 +657,20 @@ fn merged(repo: &Path, branch: &str, base: &str, gh_missing: &mut bool) -> bool 
             false
         }
     }
+}
+
+/// The folders of the worktrees of the repository `repo` is in, as `git
+/// worktree list --porcelain` names them.
+///
+/// # Errors
+///
+/// git didn't start, or didn't list them.
+pub(crate) fn worktree_paths(repo: &Path) -> Result<Vec<PathBuf>, String> {
+    let listed = git(repo, &["worktree", "list", "--porcelain"])?;
+    Ok(parse_porcelain(&listed)
+        .into_iter()
+        .map(|worktree| worktree.path)
+        .collect())
 }
 
 /// Runs `git` in `dir`, its stdout as text.
