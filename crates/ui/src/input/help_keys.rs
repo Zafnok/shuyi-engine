@@ -13,6 +13,7 @@ use shuyi_assets::keymap::ActionSet;
 
 use super::keymap::Keymap;
 use super::state::Device;
+use crate::text::StyledText;
 
 /// The English name of the four arrow keys together: what
 /// [`HelpKeys::new`] starts with, and what tests compare with. The game
@@ -185,12 +186,28 @@ pub fn cursor_keys_name<A: ActionSet>(keys: HelpKeys<'_, A>) -> String {
 
 /// Joins `key label` hints with [`SEPARATOR`], leaving out hints whose key
 /// is `None` (hidden by the caller, e.g. a key that does nothing here).
+/// The plain text of [`help_line_styled`].
 pub fn help_line(hints: &[(Option<String>, &str)]) -> String {
-    hints
+    help_line_styled(hints).plain()
+}
+
+/// [`help_line`], each key's name in a [`TextRole::Key`] span, which a skin
+/// paints in the palette's key colours; the labels and the separators are
+/// plain.
+///
+/// [`TextRole::Key`]: crate::text::TextRole::Key
+pub fn help_line_styled(hints: &[(Option<String>, &str)]) -> StyledText {
+    let mut line = StyledText::new();
+    let shown = hints
         .iter()
-        .filter_map(|(key, label)| key.as_ref().map(|k| format!("{k} {label}")))
-        .collect::<Vec<_>>()
-        .join(SEPARATOR)
+        .filter_map(|(key, label)| Some((key.as_ref()?, label)));
+    for (i, (key, label)) in shown.enumerate() {
+        if i > 0 {
+            line.push_plain(SEPARATOR);
+        }
+        line.push_key(key).push_plain(" ").push_plain(label);
+    }
+    line
 }
 
 #[cfg(test)]

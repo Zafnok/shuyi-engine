@@ -4,6 +4,7 @@
 //! skin paints it ([`super::glyph::paint`] today).
 
 use crate::prelude::*;
+use crate::text::StyledText;
 use shuyi_assets::keymap::{Key, Layout};
 
 /// The whole screen, as it is this frame.
@@ -14,7 +15,7 @@ pub struct LayoutPickerView {
     /// One entry per layout, in the order they are offered.
     pub layouts: Vec<LayoutView>,
     /// The help line: what the keys do here.
-    pub help: String,
+    pub help: StyledText,
 }
 
 impl LayoutPickerView {

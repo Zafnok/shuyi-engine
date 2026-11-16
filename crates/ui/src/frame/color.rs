@@ -14,6 +14,8 @@ use core::any::TypeId;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_core::Lerp;
 
+use crate::text::TextRole;
+
 /// A 24-bit RGB colour. Ordered red, then green, then blue: an order for
 /// maps, not a look.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
@@ -217,6 +219,15 @@ impl ColorSet for EngineColor {
     }
 }
 
+/// The palette's name for the colour of a key's name in text (a span in
+/// [`TextRole::Key`]). Optional: without it, a key is in its text's colour.
+pub const KEY: &str = "key";
+
+/// The palette's name for the cells behind a key's name in text (a span in
+/// [`TextRole::Key`]). Optional: without it, a key keeps its text's
+/// background.
+pub const KEY_BG: &str = "key_bg";
+
 /// Every name a palette for the set `C` must have: the set's, in its
 /// order, then the engine colors' that it doesn't already name.
 pub fn required_names<C: ColorSet>() -> Vec<&'static str> {
@@ -321,6 +332,44 @@ impl Palette {
                     .map(|(n, _)| n.as_str())
             })
     }
+
+    /// The colours of a span of text in `role` among text in `fg`: its
+    /// glyphs' colour, and its cells' background if the role sets one
+    /// (ADR-0122).
+    ///
+    /// - plain text (`None`): `fg`, no background;
+    /// - [`TextRole::Key`]: the palette's [`KEY`], else `fg`; and its
+    ///   [`KEY_BG`], else no background;
+    /// - [`TextRole::Engine`]: that engine colour, no background;
+    /// - [`TextRole::Palette`]: the colour of that name, else `fg`; no
+    ///   background.
+    pub fn text_colors(&self, role: Option<TextRole>, fg: Rgb) -> (Rgb, Option<Rgb>) {
+        match role {
+            None => (fg, None),
+            Some(TextRole::Key) => (self.lookup(KEY).unwrap_or(fg), self.lookup(KEY_BG)),
+            Some(TextRole::Engine(e)) => (self.engine(e), None),
+            Some(TextRole::Palette(name)) => (self.lookup(name).unwrap_or(fg), None),
+        }
+    }
+
+    /// What [`GlyphBuffer::print_styled`] takes to paint text in `fg` on
+    /// `bg` as [`GlyphBuffer::print`] does: each role's
+    /// [`text_colors`](Self::text_colors), and `bg` for a role that gives
+    /// no background. With no [`KEY`] or [`KEY_BG`] in the palette, every
+    /// cell ends as `print` leaves it.
+    ///
+    /// [`GlyphBuffer::print_styled`]: crate::frame::glyph_buffer::GlyphBuffer::print_styled
+    /// [`GlyphBuffer::print`]: crate::frame::glyph_buffer::GlyphBuffer::print
+    pub fn text_colors_on(
+        &self,
+        fg: Rgb,
+        bg: Rgb,
+    ) -> impl Fn(Option<TextRole>) -> (Rgb, Option<Rgb>) + '_ {
+        move |role| {
+            let (fg, own) = self.text_colors(role, fg);
+            (fg, Some(own.unwrap_or(bg)))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -356,7 +405,12 @@ pub(crate) mod tests {
     /// A palette with the engine's names and a little more: what the
     /// engine's own tests draw with.
     pub(crate) fn engine_palette() -> Palette {
-        let def = def(&[
+        Palette::new::<EngineColor>(&engine_def()).unwrap()
+    }
+
+    /// The file of [`engine_palette`].
+    pub(crate) fn engine_def() -> PaletteDef {
+        def(&[
             ("text", [230, 230, 230]),
             ("text_dim", [128, 128, 128]),
             ("panel", [20, 24, 40]),
@@ -368,8 +422,7 @@ pub(crate) mod tests {
             ("accent", [80, 200, 240]),
             ("bright", [255, 255, 255]),
             ("grass", [40, 120, 50]),
-        ]);
-        Palette::new::<EngineColor>(&def).unwrap()
+        ])
     }
 
     /// A game's colors, whose palette calls two engine colors otherwise.
@@ -530,6 +583,47 @@ pub(crate) mod tests {
         assert_eq!(all.len(), 11);
         assert!(all.windows(2).all(|w| w[0].0 < w[1].0));
         assert!(all.iter().all(|&(n, c)| p.lookup(n) == Some(c)));
+    }
+
+    #[test]
+    fn text_colors_give_each_role_its_colour_and_a_key_its_background() {
+        let plain = engine_palette();
+        let (fg, panel) = (Rgb::new(1, 2, 3), plain.engine(EngineColor::Panel));
+        let warn = plain.engine(EngineColor::Warning);
+        // Without `key` and `key_bg`, a key is in the text's colours.
+        assert_eq!(plain.text_colors(None, fg), (fg, None));
+        assert_eq!(plain.text_colors(Some(TextRole::Key), fg), (fg, None));
+        let engine = Some(TextRole::Engine(EngineColor::Warning));
+        assert_eq!(plain.text_colors(engine, fg), (warn, None));
+        let named = |name| Some(TextRole::Palette(name));
+        assert_eq!(plain.text_colors(named("nowhere"), fg), (fg, None));
+        let on = plain.text_colors_on(fg, panel);
+        assert_eq!(on(Some(TextRole::Key)), (fg, Some(panel)));
+        assert_eq!(on(None), (fg, Some(panel)));
+
+        let (gold, ink) = ([200, 160, 0], [10, 10, 10]);
+        let mut with = engine_def();
+        with.colors.insert(KEY.to_owned(), gold);
+        with.colors.insert("gold".to_owned(), gold);
+        let keyed = Palette::new::<EngineColor>(&with).unwrap();
+        let gold = Rgb::from(gold);
+        assert_eq!(keyed.text_colors(Some(TextRole::Key), fg), (gold, None));
+        assert_eq!(keyed.text_colors(named("gold"), fg), (gold, None));
+        assert_eq!(
+            keyed.text_colors_on(fg, panel)(Some(TextRole::Key)),
+            (gold, Some(panel))
+        );
+        with.colors.insert(KEY_BG.to_owned(), ink);
+        let boxed = Palette::new::<EngineColor>(&with).unwrap();
+        let ink = Some(Rgb::from(ink));
+        assert_eq!(boxed.text_colors(Some(TextRole::Key), fg), (gold, ink));
+        assert_eq!(
+            boxed.text_colors_on(fg, panel)(Some(TextRole::Key)),
+            (gold, ink)
+        );
+        // `key` and `key_bg` aren't required: no palette needs them.
+        assert!(!required_names::<EngineColor>().contains(&KEY));
+        assert!(!required_names::<EngineColor>().contains(&KEY_BG));
     }
 
     #[test]

@@ -5,6 +5,7 @@
 
 use super::Side;
 use crate::prelude::*;
+use crate::text::StyledText;
 use crate::widgets::AskView;
 
 /// The whole screen, as it is this frame.
@@ -32,7 +33,7 @@ pub struct KeyBindingsView<A> {
     /// side's change / clear).
     pub choices: Option<ChoicesView>,
     /// The help line: what the keys do here.
-    pub help: String,
+    pub help: StyledText,
 }
 
 impl<A: Copy + PartialEq> KeyBindingsView<A> {

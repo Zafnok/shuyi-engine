@@ -9,6 +9,7 @@ pub mod glyph;
 use crate::prelude::*;
 
 use crate::hurry::{HURRY_DELAY, HURRY_FACTOR, HurryClock};
+use crate::text::StyledText;
 use crate::widgets::menu::MenuView;
 use crate::widgets::word_wrap;
 use shuyi_assets::font::CellWidths;
@@ -246,13 +247,14 @@ impl TextView {
 pub struct SkipView {
     /// The question.
     pub question: String,
-    /// How to answer, with the keys.
-    pub answers: String,
+    /// How to answer, with the keys (each in a key span:
+    /// [`Ctx::text_styled`](crate::Ctx::text_styled)).
+    pub answers: StyledText,
 }
 
 impl SkipView {
     /// The question `question`, answered as `answers` says.
-    pub fn new(question: impl Into<String>, answers: impl Into<String>) -> Self {
+    pub fn new(question: impl Into<String>, answers: impl Into<StyledText>) -> Self {
         Self {
             question: question.into(),
             answers: answers.into(),
@@ -265,10 +267,11 @@ impl SkipView {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WaitView {
-    /// The name of the key that goes on.
-    pub key: String,
-    /// How to open the log, if its action has a key.
-    pub log_hint: Option<String>,
+    /// The name of the key that goes on, in a key span
+    /// ([`Ctx::text_styled`](crate::Ctx::text_styled)).
+    pub key: StyledText,
+    /// How to open the log, if its action has a key, the key in a key span.
+    pub log_hint: Option<StyledText>,
     /// Whether the marker that says "press to go on" is lit: it blinks.
     pub marker: bool,
 }
@@ -276,7 +279,7 @@ pub struct WaitView {
 impl WaitView {
     /// Waiting for the key named `key`, the marker lit as `marker` says,
     /// with no log hint.
-    pub fn new(key: impl Into<String>, marker: bool) -> Self {
+    pub fn new(key: impl Into<StyledText>, marker: bool) -> Self {
         Self {
             key: key.into(),
             log_hint: None,

@@ -40,6 +40,8 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
+use crate::text::StyledText;
+use core::fmt::Display;
 pub use view::{
     ChoicesView, GroupView, KeyBindingsView, RestoreView, RowView, SlotView, SwitchView,
 };
@@ -781,7 +783,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
     /// The bottom help line, naming the keys the screen was opened with
     /// (or their buttons, on a controller): the same as `ctx`'s until the
     /// screen closes.
-    pub fn help(&self, ctx: &Ctx<G>) -> String {
+    pub fn help(&self, ctx: &Ctx<G>) -> StyledText {
         let km = ctx.help_keys().of(&self.opened_with);
         let on_pad = matches!(ctx.device, Device::Pad(_));
         if self.capturing {
@@ -790,36 +792,42 @@ impl<G: GameData> KeyBindingsScreen<G> {
                 Side::Controller => CAPTURE_BUTTON_PROMPT,
             });
             let hold = on_pad || self.side == Side::Controller;
-            let hold = hold.then(|| ctx.text(HOLD_TO_CANCEL));
+            let hold = hold.then(|| ctx.text(HOLD_TO_CANCEL).into());
             let back = (!on_pad).then(|| {
                 let key = capture_abort_key_name();
-                ctx.text_with("key_bindings.help_capture_back", &[("key", &key)])
+                let keys = [("key", &key as &dyn Display)];
+                ctx.text_styled_with_keys(
+                    "key_bindings.help_capture_back",
+                    ctx.help_keys(),
+                    &[],
+                    &keys,
+                )
             });
-            let hints = [Some(what), hold, back.as_deref()];
-            return hints
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(SEPARATOR);
+            let mut line = StyledText::from(what);
+            for hint in [hold, back].into_iter().flatten() {
+                line.push_plain(SEPARATOR).append(&hint);
+            }
+            return line;
         }
         if self.restoring.is_some() {
-            return ctx.text_with_keys("key_bindings.help_restore", km, &[]);
+            return ctx.text_styled_with_keys("key_bindings.help_restore", km, &[], &[]);
         }
         if self.choice.is_some() {
-            return ctx.text_with("key_bindings.help_choice", &[]);
+            return ctx.text_styled("key_bindings.help_choice", &[]);
         }
         if self.is_on_switch() {
-            return ctx.text_with("key_bindings.help_switch", &[]);
+            return ctx.text_styled("key_bindings.help_switch", &[]);
         }
         let on_slot = self.focus().is_some();
         if on_slot && on_pad {
-            return ctx.text_with("key_bindings.help_slot_pad", &[]);
+            return ctx.text_styled("key_bindings.help_slot_pad", &[]);
         }
         if on_slot {
             let clear = clear_slot_key_name();
-            return ctx.text_with_keys("key_bindings.help_slot", km, &[("clear", &clear)]);
+            let keys = [("clear", &clear as &dyn Display)];
+            return ctx.text_styled_with_keys("key_bindings.help_slot", km, &[], &keys);
         }
-        ctx.text_with_keys("key_bindings.help_restore_row", km, &[])
+        ctx.text_styled_with_keys("key_bindings.help_restore_row", km, &[], &[])
     }
 
     /// The screen as it is now, as plain data for a skin to paint

@@ -1,18 +1,25 @@
 //! Filling in a text's placeholders: `{name}` by a value the caller gives
 //! ([`fill_values`]), or by what the caller looks up for it, such as the
 //! key the player has for an action ([`fill`],
-//! [`Ctx::text_with`](crate::Ctx::text_with)).
+//! [`Ctx::text_with`](crate::Ctx::text_with)); and [`StyledText`], a line
+//! whose spans have roles a skin paints, such as a key's name
+//! ([`fill_styled`], [`Ctx::text_styled`](crate::Ctx::text_styled),
+//! ADR-0122).
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use shuyi_assets::ContentError;
 use shuyi_assets::bundle::Bundle;
 use shuyi_assets::error::codes;
+use shuyi_assets::font::CellWidths;
 use shuyi_assets::keymap::ActionSet;
+use shuyi_assets::lang::text_width;
 use shuyi_assets::palette::line_of_key;
 use shuyi_assets::text::NO_BREAK_SPACE;
 use shuyi_assets::tip::placeholders;
+use shuyi_core::text::{Part, split_tokens};
 
+use crate::frame::color::EngineColor;
 use crate::input::help_keys::{HelpKeys, cursor_keys_name, key_name};
 
 /// The placeholder for the keys that move the cursor (`{Cursor}`).
@@ -92,38 +99,243 @@ pub fn fill_values(text: &str, args: &[(&str, &dyn Display)]) -> String {
 /// its spaces become [`NO_BREAK_SPACE`]s, which
 /// [`word_wrap`](crate::widgets::word_wrap) never breaks at and a glyph
 /// buffer draws as spaces.
+///
+/// The plain text of [`fill_styled`], with no key names handed in as
+/// values.
 pub fn fill(
     text: &str,
     args: &[(&str, &dyn Display)],
     lookup: impl Fn(&str) -> Option<String>,
 ) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some((before, after)) = rest.split_once('{') {
-        out.push_str(before);
-        let Some((name, tail)) = after.split_once('}') else {
-            // An unclosed `{`: the rest is plain text.
-            out.push('{');
-            rest = after;
-            break;
-        };
-        if let Some((_, value)) = args.iter().find(|(arg, _)| *arg == name) {
-            out.push_str(&value.to_string());
-        } else if let Some(found) = lookup(name) {
-            out.extend(
-                found
-                    .chars()
-                    .map(|c| if c == ' ' { NO_BREAK_SPACE } else { c }),
-            );
-        } else {
-            out.push('{');
-            out.push_str(name);
-            out.push('}');
+    fill_styled(text, args, &[], lookup).plain()
+}
+
+/// [`fill`], with what names a key in a [`TextRole::Key`] span: each value
+/// `lookup` gives, and each value of `key_args` (a key's name a screen
+/// hands in as a value, such as a text box's fixed keys). The values of
+/// `args` and the rest of the text are plain. A placeholder `args` names
+/// is filled from `args` first, then from `key_args`, then by `lookup`.
+/// A key's name, from either, is kept on one line: its spaces become
+/// [`NO_BREAK_SPACE`]s.
+///
+/// ```
+/// use shuyi_ui::text::{StyledText, TextRole, fill_styled};
+/// let key = |name: &str| (name == "Confirm").then(|| "f".to_owned());
+/// let filled = fill_styled("{Confirm} pick · {done} done", &[], &[("done", &"Enter")], key);
+/// let mut expected = StyledText::new();
+/// expected.push_key("f").push_plain(" pick · ").push_key("Enter").push_plain(" done");
+/// assert_eq!(filled, expected);
+/// assert_eq!(filled.plain(), "f pick · Enter done");
+/// ```
+pub fn fill_styled(
+    text: &str,
+    args: &[(&str, &dyn Display)],
+    key_args: &[(&str, &dyn Display)],
+    lookup: impl Fn(&str) -> Option<String>,
+) -> StyledText {
+    let mut out = StyledText::new();
+    let value = |values: &[(&str, &dyn Display)], name: &str| {
+        let found = values.iter().find(|(arg, _)| *arg == name);
+        found.map(|(_, value)| value.to_string())
+    };
+    for part in split_tokens(text) {
+        match part {
+            Part::Text(plain) | Part::Unclosed(plain) => {
+                out.push_plain(plain);
+            }
+            Part::Token(name) => {
+                if let Some(plain) = value(args, name) {
+                    out.push_plain(&plain);
+                } else if let Some(key) = value(key_args, name).or_else(|| lookup(name)) {
+                    out.push_key(&joined(&key));
+                } else {
+                    out.push_plain(&format!("{{{name}}}"));
+                }
+            }
         }
-        rest = tail;
     }
-    out.push_str(rest);
     out
+}
+
+/// `name` with its spaces as [`NO_BREAK_SPACE`]s: a key's name on one line.
+fn joined(name: &str) -> String {
+    name.chars()
+        .map(|c| if c == ' ' { NO_BREAK_SPACE } else { c })
+        .collect()
+}
+
+/// What a span of a [`StyledText`] is, for the skin to paint it: never its
+/// colour, which the palette gives
+/// ([`Palette::text_colors`](crate::frame::color::Palette::text_colors)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum TextRole {
+    /// A key's or a button's name: the palette's
+    /// [`KEY`](crate::frame::color::KEY) and
+    /// [`KEY_BG`](crate::frame::color::KEY_BG).
+    Key,
+    /// One of the engine's colours (a warning, a highlight).
+    Engine(EngineColor),
+    /// A colour of the game's palette, by its name
+    /// ([`ColorSet::name`](crate::frame::color::ColorSet::name)).
+    Palette(&'static str),
+}
+
+/// A run of text in one [`TextRole`], or in none (plain).
+///
+/// Kind 3 of ADR-0039: build it with [`TextSpan::new`]; a
+/// [`StyledText`] builds its own.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct TextSpan {
+    /// Its text.
+    pub text: String,
+    /// What it is; `None` for plain text.
+    pub role: Option<TextRole>,
+}
+
+impl TextSpan {
+    /// `text` in `role`.
+    pub fn new(text: impl Into<String>, role: Option<TextRole>) -> Self {
+        Self {
+            text: text.into(),
+            role,
+        }
+    }
+}
+
+/// A line of text in spans, each with an optional [`TextRole`] that a skin
+/// paints from the palette
+/// ([`GlyphBuffer::print_styled`](crate::frame::glyph_buffer::GlyphBuffer::print_styled)):
+/// a hint whose keys stand out (ADR-0122). A role never changes the text
+/// or how many cells it takes.
+///
+/// Its spans are kept joined: a push next to a span of the same role joins
+/// it, and an empty push adds nothing, so two texts that read the same in
+/// the same roles are equal.
+///
+/// ```
+/// use shuyi_ui::text::{StyledText, TextRole};
+/// let mut hint = StyledText::new();
+/// hint.push_key("f").push_plain(" yes").push_plain(" / ");
+/// hint.push_key("d").push_plain(" no");
+/// assert_eq!(hint.plain(), "f yes / d no");
+/// assert_eq!(hint.spans().len(), 4);
+/// assert_eq!(hint.spans()[2].role, Some(TextRole::Key));
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct StyledText {
+    spans: Vec<TextSpan>,
+}
+
+impl StyledText {
+    /// No text.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds `text` in `role` at the end.
+    pub fn push(&mut self, text: &str, role: Option<TextRole>) -> &mut Self {
+        if text.is_empty() {
+            return self;
+        }
+        match self.spans.last_mut() {
+            Some(last) if last.role == role => last.text.push_str(text),
+            _ => self.spans.push(TextSpan::new(text, role)),
+        }
+        self
+    }
+
+    /// Adds plain `text` at the end.
+    pub fn push_plain(&mut self, text: &str) -> &mut Self {
+        self.push(text, None)
+    }
+
+    /// Adds a key's name at the end, in [`TextRole::Key`].
+    pub fn push_key(&mut self, name: &str) -> &mut Self {
+        self.push(name, Some(TextRole::Key))
+    }
+
+    /// Adds every span of `other` at the end.
+    pub fn append(&mut self, other: &StyledText) -> &mut Self {
+        for span in &other.spans {
+            self.push(&span.text, span.role);
+        }
+        self
+    }
+
+    /// Its spans, in order: none empty, and no two neighbours in the same
+    /// role.
+    pub fn spans(&self) -> &[TextSpan] {
+        &self.spans
+    }
+
+    /// Its text, with no roles.
+    pub fn plain(&self) -> String {
+        self.spans.iter().map(|s| s.text.as_str()).collect()
+    }
+
+    /// Whether it has no text.
+    pub fn is_empty(&self) -> bool {
+        self.spans.is_empty()
+    }
+
+    /// How many cells it takes: [`text_width`] of its
+    /// [`plain`](Self::plain) text.
+    pub fn width(&self, widths: &CellWidths) -> usize {
+        self.spans.iter().map(|s| text_width(&s.text, widths)).sum()
+    }
+
+    /// It in at most `w` cells: as [`cut`](crate::frame::draw::cut) cuts
+    /// its plain text, each kept character in its role and the `…` in the
+    /// role of the first character it stands for.
+    #[must_use]
+    pub fn cut(&self, w: usize, widths: &CellWidths) -> StyledText {
+        if self.width(widths) <= w {
+            return self.clone();
+        }
+        let room = w.saturating_sub(1);
+        let mut used = 0;
+        let mut out = StyledText::new();
+        let chars = self
+            .spans
+            .iter()
+            .flat_map(|s| s.text.chars().map(|c| (c, s.role)));
+        for (c, role) in chars {
+            used += widths.of_char(c);
+            if used > room {
+                if w > 0 {
+                    out.push("…", role);
+                }
+                break;
+            }
+            let mut buf = [0; 4];
+            out.push(c.encode_utf8(&mut buf), role);
+        }
+        out
+    }
+}
+
+impl Display for StyledText {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.spans.iter().try_for_each(|s| f.write_str(&s.text))
+    }
+}
+
+impl From<String> for StyledText {
+    fn from(text: String) -> Self {
+        let mut styled = Self::new();
+        styled.push_plain(&text);
+        styled
+    }
+}
+
+impl From<&str> for StyledText {
+    fn from(text: &str) -> Self {
+        let mut styled = Self::new();
+        styled.push_plain(text);
+        styled
+    }
 }
 
 /// Text a view holds before it is shown: a text key with the values of
@@ -265,3 +477,9 @@ mod tests {
         assert_eq!(fill("no braces", &[], upper), "no braces");
     }
 }
+
+#[cfg(test)]
+mod styled_tests;
+
+#[cfg(test)]
+mod hint_tests;

@@ -23,6 +23,7 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
+use crate::text::StyledText;
 use core::fmt;
 pub use view::{ActionsView, ProfilesView, RowView};
 
@@ -389,7 +390,7 @@ impl<G: GameData> ProfilesScreen<G> {
 
     /// The bottom help line, naming the keys of the active keymap (or the
     /// text box's own keys while typing).
-    pub fn help(&self, ctx: &Ctx<G>) -> String {
+    pub fn help(&self, ctx: &Ctx<G>) -> StyledText {
         let key = match &self.naming {
             Some(n) if n.leaving.is_some() => HELP_QUESTION,
             Some(Naming {
@@ -405,7 +406,7 @@ impl<G: GameData> ProfilesScreen<G> {
                 RowKind::Profile(_) => HELP_LIST,
             },
         };
-        ctx.text_with(key, &[])
+        ctx.text_styled(key, &[])
     }
 
     /// Opens the name box for `purpose`, starting from `name`: the letter

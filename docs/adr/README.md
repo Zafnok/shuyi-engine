@@ -134,6 +134,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted |
 | [0120](0120-a-games-rebuild-budgeted-as-a-ratio-of-a-reference-build.md) | A new game's rebuild is budgeted as a ratio of a reference build on the same runner | Accepted; supersedes ADR-0049 §2 |
 | [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123 |
+| [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
 
 Template: [`0000-template.md`](0000-template.md).

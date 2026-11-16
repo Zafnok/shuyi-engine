@@ -42,7 +42,7 @@ fn answers_line<T>(view: &AskView<T>, widths: &CellWidths) -> (String, Vec<usize
 pub fn rect<T>(view: &AskView<T>, buf: &GlyphBuffer) -> Rect {
     let widths = buf.widths();
     let under = match &view.keys {
-        Some(keys) => text_width(keys, widths),
+        Some(keys) => keys.width(widths),
         None => text_width(&answers_line(view, widths).0, widths),
     };
     let widest = text_width(&view.text, widths).max(under);
@@ -65,7 +65,8 @@ pub fn paint<T>(palette: &Palette, view: &AskView<T>, buf: &mut GlyphBuffer) {
     let (x, y) = (rect.x + 2, rect.y + 2);
     buf.print(x, y, &view.text, text, bg);
     if let Some(keys) = &view.keys {
-        buf.print(x, y + 1, keys, c(EngineColor::TextDim), bg);
+        let colors = palette.text_colors_on(c(EngineColor::TextDim), bg);
+        buf.print_styled(x, y + 1, keys, colors);
         return;
     }
     let bar = c(EngineColor::Focus);

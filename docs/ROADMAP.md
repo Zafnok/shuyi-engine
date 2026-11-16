@@ -343,6 +343,7 @@ is done.
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
+| 2785 | Key names stand out in the template's and Hello, Grid's hints, with a key colour in their palettes (after 2347) |
 | 2354 | A grid cursor: `ListCursor` in two dimensions |
 | 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
 

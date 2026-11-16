@@ -3,6 +3,7 @@
 //! it ([`super::glyph::paint`] today).
 
 use crate::prelude::*;
+use crate::text::StyledText;
 
 /// A question, as it is this frame.
 ///
@@ -16,8 +17,8 @@ pub struct AskView<T> {
     /// alone ([`keys`](Self::keys)).
     pub answers: Vec<AnswerView<T>>,
     /// The line naming the keys that answer (a yes/no's "f yes / d no"),
-    /// shown instead of the answers.
-    pub keys: Option<String>,
+    /// shown instead of the answers, each key in a key span.
+    pub keys: Option<StyledText>,
 }
 
 impl<T> AskView<T> {

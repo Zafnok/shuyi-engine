@@ -275,10 +275,14 @@ and the plural table are technical.
     `crates/ui/lang/en/ui.ron` (hello-grid's copy is gone), so the
     plural form goes there, and the parse test reads that file. If not,
     change the two files above, and 2351 moves the key.
-  - **2347** (styled text): both change `fill`. If 2347 is done, `fill`
-    is `fill_styled(…).plain()`: build `fill_styled` on `walk`, so a
-    key's name in any branch is still a `Key` span, and its `args` take
-    `&dyn ToArg`. If not, 2347 builds `fill_styled` on `walk`.
+  - **From 2347 (done, ADR-0122):** `fill` is
+    `fill_styled(text, args, &[], lookup).plain()`, and `fill_styled`
+    (`crates/ui/src/text.rs`) walks `shuyi_core::text::split_tokens`,
+    filling a token from `args` (plain), then `key_args` and `lookup`
+    (a `Key` span). Build `fill_styled` on `walk`, so a key's name in
+    any branch is still a `Key` span, and its `args` and `key_args`
+    take `&dyn ToArg`; `Ctx::text_styled` and `text_styled_with_keys`
+    take the same arguments as `text_with`.
   - **From 2302 (done):** its `max_cells` overflow list
     (`Lang::overflow`, `crates/assets/src/lang/places.rs`) measures the
     raw text: make it measure each form (`Message::forms`) and report
