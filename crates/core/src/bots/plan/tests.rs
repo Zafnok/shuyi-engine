@@ -464,3 +464,16 @@ proptest! {
         prop_assert!(taken <= bound(decision), "{} > {}", taken, bound(decision));
     }
 }
+
+#[test]
+fn the_constructor_builds_what_a_literal_built() {
+    const BUILT: PlanSettings = PlanSettings::new(1, 2, 3, 4, 5);
+    let literal = PlanSettings {
+        width: 1,
+        candidates: 2,
+        depth: 3,
+        samples: 4,
+        temperature: 5,
+    };
+    assert_eq!(BUILT, literal);
+}

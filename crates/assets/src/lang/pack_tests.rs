@@ -13,13 +13,9 @@ fn data_problem(key: &str, text: &str) -> Option<String> {
         .then(|| "a tip is 5 cells".to_owned())
 }
 
-const RULES: PackRules<'static> = PackRules {
-    data_problem,
-    tokens: &HeroTokens,
-    limits: LIMITS,
-    widths: &CellWidths::NARROW,
-    variants: &["a", "b"],
-};
+const RULES: PackRules<'static> =
+    PackRules::new(data_problem, &HeroTokens, LIMITS, &CellWidths::NARROW)
+        .with_variants(&["a", "b"]);
 
 /// A scene with a caption, narration, speech with a name token, replies
 /// with reactions, an `@if` block and a hero token.

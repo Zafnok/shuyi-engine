@@ -510,11 +510,11 @@ impl Bake {
         if !errors.is_empty() {
             return Err(errors);
         }
-        let info = PackInfo {
-            stamp: self.stamp.clone(),
-            target: target.map(ToOwned::to_owned),
-            content: bundle.fingerprint(),
-        };
+        let info = PackInfo::new(
+            self.stamp.clone(),
+            target.map(ToOwned::to_owned),
+            bundle.fingerprint(),
+        );
         Ok(Baked {
             bytes: write(&info, &contents),
             files,

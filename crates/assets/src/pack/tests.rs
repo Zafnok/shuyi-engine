@@ -436,11 +436,7 @@ fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
 
 /// The info of the tests' raw packs.
 fn test_info() -> PackInfo {
-    PackInfo {
-        stamp: STAMP.to_owned(),
-        target: None,
-        content: ContentHash(7),
-    }
+    PackInfo::new(STAMP.to_owned(), None, ContentHash(7))
 }
 
 #[test]
@@ -1059,4 +1055,15 @@ fn a_raw_pack_holds_at_most_max_files() {
             "it has more than {MAX_FILES} files"
         )))
     );
+}
+
+#[test]
+fn the_constructor_builds_what_a_literal_built() {
+    let literal = PackInfo {
+        stamp: "game 1".to_owned(),
+        target: Some("playdate".to_owned()),
+        content: ContentHash(7),
+    };
+    let built = PackInfo::new("game 1", Some("playdate".to_owned()), ContentHash(7));
+    assert_eq!(built, literal);
 }

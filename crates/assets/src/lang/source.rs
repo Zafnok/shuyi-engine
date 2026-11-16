@@ -31,8 +31,10 @@ pub enum LineKind {
     Caption,
 }
 
-/// One dialogue line or caption in English.
+/// One dialogue line or caption in English: a view the engine fills in
+/// and a game reads (ADR-0039 kind 3), built with [`SourceLine::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SourceLine {
     /// The id of its scene.
     pub scene: String,
@@ -43,6 +45,25 @@ pub struct SourceLine {
     /// The stem of the `.dlg` file its scene is in (`ch01` for
     /// `ch01.dlg`); empty if the dialogue wasn't read from files.
     pub file: String,
+}
+
+impl SourceLine {
+    /// The line `text`, of `kind`, in the scene `scene` of the file
+    /// `file` (its stem; empty if not read from files).
+    #[must_use]
+    pub fn new(
+        scene: impl Into<String>,
+        text: impl Into<String>,
+        kind: LineKind,
+        file: impl Into<String>,
+    ) -> Self {
+        Self {
+            scene: scene.into(),
+            text: text.into(),
+            kind,
+            file: file.into(),
+        }
+    }
 }
 
 /// Today's English for everything `data.ron` and `dialogue/*.ron` can

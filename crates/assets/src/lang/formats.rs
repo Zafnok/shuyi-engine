@@ -202,13 +202,8 @@ impl Format for LangPackRon {
             dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), *s)).collect(),
         };
         let widths = CellWidths::wide(self.wide.iter().copied());
-        let rules = PackRules {
-            data_problem: self.data_problem,
-            tokens: self.tokens,
-            limits: self.limits,
-            widths: &widths,
-            variants: self.variants,
-        };
+        let rules = PackRules::new(self.data_problem, self.tokens, self.limits, &widths)
+            .with_variants(self.variants);
         let pack = pack_from_files_in(source, &sources, &english, self.data.as_ref(), &rules);
         if let (Ok(pack), Some(sets)) = (&pack, &self.sets)
             && let Some(set) = pack.info.wide_font.as_deref()

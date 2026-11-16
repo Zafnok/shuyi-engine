@@ -329,10 +329,10 @@ mod tests {
     }
 
     /// A game's pack rules: no tokens, no variants.
-    const RULES: PackRules<'static> = PackRules {
-        data_problem: no_problem,
-        tokens: &NoTokens,
-        limits: DialogueLimits {
+    const RULES: PackRules<'static> = PackRules::new(
+        no_problem,
+        &NoTokens,
+        DialogueLimits {
             box_width: 40,
             box_lines: 3,
             max_text: 200,
@@ -341,9 +341,8 @@ mod tests {
             max_options: 4,
             max_reaction_texts: 3,
         },
-        widths: &shuyi_assets::font::CellWidths::NARROW,
-        variants: &[],
-    };
+        &shuyi_assets::font::CellWidths::NARROW,
+    );
 
     /// No variants: one text per line.
     const ONE_TEXT: [&str; 0] = [];
@@ -685,10 +684,7 @@ mod tests {
         let after = lines_of("@scene test_s\n> New words.\n> Kept.\n@end\n");
         let old = id_of(&before, "Old words.");
         let entry = format!(r#"[(key: {old:?}, source: "Old words.", text_f: "F", text_m: "M")]"#);
-        let rules = PackRules {
-            variants: &["m", "f"],
-            ..RULES
-        };
+        let rules = RULES.with_variants(&["m", "f"]);
         let files = [
             ("en/ui.ron", r#"{"names.test_guide": "Test"}"#),
             ("test/lang.ron", r#"(name: "TEST", made_by: Machine)"#),

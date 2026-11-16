@@ -43,10 +43,8 @@ fn pack() -> Vec<u8> {
         let bytes = fs::read(hello_grid().join("files").join(name)).expect("a file of Hello, Grid");
         files.insert(name.to_owned(), Content::Raw(bytes));
     }
-    let info = PackInfo {
-        stamp: "hello-grid 0.1.0".to_owned(),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "hello-grid 0.1.0".to_owned();
     pack::write(&info, &files)
 }
 

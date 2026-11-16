@@ -1054,13 +1054,12 @@ mod tests {
         use super::super::*;
         use crate::lang::{PackRules, pack_from_sources};
 
-        const RULES: PackRules<'static> = PackRules {
-            data_problem: |_, _| None,
-            tokens: &crate::dialogue::NoTokens,
-            limits: crate::dialogue::tests::LIMITS,
-            widths: &crate::font::CellWidths::NARROW,
-            variants: &[],
-        };
+        const RULES: PackRules<'static> = PackRules::new(
+            |_, _| None,
+            &crate::dialogue::NoTokens,
+            crate::dialogue::tests::LIMITS,
+            &crate::font::CellWidths::NARROW,
+        );
 
         /// An atlas of ASCII's printable characters, and `extra`.
         fn ascii_and(extra: &str) -> FontAtlasDef {

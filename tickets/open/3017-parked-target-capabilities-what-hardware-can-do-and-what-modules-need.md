@@ -23,7 +23,9 @@ export there. [ADR-0012](../../docs/adr/0012-gba-and-ds-targets-capabilities-ind
 §1 turns that into data and a check:
 
 - `TargetProfile` ([ADR-0008](../../docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)
-  §1, built by 3001) gains `capabilities`;
+  §1, built by 3001) gains `capabilities`, additively (**from 2085
+  (done):** `TargetProfile`, `Display`, `Color` and the other profile
+  types are `#[non_exhaustive]`, and a new field is `#[serde(default)]`);
 - each module's metadata ([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)
   §4, built by 2003) gains `needs`;
 - `shuyi check --target <id>` fails when a game turns on a module, or a
