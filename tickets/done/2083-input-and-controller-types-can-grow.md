@@ -218,7 +218,7 @@ before: |
   match ui { UiAction::Up => up(), UiAction::Down => down(), UiAction::Left => left(), UiAction::Right => right(), UiAction::Confirm => confirm(), UiAction::Cancel => cancel(), UiAction::Debug => {} }
 after: |
   match ui { UiAction::Up => up(), UiAction::Down => down(), UiAction::Left => left(), UiAction::Right => right(), UiAction::Confirm => confirm(), UiAction::Cancel => cancel(), _ => {} }
-find: ["UiAction::Debug =>", "UiAction::Debug) =>"]
+find: ["UiAction::Debug =>"]
 ```
 
 Breaking: shuyi-ui: PadState: #[non_exhaustive]; build it with PadState::new
@@ -248,7 +248,7 @@ before: |
 after: |
   const KINDS: &[PadKind] = PadKind::ALL;
   for &kind in PadKind::ALL { use_kind(kind); }
-find: ["[PadKind; 6]", "in PadKind::ALL"]
+find: ["[PadKind; 6]", "for kind in PadKind::ALL"]
 ```
 
 Breaking: shuyi-ui: RawInputEvent, PadKind, Device, Input: #[non_exhaustive]; a match on one has a `_` arm
@@ -262,5 +262,5 @@ before: |
   match device { Device::Keyboard => keys(), Device::Pad(kind) => pad(kind) }
 after: |
   match device { Device::Keyboard => keys(), Device::Pad(kind) => pad(kind), _ => keys() }
-find: ["Device::Pad(kind) =>"]
+find: ["Device::Pad(kind) => pad(kind) }"]
 ```
