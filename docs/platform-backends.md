@@ -217,6 +217,9 @@ switches when it changes; a device that is always full screen ignores it.
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
 `_` arm, since later tickets add to them (more than one screen, 3023).
+So are the input types a backend reads or builds (`RawInputEvent`,
+`Key`, `Button`, `PadKind`, `PadState`; ticket 2083): a backend's match
+on one has a `_` arm, and it builds a `PadState` with `PadState::new`.
 
 ### `poll_input(&mut self, out: &mut Vec<RawInputEvent>)`
 
@@ -227,7 +230,8 @@ Add the input since the last call, in the order it happened:
   key's `Down`;
 - controller buttons by position: read every pad's state, with the
   platform's own number for the pad (`PadId`, stable while it is plugged
-  in; 0 on a device with one pad), and give it to
+  in; 0 on a device with one pad), as a `PadState::new(buttons,
+  left_stick, right_stick)`, and give it to
   `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`. It holds the
   rules (sticks as directions, the Switch-style swap) and gives each
   pad's own events with its id: every pad's releases, then
