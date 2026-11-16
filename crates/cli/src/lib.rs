@@ -56,6 +56,7 @@ pub mod template;
 pub mod toy;
 pub mod watch;
 pub mod web;
+pub mod worktrees;
 
 use std::path::{Path, PathBuf};
 

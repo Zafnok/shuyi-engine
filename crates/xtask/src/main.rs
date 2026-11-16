@@ -30,6 +30,7 @@
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
 //! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
 //! - `cargo xtask sound-parity give-up [--apply]`
+//! - `cargo xtask seed-target --into <worktree>`
 
 mod api;
 mod book;
@@ -234,7 +235,13 @@ usage:
   cargo xtask sound-parity give-up [--apply]
       Check that tools/sound-parity/footprint.ron covers all the sound
       replacement added; with --apply, take it all out. Only on Nick's word:
-      the give-up-sound-replacement skill says what else that session does.";
+      the give-up-sound-replacement skill says what else that session does.
+  cargo xtask seed-target --into <worktree>
+      Run in a warm worktree (usually the main one): start <worktree>'s
+      target/, which must be empty or absent, from this one's target/debug
+      (ticket 2078). Third-party output is hard-linked, what cargo rewrites
+      is copied, and the workspace's crates are left to build fresh with
+      their own paths. Refuses while a build runs here, and across volumes.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -279,6 +286,7 @@ fn main() -> ExitCode {
         Some("exercises") => exercises(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
+        Some("seed-target") => seed_target(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -294,6 +302,37 @@ fn repo_root() -> PathBuf {
         .and_then(Path::parent)
         .unwrap_or(manifest)
         .to_path_buf()
+}
+
+/// `seed-target --into <worktree>`: seeds `<worktree>`'s `target/` from
+/// this one's (`shuyi_cli::worktrees::seed`).
+fn seed_target(root: &Path, args: &[String]) -> ExitCode {
+    use shuyi_cli::worktrees::seed;
+    let [flag, into] = args else {
+        return report(
+            "seed-target",
+            &["usage: cargo xtask seed-target --into <worktree>".to_owned()],
+            &[],
+        );
+    };
+    if flag != "--into" {
+        return report(
+            "seed-target",
+            &[format!("unknown flag {flag}: use --into <worktree>")],
+            &[],
+        );
+    }
+    let packages = match seed::path_packages_of(root) {
+        Ok(packages) => packages,
+        Err(e) => return report("seed-target", &[e], &[]),
+    };
+    match seed::seed(root, Path::new(into), &packages) {
+        Ok(done) => {
+            eprintln!("{done}");
+            report("seed-target", &[], &[])
+        }
+        Err(e) => report("seed-target", &[e.to_string()], &[]),
+    }
 }
 
 fn check_merges(root: &Path, args: &[String]) -> ExitCode {
