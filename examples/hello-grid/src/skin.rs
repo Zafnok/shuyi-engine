@@ -8,6 +8,7 @@ use shuyi::ui::dialogue::TextView;
 use shuyi::ui::dialogue::text_box::{self, glyph::BoxPlace};
 use shuyi::ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use shuyi::ui::frame::{EngineColor, Palette, Rgb};
+use shuyi::ui::text::StyledText;
 use shuyi::ui::widgets::menu::{self, MenuView};
 use shuyi::ui::{Ctx, GameData};
 
@@ -20,8 +21,8 @@ pub struct TitleView {
     pub subtitle: String,
     /// The menu.
     pub menu: MenuView,
-    /// The help line.
-    pub help: String,
+    /// The help line, its keys in key spans.
+    pub help: StyledText,
 }
 
 /// What the lines round the stage's map show.
@@ -31,8 +32,8 @@ pub struct StageView {
     pub turn: String,
     /// What is happening.
     pub message: String,
-    /// The help line (empty while a piece walks).
-    pub help: String,
+    /// The help line (empty while a piece walks), its keys in key spans.
+    pub help: StyledText,
 }
 
 /// What a yes-or-no question over the stage shows.
@@ -40,8 +41,8 @@ pub struct StageView {
 pub struct QuestionView {
     /// The question.
     pub question: String,
-    /// Its answers, with their keys.
-    pub answers: String,
+    /// Its answers, with their keys in key spans.
+    pub answers: StyledText,
 }
 
 /// What the end of a stage shows.
@@ -53,8 +54,8 @@ pub struct EndView {
     pub won: bool,
     /// The menu.
     pub menu: MenuView,
-    /// The help line.
-    pub help: String,
+    /// The help line, its keys in key spans.
+    pub help: StyledText,
 }
 
 /// The column that centres `text` in `buf`.
@@ -77,10 +78,31 @@ fn line(buf: &mut GlyphBuffer, y: i32, text: &str, fg: Rgb, bg: Rgb) {
     buf.print(x, y, text, fg, bg);
 }
 
+/// Styled `text` centred on row `y`, its words in `fg` and its keys in the
+/// palette's `key` colour, all on `bg`.
+fn line_styled(
+    palette: &Palette,
+    buf: &mut GlyphBuffer,
+    y: i32,
+    text: &StyledText,
+    fg: Rgb,
+    bg: Rgb,
+) {
+    let x = centred(buf, &text.plain());
+    buf.print_styled(x, y, text, palette.text_colors_on(fg, bg));
+}
+
 /// The help line, on the last row.
-fn help(palette: &Palette, buf: &mut GlyphBuffer, text: &str, bg: Rgb) {
+fn help(palette: &Palette, buf: &mut GlyphBuffer, text: &StyledText, bg: Rgb) {
     let y = i32::from(buf.height()) - 1;
-    line(buf, y, text, palette.engine(EngineColor::TextDim), bg);
+    line_styled(
+        palette,
+        buf,
+        y,
+        text,
+        palette.engine(EngineColor::TextDim),
+        bg,
+    );
 }
 
 /// `menu` centred across `buf`, its top on row `y`.
@@ -154,8 +176,16 @@ pub fn paint_question(palette: &Palette, view: &QuestionView, buf: &mut GlyphBuf
         Rect::new(0, y, i32::from(buf.width()), 1),
         Cell::new(' ', bg, bg),
     );
-    let text = format!("{}  {}", view.question, view.answers);
-    line(buf, y, &text, palette.engine(EngineColor::Warning), bg);
+    let mut text = StyledText::from(format!("{}  ", view.question));
+    text.append(&view.answers);
+    line_styled(
+        palette,
+        buf,
+        y,
+        &text,
+        palette.engine(EngineColor::Warning),
+        bg,
+    );
 }
 
 /// The end of a stage: the headline, the menu, the help.

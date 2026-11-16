@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2347"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2785 — Key names stand out in the template's and Hello, Grid's hints
@@ -95,14 +95,14 @@ snapshots apart.
 
 ## Acceptance criteria
 
-- [ ] Hello, Grid's snapshots change only in key cells: its help lines,
+- [x] Hello, Grid's snapshots change only in key cells: its help lines,
       its text box's wait corner and its leave question (reviewed).
-- [ ] A new game from the template (`shuyi new`, both stages) builds,
+- [x] A new game from the template (`shuyi new`, both stages) builds,
       and its title's and stage's help lines paint their keys in `key`.
-- [ ] Hello, Grid's one-bit check test passes with `key` in its pattern
+- [x] Hello, Grid's one-bit check test passes with `key` in its pattern
       map.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass, the template job's
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass, the template job's
       included.
 
 ## Tests required
@@ -112,5 +112,68 @@ snapshots apart.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done on 2026-11-16.
+
+- **The template:** the base's `TitleView::play` (`Option<StyledText>`)
+  and `help` (`StyledText`) are built with `ctx.text_styled` and printed
+  with `screens::print_centred_styled` and
+  `ctx.palette.text_colors_on(fg, bg)`; the `top-down-grid` stage's
+  `StageView::help` the same, printed with `buf.print_styled`. The base
+  palette has `"key": "#c8a0ff"`, no `key_bg`. New tests: the title's
+  help and play lines (`tests/it/main.rs`) and the stage's help line
+  (`tests/stage.rs`) paint exactly their key spans' cells in `key`.
+  `crates/cli/src/template/plans.golden` moves with the files.
+- **Hello, Grid:** `TitleView::help`, `StageView::help`, `EndView::help`
+  and `QuestionView::answers` hold `StyledText` from `ctx.text_styled`;
+  `skin::line_styled` centres and prints them with `print_styled` (by
+  the plain text's length, as `line` does, so no cell moves but the
+  keys'). `paint_question` prints the question, two spaces and the
+  answers as one centred styled line. `files/palette.ron` has the same
+  `key`; `palette@onebit.ron` gives it `(fg: Black, bg: White, edge:
+  true)`, lists it among the text roles and puts it in a `distinct`
+  group with `text`.
+- **Snapshots, reviewed:** the title (desktop and web), the end and the
+  options screen change only in their help line's key cells (`fg:key`,
+  the words `text_dim` as before); the stage pictures (glyphs and tiles)
+  only in the help line's keys, now lavender; the one-bit title only in
+  its help's keys, drawn black edged in white. No snapshot shows the wait
+  corner or the leave question, so `playthrough.rs` now checks that the
+  text box's snapshot has `fg:key` cells (the wait corner's, the help
+  being under the box) and the leave question's has `fg:key bg:panel`.
+  `preview.png` is remade (`cargo shuyi frame-png --preview`), and the
+  golden table and session blessed (`cargo xtask golden --bless`).
+- **The book:** chapter 4 (`site/content/learn/book/actions.md`) says a
+  new game's palette has `key` and its title and stage print keys styled.
+
+Deviations:
+
+- **No `key` in the `top-down-grid` stage's palette.** `shuyi new`
+  merges a stage's palette into the base's and fails on a name both give
+  differently (`template/ron_merge.rs`), so a second `key` could only
+  repeat the base's. The base's covers both stages; so two palettes, not
+  three.
+- **One bit:** a text role must be a solid pair to pass the check
+  without a warning, and `text` is white on black, so `key` is black on
+  white; with no `key_bg` its cells keep the line's black, and `edge`
+  draws the black glyph in a white outline, which reads on it. Its `bg`
+  is never drawn.
+
+Book: chapter 4 (*Naming a key in text*) updated.
+
+Game: nothing to adopt, the template and Hello, Grid are the engine's
+own; the game's look and hints stay game#0250's and game#0254's.
+
+Breaking: hello-grid: tests/golden/hello-grid.ron "asset palette.ron" and "fingerprint files": the palette has `key`; only the example's table moves, and a game changes nothing.
+
+```migration
+since: 0.1.0
+what: Hello, Grid's palette gained a `key` colour, so two rows of its golden table moved.
+old: the example's table with no `key` in its palette
+new: the example's table with `key` in its palette
+before: |
+  "asset palette.ron": "fca8795f0ee567ad",
+after: |
+  "asset palette.ron": "09ed5b50424d6b9d",
+```
+
+Behaviour: shuyi-cli: a game made with `shuyi new` has a `key` colour in `files/palette.ron`, and its title's and grid stage's help lines (and the title's play line) hold `StyledText` and paint their keys in it.

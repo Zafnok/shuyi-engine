@@ -12,4 +12,7 @@
     "background": "#0a0a0e",
     "accent": "#a0e07a",
     "bright": "#ffffff",
+    // A key's name in a hint ("{Confirm} play"): no `key_bg`, so the
+    // cells behind it stay the line's.
+    "key": "#c8a0ff",
 }
