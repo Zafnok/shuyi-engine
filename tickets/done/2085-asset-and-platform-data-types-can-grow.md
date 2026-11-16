@@ -119,7 +119,7 @@ What was done:
     `const fn` `Presented::game(buffer, background, fullscreen)`.
 - No field was added and no serde attribute changed, so every target
   profile, `lang.ron`, credits file and pack loads as before, and
-  `pack::VERSION` stays. A later field of the file types is
+  `pack::VERSION` stays. Each field the file types gain is
   `#[serde(default)]`; their docs say so. `PackInfo`'s says a field it
   gains moves `pack::VERSION` instead, since a pack's index is not
   self-describing.
@@ -200,7 +200,7 @@ after: |
   let mut display = Display::new(Color::Rgba8, 8, 12);
   display.windowed = true;
   let profile = TargetProfile::new("desk", Status::Planned, display, frame_rate, Input::default(), "shuyi-app");
-find: ["TargetProfile {", "Display {", "Input {", "Budgets {"]
+find: ["TargetProfile {", "Display {"]
 ```
 
 Breaking: shuyi-assets: target::Status, target::Color: #[non_exhaustive]; a match on either has a `_` arm
@@ -234,7 +234,7 @@ after: |
   let mut credit = FileCredit::new("font", CreditGroup::Fonts, "A Font", "Ann", url, "OFL-1.1");
   credit.hidden = true;
   let file = CreditsFile::new(vec![credit]);
-find: ["PackInfo {", "LangInfo {", "SourceLine {", "FileCredit {", "CreditsFile {"]
+find: ["PackInfo {", "LangInfo {", "FileCredit {", "CreditsFile {"]
 ```
 
 Breaking: shuyi-assets: PackRules: #[non_exhaustive]; build it with the const fn PackRules::new and with_variants
