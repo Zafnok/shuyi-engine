@@ -277,7 +277,7 @@ impl NameEntry {
                 }
                 return NameEvent::Cancel;
             }
-            Some(UiAction::Debug) | None => return NameEvent::Open,
+            _ => return NameEvent::Open,
         };
         if moved != self.at {
             self.at = moved;

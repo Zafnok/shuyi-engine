@@ -106,7 +106,7 @@ impl<T: Copy + PartialEq> Ask<T> {
             UiAction::Down | UiAction::Right => self.step(true, audio),
             UiAction::Confirm => return self.focus(),
             UiAction::Cancel => return self.cancel,
-            UiAction::Debug => {}
+            _ => {}
         }
         None
     }

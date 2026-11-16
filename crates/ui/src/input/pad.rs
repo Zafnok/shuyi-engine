@@ -37,6 +37,8 @@ const DUALSHOCK_4: [u16; 3] = [0x05c4, 0x09cc, 0x0ba0];
 
 /// Who made a pad, which decides the Confirm / Cancel swap here and the
 /// button names shown on screen (ticket 0220).
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(
     Debug,
     Clone,
@@ -50,6 +52,7 @@ const DUALSHOCK_4: [u16; 3] = [0x05c4, 0x09cc, 0x0ba0];
     serde::Serialize,
     serde::Deserialize,
 )]
+#[non_exhaustive]
 pub enum PadKind {
     /// A Microsoft pad.
     Xbox,
@@ -71,8 +74,8 @@ pub enum PadKind {
 }
 
 impl PadKind {
-    /// Every kind.
-    pub const ALL: [PadKind; 6] = [
+    /// Every kind. A slice, so a new kind doesn't change its type.
+    pub const ALL: &'static [PadKind] = &[
         Self::Xbox,
         Self::PlayStation,
         Self::PlayStation4,
@@ -191,6 +194,9 @@ fn names(button: Button) -> [&'static str; 3] {
         Button::SystemMenu5 => ["Menu item 6"; 3],
         Button::SystemMenu6 => ["Menu item 7"; 3],
         Button::SystemMenu7 => ["Menu item 8"; 3],
+        // A button added later is named as its keymap file names it, until
+        // it gets names of its own here.
+        _ => [button.name(); 3],
     }
 }
 
@@ -252,7 +258,12 @@ impl FromIterator<Button> for ButtonSet {
 const STANDARD_BUTTONS: u32 = 16;
 
 /// One pad's raw state in one frame, as the platform reports it.
+///
+/// A view a backend fills in (ADR-0039, kind 3): built with
+/// [`new`](Self::new) (or [`Default`], nothing held), and its fields read
+/// and assigned.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[non_exhaustive]
 pub struct PadState {
     /// The real buttons held, by where they physically are on the pad (the
     /// stick directions come from the sticks below).
@@ -265,17 +276,27 @@ pub struct PadState {
 }
 
 impl PadState {
+    /// A pad holding `buttons`, with its sticks at `left_stick` and
+    /// `right_stick` (each `(x, y)` from -1 to 1, `+y` down).
+    pub const fn new(buttons: ButtonSet, left_stick: (f32, f32), right_stick: (f32, f32)) -> Self {
+        Self {
+            buttons,
+            left_stick,
+            right_stick,
+        }
+    }
+
     /// A pad the browser reports in the Gamepad API's "standard" mapping:
     /// bit `i` of `buttons` is set while its `buttons[i]` is pressed (only
     /// the first 16 count), and `axes` are its first four axes (left stick
     /// x, y, right stick x, y; down is positive).
     pub fn from_standard(buttons: u32, axes: [f32; 4]) -> Self {
         let [left_x, left_y, right_x, right_y] = axes;
-        Self {
-            buttons: ButtonSet(u64::from(buttons) & ((1 << STANDARD_BUTTONS) - 1)),
-            left_stick: (left_x, left_y),
-            right_stick: (right_x, right_y),
-        }
+        Self::new(
+            ButtonSet(u64::from(buttons) & ((1 << STANDARD_BUTTONS) - 1)),
+            (left_x, left_y),
+            (right_x, right_y),
+        )
     }
 }
 

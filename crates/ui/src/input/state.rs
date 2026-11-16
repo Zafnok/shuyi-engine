@@ -37,9 +37,12 @@ pub const MAX_REPEATS_PER_UPDATE: u64 = 5;
 /// What the player is playing with: whatever they pressed last
 /// (`docs/design/controls.md`, *Switching between keyboard and
 /// controller*). Help text names keys or this pad's buttons to match.
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
 )]
+#[non_exhaustive]
 pub enum Device {
     /// The keyboard.
     #[default]
@@ -50,7 +53,10 @@ pub enum Device {
 
 /// Something the player can hold down: a keyboard key or a controller
 /// button (a stick direction counts as a button).
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Input {
     /// A keyboard key.
     Key(Key),

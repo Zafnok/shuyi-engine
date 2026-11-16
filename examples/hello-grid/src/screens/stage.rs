@@ -376,7 +376,8 @@ impl Screen<Hello> for StageScreen {
                     self.leaving = true;
                     return Transition::Push(Box::new(Leave));
                 }
-                Some(UiAction::Debug) | None => {}
+                // Debug, and any action added later: nothing here.
+                _ => {}
             }
             if self.walk.is_some() {
                 break;

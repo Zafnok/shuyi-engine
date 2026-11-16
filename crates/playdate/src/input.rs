@@ -46,14 +46,12 @@ const PAD: PadId = 0;
 
 /// The pad state of the buttons whose bits are set in `bits`.
 fn state(bits: u32) -> PadState {
-    PadState {
-        buttons: BUTTONS
-            .iter()
-            .filter(|&&(bit, _)| bits & bit != 0)
-            .map(|&(_, button)| button)
-            .collect(),
-        ..PadState::default()
-    }
+    let buttons = BUTTONS
+        .iter()
+        .filter(|&&(bit, _)| bits & bit != 0)
+        .map(|&(_, button)| button)
+        .collect();
+    PadState::new(buttons, (0.0, 0.0), (0.0, 0.0))
 }
 
 /// Degrees in a whole turn.
