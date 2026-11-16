@@ -738,6 +738,11 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
             failed = matches!(ran, Outcome::Failed(..));
             *outcome = Some(ran);
         }
+        // A passing full run frees the disk of the idle worktrees' builds
+        // (ticket 2076); this one's own target/ is never touched.
+        if !options.fast && !failed {
+            crate::trim::after_gates(root);
+        }
     }
     let short_base = merge_base.get(..12).unwrap_or(&merge_base);
     let header = Header {

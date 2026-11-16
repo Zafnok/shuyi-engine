@@ -17,6 +17,7 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
+//! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]`
@@ -60,6 +61,7 @@ mod targets;
 mod tickets;
 mod toolchain;
 mod tries;
+mod trim;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -155,7 +157,19 @@ usage:
       commands are the run-gates skill's. Prints a summary block for the PR's
       body on stdout: HEAD, each gate's result, each gate left to CI and why.
       With --fast, only the quick gates (the pre-push hook's); with --list,
-      say what would run and run nothing.
+      say what would run and run nothing. Locally (not with CI set), a full run
+      that passes ends with `trim-targets` with its defaults, in one line;
+      SHUYI_NO_TRIM=1 turns it off.
+  cargo xtask trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]
+      Free the disk of this repository's other worktrees' target/, keeping
+      every worktree (ticket 2076): in each one idle (no build in N days, by
+      default 3) and not locked (no cargo running), delete the `incremental`
+      folder of each profile folder of target/, target/gates/games,
+      target/tutorial and target/skill-examples*. With --stale-hashes, also
+      the older hashes of a crate in deps/ not read in N days (when NTFS
+      updates the last access); with --merged, all of target/ of a worktree
+      whose branch is merged into origin/main or whose PR is merged (`gh`).
+      With --dry-run, list each with its target's size and delete nothing.
   cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]
       Count the PR's changed lines (added + removed) from <rev>'s merge base
       (by default origin/main's) to the working tree, untracked files
@@ -268,6 +282,7 @@ fn main() -> ExitCode {
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),
+        Some("trim-targets") => trim_targets(&root, &args[1..]),
         Some("flaky") => {
             let (errors, warnings) = flaky::run(&root, &args[1..]);
             report("flaky", &errors, &warnings)
@@ -497,6 +512,17 @@ fn gates(root: &Path, args: &[String]) -> ExitCode {
             }
         }
         Err(e) => report("gates", &[e], &[]),
+    }
+}
+
+fn trim_targets(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = trim::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    match shuyi_cli::worktrees::trim::run(root, &options, &mut std::io::stdout().lock()) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => report("trim-targets", &[e], &[]),
     }
 }
 

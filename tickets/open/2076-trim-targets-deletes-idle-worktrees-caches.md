@@ -5,7 +5,7 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:
@@ -107,6 +107,11 @@ None.
   outside `<worktree>/target/`.
 - A Scheduled Task or any Windows setting.
 - Touching the current worktree's target (the gates are running in it).
+
+**Estimated size:** about 1,300 lines (code 600, tests 400, docs 300).
+
+**Split:** past 1,100 lines, split off `--stale-hashes` (step 6) into a
+new ticket.
 
 ## Implementation steps
 
