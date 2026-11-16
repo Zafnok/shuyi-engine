@@ -51,6 +51,16 @@ on Windows, not on CI, compresses a `target/` that lacks the attribute
 first, saying so (minutes on a large folder, once); a failure there is a
 warning, not a failed gate. `--fast` and `--list` skip it.
 
+A new worktree's first build can start from a warm one: `cargo xtask
+seed-target --into <worktree>`, run in the warm worktree (the
+`work-ticket` skill's §2 has the commands; ticket 2078). It fills only
+`target/debug/`'s `deps`, `build` and `.fingerprint`: third-party output
+hard-linked, the files cargo rewrites in place copied with their times,
+and no fingerprint of a workspace crate, so each of those builds fresh
+with its own worktree's paths. Never share a `target/` between worktrees
+another way (`CARGO_TARGET_DIR`, `build-dir`, a junction): workspace
+crates hash the same in every worktree, so one would test another's code.
+
 The gates build in these target folders (ticket 2074):
 
 | Folder | What builds there | Incremental cache |

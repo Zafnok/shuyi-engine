@@ -535,6 +535,8 @@ fn same_volume(from: &Path, target: &Path) -> Result<(), Error> {
         return Ok(());
     };
     let link = target.join(".seed-probe");
+    // What a seed stopped before removing its probe left.
+    let _ = fs::remove_file(&link);
     match fs::hard_link(&probe, &link) {
         Ok(()) => fs::remove_file(&link).map_err(at(&link)),
         Err(error) => Err(link_refusal(error, from, target)),

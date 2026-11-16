@@ -53,6 +53,15 @@ gates` run compresses one that lacks the attribute (`--fast` and
 `--list` skip it, not on CI). 2075's completion notes hold the measured
 ratio.
 
+**From 2078 (done):** `crates/cli/src/worktrees.rs` exists, with
+`seed`; add `trim` beside it. `seed::LOCKS` lists the three lock files
+cargo 1.99 keeps in a profile folder (`.cargo-lock`,
+`.cargo-build-lock`, `.cargo-artifact-lock`): step 4 checks all three.
+`cargo run` holds none of them while the program runs (measured), so
+a worktree whose MCP server is running isn't locked. The ADR records
+seeding as built there: a partly built target is kept and added to
+(2078's completion notes), and its measured first build.
+
 ## Nick input
 
 None.
