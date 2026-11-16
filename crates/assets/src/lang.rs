@@ -1389,8 +1389,8 @@ mod tests {
         use crate::dialogue::NoTokens;
         use crate::dialogue::tests::LIMITS;
 
-        fn refuse(_: &str, _: &str) -> Option<String> {
-            Some("no".to_owned())
+        fn refuse(key: &str, text: &str) -> Option<String> {
+            (!text.is_empty()).then(|| format!("{key}: no"))
         }
         const VARIANTS: &[&str] = &["m", "f"];
         const BUILT: PackRules<'static> =
@@ -1403,8 +1403,8 @@ mod tests {
             variants: VARIANTS,
         };
         assert_eq!(format!("{BUILT:?}"), format!("{literal:?}"));
-        assert_eq!((BUILT.data_problem)("k", "t"), Some("no".to_owned()));
+        assert_eq!((BUILT.data_problem)("k", "t"), Some("k: no".to_owned()));
         let plain = PackRules::new(refuse, &NoTokens, LIMITS, &CellWidths::NARROW);
-        assert!(plain.variants.is_empty());
+        assert_eq!(plain.variants, [] as [&str; 0]);
     }
 }

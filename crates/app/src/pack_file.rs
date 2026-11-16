@@ -210,7 +210,7 @@ mod tests {
     /// A pack of one file, stamped `stamp`.
     fn pack(stamp: &str) -> Vec<u8> {
         let mut info = PackInfo::default();
-        info.stamp = stamp.to_owned();
+        info.stamp = String::from(stamp);
         let files = BTreeMap::from([("en.ron".to_owned(), Content::Raw(b"{}".to_vec()))]);
         write(&info, &files)
     }

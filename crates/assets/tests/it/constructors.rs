@@ -49,7 +49,7 @@ fn a_target_profile_is_built_and_its_optional_fields_assigned() {
     profile.budgets = budgets;
     assert_eq!(profile.id, "desk");
     assert_eq!(profile.quit, Quit::Game);
-    assert!(profile.display.sizes.is_empty());
+    assert_eq!(profile.display.sizes, []);
     assert!(profile.display.windowed);
     assert!(profile.input.keyboard);
     assert_eq!(profile.budgets.startup_ms, Some(2_000));
@@ -126,5 +126,5 @@ fn a_credits_file_is_built_by_its_constructors() {
         ("font", "OFL-1.1")
     );
     assert!(only.hidden);
-    assert!(only.private.is_empty());
+    assert_eq!(only.private, [] as [String; 0]);
 }
