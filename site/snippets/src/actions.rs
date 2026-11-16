@@ -17,6 +17,18 @@ pub fn plant_hint(ctx: &Ctx<Data>) -> String {
 }
 // ANCHOR_END: key_name
 
+// ANCHOR: styled
+/// The garden's help line on row `y`, each key in a key span: printed in
+/// the palette's `key` colours, so the keys stand out, once the palette
+/// has them; in the dim text's colour until then.
+pub fn paint_help(ctx: &Ctx<Data>, buf: &mut GlyphBuffer, y: i32) {
+    let help = ctx.text_styled("garden.help", &[]);
+    let dim = ctx.palette.engine(EngineColor::TextDim);
+    let panel = ctx.palette.engine(EngineColor::Panel);
+    buf.print_styled(1, y, &help, ctx.palette.text_colors_on(dim, panel));
+}
+// ANCHOR_END: styled
+
 // ANCHOR: action_set
 /// The actions of a garden game that needs more than the six moves: a
 /// watering can, and a key to leave with.

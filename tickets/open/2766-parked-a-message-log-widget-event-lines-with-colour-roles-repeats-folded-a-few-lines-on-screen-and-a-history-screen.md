@@ -28,15 +28,15 @@ and doesn't keep a history.
 **Who uses it**: roguelikes, crawlers outside battle, tactics games'
 battle logs, survival and colony games' event feeds, text adventures.
 
-It builds on text by key and styled text in lines (2347, if done; see
+It builds on text by key and styled text in lines (2347, done; see
 below), and the engine's text box and list cursor (done).
 
-**Either order with 2347:** if 2347 is done, a line holds a
-`StyledText`, so it may hold colour roles inside it, and this ticket
-wraps a line over its spans, each span keeping its role (the wrapping
-of a `StyledText` that 2347's Out leaves to the box that needs it). If
-not, a whole line takes one role, and 2347 turns the lines into
-`StyledText` and wraps them over their spans, as its clause says.
+**From 2347 (done, ADR-0122):** a line holds a `StyledText`
+(`shuyi_ui::text`), so it may hold colour roles inside it
+(`TextRole::Engine`, `TextRole::Palette`), and this ticket wraps a line
+over its spans, each span keeping its role (the wrapping of a
+`StyledText` that 2347's Out leaves to the box that needs it); the
+widget and the history screen paint with `GlyphBuffer::print_styled`.
 
 **A candidate from the game** (the game/engine boundary audit of
 2026-11-03): the game's dialogue screen keeps a backlog of a talk, about

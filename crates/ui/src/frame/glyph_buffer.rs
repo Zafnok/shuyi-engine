@@ -41,6 +41,7 @@ use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::gizmo::{GizmoItem, GizmoShape};
 use crate::frame::painted::{PaintedSprite, PaintedTable};
+use crate::text::{StyledText, TextRole};
 
 /// One console cell: a glyph with foreground and background colours.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -885,9 +886,64 @@ impl GlyphBuffer {
         })
     }
 
-    fn print_with(
+    /// Writes `text` as [`print_fg`](Self::print_fg) does, each span in
+    /// the colours `colors` gives for its role: the glyphs' colour, and the
+    /// cells' background if it gives one. A span keeps each cell's
+    /// background unless its colours give one; giving one makes a
+    /// see-through cell solid. Advances by each span's cells, as `print`
+    /// does by the plain text's. Returns how many cells were written.
+    /// The colours usually come from the palette
+    /// ([`Palette::text_colors`](crate::frame::color::Palette::text_colors),
+    /// or [`text_colors_on`](crate::frame::color::Palette::text_colors_on)
+    /// to paint as [`print`](Self::print) does).
+    ///
+    /// ```
+    /// use shuyi_ui::frame::{Cell, GlyphBuffer, Rgb};
+    /// use shuyi_ui::text::{StyledText, TextRole};
+    /// let (white, black, red) = (Rgb::new(255, 255, 255), Rgb::new(0, 0, 0), Rgb::new(255, 0, 0));
+    /// let mut buf = GlyphBuffer::new(6, 1, Cell::new('.', white, black));
+    /// let mut hint = StyledText::new();
+    /// hint.push_key("f").push_plain(" yes");
+    /// let key_red = |role| match role {
+    ///     Some(TextRole::Key) => (red, Some(white)),
+    ///     _ => (white, None),
+    /// };
+    /// assert_eq!(buf.print_styled(0, 0, &hint, key_red), 5);
+    /// assert_eq!(*buf.get(0, 0).unwrap(), Cell::new('f', red, white));
+    /// assert_eq!(*buf.get(2, 0).unwrap(), Cell::new('y', white, black));
+    /// ```
+    pub fn print_styled(
         &mut self,
         x: i32,
+        y: i32,
+        text: &StyledText,
+        colors: impl Fn(Option<TextRole>) -> (Rgb, Option<Rgb>),
+    ) -> u16 {
+        let mut cx = i64::from(x);
+        let mut written = 0;
+        for span in text.spans() {
+            let (fg, bg) = colors(span.role);
+            written += self.print_from(&mut cx, y, &span.text, |c, glyph| {
+                c.glyph = glyph;
+                c.fg = fg;
+                if let Some(bg) = bg {
+                    c.bg = bg;
+                    c.see_through = false;
+                }
+            });
+        }
+        written
+    }
+
+    fn print_with(&mut self, x: i32, y: i32, text: &str, f: impl FnMut(&mut Cell, char)) -> u16 {
+        self.print_from(&mut i64::from(x), y, text, f)
+    }
+
+    /// [`print_with`](Self::print_with) from column `cx`, which it moves
+    /// past the text (clipped or not).
+    fn print_from(
+        &mut self,
+        cx: &mut i64,
         y: i32,
         text: &str,
         mut f: impl FnMut(&mut Cell, char),
@@ -897,17 +953,16 @@ impl GlyphBuffer {
         }
         let columns = i64::from(self.spec.cols);
         let mut written = 0;
-        let mut cx = i64::from(x);
         for glyph in text.chars() {
             let glyph = if glyph == NO_BREAK_SPACE { ' ' } else { glyph };
-            if cx >= columns {
+            if *cx >= columns {
                 break;
             }
             let wide = self.widths.is_wide(glyph);
             let cells: u16 = if wide { 2 } else { 1 };
-            if cx >= 0 && cx + i64::from(cells) <= columns {
+            if *cx >= 0 && *cx + i64::from(cells) <= columns {
                 // Inside the buffer: below `columns`, a `u16`.
-                let at = i32::try_from(cx).unwrap_or(0);
+                let at = i32::try_from(*cx).unwrap_or(0);
                 self.unpair(y, at..at + i32::from(cells));
                 if let Some(c) = self.get_mut(at, y) {
                     f(c, glyph);
@@ -917,7 +972,7 @@ impl GlyphBuffer {
                 }
                 written += cells;
             }
-            cx += i64::from(cells);
+            *cx += i64::from(cells);
         }
         written
     }
@@ -1390,6 +1445,57 @@ mod tests {
         assert_eq!(b.print_fg(2, 0, "yz", RED), 1);
     }
 
+    /// `f yes`, the key in a key span.
+    fn f_yes() -> StyledText {
+        let mut hint = StyledText::new();
+        hint.push_key("f").push_plain(" yes");
+        hint
+    }
+
+    /// The key red on blue, the rest in `FG` keeping its background.
+    fn red_keys(role: Option<TextRole>) -> (Rgb, Option<Rgb>) {
+        match role {
+            Some(TextRole::Key) => (RED, Some(BLUE)),
+            _ => (FG, None),
+        }
+    }
+
+    #[test]
+    fn print_styled_paints_each_span_in_its_roles_colours() {
+        let mut b = buf(6, 1);
+        b.set(2, 0, Cell::new('x', RED, BLUE));
+        assert_eq!(b.print_styled(0, 0, &f_yes(), red_keys), 5);
+        // The key's background is set; the words keep the cells'.
+        assert_eq!(b.get(0, 0), Some(&Cell::new('f', RED, BLUE)));
+        assert_eq!(b.get(1, 0), Some(&Cell::new(' ', FG, BG)));
+        assert_eq!(b.get(2, 0), Some(&Cell::new('y', FG, BLUE)));
+        assert_eq!(b.get(5, 0), Some(&BLANK));
+        // Clipped at the edge, and off the rows.
+        assert_eq!(b.print_styled(3, 0, &f_yes(), red_keys), 3);
+        assert_eq!(b.print_styled(-1, 0, &f_yes(), red_keys), 4);
+        // The space keeps the background the key left there.
+        assert_eq!(b.get(0, 0), Some(&Cell::new(' ', FG, BLUE)));
+        assert_eq!(b.print_styled(0, 1, &f_yes(), red_keys), 0);
+    }
+
+    #[test]
+    fn print_styled_makes_a_see_through_cell_solid_only_with_a_background() {
+        let mut b = GlyphBuffer::new(5, 1, Cell::see_through(' ', FG));
+        b.print_styled(0, 0, &f_yes(), red_keys);
+        assert_eq!(b.get(0, 0), Some(&Cell::new('f', RED, BLUE)));
+        assert!(b.get(1, 0).is_some_and(|c| c.see_through && c.fg == FG));
+        // A wide key's two cells both take its colours.
+        let mut b = wide_buf(4, 1);
+        let mut wide = StyledText::new();
+        wide.push_key("あ").push_plain("b");
+        assert_eq!(b.print_styled(0, 0, &wide, red_keys), 3);
+        assert_eq!(halves(&b, 0), "あ+b ");
+        assert_eq!(
+            (b.get(1, 0).unwrap().fg, b.get(1, 0).unwrap().bg),
+            (RED, BLUE)
+        );
+    }
+
     #[test]
     fn fill_rect_fills_and_clips() {
         let mut b = buf(4, 3);
@@ -1686,6 +1792,23 @@ mod tests {
             unchanged_outside(&before, &after, target);
             let inside = target.intersect(&before.bounds()).map_or(0, |r| r.w);
             prop_assert_eq!(i32::from(n), inside);
+        }
+
+        /// Styled text writes the glyphs `print_fg` writes of its plain
+        /// text, and as many cells.
+        #[test]
+        fn print_styled_writes_the_glyphs_of_print_fg(
+            x in -4i32..8,
+            pushes in proptest::collection::vec(("[aあ b]{0,4}", any::<bool>()), 0..6),
+        ) {
+            let mut text = StyledText::new();
+            for (part, key) in &pushes {
+                text.push(part, key.then_some(TextRole::Key));
+            }
+            let (mut styled, mut plain) = (wide_buf(8, 1), wide_buf(8, 1));
+            let n = styled.print_styled(x, 0, &text, red_keys);
+            prop_assert_eq!(n, plain.print_fg(x, 0, &text.plain(), FG));
+            prop_assert_eq!(halves(&styled, 0), halves(&plain, 0));
         }
 
         /// However narrow and wide text is printed, filled and blitted, a

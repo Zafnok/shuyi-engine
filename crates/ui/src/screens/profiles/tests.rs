@@ -91,10 +91,10 @@ fn the_view_lists_the_profiles_the_one_in_use_marked_and_focused_then_add() {
 fn the_rows_wrap_and_cancel_goes_back() {
     let mut c = three();
     let mut s = ProfilesScreen::new(&c);
-    assert_eq!(s.help(&c), "arrows move · f choose · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f choose · d back");
     press(&mut s, &mut c, &[CursorUp]);
     assert_eq!(s.focused(&c), RowKind::Add);
-    assert_eq!(s.help(&c), "arrows move · f add · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f add · d back");
     press(&mut s, &mut c, &[CursorDown]);
     assert_eq!(s.focused(&c), RowKind::Profile(ProfileId::FIRST));
     assert_eq!(press(&mut s, &mut c, &[Cancel]), "Pop");
@@ -116,7 +116,7 @@ fn a_profile_offers_switch_unless_in_use_and_delete_unless_the_only_one() {
     assert!(s.view(&c).actions.is_none());
     press(&mut s, &mut c, &[CursorDown, Confirm]);
     assert_eq!(actions(&s, &c), ["Use this profile", "Rename", "Delete"]);
-    assert_eq!(s.help(&c), "arrows move · f select · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f select · d back");
     // The cursor moves over the items and wraps both ways.
     assert_eq!(focused_action(&s, &c).as_deref(), Some("Use this profile"));
     press(&mut s, &mut c, &[CursorUp]);
@@ -171,7 +171,7 @@ fn deleting_asks_first_focused_on_no() {
         "Delete Mei? Its options and saves go with it."
     );
     assert_eq!(question.focused(), Some(DeleteChoice::No));
-    assert_eq!(s.help(&c), "arrows choose · f pick · d back");
+    assert_eq!(s.help(&c).plain(), "arrows choose · f pick · d back");
     // Confirm at once is No: nothing is deleted.
     press(&mut s, &mut c, &[Confirm]);
     assert!(s.view(&c).deleting.is_none());
@@ -223,7 +223,7 @@ fn adding_past_the_most_profiles_is_refused_with_a_message() {
     press(&mut s, &mut c, &[CursorUp]);
     let view = s.view(&c);
     assert_eq!(view.focused().map(|r| r.enabled), Some(false));
-    assert_eq!(s.help(&c), "arrows move · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · d back");
     press(&mut s, &mut c, &[Confirm]);
     assert!(s.typed().is_none());
     assert_eq!(s.message(), Some(TOO_MANY_MESSAGE));
@@ -244,7 +244,10 @@ fn on_the_keyboard_add_types_the_name_and_uses_the_new_profile() {
     assert_eq!(s.naming(), Some(NamePurpose::Add));
     let view = s.view(&c);
     assert_eq!(view.typing.map(|t| t.title), Some("Profile name".into()));
-    assert_eq!(s.help(&c), "Enter done · Backspace delete · Escape cancel");
+    assert_eq!(
+        s.help(&c).plain(),
+        "Enter done · Backspace delete · Escape cancel"
+    );
     // The game's keys do nothing while the box is open.
     press(&mut s, &mut c, &[Cancel]);
     assert_eq!(s.typed(), Some(""));
@@ -285,7 +288,7 @@ fn backing_out_of_a_typed_name_asks_whether_to_keep_it() {
     let question = s.view(&c).leaving.unwrap_or_else(|| panic!("no question"));
     assert_eq!(question.text, "Keep this name?");
     assert_eq!(question.focused(), Some(LeaveChoice::Back));
-    assert_eq!(s.help(&c), "arrows choose · f pick · d back");
+    assert_eq!(s.help(&c).plain(), "arrows choose · f pick · d back");
     // Back: the box again, the name as it was.
     press(&mut s, &mut c, &[Cancel]);
     assert!(s.view(&c).leaving.is_none());
@@ -311,7 +314,7 @@ fn on_a_controller_add_spells_the_name_on_the_grid_and_opens_what_the_game_gives
     assert_eq!(s.naming(), Some(NamePurpose::Add));
     let grid = s.view(&c).grid.unwrap_or_else(|| panic!("no grid"));
     assert_eq!(grid.rows.len(), 6, "a row of digits");
-    assert_eq!(s.help(&c), "arrows choose · f type · d delete");
+    assert_eq!(s.help(&c).plain(), "arrows choose · f type · d delete");
     // "A", then up round to the last row and left round to Done.
     pad(&mut s, &mut c, &[Confirm]);
     assert_eq!(s.typed(), Some("A"));

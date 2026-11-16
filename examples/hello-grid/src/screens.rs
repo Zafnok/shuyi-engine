@@ -249,7 +249,7 @@ impl Talk {
         view.waiting = self
             .text
             .is_revealed()
-            .then(|| WaitView::new(ctx.text_with("talk.next", &[]), self.text.marker_lit()));
+            .then(|| WaitView::new(ctx.text_styled("talk.next", &[]), self.text.marker_lit()));
         view
     }
 

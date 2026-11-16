@@ -191,7 +191,7 @@ fn left_and_right_move_a_volumes_slider_five_at_a_time() {
     let mut c = ctx();
     c.change_settings(|s| s.volumes.set(MUSIC, 80)).unwrap();
     let mut s = on("options.row.music_volume");
-    assert_eq!(s.help(&c), "arrows move · f type a number · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f type a number · d back");
     press(&mut s, &mut c, &[CursorLeft]);
     assert_eq!(c.volume(MUSIC), 75);
     assert!(unsaved(&c));
@@ -216,7 +216,10 @@ fn confirm_on_a_volume_opens_a_box_to_type_the_number() {
     assert_eq!(s.typing().map(NumberBox::value), Some(None));
     assert_eq!(s.focus(&c), "options.row.sound_volume");
     assert_eq!(sounds(&mut c), ["ui_select"]);
-    assert_eq!(s.help(&c), "Enter done · Backspace delete · Escape cancel");
+    assert_eq!(
+        s.help(&c).plain(),
+        "Enter done · Backspace delete · Escape cancel"
+    );
     assert_eq!(focused_value(&s, &c), boxed("", true));
     // The game's keys do nothing while it is open.
     press(&mut s, &mut c, &[Action::CursorDown, Action::Cancel]);
@@ -289,7 +292,7 @@ fn the_volume_box_steps_by_one_on_a_controller() {
     let mut s = on("options.row.music_volume");
     s.update(&mut c, &pad(&[Action::Confirm]));
     assert_eq!(s.typing().and_then(NumberBox::value), Some(80));
-    assert_eq!(s.help(&c), "arrows change · f done · d cancel");
+    assert_eq!(s.help(&c).plain(), "arrows change · f done · d cancel");
     assert_eq!(focused_value(&s, &c), boxed("80", false));
     sounds(&mut c);
     let steps = [Action::CursorUp, Action::CursorRight, Action::CursorUp];
@@ -408,7 +411,7 @@ fn a_row_that_isnt_a_setting_is_kept_or_put_back_with_the_settings() {
     let mut c = ctx();
     c.game.level = Some(0);
     let mut s = on("toy.level");
-    assert_eq!(s.help(&c), "arrows move · f change · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · f change · d back");
     // Left stops at the first; right steps on, and stops at the last.
     press(&mut s, &mut c, &[Action::CursorLeft]);
     assert_eq!(c.game.level, Some(0));
@@ -456,7 +459,7 @@ fn the_view_says_what_the_screen_shows() {
     let s = on("options.row.layout");
     let view = s.view(&c);
     assert_eq!(view.title, "Options");
-    assert_eq!(view.help, s.help(&c));
+    assert_eq!(view.help.plain(), s.help(&c).plain());
     assert_eq!((view.message.clone(), view.question.clone()), (None, None));
     let keys: Vec<&str> = view.rows.iter().map(|r| r.key).collect();
     assert_eq!(keys, ROWS);
@@ -499,12 +502,17 @@ fn the_view_says_what_the_screen_shows() {
     let mut s = on("options.row.restore_defaults");
     press(&mut s, &mut c, &[Action::Confirm]);
     let question = s.view(&c).question;
+    let mut keys = crate::text::StyledText::new();
+    keys.push_key("f")
+        .push_plain(" yes / ")
+        .push_key("d")
+        .push_plain(" no");
     assert_eq!(
         question,
         Some(crate::widgets::AskView {
             text: "Restore every option to its default?".to_owned(),
             answers: Vec::new(),
-            keys: Some("f yes / d no".to_owned()),
+            keys: Some(keys),
         })
     );
     press(&mut s, &mut c, &[Action::Confirm]);
@@ -583,7 +591,7 @@ fn the_layout_and_key_bindings_rows_open_their_screens() {
     let found = sounds(&mut c);
     assert!(found.is_empty(), "{found:?}");
     assert_eq!(
-        on("options.row.layout").help(&c),
+        on("options.row.layout").help(&c).plain(),
         "arrows move · f open · d back"
     );
 }
@@ -592,7 +600,7 @@ fn the_layout_and_key_bindings_rows_open_their_screens() {
 fn a_row_that_refuses_says_why_until_the_cursor_moves() {
     let mut c = ctx();
     let mut s = on("toy.locked");
-    assert_eq!(s.help(&c), "arrows move · d back");
+    assert_eq!(s.help(&c).plain(), "arrows move · d back");
     press(&mut s, &mut c, &[Action::Confirm, Action::Confirm]);
     assert_eq!(
         (s.asking(), s.message()),
@@ -625,11 +633,11 @@ fn restore_defaults_asks_first_and_keeps_the_layout() {
     .unwrap();
     let changed = c.settings().clone();
     let mut s = on("options.row.restore_defaults");
-    assert_eq!(s.help(&c), "wasd move · j restore · k back");
+    assert_eq!(s.help(&c).plain(), "wasd move · j restore · k back");
     press(&mut s, &mut c, &[Action::Confirm, Action::Confirm]);
     // The key that asked isn't the answer.
     assert_eq!(s.asking(), Some("options.question.restore"));
-    assert_eq!(s.help(&c), "j yes · k no");
+    assert_eq!(s.help(&c).plain(), "j yes · k no");
     // Nothing but the answers does anything.
     press(&mut s, &mut c, &[Action::CursorDown, Action::CursorRight]);
     assert_eq!(s.focus(&c), "options.row.restore_defaults");
@@ -750,7 +758,7 @@ fn leaving_with_a_change_asks_with_the_cursor_on_back() {
     let labels: Vec<&str> = leaving.answers.iter().map(|c| c.label.as_str()).collect();
     assert_eq!(labels, ["Keep", "Discard", "Back"]);
     assert_eq!(leaving.focused(), Some(LeaveChoice::Back));
-    assert_eq!(view.help, "arrows choose · f pick · d back");
+    assert_eq!(view.help.plain(), "arrows choose · f pick · d back");
     // The cursor moves between the answers, going round at the ends; the
     // rows stay as they are.
     press(&mut s, &mut c, &[Action::CursorRight]);
@@ -876,19 +884,19 @@ fn discard_after_another_save_puts_the_saved_settings_back_too() {
 #[test]
 fn help_names_what_confirm_does_on_each_kind_of_row() {
     let c = ctx();
-    assert_eq!(screen().help(&c), "arrows move · f change · d back");
+    assert_eq!(screen().help(&c).plain(), "arrows move · f change · d back");
     assert_eq!(
-        on("options.row.fullscreen").help(&c),
+        on("options.row.fullscreen").help(&c).plain(),
         "arrows move · f change · d back"
     );
     assert_eq!(
-        on("options.row.key_bindings").help(&c),
+        on("options.row.key_bindings").help(&c).plain(),
         "arrows move · f open · d back"
     );
     // With no rows at all there is nothing to focus.
     let none: OptionsScreen = OptionsScreen::new(|_| Vec::new());
     assert_eq!(none.focus(&c), "");
-    assert_eq!(none.help(&c), "arrows move · f change · d back");
+    assert_eq!(none.help(&c).plain(), "arrows move · f change · d back");
 }
 
 #[test]

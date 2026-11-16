@@ -9,7 +9,8 @@
 //!
 //! - an argument of a call that puts text on the screen (`print…`,
 //!   `draw…`, `MenuItem::new`, `MenuItem::disabled`, `with_suffix`,
-//!   `help_line`), directly or inside a `format!` there; or
+//!   `help_line`, `help_line_styled`, `push_plain`), directly or inside a
+//!   `format!` there; or
 //! - prose, wherever it stands: it has a capital letter or a space
 //!   (`format!("Turn {n}")` kept in a variable, `"out of range".to_owned()`,
 //!   a `&str` constant). Cue names, storage keys and screen names
@@ -19,8 +20,9 @@
 //!   label. As a constant, a call's own argument (`Some("heal")`), a
 //!   pattern (`"foot" =>`) or a value's name (`("count", &n)`) it is an id.
 //!
-//! The arguments of `text(…)`, `text_with(…)`, `MenuItem::keyed(…)` and
-//! `Label::key(…)` are keys and value names, never text; those of an assertion, a panic or `expect` are never shown,
+//! The arguments of `text(…)`, `text_with(…)`, `text_styled(…)`,
+//! `text_styled_with_keys(…)`, `MenuItem::keyed(…)` and `Label::key(…)`
+//! are keys and value names, never text; those of an assertion, a panic or `expect` are never shown,
 //! and neither is an attribute's (`#[error("…")]`). Tests, the test
 //! harness, the snapshots' text form and the debug screens are skipped.
 //! A literal the rules get wrong is let through with a
@@ -208,6 +210,8 @@ fn bracket_of(path: &str) -> Bracket {
     let name = path.rsplit("::").next().unwrap_or(path);
     if name == "text"
         || name == "text_with"
+        || name == "text_styled"
+        || name == "text_styled_with_keys"
         || path.ends_with("MenuItem::keyed")
         || path.ends_with("Label::key")
     {
@@ -215,6 +219,8 @@ fn bracket_of(path: &str) -> Bracket {
     } else if name.starts_with("print") && name != "println"
         || name.starts_with("draw")
         || name == "help_line"
+        || name == "help_line_styled"
+        || name == "push_plain"
         || name == "with_suffix"
         || path.ends_with("MenuItem::new")
         || path.ends_with("MenuItem::disabled")
@@ -837,6 +843,10 @@ mod tests {
             "draw_tip",
             "map_menu::draw_dialog_at",
             "help_line",
+            "help_line_styled",
+            "push_plain",
+            "print_styled",
+            "screens::print_centred_styled",
             "with_suffix",
             "MenuItem::new",
             "widgets::MenuItem::disabled",
@@ -846,6 +856,8 @@ mod tests {
         for key in [
             "text",
             "text_with",
+            "text_styled",
+            "Ctx::text_styled_with_keys",
             "Ctx::text",
             "MenuItem::keyed",
             "text::Label::key",

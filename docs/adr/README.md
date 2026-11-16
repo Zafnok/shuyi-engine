@@ -133,5 +133,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0118](0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md) | A closed build's recipient overlay: one code in three marks, a ledger signed with the game's SSH key, never proof | Accepted; extends ADR-0023 §1 and §3 |
 | [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted |
 | [0120](0120-a-games-rebuild-budgeted-as-a-ratio-of-a-reference-build.md) | A new game's rebuild is budgeted as a ratio of a reference build on the same runner | Accepted; supersedes ADR-0049 §2 |
+| [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

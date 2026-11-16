@@ -89,6 +89,18 @@ lends a list of pairs, each a **tuple**, values side by side: here the placehold
 name, and what to put there.
 {% end %}
 
+A key's name reads like a word when it is printed like one ("Enter plant"). To make it
+stand out, a screen asks for the text with `ctx.text_styled` instead: the same words, but
+each key's name marked as a key. Its skin prints it with `print_styled`, which takes the
+colours of each part from the palette:
+
+{{ snippet(file="src/actions.rs", anchor="styled") }}
+
+The palette decides how a key looks: a colour named `"key"` in `files/palette.ron` is the
+keys' text, and `"key_bg"` the cells behind them. A palette with neither prints the keys
+like the words around them. A key's name passed in as an argument, as `plant_hint` does,
+is marked too when it goes to `ctx.text_styled_with_keys` as one of its key arguments.
+
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
 action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
 passes. `cargo shuyi check` fails on a capitalized name that is no action.

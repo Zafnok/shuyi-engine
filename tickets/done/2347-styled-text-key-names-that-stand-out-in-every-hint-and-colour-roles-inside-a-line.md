@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2347 — Styled text: key names that stand out in every hint, and colour roles inside a line
@@ -235,17 +235,19 @@ game's palette names `key`.
     `{done}`, `{delete}` and `{cancel}`; the layout picker's `{up}`,
     `{down}` and `{confirm}` (`layout_picker.rs:163`); the key bindings
     screen's `{key}` and `{clear}` (`key_bindings.rs:795`, `:819`);
-  - the help lines of `templates/blank` (`crates/game/src/title.rs`,
-    which prints its lines with `screens::print_centred`: its help line
-    moves to `print_centred_styled`),
-    `templates/grid` (`crates/game/src/stage.rs`) and
+  - the help lines of the template's base
+    (`templates/shuyi-default/base/crates/game/src/title.rs`, which
+    prints its lines with `screens::print_centred`: its help line moves
+    to `print_centred_styled`), its `top-down-grid` stage
+    (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid.rs`)
+    and
     `examples/hello-grid` (the views in `src/skin.rs` and its `help`
     painter at line 79);
   - `hello-grid`'s other hints: its `WaitView` (`src/screens.rs:234`,
     built with `text_styled` as the toy's is) and its
     `QuestionView::answers` (`src/skin.rs:42`, built at
     `src/screens.rs:320` and painted at `src/skin.rs:148`);
-  - the palettes of both templates and of `hello-grid`
+  - the palettes of the template's base and stage and of `hello-grid`
     (`files/palette.ron`) get a `key` colour, so a new game's keys
     stand out.
 - **check-text** (`crates/cli/src/check_text.rs`, `bracket_of` at line
@@ -285,6 +287,9 @@ game's palette names `key`.
   roles, so `hello-grid`'s pattern map (`palette@onebit.ron`) gives them
   patterns, lists them among its `text` roles, and puts `key` in a
   `distinct` group with `text`; its one-bit check test still passes.
+- **Estimated size:** about 1,400 lines (code 650, tests 600, docs 150).
+- **Split:** past 600 lines (snapshots not counted), split off step 7
+  into a new ticket, as the next bullet says.
 - **Size:** if the PR would pass about 600 changed lines (snapshots not
   counted), step 7 (the templates, the rest of `hello-grid` and the
   `key` in their palettes) goes to a follow-up ticket written with the
@@ -342,34 +347,35 @@ game's palette names `key`.
 
 ## Acceptance criteria
 
-- [ ] With a palette that has no `key` (the toy's), every existing
+- [x] With a palette that has no `key` (the toy's), every existing
       engine snapshot is unchanged.
-- [ ] With a palette that has `key` and `key_bg`, at values no other
+- [x] With a palette that has `key` and `key_bg`, at values no other
       name in it has (the legend names a colour by `Palette::name_of`),
       a snapshot of the options screen shows its help line's key cells
       as `fg:key bg:key_bg` in the legend, and the words as before
       (reviewed).
-- [ ] A test with the toy's `Ctx` builds each switched hint (the toy's
+- [x] A test with the toy's `Ctx` builds each switched hint (the toy's
       text box wait corner, a yes/no question's keys, the four screens'
       help lines, `text_keys_help`) and finds that its `Key` spans are
       exactly the names `key_name`, `all_key_names`, `cursor_keys_name`
       or the fixed keys give, in order.
-- [ ] A text box test paints a `SkipView` whose answers hold a `Key`
+- [x] A text box test paints a `SkipView` whose answers hold a `Key`
       span and finds the key's cells in the key colours.
-- [ ] For every key of the toy's English text,
+- [x] For every key of the toy's English text,
       `ctx.text_styled(key, &[]).plain() == ctx.text_with(key, &[])`.
-- [ ] With a palette whose `key` is `#ffffff`, `key_bg` `#000000` and
+- [x] With a palette whose `key` is `#ffffff`, `key_bg` `#000000` and
       `text_dim` `#000000`, on a `#ffffff` panel, the one-bit reference
       renderer (`crates/ui/src/frame/onebit/reference.rs`) draws a help
       line's key glyphs white on black and its words black on white.
-- [ ] `hello-grid`'s snapshots change only in key cells: its help
+- [x] ~~`hello-grid`'s snapshots change only in key cells: its help
       lines, its text box's wait corner and its leave question
-      (reviewed).
-- [ ] check-text's unit test treats `text_styled` and
+      (reviewed).~~ (not done: moved with step 7 to 2785; its wait corner,
+      switched here, changes no snapshot)
+- [x] check-text's unit test treats `text_styled` and
       `text_styled_with_keys` as key calls and `help_line_styled` and
       `push_plain` as sinks.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -392,4 +398,142 @@ game's palette names `key`.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-11-16.
+
+- **ADR-0122** (styled text: spans with a role the skin paints from the
+  palette), with its row in `docs/adr/README.md`.
+- **`shuyi_ui::text`:** `TextRole` (`Key`, `Engine`, `Palette`;
+  `#[non_exhaustive]`), `TextSpan` (`#[non_exhaustive]`, `TextSpan::new`),
+  `StyledText` (private spans kept joined: `new`, `push`, `push_plain`,
+  `push_key`, `append`, `spans`, `plain`, `is_empty`, `width`, `cut`,
+  `Display`, `From<String>`, `From<&str>`), and `fill_styled`, built on
+  `shuyi_core::text::split_tokens`. `fill` is
+  `fill_styled(text, args, &[], lookup).plain()`.
+- **The shape of `key_args`:** the same as `args`,
+  `&[(&str, &dyn Display)]`. A placeholder is filled from `args` first
+  (plain), then from `key_args`, then by the lookup (both in a `Key`
+  span). A key's name from `key_args` is joined with no-break spaces as
+  2302 joins the lookup's, so it is never split either.
+- **`help_keys::help_line_styled`**, with `help_line` its `plain()`;
+  **`Ctx::text_styled`, `text_styled_with_keys`, `label_styled`**, with
+  `text_with_keys` the plain of `text_styled_with_keys`.
+- **The palette:** `frame::color::KEY` and `KEY_BG` (optional names),
+  `Palette::text_colors`, and `Palette::text_colors_on(fg, bg)`: the
+  `colors` a painter that printed with `print(fg, bg)` passes, so every
+  cell ends as `print` left it (one helper in place of the same closure
+  in eight painters).
+- **The buffer:** `GlyphBuffer::print_styled` (through `print_with`,
+  which now walks from a column it moves), and
+  `screens::print_centred_styled`.
+- **Switched:** `WaitView::key`, `WaitView::log_hint`,
+  `SkipView::answers` (painted by `text_box/glyph.rs`), `AskView::keys`
+  (built by `Ask::view_with_keys`, measured and painted by
+  `widgets/ask/glyph.rs`), the `help` of the options, key bindings,
+  profiles and layout picker views and the four screens' `help`
+  functions, and `screens::text_keys_help`. Key names handed in as
+  values (`{done}`, `{delete}`, `{cancel}`, the layout picker's `{up}`,
+  `{down}`, `{confirm}`, the key bindings screen's `{key}` and
+  `{clear}`) go in `key_args`. The toy's `Talk::view` and Hello, Grid's
+  `WaitView` use `text_styled`.
+- **check-text** reads `text_styled` and `text_styled_with_keys` as key
+  calls and `help_line_styled` and `push_plain` as sinks.
+- **Tests:** unit and property tests of `StyledText` and `fill_styled`
+  (`crates/ui/src/text/styled_tests.rs`), `help_line_styled`,
+  `text_colors`, `print_styled` (unit and a property against
+  `print_fg`); the toy's hints and their key spans, every English key
+  read the same styled or plain, and a skip question painted in the key
+  colours (`crates/ui/src/text/hint_tests.rs`); a snapshot of the
+  options screen with a `key` palette (reviewed: the help line's key
+  cells are `fg:key bg:key_bg`, its words `fg:text_dim bg:background` as
+  before); the one-bit reference renderer drawing a key white on black
+  and a word black on white. Every existing snapshot is unchanged.
+- **The book:** chapter 4 (*Naming a key in text*) says how a key
+  stands out, with a snippet CI builds (`site/snippets/src/actions.rs`,
+  `paint_help`).
+
+Deviations:
+
+- **Ticket fixed before the code** (written 2026-10-21, 26 days old):
+  the templates moved to `templates/shuyi-default` (its base's
+  `title.rs` and its `top-down-grid` stage), so the paths were fixed;
+  2390 and 2348 are still open, so `fill_styled` walks `split_tokens`
+  as the "if not" branch says, and 2390's clause now says nothing is
+  left to rewrite in `fill`; the estimate was added and 2347 taken off
+  `tools/unestimated-tickets.txt`.
+- **Step 7 split off to 2785**, by the ticket's size valve: the PR
+  passed 600 counted lines before step 7 (894 after step 5). 2785 does
+  the template's and Hello, Grid's help lines, Hello, Grid's leave
+  question, a `key` in their three palettes and Hello, Grid's pattern
+  map. So the acceptance line on Hello, Grid's snapshots moved there:
+  here its one switched hint, the text box's wait corner, changes no
+  snapshot, as its palette has no `key`.
+- **The input rule went into the shipped `shuyi-input` skill**
+  (`skills/shuyi-input/SKILL.md`, rule 2 and its *Name keys in text*
+  step), not the `input-actions` skill: since the pair of the docs map,
+  `input-actions` keeps only the engine's own rules and links
+  `shuyi-input` for the ones every game keeps, which this is.
+- **`Ctx::label` is unchanged** (not rebuilt on `label_styled`): it
+  equals `label_styled(…).plain()` already, as a test checks over every
+  English key, and stays cheaper for menu labels painted every frame.
+- **The 1-bit test** builds its own pattern map with `key` and `key_bg`
+  rather than Hello, Grid's, whose `key` comes with 2785.
+
+Follow-ups:
+
+- 2785: step 7 (above).
+- No ticket: markup in text files and the wrapping of a `StyledText`
+  wait for a game or a box that needs them (ADR-0122 §8); the message
+  log's lines wrap in 2766, whose clause now says so.
+- 3215 (key caps) builds on this and amends ADR-0122 §4; its text was
+  pointed at ADR-0122.
+
+Game: game#0254 (the game's hints switch over, after this and 3215). The
+game's code that breaks at the pin move, found with
+`gh search code --repo Zafnok/visions-of-shuyi WaitView` and
+`text_keys_help`: `crates/ui/src/screens/dialogue.rs` sets
+`WaitView::log_hint` from `ctx.text_with` (now `ctx.text_styled`), and
+`crates/ui/src/screens/lead_select.rs`'s `help` returns
+`text_keys_help(ctx)` as a `String`. Its `WaitView::new(key_name(..))`
+and `SkipView::new(view.text, view.keys.unwrap_or_default())` still
+build, without the key role. With no `key` in its palette the game's
+snapshots don't change.
+
+Breaking: shuyi-ui: WaitView::key, WaitView::log_hint, SkipView::answers, AskView::keys: hold StyledText (Option<StyledText>); build them with ctx.text_styled, or .into() from a String (no key role); read their text with .plain()
+
+```migration
+since: 0.1.0
+what: The text box's wait and skip hints and a question's keys hold StyledText, so the keys they name can stand out.
+old: "WaitView { key: String, log_hint: Option<String> }, SkipView { answers: String }, AskView { keys: Option<String> }"
+new: "WaitView { key: StyledText, log_hint: Option<StyledText> }, SkipView { answers: StyledText }, AskView { keys: Option<StyledText> }"
+before: |
+  wait.log_hint = Some(ctx.text_with("dialogue.log_hint", &[]));
+  assert_eq!(view.keys.as_deref(), Some("f yes / d no"));
+after: |
+  wait.log_hint = Some(ctx.text_styled("dialogue.log_hint", &[]));
+  assert_eq!(view.keys.map(|k| k.plain()).as_deref(), Some("f yes / d no"));
+find: ["ctx.text_with(\"dialogue.log_hint\"", "keys.as_deref()"]
+```
+
+Breaking: shuyi-ui: OptionsView::help, KeyBindingsView::help, ProfilesView::help, LayoutPickerView::help, OptionsScreen::help, KeyBindingsScreen::help, ProfilesScreen::help, LayoutPickerScreen::help, screens::text_keys_help: StyledText in place of String; a skin prints it with print_styled or screens::print_centred_styled, and a String is its .plain()
+
+```migration
+since: 0.1.0
+what: The engine screens' help lines and the text box's help line are StyledText, their keys in key spans.
+old: "fn text_keys_help(ctx) -> String; OptionsView { help: String } (and the other three screens)"
+new: "fn text_keys_help(ctx) -> StyledText; OptionsView { help: StyledText } (and the other three screens)"
+before: |
+  pub fn help(&self, ctx: &Ctx) -> String {
+      text_keys_help(ctx)
+  }
+  print_centred(buf, y, &view.help, dim, bg);
+after: |
+  pub fn help(&self, ctx: &Ctx) -> StyledText {
+      text_keys_help(ctx)
+  }
+  print_centred_styled(buf, y, &view.help, ctx.palette.text_colors_on(dim, bg));
+find: ["print_centred(buf, y, &view.help"]
+```
+
+Behaviour: shuyi-ui: the help lines of the layout picker (`{up}`, `{down}`, `{confirm}`), the key bindings screen (`{key}`, `{clear}`) and a text box (`text_keys_help`) join the words of a key's name handed in as a value with no-break spaces, as `{Action}` placeholders' names already were: a key named in two words (`Page Up`) reads the same on screen, and its `plain()` holds U+00A0 between them
+
+Book: chapter 4, *Naming a key in text* (`site/content/learn/book/actions.md`), says how a key stands out, with `paint_help` in `site/snippets/src/actions.rs`.

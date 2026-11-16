@@ -60,10 +60,10 @@ None.
   - **Either order with 2334:** if 2334 is done, `Text` takes an
     optional `font` (an id in `GameData::fonts`) and is drawn as 2334's
     `TextLabel` in a layout in pixels; if not, 2334 adds the field;
-  - **Either order with 2347:** if 2347 is done, a `Text` node paints
-    its text with `Ctx::label_styled` and `GlyphBuffer::print_styled`,
-    so a `{Confirm}` in it gets the key role; if not, 2347 does it for
-    `Text` when it lands;
+  - **From 2347 (done, ADR-0122):** a `Text` node paints its text with
+    `Ctx::label_styled` and `GlyphBuffer::print_styled` (colours from
+    `Palette::text_colors_on`), so a `{Confirm}` in it gets the key
+    role;
   - a widget node's `focus` field, mapped onto 2355's `FocusNode`:
     `keeps` (directions the widget never gives away) and a neighbour
     per direction by `id`, as in `focus: (right: "buy")`; a `Menu`

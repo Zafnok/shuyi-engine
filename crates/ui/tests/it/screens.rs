@@ -177,7 +177,7 @@ fn a_scene_is_read_in_the_engines_text_box() {
     assert!(snapshot.contains("The hall is quiet."), "{snapshot}");
     // It waits for the key that goes on (its marker blinks).
     let waiting = h.screen::<Talk>().and_then(|t| t.view(h.ctx()).waiting);
-    assert_eq!(waiting.map(|w| w.key).as_deref(), Some("f"));
+    assert_eq!(waiting.map(|w| w.key.plain()).as_deref(), Some("f"));
     // Confirm goes on; the next line types from its start.
     h.keys("f");
     let (text, player) = talk(&h).unwrap();

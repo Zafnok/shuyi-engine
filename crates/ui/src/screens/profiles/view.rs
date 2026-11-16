@@ -6,6 +6,7 @@
 use super::{DeleteChoice, RowKind};
 use crate::prelude::*;
 use crate::screens::options::LeaveChoice;
+use crate::text::StyledText;
 pub use crate::widgets::name_entry::{GridView, TypingView};
 use crate::widgets::{AskView, MenuView};
 
@@ -32,7 +33,7 @@ pub struct ProfilesView {
     /// A message for the player (something couldn't be done).
     pub message: Option<String>,
     /// The help line: what the keys do here.
-    pub help: String,
+    pub help: StyledText,
 }
 
 impl ProfilesView {

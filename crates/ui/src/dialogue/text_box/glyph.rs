@@ -10,6 +10,7 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
+use crate::text::StyledText;
 use crate::widgets::menu::MenuView;
 
 /// Cells between the log's key hint and the key that goes on.
@@ -114,7 +115,8 @@ pub fn paint<G: GameData>(
     if let Some(skip) = &text.skip {
         let (x, y) = (place.text_x, place.text_y);
         buf.print(x, y, &skip.question, c(EngineColor::Text), bg);
-        buf.print(x, y + 1, &skip.answers, c(EngineColor::TextDim), bg);
+        let colors = palette.text_colors_on(c(EngineColor::TextDim), bg);
+        buf.print_styled(x, y + 1, &skip.answers, colors);
         return;
     }
 
@@ -207,14 +209,17 @@ fn paint_waiting(palette: &Palette, buf: &mut GlyphBuffer, frame: Rect, waiting:
     let bg = c(EngineColor::Panel);
     let right = frame.x + frame.w - 4;
     let bottom = frame.y + frame.h - 2;
-    let key = &waiting.key;
-    let w = buf.text_cells(key);
-    buf.print(right - 1 - w, bottom, key, c(EngineColor::TextDim), bg);
+    let colors = palette.text_colors_on(c(EngineColor::TextDim), bg);
+    let cells = |text: &StyledText, buf: &GlyphBuffer| {
+        i32::try_from(text.width(buf.widths())).unwrap_or(i32::MAX)
+    };
+    let w = cells(&waiting.key, buf);
+    buf.print_styled(right - 1 - w, bottom, &waiting.key, &colors);
     // The log's key, if it has one, before it.
     if let Some(hint) = &waiting.log_hint {
-        let hint_w = buf.text_cells(hint);
+        let hint_w = cells(hint, buf);
         let x = right - 1 - w - LOG_HINT_GAP - hint_w;
-        buf.print(x, bottom, hint, c(EngineColor::TextDim), bg);
+        buf.print_styled(x, bottom, hint, &colors);
     }
     if waiting.marker {
         buf.print(right, bottom, "▼", c(EngineColor::Highlight), bg);

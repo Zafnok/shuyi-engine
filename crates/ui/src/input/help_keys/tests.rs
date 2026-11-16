@@ -305,3 +305,29 @@ fn help_line_skips_unbound() {
     assert_eq!(help_line(&[]), "");
     assert_eq!(help_line(&[(None, "x")]), "");
 }
+
+#[test]
+fn help_line_styled_puts_each_key_in_a_key_span() {
+    use crate::text::TextRole;
+    let line = help_line_styled(&[
+        (Some("arrows".into()), "move"),
+        (None, "info"),
+        (Some("f".into()), "select"),
+    ]);
+    let spans: Vec<_> = line
+        .spans()
+        .iter()
+        .map(|s| (s.text.as_str(), s.role))
+        .collect();
+    let key = Some(TextRole::Key);
+    assert_eq!(
+        spans,
+        [
+            ("arrows", key),
+            (" move · ", None),
+            ("f", key),
+            (" select", None)
+        ]
+    );
+    assert!(help_line_styled(&[(None, "x")]).is_empty());
+}

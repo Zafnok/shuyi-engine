@@ -29,6 +29,7 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
+use crate::text::StyledText;
 use core::fmt;
 pub use view::{OptionsView, RowView, ValueView};
 
@@ -1028,11 +1029,11 @@ impl<G: GameData> OptionsScreen<G> {
     /// The bottom help line, naming the keys of the active keymap (or
     /// their buttons, on a controller): what Confirm does on the focused
     /// row, if anything.
-    pub fn help(&self, ctx: &Ctx<G>) -> String {
+    pub fn help(&self, ctx: &Ctx<G>) -> StyledText {
         match &self.typing {
             // Typing: the text box's own keys.
             Some(b) if !b.pad => text_keys_help(ctx),
-            Some(_) => ctx.text_with(HELP_NUMBER_PAD, &[]),
+            Some(_) => ctx.text_styled(HELP_NUMBER_PAD, &[]),
             None => {
                 let key = if self.leaving.is_some() {
                     HELP_LEAVE
@@ -1041,7 +1042,7 @@ impl<G: GameData> OptionsScreen<G> {
                 } else {
                     self.focused_row(ctx).map_or(HELP_CHANGE, |r| r.help(ctx))
                 };
-                ctx.text_with(key, &[])
+                ctx.text_styled(key, &[])
             }
         }
     }
