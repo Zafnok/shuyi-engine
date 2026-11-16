@@ -26,11 +26,11 @@
 //! - `cargo xtask tutorial-tries [--check] [<name>...]`
 //! - `cargo xtask exercises [--copy] [<step>...]`
 //! - `cargo xtask golden --bless`
+//! - `cargo xtask seed-target --into <worktree>`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
 //! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
 //! - `cargo xtask sound-parity give-up [--apply]`
-//! - `cargo xtask seed-target --into <worktree>`
 
 mod api;
 mod book;
@@ -221,6 +221,13 @@ usage:
       failed test printed (never outside the repository), show `git diff
       --stat` over them, and run the tests again: they must pass. A changed
       or removed row needs a `Breaking:` line in the ticket.
+  cargo xtask seed-target --into <worktree>
+      Run in a warm worktree (usually the main one): start <worktree>'s
+      target/ from this one's target/debug (ticket 2078). Third-party output
+      is hard-linked, what cargo rewrites is copied, what <worktree> already
+      built is kept, and the workspace's crates are left to build fresh with
+      their own paths. Refuses while a build runs in either, and across
+      volumes.
   cargo xtask sound-parity corpus --out <dir> [--oracle]
       Write the sound gates' test signals into <dir>/corpus, each checked
       against tools/sound-parity/corpus.ron; with --oracle, what `oggdec` makes
@@ -235,13 +242,7 @@ usage:
   cargo xtask sound-parity give-up [--apply]
       Check that tools/sound-parity/footprint.ron covers all the sound
       replacement added; with --apply, take it all out. Only on Nick's word:
-      the give-up-sound-replacement skill says what else that session does.
-  cargo xtask seed-target --into <worktree>
-      Run in a warm worktree (usually the main one): start <worktree>'s
-      target/, which must be empty or absent, from this one's target/debug
-      (ticket 2078). Third-party output is hard-linked, what cargo rewrites
-      is copied, and the workspace's crates are left to build fresh with
-      their own paths. Refuses while a build runs here, and across volumes.";
+      the give-up-sound-replacement skill says what else that session does.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
