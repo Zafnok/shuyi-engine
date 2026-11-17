@@ -163,7 +163,8 @@ Done 2026-11-17.
   `load_with`, `shuyi-cli`'s `basic.rs` and bake contact sheet,
   `shuyi-ui`'s `text.rs`, dialogue preview and one-bit pictures,
   `examples/hello-grid` (its `file()`, tools, tests and
-  `asset_memory.rs`), the tutorial's steps 9 and 10, the template (`base` and `top-down-grid`, and the
+  `asset_memory.rs`), the tutorial's steps 9 and 10 and its exercises'
+  edits (`site/exercises/edits.rs`), the template (`base` and `top-down-grid`, and the
   plans' golden), and the tests that compare a read with a literal
   (`.as_deref()`). `site/snippets` read no file and are unchanged.
 - Tests (`crates/assets/src/bundle/read_tests.rs`): a table, an embedded
@@ -200,8 +201,6 @@ Done 2026-11-17.
   migration's second way.
 - 2228 is open, so `LayerCopy` doesn't exist yet: its ticket now says,
   as what holds, that its `bytes` and `text()` are `Cow`s.
-
-SIZE_LINE
 
 Breaking: shuyi-assets: `Bundle::bytes`, `Bundle::file`, `Bundle::test_part`, `DecodeCx::bytes`, `DecodeCx::text`: they hand out a `Cow<'static, [u8]>` or `Cow<'static, str>`, not `&'static`; a game derefs it (`&bytes`, `.as_deref()`), or keeps `&'static` in its own wrapper by leaking what isn't `Cow::Borrowed` (nothing is, until 2263)
 
