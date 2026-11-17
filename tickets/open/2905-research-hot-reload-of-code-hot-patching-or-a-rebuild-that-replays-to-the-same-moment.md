@@ -88,13 +88,13 @@ None. This is technical.
   as the default, patching as an option), `docs/research/code-reload.md`
   with the numbers, and the tickets that build it.
 
-- **From 2916 (done):** the code pad is a Codespace a step of the
-  book's project, where the reader rebuilds the step's web build
-  ([ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-per-step-not-a-build-server.md),
+- **From 2916 (done):** the code pad is a Codespace of the book's
+  project (2837), where the reader rebuilds the step's web build
+  ([ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md),
   `docs/research/2916-code-pad.md`, *4. The reader's own machine*: a
   `dev` rebuild of step 2 takes 1.3 s). Say in this ticket's report
   whether the chosen reload changes that recommendation, and what a
-  reader in a step's Codespace (2837) would see after a rebuild.
+  reader in that Codespace would see after a rebuild.
 
 **Out (do not do):**
 - building it beyond the prototypes the measurements need.

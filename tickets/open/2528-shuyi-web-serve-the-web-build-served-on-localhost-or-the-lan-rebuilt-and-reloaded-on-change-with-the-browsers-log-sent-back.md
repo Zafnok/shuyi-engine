@@ -256,11 +256,12 @@ None.
     `"error":<code>` from `data-shuyi-error` under `error`), and 3052's
     `file` message names `shuyi web --serve`, as its table says. If not,
     3052 does both (its own clause says so);
-  - **with 2837:** if it is done, each step's Codespace
-    (`.devcontainer/<step>/devcontainer.json`) serves its web build with
-    a static server, and the step's page tells the reader to rebuild and
-    reload by hand: change each container to run `cargo shuyi web --serve`
-    on its forwarded port, and the page to say the game reloads on save.
+  - **with 2837:** if it is done, the book's Codespace
+    (`.devcontainer/book/devcontainer.json`) serves a step's web build
+    with a static server, and the step's page tells the reader to rebuild
+    and reload by hand: change the container to run `cargo shuyi web
+    --serve` on its forwarded port, and the pages to say the game reloads
+    on save.
     In a Codespace the page is reached through GitHub's forwarded address
     (`https://<codespace>-<port>.app.github.dev`), not `127.0.0.1`: check
     that the Host and Origin rules let it in. If not, 2837 runs `--serve`

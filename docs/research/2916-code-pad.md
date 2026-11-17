@@ -1,7 +1,7 @@
 # The code pad: editing a game's Rust from the book, and what each way costs
 
 Research for ticket 2916, measured **2026-11-16 and 17**. The choice it
-leads to is [ADR-0126](../adr/0126-the-code-pad-a-codespace-per-step-not-a-build-server.md);
+leads to is [ADR-0126](../adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md);
 Nick's answer on paying for a server is in [`decisions.md`](../decisions.md).
 This page holds the numbers.
 
@@ -19,13 +19,15 @@ a browser has no compiler.
 | 2. A compiler in the browser | nothing | not possible today | link for `wasm32-unknown-unknown`; nobody ships one that does |
 | 3. Scripts | nothing | about the playground's **Run**: the game reloads, the script compiles in milliseconds | teach Rust: the book's project teaches the Rust each step uses, and a script is not that Rust |
 | 4. The reader's own machine | nothing | 1.3 s for the web build, 1.9 s native, then a reload | start with nothing installed: Rust, and on Windows MSYS2, come first |
-| 5. A Codespace | nothing; a prebuild would be about $0–1 | the same as 4, once set up; CODESPACE_FIRST to the first game | stay in the page, or work without a GitHub account |
+| 5. A Codespace | nothing; one prebuild fits Nick's included storage, one a step would bill about $2 | 5 s on its 2 cores, then a reload; about 10 minutes from the link to the first game, less with a prebuild (not measured) | stay in the page, or work without a GitHub account |
 
-**The recommendation** (ADR-0126): way 5 now, a Codespace a step, opened
-from a link on the step's page, with a command that runs an exercise's check
-there. It is free to Nick, teaches the Rust the book teaches, and runs every
-check the site runs. A build server (way 1) is the way to edit Rust in the
-page itself; it waits for Nick, and for readers asking for it.
+**The choice** (ADR-0126, Nick's decision of 2026-11-17): way 5, one
+Codespace of the book's project with every step built, prebuilt once within
+Nick's included storage, opened from a link on each step's page, with a
+command that runs an exercise's check there. It is free to Nick, teaches the
+Rust the book teaches, and runs every check the site runs. A build server
+(way 1) is the only way to edit Rust in the page itself; Nick chose not to
+have one.
 
 ## Method
 
@@ -199,8 +201,10 @@ copy, and runs it. Free, and the fastest loop:
 
 - **Native:** a one-line edit rebuilds in 1.85–1.91 s, then `cargo run`
   opens the window.
-- **The web build:** `cargo shuyi web` (dev) rebuilds in 1.2–1.3 s, then a
-  reload of the page. 2528 (`shuyi web --serve`, open) will serve the folder
+- **The web build:** the `.wasm` rebuilds in 1.2–1.3 s (`dev`); `cargo
+  shuyi web` also rebuilds the step's tool program, which links the step's
+  crate (in the Codespace below, 4.9 s in all on 2 cores), then a reload
+  of the page. 2528 (`shuyi web --serve`, open) will serve the folder
   and reload the page on each change; until then the reader serves `dist/`
   and reloads by hand.
 - **Hot reload of code** (2905, open) would keep the game's moment across
@@ -251,7 +255,24 @@ on 2026-11-16:
 On a new 2-core Codespace (`basicLinux32gb`) of `main` at `698a964b`, in
 seconds:
 
-CODESPACE_TABLE
+| Step | Seconds | What happens |
+| ---- | ------- | ------------ |
+| `gh codespace create` until it is *Available* | 40 | GitHub makes the machine and clones the repository |
+| `bash scripts/setup-linux.sh` | 40.5 | the system packages, rustup, the pinned Rust, the web target (run by hand, after its first try failed: below) |
+| `cargo build --bin shuyi` | 135.8 | the engine's tools, for the MCP server the `postCreateCommand` registers |
+| `cargo shuyi web --release` in `02-board`, the first | 412.9 | the step's tool program (native, about 306 s), then the web build (107 s) |
+| `cargo shuyi web`, `dev`, the first | 94.5 | the web build in `dev` (93 s); the tool program was built |
+| an edit, then `cargo shuyi web` | 4.9 | the web build, 0.91 s; the tool program, which links the step's crate, built again |
+| an edit, then `cargo shuyi web --release` | 37.2 | the web build with LTO, 35.8 s |
+| `cargo test`, the first | 11.7 | |
+| the game from a forwarded port | 0.7 | GitHub's sign-in hop, then the 2.9 MB `.wasm` |
+
+So, without a prebuild, **about 10 minutes from the link to the game**: 40 s
+for the machine, 3 minutes of setup the `postCreateCommand` runs, then the
+reader's first `cargo shuyi web`, about 6.5 minutes (the tool program and
+the engine for the web, in `dev`). After that, **5 s from an edit to a new
+build** on 2 cores, then a reload. The disk held 4.8 GB at the end (the
+step's target 1.6 GB, the root's 0.9 GB, Rust and its tools 1.2 GB).
 
 **Its first boot failed.** The `postCreateCommand` stopped 8 s in:
 `apt-get` fetched its 72 packages and then failed to rename one in its own
@@ -283,11 +304,24 @@ instead of running the setup. The repository's owner pays for it
   version kept: "4 regions with 2 retained versions could mean charges for
   up to 8 prebuilds".
 
-With the Codespace above (PREBUILD_GB GB used after the step's builds), one
+With the Codespace above (4.8 GB used after the step's builds), one
 region and one version kept, made only when the dev container changes
-(not on every push): about PREBUILD_COST a month, from the 15 GB-month a
-free account includes before any of it is billed. It is still Nick's money
-and his decision (the ticket's *Out*): this ticket turns nothing on.
+(not on every push):
+
+- **storage:** about 5 GB a prebuild, at $0.07 a GB-month: $0.35 a
+  month for one, $3.50 for one a step (ten), first from the storage
+  Nick's plan includes (20 GB-month on Pro), which his own Codespaces
+  share. One fits it; ten would bill about $2 a month past it;
+- **making it:** about 10 minutes of a 2-core runner each time a dev
+  container changes, a few times a month;
+- **what it saves a reader:** the setup and the first build, most of the
+  10 minutes above. How long a Codespace takes to start from one was not
+  measured: no prebuild was made.
+
+It is Nick's money and his decision (the ticket's *Out*): this ticket
+turns nothing on. He chose one prebuild, within his included storage
+(`decisions.md`, 2026-11-17), which a single dev container for the whole
+project allows: a prebuild is made per dev container.
 
 ### A link to one step
 
@@ -297,10 +331,13 @@ page offers them in a list. A link names one with `devcontainer_path`,
 which `gh codespace create --devcontainer-path` and the REST API take too.
 Tried on 2026-11-16, the creation page took `machine=standardLinux32gb`
 from a link (it showed 4-core) and, for a `devcontainer_path` that doesn't
-exist, fell back to the one there is without a word. So a link per step
-works as soon as each step has its file; that file can open the step's
-folder (`workspaceFolder`), build it in its `postCreateCommand`, and
-forward the web build's port.
+exist, fell back to the one there is without a word. So a link can name
+a container of the book's project as soon as it exists; it can open the
+project's folder (`workspaceFolder`), build the steps in its
+`onCreateCommand` (which a prebuild runs), and forward the web build's
+port. A link can't open a folder of its own choosing, so one container for
+every step opens at the project's folder, and the step's page names the
+step's.
 
 ### An exercise's check there
 
@@ -311,7 +348,7 @@ step as it is and runs the checks' tests, but those tests are the author's
 (each check passes on the step's own files *with its exercise's edit*, laid
 over them by `edits.rs`), not the reader's. What it lacks is one command
 that runs one check on the step as the reader left it and prints its
-answer:
+answer, something like:
 
 ```text
 $ cargo xtask exercise 03-walk wall-right

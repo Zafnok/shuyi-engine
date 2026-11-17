@@ -18,9 +18,9 @@ completed:
 The book's exercises (2828, [ADR-0117](../../docs/adr/0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md))
 are done in a step's playground, on data files, and checked by the step's
 web build when the page asks. An exercise that edits Rust needs the
-reader's Rust compiled with the check: 2916 chose a Codespace a step for
-that (2837), and a command there that runs the check
-([ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-per-step-not-a-build-server.md) §2).
+reader's Rust compiled with the check: 2916 chose a Codespace of the book's
+project for that (2837), and a command there that runs the check
+([ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md) §2).
 
 What there is:
 
@@ -41,9 +41,9 @@ What there is:
   one of the page's `extra.files`, `to`), written in the twins by
   `crates/xtask/src/llms.rs`, run by `site/static/playground.js`'s
   **Check my work**.
-- **From 2837:** each step has `.devcontainer/<step>/devcontainer.json`,
-  opening a Codespace at the step with its web build, linked from the
-  step's page.
+- **From 2837:** `.devcontainer/book/devcontainer.json` opens a
+  Codespace at `site/tutorial/` with every step's web build built, linked
+  from each step's page, which names the step's folder.
 
 ## Nick input
 
@@ -65,7 +65,7 @@ None.
 - **The shortcode:** `code="<path>"` in place of `file`, a path under the
   step's project (`crates/game/src/rules.rs`) that exists; `book.rs`
   checks one of the two is there and that `code` exists. The page shows
-  the task, *Do it in `<path>`, in this step's Codespace*, the hint, a
+  the task, *Do it in `<path>`, in the book's Codespace*, the hint, a
   link to the Codespace, and the command to run, with no **Check my work**
   button. The twin says the same as text.
 - **The first exercise:** one, on a step whose rules the reader changes

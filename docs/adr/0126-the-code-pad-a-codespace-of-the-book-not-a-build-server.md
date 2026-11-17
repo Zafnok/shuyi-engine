@@ -1,4 +1,4 @@
-# ADR-0126: The code pad: a Codespace per step of the book's project, with a command for an exercise's check, and no build server until Nick asks for one
+# ADR-0126: The code pad: a Codespace of the book's project, prebuilt once, with a command for an exercise's check, and no build server
 
 - **Status:** Accepted
 - **Date:** 2026-11-17
@@ -40,30 +40,47 @@ compiled.
 5. **A Codespace** is way 4 on a machine the reader's own GitHub account
    pays for (60 free hours a month on 2 cores), opened from a link, in the
    engine's repository, where the checks of `site/exercises/` already are.
-   Its first boot failed once on a race in `apt` (2094).
+   On 2 cores it took about 10 minutes from the link to step 2's game (3
+   of setup, 6.5 of the first build), then 5 s an edit. Its first boot
+   failed once on a race in `apt` (2094).
+
+Nick chose the Codespace, with no build server, and one Codespaces
+prebuild kept within his plan's included storage (decision of
+2026-11-17). A prebuild is per dev container: one a step would be ten,
+about 50 GB, past the 20 GB-month his plan includes.
 
 ## Decision
 
-### 1. The code pad is a Codespace, one per step of the book's project
+### 1. The code pad is one Codespace of the book's project, prebuilt
 
-- Each step of the book's project with Rust to edit gets a dev container,
-  `.devcontainer/<step>/devcontainer.json` (`02-board`, …), one folder
-  deep as Codespaces reads them. It is the root's container (the same
-  image, `scripts/setup-linux.sh`) with the step's folder as
-  `workspaceFolder`, its `postCreateCommand` building the step's web build
-  once in `dev` (`cargo shuyi web`) after the setup, and the port the web
-  build is served on forwarded, private (only the reader, signed in, opens
-  it), opened in a preview tab.
-- The step's page links it, `https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/<step>/devcontainer.json&machine=basicLinux32gb`,
-  beside its playground, saying what it is in the book's words: a computer
-  in the browser, paid from the reader's own GitHub account's free hours,
-  where they change the step's Rust. The smallest machine is named in the
-  link, because the step's rebuild is no faster on more cores.
+- **One dev container for the book,** `.devcontainer/book/devcontainer.json`:
+  the root's image and setup (`scripts/setup-linux.sh`), with
+  `workspaceFolder` the project's folder (`site/tutorial/`), and a step
+  that builds every step's web build in `dev` into **one shared target
+  folder** (`CARGO_TARGET_DIR`, inside the Codespace's disk). The steps
+  lock the same crates, so the engine is built once and each step adds
+  its own crate. It forwards the port the web build is served on,
+  private (only the reader, signed in, opens it), opened in a preview.
+- **The building step is the one a prebuild runs** (`onCreateCommand` or
+  `updateContentCommand`, which prebuilds run; `postCreateCommand` doesn't
+  run in a prebuild), so a Codespace made from the prebuild opens with
+  every step built.
+- **One prebuild,** made by Nick in the repository's settings: that
+  configuration, on `main`, one region, one version kept, made when its
+  dev container changes. It must stay within his included storage; if
+  its size would bill him, it isn't turned on and he is asked again.
+- **Each step's page** links the same Codespace,
+  `https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb`,
+  beside its playground, and names the step's folder to open
+  (`02-board/crates/game/src/`) and the commands to rebuild and see it. It
+  says what a Codespace is in the book's words: a computer in the browser,
+  paid from the reader's own GitHub account's free hours. The smallest
+  machine is named, because a step's rebuild is no faster on more cores.
 - The step's game shows as its web build, served from the Codespace and
   rebuilt by hand (`cargo shuyi web`, then reload) until 2528's `shuyi web
-  --serve` rebuilds and reloads it on save; the dev container then runs
-  that instead. 2905's hot reload, when it lands, changes what the reader
-  sees after a rebuild (the same moment, not the start), not the way.
+  --serve` rebuilds and reloads it on save. 2905's hot reload, when it
+  lands, changes what the reader sees after a rebuild (the same moment,
+  not the start), not the way.
 - The page's playground stays as it is, for data files, with no account.
 - 2837 builds this.
 
@@ -81,43 +98,48 @@ compiled.
   rules (`TurnRules::apply`), as step 3's `wall-right` already does.
 - An exercise that edits Rust is the `exercise` shortcode with a new
   `code` (in place of `file`): the step's source file it is done in. Its
-  page says to do it in the step's Codespace and run the command, in place
+  page says to do it in the book's Codespace and run the command, in place
   of **Check my work**; the twin says the same. `cargo xtask exercises`
   checks its tests as today: each passes on the step with its exercise's
   edit and fails without.
 - 2838 builds this, with the first such exercise.
 
-### 3. No build server, until Nick decides to pay for one
+### 3. No build server
 
-A pad in the page itself is a build server (way 1), as §1 of the research
-says; it waits for Nick's answer to its monthly cost, recorded in
-`docs/decisions.md`. If he says yes, its ticket starts from the research's
-numbers: the template's `dev` profile stripped, the steps' target folders
-built into one image, a container a build with no network and a time,
-memory and size limit, only the step's `src/` accepted, and a sign-in with
-a limit per reader.
+A pad in the page itself is a build server (way 1). Nick chose not to have
+one (2026-11-17); it comes back only when he asks for it. Its ticket would
+start from the research's numbers: the template's `dev` profile stripped,
+the steps' target folders built into one image, a container a build with
+no network and a time, memory and size limit, only the step's `src/`
+accepted, and a sign-in with a limit per reader.
 
 ## Consequences
 
 - A reader edits the step's real Rust, with the compiler's own errors, in
   the book's own project, and the exercises can ask for Rust: nothing the
   book teaches is left out.
-- It costs Nick nothing: each reader's Codespace is on their own account.
-  A prebuild, which would skip the first build, is his to turn on.
+- It costs Nick nothing: each reader's Codespace is on their own account,
+  and the one prebuild fits his plan's included storage.
 - A reader needs a GitHub account, and the pad is a new tab with an
-  editor, not the page. The first Codespace takes minutes before the game
-  shows (the research's table); a later one resumes in seconds.
+  editor, not the page. One Codespace serves the whole project, so a
+  reader moving to the next step keeps it; but it opens at the project's
+  folder, not at the step, and the page has to say where to go.
 - A reader in a Codespace of the engine's repository sees the whole
-  repository; the step's own container opens its folder, and the rest is
-  there if they look.
-- Ten more dev containers to keep in step with the root's: they are the
-  same file but for the folder; 2837's test checks that.
+  repository if they look.
+- The book's container builds ten steps where one would do, so making
+  the prebuild takes longer; a Codespace made without it (before the first
+  prebuild, or in a region it isn't in) waits for all ten too, unless the
+  container builds only on demand there. 2837 measures it and decides.
 
 ## Alternatives considered
 
-- **A build server now** — the only way to edit Rust in the page, and
-  cheap to run (about $10 a month), but it costs more in upkeep and risk
-  than in money, and it is Nick's money (§3).
+- **A dev container per step** — opens at the step, but each is its own
+  prebuild: ten, about 50 GB, past Nick's included 20 GB-month (about $2 a
+  month billed). Without prebuilds, about 10 minutes before each step's
+  first game.
+- **A build server** — the only way to edit Rust in the page, and cheap to
+  run (about $10 a month), but it costs more in upkeep and risk than in
+  money; Nick chose no (§3).
 - **A compiler in the browser** — no browser rustc links
   `wasm32-unknown-unknown` today; to look at again when one does.
 - **Scripts in place of Rust** — free and fast, but the book teaches Rust
@@ -128,6 +150,7 @@ a limit per reader.
   newcomer installs Rust (and MSYS2 on Windows) before the first edit, and
   the checks aren't there. The command of §2 works there too for a reader
   with a clone of the repository.
-- **One Codespace for the whole repository** (the quick start's link) — it
-  opens at the root, with no step built and no port forwarded; a reader
-  must find the step's folder and serve its build themselves.
+- **The root's Codespace** (the quick start's link) — opens at the root,
+  with no step built and no port forwarded, and its `postCreateCommand`
+  builds the engine's tools for the MCP server, which a reader of the book
+  doesn't need.

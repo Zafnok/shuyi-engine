@@ -137,6 +137,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted; §4 superseded by ADR-0124 |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
 | [0124](0124-key-caps-a-key-drawn-as-a-cap-in-the-room-its-box-needs.md) | Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid | Accepted; supersedes ADR-0122 §4 |
-| [0126](0126-the-code-pad-a-codespace-per-step-not-a-build-server.md) | The code pad: a Codespace per step of the book's project, a command for an exercise's check, and no build server until Nick asks for one | Accepted; extends ADR-0117 |
+| [0126](0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md) | The code pad: one Codespace of the book's project, prebuilt once, a command for an exercise's check, and no build server | Accepted; extends ADR-0117 |
 
 Template: [`0000-template.md`](0000-template.md).
