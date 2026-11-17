@@ -168,15 +168,27 @@ fn a_bakes_folders_are_laid_first_and_the_check_holds() {
 
 #[test]
 fn a_bake_refuses_more_folders_than_a_pack_lays_first() {
-    let mut bake = Bake::new(STAMP);
-    for at in 0..=MAX_FIRST {
-        bake = bake.first(&format!("f{at}"));
-    }
-    let errors = bake.bake(&formats(), sources(), None).unwrap_err();
+    let naming =
+        |count: usize| (0..count).fold(Bake::new(STAMP), |bake, at| bake.first(&format!("f{at}")));
+    // Exactly the most bakes, with a span each.
+    let baked = naming(MAX_FIRST).bake(&formats(), sources(), None).unwrap();
+    assert_eq!(spans(&baked.bytes).len(), MAX_FIRST);
+    let errors = naming(MAX_FIRST + 1)
+        .bake(&formats(), sources(), None)
+        .unwrap_err();
     assert_eq!(
         errors[0].to_string(),
         format!("bake: the bake lays more than {MAX_FIRST} folders first")
     );
+    // Past the most, `write_first` lays the rest in path order.
+    let first: Vec<String> = (0..=MAX_FIRST).map(|at| format!("f{at}")).collect();
+    let pack = first_pack(
+        &first.iter().map(String::as_str).collect::<Vec<_>>(),
+        &named(PATHS),
+    );
+    let spans = spans(&pack);
+    assert_eq!(spans.len(), MAX_FIRST);
+    assert_eq!(spans.last().unwrap().0, format!("f{}", MAX_FIRST - 1));
     // The same folder named again and again is one.
     let mut bake = Bake::new(STAMP);
     for _ in 0..=MAX_FIRST {
@@ -257,6 +269,13 @@ fn an_index_whose_spans_dont_hold_their_folders_is_refused() {
     assert_eq!(
         read_with(&files, &[("t", 0, 2)]),
         broken("t/z lies outside its span of t/")
+    );
+    // A file named as the folder with its `/` (no pack `shuyi bake` makes
+    // holds one) is under it, and checked.
+    let slashed = [("t/", 0, 1), ("t/z", 1, 1)];
+    assert_eq!(
+        read_with(&slashed, &[("t", 1, 1)]),
+        broken("t/ lies outside its span of t/")
     );
     // Past the files' end, or past what a number holds.
     assert_eq!(
@@ -404,6 +423,12 @@ fn a_folder_has_arrived_once_its_span_has() {
         Some("title/logo.txt")
     );
     assert_eq!(bundle.file("part1/map.ron"), None);
+    // Only the last byte of the title's span hasn't arrived: the whole span
+    // is asked for.
+    let title = span("title");
+    let bundle = streamed(&pack, title.end - 1..title.end);
+    assert!(!bundle.arrived("title"));
+    assert!(bundle.arrived("part1"));
     // Nothing past the title has arrived: a folder not named first waits for
     // its own files.
     let title_end = span("title").end;
