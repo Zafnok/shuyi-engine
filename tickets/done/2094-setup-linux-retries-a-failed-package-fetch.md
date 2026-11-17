@@ -79,10 +79,8 @@ None.
 - [x] A first `apt-get` failure is retried, and the script passes when a
       later try does.
 - [x] Three failures exit non-zero with the command to run again.
-- [x] ~~A new Codespace of the branch has Rust, the web target and the MCP
-      server registered when it opens.~~ (not done: making a Codespace
-      bills Nick's account and the session's permissions refused it; the
-      dev container's own image stood in, below)
+- [x] A new Codespace of the branch has Rust, the web target and the MCP
+      server registered when it opens.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [x] All gates in the `run-gates` skill pass.
 
@@ -112,18 +110,22 @@ None.
   container: "everything was there already", exit 0. In a fresh
   container with the mirror broken throughout: three tries, the
   command to run again, exit 1 after 43 s.
-- Step 3, deviation: no Codespace was made (making one bills Nick's
-  account, and this session's permissions refused `gh codespace
-  create`). In its place, the dev container's own image
-  (`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`) as its `vscode`
-  user, through `sudo`, with the same broken-then-fixed mirror: try 1
-  failed, try 2 passed, then `. "$HOME/.cargo/env" && cargo --version`
-  answered `cargo 1.99.1` with `wasm32-unknown-unknown` installed. The
-  MCP server's registration was left out there (it builds the whole
-  CLI, and the change doesn't touch it). The race itself (something
-  else in apt's `partial/` folder at first boot) can't be made on
-  purpose, so a Codespace would show only that the happy path still
-  runs.
+- Step 3: a new 2-core Codespace of the branch (`gh codespace create -m
+  basicLinux32gb`, at `74c03cc2`), made after Nick's go-ahead and deleted
+  after. Its creation log: the `postCreateCommand` ran from 07:24:21,
+  `setup-linux: done.` with no try failed (`apt-get failed` 0 times: the
+  race didn't happen this boot), then `mcp install` found `.mcp.json` and
+  `.claude/settings.json` set up and wrote `.vscode/mcp.json`, and `mcp:
+  ready (contract 52)` at 07:28:42. In the editor's terminal, `cargo
+  --version` answered `cargo 1.99.1`, with `wasm32-unknown-unknown`
+  installed. The editor asked to trust the folder before its terminal
+  opened, as 2916 saw.
+- Before it, the dev container's own image
+  (`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`) in Docker, as its
+  `vscode` user through `sudo`, with the mirror broken for try 1 and put
+  back: try 1 failed, try 2 passed, and `cargo --version` answered with
+  the web target installed. That is where the retry ran as the
+  Codespace's user: the race itself can't be made on purpose.
 - The book's quick start (*Try it with nothing installed*) now says
   what to do when the Codespace's terminal doesn't find `cargo`: run
   `bash scripts/setup-linux.sh` there and open a new terminal.
