@@ -24,6 +24,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 
 use super::{Lang, LangCode, text_width};
 use crate::font::CellWidths;
+use crate::message::Message;
 
 /// What English's screen text says about where a key's text is drawn.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -99,9 +100,12 @@ pub struct Overflow {
     pub key: String,
     /// How many cells its place has ([`Place::max_cells`]).
     pub max_cells: usize,
-    /// How many cells its text takes ([`text_width`]).
+    /// How many cells its text takes ([`text_width`]): its widest form's,
+    /// of a message that chooses its words ([`Message::forms`]).
+    ///
+    /// [`Message::forms`]: crate::message::Message::forms
     pub width: usize,
-    /// Its text.
+    /// Its text, or that widest form.
     pub text: String,
 }
 
@@ -132,18 +136,27 @@ impl Lang {
     /// [`max_cells`](Self::max_cells), measured with `widths` (the atlas's)
     /// as the pack has them ([`LangInfo::widths`](super::LangInfo::widths)),
     /// in key order. Every entry is measured, stale ones too, as its text
-    /// is written (placeholders unfilled). `None` for a code with no pack.
+    /// is written (placeholders unfilled), each form of a message that
+    /// chooses its words ([`Message::forms`]), and the widest reported.
+    /// `None` for a code with no pack.
+    ///
+    /// [`Message::forms`]: crate::message::Message::forms
     pub fn overflow(&self, code: &LangCode, widths: &CellWidths) -> Option<Vec<Overflow>> {
         let pack = self.packs.get(code)?;
         let widths = &pack.info.widths(widths);
         let too_wide = |(key, entry): (&String, &super::Entry)| {
             let max_cells = self.max_cells(key)?;
-            let width = text_width(&entry.text, widths);
+            let forms = Message::parse(&entry.text)
+                .map_or_else(|_| vec![entry.text.clone()], |m| m.forms());
+            let (width, text) = forms
+                .into_iter()
+                .map(|form| (text_width(&form, widths), form))
+                .max_by_key(|(width, _)| *width)?;
             (width > max_cells).then(|| Overflow {
                 key: key.clone(),
                 max_cells,
                 width,
-                text: entry.text.clone(),
+                text,
             })
         };
         Some(pack.ui.iter().filter_map(too_wide).collect())
@@ -239,9 +252,17 @@ mod tests {
             (key: "title.quit", source: "Quit", text: "Beenden!"),
             (key: "title.help", source: "Press {Confirm}", text: "Drücke {Confirm} lange"),
             (key: "title.name", source: "Demo", text: "Démonstration"),
+            (key: "title.continue", source: "{device, select, playdate {Go on} other {On}}",
+             text: "{device, select, playdate {Weiter} other {Fortsetzen}}"),
         ]"#;
+        let continues = r#""title.continue": (
+            text: "{device, select, playdate {Go on} other {On}}",
+            max_cells: 8,
+        ),
+    }"#;
+        let source_ui = SOURCE_UI.replace("    }", continues);
         let files = [
-            ("en/ui.ron", SOURCE_UI),
+            ("en/ui.ron", source_ui.as_str()),
             ("xx/lang.ron", r#"(name: "X", made_by: Machine)"#),
             ("xx/ui.ron", ui),
         ]
@@ -253,24 +274,40 @@ mod tests {
         let xx = LangCode::new("xx").unwrap();
         let overflow = |widths: &CellWidths| lang.overflow(&xx, widths).unwrap();
         // Narrow, `はじめから` is 5 cells and fits 8; `Beenden!` is 8 > 6.
+        // Of a message's forms, the widest: `Fortsetzen`, 10 > 8.
         let narrow = overflow(&CellWidths::NARROW);
         assert_eq!(
             narrow,
-            [Overflow {
-                key: "title.quit".to_owned(),
-                max_cells: 6,
-                width: 8,
-                text: "Beenden!".to_owned(),
-            }]
+            [
+                Overflow {
+                    key: "title.continue".to_owned(),
+                    max_cells: 8,
+                    width: 10,
+                    text: "Fortsetzen".to_owned(),
+                },
+                Overflow {
+                    key: "title.quit".to_owned(),
+                    max_cells: 6,
+                    width: 8,
+                    text: "Beenden!".to_owned(),
+                }
+            ]
         );
         // Wide, it is 10 cells: too wide too.
         let wide = overflow(&CellWidths::wide("はじめから".chars()));
         let keys: Vec<(&str, usize)> = wide.iter().map(|o| (o.key.as_str(), o.width)).collect();
-        assert_eq!(keys, [("title.quit", 8), ("title.start", 10)]);
+        assert_eq!(
+            keys,
+            [
+                ("title.continue", 10),
+                ("title.quit", 8),
+                ("title.start", 10)
+            ]
+        );
         // Exactly as wide as its place, it fits: 8 cells of 8.
         let exact = overflow(&CellWidths::wide("はじめ".chars()));
         let keys: Vec<&str> = exact.iter().map(|o| o.key.as_str()).collect();
-        assert_eq!(keys, ["title.quit"]);
+        assert_eq!(keys, ["title.continue", "title.quit"]);
         assert_eq!(
             lang.overflow(&LangCode::default(), &CellWidths::NARROW),
             None

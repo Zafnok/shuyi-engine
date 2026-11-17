@@ -203,6 +203,15 @@ and `lang.text_in(code, key)` gives a text with that language's tag. Every choic
 `shuyi::assets::message::Message` reads one (`Message::parse`) and fills it
 (`Message::format`).
 
+The languages check their messages as they load. A text that doesn't parse (an unclosed
+`{`, or `{}`) fails, naming its file and key, and so does a translation that loses one of
+its source's `{name}`s, drops a branch of its source's select (the Playdate's wording,
+say), or uses a plural form its language hasn't (French has no `few`). A translation may
+wrap its source's `{n}` in a plural of its own, or drop a plural its language doesn't
+need. A plural that leaves out a form its language has still loads, showing `other` for
+it, and `cargo shuyi lang-status ru` lists it under `missing forms:`. A tip is measured
+form by form: each wording of a `{device, select, …}` must fit the box.
+
 ## Voices
 
 A language's voice clips sit in its voice folder, one per dialogue line, listed in its

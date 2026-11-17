@@ -95,6 +95,22 @@ fn a_tag_uses_its_own_row_then_its_languages_then_other_only() {
 }
 
 #[test]
+fn the_expected_categories_leave_out_only_the_integer_many_of_a_million() {
+    use Category::{Few, Many, One, Other};
+    for tag in ["fr", "es", "it", "pt", "pt-PT", "pt-BR"] {
+        assert_eq!(expected(tag, Kind::Cardinal), [One, Other], "{tag}");
+    }
+    // Italian's ordinal `many` (8th, 11th) is a real form: it stays.
+    assert_eq!(expected("it", Kind::Ordinal), [Many, Other]);
+    assert_eq!(expected("ru", Kind::Cardinal), [One, Few, Many, Other]);
+    assert_eq!(
+        expected("en", Kind::Ordinal),
+        categories("en", Kind::Ordinal)
+    );
+    assert_eq!(expected("nl", Kind::Cardinal), [Other]);
+}
+
+#[test]
 fn a_category_is_named_as_cldr_names_it() {
     for &category in Category::ALL {
         assert_eq!(Category::from_name(category.name()), Some(category));

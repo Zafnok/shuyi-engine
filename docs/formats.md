@@ -289,8 +289,8 @@ What each one reads:
   (`lang::english_and_places_from_source`, `Lang::max_cells`,
   `Lang::note`). A pack's `ui.ron` entry can't set either.
   `lang-status <tag>` lists the pack's entries wider than their key's
-  `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
-  they fail no gate.
+  `max_cells` (`Lang::overflow`, a message's widest form), measured with
+  the font atlas's widths; they fail no gate.
 - **A text that chooses its words** is a message, a subset of ICU
   MessageFormat 1 ([ADR-0127](adr/0127-messages-choose-their-words.md),
   `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
@@ -307,6 +307,31 @@ What each one reads:
   `it`, `ja`, `ko`, `pl`, `pt`, `ru`, `uk` and `zh`; another language has
   only `other`. A text that isn't a message is filled as plain
   placeholders.
+
+  The languages check their texts as messages when they load, each
+  problem an error naming the file and the key. The source's screen text
+  must parse (`{}`, an unclosed `{` or a comma inside braces is an
+  error), and a select on `device` names only devices (`message::DEVICES`)
+  and `other`. A pack's `ui.ron` and `data.ron` entry, its text and its
+  `source` both parse, and the text keeps what the source has:
+  - the same arguments: it may wrap the source's `{n}` in a plural, or
+    drop a plural its language doesn't need, but never lose or add a
+    `{name}`;
+  - every branch of the source's selects, by value, so a translation
+    can't drop the Playdate's wording of a `{device, select, …}`;
+  - only the plural and ordinal categories of its own language
+    (`message::plural::categories`: `fr` has no `few`), when it is read
+    with its tag (`lang::from_files`, `LangPackRon`; not
+    `pack_from_files` or `pack_from_sources`).
+
+  A plural that lacks a category its language has fails nothing (a
+  number of it shows `other`): `lang-status <tag>` lists it under
+  **missing forms** (`LangStatus::missing_forms`). The `many` of French,
+  Spanish, Italian and Portuguese, which only numbers of a million or
+  more pick, isn't asked for, and is still accepted. A tip's text and
+  `how` must parse too, and each text they can show
+  (`Message::forms`) fits the box's lines and cells; `device` and
+  `target` are always known placeholders there (`tip::from_source`).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
