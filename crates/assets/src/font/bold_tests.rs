@@ -29,8 +29,8 @@ fn bold_is_the_bold_shape_once_or_the_glyph_twice() {
     assert_eq!(atlas.bold_strikes('b', regular, true), (regular, 2));
     assert_eq!(atlas.bold_strikes('A', a, false), (a, 1));
     assert_eq!(atlas.bold_strikes('b', regular, false), (regular, 1));
-    assert!(atlas.problems("Ab").is_empty());
-    assert!(atlas.image_problems(32, 16).is_empty());
+    assert_eq!(atlas.problems("Ab"), Vec::<String>::new());
+    assert_eq!(atlas.image_problems(32, 16), Vec::<String>::new());
     // The bold shape's cell counts: the picture needs it.
     assert_eq!(atlas.cell_end(), 3);
     let two_wide = FontAtlasDef {

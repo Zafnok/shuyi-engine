@@ -36,9 +36,9 @@ fn a_bold_face_is_laid_out_after_the_glyphs_and_named_in_the_ron() {
         atlas.def.bold_ink,
         Some(FontInk::new(InkBox::new(0, 1, 2, 2)))
     );
-    assert!(atlas.def.problems("Ab").is_empty());
+    assert_eq!(atlas.def.problems("Ab"), Vec::<String>::new());
     let (w, h) = (atlas.image.width, atlas.image.height);
-    assert!(atlas.def.image_problems(w, h).is_empty());
+    assert_eq!(atlas.def.image_problems(w, h), Vec::<String>::new());
     let rect = atlas.def.bold_rect('A').unwrap();
     assert_eq!((rect.x, rect.y), (8, 0));
     let lit = |x: u32, y: u32| atlas.image.pixel(x, y).is_some_and(|p| p[3] == 255);
@@ -71,7 +71,7 @@ fn a_bold_face_past_a_row_grows_the_image() {
     assert_eq!(atlas.def.bold.len(), glyphs.len());
     assert_eq!(atlas.image.height, (cells + 31).div_ceil(COLUMNS) * 4);
     let (w, h) = (atlas.image.width, atlas.image.height);
-    assert!(atlas.def.image_problems(w, h).is_empty());
+    assert_eq!(atlas.def.image_problems(w, h), Vec::<String>::new());
     assert_eq!(atlas.image.rgba.len(), (w * h * 4) as usize);
 }
 

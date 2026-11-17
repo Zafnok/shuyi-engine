@@ -542,12 +542,19 @@ pub struct CellWidths {
     punctuation: bool,
     /// The language's wide set, if it names one.
     set: Option<Rc<str>>,
-    /// The atlas's glyphs' ink, and its bold face's.
-    ink: Option<Rc<FontInk>>,
-    bold_ink: Option<Rc<FontInk>>,
+    /// The atlas's glyphs' ink, and its bold face's; `None` when it has
+    /// neither. One pointer for both keeps a frame's buffer small.
+    inks: Option<Rc<FaceInks>>,
     /// The cells a key cap takes beyond its name; `None` where keys aren't
     /// drawn as caps.
     key_cap: Option<u16>,
+}
+
+/// The inks [`CellWidths`] carries: the regular face's and the bold one's.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct FaceInks {
+    regular: Option<Rc<FontInk>>,
+    bold: Option<Rc<FontInk>>,
 }
 
 impl CellWidths {
@@ -556,8 +563,7 @@ impl CellWidths {
         wide: None,
         punctuation: false,
         set: None,
-        ink: None,
-        bold_ink: None,
+        inks: None,
         key_cap: None,
     };
 
@@ -567,9 +573,13 @@ impl CellWidths {
     /// ([`in_lang`](Self::in_lang) makes it wide). It carries the atlas's
     /// [`ink`](Self::ink) boxes.
     pub fn of(atlas: &FontAtlasDef) -> Self {
+        let inks = FaceInks {
+            regular: atlas.ink.clone().map(Rc::new),
+            bold: atlas.bold_ink.clone().map(Rc::new),
+        };
+        let any = inks.regular.is_some() || inks.bold.is_some();
         Self {
-            ink: atlas.ink.clone().map(Rc::new),
-            bold_ink: atlas.bold_ink.clone().map(Rc::new),
+            inks: any.then(|| Rc::new(inks)),
             ..Self::wide(atlas.wide_chars())
         }
     }
@@ -578,10 +588,11 @@ impl CellWidths {
     /// face's with `bold` ([`FontAtlasDef::bold_ink`]); `None` if it
     /// doesn't say.
     pub fn ink(&self, bold: bool) -> Option<&Rc<FontInk>> {
+        let inks = self.inks.as_deref()?;
         if bold {
-            self.bold_ink.as_ref()
+            inks.bold.as_ref()
         } else {
-            self.ink.as_ref()
+            inks.regular.as_ref()
         }
     }
 
