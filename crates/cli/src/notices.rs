@@ -103,7 +103,7 @@ pub struct EngineFile {
 /// vendored scripts, the controller database `gilrs` compiles into
 /// native builds (which the crates' walk misses, in a subfolder of its
 /// package), and CLDR's plural rules, which `shuyi-assets` compiles in
-/// (ADR-0126).
+/// (ADR-0127).
 pub const FILES: [EngineFile; 4] = [
     EngineFile {
         file: "crates/cli/web/mq_js_bundle.js",

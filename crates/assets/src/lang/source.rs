@@ -181,7 +181,7 @@ impl Lang {
     /// [`data_text`](Self::data_text), with the tag of the language it is
     /// in: the pack's that gave it, else the source's. A message
     /// ([`Message`](crate::message::Message)) in it, a tip's text say,
-    /// picks its plurals by that language's rules (ADR-0126).
+    /// picks its plurals by that language's rules (ADR-0127).
     pub fn data_text_in<'a>(
         &'a self,
         code: &LangCode,

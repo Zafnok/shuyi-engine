@@ -73,7 +73,7 @@ None.
     `FocusError` becomes an error naming the file and the node path;
   - **text is always a text key**, translated when painted (ADR-0020);
     a literal string is an error; a key whose text takes values (`{n}`,
-    or a message's plural and select, ADR-0126) gets them from the game's code
+    or a message's plural and select, ADR-0127) gets them from the game's code
     (`DocScreen::set_arg(id, name, value)`, on the node with that
     `id`), never from the file. The values are typed as `Label`'s args
     are. **Either order with 3218:** if 3218 is done, its `Arg` (`impl

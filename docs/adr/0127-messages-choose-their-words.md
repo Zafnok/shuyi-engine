@@ -1,4 +1,4 @@
-# ADR-0126: Messages choose their words: a subset of ICU MessageFormat 1, our own plural table, and typed arguments
+# ADR-0127: Messages choose their words: a subset of ICU MessageFormat 1, our own plural table, and typed arguments
 
 - **Status:** Accepted
 - **Date:** 2026-11-16

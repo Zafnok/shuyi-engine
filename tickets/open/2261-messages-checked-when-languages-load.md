@@ -17,11 +17,11 @@ completed:
 
 Split from 2348 (*Messages that choose their words*), which landed
 `shuyi_assets::message` (ICU MessageFormat's plural, selectordinal and
-select, ADR-0126) and stopped at 1,500 lines. A message a translator or
+select, ADR-0127) and stopped at 1,500 lines. A message a translator or
 an agent writes wrong today fails nowhere: a text that doesn't parse is
 filled as plain placeholders, a plural branch its language never picks
 is never shown, and a translation that drops the Playdate's wording of a
-`{device, select, …}` shows the other one there. ADR-0126 says these are
+`{device, select, …}` shows the other one there. ADR-0127 says these are
 load errors, as every other mistake of a language file is (ADR-0007:
 the text formats are the source of truth, checked when they load).
 
@@ -90,7 +90,7 @@ None.
   it lacks. It fails nothing, as `missing` and `stale` don't (a missing
   form shows `other`). CLDR's integer `many` of French, Spanish,
   Italian and Portuguese (numbers of a million or more) is left out of
-  the list, and still accepted in a pack (ADR-0126). `lang-status`
+  the list, and still accepted in a pack (ADR-0127). `lang-status`
   prints a `missing forms:` list after the stale list, only when it
   isn't empty, so today's reports don't change. A new public field
   (ADR-0039: `LangStatus` gets a constructor or stays built only here,
@@ -121,7 +121,7 @@ the draft of steps 2–5 measured 490.
 
 ## Implementation steps
 
-1. Read ADR-0126, `shuyi_assets::message`, `crates/assets/src/lang.rs`
+1. Read ADR-0127, `shuyi_assets::message`, `crates/assets/src/lang.rs`
    (`english_and_places_from_source`, `entries`, `pack_from_files_in`,
    `from_files_in`, `Lang::status`), `lang/formats.rs`,
    `lang/places.rs`, `tip.rs` and `crates/cli/src/lang_status.rs`.

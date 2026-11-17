@@ -101,7 +101,7 @@ None.
     the atlas's width table (a `CellWidths`) and measure with
     `text_width` over it.
   - **From 2348 (done):** `pseudo_text` reads a text with
-    `Message::parse` (`shuyi_assets::message`, ADR-0126). It keeps a
+    `Message::parse` (`shuyi_assets::message`, ADR-0127). It keeps a
     message's syntax as it is (argument names and types, branch
     selectors, `#`) and changes only the words inside its branches, and
     the property test checks each of `Message::forms`. A text that
