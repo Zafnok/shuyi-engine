@@ -16,7 +16,9 @@ use serde::de::DeserializeOwned;
 use crate::error::ContentError;
 use crate::font::CellWidths;
 use crate::lang::text_width;
+use crate::message::Message;
 use crate::ron::parse_ron;
+use shuyi_core::text::{Part, split_tokens};
 
 /// How much text a tip's box holds, in cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,19 +191,21 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
     }
 }
 
-/// The names between braces in `text`, in order (`{Confirm}` gives
-/// `Confirm`). An unclosed `{` is ignored.
+/// The names of the arguments of the message `text`
+/// ([`Message::names`]), each once, in the order first used:
+/// `{Confirm} {n, plural, one {#} other {# {Cancel}}}` gives `Confirm`,
+/// `n`, `Cancel`. For a text that isn't a message, the names between
+/// braces, in order ([`split_tokens`]), an unclosed `{` ignored.
 pub fn placeholders(text: &str) -> Vec<&str> {
-    let mut names = Vec::new();
-    let mut rest = text;
-    while let Some((_, after)) = rest.split_once('{') {
-        let Some((name, tail)) = after.split_once('}') else {
-            break;
-        };
-        names.push(name);
-        rest = tail;
+    match Message::parse(text) {
+        Ok(message) => message.names(),
+        Err(_) => split_tokens(text)
+            .filter_map(|part| match part {
+                Part::Token(name) => Some(name),
+                Part::Text(_) | Part::Unclosed(_) => None,
+            })
+            .collect(),
     }
-    names
 }
 
 #[cfg(test)]

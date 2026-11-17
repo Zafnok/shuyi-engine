@@ -295,8 +295,10 @@ What each one reads:
   `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
   other {# keys}}` and `{n, selectordinal, one {#st} two {#nd} few {#rd}
   other {#th}}` by CLDR's categories (and `=0 {…}`), `#` the number, and
-  `{device, select, playdate {Crank it} other {Turn it}}` by a value;
-  every choice has an `other` branch, and `{n, number}` writes plain
+  `{device, select, playdate {Crank it} other {Turn it}}` by a value
+  (a screen's text, and a tip shown through `Ctx::fill_text`, have the
+  built-in `device`, the kind the player pressed last, and `target`, the
+  target's id, unless the caller passes its own); every choice has an `other` branch, and `{n, number}` writes plain
   digits. An apostrophe is a letter ("l'épée"), but `''` is one and `'{'`
   writes a brace. A plural follows the rules of the language the text is
   in (`Lang::text_in`): a key a pack lacks shows English with English's

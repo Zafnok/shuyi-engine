@@ -79,7 +79,7 @@ open ticket that day added a fourth group:
     before the bundle's API is published. The other builds of ADR-0128 only add,
     so they come after the release.
 - **Breaks no attribute softens,** done before the release: 2347
-  (styled text) and 3218 (typed label arguments), 2405 and 2409 (mouse
+  (styled text) and 3218 (done, typed label arguments), 2405 and 2409 (mouse
   and touch on the engine's widgets), 2133 (the bots' settings files),
   2136 (motions moved onto `ease`), 2239 (a check on translated lines),
   3041 (macroquad's `log-rs`) and 3044 (the window kept as it was left).

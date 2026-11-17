@@ -137,7 +137,7 @@
     "profile.answer.no": "No",
     "profile.question.keep": "Keep this name?",
     "profile.message.name_taken": "Another profile already has that name.",
-    "profile.message.too_many": "There can be at most {n} profiles.",
+    "profile.message.too_many": "There can be at most {n, plural, one {# profile} other {# profiles}}.",
     "profile.message.not_saved": "The profiles couldn't be saved.",
     "profile.help.list": "{Cursor} move · {Confirm} choose · {Cancel} back",
     "profile.help.add": "{Cursor} move · {Confirm} add · {Cancel} back",

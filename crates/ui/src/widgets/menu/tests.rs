@@ -5,6 +5,7 @@ use shuyi_assets::keymap::sample::Action;
 
 use super::*;
 use crate::audio::AudioConfig;
+use crate::text::Arg;
 use crate::toy;
 use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorUp, Info};
 
@@ -231,7 +232,7 @@ fn item_constructors() {
     );
     assert_eq!(
         MenuItem::keyed("home.greeting").with_arg("name", 3).label,
-        Label::key("home.greeting").with_arg("name", "3")
+        Label::key("home.greeting").with_arg("name", Arg::Int(3))
     );
     let m = Menu::new(vec![MenuItem::new("a"), MenuItem::disabled("bcd")]);
     assert_eq!(m.items()[1].label, Label::from("bcd"));

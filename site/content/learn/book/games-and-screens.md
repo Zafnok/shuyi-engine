@@ -244,6 +244,18 @@ action's name, as `{Confirm}`, with the player's own key for it. In a `grid` gam
 `check_text` yet, and `lint` says so). The keys `keys.not_mapped`, `keys.arrows`, `keys.chord_join`
 and `layout.arrows` are words the engine's own screens and help lines ask the game for.
 
+A value stays what it is until the text is shown: a number is a number, so a text that
+chooses its words by one ([chapter 3](@/learn/book/assets-and-formats.md)) picks the
+right form. With `"seeds.left": "{n, plural, one {# seed left} other {# seeds left}}"`,
+`ctx.text_with("seeds.left", &[("n", &seeds)])` says "1 seed left" or "3 seeds left", and
+so does a menu's label, `Label::key("seeds.left").with_arg("n", seeds)`. Numbers and text
+go in as they are; a value of a type of your own goes in as `value.to_string()`. Every
+text may also choose by `device`, the kind of controller the player pressed last
+(`keyboard`, `xbox`, `playdate`…), and by `target`, where the game runs:
+`{device, select, playdate {Turn the crank} other {Hold to water}}`. Text you already
+have, such as a tip's, is filled the same way by `ctx.fill_text(text, lang, args)`, with
+`lang` the language it is written in.
+
 {% newcomer(to="rust", topic="a tuple and `&[]`") %}
 `&[("seeds", &seeds)]` lends a list of pairs. `("seeds", &seeds)` is a
 **tuple**, values side by side: the placeholder's name, and what to put there. `&[]`

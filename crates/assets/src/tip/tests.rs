@@ -130,6 +130,16 @@ fn placeholders_are_the_names_between_braces() {
 }
 
 #[test]
+fn placeholders_of_a_message_are_its_arguments_names_inside_branches_too() {
+    let text = "{Confirm} {n, plural, one {#} other {# {Cancel}}}";
+    assert_eq!(placeholders(text), ["Confirm", "n", "Cancel"]);
+    let device = "{device, select, playdate {{Confirm}} other {{Confirm} {Cancel}}}";
+    assert_eq!(placeholders(device), ["device", "Confirm", "Cancel"]);
+    // Not a message: the names between braces, as before.
+    assert_eq!(placeholders("{a, plural} {b}"), ["a, plural", "b"]);
+}
+
+#[test]
 fn a_wide_character_is_two_cells_of_the_title_and_the_lines() {
     // Four characters of title and six of a line: under the limits of 6
     // and 10, but 8 and 12 cells where they are wide.

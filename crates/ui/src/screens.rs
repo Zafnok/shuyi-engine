@@ -17,8 +17,8 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed;
+use crate::text::ToArg;
 use crate::text::{StyledText, TextRole};
-use core::fmt::Display;
 
 /// The text key of a text box's help line, with `{done}`, `{delete}` and
 /// `{cancel}`: the text box's fixed keys.
@@ -29,7 +29,7 @@ pub const TEXT_BOX_HELP: &str = "text_box.help";
 pub fn text_keys_help<G: GameData>(ctx: &Ctx<G>) -> StyledText {
     let [done, delete, cancel] = fixed::text_key_names();
     let keys = [("done", &done), ("delete", &delete), ("cancel", &cancel)];
-    let keys = keys.map(|(name, key)| (name, key as &dyn Display));
+    let keys = keys.map(|(name, key)| (name, key as &dyn ToArg));
     ctx.text_styled_with_keys(TEXT_BOX_HELP, ctx.help_keys(), &[], &keys)
 }
 
