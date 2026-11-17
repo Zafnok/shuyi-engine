@@ -84,7 +84,8 @@ shuyi-sound-out = { path = "../sound-out", optional = true }
 # pictures with it on the web too (ticket 2019).
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 # The window's record, kept per computer beside the game's storage (ticket
-# 3044): the versions `shuyi-ui` already uses.
+# 3044): the versions `shuyi-ui` already uses. The sound probe's plan reads
+# with them too.
 serde.workspace = true
 ron = { workspace = true, features = ["std"] }
 
