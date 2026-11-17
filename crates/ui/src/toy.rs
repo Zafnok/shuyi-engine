@@ -498,6 +498,18 @@ impl Toy {
         }
     }
 
+    /// The toy game with the languages `lang` makes of its English text.
+    #[cfg(test)]
+    pub(crate) fn with_lang(self, lang: impl FnOnce(BTreeMap<String, String>) -> Lang) -> Self {
+        let mut english: BTreeMap<String, String> =
+            ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
+        english.extend(ENGLISH.iter().map(|&(k, v)| (k.to_owned(), v.to_owned())));
+        Self {
+            lang: lang(english),
+            ..self
+        }
+    }
+
     /// The toy game, its debug language's `lang.ron` written `info`.
     pub(crate) fn with_debug_info(info: &str) -> Self {
         let mut english: BTreeMap<String, String> =
@@ -1136,5 +1148,25 @@ impl Screen<Toy> for Gallery {
         let panel = ctx.palette.engine(EngineColor::Panel);
         let last = i32::from(buf.height()) - 1;
         buf.print(0, last, &ctx.text_with("gallery.help", &[]), text, panel);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `toy/en.ron` is read as a plain map, not through
+    /// `english_from_source`, so its texts are checked as messages here
+    /// (ADR-0127).
+    #[test]
+    fn every_english_text_is_a_message() {
+        let screens: BTreeMap<String, String> = ron::from_str(SCREENS_ENGLISH).unwrap();
+        let toy = ENGLISH
+            .iter()
+            .map(|&(key, text)| (key.to_owned(), text.to_owned()));
+        for (key, text) in screens.into_iter().chain(toy) {
+            let parsed = shuyi_assets::message::Message::parse(&text);
+            assert!(parsed.is_ok(), "{key}: {parsed:?}");
+        }
     }
 }

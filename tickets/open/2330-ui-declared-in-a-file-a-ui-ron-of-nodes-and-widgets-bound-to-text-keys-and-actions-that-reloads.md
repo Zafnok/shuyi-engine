@@ -76,10 +76,8 @@ None.
     or a message's plural and select, ADR-0127) gets them from the game's code
     (`DocScreen::set_arg(id, name, value)`, on the node with that
     `id`), never from the file. The values are typed as `Label`'s args
-    are. **Either order with 3218:** if 3218 is done, its `Arg` (`impl
-    ToArg`); if not, text (an `impl Display`, as `Label::with_arg` takes
-    it today), and 3218 retypes `set_arg` when it lands (its clause says
-    so);
+    are: `set_arg` takes `value: impl ToArg` and keeps an `Arg`, as
+    `Label::with_arg` does since 3218 (done);
     - a `.ui.ron` may name the engine's own keys. **Either order with
       2351:** if 2351 is done, they resolve through the engine's
       English (`Lang::with_engine_english`), so the moved engine screen

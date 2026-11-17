@@ -104,9 +104,10 @@ None.
   search of the game's `assets/` for `{}` and unclosed braces before
   landing says whether its text needs a change. `LangStatus` has a new
   field.
-- **Either order with 3218:** nothing to do either way: 3218 types the
-  arguments the UI hands a message and changes nothing these checks
-  read.
+- **From 3218 (done):** nothing to do: it typed the arguments the UI
+  hands a message and changed nothing these checks read. `tip::from_source`
+  still checks each raw line and knows no built-in `device` or `target`:
+  the tip checks under *In* do both.
 
 **Out (do not do):**
 

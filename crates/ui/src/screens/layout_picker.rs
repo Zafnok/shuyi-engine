@@ -16,8 +16,8 @@ pub mod view;
 
 use crate::prelude::*;
 use crate::text::StyledText;
+use crate::text::ToArg;
 use core::fmt;
-use core::fmt::Display;
 pub use view::{KeyCapView, KeyRole, LayoutPickerView, LayoutView, LegendRow};
 
 use shuyi_assets::keymap::{ActionSet, Chord, Key, Layout, UiAction};
@@ -163,7 +163,7 @@ impl<G: GameData> LayoutPickerScreen<G> {
         let up = names(UiAction::Up);
         let down = names(UiAction::Down);
         let confirm = names(UiAction::Confirm);
-        let keys: [(&str, &dyn Display); 3] = [("up", &up), ("down", &down), ("confirm", &confirm)];
+        let keys: [(&str, &dyn ToArg); 3] = [("up", &up), ("down", &down), ("confirm", &confirm)];
         ctx.text_styled_with_keys(HELP_FIRST, km, &[], &keys)
     }
 

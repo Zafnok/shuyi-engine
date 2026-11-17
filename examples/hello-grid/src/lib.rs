@@ -728,6 +728,18 @@ mod tests {
         assert_eq!(app.version, env!("CARGO_PKG_VERSION"));
     }
 
+    /// `en.ron` is read as a plain map, not through `english_from_source`,
+    /// so its texts are checked as messages here (ADR-0127).
+    #[test]
+    fn every_english_text_is_a_message() {
+        let english: std::collections::BTreeMap<String, String> =
+            ron::from_str(include_str!("../files/en.ron")).unwrap();
+        for (key, text) in &english {
+            let parsed = shuyi::assets::message::Message::parse(text);
+            assert!(parsed.is_ok(), "{key}: {parsed:?}");
+        }
+    }
+
     #[test]
     fn each_stage_takes_the_next_seed() {
         let mut ctx = ctx(41);

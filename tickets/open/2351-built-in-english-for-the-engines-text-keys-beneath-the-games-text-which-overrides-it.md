@@ -166,9 +166,12 @@ None.
     whatever language the game declares (`Lang::source_lang`), and the
     lookups that fall back to the source (`Lang::text` after the packs
     along `Lang::chain`) fall back to it last.
-  - **3218** (typed arguments, and the engine's English made a plural
-    message): if it is done, `profile.message.too_many` uses its plural
-    form; if not, 3218 changes it with the rest.
+  - **From 3218 (done):** `profile.message.too_many` is a plural message
+    in `crates/ui/src/toy/en.ron` and `examples/hello-grid/files/en.ron`
+    (`There can be at most {n, plural, one {# profile} other {#
+    profiles}}.`): the engine's `ui.ron` takes that form, and the test
+    that every text of the toy's English parses
+    (`toy::tests::every_english_text_is_a_message`) reads that file.
   - **3047** (parked, crash reports; adds four engine keys:
     `options.row.crash_reports`, `options.value.ask`,
     `options.value.always`, `options.value.never`): if it is done, they

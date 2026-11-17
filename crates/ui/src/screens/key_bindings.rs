@@ -41,7 +41,7 @@ pub mod view;
 
 use crate::prelude::*;
 use crate::text::StyledText;
-use core::fmt::Display;
+use crate::text::ToArg;
 pub use view::{
     ChoicesView, GroupView, KeyBindingsView, RestoreView, RowView, SlotView, SwitchView,
 };
@@ -795,7 +795,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
             let hold = hold.then(|| ctx.text(HOLD_TO_CANCEL).into());
             let back = (!on_pad).then(|| {
                 let key = capture_abort_key_name();
-                let keys = [("key", &key as &dyn Display)];
+                let keys = [("key", &key as &dyn ToArg)];
                 ctx.text_styled_with_keys(
                     "key_bindings.help_capture_back",
                     ctx.help_keys(),
@@ -824,7 +824,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
         }
         if on_slot {
             let clear = clear_slot_key_name();
-            let keys = [("clear", &clear as &dyn Display)];
+            let keys = [("clear", &clear as &dyn ToArg)];
             return ctx.text_styled_with_keys("key_bindings.help_slot", km, &[], &keys);
         }
         ctx.text_styled_with_keys("key_bindings.help_restore_row", km, &[], &[])

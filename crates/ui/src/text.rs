@@ -1,7 +1,9 @@
 //! Filling in a text's placeholders: `{name}` by a value the caller gives
 //! ([`fill_values`]), or by what the caller looks up for it, such as the
 //! key the player has for an action ([`fill`],
-//! [`Ctx::text_with`](crate::Ctx::text_with)); and [`StyledText`], a line
+//! [`Ctx::text_with`](crate::Ctx::text_with)), a text being a message that
+//! may choose its words by a number's plural or by a value (ADR-0127,
+//! [`shuyi_assets::message`]); and [`StyledText`], a line
 //! whose spans have roles a skin paints, such as a key's name
 //! ([`fill_styled`], [`Ctx::text_styled`](crate::Ctx::text_styled),
 //! ADR-0122).
@@ -14,6 +16,8 @@ use shuyi_assets::error::codes;
 use shuyi_assets::font::CellWidths;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::lang::text_width;
+pub use shuyi_assets::message::{Arg, ToArg};
+use shuyi_assets::message::{Message, Piece};
 use shuyi_assets::palette::line_of_key;
 use shuyi_assets::text::NO_BREAK_SPACE;
 use shuyi_assets::tip::placeholders;
@@ -37,6 +41,11 @@ pub fn key_text<A: ActionSet>(name: &str, keys: HelpKeys<'_, A>) -> Option<Strin
     }
 }
 use core::fmt::Display;
+
+/// The values of a text's placeholders, by name: what [`fill`] and
+/// [`Ctx::text_with`](crate::Ctx::text_with) take (`&[("n", &3),
+/// ("name", &"Mei")]`).
+pub type Args<'a> = [(&'a str, &'a dyn ToArg)];
 
 /// Checks that every placeholder of screen text `text`, read from `path`
 /// in `bundle`, can be filled: a capitalized `{Name}` names a key, so it
@@ -85,15 +94,22 @@ pub fn check_key_placeholders<A: ActionSet>(
 
 /// `text` with each `{name}` that `args` names replaced by its value, and
 /// nothing else: for text built where there are no keys to name (a line of
-/// a list, a label). Anything else in braces is left alone.
-pub fn fill_values(text: &str, args: &[(&str, &dyn Display)]) -> String {
-    fill(text, args, |_| None)
+/// a list, a label). Anything else in braces is left alone. `lang` is the
+/// language `text` is in, whose plural rules a message follows.
+pub fn fill_values(text: &str, lang: &str, args: &Args<'_>) -> String {
+    fill(text, lang, args, |_| None)
 }
 
-/// `text` with each `{name}` replaced by its value in `args`, else by what
-/// `lookup` gives for it, else left as written. What is filled in is not
-/// looked at again, so a value may hold braces. An unclosed `{` and what
-/// follows it are plain text.
+/// `text`, a message in language `lang` ([`Message`]), with each plural,
+/// selectordinal and select choosing by its value in `args`, and each
+/// `{name}` replaced by its value in `args`, else by what `lookup` gives
+/// for it, else left as written. What is filled in is not looked at
+/// again, so a value may hold braces. An integer is written in plain
+/// digits.
+///
+/// A text that isn't a message (text from outside the language files,
+/// which never panics) is filled as before messages: each `{name}` is
+/// filled, and an unclosed `{` and what follows it are plain text.
 ///
 /// What `lookup` gives (a key's name, `Left Shift`) is kept on one line:
 /// its spaces become [`NO_BREAK_SPACE`]s, which
@@ -104,24 +120,26 @@ pub fn fill_values(text: &str, args: &[(&str, &dyn Display)]) -> String {
 /// values.
 pub fn fill(
     text: &str,
-    args: &[(&str, &dyn Display)],
+    lang: &str,
+    args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<String>,
 ) -> String {
-    fill_styled(text, args, &[], lookup).plain()
+    fill_styled(text, lang, args, &[], lookup).plain()
 }
 
 /// [`fill`], with what names a key in a [`TextRole::Key`] span: each value
 /// `lookup` gives, and each value of `key_args` (a key's name a screen
 /// hands in as a value, such as a text box's fixed keys). The values of
 /// `args` and the rest of the text are plain. A placeholder `args` names
-/// is filled from `args` first, then from `key_args`, then by `lookup`.
-/// A key's name, from either, is kept on one line: its spaces become
-/// [`NO_BREAK_SPACE`]s.
+/// is filled from `args` first, then from `key_args`, then by `lookup`; a
+/// plural or select chooses by `args`, then `key_args`. A key's name, from
+/// either, is kept on one line: its spaces become [`NO_BREAK_SPACE`]s.
 ///
 /// ```
 /// use shuyi_ui::text::{StyledText, TextRole, fill_styled};
 /// let key = |name: &str| (name == "Confirm").then(|| "f".to_owned());
-/// let filled = fill_styled("{Confirm} pick · {done} done", &[], &[("done", &"Enter")], key);
+/// let text = "{Confirm} pick · {done} done";
+/// let filled = fill_styled(text, "en", &[], &[("done", &"Enter")], key);
 /// let mut expected = StyledText::new();
 /// expected.push_key("f").push_plain(" pick · ").push_key("Enter").push_plain(" done");
 /// assert_eq!(filled, expected);
@@ -129,31 +147,50 @@ pub fn fill(
 /// ```
 pub fn fill_styled(
     text: &str,
-    args: &[(&str, &dyn Display)],
-    key_args: &[(&str, &dyn Display)],
+    lang: &str,
+    args: &Args<'_>,
+    key_args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<String>,
 ) -> StyledText {
     let mut out = StyledText::new();
-    let value = |values: &[(&str, &dyn Display)], name: &str| {
+    let value = |values: &Args<'_>, name: &str| {
         let found = values.iter().find(|(arg, _)| *arg == name);
-        found.map(|(_, value)| value.to_string())
+        found.map(|(_, value)| value.to_arg())
     };
-    for part in split_tokens(text) {
-        match part {
-            Part::Text(plain) | Part::Unclosed(plain) => {
-                out.push_plain(plain);
-            }
-            Part::Token(name) => {
-                if let Some(plain) = value(args, name) {
-                    out.push_plain(&plain);
-                } else if let Some(key) = value(key_args, name).or_else(|| lookup(name)) {
-                    out.push_key(&joined(&key));
-                } else {
-                    out.push_plain(&format!("{{{name}}}"));
+    let arg = |out: &mut StyledText, name: &str| {
+        if let Some(plain) = value(args, name) {
+            out.push_plain(&plain.to_string());
+        } else if let Some(key) = value(key_args, name)
+            .map(|key| key.to_string())
+            .or_else(|| lookup(name))
+        {
+            out.push_key(&joined(&key));
+        } else {
+            out.push_plain(&format!("{{{name}}}"));
+        }
+    };
+    let Ok(message) = Message::parse(text) else {
+        for part in split_tokens(text) {
+            match part {
+                Part::Text(plain) | Part::Unclosed(plain) => {
+                    out.push_plain(plain);
                 }
+                Part::Token(name) => arg(&mut out, name),
             }
         }
-    }
+        return out;
+    };
+    let chosen_by = |name: &str| value(args, name).or_else(|| value(key_args, name));
+    message.walk(lang, chosen_by, |piece| match piece {
+        Piece::Text(plain) => {
+            out.push_plain(plain);
+        }
+        Piece::Number(n) => {
+            out.push_plain(&n.to_string());
+        }
+        Piece::Arg(name) => arg(&mut out, name),
+        _ => {}
+    });
     out
 }
 
@@ -376,13 +413,16 @@ impl From<&str> for StyledText {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Label {
     /// The text for `key` in the player's language, with each `{name}` that
-    /// `args` names filled by its value (and keys' names filled as
+    /// `args` names filled by its value, and each plural and select
+    /// choosing by it (and keys' names filled as
     /// [`Ctx::text_with`](crate::Ctx::text_with) fills them).
     Key {
         /// The text key.
         key: String,
-        /// Each placeholder's name and its value, already text.
-        args: Vec<(String, String)>,
+        /// Each placeholder's name and its value: a number stays a number
+        /// until the skin paints it, so a plural can choose by it
+        /// (ADR-0127).
+        args: Vec<(String, Arg)>,
     },
     /// Text shown as it is: a name the player typed, a number, text the
     /// caller has already translated.
@@ -401,9 +441,9 @@ impl Label {
     /// The same label with the placeholder `{name}` filled by `value`. A
     /// [`Text`](Self::Text) label has no placeholders and stays as it is.
     #[must_use]
-    pub fn with_arg(mut self, name: impl Into<String>, value: impl Display) -> Self {
+    pub fn with_arg(mut self, name: impl Into<String>, value: impl ToArg) -> Self {
         if let Self::Key { args, .. } = &mut self {
-            args.push((name.into(), value.to_string()));
+            args.push((name.into(), value.to_arg()));
         }
         self
     }
@@ -433,31 +473,36 @@ mod tests {
     fn values_come_first_then_the_lookup_and_the_rest_stays() {
         let text = "press {key} for {count} {things} {}";
         assert_eq!(
-            fill(text, &[("count", &3)], upper),
+            fill(text, "en", &[("count", &3)], upper),
             "press K for 3 {things} {}"
         );
         // A value named like a looked-up placeholder wins.
         assert_eq!(
-            fill(text, &[("key", &"Z"), ("things", &"apples")], upper),
+            fill(text, "en", &[("key", &"Z"), ("things", &"apples")], upper),
             "press Z for {count} apples {}"
         );
         assert_eq!(
-            fill_values(text, &[("key", &1)]),
+            fill_values(text, "en", &[("key", &1)]),
             "press 1 for {count} {things} {}"
         );
     }
 
     #[test]
     fn a_filled_value_is_not_filled_again() {
-        assert_eq!(fill("{a}{b}", &[("a", &"{b}")], upper), "{b}{b}");
-        assert_eq!(fill("{a}", &[("a", &"{key}")], upper), "{key}");
+        assert_eq!(fill("{a}{b}", "en", &[("a", &"{b}")], upper), "{b}{b}");
+        assert_eq!(fill("{a}", "en", &[("a", &"{key}")], upper), "{key}");
     }
 
     #[test]
     fn a_key_name_of_two_words_is_never_split_across_lines() {
         use shuyi_assets::font::CellWidths;
         let key = |name: &str| (name == "Run").then(|| "Left Shift".to_owned());
-        let filled = fill("hold {Run} to run, {who}", &[("who", &"Ada Brook")], key);
+        let filled = fill(
+            "hold {Run} to run, {who}",
+            "en",
+            &[("who", &"Ada Brook")],
+            key,
+        );
         // The key's name is joined; a value given is not.
         assert_eq!(filled, "hold Left\u{a0}Shift to run, Ada Brook");
         for width in 10..20 {
@@ -500,11 +545,30 @@ mod tests {
 
     #[test]
     fn an_unclosed_brace_is_plain_text() {
-        assert_eq!(fill("a {key", &[], upper), "a {key");
-        assert_eq!(fill("{key} {", &[], upper), "K {");
-        assert_eq!(fill("} {key}", &[], upper), "} K");
-        assert_eq!(fill("", &[], upper), "");
-        assert_eq!(fill("no braces", &[], upper), "no braces");
+        assert_eq!(fill("a {key", "en", &[], upper), "a {key");
+        assert_eq!(fill("{key} {", "en", &[], upper), "K {");
+        assert_eq!(fill("} {key}", "en", &[], upper), "} K");
+        assert_eq!(fill("", "en", &[], upper), "");
+        assert_eq!(fill("no braces", "en", &[], upper), "no braces");
+    }
+
+    #[test]
+    fn a_misspelled_action_inside_a_plurals_branch_fails_too() {
+        let bad = "{\n  \"a\": \"{n, plural, one {{Confirn} once} other {# times}}\",\n}";
+        let errors = checked(bad).unwrap_err();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(errors[0].to_string().contains("{Confirn}"), "{errors:?}");
+        let good = "{\n  \"a\": \"{n, plural, one {{Confirm} once} other {# times}}\",\n}";
+        assert_eq!(checked(good), Ok(()));
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn fill_never_panics(text in "[{}#a-z ,=0-9]{0,40}", n in proptest::num::i64::ANY) {
+            let args = [("n", &n as &dyn ToArg), ("a", &"x")];
+            let _ = fill(&text, "en", &args, upper);
+            let _ = fill_styled(&text, "ru", &[], &args, upper);
+        }
     }
 }
 

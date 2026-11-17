@@ -15,7 +15,7 @@
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use core::any::Any;
-use core::fmt::{Debug, Display};
+use core::fmt::Debug;
 
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::dialogue::LineId;
@@ -23,6 +23,7 @@ use shuyi_assets::font::CellWidths;
 use shuyi_assets::hot::Reload;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, Layout};
 use shuyi_assets::lang::{Lang, LangCode};
+use shuyi_assets::message;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{ClipVariant, Playable};
 
@@ -46,7 +47,7 @@ use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::system_keyboard::SystemKeyboard;
-use crate::text::StyledText;
+use crate::text::{Args, StyledText, ToArg};
 
 /// [`Storage`] key under which the player's key and controller-button
 /// bindings are saved ([`PlayerKeys::to_ron`]).
@@ -540,9 +541,24 @@ impl<G: GameData> Ctx<G> {
     /// [`text`](Self::text) with its placeholders filled in: each `{name}`
     /// that `args` names by its value, and each that names a key (an
     /// action's name, [`GameData::key_text`]) by the key the player has
-    /// for it ([`help_keys`](Self::help_keys)).
-    pub fn text_with(&self, key: &str, args: &[(&str, &dyn Display)]) -> String {
+    /// for it ([`help_keys`](Self::help_keys)). The text is a message
+    /// (ADR-0127): each plural and selectordinal chooses by its value in
+    /// `args` by the rules of the language the text is in
+    /// ([`Lang::text_in`]), and a select may choose by the built-in
+    /// `device` (the [`device`](Self::device) pressed last,
+    /// [`Device::message_value`]) and `target` (the target's id,
+    /// [`PlatformFacts::target`]), unless `args` names them too.
+    pub fn text_with(&self, key: &str, args: &Args<'_>) -> String {
         self.text_with_keys(key, self.help_keys(), args)
+    }
+
+    /// `text`, a text in language `lang` the caller already has (a tip's,
+    /// other data text from [`Lang::data_text_in`]), filled as
+    /// [`text_with`](Self::text_with) fills a key's: by `lang`'s plural
+    /// rules, with `device`, `target` and the player's keys.
+    pub fn fill_text(&self, text: &str, lang: &str, args: &Args<'_>) -> String {
+        self.fill_styled(text, lang, self.help_keys(), args, &[])
+            .plain()
     }
 
     /// What `label` says to the player: a key's text filled in by
@@ -551,9 +567,9 @@ impl<G: GameData> Ctx<G> {
     pub fn label(&self, label: &crate::text::Label) -> String {
         match label {
             crate::text::Label::Key { key, args } => {
-                let args: Vec<(&str, &dyn Display)> = args
+                let args: Vec<(&str, &dyn ToArg)> = args
                     .iter()
-                    .map(|(name, value)| (name.as_str(), value as &dyn Display))
+                    .map(|(name, value)| (name.as_str(), value as &dyn ToArg))
                     .collect();
                 self.text_with(key, &args)
             }
@@ -568,7 +584,7 @@ impl<G: GameData> Ctx<G> {
         &self,
         key: &str,
         keys: HelpKeys<'_, G::Action>,
-        args: &[(&str, &dyn Display)],
+        args: &Args<'_>,
     ) -> String {
         self.text_styled_with_keys(key, keys, args, &[]).plain()
     }
@@ -580,7 +596,7 @@ impl<G: GameData> Ctx<G> {
     ///
     /// [`TextRole::Key`]: crate::text::TextRole::Key
     /// [`text::fill_styled`]: crate::text::fill_styled
-    pub fn text_styled(&self, key: &str, args: &[(&str, &dyn Display)]) -> StyledText {
+    pub fn text_styled(&self, key: &str, args: &Args<'_>) -> StyledText {
         self.text_styled_with_keys(key, self.help_keys(), args, &[])
     }
 
@@ -592,11 +608,34 @@ impl<G: GameData> Ctx<G> {
         &self,
         key: &str,
         keys: HelpKeys<'_, G::Action>,
-        args: &[(&str, &dyn Display)],
-        key_args: &[(&str, &dyn Display)],
+        args: &Args<'_>,
+        key_args: &Args<'_>,
     ) -> StyledText {
+        let lang = self.game.lang();
+        debug_assert!(lang.has(key), "text key not in the source text: {key:?}");
+        let (text, code) = lang.text_in(self.effective_lang(), key);
+        self.fill_styled(text, code, keys, args, key_args)
+    }
+
+    /// `text` in language `lang` filled as
+    /// [`text_styled_with_keys`](Self::text_styled_with_keys) fills a
+    /// key's: `args`, then the built-in `device` and `target`, then
+    /// `key_args` and the names `keys` has.
+    fn fill_styled(
+        &self,
+        text: &str,
+        lang: &str,
+        keys: HelpKeys<'_, G::Action>,
+        args: &Args<'_>,
+        key_args: &Args<'_>,
+    ) -> StyledText {
+        let device = self.device.message_value();
+        let target = self.platform.target.as_str();
+        let mut all: Vec<(&str, &dyn ToArg)> = args.to_vec();
+        all.push((message::DEVICE, &device));
+        all.push((message::TARGET, &target));
         let lookup = |name: &str| self.game.key_text(name, keys);
-        crate::text::fill_styled(self.text(key), args, key_args, lookup)
+        crate::text::fill_styled(text, lang, &all, key_args, lookup)
     }
 
     /// [`label`](Self::label), each key's name in a key span
@@ -607,9 +646,9 @@ impl<G: GameData> Ctx<G> {
     pub fn label_styled(&self, label: &crate::text::Label) -> StyledText {
         match label {
             crate::text::Label::Key { key, args } => {
-                let args: Vec<(&str, &dyn Display)> = args
+                let args: Vec<(&str, &dyn ToArg)> = args
                     .iter()
-                    .map(|(name, value)| (name.as_str(), value as &dyn Display))
+                    .map(|(name, value)| (name.as_str(), value as &dyn ToArg))
                     .collect();
                 self.text_styled(key, &args)
             }
@@ -1485,8 +1524,8 @@ fn lang_widths(lang: &Lang, base: &CellWidths) -> BTreeMap<LangCode, CellWidths>
 /// The name of the profile numbered `n` when the player hasn't named it
 /// ([`PROFILE_NUMBERED_TEXT`], in the source language).
 fn numbered_profile(lang: &Lang, n: u32) -> String {
-    let text = lang.text(&lang.source_lang().code, PROFILE_NUMBERED_TEXT);
-    crate::text::fill_values(text, &[("n", &n)])
+    let (text, code) = lang.text_in(&lang.source_lang().code, PROFILE_NUMBERED_TEXT);
+    crate::text::fill_values(text, code, &[("n", &n)])
 }
 
 #[cfg(test)]
