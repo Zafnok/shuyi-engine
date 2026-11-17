@@ -375,3 +375,33 @@ fn the_arrow_keys_are_one_arrows_span_and_other_keys_four_key_spans() {
     let none = cursor_keys_styled(HelpKeys::keyboard(&wasd).of(&keymap(&[])));
     assert_eq!(spans(&none), [(NOT_MAPPED, Some(Key))]);
 }
+
+#[test]
+fn the_keymap_names_the_cursor_keys_with_the_word_it_is_given() {
+    assert_eq!(defaults().cursor_keys_name("A"), Some("A".to_owned()));
+    let wasd = keymap(&[
+        ("w", Action::CursorUp),
+        ("a", Action::CursorLeft),
+        ("s", Action::CursorDown),
+        ("d", Action::CursorRight),
+    ]);
+    assert_eq!(wasd.cursor_keys_name("A"), Some("wasd".to_owned()));
+    assert_eq!(
+        keymap(&[("w", Action::CursorUp)]).cursor_keys_name("A"),
+        None
+    );
+}
+
+#[test]
+fn key_text_styled_gives_the_cursor_keys_and_an_actions_key_in_spans() {
+    use crate::text::{CURSOR, TextRole, key_text, key_text_styled};
+    let km = defaults();
+    let keys = HelpKeys::keyboard(&km);
+    let cursor = key_text_styled(CURSOR, keys).unwrap();
+    assert_eq!(spans(&cursor), [(ARROWS, Some(TextRole::Arrows))]);
+    let confirm = key_text_styled("Confirm", keys).unwrap();
+    let name = key_name(keys, Action::Confirm);
+    assert_eq!(spans(&confirm), [(name.as_str(), Some(TextRole::Key))]);
+    assert_eq!(Some(confirm.plain()), key_text("Confirm", keys));
+    assert_eq!(key_text_styled("Nope", keys), None);
+}
