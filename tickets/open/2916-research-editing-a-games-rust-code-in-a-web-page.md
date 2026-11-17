@@ -42,6 +42,33 @@ step (`cargo xtask exercises`), whose web build runs it through
 `{ kind: "shuyi-check", name, passed, text }`. An exercise that edits Rust
 would need the code pad to build that copy with the reader's code in it.
 
+Nick, 2026-11-16: the playground edits data files only, "but what if they
+open in their codespace, it should work right? we already mention
+codespaces". The book's quick start already links one
+(`site/content/learn/book/quick-start.md`), and a Codespace bills the
+reader's own GitHub account, so the compiler costs Nick nothing and
+GitHub keeps the reader's code apart. Checked that day:
+
+- **It has:** `.devcontainer/devcontainer.json` runs
+  `scripts/setup-linux.sh`, which installs the pinned Rust, the C linker,
+  the system libraries and `wasm32-unknown-unknown`, and registers the
+  MCP server. Each step in `site/tutorial/` is its own crate with its own
+  `Cargo.lock`, so a reader can edit its Rust, build it and test it, and
+  an agent can play it headless (`frame_png`, `scene`).
+- **It lacks:**
+  - a window: a Codespace has no display, so `shuyi run` can't open one;
+    the game shows only as its web build served on a forwarded port, by
+    hand until 2528 (`shuyi web --serve`) serves and reloads it;
+  - the exercises' checks: they are spliced into the site's copy of a
+    step (ADR-0117) and run by the page, not by the reader's own build;
+  - a quick first build: a new Codespace builds the engine first, and
+    prebuilds that would skip it bill the repository's owner;
+  - a link to one step: the quick start's link opens the whole engine
+    repository; `codespaces.new` takes a `devcontainer_path`, so a step
+    could have its own;
+  - no sign-in: it needs a GitHub account, and its free hours end, so it
+    adds to the page's playground and doesn't replace it.
+
 **Either order with 2905:** if 2905 is done, read its ADR and
 `docs/research/code-reload.md`, and measure option 4 with what it chose;
 if not, measure option 4 with `shuyi web --serve` (2528) or a rebuild by
@@ -70,6 +97,13 @@ running game, and what it can't do:
 4. **A reader's own machine:** `shuyi web --serve` (2528) reloading on
    each save, with the tutorial's pages open beside it: free today, and
    what it leaves out.
+5. **A Codespace:** option 4 on the reader's GitHub account, from a link
+   on the step's page, with nothing installed. The time from opening the
+   link to a running game, on the smallest machine, with and without a
+   prebuild; what a prebuild would cost Nick a month; how many hours of a
+   free account a reader gets; how the step's page links to one step
+   (its own `devcontainer_path`); and how an exercise's check runs there
+   without the page (a command on the step, for one).
 
 **Writes:** `docs/research/code-pad.md`, an ADR with the recommendation,
 an `ask-nick` question with the cost in dollars a month, and, for the
@@ -78,13 +112,15 @@ run on it.
 
 **Out (do not do):**
 - building any of it beyond what the numbers need;
-- renting a server: that is Nick's decision.
+- renting a server, or turning on the Codespaces prebuilds: each costs
+  Nick money, so each is his decision.
 
 ## Implementation steps
 
 1. Read 2814's completion notes, ADR-0049, 2828's exercise shape, and
    2905's ADR and research as the clause above says.
-2. Measure each option on `site/tutorial/02-board`.
+2. Measure each option on `site/tutorial/02-board`, option 5 in a new
+   Codespace of this repository.
 3. Write the report and the ADR, then ask Nick.
 
 ## Acceptance criteria

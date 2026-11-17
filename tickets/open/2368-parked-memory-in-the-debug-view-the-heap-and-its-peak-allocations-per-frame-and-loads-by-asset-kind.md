@@ -103,7 +103,9 @@ a developer where memory goes while the game runs:
 - 3010 and 3011: the Playdate backend, whose global allocator goes
   through the SDK's `realloc` (3064 counts it, by 3010's clause), and
   its bench build that logs peak heap on the device.
-- 2906: research on what stays resident; it may decide an asset store.
+- 2906 (done) measured what stays resident
+  (`docs/research/2906-asset-memory.md`); 2919's ADR may decide an
+  asset store.
 
 So CI and the device bench builds measure peak heap, and agents read
 the heap through the trace. Nothing shows the heap, the allocations per
@@ -243,8 +245,8 @@ None.
   developer asks;
 - resident bytes per asset. A game keeps what it loads in its own data,
   so nothing knows which asset is still in memory. That needs an asset
-  store owned by the engine, if 2906's ADR decides one; the store's
-  build ticket then shows them in the `memory` channel (2906's clause
+  store owned by the engine, if 2919's ADR decides one; the store's
+  build ticket then shows them in the `memory` channel (2919's clause
   says so);
 - a budget line in `shuyi-app`. Its target's facts at run time (3053,
   done) carry no budgets, and a 64-bit desktop heap is only a proxy for
@@ -253,7 +255,7 @@ None.
 - loads by kind on the Playdate backend (no `std`, so no `Mutex`). They
   are the same as on desktop, apart from per-target layers (3007);
 - call stacks per allocation and Tracy's memory view (3063's ADR);
-- GPU and texture memory (after 3034; 2906 measures textures);
+- GPU and texture memory (after 3034; 2906 measured textures);
 - memory in CI (3008, and 3020 for allocations per frame) and on GBA and
   DS devices (3022, 3026). No second CI ticket;
 - new actions or keys. The debug menu is the only way in.

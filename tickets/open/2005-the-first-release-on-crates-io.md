@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
+blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
 nick_input: sign-off
 completed:
 ---
@@ -74,9 +74,9 @@ open ticket that day added a fourth group:
   - 2089 checks, on each PR, that the public API names no outside crate
     ADR-0119 doesn't list;
   - 2088 decides what the contract's version promises;
-  - 2906 decides the assets' lifetimes before the bundle's API is
-    published. Any build ticket it writes that changes the bundle's
-    public API joins this list.
+  - 2919 decides the assets' lifetimes before the bundle's API is
+    published, from what 2906 (done) measured. Any build ticket it
+    writes that changes the bundle's public API joins this list.
 - **Breaks no attribute softens,** done before the release: 2347
   (styled text) and 3218 (typed label arguments), 2405 and 2409 (mouse
   and touch on the engine's widgets), 2133 (the bots' settings files),
@@ -318,10 +318,10 @@ The sign-off also:
 - **2544 is done** (`bots` folded into `playtest`, which removed the
   `bots` operation and `GameTools::bots`): its break landed before the
   first release, so nothing is left here.
-- **Either order with 2906** (research on asset memory): if 2906 is
+- **Either order with 2919** (the asset memory ADR): if 2919 is
   done, nothing to do: a build ticket of its ADR that changes the
   `&'static` reads (`Bundle`, `DecodeCx`, `ImageId`) carries its own
-  `Breaking:` line. If not, nothing to do either: 2906 counts a change
+  `Breaking:` line. If not, nothing to do either: 2919 counts a change
   of lifetimes after this release as a 0.x break, as this policy says.
 - The names are held already: on 2026-10-21 Nick had the six crates
   published as empty 0.0.0 placeholders, `shuyi` on 2026-10-22, and
