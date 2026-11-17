@@ -58,6 +58,11 @@ None.
   `UiAction`'s own `ActionSet` impl (`keymap/action_set.rs`), neither
   required nor rebindable, with `ui` `Some(self)`, and stay out of `ALL`
   (ADR-0036 §3).
+- **Either order with 2097:** if 2097 is done, `cargo xtask
+  omitted-patterns` fails each engine match on `UiAction` outside
+  `shuyi-assets` that doesn't name the two new variants: name them in
+  each, beside `Debug`, doing what `Debug` does there; if not, nothing
+  to do (2097 names them).
 - **`DebugView` gains** `paused: bool`, `slow: u8` (1 = normal speed,
   2–8 = one update every *n* frames) and a pending step.
 - **`Game::frame`:**

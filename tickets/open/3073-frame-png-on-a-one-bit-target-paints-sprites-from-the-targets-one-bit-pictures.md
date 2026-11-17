@@ -49,6 +49,10 @@ None.
   paints.
 - A snapshot of the stage in tiles on the Playdate
   (`frame-png --target playdate --stage --tiles`), beside the title's.
+- **Either order with 3220:** if 3220 is done, the pictures made one-bit
+  go in a `shuyi_ui::frame::onebit::OneBitPictures` in place of an
+  `Images` of the example's own; if not, nothing to do (3220 replaces
+  an `Images` of the example's own with `OneBitPictures`).
 
 **Out (do not do):**
 - a change to `GameTools::frame_one_bit`'s signature, or to the

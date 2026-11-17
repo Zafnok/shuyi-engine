@@ -109,6 +109,11 @@ MVP, not parked.
      `HeadlessPlatform::push_input`
      (`crates/platform/src/headless.rs`, line 297) already takes any
      `RawInputEvent`.
+   - **Either order with 2097:** if 2097 is done, `cargo xtask
+     omitted-patterns` fails each engine match on `RawInputEvent`
+     outside `shuyi-ui` that doesn't name the new variants (none on
+     2026-11-17): name them there; if not, nothing to do (2097 names
+     them).
 2. **`shuyi-app` reads the mouse** in a new `crates/app/src/pointer.rs`,
    called from `Macroquad::poll_input` (`backend.rs`, line 265) after
    the keys and pads:
