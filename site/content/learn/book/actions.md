@@ -112,6 +112,15 @@ hint printed with `print_styled` gets caps, the engine's own screens' too. A cap
 cell more than its name, so a hint with caps is wider: a skin that fits one by measuring it
 with the frame's widths, `help.width(buf.widths())`, fits it with caps.
 
+Bold is the font's own bold face when the atlas has one, made with `font-atlas --bold`
+from a bold font of the same cell size (Terminus Bold, `ter-u16b.bdf`, beside Terminus):
+
+```text
+cargo shuyi font-atlas --bold files-src/ter-u16b.bdf files-src/ter-u16n.bdf crates/game/files/font
+```
+
+Without one, each letter is drawn twice, a pixel apart.
+
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
 action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
 passes. `cargo shuyi check` fails on a capitalized name that is no action.

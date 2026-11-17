@@ -1,6 +1,7 @@
 //! Key caps as the raster paints them in Terminus 8 × 16, the font the
 //! game measured its mockups in (ticket 3215): the margin round a cap's
-//! letter, the glyphs beside a cap, and bold struck twice.
+//! letter, the glyphs beside a cap, and bold struck twice or drawn from
+//! the atlas's bold face (ticket 3216).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -11,7 +12,7 @@ use shuyi_ui::frame::{Cell, ConsoleSpec, GlyphBuffer, KeyCapStyle, KeyCaps, Rgb}
 use shuyi_ui::text::{StyledText, TextRole};
 
 use crate::codec::encode_png;
-use crate::font_atlas::{Atlas, AtlasChars, BitmapFont, build_atlas, read_font};
+use crate::font_atlas::{Atlas, AtlasChars, BitmapFont, add_bold, build_atlas, read_font};
 
 const BG: Rgb = Rgb::new(20, 18, 28);
 const TEXT: Rgb = Rgb::new(208, 196, 168);
@@ -28,6 +29,30 @@ fn terminus() -> BitmapFont {
 /// Terminus's atlas.
 fn atlas() -> Atlas {
     build_atlas(&terminus(), &AtlasChars::default())
+}
+
+/// A bold face of Terminus, as a test makes one: each glyph thickened a
+/// pixel left and a pixel right, so it is drawn unlike two strikes (its
+/// strokes down are 3 px wide, not 2). Terminus Bold is the game's.
+fn bold_face() -> BitmapFont {
+    let mut font = terminus();
+    let (w, h) = (font.cell_w as usize, font.cell_h as usize);
+    for pixels in font.glyphs.values_mut() {
+        let at = |x: usize, y: usize| pixels[y * w + x];
+        let bold: Vec<bool> = (0..w * h)
+            .map(|i| {
+                let (x, y) = (i % w, i / w);
+                at(x, y) || (x > 0 && at(x - 1, y)) || (x + 1 < w && at(x + 1, y))
+            })
+            .collect();
+        *pixels = bold;
+    }
+    font
+}
+
+/// Terminus's atlas with [`bold_face`].
+fn bold_atlas() -> Atlas {
+    add_bold(atlas(), &bold_face()).unwrap()
 }
 
 /// `text` on a line `cols` cells wide, its keys as caps in `style`, or as
@@ -139,6 +164,33 @@ fn bold_is_the_glyph_struck_twice_placed_by_its_wider_ink() {
 }
 
 #[test]
+fn a_cap_from_a_bold_face_has_two_pixels_round_its_ink_on_every_side() {
+    let atlas = bold_atlas();
+    for name in ["W", "D", "F", "E", "w", "d", "f", "e"] {
+        let image = draw(&atlas, Some(KeyCapStyle::new()), &key(name), 4, 1);
+        assert_eq!(margins(&image), [2; 4], "{name}");
+    }
+}
+
+#[test]
+fn a_bold_face_is_drawn_once_unlike_two_strikes() {
+    let style = Some(KeyCapStyle::new());
+    let face = draw(&bold_atlas(), style, &key("E"), 4, 1);
+    let struck = draw(&atlas(), style, &key("E"), 4, 1);
+    let key_px = [KEY.r, KEY.g, KEY.b, 255];
+    // E's stem, between its top bar and its middle one: 2 px wide struck
+    // twice, 3 px in the face.
+    let stem = |image: &Image| {
+        let (left, top, right, _) = bounds(image, KEY);
+        (left..=right)
+            .filter(|&x| image.pixel(x, top + 2) == Some(key_px))
+            .count()
+    };
+    assert_eq!((stem(&struck), stem(&face)), (2, 3));
+    assert_eq!(margins(&face), [2; 4]);
+}
+
+#[test]
 fn without_caps_a_key_is_text() {
     let mut line = key("f");
     line.push_plain(" select");
@@ -155,7 +207,7 @@ fn without_caps_a_key_is_text() {
 /// What a test can't judge: the pictures a reviewer looks at, written to
 /// `target/key-caps/` (`cargo test -p shuyi-cli key_caps_pictures --
 /// --ignored`): a help line, a text box's corner and a line of prose,
-/// without caps and with them.
+/// without caps, with them struck twice, and with them from a bold face.
 #[test]
 #[ignore = "writes pictures for a reviewer"]
 fn key_caps_pictures() {
@@ -193,14 +245,19 @@ fn key_caps_pictures() {
             (".", false),
         ]),
     ];
-    let atlas = atlas();
-    let looks = [("off", None), ("caps", Some(KeyCapStyle::new()))];
+    let (regular, bold) = (atlas(), bold_atlas());
+    let caps = Some(KeyCapStyle::new());
+    let looks = [
+        ("off", &regular, None),
+        ("caps", &regular, caps),
+        ("caps-bold-face", &bold, caps),
+    ];
     let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/key-caps");
     std::fs::create_dir_all(&out).unwrap();
-    for (name, style) in looks {
+    for (name, atlas, style) in looks {
         let images: Vec<Image> = lines
             .iter()
-            .map(|text| draw(&atlas, style, text, 44, 3))
+            .map(|text| draw(atlas, style, text, 44, 3))
             .collect();
         let width = images[0].width;
         let rgba: Vec<u8> = images

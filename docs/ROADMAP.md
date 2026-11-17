@@ -346,7 +346,7 @@ is done.
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
 | 2785 | Key names stand out in the template's and Hello, Grid's hints, with a key colour in their palettes (after 2347) |
 | 3215 (done) | Key caps: a key's name in text drawn as a key, boxed, bold and with room around it |
-| 3216 | A bold face in the font atlas, which key caps draw from (after 3215) |
+| 3216 (done) | A bold face in the font atlas, which key caps draw from (after 3215) |
 | 3217 | The cursor's four direction keys as one picture, with key caps on (after 3215) |
 | 2354 | A grid cursor: `ListCursor` in two dimensions |
 | 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
