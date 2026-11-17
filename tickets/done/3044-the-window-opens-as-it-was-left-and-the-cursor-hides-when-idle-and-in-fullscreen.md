@@ -416,6 +416,12 @@ None.
 - `WindowMemory` holds whether the record is kept (`Opened::kept`), so a
   capture run or the web never writes, rather than a flag on
   `Macroquad` (clippy's `struct_excessive_bools`).
+- With `serde` and `ron` normal dependencies of `shuyi-app`, the
+  tutorial steps' locks gained them, and the sound give-up's footprint
+  (`tools/sound-parity/footprint.ron`) no longer removes them: the
+  window's record needs them whatever the sound backend.
+- `Place` and `WindowMemory::windowed` are built on Windows (and in
+  tests) only, where leaving fullscreen uses them.
 
 **Manual check on Windows** (Windows 11, 2560 × 1600 at 175 %, after
 merging the tip of `main`, 4638655b, into the branch at 36e02830, with
