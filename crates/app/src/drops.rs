@@ -22,6 +22,9 @@ use shuyi_platform::{DroppedFile, SystemEvent};
 #[cfg(windows)]
 mod windows;
 
+#[cfg(windows)]
+pub(crate) use windows::miniquad_window;
+
 /// One file as macroquad gives it: its path (on the web, its name alone)
 /// and its bytes, either missing when the system couldn't say.
 pub(crate) type Raw = (Option<String>, Option<Vec<u8>>);

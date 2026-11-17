@@ -66,7 +66,7 @@ half. Related: 2333 (scale modes: the placement whose inverse maps the
 mouse), 2355 (focus between widgets), 2354 (a grid cursor), 3042 (held
 input let go on focus loss), 2518 (session records), 2407 (parked:
 on-screen controls and swipes on phones' browsers, blocked by this),
-3053 (platform facts at run time), 3044 (the system cursor).
+3053 (platform facts at run time), 3314 (the system cursor).
 
 **Why it matters.**
 
@@ -394,7 +394,7 @@ gains a field additively (**from 2082 (done):** it is
   it lands.
 - Picking isometric tiles: 1126 (parked) gives its projection a
   `tile_at`.
-- Hiding the system cursor: 3044. Telling a running game whether it has
+- Hiding the system cursor: 3314. Telling a running game whether it has
   a pointer: 3053.
 - Pointer steps in the tool contract and the MCP server: write a ticket
   when an agent needs them.

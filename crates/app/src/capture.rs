@@ -56,6 +56,7 @@ use shuyi_ui::{GameData, PlatformFacts, RawInputEvent};
 use crate::AppConfig;
 use crate::backend::Macroquad;
 use crate::readback;
+use crate::window::Opened;
 
 /// The variable naming the plan to run.
 pub const PLAN_VAR: &str = "SHUYI_CAPTURE";
@@ -163,6 +164,7 @@ async fn play<G: GameData>(
             config,
             facts,
             crate::storage::StorageAt::find(config.storage_name, config.desktop_folder),
+            &Opened::unkept(&crate::window::conf_from(&config.window, None).0),
         ),
         files: config.files,
         font_png: config.font_png,
