@@ -18,7 +18,7 @@ fn atlas() -> FontAtlasDef {
 
 #[test]
 fn ink_must_lie_inside_the_cell() {
-    assert!(atlas().problems("Ab").is_empty());
+    assert_eq!(atlas().problems("Ab"), Vec::<String>::new());
     let mut outside = atlas();
     let ink = outside.ink.as_mut().unwrap();
     ink.capitals.right = 8;

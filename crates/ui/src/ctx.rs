@@ -40,7 +40,7 @@ use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
 use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
-use crate::platform_facts::PlatformFacts;
+use crate::platform_facts::{PlatformFacts, ScreenColor};
 use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
@@ -476,11 +476,11 @@ impl<G: GameData> Ctx<G> {
     /// How the frame draws a key's name in styled text: as the game's key
     /// caps ([`GameData::key_caps`]) in the palette's colours, placed by
     /// the font's ink ([`widths`](Self::widths)); `None` where the game
-    /// has none, and on a one-bit screen ([`PlatformFacts::one_bit`])
+    /// has none, and on a one-bit screen ([`PlatformFacts::screen`])
     /// unless its style is drawn there ([`KeyCapStyle::one_bit`]).
     pub fn key_caps(&self) -> Option<KeyCaps> {
         let style = self.game.key_caps()?;
-        if self.platform.one_bit && !style.one_bit {
+        if self.platform.screen == ScreenColor::OneBit && !style.one_bit {
             return None;
         }
         Some(KeyCaps::new(

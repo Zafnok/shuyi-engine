@@ -204,7 +204,7 @@ Done (ADR-0124, which supersedes ADR-0122 §4):
   `key`, `key_bg` (the box) and a new optional `key_edge` (its 1 px edge,
   else the fill). `Ctx::key_caps` makes the `KeyCaps` the frame draws
   with; `Game` hands it to its buffer before each drawing. A one-bit
-  screen (`PlatformFacts::one_bit`, new, from the profile's display
+  screen (`PlatformFacts::screen`, new, from the profile's display
   colour) gets none unless `KeyCapStyle::one_bit`.
 - **Room:** a cap takes its name's cells and a fixed number more
   (`KeyCaps::extra_cells`: one for Terminus and 2 px). `CellWidths`
@@ -259,7 +259,7 @@ misaligns every hint; drawn but not counted, it covers its neighbour),
 and its margins need the atlas's ink; 835 of the lines are the tests
 that read its pixels.
 
-Follow-ups:
+Tickets written here:
 
 - 3216: the bold face in the font atlas (above).
 - 3217: the direction cluster (above).

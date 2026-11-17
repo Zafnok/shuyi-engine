@@ -145,16 +145,18 @@ fn one_letter_is_shown_as_its_capital_and_longer_names_as_written() {
 
 #[test]
 fn the_box_takes_the_palettes_key_colours_its_edge_the_fill_without_one() {
-    let mut file = engine_def();
-    file.colors.insert(KEY.to_owned(), [250, 200, 60]);
-    file.colors.insert(KEY_BG.to_owned(), [74, 64, 46]);
+    let mut palette_file = engine_def();
+    palette_file.colors.insert(KEY.to_owned(), [250, 200, 60]);
+    palette_file.colors.insert(KEY_BG.to_owned(), [74, 64, 46]);
     let spec = ConsoleSpec::text(10, 2);
-    let filled = Palette::new::<EngineColor>(&file).unwrap();
+    let filled = Palette::new::<EngineColor>(&palette_file).unwrap();
     let caps = KeyCaps::new(KeyCapStyle::new(), &filled, &CellWidths::NARROW, spec);
     let fill = Some(Rgb::new(74, 64, 46));
     assert_eq!(caps.colors(), (fill, fill));
-    file.colors.insert(KEY_EDGE.to_owned(), [128, 112, 82]);
-    let edged = Palette::new::<EngineColor>(&file).unwrap();
+    palette_file
+        .colors
+        .insert(KEY_EDGE.to_owned(), [128, 112, 82]);
+    let edged = Palette::new::<EngineColor>(&palette_file).unwrap();
     let caps = KeyCaps::new(KeyCapStyle::new(), &edged, &CellWidths::NARROW, spec);
     assert_eq!(caps.colors(), (fill, Some(Rgb::new(128, 112, 82))));
     assert_eq!(caps.style(), &KeyCapStyle::new());

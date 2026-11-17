@@ -120,12 +120,12 @@ fn a_cap_the_edge_cuts_has_no_box_and_its_glyphs_are_plain() {
     let written = buf.print_styled(2, 0, &hint(&[("Space", true)]), colors);
     assert_eq!(written, 2);
     assert_eq!(glyphs(&buf, 0), "  Sp");
-    assert!(buf.items().is_empty());
+    assert_eq!(buf.items().len(), 0);
     assert!(buf.glyph_styles().next().is_none());
     let mut left = capped(4);
     left.print_styled(-1, 0, &hint(&[("f", true), ("x", false)]), colors);
     assert_eq!(glyphs(&left, 0), " x  ");
-    assert!(left.items().is_empty());
+    assert_eq!(left.items().len(), 0);
 }
 
 #[test]

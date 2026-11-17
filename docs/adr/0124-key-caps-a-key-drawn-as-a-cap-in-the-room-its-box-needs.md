@@ -56,7 +56,7 @@ what it measures with.
    `Ctx::key_caps` makes the `KeyCaps` the frame draws with (the style,
    the palette's colours, the font's ink, the cell's size), and `Game`
    hands it to its `GlyphBuffer` before each drawing
-   (`set_key_caps`). On a one-bit screen (`PlatformFacts::one_bit`, from
+   (`set_key_caps`). On a one-bit screen (`PlatformFacts::screen`, from
    the target's display colour) it is `None` unless `KeyCapStyle::one_bit`:
    ADR-0122's patterns hold there until a game decides (game#0256).
 4. **A cap is cells, rectangles and a glyph style.** `print_styled`

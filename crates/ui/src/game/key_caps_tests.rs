@@ -11,6 +11,7 @@ use crate::frame::GlyphStyle;
 use crate::frame::color::{KEY_BG, Palette};
 use crate::frame::console::ConsoleSpec;
 use crate::frame::key_cap::KeyCapStyle;
+use crate::platform_facts::ScreenColor;
 use crate::screen::Transition;
 use crate::screens::print_centred_styled;
 use crate::text::StyledText;
@@ -75,7 +76,9 @@ fn game(style: Option<KeyCapStyle>, one_bit: bool) -> Game<Capped> {
     let mut boxed = ctx.game.palette_def().clone();
     boxed.colors.insert(KEY_BG.to_owned(), [74, 64, 46]);
     ctx.palette = Palette::new::<EngineColor>(&boxed).unwrap();
-    ctx.platform.one_bit = one_bit;
+    if one_bit {
+        ctx.platform.screen = ScreenColor::OneBit;
+    }
     Game::new(ctx, Box::new(Help), GameHooks::default())
 }
 
@@ -116,7 +119,7 @@ fn a_one_bit_screen_draws_keys_as_text_unless_the_style_says() {
     let plain = game(Some(KeyCapStyle::new()), true);
     assert!(plain.ctx().key_caps().is_none());
     assert!(plain.buffer().glyph_styles().next().is_none());
-    assert!(plain.buffer().overlays().is_empty());
+    assert_eq!(plain.buffer().overlays().len(), 0);
     let capped = game(Some(KeyCapStyle::new().with_one_bit(true)), true);
     assert!(capped.ctx().key_caps().is_some());
     assert!(capped.buffer().glyph_styles().next().is_some());
