@@ -1,0 +1,35 @@
+// The book's project in a Codespace: the code pad (ticket 2837, ADR-0126
+// §1). Each step's page links it, by `devcontainer_path`. The root's image
+// and setup, opened at the project's folder, with every step's web build
+// made in `dev` into one target folder as it is created (a prebuild runs
+// the `onCreateCommand` too), and the step served on a private forwarded
+// port. No MCP server: the root's container registers it, and a reader of
+// the book doesn't need it. `cargo xtask check-devcontainers` checks that
+// it names every step and keeps the root's image and setup.
+{
+  "name": "The book's project (Box Pusher)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/site/tutorial",
+  // On the Codespace's own disk, out of the repository's tree.
+  "containerEnv": {
+    "CARGO_TARGET_DIR": "/home/vscode/book-target"
+  },
+  // The commands run in the workspace folder, `site/tutorial`.
+  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship",
+  "postAttachCommand": "bash serve.sh",
+  "forwardPorts": [4000],
+  "portsAttributes": {
+    "4000": {
+      "label": "The step's game",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer"]
+    }
+  }
+}
