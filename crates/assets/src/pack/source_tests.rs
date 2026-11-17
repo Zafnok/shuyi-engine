@@ -11,7 +11,7 @@ use super::tests::{
     STAMP, baked, every_kind, pack_files, pack_formats, raw_pack, resummed, sources, test_info,
 };
 use super::*;
-use crate::bundle::{Bundle, reads_of};
+use crate::bundle::{Bundle, Files, reads_of};
 
 /// `bytes`, kept for the run.
 fn kept(bytes: &[u8]) -> &'static [u8] {
@@ -177,6 +177,13 @@ fn a_layer_over_memory_reads_every_asset_as_the_pack_read_whole_and_hands_it_out
     assert!(!layer.has("nope.txt"));
     assert_eq!(layer.bytes("nope.txt"), None);
     assert_eq!(layer.layers()[0].problems(), []);
+    // Shown for debugging by how many files it has, not by its source.
+    let Files::Source(files) = layer.layers()[0].files else {
+        panic!("a layer over a source");
+    };
+    let shown = format!("{files:?}");
+    let count = whole.files_under("").len();
+    assert_eq!(shown, format!("SourceFiles {{ files: {count}, .. }}"));
 }
 
 /// A pack's bytes that arrive from its start, up to a point that moves.
@@ -240,6 +247,13 @@ fn a_failed_read_reads_as_missing_and_is_listed_once_as_it_first_failed() {
     let bytes = raw_pack(&test_info(), &[("a.txt".to_owned(), b"a".to_vec())]);
     let source: &'static Failing = Box::leak(Box::new(Failing(Mutex::new(0))));
     let layer = by_file(&bytes, source);
+    // Asking whether it has a file, or how to show it, reads nothing of
+    // the pack: the index answers.
+    assert!(layer.has("a.txt"));
+    assert_eq!(layer.display_path("a.txt"), "pack/a.txt");
+    assert_eq!(layer.files_under(""), ["a.txt"]);
+    assert_eq!(*source.0.lock().unwrap(), 0);
+    assert_eq!(layer.layers()[0].problems(), []);
     assert_eq!(layer.bytes("a.txt"), None);
     assert_eq!(layer.bytes("a.txt"), None);
     let problems = layer.layers()[0].problems();
