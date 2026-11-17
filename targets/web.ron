@@ -34,6 +34,7 @@
         // Provisional: the download; the examples' packages are in
         // docs/targets/web.md.
         package_bytes: 26_214_400, // 25 MB
+        // To the game's first frame, not the card (ADR-0128 §6).
         startup_ms: 5_000, // at 25 Mbit/s
     ),
     backend: "shuyi-app",

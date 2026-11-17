@@ -309,6 +309,7 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
             notices::FILE
         );
     }
+    works.extend(notices::engine_files(notices::Build::Web, &works));
     works.extend(shell_works());
     works.extend(game.iter().cloned());
     package(&RealWasmOpt, rules, root, &target, options, &works)

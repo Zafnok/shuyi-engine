@@ -1,6 +1,6 @@
 # ADR-0097: A load in steps: a slice a frame from the platform, and the one-shot load kept beside it
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0128 (§4: a step counts units, `Progress::Of`, and waits for the platform, `Progress::Wait`; the card shows the count)
 - **Date:** 2026-11-09
 - **Related tickets:** 3097; game ticket 1086 and game ADR-0111 (the
   game's own start in steps), game ticket 1170 (the game's Playdate front

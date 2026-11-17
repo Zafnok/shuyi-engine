@@ -477,7 +477,10 @@ this game has none of its own.
 Such a game makes its context with `Ctx::new(data)`, its game with `Game::new(ctx,
 first_screen, GameHooks::default())`, and its binary's plain `main` calls
 `shuyi::app::run_app` with its own `AppConfig`, the window and its files, and how it
-starts, a `Start`. The API docs of `shuyi_ui` and `shuyi_app` have the details.
+starts, a `Start`. `Window::console("My Game", CONSOLE, 2, 16)` sizes the window to the
+console drawn twice, with a margin, as `run_game` does. On a desktop the window then opens
+as the player left it: its last size and whether it filled the screen, kept on that
+computer. The API docs of `shuyi_ui` and `shuyi_app` have the details.
 
 ## Check yourself
 

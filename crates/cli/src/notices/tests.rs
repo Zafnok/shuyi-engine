@@ -282,7 +282,10 @@ fn a_native_build_of_hello_grid_lists_the_controller_database_with_its_zlib_text
     let files = engine_files(Build::Native, &native);
     assert_eq!(
         names(&files),
-        ["gamecontrollerdb.txt, from SDL_GameControllerDB, compiled in by gilrs"]
+        [
+            "gamecontrollerdb.txt, from SDL_GameControllerDB, compiled in by gilrs",
+            "plural.rs, from Unicode CLDR, compiled in by shuyi-assets",
+        ]
     );
     assert_eq!(files[0].section, Section::Data);
     assert_eq!(files[0].license, "Zlib");
@@ -291,10 +294,21 @@ fn a_native_build_of_hello_grid_lists_the_controller_database_with_its_zlib_text
     assert!(text.body.contains("Sam Lantinga"), "{}", text.body);
     let notices = render("Hello, Grid", &files);
     assert!(notices.contains("\nData compiled in\n"), "{notices}");
-    // The web build has no gilrs, and the shell lists its own scripts.
+    let cldr = &files[1].texts[0];
+    assert_eq!(
+        (files[1].license.as_str(), cldr.label.as_str()),
+        ("Unicode-3.0", "CLDR-LICENSE.txt")
+    );
+    assert!(cldr.body.contains("UNICODE LICENSE V3"), "{}", cldr.body);
+    // The web build has no gilrs, and the shell lists its own scripts:
+    // only CLDR's rules are data compiled in.
     let web = crates(&example, "hello-grid", "wasm32-unknown-unknown", &[]).unwrap();
-    assert_eq!(engine_files(Build::Native, &web), Vec::<Work>::new());
-    assert_eq!(engine_files(Build::Web, &native), Vec::<Work>::new());
+    let only_cldr = |files: Vec<Work>| {
+        names(&files) == ["plural.rs, from Unicode CLDR, compiled in by shuyi-assets"]
+    };
+    assert!(only_cldr(engine_files(Build::Native, &web)));
+    assert!(only_cldr(engine_files(Build::Web, &native)));
+    assert!(only_cldr(engine_files(Build::Web, &web)));
 }
 
 #[test]

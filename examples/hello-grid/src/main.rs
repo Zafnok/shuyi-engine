@@ -6,15 +6,15 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 use hello_grid::app_info::APP;
-use hello_grid::{FONT_PNG, TITLE, sound};
+use hello_grid::{CONSOLE, FONT_PNG, TITLE, sound};
 use shuyi::app::page::{self, PageLimits};
 use shuyi::app::{AppConfig, CrashReports, Window};
 use shuyi::assets::bundle::Layer;
 
 /// The window, titled with the game's name: the console at twice its
-/// size, and a small margin, with the game's icon (none yet).
-const WINDOW: Window =
-    Window::new(TITLE, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16).with_icon(APP.window_icon);
+/// size, and a small margin, with the game's icon (none yet). It opens
+/// as the player left it, after the first time.
+const WINDOW: Window = Window::console(TITLE, CONSOLE, 2, 16).with_icon(APP.window_icon);
 
 /// What the macroquad backend needs to know about the game: its settings
 /// and key bindings are kept under `APP.storage`, and its crash reports

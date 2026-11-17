@@ -38,9 +38,10 @@ places find those braces, each with its own loop:
 
 The three agree today on every input (an unclosed `{` and what follows
 it is plain text; `{}` is a token named nothing; `{a{b}` is the token
-`a{b`). Nothing keeps them agreeing, and 2348 adds a fourth parser
-(ICU messages, `Message::walk`), whose fallback for text that doesn't
-parse fills "simple placeholders only", as `fill` does.
+`a{b`). Nothing keeps them agreeing, and 2348 (done) added a fourth
+parser (ICU messages, `shuyi_assets::message`); 3218 builds `fill` on
+it, whose fallback for text that doesn't parse fills "simple
+placeholders only", as `fill` does.
 
 ## Nick input
 
@@ -60,12 +61,12 @@ None.
   with the same signature, since the game re-exports it.
 - **`lang`** calls `shuyi_core::text::tokens` instead of the tips
   module's function.
-- **Either order with 2348:** if 2348 is done, the text that still finds
+- **Either order with 3218:** if 3218 is done, the text that still finds
   braces by hand is `fill`'s fallback for a text that doesn't parse as a
   message, and whatever is left of `tip::placeholders`: move those onto
   `split_tokens` and `tokens`, and leave `Message`'s own parser alone
   (it reads plural and select, which `split_tokens` can't); if not,
-  nothing to do (2348 builds its fallback on `split_tokens`).
+  nothing to do (3218 builds its fallback on `split_tokens`).
 - **From 2347 (done):** `fill` is `fill_styled(…).plain()`, and
   `fill_styled` already walks `split_tokens`: nothing is left to
   rewrite in `fill` (step 2 is done), and the property test runs on it
@@ -94,7 +95,7 @@ None.
    re-export it from `crates/core/src/lib.rs` beside `split_tokens`.
 2. `fill` already walks `split_tokens` (2347): nothing to do.
 3. Make `tip::placeholders` call `tokens`; point `lang.rs` at `tokens`.
-4. Settle the 2348 and 2353 clauses above with what is done.
+4. Settle the 3218 and 2353 clauses above with what is done.
 5. Run the gates.
 
 ## Acceptance criteria

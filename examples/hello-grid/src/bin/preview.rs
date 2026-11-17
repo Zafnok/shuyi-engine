@@ -9,13 +9,12 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 use hello_grid::app_info::APP;
-use hello_grid::{FONT_PNG, TITLE, sound};
+use hello_grid::{CONSOLE, FONT_PNG, TITLE, sound};
 use shuyi::app::{AppConfig, Window};
 use shuyi::assets::bundle::Layer;
 
 /// The window: the game's.
-const WINDOW: Window =
-    Window::new(TITLE, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16).with_icon(APP.window_icon);
+const WINDOW: Window = Window::console(TITLE, CONSOLE, 2, 16).with_icon(APP.window_icon);
 
 /// What the macroquad backend needs to know: the game's, its settings and
 /// key bindings shared with it.
