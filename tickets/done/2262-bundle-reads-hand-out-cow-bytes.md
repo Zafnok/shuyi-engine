@@ -163,7 +163,7 @@ Done 2026-11-17.
   `load_with`, `shuyi-cli`'s `basic.rs` and bake contact sheet,
   `shuyi-ui`'s `text.rs`, dialogue preview and one-bit pictures,
   `examples/hello-grid` (its `file()`, tools, tests and
-  `asset_memory.rs`), the template (`base` and `top-down-grid`, and the
+  `asset_memory.rs`), the tutorial's steps 9 and 10, the template (`base` and `top-down-grid`, and the
   plans' golden), and the tests that compare a read with a literal
   (`.as_deref()`). `site/snippets` read no file and are unchanged.
 - Tests (`crates/assets/src/bundle/read_tests.rs`): a table, an embedded
@@ -344,7 +344,7 @@ find: ["let kept: Vec<&'static [u8]> = files.files()"]
 
 Behaviour: shuyi-ui: the one-bit frame's `Images for Bundle` draws only a picture its layer lends (`Cow::Borrowed`); every layer of today lends, so nothing a game sees changes until a layer read on demand (2263)
 
-Book: none, the book shows no read of the bundle: its chapter on assets and formats (`site/content/learn/book/assets-and-formats.md`) loads through `Formats` and lays layers, whose signatures don't change. `docs/formats.md` says what a read hands out.
+Book: none, the book shows no read of the bundle: its chapter on assets and formats (`site/content/learn/book/assets-and-formats.md`) loads through `Formats` and lays layers, whose signatures don't change. The tutorial's steps 9 and 10 (`site/tutorial/*/crates/game/src/tools.rs`) deref the file their bot reads (`&text`), a line the book doesn't show. `docs/formats.md` says what a read hands out.
 
 **For the game.** Its PR that moves the pin adopts the breaks above, as the migration blocks say. Searched with `gh search code --repo Zafnok/visions-of-shuyi` for `test_part`, `LoadFile`, `DecodeCx`, `AppConfig`, `ImageTable::from_files`, `Painter::new`, `DialogueFiles` and `Renderer::new`. The hits: its wrapper `crates/content/src/bundle.rs` (`file`, `bytes`, `test_part`, `load_each`), `crates/app/src/main.rs` and `crates/story-preview/src/main.rs` (`AppConfig::new` with `bundle::bytes`), `crates/content/src/formats.rs` (`DecodeCx`), `crates/content/src/image.rs` (`from_files` with `&[u8]`: compiles as before), `crates/xtask/src/game_tools.rs` (`Painter::new` with `bundle::bytes`: compiles either way), `crates/ui/src/story_preview.rs` (`DialogueFiles::files`, read within the borrow: compiles as before).
 

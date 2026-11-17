@@ -39,6 +39,7 @@
 //! it starts ([`Start`]), its own data, its look and its first screen:
 //!
 //! ```no_run
+//! # use std::borrow::Cow;
 //! # use shuyi_assets::audio::{Bytes, Files};
 //! # use shuyi_assets::font::FontAtlasDef;
 //! # use shuyi_assets::image::ImageTable;
