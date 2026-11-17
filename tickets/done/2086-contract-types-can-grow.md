@@ -93,7 +93,7 @@ None.
       schemas and JSON answers are byte for byte the same (the schema
       tests pass with no file regenerated).
 - [x] A `shuyi.ron` with `rules: "rules"` and one with a list both load.
-- [ ] `cargo xtask api` lists each change, and the `Breaking:` line names
+- [x] ~~`cargo xtask api` lists each change~~ (not done locally: it needs a nightly and two tools, so CI's `api` job checks it), and the `Breaking:` lines name
       each item.
 - [x] No open ticket still plans a `Breaking:` line for one of these
       items.
