@@ -43,9 +43,9 @@ them is the fastest way to learn what each line does.
 To change a step's Rust code with nothing installed, each step's page links
 **Change its Rust in a Codespace**: one computer in your browser for the whole
 project, with Rust ready, paid from your own GitHub account's free hours (a free
-account has 60 hours a month of the small machine it opens). Making it takes some
-minutes the first time, while it builds every step. Then it opens at the project's
-folder, with step 2's game showing in a tab beside the editor. Change a step's
+account has 60 hours a month of the small machine it opens). Making it can take
+some minutes the first time, while it builds the game. Then it opens at the
+project's folder, with step 2's game showing in a tab beside the editor. Change a step's
 code in its folder, run `cargo shuyi web` there to build it again and `bash
 ../serve.sh` to show that step, and reload the game's tab to play it. Keep the
 same Codespace for the whole project: it stops itself when you leave it, and

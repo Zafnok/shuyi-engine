@@ -504,13 +504,18 @@ use it.
 
 - **The container** is the root's image and setup
   (`scripts/setup-linux.sh`), opened at `site/tutorial/`, with no MCP
-  server. Its `onCreateCommand`, which a prebuild runs too, sets up, adds
-  Python (the image has none) and runs
-  [`.devcontainer/book/build.sh`](../.devcontainer/book/build.sh), which
-  makes each step's web build (`cargo shuyi web`, `dev`) into one target
-  folder, `CARGO_TARGET_DIR=/home/vscode/book-target`: the engine is built
-  for the first step of each lock and each step after it builds its own
-  crate.
+  server.
+  [`.devcontainer/book/build.sh`](../.devcontainer/book/build.sh) makes
+  each step's web build it is given (`cargo shuyi web`, `dev`) into one
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`, so the
+  engine is built once for each set of features the steps' locks resolve
+  (01; 02 to 06; 07 to 10, today), and each other step builds only its own
+  crate. The `onCreateCommand` sets up, adds Python (the image has none),
+  builds step 2 and serves it; the `updateContentCommand` builds the other
+  nine. A prebuild runs both, so a Codespace made from it opens with every
+  step built. One made without it opens after the first (`waitFor`), and
+  builds the rest behind it: a build the reader starts meanwhile waits for
+  the target folder's lock.
 - **Serving:** its `postAttachCommand` runs
   [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
   `dist/web/` on port 4000 with Python's server, uncached: the step whose
@@ -520,10 +525,12 @@ use it.
   shuyi web` in the step's folder builds it again into the same folder,
   and a reload plays it. When `shuyi web --serve` (2528) is done, it
   takes `serve.sh`'s place.
-- **Measured** on a 2-core Codespace (`docs/research/2916-code-pad.md`
-  has the first numbers; ticket 2837's notes these): with no prebuild,
-  12 min 43 s from the link to the editor, step 2's game built and served;
-  step 2's build alone 404 s, a step sharing its lock about 10 s more.
+- **Measured** on a 2-core Codespace (ticket 2837's notes; 2916's
+  research has the first numbers): step 2's build 404 s from nothing; a
+  step sharing its lock about 10 s more, step 1 73 s and step 7 239 s
+  (their locks rebuild part of the engine); all ten 786 s, into 2.7 GB of
+  target folder, 4.8 GB of disk in all. An edit to step 2's Rust rebuilds
+  in 8 s.
 - **The prebuild** is Nick's, in the repository's settings: this
   container, on `main`, one region, one version, made when the container
   changes. A Codespace made from it opens with every step built.
