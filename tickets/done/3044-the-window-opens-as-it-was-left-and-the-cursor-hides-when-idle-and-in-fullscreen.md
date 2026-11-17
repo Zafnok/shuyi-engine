@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 3044 — The window opens as it was left
@@ -320,33 +320,33 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Window::console("x", ConsoleSpec::text(48, 24), 2, 16)` is
+- [x] `Window::console("x", ConsoleSpec::text(48, 24), 2, 16)` is
       784 × 784.
-- [ ] `conf_from` with no record gives the `Window`'s size, windowed;
+- [x] `conf_from` with no record gives the `Window`'s size, windowed;
       with `(version: 1, width: 1000, height: 700, fullscreen: true)` it
       gives 1000 × 700 and fullscreen; with 100 × 50 it gives 320 × 200;
       with 20000 × 20000 it gives 16384 × 16384; with text that doesn't
       parse, or `version: 2`, it gives the `Window`'s size and one
       warning.
-- [ ] The memory, with made-up times: a size held 999 ms writes nothing,
+- [x] The memory, with made-up times: a size held 999 ms writes nothing,
       held 1000 ms writes once, and the same size again writes nothing;
       a 1 × 1 size never replaces the windowed size; while fullscreen the
       recorded size stays the last windowed one; quitting writes the
       record if it differs from the last written, and nothing if it
       doesn't.
-- [ ] A record written and read back gives the same size and mode.
-- [ ] The place on leaving fullscreen: the place read on entering comes
+- [x] A record written and read back gives the same size and mode.
+- [x] The place on leaving fullscreen: the place read on entering comes
       back, a negative x included (`(-1200i32) as u32` from miniquad
       comes back as -1200); with no place, a 1000 × 700 window in a
       1920 × 1080 picture is centred at (460, 190).
-- [ ] `wanted_fullscreen` gives `None` for a card and for errors, and
+- [x] `wanted_fullscreen` gives `None` for a card and for errors, and
       `Some` of the frame's `fullscreen` for a game frame.
-- [ ] `Opened`: what `window_conf` builds from `conf_from`'s answer
+- [x] `Opened`: what `window_conf` builds from `conf_from`'s answer
       keeps the mode, the windowed size, the good record and the
       warning, and an unkept one (the web, a capture run) never writes.
-- [ ] hello-grid and `run_game` open with `Window::console`.
-- [ ] The PR says what was seen on Windows for the checks in step 6.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] hello-grid and `run_game` open with `Window::console`.
+- [x] The PR says what was seen on Windows for the checks in step 6.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -358,4 +358,95 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done.**
+- `crates/app/src/window.rs` (new): the record (`WINDOW_KEY`,
+  `WINDOW_VERSION`, `MIN_WINDOW`, `SAVE_AFTER`), `conf_from`, `Opened`,
+  `WindowMemory` (when to write), `Place` (where the window goes back to
+  on leaving fullscreen) and `wanted_fullscreen`, all pure, with their
+  tests. `window/win32.rs` reads the client area on Windows (below).
+- `Window::console(title, spec, scale, margin)`, a `const fn` with
+  saturating sides; `run_game`'s `basic_window` and hello-grid's game
+  and dialogue preview use it.
+- `run_app` finds the storage folder, calls `window_conf(&window,
+  &storage_at)`, which reads the record beside the game's keys (native,
+  outside a capture run) and returns `(Conf, Opened)`, and hands both to
+  `run`. `run` logs the warning, `Macroquad` starts in the mode it
+  opened in, applies `fullscreen` from game frames only, re-sends
+  `set_fullscreen(true)` on the first frame of a Windows fullscreen
+  start, puts the window back at its windowed size and place on leaving
+  fullscreen on Windows, and writes the record in `after_frame` and as
+  the game quits (`save_window`).
+- `StorageAt::read_window` and `write_window` (through `FileStorage`,
+  in the folder `StorageAt::find` chose). `serde` and `ron` (`std`) are
+  normal dependencies of `shuyi-app` now (they were dev-dependencies;
+  same versions, already in the tree, so `deny.toml` is unchanged).
+- Docs: `docs/platform-backends.md`'s new *The window (desktop)*, the
+  storage section names the key, the `present` section says only a
+  game frame's `fullscreen` applies; `Frame::fullscreen` and
+  `Frame::new`; `run_app`'s and `open_window`'s docs; the crate docs'
+  example uses `Window::console`; the book's *Games and screens*
+  (`site/content/learn/book/games-and-screens.md`) names
+  `Window::console` and the window kept as it was left.
+
+**Deviations.**
+- The ticket was 26 days old and was checked against the code first
+  (the skill's step 0); the fixes are in its text: there is one
+  template now (`templates/shuyi-default`, through `run_game`, no
+  `Window`), so the "grid template" steps went; 2087 had made
+  `window_conf` private behind `run_app`, so `Opened` is returned by
+  `window_conf` and handed to `run` as a value, not kept in a `static`
+  (which only crossed `macroquad::main`'s boundary); 3310's
+  `DesktopFolder` decides where a desktop keeps the storage, so
+  `window_conf` takes the `StorageAt` (found once, in `run_app`, before
+  the window opens) instead of the storage's name, and the record goes
+  where the game's keys go; hello-grid titles its window with `TITLE`,
+  not `APP.name`; nothing changes in the game's `main.rs`.
+- **The cursor went to 3314**, by the *Size* clause: without it the PR
+  was already past 800 counted lines. 1121, 3106, 3062 and 2405 now
+  name 3314 for `IdleCursor`. 3314 also carries a fix this ticket's
+  manual check suggested: a mode change can move the mouse's position
+  in the window without the mouse moving, so it must not read as a move.
+- **The size on Windows is read from the system**, not from miniquad
+  (`window/win32.rs`, through `drops::miniquad_window`). The manual
+  check found the record shrinking about 2 pixels a launch at 175 %
+  (1550, then 1548, then 1547): miniquad's `update_dimensions` divides
+  the client area by the scale, cuts it to a whole number and multiplies
+  back. `GetClientRect` gives the exact size `Conf::window_width` and
+  `set_window_size` take.
+- `WindowMemory` holds whether the record is kept (`Opened::kept`), so a
+  capture run or the web never writes, rather than a flag on
+  `Macroquad` (clippy's `struct_excessive_bools`).
+
+**Manual check on Windows** (Windows 11, 2560 × 1600 at 175 %, after
+merging the tip of `main`, 4638655b, into the branch at 36e02830, with
+the size fix on top): hello-grid driven from a script through Win32
+(`SetWindowPos`, a posted F11 and `WM_CLOSE`), the window's rectangle
+sampled every 30 ms from launch.
+- Resized to 1550 × 1055 client pixels, quit: the record said 1550 ×
+  1055; reopened at that size, and with the fix it stays 1547 × 1050
+  over two more launches.
+- F11, quit: the record said `fullscreen: true` with the windowed size;
+  reopened, the first rectangle sampled was already 2560 × 1600, with no
+  windowed one before it (the loading card was full screen).
+- F11 out of a fullscreen start: back at 1547 × 1050, centred at (506,
+  275); in and out again, the same place. Moved to (300, 120), in and
+  out: back at (300, 120).
+- Not checked: the screen saver staying off in a fullscreen start, and
+  macOS and Linux by hand.
+
+**Follow-ups.** 3314 (the idle cursor), written in this PR.
+
+Game: nothing to adopt, its `Window::new(APP.name, 1640, 1064)` and
+`run_app` compile unchanged, and its window opens as left from its next
+pin bump (searched `window_conf`, `Window::new`, `"window" storage` and
+`WINDOW_KEY` in Zafnok/visions-of-shuyi, pinned at 1ccb1acc: no game key
+named `window`). game#0903 has no window items, as the Context says.
+
+No break: `Window::console` is an addition, and `window_conf` and `run`
+are private.
+
+Behaviour: shuyi-app: on a desktop a game's window opens at the size and in the mode the player left it in on that computer (a `window` key beside its storage), not at `AppConfig::window`'s size, windowed, after the first launch.
+
+Behaviour: shuyi-app: a loading card's or an error's frame no longer switches the window out of fullscreen; only a game frame's `fullscreen` is applied.
+
+Behaviour: shuyi-app: on Windows, leaving fullscreen puts the window back at its windowed size and place instead of the screen's size at (0, 0).

@@ -66,8 +66,9 @@ fn install() {
     INSTALLED.store(true, Ordering::Relaxed);
 }
 
-/// miniquad's main window, if this thread has made it.
-fn miniquad_window() -> Option<HWND> {
+/// miniquad's main window, if this thread has made it: also the window
+/// whose size the window's record reads (`crate::window`).
+pub(crate) fn miniquad_window() -> Option<HWND> {
     let mut found: HWND = std::ptr::null_mut();
     // SAFETY: `find` reads `found` through the pointer it is handed, which
     // lives until `EnumThreadWindows` returns.

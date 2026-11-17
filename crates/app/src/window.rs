@@ -19,6 +19,9 @@ use shuyi_platform::{Frame, Millis, Show};
 
 use crate::Window;
 
+#[cfg(windows)]
+pub(crate) mod win32;
+
 /// The storage key of the record, beside the computer's `profiles`: a game
 /// must not use it for its own data.
 pub(crate) const WINDOW_KEY: &str = "window";

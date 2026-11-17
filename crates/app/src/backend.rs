@@ -417,8 +417,14 @@ fn pixels(x: f32) -> u32 {
 }
 
 /// The window's size in the units its record keeps, those miniquad opens a
-/// window at: points on macOS, device pixels elsewhere.
+/// window at: points on macOS, device pixels elsewhere. On Windows, the
+/// client area as the system says, which miniquad's own size rounds down
+/// on a scaled display ([`win32`](crate::window::win32)).
 fn window_size() -> (i32, i32) {
+    #[cfg(windows)]
+    if let Some(size) = crate::window::win32::client_size() {
+        return size;
+    }
     let (width, height) = if cfg!(target_os = "macos") {
         (screen_width(), screen_height())
     } else {
