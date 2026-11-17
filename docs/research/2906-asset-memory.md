@@ -195,6 +195,29 @@ files (24,866,105 unpacked, 14,010,188 stored).
   376 KB for the 7,248 files of the `playdate` synthetic pack. Leaked
   paths (`&'static str`, ticket 2207's rule) cost little.
 
+### On first read, measured (ticket 2263)
+
+Ticket 2263 built the layer that reads a pack file by file
+(`pack::Index::into_layer` over `pack::InMemory`), and the program measures
+it as a fourth way. On 2026-11-17, engine `191986d0` with 2263's change, the
+same machine and build. The load's decoded values have grown since the
+tables above (43,248 bytes against 42,168), so each row is set beside the
+computed one of the same run:
+
+| Pack | Measured peak | Measured resident | Computed peak | Computed resident | Table, measured / computed |
+| ---- | ------------: | ----------------: | ------------: | ----------------: | -------------------------: |
+| Hello, Grid | 44,861 | 43,816 | 58,097 | 43,744 | 568 / 496 |
+| `web` | 723,309 | 278,110 | 447,389 | 278,038 | 234,862 / 234,790 |
+| `playdate` | 1,156,323 | 418,737 | 588,016 | 418,665 | 375,489 / 375,417 |
+
+- **Resident:** the computed row and 72 bytes, whatever the pack: each
+  file takes 32 bytes and its path, as in the table of a pack read whole,
+  and the layer adds its own record (56 bytes) and its source (16).
+- **Peak:** set by opening, not the load, on a big pack: the index read
+  (each path a `String`) and the layer's table are live at once. That is
+  1.2 MB on the `playdate` pack, against its 10 MB heap. On Hello, Grid it is
+  below the computed peak, which counted the largest file read twice.
+
 ## The web
 
 Measured in Chromium (the desktop app's browser), served by Python's

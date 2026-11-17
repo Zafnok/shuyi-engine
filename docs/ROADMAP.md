@@ -751,11 +751,12 @@ one break, is in the MVP above. In order:
 
 | Ticket | What |
 | ------ | ---- |
-| 2263 | The pack read file by file: its index alone, a check per file, folders laid in the order the bake names, a layer over a source (after 2262) |
+| 2263 | The pack read file by file: its index alone, a check per file, a layer over a source (after 2262) |
+| 2265 | The pack lays folders in the order the bake names, and `Bundle::arrived` says when a folder can be read (after 2263) |
 | 3315 | The Playdate reads its pack file by file through the SDK's seek and read (after 2263) |
 | 3316 | A load in steps counts its units and waits for the platform; the card shows the count |
 | 3317 | `shuyi-app` makes a picture's texture when it is first drawn |
-| 3318 | The web page fetches the `.wasm` beside the pack and streams the pack in, keeping no copy in JS (after 2263, 3316 and 3317) |
+| 3318 | The web page fetches the `.wasm` beside the pack and streams the pack in, keeping no copy in JS (after 2265, 3316 and 3317) |
 
 ### Follow-ups the backlog audit wrote
 

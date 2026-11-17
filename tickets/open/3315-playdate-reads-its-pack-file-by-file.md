@@ -36,6 +36,12 @@ completed:
   once. Section 1.2 warns that disk access is slow on the hardware.
 - 2263 gives `pack::Index::read`, `pack::Source` and a layer that reads
   one file per `Bundle::bytes`, handed out as `Cow::Owned` (2262).
+- **From 2263 (done):** `Index::read(prefix, stamp)` checks the stamp
+  itself, and gives `IndexError::Short { needs }` (a `u64`) for a prefix
+  too short. `pack::Source` is `Send + Sync + RefUnwindSafe`, so a bundle
+  over it stays `RefUnwindSafe`. A failed read or a refused file is
+  listed once by `Layer::problems()`, for the backend to log. A pack's
+  files may not reach past 4 GiB from its start.
 
 ## Nick input
 

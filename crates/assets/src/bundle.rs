@@ -51,6 +51,7 @@ use alloc::collections::BTreeSet;
 use shuyi_core::ContentHash;
 
 use crate::error::ContentError;
+use crate::pack::{Problem, SourceFiles};
 use crate::prelude::*;
 
 mod fingerprint;
@@ -177,6 +178,10 @@ pub enum Files {
     /// Files handed in at run time ([`Layer::owned`]): a player's mod, a
     /// folder read from disk.
     Owned(&'static OwnedFiles),
+    /// A pack read file by file from a source a backend gives
+    /// ([`Index::into_layer`](crate::pack::Index::into_layer)): each read
+    /// is handed out owned.
+    Source(&'static SourceFiles),
 }
 
 /// One file of a layer's table: its path and its contents.
@@ -241,14 +246,25 @@ impl OwnedFiles {
 }
 
 impl Files {
-    /// The contents of the file at `path`: borrowed, for every kind of
-    /// layer there is.
-    fn get(self, path: &str) -> Option<Cow<'static, [u8]>> {
+    /// The contents of the file at `path`, if the layer has it: [`Unread`]
+    /// when it has it but can't read it now (a layer over a source). Every
+    /// other kind of layer lends them.
+    fn get(self, path: &str) -> Option<Read> {
         match self {
             #[cfg(feature = "std")]
-            Self::Dir(dir) => dir.get(path),
-            Self::Table(files) => table_get(files, path),
-            Self::Owned(files) => files.with(|table| table_get(table, path)),
+            Self::Dir(dir) => dir.get(path).map(Ok),
+            Self::Table(files) => table_get(files, path).map(Ok),
+            Self::Owned(files) => files.with(|table| table_get(table, path)).map(Ok),
+            Self::Source(files) => files.read(path),
+        }
+    }
+
+    /// Whether the layer has a file at `path`, reading nothing but its
+    /// index.
+    fn has(self, path: &str) -> bool {
+        match self {
+            Self::Source(files) => files.has(path),
+            _ => self.get(path).is_some(),
         }
     }
 
@@ -258,11 +274,22 @@ impl Files {
         match self {
             #[cfg(feature = "std")]
             Self::Dir(root) => root.list(dir, deep, paths),
-            Self::Table(files) => table_list(files, dir, deep, paths),
-            Self::Owned(files) => files.with(|table| table_list(table, dir, deep, paths)),
+            Self::Table(files) => table_list(files.iter().map(|(p, _)| *p), dir, deep, paths),
+            Self::Owned(files) => files.with(|table| {
+                table_list(table.iter().map(|(p, _)| *p), dir, deep, paths);
+            }),
+            Self::Source(files) => table_list(files.paths(), dir, deep, paths),
         }
     }
 }
+
+/// A file a layer has and can't read now: a layer over a source whose
+/// bytes haven't arrived, or failed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Unread;
+
+/// A file's bytes as a layer reads them ([`Files::get`]).
+type Read = Result<Cow<'static, [u8]>, Unread>;
 
 /// The contents of the file at `path` in `files` (sorted by path).
 fn table_get(files: &[TableFile], path: &str) -> Option<Cow<'static, [u8]>> {
@@ -270,10 +297,15 @@ fn table_get(files: &[TableFile], path: &str) -> Option<Cow<'static, [u8]>> {
     Some(Cow::Borrowed(files[at].1))
 }
 
-/// Adds the paths of the files of `files` inside `dir` to `paths`, as
-/// [`Files::list`] does.
-fn table_list(files: &[TableFile], dir: &str, deep: bool, paths: &mut Vec<&'static str>) {
-    paths.extend(files.iter().map(|(path, _)| *path).filter(|path| {
+/// Adds the paths of `files` inside `dir` to `paths`, as [`Files::list`]
+/// does.
+fn table_list(
+    files: impl Iterator<Item = &'static str>,
+    dir: &str,
+    deep: bool,
+    paths: &mut Vec<&'static str>,
+) {
+    paths.extend(files.filter(|path| {
         let rest = if dir.is_empty() {
             Some(*path)
         } else {
@@ -449,7 +481,7 @@ impl Layer {
     }
 
     /// A layer of `files`, shown as `name`.
-    const fn of(name: &'static str, files: Files) -> Self {
+    pub(crate) const fn of(name: &'static str, files: Files) -> Self {
         Self {
             name,
             files,
@@ -495,6 +527,16 @@ impl Layer {
         Self {
             stands_for: Some(content),
             ..self
+        }
+    }
+
+    /// The files this layer couldn't read, once each, for the backend to
+    /// log: only a layer that reads a pack file by file has any
+    /// ([`SourceFiles::problems`]).
+    pub fn problems(&self) -> Vec<Problem> {
+        match self.files {
+            Files::Source(files) => files.problems(),
+            _ => Vec::new(),
         }
     }
 
@@ -580,7 +622,7 @@ impl Bundle {
     /// it: whether it is the game's own, a mod's, or a target's
     /// ([`Layer::target`]).
     pub fn layer_of(&self, path: &str) -> Option<&Layer> {
-        find(self.read(), path).map(|(layer, _)| layer)
+        layer_with(self.read(), path)
     }
 
     /// Every layer, in the order files are read from them.
@@ -627,10 +669,11 @@ impl Bundle {
 
     /// Returns the raw bytes of the file at `path` (relative to a layer's
     /// root, `/`-separated), e.g. an image, or `None` if it is missing.
-    /// Every kind of layer there is hands them out borrowed, so nothing is
-    /// copied (ADR-0128 §1).
+    /// A layer read whole lends them, so nothing is copied; a layer that
+    /// reads a pack file by file hands them out owned, and reads as missing
+    /// a file it can't read now (ADR-0128 §1, §2).
     pub fn bytes(&self, path: &str) -> Option<Cow<'static, [u8]>> {
-        let bytes = find(self.read(), path).map(|(_, bytes)| bytes);
+        let bytes = find(self.read(), path).and_then(|(_, bytes)| bytes.ok());
         if let Some(watcher) = WATCHER.get() {
             watcher(path, bytes.is_some());
         }
@@ -643,7 +686,7 @@ impl Bundle {
     /// [`Bundle::bytes`], this reads nothing: the [`watch`]er isn't told,
     /// and [`recording`] doesn't hear of it.
     pub fn has(&self, path: &str) -> bool {
-        find(self.read(), path).is_some()
+        layer_with(self.read(), path).is_some()
     }
 
     /// Puts `bytes` at `path` in the first layer handed in at run time that
@@ -674,7 +717,7 @@ impl Bundle {
             .iter()
             .filter(|layer| matches!(layer.files, Files::Owned(_)));
         let first = disk.clone().next();
-        disk.find(|layer| layer.files.get(path).is_some())
+        disk.find(|layer| layer.files.has(path))
             .or(first)
             .is_some_and(|layer| layer.replace(path, bytes))
     }
@@ -697,8 +740,9 @@ impl Bundle {
         if story_only_now() {
             return None;
         }
-        find(self.shipped(), path)?;
+        layer_with(self.shipped(), path)?;
         let (layer, bytes) = find(self.tests(), path)?;
+        let bytes = bytes.ok()?;
         let display = format!("{}/{path}", layer.name);
         Some((display, text_of(bytes)?))
     }
@@ -786,7 +830,7 @@ impl Bundle {
     /// read from (`base/data/x.ron`), or of the first layer that is neither
     /// private nor test files when no layer has it.
     pub fn display_path(&self, path: &str) -> String {
-        let layer = find(self.read(), path).map(|(layer, _)| layer);
+        let layer = layer_with(self.read(), path);
         match layer.or_else(|| self.home()) {
             Some(layer) => format!("{}/{path}", layer.name),
             None => path.to_owned(),
@@ -838,11 +882,17 @@ pub fn shown_under(shown: &str, name: &str) -> bool {
 }
 
 /// The file at `path` and the layer it is read from: the first of `layers`
-/// that has it.
-fn find<'a>(layers: &'a [Layer], path: &str) -> Option<(&'a Layer, Cow<'static, [u8]>)> {
+/// that has it, and its bytes, unless that layer can't read it now.
+fn find<'a>(layers: &'a [Layer], path: &str) -> Option<(&'a Layer, Read)> {
     layers
         .iter()
         .find_map(|layer| Some((layer, layer.files.get(path)?)))
+}
+
+/// The first of `layers` that has the file at `path`, reading nothing of
+/// it.
+fn layer_with<'a>(layers: &'a [Layer], path: &str) -> Option<&'a Layer> {
+    layers.iter().find(|layer| layer.files.has(path))
 }
 
 /// `bytes` as text, if they are UTF-8: borrowed bytes stay borrowed, and
@@ -1712,7 +1762,7 @@ mod tests {
             let listed = if deep { bundle.files_under(&dir) } else { bundle.files_in(&dir) };
             proptest::prop_assert!(listed.windows(2).all(|w| w[0] < w[1]), "{listed:?}");
             for path in &listed {
-                let first = bundle.layers().iter().find_map(|l| Some((l.name, l.files.get(path)?)));
+                let first = bundle.layers().iter().find_map(|l| Some((l.name, l.files.get(path)?.ok()?)));
                 proptest::prop_assert!(first.is_some(), "{path}");
                 let (name, bytes) = first.unwrap_or_default();
                 proptest::prop_assert_eq!(bundle.bytes(path), Some(bytes));

@@ -14,16 +14,23 @@
 //! - **every other file** (a picture, a sound) holds its own bytes.
 //!
 //! The file is a header (magic bytes, the [`VERSION`], a checksum of the
-//! rest), an index (the stamp, the target, the fingerprint of its sources,
-//! and each file's path, kinds, offset and sizes) and each file's bytes,
-//! compressed with LZ4 when that makes them smaller.
+//! header and the index), an index (the stamp, the target, the fingerprint
+//! of its sources, and each file's path, kinds, offset, sizes and checksum)
+//! and each file's bytes, compressed with LZ4 when that makes them smaller.
+//!
+//! A pack is read whole ([`Pack::open`], which checks every file) or file by
+//! file: [`Index::read`] reads the header and the index alone, and
+//! [`Index::into_layer`] makes a layer that reads, checks and unpacks one
+//! file each time the bundle asks for it, from a [`Source`] a backend gives
+//! (ADR-0128 §2).
 //!
 //! The index lists the files in path order, and [`write()`] lays their bytes
 //! in that order with nothing between them. A reader takes them in any
 //! order and with bytes between them, so long as no two overlap and the
 //! last ends the pack: a closed build's copy is laid out by its recipient's
 //! code ([`Raw::write_marked`], ADR-0118), and [`Raw::mark`] reads the code
-//! back. What the game reads is the same either way.
+//! back. What the game reads is the same either way, and no checksum covers
+//! the bytes between files: one changed changes nothing the game reads.
 //!
 //! A pack stands for its sources: its layer ([`Pack::into_layer`]) gives a
 //! bundle the fingerprint of the bundle it was baked from
@@ -39,9 +46,11 @@
 //! - **No migration.** A pack of another [`VERSION`], or baked for
 //!   another stamp (the game's word for the shapes of its own kinds), is
 //!   refused with a message to bake it again.
-//! - **Never a panic.** A pack cut short or changed anywhere is refused:
-//!   the checksum covers every byte after the header, and every size is
-//!   checked before anything is allocated for it.
+//! - **Never a panic.** A pack cut short or changed is refused: the
+//!   header's checksum covers the header and the index, each file's its
+//!   own bytes, and every size is checked before anything is allocated for
+//!   it. A file changed is refused when it is read, and the others still
+//!   read.
 //!
 //! The reader builds without `std`: a Playdate loads only packs
 //! (ADR-0008 §5).
@@ -62,8 +71,10 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format};
 use crate::recipient::{CODE_BYTES, Code, Stream};
 
 mod bake;
+mod source;
 
 pub use bake::{Bake, Bakeable, Baked, BakedFile};
+pub use source::{FileError, InMemory, Problem, Source, SourceError, SourceFiles};
 
 /// A pack's file extension, without the dot.
 pub const EXTENSION: &str = "shuyipak";
@@ -76,9 +87,11 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// change to any of them makes it the next number, and a pack of another
 /// version is refused, never migrated. Version 15 reads files' bytes in any
 /// order and with bytes between them (a recipient's layout, ADR-0118);
-/// version 16 holds a font atlas's ink (ticket 3215, ADR-0124), and version
-/// 17 its bold face (ticket 3216).
-pub const VERSION: u32 = 17;
+/// version 16 holds a font atlas's ink (ticket 3215, ADR-0124), version
+/// 17 its bold face (ticket 3216), and version 18 checks the header and the
+/// index apart from each file, which has a checksum of its own (ticket
+/// 2263, ADR-0128 §2).
+pub const VERSION: u32 = 18;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";
@@ -97,9 +110,13 @@ pub const MAX_BAKED_BYTES: usize = 64 << 20;
 /// than this many times its stored bytes is broken.
 const MAX_RATIO: u64 = 255;
 
-/// The header: the magic bytes, the version (`u32`), the checksum of
-/// everything after the header (`u64`) and the index's length (`u32`).
+/// The header: the magic bytes, the version (`u32`), the checksum of the
+/// header's other bytes and the index (`u64`) and the index's length
+/// (`u32`).
 const HEADER: usize = 24;
+
+/// Where the header's checksum lies in it.
+const SUM_AT: core::ops::Range<usize> = 12..20;
 
 /// What a pack says of itself (ADR-0039 kind 5): build it with
 /// [`PackInfo::new`]. A field it gains moves [`VERSION`], since a baked
@@ -156,13 +173,74 @@ struct Entry {
     stored: u64,
     /// How many bytes it has, unpacked.
     size: u64,
+    /// The [`checksum`] of its kept bytes.
+    sum: u64,
 }
 
-/// The index: what the pack says of itself, and its files in path order.
+impl Entry {
+    /// How the file is kept, without its path.
+    fn kept(&self) -> Kept {
+        Kept {
+            codec: self.codec,
+            offset: self.offset,
+            stored: self.stored,
+            size: self.size,
+            sum: self.sum,
+            baked: !self.kinds.is_empty(),
+        }
+    }
+}
+
+/// How one file is kept, once its index has checked ([`check_listing`]):
+/// what reading it needs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Kept {
+    codec: Codec,
+    /// Where its bytes start, after the index.
+    offset: u64,
+    stored: u64,
+    size: u64,
+    sum: u64,
+    /// Whether it holds baked assets.
+    baked: bool,
+}
+
+/// The index as the file holds it: what the pack says of itself, and its
+/// files in path order.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct Index {
+struct Listing {
     info: PackInfo,
     entries: Vec<Entry>,
+}
+
+/// A pack's header and index, read and checked alone ([`Index::read`]):
+/// what a layer that reads the pack file by file holds
+/// ([`Index::into_layer`]), and the check of each file's bytes
+/// ([`Index::check_file`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Index {
+    listing: Listing,
+    /// Where the files' bytes start in the pack: the header's and the
+    /// index's length.
+    data_at: u64,
+}
+
+/// Why [`Index::read`] read no index.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum IndexError {
+    /// The bytes given end before the index does: the pack's header and
+    /// index take `needs` bytes (the header's own, when fewer than it were
+    /// given). Read that many from the pack's start, and read again.
+    #[error("the pack's header and index take {needs} bytes")]
+    Short {
+        /// How many bytes the header and the index take.
+        needs: u64,
+    },
+    /// The pack is refused.
+    #[error(transparent)]
+    Pack(#[from] PackError),
 }
 
 /// What goes into a pack at one path.
@@ -323,59 +401,151 @@ fn assemble(info: &PackInfo, files: &[RawFile], order: &[usize], gaps: &[Vec<u8>
             offset,
             stored: file.kept.len() as u64,
             size: file.size,
+            sum: checksum(&file.kept),
         })
         .collect();
-    let index = Index {
+    let listing = Listing {
         info: info.clone(),
         entries,
     };
     // Strings, numbers and lists always serialize.
-    let index = postcard::to_allocvec(&index).unwrap_or_default();
-    let mut body = Vec::with_capacity(index.len() + data.len());
-    body.extend_from_slice(&index);
-    body.extend_from_slice(&data);
-    let mut out = Vec::with_capacity(HEADER + body.len());
+    let index = postcard::to_allocvec(&listing).unwrap_or_default();
+    let mut out = Vec::with_capacity(HEADER + index.len() + data.len());
     out.extend_from_slice(&MAGIC);
     out.extend_from_slice(&VERSION.to_le_bytes());
-    out.extend_from_slice(&checksum(&body).to_le_bytes());
+    out.extend_from_slice(&[0; 8]);
     // An index over 4 GiB would hold more than `MAX_FILES` files.
     out.extend_from_slice(&u32::try_from(index.len()).unwrap_or(u32::MAX).to_le_bytes());
-    out.extend_from_slice(&body);
+    out.extend_from_slice(&index);
+    let sum = header_sum(&out);
+    out[SUM_AT].copy_from_slice(&sum.to_le_bytes());
+    out.extend_from_slice(&data);
     out
 }
 
-/// The body of pack `bytes`, the rest of them after its header, and its
-/// index's length, once its magic bytes and version are right.
-fn body(bytes: &[u8]) -> Result<(&[u8], usize), PackError> {
-    if !bytes.starts_with(&MAGIC) {
-        return Err(if MAGIC.starts_with(bytes) {
-            PackError::Truncated
-        } else {
-            PackError::NotAPack
-        });
+/// The checksum of a pack's header and index, `head` (at least the
+/// header), but for the bytes the checksum itself takes.
+fn header_sum(head: &[u8]) -> u64 {
+    let mut summed = Vec::with_capacity(head.len());
+    summed.extend_from_slice(&head[..SUM_AT.start]);
+    summed.extend_from_slice(&head[SUM_AT.end..]);
+    checksum(&summed)
+}
+
+/// The index of the pack at the start of `bytes`, checked, and where its
+/// files' bytes start: refused when its magic bytes, version or checksum
+/// are wrong, or [`IndexError::Short`] when `bytes` end before the index
+/// does.
+fn listing(bytes: &[u8]) -> Result<(Listing, usize), IndexError> {
+    let seen = &bytes[..bytes.len().min(MAGIC.len())];
+    if !MAGIC.starts_with(seen) {
+        return Err(PackError::NotAPack.into());
     }
-    let found = u32::from_le_bytes(take(bytes, 8)?);
-    if found != VERSION {
-        return Err(PackError::Version { found });
+    let short = |needs: usize| IndexError::Short {
+        needs: needs as u64,
+    };
+    if bytes.len() < HEADER {
+        if bytes.len() >= 12 {
+            check_version(bytes)?;
+        }
+        return Err(short(HEADER));
     }
+    check_version(bytes)?;
     let length = u32::from_le_bytes(take(bytes, 20)?);
-    let body = bytes.get(HEADER..).ok_or(PackError::Truncated)?;
-    let length = usize::try_from(length).map_err(|_| PackError::Truncated)?;
-    if body.len() < length {
-        return Err(PackError::Truncated);
+    let needs = usize::try_from(length)
+        .ok()
+        .and_then(|length| HEADER.checked_add(length))
+        .ok_or(PackError::Truncated)?;
+    let head = bytes.get(..needs).ok_or_else(|| short(needs))?;
+    if header_sum(head) != u64::from_le_bytes(take(bytes, SUM_AT.start)?) {
+        return Err(PackError::Checksum.into());
     }
-    Ok((body, length))
+    let listing: Listing =
+        postcard::from_bytes(&head[HEADER..]).map_err(|_| broken("its index doesn't read"))?;
+    check_listing(&listing)?;
+    let ends = listing.entries.iter().map(|entry| {
+        (needs as u64)
+            .saturating_add(entry.offset)
+            .saturating_add(entry.stored)
+    });
+    if ends.max().unwrap_or(0) > u64::from(u32::MAX) {
+        return Err(broken("its files' bytes reach past 4 GiB").into());
+    }
+    Ok((listing, needs))
+}
+
+/// Refuses a pack whose version, at bytes 8 to 12, isn't [`VERSION`].
+fn check_version(bytes: &[u8]) -> Result<(), PackError> {
+    match u32::from_le_bytes(take(bytes, 8)?) {
+        VERSION => Ok(()),
+        found => Err(PackError::Version { found }),
+    }
+}
+
+/// Whether `listing` holds together, whatever follows it: no more than
+/// [`MAX_FILES`] files, in path order, each of a size it can have and none
+/// overlapping another, adding up to no more than [`MAX_UNPACKED_BYTES`].
+fn check_listing(listing: &Listing) -> Result<(), PackError> {
+    let entries = &listing.entries;
+    if entries.len() > MAX_FILES {
+        return Err(broken(format!("it has more than {MAX_FILES} files")));
+    }
+    let mut unpacked: u64 = 0;
+    let mut spans = Vec::with_capacity(entries.len());
+    for (at, entry) in entries.iter().enumerate() {
+        let path = &entry.path;
+        if at > 0 && entries[at - 1].path >= *path {
+            return Err(broken(format!("{path} is out of path order")));
+        }
+        unpacked = unpacked.saturating_add(entry.size);
+        if unpacked > MAX_UNPACKED_BYTES {
+            return Err(broken(format!(
+                "its files add up to more than {MAX_UNPACKED_BYTES} bytes"
+            )));
+        }
+        match entry.codec {
+            Codec::Stored if entry.stored != entry.size => {
+                return Err(broken(format!("{path} is stored with two sizes")));
+            }
+            Codec::Lz4 if entry.stored >= entry.size => {
+                return Err(broken(format!(
+                    "{path} is compressed to no fewer bytes than it has"
+                )));
+            }
+            Codec::Lz4 if entry.size > entry.stored.saturating_mul(MAX_RATIO) => {
+                return Err(broken(format!(
+                    "{path} claims {} bytes from {} stored",
+                    entry.size, entry.stored
+                )));
+            }
+            _ => {}
+        }
+        let end = entry
+            .offset
+            .checked_add(entry.stored)
+            .ok_or_else(|| broken(format!("{path} goes past the end of the pack")))?;
+        spans.push((entry.offset, end, at));
+    }
+    spans.sort_unstable();
+    for pair in spans.windows(2) {
+        let ((_, first_end, first), (second_start, _, second)) = (pair[0], pair[1]);
+        if second_start < first_end {
+            return Err(broken(format!(
+                "{} overlaps {}",
+                entries[second].path, entries[first].path
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// How many bytes the pack at the start of `bytes` takes, by its header and
 /// its index: for a tool that looks for a pack inside a bigger file, such as
-/// a program that embeds one with `include_bytes!`. Nothing here is checked
-/// against the checksum: [`Pack::open`] the bytes it counts.
+/// a program that embeds one with `include_bytes!`. The header and the index
+/// are checked, the files' bytes not: [`Pack::open`] the bytes it counts.
 pub fn length(bytes: &[u8]) -> Result<usize, PackError> {
-    let (body, length) = body(bytes)?;
-    let index: Index =
-        postcard::from_bytes(&body[..length]).map_err(|_| broken("its index doesn't read"))?;
-    let data = index
+    let (listing, data_at) = listing(bytes).map_err(IndexError::into_pack)?;
+    let data = listing
         .entries
         .iter()
         .map(|entry| entry.offset.saturating_add(entry.stored))
@@ -383,69 +553,67 @@ pub fn length(bytes: &[u8]) -> Result<usize, PackError> {
         .unwrap_or(0);
     usize::try_from(data)
         .ok()
-        .and_then(|data| (HEADER + length).checked_add(data))
+        .and_then(|data| data_at.checked_add(data))
         .filter(|&total| total <= bytes.len())
         .ok_or(PackError::Truncated)
 }
 
-/// The index of pack `bytes` and where its files' bytes start, once its
-/// header, version and checksum are right.
-fn index(bytes: &[u8]) -> Result<(Index, &[u8]), PackError> {
-    let (body, length) = body(bytes)?;
-    let sum = u64::from_le_bytes(take(bytes, 12)?);
-    if checksum(body) != sum {
-        return Err(PackError::Checksum);
-    }
-    let (index, data) = body.split_at(length);
-    let index: Index = postcard::from_bytes(index).map_err(|_| broken("its index doesn't read"))?;
-    Ok((index, data))
+/// The index of pack `bytes` and its files' bytes, once its header, version
+/// and index are right.
+fn index(bytes: &[u8]) -> Result<(Listing, &[u8]), PackError> {
+    let (listing, data_at) = listing(bytes).map_err(IndexError::into_pack)?;
+    Ok((listing, &bytes[data_at..]))
 }
 
-/// The bytes of `entry` in `data`, unpacked, after `unpacked` bytes
-/// unpacked so far.
-fn unpack<'a>(entry: &Entry, data: &'a [u8], unpacked: u64) -> Result<Cow<'a, [u8]>, PackError> {
-    let path = &entry.path;
-    if unpacked.saturating_add(entry.size) > MAX_UNPACKED_BYTES {
-        return Err(broken(format!(
-            "its files add up to more than {MAX_UNPACKED_BYTES} bytes"
-        )));
+/// The bytes of the file at `path`, kept as `kept` says in `stored`,
+/// checked against its checksum and unpacked: borrowed if it is kept as it
+/// is.
+fn checked<'a>(path: &str, kept: Kept, stored: &'a [u8]) -> Result<Cow<'a, [u8]>, PackError> {
+    if stored.len() as u64 != kept.stored {
+        return Err(PackError::Truncated);
     }
-    let size = usize::try_from(entry.size).map_err(|_| broken(format!("{path} is too big")))?;
+    if checksum(stored) != kept.sum {
+        return Err(PackError::Checksum);
+    }
+    let bytes = match kept.codec {
+        Codec::Stored => Cow::Borrowed(stored),
+        Codec::Lz4 => {
+            let size =
+                usize::try_from(kept.size).map_err(|_| broken(format!("{path} is too big")))?;
+            match lz4_flex::block::decompress(stored, size) {
+                Ok(bytes) if bytes.len() == size => Cow::Owned(bytes),
+                _ => return Err(broken(format!("{path} doesn't unpack"))),
+            }
+        }
+    };
+    if kept.baked && sections(&bytes).is_none() {
+        return Err(broken(format!("{path} isn't a whole baked file")));
+    }
+    Ok(bytes)
+}
+
+/// The bytes of `entry` in `data`, checked and unpacked.
+fn unpack<'a>(entry: &Entry, data: &'a [u8]) -> Result<Cow<'a, [u8]>, PackError> {
     let range = usize::try_from(entry.offset)
         .ok()
         .zip(usize::try_from(entry.offset.saturating_add(entry.stored)).ok())
         .and_then(|(start, end)| data.get(start..end))
-        .ok_or_else(|| broken(format!("{path} goes past the end of the pack")))?;
-    match entry.codec {
-        Codec::Stored if entry.stored == entry.size => Ok(Cow::Borrowed(range)),
-        Codec::Stored => Err(broken(format!("{path} is stored with two sizes"))),
-        Codec::Lz4 if entry.size > entry.stored.saturating_mul(MAX_RATIO) => Err(broken(format!(
-            "{path} claims {size} bytes from {} stored",
-            entry.stored
-        ))),
-        Codec::Lz4 => match lz4_flex::block::decompress(range, size) {
-            Ok(bytes) if bytes.len() == size => Ok(Cow::Owned(bytes)),
-            _ => Err(broken(format!("{path} doesn't unpack"))),
-        },
-    }
+        .ok_or_else(|| broken(format!("{} goes past the end of the pack", entry.path)))?;
+    checked(&entry.path, entry.kept(), range)
 }
 
-/// What pack `bytes` says of itself, once its header, version and
-/// checksum are right: for a tool that looks at a pack without opening
-/// it.
+/// What pack `bytes` says of itself, once its header, version and index
+/// are right: for a tool that looks at a pack without opening it.
 pub fn info(bytes: &[u8]) -> Result<PackInfo, PackError> {
-    index(bytes).map(|(index, _)| index.info)
+    index(bytes).map(|(listing, _)| listing.info)
 }
 
-/// The order `entries` lay their bytes in `data_len` bytes of data (each a
-/// place in `entries`), once they hold together: in path order, none going
-/// past the end, none overlapping another, and the last ending the data.
+/// The order `entries` (checked, [`check_listing`]) lay their bytes in
+/// `data_len` bytes of data (each a place in `entries`), once none goes past
+/// the end and the last ends the data.
 fn layout(entries: &[Entry], data_len: usize) -> Result<Vec<usize>, PackError> {
     let mut spans = Vec::with_capacity(entries.len());
     for (at, entry) in entries.iter().enumerate() {
-        if at > 0 && entries[at - 1].path >= entry.path {
-            return Err(broken(format!("{} is out of path order", entry.path)));
-        }
         let span = usize::try_from(entry.offset)
             .ok()
             .zip(usize::try_from(entry.offset.saturating_add(entry.stored)).ok())
@@ -454,23 +622,102 @@ fn layout(entries: &[Entry], data_len: usize) -> Result<Vec<usize>, PackError> {
         spans.push((span, at));
     }
     spans.sort_unstable();
-    let mut end = 0;
-    for pair in spans.windows(2) {
-        let (((_, first_end), first), ((second_start, _), second)) = (pair[0], pair[1]);
-        if second_start < first_end {
-            return Err(broken(format!(
-                "{} overlaps {}",
-                entries[second].path, entries[first].path
-            )));
-        }
-    }
-    for &((_, span_end), _) in &spans {
-        end = end.max(span_end);
-    }
+    let end = spans.iter().map(|&((_, end), _)| end).max().unwrap_or(0);
     if end != data_len {
         return Err(broken("bytes follow its last file"));
     }
     Ok(spans.into_iter().map(|(_, at)| at).collect())
+}
+
+impl IndexError {
+    /// The error of a pack read whole: one cut short before its index ends
+    /// is [`PackError::Truncated`].
+    fn into_pack(self) -> PackError {
+        match self {
+            Self::Short { .. } => PackError::Truncated,
+            Self::Pack(error) => error,
+        }
+    }
+}
+
+impl Index {
+    /// The header and the index of the pack whose first bytes are
+    /// `prefix`, checked, if it is of this engine's [`VERSION`] and was
+    /// baked with `stamp`. When `prefix` ends before the index does, it is
+    /// [`IndexError::Short`], saying how many bytes to read: a backend reads
+    /// the header's, then that many.
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use shuyi_assets::pack::{self, Content, Index, IndexError, PackInfo};
+    /// use shuyi_core::ContentHash;
+    ///
+    /// let info = PackInfo::new("my-game 1", None, ContentHash(1));
+    /// let files = BTreeMap::from([("a.txt".to_owned(), Content::Raw(b"a".to_vec()))]);
+    /// let pack = pack::write(&info, &files);
+    /// let Err(IndexError::Short { needs }) = Index::read(&pack[..4], "my-game 1") else {
+    ///     panic!("four bytes hold no header");
+    /// };
+    /// let Err(IndexError::Short { needs }) = Index::read(&pack[..needs as usize], "my-game 1")
+    /// else {
+    ///     panic!("the header holds no index");
+    /// };
+    /// let index = Index::read(&pack[..needs as usize], "my-game 1").unwrap();
+    /// assert_eq!(index.info(), &info);
+    /// ```
+    pub fn read(prefix: &[u8], stamp: &str) -> Result<Self, IndexError> {
+        let (listing, data_at) = listing(prefix)?;
+        if listing.info.stamp != stamp {
+            return Err(PackError::Stamp {
+                found: listing.info.stamp,
+                expected: stamp.to_owned(),
+            }
+            .into());
+        }
+        Ok(Self {
+            listing,
+            data_at: data_at as u64,
+        })
+    }
+
+    /// What the pack says of itself.
+    pub fn info(&self) -> &PackInfo {
+        &self.listing.info
+    }
+
+    /// The paths of its files, in path order.
+    pub fn paths(&self) -> impl Iterator<Item = &str> {
+        self.listing.entries.iter().map(|entry| entry.path.as_str())
+    }
+
+    /// Where the bytes the pack keeps of the file at `path` lie in the pack,
+    /// from its start, if it has the file: what a backend reads to hand
+    /// them to [`check_file`](Self::check_file).
+    pub fn file_range(&self, path: &str) -> Option<core::ops::Range<u64>> {
+        let entry = self.entry(path)?;
+        let start = self.data_at.saturating_add(entry.offset);
+        Some(start..start.saturating_add(entry.stored))
+    }
+
+    /// The bytes of the file at `path`, from `stored`, the bytes the pack
+    /// keeps of it ([`file_range`](Self::file_range)): checked against the
+    /// file's checksum, then unpacked. A file changed in the pack is refused
+    /// here, when it is read, and every other file still reads.
+    pub fn check_file(&self, path: &str, stored: &[u8]) -> Result<Vec<u8>, PackError> {
+        let entry = self
+            .entry(path)
+            .ok_or_else(|| broken(format!("it has no file {path}")))?;
+        checked(path, entry.kept(), stored).map(Cow::into_owned)
+    }
+
+    /// The entry of the file at `path`.
+    fn entry(&self, path: &str) -> Option<&Entry> {
+        let entries = &self.listing.entries;
+        let at = entries
+            .binary_search_by(|entry| entry.path.as_str().cmp(path))
+            .ok()?;
+        entries.get(at)
+    }
 }
 
 /// One file of a [`Raw`] pack, as the pack keeps it.
@@ -588,17 +835,9 @@ impl Raw {
     /// together as [`Pack::open`] says, whatever its stamp.
     pub fn read(bytes: &[u8]) -> Result<Self, PackError> {
         let (index, data) = index(bytes)?;
-        if index.entries.len() > MAX_FILES {
-            return Err(broken(format!("it has more than {MAX_FILES} files")));
-        }
         let order = layout(&index.entries, data.len())?;
-        let mut unpacked = 0;
         for entry in &index.entries {
-            let bytes = unpack(entry, data, unpacked)?;
-            if !entry.kinds.is_empty() && sections(&bytes).is_none() {
-                return Err(broken(format!("{} isn't a whole baked file", entry.path)));
-            }
-            unpacked = unpacked.saturating_add(entry.size);
+            unpack(entry, data)?;
         }
         let span = |entry: &Entry| {
             // `layout` checked every span is in the data.
@@ -730,8 +969,9 @@ impl Raw {
 }
 
 impl<'a> Pack<'a> {
-    /// The pack `bytes`, every file unpacked, if it is of this engine's
-    /// [`VERSION`], was baked with `stamp`, and holds together.
+    /// The pack `bytes`, every file checked and unpacked, if it is of this
+    /// engine's [`VERSION`], was baked with `stamp`, and holds together: for
+    /// a pack embedded or read whole.
     pub fn open(bytes: &'a [u8], stamp: &str) -> Result<Self, PackError> {
         let (index, data) = index(bytes)?;
         if index.info.stamp != stamp {
@@ -740,18 +980,10 @@ impl<'a> Pack<'a> {
                 expected: stamp.to_owned(),
             });
         }
-        if index.entries.len() > MAX_FILES {
-            return Err(broken(format!("it has more than {MAX_FILES} files")));
-        }
         layout(&index.entries, data.len())?;
         let mut files: Vec<PackFile<'a>> = Vec::with_capacity(index.entries.len());
-        let mut unpacked = 0;
         for entry in index.entries {
-            let bytes = unpack(&entry, data, unpacked)?;
-            if !entry.kinds.is_empty() && sections(&bytes).is_none() {
-                return Err(broken(format!("{} isn't a whole baked file", entry.path)));
-            }
-            unpacked = unpacked.saturating_add(entry.size);
+            let bytes = unpack(&entry, data)?;
             files.push(PackFile {
                 path: entry.path,
                 kinds: entry.kinds,
@@ -907,5 +1139,7 @@ impl<K: AssetKind + DeserializeOwned> Format for Packed<K> {
 
 #[cfg(test)]
 mod one_bit_tests;
+#[cfg(test)]
+mod source_tests;
 #[cfg(test)]
 mod tests;
