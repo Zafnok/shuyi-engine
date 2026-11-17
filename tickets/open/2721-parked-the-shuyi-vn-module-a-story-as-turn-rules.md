@@ -82,9 +82,8 @@ None.
     `building`, with its doc, to the enum,
     `crates/cli/schemas/modules.output.json`, the `status` line of
     `docs/modules.ron`'s header and the *Status* line of *How to read
-    it* in `docs/modules.md`. It is a new variant of an exhaustive
-    public enum, so write a `Breaking:` line if CI's `api` job reports
-    one. 2118 adds it the same way if it lands first;
+    it* in `docs/modules.md`. It is a new variant of `Status`,
+    which is `#[non_exhaustive]` since 2086 (done), so no break. 2118 adds it the same way if it lands first;
   - the README's first two sections in ADR-0009 §4's order (what it is
     for, what it is not for). 2726 finishes the rest;
   - the `shuyi-vn` skill. **From 1134 (done):** a short skill,

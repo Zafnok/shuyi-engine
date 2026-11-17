@@ -67,9 +67,9 @@ None.
     (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
     still has none, add `Status::Building`, named `building`, with its
     doc, the `status` line of `docs/modules.ron`'s header, *How to read
-    it* in `docs/modules.md` and the `modules` schema. `Status` is a
-    public enum: write a `Breaking:` line if CI's `api` job reports
-    one;
+    it* in `docs/modules.md` and the `modules` schema. `Status` is
+    `#[non_exhaustive]` since 2086 (done), so the new variant is no
+    break;
   - the README's first two sections (what it is for, what it is not
     for). 2704 finishes the rest.
 - **`Body`** (ADR-0010 §2):

@@ -161,9 +161,10 @@ ships (rule 7, `deny.toml`) don't change.
       file on disk (a folder, for an entry ending in `/`): a stale
       entry. One in the credits file is reported there, at its line;
       one in `own` is reported in `shuyi.ron`.
-  - `contract::check::check` (`crates/cli/src/contract/check.rs`) takes
-    the project too, `check(project, game, input)`, and adds the pass's
-    errors to its `errors`. Its one caller is `contract::cli::with_game`.
+  - `contract::check::check` (`crates/cli/src/contract/check.rs`) reads
+    the project from `CheckInput::project`, which the CLI and the MCP
+    server set (**from 2086 (done):** no new argument, so no break), and
+    adds the pass's errors to its `errors`.
     Without the part, `check` is unchanged. The answer's shape doesn't
     change: these are `Problem`s like the others.
 - **The credits in `NOTICES.txt`:** when the `credits` part is there,
@@ -292,8 +293,8 @@ ships (rule 7, `deny.toml`) don't change.
    them to the `BAD_CREDITS` and `MANIFEST` seeds of
    `crates/assets/src/format/builtin_tests.rs`.
 4. Add the `CreditsCheck` part to `Config`, write
-   `crates/cli/src/credits.rs` (`pass`, `works`), and pass the project
-   to `check::check`.
+   `crates/cli/src/credits.rs` (`pass`, `works`), and run the pass in
+   `check::check` with the project from `CheckInput::project`.
 5. Add the section to 3039's `notices` module, wire it through `web`,
    and extend the `wasm` job's check.
 6. Write the credits files and parts of the templates and Hello, Grid.
@@ -303,8 +304,7 @@ ships (rule 7, `deny.toml`) don't change.
    error texts changed, and that the pack version moved (rebake any
    pack). The game's PR that moves the pin follows it. The completion
    notes carry `Breaking:` lines (2010): `AudioManifest` gains a public
-   field, the pack version, and `contract::check::check`'s new
-   argument. `CreditsFile` and `FileCredit` gain theirs additively
+   field, and the pack version. `CreditsFile` and `FileCredit` gain theirs additively
    (**from 2085 (done):** both are `#[non_exhaustive]`, built with their
    `new`), each new field `#[serde(default)]`.
 8. Run the gates.

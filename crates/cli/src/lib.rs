@@ -643,19 +643,24 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
     for (set, glyphs) in &rules.wide_set_glyphs {
         chars = chars.with_wide_set(Some(set), glyphs);
     }
-    let out_dir = Path::new(out_dir);
-    Ok(
-        match font_atlas::run(rules, command, &fonts, &wides, out_dir, &chars) {
-            Ok(summary) => {
-                println!("{summary}");
-                0
-            }
-            Err(e) => {
-                eprintln!("font-atlas: {e}");
-                1
-            }
-        },
-    )
+    let options = font_atlas::RunOptions {
+        rules: rules.clone(),
+        command: command.to_owned(),
+        fonts,
+        wides,
+        out_dir: PathBuf::from(out_dir),
+        chars,
+    };
+    Ok(match font_atlas::run(&options) {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(e) => {
+            eprintln!("font-atlas: {e}");
+            1
+        }
+    })
 }
 
 fn app_info(project: &Project, args: &[String]) -> Outcome {

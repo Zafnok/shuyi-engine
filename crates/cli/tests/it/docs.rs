@@ -86,7 +86,7 @@ fn every_operation_has_its_row_in_the_operations_table() {
         .filter(|l| l.starts_with("| `"))
         .filter_map(first_name)
         .collect();
-    for op in Op::ALL {
+    for &op in Op::ALL {
         assert!(
             rows.contains(&op.name()),
             "docs/contract.md's table under `## The operations` has no row for `{}`: add one",
@@ -109,7 +109,7 @@ fn the_readme_names_every_operation() {
         .lines()
         .find(|l| l.starts_with("| `shuyi-cli`"))
         .expect("README.md has no `shuyi-cli` row in its crates table");
-    for op in Op::ALL {
+    for &op in Op::ALL {
         assert!(
             row.contains(&format!("`{}`", op.name())),
             "README.md's `shuyi-cli` row doesn't name the operation `{}`: add it to the list",

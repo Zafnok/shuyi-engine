@@ -58,6 +58,9 @@ pub struct Concerns {
 /// A question every game answers one way or another.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 5): a field it gains is
+// `#[serde(default)]`, so every catalog keeps loading.
+#[non_exhaustive]
 pub struct Concern {
     /// What a module's metadata names (`bodies`).
     pub id: String,
@@ -91,6 +94,9 @@ pub struct Choice {
 /// Whether an answer or a module is built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new statuses come, so a `match`
+// outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum Status {
     /// Built, with an example passing CI.
     Ready,

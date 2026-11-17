@@ -56,6 +56,10 @@ impl AddInput {
 /// What `add` did, and what is left to the game.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields, so a
+// game reads its fields and never builds it by literal or matches it
+// without `..`.
+#[non_exhaustive]
 pub struct AddOutput {
     /// The module's crate (`shuyi-physics`).
     pub module: String,

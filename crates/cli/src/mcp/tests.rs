@@ -6,7 +6,7 @@ use super::*;
 fn every_operation_and_session_tool_is_a_tool_once() {
     let listed = tools();
     let names: Vec<&str> = listed.iter().filter_map(|t| t["name"].as_str()).collect();
-    for op in Op::ALL.into_iter().chain(Op::SESSION) {
+    for op in Op::ALL.iter().copied().chain(Op::SESSION.iter().copied()) {
         assert_eq!(
             names.iter().filter(|name| **name == op.name()).count(),
             1,
@@ -51,7 +51,8 @@ fn each_tool_says_what_it_does_in_its_own_words() {
 #[test]
 fn the_tools_that_run_the_game_or_read_its_files_take_a_project() {
     let takes: Vec<&str> = Op::ALL
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|op| takes_project(*op, false))
         .map(Op::name)
         .collect();

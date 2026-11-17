@@ -71,8 +71,8 @@ None.
     no building status (`shuyi_cli::catalog::Status` is ready, planned
     or parked): if it still has none, add `Status::Building`, named
     `building`, with its doc, `docs/modules.ron`'s header, *How to read
-    it* in `docs/modules.md` and the `modules` schema, and a
-    `Breaking:` line if CI's `api` job reports one. 2719
+    it* in `docs/modules.md` and the `modules` schema
+    (no break: `Status` is `#[non_exhaustive]` since 2086, done). 2719
     sets both to ready when the example passes CI (ADR-0009 §4). 2003
     wrote the `kind` concern (`alternatives: false`); 2502 adds its
     `pick` and question. Don't change `check-modules`; 2003 owns its

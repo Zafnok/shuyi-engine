@@ -342,11 +342,12 @@ pub struct StopOutput {
 /// The tool named `name`: its operation, and whether it is a session
 /// tool ([`Op::SESSION`]).
 pub fn tool(name: &str) -> Option<(Op, bool)> {
-    if let Some(op) = Op::SESSION.into_iter().find(|op| op.name() == name) {
+    if let Some(op) = Op::SESSION.iter().copied().find(|op| op.name() == name) {
         return Some((op, true));
     }
     Op::ALL
-        .into_iter()
+        .iter()
+        .copied()
         .find(|op| op.name() == name)
         .map(|op| (op, false))
 }
@@ -551,10 +552,11 @@ fn tool_listing(op: Op, session: bool) -> Value {
 /// the one-off `scene` left out), then the session's ([`Op::SESSION`]).
 pub fn tools() -> Vec<Value> {
     let ops = Op::ALL
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|op| *op != Op::Scene)
         .map(|op| tool_listing(op, false));
-    let session = Op::SESSION.into_iter().map(|op| tool_listing(op, true));
+    let session = Op::SESSION.iter().copied().map(|op| tool_listing(op, true));
     ops.chain(session).collect()
 }
 

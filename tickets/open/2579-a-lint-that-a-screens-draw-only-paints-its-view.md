@@ -62,8 +62,8 @@ None.
 - `crates/cli/src/screen_skin.rs`: the scan, on `check_keys::lex` (no
   parser), returning findings with file and line.
 - `lint`: `LintCheck::ScreenSkin` and `codes::SCREEN_SKIN` (`SH2105`),
-  with `explain`'s text. `LintCheck` isn't `#[non_exhaustive]`, so the
-  new variant is a `Breaking:` line if CI's `api` job reports one.
+  with `explain`'s text. **From 2086 (done):** `LintCheck` is
+  `#[non_exhaustive]`, so the new variant is no break.
 - This engine's own screens: a test in `crates/cli` runs the scan on
   `crates/ui/src/screens` with an in-memory `ScreenSkin`, and the old
   test in `crates/ui/src/screens/tests.rs` goes.

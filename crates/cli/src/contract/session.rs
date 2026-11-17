@@ -162,6 +162,9 @@ fn kind_of(value: &serde_json::Value) -> &'static str {
 /// count from 1).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new kinds of event come, so a `match`
+// outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum Event {
     /// A screen opened.
     Opened {
