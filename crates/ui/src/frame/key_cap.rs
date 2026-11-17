@@ -35,8 +35,8 @@ use crate::frame::glyph_buffer::{GlyphStyle, PxRect, Rect};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct KeyCapStyle {
-    /// The name's glyphs in bold: each drawn twice, 1 px apart (a bold
-    /// face in the font atlas is ticket 3216).
+    /// The name's glyphs in bold: from the font atlas's bold face, else
+    /// each drawn twice, 1 px apart (ticket 3216).
     pub bold: bool,
     /// A name of one letter drawn as its capital (`f` as `F`); longer
     /// names as the keymap writes them. The text itself is unchanged.
@@ -105,8 +105,11 @@ pub struct KeyCaps {
     style: KeyCapStyle,
     fill: Option<Rgb>,
     edge: Option<Rgb>,
-    /// Where the glyphs have ink; `None` where the font doesn't say.
+    /// Where the glyphs drawn have ink: the bold face's when it draws
+    /// them, else the regular face's; `None` where the font doesn't say.
     ink: Option<Rc<FontInk>>,
+    /// Bold drawn as two strikes, 1 px apart: the ink a column wider.
+    struck: bool,
     cell_w: i32,
     cell_h: i32,
 }
@@ -137,8 +140,10 @@ impl KeyCaps {
     }
 
     /// `style` with box fill and edge colours `(fill, edge)` (`None`: not
-    /// drawn), placed as [`new`](Self::new) places it. Bold is struck
-    /// twice, its ink a column wider; where the font's ink isn't known,
+    /// drawn), placed as [`new`](Self::new) places it. Bold is drawn
+    /// from the atlas's bold face and placed by its ink
+    /// ([`CellWidths::ink`]); without one it is the regular face struck
+    /// twice, its ink a column wider. Where the font's ink isn't known,
     /// the whole cell counts as ink.
     pub fn with_colors(
         style: KeyCapStyle,
@@ -146,11 +151,13 @@ impl KeyCaps {
         widths: &CellWidths,
         spec: ConsoleSpec,
     ) -> Self {
+        let face = widths.ink(true).filter(|_| style.bold);
         Self {
             style,
             fill,
             edge,
-            ink: widths.ink().cloned(),
+            ink: face.or_else(|| widths.ink(false)).cloned(),
+            struck: style.bold && face.is_none(),
             cell_w: i32::from(spec.cell_w.max(1)),
             cell_h: i32::from(spec.cell_h.max(1)),
         }
@@ -168,9 +175,9 @@ impl KeyCaps {
 
     /// How many cells a cap takes beyond its name's: the same for every
     /// name, the room a glyph inked across its whole cell (and a column
-    /// more, bold) needs for its margin and edge on both sides.
+    /// more, bold struck twice) needs for its margin and edge on both sides.
     pub fn extra_cells(&self) -> u16 {
-        let widest = self.cell_w + 1 + 2 * self.pad();
+        let widest = self.cell_w + i32::from(self.struck) + 2 * self.pad();
         u16::try_from((widest + self.cell_w - 1) / self.cell_w - 1).unwrap_or(0)
     }
 
@@ -210,7 +217,7 @@ impl KeyCaps {
             ),
             (None, _) => (0, cells * self.cell_w - 1),
         };
-        (left, right + i32::from(self.style.bold))
+        (left, right + i32::from(self.struck))
     }
 
     /// Where the cap of `name` goes, its glyphs measured with `widths`.

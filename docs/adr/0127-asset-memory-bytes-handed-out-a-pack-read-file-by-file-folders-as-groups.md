@@ -1,4 +1,4 @@
-# ADR-0126: Asset memory: bytes handed out, not leaked; a pack read file by file; folders as groups; a load that counts and waits
+# ADR-0127: Asset memory: bytes handed out, not leaked; a pack read file by file; folders as groups; a load that counts and waits
 
 - **Status:** Accepted
 - **Date:** 2026-11-16

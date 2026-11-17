@@ -285,8 +285,9 @@ impl Renderer {
             };
             // A key cap's glyph: moved off the grid, and bold (ticket 3215).
             let style = buf.glyph_style(x, y);
-            // Bold: struck twice, 1 px apart, as the raster's painter does.
-            let strikes: u8 = if style.bold { 2 } else { 1 };
+            let (rect, strikes) = self
+                .atlas
+                .bold_strikes(cell.glyph, rect, style.bold && !wide);
             #[allow(clippy::cast_precision_loss)] // cell coords < 2^16
             let (px, py) = (
                 offset_x + x as f32 * cell_w + f32::from(style.dx) * scale,

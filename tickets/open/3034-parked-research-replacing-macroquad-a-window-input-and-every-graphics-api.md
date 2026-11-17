@@ -170,8 +170,8 @@ when (dropping a platform for a while, say), it asks Nick with the
     (miniquad 0.4.11 has only the system's cursors); and leaving
     fullscreen on Linux (miniquad's X11 code has a TODO saying it can't
     go back to windowed). The winit backend keeps 3044's window record
-    and cursor rule (`docs/platform-backends.md`, *The window and the
-    cursor (desktop)*);
+    and 3314's cursor rule (`docs/platform-backends.md`, *The window
+    (desktop)*, which 3314 extends to the cursor);
   - the cursor grab, which miniquad 0.4.11 already has
     (`set_cursor_grab`: the cursor held inside the window on desktop,
     pointer lock on the web), kept through winit's own grab.
@@ -265,8 +265,8 @@ when (dropping a platform for a while, say), it asks Nick with the
 2. Read what the macroquad backend does today that the new one keeps,
    and note which of these tickets are done: 2018's and 2019's capture
    mode and jobs, 2337's blend rules, 2346's IME calls, 3041's sinks,
-   ADR-0076, 3043's `lifecycle.js`, 3044's window record and cursor
-   rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
+   ADR-0076, 3043's `lifecycle.js`, 3044's window record, 3314's
+   cursor rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
    `shuyi-app-3d` and 3106's pointer lock.
 3. Read wgpu's and winit's documentation and examples, and the WGSL
    specification, and list what was used in the report.

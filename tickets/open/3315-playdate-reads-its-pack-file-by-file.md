@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §2 and §6, from ticket 2906's numbers
 ([`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md),
 *The Playdate*):

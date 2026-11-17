@@ -72,7 +72,7 @@ None.
   equality test covers an atlas fixture.
 - **In `shuyi-app`:** the sprite skin draws a sprite from its atlas page
   and rectangle; a page that changed is uploaded again before the frame.
-  **From 2919 (done):** ADR-0126 §5 treats a page as a picture's
+  **From 2919 (done):** ADR-0127 §5 treats a page as a picture's
   texture: kept for the run, never freed (its trigger, textures over a
   quarter of `peak_heap_bytes`, isn't crossed), and an atlas's names are
   its images' paths, `&'static str` as every path stays (§1).

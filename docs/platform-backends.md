@@ -212,7 +212,10 @@ next. `frame.show` is one of:
   `raster::compare`, within a `Tolerance`.
 
 `frame.fullscreen` is the player's Fullscreen setting: a windowed backend
-switches when it changes; a device that is always full screen ignores it.
+switches when a game frame's changes, and a card's or the errors' frames
+leave the window as it is (they carry `Frame::new`'s windowed); a device
+that is always full screen ignores it. *The window (desktop)*, below,
+says how a desktop window opens and leaves fullscreen.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
@@ -313,6 +316,10 @@ file and flushing it, keeping the old value as `<key>.ron.bak`, renaming
 the `.tmp` onto `<key>.ron` and flushing the folder; a read of a damaged
 `.ron` falls back to the `.bak`. Its doc comment says what that promises
 on each OS.
+
+The key `window` beside the game's own keys is the backend's, not the
+game's: a desktop keeps the window's record there (*The window
+(desktop)*, below), so a game must not use it for its own data.
 
 ### `audio(&mut self) -> &mut dyn Audio`
 
@@ -521,6 +528,35 @@ folder was read with `read_watched_folder`, and in a build without debug
 tools its poller looks at those folders only. The headless backend answers
 what `HeadlessPlatform::set_watches_files` set. A device with no files to
 watch leaves the default, `false`.
+
+## The window (desktop)
+
+A desktop window opens as the player left it on that computer. The
+backend, not the game, keeps a record of it, never in a profile: `shuyi-app`
+writes the key `window` in the folder of the game's storage (beside the
+computer's `profiles`), one RON value,
+`(version: 1, width: 1024, height: 768, fullscreen: false)`:
+
+- `width` and `height` are the last windowed size, never the fullscreen
+  one, in the units the window system opens a window at (device pixels
+  on Windows and Linux, points on macOS). A size under 320 × 200 (a
+  minimized window) is never recorded.
+- It is written once the windowed size and the mode have held for a
+  second and differ from what was last written, and again as the game
+  quits. A crash loses at most the last second's change.
+- At the next launch the window opens at the record's size, clamped to
+  320 × 200 and 16384 a side, and in its mode, with no windowed frame
+  before fullscreen: the backend starts in that mode, and the loading
+  card's and the errors' frames don't change it. Without a record it
+  opens at the game's `Window` size, windowed. A record that doesn't
+  parse, or of another version, is ignored with one warning.
+- Leaving fullscreen puts the window back at its windowed size and where
+  it was (on Windows; centred in the screen if it opened fullscreen).
+- The web keeps no record (the page sizes the canvas), and neither does a
+  capture run (ADR-0052).
+
+A new desktop backend (the winit one, 3034) keeps the same record under
+the same key, so a player's window survives the move.
 
 ## Files handed in at run time (optional)
 

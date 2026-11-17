@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §4, extending ADR-0097 (a load in steps, `crates/platform/src/app.rs`):
 
 - A load in steps says `Progress::More` or `Progress::Done`. Nothing
@@ -80,7 +80,7 @@ None.
 - what waits on the web: the streamed pack and its `NotYet` (3318); this
   ticket gives the `Wait` it returns;
 - the page's own progress bar before the `.wasm` runs (3052);
-- time as progress (ADR-0126, *Alternatives*);
+- time as progress (ADR-0127, *Alternatives*);
 - threads or an async asset server (ADR-0007, *Alternatives*).
 
 **Estimated size:** about 700 lines (code 300, tests 300, docs 100).

@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §5:
 
 - `Renderer::new` (`crates/app/src/render.rs`) uploads the font atlas and
@@ -27,7 +27,7 @@ completed:
   after the game's first frame: today it would never get a texture.
 - 2906's numbers (`docs/research/2906-asset-memory.md`, *Textures*): the
   game's 33 pictures take 3.5 MB as textures and upload in about 10 ms
-  native and 5–8 ms on the web. So textures aren't freed yet (ADR-0126
+  native and 5–8 ms on the web. So textures aren't freed yet (ADR-0127
   §7: freeing waits for textures over a quarter of `peak_heap_bytes`),
   and making them on first draw costs little.
 
@@ -50,13 +50,13 @@ None.
 - **The font atlas** stays uploaded at start: the first frame needs it.
 - **Recoloured copies** and **`remake`** (a picture saved under `--watch`)
   work on the textures made so far, as today.
-- Textures are never freed (ADR-0126 §5 and §7).
+- Textures are never freed (ADR-0127 §5 and §7).
 - **The raster** (`shuyi_ui::frame::raster`, `frame-png`) is unchanged:
   it decodes from the image table as before.
 
 **Out (do not do):**
 
-- freeing a texture (ADR-0126 §7: not crossed);
+- freeing a texture (ADR-0127 §7: not crossed);
 - the web's streamed pack (3318);
 - 2222's atlas pages: **Either order with 2222:** if 2222 is done, its
   pages are made when first drawn too, and uploaded again when they

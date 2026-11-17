@@ -5,10 +5,10 @@ type: research
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: decision
-completed:
+completed: 2026-11-17
 ---
 
 # 2916 — Research: editing a game's Rust code in a web page
@@ -125,12 +125,12 @@ run on it.
 
 ## Acceptance criteria
 
-- [ ] Each option has its cost, its time and its limits in
+- [x] Each option has its cost, its time and its limits in
       `docs/research/code-pad.md`.
-- [ ] The ADR recommends one, and Nick's answer is in `docs/decisions.md`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a
+- [x] The ADR recommends one, and Nick's answer is in `docs/decisions.md`.
+- [x] The book's chapter is updated (2802), or the completion notes have a
       `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -138,4 +138,66 @@ run on it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done**
+
+- [`docs/research/2916-code-pad.md`](../../docs/research/2916-code-pad.md):
+  the five ways measured on `site/tutorial/02-board`, each with its cost,
+  its time from an edit to the game, and its limits.
+  - **A build server:** a `dev` rebuild of the step's wasm takes 1.3 s on
+    24 cores or two (the site's LTO profile 17 s, 21 s on two); about
+    $10 a month for one small box, plus upkeep and the risk of untrusted
+    code (`build.rs`, macros, `include_bytes!`).
+  - **A compiler in the browser:** none links `wasm32-unknown-unknown`
+    (rubrc links `wasm32-wasip1` and musl only).
+  - **Scripts:** free and as fast as the playground, but two missing
+    pieces (a script asset kind, scripted `TurnRules`) and Rhai beside a
+    page that teaches Rust.
+  - **The reader's own machine:** 1.3 s (web) and 1.9 s (native) a
+    rebuild, after installing Rust.
+  - **A Codespace:** a new 2-core one of `main` at 698a964b, made and
+    deleted on Nick's account: 40 s to *Available*, 40.5 s of setup,
+    136 s for the MCP server's tools, about 6.5 minutes for step 2's
+    first web build, 4.9 s an edit, 4.8 GB of disk; the game played from a
+    private forwarded port.
+- [ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md):
+  one Codespace of the book's project, prebuilt once; `cargo xtask
+  exercise <step> <check>` for exercises that edit Rust; no build server.
+  It extends ADR-0117 (its status line and the index say so).
+- Nick's answer in `docs/decisions.md` (2026-11-17): Codespaces only, and
+  one prebuild kept within his plan's included storage.
+- Tickets: 2094 (the dev container's setup retries a failed fetch), 2837
+  (the book's Codespace, with Nick's prebuild setup), 2838 (the check
+  command and the first exercise that edits Rust), in `docs/ROADMAP.md`.
+
+**Deviations**
+
+- The report is `docs/research/2916-code-pad.md`, not
+  `docs/research/code-pad.md`: every report there starts with its
+  ticket's number.
+- The Codespace's first boot failed: its `postCreateCommand` stopped on a
+  race in `apt` ("rename failed" in apt's `partial/` folder), and the
+  Codespace opened with no Rust. The setup was run again by hand and
+  timed (it passed); 2094 fixes the script.
+- The image has no SSH server, so `gh codespace ssh` failed; one was
+  installed in that Codespace (`apt-get install openssh-server`, from its
+  editor's terminal) to run the timings from here. Nothing in the
+  repository changed for it.
+- The ticket asked for a link to one step (`devcontainer_path`). Nick's
+  choice of one free prebuild made it one container for the whole
+  project instead, since a prebuild is per container (ADR-0126's
+  alternatives).
+- Option 4 was measured with a rebuild by hand: 2528 (`shuyi web
+  --serve`) and 2905 are open. The report says what each would change;
+  2905's clause on this ticket now says what holds, and 2528 names 2837.
+- The playground's **Run** wasn't timed in the page: the browser pane was
+  hidden, so its frames didn't run. The scripts' time is given as the
+  playground's reload plus Rhai's compile time from ADR-0093.
+
+Book: none, no public API changed; the book changes with 2837 and 2838,
+which link the Codespace from each step's page and add exercises that
+edit Rust.
+
+No break.
+
+Nick input: answered (`docs/decisions.md`, 2026-11-17). 2837 asks him to
+set up the one prebuild once its container is on `main`.
