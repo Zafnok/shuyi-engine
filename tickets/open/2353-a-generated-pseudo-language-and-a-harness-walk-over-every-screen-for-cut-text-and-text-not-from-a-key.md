@@ -100,12 +100,12 @@ None.
   - **From 2301 (done):** `pseudo_text` and `with_pseudo` also take
     the atlas's width table (a `CellWidths`) and measure with
     `text_width` over it.
-  - **Either order with 2348:** if it is done, `pseudo_text` reads a
-    text with `Message::parse`. It keeps a message's syntax as it is
-    (argument names and types, branch selectors, `#`) and changes only
-    the words inside its branches, and the property test checks each of
-    `Message::forms`. If not, 2348 makes `pseudo_text` do that when it
-    lands (its clause says so).
+  - **From 2348 (done):** `pseudo_text` reads a text with
+    `Message::parse` (`shuyi_assets::message`, ADR-0125). It keeps a
+    message's syntax as it is (argument names and types, branch
+    selectors, `#`) and changes only the words inside its branches, and
+    the property test checks each of `Message::forms`. A text that
+    doesn't parse is changed as plain placeholders.
   - **Either order with 2390:** if 2390 is done, `fill` and
     `tip::placeholders` are built on `split_tokens` too, and
     `pseudo_text`'s step 1 walks it: a `Token` copied back as `{name}`,

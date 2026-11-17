@@ -264,6 +264,20 @@ What each one reads:
   `lang-status <tag>` lists the pack's entries wider than their key's
   `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
   they fail no gate.
+- **A text that chooses its words** is a message, a subset of ICU
+  MessageFormat 1 ([ADR-0125](adr/0125-messages-choose-their-words.md),
+  `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
+  other {# keys}}` and `{n, selectordinal, one {#st} two {#nd} few {#rd}
+  other {#th}}` by CLDR's categories (and `=0 {…}`), `#` the number, and
+  `{device, select, playdate {Crank it} other {Turn it}}` by a value;
+  every choice has an `other` branch, and `{n, number}` writes plain
+  digits. An apostrophe is a letter ("l'épée"), but `''` is one and `'{'`
+  writes a brace. A plural follows the rules of the language the text is
+  in (`Lang::text_in`): a key a pack lacks shows English with English's
+  rules. `message::plural` holds the rules of `de`, `en`, `es`, `fr`,
+  `it`, `ja`, `ko`, `pl`, `pt`, `ru`, `uk` and `zh`; another language has
+  only `other`. A text that isn't a message is filled as plain
+  placeholders.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

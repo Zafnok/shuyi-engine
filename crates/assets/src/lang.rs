@@ -405,12 +405,24 @@ impl Lang {
     /// [`chain`](Self::chain) made from today's source text, else the
     /// source's. A key the source lacks comes back as it is.
     pub fn text<'a>(&'a self, code: &LangCode, key: &'a str) -> &'a str {
+        self.text_in(code, key).0
+    }
+
+    /// [`text`](Self::text), with the tag of the language it is in: the
+    /// pack's that gave it, else the source's. A message
+    /// ([`Message`](crate::message::Message)) picks its plurals by that
+    /// language's rules, not the player's (ADR-0125).
+    pub fn text_in<'a>(&'a self, code: &LangCode, key: &'a str) -> (&'a str, &'a str) {
+        let source_code = self.written_in.code.as_str();
         let Some(source) = self.ui.get(key) else {
-            return key;
+            return (key, source_code);
         };
         self.packs_along(code)
-            .find_map(|(_, pack)| pack.ui.get(key).filter(|entry| entry.source == *source))
-            .map_or(source, |entry| &entry.text)
+            .find_map(|(code, pack)| {
+                let entry = pack.ui.get(key).filter(|entry| entry.source == *source)?;
+                Some((entry.text.as_str(), code.as_str()))
+            })
+            .unwrap_or((source, source_code))
     }
 
     /// What `code`'s pack lacks, itself, without its chain. The source

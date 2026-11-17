@@ -183,6 +183,33 @@ fn screen_and_data_text_fall_back_along_the_chain() {
 }
 
 #[test]
+fn text_in_and_data_text_in_say_which_language_gave_the_text() {
+    let lang = portuguese(true);
+    let br = code("pt-BR");
+    let text = |key| lang.text_in(&br, key);
+    assert_eq!(
+        [text("a"), text("b"), text("d"), text("nope")],
+        [
+            ("br a", "pt-BR"),
+            ("pt b", "pt"),
+            ("D", "en"),
+            ("nope", "en")
+        ]
+    );
+    let data = |key: &str, english| lang.data_text_in(&br, || key.to_owned(), english);
+    assert_eq!(
+        [data("a", "A"), data("c", "C"), data("d", "D")],
+        [("br a", "pt-BR"), ("pt c", "pt"), ("D", "en")]
+    );
+    // A stale entry is no current one: the source gives the text.
+    assert_eq!(data("a", "A changed"), ("A changed", "en"));
+    assert_eq!(
+        lang.data_text_in(&code("fr"), String::new, "X"),
+        ("X", "en")
+    );
+}
+
+#[test]
 fn the_key_of_data_text_is_built_only_with_a_pack_along_the_chain() {
     let lang = portuguese(true);
     let unbuilt = || -> String { panic!("the key was built") };

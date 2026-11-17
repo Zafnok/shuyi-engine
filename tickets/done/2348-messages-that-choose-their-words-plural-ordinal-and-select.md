@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2348 — Messages that choose their words: plural, ordinal and select
@@ -400,47 +400,50 @@ MVP, blocked by 2348), and say so in the completion notes.
 
 ## Acceptance criteria
 
-- [ ] The ADR is in `docs/adr/` and its README, and ADR-0020 says it
-      is amended.
-- [ ] In `en`, `{n, plural, one {# key} other {# keys}}` gives "1 key"
+- [x] The ADR is in `docs/adr/` and its README, and ADR-0020 says it
+      is amended (ADR-0125).
+- [x] In `en`, `{n, plural, one {# key} other {# keys}}` gives "1 key"
       and "2 keys". In `ru`, a message with `one`, `few`, `many` and
       `other` picks `one` for 1 and 21, `few` for 2 and 22, and `many`
       for 5 and 11. In `fr`, 0 and 1 pick `one` (unit tests).
-- [ ] In `en`, `{n, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}`
+- [x] In `en`, `{n, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}`
       gives 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st and 112th.
-- [ ] For every language in the table, each integer sample CLDR lists
+- [x] For every language in the table, each integer sample CLDR lists
       for a category, cardinal and ordinal, gets that category (the
       fixture).
-- [ ] `=0` wins over a category; `#` writes the number; `'{'` and `''`
+- [x] `=0` wins over a category; `#` writes the number; `'{'` and `''`
       come out as `{` and `'`; "l'épée" needs no quoting.
-- [ ] With the player's language `ru` and a `ru` pack that lacks a key,
+- [x] ~~With the player's language `ru` and a `ru` pack that lacks a key,
       `Ctx::text_with` on that key's English
-      `{n, plural, one {# key} other {# keys}}` gives "21 keys" for 21.
-- [ ] `{device, select, playdate {A} other {B}}` shows A when the
+      `{n, plural, one {# key} other {# keys}}` gives "21 keys" for 21. (`Lang::text_in`'s half is here: it gives the
+      English and `en`, `chain_tests.rs`).~~ (not done: moved to 3218)
+- [x] ~~`{device, select, playdate {A} other {B}}` shows A when the
       `Ctx::device` field is `Device::Pad(PadKind::Playdate)` and B with
       the keyboard, through both `Ctx::text_with` and `Ctx::fill_text`
-      (tests in `crates/ui/src/ctx/tests.rs`).
-- [ ] Each of these is a load error naming the file and the key: an
+      (tests in `crates/ui/src/ctx/tests.rs`).~~ (not done: moved to 3218)
+- [x] ~~Each of these is a load error naming the file and the key: an
       English text that doesn't parse; a pack select that drops a
       branch value of its source; a select on `device` with an unknown
-      value; a plural category the pack's language lacks.
-- [ ] `lang-status` lists a `ru` pack plural that lacks `few` under
+      value; a plural category the pack's language lacks.~~ (not done: moved to 2261)
+- [x] ~~`lang-status` lists a `ru` pack plural that lacks `few` under
       missing forms, and the pack still loads (a fixture pack). The
-      existing tests in `lang_status.rs` pass unchanged.
-- [ ] A tip whose text is a select of two short wordings passes the box
+      existing tests in `lang_status.rs` pass unchanged.~~ (not done: moved to 2261)
+- [x] ~~A tip whose text is a select of two short wordings passes the box
       check, and one whose longer form is too wide fails, naming the
-      tip.
-- [ ] `fill` gives today's output for text that isn't a valid message:
+      tip.~~ (not done: moved to 2261)
+- [x] ~~`fill` gives today's output for text that isn't a valid message:
       the existing tests in `text.rs` pass with only the new `lang`
-      argument added.
-- [ ] Every text of the toy's and hello-grid's English parses (the new
-      tests).
-- [ ] The profiles screen still says "There can be at most 8
+      argument added.~~ (not done: moved to 3218)
+- [x] ~~Every text of the toy's and hello-grid's English parses (the new
+      tests).~~ (not done: moved to 3218)
+- [x] The profiles screen still says "There can be at most 8
       profiles." (`crates/ui/src/screens/profiles/tests.rs`, line 232),
-      and every engine screen's `frame-png` snapshot is unchanged.
-- [ ] The completion notes have a `Breaking:` line for each break
-      under *For the game*.
-- [ ] All gates in the `run-gates` skill pass.
+      and every engine screen's `frame-png` snapshot is unchanged: this
+      PR changes no screen (3218 changes the text and keeps both).
+- [x] The completion notes have a `Breaking:` line for each break
+      under *For the game*: the breaks listed there moved to 3218; this
+      PR's one break is `notices::FILES`'s length.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -462,4 +465,89 @@ MVP, blocked by 2348), and say so in the completion notes.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done: `shuyi_assets::message` and its plural table, with
+`Lang::text_in` and `Lang::data_text_in`; the typed arguments and the
+load checks split off (below).
+
+- **`shuyi_assets::message`** (`no_std` with `alloc`): `Message::parse`
+  (a message borrows its text; errors give the character offset and
+  what was expected), `walk`, `format`, `args`, `names` (added: each
+  argument's name once, what the placeholder rules compare) and `forms`
+  (at most `MAX_FORMS`, 64); `Arg`, `ToArg`, `Piece`, `ArgKind`,
+  `ArgUse` and `MessageError`, each `#[non_exhaustive]` with a
+  constructor where a game could build one (ADR-0039); `DEVICES`,
+  `DEVICE` and `TARGET`, the built-in arguments' names and values, for
+  3218 and 2261.
+- **`message::plural`**: `Category`, `Kind`, `cardinal`, `ordinal` and
+  `categories` over `u64`, from CLDR 49 (`release-49`, 2026-10-21) for
+  the twelve languages and `pt-PT`, which CLDR gives the Italian rule;
+  its fixture `plural_samples.txt` (CLDR's integer samples, generated
+  from the XML; compact and decimal samples left out) is checked sample
+  by sample. `other` of `ru`, `uk` and `pl` has no integer samples.
+- **`Lang::text_in`** and **`Lang::data_text_in`** give the text and the
+  tag of the language that gave it, walking the chain; `text` and
+  `data_text` are built on them.
+- **Credit:** `crates/assets/src/message/CLDR-LICENSE.txt` (from
+  `https://www.unicode.org/license.txt`), a row of
+  `THIRD_PARTY_ASSETS.md`, and a row of `shuyi_cli::notices::FILES`
+  within `shuyi-assets`, so every game's `NOTICES.txt` carries CLDR's
+  license. The web build now lists `notices::engine_files(Build::Web,
+  …)` too (it listed none before, as no file was for the web and
+  within a crate).
+- **Docs:** ADR-0125 (the next free number: 0124 was taken by an open
+  PR), ADR-0020's status, `docs/formats.md`'s paragraph on messages, and
+  the book's chapter 3 (*Assets and formats*), a passage on messages.
+
+Deviations:
+
+- **Split, by size.** The whole ticket measured 2,452 counted lines
+  before `missing_forms` was written; its estimate was 600. Its parts
+  land apart, so this PR keeps the core and two tickets take the rest:
+  - **3218**: the typed arguments in `shuyi-ui` (`Label`, `fill`,
+    `fill_values`, `fill_styled`, `Ctx`, `MenuItem::with_arg`,
+    `Ask::view_with_keys`), `device` and `target`, `Ctx::fill_text`,
+    `tip::placeholders` on `Message::names`, the engine's plural
+    `profile.message.too_many` and the toy's and hello-grid's parse
+    tests. It carries every break of *For the game*.
+  - **2261**: the load checks of English and packs, tips and
+    `Lang::overflow` by form, and `LangStatus::missing_forms` with its
+    `lang-status` lines.
+
+  Both were written and tested before the split and are kept on the
+  local branch `wip/2348-full` (commit `c3fa207b`) of Nick's clone,
+  which each ticket names. The open tickets that named 2348 for those
+  parts (2005, 2330, 2351, 2352, 2390, 2758) now name 3218, and 2238
+  and 2353 say what 2348 left them.
+- `Message` borrows its text (`Message<'a>`): each literal piece is a
+  slice of it, so `walk` hands out `&str` without copying and
+  `tip::placeholders` can keep returning `Vec<&str>`.
+- A lone `}` outside every argument is a letter, as the old fill had it
+  (ICU refuses it), and nesting stops at 8 deep, so random text can't
+  overflow the stack (the property tests).
+- `#` in a select inside a plural is the plural's number; a `#` with a
+  text value writes the text, and with no value is handed out as the
+  plural's argument (`{n}` when `format` has none).
+
+Size: 1,763 counted lines, the parser picks its branches by the plural table and the table has no other user, so neither lands without the other; the ADR, the CLDR fixture and credit are theirs.
+
+Breaking: shuyi-cli: notices::FILES: an array of 4 rather than 3, with CLDR's plural rules; a game that names its type writes `[EngineFile; 4]`, or iterates it.
+
+```migration
+since: 0.1.0
+what: notices::FILES lists CLDR's plural rules too, so it holds four files.
+old: "pub const FILES: [EngineFile; 3]"
+new: "pub const FILES: [EngineFile; 4]"
+before: |
+  let files: &[EngineFile; 3] = &notices::FILES;
+after: |
+  let files: &[EngineFile] = &notices::FILES;
+find: ["[EngineFile; 3]"]
+```
+
+Behaviour: shuyi-cli: every game's NOTICES.txt (`shuyi web`, `shuyi export`) lists "plural.rs, from Unicode CLDR, compiled in by shuyi-assets" under the data compiled in, with the Unicode-3.0 text.
+
+Book: chapter 3 (*Assets and formats*) has a passage on messages and `Lang::text_in`.
+
+Game: game#1062, through 3218, whose PR breaks the game's calls and moves its pin; nothing here changes the game's code (searches of the game for `notices::FILES`, `EngineFile` and `text_in` found none).
+
+Nick: nothing to decide.

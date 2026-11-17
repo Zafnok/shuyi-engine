@@ -32,7 +32,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071; extended by ADR-0037 |
 | [0018](0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md) | Screen results: a screen pops with a value, and hears when it is covered | Accepted |
 | [0019](0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md) | The format registry: kinds are types, a format reads one file, conflicts are per kind | Accepted; extends ADR-0007; extended by ADR-0057 (import settings) |
-| [0020](0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md) | Menu items carry a value, and views hold labels the skin translates | Accepted |
+| [0020](0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md) | Menu items carry a value, and views hold labels the skin translates | Accepted; amended by ADR-0125 |
 | [0021](0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md) | The platform layer in-house: written from specifications, in crates of their own, with wgpu and winit for graphics and the window | Accepted; extends ADR-0002 §8 and §9 and ADR-0008 §2; its tickets are parked |
 | [0022](0022-the-tool-contract-answers-with-limits-schemas-by-version-and-a-session-over-the-harness.md) | The tool contract: answers with limits, schemas by version, and a session over the Harness | Accepted; extends ADR-0005 §1–§2; extended by ADR-0084 (§5: schemas of a game's types) |
 | [0023](0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md) | The pack: one indexed file of baked assets, a bundle layer, proven equal to its sources | Accepted; extends ADR-0007 §4 and ADR-0019; extended by ADR-0118 (§1, §3) |
@@ -136,5 +136,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123 |
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
+| [0125](0125-messages-choose-their-words.md) | Messages choose their words: a subset of ICU MessageFormat 1, our own plural table, and typed arguments | Accepted; amends ADR-0020 |
 
 Template: [`0000-template.md`](0000-template.md).

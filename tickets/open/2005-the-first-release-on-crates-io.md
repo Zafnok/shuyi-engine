@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
+blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044"]
 nick_input: sign-off
 completed:
 ---
@@ -78,7 +78,7 @@ open ticket that day added a fourth group:
     published. Any build ticket it writes that changes the bundle's
     public API joins this list.
 - **Breaks no attribute softens,** done before the release: 2347
-  (styled text) and 2348 (typed label arguments), 2405 and 2409 (mouse
+  (styled text) and 3218 (typed label arguments), 2405 and 2409 (mouse
   and touch on the engine's widgets), 2133 (the bots' settings files),
   2136 (motions moved onto `ease`), 2239 (a check on translated lines),
   3041 (macroquad's `log-rs`) and 3044 (the window kept as it was left).
