@@ -652,7 +652,9 @@ name = "hello-grid"
 version = "0.1.0"
 dependencies = [
  "hello-grid",
+ "hound",
  "insta",
+ "lewton",
  "ron",
  "schemars",
  "serde",
@@ -662,7 +664,6 @@ dependencies = [
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-playdate",
- "shuyi-sound",
 ]
 
 [[package]]

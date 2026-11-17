@@ -45,8 +45,8 @@ Godot, Unity, Unreal, GameMaker and Defold, and what Shuyi had on
   - The page's JS heap keeps a second copy of the pack for the whole run.
   - macroquad's loader can't send a `Range` request; a JS plugin of our
     own can.
-- **Decoded values.** The game's public sounds decode to 2.1 MB from
-  0.4 MB of files. Its 33 pictures take 3.5 MB as textures from 23 KB of
+- **Decoded values.** The game's public sounds decode to about 1.9 MB
+  from 0.4 MB of files. Its 33 pictures take 3.5 MB as textures from 23 KB of
   PNG files, uploaded at start in about 10 ms native and 5–8 ms on the
   web.
 - **The game's public assets** (0.6 MB packed) fit every budget in every

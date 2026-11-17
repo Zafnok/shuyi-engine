@@ -364,24 +364,36 @@ fn hello_load(bundle: &Bundle) -> Result<Box<dyn Any>, String> {
 /// backend decodes a sound at start.
 fn engine_load(bundle: &Bundle) -> Result<Box<dyn Any>, String> {
     let images = ImageTable::load_with(bundle, &Formats::standard(), &[]).map_err(|e| lines(&e))?;
-    let limits = shuyi_sound::Limits::default();
     let mut sounds = Vec::new();
     for path in bundle.files_under("") {
         let bytes = bundle.bytes(path).unwrap_or_default();
-        let pcm = if has_extension(path, "wav") {
-            let mut source = shuyi_sound::wav::WavSource::new(bytes, &limits)
-                .map_err(|e| format!("{path}: {e}"))?;
-            shuyi_sound::read_all(&mut source, &limits)
-        } else if has_extension(path, "ogg") {
-            let mut source = shuyi_sound::vorbis::VorbisSource::new(bytes, &limits)
-                .map_err(|e| format!("{path}: {e}"))?;
-            shuyi_sound::read_all(&mut source, &limits)
-        } else {
-            continue;
-        };
-        sounds.push(pcm.map_err(|e| format!("{path}: {e}"))?);
+        if let Some(samples) = decoded(path, bytes).map_err(|e| format!("{path}: {e}"))? {
+            sounds.push(samples);
+        }
     }
     Ok(Box::new((images, sounds)))
+}
+
+/// The samples of the sound file at `path`, 16 bits each, as the backend
+/// decodes a sound at start: an Ogg Vorbis file decoded with `lewton`, a
+/// WAV file's samples as its header counts them (decoding a WAV copies
+/// them). `None` for a file that isn't a sound.
+fn decoded(path: &str, bytes: &[u8]) -> Result<Option<Vec<i16>>, String> {
+    if has_extension(path, "wav") {
+        let reader = hound::WavReader::new(bytes).map_err(|e| e.to_string())?;
+        let samples = usize::try_from(reader.len()).map_err(|e| e.to_string())?;
+        return Ok(Some(vec![0; samples]));
+    }
+    if !has_extension(path, "ogg") {
+        return Ok(None);
+    }
+    let mut reader = lewton::inside_ogg::OggStreamReader::new(std::io::Cursor::new(bytes))
+        .map_err(|e| e.to_string())?;
+    let mut samples = Vec::new();
+    while let Some(packet) = reader.read_dec_packet_itl().map_err(|e| e.to_string())? {
+        samples.extend(packet);
+    }
+    Ok(Some(samples))
 }
 
 /// The heap a counted step took, or why there is none.

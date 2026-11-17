@@ -22,7 +22,7 @@ three numbers say where that breaks:**
   first; the game's first frame then waits for the files its first
   screen reads.
 - **Decoded values outweigh their files.** The game's public sounds take
-  2.1 MB decoded, against 0.4 MB of files, and its 33 pictures take
+  2.0 MB decoded, against 0.4 MB of files, and its 33 pictures take
   3.5 MB as textures, against 23 KB of PNG files.
 
 Visions of Shuyi's public assets, 0.6 MB packed, fit every budget in
@@ -66,8 +66,10 @@ every way. Nothing here is needed for the game's launch.
   - Hello, Grid: its own load (`Hello::load_from`).
   - The game's folder: every file goes in as its own bytes, and the load
     reads the engine's own kinds. That is each picture's size (the image
-    table) and each sound decoded whole with `shuyi-sound`, as the
-    desktop backend decodes a sound at start. Its data tables need the
+    table) and each sound's samples at 16 bits, as the desktop backend
+    decodes a sound at start: an Ogg file decoded with `lewton` (the
+    library the backend's sound decodes with), a WAV file's samples sized
+    from its header with `hound` (decoding a WAV copies them). Its data tables need the
     game's types, so they go in raw and aren't decoded.
 - **The synthetic packs:** Hello, Grid's files with synthetic ones added
   in the proportions of the game's public assets, by bytes:
@@ -134,16 +136,17 @@ sounds (422,320) and 62 other files (400,417), none baked.
 
 | Way | Peak | Resident | PNG | Sounds | Other | Table | Decoded | In the program |
 | --- | ---: | -------: | --: | -----: | ----: | ----: | ------: | -------------: |
-| embedded | 3,161,092 | 2,915,096 | 18,059 | 404,812 | 400,417 | 6,178 | 2,085,630 | 631,985 |
-| read whole, copied | 3,183,855 | 2,937,859 | 23,314 | 422,320 | 400,417 | 6,178 | 2,085,630 | 0 |
-| read whole, kept | 3,793,077 | 3,547,081 | 35,422 | 807,662 | 608,501 | 9,866 | 2,085,630 | 0 |
-| on first read | 2,619,677 | 2,091,808 | 0 | 0 | 0 | 6,178 | 2,085,630 | 0 |
+| embedded | 3,035,246 | 2,791,006 | 18,059 | 404,812 | 400,417 | 6,178 | 1,961,540 | 631,985 |
+| read whole, copied | 3,058,009 | 2,813,769 | 23,314 | 422,320 | 400,417 | 6,178 | 1,961,540 | 0 |
+| read whole, kept | 3,667,231 | 3,422,991 | 35,422 | 807,662 | 608,501 | 9,866 | 1,961,540 | 0 |
+| on first read | 2,493,831 | 1,967,718 | 0 | 0 | 0 | 6,178 | 1,961,540 | 0 |
 
 On first read: peak = 6,178 + `audio/sfx/heal.wav` stored 137,267 +
-unpacked 144,606 + the load's peak 2,331,626 = 2,619,677.
+unpacked 144,606 + the load's peak 2,205,780 = 2,493,831.
 
 The decoded values are almost all sound: 422 KB of WAV and Ogg files
-decode to about 2.1 MB of 16-bit samples, five times their files. The
+decode to about 1.9 MB of 16-bit samples, between four and five times
+their files. The
 game's music isn't among its public assets; it already loads from beside
 the game when it plays (`crates/app/src/audio.rs`).
 
@@ -177,7 +180,7 @@ files (24,866,105 unpacked, 14,010,188 stored).
 
 - **Read whole and kept** (today's way) holds the pack, plus every
   compressed file unpacked beside it: 1.6 times the pack in the synthetic
-  proportions, and 5.6 times for the game's public assets, whose sounds
+  proportions, and 5.4 times for the game's public assets, whose sounds
   decode. **Copied**, it holds less after (1.26 times), but peaks at 2.3
   times: the read, the unpacked files and the copies are all live at
   once.

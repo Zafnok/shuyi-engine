@@ -447,8 +447,10 @@ ticket that only adds stays after the MVP.
   "read whole, copied", since it is what `pack_beside_program` and the
   Playdate's `read_pack` do.
 - **The game's folder:** its files went in as their own bytes and only
-  the engine's own kinds were loaded (the image table, and each sound
-  decoded with `shuyi-sound`). Baking the game's data needs its types,
+  the engine's own kinds were loaded: the image table, and each sound's
+  samples at 16 bits (Ogg decoded with `lewton`, a WAV sized from its
+  header with `hound`). Not with `shuyi-sound`: it is the sound
+  replacement, which ADR-0068 keeps removable in one step. Baking the game's data needs its types,
   as `docs/formats.md` says.
 - **The synthetic data** compresses about as the game's does (1.8×,
   against the game's 1.9×), not as plain repeated text (70×). The sources
@@ -471,8 +473,8 @@ for a game with several megabytes of art on the Playdate, or a web game
 near its download budget; 2919 decides what to build for them, and when.
 
 No break: the change adds an example program and its dev-dependencies
-(`shuyi-alloc-count`, and `shuyi-sound` with `wav` and `vorbis`), both
-crates of this workspace; no public item changes.
+(`shuyi-alloc-count`, and `lewton` and `hound`, which `shuyi-cli`
+already depends on); no public item changes.
 
 Game: nothing to adopt, the change adds an example program and a
 research page; no public item changes.

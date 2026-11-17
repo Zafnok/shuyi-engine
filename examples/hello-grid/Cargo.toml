@@ -100,9 +100,11 @@ ignored = ["shuyi-app"]
 # the golden test builds for WASI (ticket 2116).
 hello-grid = { path = ".", default-features = false, features = ["tools"] }
 insta.workspace = true
-# The heap counter `examples/asset_memory.rs` reads, and the sound decoders
-# it decodes a folder's sounds with.
+# The heap counter `examples/asset_memory.rs` reads, and the libraries it
+# reads a folder's sounds with: `lewton` decodes Ogg Vorbis (as the desktop
+# backend's sound library does), and `hound` reads a WAV file's header.
 shuyi-alloc-count = { path = "../../crates/alloc-count", features = ["global"] }
-shuyi-sound = { path = "../../crates/sound", features = ["wav", "vorbis"] }
+lewton = { version = "0.9", default-features = false, features = ["ogg"] }
+hound = "3.5"
 # The golden table of `tests/golden.rs`.
 shuyi-assets = { path = "../../crates/assets", features = ["golden"] }
