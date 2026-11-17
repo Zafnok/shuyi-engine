@@ -14,8 +14,9 @@
   "containerEnv": {
     "CARGO_TARGET_DIR": "/home/vscode/book-target"
   },
-  // The commands run in the workspace folder, `site/tutorial`.
-  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship",
+  // The commands run in the workspace folder, `site/tutorial`. The image
+  // has no Python, which serves the step (`serve.sh`).
+  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && sudo apt-get install -y -qq --no-install-recommends python3 && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship",
   "postAttachCommand": "bash serve.sh",
   "forwardPorts": [4000],
   "portsAttributes": {
@@ -29,7 +30,11 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["rust-lang.rust-analyzer"]
+      "extensions": ["rust-lang.rust-analyzer"],
+      // The repository is the folder's parent: its changes show, unasked.
+      "settings": {
+        "git.openRepositoryInParentFolders": "always"
+      }
     }
   }
 }

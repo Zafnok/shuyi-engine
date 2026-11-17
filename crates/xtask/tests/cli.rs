@@ -222,6 +222,20 @@ fn check_pins_passes_on_the_repository() {
 }
 
 #[test]
+fn check_devcontainers_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-devcontainers"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-devcontainers: ok"), "{err}");
+}
+
+#[test]
+fn check_devcontainers_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-devcontainers", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
+
+#[test]
 fn check_pins_takes_no_arguments() {
     let (ok, err) = xtask(&["check-pins", "extra"]);
     assert!(!ok);

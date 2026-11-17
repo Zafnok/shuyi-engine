@@ -264,6 +264,12 @@ h3 {
   color: var(--accent);
 }
 
+/* A step's line under its buttons, on the book's Codespace (ticket 2837). */
+.codespace-note {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .status-key {
   color: var(--muted);
   font-size: 0.95rem;

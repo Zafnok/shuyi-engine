@@ -177,6 +177,7 @@ pub const GATES: &[Gate] = &[
         "cargo xtask changelog >null",
         "cargo xtask check-pins",
         "cargo xtask check-toolchain",
+        "cargo xtask check-devcontainers",
         "cargo xtask check-docs",
         "cargo xtask check-paths",
         "cargo xtask check-merges",

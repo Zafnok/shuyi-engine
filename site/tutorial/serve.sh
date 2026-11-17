@@ -46,14 +46,22 @@ fi
 server='
 import functools, http.server, sys
 class NoCache(http.server.SimpleHTTPRequestHandler):
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".wasm": "application/wasm"}
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 handler = functools.partial(NoCache, directory=sys.argv[2])
 http.server.ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), handler).serve_forever()
 '
-setsid nohup python3 -c "$server" "$port" "$dist" > "$HOME/.book-serve.log" 2>&1 < /dev/null &
+log="$HOME/.book-serve.log"
+setsid nohup python3 -c "$server" "$port" "$dist" > "$log" 2>&1 < /dev/null &
 echo $! > "$pid_file"
+sleep 1
+if ! kill -0 "$(cat "$pid_file")" 2> /dev/null; then
+  echo "serve.sh: the server stopped as it started:" >&2
+  cat "$log" >&2
+  exit 1
+fi
 
 echo "Serving $step's game on port $port: the Ports tab opens it."
 echo "After an edit: \`cargo shuyi web\` in $step/, then reload the game's tab."
