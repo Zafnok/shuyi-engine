@@ -50,6 +50,9 @@ pub struct GlyphSkin {
     /// cells left at the sides. (The sprite skin's glyph ground is always
     /// in the plain style.)
     pub style: GlyphStyle,
+    /// How the threat arrows are drawn ([`with_threat_shape`](Self::with_threat_shape)):
+    /// straight unless given.
+    pub threat_shape: threat::Shape,
 }
 
 impl<U> GridSkin<U> for GlyphSkin {
@@ -99,7 +102,8 @@ impl<U> GridSkin<U> for GlyphSkin {
         style.draw_cursor(self.cursor_ink(looks), buf, scene, &layout, area);
         // From the edge of each enemy's tile: never over its letters.
         let colors = style.threat_colors(looks, &self.colors);
-        threat::paint(scene, &grid, threat::Start::Edge, colors, buf);
+        let shape = self.threat_shape;
+        threat::paint_shaped(scene, &grid, threat::Start::Edge, shape, colors, buf);
     }
 }
 
@@ -112,7 +116,16 @@ impl GlyphSkin {
             walk,
             foot_px,
             style: GlyphStyle::PLAIN,
+            threat_shape: threat::Shape::Straight,
         }
+    }
+
+    /// The same skin, drawing the threat arrows in `shape` (ticket 3220).
+    /// The sprite skin built on it draws them so too.
+    #[must_use]
+    pub const fn with_threat_shape(mut self, shape: threat::Shape) -> Self {
+        self.threat_shape = shape;
+        self
     }
 
     /// The same skin in `style`.

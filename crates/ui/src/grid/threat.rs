@@ -10,6 +10,10 @@
 //! dark edge all round. A line at any angle is a row of short
 //! rectangles, one per step across it. An enemy outside the view has its
 //! arrow cut at the view's edge and no mark.
+//!
+//! A skin may draw the arrows in another [`Shape`] (ticket 3220): as arcs
+//! that bow up the screen over what lies between, 2 pixels thick under a
+//! filled head, and with a frame on the threatened tile as well.
 
 use crate::prelude::*;
 use shuyi_core::Pos;
@@ -29,6 +33,38 @@ pub const BARB_LEN: f32 = 4.0;
 /// The cosine and sine of the angle between a barb and the arrow's line
 /// (about 35°). *Tunable.*
 const BARB_TURN: (f32, f32) = (0.82, 0.57);
+
+/// How a threat's arrows are drawn (ticket 3220). Kind 6 of ADR-0039:
+/// more shapes may come, so a `match` on it has a `_` arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub enum Shape {
+    /// A 1-pixel straight line ending in two barbs (game ticket 0448).
+    #[default]
+    Straight,
+    /// A 2-pixel arc bowing up the screen over what lies between, ending
+    /// in a filled head (as Fire Emblem: Three Houses draws them).
+    Arc,
+    /// [`Arc`](Self::Arc)s, and a frame inside the threatened tile.
+    ArcAndFrame,
+}
+
+/// How far above the middle of its two ends an arc's bend is pulled, as a
+/// part of the distance between them. *Tunable.*
+pub const ARC_BOW: f32 = 0.4;
+
+/// How far short of the tile's middle an arc stops, in pixels. *Tunable.*
+pub const ARC_TIP_SHORT: f32 = 4.0;
+
+/// How long the sides of an arc's head are, in pixels. *Tunable.*
+pub const ARC_HEAD_LEN: f32 = 6.0;
+
+/// The cosine and sine of the angle between each side of an arc's head
+/// and the arc (about 34°). *Tunable.*
+const ARC_HEAD_TURN: (f32, f32) = (0.83, 0.56);
+
+/// How far past the arc's last point its head's tip reaches, in pixels.
+const ARC_HEAD_PAST: f32 = 2.0;
 
 /// The mark's width, in pixels.
 pub const MARK_W: i32 = 3;
@@ -165,6 +201,128 @@ fn arrow(from: Pos, to: Pos, art: &Grid, start: Start) -> Vec<PxRect> {
     rects
 }
 
+/// The middle pixel of tile `tile` of `art`.
+fn tile_middle(tile: Pos, art: &Grid) -> (i32, i32) {
+    let (x, y) = art.tile_px(tile);
+    (x + art.tile.0 / 2, y + art.tile.1 / 2)
+}
+
+/// `r`, one pixel thicker across its run: below a flat one, right of an
+/// upright one.
+const fn thick(r: PxRect) -> PxRect {
+    if r.w >= r.h {
+        Rect::new(r.x, r.y, r.w, r.h + 1)
+    } else {
+        Rect::new(r.x, r.y, r.w + 1, r.h)
+    }
+}
+
+/// The pixels inside the triangle `a`, `b`, `c` (its edges included), as
+/// one rectangle per row.
+fn triangle(a: (i32, i32), b: (i32, i32), c: (i32, i32)) -> Vec<PxRect> {
+    // Which side of the edge from `p` to `q` the pixel `r` is on.
+    let side = |p: (i32, i32), q: (i32, i32), r: (i32, i32)| {
+        i64::from(q.0 - p.0) * i64::from(r.1 - p.1) - i64::from(q.1 - p.1) * i64::from(r.0 - p.0)
+    };
+    let inside = |r: (i32, i32)| {
+        let (d1, d2, d3) = (side(a, b, r), side(b, c, r), side(c, a, r));
+        let neg = d1 < 0 || d2 < 0 || d3 < 0;
+        let pos = d1 > 0 || d2 > 0 || d3 > 0;
+        !(neg && pos)
+    };
+    let (x0, x1) = (a.0.min(b.0).min(c.0), a.0.max(b.0).max(c.0));
+    let (y0, y1) = (a.1.min(b.1).min(c.1), a.1.max(b.1).max(c.1));
+    let mut rows = Vec::new();
+    for y in y0..=y1 {
+        let mut xs = (x0..=x1).filter(|&x| inside((x, y)));
+        if let Some(first) = xs.next() {
+            let last = xs.last().unwrap_or(first);
+            rows.push(Rect::new(first, y, last - first + 1, 1));
+        }
+    }
+    rows
+}
+
+/// The arc from tile `from` (its middle or its edge: `start`) to just
+/// short of the middle of tile `to`, on `art`: a 2-pixel curve bowing up
+/// the screen by [`ARC_BOW`], then its filled head. Nothing for an enemy
+/// on the tile itself.
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // console pixels
+fn arc(from: Pos, to: Pos, art: &Grid, start: Start) -> Vec<PxRect> {
+    if from == to {
+        return Vec::new();
+    }
+    let (a, b) = (tile_middle(from, art), tile_middle(to, art));
+    let (ax, ay, bx, by) = (a.0 as f32, a.1 as f32, b.0 as f32, b.1 as f32);
+    let len = (bx - ax).hypot(by - ay);
+    let (cx, cy) = (f32::midpoint(ax, bx), f32::midpoint(ay, by) - ARC_BOW * len);
+    let at = |t: f32| {
+        let u = 1.0 - t;
+        (
+            u * u * ax + 2.0 * u * t * cx + t * t * bx,
+            u * u * ay + 2.0 * u * t * cy + t * t * by,
+        )
+    };
+    // About two points a pixel: neighbours are never more than one apart.
+    let steps = (len * 2.0).ceil().clamp(4.0, 4096.0) as i32;
+    let mut points: Vec<(f32, f32)> = (0..=steps).map(|i| at(i as f32 / steps as f32)).collect();
+    while points.len() > 2
+        && points
+            .last()
+            .is_some_and(|&(x, y)| (x - bx).hypot(y - by) < ARC_TIP_SHORT)
+    {
+        points.pop();
+    }
+    if start == Start::Edge {
+        // From the first point off the enemy's tile.
+        let (x, y) = art.tile_px(from);
+        let tile = Rect::new(x, y, art.tile.0, art.tile.1);
+        let off = points.iter().position(|&(x, y)| {
+            let (x, y) = pixel(x, y);
+            !tile.contains(x, y)
+        });
+        if let Some(first) = off.filter(|&i| i + 2 <= points.len()) {
+            points.drain(..first);
+        }
+    }
+    let mut pixels: Vec<(i32, i32)> = points.iter().map(|&(x, y)| pixel(x, y)).collect();
+    pixels.dedup();
+    let mut rects: Vec<PxRect> = if pixels.len() == 1 {
+        line(pixels[0], pixels[0])
+    } else {
+        pixels.windows(2).flat_map(|w| line(w[0], w[1])).collect()
+    };
+    rects = rects.into_iter().map(thick).collect();
+    // The head, pointing along the arc's last few points.
+    let (ex, ey) = points[points.len() - 1];
+    let (px, py) = points[points.len().saturating_sub(6)];
+    let d = (ex - px).hypot(ey - py);
+    if d > 0.0 {
+        let (ux, uy) = ((ex - px) / d, (ey - py) / d);
+        let (tx, ty) = (ex + ux * ARC_HEAD_PAST, ey + uy * ARC_HEAD_PAST);
+        let (cos, sin) = ARC_HEAD_TURN;
+        let corner = |sin: f32| {
+            let (bx, by) = (-ux * cos + uy * sin, -uy * cos - ux * sin);
+            pixel(tx + bx * ARC_HEAD_LEN, ty + by * ARC_HEAD_LEN)
+        };
+        rects.extend(triangle(pixel(tx, ty), corner(sin), corner(-sin)));
+    }
+    rects
+}
+
+/// The frame inside tile `tile` of `art`: a 1-pixel ring a pixel in from
+/// its edge (its dark edge then fills the pixel each side).
+fn frame(tile: Pos, art: &Grid) -> [PxRect; 4] {
+    let (x, y) = art.tile_px(tile);
+    let (w, h) = art.tile;
+    [
+        Rect::new(x + 1, y + 1, w - 2, 1),
+        Rect::new(x + 1, y + h - 2, w - 2, 1),
+        Rect::new(x + 1, y + 2, 1, h - 4),
+        Rect::new(x + w - 2, y + 2, 1, h - 4),
+    ]
+}
+
 /// The mark over tile `tile` of `art` (a grid at the art's size, its view's
 /// top at pixel 0): its bar and its dot, centred across the tile, the dot's
 /// last row [`MARK_ABOVE`] pixels clear of the tile's top; moved down to
@@ -184,10 +342,25 @@ fn mark(tile: Pos, art: &Grid) -> [PxRect; 2] {
 /// arrow's dark edge, then the arrows (each from its enemy's tile at
 /// `start`); then every mark's dark edge and the marks. Clipped to the
 /// tiles of `grid`. On a zoomed grid every pixel is a square of the zoom's.
+/// The arrows are [straight](Shape::Straight): [`threat_overlays_shaped`]
+/// draws another shape.
 pub fn threat_overlays(
     threat: &ThreatView,
     grid: &Grid,
     start: Start,
+    colors: Colors,
+) -> Vec<Overlay> {
+    threat_overlays_shaped(threat, grid, start, Shape::Straight, colors)
+}
+
+/// The overlays drawing `threat` on `grid` as [`threat_overlays`] does,
+/// its arrows in `shape`: with [`Shape::ArcAndFrame`], the threatened
+/// tile's frame (and its dark edge) goes with the arrows.
+pub fn threat_overlays_shaped(
+    threat: &ThreatView,
+    grid: &Grid,
+    start: Start,
+    shape: Shape,
     colors: Colors,
 ) -> Vec<Overlay> {
     let view = grid.bounds();
@@ -198,11 +371,14 @@ pub fn threat_overlays(
             out.push(Overlay::new(rect, color, Layer::Over));
         }
     };
-    let arrows: Vec<PxRect> = threat
-        .enemies
-        .iter()
-        .flat_map(|&enemy| arrow(enemy, threat.tile, &art, start))
-        .collect();
+    let draw = |enemy: Pos| match shape {
+        Shape::Straight => arrow(enemy, threat.tile, &art, start),
+        _ => arc(enemy, threat.tile, &art, start),
+    };
+    let mut arrows: Vec<PxRect> = threat.enemies.iter().flat_map(|&e| draw(e)).collect();
+    if shape == Shape::ArcAndFrame && !threat.enemies.is_empty() {
+        arrows.extend(frame(threat.tile, &art));
+    }
     for &rect in &arrows {
         add(grown(rect), colors.edge);
     }
@@ -224,7 +400,7 @@ pub fn threat_overlays(
 
 /// Paints `scene`'s threat arrows and marks, if it has any, on `grid`, in
 /// `colors` ([`Looks::threat`](super::Looks::threat)), each arrow from its
-/// enemy's tile at `start`.
+/// enemy's tile at `start`, [straight](Shape::Straight).
 pub fn paint<U>(
     scene: &MapScene<U>,
     grid: &Grid,
@@ -232,10 +408,23 @@ pub fn paint<U>(
     colors: Colors,
     buf: &mut GlyphBuffer,
 ) {
+    paint_shaped(scene, grid, start, Shape::Straight, colors, buf);
+}
+
+/// Paints `scene`'s threat arrows and marks as [`paint`] does, its arrows
+/// in `shape`.
+pub fn paint_shaped<U>(
+    scene: &MapScene<U>,
+    grid: &Grid,
+    start: Start,
+    shape: Shape,
+    colors: Colors,
+    buf: &mut GlyphBuffer,
+) {
     let Some(threat) = &scene.threat else {
         return;
     };
-    for overlay in threat_overlays(threat, grid, start, colors) {
+    for overlay in threat_overlays_shaped(threat, grid, start, shape, colors) {
         buf.add_overlay(overlay);
     }
 }
