@@ -83,6 +83,11 @@ shuyi-sound-out = { path = "../sound-out", optional = true }
 # features). On every target: the render card's example encodes its
 # pictures with it on the web too (ticket 2019).
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+# The window's record, kept per computer beside the game's storage (ticket
+# 3044): the versions `shuyi-ui` already uses. The sound probe's plan reads
+# with them too.
+serde.workspace = true
+ron = { workspace = true, features = ["std"] }
 
 # Storage on the web (ticket 0207) is `localStorage`, through the engine's own
 # `crates/cli/web/storage.js` (ticket 3033). Native resolves its data
@@ -119,9 +124,6 @@ shuyi-app = { path = ".", features = ["link", "capture"] }
 # Turns on `storage::conformance_suite` in tests, and the toy game the
 # link's tests attach to.
 shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
-# The sound probe's plan.
-serde.workspace = true
-ron.workspace = true
 # The sound probe's decoder timings (ticket 2210): only the example uses it.
 shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
 
