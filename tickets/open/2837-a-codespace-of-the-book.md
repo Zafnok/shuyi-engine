@@ -46,8 +46,8 @@ What there is:
   showed from a private forwarded port after GitHub's sign-in hop. A
   Codespace has no display.
 - 2916 found the root's container's first boot failing on a race in
-  `apt` (2094, this ticket's blocker): the book's container runs the same
-  script.
+  `apt`; the script now tries `apt-get` three times (2094, done), and the
+  book's container runs the same script.
 - 2916 tried `codespaces.new` links: `machine=` works; a
   `devcontainer_path` that doesn't exist falls back to the one container
   without a word, so the parameter is confirmed only once a second

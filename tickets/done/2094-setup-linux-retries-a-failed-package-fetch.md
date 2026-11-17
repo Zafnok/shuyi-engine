@@ -5,10 +5,10 @@ type: bug
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2094 — `setup-linux.sh` retries a failed package fetch
@@ -76,13 +76,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A first `apt-get` failure is retried, and the script passes when a
+- [x] A first `apt-get` failure is retried, and the script passes when a
       later try does.
-- [ ] Three failures exit non-zero with the command to run again.
-- [ ] A new Codespace of the branch has Rust, the web target and the MCP
+- [x] Three failures exit non-zero with the command to run again.
+- [x] A new Codespace of the branch has Rust, the web target and the MCP
       server registered when it opens.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -90,5 +90,46 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `scripts/setup-linux.sh`, its `apt` branch: `add` runs `apt-get
+  update` and `apt-get install` up to three times, 10 s apart, and says
+  on stderr which try failed (`setup-linux: apt-get failed on try 1 of
+  3; trying again in 10 s`). After the third it says to run `bash
+  scripts/setup-linux.sh` again by hand and exits 1. `dnf` and `pacman`
+  keep one try. The template's copy
+  (`templates/shuyi-default/base/scripts/setup-linux.sh`) changes the
+  same: `shuyi new`'s test keeps it byte for byte the engine's.
+  `crates/cli/src/template/plans.golden` is blessed for it: only the
+  three `scripts/setup-linux.sh` hashes moved.
+- `.devcontainer/devcontainer.json` is unchanged: the retry is inside the
+  script, so the `postCreateCommand` needs no split.
+- Step 2, in Docker on `ubuntu:24.04` (as root), with the mirror in
+  `ubuntu.sources` set to `mirror.invalid` and a fixture that puts it
+  back once stderr says try 1 failed: try 1 failed ("Unable to locate
+  package"), try 2 installed the eight packages, curl and rustup, the
+  pinned Rust and the web target; exit 0. Run again in the same
+  container: "everything was there already", exit 0. In a fresh
+  container with the mirror broken throughout: three tries, the
+  command to run again, exit 1 after 43 s.
+- Step 3: a new 2-core Codespace of the branch (`gh codespace create -m
+  basicLinux32gb`, at `74c03cc2`), made after Nick's go-ahead and deleted
+  after. Its creation log: the `postCreateCommand` ran from 07:24:21,
+  `setup-linux: done.` with no try failed (`apt-get failed` 0 times: the
+  race didn't happen this boot), then `mcp install` found `.mcp.json` and
+  `.claude/settings.json` set up and wrote `.vscode/mcp.json`, and `mcp:
+  ready (contract 52)` at 07:28:42. In the editor's terminal, `cargo
+  --version` answered `cargo 1.99.1`, with `wasm32-unknown-unknown`
+  installed. The editor asked to trust the folder before its terminal
+  opened, as 2916 saw.
+- Before it, the dev container's own image
+  (`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`) in Docker, as its
+  `vscode` user through `sudo`, with the mirror broken for try 1 and put
+  back: try 1 failed, try 2 passed, and `cargo --version` answered with
+  the web target installed. That is where the retry ran as the
+  Codespace's user: the race itself can't be made on purpose.
+- The book's quick start (*Try it with nothing installed*) now says
+  what to do when the Codespace's terminal doesn't find `cargo`: run
+  `bash scripts/setup-linux.sh` there and open a new terminal.
+- 2837's note on the race now says the script retries.
+- Behaviour: templates: a new game's `scripts/setup-linux.sh` tries
+  `apt-get` three times, 10 s apart, before it fails.
+- No break: no Rust changed.

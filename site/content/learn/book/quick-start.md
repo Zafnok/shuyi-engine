@@ -34,7 +34,8 @@ Codespaces](https://codespaces.new/Zafnok/shuyi-engine?quickstart=1). That gives
 you a computer in your browser, a **container**, with Rust, a C linker and the
 system libraries set up, and the engine's tools registered with the coding agents
 it finds. Codespaces bills whoever opens it, from their own GitHub account's free
-hours or plan.
+hours or plan. If its terminal says `cargo` isn't found, the setup didn't finish:
+run `bash scripts/setup-linux.sh` there, then open a new terminal.
 
 In it, `cargo shuyi new ../moon-garden --template blank` makes a game beside the
 engine. The rest of this chapter works as written, but there's no window to open:

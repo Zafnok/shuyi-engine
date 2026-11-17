@@ -34,9 +34,24 @@ as_root() {
 if command -v apt-get > /dev/null; then
   manager=apt
   has() { dpkg-query -W -f '${Status}' "$1" 2> /dev/null | grep -q 'install ok installed'; }
+  # Up to three tries: at a new container's first boot, the image's own
+  # start-up work can touch apt's cache while it downloads (engine ticket
+  # 2094), and a later try passes.
   add() {
-    as_root apt-get update
-    as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
+    local try
+    for try in 1 2 3; do
+      if as_root apt-get update &&
+        as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"; then
+        return 0
+      fi
+      if [ "$try" -lt 3 ]; then
+        echo "setup-linux: apt-get failed on try $try of 3; trying again in 10 s" >&2
+        sleep 10
+      fi
+    done
+    echo "setup-linux: apt-get failed on try 3 of 3. Run this again by hand once nothing else is installing:" >&2
+    echo "  bash scripts/setup-linux.sh" >&2
+    exit 1
   }
   packages=$APT
 elif command -v dnf > /dev/null; then
