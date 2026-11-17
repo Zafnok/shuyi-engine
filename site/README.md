@@ -522,8 +522,9 @@ use it.
   `dist/web/` on port 4000 with Python's server, uncached: the step whose
   folder it runs in, the one named (`bash serve.sh 03-walk`), or the last
   one served (`~/.book-step`, step 2 at first). The port is forwarded,
-  private to the reader; the Ports tab opens it (`openPreview` doesn't
-  fire for a server already listening as the editor attaches). After an edit, `cargo
+  private to the reader; the Ports tab opens it, and a preview opens by
+  itself when the `postAttachCommand` starts the server again (at once
+  from a prebuild; after the other nine steps without one). After an edit, `cargo
   shuyi web` in the step's folder builds it again into the same folder,
   and a reload plays it. When `shuyi web --serve` (2528) is done, it
   takes `serve.sh`'s place.

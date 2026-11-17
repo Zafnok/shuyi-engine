@@ -212,6 +212,7 @@ branch at `d60152a6` and `8ff8eba4`):
 | Then steps 8–10, each | 10–11 s |
 | All ten (`build.sh`, timed) | 786 s |
 | Step 2 in the `onCreateCommand`, the rest in `updateContentCommand` (second container): the link to *Available* | 7 min 36 s |
+| Then the other nine, behind the open editor, rust-analyzer sharing the cores | 716 s |
 | An edit to step 2's Rust, then `cargo shuyi web` | 8.1 s |
 
 - **The shared target folder is reused**, but not as one: the ten locks
@@ -260,10 +261,11 @@ cost about step 2's time and go back in one command.
   without it a Codespace with no prebuild would show no game for its
   first minutes. A process started there survives into the Codespace
   (checked: it served while the nine built).
-- *Opened in a preview:* `openPreview` didn't open the port by itself in
-  the second Codespace, whose server was already listening as the editor
-  attached; the Ports tab and the forwarded address open it, and
-  `serve.sh` and the pages say so.
+- *Opened in a preview:* in a Codespace made without the prebuild, the
+  preview opens when the `postAttachCommand` starts the server again,
+  once the other nine are built (12 minutes after the editor opened in
+  the second Codespace); before that, the Ports tab opens the game, which
+  is what `serve.sh` and the pages say.
 - Tried and dropped: `git.openRepositoryInParentFolders: "always"`, which
   traded a notification for a modal trust prompt that came back.
 - No ticket 2528 change: `shuyi web --serve` isn't done; its clause now
