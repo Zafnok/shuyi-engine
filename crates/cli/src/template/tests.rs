@@ -1053,7 +1053,7 @@ fn the_engine_template_has_blank_and_grid_and_a_stage_for_grid() {
         assert!(agents.contains(named), "AGENTS.md doesn't name {named}");
     }
     let config = crate::project::Config::parse(&text_of(&grid, "shuyi.ron")).unwrap();
-    assert_eq!(config.rules.as_deref(), Some("moon-garden-rules"));
+    assert_eq!(config.rules, ["moon-garden-rules"]);
     for plan in [&blank, &grid] {
         let config = crate::project::Config::parse(&text_of(plan, "shuyi.ron")).unwrap();
         let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();

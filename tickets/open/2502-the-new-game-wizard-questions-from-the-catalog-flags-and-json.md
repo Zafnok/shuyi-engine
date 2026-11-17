@@ -69,8 +69,9 @@ asked is missing.
   the xtask's `Concern` (`crates/xtask/src/modules.rs`), and make
   2003's `check-modules` require both fields on every concern but
   `time` (below). `Concern` is in `shuyi modules`'s answer: regenerate
-  its schema and raise `contract::VERSION`. It is a public struct with
-  public fields, so write the `Breaking:` line CI's `api` job asks for.
+  its schema and raise `contract::VERSION`. **From 2086 (done):**
+  `Concern` is `#[non_exhaustive]`, so a new field, `#[serde(default)]`,
+  is no break.
 - **Time is not asked** (ADR-0013 §1): it follows from the
   perspectives, so the `time` concern gets neither field and the wizard
   has no `--time` flag. A template asks its own `time` question when a

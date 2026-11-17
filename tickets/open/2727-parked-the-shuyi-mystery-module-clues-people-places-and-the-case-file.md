@@ -72,9 +72,9 @@ None.
     (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
     still has none, add `Status::Building`, named `building`, with its
     doc, the `status` line of `docs/modules.ron`'s header, *How to read
-    it* in `docs/modules.md` and the `modules` schema. `Status` is a
-    public enum: write a `Breaking:` line if CI's `api` job reports
-    one;
+    it* in `docs/modules.md` and the `modules` schema. `Status` is
+    `#[non_exhaustive]` since 2086 (done), so the new variant is no
+    break;
   - the `shuyi-mystery` skill. **From 1134 (done):** a short skill,
     `skills/shuyi-mystery/SKILL.md`, in the pack's form, saying what
     this ticket built. It has no worked example yet, so its `metadata`

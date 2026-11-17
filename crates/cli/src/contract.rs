@@ -78,6 +78,9 @@ pub const VERSION: u32 = 52;
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new operations come, so a
+// `match` outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum Op {
     /// A new game from a template.
     New,
@@ -129,8 +132,9 @@ pub enum Op {
 }
 
 impl Op {
-    /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 16] = [
+    /// Every operation, in the order the usage lists them. A slice, so
+    /// a new operation changes no type.
+    pub const ALL: &'static [Op] = &[
         Op::New,
         Op::Check,
         Op::Lint,
@@ -151,7 +155,8 @@ impl Op {
 
     /// The MCP server's session tools ([`crate::mcp`]), in the order it
     /// lists them: `scene` is the session's, not the one-off operation.
-    pub const SESSION: [Op; 8] = [
+    /// A slice, as [`Op::ALL`] is.
+    pub const SESSION: &'static [Op] = &[
         Op::Start,
         Op::Step,
         Op::Scene,
@@ -194,7 +199,7 @@ impl Op {
     /// The operation named `name` on the command line (not a session
     /// tool).
     pub fn named(name: &str) -> Option<Op> {
-        Op::ALL.into_iter().find(|op| op.name() == name)
+        Op::ALL.iter().copied().find(|op| op.name() == name)
     }
 }
 
@@ -477,8 +482,11 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
 /// then the MCP server's session tools' ([`Op::SESSION`]), then the file
 /// `export` writes beside its package.
 pub fn schemas() -> Vec<SchemaFile> {
-    let ops = Op::ALL.into_iter().flat_map(|op| op_schemas(op, false));
-    let session = Op::SESSION.into_iter().flat_map(|op| op_schemas(op, true));
+    let ops = Op::ALL.iter().copied().flat_map(|op| op_schemas(op, false));
+    let session = Op::SESSION
+        .iter()
+        .copied()
+        .flat_map(|op| op_schemas(op, true));
     let exposure = file(
         "export.exposure.json".to_owned(),
         &schema_for!(crate::export::disclosure::ExposureReport),

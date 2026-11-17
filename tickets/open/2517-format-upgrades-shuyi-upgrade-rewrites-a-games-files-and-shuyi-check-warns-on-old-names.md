@@ -234,9 +234,9 @@ None.
     Vec<Problem>` (`#[serde(default)]`): "`color` is an old name in the
     \"swatch\" format (since 0.2.0); it is `colour` now: `shuyi
     upgrade` renames it", or a manual change's `say`;
-  - warnings don't fail `check`; `check::check` takes the project's
-    root for the walk (its one caller, `contract/cli.rs`'s `with_game`,
-    passes `project.root`).
+  - warnings don't fail `check`; the walk reads the project's root
+    from `CheckInput::project`, which the CLI and the MCP server set
+    (**from 2086 (done):** no new argument of `check::check`).
 - **The tools read a new game's keymap,** so `import`, `check` and
   `upgrade` see it:
   - `templates/grid/crates/game/src/tools.rs` registers
@@ -343,16 +343,16 @@ None.
   (2236 adds both when it lands).
 - **Size:** if the PR passes about 600 changed lines (the schemas,
   fixtures and snapshots not counted), the warnings in `shuyi check`
-  (`CheckOutput::warnings`, the root on `check::check`, the 2516
+  (`CheckOutput::warnings`, the walk from `CheckInput::project`, the 2516
   clause) go to a follow-up ticket (`write-ticket`), After MVP, blocked
   by this one, and the PR says so. `upgrade --check` already finds every
   old name.
-- **For the game:** nothing changes in its files. The library API does
-  change: a new `Op` variant, a new field of `CheckOutput`, and
-  `check::check` takes the root. Say so in a `Breaking:` line (2010's
-  form, `work-ticket` §5), with a `migration` block under it (the
-  `work-ticket` skill asks for one, 2804); the game's PR that moves
-  the pin follows.
+- **For the game:** nothing changes in its files. The library API only
+  grows: a new `Op` variant and a new field of `CheckOutput`, and the
+  check reads the root from `CheckInput::project`. **From 2086 (done):**
+  `Op` and `CheckOutput` are `#[non_exhaustive]` and `check::check`
+  keeps its signature, so none of these is a break and the PR needs no
+  `Breaking:` line for them.
 
 **Out (do not do):**
 - Deleting a removed field by itself: in this first cut a removal is a

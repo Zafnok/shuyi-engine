@@ -321,12 +321,10 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
     let options = game.frame_options();
     match name {
         "check" => match check::parse_args(&args) {
-            Ok(input) if input.target.is_some() => print(
-                json,
-                &check::targets(&project.config, &project.root, &input, Some(game)),
-                check::text,
-            ),
-            Ok(input) => print(json, &check::check(game, &input), check::text),
+            Ok(mut input) => {
+                input.project = Some(project.clone());
+                print(json, &check::check(game, &input), check::text)
+            }
             Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
         },
         "export" => match export::parse_args(&args) {
@@ -653,7 +651,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("src")).unwrap();
         let mut p = project(dir.clone());
-        p.config.rules = Some("r".to_owned());
+        p.config.rules = vec!["r".to_owned()];
         assert_eq!(lint(&p, &[], &QuietCargo), 0);
         assert_eq!(lint(&p, &args(&["--json"]), &QuietCargo), 0);
         assert_eq!(lint(&p, &args(&["x"]), &QuietCargo), 2);

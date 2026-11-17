@@ -105,9 +105,9 @@ None.
     (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
     still has none, add `Status::Building`, named `building`, with its
     doc, the `status` line of `docs/modules.ron`'s header, *How to read
-    it* in `docs/modules.md` and the `modules` schema. `Status` is a
-    public enum: write a `Breaking:` line if CI's `api` job reports
-    one;
+    it* in `docs/modules.md` and the `modules` schema. `Status` is
+    `#[non_exhaustive]` since 2086 (done), so the new variant is no
+    break;
   - `crates/3d/README.md` in ADR-0009 §4's order: sections 1, 2 and 5
     in full, section 4 with a doc-tested snippet of the space types,
     and section 3 (cost) saying it is measured in 3108.

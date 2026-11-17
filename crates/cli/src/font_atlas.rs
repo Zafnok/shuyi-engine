@@ -656,21 +656,49 @@ fn lacked(font: &BitmapFont, wides: &[BitmapFont], chars: &AtlasChars) -> Option
     ))
 }
 
-/// Runs the command: reads the fonts at `font_paths` (the first is the
-/// font; the rest add glyphs to it) and the wide fonts `wides`, each its
-/// own set (one set once), and writes the glyphs `chars` wants to
-/// `atlas.png`, `atlas.ron` and `atlas_1bit.bin` in `out_dir`. Fails if
-/// the result lacks a glyph `rules` require; a character the text uses
-/// that the fonts lack is named in the summary, not a failure. `command`
-/// is what `atlas.ron`'s header calls the tool.
-pub fn run(
-    rules: &FontAtlas,
-    command: &str,
-    font_paths: &[PathBuf],
-    wides: &[WideFont],
-    out_dir: &Path,
-    chars: &AtlasChars,
-) -> Result<String, String> {
+/// What [`run`] makes an atlas from, and where it writes it.
+///
+/// `#[non_exhaustive]` (ADR-0039, kind 4): built with `default()` and its
+/// fields assigned, so a new option is a field, not an argument.
+///
+/// ```
+/// # use shuyi_cli::font_atlas::RunOptions;
+/// let mut options = RunOptions::default();
+/// options.fonts = vec!["fonts/cells.bdf".into()];
+/// options.out_dir = "assets/fonts".into();
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RunOptions {
+    /// The project's `font_atlas` part: the glyphs the atlas must hold.
+    pub rules: FontAtlas,
+    /// What `atlas.ron`'s header calls the tool (`shuyi`).
+    pub command: String,
+    /// The fonts: the first is the font, the rest add glyphs to it.
+    pub fonts: Vec<PathBuf>,
+    /// The wide fonts, each its own set (one set once).
+    pub wides: Vec<WideFont>,
+    /// The folder the atlas's files go in.
+    pub out_dir: PathBuf,
+    /// The characters the atlas keeps.
+    pub chars: AtlasChars,
+}
+
+/// Runs the command: reads the fonts `options.fonts` and the wide fonts
+/// `options.wides`, and writes the glyphs `options.chars` wants to
+/// `atlas.png`, `atlas.ron` and `atlas_1bit.bin` in `options.out_dir`.
+/// Fails if the result lacks a glyph `options.rules` require; a
+/// character the text uses that the fonts lack is named in the summary,
+/// not a failure.
+pub fn run(options: &RunOptions) -> Result<String, String> {
+    let RunOptions {
+        rules,
+        command,
+        fonts: font_paths,
+        wides,
+        out_dir,
+        chars,
+    } = options;
     let (font_path, extras) = font_paths.split_first().ok_or("no font given")?;
     let mut font = read_font(font_path)?;
     for path in extras {
@@ -768,6 +796,25 @@ fn wide_count(def: &FontAtlasDef, wides: &[WideFont]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// [`super::run`] on these options.
+    fn run(
+        rules: &FontAtlas,
+        command: &str,
+        fonts: &[PathBuf],
+        wides: &[WideFont],
+        out_dir: &Path,
+        chars: &AtlasChars,
+    ) -> Result<String, String> {
+        super::run(&RunOptions {
+            rules: rules.clone(),
+            command: command.to_owned(),
+            fonts: fonts.to_vec(),
+            wides: wides.to_vec(),
+            out_dir: out_dir.to_owned(),
+            chars: chars.clone(),
+        })
+    }
     use crate::codec::decode_png;
 
     /// What a project requires: the fallback glyph and two letters.

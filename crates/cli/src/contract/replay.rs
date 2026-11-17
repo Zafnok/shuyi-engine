@@ -86,6 +86,10 @@ pub struct ReplayRun {
 /// One step of a run: the state after a command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields, so a
+// game reads its fields and never builds it by literal or matches it
+// without `..`.
+#[non_exhaustive]
 pub struct ReplayStep {
     /// The step: 0 before any command, then the command's place from 1.
     pub step: u32,
@@ -113,6 +117,10 @@ pub struct Difference {
 /// What `replay` found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields, so a
+// game reads its fields and never builds it by literal or matches it
+// without `..`.
+#[non_exhaustive]
 pub struct ReplayOutput {
     /// The two runs.
     pub runs: Vec<ReplayRun>,

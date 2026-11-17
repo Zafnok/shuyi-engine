@@ -108,8 +108,8 @@ None.
     *Status* line of `docs/modules.md`). If no ticket has added
     `building` yet (2701 and 2721 use it too), add it in all three.
     `Status` is in `shuyi modules`'s answer, so regenerate its schema
-    and raise `contract::VERSION`. It is an exhaustive public enum, so
-    write the `Breaking:` line CI's `api` job asks for;
+    and raise `contract::VERSION`. It is `#[non_exhaustive]` since 2086
+    (done), so the new variant is no break;
   - the `procgen` feature of the `shuyi` crate;
   - its row in `docs/modules.md` (2003 wrote it parked): `shuyi-procgen`,
     building, tickets 2118, 2119 and 2735.
