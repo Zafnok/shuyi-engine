@@ -300,6 +300,11 @@ None.
       the setting does nothing and no error panel shows;
     - leaving fullscreen with the browser's own key while the setting
       is on: what the setting shows after.
+- **Either order with 3318:** if 3318 is done, the page starts the
+  game once the `.wasm` and the pack's index have arrived, and streams
+  the rest into it: the bar counts those two, and the rest of the pack
+  shows on the game's card (3316); if not, the bar counts the whole pack
+  as the page fetches it today, and 3318 narrows it.
 - **Either order with 3049:** both change `index.html`; whichever
   lands later keeps the other's parts.
 - **From 3066 (done):** `index.html`'s `<head>` has

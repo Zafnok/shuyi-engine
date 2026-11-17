@@ -80,8 +80,9 @@ None.
   - `layer: &'static str`, the layer's name;
   - `shown: String`, its human-facing name (`base/data/crops.ron`), as
     `display_path` shows a file of that layer;
-  - `bytes: &'static [u8]`;
-  - `fn text(&self) -> Option<&'static str>`, the bytes as UTF-8.
+  - `bytes: &'static [u8]` (a `Cow`, by the clause with 2262 below);
+  - `fn text(&self) -> Option<&'static str>`, the bytes as UTF-8 (a
+    `Cow` too, by the same clause).
 - **`Bundle::versions(&self, path: &str) -> Vec<LayerCopy>`**:
   - every layer this thread reads that has the file, **in the order the
     bundle reads layers**: the first is the copy `Bundle::bytes` reads
@@ -138,11 +139,13 @@ None.
   through the shared helper as `bytes` does, found or not, so a `Hot<T>`
   follows a merged value, and a unit test checks that a path read through
   `versions` is in the recording.
-- **Either order with 2919.** If 2919 is done, `LayerCopy`'s `layer`
-  and `bytes` take the lifetimes its ADR decides for the bundle's
-  reads (2919 updates this ticket to say which). If not, they are
-  `&'static` like every read today, and 2919's ADR says what changes
-  for `versions`, a build ticket if anything does.
+- **From 2919 (done):** ADR-0128 §1 keeps a layer's name `&'static str`
+  and hands out a read's bytes as `Cow<'static, [u8]>`. So `LayerCopy`'s
+  `layer` stays `&'static str`. **Either order with 2262:** if 2262 is
+  done, `bytes` is a `Cow<'static, [u8]>` and `text()` gives
+  `Option<Cow<'static, str>>`, as `Bundle::bytes` and `Bundle::file` do;
+  if not, they are `&'static [u8]` and `Option<&'static str>`, and 2262
+  changes them.
 - **Public types (ADR-0039):** `LayerCopy` follows it.
 
 **Out (do not do):**

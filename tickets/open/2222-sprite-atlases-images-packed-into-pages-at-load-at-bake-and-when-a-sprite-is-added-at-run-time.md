@@ -72,6 +72,14 @@ None.
   equality test covers an atlas fixture.
 - **In `shuyi-app`:** the sprite skin draws a sprite from its atlas page
   and rectangle; a page that changed is uploaded again before the frame.
+  **From 2919 (done):** ADR-0128 §5 treats a page as a picture's
+  texture: kept for the run, never freed (its trigger, textures over a
+  quarter of `peak_heap_bytes`, isn't crossed), and an atlas's names are
+  its images' paths, `&'static str` as every path stays (§1).
+  **Either order with 3317:** if 3317 is done, a page is uploaded when it
+  is first drawn, as a picture is, and again when it changes; if not,
+  upload every page at start, as pictures are, and 3317 makes them when
+  first drawn.
   **Either order with 2234** (pictures in 2203's formats): if 2234 is
   done, `crates/app/src/render.rs` has `upload_rgba(width, height,
   rgba)`, which uploads pixels as a texture with the nearest filter:
