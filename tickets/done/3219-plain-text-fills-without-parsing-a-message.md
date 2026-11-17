@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3219 — Plain text fills without parsing a message
@@ -97,4 +97,44 @@ message path agree whenever the check picks the fast one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `text::fill_styled_by` (crate-private) fills with a value lookup in
+  place of a list; `fill_styled_with` calls it with its `args`, and
+  `Ctx::fill_styled` with its `args`, then the built-in `device` and
+  `target`, without the `Vec` it built per call.
+- `has_message_syntax` reads a text's bytes once: a `'` before a `'` or a
+  brace, or a `,`, a space, a `{` or a byte outside ASCII between a `{`
+  and its `}`. A text with none of them is filled by its `{name}`s alone
+  and never given to `Message::parse` (`message_by`, which a test hands
+  a counting parse).
+- Deviation: the ticket's check (a `,` in braces, a `'` by a brace or a
+  `'`) missed one case: a message trims the spaces of a placeholder
+  (`{ name }` fills `name`'s value), which the plain path leaves as
+  written. A space in braces takes the message path too, and so does any
+  byte outside ASCII there (a Unicode space). Without the space rule,
+  the property test and the equivalence test both fail.
+- Tests (`crates/ui/src/text/plain_tests.rs`): every text of the toy's
+  and Hello, Grid's `en.ron` and every string of the text and message
+  tests fills to the same `StyledText` on both paths, in three
+  languages, with values plain and as keys; a property test over texts
+  of braces, commas, apostrophes, spaces, `#`, words and a plural; the
+  counted parse.
+- The number, by Callgrind (Valgrind 3.22, x86-64 Linux, release
+  build), instructions per fill, from a micro-benchmark that fills as
+  `Ctx` does (`device` and `target` added to three values):
+
+  | Text | Before (main) | After |
+  |---|---|---|
+  | a 110-character help line, six placeholders | 15,878 | 13,302 (-16%) |
+  | a plural message and a key | 8,418 | 7,893 (-6%) |
+
+  The check alone on the old argument list took the help line to
+  14,398; the `Vec` dropped took the rest.
+- No break, and no output changes, so no `Behaviour:` line: every text
+  fills byte for byte as before, which the equivalence tests check. The
+  game fills through `Ctx`'s text (`gh search code --repo
+  Zafnok/visions-of-shuyi 'fill_styled_with'` finds no direct call).
+- Docs: none. No public item, format or rule changes; the check's doc
+  comment says what it reads.
+
+Game: game#1285 moves the pin past this one and checks the Playdate
+bench is under budget again.
