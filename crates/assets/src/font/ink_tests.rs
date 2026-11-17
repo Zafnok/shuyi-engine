@@ -33,6 +33,15 @@ fn ink_must_lie_inside_the_cell() {
     let mut upside_down = atlas();
     upside_down.ink.as_mut().unwrap().capitals.top = 12;
     assert_eq!(upside_down.problems("").len(), 1);
+    let mut inside_out = atlas();
+    inside_out.ink.as_mut().unwrap().capitals.left = 7;
+    assert_eq!(inside_out.problems("").len(), 1);
+    // One column, one row, or a glyph one column wide, is ink.
+    let mut thin = atlas();
+    let ink = thin.ink.as_mut().unwrap();
+    ink.capitals = InkBox::new(3, 5, 3, 5);
+    ink.columns.insert('b', [2, 2]);
+    assert_eq!(thin.problems("Ab"), Vec::<String>::new());
 }
 
 #[test]

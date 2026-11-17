@@ -115,6 +115,48 @@ fn a_cap_followed_by_a_full_stop_or_a_comma_leaves_their_cells_alone() {
 }
 
 #[test]
+fn a_cap_one_cell_short_of_its_room_has_no_box() {
+    // `f` at the last column: its name fits, its extra cell doesn't.
+    let mut buf = capped(4);
+    buf.print_styled(3, 0, &hint(&[("f", true)]), colors);
+    assert_eq!(glyphs(&buf, 0), "   F");
+    assert_eq!(buf.items().len(), 0);
+    assert_eq!(buf.glyph_style(3, 0), GlyphStyle::PLAIN);
+    // At the column before, it fits.
+    buf.print_styled(2, 1, &hint(&[("f", true)]), colors);
+    assert_eq!(buf.overlays().len(), 5);
+}
+
+#[test]
+fn a_shorter_box_sits_down_the_line_on_the_row_it_is_printed_on() {
+    let buf = GlyphBuffer::new(4, 2, Cell::new(' ', FG, BG)).with_widths(terminus());
+    let style = KeyCapStyle::new().with_margin_px(1);
+    let caps = KeyCaps::with_colors(style, (Some(FILL), Some(EDGE)), &terminus(), buf.spec());
+    let mut buf = buf.with_key_caps(Some(caps));
+    buf.print_styled(1, 1, &hint(&[("f", true)]), colors);
+    // The box is 11 × 14 px, 2 px into the cap's cells and 1 down: from
+    // (10, 17), its top edge one pixel in from each corner.
+    let under = |x, y, w, h, color| Overlay::new(Rect::new(x, y, w, h), color, Layer::Under);
+    assert_eq!(buf.overlays()[1], under(11, 17, 9, 1, EDGE));
+    assert_eq!(buf.overlays()[2], under(11, 30, 9, 1, EDGE));
+}
+
+#[test]
+fn printing_over_a_cell_leaves_its_neighbours_styles() {
+    let mut buf = GlyphBuffer::new(4, 1, Cell::new(' ', FG, BG));
+    let bold = GlyphStyle::new(1, 0, true);
+    for x in 0..4 {
+        buf.set_glyph_style(x, 0, bold);
+    }
+    buf.print(1, 0, "x", FG, BG);
+    let styled: Vec<i32> = buf.glyph_styles().map(|(x, _, _)| x).collect();
+    assert_eq!(styled, [0, 2, 3]);
+    buf.print(3, 0, "y", FG, BG);
+    let styled: Vec<i32> = buf.glyph_styles().map(|(x, _, _)| x).collect();
+    assert_eq!(styled, [0, 2]);
+}
+
+#[test]
 fn a_cap_the_edge_cuts_has_no_box_and_its_glyphs_are_plain() {
     let mut buf = capped(4);
     let written = buf.print_styled(2, 0, &hint(&[("Space", true)]), colors);

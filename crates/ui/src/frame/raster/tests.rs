@@ -713,3 +713,21 @@ fn a_gizmo_is_its_runs_of_whole_console_pixels() {
     assert_eq!(image.pixel(8, 3), Some([16, 16, 16, 255]));
     assert_eq!(image.pixel(8, 6), Some([16, 16, 16, 255]));
 }
+
+#[test]
+fn a_glyph_style_moves_the_glyph_and_bold_strikes_it_twice() {
+    // The fallback glyph is its cell's left column: moved 2 px right and
+    // 1 down, struck again 1 px right, each pixel 2 × 2.
+    let (fg, bg) = (Rgb::new(250, 200, 60), Rgb::new(10, 20, 30));
+    let mut buf = GlyphBuffer::new(2, 1, Cell::new(' ', fg, bg));
+    buf.set(0, 0, Cell::new(FALLBACK_GLYPH, fg, bg));
+    buf.set_glyph_style(0, 0, crate::frame::GlyphStyle::new(2, 1, true));
+    let image = painter(false).0.render(&buf, 2);
+    let lit = |x: u32, y: u32| image.pixel(x, y) == Some([fg.r, fg.g, fg.b, 255]);
+    assert!(!lit(3, 10) && lit(4, 10) && lit(7, 10) && !lit(8, 10));
+    assert!(!lit(5, 1) && lit(5, 2) && lit(5, 31));
+    buf.set_glyph_style(0, 0, crate::frame::GlyphStyle::PLAIN);
+    let plain = painter(false).0.render(&buf, 2);
+    let lit = |x: u32, y: u32| plain.pixel(x, y) == Some([fg.r, fg.g, fg.b, 255]);
+    assert!(lit(0, 0) && lit(1, 10) && !lit(2, 10));
+}

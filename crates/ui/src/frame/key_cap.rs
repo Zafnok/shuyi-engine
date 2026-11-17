@@ -227,7 +227,8 @@ impl KeyCaps {
         for c in name.chars() {
             let cells = i32::try_from(widths.of_char(c)).unwrap_or(1);
             let (l, r) = self.columns(c, cells);
-            ink = Some((ink.map_or(at * cw + l, |(first, _)| first), at * cw + r));
+            // The first glyph starts the name: its left ink is the cap's.
+            ink = Some((ink.map_or(l, |(first, _)| first), at * cw + r));
             at += cells;
         }
         let (left, right) = ink.unwrap_or((0, cw - 1));
@@ -241,8 +242,9 @@ impl KeyCaps {
         let ink_h = bottom - top + 1;
         let box_h = (ink_h + 2 * pad).min(ch);
         let box_y = (ch - box_h) / 2;
-        let gap_top = (box_h - 2 - ink_h) / 2;
-        let nudge = |v: i32| i8::try_from(v).unwrap_or(if v < 0 { i8::MIN } else { i8::MAX });
+        // Rounded down, also when the ink is taller than the box.
+        let gap_top = (box_h - 2 - ink_h).div_euclid(2);
+        let nudge = |v: i32| i8::try_from(v.clamp(i8::MIN.into(), i8::MAX.into())).unwrap_or(0);
         CapLayout {
             extra,
             frame: Rect::new(box_x, box_y, box_w, box_h),

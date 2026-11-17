@@ -311,6 +311,7 @@ mod tests {
         assert_eq!(playdate.keyboard, Keyboard::Absent);
         assert_eq!(playdate.screen, ScreenColor::OneBit);
         assert!(web.screen.is_color() && deck.screen.is_color());
+        assert!(!playdate.screen.is_color());
         let desktop = PlatformFacts::from_profile(&desktop());
         assert!(desktop.can_quit() && !desktop.can_drop_files());
         let heard = desktop.with_file_drops(FileDrops::Heard);

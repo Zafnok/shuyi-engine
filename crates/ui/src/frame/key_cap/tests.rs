@@ -122,6 +122,31 @@ fn a_margin_too_big_for_the_line_keeps_the_box_the_lines_height() {
 }
 
 #[test]
+fn the_extra_cells_are_the_room_of_a_glyph_inked_across_its_cell_and_bold() {
+    // 8 + 1 + 2 × 4 = 17 px: three cells, two more than the name.
+    let wide_margin = caps(KeyCapStyle::new().with_margin_px(3), &terminus());
+    assert_eq!(wide_margin.extra_cells(), 2);
+    // In 7 px cells, 7 + 1 + 6 = 14 px: two cells, one more.
+    let narrow = KeyCaps::with_colors(
+        KeyCapStyle::new(),
+        (None, None),
+        &CellWidths::NARROW,
+        ConsoleSpec {
+            cell_w: 7,
+            ..ConsoleSpec::text(10, 2)
+        },
+    );
+    assert_eq!(narrow.extra_cells(), 1);
+}
+
+#[test]
+fn an_empty_name_gets_the_box_of_a_glyph_inked_across_its_cell() {
+    let caps = caps(KeyCapStyle::new().with_bold(false), &terminus());
+    let layout = caps.layout("", &terminus());
+    assert_eq!(layout.frame, Rect::new(1, 0, 14, 16));
+}
+
+#[test]
 fn a_font_whose_ink_is_unknown_counts_the_whole_cell() {
     let layout = caps(KeyCapStyle::new().with_bold(false), &CellWidths::NARROW)
         .layout("F", &CellWidths::NARROW);
@@ -159,5 +184,7 @@ fn the_box_takes_the_palettes_key_colours_its_edge_the_fill_without_one() {
     let edged = Palette::new::<EngineColor>(&palette_file).unwrap();
     let caps = KeyCaps::new(KeyCapStyle::new(), &edged, &CellWidths::NARROW, spec);
     assert_eq!(caps.colors(), (fill, Some(Rgb::new(128, 112, 82))));
-    assert_eq!(caps.style(), &KeyCapStyle::new());
+    let thin = KeyCapStyle::new().with_margin_px(1);
+    let caps = KeyCaps::new(thin, &edged, &CellWidths::NARROW, spec);
+    assert_eq!(caps.style(), &thin);
 }
