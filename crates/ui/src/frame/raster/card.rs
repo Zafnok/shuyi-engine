@@ -19,7 +19,8 @@
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;
 //! - two key caps (ticket 3215): a box under each, the name's glyph moved
-//!   off the grid and bold, struck twice;
+//!   off the grid and bold, one drawn from the atlas's bold face (ticket
+//!   3216) and one, which the face lacks, struck twice;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
 //!   a painted picture of its own;
 //! - the debug view's gizmos (ADR-0085) over everything: lines into all
@@ -83,6 +84,8 @@ const MISSING_GLYPH: char = 'Z';
 /// The atlas's wide glyph: a box with a bar down left of its middle, so
 /// its two halves differ.
 const WIDE_GLYPH: char = '田';
+/// What the bold face's `o` is drawn by in [`atlas`]: never in text.
+const BOLD_O: char = '\u{f000}';
 /// The sprites' gallery: two background colours, a cell each, in turn.
 const STRIPES: [Rgb; 2] = [Rgb::new(70, 70, 80), Rgb::new(200, 190, 170)];
 
@@ -161,17 +164,20 @@ pub fn build() -> RenderCard {
     }
 }
 
-/// A 64 × 16 atlas of eight 8 × 16 cells: the space, a box (`#`), a box's
+/// A 72 × 16 atlas of nine 8 × 16 cells: the space, a box (`#`), a box's
 /// outline (`o`), a bar across (`-`), a bar down (`|`), the fallback
-/// glyph, a checkerboard, and the wide glyph over the last two. Glyph
-/// pixels are white, the rest see-through. Its capitals' ink is the
-/// box's, and the bar down's columns its own.
+/// glyph, a checkerboard, the wide glyph over the next two, and the bold
+/// face's `o`, its outline 2 px thick and a column wider (ticket 3216).
+/// Glyph pixels are white, the rest see-through. Its capitals' ink is the
+/// box's, and the bar down's columns its own; the bold face's capitals
+/// reach a column further, and its bar down, which it lacks and strikes
+/// twice, is a column wider.
 fn atlas() -> (FontAtlasDef, Image) {
     const CELL: (u32, u32) = (8, 16);
     let order = [' ', '#', 'o', '-', '|', FALLBACK_GLYPH];
     let glyphs: BTreeMap<char, u32> = order.iter().copied().zip(0..).collect();
     let narrow = u32::try_from(order.len()).unwrap_or(0);
-    let columns = narrow + 2;
+    let columns = narrow + 3;
     let (width, height) = (CELL.0 * columns, CELL.1);
     // Whether pixel `(x, y)` of glyph `glyph`'s cell (both cells of the
     // wide one) is set.
@@ -184,6 +190,10 @@ fn atlas() -> (FontAtlasDef, Image) {
         '-' => (7..9).contains(&y),
         '|' => (3..5).contains(&x),
         FALLBACK_GLYPH => (1..7).contains(&x) && (2..14).contains(&y) && (x + y).is_multiple_of(2),
+        BOLD_O => {
+            let (across, down) = ((1..8).contains(&x), (3..13).contains(&y));
+            across && down && (x <= 2 || x >= 6 || y <= 4 || y >= 11)
+        }
         WIDE_GLYPH => {
             let (across, down) = ((1..15).contains(&x), (2..14).contains(&y));
             across && down && (x == 1 || x == 14 || x == 5 || y == 2 || y == 13 || y == 7)
@@ -196,7 +206,8 @@ fn atlas() -> (FontAtlasDef, Image) {
             let cell = x / CELL.0;
             let on = match order.get(cell as usize) {
                 Some(&glyph) => set(glyph, x % CELL.0, y),
-                None => set(WIDE_GLYPH, x - narrow * CELL.0, y),
+                None if cell < narrow + 2 => set(WIDE_GLYPH, x - narrow * CELL.0, y),
+                None => set(BOLD_O, x % CELL.0, y),
             };
             [if on { 255 } else { 0 }; 4]
         })
@@ -208,9 +219,14 @@ fn atlas() -> (FontAtlasDef, Image) {
         glyphs,
         wide: BTreeMap::from([(WIDE_GLYPH, narrow)]),
         wide_sets: BTreeMap::new(),
+        bold: BTreeMap::from([('o', narrow + 2)]),
         ink: Some(FontInk {
             capitals: InkBox::new(1, 2, 6, 13),
             columns: BTreeMap::from([('|', [3, 4])]),
+        }),
+        bold_ink: Some(FontInk {
+            capitals: InkBox::new(1, 2, 7, 13),
+            columns: BTreeMap::from([('|', [3, 5])]),
         }),
     };
     (
@@ -285,9 +301,10 @@ fn cells(buf: &mut GlyphBuffer) {
     buf.set(22, 11, Cell::new(WIDE_GLYPH, FOREGROUNDS[2], CLEAR));
 }
 
-/// Two key caps at the end of row 1, from column 26: `o`, and `|`,
-/// whose ink is narrower; each a box with an edge, and the glyph moved
-/// off the grid and struck twice. The buffer draws no caps after.
+/// Two key caps at the end of row 1, from column 26: `o`, drawn from the
+/// bold face, and `|`, whose ink is narrower and which the face lacks,
+/// struck twice; each a box with an edge, and the glyph moved off the
+/// grid. The buffer draws no caps after.
 fn caps(buf: &mut GlyphBuffer) {
     let style = KeyCapStyle::new().with_capitals(false);
     let colors = (Some(BACKGROUNDS[0]), Some(FOREGROUNDS[2]));

@@ -202,6 +202,13 @@ What each one reads:
   printable ASCII glyph whose leftmost and rightmost inked columns
   differ (`'W': (0, 6)`). `font-atlas` measures it; a key cap places its
   name by it, and an atlas without it counts the whole cell as ink.
+  **Bold face** (ticket 3216): `bold`, left out when empty, gives a
+  narrow glyph the cell of its bold shape, and `bold_ink` that face's
+  ink. `font-atlas --bold <bold.bdf>` makes them from a bold font of the
+  same cell size (Terminus Bold beside Terminus), after the wide sets.
+  A key cap's name is drawn from it, once, and placed by its ink; a
+  glyph without a bold shape is drawn twice, 1 px apart
+  (`FontAtlasDef::bold_strikes`, which every renderer uses).
   **What the cells draw:** text left to right, one character to a cell
   and two to a wide one (`font::CellWidths` says which, in the language
   the text is in, and `lang::text_width` counts with it). A cell holds one character: no
