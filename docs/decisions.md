@@ -1872,3 +1872,37 @@ that remove those breaks come before the first release.
 - A breaking release after the MVP is fine for 3D (31xx) and other work
   of that size. Parked work that would break stays parked; when it is
   unparked, its ticket says whether it needs a breaking release.
+
+## 2026-11-17: the code pad is a Codespace, with one free prebuild
+
+Source: Nick, in a session of this repository on 2026-11-17, shown
+2916's research (`docs/research/2916-code-pad.md`): a build server
+compiles a step's edit in about 1.3 s and would cost about $10 a month on
+one small box, plus its upkeep and the risk of running strangers' code; a
+Codespace per step costs him nothing, as each reader's own GitHub account
+pays, and takes about 10 minutes to the first game, then about 5 s an
+edit.
+
+Asked how a reader edits a step's Rust, he chose **"Codespaces only
+(Recommended)"**. Asked whether to turn on Codespaces prebuilds, he asked:
+
+> "does this use my free allotment? or it actually bills me some amount?
+> I am on pro plan. If prebuild each step is better then probably that
+> unless it costs $"
+
+Told that his Pro plan includes 20 GB-month of Codespaces storage, shared
+with his own Codespaces, that one prebuild of about 5 GB fits in it ($0),
+and that one a step (about 50 GB) would bill about $2 a month past it, he
+chose **"One shared, free"**.
+
+**Rules:**
+
+- The code pad is a Codespace on the reader's own GitHub account, opened
+  from the book, with a command that checks an exercise that edits Rust
+  (ADR-0126, 2837, 2838). No build server: editing Rust inside the page
+  waits until Nick asks for it again, and costs money then.
+- One Codespaces prebuild, kept within his included storage: one
+  configuration with every step of the book's project built in it, one
+  region, one version kept, made when its dev container changes, not on
+  every push. Nothing on his account bills for it; if it would, it isn't
+  turned on, and he is asked again (2837).
