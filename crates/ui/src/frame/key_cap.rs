@@ -10,7 +10,7 @@
 //! ([`GlyphBuffer::print_styled`](crate::frame::GlyphBuffer::print_styled)).
 //!
 //! A style may also name a picture of the arrow cluster
-//! ([`KeyCapStyle::arrows`], ticket 3217, ADR-0127): a
+//! ([`KeyCapStyle::arrows`], ticket 3217, ADR-0129): a
 //! [`TextRole::Arrows`](crate::text::TextRole::Arrows) span is then drawn
 //! as that picture, a [`Sprite`] in the cells it takes.
 

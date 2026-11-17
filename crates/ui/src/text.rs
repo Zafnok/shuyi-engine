@@ -228,7 +228,7 @@ pub enum TextRole {
     /// language's word for them (`arrows`): drawn as the key caps' picture
     /// of the arrow cluster where they have one
     /// ([`KeyCapStyle::arrows`](crate::frame::KeyCapStyle::arrows)), else
-    /// as a [`Key`](Self::Key) (ADR-0127).
+    /// as a [`Key`](Self::Key) (ADR-0129).
     Arrows,
     /// One of the engine's colours (a warning, a highlight).
     Engine(EngineColor),
@@ -349,7 +349,7 @@ impl StyledText {
     /// [`TextRole::Key`] span's extra cells (ADR-0124). Where they draw the
     /// arrow cluster's picture ([`CellWidths::arrows_cells`]), a
     /// [`TextRole::Arrows`] span takes the picture's cells instead of its
-    /// word's; else it counts as a key (ADR-0127).
+    /// word's; else it counts as a key (ADR-0129).
     pub fn width(&self, widths: &CellWidths) -> usize {
         self.spans.iter().map(|s| span_width(s, widths)).sum()
     }

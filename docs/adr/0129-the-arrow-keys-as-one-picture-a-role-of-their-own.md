@@ -1,4 +1,4 @@
-# ADR-0127: The cursor's arrow keys as one picture: a role of their own, a picture in the key caps' style
+# ADR-0129: The cursor's arrow keys as one picture: a role of their own, a picture in the key caps' style
 
 - **Status:** Accepted; extends ADR-0124
 - **Date:** 2026-11-17

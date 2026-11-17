@@ -1021,7 +1021,7 @@ impl GlyphBuffer {
     /// ([`KeyCapStyle::arrows`](crate::frame::KeyCapStyle::arrows)), a
     /// [`TextRole::Arrows`] span is that picture: spaces on plain text's
     /// background in the cells it takes, and a [`Sprite`] over them
-    /// (ADR-0127); without one it is drawn as a key.
+    /// (ADR-0129); without one it is drawn as a key.
     ///
     /// ```
     /// use shuyi_ui::frame::{Cell, GlyphBuffer, Rgb};

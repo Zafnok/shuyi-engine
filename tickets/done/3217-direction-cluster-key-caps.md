@@ -98,7 +98,7 @@ None. The look is the game's decision (game#0250).
 ## Completion notes
 
 - **The role:** a new `TextRole::Arrows` (not a flag on a `Key`
-  span), recorded in ADR-0127, which extends ADR-0124. The palette
+  span), recorded in ADR-0129, which extends ADR-0124. The palette
   paints it as a key.
 - **The styled cursor keys:** `help_keys::cursor_keys_styled` gives one
   `Arrows` span on the arrow keys, else four `Key` spans (up, left,

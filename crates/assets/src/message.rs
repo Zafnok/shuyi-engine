@@ -1,5 +1,5 @@
 //! Messages that choose their words: a text of a language file in a subset
-//! of ICU `MessageFormat` 1 (ADR-0127), which picks a wording by a number's
+//! of ICU `MessageFormat` 1 (ADR-0129), which picks a wording by a number's
 //! plural category, its rank, or a value.
 //!
 //! ```text
