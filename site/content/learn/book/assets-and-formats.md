@@ -188,6 +188,21 @@ The checks that keep text to a length count so too, once they have the atlas's w
 measured in its language: `source.widths(&CellWidths::of(&atlas))`, or
 `lang.widths(code, &base)` for any language.
 
+A text can choose its words by a number or a value. It is a **message**, written as
+translators and their tools know it, ICU MessageFormat's plural and select:
+
+```ron
+"seeds.left": "{n, plural, =0 {No seeds left} one {# seed left} other {# seeds left}}",
+"sign.water": "{device, select, playdate {Turn the crank} other {Hold to water}}",
+```
+
+Each language has its own plural forms: Russian picks among `one`, `few` and `many`,
+French counts 0 as `one`. A message follows the rules of the language it is written in,
+and `lang.text_in(code, key)` gives a text with that language's tag. Every choice has an
+`other` branch, and an apostrophe is a letter (`l'arrosoir`); `'{'` writes a brace.
+`shuyi::assets::message::Message` reads one (`Message::parse`) and fills it
+(`Message::format`).
+
 ## Voices
 
 A language's voice clips sit in its voice folder, one per dialogue line, listed in its
