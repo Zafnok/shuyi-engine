@@ -5,10 +5,10 @@ type: research
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2906 — Research: asset memory
@@ -355,27 +355,29 @@ ticket that only adds stays after the MVP.
 
 ## Acceptance criteria
 
-- [ ] `docs/research/asset-memory.md` gives, for Hello, Grid, the game's
+- [x] `docs/research/2906-asset-memory.md` gives, for Hello, Grid, the game's
       public assets and both synthetic packs, the peak and the resident
       heap of each of the three ways, split into raw bytes by kind and
       decoded values.
-- [ ] It gives the web numbers (the `.wasm` with and without the files,
+- [x] It gives the web numbers (the `.wasm` with and without the files,
       the times to the card and to the first frame at 25 Mbit/s), the
       textures' count, bytes and upload time, and the Playdate SDK's
       answers with their sources.
-- [ ] `cargo run -p hello-grid --example asset_memory --release`
+- [x] `cargo run -p hello-grid --example asset_memory --release`
       prints the native numbers again, and the document says how to run
       it on the game's assets.
-- [ ] The ADR decides all seven points, each with its numbers.
-- [ ] Each trigger the numbers cross has a build ticket in
+- [x] ~~The ADR decides all seven points, each with its numbers.~~ (not
+      done: moved to 2919 by the size rule)
+- [x] ~~Each trigger the numbers cross has a build ticket in
       `tickets/open/`; each one not crossed is in the ADR with its
-      number.
-- [ ] 2207, 2220, 2222, 2228, 3008, 3010 and 3011 match the ADR, or
-      the completion notes say why one needs no change.
-- [ ] The program uses 3064's counting allocator
+      number.~~ (not done: moved to 2919 by the size rule)
+- [x] ~~2207, 2220, 2222, 2228, 3008, 3010 and 3011 match the ADR, or
+      the completion notes say why one needs no change.~~ (not done:
+      moved to 2919 by the size rule)
+- [x] The program uses 3064's counting allocator
       (`shuyi-alloc-count`); no `unsafe` is in `examples/`.
-- [ ] No file of the game is committed.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] No file of the game is committed.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -391,5 +393,86 @@ ticket that only adds stays after the MVP.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done:**
+
+- `examples/hello-grid/examples/asset_memory.rs`, an `[[example]]` with
+  `test = true`, measures each pack in each way a game can hold one:
+  - **the ways:** embedded; read whole and copied; read whole and kept
+    (today's way, which the ticket didn't list); and on first read,
+    computed with its arithmetic printed;
+  - **the counter:** the global counter's memory tags in a debug build,
+    and a `CountingAlloc` of its own in a release build, so `examples/`
+    has no `unsafe`;
+  - **the packs:** Hello, Grid; `--folder <dir>` for a game's files;
+    and synthetic packs at the `web` and `playdate` profiles'
+    `package_bytes`, read from `targets/*.ron`. `--write-synthetic`
+    writes one to a file.
+- Four tests run in `cargo test --workspace`:
+  - the synthetic pack is the same for the same seed and opens;
+  - the ways on a small synthetic pack, checked by their relations;
+  - a folder's pack and the engine's load of it;
+  - the budgets and the arguments.
+- [`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md)
+  holds the method, every number (native, web, textures, the Playdate
+  SDK's answers with their sections), the machine, the commits, and how
+  to run the program again.
+  - **The Playdate:** a pack over about 6 MB doesn't fit its 10 MB heap
+    read whole as it is read today, and embedding it doesn't help: the
+    SDK loads the program into RAM.
+  - **The web:** the page fetches the whole pack before the `.wasm`, so a
+    pack at the `web` budget puts the card at 9.5 s at 25 Mbit/s.
+  - **The game:** its public assets fit every budget in every way.
+- **The size rule:** the program passed 600 changed lines before step 8.
+  So, as the ticket's *Size* line says, its ADR, its build tickets and
+  its updates to 2207, 2220, 2222, 2228, 3008, 3010 and 3011 moved to
+  follow-up research ticket 2919 (MVP, blocked by this one), which
+  starts from the research page. Three acceptance criteria are left
+  unticked for it.
+- **The tickets that waited on this one's ADR now wait on 2919:** 1124,
+  2005 (which also gains 2919 in its `blocked_by`), 2228, 2368, 2909 and
+  3009, and `docs/ROADMAP.md`.
+
+**Deviations:**
+
+- **The research page** is `docs/research/2906-asset-memory.md`, not
+  `asset-memory.md`: the folder names each report by its ticket.
+- **The ticket was 26 days old** when worked. In the meantime:
+  - 2207, 2220, 3008, 3010, 3064 and 3065 were done;
+  - 3097 (ADR-0097) added a load in steps, with time slices;
+  - 3300 made the web's packed build.
+
+  So that build is the release export, and no scratch build fetching the
+  pack with `load_file` was needed. 2919's text starts from all of this.
+- **A fourth way:** "read whole, kept" is measured beside the ticket's
+  "read whole, copied", since it is what `pack_beside_program` and the
+  Playdate's `read_pack` do.
+- **The game's folder:** its files went in as their own bytes and only
+  the engine's own kinds were loaded (the image table, and each sound
+  decoded with `shuyi-sound`). Baking the game's data needs its types,
+  as `docs/formats.md` says.
+- **The synthetic data** compresses about as the game's does (1.8×,
+  against the game's 1.9×), not as plain repeated text (70×). The sources
+  are scaled so the pack, not the sources, lands at the budget.
+- **The web:**
+  - The browser pane was hidden, so frames were driven by hand
+    (`wasm_exports.frame()`).
+  - The times at 25 Mbit/s add each download's bytes to unthrottled
+    runs, as the ticket allows.
+  - Binaryen isn't installed, so neither build ran `wasm-opt`. The
+    export ran with a scratch `wasm_opt: optional`, not committed.
+- **Textures** were timed in a scratch build of `Renderer::new`, not
+  committed.
+
+**Follow-up tickets:** 2919.
+
+**Notes for Nick:** nothing to decide. Visions of Shuyi's public assets
+fit the Playdate's and the web's budgets in every way. The limits show
+for a game with several megabytes of art on the Playdate, or a web game
+near its download budget; 2919 decides what to build for them, and when.
+
+No break: the change adds an example program and its dev-dependencies
+(`shuyi-alloc-count`, and `shuyi-sound` with `wav` and `vorbis`), both
+crates of this workspace; no public item changes.
+
+Game: nothing to adopt, the change adds an example program and a
+research page; no public item changes.

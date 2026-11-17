@@ -138,10 +138,10 @@ None.
   through the shared helper as `bytes` does, found or not, so a `Hot<T>`
   follows a merged value, and a unit test checks that a path read through
   `versions` is in the recording.
-- **Either order with 2906.** If 2906 is done, `LayerCopy`'s `layer`
+- **Either order with 2919.** If 2919 is done, `LayerCopy`'s `layer`
   and `bytes` take the lifetimes its ADR decides for the bundle's
-  reads (2906 updates this ticket to say which). If not, they are
-  `&'static` like every read today, and 2906's ADR says what changes
+  reads (2919 updates this ticket to say which). If not, they are
+  `&'static` like every read today, and 2919's ADR says what changes
   for `versions`, a build ticket if anything does.
 - **Public types (ADR-0039):** `LayerCopy` follows it.
 

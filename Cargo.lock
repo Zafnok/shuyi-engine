@@ -657,10 +657,12 @@ dependencies = [
  "schemars",
  "serde",
  "shuyi",
+ "shuyi-alloc-count",
  "shuyi-app",
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-playdate",
+ "shuyi-sound",
 ]
 
 [[package]]

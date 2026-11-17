@@ -68,7 +68,7 @@ after every other ticket of this phase but the blog (2805) and sponsors
 2026-11-14 he asked for no run of breaking versions after the MVP: an
 audit of every open ticket put the types that can grow (2082–2086), pad
 events with their pad (2412), outside crates' types (2087), the
-contract's version (2088), the assets' lifetimes (2906) and the breaks
+contract's version (2088), the assets' lifetimes (2906, 2919) and the breaks
 no attribute softens (2347, 2348, 2405, 2409, 2133, 2136, 2239, 3041,
 3044) in the phase, before the release ([`decisions.md`](decisions.md)).
 These tickets, in order:
@@ -164,7 +164,8 @@ These tickets, in order:
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
-| 2906 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published |
+| 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
+| 2919 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |
 | 2405 | Mouse and touch for menus and grid maps |
@@ -373,7 +374,8 @@ is done.
 | 2516 | References between assets checked, and unused shipped files reported |
 | 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
-| 2906 | Research: asset memory, lifetimes, groups and loading in steps |
+| 2906 (done) | Research: asset memory, what stays resident (`docs/research/2906-asset-memory.md`) |
+| 2919 | Research: asset memory, part two: the ADR and the build tickets |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
 | 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
