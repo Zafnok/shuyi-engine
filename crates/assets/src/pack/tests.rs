@@ -77,7 +77,7 @@ pub(super) fn sources() -> &'static Bundle {
 }
 
 /// The tests' game's formats: the standard ones, with pixels, and its own.
-fn formats() -> Formats {
+pub(super) fn formats() -> Formats {
     let mut formats = Formats::standard();
     let own: [Result<(), RegisterError>; 7] = [
         formats.register(Png).or(Ok(())),
@@ -127,7 +127,7 @@ pub(super) fn baked() -> &'static Baked {
 }
 
 /// A bundle of `pack` alone.
-fn pack_bundle(pack: Pack<'static>) -> Bundle {
+pub(super) fn pack_bundle(pack: Pack<'static>) -> Bundle {
     Bundle::new(vec![pack.into_layer("pack")])
 }
 
@@ -455,7 +455,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 18: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 19: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -512,7 +512,7 @@ pub(super) fn resummed(bytes: &[u8], change: impl FnOnce(&mut Vec<u8>)) -> Vec<u
 }
 
 /// The pack of `listing` and `data`, with a right header.
-fn assembled(listing: &Listing, data: &[u8]) -> Vec<u8> {
+pub(super) fn assembled(listing: &Listing, data: &[u8]) -> Vec<u8> {
     let index = postcard::to_allocvec(listing).unwrap();
     let length = u32::try_from(index.len()).unwrap();
     let head = [
@@ -553,6 +553,7 @@ fn opened(mut entries: Vec<Entry>, data: &[u8]) -> String {
     let index = Listing {
         info: test_info(),
         entries,
+        spans: Vec::new(),
     };
     match Pack::open(&assembled(&index, data), STAMP) {
         Ok(pack) => format!("ok: {} file(s)", pack.files().len()),
@@ -869,6 +870,7 @@ fn the_limits_hold_at_their_edges() {
             &Listing {
                 info: test_info(),
                 entries,
+                spans: Vec::new(),
             },
             b"",
         )
@@ -941,12 +943,12 @@ pub(super) fn twelve() -> Vec<(String, Vec<u8>)> {
         .collect()
 }
 
-fn code(bits: u32) -> Code {
+pub(super) fn code(bits: u32) -> Code {
     Code::new(bits).expect("not zero")
 }
 
 /// Each file of pack `bytes`, opened, by path.
-fn files_of(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
+pub(super) fn files_of(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
     let pack = Pack::open(bytes, &test_info().stamp).expect("opens");
     pack.files()
         .iter()
@@ -1093,6 +1095,7 @@ fn a_raw_pack_holds_at_most_max_files() {
         let index = Listing {
             info: test_info(),
             entries,
+            spans: Vec::new(),
         };
         assembled(&index, b"")
     };

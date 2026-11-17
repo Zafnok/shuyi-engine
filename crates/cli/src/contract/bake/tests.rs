@@ -60,6 +60,22 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
         "{shown}"
     );
     assert!(shown.contains("\n  load: sources "), "{shown}");
+    // The folder the game lays first, where it lies.
+    let index = Index::read(&bytes, "fake for playdate").unwrap();
+    let laid = index.file_range("images/a.png").unwrap();
+    let length = laid.end - laid.start;
+    assert_eq!(pack.spans, [PackSpan::new("images", laid.start, length)]);
+    let others = index.paths().filter(|path| *path != "images/a.png");
+    assert!(
+        others
+            .map(|path| index.file_range(path).unwrap())
+            .all(|r| r.start >= laid.end)
+    );
+    let line = format!(
+        "  laid first: images/ ({length} bytes from byte {})\n",
+        laid.start
+    );
+    assert!(shown.ends_with(&line), "{shown}");
     // Somewhere else, for no target.
     let input = BakeInput {
         target: None,
@@ -268,6 +284,7 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
             replaced: Vec::new(),
             sheet: None,
             audio_files: None,
+            spans: Vec::new(),
         }),
     };
     assert_eq!(
@@ -288,6 +305,21 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
         shown.ends_with(
             "  dithered 2 picture(s), to check: assets/a.png, assets/b.png\n  from the target's \
              layer: assets@playdate/c.png\n  contact sheet: sheet.png\n"
+        ),
+        "{shown}"
+    );
+    // A pack that lays folders first names each span.
+    if let Some(pack) = &mut one_bit.pack {
+        pack.spans = vec![
+            PackSpan::new("title", 120, 4_096),
+            PackSpan::new("part1", 4_216, 0),
+        ];
+    }
+    let shown = text(&one_bit);
+    assert!(
+        shown.contains(
+            "pack 0.3 ms\n  laid first: title/ (4,096 bytes from byte 120), part1/ (0 bytes from \
+             byte 4,216)\n  dithered"
         ),
         "{shown}"
     );
