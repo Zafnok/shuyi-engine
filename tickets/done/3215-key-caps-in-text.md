@@ -255,12 +255,12 @@ Deviations:
   (`target/key-caps/`), not committed: a help line, a text box's
   corner (`b log  f ▼`) and a line of prose, caps off and on.
 
-Size: 1,937 counted lines, not split further: the cluster and the bold
+Size: 2,071 counted lines, not split further: the cluster and the bold
 face went to 3217 and 3216, and what is left lands together. A cap's
 room (`CellWidths`, `width`, `cut`), its printing and its glyph style
 in the renderers only work as a whole (a cap counted but not drawn
 misaligns every hint; drawn but not counted, it covers its neighbour),
-and its margins need the atlas's ink; 835 of the lines are the tests
+and its margins need the atlas's ink; 912 of the lines are the tests
 that read its pixels.
 
 Tickets written here:
