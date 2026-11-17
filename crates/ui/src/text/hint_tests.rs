@@ -23,7 +23,7 @@ fn keys(text: &StyledText) -> Vec<String> {
     let spans = text
         .spans()
         .iter()
-        .filter(|s| s.role == Some(TextRole::Key));
+        .filter(|s| matches!(s.role, Some(TextRole::Key | TextRole::Arrows)));
     spans.map(|s| s.text.replace(NO_BREAK_SPACE, " ")).collect()
 }
 

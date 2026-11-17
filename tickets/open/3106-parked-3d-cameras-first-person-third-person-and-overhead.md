@@ -74,13 +74,13 @@ None.
     way its ADR says a game asks for the grab (macroquad's
     `set_cursor_grab` until the winit backend replaces macroquad); if
     not, use macroquad's cursor grab, and 3034 plans keeping it.
-  - **Either order with 3314** (the idle cursor): a locked pointer is
-    never shown. If 3314 is done, give its `IdleCursor`
-    (`crates/app/src/window.rs`) a `locked: bool`, set while the lock
-    holds, that hides the cursor and wins over mouse motion and 1121's
-    `keep_shown`, with a unit test; if not, hide the cursor while the
-    lock holds (`show_mouse(false)`), and 3314 adds `locked` (its scope
-    says so).
+  - **From 3314 (done)** (the idle cursor): a locked pointer is never
+    shown. Give its `CursorSeen` (`crates/app/src/window.rs`) a
+    `locked: bool` (a fourth bool there: clippy's
+    `struct_excessive_bools` allows three, so group them or make
+    `keep_shown` and `locked` one enum), set while the lock holds, that makes `IdleCursor`
+    hide the cursor and wins over mouse motion and 1121's `keep_shown`,
+    with a unit test.
   - sensitivity and invert-y are the player's settings in their keymap
     file, never constants in a game.
 - **`FirstPersonLook: CameraRig<FirstPerson>`**: yaw and pitch as

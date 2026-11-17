@@ -80,7 +80,7 @@ impl DroppedFile {
     /// let dropped = DroppedFile::new("C:\\Users\\me\\level.txt", b"mine".to_vec());
     /// let layer = DroppedFile::layer([dropped]).unwrap();
     /// let bundle = Bundle::new(vec![layer, Layer::table("base", BASE)]);
-    /// assert_eq!(bundle.file("level.txt"), Some("mine"));
+    /// assert_eq!(bundle.file("level.txt").as_deref(), Some("mine"));
     /// ```
     ///
     /// # Errors
@@ -192,8 +192,8 @@ mod tests {
         .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(layer.name, DROPPED_LAYER);
         let bundle = shuyi_assets::bundle::Bundle::new(vec![layer]);
-        assert_eq!(bundle.file("one.txt"), Some("1"));
-        assert_eq!(bundle.file("two.txt"), Some("2"));
+        assert_eq!(bundle.file("one.txt").as_deref(), Some("1"));
+        assert_eq!(bundle.file("two.txt").as_deref(), Some("2"));
     }
 
     #[test]

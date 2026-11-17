@@ -4,6 +4,7 @@
 //! or changed, is refused and never panics; and the binary form of every
 //! engine kind is pinned, so a change to one makes [`VERSION`] the next
 //! number.
+use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::sync::OnceLock;
 
@@ -175,7 +176,10 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     };
     assert_eq!(kinds("images/card.png"), ["image", "image pixels"]);
     assert_eq!(kinds("fonts/atlas.png"), Vec::<&str>::new());
-    assert_eq!(pack.bytes("readme.txt"), Some(&b"kept as it is"[..]));
+    assert_eq!(
+        pack.bytes("readme.txt").as_deref(),
+        Some(&b"kept as it is"[..])
+    );
     assert_eq!(baked().files.len(), sources().files_under("").len());
     assert_eq!(
         baked().source_bytes(),
@@ -325,7 +329,7 @@ fn settings_files_are_checked_and_kept_as_their_own_bytes() {
     );
     let bytes: &'static [u8] = Box::leak(baked.bytes.into_boxed_slice());
     let pack = pack_bundle(Pack::open(bytes, STAMP).unwrap_or_else(|e| panic!("{e}")));
-    assert_eq!(pack.bytes("data/a.ron.meta"), Some(&b"()"[..]));
+    assert_eq!(pack.bytes("data/a.ron.meta").as_deref(), Some(&b"()"[..]));
     assert_eq!(bake.check(&pack_formats(&bake), good, &pack), []);
     let bad = files(("data/b.ron.meta", b"(nope: ())".to_vec()));
     let refused = bake.bake(&formats(), bad, None).err().unwrap_or_default();
@@ -726,7 +730,7 @@ proptest! {
         prop_assert_eq!(&read, &files);
         let bundle = pack_bundle(pack.into_owned());
         for (path, bytes) in &files {
-            prop_assert_eq!(bundle.bytes(path), Some(bytes.as_slice()));
+            prop_assert_eq!(bundle.bytes(path), Some(Cow::Borrowed(bytes.as_slice())));
         }
     }
 

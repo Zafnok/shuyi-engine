@@ -7,6 +7,7 @@ use super::*;
 use crate::frame::draw::cut;
 
 const KEY: Option<TextRole> = Some(TextRole::Key);
+const ARROWS: Option<TextRole> = Some(TextRole::Arrows);
 const WARN: Option<TextRole> = Some(TextRole::Engine(EngineColor::Warning));
 
 /// `text`'s spans as `(text, role)` pairs.
@@ -164,10 +165,11 @@ fn a_select_chooses_by_args_then_key_args() {
 
 /// A role, by a number.
 fn role(n: u8) -> Option<TextRole> {
-    match n % 4 {
+    match n % 5 {
         0 => None,
         1 => KEY,
         2 => WARN,
+        3 => ARROWS,
         _ => Some(TextRole::Palette("gold")),
     }
 }
@@ -175,7 +177,7 @@ fn role(n: u8) -> Option<TextRole> {
 /// Texts made of up to eight pushes of short text (wide glyphs among them)
 /// in random roles.
 fn styled() -> impl Strategy<Value = StyledText> {
-    proptest::collection::vec(("[a あ.]{0,4}", 0..4_u8), 0..8).prop_map(|pushes| {
+    proptest::collection::vec(("[a あ.]{0,4}", 0..5_u8), 0..8).prop_map(|pushes| {
         let mut s = StyledText::new();
         for (text, n) in &pushes {
             s.push(text, role(*n));
@@ -207,11 +209,89 @@ proptest! {
         s in styled(),
         w in 0..20_usize,
     ) {
-        let keys = s.spans().iter().filter(|span| span.role == KEY).count();
+        // Without a picture, the arrow keys are a cap of their word.
+        let keys = s.spans().iter().filter(|span| span.role == KEY || span.role == ARROWS);
         let plain = text_width(&s.plain(), &capped());
-        prop_assert_eq!(s.width(&capped()), plain + keys);
+        prop_assert_eq!(s.width(&capped()), plain + keys.count());
         prop_assert!(s.cut(w, &capped()).width(&capped()) <= w);
     }
+
+    /// With the arrow cluster's picture, an arrows span takes the
+    /// picture's cells, whatever its word; a cut fits and keeps it whole.
+    #[test]
+    fn with_a_picture_the_arrows_take_its_cells(s in styled(), w in 0..20_usize) {
+        let widths = pictured();
+        let mut expected = 0;
+        for span in s.spans() {
+            expected += match span.role {
+                ARROWS => 3,
+                KEY => text_width(&span.text, &widths) + 1,
+                _ => text_width(&span.text, &widths),
+            };
+        }
+        prop_assert_eq!(s.width(&widths), expected);
+        let cut = s.cut(w, &widths);
+        prop_assert!(cut.width(&widths) <= w);
+        let whole = |span: &TextSpan| s.spans().iter().any(|t| t.text == span.text);
+        prop_assert!(cut.spans().iter().filter(|t| t.role == ARROWS).all(whole));
+    }
+}
+
+/// [`capped`], drawing the arrow keys as a picture three cells wide.
+fn pictured() -> CellWidths {
+    capped().with_arrows_cells(Some(3))
+}
+
+#[test]
+fn the_arrows_take_the_pictures_cells_and_are_cut_whole() {
+    let mut hint = StyledText::new();
+    hint.push_arrows("arrows").push_plain(" move");
+    assert_eq!(spans(&hint), [("arrows", ARROWS), (" move", None)]);
+    assert_eq!(hint.width(&CellWidths::NARROW), 11);
+    // Caps without a picture: a cap of the word, a cell wider.
+    assert_eq!(hint.width(&capped()), 12);
+    assert_eq!(hint.width(&pictured()), 8);
+    assert_eq!(hint.cut(8, &pictured()), hint);
+    let mut kept = StyledText::new();
+    kept.push_arrows("arrows").push_plain(" m…");
+    assert_eq!(hint.cut(6, &pictured()), kept);
+    let mut dropped = StyledText::new();
+    dropped.push_plain("…");
+    for w in 1..=3 {
+        assert_eq!(hint.cut(w, &pictured()), dropped, "{w}");
+    }
+}
+
+#[test]
+fn fill_styled_with_keeps_the_roles_of_what_it_fills_in() {
+    let cursor = |name: &str| {
+        let mut keys = StyledText::new();
+        match name {
+            "Cursor" => keys.push_key("w").push_plain(" ").push_key("a"),
+            "Arrows" => keys.push_arrows("arrow keys"),
+            _ => return None,
+        };
+        Some(keys)
+    };
+    let filled = fill_styled_with(
+        "{Cursor} · {Arrows} · {x} {y}",
+        &[],
+        &[("x", &"Num Enter")],
+        cursor,
+    );
+    assert_eq!(
+        spans(&filled),
+        [
+            ("w", KEY),
+            ("\u{a0}", None),
+            ("a", KEY),
+            (" · ", None),
+            ("arrow\u{a0}keys", ARROWS),
+            (" · ", None),
+            ("Num\u{a0}Enter", KEY),
+            (" {y}", None),
+        ]
+    );
 }
 
 /// Widths that draw a key as a cap a cell wider than its name.

@@ -232,25 +232,34 @@ impl<A: ActionSet> Keymap<A> {
     /// if any of them is unbound, or the game has no such action. Lives
     /// here, not with the help text, because it names keys.
     pub fn cursor_keys_name(&self, arrows_name: &str) -> Option<String> {
+        let (chords, arrows) = self.cursor_chords()?;
+        Some(if arrows {
+            arrows_name.to_owned()
+        } else {
+            chords.iter().map(ToString::to_string).collect()
+        })
+    }
+
+    /// The primary chords of the actions the game takes for up, left,
+    /// down and right, in that order, and whether they are the plain arrow
+    /// keys. `None` if any of them is unbound, or the game has no such
+    /// action.
+    pub(crate) fn cursor_chords(&self) -> Option<([Chord; 4], bool)> {
         let order = [
             (UiAction::Up, Key::Up),
             (UiAction::Left, Key::Left),
             (UiAction::Down, Key::Down),
             (UiAction::Right, Key::Right),
         ];
-        let chords = order
-            .iter()
-            .map(|&(ui, _)| self.primary(A::for_ui(ui)?))
-            .collect::<Option<Vec<_>>>()?;
+        let mut chords = [Chord::plain(Key::Up); 4];
+        for (chord, &(ui, _)) in chords.iter_mut().zip(&order) {
+            *chord = self.primary(A::for_ui(ui)?)?;
+        }
         let arrows = chords
             .iter()
             .zip(order)
             .all(|(chord, (_, arrow))| *chord == Chord::plain(arrow));
-        Some(if arrows {
-            arrows_name.to_owned()
-        } else {
-            chords.iter().map(ToString::to_string).collect()
-        })
+        Some((chords, arrows))
     }
 
     /// What moves the cursor on a pad of `kind`, for help text: the whole

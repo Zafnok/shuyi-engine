@@ -7,7 +7,9 @@
 //! player and asks for ([`player_files`]), the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
 //! memory tags and its snapshots, in debug builds. On a desktop it keeps
-//! the window's record as the window changes ([`window`](crate::window)).
+//! the window's record as the window changes ([`window`](crate::window)),
+//! and hides the cursor while the mouse rests and in fullscreen
+//! ([`IdleCursor`]).
 //! It keeps the frame cap
 //! the last frame asked for, for [`run_app`](crate::run_app)'s pacer, and the input
 //! of the web's skipped frames for the next that runs.
@@ -17,6 +19,8 @@
 //! is made from the first game frame's [`Look`], its textures made again as
 //! their files change ([`pictures`]), and the sound player and the pads once
 //! the game has loaded ([`Macroquad::start`]).
+
+use std::borrow::Cow;
 
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
@@ -48,7 +52,9 @@ use crate::render::{Renderer, color, decode, upload};
 use crate::watch::{Poller, RealDisk};
 #[cfg(windows)]
 use crate::window::Place;
-use crate::window::{Opened, Record, WindowMemory, wanted_fullscreen};
+use crate::window::{
+    CursorSeen, IdleCursor, Mouse, Opened, Record, WindowMemory, wanted_fullscreen,
+};
 use crate::{AppConfig, keys, storage};
 use shuyi_platform::Millis;
 
@@ -61,7 +67,7 @@ type Sound = PlayerDevice<audio::Chosen>;
 pub(crate) struct Macroquad {
     /// Where the storage is.
     storage_at: storage::StorageAt,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &'static str,
     /// What draws the game's frames, from the first one's look.
     renderer: Option<Renderer>,
@@ -87,6 +93,8 @@ pub(crate) struct Macroquad {
     pads: Option<PadInput>,
     /// Whether the window has focus, from miniquad's events.
     focus: WindowFocus,
+    /// Whether the cursor shows over the window.
+    cursor: IdleCursor,
     sound: Sound,
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
@@ -144,6 +152,7 @@ impl Macroquad {
             place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
+            cursor: IdleCursor::default(),
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
@@ -185,6 +194,7 @@ impl Macroquad {
         self.system_events(&mut system);
         self.poll_input(&mut input);
         self.held.keep(input, system);
+        self.held.keep_press(mouse_pressed());
     }
 
     /// Readies what plays the loaded `game`: decodes its sounds (which takes
@@ -212,13 +222,28 @@ impl Macroquad {
     }
 
     /// After `run_app`'s frame at `now`: the window is seen, and its record
-    /// written once it has settled.
+    /// written once it has settled; the cursor is shown or hidden as the
+    /// mouse and the window's mode and focus say ([`IdleCursor`]). Reading
+    /// the mouse here is not input: nothing of it reaches the game.
     pub(crate) fn after_frame(&mut self, now: Millis) {
         if std::mem::take(&mut self.refresh_fullscreen) {
             set_fullscreen(true);
         }
         if let Some(record) = self.memory.see(now, window_size(), self.fullscreen) {
             self.write_window(record);
+        }
+        let seen = CursorSeen {
+            now,
+            mouse: Mouse {
+                at: mouse_at(),
+                pressed: self.held.take_press() || mouse_pressed(),
+            },
+            fullscreen: self.fullscreen,
+            focused: self.focus.is_focused(),
+            keep_shown: false,
+        };
+        if let Some(shown) = self.cursor.see(seen) {
+            show_mouse(shown);
         }
     }
 
@@ -299,7 +324,7 @@ impl Macroquad {
                     let files = self.files;
                     let png = pictures::read(files, self.font_png).unwrap_or_default();
                     let read = |path: &str| pictures::read(files, path);
-                    Renderer::with_files(look.font.clone(), png, background, look.images, read)
+                    Renderer::with_files(look.font.clone(), &png, background, look.images, read)
                 }
                 None => Err("the game gave no font and pictures to draw with".to_owned()),
             };
@@ -369,7 +394,7 @@ impl Macroquad {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
                     let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
-                        .and_then(upload);
+                        .and_then(|png| upload(&png));
                     if let Err(e) = &texture {
                         warn!("loading card: {}: {}", path, e);
                     }
@@ -434,6 +459,22 @@ fn window_size() -> (i32, i32) {
     };
     let side = |x: f32| i32::try_from(pixels(x)).unwrap_or(i32::MAX);
     (side(width), side(height))
+}
+
+/// The mouse's position over the window, in whole pixels.
+fn mouse_at() -> (i32, i32) {
+    let (x, y) = mouse_position();
+    // A position over a window is far within an i32.
+    #[allow(clippy::cast_possible_truncation)]
+    let whole = |v: f32| v.round() as i32;
+    (whole(x), whole(y))
+}
+
+/// Whether a mouse button was pressed this frame.
+fn mouse_pressed() -> bool {
+    [MouseButton::Left, MouseButton::Right, MouseButton::Middle]
+        .into_iter()
+        .any(is_mouse_button_pressed)
 }
 
 impl Platform for Macroquad {

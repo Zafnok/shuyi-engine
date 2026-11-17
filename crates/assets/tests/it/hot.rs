@@ -2,6 +2,7 @@
 //! decode reads tracked across a format that reads a second one, and a
 //! broken file keeping the old value.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -55,7 +56,7 @@ impl Format for SheetFormat {
         };
         Ok(Sheet {
             picture,
-            pixels: pixels.to_owned(),
+            pixels: pixels.into_owned(),
         })
     }
 }
@@ -215,17 +216,17 @@ fn only_a_layer_handed_in_at_run_time_takes_new_bytes() {
     assert!(!table.replace("a.txt", b"new".to_vec()));
     let alone = Bundle::new(vec![table]);
     assert!(!alone.replace("a.txt", b"new".to_vec()));
-    assert_eq!(alone.file("a.txt"), Some("embedded"));
+    assert_eq!(alone.file("a.txt").as_deref(), Some("embedded"));
     // Over the embedded one, the disk layer's file wins; under it, it is
     // kept but never read.
     let top = disk(&[("a.txt", "disk")]);
     let over = Bundle::new(vec![top, table]);
     assert!(over.replace("b.txt", b"disk b".to_vec()));
-    assert_eq!(over.file("b.txt"), Some("disk b"));
+    assert_eq!(over.file("b.txt").as_deref(), Some("disk b"));
     assert_eq!(over.display_path("b.txt"), "disk/b.txt");
     let under = Bundle::new(vec![table, disk(&[])]);
     assert!(under.replace("a.txt", b"new".to_vec()));
-    assert_eq!(under.file("a.txt"), Some("embedded"));
+    assert_eq!(under.file("a.txt").as_deref(), Some("embedded"));
     // A bad path is refused.
     assert!(!over.replace("../a.txt", b"new".to_vec()));
     assert_eq!(over.files_under(""), ["a.txt", "b.txt"]);
@@ -236,19 +237,25 @@ fn of_two_disk_layers_the_one_that_has_the_file_takes_it() {
     let (first, second) = (disk(&[("a.txt", "a")]), disk(&[("b.txt", "b")]));
     let bundle = Bundle::new(vec![first, second]);
     assert!(bundle.replace("b.txt", b"b2".to_vec()));
-    assert_eq!(Bundle::new(vec![second]).file("b.txt"), Some("b2"));
+    assert_eq!(
+        Bundle::new(vec![second]).file("b.txt").as_deref(),
+        Some("b2")
+    );
     assert_eq!(Bundle::new(vec![first]).file("b.txt"), None);
     let new = bundle.replace("c.txt", b"c".to_vec());
     assert!(new);
-    assert_eq!(Bundle::new(vec![first]).file("c.txt"), Some("c"));
+    assert_eq!(Bundle::new(vec![first]).file("c.txt").as_deref(), Some("c"));
 }
 
 #[test]
 fn an_old_read_stays_valid_after_a_replace() {
     let bundle = Bundle::new(vec![disk(&[("a.txt", "old")])]);
-    let old: &'static str = bundle.file("a.txt").unwrap();
+    // The read is borrowed from the layer, for the life of the program.
+    let Some(Cow::Borrowed(old)) = bundle.file("a.txt") else {
+        panic!("a read of a run-time layer is borrowed");
+    };
     assert!(bundle.replace("a.txt", b"new".to_vec()));
-    assert_eq!((old, bundle.file("a.txt")), ("old", Some("new")));
+    assert_eq!((old, bundle.file("a.txt").as_deref()), ("old", Some("new")));
     // A bundle cloned before it reads the same layer.
-    assert_eq!(bundle.clone().file("a.txt"), Some("new"));
+    assert_eq!(bundle.clone().file("a.txt").as_deref(), Some("new"));
 }

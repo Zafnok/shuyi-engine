@@ -21,7 +21,7 @@ pub fn edited(file: &str, edits: &[(&str, &str)]) -> Data {
     let mut text = bundle
         .file(file)
         .unwrap_or_else(|| panic!("the step has no files/{file}"))
-        .to_owned();
+        .into_owned();
     for (find, replace) in edits {
         assert_eq!(
             text.matches(find).count(),

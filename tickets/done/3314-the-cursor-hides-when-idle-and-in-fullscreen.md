@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["3044"]
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3314 — The cursor hides when the mouse is still and in fullscreen
@@ -127,18 +127,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `IdleCursor`, with made-up times: shown at a windowed start,
+- [x] `IdleCursor`, with made-up times: shown at a windowed start,
       still shown at 1999 ms, hidden at 2000 ms; shown again on a move
       or a button; hidden at once on entering fullscreen and at a
       fullscreen start; a position change within 199 ms of a mode
       change shows nothing, and one at 200 ms shows it; shown while the
       window lacks focus; never hidden with `keep_shown`; a change is
       reported only when the answer changes.
-- [ ] `show_mouse` is called from `after_frame` only on a reported
+- [x] `show_mouse` is called from `after_frame` only on a reported
       change.
-- [ ] The PR says what was seen on Windows for the checks in step 4.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The PR says what was seen on Windows for the checks in step 4.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -147,5 +147,58 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **`IdleCursor`** (`crates/app/src/window.rs`), pure, with
+  `CURSOR_IDLE` (2 s) and `MODE_SETTLE` (200 ms). What it sees each
+  frame is one struct, `CursorSeen` (the clock, the `Mouse`: its
+  position in whole pixels and a press, the mode, the focus,
+  `keep_shown`), rather than six arguments; the mouse is a struct of its
+  own because clippy's `struct_excessive_bools` allows three bools in
+  one. `see` returns `Some(shown)` only when the answer changes.
+  Eleven unit tests cover every case of the acceptance list, and a press
+  during the settle (it shows), and focus lost in fullscreen.
+- **Wiring:** `Macroquad` keeps an `IdleCursor` and feeds it in
+  `after_frame` from `mouse_position()` (rounded), any of the left,
+  right and middle buttons' `is_mouse_button_pressed`, its `fullscreen`
+  and `focus`, with `keep_shown: false`, and calls `show_mouse` only on
+  a reported change. On the web a frame the pacer skips also keeps
+  whether a button was pressed (`Held::keep_press` in `hold_input`),
+  since macroquad forgets it at the frame's end. Nothing reaches `poll_input` or the game.
+- **Either-order clauses:** 1121, 3106 and 3062 are open, so none was
+  done here. Each one's clause now says what holds, "From 3314 (done)",
+  and names `CursorSeen` as where its field goes (`keep_shown` for 1121,
+  a new `locked` for 3106, the mode for 3062).
+- **Docs:** `docs/platform-backends.md`'s *The window (desktop)* is now
+  *The window and the cursor (desktop)*, with the rule, and its two
+  links and 3034's are renamed; `run_app`'s docs (which already linked
+  the new name) say the cursor hides; the book's *Games and screens*
+  chapter says so in one sentence.
+- **Seen on Windows 11** (hello-grid, debug build, on `24c31b3b`, the
+  tip of `main` merged), driven by a PowerShell script that moves the
+  mouse (`SetCursorPos`), presses F11 (`keybd_event`) and gives the
+  focus to the terminal, reading the system's cursor with
+  `GetCursorInfo` (`CURSOR_SHOWING`) and checking the mouse is over the
+  window: shown after a move, still shown at 1.5 s, hidden at 2.5 s;
+  shown after a 5 px move; hidden 120 ms after F11 into fullscreen and
+  still at 1.1 s; shown after a move in fullscreen, hidden 2.5 s after it;
+  still hidden 400 ms and 1.2 s after F11 out of fullscreen, with the
+  mouse over the window; shown over the game once the terminal had the
+  focus, and still shown 2.5 s after. A first run that left fullscreen with
+  the mouse at the screen's centre read "shown": the window had shrunk
+  back, the mouse was no longer over it, and `IdleCursor` had reported
+  nothing (a log of each frame said so), so the run was redone with the
+  mouse kept over the window's place. macOS, Linux and the web were not
+  checked by hand.
+
+Behaviour: shuyi-app: the system's cursor hides over a game's window
+once the mouse has neither moved nor clicked for 2 seconds, and at once
+when the window enters fullscreen or starts in it; a move, a mouse
+button or losing the focus shows it again. Searched the game
+(`gh search code --repo Zafnok/visions-of-shuyi` for `show_mouse`,
+`set_cursor_grab`, `mouse_position` and `cursor`): it never shows,
+hides or reads the system's cursor (its cursor is the grid's, ADR-0006
+and ADR-0024 of the game), so it changes nothing.
+
+Book: `site/content/learn/book/games-and-screens.md` says the cursor
+hides. No public item changed.
+
+Nick input: none.

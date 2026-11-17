@@ -4,6 +4,7 @@
 //! where mods live and in what order is the game's. Native only: the web
 //! has no folders.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Read};
@@ -202,7 +203,7 @@ fn watched_folder(var: &str, name: Option<&str>) -> Option<Layer> {
 /// The file at `path` of the folder [`watched_layer`] read, with its last
 /// saved bytes: what the backend reads pictures through, since a game's
 /// `AppConfig::files` is a function over its embedded files.
-pub(crate) fn watched_file(path: &str) -> Option<&'static [u8]> {
+pub(crate) fn watched_file(path: &str) -> Option<Cow<'static, [u8]>> {
     WATCHED.get()?.bytes(path)
 }
 
@@ -260,14 +261,14 @@ mod tests {
         fs::create_dir(dir.path().join("empty")).unwrap();
         let layer = read_folder(dir.path(), "mods/more", 16).unwrap();
         let bundle = Bundle::new(vec![layer, Layer::table("base", BASE)]);
-        assert_eq!(bundle.file("data/crops.ron"), Some("mod crops"));
+        assert_eq!(bundle.file("data/crops.ron").as_deref(), Some("mod crops"));
         assert_eq!(
             bundle.display_path("data/crops.ron"),
             "mods/more/data/crops.ron"
         );
-        assert_eq!(bundle.file("data/more/deep.ron"), Some("deep"));
-        assert_eq!(bundle.bytes("new.png"), Some(&[0xff, 0x00][..]));
-        assert_eq!(bundle.file("top.txt"), Some("top"));
+        assert_eq!(bundle.file("data/more/deep.ron").as_deref(), Some("deep"));
+        assert_eq!(bundle.bytes("new.png").as_deref(), Some(&[0xff, 0x00][..]));
+        assert_eq!(bundle.file("top.txt").as_deref(), Some("top"));
         assert_eq!(
             bundle.files_under(""),
             ["data/crops.ron", "data/more/deep.ron", "new.png", "top.txt"]
@@ -288,7 +289,10 @@ mod tests {
             "{message}"
         );
         let layer = read_folder(dir.path(), "mods/big", 5).unwrap();
-        assert_eq!(Bundle::new(vec![layer]).file("data/b.txt"), Some("12345"));
+        assert_eq!(
+            Bundle::new(vec![layer]).file("data/b.txt").as_deref(),
+            Some("12345")
+        );
     }
 
     #[test]

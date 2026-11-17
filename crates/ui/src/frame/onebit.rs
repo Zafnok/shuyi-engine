@@ -361,9 +361,18 @@ impl Images for () {
 /// The pictures of a one-bit target's pack (`shuyi bake --target
 /// playdate`): the one-bit picture file at each image's path, its first
 /// style, read where it lies. A PNG, or no file, is no picture.
+///
+/// Only a file its layer lends (`Cow::Borrowed`, every layer read whole)
+/// is read where it lies. One handed out owned, by a layer that reads its
+/// files on demand (ADR-0128 §2), has nothing to lend the frame, so it is
+/// no picture here: a game whose pack is read so keeps its pictures as
+/// values of its own (ADR-0128 §3).
 impl Images for shuyi_assets::Bundle {
     fn image(&self, id: ImageId) -> Option<Image<'_>> {
-        let bitmap = Bitmap::parse(self.bytes(id.path())?).ok()?;
+        let alloc::borrow::Cow::Borrowed(bytes) = self.bytes(id.path())? else {
+            return None;
+        };
+        let bitmap = Bitmap::parse(bytes).ok()?;
         Image::from_bitmap(&bitmap, 0)
     }
 }

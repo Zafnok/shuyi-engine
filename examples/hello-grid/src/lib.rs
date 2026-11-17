@@ -130,7 +130,7 @@ static OVER: OnceLock<Bundle> = OnceLock::new();
 /// The file at `path` (relative to `files/`), if there is one: the file
 /// laid over the game's there ([`lay_over_files`]), else the embedded one.
 #[cfg(feature = "std")]
-pub fn file(path: &str) -> Option<&'static [u8]> {
+pub fn file(path: &str) -> Option<std::borrow::Cow<'static, [u8]>> {
     OVER.get()
         .and_then(|over| over.bytes(path))
         .or_else(|| Bundle::new(vec![layer()]).bytes(path))
@@ -406,6 +406,12 @@ impl Hello {
         let bits = bundle
             .bytes(FONT_1BIT)
             .ok_or_else(|| problem(format!("no {FONT_1BIT}")))?;
+        // The font is drawn with for the whole run: a pack read whole lends
+        // its bytes, and one read file by file hands them out to keep.
+        let bits: &'static [u8] = match bits {
+            alloc::borrow::Cow::Borrowed(bits) => bits,
+            alloc::borrow::Cow::Owned(bits) => Box::leak(bits.into_boxed_slice()),
+        };
         let atlas: &'static FontAtlasDef = Box::leak(Box::new(game.font.clone()));
         let font = Font::new(atlas, bits).map_err(|e| problem(e.to_owned()))?;
         let mut ctx = Ctx::new(game).map_err(|missing| problem(format!("colors: {missing:?}")))?;

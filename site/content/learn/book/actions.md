@@ -112,6 +112,12 @@ hint printed with `print_styled` gets caps, the engine's own screens' too. A cap
 cell more than its name, so a hint with caps is wider: a skin that fits one by measuring it
 with the frame's widths, `help.width(buf.widths())`, fits it with caps.
 
+The cursor's keys can be a picture: when the four cursor actions are on the arrow keys,
+`{Cursor}` is one span in the role `TextRole::Arrows`, and a style with
+`.with_arrows(image, part)` draws it as that part of an image (the arrow cluster your game
+draws), one line tall, in the cells its width needs. Any other four keys are four caps,
+`w a s d`. Without a picture, the arrows are a cap of the language's word for them.
+
 Bold is the font's own bold face when the atlas has one, made with `font-atlas --bold`
 from a bold font of the same cell size (Terminus Bold, `ter-u16b.bdf`, beside Terminus):
 

@@ -343,7 +343,7 @@ impl Palette {
     /// (ADR-0122).
     ///
     /// - plain text (`None`): `fg`, no background;
-    /// - [`TextRole::Key`]: the palette's [`KEY`], else `fg`; and its
+    /// - [`TextRole::Key`] and [`TextRole::Arrows`]: the palette's [`KEY`], else `fg`; and its
     ///   [`KEY_BG`], else no background;
     /// - [`TextRole::Engine`]: that engine colour, no background;
     /// - [`TextRole::Palette`]: the colour of that name, else `fg`; no
@@ -351,7 +351,9 @@ impl Palette {
     pub fn text_colors(&self, role: Option<TextRole>, fg: Rgb) -> (Rgb, Option<Rgb>) {
         match role {
             None => (fg, None),
-            Some(TextRole::Key) => (self.lookup(KEY).unwrap_or(fg), self.lookup(KEY_BG)),
+            Some(TextRole::Key | TextRole::Arrows) => {
+                (self.lookup(KEY).unwrap_or(fg), self.lookup(KEY_BG))
+            }
             Some(TextRole::Engine(e)) => (self.engine(e), None),
             Some(TextRole::Palette(name)) => (self.lookup(name).unwrap_or(fg), None),
         }

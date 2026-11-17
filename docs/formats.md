@@ -33,6 +33,19 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   in at run time (`Layer::owned`; `shuyi_app::read_folder` reads a folder
   on disk into one, on desktop): a player's mod laid over the game's
   files reaches the same loaders.
+- **A read hands out its bytes as a `Cow<'static, [u8]>`** (ADR-0128
+  §1): `Bundle::bytes`, and `DecodeCx::bytes` for a format reading a file
+  its file names. `Bundle::file`, `DecodeCx::text` and
+  `Bundle::test_part`'s text are a `Cow<'static, str>`, `None` when not
+  UTF-8, and `load_each` lends each file's text (`LoadFile::text`) for its
+  parse. Every layer today (embedded, a table, `Layer::owned`, a pack)
+  lends its bytes, `Cow::Borrowed`, so nothing is copied; a layer that
+  reads its files on demand, from a pack too big to keep (2263), hands
+  them out owned, `Cow::Owned`, for the reader to drop. Paths stay
+  `&'static`: the listings, `ImageId`, `ImageTable` and the keys of
+  `load_under` and `load_each`. A value a game keeps for the whole run
+  (a font's bits) keeps the borrowed bytes as they are, and leaks only
+  owned ones.
 - **A folder's assets** come all or nothing over a tree with
   `formats.load_under::<K>(&bundle, dir)`, or file by file in one folder
   with `formats.load_each::<K>(&bundle, dir)`, each with its asset or its
@@ -632,8 +645,8 @@ format.
   failure keeps the old value. A `Hot<T>` derefs to its `T`.
 - Only a layer handed in at run time changes (`Layer::owned`,
   `shuyi_app::read_folder`), with `Bundle::replace` or `Layer::replace`. An
-  embedded file stays as it is. The old bytes are leaked so every `&'static`
-  read stays valid, which is why this is for debug builds.
+  embedded file stays as it is. The old bytes are leaked so every borrowed
+  read (`Cow::Borrowed`) stays valid, which is why this is for debug builds.
 - `bundle::recording(f)` gives the paths `f` found on its thread, for a tool
   that wants to know what a load read.
 

@@ -207,10 +207,11 @@ None.
   `wanted_fullscreen` gives, and the window record (`WindowMemory::see`
   in `after_frame`) reads `mode()`, so a mode changed with macOS's own
   control is recorded as a switch from the game is.
-- **Either order with 3314** (the idle cursor): if 3314 is done, its
-  `IdleCursor` reads `mode()`, so a mode changed with macOS's own
-  control hides or shows the cursor; if not, nothing to do (3314 does
-  it, its clause says so).
+- **From 3314 (done)** (the idle cursor): its `IdleCursor` reads
+  `mode()` (the `fullscreen` of the `CursorSeen` that
+  `Macroquad::after_frame` builds, `self.fullscreen` today), so a mode
+  changed with macOS's own control hides or shows the cursor like any
+  other switch.
 - **For the game:** additive only. Its web build and a macOS build get
   it at the next pin bump with no code change. If its hook matches on
   `SystemEvent`, its `_` arm covers the new event. The game's PR that
@@ -242,8 +243,8 @@ None.
    `docs/platform-backends.md`. In the cargo registry, read miniquad
    0.4.11's `src/native/wasm.rs` (`sapp_is_fullscreen` and the queued
    requests), `src/native/macos.rs` (`set_fullscreen` and the
-   delegate) and `src/native/apple/frameworks.rs`. Check whether 3314
-   and 3052 are done.
+   delegate) and `src/native/apple/frameworks.rs`. Check whether 3052
+   is done.
 2. Write `crates/app/src/fullscreen.rs` with `FullscreenWatch` and its
    tests.
 3. Add the readers in `fullscreen/web.rs` and `fullscreen/macos.rs`,

@@ -17,6 +17,7 @@
 //! ([`GameTools::session_on`]). `examples/tools.rs` is the tool program
 //! that runs them; the tests use them too.
 
+use std::borrow::Cow;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
@@ -145,7 +146,7 @@ pub fn picture(h: &Harness<Hello>, scale: u32) -> Result<shuyi_cli::frame_png::I
     let clear = ctx.game.blank_cell(&ctx.palette).bg;
     let painter = Painter::new(
         ctx.game.font.clone(),
-        png,
+        &png,
         &ctx.game.images,
         crate::file,
         clear,
@@ -182,7 +183,7 @@ pub fn one_bit_picture(
     let ctx = h.ctx();
     let map = PatternMap::new(ctx.palette.iter(), &one_bit_skin()?.map);
     let bits = crate::file(FONT_1BIT).ok_or("no one-bit font atlas")?;
-    let font = Font::new(&ctx.game.font, bits)?;
+    let font = Font::new(&ctx.game.font, &bits)?;
     let frame = to_one_bit(h.game().buffer(), &map, &font, &());
     Ok(frame_png::one_bit_picture(frame.bytes(), scale))
 }
@@ -195,6 +196,10 @@ fn one_bit_conversion(h: &Harness<Hello>) -> Result<PresentHook, String> {
     let map = PatternMap::new(ctx.palette.iter(), &one_bit_skin()?.map);
     let bits = crate::file(FONT_1BIT).ok_or("no one-bit font atlas")?;
     let atlas: &'static FontAtlasDef = Box::leak(Box::new(ctx.game.font.clone()));
+    let bits: &'static [u8] = match bits {
+        Cow::Borrowed(bits) => bits,
+        Cow::Owned(bits) => Box::leak(bits.into_boxed_slice()),
+    };
     let font = Font::new(atlas, bits)?;
     Ok(Box::new(move |frame: &Frame<'_>| {
         if let Show::Game { buffer, .. } = frame.show {

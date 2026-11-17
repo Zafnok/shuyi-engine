@@ -42,6 +42,7 @@
 //! counter says what the game holds of each kind of asset.
 use crate::prelude::*;
 
+use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
 use core::any::Any;
 use core::fmt;
@@ -278,14 +279,14 @@ impl<'a> DecodeCx<'a> {
     }
 
     /// The bytes of the file at `path` (relative to a layer's root), if the
-    /// bundle has it.
-    pub fn bytes(&self, path: &str) -> Option<&'static [u8]> {
+    /// bundle has it, as [`Bundle::bytes`] hands them out.
+    pub fn bytes(&self, path: &str) -> Option<Cow<'static, [u8]>> {
         self.bundle?.bytes(path)
     }
 
     /// The text of the file at `path`, if the bundle has it and it is valid
-    /// UTF-8.
-    pub fn text(&self, path: &str) -> Option<&'static str> {
+    /// UTF-8, as [`Bundle::file`] hands it out.
+    pub fn text(&self, path: &str) -> Option<Cow<'static, str>> {
         self.bundle?.file(path)
     }
 
@@ -327,7 +328,7 @@ impl<'a> DecodeCx<'a> {
                 continue;
             };
             let shown = self.shown(&path);
-            let sections = import_settings::sections(&shown, bytes, max)?;
+            let sections = import_settings::sections(&shown, &bytes, max)?;
             if let Some(section) = sections.iter().find(|s| s.name == S::SECTION) {
                 return import_settings::read_section(&shown, section).map_err(|e| vec![e]);
             }
@@ -783,7 +784,7 @@ impl Formats {
             let shown = bundle.display_path(path);
             errors.extend(import_settings::orphan(bundle, path, &shown));
             let bytes = bundle.bytes(path).unwrap_or_default();
-            match import_settings::sections(&shown, bytes, max) {
+            match import_settings::sections(&shown, &bytes, max) {
                 Ok(sections) => {
                     for section in &sections {
                         match self.sections.get(section.name.as_str()) {
@@ -951,7 +952,7 @@ impl Formats {
     fn read<K: AssetKind>(&self, bundle: &Bundle, path: &str) -> Result<K, Vec<ContentError>> {
         let bytes = bundle.bytes(path).unwrap_or_default();
         let cx = DecodeCx::in_bundle(bundle).with_limits(self.limits);
-        self.decode(&AssetPath::in_bundle(bundle, path), bytes, &cx)
+        self.decode(&AssetPath::in_bundle(bundle, path), &bytes, &cx)
     }
 
     /// Every asset of kind `K` in `bundle` under directory `dir` (`""` for

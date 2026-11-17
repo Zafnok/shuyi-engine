@@ -269,6 +269,94 @@ impl Place {
     }
 }
 
+/// How long the mouse rests, neither moved nor clicked, before the cursor
+/// hides (ticket 3314). *Tunable*.
+pub(crate) const CURSOR_IDLE: Duration = Duration::from_secs(2);
+
+/// How long after the window's mode changes a change of the mouse's
+/// position is the window moving under it, not the mouse: Windows may send
+/// a move as the window enters or leaves fullscreen. *Tunable*.
+pub(crate) const MODE_SETTLE: Duration = Duration::from_millis(200);
+
+/// The mouse, as [`IdleCursor`] sees it in one frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Mouse {
+    /// Its position over the window, in whole pixels.
+    pub at: (i32, i32),
+    /// Whether one of its buttons was pressed this frame.
+    pub pressed: bool,
+}
+
+/// What [`IdleCursor`] sees in one frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CursorSeen {
+    /// The frame's clock.
+    pub now: Millis,
+    /// The mouse.
+    pub mouse: Mouse,
+    /// Whether the window fills the screen.
+    pub fullscreen: bool,
+    /// Whether the window has the player's focus.
+    pub focused: bool,
+    /// Whether the cursor stays shown whatever the mouse does: `false`
+    /// until a screen reads the mouse (1121).
+    pub keep_shown: bool,
+}
+
+/// Whether the system's cursor shows over the window (ticket 3314): it
+/// hides once the mouse has rested [`CURSOR_IDLE`], and at once as the
+/// window fills the screen, and shows again when the mouse moves or a
+/// button is pressed. It shows while the window lacks focus, so it is never
+/// hidden over another program. It starts as the system's: shown.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct IdleCursor {
+    /// Whether it is hidden, as last reported.
+    hidden: bool,
+    /// Where the mouse rested last frame.
+    mouse: Option<(i32, i32)>,
+    /// When the mouse last moved or a button was pressed: `None` once the
+    /// window entered fullscreen with neither since.
+    active: Option<Millis>,
+    /// The mode last seen, and when it changed: `None` before the first
+    /// frame.
+    mode: Option<(bool, Millis)>,
+}
+
+impl IdleCursor {
+    /// Sees a frame: whether the cursor is to be shown, if that changed.
+    pub(crate) fn see(&mut self, seen: CursorSeen) -> Option<bool> {
+        let now = seen.now;
+        match self.mode {
+            Some((fullscreen, _)) if fullscreen == seen.fullscreen => {}
+            first_or_changed => {
+                if first_or_changed.is_none() {
+                    self.active = Some(now);
+                }
+                if seen.fullscreen {
+                    self.active = None;
+                }
+                self.mode = Some((seen.fullscreen, now));
+            }
+        }
+        let settling = self
+            .mode
+            .is_some_and(|(_, since)| now.since(since) < MODE_SETTLE);
+        let moved = self.mouse.is_some_and(|at| at != seen.mouse.at);
+        self.mouse = Some(seen.mouse.at);
+        if seen.mouse.pressed || (moved && !settling) {
+            self.active = Some(now);
+        }
+        let idle = self
+            .active
+            .is_none_or(|since| now.since(since) >= CURSOR_IDLE);
+        let hidden = idle && seen.focused && !seen.keep_shown;
+        (hidden != self.hidden).then(|| {
+            self.hidden = hidden;
+            !hidden
+        })
+    }
+}
+
 /// The mode `frame` asks for: a game frame's `fullscreen`. A card's and the
 /// errors' frames leave the window as it is.
 pub(crate) fn wanted_fullscreen(frame: &Frame<'_>) -> Option<bool> {
@@ -464,6 +552,213 @@ mod tests {
         assert_eq!(
             Place::default().leaving((3000, 700), (1920, 1080)),
             (0, 190)
+        );
+    }
+
+    /// A frame at `ms` with the mouse at `mouse`, windowed and focused, no
+    /// button pressed.
+    fn cursor_at(ms: u64, mouse: (i32, i32)) -> CursorSeen {
+        CursorSeen {
+            now: at(ms),
+            mouse: Mouse {
+                at: mouse,
+                pressed: false,
+            },
+            fullscreen: false,
+            focused: true,
+            keep_shown: false,
+        }
+    }
+
+    /// `seen` with a mouse button pressed.
+    fn pressed(seen: CursorSeen) -> CursorSeen {
+        CursorSeen {
+            mouse: Mouse {
+                pressed: true,
+                ..seen.mouse
+            },
+            ..seen
+        }
+    }
+
+    /// The same frame in fullscreen.
+    fn fullscreen_at(ms: u64, mouse: (i32, i32)) -> CursorSeen {
+        CursorSeen {
+            fullscreen: true,
+            ..cursor_at(ms, mouse)
+        }
+    }
+
+    /// Whether the cursor shows after each of `frames`, from a new one.
+    fn shown_after(frames: &[CursorSeen]) -> Vec<bool> {
+        let mut cursor = IdleCursor::default();
+        let mut shown = true;
+        frames
+            .iter()
+            .map(|seen| {
+                shown = cursor.see(*seen).unwrap_or(shown);
+                shown
+            })
+            .collect()
+    }
+
+    #[test]
+    fn at_a_windowed_start_the_cursor_shows_until_the_mouse_has_rested_two_seconds() {
+        assert_eq!(CURSOR_IDLE, Duration::from_millis(2000));
+        let rest = (10, 20);
+        let frames = [
+            cursor_at(0, rest),
+            cursor_at(1999, rest),
+            cursor_at(2000, rest),
+        ];
+        assert_eq!(shown_after(&frames), [true, true, false]);
+        let mut cursor = IdleCursor::default();
+        assert_eq!(cursor.see(cursor_at(0, rest)), None, "it starts shown");
+    }
+
+    #[test]
+    fn a_move_or_a_button_shows_the_cursor_again_and_starts_the_rest_over() {
+        let moved = [
+            cursor_at(0, (10, 20)),
+            cursor_at(2000, (10, 20)),
+            cursor_at(2500, (11, 20)),
+            cursor_at(4499, (11, 20)),
+            cursor_at(4500, (11, 20)),
+        ];
+        assert_eq!(shown_after(&moved), [true, false, true, true, false]);
+        let pressed = [
+            cursor_at(0, (10, 20)),
+            cursor_at(2000, (10, 20)),
+            pressed(cursor_at(2500, (10, 20))),
+            cursor_at(4499, (10, 20)),
+            cursor_at(4500, (10, 20)),
+        ];
+        assert_eq!(shown_after(&pressed), [true, false, true, true, false]);
+    }
+
+    #[test]
+    fn entering_fullscreen_hides_the_cursor_at_once() {
+        let mut cursor = IdleCursor::default();
+        assert_eq!(cursor.see(cursor_at(0, (5, 5))), None);
+        assert_eq!(cursor.see(cursor_at(500, (6, 5))), None);
+        assert_eq!(cursor.see(fullscreen_at(600, (6, 5))), Some(false));
+    }
+
+    #[test]
+    fn a_fullscreen_start_hides_the_cursor_on_the_first_frame() {
+        let mut cursor = IdleCursor::default();
+        assert_eq!(cursor.see(fullscreen_at(0, (0, 0))), Some(false));
+        assert_eq!(cursor.see(fullscreen_at(16, (0, 0))), None);
+    }
+
+    #[test]
+    fn a_move_within_the_settle_of_a_mode_change_is_the_window_not_the_mouse() {
+        assert_eq!(MODE_SETTLE, Duration::from_millis(200));
+        // Entering fullscreen at 1000: the window moves under the mouse.
+        let entering = [
+            cursor_at(0, (5, 5)),
+            fullscreen_at(1000, (5, 5)),
+            fullscreen_at(1199, (300, 200)),
+            fullscreen_at(1300, (300, 200)),
+        ];
+        assert_eq!(shown_after(&entering), [true, false, false, false]);
+        // The new place is the mouse's resting place: a move at 200 ms
+        // from it shows the cursor.
+        let after = [
+            cursor_at(0, (5, 5)),
+            fullscreen_at(1000, (5, 5)),
+            fullscreen_at(1199, (300, 200)),
+            fullscreen_at(1200, (301, 200)),
+        ];
+        assert_eq!(shown_after(&after), [true, false, false, true]);
+    }
+
+    #[test]
+    fn leaving_fullscreen_does_not_show_the_cursor_by_itself() {
+        let frames = [
+            fullscreen_at(0, (300, 200)),
+            cursor_at(1000, (300, 200)),
+            cursor_at(1100, (40, 30)),
+            cursor_at(1250, (40, 30)),
+            cursor_at(1250, (41, 30)),
+        ];
+        assert_eq!(shown_after(&frames), [false, false, false, false, true]);
+    }
+
+    #[test]
+    fn a_button_shows_the_cursor_even_as_the_mode_settles() {
+        let frames = [fullscreen_at(0, (0, 0)), pressed(fullscreen_at(50, (0, 0)))];
+        assert_eq!(shown_after(&frames), [false, true]);
+    }
+
+    #[test]
+    fn the_cursor_shows_while_the_window_lacks_focus() {
+        let unfocused = |ms| CursorSeen {
+            focused: false,
+            ..cursor_at(ms, (5, 5))
+        };
+        let frames = [
+            cursor_at(0, (5, 5)),
+            cursor_at(2000, (5, 5)),
+            unfocused(2100),
+            unfocused(9000),
+            cursor_at(9100, (5, 5)),
+        ];
+        assert_eq!(shown_after(&frames), [true, false, true, true, false]);
+        let fullscreen = [
+            fullscreen_at(0, (5, 5)),
+            CursorSeen {
+                focused: false,
+                ..fullscreen_at(100, (5, 5))
+            },
+        ];
+        assert_eq!(shown_after(&fullscreen), [false, true]);
+    }
+
+    #[test]
+    fn keep_shown_never_hides_the_cursor() {
+        let kept = |seen: CursorSeen| CursorSeen {
+            keep_shown: true,
+            ..seen
+        };
+        let frames = [
+            kept(cursor_at(0, (5, 5))),
+            kept(cursor_at(5000, (5, 5))),
+            kept(fullscreen_at(5100, (5, 5))),
+            kept(fullscreen_at(9000, (5, 5))),
+            fullscreen_at(9100, (5, 5)),
+        ];
+        assert_eq!(shown_after(&frames), [true, true, true, true, false]);
+    }
+
+    #[test]
+    fn a_change_is_reported_only_when_the_answer_changes() {
+        let mut cursor = IdleCursor::default();
+        let reported: Vec<_> = [
+            cursor_at(0, (5, 5)),
+            cursor_at(1000, (6, 5)),
+            cursor_at(3000, (6, 5)),
+            cursor_at(4000, (6, 5)),
+            cursor_at(4100, (7, 5)),
+            cursor_at(4200, (8, 5)),
+            fullscreen_at(4300, (8, 5)),
+            fullscreen_at(4400, (8, 5)),
+        ]
+        .into_iter()
+        .map(|seen| cursor.see(seen))
+        .collect();
+        assert_eq!(
+            reported,
+            [
+                None,
+                None,
+                Some(false),
+                None,
+                Some(true),
+                None,
+                Some(false),
+                None
+            ]
         );
     }
 

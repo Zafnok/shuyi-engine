@@ -214,7 +214,7 @@ next. `frame.show` is one of:
 `frame.fullscreen` is the player's Fullscreen setting: a windowed backend
 switches when a game frame's changes, and a card's or the errors' frames
 leave the window as it is (they carry `Frame::new`'s windowed); a device
-that is always full screen ignores it. *The window (desktop)*, below,
+that is always full screen ignores it. *The window and the cursor (desktop)*, below,
 says how a desktop window opens and leaves fullscreen.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
@@ -319,7 +319,7 @@ on each OS.
 
 The key `window` beside the game's own keys is the backend's, not the
 game's: a desktop keeps the window's record there (*The window
-(desktop)*, below), so a game must not use it for its own data.
+and the cursor (desktop)*, below), so a game must not use it for its own data.
 
 ### `audio(&mut self) -> &mut dyn Audio`
 
@@ -529,7 +529,7 @@ tools its poller looks at those folders only. The headless backend answers
 what `HeadlessPlatform::set_watches_files` set. A device with no files to
 watch leaves the default, `false`.
 
-## The window (desktop)
+## The window and the cursor (desktop)
 
 A desktop window opens as the player left it on that computer. The
 backend, not the game, keeps a record of it, never in a profile: `shuyi-app`
@@ -557,6 +557,29 @@ computer's `profiles`), one RON value,
 
 A new desktop backend (the winit one, 3034) keeps the same record under
 the same key, so a player's window survives the move.
+
+The system's cursor hides over the picture when the mouse isn't in use,
+as keyboard-and-pad games expect, with no code in the game (ticket 3314).
+`shuyi-app` keeps the rule in `IdleCursor` (`crates/app/src/window.rs`),
+fed after each frame with the clock, the mouse's position in whole pixels,
+whether a mouse button was pressed, the window's mode and its focus:
+
+- It starts shown, as the system's. It hides once the mouse has neither
+  moved nor clicked for 2 seconds, and at once when the window enters
+  fullscreen, or on the first frame of a fullscreen start.
+- A move or a press of any mouse button shows it again.
+- For 200 ms after the mode changes, a change of the mouse's position is
+  the window moving under it (Windows sends one as the window enters or
+  leaves fullscreen): it becomes the mouse's resting place and shows
+  nothing. Leaving fullscreen alone doesn't show the cursor.
+- It shows while the window lacks focus, so it is never hidden over
+  another program.
+- The backend tells the system only when the answer changes. Reading the
+  mouse for this is not input: nothing of it reaches the game.
+
+The web does the same, through the canvas's CSS `cursor`. A capture run
+never reaches it. Both times are *tunable* (`CURSOR_IDLE`, `MODE_SETTLE`).
+A new desktop backend (3034) keeps the same rule.
 
 ## Files handed in at run time (optional)
 

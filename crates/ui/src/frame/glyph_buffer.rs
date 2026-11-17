@@ -533,7 +533,7 @@ pub struct GlyphBuffer {
     /// The glyphs not drawn plain, by cell index (few: a key cap's).
     styles: BTreeMap<usize, GlyphStyle>,
     /// How a key's name in styled text is drawn: as a cap, or `None`.
-    key_caps: Option<KeyCaps>,
+    key_caps: Option<Rc<KeyCaps>>,
 }
 
 impl GlyphBuffer {
@@ -572,8 +572,7 @@ impl GlyphBuffer {
     /// what is already printed stays. A key cap's cells
     /// ([`key_caps`](Self::key_caps)) stay as they are.
     pub fn set_widths(&mut self, widths: CellWidths) {
-        let cap = self.key_caps.as_ref().map(KeyCaps::extra_cells);
-        self.widths = widths.with_key_cap_cells(cap);
+        self.widths = KeyCaps::frame_widths(widths, self.key_caps.as_deref());
     }
 
     /// Which characters it prints in two cells, and the cells a key cap
@@ -597,14 +596,13 @@ impl GlyphBuffer {
     /// or as text with `None`; its [`widths`](Self::widths) count a cap's
     /// cells. What is already printed stays.
     pub fn set_key_caps(&mut self, caps: Option<KeyCaps>) {
-        let cap = caps.as_ref().map(KeyCaps::extra_cells);
-        self.key_caps = caps;
-        self.widths = self.widths.clone().with_key_cap_cells(cap);
+        self.widths = KeyCaps::frame_widths(self.widths.clone(), caps.as_ref());
+        self.key_caps = caps.map(Rc::new);
     }
 
     /// How it draws a key's name in styled text: as a cap, or `None`.
     pub fn key_caps(&self) -> Option<&KeyCaps> {
-        self.key_caps.as_ref()
+        self.key_caps.as_deref()
     }
 
     /// How the glyph of cell `(x, y)` is drawn besides its colours:
@@ -1019,6 +1017,11 @@ impl GlyphBuffer {
     /// moved and bold ([`glyph_style`](Self::glyph_style)), and the box
     /// under them as rectangles ([`Layer::Under`]) inside the cap's cells.
     /// A cap the buffer's edge cuts has no box, and its name is plain.
+    /// Where the caps have a picture of the arrow keys
+    /// ([`KeyCapStyle::arrows`](crate::frame::KeyCapStyle::arrows)), a
+    /// [`TextRole::Arrows`] span is that picture: spaces on plain text's
+    /// background in the cells it takes, and a [`Sprite`] over them
+    /// (ADR-0129); without one it is drawn as a key.
     ///
     /// ```
     /// use shuyi_ui::frame::{Cell, GlyphBuffer, Rgb};
@@ -1045,8 +1048,14 @@ impl GlyphBuffer {
         let mut cx = i64::from(x);
         let mut written = 0;
         for span in text.spans() {
-            if let (Some(TextRole::Key), Some(caps)) = (span.role, self.key_caps.clone()) {
-                written += self.print_cap(&mut cx, y, &span.text, &caps, &colors);
+            if let (Some(TextRole::Key | TextRole::Arrows), Some(caps)) =
+                (span.role, self.key_caps.clone())
+            {
+                written += if span.role == Some(TextRole::Arrows) && caps.arrows_cells().is_some() {
+                    self.print_arrows(&mut cx, y, &caps, &colors)
+                } else {
+                    self.print_cap(&mut cx, y, &span.text, &caps, &colors)
+                };
                 continue;
             }
             let (fg, bg) = colors(span.role);

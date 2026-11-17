@@ -262,7 +262,7 @@ fn other_cursor_keys_are_listed() {
         ("s", Action::CursorDown),
         ("d", Action::CursorRight),
     ]);
-    assert_eq!(cursor_keys_name(HelpKeys::keyboard(&wasd)), "wasd");
+    assert_eq!(cursor_keys_name(HelpKeys::keyboard(&wasd)), "w a s d");
     // One arrow out of place, or shifted arrows, is not "arrows".
     let mixed = keymap(&[
         ("Up", Action::CursorUp),
@@ -270,7 +270,10 @@ fn other_cursor_keys_are_listed() {
         ("Down", Action::CursorDown),
         ("l", Action::CursorRight),
     ]);
-    assert_eq!(cursor_keys_name(HelpKeys::keyboard(&mixed)), "UpLeftDownl");
+    assert_eq!(
+        cursor_keys_name(HelpKeys::keyboard(&mixed)),
+        "Up Left Down l"
+    );
     let shifted = keymap(&[
         ("Shift+Up", Action::CursorUp),
         ("Shift+Left", Action::CursorLeft),
@@ -279,7 +282,7 @@ fn other_cursor_keys_are_listed() {
     ]);
     assert_eq!(
         cursor_keys_name(HelpKeys::keyboard(&shifted)),
-        "Shift+UpShift+LeftShift+DownShift+Right"
+        "Shift+Up Shift+Left Shift+Down Shift+Right"
     );
 }
 
@@ -330,4 +333,75 @@ fn help_line_styled_puts_each_key_in_a_key_span() {
         ]
     );
     assert!(help_line_styled(&[(None, "x")]).is_empty());
+}
+
+/// `text`'s spans as `(text, role)` pairs.
+fn spans(text: &StyledText) -> Vec<(&str, Option<crate::text::TextRole>)> {
+    text.spans()
+        .iter()
+        .map(|s| (s.text.as_str(), s.role))
+        .collect()
+}
+
+#[test]
+fn the_arrow_keys_are_one_arrows_span_and_other_keys_four_key_spans() {
+    use crate::text::TextRole::{Arrows, Key};
+    let arrows = defaults();
+    let styled = cursor_keys_styled(HelpKeys::keyboard(&arrows).worded("-", "Pfeile"));
+    assert_eq!(spans(&styled), [("Pfeile", Some(Arrows))]);
+    let wasd = keymap(&[
+        ("w", Action::CursorUp),
+        ("a", Action::CursorLeft),
+        ("s", Action::CursorDown),
+        ("d", Action::CursorRight),
+    ]);
+    let styled = cursor_keys_styled(HelpKeys::keyboard(&wasd));
+    assert_eq!(
+        spans(&styled),
+        [
+            ("w", Some(Key)),
+            (" ", None),
+            ("a", Some(Key)),
+            (" ", None),
+            ("s", Some(Key)),
+            (" ", None),
+            ("d", Some(Key)),
+        ]
+    );
+    assert_eq!(styled.plain(), cursor_keys_name(HelpKeys::keyboard(&wasd)));
+    // A controller's buttons, and no keys, are one key span.
+    let pad = cursor_keys_styled(HelpKeys::new(&arrows, XBOX));
+    assert_eq!(spans(&pad), [("D-pad/L-stick", Some(Key))]);
+    let none = cursor_keys_styled(HelpKeys::keyboard(&wasd).of(&keymap(&[])));
+    assert_eq!(spans(&none), [(NOT_MAPPED, Some(Key))]);
+}
+
+#[test]
+fn the_keymap_names_the_cursor_keys_with_the_word_it_is_given() {
+    assert_eq!(defaults().cursor_keys_name("A"), Some("A".to_owned()));
+    let wasd = keymap(&[
+        ("w", Action::CursorUp),
+        ("a", Action::CursorLeft),
+        ("s", Action::CursorDown),
+        ("d", Action::CursorRight),
+    ]);
+    assert_eq!(wasd.cursor_keys_name("A"), Some("wasd".to_owned()));
+    assert_eq!(
+        keymap(&[("w", Action::CursorUp)]).cursor_keys_name("A"),
+        None
+    );
+}
+
+#[test]
+fn key_text_styled_gives_the_cursor_keys_and_an_actions_key_in_spans() {
+    use crate::text::{CURSOR, TextRole, key_text, key_text_styled};
+    let km = defaults();
+    let keys = HelpKeys::keyboard(&km);
+    let cursor = key_text_styled(CURSOR, keys).unwrap();
+    assert_eq!(spans(&cursor), [(ARROWS, Some(TextRole::Arrows))]);
+    let confirm = key_text_styled("Confirm", keys).unwrap();
+    let name = key_name(keys, Action::Confirm);
+    assert_eq!(spans(&confirm), [(name.as_str(), Some(TextRole::Key))]);
+    assert_eq!(Some(confirm.plain()), key_text("Confirm", keys));
+    assert_eq!(key_text_styled("Nope", keys), None);
 }

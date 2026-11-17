@@ -24,7 +24,7 @@ use shuyi_assets::tip::placeholders;
 use shuyi_core::text::{Part, split_tokens};
 
 use crate::frame::color::EngineColor;
-use crate::input::help_keys::{HelpKeys, cursor_keys_name, key_name};
+use crate::input::help_keys::{HelpKeys, cursor_keys_name, cursor_keys_styled, key_name};
 
 /// The placeholder for the keys that move the cursor (`{Cursor}`).
 pub const CURSOR: &str = "Cursor";
@@ -38,6 +38,22 @@ pub fn key_text<A: ActionSet>(name: &str, keys: HelpKeys<'_, A>) -> Option<Strin
         Some(cursor_keys_name(keys))
     } else {
         A::from_name(name).map(|action| key_name(keys, action))
+    }
+}
+
+/// [`key_text`] in spans: [`{Cursor}`](CURSOR) as
+/// [`cursor_keys_styled`] gives it (the four arrow keys as one
+/// [`TextRole::Arrows`] span, other keys as four [`TextRole::Key`] spans),
+/// an action's key as one key span. Its [`plain`](StyledText::plain) text
+/// is `key_text`'s. What a game's styled text fills in by default
+/// ([`GameData::key_text_styled`](crate::GameData::key_text_styled)).
+pub fn key_text_styled<A: ActionSet>(name: &str, keys: HelpKeys<'_, A>) -> Option<StyledText> {
+    if name == CURSOR {
+        Some(cursor_keys_styled(keys))
+    } else {
+        let mut key = StyledText::new();
+        key.push_key(&key_name(keys, A::from_name(name)?));
+        Some(key)
     }
 }
 use core::fmt::Display;
@@ -79,7 +95,7 @@ pub fn check_key_placeholders<A: ActionSet>(
                 known.join(", ")
             );
             let mut error = ContentError::new(&file, message).with_code(codes::UNKNOWN_NAME);
-            if let Some(line) = line_of_key(source, key) {
+            if let Some(line) = line_of_key(&source, key) {
                 error = error.at(line, None);
             }
             errors.push(error);
@@ -152,6 +168,36 @@ pub fn fill_styled(
     key_args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<String>,
 ) -> StyledText {
+    fill_styled_with(text, args, key_args, |name| {
+        let mut key = StyledText::new();
+        key.push_key(&lookup(name)?);
+        Some(key)
+    })
+}
+
+/// [`fill_styled`], with `lookup` giving what names a key in spans of its
+/// own: the cursor keys as [`key_text_styled`] gives them, say. A value of
+/// `key_args` is one [`TextRole::Key`] span. Each span of what is filled
+/// in keeps its role, and its spaces become [`NO_BREAK_SPACE`]s, so it
+/// stays on one line.
+///
+/// ```
+/// use shuyi_ui::text::{StyledText, fill_styled_with};
+/// let cursor = |name: &str| {
+///     let mut keys = StyledText::new();
+///     keys.push_key("w").push_plain(" ").push_key("a");
+///     (name == "Cursor").then_some(keys)
+/// };
+/// let filled = fill_styled_with("{Cursor} move", &[], &[], cursor);
+/// assert_eq!(filled.plain(), "w\u{a0}a move");
+/// assert_eq!(filled.spans().len(), 4);
+/// ```
+pub fn fill_styled_with(
+    text: &str,
+    args: &[(&str, &dyn Display)],
+    key_args: &[(&str, &dyn Display)],
+    lookup: impl Fn(&str) -> Option<StyledText>,
+) -> StyledText {
     let mut out = StyledText::new();
     let value = |values: &Args<'_>, name: &str| {
         let found = values.iter().find(|(arg, _)| *arg == name);
@@ -160,11 +206,12 @@ pub fn fill_styled(
     let arg = |out: &mut StyledText, name: &str| {
         if let Some(plain) = value(args, name) {
             out.push_plain(&plain.to_string());
-        } else if let Some(key) = value(key_args, name)
-            .map(|key| key.to_string())
-            .or_else(|| lookup(name))
-        {
-            out.push_key(&joined(&key));
+        } else if let Some(key) = value(key_args, name) {
+            out.push_key(&joined(&key.to_string()));
+        } else if let Some(keys) = lookup(name) {
+            for span in keys.spans() {
+                out.push(&joined(&span.text), span.role);
+            }
         } else {
             out.push_plain(&format!("{{{name}}}"));
         }
@@ -211,6 +258,12 @@ pub enum TextRole {
     /// [`KEY`](crate::frame::color::KEY) and
     /// [`KEY_BG`](crate::frame::color::KEY_BG).
     Key,
+    /// The four arrow keys that move the cursor, together, its text the
+    /// language's word for them (`arrows`): drawn as the key caps' picture
+    /// of the arrow cluster where they have one
+    /// ([`KeyCapStyle::arrows`](crate::frame::KeyCapStyle::arrows)), else
+    /// as a [`Key`](Self::Key) (ADR-0129).
+    Arrows,
     /// One of the engine's colours (a warning, a highlight).
     Engine(EngineColor),
     /// A colour of the game's palette, by its name
@@ -293,6 +346,12 @@ impl StyledText {
         self.push(name, Some(TextRole::Key))
     }
 
+    /// Adds the language's word for the four arrow keys at the end, in
+    /// [`TextRole::Arrows`].
+    pub fn push_arrows(&mut self, word: &str) -> &mut Self {
+        self.push(word, Some(TextRole::Arrows))
+    }
+
     /// Adds every span of `other` at the end.
     pub fn append(&mut self, other: &StyledText) -> &mut Self {
         for span in &other.spans {
@@ -321,7 +380,10 @@ impl StyledText {
     /// [`plain`](Self::plain) text, and where `widths` draw keys as caps
     /// ([`CellWidths::key_cap_cells`], a frame's
     /// [`widths`](crate::frame::GlyphBuffer::widths) with key caps on), each
-    /// [`TextRole::Key`] span's extra cells (ADR-0124).
+    /// [`TextRole::Key`] span's extra cells (ADR-0124). Where they draw the
+    /// arrow cluster's picture ([`CellWidths::arrows_cells`]), a
+    /// [`TextRole::Arrows`] span takes the picture's cells instead of its
+    /// word's; else it counts as a key (ADR-0129).
     pub fn width(&self, widths: &CellWidths) -> usize {
         self.spans.iter().map(|s| span_width(s, widths)).sum()
     }
@@ -329,8 +391,8 @@ impl StyledText {
     /// It in at most `w` cells: as [`cut`](crate::frame::draw::cut) cuts
     /// its plain text, each kept character in its role and the `…` in the
     /// role of the first character it stands for. Where `widths` draw
-    /// keys as caps, a key is kept whole or not at all, and the `…` that
-    /// stands for it is plain.
+    /// keys as caps, a key (and the arrow cluster's picture) is kept whole
+    /// or not at all, and the `…` that stands for it is plain.
     #[must_use]
     pub fn cut(&self, w: usize, widths: &CellWidths) -> StyledText {
         if self.width(widths) <= w {
@@ -340,7 +402,7 @@ impl StyledText {
         let mut used = 0;
         let mut out = StyledText::new();
         for span in &self.spans {
-            if is_cap(span, widths) {
+            if is_cap(span, widths) || is_picture(span, widths) {
                 used += span_width(span, widths);
                 if used > room {
                     if w > 0 {
@@ -367,14 +429,28 @@ impl StyledText {
     }
 }
 
-/// Whether `span` is drawn as a key cap with `widths`.
+/// Whether `span` is drawn as a key cap with `widths`: a key, or the
+/// arrow keys with no picture.
 fn is_cap(span: &TextSpan, widths: &CellWidths) -> bool {
-    span.role == Some(TextRole::Key) && widths.key_cap_cells().is_some()
+    let key = match span.role {
+        Some(TextRole::Key) => true,
+        Some(TextRole::Arrows) => widths.arrows_cells().is_none(),
+        _ => false,
+    };
+    key && widths.key_cap_cells().is_some()
+}
+
+/// Whether `span` is drawn as the arrow cluster's picture with `widths`.
+fn is_picture(span: &TextSpan, widths: &CellWidths) -> bool {
+    span.role == Some(TextRole::Arrows) && widths.arrows_cells().is_some()
 }
 
 /// How many cells `span` takes with `widths`: its text's, and a key cap's
-/// extra cells.
+/// extra cells; or the arrow cluster's picture's.
 fn span_width(span: &TextSpan, widths: &CellWidths) -> usize {
+    if let (true, Some(cells)) = (is_picture(span, widths), widths.arrows_cells()) {
+        return usize::from(cells);
+    }
     let extra = if is_cap(span, widths) {
         widths.key_cap_cells().map_or(0, usize::from)
     } else {
