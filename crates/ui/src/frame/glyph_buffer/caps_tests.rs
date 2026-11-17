@@ -336,7 +336,7 @@ fn without_a_picture_the_arrows_are_a_cap_and_without_caps_text() {
     assert_eq!(buf.widths().arrows_cells(), None);
     assert_eq!(buf.print_styled(0, 0, &text, colors), 11);
     assert_eq!(glyphs(&buf, 0), "arrows move.");
-    assert!(buf.items().is_empty());
+    assert_eq!(buf.items(), []);
 }
 
 #[test]

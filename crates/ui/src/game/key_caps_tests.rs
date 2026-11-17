@@ -210,6 +210,6 @@ fn a_help_line_with_the_arrows_picture_is_as_its_snapshot_says() {
 #[test]
 fn a_help_line_with_caps_off_is_as_its_snapshot_says() {
     let game = game_on(None, false, Box::new(CursorHelp));
-    assert!(game.buffer().items().is_empty());
+    assert_eq!(game.buffer().items(), []);
     insta::assert_snapshot!(game.buffer().to_snapshot(&game.ctx().palette));
 }
