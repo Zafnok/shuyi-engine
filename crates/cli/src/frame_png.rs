@@ -643,4 +643,6 @@ impl Painter {
 }
 
 #[cfg(test)]
+mod key_cap_tests;
+#[cfg(test)]
 mod tests;

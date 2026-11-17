@@ -18,6 +18,8 @@
 //!   or half clear), indexed and one-bit (with a mask and without), in
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;
+//! - two key caps (ticket 3215): a box under each, the name's glyph moved
+//!   off the grid and bold, struck twice;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
 //!   a painted picture of its own;
 //! - the debug view's gizmos (ADR-0085) over everything: lines into all
@@ -34,7 +36,7 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::rc::Rc;
 
-use shuyi_assets::font::{CellWidths, FALLBACK_GLYPH, FontAtlasDef};
+use shuyi_assets::font::{CellWidths, FALLBACK_GLYPH, FontAtlasDef, FontInk, InkBox};
 use shuyi_assets::image::{ImageId, ImageInfo, ImageTable};
 use shuyi_assets::lighting::Light;
 
@@ -42,7 +44,9 @@ use super::{Image, Painter, test_card};
 use crate::frame::color::Rgb;
 use crate::frame::gizmo::{GizmoItem, GizmoRole, GizmoShape, LabelText};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, Paint, Rect, Sprite};
+use crate::frame::key_cap::{KeyCapStyle, KeyCaps};
 use crate::frame::painted::{Painted, PaintedId, PaintedSprite};
+use crate::text::StyledText;
 
 /// The card's size in cells (8 × 16 pixels each): 256 × 192 pixels.
 pub const COLUMNS: u16 = 32;
@@ -160,7 +164,8 @@ pub fn build() -> RenderCard {
 /// A 64 × 16 atlas of eight 8 × 16 cells: the space, a box (`#`), a box's
 /// outline (`o`), a bar across (`-`), a bar down (`|`), the fallback
 /// glyph, a checkerboard, and the wide glyph over the last two. Glyph
-/// pixels are white, the rest see-through.
+/// pixels are white, the rest see-through. Its capitals' ink is the
+/// box's, and the bar down's columns its own.
 fn atlas() -> (FontAtlasDef, Image) {
     const CELL: (u32, u32) = (8, 16);
     let order = [' ', '#', 'o', '-', '|', FALLBACK_GLYPH];
@@ -203,6 +208,10 @@ fn atlas() -> (FontAtlasDef, Image) {
         glyphs,
         wide: BTreeMap::from([(WIDE_GLYPH, narrow)]),
         wide_sets: BTreeMap::new(),
+        ink: Some(FontInk {
+            capitals: InkBox::new(1, 2, 6, 13),
+            columns: BTreeMap::from([('|', [3, 4])]),
+        }),
     };
     (
         def,
@@ -218,8 +227,9 @@ fn atlas() -> (FontAtlasDef, Image) {
 /// `missing`.
 fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
     let mut buf = GlyphBuffer::new(COLUMNS, ROWS, Cell::new(' ', FOREGROUNDS[0], CLEAR))
-        .with_widths(CellWidths::wide([WIDE_GLYPH]));
+        .with_widths(CellWidths::of(&atlas().0));
     cells(&mut buf);
+    caps(&mut buf);
     rects(&mut buf);
     sprites(&mut buf, card, missing);
     painted(&mut buf);
@@ -273,6 +283,20 @@ fn cells(buf: &mut GlyphBuffer) {
         BACKGROUNDS[0],
     );
     buf.set(22, 11, Cell::new(WIDE_GLYPH, FOREGROUNDS[2], CLEAR));
+}
+
+/// Two key caps at the end of row 1, from column 26: `o`, and `|`,
+/// whose ink is narrower; each a box with an edge, and the glyph moved
+/// off the grid and struck twice. The buffer draws no caps after.
+fn caps(buf: &mut GlyphBuffer) {
+    let style = KeyCapStyle::new().with_capitals(false);
+    let colors = (Some(BACKGROUNDS[0]), Some(FOREGROUNDS[2]));
+    let caps = KeyCaps::with_colors(style, colors, buf.widths(), buf.spec());
+    buf.set_key_caps(Some(caps));
+    let mut keys = StyledText::new();
+    keys.push_key("o").push_plain(" ").push_key("|");
+    buf.print_styled(26, 1, &keys, |_| (FOREGROUNDS[1], Some(CLEAR)));
+    buf.set_key_caps(None);
 }
 
 /// The rectangles: an `Under` bar through row 1's glyphs, `Over` squares
