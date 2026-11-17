@@ -15,7 +15,7 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
-use core::fmt::Display;
+use crate::text::ToArg;
 pub use view::{AnswerView, AskView};
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
@@ -132,7 +132,7 @@ impl<T: Copy + PartialEq> Ask<T> {
         &self,
         ctx: &Ctx<G>,
         keys: HelpKeys<'_, G::Action>,
-        args: &[(&str, &dyn Display)],
+        args: &[(&str, &dyn ToArg)],
     ) -> AskView<T> {
         let focus = self.cursor.focus();
         let answers = self

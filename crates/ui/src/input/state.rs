@@ -51,6 +51,24 @@ pub enum Device {
     Pad(PadKind),
 }
 
+impl Device {
+    /// Its value as a message's built-in `device` argument, which a
+    /// `select` chooses its words by (ADR-0127): one of
+    /// [`DEVICES`](shuyi_assets::message::DEVICES), `keyboard` or the
+    /// pad's kind (`xbox`, `playdate`).
+    pub fn message_value(self) -> &'static str {
+        match self {
+            Self::Keyboard => "keyboard",
+            Self::Pad(PadKind::Xbox) => "xbox",
+            Self::Pad(PadKind::PlayStation) => "playstation",
+            Self::Pad(PadKind::PlayStation4) => "playstation4",
+            Self::Pad(PadKind::Nintendo) => "nintendo",
+            Self::Pad(PadKind::Playdate) => "playdate",
+            Self::Pad(PadKind::Generic) => "generic",
+        }
+    }
+}
+
 /// Something the player can hold down: a keyboard key or a controller
 /// button (a stick direction counts as a button).
 ///

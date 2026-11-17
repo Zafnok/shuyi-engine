@@ -97,6 +97,7 @@ fn lookup(name: &str) -> Option<String> {
 fn fill_styled_puts_looked_up_keys_and_key_args_in_key_spans() {
     let filled = fill_styled(
         "{Confirm} pick · {Run} run · {done} done · {count} left",
+        "en",
         &[("count", &3)],
         &[("done", &"Num Enter")],
         lookup,
@@ -119,6 +120,7 @@ fn fill_styled_takes_args_first_and_leaves_the_rest_as_fill_does() {
     // A value in `args` wins over a key of the same name, and is plain.
     let filled = fill_styled(
         "{Confirm} {x}",
+        "en",
         &[("Confirm", &"y")],
         &[("x", &"z")],
         lookup,
@@ -126,14 +128,39 @@ fn fill_styled_takes_args_first_and_leaves_the_rest_as_fill_does() {
     assert_eq!(spans(&filled), [("y ", None), ("z", KEY)]);
     // Unknown placeholders, empty ones and an unclosed `{` stay as written.
     for text in ["{nope} {} {", "a {Confirm", "} {", ""] {
-        let filled = fill_styled(text, &[], &[], lookup);
-        assert_eq!(filled.plain(), fill(text, &[], lookup), "{text}");
+        let filled = fill_styled(text, "en", &[], &[], lookup);
+        assert_eq!(filled.plain(), fill(text, "en", &[], lookup), "{text}");
         assert!(filled.spans().iter().all(|s| s.role.is_none()), "{text}");
     }
     assert_eq!(
-        fill_styled("{nope} {", &[], &[], lookup).plain(),
+        fill_styled("{nope} {", "en", &[], &[], lookup).plain(),
         "{nope} {"
     );
+}
+
+#[test]
+fn a_key_named_in_a_messages_branch_is_still_a_key_span() {
+    let text = "{n, plural, one {{Confirm} takes # step} other {{Confirm} takes # steps}}";
+    let one = fill_styled(text, "en", &[("n", &1)], &[], lookup);
+    assert_eq!(spans(&one), [("f", KEY), (" takes 1 step", None)]);
+    // The rules are the language's the text is in: 21 is `one` in Russian.
+    let n = [("n", &21u64 as &dyn ToArg)];
+    assert_eq!(fill(text, "en", &n, lookup), "f takes 21 steps");
+    assert_eq!(fill(text, "ru", &n, lookup), "f takes 21 step");
+    assert_eq!(fill(text, "ja", &[("n", &1)], lookup), "f takes 1 steps");
+    // With no value, `other` and `#` written back as its argument.
+    assert_eq!(fill(text, "en", &[], lookup), "f takes {n} steps");
+}
+
+#[test]
+fn a_select_chooses_by_args_then_key_args() {
+    let text = "{d, select, pad {A} other {B}}";
+    assert_eq!(fill(text, "en", &[("d", &"pad")], lookup), "A");
+    assert_eq!(
+        fill_styled(text, "en", &[], &[("d", &"pad")], lookup).plain(),
+        "A"
+    );
+    assert_eq!(fill(text, "en", &[], lookup), "B");
 }
 
 /// A role, by a number.
@@ -248,6 +275,7 @@ fn fill_styled_with_keeps_the_roles_of_what_it_fills_in() {
     };
     let filled = fill_styled_with(
         "{Cursor} · {Arrows} · {x} {y}",
+        "en",
         &[],
         &[("x", &"Num Enter")],
         cursor,

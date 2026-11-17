@@ -1,5 +1,5 @@
 {
-    "asset en.ron": "96c0c23a6a5eb4c9",
+    "asset en.ron": "ef2ba285cd7d6c07",
     "asset font/atlas.png": "8e2913e3e43e6fce",
     "asset font/atlas.ron": "7d44de3e1aa1749b",
     "asset intro.dlg": "2229b904caec173f",
@@ -7,7 +7,7 @@
     "asset palette.ron": "09ed5b50424d6b9d",
     "asset stage.map": "3a09382f621be4e0",
     "asset tiles.png": "5b09c4634d404040",
-    "fingerprint files": "6ce974f731981162",
+    "fingerprint files": "babd9dc9d3dcc74e",
     "outcome": "Caught { turn: 43 }",
     "step 000": "4aa0bf5fbdac7ff3",
     "step 001": "9c6cd60f01df1498",

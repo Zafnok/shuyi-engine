@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2348"]
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3218 — Typed text arguments: screen text and tips choose their words
@@ -187,35 +187,35 @@ the draft measured 490.
 
 ## Acceptance criteria
 
-- [ ] With the player's language `ru` and a `ru` pack that lacks a key,
+- [x] With the player's language `ru` and a `ru` pack that lacks a key,
       `Ctx::text_with` on that key's English
       `{n, plural, one {# key} other {# keys}}` gives "21 keys" for 21,
       and `Ctx::label` of `Label::key(…).with_arg("n", 21)` the same.
-- [ ] `{device, select, playdate {A} other {B}}` shows A when the
+- [x] `{device, select, playdate {A} other {B}}` shows A when the
       `Ctx::device` field is `Device::Pad(PadKind::Playdate)` and B with
       the keyboard, through both `Ctx::text_with` and `Ctx::fill_text`
       (tests in `crates/ui/src/ctx/tests.rs`); a value the caller passes
       as `device` wins; `{target}` gives `ctx.platform.target`.
-- [ ] Every `Device` has a `message_value` in `DEVICES`, and every value
+- [x] Every `Device` has a `message_value` in `DEVICES`, and every value
       of `DEVICES` is some device's.
-- [ ] A key's name in a plural's branch is a `TextRole::Key` span.
-- [ ] `fill` gives today's output for text that isn't a valid message:
+- [x] A key's name in a plural's branch is a `TextRole::Key` span.
+- [x] `fill` gives today's output for text that isn't a valid message:
       the existing tests in `text.rs` pass with only the new `lang`
       argument added, and
       `a_key_name_of_two_words_is_never_split_across_lines` unchanged.
-- [ ] `tip::placeholders` of `{Confirm} {n, plural, one {#} other {#
+- [x] `tip::placeholders` of `{Confirm} {n, plural, one {#} other {#
       {Cancel}}}` is `Confirm`, `n`, `Cancel`; of `{a}{b} {` it is
       `a`, `b` as today.
-- [ ] Every text of the toy's and hello-grid's English parses (the new
+- [x] Every text of the toy's and hello-grid's English parses (the new
       tests).
-- [ ] The profiles screen still says "There can be at most 8 profiles."
+- [x] The profiles screen still says "There can be at most 8 profiles."
       (`crates/ui/src/screens/profiles/tests.rs`), and every engine
       screen's `frame-png` snapshot is unchanged.
-- [ ] The completion notes have a `Breaking:` line for each break under
+- [x] The completion notes have a `Breaking:` line for each break under
       *For the game*, and a `Game:` line.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -230,4 +230,145 @@ the draft measured 490.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-11-17 from the draft on `wip/2348-full` (`c3fa207b`), which
+applied cleanly to `main`; each step checked against `main`.
+
+- `shuyi_ui::text` re-exports `Arg` and `ToArg` and names `Args<'a>`.
+  `fill`, `fill_values` and `fill_styled` take the text's language and
+  walk `Message::walk` for a text that parses (a plural or select
+  chooses by `args`, then `key_args`; `{name}` from `args` plain, else a
+  key span from `key_args` or the lookup, else `{name}`; `#` in digits),
+  and `split_tokens` as before for one that doesn't. `Label::Key`'s args
+  are `Vec<(String, Arg)>`; `Label::with_arg` and `MenuItem::with_arg`
+  take `impl ToArg`.
+- `Ctx::text_with`, `text_with_keys`, `text_styled` and
+  `text_styled_with_keys` (and so `label` and `label_styled`) take
+  `&Args`, read the text and its language from `Lang::text_in` under
+  `effective_lang()`, and give the built-in `device`
+  (`Device::message_value`) and `target` (`ctx.platform.target`) after
+  the caller's values. `Ctx::fill_text(text, lang, args)` fills text the
+  caller has (a tip's). `numbered_profile` fills by `text_in`'s language.
+- `tip::placeholders` gives `Message::names` for a message and the
+  `Part::Token`s of `split_tokens` otherwise, so `lang::entries`' "same
+  placeholders" rule and `check_key_placeholders` see inside a branch.
+- `profile.message.too_many` is a plural in the toy's and hello-grid's
+  English; a test in each checks that every English text parses.
+- Tests: a plural, a select, a key in a branch and a non-message through
+  `fill` and `fill_styled`; a property test that `fill` never panics;
+  `Ctx::text_with`, `label` and `fill_text` by the text's language with
+  a `ru` player and a pack lacking the key; `device`, a caller's
+  `device` winning, and `target`; every `Device` against `DEVICES`;
+  `tip::placeholders` of a message; a misspelled action inside a
+  plural's branch fails `check_key_placeholders`. The profiles screen's
+  message test and the frame snapshots pass unchanged.
+- Docs: `docs/formats.md` says which texts have `device` and `target`;
+  the book's chapter 6 (*Games and screens*, text by key) shows a plural
+  chosen by a number through `text_with` and `with_arg`, `device` and
+  `target`, and `ctx.fill_text`.
+
+Deviations:
+
+- The draft also checked tips by form in `tip::from_source` and let
+  `device` and `target` through its placeholder check. Both are under
+  this ticket's *Out* (2261), so they are left out; 2261's *In* lists
+  them, and its clause on 3218 now says so. Until 2261 lands, a game's
+  tip that is a `device` select needs its `placeholder` rule to admit
+  `device`, and its raw text is measured whole.
+- The draft named the messages ADR "ADR-0124"; it is ADR-0127 (ADR-0124
+  is key caps).
+- Merged with 3217 (done), which added `fill_styled_with` (a lookup
+  that gives spans, for the cursor keys drawn as one arrows picture) and
+  moved `Ctx` onto it: it takes the text's language and `&Args` too, and
+  walks the message as `fill_styled` does, which now calls it.
+- Either-order clauses: 2261, 2351, 2390, 2330, 2352 and 2758 are open,
+  so the *if not* branch of each was taken: the two English files
+  changed, both fallbacks built on `split_tokens`, and nothing else.
+  Their clauses on 3218 now say what holds.
+
+Breaking: shuyi-ui: text::Label::Key, text::Label::with_arg, widgets::menu::MenuItem::with_arg: a label's args are `Vec<(String, Arg)>` and `with_arg` takes `impl ToArg`; integers and strings compile as before, a value of the game's own `Display` type is passed as `value.to_string()`, and a game that builds `Label::Key { args, .. }` itself holds `Arg`s.
+
+```migration
+since: 0.1.0
+what: A label's values are typed (an Arg), so a plural can choose by a number; with_arg takes impl ToArg.
+old: "Label::with_arg(name, value: impl Display); Label::Key { args: Vec<(String, String)> }"
+new: "Label::with_arg(name, value: impl ToArg); Label::Key { args: Vec<(String, Arg)> }"
+before: |
+  let label = Label::key("unit.class").with_arg("class", unit.class);
+  let raw = Label::Key { key: "a".into(), args: vec![("n".into(), n.to_string())] };
+after: |
+  let label = Label::key("unit.class").with_arg("class", unit.class.to_string());
+  let raw = Label::Key { key: "a".into(), args: vec![("n".into(), Arg::Int(n))] };
+find: ["n.to_string())] }"]
+```
+
+Breaking: shuyi-ui: text::fill, text::fill_values, text::fill_styled, text::fill_styled_with: each takes the language the text is in after the text, and its values as `&Args` (`&[(&str, &dyn ToArg)]`); a game passes the tag (`Lang::text_in` gives it with the text) and casts a value to `&dyn ToArg`, or passes its own `Display` type as a `String`.
+
+```migration
+since: 0.1.0
+what: fill, fill_values and fill_styled take the text's language, whose plural rules a message follows, and typed values.
+old: "fill_values(text: &str, args: &[(&str, &dyn Display)])"
+new: "fill_values(text: &str, lang: &str, args: &Args)"
+before: |
+  let line = fill_values(text, &[("n", &n as &dyn Display)]);
+after: |
+  let line = fill_values(text, lang, &[("n", &n as &dyn ToArg)]);
+find: ["as &dyn Display"]
+```
+
+Breaking: shuyi-ui: Ctx::text_with, Ctx::text_with_keys, Ctx::text_styled, Ctx::text_styled_with_keys: their values are `&Args` (`&dyn ToArg`); integers and strings compile as before, a slice typed `&dyn Display` becomes `&dyn ToArg`, and a value of the game's own `Display` type is passed as a `String`.
+
+```migration
+since: 0.1.0
+what: A screen's text takes typed values, so a plural chooses by a number.
+old: "Ctx::text_with(key, args: &[(&str, &dyn Display)])"
+new: "Ctx::text_with(key, args: &Args)"
+before: |
+  let values = [("count", &n as &dyn Display), ("name", &unit.name)];
+  ctx.text_with("battle.line", &values)
+after: |
+  let values = [("count", &n as &dyn ToArg), ("name", &unit.name.to_string())];
+  ctx.text_with("battle.line", &values)
+find: ["as &dyn Display"]
+```
+
+Breaking: shuyi-ui: widgets::ask::Ask::view_with_keys: its values are `&[(&str, &dyn ToArg)]`; a game casts to `&dyn ToArg` where it cast to `&dyn Display`.
+
+```migration
+since: 0.1.0
+what: A question's view takes typed values, as Ctx::text_with does.
+old: "Ask::view_with_keys(ctx, keys, args: &[(&str, &dyn Display)])"
+new: "Ask::view_with_keys(ctx, keys, args: &[(&str, &dyn ToArg)])"
+before: |
+  ask.view_with_keys(ctx, keys, &[("name", &name as &dyn Display)])
+after: |
+  ask.view_with_keys(ctx, keys, &[("name", &name as &dyn ToArg)])
+find: ["as &dyn Display"]
+```
+
+Breaking: hello-grid: tests/golden/hello-grid.ron "asset en.ron" and "fingerprint files": the example's English has the plural `profile.message.too_many`; only the example's table moves (and `tests/sessions/stage.session.ron`'s content stamp with it), and a game changes nothing.
+
+Behaviour: shuyi-ui: a screen's text that parses as a message is written by ICU's rules: two apostrophes show one, a quoted brace shows a brace, and `{n, number}` shows the digits; a text that doesn't parse is filled as before.
+
+Behaviour: shuyi-ui: `{device}` and `{target}` in screen text are filled by the device pressed last (`keyboard`, `xbox`, `playdate`…) and the target's id unless the caller passes values of those names; they were left as written.
+
+Behaviour: shuyi-ui: a key's text a pack lacks shows the source's text by the source language's plural rules (`Lang::text_in`), not the player's.
+
+Behaviour: shuyi-assets: `tip::placeholders` of a message gives its arguments' names, each once, inside branches too (`{n, plural, one {#} other {# {Cancel}}}` gives `n` and `Cancel`), where it gave the raw inside of each pair of braces.
+
+Behaviour: shuyi-ui: the engine's `profile.message.too_many` is a plural message in the toy's and hello-grid's English; it still reads "There can be at most 8 profiles."
+
+Searches of the game (`gh search code --repo Zafnok/visions-of-shuyi`):
+`fill_values(` in `crates/ui/src/tips.rs`, `profiles.rs` and `words.rs`;
+`Label::Key` in `widgets/menu.rs` and `screens/battle/mode.rs`;
+`fill_placeholders` in `tips.rs`, `tips/view.rs` and
+`screens/battle/guides.rs`; `dyn Display` in `tips.rs`, `words.rs`,
+`screens/preparations.rs`, `screens/class_change.rs` and
+`screens/battle/` (`magic.rs`, `rewind.rs`, `mod.rs`, `map_menu.rs`).
+Each is a call the breaks above change. `{device}`: no hit. `{target}`:
+four `battle.rewind.*` texts in `assets/lang/en/ui.ron`, and
+`screens/battle/rewind.rs` passes its own `target` in each call, which
+wins over the built-in. No doubled apostrophe in the game's English.
+
+Game: game#1062, whose PR moves the pin to this change, fixes the calls above and shows its tip's second wording through `Ctx::fill_text`.
+
+Nick: nothing to decide.
