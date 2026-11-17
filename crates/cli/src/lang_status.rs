@@ -8,7 +8,7 @@
 //! for whoever translates. After a part's stale keys come its entries
 //! with **missing forms**, when it has any: a plural or selectordinal with
 //! no branch for a category the pack's language has, so a number of that
-//! category shows `other` ([`LangStatus::missing_forms`]; French's,
+//! category shows `other` ([`LangStatus::missing_forms`](shuyi_assets::lang::LangStatus::missing_forms); French's,
 //! Spanish's, Italian's and Portuguese's `many` of a million isn't asked).
 //! Then, for the screen text, its entries **too long** for their place:
 //! wider than their key's `max_cells` in the source's `ui.ron`
