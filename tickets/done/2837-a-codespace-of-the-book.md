@@ -280,7 +280,7 @@ cost about step 2's time and go back in one command.
 **Follow-up:** 2839 (the steps resolve one set of features, so the
 engine is built once). 2528 and 2838 say what they take from here.
 
-Size: 997 counted lines against the 600 estimated: the check's fixture
+Size: 1,001 counted lines against the 600 estimated: the check's fixture
 tests and the split build. It would split cleanly at the check (`crates/xtask/`).
 
 Book: the quick start and the project's front page say how to use the
