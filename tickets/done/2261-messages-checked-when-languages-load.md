@@ -191,7 +191,8 @@ Deviations:
   arrow keys). Corrected in the files this PR touches.
 - `LangStatus` became `#[non_exhaustive]` beside its new field. It is a
   view only `Lang::status` builds (ADR-0039, kind 3), and the new field
-  breaks a struct literal either way, so later fields won't.
+  breaks a struct literal either way; with it, a field added after this
+  one is no break.
 
 The game's text (searched on its `main`, 2026-11-17): its
 `assets/lang/en/ui.ron` (841 keys) loads through `english_from_source`

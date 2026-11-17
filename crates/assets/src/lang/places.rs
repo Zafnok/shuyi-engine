@@ -255,16 +255,12 @@ mod tests {
             (key: "title.continue", source: "{device, select, playdate {Go on} other {On}}",
              text: "{device, select, playdate {Weiter} other {Fortsetzen}}"),
         ]"#;
-        let continues = r#""title.continue": (text: "{device, select, playdate {Go on} other {On}}", max_cells: 8),
+        let continues = r#""title.continue": (
+            text: "{device, select, playdate {Go on} other {On}}",
+            max_cells: 8,
+        ),
     }"#;
-        let source_ui = SOURCE_UI.replace(
-            "
-    }",
-            &format!(
-                "
-{continues}"
-            ),
-        );
+        let source_ui = SOURCE_UI.replace("    }", continues);
         let files = [
             ("en/ui.ron", source_ui.as_str()),
             ("xx/lang.ron", r#"(name: "X", made_by: Machine)"#),

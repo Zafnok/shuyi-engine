@@ -283,23 +283,8 @@ pub fn report<S: AsRef<str>>(
             Part::Data => {}
         }
         out.push('\n');
-        if !missing.is_empty() {
-            out.push_str("missing:\n");
-        }
-        for key in &missing {
-            let source = lang.source_text(key).unwrap_or_default();
-            let _ = writeln!(out, "  {key}\n    source: {source:?}");
-        }
-        if !stale.is_empty() {
-            out.push_str("stale:\n");
-        }
-        for key in &stale {
-            let entry = pack.entry(key).map(|e| &e.source);
-            let was = entry.or_else(|| pack.line(key).map(|e| &e.source));
-            let was = was.map_or("", String::as_str);
-            let now = lang.source_text(key).unwrap_or_default();
-            let _ = writeln!(out, "  {key}\n    was: {was:?}\n    now: {now:?}");
-        }
+        write_missing(&mut out, lang, &missing);
+        write_stale(&mut out, lang, pack, &stale);
         let forms: Vec<&MissingForms> = missing_forms
             .iter()
             .copied()
@@ -317,6 +302,29 @@ pub fn report<S: AsRef<str>>(
         }
     }
     Ok(out)
+}
+
+fn write_missing(out: &mut String, lang: &Lang, missing: &[String]) {
+    if !missing.is_empty() {
+        out.push_str("missing:\n");
+    }
+    for key in missing {
+        let source = lang.source_text(key).unwrap_or_default();
+        let _ = writeln!(out, "  {key}\n    source: {source:?}");
+    }
+}
+
+fn write_stale(out: &mut String, lang: &Lang, pack: &LangPack, stale: &[String]) {
+    if !stale.is_empty() {
+        out.push_str("stale:\n");
+    }
+    for key in stale {
+        let entry = pack.entry(key).map(|e| &e.source);
+        let was = entry.or_else(|| pack.line(key).map(|e| &e.source));
+        let was = was.map_or("", String::as_str);
+        let now = lang.source_text(key).unwrap_or_default();
+        let _ = writeln!(out, "  {key}\n    was: {was:?}\n    now: {now:?}");
+    }
 }
 
 fn write_missing_forms(out: &mut String, pack: &LangPack, forms: &[&MissingForms]) {
