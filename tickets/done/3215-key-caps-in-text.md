@@ -222,8 +222,11 @@ Done (ADR-0124, which supersedes ADR-0122 §4):
 - **Even margins:** `font-atlas` measures the font's ink into
   `atlas.ron` (`FontInk`: the box most capitals share the edges of, and
   the columns of each printable ASCII glyph that differs). Terminus:
-  columns 1–6, rows 2–11, as the game measured; `W` 0–6. The template's,
-  Hello, Grid's, the book's and the tutorial's atlases carry it.
+  columns 1–6, rows 2–11, as the game measured; `W` 0–6. The template's
+  atlas carries it (a test makes it again and compares); Hello, Grid's
+  and the book's copies stay as they were, as Hello, Grid's recorded
+  sessions are stamped with its files, and none of them draws caps. A
+  pack holds the ink: the pack format is version 16.
 
 Deviations:
 
@@ -302,6 +305,32 @@ after: |
       wide_sets: BTreeMap::new(),
       ink: None,
   }
+```
+
+Breaking: shuyi-assets: pack::VERSION: 16 (a font atlas's ink); a pack baked before is refused, so a game bakes again with `shuyi bake`
+
+```migration
+since: 0.1.0
+what: The pack format is version 16; a pack of version 15 is refused.
+old: "pack::VERSION == 15"
+new: "pack::VERSION == 16"
+before: |
+  cargo shuyi bake   # with the engine before 3215
+after: |
+  cargo shuyi bake   # again, with this engine
+```
+
+Breaking: shuyi-assets: the golden value `font atlas: font-atlas` (`crates/assets/tests/golden/formats.ron`): a decoded atlas has `ink`, so its state hash changed; a game's golden table of a font atlas is blessed again
+
+```migration
+since: 0.1.0
+what: A decoded font atlas has an ink field, so its state hash in a golden table changes.
+old: "golden font atlas hash before 3215"
+new: "golden font atlas hash with ink: None"
+before: |
+  cargo xtask golden
+after: |
+  cargo xtask golden --bless
 ```
 
 Behaviour: shuyi-cli: `font-atlas` writes an `ink` block at the end of `atlas.ron` (the capitals' box and the columns of the ASCII glyphs that differ); an atlas made again differs from one made before by that block

@@ -75,8 +75,9 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// header, the index, and the binary form of the engine's own kinds. A
 /// change to any of them makes it the next number, and a pack of another
 /// version is refused, never migrated. Version 15 reads files' bytes in any
-/// order and with bytes between them (a recipient's layout, ADR-0118).
-pub const VERSION: u32 = 15;
+/// order and with bytes between them (a recipient's layout, ADR-0118);
+/// version 16 holds a font atlas's ink (ticket 3215, ADR-0124).
+pub const VERSION: u32 = 16;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";

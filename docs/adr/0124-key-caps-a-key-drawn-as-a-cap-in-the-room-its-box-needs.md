@@ -101,8 +101,9 @@ what it measures with.
 - A line with caps is wider: a hint that fit a panel by a cell or two may
   be cut. A game measures it as before and sees the new width.
 - `FontAtlasDef` has a new field (`ink`), so a struct literal of it
-  breaks; an atlas file without it still reads. The template's and the
-  examples' atlases carry it.
+  breaks; an atlas file without it still reads. A pack holds it: the
+  pack format is version 16. The template's atlas carries it; an
+  example's, made before, gets it when made again.
 - A renderer that ignores glyph styles (the one-bit renderer, the
   Playdate's) draws a cap's name on the grid; the style is off there
   unless a game says.

@@ -21,7 +21,7 @@ d9d0d34f89554d0a crates/game/examples/tools.rs
 8a1505756a23ce0b crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
 bb6026e333cd9cbd crates/game/files/font/atlas.png
-6a670fd99c7bd549 crates/game/files/font/atlas.ron
+019fc6c07bbcb069 crates/game/files/font/atlas.ron
 ba791d69f803381d crates/game/files/keymap.ron
 446f98acc0401781 crates/game/files/palette.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
@@ -56,7 +56,7 @@ d9d0d34f89554d0a crates/game/examples/tools.rs
 ac3f7f6edb84c1ec crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
 bb6026e333cd9cbd crates/game/files/font/atlas.png
-6a670fd99c7bd549 crates/game/files/font/atlas.ron
+019fc6c07bbcb069 crates/game/files/font/atlas.ron
 ba791d69f803381d crates/game/files/keymap.ron
 4c2a9300c6e22047 crates/game/files/palette.ron
 6ce7f8b2d89d719d crates/game/files/stage.map
@@ -100,7 +100,7 @@ d9d0d34f89554d0a crates/game/examples/tools.rs
 8a1505756a23ce0b crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
 bb6026e333cd9cbd crates/game/files/font/atlas.png
-6a670fd99c7bd549 crates/game/files/font/atlas.ron
+019fc6c07bbcb069 crates/game/files/font/atlas.ron
 ba791d69f803381d crates/game/files/keymap.ron
 446f98acc0401781 crates/game/files/palette.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
