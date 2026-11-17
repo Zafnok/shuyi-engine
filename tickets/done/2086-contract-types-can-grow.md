@@ -198,7 +198,7 @@ before: |
   for op in Op::ALL.into_iter() { println!("{}", op.name()); }
 after: |
   for op in Op::ALL.iter().copied() { println!("{}", op.name()); }
-find: ["Op::ALL.into_iter()", "Op::SESSION.into_iter()"]
+find: ["Op::ALL.into_iter()"]
 ```
 
 Breaking: shuyi-cli: CheckOutput, ReplayStep, ReplayOutput, AddOutput, ModuleEntry, catalog::Concern: #[non_exhaustive]; read their fields, never build them by literal or match them without `..`
