@@ -203,6 +203,15 @@ and `lang.text_in(code, key)` gives a text with that language's tag. Every choic
 `shuyi::assets::message::Message` reads one (`Message::parse`) and fills it
 (`Message::format`).
 
+The languages check their messages as they load. A text that doesn't parse (an unclosed
+`{`, or `{}`) fails, naming its file and key, and so does a translation that loses one of
+its source's `{name}`s, drops a branch of its source's select (the Playdate's wording,
+say), or uses a plural form its language hasn't (French has no `few`). A translation may
+wrap its source's `{n}` in a plural of its own, or drop a plural its language doesn't
+need. A plural that leaves out a form its language has still loads, showing `other` for
+it, and `cargo shuyi lang-status ru` lists it under `missing forms:`. A tip is measured
+form by form: each wording of a `{device, select, …}` must fit the box.
+
 ## Voices
 
 A language's voice clips sit in its voice folder, one per dialogue line, listed in its
@@ -302,6 +311,13 @@ loading. `cargo shuyi bake` makes it, and `cargo shuyi check --baked` proves eve
 read from the pack equal to the one read from its source, so the text files stay what
 the game is made of. The formats page says [how a pack is
 built](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-pack).
+
+A group of assets is a **folder**. A game whose pack is big, as a web game's can be,
+names the folders its first frame reads in its bake, `.first("title/")`, and the bake
+lays them at the front of the pack, so the page that fetches the pack can start the
+game as soon as they arrive. A screen that opens a later part asks the bundle's
+`arrived("part2/")` first, and shows its own wait until it says yes. On desktop and the
+Playdate every folder has always arrived.
 
 ## A target's own files
 

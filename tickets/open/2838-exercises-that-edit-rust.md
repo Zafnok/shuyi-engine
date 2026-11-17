@@ -41,9 +41,23 @@ What there is:
   one of the page's `extra.files`, `to`), written in the twins by
   `crates/xtask/src/llms.rs`, run by `site/static/playground.js`'s
   **Check my work**.
-- **From 2837:** `.devcontainer/book/devcontainer.json` opens a
-  Codespace at `site/tutorial/` with every step's web build built, linked
-  from each step's page, which names the step's folder.
+- **From 2837 (done):** `.devcontainer/book/devcontainer.json` opens a
+  Codespace at `site/tutorial/`, linked from each step's page, which names
+  the step's folder and the two commands, `cargo shuyi web` and `bash
+  ../serve.sh` (`site/templates/chapter.html`; the twin, `codespace` in
+  `crates/xtask/src/llms.rs`). Every step's web build is built into one
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target` (step 2
+  before the Codespace opens, the other nine behind it, or all from a
+  prebuild): a command run there builds into it too, and waits for its
+  lock while those builds run.
+
+**Either order with 2841:** if 2841 is done, a `code` exercise on a page
+served from the book's Codespace (where 2841's `GET /pad/status` answers)
+shows **Check my work**, which posts to the book's server's `POST
+/pad/check/<step>/<check>` (added here, in `crates/xtask/src/book_pad.rs`,
+with 2841's `Origin` check) to run this command, and shows its `Done.` or
+`Not yet.` and text as the page's other exercises do, a compile error in
+Problems; if not, nothing to do (2841 adds it).
 
 ## Nick input
 
@@ -77,8 +91,9 @@ None.
   so nothing there changes.
 
 **Out (do not do):**
-- running a Rust exercise's check from the page (no build server,
-  ADR-0126 §3);
+- running a Rust exercise's check from the public page (no build
+  server, ADR-0126 §3); from the page the book's Codespace serves, the
+  clause with 2841 says who;
 - more than one Rust exercise; the book's later steps can take more in
   their own tickets.
 

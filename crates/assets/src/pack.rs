@@ -25,12 +25,18 @@
 //! (ADR-0128 §2).
 //!
 //! The index lists the files in path order, and [`write()`] lays their bytes
-//! in that order with nothing between them. A reader takes them in any
-//! order and with bytes between them, so long as no two overlap and the
-//! last ends the pack: a closed build's copy is laid out by its recipient's
-//! code ([`Raw::write_marked`], ADR-0118), and [`Raw::mark`] reads the code
-//! back. What the game reads is the same either way, and no checksum covers
-//! the bytes between files: one changed changes nothing the game reads.
+//! in that order with nothing between them. A game may name folders to lay
+//! first ([`Bake::first`], [`write_first`], ADR-0128 §3): their files go at
+//! the front of the pack, in the order named, and the index holds each
+//! one's span ([`Index::spans`]), so a pack streamed in that order can be
+//! read from once a folder has arrived ([`Source::arrived`]). A reader
+//! takes the files in any order and with bytes between them, so long as no
+//! two overlap, the last ends the pack and each span holds its folder: a
+//! closed build's copy is laid out by its recipient's code
+//! ([`Raw::write_marked`], ADR-0118), within each span, and [`Raw::mark`]
+//! reads the code back. What the game reads is the same either way, and no
+//! checksum covers the bytes between files: one changed changes nothing the
+//! game reads.
 //!
 //! A pack stands for its sources: its layer ([`Pack::into_layer`]) gives a
 //! bundle the fingerprint of the bundle it was baked from
@@ -88,10 +94,11 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// version is refused, never migrated. Version 15 reads files' bytes in any
 /// order and with bytes between them (a recipient's layout, ADR-0118);
 /// version 16 holds a font atlas's ink (ticket 3215, ADR-0124), version
-/// 17 its bold face (ticket 3216), and version 18 checks the header and the
+/// 17 its bold face (ticket 3216), version 18 checks the header and the
 /// index apart from each file, which has a checksum of its own (ticket
-/// 2263, ADR-0128 §2).
-pub const VERSION: u32 = 18;
+/// 2263, ADR-0128 §2), and version 19's index holds the span of each
+/// folder laid first (ticket 2265, ADR-0128 §3).
+pub const VERSION: u32 = 19;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";
@@ -101,6 +108,9 @@ pub const MAX_FILES: usize = 1 << 16;
 
 /// The most bytes a pack's files add up to, unpacked: 1 GiB.
 pub const MAX_UNPACKED_BYTES: u64 = 1 << 30;
+
+/// The most folders a pack lays first ([`write_first`]).
+pub const MAX_FIRST: usize = 256;
 
 /// The most bytes a baked file has: 64 MiB, as the engine's biggest
 /// sources (a PNG, a sound).
@@ -205,12 +215,75 @@ struct Kept {
     baked: bool,
 }
 
-/// The index as the file holds it: what the pack says of itself, and its
-/// files in path order.
+/// A folder laid first ([`write_first`]), and the bytes its files take.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct Span {
+    /// The folder, with no `/` at its end (`""` for the whole pack).
+    dir: String,
+    /// Where the bytes start, after the index.
+    offset: u64,
+    /// How many bytes they are: from the first byte of its files to the
+    /// last, whatever lies between.
+    length: u64,
+}
+
+/// The index as the file holds it: what the pack says of itself, its files
+/// in path order, and the folders laid first, in the order named.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Listing {
     info: PackInfo,
     entries: Vec<Entry>,
+    spans: Vec<Span>,
+}
+
+/// Whether the file at `path` is under folder `dir` (with no `/` at its
+/// end): inside it or a folder below it. Every file is under `""`.
+pub(crate) fn under(path: &str, dir: &str) -> bool {
+    dir.is_empty()
+        || path
+            .strip_prefix(dir)
+            .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// Folder `dir` as a span names it: with no `/` at its end.
+pub(crate) fn folder(dir: &str) -> &str {
+    dir.trim_end_matches('/')
+}
+
+/// The folders of `first`, as spans name them, each once, in the order
+/// first named, and no more than [`MAX_FIRST`].
+fn folders<S: AsRef<str>>(first: &[S]) -> Vec<String> {
+    let mut dirs: Vec<String> = Vec::new();
+    for dir in first {
+        let dir = folder(dir.as_ref());
+        if dirs.len() < MAX_FIRST && !dirs.iter().any(|seen| seen == dir) {
+            dirs.push(dir.to_owned());
+        }
+    }
+    dirs
+}
+
+/// The order a pack of the files at `paths` (in path order) lays them in
+/// with no code, each a place in `paths`, and how many files each group of
+/// it holds: the files under each folder of `first`, in its order (a file
+/// under two goes with the first), then every other, each group in path
+/// order.
+fn grouped(paths: &[&str], first: &[String]) -> (Vec<usize>, Vec<usize>) {
+    let group_of = |path: &str| {
+        first
+            .iter()
+            .position(|dir| under(path, dir))
+            .unwrap_or(first.len())
+    };
+    let groups: Vec<usize> = paths.iter().map(|path| group_of(path)).collect();
+    let mut order: Vec<usize> = (0..paths.len()).collect();
+    // A stable sort: each group keeps its files in path order.
+    order.sort_by_key(|&at| groups[at]);
+    let mut sizes = vec![0; first.len() + 1];
+    for group in groups {
+        sizes[group] += 1;
+    }
+    (order, sizes)
 }
 
 /// A pack's header and index, read and checked alone ([`Index::read`]):
@@ -358,6 +431,36 @@ fn sections(bytes: &[u8]) -> Option<Vec<(&str, &[u8])>> {
 /// A pack of `files` (path → content), described by `info`. Each file's
 /// bytes are compressed when that makes them smaller.
 pub fn write(info: &PackInfo, files: &BTreeMap<String, Content>) -> Vec<u8> {
+    write_first::<&str>(info, &[], files)
+}
+
+/// A pack of `files` (path → content), described by `info`, the files
+/// under each folder of `first` laid at its front, in the order of `first`
+/// (a file under two goes with the first), then every other file in path
+/// order. `a/` is the same folder as `a`, a folder named twice is laid
+/// where first named, and past [`MAX_FIRST`] folders the rest are laid in
+/// path order. The index holds each folder's span ([`Index::spans`]):
+/// [`Bake::first`] names them.
+///
+/// ```
+/// use std::collections::BTreeMap;
+/// use shuyi_assets::pack::{self, Content, Index, PackInfo};
+/// use shuyi_core::ContentHash;
+///
+/// let info = PackInfo::new("my-game 1", None, ContentHash(1));
+/// let file = |path: &str| (path.to_owned(), Content::Raw(path.as_bytes().to_vec()));
+/// let files = BTreeMap::from([file("a.txt"), file("title/logo.txt")]);
+/// let bytes = pack::write_first(&info, &["title/"], &files);
+/// let index = Index::read(&bytes, "my-game 1").unwrap();
+/// let title = index.file_range("title/logo.txt").unwrap();
+/// assert!(title.end <= index.file_range("a.txt").unwrap().start);
+/// assert_eq!(index.spans().collect::<Vec<_>>(), [("title", title)]);
+/// ```
+pub fn write_first<S: AsRef<str>>(
+    info: &PackInfo,
+    first: &[S],
+    files: &BTreeMap<String, Content>,
+) -> Vec<u8> {
     let files = files
         .iter()
         .map(|(path, content)| match content {
@@ -372,16 +475,46 @@ pub fn write(info: &PackInfo, files: &BTreeMap<String, Content>) -> Vec<u8> {
     Raw {
         info: info.clone(),
         files,
+        first: folders(first),
         order: Vec::new(),
         gaps: Vec::new(),
     }
     .write()
 }
 
+/// The span of each folder of `first` once `files` lie at `offsets`: from
+/// the first byte of its files to the last (none for a folder with no file).
+fn spans_of(files: &[RawFile], offsets: &[u64], first: &[String]) -> Vec<Span> {
+    first
+        .iter()
+        .map(|dir| {
+            let (mut start, mut end) = (u64::MAX, 0);
+            for (file, &offset) in files.iter().zip(offsets) {
+                if under(&file.path, dir) {
+                    start = start.min(offset);
+                    end = end.max(offset + file.kept.len() as u64);
+                }
+            }
+            let start = start.min(end);
+            Span {
+                dir: dir.clone(),
+                offset: start,
+                length: end - start,
+            }
+        })
+        .collect()
+}
+
 /// The pack of `info` and `files` (in path order), their bytes laid in the
 /// order `order` gives (each a place in `files`), each after the bytes of
-/// the same place in `gaps`.
-fn assemble(info: &PackInfo, files: &[RawFile], order: &[usize], gaps: &[Vec<u8>]) -> Vec<u8> {
+/// the same place in `gaps`, with the span of each folder of `first`.
+fn assemble(
+    info: &PackInfo,
+    files: &[RawFile],
+    first: &[String],
+    order: &[usize],
+    gaps: &[Vec<u8>],
+) -> Vec<u8> {
     let mut offsets = vec![0u64; files.len()];
     let mut data = Vec::new();
     for (place, &at) in order.iter().enumerate() {
@@ -391,6 +524,7 @@ fn assemble(info: &PackInfo, files: &[RawFile], order: &[usize], gaps: &[Vec<u8>
         offsets[at] = data.len() as u64;
         data.extend_from_slice(&files[at].kept);
     }
+    let spans = spans_of(files, &offsets, first);
     let entries = files
         .iter()
         .zip(offsets)
@@ -407,6 +541,7 @@ fn assemble(info: &PackInfo, files: &[RawFile], order: &[usize], gaps: &[Vec<u8>
     let listing = Listing {
         info: info.clone(),
         entries,
+        spans,
     };
     // Strings, numbers and lists always serialize.
     let index = postcard::to_allocvec(&listing).unwrap_or_default();
@@ -533,6 +668,53 @@ fn check_listing(listing: &Listing) -> Result<(), PackError> {
             return Err(broken(format!(
                 "{} overlaps {}",
                 entries[second].path, entries[first].path
+            )));
+        }
+    }
+    let data_end = spans.iter().map(|&(_, end, _)| end).max().unwrap_or(0);
+    check_spans(listing, data_end)
+}
+
+/// Whether the spans of `listing` hold together, its files' bytes ending at
+/// `data_end`: no more than [`MAX_FIRST`], each folder once and with no `/`
+/// at its end, each ending by `data_end` and holding every file under its
+/// folder.
+fn check_spans(listing: &Listing, data_end: u64) -> Result<(), PackError> {
+    let spans = &listing.spans;
+    if spans.len() > MAX_FIRST {
+        return Err(broken(format!(
+            "it lays more than {MAX_FIRST} folders first"
+        )));
+    }
+    let entries = &listing.entries;
+    for (at, span) in spans.iter().enumerate() {
+        let dir = &span.dir;
+        if folder(dir) != dir || spans[..at].iter().any(|seen| seen.dir == *dir) {
+            return Err(broken(format!(
+                "its span of {dir}/ is named wrong or twice"
+            )));
+        }
+        let end = span
+            .offset
+            .checked_add(span.length)
+            .filter(|&end| end <= data_end)
+            .ok_or_else(|| broken(format!("its span of {dir}/ goes past its files")))?;
+        // The files under a folder are together in path order, from the
+        // first path at or after `dir/`.
+        let start = if dir.is_empty() {
+            0
+        } else {
+            let prefix = format!("{dir}/");
+            entries.partition_point(|entry| entry.path < prefix)
+        };
+        let outside = entries[start..]
+            .iter()
+            .take_while(|entry| under(&entry.path, dir))
+            .find(|entry| entry.offset < span.offset || entry.offset + entry.stored > end);
+        if let Some(entry) = outside {
+            return Err(broken(format!(
+                "{} lies outside its span of {dir}/",
+                entry.path
             )));
         }
     }
@@ -696,6 +878,19 @@ impl Index {
         Some(start..start.saturating_add(entry.stored))
     }
 
+    /// Each folder laid first ([`write_first`]), in the order named, with
+    /// no `/` at its end, and where its files' bytes lie in the pack, from
+    /// its start: from the first byte of its files to the last, whatever
+    /// lies between (empty for a folder with no file). A page that streams
+    /// the pack fetches it in this order, and a folder can be read once its
+    /// span has arrived.
+    pub fn spans(&self) -> impl Iterator<Item = (&str, core::ops::Range<u64>)> {
+        self.listing.spans.iter().map(|span| {
+            let start = self.data_at.saturating_add(span.offset);
+            (span.dir.as_str(), start..start.saturating_add(span.length))
+        })
+    }
+
     /// The bytes of the file at `path`, from `stored`, the bytes the pack
     /// keeps of it ([`file_range`](Self::file_range)): checked against the
     /// file's checksum, then unpacked. A file changed in the pack is refused
@@ -777,11 +972,25 @@ const GAP_SEED: u64 = 0x5348_5559_4741_5053;
 const ORDER_SEED: u64 = 0x5348_5559_4f52_4452;
 
 /// The order `code` lays `count` files in: each data place's file.
+#[cfg(test)]
 fn order_of(code: Code, count: usize) -> Vec<usize> {
-    let mut order: Vec<usize> = (0..count).collect();
+    order_in(code, &[count])
+}
+
+/// The order `code` lays files in groups of `sizes` files in, each group
+/// after the one before: each data place's place in the order with no code.
+/// Each group's files are shuffled among its own places, from one stream
+/// drawn group after group, so a pack with no folder laid first is laid
+/// as before there were groups (the order `a_codes_layout_is_pinned` pins).
+fn order_in(code: Code, sizes: &[usize]) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..sizes.iter().sum()).collect();
     let mut stream = Stream::new(ORDER_SEED ^ u64::from(code.bits()));
-    for at in (1..count).rev() {
-        order.swap(at, stream.below(at + 1));
+    let mut start = 0;
+    for &size in sizes {
+        for at in (1..size).rev() {
+            order.swap(start + at, start + stream.below(at + 1));
+        }
+        start += size;
     }
     order
 }
@@ -821,6 +1030,8 @@ pub struct Raw {
     info: PackInfo,
     /// Its files in path order.
     files: Vec<RawFile>,
+    /// The folders laid first, in the order named, each once.
+    first: Vec<String>,
     /// Each data place's file, as read; empty for a pack made here.
     order: Vec<usize>,
     /// The bytes before each data place, as read.
@@ -866,9 +1077,27 @@ impl Raw {
         Ok(Self {
             info: index.info,
             files,
+            first: index.spans.into_iter().map(|span| span.dir).collect(),
             order,
             gaps,
         })
+    }
+
+    /// The order its files are laid in with no code ([`write`](Self::write)),
+    /// each a place in its files, and how many each group holds.
+    fn grouped(&self) -> (Vec<usize>, Vec<usize>) {
+        let paths: Vec<&str> = self.paths().collect();
+        grouped(&paths, &self.first)
+    }
+
+    /// The order `code` lays its files in: within each group, so each span
+    /// still holds its folder.
+    fn coded(&self, code: Code) -> Vec<usize> {
+        let (base, sizes) = self.grouped();
+        order_in(code, &sizes)
+            .into_iter()
+            .map(|place| base[place])
+            .collect()
     }
 
     /// What the pack says of itself.
@@ -911,32 +1140,41 @@ impl Raw {
         true
     }
 
-    /// The pack's bytes, its files in path order with nothing between them,
-    /// as [`write()`] lays them.
+    /// The pack's bytes with nothing between its files, as [`write()`] and
+    /// [`write_first`] lay them: the folders laid first, then every other
+    /// file, each group in path order.
     pub fn write(&self) -> Vec<u8> {
-        let order: Vec<usize> = (0..self.files.len()).collect();
-        assemble(&self.info, &self.files, &order, &[])
+        let (order, _) = self.grouped();
+        assemble(&self.info, &self.files, &self.first, &order, &[])
     }
 
     /// The pack's bytes laid out by `code`: its files in the order the code
     /// gives, and the code twice in bytes between the first of them. The
-    /// index is the same but for its offsets, and the game reads the same
-    /// files. None for a pack with no file.
+    /// code shuffles each folder laid first among its own places, and every
+    /// other file among theirs, so each span still holds its folder. The
+    /// index is the same but for its offsets and spans, and the game reads
+    /// the same files. None for a pack with no file.
     pub fn write_marked(&self, code: Code) -> Option<Vec<u8>> {
         let count = self.files.len();
         if count == 0 {
             return None;
         }
-        let order = order_of(code, count);
+        let order = self.coded(code);
         let gaps = gaps_of(code, count);
-        Some(assemble(&self.info, &self.files, &order, &gaps))
+        Some(assemble(
+            &self.info,
+            &self.files,
+            &self.first,
+            &order,
+            &gaps,
+        ))
     }
 
     /// What its layout holds: no mark, a code, or bytes that hold none.
     pub fn mark(&self) -> PackMark {
         let count = self.files.len();
         let between: Vec<u8> = self.gaps.iter().flatten().copied().collect();
-        let in_order = self.order.iter().enumerate().all(|(at, &file)| at == file);
+        let in_order = self.order == self.grouped().0;
         if between.is_empty() {
             return if in_order {
                 PackMark::None
@@ -958,7 +1196,7 @@ impl Raw {
         match Code::from_bytes(bytes) {
             Some(code) if first == second => PackMark::Code {
                 code,
-                order_agrees: self.order == order_of(code, count),
+                order_agrees: self.order == self.coded(code),
             },
             _ => PackMark::Broken,
         }
@@ -1134,6 +1372,8 @@ impl<K: AssetKind + DeserializeOwned> Format for Packed<K> {
     }
 }
 
+#[cfg(test)]
+mod first_tests;
 #[cfg(test)]
 mod one_bit_tests;
 #[cfg(test)]

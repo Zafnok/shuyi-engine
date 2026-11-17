@@ -136,6 +136,10 @@ for project in "${projects[@]}"; do
     page="$out/one/learn/book/$folder/$name/index.html"
     [ -f "$page" ] || fail "the build has no learn/book/$folder/$name/"
     grep -qF "${one}learn/book/$folder/$name/play/" "$page" || fail "learn/book/$folder/$name/ doesn't link its play/"
+    # The book's Codespace, and the step's folder in it (ticket 2837).
+    grep -qF "devcontainer_path=.devcontainer/book/devcontainer.json" "$page" &&
+      grep -qF "<code>$name/</code>" "$page" ||
+      fail "learn/book/$folder/$name/ doesn't link the book's Codespace and name its folder, $name/"
   done
   for step in "$project"/*.md; do
     [ "$(basename "$step")" = _index.md ] && continue

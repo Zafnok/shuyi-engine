@@ -289,8 +289,8 @@ What each one reads:
   (`lang::english_and_places_from_source`, `Lang::max_cells`,
   `Lang::note`). A pack's `ui.ron` entry can't set either.
   `lang-status <tag>` lists the pack's entries wider than their key's
-  `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
-  they fail no gate.
+  `max_cells` (`Lang::overflow`, a message's widest form), measured with
+  the font atlas's widths; they fail no gate.
 - **A text that chooses its words** is a message, a subset of ICU
   MessageFormat 1 ([ADR-0127](adr/0127-messages-choose-their-words.md),
   `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
@@ -307,6 +307,31 @@ What each one reads:
   `it`, `ja`, `ko`, `pl`, `pt`, `ru`, `uk` and `zh`; another language has
   only `other`. A text that isn't a message is filled as plain
   placeholders.
+
+  The languages check their texts as messages when they load, each
+  problem an error naming the file and the key. The source's screen text
+  must parse (`{}`, an unclosed `{` or a comma inside braces is an
+  error), and a select on `device` names only devices (`message::DEVICES`)
+  and `other`. A pack's `ui.ron` and `data.ron` entry, its text and its
+  `source` both parse, and the text keeps what the source has:
+  - the same arguments: it may wrap the source's `{n}` in a plural, or
+    drop a plural its language doesn't need, but never lose or add a
+    `{name}`;
+  - every branch of the source's selects, by value, so a translation
+    can't drop the Playdate's wording of a `{device, select, …}`;
+  - only the plural and ordinal categories of its own language
+    (`message::plural::categories`: `fr` has no `few`), when it is read
+    with its tag (`lang::from_files`, `LangPackRon`; not
+    `pack_from_files` or `pack_from_sources`).
+
+  A plural that lacks a category its language has fails nothing (a
+  number of it shows `other`): `lang-status <tag>` lists it under
+  **missing forms** (`LangStatus::missing_forms`). The `many` of French,
+  Spanish, Italian and Portuguese, which only numbers of a million or
+  more pick, isn't asked for, and is still accepted. A tip's text and
+  `how` must parse too, and each text they can show
+  (`Message::forms`) fits the box's lines and cells; `device` and
+  `target` are always known placeholders there (`tip::from_source`).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
@@ -743,13 +768,40 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
 - **Laid out in any order.** The index lists the files in path order, and
-  `shuyi bake` lays their bytes in that order with nothing between them.
-  From version 15 a reader takes them in any order and with bytes between
-  them, so long as no two overlap and the last ends the pack. A closed
-  build's copy (`export --recipient`) lays its pack out by its
-  recipient's code (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
+  `shuyi bake` lays their bytes in that order with nothing between them,
+  but for the folders laid first (below). From version 15 a reader takes
+  them in any order and with bytes between them, so long as no two
+  overlap and the last ends the pack. A closed build's copy (`export
+  --recipient`) lays its pack out by its recipient's code
+  (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
   and the game reads the same files from it. No checksum covers the bytes
   between files: one changed changes nothing the game reads.
+- **Folders laid first** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §3, version 19). A group of assets is a folder. `Bake::first(dir)` lays
+  the files under `dir` at the front of the pack, after those of the
+  folders named before it, and every other file follows in path order:
+  a web game names the folders its first frame reads
+  (`.first("title/")`), and the page that streams the pack in its order
+  starts the game once they have arrived. `title/` and `title` are the
+  same folder; a file under two named folders goes with the first, a
+  folder named twice is laid where first named, and a bake names up to
+  `pack::MAX_FIRST` (256). The index holds each folder's **span**: from
+  the first byte of its files to the last (`Index::spans()`, each folder
+  and its byte range from the pack's start), and `Index::read` refuses a
+  span that doesn't hold every file under its folder. A recipient's code
+  shuffles each named folder's files among their own places, and the
+  rest among theirs, so each span still holds its folder; with no folder
+  named, the order is the one it laid before spans. `pack::write_first`
+  is the same without a `Bake`. `shuyi bake` names each span it laid
+  (`PackMade::spans`).
+- **Whether a folder has arrived.** `Bundle::arrived(dir)` says whether
+  every file under `dir` can be read now: always for a layer read whole,
+  and for a layer over a `Source`, once the folder's span has arrived, or
+  for a folder not laid first, once each file under it has. It asks the
+  source's `arrived(at, len)`, which a source whose bytes arrive in time
+  (the web's stream) implements; one that has every byte at once keeps
+  its default, `true`. A screen that opens a later part asks it first
+  and shows its own wait. Like `Bundle::has`, it reads nothing.
 - **Read file by file** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
   §2), for a pack too big to hold whole (the Playdate's heap, a web page
   that starts before the pack has arrived). `pack::Index::read(prefix,

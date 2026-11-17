@@ -960,6 +960,37 @@ fn a_project_has_its_twins_and_lines_but_stays_out_of_the_full_file() {
 }
 
 #[test]
+fn a_step_twin_names_the_books_codespace_and_its_folder() {
+    let fixture = with_project("codespace");
+    fixture.passes();
+    let step = fixture.read("learn/book/box-pusher/01-new/index.md");
+    assert!(
+        step.contains(&format!("Change its Rust in a Codespace: <{CODESPACE}>.")),
+        "{step}"
+    );
+    assert!(step.contains("this step is the folder `01-new/`"), "{step}");
+    assert!(step.contains("`cargo shuyi web` in `01-new/`"), "{step}");
+    assert!(
+        step.find("Codespace:") < step.find("First steps."),
+        "{step}"
+    );
+    // The project's own page isn't a step.
+    let project = fixture.read("learn/book/box-pusher/index.md");
+    assert!(!project.contains("Change its Rust"), "{project}");
+}
+
+#[test]
+fn the_codespace_is_the_sites() {
+    let config =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../site/config.toml"))
+            .unwrap();
+    assert!(
+        config.contains(&format!("codespace = \"{CODESPACE}\"")),
+        "site/config.toml's extra.codespace isn't {CODESPACE}"
+    );
+}
+
+#[test]
 fn an_aliased_page_gets_one_twin_at_its_new_address() {
     let fixture = with_project("aliased");
     fixture.passes();

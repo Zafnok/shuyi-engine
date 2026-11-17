@@ -37,8 +37,14 @@ completed:
 - 2263 gives the pack's index alone, `pack::Source` with `NotYet` and
   the layer over it (`Index::read(prefix, stamp)`, a `Source` that is
   `Send + Sync + RefUnwindSafe`, failures listed by `Layer::problems()`);
-  2265 gives `Bake::first`, the spans, `Source::arrived` and
-  `Bundle::arrived`; 3316 gives
+  **from 2265 (done):** the pack is version 19; `Bake::first(dir)` lays
+  a folder's files at the front, `Index::spans()` gives each folder laid
+  first and its byte range from the pack's start, in the order named
+  (a span may hold more than its folder, when folders nest),
+  `Source::arrived(at, len)` (default
+  `true`) is what this ticket's source answers from how far it is
+  filled, and `Bundle::arrived(dir)` asks it for the folder's span, or
+  for each file of a folder not laid first; 3316 gives
   `Progress::Wait` and the card's count; 3317 makes a texture when its
   picture is first drawn.
 

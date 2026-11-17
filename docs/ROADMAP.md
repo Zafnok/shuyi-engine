@@ -343,7 +343,7 @@ is done.
 | 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
 | 2348 (done) | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
 | 3218 (done) | Typed text arguments: screen text and tips choose their words |
-| 2261 | Messages checked when the languages load, and missing forms in `lang-status` |
+| 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
 | 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
@@ -817,8 +817,11 @@ going public, with the one book (2823–2828).
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
 | 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
 | 2916 (done) | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
-| 2837 | The code pad: one Codespace of the book's project, every step built and prebuilt once, opened from each step's page (ADR-0126) |
+| 2837 (done) | The code pad: one Codespace of the book's project, every step built and prebuilt once, opened from each step's page (ADR-0126) |
+| 2839 | The book's steps resolve the engine's features alike, so its Codespace builds the engine once, not three times (after 2837) |
 | 2838 | Exercises that edit Rust: a command that runs one exercise's check on the step as the reader left it, and the first such exercise (after 2837) |
+| 2840 | The book served from its Codespace: the reader follows the book there, and each step's game is rebuilt when its files change (after 2837) |
+| 2841 | The step's Rust in the playground's tabs, in the book served from its Codespace (after 2840) |
 
 ### Public demo defenses
 

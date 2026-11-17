@@ -200,5 +200,19 @@ pub fn categories(lang: &str, kind: Kind) -> &'static [Category] {
     }
 }
 
+/// The categories a plural of `kind` in `lang` is expected to have
+/// branches for: [`categories`] without the cardinal `many` of French,
+/// Spanish, Italian and Portuguese, which only whole numbers of a million
+/// or more pick (ADR-0127 §8). `lang-status` lists a plural that lacks
+/// one of these.
+pub(crate) fn expected(lang: &str, kind: Kind) -> &'static [Category] {
+    match (kind, rules(lang).0) {
+        (Kind::Cardinal, Cardinal::OneMillion | Cardinal::ZeroOneMillion) => {
+            &[Category::One, Category::Other]
+        }
+        _ => categories(lang, kind),
+    }
+}
+
 #[cfg(test)]
 mod tests;

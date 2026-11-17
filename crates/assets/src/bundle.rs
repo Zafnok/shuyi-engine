@@ -268,6 +268,15 @@ impl Files {
         }
     }
 
+    /// Whether every file the layer has under folder `dir` can be read now:
+    /// always, but for a layer over a source whose bytes arrive in time.
+    fn arrived(self, dir: &str) -> bool {
+        match self {
+            Self::Source(files) => files.arrived(dir),
+            _ => true,
+        }
+    }
+
     /// Adds the paths of the files inside `dir` to `paths`: directly inside
     /// it, or with `deep` also in any directory below it.
     fn list(self, dir: &str, deep: bool, paths: &mut Vec<&'static str>) {
@@ -687,6 +696,27 @@ impl Bundle {
     /// and [`recording`] doesn't hear of it.
     pub fn has(&self, path: &str) -> bool {
         layer_with(self.read(), path).is_some()
+    }
+
+    /// Whether every file under folder `dir` (`title` or `title/`; `""` for
+    /// the whole bundle) can be read now, in every layer this thread reads
+    /// (ADR-0128 §3). A layer read whole has every file at once; a layer
+    /// over a pack's [`Source`](crate::pack::Source) has them once the
+    /// folder's span has arrived, if the pack lays it first
+    /// ([`Bake::first`](crate::pack::Bake::first)), else once each file under
+    /// it has. A screen that opens a part of the game whose files may still
+    /// be on their way asks this first, and shows its own wait until it is
+    /// true. Like [`has`](Self::has), it reads nothing.
+    ///
+    /// ```
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    ///
+    /// static FILES: &[(&str, &[u8])] = &[("title/logo.txt", b"logo")];
+    /// let bundle = Bundle::new(vec![Layer::table("base", FILES)]);
+    /// assert!(bundle.arrived("title/"));
+    /// ```
+    pub fn arrived(&self, dir: &str) -> bool {
+        self.read().iter().all(|layer| layer.files.arrived(dir))
     }
 
     /// Puts `bytes` at `path` in the first layer handed in at run time that
