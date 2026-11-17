@@ -236,7 +236,7 @@ fn triangle(a: (i32, i32), b: (i32, i32), c: (i32, i32)) -> Vec<PxRect> {
     for y in y0..=y1 {
         let mut xs = (x0..=x1).filter(|&x| inside((x, y)));
         if let Some(first) = xs.next() {
-            let last = xs.last().unwrap_or(first);
+            let last = xs.next_back().unwrap_or(first);
             rows.push(Rect::new(first, y, last - first + 1, 1));
         }
     }
@@ -843,7 +843,7 @@ mod tests {
         }
         // Every run of the line is 2 pixels across (the head's rows 1).
         let line: Vec<_> = red.iter().filter(|r| r.w.min(r.h) != 1).collect();
-        assert!(!line.is_empty());
+        assert_ne!(line.len(), 0);
         assert!(line.iter().all(|r| r.w.min(r.h) == 2), "{line:?}");
     }
 
@@ -858,10 +858,10 @@ mod tests {
         assert!(px.iter().any(|&(x, y)| !tile.contains(x, y)));
         // Next to the tile, an arc still has its head.
         let next = threat(p(4, 4), &[p(5, 4)]);
-        assert!(!shaped(&next, Start::Edge, Shape::Arc).is_empty());
+        assert_ne!(shaped(&next, Start::Edge, Shape::Arc).len(), 0);
         // None for an enemy on the tile itself.
         let none = threat(p(4, 4), &[p(4, 4)]);
-        assert!(shaped(&none, Start::Middle, Shape::Arc).is_empty());
+        assert_eq!(shaped(&none, Start::Middle, Shape::Arc), []);
     }
 
     #[test]
