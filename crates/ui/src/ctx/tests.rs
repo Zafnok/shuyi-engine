@@ -159,7 +159,7 @@ fn text_with_fills_values_then_the_keys_actions_are_on() {
     c.use_layout(LEFT_HANDED);
     assert_eq!(
         c.text_with("home.help", &[]),
-        "j opens · k quits · wasd {Nope}"
+        "j opens · k quits · w\u{a0}a\u{a0}s\u{a0}d {Nope}"
     );
     c.lang = code(DEBUG_LANG);
     assert_eq!(c.text_with("home.greeting", &[("name", &1)]), "HELLO, 1");

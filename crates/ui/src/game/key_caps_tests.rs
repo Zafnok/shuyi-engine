@@ -50,6 +50,17 @@ impl GameData for Capped {
     fn key_caps(&self) -> Option<KeyCapStyle> {
         self.1
     }
+    /// `{Move}` is the cursor keys too, as a game may name them.
+    fn key_text(
+        &self,
+        name: &str,
+        keys: crate::input::help_keys::HelpKeys<'_, Action>,
+    ) -> Option<String> {
+        if name == "Move" {
+            return Some(crate::input::help_keys::cursor_keys_name(keys));
+        }
+        crate::text::key_text(name, keys)
+    }
 }
 
 /// A help line at the bottom, centred as the engine's screens print one.
@@ -71,15 +82,47 @@ impl Screen<Capped> for Help {
     }
 }
 
+/// The cursor's keys and Confirm's, as the engine's screens print a help
+/// line: `arrows move · f select`.
+struct CursorHelp;
+
+impl Screen<Capped> for CursorHelp {
+    fn name(&self) -> &'static str {
+        "cursor help"
+    }
+    fn update(&mut self, _: &mut Ctx<Capped>, _: &FrameInput<Action>) -> Transition<Capped> {
+        Transition::None
+    }
+    fn draw(&self, ctx: &Ctx<Capped>, buf: &mut GlyphBuffer) {
+        let keys = ctx.help_keys();
+        let mut help = crate::input::help_keys::cursor_keys_styled(keys);
+        help.push_plain(" move · ")
+            .push_key(&crate::input::help_keys::key_name(keys, Action::Confirm))
+            .push_plain(" select");
+        let text = ctx.palette.engine(EngineColor::Text);
+        let panel = ctx.palette.engine(EngineColor::Panel);
+        print_centred_styled(buf, 0, &help, ctx.palette.text_colors_on(text, panel));
+    }
+}
+
 fn game(style: Option<KeyCapStyle>, one_bit: bool) -> Game<Capped> {
+    game_on(style, one_bit, Box::new(Help))
+}
+
+fn game_on(
+    style: Option<KeyCapStyle>,
+    one_bit: bool,
+    screen: Box<dyn Screen<Capped>>,
+) -> Game<Capped> {
     let mut ctx = Ctx::new(Capped(Toy::new(), style)).unwrap();
+    ctx.use_layout(crate::toy::RIGHT_HANDED);
     let mut boxed = ctx.game.palette_def().clone();
     boxed.colors.insert(KEY_BG.to_owned(), [74, 64, 46]);
     ctx.palette = Palette::new::<EngineColor>(&boxed).unwrap();
     if one_bit {
         ctx.platform.screen = ScreenColor::OneBit;
     }
-    Game::new(ctx, Box::new(Help), GameHooks::default())
+    Game::new(ctx, screen, GameHooks::default())
 }
 
 #[test]
@@ -123,4 +166,50 @@ fn a_one_bit_screen_draws_keys_as_text_unless_the_style_says() {
     let capped = game(Some(KeyCapStyle::new().with_one_bit(true)), true);
     assert!(capped.ctx().key_caps().is_some());
     assert!(capped.buffer().glyph_styles().next().is_some());
+}
+
+/// Key caps with a made-up 24 × 16 picture of the arrow cluster.
+fn arrows_style() -> KeyCapStyle {
+    use shuyi_assets::image::{ImageInfo, ImageTable};
+    let table = ImageTable::new([("arrows.png", ImageInfo::new(24, 16))].into());
+    let image = table.id("arrows.png").unwrap();
+    KeyCapStyle::new().with_arrows(image, crate::frame::Rect::new(0, 0, 24, 16))
+}
+
+#[test]
+fn the_cursor_keys_in_a_games_text_are_one_arrows_span() {
+    use crate::text::TextRole;
+    let game = game(Some(arrows_style()), false);
+    let ctx = game.ctx();
+    let help = ctx.text_styled("home.help", &[]);
+    assert_eq!(help.plain(), ctx.text_with("home.help", &[]));
+    let arrows: Vec<&str> = help
+        .spans()
+        .iter()
+        .filter(|s| s.role == Some(TextRole::Arrows))
+        .map(|s| s.text.as_str())
+        .collect();
+    assert_eq!(arrows, ["arrows"]);
+    // A game's own name for the cursor keys gives the same span; an
+    // action's key stays a key.
+    let keys = ctx.help_keys();
+    let moved = ctx.game.key_text_styled("Move", keys).unwrap();
+    assert_eq!(moved.spans()[0].role, Some(TextRole::Arrows));
+    let confirm = ctx.game.key_text_styled("Confirm", keys).unwrap();
+    assert_eq!(confirm.spans()[0].role, Some(TextRole::Key));
+    assert_eq!(ctx.game.key_text_styled("Nope", keys), None);
+}
+
+#[test]
+fn a_help_line_with_the_arrows_picture_is_as_its_snapshot_says() {
+    let game = game_on(Some(arrows_style()), false, Box::new(CursorHelp));
+    assert_eq!(game.buffer().sprites().len(), 1);
+    insta::assert_snapshot!(game.buffer().to_snapshot(&game.ctx().palette));
+}
+
+#[test]
+fn a_help_line_with_caps_off_is_as_its_snapshot_says() {
+    let game = game_on(None, false, Box::new(CursorHelp));
+    assert_eq!(game.buffer().items(), []);
+    insta::assert_snapshot!(game.buffer().to_snapshot(&game.ctx().palette));
 }

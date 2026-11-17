@@ -103,7 +103,7 @@ fn the_stages_help_line_paints_its_keys_in_the_palettes_key_colour() {
         .help
         .spans()
         .iter()
-        .filter(|span| span.role == Some(TextRole::Key))
+        .filter(|span| matches!(span.role, Some(TextRole::Key | TextRole::Arrows)))
         .map(|span| span.text.as_str())
         .collect();
     assert!(!keys.is_empty(), "{:?}", view.help);

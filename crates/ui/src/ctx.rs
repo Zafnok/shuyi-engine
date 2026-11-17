@@ -135,6 +135,27 @@ pub trait GameData: Debug + Sized + 'static {
         crate::text::key_text(name, keys)
     }
 
+    /// [`key_text`](Self::key_text) in spans, for styled text
+    /// ([`Ctx::text_styled`]): by default, the cursor keys as
+    /// [`cursor_keys_styled`] gives them where `key_text` gives their
+    /// name (the four arrow keys as one [`TextRole::Arrows`] span), else
+    /// what `key_text` gives as one [`TextRole::Key`] span. Its plain text
+    /// is `key_text`'s.
+    ///
+    /// [`cursor_keys_styled`]: crate::input::help_keys::cursor_keys_styled
+    /// [`TextRole::Arrows`]: crate::text::TextRole::Arrows
+    /// [`TextRole::Key`]: crate::text::TextRole::Key
+    fn key_text_styled(&self, name: &str, keys: HelpKeys<'_, Self::Action>) -> Option<StyledText> {
+        let text = self.key_text(name, keys)?;
+        let cursor = crate::input::help_keys::cursor_keys_styled(keys);
+        if cursor.plain() == text {
+            return Some(cursor);
+        }
+        let mut key = StyledText::new();
+        key.push_key(&text);
+        Some(key)
+    }
+
     /// Which clip of a line plays now, where a line has several (who the
     /// player made the hero, say). By default the variant's default: a
     /// line's only clip.
@@ -595,8 +616,8 @@ impl<G: GameData> Ctx<G> {
         args: &[(&str, &dyn Display)],
         key_args: &[(&str, &dyn Display)],
     ) -> StyledText {
-        let lookup = |name: &str| self.game.key_text(name, keys);
-        crate::text::fill_styled(self.text(key), args, key_args, lookup)
+        let lookup = |name: &str| self.game.key_text_styled(name, keys);
+        crate::text::fill_styled_with(self.text(key), args, key_args, lookup)
     }
 
     /// [`label`](Self::label), each key's name in a key span

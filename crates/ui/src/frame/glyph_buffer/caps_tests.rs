@@ -262,3 +262,92 @@ proptest! {
         prop_assert_eq!(text.plain(), plain);
     }
 }
+
+/// A made-up 24 × 16 picture of the arrow cluster, in a 32 × 16 image.
+fn arrows_image() -> (ImageId, PxRect) {
+    use shuyi_assets::image::{ImageInfo, ImageTable};
+    let table = ImageTable::new([("arrows.png", ImageInfo::new(32, 16))].into());
+    (table.id("arrows.png").unwrap(), Rect::new(8, 0, 24, 16))
+}
+
+/// [`capped`], its caps with [`arrows_image`].
+fn pictured(w: u16) -> GlyphBuffer {
+    let (image, src) = arrows_image();
+    let buf = GlyphBuffer::new(w, 2, Cell::new('.', FG, BG)).with_widths(terminus());
+    let style = KeyCapStyle::new().with_arrows(image, src);
+    let caps = KeyCaps::with_colors(style, (Some(FILL), Some(EDGE)), &terminus(), buf.spec());
+    buf.with_key_caps(Some(caps))
+}
+
+fn arrows_hint() -> StyledText {
+    let mut text = StyledText::new();
+    text.push_arrows("arrows").push_plain(" move");
+    text
+}
+
+#[test]
+fn the_arrow_keys_are_the_picture_in_the_cells_it_takes() {
+    let mut buf = pictured(12);
+    assert_eq!(buf.widths().arrows_cells(), Some(3));
+    let text = arrows_hint();
+    assert_eq!(text.width(buf.widths()), 8);
+    assert_eq!(buf.print_styled(1, 1, &text, colors), 8);
+    assert_eq!(glyphs(&buf, 1), ".    move...");
+    // Blank on the plain text's background, the picture over them.
+    assert_eq!(*buf.get(1, 1).unwrap(), Cell::new(' ', FG, BG));
+    let (image, src) = arrows_image();
+    let dest = Rect::new(8, 16, 24, 16);
+    assert_eq!(buf.sprites(), [Sprite::new(image, src, dest, Layer::Over)]);
+    assert!(buf.overlays().is_empty() && buf.glyph_styles().next().is_none());
+}
+
+#[test]
+fn a_picture_is_scaled_to_the_line_and_centred_in_its_cells() {
+    let (image, _) = arrows_image();
+    let spec = ConsoleSpec::text(10, 1);
+    let style = KeyCapStyle::new().with_arrows(image, Rect::new(0, 0, 12, 8));
+    let caps = KeyCaps::with_colors(style, (None, None), &terminus(), spec);
+    // 12 × 8 to a line 16 tall: 24 × 16, three 8 px cells.
+    assert_eq!(caps.arrows_cells(), Some(3));
+    let odd = KeyCapStyle::new().with_arrows(image, Rect::new(0, 0, 10, 16));
+    let caps = KeyCaps::with_colors(odd, (None, None), &terminus(), spec);
+    assert_eq!(caps.arrows_cells(), Some(2));
+    let sprite = caps.arrows_sprite(2, 0).unwrap();
+    // 10 px in 16: 3 px either side.
+    assert_eq!(sprite.dest, Rect::new(19, 0, 10, 16));
+    let empty = KeyCapStyle::new().with_arrows(image, Rect::new(0, 0, 0, 16));
+    let caps = KeyCaps::with_colors(empty, (None, None), &terminus(), spec);
+    assert_eq!(
+        (caps.arrows_cells(), caps.arrows_sprite(0, 0)),
+        (None, None)
+    );
+}
+
+#[test]
+fn without_a_picture_the_arrows_are_a_cap_and_without_caps_text() {
+    let mut buf = capped(12);
+    assert_eq!(buf.widths().arrows_cells(), None);
+    let text = arrows_hint();
+    assert_eq!(buf.print_styled(0, 0, &text, colors), 12);
+    assert_eq!(glyphs(&buf, 0), "arrows  move");
+    assert!(buf.sprites().is_empty() && !buf.overlays().is_empty());
+    let mut buf = pictured(12);
+    buf.set_key_caps(None);
+    assert_eq!(buf.widths().arrows_cells(), None);
+    assert_eq!(buf.print_styled(0, 0, &text, colors), 11);
+    assert_eq!(glyphs(&buf, 0), "arrows move.");
+    assert_eq!(buf.items(), []);
+}
+
+#[test]
+fn a_picture_the_edge_cuts_is_clipped_and_new_widths_keep_its_cells() {
+    let mut buf = pictured(2);
+    assert_eq!(buf.print_styled(0, 0, &arrows_hint(), colors), 2);
+    let sprite = buf.sprites()[0];
+    assert_eq!(sprite.clip, Rect::new(0, 0, 16, 16));
+    // Off the rows, nothing.
+    assert_eq!(buf.print_styled(0, 5, &arrows_hint(), colors), 0);
+    assert_eq!(buf.sprites().len(), 1);
+    buf.set_widths(CellWidths::NARROW);
+    assert_eq!(buf.widths().arrows_cells(), Some(3));
+}

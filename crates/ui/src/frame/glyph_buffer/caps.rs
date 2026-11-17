@@ -54,6 +54,37 @@ impl GlyphBuffer {
         written
     }
 
+    /// Prints the arrow cluster's picture from column `cx`, which it moves
+    /// past the picture's cells: spaces on plain text's background, and
+    /// the picture over them, clipped to the buffer like any sprite.
+    /// Returns how many cells were written.
+    pub(super) fn print_arrows(
+        &mut self,
+        cx: &mut i64,
+        y: i32,
+        caps: &KeyCaps,
+        colors: &impl Fn(Option<TextRole>) -> (Rgb, Option<Rgb>),
+    ) -> u16 {
+        let cells = caps.arrows_cells().unwrap_or(0);
+        let (_, bg) = colors(None);
+        let start = *cx;
+        let blank = " ".repeat(usize::from(cells));
+        let written = self.print_from(cx, y, &blank, |c, glyph| {
+            c.glyph = glyph;
+            if let Some(bg) = bg {
+                c.bg = bg;
+                c.see_through = false;
+            }
+        });
+        let on_rows = (0..i32::from(self.spec.rows)).contains(&y);
+        if let (true, Ok(x)) = (on_rows, i32::try_from(start))
+            && let Some(sprite) = caps.arrows_sprite(x, y)
+        {
+            self.add_sprite(sprite);
+        }
+        written
+    }
+
     /// The box of a cap whose first cell is `(x, y)`: its fill, and its
     /// edge 1 px wide with the four corner pixels left out, a rounded
     /// corner. Rectangles under the glyphs.

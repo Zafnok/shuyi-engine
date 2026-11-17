@@ -29,7 +29,7 @@ a34562234f09026a crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 052d1cd0d321414b crates/game/src/stages.rs
 41aca60d4a6de86c crates/game/src/title.rs
-75828d64bcda5f10 crates/game/tests/it/main.rs
+2508a4241dbfbf4e crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 d269a8a87c41fdb0 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
@@ -67,8 +67,8 @@ c2a32153feca5b36 crates/game/src/main.rs
 d0c132496cfd558c crates/game/src/stages/top_down_grid.rs
 990e9c3f7a8a2ef1 crates/game/src/stages.rs
 41aca60d4a6de86c crates/game/src/title.rs
-75828d64bcda5f10 crates/game/tests/it/main.rs
-be98a14e0700403c crates/game/tests/stage.rs
+2508a4241dbfbf4e crates/game/tests/it/main.rs
+fee104e7f4d5f4e2 crates/game/tests/stage.rs
 39ce7b8f894fff11 crates/rules/AGENTS.md
 b7aa8f2f58462c41 crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml
@@ -108,7 +108,7 @@ a34562234f09026a crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 052d1cd0d321414b crates/game/src/stages.rs
 41aca60d4a6de86c crates/game/src/title.rs
-75828d64bcda5f10 crates/game/tests/it/main.rs
+2508a4241dbfbf4e crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 cbf29ce484222325 private.rev
 d269a8a87c41fdb0 rust-toolchain.toml

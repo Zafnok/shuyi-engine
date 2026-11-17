@@ -411,7 +411,7 @@ impl Lang {
     /// [`text`](Self::text), with the tag of the language it is in: the
     /// pack's that gave it, else the source's. A message
     /// ([`Message`](crate::message::Message)) picks its plurals by that
-    /// language's rules, not the player's (ADR-0127).
+    /// language's rules, not the player's (ADR-0129).
     pub fn text_in<'a>(&'a self, code: &LangCode, key: &'a str) -> (&'a str, &'a str) {
         let source_code = self.written_in.code.as_str();
         let Some(source) = self.ui.get(key) else {

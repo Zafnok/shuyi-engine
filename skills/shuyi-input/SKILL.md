@@ -94,6 +94,8 @@ the player's keymap.
    returns a `KeyCapStyle` (`shuyi::ui::frame::key_cap`); the box is
    `key_bg` with a `key_edge`. A cap takes a cell more than its name:
    measure a hint with the frame's widths, `help.width(buf.widths())`.
+   `KeyCapStyle::with_arrows(image, part)` draws `{Cursor}` on the arrow
+   keys as that picture of the arrow cluster.
 
 5. **Check it:** `cargo shuyi lint` (or `cargo shuyi check-keys`) fails
    on a key named in code or text, with its file and line, and `cargo

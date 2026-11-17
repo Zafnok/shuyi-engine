@@ -721,7 +721,7 @@ fn help_names_the_keys_the_screen_was_opened_with() {
     let left = ctx().with_layout(LEFT_HANDED);
     assert_eq!(
         KeyBindingsScreen::new(&left, &KEY_ROWS).help(&left).plain(),
-        "wasd move · j bind · Delete clear · k back"
+        "w\u{a0}a\u{a0}s\u{a0}d move · j bind · Delete clear · k back"
     );
 }
 

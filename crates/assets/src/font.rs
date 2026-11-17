@@ -533,7 +533,9 @@ impl FontAtlasDef {
 /// It also carries what a key cap is measured and placed by (ticket
 /// 3215): the atlas's [`ink`](Self::ink) boxes, and, where a frame draws
 /// a key's name as a cap, the cells a cap takes beyond its name
-/// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts.
+/// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts,
+/// and the cells of the picture of the arrow keys it draws in their place
+/// ([`arrows_cells`](Self::arrows_cells), ticket 3217).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CellWidths {
     /// The wide characters; `None` when there are none.
@@ -548,6 +550,9 @@ pub struct CellWidths {
     /// The cells a key cap takes beyond its name; `None` where keys aren't
     /// drawn as caps.
     key_cap: Option<u16>,
+    /// The cells the picture of the arrow keys takes; `None` where they
+    /// aren't drawn as one.
+    arrows: Option<u16>,
 }
 
 /// The inks [`CellWidths`] carries: the regular face's and the bold one's.
@@ -565,6 +570,7 @@ impl CellWidths {
         set: None,
         inks: None,
         key_cap: None,
+        arrows: None,
     };
 
     /// The widths of `atlas`'s glyphs where no language is named: a
@@ -611,6 +617,23 @@ impl CellWidths {
     /// own; `None` where keys aren't drawn as caps.
     pub fn key_cap_cells(&self) -> Option<u16> {
         self.key_cap
+    }
+
+    /// The same widths, with the picture of the four arrow keys taking
+    /// `cells` cells in place of their word (`None`: they are drawn as
+    /// their word). What a frame that draws the picture measures with.
+    #[must_use]
+    pub fn with_arrows_cells(self, cells: Option<u16>) -> Self {
+        Self {
+            arrows: cells,
+            ..self
+        }
+    }
+
+    /// How many cells the picture of the four arrow keys takes in place of
+    /// their word; `None` where they are drawn as their word.
+    pub fn arrows_cells(&self) -> Option<u16> {
+        self.arrows
     }
 
     /// Widths where the characters of `wide` take two cells.

@@ -54,6 +54,11 @@ fn widths_carry_the_ink_and_a_caps_cells() {
     let capped = widths.clone().with_key_cap_cells(Some(1));
     assert_eq!(capped.key_cap_cells(), Some(1));
     assert_ne!(capped, widths);
+    assert_eq!(capped.arrows_cells(), None);
+    let pictured = capped.clone().with_arrows_cells(Some(3));
+    assert_eq!(pictured.arrows_cells(), Some(3));
+    assert_eq!(pictured.key_cap_cells(), Some(1));
+    assert_ne!(pictured, capped);
     assert_eq!(CellWidths::NARROW.ink(false), None);
 }
 
