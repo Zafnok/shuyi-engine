@@ -243,8 +243,7 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
 
     report.errors.extend(check_mirrors(&tickets));
     let unestimated = fs::read_to_string(repo_root.join(size::UNESTIMATED))
-        .map(|text| size::unestimated_ids(&text))
-        .unwrap_or_default();
+        .map_or_default(|text| size::unestimated_ids(&text));
     let (errors, warnings) = size::check_estimates(&tickets, &unestimated);
     report.errors.extend(errors);
     report.warnings.extend(warnings);

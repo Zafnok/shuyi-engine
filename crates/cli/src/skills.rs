@@ -223,8 +223,7 @@ impl Pack {
                 let name = dir
                     .path()
                     .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default();
+                    .map_or_default(|n| n.to_string_lossy().into_owned());
                 let mut files = BTreeMap::new();
                 embedded_files(dir, dir.path(), &mut files);
                 pack.add(name, files);
@@ -339,15 +338,12 @@ impl Frontmatter {
     /// The ticket ids it waits for: `metadata.waits_for`, split on spaces
     /// and commas.
     pub fn waits_for(&self) -> Vec<String> {
-        self.metadata
-            .get("waits_for")
-            .map(|ids| {
-                ids.split([' ', ','])
-                    .filter(|id| !id.is_empty())
-                    .map(str::to_owned)
-                    .collect()
-            })
-            .unwrap_or_default()
+        self.metadata.get("waits_for").map_or_default(|ids| {
+            ids.split([' ', ','])
+                .filter(|id| !id.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
     }
 }
 

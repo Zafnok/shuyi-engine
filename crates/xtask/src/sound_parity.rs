@@ -462,8 +462,7 @@ fn port_ready(matrix: &str, platform: &str) -> Result<(), String> {
     }
     let cells: Vec<&Value> = matrix["cells"]
         .as_array()
-        .map(|cells| cells.iter().filter(|c| c["platform"] == platform).collect())
-        .unwrap_or_default();
+        .map_or_default(|cells| cells.iter().filter(|c| c["platform"] == platform).collect());
     let real = |cell: &&&Value| cell["status"] == "passed" && cell["check"] != "capture";
     if cells.iter().filter(real).count() == 0 {
         return Err(format!("{platform} has no passed capture evidence"));

@@ -319,7 +319,7 @@ mod tests {
         let contexts = Contexts::default();
         let result = Music::load("no/such/music/track.ogg", contexts.clone());
         assert!(result.is_err());
-        let pooled = contexts.0.lock().map(|c| c.len()).unwrap_or_default();
+        let pooled = contexts.0.lock().map_or_default(|c| c.len());
         assert_eq!(pooled, 0, "no context was opened");
     }
 }

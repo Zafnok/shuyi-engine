@@ -579,9 +579,7 @@ fn the_previews_start_hears_a_drop() {
     let files = game
         .ctx()
         .module_state::<shuyi_ui::dialogue::preview::DialogueFiles>();
-    let names: Vec<_> = files
-        .map(|f| f.files().map(|(path, _)| path).collect())
-        .unwrap_or_default();
+    let names: Vec<_> = files.map_or_default(|f| f.files().map(|(path, _)| path).collect());
     assert_eq!(names, ["dusk.dlg"]);
 }
 

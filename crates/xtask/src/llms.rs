@@ -733,8 +733,7 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         .newcomer
         .as_deref()
         .and_then(book::label)
-        .map(|label| format!("> **{label}** This whole page.\n\n"))
-        .unwrap_or_default();
+        .map_or_default(|label| format!("> **{label}** This whole page.\n\n"));
     let pad = if page.step {
         let file = page.source.rsplit('/').next().unwrap_or(&page.source);
         codespace(file.trim_end_matches(".md"))

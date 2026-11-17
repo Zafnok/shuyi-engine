@@ -331,7 +331,7 @@ pub fn modules_of_features(manifest: &str) -> Result<Vec<ModuleCrate>, String> {
     let mut modules: Vec<ModuleCrate> = doc
         .get("features")
         .and_then(Item::as_table_like)
-        .map(|features| {
+        .map_or_default(|features| {
             features
                 .iter()
                 .map(|(feature, _)| feature)
@@ -342,8 +342,7 @@ pub fn modules_of_features(manifest: &str) -> Result<Vec<ModuleCrate>, String> {
                     info: ModuleInfo::default(),
                 })
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     modules.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(modules)
 }
@@ -386,13 +385,12 @@ fn features_in(entry: &Item) -> Vec<String> {
         .as_table_like()
         .and_then(|table| table.get("features"))
         .and_then(Item::as_array)
-        .map(|features| {
+        .map_or_default(|features| {
             features
                 .iter()
                 .filter_map(|f| f.as_str().map(str::to_owned))
                 .collect()
         })
-        .unwrap_or_default()
 }
 
 /// The features of the `shuyi` crate a `Cargo.toml`'s text turns on.

@@ -462,11 +462,7 @@ fn merge_markdown(base: &str, other: &str) -> String {
 fn merged(path: &str, writers: Vec<(String, Vec<u8>)>) -> Result<Vec<u8>, ComposeError> {
     let parts: Vec<String> = writers.iter().map(|(part, _)| part.clone()).collect();
     if writers.len() == 1 {
-        return Ok(writers
-            .into_iter()
-            .next()
-            .map(|(_, b)| b)
-            .unwrap_or_default());
+        return Ok(writers.into_iter().next().map_or_default(|(_, b)| b));
     }
     let Some(kind) = Merged::of(path) else {
         return Err(ComposeError::SameFile {

@@ -1129,7 +1129,7 @@ jobs:
       - run: rustup show
       # The nightly, and the tools' versions below, are the consts in
       # crates/xtask/src/api.rs; they move with rust-toolchain.toml.
-      - run: rustup toolchain install nightly-2026-07-06 --profile minimal
+      - run: rustup toolchain install nightly-2026-08-16 --profile minimal
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Set up Linux

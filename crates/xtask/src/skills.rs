@@ -239,8 +239,7 @@ pub fn run(
                     .detail
                     .as_deref()
                     .and_then(|d| d.lines().next())
-                    .map(|first| format!(": {first}"))
-                    .unwrap_or_default()
+                    .map_or_default(|first| format!(": {first}"))
             ));
         }
     }
