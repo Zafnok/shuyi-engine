@@ -125,7 +125,7 @@ fn legend_comes_from_each_layout() {
     assert_eq!(
         legend(LEFT_HANDED),
         [
-            "wasd move",
+            "w a s d move",
             "j select",
             "k/Escape back",
             "; prev unit",

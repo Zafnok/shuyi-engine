@@ -722,8 +722,7 @@ impl<G: GameData> Game<G> {
     /// What the frame measures text with when it draws keys as `caps`:
     /// [`Ctx::widths`] with a cap's extra cells.
     fn frame_widths(&self, caps: Option<&KeyCaps>) -> CellWidths {
-        let cap = caps.map(KeyCaps::extra_cells);
-        self.ctx.widths().clone().with_key_cap_cells(cap)
+        KeyCaps::frame_widths(self.ctx.widths().clone(), caps)
     }
 
     /// Clears the buffer and draws the stack into it, then the modules

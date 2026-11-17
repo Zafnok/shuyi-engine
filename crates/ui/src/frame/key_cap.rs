@@ -8,16 +8,22 @@
 //! frame's [`GlyphBuffer`](crate::frame::GlyphBuffer) draws every
 //! [`TextRole::Key`](crate::text::TextRole::Key) span as one
 //! ([`GlyphBuffer::print_styled`](crate::frame::GlyphBuffer::print_styled)).
+//!
+//! A style may also name a picture of the arrow cluster
+//! ([`KeyCapStyle::arrows`], ticket 3217, ADR-0127): a
+//! [`TextRole::Arrows`](crate::text::TextRole::Arrows) span is then drawn
+//! as that picture, a [`Sprite`] in the cells it takes.
 
 use crate::prelude::*;
 use alloc::borrow::Cow;
 use alloc::rc::Rc;
 
 use shuyi_assets::font::{CellWidths, FontInk};
+use shuyi_assets::image::ImageId;
 
 use crate::frame::color::{KEY_BG, KEY_EDGE, Palette, Rgb};
 use crate::frame::console::ConsoleSpec;
-use crate::frame::glyph_buffer::{GlyphStyle, PxRect, Rect};
+use crate::frame::glyph_buffer::{GlyphStyle, Layer, PxRect, Rect, Sprite};
 
 /// How a game draws a key's name in text as a key cap: what its theme
 /// turns on ([`GameData::key_caps`](crate::GameData::key_caps)). The box's
@@ -48,6 +54,13 @@ pub struct KeyCapStyle {
     /// Whether caps are drawn on a one-bit screen (the Playdate) too. Off:
     /// a one-bit target draws keys as text, in the pattern map's colours.
     pub one_bit: bool,
+    /// A picture of the four arrow keys together (an upside-down T of
+    /// caps), drawn for the cursor's keys when they are the arrows
+    /// ([`TextRole::Arrows`](crate::text::TextRole::Arrows)): an image and
+    /// the part of it to show, in image pixels. It is scaled to one line's
+    /// height, keeping its shape, and takes the cells its width needs.
+    /// `None`: the arrow keys are drawn as a cap of their word.
+    pub arrows: Option<(ImageId, PxRect)>,
 }
 
 impl KeyCapStyle {
@@ -58,6 +71,7 @@ impl KeyCapStyle {
             capitals: true,
             margin_px: 2,
             one_bit: false,
+            arrows: None,
         }
     }
 
@@ -86,6 +100,14 @@ impl KeyCapStyle {
     #[must_use]
     pub const fn with_one_bit(mut self, one_bit: bool) -> Self {
         self.one_bit = one_bit;
+        self
+    }
+
+    /// The same style, drawing the arrow keys as the part `src` of `image`
+    /// ([`arrows`](Self::arrows)).
+    #[must_use]
+    pub const fn with_arrows(mut self, image: ImageId, src: PxRect) -> Self {
+        self.arrows = Some((image, src));
         self
     }
 }
@@ -194,6 +216,46 @@ impl KeyCaps {
             }
         }
         Cow::Borrowed(name)
+    }
+
+    /// How many cells the arrow cluster's picture takes
+    /// ([`KeyCapStyle::arrows`]): its width scaled to one line's height,
+    /// in whole cells. `None` without a picture, or with an empty one.
+    pub fn arrows_cells(&self) -> Option<u16> {
+        let (_, w) = self.arrows_size()?;
+        u16::try_from((w + self.cell_w - 1) / self.cell_w).ok()
+    }
+
+    /// The arrow cluster's picture as a sprite, its cells' first one at
+    /// `(x, y)`: one line tall, centred across its cells, over the glyphs.
+    /// `None` without a picture.
+    pub(crate) fn arrows_sprite(&self, x: i32, y: i32) -> Option<Sprite> {
+        let (image, src) = self.style.arrows?;
+        let (h, w) = self.arrows_size()?;
+        let cells = i32::from(self.arrows_cells()?);
+        let left = x * self.cell_w + (cells * self.cell_w - w) / 2;
+        let dest = Rect::new(left, y * self.cell_h, w, h);
+        Some(Sprite::new(image, src, dest, Layer::Over))
+    }
+
+    /// The arrow cluster's picture's height and width as drawn: one line
+    /// tall, its width scaled as much and rounded to the nearest pixel.
+    fn arrows_size(&self) -> Option<(i32, i32)> {
+        let (_, src) = self.style.arrows?;
+        if src.is_empty() {
+            return None;
+        }
+        let h = self.cell_h;
+        let w = ((2 * src.w * h + src.h) / (2 * src.h)).max(1);
+        Some((h, w))
+    }
+
+    /// `widths` as a frame drawing with `caps` measures text: with a key
+    /// cap's extra cells, and the arrow cluster's picture's cells.
+    pub(crate) fn frame_widths(widths: CellWidths, caps: Option<&KeyCaps>) -> CellWidths {
+        widths
+            .with_key_cap_cells(caps.map(KeyCaps::extra_cells))
+            .with_arrows_cells(caps.and_then(KeyCaps::arrows_cells))
     }
 
     /// The margin and the edge: how far the box is outside the ink.

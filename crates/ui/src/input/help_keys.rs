@@ -172,16 +172,46 @@ pub fn all_key_names<A: ActionSet>(keys: HelpKeys<'_, A>, action: A) -> String {
 }
 
 /// What moves the cursor: `arrows` when the four cursor actions are on the
-/// arrow keys, otherwise their keys in up-left-down-right order (`wasd`).
-/// On a controller, `D-pad/L-stick` or whatever the cursor is on
-/// ([`Keymap::cursor_buttons_name`]). [`HelpKeys::not_mapped`] if any
-/// cursor action has no key. See [`Keymap::cursor_keys_name`].
+/// arrow keys, otherwise their keys in up-left-down-right order with a
+/// space between them (`w a s d`). On a controller, `D-pad/L-stick` or
+/// whatever the cursor is on ([`Keymap::cursor_buttons_name`]).
+/// [`HelpKeys::not_mapped`] if any cursor action has no key. The plain
+/// text of [`cursor_keys_styled`].
 pub fn cursor_keys_name<A: ActionSet>(keys: HelpKeys<'_, A>) -> String {
+    cursor_keys_styled(keys).plain()
+}
+
+/// [`cursor_keys_name`] in spans: the arrows word as one
+/// [`TextRole::Arrows`] span, which a skin may draw as a picture of the
+/// arrow cluster; other keys as four [`TextRole::Key`] spans, up, left,
+/// down and right, with a plain space between them. A controller's
+/// buttons, or [`HelpKeys::not_mapped`], are one key span.
+///
+/// [`TextRole::Arrows`]: crate::text::TextRole::Arrows
+/// [`TextRole::Key`]: crate::text::TextRole::Key
+pub fn cursor_keys_styled<A: ActionSet>(keys: HelpKeys<'_, A>) -> StyledText {
+    let mut out = StyledText::new();
     let name = match keys.device {
-        Device::Keyboard => keys.cursor_keys_name(keys.arrows),
+        Device::Keyboard => match keys.cursor_chords() {
+            Some((_, true)) => {
+                out.push_arrows(keys.arrows);
+                return out;
+            }
+            Some((chords, false)) => {
+                for (i, chord) in chords.iter().enumerate() {
+                    if i > 0 {
+                        out.push_plain(" ");
+                    }
+                    out.push_key(&chord.to_string());
+                }
+                return out;
+            }
+            None => None,
+        },
         Device::Pad(kind) => keys.cursor_buttons_name(kind),
     };
-    name.unwrap_or_else(|| keys.not_mapped.to_owned())
+    out.push_key(name.as_deref().unwrap_or(keys.not_mapped));
+    out
 }
 
 /// Joins `key label` hints with [`SEPARATOR`], leaving out hints whose key

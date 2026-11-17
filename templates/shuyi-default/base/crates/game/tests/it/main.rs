@@ -42,7 +42,7 @@ fn keys_and_key_cells(line: &StyledText, buf: &GlyphBuffer, y: i32, key: Rgb) ->
     let keys = line
         .spans()
         .iter()
-        .filter(|span| span.role == Some(TextRole::Key))
+        .filter(|span| matches!(span.role, Some(TextRole::Key | TextRole::Arrows)))
         .map(|span| span.text.as_str())
         .collect();
     let cells = (0..i32::from(buf.width()))

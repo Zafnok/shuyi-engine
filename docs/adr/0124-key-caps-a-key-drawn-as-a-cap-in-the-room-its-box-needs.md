@@ -1,6 +1,6 @@
 # ADR-0124: Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid
 
-- **Status:** Accepted; §5 and §6 amended by ADR-0125 (a bold face in the atlas)
+- **Status:** Accepted; §5 and §6 amended by ADR-0125 (a bold face in the atlas); extended by ADR-0127 (the arrow keys as one picture)
 - **Date:** 2026-11-16
 - **Supersedes:** ADR-0122 §4 (a role never changes how many cells a span takes); its other sections stand
 - **Related tickets:** 3215 (this); 3216 (a bold face in the font atlas), 3217 (the direction cluster), 2347 (styled text); game#0250, game#0254

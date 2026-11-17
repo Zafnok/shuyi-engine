@@ -136,7 +136,8 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123 |
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted; §4 superseded by ADR-0124 |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
-| [0124](0124-key-caps-a-key-drawn-as-a-cap-in-the-room-its-box-needs.md) | Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid | Accepted; supersedes ADR-0122 §4; §5 and §6 amended by ADR-0125 |
+| [0124](0124-key-caps-a-key-drawn-as-a-cap-in-the-room-its-box-needs.md) | Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid | Accepted; supersedes ADR-0122 §4; §5 and §6 amended by ADR-0125; extended by ADR-0127 |
 | [0125](0125-a-bold-face-in-the-font-atlas.md) | A bold face in the font atlas, drawn once and placed by its own ink | Accepted; amends ADR-0124 §5 and §6 |
+| [0127](0127-the-arrow-keys-as-one-picture-a-role-of-their-own.md) | The cursor's arrow keys as one picture: a role of their own, a picture in the key caps' style | Accepted; extends ADR-0124 |
 
 Template: [`0000-template.md`](0000-template.md).
