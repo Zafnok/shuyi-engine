@@ -40,8 +40,9 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   UTF-8, and `load_each` lends each file's text (`LoadFile::text`) for its
   parse. Every layer today (embedded, a table, `Layer::owned`, a pack)
   lends its bytes, `Cow::Borrowed`, so nothing is copied; a layer that
-  reads its files on demand, from a pack too big to keep (2263), hands
-  them out owned, `Cow::Owned`, for the reader to drop. Paths stay
+  reads its files on demand, from a pack too big to keep
+  (`pack::Index::into_layer`, below), hands them out owned, `Cow::Owned`,
+  for the reader to drop. Paths stay
   `&'static`: the listings, `ImageId`, `ImageTable` and the keys of
   `load_under` and `load_each`. A value a game keeps for the whole run
   (a font's bits) keeps the borrowed bytes as they are, and leaks only
@@ -733,8 +734,11 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   file of every kind of the built-in formats.
 - **Refused, never migrated.** A pack of another `pack::VERSION`, or
   baked with another stamp, is refused with a message to bake it again.
-  So is a pack cut short or changed: a checksum covers every byte, and
-  every size is checked before anything is allocated. `pack::VERSION`
+  So is a pack cut short or changed: from version 18 the header's checksum
+  covers the header and the index, and each file has a checksum of its
+  own, checked when it is read; every size is checked before anything is
+  allocated. LZ4 keeps only a file it makes smaller, and no file's bytes
+  reach past 4 GiB. `pack::VERSION`
   goes up whenever the binary form of an engine kind changes; a pinned
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
@@ -744,7 +748,28 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   them, so long as no two overlap and the last ends the pack. A closed
   build's copy (`export --recipient`) lays its pack out by its
   recipient's code (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
-  and the game reads the same files from it.
+  and the game reads the same files from it. No checksum covers the bytes
+  between files: one changed changes nothing the game reads.
+- **Read file by file** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §2), for a pack too big to hold whole (the Playdate's heap, a web page
+  that starts before the pack has arrived). `pack::Index::read(prefix,
+  stamp)` reads the header and the index alone; given too few bytes it
+  says how many it needs (`IndexError::Short { needs }`), so a backend
+  reads the header's 24, then that many. `Index::check_file(path,
+  stored)` checks one file's kept bytes (`Index::file_range`) and unpacks
+  them. `Index::into_layer(name, source)` makes a layer over a
+  `pack::Source`, which a backend implements (`read(at, into)`); it
+  answers `has` and the listings from the index, and reads, checks and
+  unpacks a file each time the bundle asks for it, handing it out owned
+  and keeping nothing but the index (about 52 bytes a file with its
+  path). A file whose bytes haven't arrived (`SourceError::NotYet`) reads
+  as missing for now; one whose read fails, or whose bytes are refused,
+  reads as missing too, and `Layer::problems` lists it once, for the
+  backend to log. `pack::InMemory` is a source over bytes the program
+  holds (an embedded pack, a test's). The one-bit frame reads a picture
+  only where the bundle lends it, so a game over this layer keeps its
+  one-bit pictures as values of its own (ADR-0128 §3). Desktop reads its
+  pack whole, with `Pack::open`, which checks every file.
 - **It stands for its sources.** The index holds the fingerprint of the
   bundle it was baked from (`PackInfo::content`, `Bundle::fingerprint`),
   and its layer stands for it (`Layer::standing_for`): a bundle of the

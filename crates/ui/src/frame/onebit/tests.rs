@@ -534,8 +534,25 @@ fn a_one_bit_packs_bundle_gives_the_picture_at_each_images_path() {
         Layer::Over,
     );
     b.add_sprite(sprite);
-    let from_pack = text(&draw_with(&b, &bundle_of(file)), 0, 0, 8, 4);
+    let from_pack = text(&draw_with(&b, &bundle_of(file.clone())), 0, 0, 8, 4);
     assert_eq!(from_pack, sprite_frame(|s| s, false));
+    // The same picture in a pack read file by file is handed out owned,
+    // with nothing to lend the frame: no picture, a grey rectangle, and no
+    // failure (ADR-0128 §3: such a game keeps its pictures as its own).
+    let by_file = {
+        use shuyi_assets::pack::{self, Content, InMemory, Index, PackInfo};
+        let info = PackInfo::new("test", None, shuyi_core::ContentHash(0));
+        let files = [("p.png".to_owned(), Content::Raw(file))].into();
+        let bytes: &'static [u8] = pack::write(&info, &files).leak();
+        let source: &'static InMemory = Box::leak(Box::new(InMemory::new(bytes)));
+        let index = Index::read(bytes, "test").unwrap();
+        Bundle::new(vec![index.into_layer("pack", source)])
+    };
+    assert!(by_file.bytes("p.png").is_some());
+    assert_eq!(
+        text(&draw_with(&b, &by_file), 0, 0, 8, 4),
+        sprite_frame(|s| s, true)
+    );
     // A PNG at its path is no one-bit picture: a grey rectangle.
     let png = bundle_of(b"\x89PNG\r\n\x1a\n".to_vec());
     assert_eq!(

@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2262", "2263", "3316", "3317"]
+blocked_by: ["2262", "2263", "2265", "3316", "3317"]
 nick_input: none
 completed:
 ---
@@ -34,8 +34,11 @@ completed:
 - macroquad's loader can't ask for a byte range; a streamed GET
   (`response.body.getReader()`) needs no `Range`, so it works on every
   host, Python's `http.server` included.
-- 2263 gives the pack's index alone, `pack::Source` with `NotYet`, the
-  layer over it, `Bake::first` and `Bundle::arrived`; 3316 gives
+- 2263 gives the pack's index alone, `pack::Source` with `NotYet` and
+  the layer over it (`Index::read(prefix, stamp)`, a `Source` that is
+  `Send + Sync + RefUnwindSafe`, failures listed by `Layer::problems()`);
+  2265 gives `Bake::first`, the spans, `Source::arrived` and
+  `Bundle::arrived`; 3316 gives
   `Progress::Wait` and the card's count; 3317 makes a texture when its
   picture is first drawn.
 

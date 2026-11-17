@@ -13,8 +13,12 @@
 //!    stored files borrowing it, as `shuyi_app::pack_beside_program` and
 //!    the Playdate's `read_pack` hold it today;
 //! 4. **on first read:** each file read from the pack when the load asks
-//!    for it, and dropped once decoded. Nothing in the engine reads so, so
-//!    it is computed from the parts measured above, its arithmetic printed.
+//!    for it, and dropped once decoded: computed from the parts measured
+//!    above, its arithmetic printed, as ticket 2906 did; and measured
+//!    (ticket 2263), its index read alone ([`Index::read`]) and its layer
+//!    reading each file from the pack where it lies
+//!    ([`Index::into_layer`] over [`InMemory`]), as a backend reads its
+//!    file.
 //!
 //! For each: the most heap at once while the pack is opened and the game
 //! loaded from it (the peak), and what stays after (resident), split into
@@ -48,7 +52,7 @@ use hello_grid::tools::HelloTools;
 use shuyi::assets::bundle::{Bundle, Layer};
 use shuyi::assets::format::Formats;
 use shuyi::assets::image::ImageTable;
-use shuyi::assets::pack::{Content, Pack, PackFile, PackInfo, write};
+use shuyi::assets::pack::{Content, InMemory, Index, Pack, PackFile, PackInfo, write};
 use shuyi::assets::target::TargetProfile;
 use shuyi::core::{ContentHash, SimRng};
 use shuyi_alloc_count::{global, tags};
@@ -424,10 +428,16 @@ fn measure_pack(bytes: &'static [u8], stamp: &str, load: Loader) -> Result<Optio
             by_class(|class| class.stored + class.compressed),
             0,
         ),
+        ("on first read, measured", [0; 4], 0),
     ];
     let mut measured = Vec::new();
     for (at, (name, files, in_program)) in ways.into_iter().enumerate() {
         let (layer, open) = measure(|| -> Result<Layer, String> {
+            if at == 3 {
+                let index = Index::read(bytes, stamp).map_err(|e| e.to_string())?;
+                let source: &'static InMemory = Box::leak(Box::new(InMemory::new(bytes)));
+                return Ok(index.into_layer("pack", source));
+            }
             let pack = match at {
                 0 => Pack::open(bytes, stamp).map_err(|e| e.to_string())?,
                 1 => {
@@ -786,15 +796,20 @@ mod tests {
         let names: Vec<&str> = report.ways.iter().map(|way| way.name).collect();
         assert_eq!(
             names,
-            ["embedded", "read whole, copied", "read whole, kept"]
+            [
+                "embedded",
+                "read whole, copied",
+                "read whole, kept",
+                "on first read, measured"
+            ]
         );
         for way in &report.ways {
             assert!(way.kept() <= way.peak(), "{way:?}");
             assert!(way.file_bytes() <= way.open.kept, "{way:?}");
             assert!(way.load.kept > 0, "{way:?}");
         }
-        let [embedded, copied, kept] = &report.ways[..] else {
-            panic!("three ways");
+        let [embedded, copied, kept, measured] = &report.ways[..] else {
+            panic!("four ways");
         };
         // Only the embedded pack is in the program, and the ways that read
         // it hold more than the one that doesn't.
@@ -805,6 +820,12 @@ mod tests {
         let first = report.first_read;
         assert!(first.kept() <= first.peak(), "{first:?}");
         assert!(first.kept() <= embedded.kept(), "{report:?}");
+        // Read file by file, it holds no file and nothing of the pack: less
+        // than every way that holds one, and its table as small as the
+        // table of the pack read whole.
+        assert_eq!(measured.in_program, 0);
+        assert!(measured.kept() < embedded.kept(), "{report:?}");
+        assert!(measured.peak() < copied.peak(), "{report:?}");
         let mut printed = Vec::new();
         print(&mut printed, "small", &report).unwrap();
         let printed = String::from_utf8(printed).unwrap();
@@ -817,6 +838,21 @@ mod tests {
         ] {
             assert!(printed.to_lowercase().contains(part), "{part}: {printed}");
         }
+    }
+
+    #[test]
+    fn hello_grids_pack_read_file_by_file_reads_as_its_sources() {
+        let bytes: &'static [u8] = hello_pack(BTreeMap::new()).unwrap().leak();
+        let index = Index::read(bytes, PACK_STAMP).unwrap();
+        let source: &'static InMemory = Box::leak(Box::new(InMemory::new(bytes)));
+        let by_file = Bundle::new(vec![index.into_layer("pack", source)]);
+        let sources = Bundle::new(vec![hello_grid::layer()]);
+        let bake = hello_grid::bake();
+        let mut formats = hello_grid::formats();
+        bake.register(&mut formats).unwrap();
+        assert_eq!(bake.check(&formats, &sources, &by_file), []);
+        assert!(matches!(by_file.bytes("palette.ron"), Some(Cow::Owned(_))));
+        assert!(hello_load(&by_file).is_ok());
     }
 
     #[test]

@@ -45,7 +45,7 @@ None.
   today. An image whose read gives nothing is drawn magenta, as today,
   and read again the next frame that draws it: on the web it may not
   have arrived yet (a game waits for its folder with `Bundle::arrived`,
-  2263). One whose bytes don't decode is logged once and drawn magenta
+  2265). One whose bytes don't decode is logged once and drawn magenta
   for the run, as today.
 - **The font atlas** stays uploaded at start: the first frame needs it.
 - **Recoloured copies** and **`remake`** (a picture saved under `--watch`)

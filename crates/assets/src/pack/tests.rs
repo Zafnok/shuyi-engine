@@ -35,14 +35,14 @@ use crate::ron::Ron;
 use crate::target::TargetProfile;
 
 /// The stamp the tests bake with.
-const STAMP: &str = "test 1";
+pub(super) const STAMP: &str = "test 1";
 
 /// The engine's Playdate profile.
 const PLAYDATE: &str = include_str!("../../../../targets/playdate.ron");
 
 /// A game of one file of every kind the built-in formats read, and the
 /// files they name.
-fn sources() -> &'static Bundle {
+pub(super) fn sources() -> &'static Bundle {
     static SOURCES: OnceLock<&'static Bundle> = OnceLock::new();
     SOURCES.get_or_init(|| {
         bundle(vec![
@@ -94,7 +94,7 @@ fn formats() -> Formats {
 
 /// The tests' game's bake: every kind, each asset as its loader asks for
 /// it.
-fn every_kind() -> Bake {
+pub(super) fn every_kind() -> Bake {
     Bake::new(STAMP)
         .under::<ImageInfo>("images")
         .under::<Image>("images")
@@ -117,7 +117,7 @@ fn every_kind() -> Bake {
 }
 
 /// The pack of the tests' game, baked once.
-fn baked() -> &'static Baked {
+pub(super) fn baked() -> &'static Baked {
     static BAKED: OnceLock<Baked> = OnceLock::new();
     BAKED.get_or_init(|| {
         every_kind()
@@ -132,7 +132,7 @@ fn pack_bundle(pack: Pack<'static>) -> Bundle {
 }
 
 /// The formats of the tests' game, with the pack's.
-fn pack_formats(bake: &Bake) -> Formats {
+pub(super) fn pack_formats(bake: &Bake) -> Formats {
     let mut formats = formats();
     bake.register(&mut formats)
         .unwrap_or_else(|e| panic!("{e}"));
@@ -430,7 +430,7 @@ fn a_baked_kind_whose_shape_changed_is_refused_with_a_message_to_bake_again() {
 }
 
 /// The pack of `files` (path → raw bytes), with `info`.
-fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
+pub(super) fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
     let files = files
         .iter()
         .map(|(path, bytes)| (path.clone(), Content::Raw(bytes.clone())))
@@ -439,7 +439,7 @@ fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
 }
 
 /// The info of the tests' raw packs.
-fn test_info() -> PackInfo {
+pub(super) fn test_info() -> PackInfo {
     PackInfo::new(STAMP.to_owned(), None, ContentHash(7))
 }
 
@@ -455,7 +455,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 17: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 18: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -496,34 +496,38 @@ fn a_pack_keeps_a_file_as_it_is_when_compressing_doesnt_make_it_smaller() {
     assert!(got.is_empty(), "{got:?}");
 }
 
-/// `bytes`, its body changed by `change`, with the checksum made right
+/// `bytes`, changed by `change`, with the header's checksum made right
 /// again: what reaches the index and the files' checks.
-fn resummed(bytes: &[u8], change: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
+pub(super) fn resummed(bytes: &[u8], change: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
     let mut bytes = bytes.to_vec();
     change(&mut bytes);
-    let sum = checksum(bytes.get(HEADER..).unwrap_or_default());
-    if let Some(at) = bytes.get_mut(12..20) {
-        at.copy_from_slice(&sum.to_le_bytes());
+    if bytes.len() >= HEADER {
+        let length = u32::from_le_bytes(take(&bytes, 20).unwrap());
+        let end = usize::try_from(length)
+            .map_or(bytes.len(), |length| (HEADER + length).min(bytes.len()));
+        let sum = header_sum(&bytes[..end]);
+        bytes[SUM_AT].copy_from_slice(&sum.to_le_bytes());
     }
     bytes
 }
 
-/// The pack of `index` and `data`, with a right header.
-fn assembled(index: &Index, data: &[u8]) -> Vec<u8> {
-    let index = postcard::to_allocvec(index).unwrap();
-    let body = [index.as_slice(), data].concat();
+/// The pack of `listing` and `data`, with a right header.
+fn assembled(listing: &Listing, data: &[u8]) -> Vec<u8> {
+    let index = postcard::to_allocvec(listing).unwrap();
     let length = u32::try_from(index.len()).unwrap();
-    [
+    let head = [
         &MAGIC[..],
         &VERSION.to_le_bytes(),
-        &checksum(&body).to_le_bytes(),
+        &[0; 8],
         &length.to_le_bytes(),
-        &body,
+        &index,
     ]
-    .concat()
+    .concat();
+    resummed(&[&head[..], data].concat(), |_| {})
 }
 
-/// An entry of `stored` bytes at `offset`, of `size` unpacked.
+/// An entry of `stored` bytes at `offset`, of `size` unpacked, its checksum
+/// that of no bytes ([`opened`] sets it).
 fn entry(path: &str, codec: Codec, offset: u64, stored: u64, size: u64) -> Entry {
     Entry {
         path: path.to_owned(),
@@ -532,12 +536,21 @@ fn entry(path: &str, codec: Codec, offset: u64, stored: u64, size: u64) -> Entry
         offset,
         stored,
         size,
+        sum: checksum(b""),
     }
 }
 
-/// What opening a pack of `entries` over `data` says, as text.
-fn opened(entries: Vec<Entry>, data: &[u8]) -> String {
-    let index = Index {
+/// What opening a pack of `entries` over `data` says, as text: each entry's
+/// checksum is made that of its bytes, where they are in `data`.
+fn opened(mut entries: Vec<Entry>, data: &[u8]) -> String {
+    for entry in &mut entries {
+        let range = usize::try_from(entry.offset).unwrap_or(usize::MAX)
+            ..usize::try_from(entry.offset.saturating_add(entry.stored)).unwrap_or(usize::MAX);
+        if let Some(bytes) = data.get(range) {
+            entry.sum = checksum(bytes);
+        }
+    }
+    let index = Listing {
         info: test_info(),
         entries,
     };
@@ -607,6 +620,12 @@ fn an_index_that_doesnt_hold_together_is_refused() {
     assert_eq!(
         opened(vec![entry("a", Codec::Lz4, 0, 2, 3)], b"\xff\xff"),
         "the pack is broken: a doesn't unpack"
+    );
+    // LZ4 only keeps a file it makes smaller, and no file's bytes reach
+    // past 4 GiB, so a layer read file by file keeps each place in 32 bits.
+    assert_eq!(
+        opened(vec![entry("a", Codec::Lz4, 0, 2, 2)], b"ab"),
+        "the pack is broken: a is compressed to no fewer bytes than it has"
     );
     assert_eq!(
         opened(vec![entry("a", stored, 0, 0, MAX_UNPACKED_BYTES + 1)], b""),
@@ -696,7 +715,7 @@ fn baking_is_deterministic() {
 }
 
 /// Paths and bytes for a pack: distinct paths in order.
-fn pack_files() -> impl Strategy<Value = Vec<(String, Vec<u8>)>> {
+pub(super) fn pack_files() -> impl Strategy<Value = Vec<(String, Vec<u8>)>> {
     proptest::collection::btree_map(
         "[a-z]{1,8}(/[a-z]{1,8}){0,2}\\.[a-z]{1,3}",
         prop_oneof![
@@ -842,6 +861,29 @@ fn the_limits_hold_at_their_edges() {
         opened(vec![entry("a", Codec::Lz4, 0, length, 18)], &short),
         "ok: 1 file(s)"
     );
+    // A file may end 4 GiB from the pack's start, not a byte further (an
+    // offset near 4 GiB takes as many bytes in the index, whatever it is).
+    let ending_at = |offset| {
+        let entries = vec![entry("a", stored, offset, 1, 1)];
+        assembled(
+            &Listing {
+                info: test_info(),
+                entries,
+            },
+            b"",
+        )
+    };
+    let Err(IndexError::Short { needs }) = Index::read(&ending_at(1 << 31)[..HEADER], STAMP) else {
+        panic!("a header alone");
+    };
+    let last = u64::from(u32::MAX) - needs - 1;
+    assert!(Index::read(&ending_at(last), STAMP).is_ok());
+    assert_eq!(
+        Index::read(&ending_at(last + 1), STAMP),
+        Err(IndexError::Pack(broken(
+            "its files' bytes reach past 4 GiB"
+        )))
+    );
     // Exactly the most files opens.
     let most = (0..MAX_FILES)
         .map(|i| entry(&format!("{i:06}"), stored, 0, 0, 0))
@@ -875,11 +917,16 @@ fn a_packs_length_finds_its_end_inside_a_bigger_file() {
         &[0xff, 0xff],
     ]
     .concat();
+    let unread = resummed(&unread, |_| {});
     assert!(matches!(length(&unread), Err(PackError::Broken(_))));
+    // The header and the index are checked.
+    let mut changed = pack.clone();
+    changed[HEADER] ^= 1;
+    assert_eq!(length(&changed), Err(PackError::Checksum));
 }
 
 /// Twelve files, as many as Hello, Grid's pack has, some that compress.
-fn twelve() -> Vec<(String, Vec<u8>)> {
+pub(super) fn twelve() -> Vec<(String, Vec<u8>)> {
     (0..12u8)
         .map(|i| {
             let bytes = if i % 3 == 0 {
@@ -1043,7 +1090,7 @@ fn a_raw_pack_holds_at_most_max_files() {
         let entries = (0..count)
             .map(|i| entry(&format!("{i:06}"), Codec::Stored, 0, 0, 0))
             .collect();
-        let index = Index {
+        let index = Listing {
             info: test_info(),
             entries,
         };
