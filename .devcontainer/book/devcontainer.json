@@ -1,8 +1,10 @@
 // The book's project in a Codespace: the code pad (ticket 2837, ADR-0126
 // §1). Each step's page links it, by `devcontainer_path`. The root's image
 // and setup, opened at the project's folder, with every step's web build
-// made in `dev` into one target folder as it is created, and a step served
-// on a private forwarded port. No MCP server: the root's container
+// made in `dev` into one target folder as it is created, and the book
+// itself served on a private forwarded port (`cargo xtask book-pad`, ticket
+// 2840), each step's game from its own build, built again when its files
+// change. No MCP server: the root's container
 // registers it, and a reader of the book doesn't need it. `cargo xtask
 // check-devcontainers` checks that it builds every step and keeps the
 // root's image and setup.
@@ -17,18 +19,22 @@
   // The commands run in the workspace folder, `site/tutorial`. A prebuild
   // runs both of the first two, so a Codespace made from it opens with
   // every step built. One made without it opens once step 2 is built and
-  // served (about 8 minutes on 2 cores), and builds the other nine behind
-  // it (about 6 more: steps 1 and 7 lock other features of the engine's
-  // crates, the others take about 10 seconds each). The image has no
-  // Python, which serves a step (`serve.sh`).
-  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && sudo apt-get install -y -qq --no-install-recommends python3 && bash ../../.devcontainer/book/build.sh 02-board && bash serve.sh",
+  // the book served (about 8 minutes on 2 cores), and builds the other nine
+  // behind it (about 6 more: steps 1 and 7 lock other features of the
+  // engine's crates, the others take about 10 seconds each). The
+  // `onCreateCommand` adds Zola, which builds the site (`setup-zola.sh`, the
+  // version CI's), and ends by starting the server (`pad.sh`, which builds
+  // `xtask` first); the `postAttachCommand`, which runs after the
+  // `updateContentCommand`, starts it again in a Codespace made from the
+  // prebuild, or says it is served already.
+  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../scripts/setup-zola.sh && bash ../../.devcontainer/book/build.sh 02-board && bash ../../.devcontainer/book/pad.sh",
   "updateContentCommand": "bash ../../.devcontainer/book/build.sh 01-new 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship",
   "waitFor": "onCreateCommand",
-  "postAttachCommand": "bash serve.sh",
+  "postAttachCommand": "bash ../../.devcontainer/book/pad.sh",
   "forwardPorts": [4000],
   "portsAttributes": {
     "4000": {
-      "label": "The step's game",
+      "label": "The book",
       "onAutoForward": "openPreview"
     }
   },

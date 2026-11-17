@@ -69,7 +69,7 @@ pub fn run(repo_root: &Path) -> Vec<String> {
 }
 
 /// The steps in `tutorial`: each folder with a `shuyi.ron`, by name.
-fn steps(tutorial: &Path) -> std::io::Result<Vec<String>> {
+pub fn steps(tutorial: &Path) -> std::io::Result<Vec<String>> {
     let mut steps = Vec::new();
     for entry in fs::read_dir(tutorial)? {
         let entry = entry?;

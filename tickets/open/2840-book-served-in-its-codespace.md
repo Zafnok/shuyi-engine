@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2837"]
 nick_input: none
 completed:

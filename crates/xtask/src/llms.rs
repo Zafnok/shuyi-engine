@@ -756,11 +756,12 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
 /// `step`.
 fn codespace(step: &str) -> String {
     format!(
-        "Change its Rust in a Codespace: <{CODESPACE}>. A Codespace is a computer in your browser, \
+        "Open this book in a Codespace: <{CODESPACE}>. A Codespace is a computer in your browser, \
          with Rust and the book's project ready, paid from your own GitHub account's free hours. \
-         In it, this step is the folder `{step}/`, and its Rust is in `{step}/crates/game/src/`. \
-         After a change, `cargo shuyi web` in `{step}/` builds it again, and `bash ../serve.sh` \
-         there shows it on the forwarded port: reload the game's tab.\n\n"
+         It opens this book beside an editor of the project, and there **Play this step** and the \
+         playground play your own build of this step, the folder `{step}/`, built again each time \
+         you save a change to its files. Its Rust is in `{step}/crates/game/src/`. A Codespace that \
+         has just opened may still be building the other steps for a few minutes.\n\n"
     )
 }
 
