@@ -1,6 +1,6 @@
 # ADR-0122: Styled text: a line of spans, each with an optional role that the skin paints from the palette
 
-- **Status:** Accepted
+- **Status:** Accepted; §4 superseded by ADR-0124 (a key cap takes more cells than its name)
 - **Date:** 2026-11-16
 - **Related tickets:** 2347; 3215 (key caps, which will amend §4), 2766 (the message log's lines), 2330 (a `Text` node), 2322 (screen readers)
 

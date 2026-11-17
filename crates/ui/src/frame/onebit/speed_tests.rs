@@ -28,9 +28,7 @@ pub(super) fn test_font() -> (FontAtlasDef, Vec<u8>) {
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4), ('#', 5)].into(),
         wide: [('田', 6)].into(),
         wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
         ink: None,
-        bold_ink: None,
     };
     let mut bits = vec![0u8; 8 * 16];
     bits[6] = 0b0001_1000;

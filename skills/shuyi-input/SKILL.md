@@ -89,7 +89,11 @@ the player's keymap.
    `key_name(ctx.help_keys(), action)` (`shuyi::ui::input::help_keys`),
    and a help bar of such keys is `help_line_styled`. All follow the
    device the player pressed last: keys on the keyboard, the pad's own
-   button names on a controller.
+   button names on a controller. To draw each key as a key cap (boxed,
+   bold, one letter as its capital), the game's `GameData::key_caps`
+   returns a `KeyCapStyle` (`shuyi::ui::frame::key_cap`); the box is
+   `key_bg` with a `key_edge`. A cap takes a cell more than its name:
+   measure a hint with the frame's widths, `help.width(buf.widths())`.
 
 5. **Check it:** `cargo shuyi lint` (or `cargo shuyi check-keys`) fails
    on a key named in code or text, with its file and line, and `cargo

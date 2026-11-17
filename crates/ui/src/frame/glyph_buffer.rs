@@ -108,8 +108,7 @@ pub struct GlyphStyle {
     pub dx: i8,
     /// Console pixels down (negative: up).
     pub dy: i8,
-    /// Drawn from the font atlas's bold face, or, without one, twice,
-    /// 1 px apart.
+    /// In bold: drawn twice, 1 px apart.
     pub bold: bool,
 }
 
@@ -650,7 +649,8 @@ impl GlyphBuffer {
             return;
         }
         for y in clip_span(rect.y, rect.h, self.spec.rows) {
-            if let (Some(first), Some(last)) = (self.index(row.start, y), self.index(row.end - 1, y))
+            if let (Some(first), Some(last)) =
+                (self.index(row.start, y), self.index(row.end - 1, y))
             {
                 self.styles.retain(|&i, _| !(first..=last).contains(&i));
             }

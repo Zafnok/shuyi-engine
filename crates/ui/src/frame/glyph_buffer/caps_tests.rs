@@ -28,7 +28,12 @@ fn terminus() -> CellWidths {
 /// A `w × 2` buffer drawing key caps boxed in `FILL` and `EDGE`.
 fn capped(w: u16) -> GlyphBuffer {
     let buf = GlyphBuffer::new(w, 2, Cell::new(' ', FG, BG)).with_widths(terminus());
-    let caps = KeyCaps::with_colors(KeyCapStyle::new(), (Some(FILL), Some(EDGE)), &terminus(), buf.spec());
+    let caps = KeyCaps::with_colors(
+        KeyCapStyle::new(),
+        (Some(FILL), Some(EDGE)),
+        &terminus(),
+        buf.spec(),
+    );
     buf.with_key_caps(Some(caps))
 }
 
@@ -99,7 +104,10 @@ fn a_cap_followed_by_a_full_stop_or_a_comma_leaves_their_cells_alone() {
         assert_eq!(glyphs(&wide, 1), format!("Enter {mark} "));
         let cell = PxRect::new(6 * 8, 16, 8, 16);
         for item in wide.items() {
-            assert!(item.visible().intersect(&cell).is_none(), "{mark}: {item:?}");
+            assert!(
+                item.visible().intersect(&cell).is_none(),
+                "{mark}: {item:?}"
+            );
         }
         assert_eq!(wide.glyph_style(6, 1), GlyphStyle::PLAIN);
         assert!(buf.overlays().len() == 5, "Enter fits in six cells");
@@ -185,7 +193,11 @@ fn a_snapshot_lists_the_glyph_styles() {
         "{snapshot}"
     );
     let plain = GlyphBuffer::new(2, 1, Cell::new(' ', FG, BG));
-    assert!(!plain.to_snapshot(&engine_palette()).contains("glyph styles"));
+    assert!(
+        !plain
+            .to_snapshot(&engine_palette())
+            .contains("glyph styles")
+    );
 }
 
 proptest! {

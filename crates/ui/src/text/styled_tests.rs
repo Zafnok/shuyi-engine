@@ -195,7 +195,9 @@ fn capped() -> CellWidths {
 #[test]
 fn with_caps_a_hints_width_counts_each_keys_room() {
     let mut hint = StyledText::new();
-    hint.push_key("F").push_plain(" select · ").push_key("Space");
+    hint.push_key("F")
+        .push_plain(" select · ")
+        .push_key("Space");
     hint.push_plain(" end turn");
     assert_eq!(hint.plain(), "F select · Space end turn");
     assert_eq!(hint.width(&CellWidths::NARROW), 25);

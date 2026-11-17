@@ -12,15 +12,13 @@ fn terminus_ink() -> FontInk {
     ink
 }
 
-fn terminus(bold_face: Option<FontInk>) -> CellWidths {
-    let mut atlas = shuyi_assets::font::FontAtlasDef {
+fn terminus() -> CellWidths {
+    CellWidths::of(&shuyi_assets::font::FontAtlasDef {
         cell_w: 8,
         cell_h: 16,
         ink: Some(terminus_ink()),
         ..Default::default()
-    };
-    atlas.bold_ink = bold_face;
-    CellWidths::of(&atlas)
+    })
 }
 
 fn caps(style: KeyCapStyle, widths: &CellWidths) -> KeyCaps {
@@ -44,9 +42,9 @@ fn the_style_is_bold_capitals_and_a_two_pixel_margin_off_a_one_bit_screen() {
 
 #[test]
 fn a_bold_letter_struck_twice_sits_two_pixels_inside_its_box_on_every_side() {
-    // Bold without a bold face: the ink is columns 1 to 7. The box is
+    // Bold, struck twice: the ink is columns 1 to 7. The box is
     // 3 px outside it (2 of margin, 1 of edge): 13 px, in two cells.
-    let layout = caps(KeyCapStyle::new(), &terminus(None)).layout("F", &terminus(None));
+    let layout = caps(KeyCapStyle::new(), &terminus()).layout("F", &terminus());
     assert_eq!(layout.extra, 1);
     assert_eq!(layout.frame, Rect::new(1, 0, 13, 16));
     assert_eq!(layout.style, GlyphStyle::new(3, 1, true));
@@ -65,8 +63,8 @@ fn a_bold_letter_struck_twice_sits_two_pixels_inside_its_box_on_every_side() {
 
 #[test]
 fn a_longer_name_takes_one_more_cell_and_the_same_placement() {
-    let caps = caps(KeyCapStyle::new(), &terminus(None));
-    let space = caps.layout("Space", &terminus(None));
+    let caps = caps(KeyCapStyle::new(), &terminus());
+    let space = caps.layout("Space", &terminus());
     assert_eq!(space.extra, 1);
     assert_eq!(space.frame, Rect::new(1, 0, 45, 16));
     assert_eq!(space.style, GlyphStyle::new(3, 1, true));
@@ -76,19 +74,19 @@ fn a_longer_name_takes_one_more_cell_and_the_same_placement() {
 #[test]
 fn a_glyph_inked_wider_gets_a_wider_box_and_the_same_margin() {
     // W's ink is columns 0 to 6, 0 to 7 struck twice: a 14 px box.
-    let caps = caps(KeyCapStyle::new(), &terminus(None));
-    let w = caps.layout("W", &terminus(None));
+    let caps = caps(KeyCapStyle::new(), &terminus());
+    let w = caps.layout("W", &terminus());
     assert_eq!(w.frame, Rect::new(1, 0, 14, 16));
     assert_eq!(w.style, GlyphStyle::new(4, 1, true));
     // A name ending in W reaches its last column.
-    let fw = caps.layout("FW", &terminus(None));
+    let fw = caps.layout("FW", &terminus());
     assert_eq!(fw.frame, Rect::new(1, 0, 21, 16));
     assert_eq!(fw.style.dx, 3);
 }
 
 #[test]
 fn a_wide_glyph_is_placed_by_the_capitals_margins_in_its_two_cells() {
-    let widths = terminus(None).clone();
+    let widths = terminus();
     let wide = CellWidths::wide(['あ']);
     let caps = caps(KeyCapStyle::new().with_bold(false), &widths);
     // Columns 1 to 14 of its two cells: a 20 px box in three cells.
@@ -98,20 +96,16 @@ fn a_wide_glyph_is_placed_by_the_capitals_margins_in_its_two_cells() {
 }
 
 #[test]
-fn a_bold_face_is_placed_by_its_own_ink_and_plain_by_the_regular() {
-    let face = FontInk::new(InkBox::new(0, 2, 6, 11));
-    let widths = terminus(Some(face));
-    let bold = caps(KeyCapStyle::new(), &widths).layout("F", &widths);
-    assert_eq!(bold.frame, Rect::new(1, 0, 13, 16));
-    assert_eq!(bold.style, GlyphStyle::new(4, 1, true));
-    let plain = caps(KeyCapStyle::new().with_bold(false), &widths).layout("F", &widths);
+fn a_name_not_bold_is_placed_by_its_own_ink() {
+    let plain = caps(KeyCapStyle::new().with_bold(false), &terminus()).layout("F", &terminus());
+    // 6 + 6 = 12 px, centred in two cells.
     assert_eq!(plain.frame, Rect::new(2, 0, 12, 16));
     assert_eq!(plain.style, GlyphStyle::new(4, 1, false));
 }
 
 #[test]
 fn a_smaller_margin_makes_a_shorter_box_centred_in_the_line() {
-    let layout = caps(KeyCapStyle::new().with_margin_px(1), &terminus(None)).layout("F", &terminus(None));
+    let layout = caps(KeyCapStyle::new().with_margin_px(1), &terminus()).layout("F", &terminus());
     // 7 + 2 × 2 = 11 px across, 10 + 4 = 14 down.
     assert_eq!(layout.frame, Rect::new(2, 1, 11, 14));
     assert_eq!(layout.style, GlyphStyle::new(3, 1, true));
@@ -119,7 +113,7 @@ fn a_smaller_margin_makes_a_shorter_box_centred_in_the_line() {
 
 #[test]
 fn a_margin_too_big_for_the_line_keeps_the_box_the_lines_height() {
-    let layout = caps(KeyCapStyle::new().with_margin_px(5), &terminus(None)).layout("F", &terminus(None));
+    let layout = caps(KeyCapStyle::new().with_margin_px(5), &terminus()).layout("F", &terminus());
     // 7 + 12 = 19 px across, in three cells: room for a glyph inked
     // across its whole cell and struck twice, 8 + 1 + 12.
     assert_eq!(layout.extra, 2);
@@ -129,7 +123,8 @@ fn a_margin_too_big_for_the_line_keeps_the_box_the_lines_height() {
 
 #[test]
 fn a_font_whose_ink_is_unknown_counts_the_whole_cell() {
-    let layout = caps(KeyCapStyle::new().with_bold(false), &CellWidths::NARROW).layout("F", &CellWidths::NARROW);
+    let layout = caps(KeyCapStyle::new().with_bold(false), &CellWidths::NARROW)
+        .layout("F", &CellWidths::NARROW);
     // 8 + 6 = 14 px across; down, the box is the line's.
     assert_eq!(layout.extra, 1);
     assert_eq!(layout.frame, Rect::new(1, 0, 14, 16));

@@ -483,7 +483,12 @@ impl<G: GameData> Ctx<G> {
         if self.platform.one_bit && !style.one_bit {
             return None;
         }
-        Some(KeyCaps::new(style, &self.palette, self.widths(), self.console))
+        Some(KeyCaps::new(
+            style,
+            &self.palette,
+            self.widths(),
+            self.console,
+        ))
     }
 
     /// Sets the font atlas's widths, which [`widths`](Self::widths) are

@@ -1,4 +1,4 @@
-//! `font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... [--bold <bold.bdf>] <font.bdf>... <out-dir>`: turns a BDF
+//! `font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... <font.bdf>... <out-dir>`: turns a BDF
 //! bitmap font into a
 //! font atlas (`atlas.png` + `atlas.ron`, read as
 //! [`shuyi_assets::font::FontAtlasDef`]) and its one-bit copy for a one-bit
@@ -28,12 +28,8 @@
 //! languages that name no set. The sets are laid out one after another,
 //! in the order given, after the narrow glyphs.
 //!
-//! `--bold <bold.bdf>` adds a bold face of the font, its cells the same
-//! size (ticket 3215): the atlas keeps the bold shape of each narrow glyph
-//! it has that the bold font has, after the wide sets, and its `atlas.ron`
-//! names them (`bold`), which a key cap's name is drawn in. Every atlas
-//! also says where its capitals put ink (`ink`, and `bold_ink` for the
-//! bold face's), which a key cap places its name by.
+//! Every atlas says where its glyphs put ink (`ink`, [`ink_of`]), which
+//! a key cap places its name by (ticket 3215).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -524,7 +520,9 @@ fn ink_box(pixels: &[bool], w: usize) -> Option<InkBox> {
         .fold(None, |ink: Option<InkBox>, (x, y)| {
             Some(match ink {
                 None => InkBox::new(x, y, x, y),
-                Some(b) => InkBox::new(b.left.min(x), b.top.min(y), b.right.max(x), b.bottom.max(y)),
+                Some(b) => {
+                    InkBox::new(b.left.min(x), b.top.min(y), b.right.max(x), b.bottom.max(y))
+                }
             })
         })
 }
@@ -549,7 +547,11 @@ pub fn ink_of(font: &BitmapFont, glyphs: &BTreeMap<char, u32>) -> Option<FontInk
             *counts.entry(edge(ink)).or_default() += 1;
         }
         // The first of the most common: `max_by_key` keeps the last.
-        counts.into_iter().rev().max_by_key(|&(_, n)| n).map(|(v, _)| v)
+        counts
+            .into_iter()
+            .rev()
+            .max_by_key(|&(_, n)| n)
+            .map(|(v, _)| v)
     };
     let capitals = InkBox::new(
         most(|b| b.left)?,
@@ -567,51 +569,6 @@ pub fn ink_of(font: &BitmapFont, glyphs: &BTreeMap<char, u32>) -> Option<FontInk
         }
     }
     Some(ink)
-}
-
-/// `atlas` with the bold face `bold` (ticket 3215): the bold shape of each
-/// narrow glyph it has that `bold` has, in codepoint order after its
-/// glyphs, and their capitals' ink. Fails if `bold`'s cells aren't the
-/// atlas's size.
-pub fn add_bold(atlas: Atlas, bold: &BitmapFont) -> Result<Atlas, String> {
-    let Atlas { mut def, image } = atlas;
-    if (bold.cell_w, bold.cell_h) != (def.cell_w, def.cell_h) {
-        return Err(format!(
-            "a bold font's cells are the font's size: {}×{}, not {}×{}",
-            def.cell_w, def.cell_h, bold.cell_w, bold.cell_h
-        ));
-    }
-    let shapes: Vec<(char, &Vec<bool>)> = def
-        .glyphs
-        .keys()
-        .filter_map(|c| bold.glyphs.get(c).map(|pixels| (*c, pixels)))
-        .collect();
-    let first = def.cell_end();
-    def.bold = shapes.iter().map(|&(c, _)| c).zip(first..).collect();
-    def.bold_ink = ink_of(bold, &def.bold);
-    let cells = first + u32::try_from(shapes.len()).unwrap_or(u32::MAX);
-    let height = cells.div_ceil(COLUMNS).max(1) * def.cell_h;
-    let mut rgba = image.rgba;
-    rgba.resize(to_usize(i64::from(image.width) * i64::from(height) * 4), 0);
-    for (c, pixels) in shapes {
-        let Some(rect) = def.bold_rect(c) else {
-            continue;
-        };
-        for (i, _) in pixels.iter().enumerate().filter(|&(_, &on)| on) {
-            let i = u32::try_from(i).unwrap_or(0);
-            let (x, y) = (rect.x + i % rect.w, rect.y + i / rect.w);
-            let at = to_usize((i64::from(y) * i64::from(image.width) + i64::from(x)) * 4);
-            rgba[at..at + 4].copy_from_slice(&[255; 4]);
-        }
-    }
-    Ok(Atlas {
-        def,
-        image: Image {
-            width: image.width,
-            height,
-            rgba,
-        },
-    })
 }
 
 /// Whether `wide` fits beside `font` as its wide font: its cells twice as
@@ -660,8 +617,8 @@ pub fn one_bit(def: &FontAtlasDef, image: &Image) -> Result<Vec<u8>, String> {
 }
 
 /// What `atlas.ron` holds: a [`FontAtlasDef`], without its `wide`, its
-/// `wide_sets`, its `bold` or its ink when there are none, so an atlas
-/// without them is written as before.
+/// `wide_sets` or its ink when there are none, so an atlas without them is
+/// written as before.
 #[derive(Serialize)]
 struct AtlasRonBody<'a> {
     cell_w: u32,
@@ -672,12 +629,8 @@ struct AtlasRonBody<'a> {
     wide: &'a WideSet,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     wide_sets: &'a BTreeMap<String, WideSet>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    bold: &'a BTreeMap<char, u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ink: Option<&'a FontInk>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bold_ink: Option<&'a FontInk>,
 }
 
 /// The `atlas.ron` text for `def`, with a generated-file header naming
@@ -689,7 +642,7 @@ pub fn atlas_ron(
     readme: Option<&str>,
 ) -> Result<String, String> {
     // LF on every OS, so regenerating never churns line endings.
-    // A glyph's ink columns on one line each (`'W': [0, 6],`).
+    // A glyph's ink columns on one line each (`'W': (0, 6),`).
     let config = ron::ser::PrettyConfig::default()
         .new_line("\n")
         .compact_arrays(true);
@@ -700,9 +653,7 @@ pub fn atlas_ron(
         glyphs: &def.glyphs,
         wide: &def.wide,
         wide_sets: &def.wide_sets,
-        bold: &def.bold,
         ink: def.ink.as_ref(),
-        bold_ink: def.bold_ink.as_ref(),
     };
     let body = ron::ser::to_string_pretty(&body, config).map_err(|e| e.to_string())?;
     let first = format!("// Generated by `{command} font-atlas` from {source_name}. Do not edit");
@@ -782,25 +733,11 @@ fn lacked(font: &BitmapFont, wides: &[BitmapFont], chars: &AtlasChars) -> Option
 /// `atlas.png`, `atlas.ron` and `atlas_1bit.bin` in `out_dir`. Fails if
 /// the result lacks a glyph `rules` require; a character the text uses
 /// that the fonts lack is named in the summary, not a failure. `command`
-/// is what `atlas.ron`'s header calls the tool. [`run_with_bold`] adds a
-/// bold face.
+/// is what `atlas.ron`'s header calls the tool.
 pub fn run(
     rules: &FontAtlas,
     command: &str,
     font_paths: &[PathBuf],
-    wides: &[WideFont],
-    out_dir: &Path,
-    chars: &AtlasChars,
-) -> Result<String, String> {
-    run_with_bold(rules, command, (font_paths, None), wides, out_dir, chars)
-}
-
-/// [`run`], with the bold face of the font at `bold`, if one is named
-/// ([`add_bold`]): `fonts` is `(font_paths, bold)`.
-pub fn run_with_bold(
-    rules: &FontAtlas,
-    command: &str,
-    (font_paths, bold): (&[PathBuf], Option<&Path>),
     wides: &[WideFont],
     out_dir: &Path,
     chars: &AtlasChars,
@@ -831,11 +768,7 @@ pub fn run_with_bold(
         .map(|wide| wide.set.as_deref())
         .zip(&wide_fonts)
         .collect();
-    let mut atlas = build_atlas_with_sets(&font, &by_set, chars);
-    if let Some(path) = bold {
-        let face = read_font(path)?;
-        atlas = add_bold(atlas, &face).map_err(|e| format!("{}: {e}", path.display()))?;
-    }
+    let atlas = build_atlas_with_sets(&font, &by_set, chars);
     let problems = atlas.def.problems(&rules.required_glyphs);
     if !problems.is_empty() {
         return Err(format!(
@@ -846,9 +779,7 @@ pub fn run_with_bold(
     }
     let names: Vec<String> = font_paths
         .iter()
-        .map(PathBuf::as_path)
-        .chain(wides.iter().map(|wide| wide.path.as_path()))
-        .chain(bold)
+        .chain(wides.iter().map(|wide| &wide.path))
         .filter_map(|p| p.file_name())
         .map(|n| n.to_string_lossy().into_owned())
         .collect();
@@ -870,12 +801,8 @@ pub fn run_with_bold(
         fs::write(&path, bytes).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
     let wide_count = wide_count(&atlas.def, wides);
-    let bold_count = match atlas.def.bold.len() {
-        0 => String::new(),
-        n => format!(" and {n} bold"),
-    };
     let mut summary = format!(
-        "font-atlas: {} glyphs{wide_count}{bold_count}, {}×{} px → {}",
+        "font-atlas: {} glyphs{wide_count}, {}×{} px → {}",
         atlas.def.glyphs.len(),
         atlas.image.width,
         atlas.image.height,
@@ -910,7 +837,7 @@ fn wide_count(def: &FontAtlasDef, wides: &[WideFont]) -> String {
 }
 
 #[cfg(test)]
-mod bold_tests;
+mod ink_tests;
 
 #[cfg(test)]
 mod tests {

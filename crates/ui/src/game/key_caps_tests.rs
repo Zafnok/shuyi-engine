@@ -93,7 +93,10 @@ fn a_game_with_caps_draws_its_keys_as_caps_in_every_frame() {
     let mut game = game(Some(KeyCapStyle::new()), false);
     let caps = game.ctx().key_caps().unwrap();
     assert_eq!(game.buffer().key_caps(), Some(&caps));
-    assert_eq!(game.buffer().widths().key_cap_cells(), Some(caps.extra_cells()));
+    assert_eq!(
+        game.buffer().widths().key_cap_cells(),
+        Some(caps.extra_cells())
+    );
     // "F select" and the cap's cell, centred: from column 15 of 40.
     let width = i32::from(game.buffer().width());
     let start = (width - 9) / 2;

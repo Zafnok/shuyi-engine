@@ -103,6 +103,15 @@ and its title and stage print their help with `print_styled`, so their keys stan
 from the first run; change the colour, or add a `"key_bg"`, in `files/palette.ron`. A key's name passed in as an argument, as `plant_hint` does,
 is marked too when it goes to `ctx.text_styled_with_keys` as one of its key arguments.
 
+A game can draw each key as a key cap instead: its name in a small rounded box, in bold, a
+single letter as its capital (`F`, not `f`). It turns them on in its `GameData`, with
+`fn key_caps(&self) -> Option<KeyCapStyle> { Some(KeyCapStyle::new()) }`
+(`shuyi::ui::frame::key_cap`). The box is the palette's `"key_bg"`, its edge
+`"key_edge"`, the name `"key"`; the style sets the bold, the capitals and the margin. Every
+hint printed with `print_styled` gets caps, the engine's own screens' too. A cap takes a
+cell more than its name, so a hint with caps is wider: a skin that fits one by measuring it
+with the frame's widths, `help.width(buf.widths())`, fits it with caps.
+
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
 action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
 passes. `cargo shuyi check` fails on a capitalized name that is no action.

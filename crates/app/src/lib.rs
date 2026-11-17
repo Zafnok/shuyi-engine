@@ -75,7 +75,7 @@
 //! #     FONT.get_or_init(|| FontAtlasDef {
 //! #         cell_w: 8, cell_h: 16, columns: 16,
 //! #         glyphs: Default::default(), wide: Default::default(), wide_sets: Default::default(),
-//! #         bold: Default::default(), ink: None, bold_ink: None,
+//! #         ink: None,
 //! #     })
 //! # }
 //! # fn my_ctx() -> Ctx<MyGame> { toy::ctx() }

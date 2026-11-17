@@ -922,8 +922,8 @@ fn plays_a_loop<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool 
         if manifest.sounds.get(cue).is_some_and(|s| s.looped))
 }
 
+#[cfg(test)]
+mod key_caps_tests;
 mod pads;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod key_caps_tests;

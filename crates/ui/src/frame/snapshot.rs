@@ -163,8 +163,10 @@ impl GlyphBuffer {
         }
         let mut styles = self.glyph_styles().peekable();
         if styles.peek().is_some() {
-            out.push_str("--- glyph styles ---
-");
+            out.push_str(
+                "--- glyph styles ---
+",
+            );
         }
         for (x, y, style) in styles {
             let bold = if style.bold { " bold" } else { "" };
