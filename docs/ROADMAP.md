@@ -164,6 +164,7 @@ These tickets, in order:
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
+| 2094 | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
 | 2919 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
@@ -791,7 +792,9 @@ going public, with the one book (2823–2828).
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
 | 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
-| 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2916 (done) | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2837 | The code pad: a Codespace per step of the book's project, opened from the step's page, with the step built and its web build forwarded (ADR-0126) |
+| 2838 | Exercises that edit Rust: a command that runs one exercise's check on the step as the reader left it, and the first such exercise (after 2837) |
 
 ### Public demo defenses
 

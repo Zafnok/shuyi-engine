@@ -129,7 +129,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0114](0114-a-games-release-from-a-tag-one-plan-one-export-workflow.md) | A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release | Accepted; amends ADR-0111 §5 |
 | [0115](0115-moving-a-program-aside-leaves-no-gap-of-its-own.md) | Moving a program aside leaves no gap of its own; the system's replacing of a name may, rarely, and the test counts separate gaps | Accepted |
 | [0116](0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md) | The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published | Accepted |
-| [0117](0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md) | Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays | Accepted; extends ADR-0090 §8 |
+| [0117](0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md) | Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays | Accepted; extends ADR-0090 §8; extended by ADR-0126 |
 | [0118](0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md) | A closed build's recipient overlay: one code in three marks, a ledger signed with the game's SSH key, never proof | Accepted; extends ADR-0023 §1 and §3 |
 | [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted |
 | [0120](0120-a-games-rebuild-budgeted-as-a-ratio-of-a-reference-build.md) | A new game's rebuild is budgeted as a ratio of a reference build on the same runner | Accepted; supersedes ADR-0049 §2 |
@@ -137,5 +137,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted; §4 superseded by ADR-0124 |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
 | [0124](0124-key-caps-a-key-drawn-as-a-cap-in-the-room-its-box-needs.md) | Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid | Accepted; supersedes ADR-0122 §4 |
+| [0126](0126-the-code-pad-a-codespace-per-step-not-a-build-server.md) | The code pad: a Codespace per step of the book's project, a command for an exercise's check, and no build server until Nick asks for one | Accepted; extends ADR-0117 |
 
 Template: [`0000-template.md`](0000-template.md).
