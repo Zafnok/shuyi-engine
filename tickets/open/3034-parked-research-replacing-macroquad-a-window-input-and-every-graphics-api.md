@@ -171,7 +171,7 @@ when (dropping a platform for a while, say), it asks Nick with the
     fullscreen on Linux (miniquad's X11 code has a TODO saying it can't
     go back to windowed). The winit backend keeps 3044's window record
     and 3314's cursor rule (`docs/platform-backends.md`, *The window
-    (desktop)*, which 3314 extends to the cursor);
+    and the cursor (desktop)*);
   - the cursor grab, which miniquad 0.4.11 already has
     (`set_cursor_grab`: the cursor held inside the window on desktop,
     pointer lock on the web), kept through winit's own grab.

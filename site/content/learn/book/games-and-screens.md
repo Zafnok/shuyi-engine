@@ -480,7 +480,9 @@ first_screen, GameHooks::default())`, and its binary's plain `main` calls
 starts, a `Start`. `Window::console("My Game", CONSOLE, 2, 16)` sizes the window to the
 console drawn twice, with a margin, as `run_game` does. On a desktop the window then opens
 as the player left it: its last size and whether it filled the screen, kept on that
-computer. The API docs of `shuyi_ui` and `shuyi_app` have the details.
+computer. The mouse's arrow hides once the mouse has rested 2 seconds, and at once in
+fullscreen, and comes back when the mouse moves or clicks. The API docs of `shuyi_ui` and
+`shuyi_app` have the details.
 
 ## Check yourself
 

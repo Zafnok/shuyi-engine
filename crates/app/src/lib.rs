@@ -550,7 +550,10 @@ pub fn open_window(window: &Window, main: impl Future<Output = ()> + 'static) {
 /// On a desktop the window opens as the player left it on this computer:
 /// at its last windowed size and in its mode, kept beside the game's
 /// storage (`docs/platform-backends.md`, *The window and the cursor*). The
-/// first time, it opens at [`AppConfig::window`]'s size, windowed.
+/// first time, it opens at [`AppConfig::window`]'s size, windowed. The
+/// system's cursor hides over the window once the mouse has rested two
+/// seconds, and at once in fullscreen, and shows again when the mouse moves
+/// or a button is pressed, or the window loses focus (on the web too).
 ///
 /// A panic writes a crash report as [`AppConfig::crash`] says ([`crash`]).
 /// On native a panic of the game's frame then stops the sound, adds the
