@@ -527,6 +527,7 @@ impl<'a> Parser<'a> {
             if self.overrun(nodes.len()) {
                 return Err(self.error(self.at, "the parser stopped moving on"));
             }
+            let before = self.at;
             let Some(c) = self.peek() else {
                 if depth > 0 {
                     return Err(self.error(self.at, "expected `}` to close the branch"));
@@ -550,6 +551,11 @@ impl<'a> Parser<'a> {
                     let special = |c| matches!(c, '{' | '}' | '\'') || (c == '#' && hash.is_some());
                     nodes.push(Node::Text(self.until(special)));
                 }
+            }
+            // Each piece takes a byte or more: one that took none would
+            // loop here for ever.
+            if self.at == before {
+                return Err(self.error(self.at, "the parser stopped moving on"));
             }
         }
     }
