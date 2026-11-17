@@ -223,10 +223,11 @@ Done (ADR-0124, which supersedes ADR-0122 §4):
   `atlas.ron` (`FontInk`: the box most capitals share the edges of, and
   the columns of each printable ASCII glyph that differs). Terminus:
   columns 1–6, rows 2–11, as the game measured; `W` 0–6. The template's
-  atlas carries it (a test makes it again and compares); Hello, Grid's
-  and the book's copies stay as they were, as Hello, Grid's recorded
-  sessions are stamped with its files, and none of them draws caps. A
-  pack holds the ink: the pack format is version 16.
+  and Hello, Grid's atlases carry it (tests make each again and
+  compare), so Hello, Grid's golden table and its recorded session's
+  content stamp were blessed again; the book's and the tutorial's copies
+  stay as they were (nothing checks them, and none draws caps). A pack
+  holds the ink: the pack format is version 16.
 
 Deviations:
 

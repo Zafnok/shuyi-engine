@@ -102,8 +102,8 @@ what it measures with.
   be cut. A game measures it as before and sees the new width.
 - `FontAtlasDef` has a new field (`ink`), so a struct literal of it
   breaks; an atlas file without it still reads. A pack holds it: the
-  pack format is version 16. The template's atlas carries it; an
-  example's, made before, gets it when made again.
+  pack format is version 16. The template's and Hello, Grid's atlases
+  carry it; a copy made before gets it when made again.
 - A renderer that ignores glyph styles (the one-bit renderer, the
   Playdate's) draws a cap's name on the grid; the style is off there
   unless a game says.

@@ -3,7 +3,7 @@ source: crates/ui/src/frame/raster/card/tests.rs
 expression: build().buffer.to_snapshot(&engine_palette())
 ---
 #o-|#o-|#o-|#o-|#o-|#o-|#o-|#o-|
-Zo-Z#oZ|#Z-|Zo-Z#oZ|#Z-|Zoo  # |
+Zo-Z#oZ|#Z-|Zo-Z#oZ|#Z-|Zoo  | |
                       #  |  -   
                      #  |  -  o 
                        o# -  o  
@@ -71,11 +71,11 @@ under 210,16 11x1  #5adcf0
 under 210,31 11x1  #5adcf0
 under 209,17 1x14  #5adcf0
 under 221,17 1x14  #5adcf0
-under 234,17 11x14  #283c78
-under 234,16 11x1  #5adcf0
-under 234,31 11x1  #5adcf0
-under 233,17 1x14  #5adcf0
-under 245,17 1x14  #5adcf0
+under 236,17 7x14  #283c78
+under 236,16 7x1  #5adcf0
+under 236,31 7x1  #5adcf0
+under 235,17 1x14  #5adcf0
+under 243,17 1x14  #5adcf0
 under 0,23 256x3  #e62828
 over  5,6 5x3  #283c78
 over  37,6 5x3  #782832
