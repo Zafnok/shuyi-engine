@@ -130,9 +130,9 @@ This is too big for one PR. It asks Nick, then splits, as 3015 does.
   the screen is one press. Games still read only actions (`AGENTS.md`
   rule 8), help text names the buttons (`HelpKeys`), controls-fit
   (3002) counts them, and replays don't change.
-- **`PadKind` gains a variant,** which breaks a game's `match` on it
-  with no `_` arm. The first split ticket says so for the game's pin
-  bump.
+- **`PadKind` gains a variant,** additively (**from 2083 (done):**
+  `PadKind` is `#[non_exhaustive]` and `PadKind::ALL` a slice, so neither
+  a game's `match` nor `ALL`'s type changes).
 - **The on-screen stick is 4-way,** like a pad's stick ("Sticks are
   4-way buttons", the module doc of `pad.rs`), with the keymap's
   `StickDef` thresholds.

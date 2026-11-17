@@ -12,7 +12,7 @@ use crate::frame::color::EngineColor;
 use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
-use crate::screens::print_centred;
+use crate::screens::{print_centred, print_centred_styled};
 
 /// Row of the title.
 const TITLE_ROW: i32 = 1;
@@ -106,7 +106,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &LayoutPickerView, buf: &mut Glyph
         paint_panel(ctx, buf, layout, x, y);
     }
     let bottom = i32::from(buf.height()) - 1;
-    print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
+    let colors = ctx.palette.text_colors_on(c(EngineColor::TextDim), black);
+    print_centred_styled(buf, bottom, &view.help, colors);
 }
 
 /// Paints `layout`'s panel with its top-left corner at `(x, y)`: a double
@@ -139,8 +140,8 @@ fn paint_panel<G: GameData>(
         )
     };
     let look = PanelLook::new(style, c(EngineColor::Text), bg)
-        .border(border)
-        .title(title_fg);
+        .with_border(border)
+        .with_title(title_fg);
     buf.panel(rect, &look, Some(&title));
 
     let cap_fg = |key| c(role_colour(layout.role(key)));
@@ -254,7 +255,7 @@ mod tests {
         LayoutPickerView {
             title: "Pick".to_owned(),
             layouts: vec![layout("First", false), layout("Second", true)],
-            help: "help".to_owned(),
+            help: "help".into(),
         }
     }
 

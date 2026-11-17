@@ -15,7 +15,7 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
-use core::fmt::Display;
+use crate::text::ToArg;
 pub use view::{AnswerView, AskView};
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
@@ -106,7 +106,7 @@ impl<T: Copy + PartialEq> Ask<T> {
             UiAction::Down | UiAction::Right => self.step(true, audio),
             UiAction::Confirm => return self.focus(),
             UiAction::Cancel => return self.cancel,
-            UiAction::Debug => {}
+            _ => {}
         }
         None
     }
@@ -132,7 +132,7 @@ impl<T: Copy + PartialEq> Ask<T> {
         &self,
         ctx: &Ctx<G>,
         keys: HelpKeys<'_, G::Action>,
-        args: &[(&str, &dyn Display)],
+        args: &[(&str, &dyn ToArg)],
     ) -> AskView<T> {
         let focus = self.cursor.focus();
         let answers = self
@@ -150,7 +150,9 @@ impl<T: Copy + PartialEq> Ask<T> {
                 Some(_) => Vec::new(),
                 None => answers.collect(),
             },
-            keys: self.keys.map(|key| ctx.text_with_keys(key, keys, &[])),
+            keys: self
+                .keys
+                .map(|key| ctx.text_styled_with_keys(key, keys, &[], &[])),
         }
     }
 }

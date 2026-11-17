@@ -43,10 +43,13 @@ fn a_program_and_its_twin_are_both_moved_and_a_copy_left_in_their_place() {
         assert_eq!(fs::metadata(path).unwrap().modified().unwrap(), modified);
     }
     assert!(!dir.join(RUNNING).join("shuyi-7-0.copy").exists());
-    // The copies are files of their own: a build replaces them, and the
-    // moved program stays as it was.
+    assert!(!dir.join(RUNNING).join("shuyi-7-1.copy").exists());
+    // The copies are one file, as cargo links them, so cargo has nothing
+    // to remove (ticket 2599): what is written at one name is at the other.
     fs::write(&exe, b"fresh").unwrap();
-    fs::write(&twin, b"fresh").unwrap();
+    assert_eq!(fs::read(&twin).unwrap(), b"fresh");
+    // And none of the moved program's: a build replaces them, and the
+    // moved program stays as it was.
     assert!(
         moved
             .iter()
@@ -156,27 +159,44 @@ fn sweep_deletes_what_it_can_and_skips_what_it_cannot() {
     fs::remove_dir_all(dir.parent().unwrap().parent().unwrap()).unwrap();
 }
 
+/// The separate gaps a watcher may see in [`MOVES`] moves: the system's own
+/// replacing of a name, never the order of the moves (ADR-0115).
+///
+/// Ticket 2564 measured that replacing open a gap in about one move in
+/// 36,000 (25 in 900,000), and this test fail 4 runs in 300 under load: a
+/// gap in a run about one run in 75, so two in one run about one in
+/// 11,000 and three about one in 2,500,000. The old order opened one in
+/// every move, 200 a run.
+const GAPS: u32 = 2;
+const MOVES: u32 = 200;
+
 #[test]
 fn a_program_is_at_its_path_at_every_moment_of_a_move() {
     let dir = scratch("never-missing");
     let from = dir.join("shuyi.exe");
     fs::write(&from, b"program").unwrap();
     let done = std::sync::atomic::AtomicBool::new(false);
-    let missing = std::thread::scope(|scope| {
+    let gaps = std::thread::scope(|scope| {
         let watcher = scope.spawn(|| {
-            let mut missing = 0_u32;
+            // A gap starts each time the path, there before, isn't.
+            let (mut gaps, mut there) = (0_u32, true);
             while !done.load(std::sync::atomic::Ordering::Relaxed) {
-                missing += u32::from(!from.exists());
+                let now = from.exists();
+                gaps += u32::from(there && !now);
+                there = now;
             }
-            missing
+            gaps
         });
-        for n in 0..200 {
-            put_aside(&from, &dir.join(format!("aside-{n}.exe"))).unwrap();
+        for n in 0..MOVES {
+            put_aside(&from, &dir.join(format!("aside-{n}.exe")), None).unwrap();
         }
         done.store(true, std::sync::atomic::Ordering::Relaxed);
         watcher.join().unwrap()
     });
-    assert_eq!(missing, 0);
+    assert!(
+        gaps <= GAPS,
+        "the path was missing {gaps} separate times in {MOVES} moves"
+    );
     assert_eq!(fs::read(&from).unwrap(), b"program");
     fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
@@ -194,7 +214,7 @@ fn a_running_program_is_put_aside_and_its_path_left_replaceable() {
         .spawn()
         .unwrap();
     let to = dir.join("ping-aside.exe");
-    let put = put_aside(&from, &to);
+    let put = put_aside(&from, &to, None);
     // What the build does next: write a new program at the old path.
     // A scan of the new `.exe` can hold the path for a moment, as for a
     // build's linker; a refusal that lasts still fails below.
@@ -245,6 +265,34 @@ fn any_other_error_is_returned_at_once() {
     let (answer, count) = tried(5, u32::MAX, 2);
     assert_eq!(answer.unwrap_err().raw_os_error(), Some(2));
     assert_eq!(count, 1);
+}
+
+#[cfg(windows)]
+#[test]
+fn a_copy_held_for_a_moment_is_waited_for_until_it_can_be_deleted() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = scratch("held");
+    let path = dir.join("tools.exe");
+    fs::write(&path, b"program").unwrap();
+    // Held as a scan holds a new `.exe`: shared for reading only.
+    let held = fs::File::options()
+        .read(true)
+        .share_mode(1)
+        .open(&path)
+        .unwrap();
+    let refused = deletable(&path).unwrap_err().raw_os_error();
+    assert!(refused.is_some_and(|c| BUSY.contains(&c)), "{refused:?}");
+    let waited = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            std::thread::sleep(Duration::from_millis(50));
+            drop(held);
+        });
+        retrying(TRIES, PAUSE, || deletable(&path))
+    });
+    waited.unwrap();
+    // What cargo does next: remove the name.
+    fs::remove_file(&path).unwrap();
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
 
 #[test]

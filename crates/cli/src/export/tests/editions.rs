@@ -5,7 +5,7 @@
 //!
 //! The stand-in has no dependency: its build script embeds the files of its
 //! content root (`SHUYI_CONTENT`, else `files`) as the template's
-//! `include_dir!` does, and its `full` feature, on by default, adds a line of
+//! `shuyi::files!` does, and its `full` feature, on by default, adds a line of
 //! code only the full game has.
 
 use std::collections::BTreeMap;
@@ -64,7 +64,7 @@ const PROJECT: &str = r#"(
 const MANIFEST: &str = "[features]\ndefault = [\"full\"]\nfull = []\ndemo = []\npackaged = []\n";
 
 /// Its build script: the files of its content root, embedded, as the
-/// template's `include_dir!` embeds them.
+/// template's `shuyi::files!` embeds them.
 const BUILD: &str = r#"use std::path::{Path, PathBuf};
 fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, PathBuf)>) {
     let mut entries: Vec<_> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()).collect();
@@ -122,10 +122,8 @@ fn write(path: &Path, bytes: &[u8]) {
 
 /// A pack of `files`.
 fn pack_of(files: &[(&str, &str)]) -> Vec<u8> {
-    let info = PackInfo {
-        stamp: "the game 1".to_owned(),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "the game 1".to_owned();
     let files: BTreeMap<String, Content> = files
         .iter()
         .map(|(path, text)| ((*path).to_owned(), Content::Raw(text.as_bytes().to_vec())))
@@ -628,11 +626,9 @@ fn main() {
         let at = args.iter().position(|arg| arg == flag).unwrap();
         args[at + 1].clone()
     };
-    let info = PackInfo {
-        stamp: "the stand-in 1".to_owned(),
-        target: Some(value("--target")),
-        ..PackInfo::default()
-    };
+    let mut info = PackInfo::default();
+    info.stamp = "the stand-in 1".to_owned();
+    info.target = Some(value("--target"));
     let files: BTreeMap<String, Content> = FILES
         .iter()
         .filter(|(name, _)| !name.starts_with("audio/"))

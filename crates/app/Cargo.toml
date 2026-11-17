@@ -48,13 +48,15 @@ link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
 # build.
 capture = ["shuyi-platform/capture", "shuyi-ui/raster", "dep:image"]
 # `sound-probe`: names the sound backend for the example `sound_probe`, the
-# parity gates' probe (ticket 2573, ADR-0066). Off by default; never in a
-# shipped build.
+# parity gates' probe (ticket 2573, ADR-0066). The gates' own: what it
+# names is hidden and not covered by semver (ADR-0068). Off by default;
+# never in a shipped build, and no game turns it on.
 sound-probe = []
 # `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
 # `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
 # by default. A game that turns it on needs the root Cargo.toml's patch of `alsa-sys`
-# (ADR-0075).
+# (ADR-0075). The name stays for good, and does nothing once it is the only
+# backend (ADR-0068); no feature is ever named for quad-snd.
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 
 [dependencies]
@@ -81,6 +83,11 @@ shuyi-sound-out = { path = "../sound-out", optional = true }
 # features). On every target: the render card's example encodes its
 # pictures with it on the web too (ticket 2019).
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+# The window's record, kept per computer beside the game's storage (ticket
+# 3044): the versions `shuyi-ui` already uses. The sound probe's plan reads
+# with them too.
+serde.workspace = true
+ron = { workspace = true, features = ["std"] }
 
 # Storage on the web (ticket 0207) is `localStorage`, through the engine's own
 # `crates/cli/web/storage.js` (ticket 3033). Native resolves its data
@@ -100,9 +107,10 @@ getrandom = { version = "0.4", default-features = false, optional = true }
 # Drops on Windows, read by the backend itself (ticket 3307, ADR-0104): the
 # version and features miniquad already builds, and `processthreadsapi`. The
 # Documents folder of `DesktopFolder::MyGames` (ticket 3310, ADR-0109):
-# `shlobj`, `knownfolders`, `combaseapi` and `winerror`.
+# `shlobj`, `knownfolders`, `combaseapi` and `winerror`. A crash report's
+# frames (ticket 2598): `winnt` and `libloaderapi`.
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["winuser", "shellapi", "processthreadsapi", "shlobj", "knownfolders", "combaseapi", "winerror"] }
+winapi = { version = "0.3.9", features = ["winuser", "shellapi", "processthreadsapi", "shlobj", "knownfolders", "combaseapi", "winerror", "winnt", "libloaderapi"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Strings and bytes from the engine's own plugins (`crates/cli/web/page-files.js`,
@@ -116,9 +124,6 @@ shuyi-app = { path = ".", features = ["link", "capture"] }
 # Turns on `storage::conformance_suite` in tests, and the toy game the
 # link's tests attach to.
 shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
-# The sound probe's plan.
-serde.workspace = true
-ron.workspace = true
 # The sound probe's decoder timings (ticket 2210): only the example uses it.
 shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
 

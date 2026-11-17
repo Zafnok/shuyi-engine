@@ -5,23 +5,26 @@
 //! and cargo must do both to relink; it does let the file be renamed. So
 //! on Windows `shuyi mcp` and `mcp-host` move their own program, and the
 //! hard-linked twin cargo wrote first (in `deps/`, or beside an example),
-//! into `<exe dir>/.shuyi-running/`, and run on from there. A copy of each,
-//! with its modified time, takes its place: no program runs from the copy,
+//! into `<exe dir>/.shuyi-running/`, and run on from there. A copy, with
+//! the program's modified time, takes both places, one file under both
+//! names as cargo left them (ticket 2599): no program runs from the copy,
 //! so the next build can replace it, and until then the program is still
 //! there to run (another session's `cargo run`, a test's
-//! `CARGO_BIN_EXE_shuyi`) and cargo sees it fresh.
+//! `CARGO_BIN_EXE_shuyi`), and cargo sees it fresh and already linked.
 //!
-//! The program is never missing from its path, not even for a moment
-//! (ticket 2561): the running file is hard-linked into `.shuyi-running/`
+//! The order of the moves never leaves the program's path empty (ticket
+//! 2561, ADR-0115): the running file is hard-linked into `.shuyi-running/`
 //! and the copy renamed over the old name, rather than the file renamed
 //! away and the copy renamed in after it. Windows lets a running
 //! program's name be replaced while another name keeps the file.
 //!
 //! That replacing is the one moment left, and it is the system's: on a busy
 //! machine a name being replaced can read as not there for tens of
-//! milliseconds (ticket 2564 saw it in about one move in 40,000, inside the
+//! milliseconds (ticket 2564 saw it in about one move in 36,000, inside the
 //! call, with `fs::rename`, a POSIX-semantics rename and a replacing hard
-//! link alike). No order of the moves avoids it.
+//! link alike). No order of the moves avoids it, so the promise is what the
+//! system allows: no gap of the order's own, and rarely one of the
+//! system's (ticket 2574).
 //!
 //! Only a cargo build output has a twin: a `shuyi` installed with `cargo
 //! install` has none and is never moved.
@@ -114,31 +117,42 @@ pub fn sweep(dir: &Path) {
 /// `from`: the copy is no running program's, so a build can replace it,
 /// and until one does the program is still where cargo left it.
 ///
-/// The order keeps a program at `from` at every moment (ticket 2561):
+/// The order leaves no moment without a program at `from` (ticket 2561):
 /// the copy is made first, the running file gains its second name `to`
 /// by a hard link, and the copy is renamed over `from`, which replaces
 /// that name in one step. Renaming `from` away first would leave nothing
 /// there until the copy came, and a program started then (another test,
-/// a person's `cargo shuyi`) would fail to find it.
+/// a person's `cargo shuyi`) would fail to find it. The replacing itself
+/// can, rarely, read as missing for a moment on Windows: the system's,
+/// not the order's (ADR-0115).
 ///
 /// Each step after the copy is retried while the file is busy (ticket
 /// 2564): the copy is a new `.exe`, which a scan may hold just then, and a
 /// busy machine refused the rename with `Access is denied`. A refusal that
 /// lasts is still returned.
-fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
+///
+/// With `linked_to`, the copy is that file under one more name, not a new
+/// one: a twin's copy is the program's copy (ticket 2599), see
+/// [`move_aside`].
+fn put_aside(from: &Path, to: &Path, linked_to: Option<&Path>) -> Result<(), String> {
     let at = |path: &Path, e: std::io::Error| format!("{}: {e}", path.display());
     let copy = to.with_extension("copy");
-    fs::copy(from, &copy).map_err(|e| at(&copy, e))?;
-    let modified = fs::metadata(from)
-        .and_then(|meta| meta.modified())
-        .map_err(|e| at(from, e))?;
-    retrying(TRIES, PAUSE, || {
-        fs::File::options()
-            .write(true)
-            .open(&copy)
-            .and_then(|file| file.set_modified(modified))
-    })
-    .map_err(|e| at(&copy, e))?;
+    if let Some(first) = linked_to {
+        // Already a copy of the same program, with its modified time.
+        retrying(TRIES, PAUSE, || fs::hard_link(first, &copy)).map_err(|e| at(&copy, e))?;
+    } else {
+        fs::copy(from, &copy).map_err(|e| at(&copy, e))?;
+        let modified = fs::metadata(from)
+            .and_then(|meta| meta.modified())
+            .map_err(|e| at(from, e))?;
+        retrying(TRIES, PAUSE, || {
+            fs::File::options()
+                .write(true)
+                .open(&copy)
+                .and_then(|file| file.set_modified(modified))
+        })
+        .map_err(|e| at(&copy, e))?;
+    }
     retrying(TRIES, PAUSE, || fs::hard_link(from, to)).map_err(|e| at(to, e))?;
     retrying(TRIES, PAUSE, || fs::rename(&copy, from)).map_err(|e| at(from, e))
 }
@@ -147,6 +161,17 @@ fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
 /// each as `<stem>-<pid>-<n>` with `exe`'s extension, after sweeping that
 /// folder, and leaves a copy of each in its place: the new paths, none if
 /// `exe` has no twin. Or why not.
+///
+/// The copies left are one file under every name, as cargo left the
+/// program (ticket 2599). Cargo links a program's name to its twin on
+/// every build, a fresh one too, and when the two are separate files it
+/// first removes the program's name: on each `cargo run`, right after a
+/// copy was made, where a scan of the new `.exe` can refuse it
+/// (`failed to remove file`, `Access is denied`). One file is already
+/// linked, so cargo leaves it alone. And before returning, the copy is
+/// waited for until it can be opened for delete (two seconds at most, as
+/// each step of a move is retried), so a build that does relink right
+/// after finds it free.
 pub fn move_aside(exe: &Path, pid: u32) -> Result<Vec<PathBuf>, String> {
     let stem = exe
         .file_stem()
@@ -175,10 +200,37 @@ pub fn move_aside(exe: &Path, pid: u32) -> Result<Vec<PathBuf>, String> {
         let to = names
             .next()
             .ok_or_else(|| format!("{}: no free name for {pid}", running.display()))?;
-        put_aside(&from, &to)?;
+        // The program first, copied; each twin then gets that copy.
+        let linked_to = (from != exe).then_some(exe);
+        put_aside(&from, &to, linked_to)?;
         moved.push(to);
     }
+    // A hold that lasts is the build's to meet: the move is done.
+    let _ = retrying(TRIES, PAUSE, || deletable(exe));
     Ok(moved)
+}
+
+/// Opens `path` for delete and closes it, as cargo's remove of it will:
+/// refused while something else, such as a scan of a new `.exe`, holds it
+/// without sharing delete.
+#[cfg(windows)]
+fn deletable(path: &Path) -> std::io::Result<()> {
+    use std::os::windows::fs::OpenOptionsExt;
+    /// `DELETE`, the access a remove asks for.
+    const DELETE: u32 = 0x0001_0000;
+    /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`.
+    const SHARE_ALL: u32 = 7;
+    fs::File::options()
+        .access_mode(DELETE)
+        .share_mode(SHARE_ALL)
+        .open(path)
+        .map(drop)
+}
+
+/// Elsewhere a held file is still removed: only that it is there.
+#[cfg(not(windows))]
+fn deletable(path: &Path) -> std::io::Result<()> {
+    fs::metadata(path).map(drop)
 }
 
 /// Moves this process's own program aside, saying on stderr if it

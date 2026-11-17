@@ -1610,7 +1610,7 @@ fn step<G: GameData>(
     let out = game.frame(&lists.input, elapsed.dt);
     lists.audio.extend_from_slice(out.audio);
     for request in out.audio {
-        if let AudioRequest::PlayVoice { line, variant } = request {
+        if let AudioRequest::PlayVoice { line, variant, .. } = request {
             lists.voice = Some((line.clone(), clip_file(line, *variant)));
         }
     }

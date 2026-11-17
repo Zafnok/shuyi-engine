@@ -62,9 +62,8 @@ None.
   `roll_unique`. Items with rolls stack only with equal rolls (2746).
 - **Names**: an item's shown name from its rarity and affixes, by a
   text pattern in the language pack (`{prefix} {base} {suffix}`, the
-  game's). **Either order with 2348:** if 2348 is done, the pattern
-  may choose words by its selection rules; if not, a plain pattern, and
-  2348 needs no change here.
+  game's). The pattern may choose words by its selection rules
+  (ADR-0127), as screen text can since 3218 (done).
 - **Monster modifiers**: `roll_modifiers(defs, table, level, rng) ->
   Vec<(ModId, i32)>` from the same affix tables, for 2760's packs.
   **Either order with 2760:** if 2760 is done, wire its leaders:

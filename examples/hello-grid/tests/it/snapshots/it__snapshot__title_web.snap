@@ -50,7 +50,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaddddddddddddddddddddddddddaaaaaaaaaaa
+aaaaaaaaaaahhhhhhddddddddddhhhhhdddddaaaaaaaaaaa
 --- legend ---
 a = fg:background bg:background
 b = fg:border bg:background
@@ -59,3 +59,4 @@ d = fg:text_dim bg:background
 e = fg:border bg:panel
 f = fg:panel bg:focus
 g = fg:text bg:panel
+h = fg:key bg:background

@@ -34,12 +34,20 @@ Codespaces](https://codespaces.new/Zafnok/shuyi-engine?quickstart=1). That gives
 you a computer in your browser, a **container**, with Rust, a C linker and the
 system libraries set up, and the engine's tools registered with the coding agents
 it finds. Codespaces bills whoever opens it, from their own GitHub account's free
-hours or plan.
+hours or plan. If its terminal says `cargo` isn't found, the setup didn't finish:
+run `bash scripts/setup-linux.sh` there, then open a new terminal.
 
 In it, `cargo shuyi new ../moon-garden --template blank` makes a game beside the
 engine. The rest of this chapter works as written, but there's no window to open:
 use the commands below that run the game with no window, which the engine calls
 running **headless**.
+
+The book's project, the box-pushing puzzle you build after this chapter, has a
+Codespace of its own: [open the book's project in a
+Codespace](https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb).
+It opens at the project's folder, with the project's game built and served: the
+editor's **Ports** tab opens it. [The project's first page](@/learn/book/box-pusher/_index.md)
+says how to use it.
 
 ## Install Rust
 
@@ -97,7 +105,12 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. A **template** is what the game starts from. `blank` is one screen, a title.
+it. In a terminal it first asks whether to include the engine skills' **worked
+examples**, files that show each skill at work (`bots.rs`, `playtest.ron`…): yes keeps
+them for you and your coding agent to read, no leaves only the skills, and the game runs
+the same either way (`--examples` or `--no-examples` answers it). Then it asks whether to
+put the game on GitHub too: each question says what pressing Enter picks, or answer no
+and do it later ([On GitHub](#on-github), below). A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
@@ -115,7 +128,9 @@ story not out yet, art you bought) keeps them in a second, private repository.
 that part: `cargo shuyi private-assets` checks the private files out into
 `private/files/`, and the build lays them over the game's own files, a private
 file in place of the public one at its path. Without access, the game still builds
-and runs on its public files. The game's `AGENTS.md` says the rest.
+and runs on its public files. The game's `AGENTS.md` says the rest, and its
+`shuyi-private-files` skill the steps of a change to them: a pull request in the
+private repository first, then one in the game's moving the commit it builds with.
 
 On Linux, run the setup script the game came with before its first build. It
 installs the C linker, `pkg-config`, the system libraries the window and sound
@@ -220,8 +235,8 @@ like this, a player gets one program:
 {% newcomer(to="rust", topic="comments, `static` and a macro") %}
 `///` is a comment for the thing below it, and `//` an ordinary one. The
 computer ignores both. `static` makes a value that
-lasts as long as the program, `Dir<'static>` is its type, and `'static` is that
-lifetime written down. `include_dir!` is a
+lasts as long as the program, and `Embedded`, an embedded folder, is its type.
+`shuyi::files!` is a
 [macro](@/learn/book/box-pusher/01-new.md#what-the-game-is-lib-rs), code that ends in `!`
 and writes more code while compiling: here, code that holds your whole folder.
 {% end %}
@@ -362,6 +377,53 @@ and open `http://localhost:8000`. [Chapter 9](@/learn/book/targets-and-export.md
 says how it works and how to hand it out. [Hello, Grid](@/examples/hello-grid.md), the
 engine's example, plays in your browser on this site.
 
+## On GitHub
+
+When you want your game on GitHub, with its CI running the gates on every change,
+the tools set it up with [`gh`](https://cli.github.com), GitHub's own command-line
+tool, signed in to your account (`gh auth login`):
+
+```bash
+cargo shuyi repos --dry-run
+cargo shuyi repos
+```
+
+The first says what it would make and changes nothing. The second makes it: a
+repository on your account named from the game (Moon Garden's is `moon-garden`),
+public unless you say `--visibility private`, since GitHub's CI is free for a public
+one, and it pushes the game there. A game with private files also gets their
+private repository, with a README and a folder for each kind of file, the game
+pinned to it, and the read-only key and secret its CI reads them with. It creates
+these on your account, so a coding agent should ask you before running it. Run it
+again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
+and `ssh-keygen` as optional, since only this command needs them.
+
+It also sets git's hooks to the game's `scripts/git-hooks`: on Windows, its
+`post-checkout` hook compresses the build folder (`target/`) of each new worktree,
+which takes about half the disk, no slower. In a clone of the game, set them once
+with `git config core.hooksPath scripts/git-hooks`; `shuyi doctor` says when they
+aren't set.
+
+A coding agent that works in many worktrees makes many build folders, and each one's
+first build compiles every dependency. Two commands of the game's tools help, and the
+`shuyi-worktrees` skill in `.claude/skills/` says when to run them: `cargo shuyi
+seed-target --into <worktree>`, run in the main checkout, starts a new worktree's build
+from its own, so it compiles only the game's crates; `cargo shuyi trim-targets` deletes
+the caches of the worktrees idle for days. Neither ever removes a worktree.
+
+`shuyi new` asks the same when you make the game, and runs it for you: whether to
+put the game on GitHub, whether its repository is public, and which kinds of files
+(writing, sprites, sounds, music, data, or folders you name) go in a second, private
+repository, `<you>/moon-garden-assets`. Each answer has its flag (`--github`,
+`--no-github`, `--visibility`, `--private sprites,music` or `--private none`,
+`--private-folder files/levels`), and `--no-github` asks none of these. If a step fails, the
+game is still written: fix what it says, and run `cargo shuyi repos` in its folder.
+
+{% newcomer(to="programming", topic="a repository") %}
+A **repository** is a project's folder with the history of every change, kept by
+git. On GitHub, others can read it, and its CI runs on each change you push.
+{% end %}
+
 ## Next
 
 A rebuild after a one-line change takes about a second: [Fast
@@ -383,8 +445,8 @@ What does `cargo shuyi run --frames 30` do?
 `cargo shuyi run` answers ``error: no such command: `shuyi` ``, though `shuyi doctor`
 works. What is wrong?
 
-- [x] The terminal isn't in the game's folder. — `cargo shuyi` is defined by the game's own `.cargo/config.toml`, so it only works inside the game's folder ([when it goes wrong](#when-it-goes-wrong)).
 - [ ] The engine's tools aren't installed. — `shuyi doctor` working means they are, and `cargo shuyi` comes from the game's folder, not from that install ([when it goes wrong](#when-it-goes-wrong)).
+- [x] The terminal isn't in the game's folder. — `cargo shuyi` is defined by the game's own `.cargo/config.toml`, so it only works inside the game's folder ([when it goes wrong](#when-it-goes-wrong)).
 - [ ] The C linker is missing. — A missing linker shows as ``linker `cc` not found`` or a linker error, not as an unknown command ([when it goes wrong](#when-it-goes-wrong)).
 {% end %}
 
@@ -392,7 +454,7 @@ works. What is wrong?
 A new game's id is the placeholder `com.example.moon-garden`. Why set your own before
 you hand out a build?
 
-- [x] The player's settings are kept under the id, so two games with one id share their saves. — That's why `check --target` warns of the placeholder ([what it is made of](#what-it-is-made-of)).
 - [ ] The game doesn't build until the id is changed. — The placeholder builds and runs, and `check --target` only warns of it ([what it is made of](#what-it-is-made-of)).
 - [ ] Players would see "com.example" as the game's name. — The name is separate from the id: `shuyi.ron`'s `app` holds the name, the id and the version ([what it is made of](#what-it-is-made-of)).
+- [x] The player's settings are kept under the id, so two games with one id share their saves. — That's why `check --target` warns of the placeholder ([what it is made of](#what-it-is-made-of)).
 {% end %}

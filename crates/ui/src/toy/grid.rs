@@ -113,16 +113,17 @@ pub const GLYPH: GlyphSkin = GlyphSkin::new(COLORS, WalkSpeeds::of(10.0), 2);
 /// painter would edge it); a changed tile flashes inverted; the cursor's
 /// marks are flat; the threat marks are the arrows' color, edged in the
 /// text color; and a cell is left at each side.
-pub const ONE_BIT: GlyphSkin = GLYPH.styled(GlyphStyle {
-    range: RangeLook::Fill {
-        glyphs: "text",
-        skip: &[RangeName("danger")],
-    },
-    flash: FlashLook::Invert,
-    cursor: CursorLook::Flat,
-    threat: ThreatLook::Plain { edge: "text" },
-    side_cells: 1,
-});
+pub const ONE_BIT: GlyphSkin = GLYPH.with_style(
+    GlyphStyle::PLAIN
+        .with_range(RangeLook::Fill {
+            glyphs: "text",
+            skip: &[RangeName("danger")],
+        })
+        .with_flash(FlashLook::Invert)
+        .with_cursor(CursorLook::Flat)
+        .with_threat(ThreatLook::Plain { edge: "text" })
+        .with_side_cells(1),
+);
 
 /// How fast a piece walks under the sprite skin: slower, to be seen.
 pub const SPRITE_WALK: WalkSpeeds = WalkSpeeds {
@@ -679,7 +680,7 @@ impl Screen<Toy> for Field {
                 Some(UiAction::Right) => self.step(Dir::Right),
                 Some(UiAction::Confirm) => self.confirm(),
                 Some(UiAction::Cancel) => self.selected = None,
-                Some(UiAction::Debug) | None => {}
+                _ => {}
             }
         }
         Transition::None

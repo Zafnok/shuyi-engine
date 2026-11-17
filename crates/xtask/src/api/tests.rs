@@ -71,6 +71,16 @@ fn metadata_json(packages: &[&str]) -> String {
 /// [`metadata_json`], but `missing` (a crate and a feature) not in that
 /// crate's manifest.
 fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String {
+    metadata_json_with(packages, missing, &[])
+}
+
+/// [`metadata_json_without`], with each crate of `deps` depending on its
+/// list: a name `dev:<name>` as a dev-dependency, any other as a normal one.
+fn metadata_json_with(
+    packages: &[&str],
+    missing: &[(&str, &str)],
+    deps: &[(&str, &[&str])],
+) -> String {
     let list: Vec<String> = packages
         .iter()
         .map(|name| {
@@ -87,9 +97,19 @@ fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String 
                 .filter(|feature| !missing.contains(&(*name, **feature)))
                 .map(|feature| format!("\"{feature}\":[]"))
                 .collect();
+            let dependencies: Vec<String> = deps
+                .iter()
+                .filter(|(krate, _)| krate == name)
+                .flat_map(|(_, list)| list.iter())
+                .map(|dep| match dep.strip_prefix("dev:") {
+                    Some(dep) => format!("{{\"name\":\"{dep}\",\"kind\":\"dev\"}}"),
+                    None => format!("{{\"name\":\"{dep}\",\"kind\":null}}"),
+                })
+                .collect();
             format!(
-                "{{\"name\":\"{name}\",\"features\":{{{}}}}}",
-                features.join(",")
+                "{{\"name\":\"{name}\",\"features\":{{{}}},\"dependencies\":[{}]}}",
+                features.join(","),
+                dependencies.join(",")
             )
         })
         .collect();
@@ -99,11 +119,13 @@ fn metadata_json_without(packages: &[&str], missing: &[(&str, &str)]) -> String 
 /// A fake [`Runner`]. Each command is written `<where>: <program> <args>`,
 /// `<where>` being `head` (the root) or `base` (the base's tree); the last
 /// answer given whose key starts the command answers it, and any other
-/// command succeeds and prints nothing. It records every command.
+/// command succeeds and prints nothing. It records every command, and the
+/// variables each command run with some was given.
 struct Fake {
     root: PathBuf,
     answers: Vec<(String, Result<Ran, String>)>,
     ran: RefCell<Vec<String>>,
+    envs: RefCell<Vec<(String, Vec<String>)>>,
 }
 
 impl Fake {
@@ -112,6 +134,7 @@ impl Fake {
             root: root.to_path_buf(),
             answers: Vec::new(),
             ran: RefCell::new(Vec::new()),
+            envs: RefCell::new(Vec::new()),
         }
     }
 
@@ -186,6 +209,20 @@ impl Fake {
 }
 
 impl Runner for Fake {
+    fn run_with_env(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Result<Ran, String> {
+        let names: Vec<String> = env.iter().map(|(k, v)| format!("{k}={v}")).collect();
+        self.envs
+            .borrow_mut()
+            .push((format!("{program} {}", args.join(" ")), names));
+        self.run(dir, program, args)
+    }
+
     fn run(&self, dir: &Path, program: &str, args: &[&str]) -> Result<Ran, String> {
         let place = if dir == self.root {
             "head"
@@ -1309,6 +1346,45 @@ fn no_merge_base_is_an_error() {
 }
 
 #[test]
+fn the_semver_check_builds_in_a_short_target_folder_of_its_own() {
+    let root = PathBuf::from("D:/repo/.claude/worktrees/some-worktree-name");
+    let fake = Fake::new(&root).answer(
+        "head: cargo semver-checks check-release",
+        Ok(fixture("pass")),
+    );
+    let base_root = root.join(BASE_DIR);
+    let findings = semver(&root, "shuyi-core", &[], &base_root, &fake).unwrap();
+    assert_eq!(findings, Vec::<Finding>::new());
+    let target = root
+        .join("target/api-semver")
+        .to_string_lossy()
+        .into_owned();
+    let envs = fake.envs.borrow();
+    assert_eq!(envs.len(), 1, "{envs:?}");
+    assert!(
+        envs[0]
+            .0
+            .starts_with("cargo semver-checks check-release -p shuyi-core ")
+    );
+    assert_eq!(envs[0].1, vec![format!("CARGO_TARGET_DIR={target}")]);
+
+    // Ticket 2061: Windows starts no program at a path of 260 characters or
+    // more. A build script there is `<target>/debug/build/<dependency>-<16
+    // hex>/build-script-build.exe`. With a root of 120 characters (the
+    // longest worktree seen was 77) and a dependency's name of 40 characters,
+    // it stays under.
+    let longest = 120
+        + 1
+        + SEMVER_TARGET_DIR.len()
+        + "/debug/build/".len()
+        + 40
+        + 1
+        + 16
+        + "/build-script-build.exe".len();
+    assert!(longest < 260, "{longest}");
+}
+
+#[test]
 fn a_semver_build_error_fails_the_run_and_still_removes_the_base() {
     let root = temp_root("build-error");
     let fake = breaking_run(&root).answer(
@@ -1988,5 +2064,203 @@ fn a_summary_file_that_cannot_be_written_is_an_error() {
     // A folder can't be opened as a file to append to.
     let error = write_summary("## Public API", Some(&root), &mut Vec::new()).unwrap();
     assert!(error.starts_with(&root.display().to_string()), "{error}");
+    let _ = fs::remove_dir_all(&root);
+}
+
+// -- outside crates (ticket 2089, ADR-0119) --
+
+/// No line found.
+const NONE: [(String, String); 0] = [];
+
+fn outside_in(krate: &str, line: &str, deps: &[&str]) -> Vec<(String, String)> {
+    let deps: Vec<String> = deps.iter().map(|dep| (*dep).to_string()).collect();
+    unlisted_outside(krate, &lines(&[line]), &deps)
+}
+
+#[test]
+fn an_unlisted_outside_crate_is_found() {
+    assert_eq!(
+        outside_in(
+            "shuyi-app",
+            "pub fn shuyi_app::x(gilrs::GamepadId)",
+            &["gilrs"]
+        ),
+        vec![(
+            "pub fn shuyi_app::x(gilrs::GamepadId)".to_string(),
+            "gilrs".to_string()
+        )]
+    );
+}
+
+#[test]
+fn serde_core_is_allowed_everywhere() {
+    let line = "impl serde_core::de::Deserialize<'de> for shuyi_core::Pos";
+    assert_eq!(
+        outside_in("shuyi-core", line, &["serde_core", "serde"]),
+        NONE
+    );
+}
+
+#[test]
+fn serde_json_is_allowed_in_the_cli_alone() {
+    let line = "pub fn shuyi_x::f() -> serde_json::value::Value";
+    assert_eq!(outside_in("shuyi-cli", line, &["serde_json"]), NONE);
+    assert_eq!(outside_in("shuyi-ui", line, &["serde_json"]).len(), 1);
+}
+
+#[test]
+fn an_engine_module_named_like_a_crate_is_not_the_crate() {
+    let line = "pub struct shuyi_assets::image::ImageTable";
+    assert_eq!(outside_in("shuyi-assets", line, &["image"]), NONE);
+    assert_eq!(
+        outside_in("shuyi-assets", "pub fn my_image::f()", &["image"]),
+        NONE
+    );
+}
+
+#[test]
+fn a_crate_at_the_start_of_a_path_is_found_anywhere_on_the_line() {
+    for line in [
+        "image::RgbaImage",
+        "pub fn shuyi_assets::f(&image::RgbaImage)",
+        "pub fn shuyi_assets::f() -> Vec<image::RgbaImage>",
+        "pub fn shuyi_assets::f(shuyi_assets::image::X, image::Y)",
+    ] {
+        assert_eq!(
+            outside_in("shuyi-assets", line, &["image"]).len(),
+            1,
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn a_crate_that_is_no_dependency_is_not_looked_for() {
+    assert_eq!(
+        outside_in("shuyi-app", "pub fn shuyi_app::x(gilrs::GamepadId)", &[]),
+        NONE
+    );
+}
+
+#[test]
+fn every_allowed_crate_names_engine_crates_of_the_catalog() {
+    let catalog = catalog_names();
+    for (path, crates) in OUTSIDE_CRATES {
+        for krate in *crates {
+            assert!(catalog.contains(krate), "{path}: {krate}");
+        }
+    }
+}
+
+#[test]
+fn outside_dependencies_are_the_normal_ones_that_are_no_engine_crate() {
+    let root = temp_root("outside-deps");
+    let fake = Fake::new(&root).answer(
+        "head: cargo metadata --no-deps --format-version 1",
+        Ok(ok(&metadata_json_with(
+            &["shuyi-app"],
+            &[],
+            &[(
+                "shuyi-app",
+                &["quad-snd", "gilrs", "gilrs", "shuyi-ui", "dev:tempfile"],
+            )],
+        ))),
+    );
+    let packages = packages(&root, &fake).unwrap();
+    assert_eq!(packages["shuyi-app"].outside, lines(&["gilrs", "quad_snd"]));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_fails_on_an_unlisted_outside_crate() {
+    let root = temp_root("outside-run");
+    let options = Options {
+        base: Some("HEAD^1".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_with(
+                &catalog_names(),
+                &[],
+                &[("shuyi-app", &["gilrs"]), ("shuyi-ui", &["serde_json"])],
+            ))),
+        )
+        .with_listing(
+            "head",
+            "shuyi-app",
+            "pub mod shuyi_app\npub fn shuyi_app::x(gilrs::GamepadId)\n",
+        )
+        .with_listing(
+            "head",
+            "shuyi-ui",
+            "pub fn shuyi_ui::f() -> serde_json::value::Value\n",
+        )
+        // The base's lines don't count.
+        .with_listing(
+            "base",
+            "shuyi-core",
+            "pub mod shuyi_core\npub fn shuyi_core::state_hash(gilrs::GamepadId)\n",
+        );
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 2, "{:?}", outcome.errors);
+    // In the catalog's order: `shuyi-ui` before `shuyi-app`.
+    assert!(
+        outcome.errors[0].starts_with("shuyi-ui's"),
+        "{:?}",
+        outcome.errors
+    );
+    let app = &outcome.errors[1];
+    assert!(app.starts_with("shuyi-app's public API"), "{app}");
+    assert!(
+        app.contains("pub fn shuyi_app::x(gilrs::GamepadId)"),
+        "{app}"
+    );
+    assert!(app.contains("names `gilrs`"), "{app}");
+    assert!(
+        app.contains("ADR-0119 lists the outside crates the public API may name"),
+        "{app}"
+    );
+    assert!(
+        outcome.summary.contains(
+            "**Outside crate, fail:** `shuyi-app` names `gilrs`, which ADR-0119 doesn't allow \
+             there: `pub fn shuyi_app::x(gilrs::GamepadId)`"
+        ),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_passes_an_allowed_outside_crate() {
+    let root = temp_root("outside-allowed");
+    let options = Options {
+        base: Some("HEAD^1".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_with(
+                &catalog_names(),
+                &[],
+                &[("shuyi-cli", &["serde_json", "semver"])],
+            ))),
+        )
+        .with_listing(
+            "head",
+            "shuyi-cli",
+            "pub mod shuyi_cli\npub use shuyi_cli::serde_json\n\
+             pub fn shuyi_cli::f(serde_json::value::Value) -> semver::Version\n",
+        );
+    let outcome = run(&root, &options, &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(
+        !outcome.summary.contains("Outside crate"),
+        "{}",
+        outcome.summary
+    );
     let _ = fs::remove_dir_all(&root);
 }

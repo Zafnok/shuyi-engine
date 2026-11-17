@@ -9,14 +9,12 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 use hello_grid::app_info::APP;
-use hello_grid::{FONT_PNG, TITLE, sound};
-use macroquad::window::Conf;
+use hello_grid::{CONSOLE, FONT_PNG, TITLE, sound};
 use shuyi::app::{AppConfig, Window};
 use shuyi::assets::bundle::Layer;
 
 /// The window: the game's.
-const WINDOW: Window =
-    Window::new(TITLE, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16).with_icon(APP.window_icon);
+const WINDOW: Window = Window::console(TITLE, CONSOLE, 2, 16).with_icon(APP.window_icon);
 
 /// What the macroquad backend needs to know: the game's, its settings and
 /// key bindings shared with it.
@@ -28,10 +26,6 @@ fn config() -> AppConfig {
         FONT_PNG,
         sound::files(),
     )
-}
-
-fn window_conf() -> Conf {
-    shuyi::app::window_conf(&WINDOW)
 }
 
 /// The folder named on the command line (else `files/`), read to be
@@ -56,12 +50,6 @@ fn folder() -> Result<Layer, String> {
     Layer::owned("files".to_owned(), files.into_iter().collect()).map_err(|e| e.to_string())
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    match folder() {
-        Ok(layer) => shuyi::app::run(config(), hello_grid::preview::start(layer)).await,
-        Err(error) => {
-            macroquad::logging::error!("{TITLE}: {error}");
-        }
-    }
+fn main() {
+    shuyi::app::run_app(config(), hello_grid::preview::start(folder()));
 }

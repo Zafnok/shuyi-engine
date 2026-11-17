@@ -62,11 +62,11 @@ None. Running it on a real Deck is 3013.
     Fullscreen row), `Keyboard::Absent` (the first-key screen never
     opens), and Quit by the game (`quit: Game`);
   - fullscreen at the display's size from the start;
-    - either order with 3044 (the window record): the Deck's fullscreen
+    - from 3044 (done, the window record): the Deck's fullscreen
       applies when there is no record, and a record's mode never takes
-      the Deck out of fullscreen, since the Deck is not windowed. If
-      3044 is done, set it through its `conf_from`; if not, 3044 keeps
-      the Deck's fullscreen;
+      the Deck out of fullscreen, since the Deck is not windowed: set it
+      through `window::conf_from` (`crates/app/src/window.rs`), and keep
+      `present`'s full screen whatever the frame says;
   - the frame is placed by the game's scale mode through
     `shuyi_ui::frame::console::place` (2333): `integer` by default, the
     largest whole number that fits, with letterboxing in the skin's
@@ -125,11 +125,14 @@ None. Running it on a real Deck is 3013.
 - the new-game wizard's Steam Deck part. Either order: if 2504 is done,
   add the Deck export to the built-in template's `target-steam-deck`
   part's CI matrix in this PR; if not, 2504 adds it;
-- the release from a tag. Either order with 3050: if 3050 is done, the
-  `steam-deck` exporter fills `Exporter::host()` (`linux`),
-  `container()` (the sniper SDK image) and `ci()` (`build`), so
-  `export --plan` lists it and a tag's release builds it in the
-  container through `export.yml`; if not, 3050 fills them;
+- the release from a tag. From 3050 (done): the `steam-deck` exporter
+  fills `Exporter::host()` (`Host::Linux`), `container()` (the sniper
+  SDK image, `export::SNIPER`) and `ci()` (`InCi::Build`), which the
+  trait requires, so `export --plan` lists it and a tag's release builds
+  it in the container through `export.yml` (the itch.io job skips the
+  `steam-deck` package already); the plan's tests in
+  `crates/cli/src/contract/export/tests.rs` and the `shuyi-ship`
+  example's plan (its Steam Deck is a limit today) change with it;
 - an engine-drawn keyboard (the game already has a letter grid; Nick
   chose Steam's keyboard for the Steam build, game 0903);
 - the engine's profiles screen asking the system keyboard for a name

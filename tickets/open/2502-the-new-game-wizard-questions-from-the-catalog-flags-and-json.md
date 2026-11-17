@@ -69,8 +69,9 @@ asked is missing.
   the xtask's `Concern` (`crates/xtask/src/modules.rs`), and make
   2003's `check-modules` require both fields on every concern but
   `time` (below). `Concern` is in `shuyi modules`'s answer: regenerate
-  its schema and raise `contract::VERSION`. It is a public struct with
-  public fields, so write the `Breaking:` line CI's `api` job asks for.
+  its schema and raise `contract::VERSION`. **From 2086 (done):**
+  `Concern` is `#[non_exhaustive]`, so a new field, `#[serde(default)]`,
+  is no break.
 - **Time is not asked** (ADR-0013 §1): it follows from the
   perspectives, so the `time` concern gets neither field and the wizard
   has no `--time` flag. A template asks its own `time` question when a
@@ -177,13 +178,20 @@ asked is missing.
   beside `--template hex` in `docs/guides/hex-grid.md`'s *what starts
   it*. If not, nothing to do: 2771 names the command and adds the test
   when it lands (its clause says so).
-- **Either order with 2592** (`shuyi new` asks about the game's GitHub
-  repositories and its private files): if 2592 is done, move its six
-  questions into the wizard, after the catalog's and the template's, in
-  the wizard's prompt style; `--questions --json` lists them with a
-  field saying an agent must not answer `github: yes` itself, and
-  `--no-input` means `--no-github`. If not, nothing to do: 2592 asks
-  them in the wizard when it lands (its clause says so).
+- **From 2592 (done):** `shuyi new` asks six questions about the
+  game's GitHub repositories and its private files, as plain prompts in
+  `crates/cli/src/contract/new/questions.rs` (each a function over a
+  `Terminal`, a flag answering each, nothing asked off a terminal or
+  with `--json`). Move them into the wizard, after the catalog's and
+  the template's, in the wizard's prompt style; `--questions --json`
+  lists them with a field saying an agent must not answer `github: yes`
+  itself, and `--no-input` means `--no-github`.
+- **From 2597 (done):** whether a new game gets the skills' worked
+  examples is the template's `examples` question (ADR-0113), asked with
+  the others in the wizard. `new`'s terminal prompt for it
+  (`questions::examples`, asked first, before the GitHub questions, with
+  `--examples`/`--no-examples`) moves into the wizard, and its flags
+  stay.
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give

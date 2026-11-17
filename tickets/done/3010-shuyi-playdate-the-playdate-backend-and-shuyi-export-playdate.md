@@ -419,7 +419,7 @@ them any way you like, but never the SDK itself.
 Breaking: shuyi-assets: `CrankDef::default` and the golden hash of a keymap with no `crank`: a notch is 45° unless the file says, was 30°.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: A crank's notch is 45 degrees unless the keymap file says, where it was 30.
 old: "a keymap file with no crank part: a notch every 30 degrees"
 new: "a keymap file with no crank part: a notch every 45 degrees"
@@ -433,7 +433,7 @@ find: ["CrankDef::default"]
 Breaking: shuyi-cli: `ExportCx`: two new public fields, `app` and `features`: code that builds one with a literal adds them.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: ExportCx has two more public fields, app and features.
 old: "ExportCx { .. }"
 new: "ExportCx { app, features, .. }"
@@ -447,7 +447,7 @@ find: ["web: None }"]
 Breaking: shuyi-platform: `Look`, `Frame`, `Show`: `Look` holds a `&dyn Images`, so it is no longer `Send`, `Sync` or unwind safe, and `Frame` and `Show` no longer unwind safe: nothing here moved one across threads or a `catch_unwind`, and code that did draws on its own thread.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Look holds a one-bit look with a &dyn Images, so it no longer crosses threads or a catch_unwind.
 old: "std::panic::catch_unwind(|| paint(look))"
 new: "paint(look)"

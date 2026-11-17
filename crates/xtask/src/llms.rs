@@ -38,6 +38,10 @@ pub const FULL_BUDGET_BYTES: usize = 400_000;
 const REPO: &str = "Zafnok/shuyi-engine";
 /// Zola's content, from the repository's root.
 const CONTENT: &str = "site/content";
+/// The book's Codespace (ticket 2837, ADR-0126 §1), which each step's page
+/// links beside **Play this step**: `site/config.toml`'s `extra.codespace`,
+/// which `templates/chapter.html` reads.
+const CODESPACE: &str = "https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb";
 /// Learn's folder, from [`CONTENT`], as a section's folder is written.
 const LEARN: &str = "learn/";
 /// The newcomers whom `llms-full.txt` leaves out, a page written whole for
@@ -384,6 +388,8 @@ struct Page {
     project: bool,
     /// `extra.newcomer`: the newcomer the whole page is written for.
     newcomer: Option<String>,
+    /// `extra.step`: it is a step of one of the book's projects.
+    step: bool,
     /// The text after the front matter.
     body: String,
     /// The number of the body's first line in the file.
@@ -488,6 +494,7 @@ fn page(source: &str, shown: &str, text: &str) -> Result<Option<Page>, String> {
         weight: front.weight,
         project: front.project,
         newcomer: front.newcomer,
+        step: front.step,
         body: text[front.body..].to_owned(),
         body_line: front.body_line,
     }))
@@ -521,6 +528,8 @@ struct Front {
     project: bool,
     /// `extra.newcomer`.
     newcomer: Option<String>,
+    /// Whether it has `extra.step`.
+    step: bool,
     /// Where its body starts, in bytes.
     body: usize,
     /// Its body's first line's number.
@@ -598,6 +607,7 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
             .and_then(|extra| extra.get("newcomer"))
             .and_then(toml::Value::as_str)
             .map(str::to_owned),
+        step: extra.is_some_and(|extra| extra.contains_key("step")),
         body,
         body_line,
     })
@@ -699,6 +709,8 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         }
         let text = if let Some(check) = &part.check {
             checked(check)
+        } else if let Some(exercise) = &part.exercise {
+            exercised(exercise)
         } else {
             let (text, part_errors) = expand(&shown, part.text, part.line, snippets);
             errors.extend(part_errors);
@@ -723,14 +735,33 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         .and_then(book::label)
         .map(|label| format!("> **{label}** This whole page.\n\n"))
         .unwrap_or_default();
+    let pad = if page.step {
+        let file = page.source.rsplit('/').next().unwrap_or(&page.source);
+        codespace(file.trim_end_matches(".md"))
+    } else {
+        String::new()
+    };
     let text = format!(
-        "# {}\n\nSource: {}{}\n\n{whole}{}\n",
+        "# {}\n\nSource: {}{}\n\n{whole}{pad}{}\n",
         page.title,
         site.base,
         page.url,
         linked.trim()
     );
     (text, errors)
+}
+
+/// What a step's page says under **Play this step** of the book's
+/// Codespace (`templates/chapter.html`), for the step whose folder is
+/// `step`.
+fn codespace(step: &str) -> String {
+    format!(
+        "Change its Rust in a Codespace: <{CODESPACE}>. A Codespace is a computer in your browser, \
+         with Rust and the book's project ready, paid from your own GitHub account's free hours. \
+         In it, this step is the folder `{step}/`, and its Rust is in `{step}/crates/game/src/`. \
+         After a change, `cargo shuyi web` in `{step}/` builds it again, and `bash ../serve.sh` \
+         there shows it on the forwarded port: reload the game's tab.\n\n"
+    )
 }
 
 /// A quick check as text (ticket 2827): its question, then each answer,
@@ -743,6 +774,17 @@ fn checked(check: &book::Check) -> String {
     }
     out.push('\n');
     out
+}
+
+/// An exercise as text (ticket 2828): its task, where it is done and
+/// checked, and its hint.
+fn exercised(exercise: &book::Exercise) -> String {
+    format!(
+        "\n**Exercise.** {}\n\nDo it in this step's playground, in `files/{}`: **Check my work** \
+         there runs the game on your files, and says whether the exercise is done, and why.\n\n\
+         Hint: {}\n\n",
+        exercise.task, exercise.file, exercise.hint
+    )
 }
 
 /// A marked passage's `text` as a blockquote: its label and topic, then

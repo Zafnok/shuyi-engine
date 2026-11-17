@@ -58,7 +58,6 @@ name = "box-pusher"
 version = "0.1.0"
 dependencies = [
  "box-pusher",
- "include_dir",
  "serde",
  "shuyi",
  "shuyi-app",
@@ -908,7 +907,9 @@ dependencies = [
  "image 0.25.10",
  "macroquad",
  "quad-snd",
+ "ron",
  "sapp-jsutils",
+ "serde",
  "serde_json",
  "shuyi-alloc-count",
  "shuyi-assets",
@@ -939,6 +940,7 @@ version = "0.1.0"
 dependencies = [
  "crc32fast",
  "flate2",
+ "getrandom",
  "gif",
  "hound",
  "include_dir",

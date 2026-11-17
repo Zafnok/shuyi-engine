@@ -1,11 +1,11 @@
 //! Crash reports (ADR-0079): a panic hook that writes a
 //! `shuyi_platform::crash::CrashReport` through the game's storage, which
-//! [`run`](crate::run) installs before its first frame
+//! [`run_app`](crate::run_app) installs before its first frame
 //! ([`AppConfig::crash`](crate::AppConfig::crash)).
 //!
 //! The hook takes the one before it and calls it after writing, so the
 //! standard library's message in a terminal and miniquad's console line on
-//! the web stay. It reads the frame and the top screen [`run`](crate::run)
+//! the web stay. It reads the frame and the top screen [`run_app`](crate::run_app)
 //! set ([`set_frame`]) and the last lines of the log ([`note_log`]), from
 //! statics, so a panic on another thread (the music's worker) gets them too.
 //! A panic caught on purpose runs in [`quiet`] and writes nothing.
@@ -32,6 +32,12 @@
 //! ([`CrashReports::records_play`]): together they write a shipped game's
 //! state on demand. Without debug tools the log's lines in a report are
 //! its warnings and errors.
+//!
+//! A report's [`frames`](CrashReport::frames) are the stack as offsets into
+//! the executable, which a release's debug file names (`crash/frames.rs`,
+//! ticket 2598): on Windows and Linux.
+
+mod frames;
 
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -176,6 +182,7 @@ pub fn install(
         *lock(&INSTALLED) = None;
         return;
     }
+    frames::note_executable();
     *lock(&INSTALLED) = Some(Installed {
         reports,
         storage: Arc::new(storage),
@@ -294,6 +301,7 @@ fn build(info: &PanicHookInfo<'_>, reports: CrashReports, on_game_thread: bool) 
         .location()
         .map(|at| format!("{}:{}:{}", at.file(), at.line(), at.column()));
     report.thread = std::thread::current().name().map(ToOwned::to_owned);
+    report.frames = frames::capture();
     report.backtrace = std::backtrace::Backtrace::force_capture().to_string();
     reports.game_version.clone_into(&mut report.game);
     let build = if cfg!(debug_assertions) {

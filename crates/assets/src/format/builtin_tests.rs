@@ -2,7 +2,6 @@
 //! magic bytes and limit; each reads what the parser it wraps reads, with
 //! the files it names from the bundle; and no bytes make one panic (§5),
 //! from random bytes to its own fixtures with a few characters changed.
-use alloc::borrow::Cow;
 use std::sync::OnceLock;
 
 use proptest::prelude::*;
@@ -73,7 +72,7 @@ fn bundled<F: Format>(
     let bytes = bundle.bytes(path).unwrap_or_default();
     format.decode(
         &AssetPath::in_bundle(bundle, path),
-        bytes,
+        &bytes,
         &DecodeCx::in_bundle(bundle),
     )
 }
@@ -164,13 +163,13 @@ pub(crate) fn lang_pack() -> LangPackRon {
 
 /// The same game's rules, as [`lang::from_files`] takes them.
 fn rules(variants: &'static [&'static str]) -> PackRules<'static> {
-    PackRules {
-        data_problem: |_, _| None,
-        tokens: &NoTokens,
-        limits: LIMITS,
-        widths: &crate::font::CellWidths::NARROW,
-        variants,
-    }
+    PackRules::new(
+        |_, _| None,
+        &NoTokens,
+        LIMITS,
+        &crate::font::CellWidths::NARROW,
+    )
+    .with_variants(variants)
 }
 
 /// The tests' shots.
@@ -560,7 +559,7 @@ fn a_music_track_is_a_whole_ogg_vorbis_file_whose_last_page_gives_its_length() {
 fn manifest(bundle: &Bundle, source: &str) -> Result<AudioManifest, Vec<ContentError>> {
     let path = |name: &str| format!("audio/{name}");
     let files = audio::Files {
-        sound: &|name| bundle.bytes(&path(name)).map(Cow::Borrowed),
+        sound: &|name| bundle.bytes(&path(name)),
         sound_shown: &|name| bundle.display_path(&path(name)),
         sound_left_out: &|name| bundle.left_out(&path(name)),
         music_dir: "music",
@@ -644,7 +643,7 @@ fn a_font_atlas_is_read_with_the_png_beside_it() {
             "base/fonts/atlas.ron",
             ATLAS,
             "base/fonts/atlas.png",
-            files.bytes("fonts/atlas.png"),
+            files.bytes("fonts/atlas.png").as_deref(),
             required,
         )
     };
@@ -834,11 +833,13 @@ fn languages(
     rules: &PackRules<'_>,
 ) -> Result<Lang, Vec<ContentError>> {
     let paths = bundle.files_under("lang");
+    let texts: Vec<_> = paths.iter().map(|path| bundle.file(path)).collect();
     let files: Vec<LangFile<'_>> = paths
         .iter()
-        .map(|path| LangFile {
+        .zip(&texts)
+        .map(|(path, text)| LangFile {
             path: path.strip_prefix("lang/").unwrap_or(path),
-            source: bundle.file(path),
+            source: text.as_deref(),
         })
         .collect();
     let display = |path: &str| bundle.display_path(&format!("lang/{path}"));

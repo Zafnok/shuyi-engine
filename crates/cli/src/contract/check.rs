@@ -29,12 +29,14 @@ use super::target::{self, Level, TargetReport};
 use super::{Answer, Op, Problem, bake, codes};
 use crate::app_info;
 use crate::game::{GameTools, code_of};
-use crate::project::{Config, FILE};
+use crate::project::{Config, FILE, Project};
 
 /// What `check` checks: everything the game loads (with `baked`, its pack
 /// too), or with `target`, how the game fits a target.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// What `check` reads besides the game's tools is here too (`project`), so
+// what a later check reads is a field, not an argument.
 // An input: built with `default()` and its fields assigned, it may grow
 // (ADR-0039).
 #[non_exhaustive]
@@ -48,11 +50,22 @@ pub struct CheckInput {
     /// from it against the one read from its source.
     #[serde(default)]
     pub baked: bool,
+    /// The game's project: its root and its `shuyi.ron`. The CLI and the
+    /// MCP server set it; a game's own test may leave it out, and then
+    /// `check` with a `target` fails, as it reads the targets there. Not
+    /// part of the contract's JSON: a caller of `shuyi` names the project
+    /// by the folder it runs in.
+    #[serde(skip)]
+    pub project: Option<Project>,
 }
 
 /// What `check` found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields, so a
+// game reads its fields and never builds it by literal or matches it
+// without `..`.
+#[non_exhaustive]
 pub struct CheckOutput {
     /// Every error of the game's content, in the order the game's
     /// validators found them (none with a target).
@@ -63,14 +76,18 @@ pub struct CheckOutput {
 }
 
 /// `check`: every error of `game`'s content, and with `baked`, every way
-/// its pack differs from its sources. A target is checked by [`targets`].
+/// its pack differs from its sources. With a `target`, how the game of
+/// `input.project` fits it ([`targets`]).
 pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
     if input.target.is_some() {
-        return Answer::failed(
-            Op::Check,
-            codes::WRONG_ARGUMENTS,
-            "check --target is checked by check::targets, with the project file",
-        );
+        return match &input.project {
+            Some(project) => targets(&project.config, &project.root, input, Some(game)),
+            None => Answer::failed(
+                Op::Check,
+                codes::WRONG_ARGUMENTS,
+                "check --target reads the project file: set the input's project, or call                  check::targets",
+            ),
+        };
     }
     let found = game.check().and_then(|mut errors| {
         let loaded = errors.is_empty();
@@ -390,10 +407,10 @@ mod tests {
             path,
             source: Some(source),
         });
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &shuyi_assets::dialogue::NoTokens,
-            limits: shuyi_assets::dialogue::DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &shuyi_assets::dialogue::NoTokens,
+            shuyi_assets::dialogue::DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -402,9 +419,8 @@ mod tests {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &shuyi_assets::font::CellWidths::NARROW,
-            variants: &[],
-        };
+            &shuyi_assets::font::CellWidths::NARROW,
+        );
         from_files(&files, None, str::to_owned, &rules).unwrap()
     }
 
@@ -522,7 +538,7 @@ mod tests {
             assert_eq!(answer.ok, ok, "{:?}", answer.result);
             let errors = &answer.result.as_ref().unwrap().errors;
             let messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
-            let over = ["tip \"a\": the title must be 1 to 6 characters"];
+            let over = ["tip \"a\": the title must be 1 to 6 cells"];
             assert_eq!(messages, if ok { &[][..] } else { &over[..] });
         }
     }

@@ -156,7 +156,7 @@ impl Title {
             name: ctx.text("title.name").to_owned(),
             subtitle: ctx.text("title.subtitle").to_owned(),
             menu: self.menu(ctx).view(),
-            help: ctx.text_with("title.help", &[]),
+            help: ctx.text_styled("title.help", &[]),
         }
     }
 }
@@ -249,7 +249,7 @@ impl Talk {
         view.waiting = self
             .text
             .is_revealed()
-            .then(|| WaitView::new(ctx.text_with("talk.next", &[]), self.text.marker_lit()));
+            .then(|| WaitView::new(ctx.text_styled("talk.next", &[]), self.text.marker_lit()));
         view
     }
 
@@ -324,7 +324,7 @@ impl Leave {
     pub fn view(ctx: &HelloCtx) -> QuestionView {
         QuestionView {
             question: ctx.text("stage.leave").to_owned(),
-            answers: ctx.text_with("stage.leave.answers", &[]),
+            answers: ctx.text_styled("stage.leave.answers", &[]),
         }
     }
 }
@@ -410,7 +410,7 @@ impl End {
             headline: ctx.text_with(key, &[("turn", &turn)]),
             won,
             menu: self.menu().view(),
-            help: ctx.text_with("end.help", &[]),
+            help: ctx.text_styled("end.help", &[]),
         }
     }
 }

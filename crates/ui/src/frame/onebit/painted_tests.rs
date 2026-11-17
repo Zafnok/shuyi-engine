@@ -39,6 +39,9 @@ fn draw(buf: &GlyphBuffer) -> Box<Frame> {
         glyphs: alloc::collections::BTreeMap::default(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        bold_ink: None,
+        ink: None,
     };
     let font = Font::new(&atlas, &[]).unwrap();
     let mut fast = Box::new([0u8; FRAME_BYTES]);
@@ -247,6 +250,9 @@ fn a_repainted_picture_is_drawn_again_where_it_changed() {
         glyphs: alloc::collections::BTreeMap::default(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        bold_ink: None,
+        ink: None,
     };
     let font = Font::new(&atlas, &[]).unwrap();
     let mut frame = draw(&old);

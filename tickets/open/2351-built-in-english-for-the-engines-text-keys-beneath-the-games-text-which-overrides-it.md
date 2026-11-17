@@ -129,10 +129,8 @@ None.
   text. `--only engine` shows it alone; `--only ui` shows the game's
   screen text alone. The parse error and both usage lines
   (`crates/cli/src/lib.rs:66` and `:245`) name `engine`.
-  - `Part` is a public enum without `#[non_exhaustive]`, so the new
-    variant is a break by the Cargo book's rules. No code in this
-    repository outside `lang_status.rs` matches on it. The PR says so
-    (see 2010 below).
+  - **From 2086 (done):** `Part` is `#[non_exhaustive]`, so the new
+    variant is no break.
 - **The users:**
   - the toy (`Toy::new`, `crates/ui/src/toy.rs:451`) builds its `Lang`
     with `with_engine_english`. Its debug pack (`DEBUG_UI`, which
@@ -168,9 +166,12 @@ None.
     whatever language the game declares (`Lang::source_lang`), and the
     lookups that fall back to the source (`Lang::text` after the packs
     along `Lang::chain`) fall back to it last.
-  - **2348** (plurals in text): if it is done,
-    `profile.message.too_many` uses its plural form; if not, 2348
-    changes it with the rest.
+  - **From 3218 (done):** `profile.message.too_many` is a plural message
+    in `crates/ui/src/toy/en.ron` and `examples/hello-grid/files/en.ron`
+    (`There can be at most {n, plural, one {# profile} other {#
+    profiles}}.`): the engine's `ui.ron` takes that form, and the test
+    that every text of the toy's English parses
+    (`toy::tests::every_english_text_is_a_message`) reads that file.
   - **3047** (parked, crash reports; adds four engine keys:
     `options.row.crash_reports`, `options.value.ask`,
     `options.value.always`, `options.value.never`): if it is done, they
@@ -216,9 +217,6 @@ None.
   - **From 2006 (done):** the root `shuyi.ron`'s `check_keys.assets`
     gets `crates/ui/lang`, and `cargo run -q -p shuyi-cli -- lint`
     passes on it.
-  - **2010** (done, public API diffs): the completion notes and the PR
-    body have the `Breaking:` line its check asks for, for
-    `Part::Engine`.
   - **From 2802 (done):** the book's chapter 6
     (`site/content/learn/book/games-and-screens.md`, *Text by key*) gets
     a paragraph on the engine's words beneath the game's and on
@@ -255,7 +253,7 @@ None.
    `crates/assets/src/lang/formats.rs`, `crates/cli/src/lang_status.rs`,
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
    `crates/ui/src/toy.rs` (lines 339 to 478). Check which of
-   2226, 2330, 2333, 2340, 2346, 2348, 2349, 2353, 2511,
+   2226, 2330, 2333, 2340, 2346, 2349, 2353, 2511, 3218,
    and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
    `Lang::with_engine_english`, `Lang::is_engine`,
@@ -305,7 +303,8 @@ None.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] The ADR is merged. The PR says what changes for the game:
       nothing breaks in `shuyi-assets` or `shuyi-ui`, `lang_status::Part`
-      gains a variant, and the game may later delete its copies.
+      gains a variant (no break: it is `#[non_exhaustive]` since 2086),
+      and the game may later delete its copies.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -20,7 +20,8 @@ integer ease curves (`Ease`, the `Easing` trait), `Lerp`, and
 `Tween<T, E>`, one value from `from` to `to`, drawn from the time
 alone. It split two things out to stay one PR's worth (its step 9).
 This ticket is those two, with the spec 2109's Scope gave them. The
-other follow-up, 2136, moves the motions written by hand onto `ease`.
+other follow-up, 2136 (done), moved the motions written by hand onto
+`ease`.
 
 What the engines have that 2109 doesn't:
 

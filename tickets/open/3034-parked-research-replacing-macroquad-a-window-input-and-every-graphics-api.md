@@ -137,7 +137,12 @@ when (dropping a platform for a while, say), it asks Nick with the
     `Window::from_config`, and a long-form game's `main` is
     `#[macroquad::main]`. The plan gives the new backend a `run_game`
     of the same signature, so a short-path game changes nothing at the
-    switch, and says how a long-form game's entry moves;
+    switch, and says how a long-form game's entry moves. **From 2087
+    (done):** a long-form game's `main` is a plain `fn` calling
+    `shuyi_app::run_app(config, start)`, and `run_game` calls it; no
+    public item of `shuyi-app` names a macroquad type (ADR-0119). The
+    plan keeps `run_app`'s signature too, so neither kind of game
+    changes at the switch;
   - keyboard and mouse to the engine's `RawInputEvent`s
     (`crates/app/src/keys.rs` today);
   - text input: the IME as winit gives it (its composing text with a
@@ -165,8 +170,8 @@ when (dropping a platform for a while, say), it asks Nick with the
     (miniquad 0.4.11 has only the system's cursors); and leaving
     fullscreen on Linux (miniquad's X11 code has a TODO saying it can't
     go back to windowed). The winit backend keeps 3044's window record
-    and cursor rule (`docs/platform-backends.md`, *The window and the
-    cursor (desktop)*);
+    and 3314's cursor rule (`docs/platform-backends.md`, *The window
+    and the cursor (desktop)*);
   - the cursor grab, which miniquad 0.4.11 already has
     (`set_cursor_grab`: the cursor held inside the window on desktop,
     pointer lock on the web), kept through winit's own grab.
@@ -260,8 +265,8 @@ when (dropping a platform for a while, say), it asks Nick with the
 2. Read what the macroquad backend does today that the new one keeps,
    and note which of these tickets are done: 2018's and 2019's capture
    mode and jobs, 2337's blend rules, 2346's IME calls, 3041's sinks,
-   ADR-0076, 3043's `lifecycle.js`, 3044's window record and cursor
-   rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
+   ADR-0076, 3043's `lifecycle.js`, 3044's window record, 3314's
+   cursor rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
    `shuyi-app-3d` and 3106's pointer lock.
 3. Read wgpu's and winit's documentation and examples, and the WGSL
    specification, and list what was used in the report.

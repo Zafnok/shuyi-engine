@@ -188,6 +188,30 @@ The checks that keep text to a length count so too, once they have the atlas's w
 measured in its language: `source.widths(&CellWidths::of(&atlas))`, or
 `lang.widths(code, &base)` for any language.
 
+A text can choose its words by a number or a value. It is a **message**, written as
+translators and their tools know it, ICU MessageFormat's plural and select:
+
+```ron
+"seeds.left": "{n, plural, =0 {No seeds left} one {# seed left} other {# seeds left}}",
+"sign.water": "{device, select, playdate {Turn the crank} other {Hold to water}}",
+```
+
+Each language has its own plural forms: Russian picks among `one`, `few` and `many`,
+French counts 0 as `one`. A message follows the rules of the language it is written in,
+and `lang.text_in(code, key)` gives a text with that language's tag. Every choice has an
+`other` branch, and an apostrophe is a letter (`l'arrosoir`); `'{'` writes a brace.
+`shuyi::assets::message::Message` reads one (`Message::parse`) and fills it
+(`Message::format`).
+
+The languages check their messages as they load. A text that doesn't parse (an unclosed
+`{`, or `{}`) fails, naming its file and key, and so does a translation that loses one of
+its source's `{name}`s, drops a branch of its source's select (the Playdate's wording,
+say), or uses a plural form its language hasn't (French has no `few`). A translation may
+wrap its source's `{n}` in a plural of its own, or drop a plural its language doesn't
+need. A plural that leaves out a form its language has still loads, showing `other` for
+it, and `cargo shuyi lang-status ru` lists it under `missing forms:`. A tip is measured
+form by form: each wording of a `{device, select, …}` must fit the box.
+
 ## Voices
 
 A language's voice clips sit in its voice folder, one per dialogue line, listed in its
@@ -288,6 +312,13 @@ read from the pack equal to the one read from its source, so the text files stay
 the game is made of. The formats page says [how a pack is
 built](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-pack).
 
+A group of assets is a **folder**. A game whose pack is big, as a web game's can be,
+names the folders its first frame reads in its bake, `.first("title/")`, and the bake
+lays them at the front of the pack, so the page that fetches the pack can start the
+game as soon as they arrive. A screen that opens a later part asks the bundle's
+`arrived("part2/")` first, and shows its own wait until it says yes. On desktop and the
+Playdate every folder has always arrived.
+
 ## A target's own files
 
 A **target** is a kind of machine a game runs on. A folder `assets@playdate/` beside
@@ -320,8 +351,8 @@ What does `cargo shuyi check` say?
 {% check() %}
 `garden.ron` says `grow_percent: 150`. `grow_percent` is a `u8`. What catches it?
 
-- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
 - [ ] The RON format, with "Integer is out of bounds". — A `u8` goes up to 255, so 150 reads fine ([a kind of the game's own](#a-kind-of-the-game-s-own)).
+- [x] `read_plan`'s own check after loading, whose message names the file but not the line. — The format can't know a percent stops at 100, so `read_plan` checks it by hand ([reading it through the registry](#reading-it-through-the-registry)).
 - [ ] Nothing: the game reads it, and every seed grows. — `read_plan` gives back an error when `plan.grow_percent > 100` ([reading it through the registry](#reading-it-through-the-registry)).
 {% end %}
 
@@ -329,7 +360,7 @@ What does `cargo shuyi check` say?
 A test makes `Bundle::new(vec![layer, game().bundle().layers()[0]])`, where `layer` holds
 only a `garden.ron`. Where do `garden.ron` and `en.ron` come from?
 
-- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
 - [ ] Both from the game's layer, since the game's files come first. — The order of the list decides, and `layer` is first ([layers](#layers)).
 - [ ] `garden.ron` from the mod's layer, and no `en.ron` at all. — A layer laid over the game's files only replaces the ones it has, and the test checks `bundle.has("en.ron")` ([layers](#layers)).
+- [x] `garden.ron` from the mod's layer, and `en.ron` from the game's. — A file comes from the first layer that has it, so a layer replaces the files it has and leaves the rest ([layers](#layers)).
 {% end %}

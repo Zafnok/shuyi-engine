@@ -193,8 +193,10 @@ pub struct Frame<'a> {
     /// What it shows.
     pub show: Show<'a>,
     /// Whether the game should fill the screen (the player's Fullscreen
-    /// setting): a windowed backend switches when it changes; a device
-    /// that is always full screen ignores it.
+    /// setting): a windowed backend switches when a game frame's
+    /// ([`Show::Game`]) changes, and leaves the window as it is for a
+    /// card's or the errors'; a device that is always full screen ignores
+    /// it.
     pub fullscreen: bool,
     /// The most frames a second to show (the player's frame cap): a
     /// backend that paces its frames paces the next ones to it, and reports
@@ -213,7 +215,9 @@ pub struct Frame<'a> {
 
 impl<'a> Frame<'a> {
     /// A frame showing `show`, windowed, at the engine's default cap
-    /// ([`FrameCap::DEFAULT`]) with serial 0.
+    /// ([`FrameCap::DEFAULT`]) with serial 0. Only a game frame's
+    /// [`fullscreen`](Self::fullscreen) is applied, so a card's or the
+    /// errors' frame leaves the window as it is.
     pub fn new(show: Show<'a>) -> Self {
         Self {
             show,
@@ -520,6 +524,9 @@ mod tests {
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
             wide_sets: alloc::collections::BTreeMap::new(),
+            bold: alloc::collections::BTreeMap::new(),
+            bold_ink: None,
+            ink: None,
         };
         let images = ImageTable::default();
         let map = PatternMap::default();
@@ -541,6 +548,9 @@ mod tests {
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
             wide_sets: alloc::collections::BTreeMap::new(),
+            bold: alloc::collections::BTreeMap::new(),
+            bold_ink: None,
+            ink: None,
         };
         let images = ImageTable::default();
         let look = Look::new(&font, &images);

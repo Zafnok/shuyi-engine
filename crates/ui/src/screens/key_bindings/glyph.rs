@@ -26,7 +26,7 @@ use crate::frame::color::EngineColor;
 use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
-use crate::screens::{cut, print_centred};
+use crate::screens::{cut, print_centred, print_centred_styled};
 use crate::widgets::ask;
 use shuyi_assets::font::CellWidths;
 use shuyi_assets::lang::text_width;
@@ -287,8 +287,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     let at = Layout::new(view, buf.width(), buf.height(), buf.widths());
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let look = PanelLook::new(BoxStyle::Single, text, bg)
-        .border(c(EngineColor::Border))
-        .title(c(EngineColor::Highlight));
+        .with_border(c(EngineColor::Border))
+        .with_title(c(EngineColor::Highlight));
     buf.panel(at.panel, &look, Some(&view.title));
     if let Some(switch) = &view.switch {
         paint_switch(ctx, buf, switch, at.label_x);
@@ -349,7 +349,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
         }
     }
     let bottom = i32::from(buf.height()) - 1;
-    print_centred(buf, bottom, &view.help, dim, black);
+    let colors = ctx.palette.text_colors_on(dim, black);
+    print_centred_styled(buf, bottom, &view.help, colors);
 }
 
 /// Paints the keyboard / controller switch from column `x`: the shown side
@@ -485,7 +486,7 @@ fn paint_choices<G: GameData>(
     };
     let x = at.slot_x(choices.slot).min(at.right() - CHOICE_W);
     let rect = Rect::new(x, y, CHOICE_W, CHOICE_H);
-    let look = PanelLook::new(BoxStyle::Double, c(EngineColor::Text), bg).border(bar);
+    let look = PanelLook::new(BoxStyle::Double, c(EngineColor::Text), bg).with_border(bar);
     buf.panel(rect, &look, None);
     let inner = usize::try_from(CHOICE_W - 3).unwrap_or(0);
     for (i, choice) in (0..).zip(&choices.lines) {

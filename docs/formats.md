@@ -33,6 +33,20 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   in at run time (`Layer::owned`; `shuyi_app::read_folder` reads a folder
   on disk into one, on desktop): a player's mod laid over the game's
   files reaches the same loaders.
+- **A read hands out its bytes as a `Cow<'static, [u8]>`** (ADR-0128
+  §1): `Bundle::bytes`, and `DecodeCx::bytes` for a format reading a file
+  its file names. `Bundle::file`, `DecodeCx::text` and
+  `Bundle::test_part`'s text are a `Cow<'static, str>`, `None` when not
+  UTF-8, and `load_each` lends each file's text (`LoadFile::text`) for its
+  parse. Every layer today (embedded, a table, `Layer::owned`, a pack)
+  lends its bytes, `Cow::Borrowed`, so nothing is copied; a layer that
+  reads its files on demand, from a pack too big to keep
+  (`pack::Index::into_layer`, below), hands them out owned, `Cow::Owned`,
+  for the reader to drop. Paths stay
+  `&'static`: the listings, `ImageId`, `ImageTable` and the keys of
+  `load_under` and `load_each`. A value a game keeps for the whole run
+  (a font's bits) keeps the borrowed bytes as they are, and leaks only
+  owned ones.
 - **A folder's assets** come all or nothing over a tree with
   `formats.load_under::<K>(&bundle, dir)`, or file by file in one folder
   with `formats.load_each::<K>(&bundle, dir)`, each with its asset or its
@@ -196,6 +210,19 @@ What each one reads:
   wide in Chinese, with the same code points
   (`font::WIDE_PUNCTUATION`): an atlas may have each both narrow and in
   a set, and the language's pack says which it is (below).
+  **Ink** (ticket 3215, ADR-0124): `ink`, left out when the atlas has no
+  capital, says where its glyphs put ink in their cell: `capitals`, the
+  box most capitals `A`–`Z` share the edges of, and `columns`, each
+  printable ASCII glyph whose leftmost and rightmost inked columns
+  differ (`'W': (0, 6)`). `font-atlas` measures it; a key cap places its
+  name by it, and an atlas without it counts the whole cell as ink.
+  **Bold face** (ticket 3216): `bold`, left out when empty, gives a
+  narrow glyph the cell of its bold shape, and `bold_ink` that face's
+  ink. `font-atlas --bold <bold.bdf>` makes them from a bold font of the
+  same cell size (Terminus Bold beside Terminus), after the wide sets.
+  A key cap's name is drawn from it, once, and placed by its ink; a
+  glyph without a bold shape is drawn twice, 1 px apart
+  (`FontAtlasDef::bold_strikes`, which every renderer uses).
   **What the cells draw:** text left to right, one character to a cell
   and two to a wide one (`font::CellWidths` says which, in the language
   the text is in, and `lang::text_width` counts with it). A cell holds one character: no
@@ -262,8 +289,49 @@ What each one reads:
   (`lang::english_and_places_from_source`, `Lang::max_cells`,
   `Lang::note`). A pack's `ui.ron` entry can't set either.
   `lang-status <tag>` lists the pack's entries wider than their key's
-  `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
-  they fail no gate.
+  `max_cells` (`Lang::overflow`, a message's widest form), measured with
+  the font atlas's widths; they fail no gate.
+- **A text that chooses its words** is a message, a subset of ICU
+  MessageFormat 1 ([ADR-0127](adr/0127-messages-choose-their-words.md),
+  `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
+  other {# keys}}` and `{n, selectordinal, one {#st} two {#nd} few {#rd}
+  other {#th}}` by CLDR's categories (and `=0 {…}`), `#` the number, and
+  `{device, select, playdate {Crank it} other {Turn it}}` by a value
+  (a screen's text, and a tip shown through `Ctx::fill_text`, have the
+  built-in `device`, the kind the player pressed last, and `target`, the
+  target's id, unless the caller passes its own); every choice has an `other` branch, and `{n, number}` writes plain
+  digits. An apostrophe is a letter ("l'épée"), but `''` is one and `'{'`
+  writes a brace. A plural follows the rules of the language the text is
+  in (`Lang::text_in`): a key a pack lacks shows English with English's
+  rules. `message::plural` holds the rules of `de`, `en`, `es`, `fr`,
+  `it`, `ja`, `ko`, `pl`, `pt`, `ru`, `uk` and `zh`; another language has
+  only `other`. A text that isn't a message is filled as plain
+  placeholders.
+
+  The languages check their texts as messages when they load, each
+  problem an error naming the file and the key. The source's screen text
+  must parse (`{}`, an unclosed `{` or a comma inside braces is an
+  error), and a select on `device` names only devices (`message::DEVICES`)
+  and `other`. A pack's `ui.ron` and `data.ron` entry, its text and its
+  `source` both parse, and the text keeps what the source has:
+  - the same arguments: it may wrap the source's `{n}` in a plural, or
+    drop a plural its language doesn't need, but never lose or add a
+    `{name}`;
+  - every branch of the source's selects, by value, so a translation
+    can't drop the Playdate's wording of a `{device, select, …}`;
+  - only the plural and ordinal categories of its own language
+    (`message::plural::categories`: `fr` has no `few`), when it is read
+    with its tag (`lang::from_files`, `LangPackRon`; not
+    `pack_from_files` or `pack_from_sources`).
+
+  A plural that lacks a category its language has fails nothing (a
+  number of it shows `other`): `lang-status <tag>` lists it under
+  **missing forms** (`LangStatus::missing_forms`). The `many` of French,
+  Spanish, Italian and Portuguese, which only numbers of a million or
+  more pick, isn't asked for, and is still accepted. A tip's text and
+  `how` must parse too, and each text they can show
+  (`Message::forms`) fits the box's lines and cells; `device` and
+  `target` are always known placeholders there (`tip::from_source`).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
@@ -603,8 +671,8 @@ format.
   failure keeps the old value. A `Hot<T>` derefs to its `T`.
 - Only a layer handed in at run time changes (`Layer::owned`,
   `shuyi_app::read_folder`), with `Bundle::replace` or `Layer::replace`. An
-  embedded file stays as it is. The old bytes are leaked so every `&'static`
-  read stays valid, which is why this is for debug builds.
+  embedded file stays as it is. The old bytes are leaked so every borrowed
+  read (`Cow::Borrowed`) stays valid, which is why this is for debug builds.
 - `bundle::recording(f)` gives the paths `f` found on its thread, for a tool
   that wants to know what a load read.
 
@@ -691,11 +759,69 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   file of every kind of the built-in formats.
 - **Refused, never migrated.** A pack of another `pack::VERSION`, or
   baked with another stamp, is refused with a message to bake it again.
-  So is a pack cut short or changed: a checksum covers every byte, and
-  every size is checked before anything is allocated. `pack::VERSION`
+  So is a pack cut short or changed: from version 18 the header's checksum
+  covers the header and the index, and each file has a checksum of its
+  own, checked when it is read; every size is checked before anything is
+  allocated. LZ4 keeps only a file it makes smaller, and no file's bytes
+  reach past 4 GiB. `pack::VERSION`
   goes up whenever the binary form of an engine kind changes; a pinned
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
+- **Laid out in any order.** The index lists the files in path order, and
+  `shuyi bake` lays their bytes in that order with nothing between them,
+  but for the folders laid first (below). From version 15 a reader takes
+  them in any order and with bytes between them, so long as no two
+  overlap and the last ends the pack. A closed build's copy (`export
+  --recipient`) lays its pack out by its recipient's code
+  (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
+  and the game reads the same files from it. No checksum covers the bytes
+  between files: one changed changes nothing the game reads.
+- **Folders laid first** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §3, version 19). A group of assets is a folder. `Bake::first(dir)` lays
+  the files under `dir` at the front of the pack, after those of the
+  folders named before it, and every other file follows in path order:
+  a web game names the folders its first frame reads
+  (`.first("title/")`), and the page that streams the pack in its order
+  starts the game once they have arrived. `title/` and `title` are the
+  same folder; a file under two named folders goes with the first, a
+  folder named twice is laid where first named, and a bake names up to
+  `pack::MAX_FIRST` (256). The index holds each folder's **span**: from
+  the first byte of its files to the last (`Index::spans()`, each folder
+  and its byte range from the pack's start), and `Index::read` refuses a
+  span that doesn't hold every file under its folder. A recipient's code
+  shuffles each named folder's files among their own places, and the
+  rest among theirs, so each span still holds its folder; with no folder
+  named, the order is the one it laid before spans. `pack::write_first`
+  is the same without a `Bake`. `shuyi bake` names each span it laid
+  (`PackMade::spans`).
+- **Whether a folder has arrived.** `Bundle::arrived(dir)` says whether
+  every file under `dir` can be read now: always for a layer read whole,
+  and for a layer over a `Source`, once the folder's span has arrived, or
+  for a folder not laid first, once each file under it has. It asks the
+  source's `arrived(at, len)`, which a source whose bytes arrive in time
+  (the web's stream) implements; one that has every byte at once keeps
+  its default, `true`. A screen that opens a later part asks it first
+  and shows its own wait. Like `Bundle::has`, it reads nothing.
+- **Read file by file** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §2), for a pack too big to hold whole (the Playdate's heap, a web page
+  that starts before the pack has arrived). `pack::Index::read(prefix,
+  stamp)` reads the header and the index alone; given too few bytes it
+  says how many it needs (`IndexError::Short { needs }`), so a backend
+  reads the header's 24, then that many. `Index::check_file(path,
+  stored)` checks one file's kept bytes (`Index::file_range`) and unpacks
+  them. `Index::into_layer(name, source)` makes a layer over a
+  `pack::Source`, which a backend implements (`read(at, into)`); it
+  answers `has` and the listings from the index, and reads, checks and
+  unpacks a file each time the bundle asks for it, handing it out owned
+  and keeping nothing but the index (about 52 bytes a file with its
+  path). A file whose bytes haven't arrived (`SourceError::NotYet`) reads
+  as missing for now; one whose read fails, or whose bytes are refused,
+  reads as missing too, and `Layer::problems` lists it once, for the
+  backend to log. `pack::InMemory` is a source over bytes the program
+  holds (an embedded pack, a test's). The one-bit frame reads a picture
+  only where the bundle lends it, so a game over this layer keeps its
+  one-bit pictures as values of its own (ADR-0128 §3). Desktop reads its
+  pack whole, with `Pack::open`, which checks every file.
 - **It stands for its sources.** The index holds the fingerprint of the
   bundle it was baked from (`PackInfo::content`, `Bundle::fingerprint`),
   and its layer stands for it (`Layer::standing_for`): a bundle of the
@@ -765,12 +891,12 @@ dithering spoils it, a settings file. It is a layer laid right above its
 own, used only when baking or running for that target:
 
 ```rust
-static ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets");
-static PLAYDATE: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets@playdate");
+static ASSETS: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/assets");
+static PLAYDATE: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/assets@playdate");
 
-let targets = [Layer::dir("assets@playdate", &PLAYDATE)];
+let targets = [Layer::dir("assets@playdate", PLAYDATE)];
 // `target` is what `GameTools::bake` gets, or `ctx.platform.target`.
-let bundle = Bundle::for_target(vec![Layer::dir("assets", &ASSETS)], &targets, target);
+let bundle = Bundle::for_target(vec![Layer::dir("assets", ASSETS)], &targets, target);
 ```
 
 Any file may be replaced so, a settings file too

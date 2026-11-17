@@ -33,6 +33,9 @@ static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef
     glyphs: BTreeMap::new(),
     wide: BTreeMap::new(),
     wide_sets: BTreeMap::new(),
+    bold: BTreeMap::new(),
+    bold_ink: None,
+    ink: None,
 };
 static IMAGES: shuyi_assets::image::ImageTable =
     shuyi_assets::image::ImageTable::new(BTreeMap::new());
@@ -533,8 +536,8 @@ proptest! {
                 1 => vec![RawInputEvent::Up(Key::F)],
                 2 => press_action(Action::Cancel),
                 3 => press_action(Action::CursorUp),
-                4 => vec![RawInputEvent::PadDown(Button::South, PadKind::Xbox)],
-                5 => vec![RawInputEvent::PadUp(Button::South)],
+                4 => vec![RawInputEvent::PadDown(Button::South, PadKind::Xbox, 0)],
+                5 => vec![RawInputEvent::PadUp(Button::South, 0)],
                 _ => Vec::new(),
             };
             run(&mut p, &mut app, &input, *wait);
@@ -570,8 +573,10 @@ fn any_event() -> impl Strategy<Value = RawInputEvent> {
             .prop_map(|(key, shift)| RawInputEvent::Down(Chord { key, shift })),
         key.prop_map(RawInputEvent::Up),
         any::<char>().prop_map(RawInputEvent::Text),
-        (button.clone(), kind).prop_map(|(button, kind)| RawInputEvent::PadDown(button, kind)),
-        button.prop_map(RawInputEvent::PadUp),
+        (button.clone(), kind, 0usize..4)
+            .prop_map(|(button, kind, pad)| RawInputEvent::PadDown(button, kind, pad)),
+        (button, 0usize..4).prop_map(|(button, pad)| RawInputEvent::PadUp(button, pad)),
+        (0usize..4).prop_map(RawInputEvent::PadRemoved),
     ]
 }
 
@@ -744,6 +749,30 @@ fn awkward_text_reads_back_from_its_text() {
     assert_ne!(two, text);
     let error = SessionRecord::from_ron(&two);
     assert!(matches!(error, Err(SessionError::Text(_))), "{error:?}");
+}
+
+/// Ticket 2412: a record made before pads had ids wrote its pad events
+/// without one. It reads at this version, each as pad 0, which is what it
+/// meant (every pad's events merged into one), so it plays as it did.
+#[test]
+fn a_record_from_before_pad_ids_reads_its_pad_events_as_pad_0() {
+    let mut record = SessionRecord::new();
+    let pad = |dt, event| FrameRecord {
+        dt,
+        input: vec![event],
+        ..FrameRecord::default()
+    };
+    record.frames = vec![
+        pad(0, RawInputEvent::PadDown(Button::South, PadKind::Xbox, 0)),
+        pad(16, RawInputEvent::PadUp(Button::South, 0)),
+    ];
+    let text = record.to_ron();
+    let old = text.replace(", 0)]", ")]");
+    assert!(
+        old.contains(r#"[PadDown("South", Xbox)]"#) && old.contains(r#"[PadUp("South")]"#),
+        "{old}"
+    );
+    assert_eq!(SessionRecord::from_ron(&old), Ok(record));
 }
 
 #[test]

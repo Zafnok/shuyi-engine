@@ -256,6 +256,25 @@ None.
     `"error":<code>` from `data-shuyi-error` under `error`), and 3052's
     `file` message names `shuyi web --serve`, as its table says. If not,
     3052 does both (its own clause says so);
+  - **From 2837 (done):** the book's Codespace
+    (`.devcontainer/book/devcontainer.json`) serves a step's web build
+    with `site/tutorial/serve.sh` (Python's server on port 4000, which
+    the container forwards, private, and opens in a preview; run by its
+    `onCreateCommand` and `postAttachCommand`), and the step's page
+    (`site/templates/chapter.html`, and its twin, `codespace` in
+    `crates/xtask/src/llms.rs`) tells the reader to rebuild (`cargo shuyi
+    web`) and reload by hand: change `serve.sh` to run `cargo shuyi web
+    --serve --port 4000` in the step's folder, and the pages, the
+    project's front page and `site/README.md` (*The code pad*) to say the
+    game reloads on save.
+    In a Codespace the page is reached through GitHub's forwarded address
+    (`https://<codespace>-<port>.app.github.dev`), not `127.0.0.1`: check
+    that the Host and Origin rules let it in;
+  - **Either order with 2840:** if 2840 is done, the book's Codespace
+    serves the whole book with `cargo xtask book-pad`, which rebuilds each
+    step when its files change, and `serve.sh` is gone: make none of the
+    *From 2837* change above; if not, make it, and 2840 replaces
+    `serve.sh` afterwards (its own clause says so);
   - **from 3004 (done):** this ticket gives its `web` exporter
     (`crates/cli/src/export/web.rs`) the run step (`shuyi export web
     --run`, the `Exporter` trait's `run`, whose `RunCx` gives the

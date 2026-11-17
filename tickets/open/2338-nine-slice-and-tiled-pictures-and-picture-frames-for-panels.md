@@ -200,7 +200,9 @@ None.
   - `ask::glyph::paint`, `name_entry::glyph::paint_typing` and
     `paint_grid`, and the text box's private `paint_frame` get a
     `&Palette`, not the `Ctx`, so they take the frame as a new argument
-    (`frame: Option<NineSlice>`). The engine's callers pass
+    (`frame: Option<NineSlice>`). **From 2082 (done):** each keeps its
+    signature, and the one with the frame is a new function beside it
+    (`paint_framed` and the like), so a game's call doesn't break. The engine's callers pass
     `ctx.panel_frame(BoxStyle::Double)` (`BoxStyle::Single` for the
     text box). **Either order with 2346:** it sets the IME caret in
     `paint_typing`; the frame argument is added the same way whichever
@@ -224,13 +226,13 @@ None.
 - With no frame, every screen draws as today, and every existing
   snapshot is unchanged.
 - **Public types (ADR-0039):** `NineSlice`, `EdgeFill` and `CentreFill`
-  follow it. `PanelLook` isn't under it yet, and this PR adds to it, so
-  it moves under it here, as the ADR's *When* says.
-- **For the game:** `PanelLook` gains a field and moves under ADR-0039
-  (a struct literal moves to its constructor), and `ask::glyph::paint`
-  and the name boxes' painters gain an argument. The PR says so, with a
-  `Breaking:` line (2010), and the game's PR that moves its pin follows
-  it. The game sets no frame, so it draws as before.
+  follow it. **From 2082 (done):** `PanelLook` is already under it
+  (kind 2: `new`, `with_border`, `with_title`), so its new field is
+  additive, with a `with_<field>` of its own.
+- **For the game:** additive. **From 2082 (done):** a painter whose
+  signature changes (`ask::glyph::paint`, the name boxes' painters)
+  keeps its old signature, and the one with the new argument is a new
+  function beside it. The game sets no frame, so it draws as before.
 - **Lines in other tickets**, so the plans that touch this stay true:
   - 1127 (parked), its step 2: the backdrop that repeats sideways is
     `tiled_sprites` with an origin that scrolls;

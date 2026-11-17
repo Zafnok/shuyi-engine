@@ -18,6 +18,7 @@
 //! it writes nothing: it logs the capture's line to the browser's console,
 //! then `shuyi-capture: done`, and keeps showing the card.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
@@ -26,7 +27,7 @@ use image::codecs::png::PngEncoder;
 use macroquad::prelude::{error, info, next_frame};
 use shuyi_app::capture::{self, read_window, window_layout};
 use shuyi_app::render::Renderer;
-use shuyi_app::{Window, window_conf};
+use shuyi_app::{Window, open_window};
 use shuyi_ui::frame::raster::card::{self, RenderCard};
 use shuyi_ui::frame::raster::{self, Tolerance};
 
@@ -48,8 +49,7 @@ fn main() {
         bounds.w * SCALE,
         bounds.h * SCALE,
     );
-    // What `#[macroquad::main]` expands to.
-    macroquad::Window::from_config(window_conf(&window), show(card));
+    open_window(&window, show(card));
 }
 
 /// Draws and captures the card, then finishes with the run's code (on the
@@ -108,8 +108,11 @@ async fn draw_and_capture(
 }
 
 /// The card's picture at `path`, as a PNG file.
-fn file(path: &str) -> Option<&'static [u8]> {
-    FILES.get()?.get(path).map(Vec::as_slice)
+fn file(path: &str) -> Option<Cow<'static, [u8]>> {
+    FILES
+        .get()?
+        .get(path)
+        .map(|bytes| Cow::Borrowed(bytes.as_slice()))
 }
 
 /// `image` as a PNG file.

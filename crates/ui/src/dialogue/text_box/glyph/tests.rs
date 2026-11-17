@@ -136,7 +136,7 @@ fn the_skip_question_shows_instead_of_the_text() {
     let mut view = text(&["Hello."]);
     view.skip = Some(SkipView {
         question: "Skip scene?".to_owned(),
-        answers: "f yes / d no".to_owned(),
+        answers: "f yes / d no".into(),
     });
     view.choices = Some(replies(&["a"], 0));
     let (buf, p) = painted(&view, None);
@@ -150,8 +150,8 @@ fn the_skip_question_shows_instead_of_the_text() {
 fn a_waiting_page_names_the_key_the_log_and_blinks() {
     let mut view = text(&["Hi."]);
     view.waiting = Some(WaitView {
-        key: "f".to_owned(),
-        log_hint: Some("l log".to_owned()),
+        key: "f".into(),
+        log_hint: Some("l log".into()),
         marker: true,
     });
     let (buf, p) = painted(&view, None);
@@ -164,7 +164,7 @@ fn a_waiting_page_names_the_key_the_log_and_blinks() {
     );
     assert_eq!(buf.get(34, 15).unwrap().fg, p.engine(EngineColor::TextDim));
     view.waiting = Some(WaitView {
-        key: "f".to_owned(),
+        key: "f".into(),
         log_hint: None,
         marker: false,
     });

@@ -4,6 +4,7 @@
 //! or changed, is refused and never panics; and the binary form of every
 //! engine kind is pinned, so a change to one makes [`VERSION`] the next
 //! number.
+use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::sync::OnceLock;
 
@@ -34,14 +35,14 @@ use crate::ron::Ron;
 use crate::target::TargetProfile;
 
 /// The stamp the tests bake with.
-const STAMP: &str = "test 1";
+pub(super) const STAMP: &str = "test 1";
 
 /// The engine's Playdate profile.
 const PLAYDATE: &str = include_str!("../../../../targets/playdate.ron");
 
 /// A game of one file of every kind the built-in formats read, and the
 /// files they name.
-fn sources() -> &'static Bundle {
+pub(super) fn sources() -> &'static Bundle {
     static SOURCES: OnceLock<&'static Bundle> = OnceLock::new();
     SOURCES.get_or_init(|| {
         bundle(vec![
@@ -76,7 +77,7 @@ fn sources() -> &'static Bundle {
 }
 
 /// The tests' game's formats: the standard ones, with pixels, and its own.
-fn formats() -> Formats {
+pub(super) fn formats() -> Formats {
     let mut formats = Formats::standard();
     let own: [Result<(), RegisterError>; 7] = [
         formats.register(Png).or(Ok(())),
@@ -93,7 +94,7 @@ fn formats() -> Formats {
 
 /// The tests' game's bake: every kind, each asset as its loader asks for
 /// it.
-fn every_kind() -> Bake {
+pub(super) fn every_kind() -> Bake {
     Bake::new(STAMP)
         .under::<ImageInfo>("images")
         .under::<Image>("images")
@@ -116,7 +117,7 @@ fn every_kind() -> Bake {
 }
 
 /// The pack of the tests' game, baked once.
-fn baked() -> &'static Baked {
+pub(super) fn baked() -> &'static Baked {
     static BAKED: OnceLock<Baked> = OnceLock::new();
     BAKED.get_or_init(|| {
         every_kind()
@@ -126,12 +127,12 @@ fn baked() -> &'static Baked {
 }
 
 /// A bundle of `pack` alone.
-fn pack_bundle(pack: Pack<'static>) -> Bundle {
+pub(super) fn pack_bundle(pack: Pack<'static>) -> Bundle {
     Bundle::new(vec![pack.into_layer("pack")])
 }
 
 /// The formats of the tests' game, with the pack's.
-fn pack_formats(bake: &Bake) -> Formats {
+pub(super) fn pack_formats(bake: &Bake) -> Formats {
     let mut formats = formats();
     bake.register(&mut formats)
         .unwrap_or_else(|e| panic!("{e}"));
@@ -175,7 +176,10 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     };
     assert_eq!(kinds("images/card.png"), ["image", "image pixels"]);
     assert_eq!(kinds("fonts/atlas.png"), Vec::<&str>::new());
-    assert_eq!(pack.bytes("readme.txt"), Some(&b"kept as it is"[..]));
+    assert_eq!(
+        pack.bytes("readme.txt").as_deref(),
+        Some(&b"kept as it is"[..])
+    );
     assert_eq!(baked().files.len(), sources().files_under("").len());
     assert_eq!(
         baked().source_bytes(),
@@ -325,7 +329,7 @@ fn settings_files_are_checked_and_kept_as_their_own_bytes() {
     );
     let bytes: &'static [u8] = Box::leak(baked.bytes.into_boxed_slice());
     let pack = pack_bundle(Pack::open(bytes, STAMP).unwrap_or_else(|e| panic!("{e}")));
-    assert_eq!(pack.bytes("data/a.ron.meta"), Some(&b"()"[..]));
+    assert_eq!(pack.bytes("data/a.ron.meta").as_deref(), Some(&b"()"[..]));
     assert_eq!(bake.check(&pack_formats(&bake), good, &pack), []);
     let bad = files(("data/b.ron.meta", b"(nope: ())".to_vec()));
     let refused = bake.bake(&formats(), bad, None).err().unwrap_or_default();
@@ -426,7 +430,7 @@ fn a_baked_kind_whose_shape_changed_is_refused_with_a_message_to_bake_again() {
 }
 
 /// The pack of `files` (path → raw bytes), with `info`.
-fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
+pub(super) fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
     let files = files
         .iter()
         .map(|(path, bytes)| (path.clone(), Content::Raw(bytes.clone())))
@@ -435,12 +439,8 @@ fn raw_pack(info: &PackInfo, files: &[(String, Vec<u8>)]) -> Vec<u8> {
 }
 
 /// The info of the tests' raw packs.
-fn test_info() -> PackInfo {
-    PackInfo {
-        stamp: STAMP.to_owned(),
-        target: None,
-        content: ContentHash(7),
-    }
+pub(super) fn test_info() -> PackInfo {
+    PackInfo::new(STAMP.to_owned(), None, ContentHash(7))
 }
 
 #[test]
@@ -455,7 +455,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 14: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 19: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -496,34 +496,38 @@ fn a_pack_keeps_a_file_as_it_is_when_compressing_doesnt_make_it_smaller() {
     assert!(got.is_empty(), "{got:?}");
 }
 
-/// `bytes`, its body changed by `change`, with the checksum made right
+/// `bytes`, changed by `change`, with the header's checksum made right
 /// again: what reaches the index and the files' checks.
-fn resummed(bytes: &[u8], change: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
+pub(super) fn resummed(bytes: &[u8], change: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
     let mut bytes = bytes.to_vec();
     change(&mut bytes);
-    let sum = checksum(bytes.get(HEADER..).unwrap_or_default());
-    if let Some(at) = bytes.get_mut(12..20) {
-        at.copy_from_slice(&sum.to_le_bytes());
+    if bytes.len() >= HEADER {
+        let length = u32::from_le_bytes(take(&bytes, 20).unwrap());
+        let end = usize::try_from(length)
+            .map_or(bytes.len(), |length| (HEADER + length).min(bytes.len()));
+        let sum = header_sum(&bytes[..end]);
+        bytes[SUM_AT].copy_from_slice(&sum.to_le_bytes());
     }
     bytes
 }
 
-/// The pack of `index` and `data`, with a right header.
-fn assembled(index: &Index, data: &[u8]) -> Vec<u8> {
-    let index = postcard::to_allocvec(index).unwrap();
-    let body = [index.as_slice(), data].concat();
+/// The pack of `listing` and `data`, with a right header.
+pub(super) fn assembled(listing: &Listing, data: &[u8]) -> Vec<u8> {
+    let index = postcard::to_allocvec(listing).unwrap();
     let length = u32::try_from(index.len()).unwrap();
-    [
+    let head = [
         &MAGIC[..],
         &VERSION.to_le_bytes(),
-        &checksum(&body).to_le_bytes(),
+        &[0; 8],
         &length.to_le_bytes(),
-        &body,
+        &index,
     ]
-    .concat()
+    .concat();
+    resummed(&[&head[..], data].concat(), |_| {})
 }
 
-/// An entry of `stored` bytes at `offset`, of `size` unpacked.
+/// An entry of `stored` bytes at `offset`, of `size` unpacked, its checksum
+/// that of no bytes ([`opened`] sets it).
 fn entry(path: &str, codec: Codec, offset: u64, stored: u64, size: u64) -> Entry {
     Entry {
         path: path.to_owned(),
@@ -532,14 +536,24 @@ fn entry(path: &str, codec: Codec, offset: u64, stored: u64, size: u64) -> Entry
         offset,
         stored,
         size,
+        sum: checksum(b""),
     }
 }
 
-/// What opening a pack of `entries` over `data` says, as text.
-fn opened(entries: Vec<Entry>, data: &[u8]) -> String {
-    let index = Index {
+/// What opening a pack of `entries` over `data` says, as text: each entry's
+/// checksum is made that of its bytes, where they are in `data`.
+fn opened(mut entries: Vec<Entry>, data: &[u8]) -> String {
+    for entry in &mut entries {
+        let range = usize::try_from(entry.offset).unwrap_or(usize::MAX)
+            ..usize::try_from(entry.offset.saturating_add(entry.stored)).unwrap_or(usize::MAX);
+        if let Some(bytes) = data.get(range) {
+            entry.sum = checksum(bytes);
+        }
+    }
+    let index = Listing {
         info: test_info(),
         entries,
+        spans: Vec::new(),
     };
     match Pack::open(&assembled(&index, data), STAMP) {
         Ok(pack) => format!("ok: {} file(s)", pack.files().len()),
@@ -554,9 +568,32 @@ fn an_index_that_doesnt_hold_together_is_refused() {
         opened(vec![entry("a", stored, 0, 2, 2)], b"ab"),
         "ok: 1 file(s)"
     );
+    // A byte before a file, or files' bytes out of path order, is a layout
+    // a reader takes (a recipient's, ADR-0118).
     assert_eq!(
         opened(vec![entry("a", stored, 1, 1, 1)], b"ab"),
-        "the pack is broken: a starts at 1 and the file before it ends at 0"
+        "ok: 1 file(s)"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 2, 1, 1), entry("b", stored, 0, 1, 1)],
+            b"bxa"
+        ),
+        "ok: 2 file(s)"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 0, 2, 2), entry("b", stored, 1, 2, 2)],
+            b"abc"
+        ),
+        "the pack is broken: b overlaps a"
+    );
+    assert_eq!(
+        opened(
+            vec![entry("a", stored, 1, 2, 2), entry("b", stored, 0, 2, 2)],
+            b"abc"
+        ),
+        "the pack is broken: a overlaps b"
     );
     assert_eq!(
         opened(vec![entry("a", stored, 0, 3, 3)], b"ab"),
@@ -584,6 +621,12 @@ fn an_index_that_doesnt_hold_together_is_refused() {
     assert_eq!(
         opened(vec![entry("a", Codec::Lz4, 0, 2, 3)], b"\xff\xff"),
         "the pack is broken: a doesn't unpack"
+    );
+    // LZ4 only keeps a file it makes smaller, and no file's bytes reach
+    // past 4 GiB, so a layer read file by file keeps each place in 32 bits.
+    assert_eq!(
+        opened(vec![entry("a", Codec::Lz4, 0, 2, 2)], b"ab"),
+        "the pack is broken: a is compressed to no fewer bytes than it has"
     );
     assert_eq!(
         opened(vec![entry("a", stored, 0, 0, MAX_UNPACKED_BYTES + 1)], b""),
@@ -673,7 +716,7 @@ fn baking_is_deterministic() {
 }
 
 /// Paths and bytes for a pack: distinct paths in order.
-fn pack_files() -> impl Strategy<Value = Vec<(String, Vec<u8>)>> {
+pub(super) fn pack_files() -> impl Strategy<Value = Vec<(String, Vec<u8>)>> {
     proptest::collection::btree_map(
         "[a-z]{1,8}(/[a-z]{1,8}){0,2}\\.[a-z]{1,3}",
         prop_oneof![
@@ -707,7 +750,7 @@ proptest! {
         prop_assert_eq!(&read, &files);
         let bundle = pack_bundle(pack.into_owned());
         for (path, bytes) in &files {
-            prop_assert_eq!(bundle.bytes(path), Some(bytes.as_slice()));
+            prop_assert_eq!(bundle.bytes(path), Some(Cow::Borrowed(bytes.as_slice())));
         }
     }
 
@@ -819,6 +862,30 @@ fn the_limits_hold_at_their_edges() {
         opened(vec![entry("a", Codec::Lz4, 0, length, 18)], &short),
         "ok: 1 file(s)"
     );
+    // A file may end 4 GiB from the pack's start, not a byte further (an
+    // offset near 4 GiB takes as many bytes in the index, whatever it is).
+    let ending_at = |offset| {
+        let entries = vec![entry("a", stored, offset, 1, 1)];
+        assembled(
+            &Listing {
+                info: test_info(),
+                entries,
+                spans: Vec::new(),
+            },
+            b"",
+        )
+    };
+    let Err(IndexError::Short { needs }) = Index::read(&ending_at(1 << 31)[..HEADER], STAMP) else {
+        panic!("a header alone");
+    };
+    let last = u64::from(u32::MAX) - needs - 1;
+    assert!(Index::read(&ending_at(last), STAMP).is_ok());
+    assert_eq!(
+        Index::read(&ending_at(last + 1), STAMP),
+        Err(IndexError::Pack(broken(
+            "its files' bytes reach past 4 GiB"
+        )))
+    );
     // Exactly the most files opens.
     let most = (0..MAX_FILES)
         .map(|i| entry(&format!("{i:06}"), stored, 0, 0, 0))
@@ -852,5 +919,205 @@ fn a_packs_length_finds_its_end_inside_a_bigger_file() {
         &[0xff, 0xff],
     ]
     .concat();
+    let unread = resummed(&unread, |_| {});
     assert!(matches!(length(&unread), Err(PackError::Broken(_))));
+    // The header and the index are checked.
+    let mut changed = pack.clone();
+    changed[HEADER] ^= 1;
+    assert_eq!(length(&changed), Err(PackError::Checksum));
+}
+
+/// Twelve files, as many as Hello, Grid's pack has, some that compress.
+pub(super) fn twelve() -> Vec<(String, Vec<u8>)> {
+    (0..12u8)
+        .map(|i| {
+            let bytes = if i % 3 == 0 {
+                vec![i; 200]
+            } else {
+                (0..50u8)
+                    .map(|b| b.wrapping_mul(i).wrapping_add(7))
+                    .collect()
+            };
+            (format!("file{i:02}.bin"), bytes)
+        })
+        .collect()
+}
+
+pub(super) fn code(bits: u32) -> Code {
+    Code::new(bits).expect("not zero")
+}
+
+/// Each file of pack `bytes`, opened, by path.
+pub(super) fn files_of(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
+    let pack = Pack::open(bytes, &test_info().stamp).expect("opens");
+    pack.files()
+        .iter()
+        .map(|file| (file.path.clone(), file.bytes.to_vec()))
+        .collect()
+}
+
+#[test]
+fn a_raw_pack_writes_the_bytes_write_gives() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let raw = Raw::read(&pack).expect("reads");
+    assert_eq!(raw.write(), pack);
+    assert_eq!(raw.mark(), PackMark::None);
+    assert_eq!(raw.paths().count(), 12);
+}
+
+#[test]
+fn a_marked_pack_opens_to_the_same_files_and_names_its_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let raw = Raw::read(&pack).expect("reads");
+    let marked = raw.write_marked(code(0x1234_5678)).expect("has files");
+    assert_ne!(marked, pack);
+    assert_eq!(files_of(&marked), files_of(&pack));
+    assert_eq!(info(&marked), info(&pack));
+    assert_eq!(length(&marked), Ok(marked.len()));
+    assert_eq!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            code: code(0x1234_5678),
+            order_agrees: true
+        }
+    );
+    // Laid out again in path order, it is the public pack.
+    assert_eq!(Raw::read(&marked).expect("reads").write(), pack);
+}
+
+#[test]
+fn a_pack_of_one_file_holds_the_code_before_it() {
+    let pack = raw_pack(&test_info(), &[("a".to_owned(), vec![1, 2, 3])]);
+    let raw = Raw::read(&pack).expect("reads");
+    let marked = raw.write_marked(code(5)).expect("one file");
+    assert_eq!(files_of(&marked), files_of(&pack));
+    assert_eq!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            code: code(5),
+            order_agrees: true
+        }
+    );
+    let empty = Raw::read(&raw_pack(&test_info(), &[])).expect("reads");
+    assert_eq!(empty.write_marked(code(5)), None);
+}
+
+#[test]
+fn a_changed_byte_between_files_names_no_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let marked = Raw::read(&pack)
+        .expect("reads")
+        .write_marked(code(0x00c0_ffee))
+        .expect("has files");
+    let mut raw = Raw::read(&marked).expect("reads");
+    raw.gaps[0][0] ^= 1;
+    assert_eq!(raw.mark(), PackMark::Broken);
+}
+
+#[test]
+fn a_replaced_file_reads_back_and_keeps_the_layout_mark() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let mut raw = Raw::read(&pack).expect("reads");
+    assert_eq!(raw.file("file01.bin"), Some(twelve()[1].1.clone()));
+    assert_eq!(raw.file("file00.bin"), Some(vec![0; 200]));
+    assert!(raw.replace("file01.bin", b"new bytes"));
+    assert!(!raw.replace("nope", b"new bytes"));
+    let marked = raw.write_marked(code(42)).expect("has files");
+    let opened = files_of(&marked);
+    assert_eq!(opened[1], ("file01.bin".to_owned(), b"new bytes".to_vec()));
+    assert!(matches!(
+        Raw::read(&marked).expect("reads").mark(),
+        PackMark::Code {
+            order_agrees: true,
+            ..
+        }
+    ));
+}
+
+proptest! {
+    #[test]
+    fn any_code_lays_a_pack_out_that_reads_back(bits in 1u32.., count in 1usize..20) {
+        let files: Vec<(String, Vec<u8>)> = twelve().into_iter().cycle().take(count)
+            .enumerate()
+            .map(|(i, (_, bytes))| (format!("f{i:03}"), bytes))
+            .collect();
+        let pack = raw_pack(&test_info(), &files);
+        let marked = Raw::read(&pack).unwrap().write_marked(code(bits)).unwrap();
+        prop_assert_eq!(files_of(&marked), files_of(&pack));
+        prop_assert_eq!(
+            Raw::read(&marked).unwrap().mark(),
+            PackMark::Code { code: code(bits), order_agrees: true }
+        );
+    }
+}
+
+#[test]
+fn a_codes_layout_is_pinned() {
+    // What a copy's pack holds: a change here leaves every copy made before
+    // unread by the detector. The values come from SplitMix64 as published,
+    // computed apart from this code.
+    assert_eq!(
+        order_of(code(0x1234_5678), 12),
+        [2, 5, 8, 1, 11, 6, 7, 4, 9, 10, 0, 3]
+    );
+    assert_eq!(gap_key(12), [28, 125, 3, 37, 254, 217, 202, 223, 116, 92]);
+    // The seed takes the count by XOR: with one file, unlike twelve, an OR
+    // would give another seed.
+    assert_eq!(gap_key(1), [202, 9, 232, 150, 224, 27, 248, 176, 2, 225]);
+    let gaps = gaps_of(code(0x1234_5678), 12);
+    let key = gap_key(12);
+    let bytes = code(0x1234_5678).to_bytes();
+    for at in 0..GAP_BYTES {
+        assert_eq!(gaps[at], [bytes[at % CODE_BYTES] ^ key[at]], "gap {at}");
+    }
+    assert!(gaps[GAP_BYTES..].iter().all(Vec::is_empty));
+}
+
+#[test]
+fn a_layout_whose_two_copies_of_the_code_differ_names_no_code() {
+    let pack = raw_pack(&test_info(), &twelve());
+    let marked = Raw::read(&pack)
+        .expect("reads")
+        .write_marked(code(0x00c0_ffee))
+        .expect("has files");
+    let mut raw = Raw::read(&marked).expect("reads");
+    assert_eq!(raw.info(), &test_info());
+    raw.gaps[CODE_BYTES][0] ^= 1;
+    assert_eq!(raw.mark(), PackMark::Broken);
+}
+
+#[test]
+fn a_raw_pack_holds_at_most_max_files() {
+    let files = |count: usize| {
+        let entries = (0..count)
+            .map(|i| entry(&format!("{i:06}"), Codec::Stored, 0, 0, 0))
+            .collect();
+        let index = Listing {
+            info: test_info(),
+            entries,
+            spans: Vec::new(),
+        };
+        assembled(&index, b"")
+    };
+    assert_eq!(
+        Raw::read(&files(MAX_FILES)).map(|raw| raw.paths().count()),
+        Ok(MAX_FILES)
+    );
+    assert_eq!(
+        Raw::read(&files(MAX_FILES + 1)),
+        Err(PackError::Broken(format!(
+            "it has more than {MAX_FILES} files"
+        )))
+    );
+}
+
+#[test]
+fn the_constructor_builds_what_a_literal_built() {
+    let literal = PackInfo {
+        stamp: "game 1".to_owned(),
+        target: Some("playdate".to_owned()),
+        content: ContentHash(7),
+    };
+    let built = PackInfo::new("game 1", Some("playdate".to_owned()), ContentHash(7));
+    assert_eq!(built, literal);
 }

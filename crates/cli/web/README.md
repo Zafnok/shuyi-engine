@@ -43,8 +43,9 @@ itself, so a game needs no copy of its own.
   asks for. The engine's own code, not vendored. See below.
 - `page-files.js`: files from the page, a miniquad JS plugin over
   `sessionStorage` and `postMessage`: the text files a page hands the
-  game, which it lays over its own, and the game's problems with them
-  sent back. The engine's own code, not vendored. See below.
+  game, which it lays over its own, the game's problems with them sent
+  back, and a check of them the page may ask for. The engine's own code,
+  not vendored. See below.
 - `pack-file.js`: the pack beside the page, a miniquad JS plugin that
   fetches the pack a release export ships (`<package>.pack`) before the
   game starts and hands its bytes to the game. The engine's own code, not
@@ -239,6 +240,15 @@ version of the crate and update this note. It comes in Dependabot's
   origin, the parent gets `{ kind: "shuyi-report", text }` by
   `postMessage`, at that origin only; with no such parent, the console
   gets `text` with `console.info`.
+- **A check the page asks for** (ticket 2828, ADR-0117): a page writes a
+  check's name under `shuyi-page-check`, and `page::page_check()` reads it
+  (`None` for none, and on every other target). `page::report_check(&report)`
+  sends the parent `{ kind: "shuyi-check", name, passed, text }` the same
+  way, or the console has it. `shuyi_app::run_game_checked(game, checks)`
+  does both for a game on the short path: after the report, when the page
+  asks for a check and the files load, it runs that check of `checks` on
+  the game's data, and plays on. The book's steps run their exercises'
+  checks so.
 
 ## The engine's own `pack-file.js`
 

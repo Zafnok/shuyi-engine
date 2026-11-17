@@ -20,7 +20,7 @@
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
-//! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt`, `export-report.json` and `exposure-report.json` | [`export`] |
+//! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt`, `export-report.json` and `exposure-report.json`; with `--plan`, what each target's exporters build and where, in CI | [`export`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
 //! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
@@ -73,11 +73,14 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 49;
+pub const VERSION: u32 = 53;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new operations come, so a
+// `match` outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum Op {
     /// A new game from a template.
     New,
@@ -129,8 +132,9 @@ pub enum Op {
 }
 
 impl Op {
-    /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 16] = [
+    /// Every operation, in the order the usage lists them. A slice, so
+    /// a new operation changes no type.
+    pub const ALL: &'static [Op] = &[
         Op::New,
         Op::Check,
         Op::Lint,
@@ -151,7 +155,8 @@ impl Op {
 
     /// The MCP server's session tools ([`crate::mcp`]), in the order it
     /// lists them: `scene` is the session's, not the one-off operation.
-    pub const SESSION: [Op; 8] = [
+    /// A slice, as [`Op::ALL`] is.
+    pub const SESSION: &'static [Op] = &[
         Op::Start,
         Op::Step,
         Op::Scene,
@@ -194,7 +199,7 @@ impl Op {
     /// The operation named `name` on the command line (not a session
     /// tool).
     pub fn named(name: &str) -> Option<Op> {
-        Op::ALL.into_iter().find(|op| op.name() == name)
+        Op::ALL.iter().copied().find(|op| op.name() == name)
     }
 }
 
@@ -462,7 +467,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op, name),
         (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(op, name),
         (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(op, name),
-        (Op::Export, _) => pair::<export::ExportInput, export::ExportOutput>(op, name),
+        (Op::Export, _) => pair::<export::ExportInput, export::ExportResult>(op, name),
         (Op::Start, _) => pair::<StartInput, StartOutput>(op, name),
         (Op::Step, _) => pair::<StepInput, run::RunOutput>(op, name),
         (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(op, name),
@@ -477,8 +482,11 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
 /// then the MCP server's session tools' ([`Op::SESSION`]), then the file
 /// `export` writes beside its package.
 pub fn schemas() -> Vec<SchemaFile> {
-    let ops = Op::ALL.into_iter().flat_map(|op| op_schemas(op, false));
-    let session = Op::SESSION.into_iter().flat_map(|op| op_schemas(op, true));
+    let ops = Op::ALL.iter().copied().flat_map(|op| op_schemas(op, false));
+    let session = Op::SESSION
+        .iter()
+        .copied()
+        .flat_map(|op| op_schemas(op, true));
     let exposure = file(
         "export.exposure.json".to_owned(),
         &schema_for!(crate::export::disclosure::ExposureReport),

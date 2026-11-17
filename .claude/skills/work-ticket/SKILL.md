@@ -80,6 +80,33 @@ title's ticket (`tickets/README.md`, *Pull requests*).
 
 Set `status: in-progress` in the ticket's frontmatter.
 
+**In a new worktree, seed its build before the first one** (ticket
+2078). The main worktree (the first line of `git worktree list
+--porcelain`) is warm: from there, `cargo xtask seed-target` hard-links
+its third-party output into this worktree's `target/` and leaves the
+workspace's crates to build fresh with this worktree's paths. The first
+`cargo test --workspace --no-run` then compiles no third-party crate,
+or few: on Nick's machine (24 cores) it took 1 min 46 s against 2 min
+15 s unseeded, after the MCP server's build. Run it once, from this
+worktree:
+
+```bash
+main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+(cd "$main" && cargo xtask seed-target --into "$OLDPWD")
+```
+
+```powershell
+$main = (git worktree list --porcelain | Select-Object -First 1) -replace '^worktree ', ''
+$here = (Get-Location).Path
+Push-Location $main; cargo xtask seed-target --into $here; Pop-Location
+```
+
+It keeps what this `target/` already has (the session's MCP server
+builds `shuyi` there as it starts), and refuses while a cargo build runs
+in either worktree: wait, and run it again. Skip it when the main
+worktree is on another volume (it says so), or when this worktree has
+built already.
+
 ## 3. Implement
 
 - Follow the **Implementation steps** in order. If a step turns out to be
@@ -105,6 +132,21 @@ Set `status: in-progress` in the ticket's frontmatter.
   rule 12), even where a ticket asks for one: fix or work around the
   bug here, and say in the Completion notes that it was left out and
   why.
+- **Watch the size.** `cargo xtask pr-size` counts the PR's lines as
+  CI does (the hook says so before a commit, a push or `gh pr create`).
+  - A ticket with no `**Estimated size:**` that needs one (listed in
+    `tools/unestimated-tickets.txt`): estimate it before the code, as the
+    `write-ticket` skill's step 5 says, write it in the ticket, and take
+    its id off that list. Past 1,000 lines, name the split too.
+  - Past 1,000 counted lines, note where it would split cleanly. At its
+    `**Split:**` point, split there: move what's left into a new ticket
+    (`write-ticket`) and finish this one.
+  - Past 1,500, CI fails unless the completion notes have a line
+    `Size: 1,820 counted lines, <why it wasn't split>`, with the number
+    `pr-size` measures (within a tenth). A reason is one the parts
+    couldn't land apart, not that the work is done.
+  Why: in the retro of 2026-11-08, 13 of the 15 PRs over 1,500 lines
+  missed mutants in CI, against 8 of the 45 smaller ones.
 - **Scope creep rule:** if you notice something else worth doing, don't
   do it. Write a ticket with the `write-ticket` skill and mention it in
   the PR.

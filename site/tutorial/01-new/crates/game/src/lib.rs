@@ -15,14 +15,13 @@ pub mod title;
 
 use std::sync::OnceLock;
 
-use include_dir::{Dir, include_dir};
 use shuyi::core::Made;
 use shuyi::prelude::*;
 
 // ANCHOR: files
 /// The game's files, embedded.
 // check-text: not player text, a folder
-static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
 // ANCHOR_END: files
 
 // ANCHOR: data
@@ -39,7 +38,7 @@ pub type Data = BasicData<UiAction, stages::Own>;
 /// modules its features turn on (`Cargo.toml`).
 pub fn game() -> BasicGame<UiAction, stages::Own> {
     // check-text: not player text, a folder
-    let files = Layer::dir("files", &FILES);
+    let files = Layer::dir("files", FILES);
     BasicGame::with_own(app_info::APP, files, stages::own, |_| {
         Box::new(title::Title)
     })

@@ -122,7 +122,7 @@ and a game that needs more than that doesn't export there
 | `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `playtest`, `import`, `doctor`, their JSON answers and schemas |
 | `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
-| `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, and so does CI |
+| `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, so does the book's (`.devcontainer/book/`, the code pad: [`site/README.md`](site/README.md), *The code pad*), and so does CI |
 | `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs on a new game. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
 | `site/` | The website: a Zola project that `pages.yml` publishes on GitHub Pages, with the book, the API docs and the examples playing in the browser; the book's code is the crate in `site/snippets/` ([`site/README.md`](site/README.md)) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
@@ -146,7 +146,7 @@ counter. An engine crate never depends on a game.
 | `shuyi-sound` | `crates/sound` | Decoded sound apart from the rest of the engine: `Pcm`, a bounded `Source` of it, optional WAV and Ogg Vorbis adapters, and an integer mixer. Builds without `std`; only the backend of `shuyi-app`'s `in-house-sound` feature plays through it yet. |
 | `shuyi-sound-out` | `crates/sound-out` | Hands a mix to the system: CPAL on Windows, a Web Audio worklet in the browser, and an output that discards it. |
 | `shuyi-script` | `crates/script` | A module: rules written as Rhai scripts, compiled once and run on a read-only view the game hands them, integer only, with no clock, no luck and no files, inside an operation and size limit ([`crates/script/README.md`](crates/script/README.md)). Needs `std`. |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `bench`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `bench`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web`, `private-assets`, `repos` and `reveal` (the reveal kit, evidence before a game's first public footage), on the project a `shuyi.ron` describes. |
 | `shuyi` | `crates/shuyi` | The front door a game depends on: the crates above under short names (`shuyi::core` to `shuyi::app`), the `prelude` with `run_game`, and one cargo feature per module, all off by default, with `enabled_modules`, the modules turned on, for the game to install. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
@@ -216,9 +216,11 @@ compiles](https://zafnok.github.io/shuyi-engine/learn/book/fast-compiles/)
 has the numbers and the setup behind them, and the nightly-only options.
 `cargo xtask compile-times`, in this repository, measures it: a new
 `grid` game's clean build, its rebuild and `check` after a one-line
-change, and a new game's dependency count. CI runs it on Linux and
-Windows, and fails a rebuild over the budget in `tools/compile-budget.ron`
-or a new game that depends on more crates than it says.
+change, a fixed reference build, and a new game's dependency count, and
+names the CPU. CI runs it on Linux and Windows, and fails a rebuild that
+takes longer, against the reference build on the same runner, than
+`tools/compile-budget.ron` allows, or a new game that depends on more
+crates than it says.
 
 ## The first example: Hello, Grid
 

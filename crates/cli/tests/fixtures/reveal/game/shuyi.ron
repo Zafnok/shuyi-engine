@@ -1,0 +1,15 @@
+// The reveal kit's fixture: a game revealed by its store page alone, with
+// no build released. `src/reveal/tests.rs` prepares its kit, which is
+// committed in `../kit`, and verifies that on every system CI runs.
+(
+    app: (name: "Moon Garden", id: "io.github.example.moon-garden", version: "0.3.0"),
+    reveal: (
+        store_url: "https://store.example.com/app/1/Moon_Garden/",
+        keywords: ["moon", "garden", "well"],
+        captures: [
+            (file: "shots/title.png", what: "Hello, Grid's first frame, standing in for the game's title"),
+        ],
+        receipts: ["receipts/registration.txt"],
+        salts: "private/reveal-salts.ron",
+    ),
+)

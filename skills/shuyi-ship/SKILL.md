@@ -1,6 +1,6 @@
 ---
 name: shuyi-ship
-description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
+description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (`cargo shuyi web --release`, and what a game needs for it); the targets it ships on and their controls (`check --target`); a baked pack; the credits of every third-party work it uses; the reveal kit, its evidence before the first public footage (`cargo shuyi reveal prepare`); and a closed build's copy marked for one recipient (`export --recipient`), a deterrent, never proof. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, making pictures for a store page, or before showing the game in public. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -19,6 +19,9 @@ Ship only what `check --target` passes.
 - Adding a target to the ones it ships on (the Steam Deck, the web).
 - Writing the credits of a font, a picture or vendored code.
 - Pictures for a store page or a README.
+- Before the first public footage: the reveal kit.
+- A press, playtest or publisher copy for one person, and finding whose
+  copy leaked.
 
 ## When not to
 
@@ -262,6 +265,131 @@ Ship only what `check --target` passes.
    The store pages themselves, their text and their prices are the
    game's owner's.
 
+8. **A release from a tag.** The game's `.github/workflows/release.yml`
+   builds every package CI can on its own system, then makes a GitHub
+   Release of the tag with them, their debug files and `SHA256SUMS`.
+   First see what it builds, and that the tag names the version:
+
+   ```bash
+   cargo shuyi export --plan --tag v0.1.0
+   ```
+
+   The version is `shuyi.ron`'s `app.version`, else the workspace's in
+   `Cargo.toml`; after changing it, run `cargo shuyi app-info` and
+   commit. A target no exporter builds (the Steam Deck, today) is a
+   limit, not an error; `playdate` is `check-only`, since its SDK can't
+   be downloaded in CI: export it on a machine with the SDK. Then tag,
+   with the notes as the tag's message, and push the tag:
+
+   ```bash
+   git tag -a v0.1.0 -m "The first release"
+   git push origin v0.1.0
+   ```
+
+   Ask the game's owner before pushing a tag: it publishes the game. A
+   dry run, the Release workflow run from the repository's Actions tab,
+   builds the packages and publishes nothing. itch.io is the owner's to
+   turn on: the repository variable `ITCH_GAME` (`user/game`) and the
+   secret `BUTLER_API_KEY`; then each release but a prerelease
+   (`1.2.0-beta.1`) is pushed to a channel per target, and the owner sets
+   the `web` channel to play in the browser once, on itch.io. The macOS
+   app has no Developer ID signature, so players open it from System
+   Settings, Privacy & Security.
+
+9. **Before the reveal**, the first public footage of the game: a
+   gameplay idea can be copied from footage alone, and nothing stops
+   that, so keep the evidence of what is the game's, and when. List the
+   approved captures and the store page in a `reveal` part of
+   `shuyi.ron`:
+
+   ```ron
+   reveal: (
+       store_url: "https://store.steampowered.com/app/123/Moon_Garden/",
+       keywords: ["moon", "garden"],
+       captures: [
+           (file: "preview.png", what: "the walk to the well",
+            encodes: ["shots/preview-steam.webp"]),
+       ],
+       sums: "release/SHA256SUMS",
+       receipts: ["release/moon-garden-windows.zip.sigstore.json"],
+       salts: "private/reveal-salts.ron",
+   ),
+   ```
+
+   `name` is `app`'s unless it says; `encodes` are the same capture as a
+   platform re-encoded it; `artifacts` (a demo's package) are recorded by
+   hash, never copied, and a store page alone needs none; `sums` is a
+   release's `SHA256SUMS` (step 8) and `receipts` its attestations or any
+   dated receipt. Then:
+
+   ```bash
+   cargo shuyi reveal prepare
+   cargo shuyi reveal verify dist/reveal
+   ```
+
+   `prepare` writes the kit into `dist/reveal` (`out` to change it):
+   every file copied whole, `reveal.ron` with each one's SHA-256, and the
+   kit's digest, the manifest's own SHA-256, in `reveal.ron.sha256`.
+   `verify` checks a copy anywhere, with no project (`--digest <digest>`:
+   against the one published). Work through `CHECKLIST.md` before the
+   footage goes out:
+   - open the store page and check its name and media are the approved
+     captures;
+   - publish the digest where it is dated: a pushed commit or tag, a
+     release's notes (the kit's own date is the machine's clock);
+   - copyright registration of the art, music and text: in the US about
+     US$65, and statutory damages need it before the infringement or
+     within three months of first publication (17 U.S.C. 412). Whether
+     to register is the game's owner's call; the kit only reminds, and is
+     not legal advice.
+
+   To prove later what isn't shown yet (a design note, a level),
+   `cargo shuyi reveal commit <file>` keeps a salted commitment in the
+   `salts` file, whose digest the next `prepare` records; `cargo shuyi
+   reveal open <file>` shows the file opens it. Keep the salts file
+   private, and back it up: in the private files' checkout (`private/`)
+   but outside its `files/`, which the build embeds, and never in a
+   public repository. Without it nothing opens. `EVIDENCE.md` lists every hash, and ends with what a
+   report of a copied clip fills in. The kit judges nothing and sends
+   nothing.
+
+10. **A closed build's copy for one recipient** (press, playtest,
+    publisher). The limit first: a mark is circumstantial evidence,
+    never proof. Two recipients who compare their copies find and remove
+    every mark, a repacked pack loses its mark, a picture saved again at
+    a lower quality loses its, and an overwritten program field loses
+    its. Say so whenever a match is reported. With the kit prepared
+    (step 9), name a picture of the game's with at least seven colors,
+    never its text, by its path in the pack:
+
+    ```ron
+    export: (overlay_picture: "tiles.png"),
+    ```
+
+    ```bash
+    cargo shuyi export windows --release --recipient press-jane --label "Jane, Example Magazine" --signing-key <ssh private key>
+    ```
+
+    The package is made as for a release, then copied into
+    `dist/recipients/<id>/<target>`. The copy's program, pack and that
+    picture each hold the recipient's 8-character code. The copy passes
+    the disclosure check, and `dist/recipients.ron`, beside the kit, gets
+    an entry signed with the key (`recipients.ron.sig`, `ssh-keygen -Y
+    sign`). Keep the key outside the repository; `SHUYI_SIGNING_KEY`
+    names it in place of the flag. Desktop and web only, release and
+    packed builds only. `shuyi::app::recipient()` gives the code in a
+    copy and `None` in the public build, for a faint corner line the game
+    may draw. A copy that turns up:
+
+    ```bash
+    cargo shuyi export --detect-recipient <package, folder, program, pack or png>
+    ```
+
+    It answers each mark found, the code it holds, and whom the ledger
+    gave it. On the public build it says "no mark found". Pair each copy
+    with a store key of the recipient's own: the key names the account
+    that played, which no mark in a file can.
+
 ## Licenses
 
 Every work the game ships, code or not, must be under a license that
@@ -296,6 +424,18 @@ with `cargo shuyi explain <code>`:
   tool failed; `SH3012`, the package holds what the `disclosure` part
   doesn't allow (each file named, with its source); `SH1003`, a Rust target
   or tool is missing.
+- `export --recipient`: `SH1002`, refused before anything is built: no
+  `--release`, no `packed` feature, a target with no overlay, no
+  `export.overlay_picture`, an id that isn't plain, no signing key, a
+  kit that doesn't verify, or a picture with too few colors. `SH1003`,
+  `ssh-keygen` is missing, or a macOS copy wasn't signed again on macOS.
+- `export --plan --tag`: `SH0001`, the tag isn't `v` and the version
+  (both named): tag the version the game has, or set the version and tag
+  that commit.
+- `reveal verify`: `SH3015`, the kit isn't as it was sealed; each problem
+  names a file (changed, missing, or not in the manifest). Copy the kit
+  again from a copy that verifies, never edit it; captures that really
+  changed are a new kit (`reveal prepare`), with a new digest.
 - `import` answers `ok: false` with each error's file and line (and its
   code when its class has one): a credit with an empty field, a source
   that isn't a web link, a license not on the list.
@@ -307,4 +447,5 @@ with `cargo shuyi explain <code>`:
 controls' problem; a button table in the keymap fixes it. Then the web
 build as the game has it, `cargo shuyi web --release`, the
 page and the binary in `dist/web/`, a credits file that `import` reads,
-and the gates still passing.
+the release's plan (the Steam Deck a limit, a wrong tag refused), and
+the gates still passing.

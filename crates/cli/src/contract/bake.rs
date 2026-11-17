@@ -43,7 +43,7 @@ use shuyi_assets::bitmap::OneBitPicture;
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::format::{AssetKind, Formats};
 use shuyi_assets::image::PNG_SIGNATURE;
-use shuyi_assets::pack::{Bake, Baked, Pack};
+use shuyi_assets::pack::{Bake, Baked, Index, Pack};
 
 use super::{Answer, Op, Problem, codes, target};
 use crate::export::CONTENT;
@@ -161,6 +161,51 @@ pub struct PackMade {
     /// audio.
     #[serde(default)]
     pub audio_files: Option<u32>,
+    /// The folders the pack lays first (`Bake::first`), in the order the
+    /// game named them, each with where its bytes lie: what a page that
+    /// streams the pack waits for before the game's first frame
+    /// (ADR-0128 §3). None when the game names none.
+    #[serde(default)]
+    pub spans: Vec<PackSpan>,
+}
+
+/// A folder a pack lays first (`Bake::first`), and where its files' bytes
+/// lie in the pack.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct PackSpan {
+    /// The folder, with no `/` at its end (empty for the whole pack).
+    pub folder: String,
+    /// Where its bytes start, from the pack's start.
+    pub start: u64,
+    /// How many bytes it takes: from the first byte of its files to the
+    /// last, whatever lies between (none for a folder with no file).
+    pub bytes: u64,
+}
+
+impl PackSpan {
+    /// The span of `folder`, `bytes` long from byte `start` of the pack.
+    #[must_use]
+    pub fn new(folder: impl Into<String>, start: u64, bytes: u64) -> Self {
+        Self {
+            folder: folder.into(),
+            start,
+            bytes,
+        }
+    }
+}
+
+/// The spans of the folders `baked` lays first, read from its index.
+fn spans_of(baked: &Baked, stamp: &str) -> Vec<PackSpan> {
+    Index::read(&baked.bytes, stamp)
+        .map(|index| {
+            index
+                .spans()
+                .map(|(folder, range)| PackSpan::new(folder, range.start, range.end - range.start))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The pictures of `baked`, baked from `bundle` for `target` as one-bit
@@ -501,6 +546,7 @@ pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answe
         replaced: shown(replaced),
         sheet: input.sheet.clone(),
         audio_files,
+        spans: spans_of(&baked, bake.stamp()),
     };
     let output = BakeOutput {
         errors: Vec::new(),
@@ -659,6 +705,21 @@ pub fn text(output: &BakeOutput) -> String {
             ms(pack.load_sources_us),
             ms(pack.load_pack_us)
         );
+        if !pack.spans.is_empty() {
+            let spans: Vec<String> = pack
+                .spans
+                .iter()
+                .map(|span| {
+                    format!(
+                        "{}/ ({} bytes from byte {})",
+                        span.folder,
+                        bytes(span.bytes),
+                        bytes(span.start)
+                    )
+                })
+                .collect();
+            let _ = writeln!(out, "  laid first: {}", spans.join(", "));
+        }
         if !pack.dithered.is_empty() {
             let _ = writeln!(
                 out,

@@ -5,8 +5,12 @@ A template is what `shuyi new` makes a game from: a folder of data with a
 choose the parts, and the composer turns the template and the answers
 into the new game's files ([ADR-0013](adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §3, [ADR-0042](adr/0042-the-template-format-merged-ron-and-cargo-files-a-generated-list-of-stages-and-short-names.md)).
-No template runs code: there are no hooks and no scripts, and `new` only
-writes files.
+No template runs code: `new` only writes files, and runs nothing while it
+makes a game. A file a template ships may be a program the developer or
+git runs later: `scripts/setup-linux.sh`, which they run, and a git hook
+(`scripts/git-hooks/post-checkout`), which git runs only once the game's
+`core.hooksPath` names its folder. `new` sets nothing in git; `shuyi
+repos`, which makes the game's git repository, sets it (ticket 3402).
 
 The engine's own template is [`templates/shuyi-default`](../templates/shuyi-default/),
 embedded in the `shuyi` binary. It is the example on this page.
@@ -36,6 +40,26 @@ the files made, the parts, the modules turned on, the stages, the skills
 (below), and in its `limits` what the template didn't do (an answer no
 part serves, but a question's default, which adds nothing by design:
 `private-files` = `no`).
+
+In a terminal, `shuyi new` first asks whether to include the engine
+skills' worked examples (the template's `examples` question, below),
+unless `--examples`, `--no-examples`, `--set examples=…` or the answers
+file answers it. It then asks whether
+to put the game on GitHub (with `gh`, signed in), each repository's
+visibility, and which kinds of files go in a private repository
+(`files/text`, `files/sprites`, `files/sounds`, `files/music`,
+`files/data`, and folders of the developer's own). With a private
+repository it answers `private-files` = `yes` and sets `--private-url` to
+`https://github.com/<owner>/<crate name>-assets.git` itself, writes the
+game, then runs `shuyi repos` in it ([ADR-0112](adr/0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md)).
+Each question has its flag (`--examples`/`--no-examples`,
+`--github`/`--no-github`, `--owner`,
+`--visibility`, `--assets-visibility`, `--private <kinds>|none`,
+`--private-folder <path>`). Off a terminal, with `--json` and from the
+MCP server's `new` tool, nothing is asked and no repository is made
+(`--github` is refused with `--json`); there `--private` adds the part
+only with `--private-url`, and the examples are in unless `examples` is
+`no`.
 
 An answers file maps each question to the ids of its answers:
 
@@ -167,6 +191,18 @@ placeholder fails, naming its file and line. There are no conditions
 and no loops: a condition is a part. That keeps every file valid Rust,
 TOML or RON.
 
+## Manifests are `Cargo.toml.tmpl`
+
+A part's manifest is named `Cargo.toml.tmpl` in the template's folder,
+and the game gets it as `Cargo.toml`: everything below, and `new`'s
+output, names it `Cargo.toml`. Why: a game that depends on the engine
+by git makes cargo read every `Cargo.toml` of the engine's repository,
+and a template's `name = "{{crate_name}}"` printed errors in each of the
+game's builds (ticket 2067). A template that names its manifests
+`Cargo.toml` still reads; a folder that holds both fails, naming the
+`.tmpl`. `cargo xtask check-pins` and `check-toolchain` read the
+template's `Cargo.toml.tmpl` files.
+
 ## Merged files
 
 Each file is written by the parts whose folders hold it. A file two
@@ -234,6 +270,18 @@ not: `shuyi add` copies it when the game turns the module on) and a skill
 whose folder a part already writes. `new`'s answer lists them in
 `skills`.
 
+The composer reads one question itself, `examples`
+([ADR-0113](adr/0113-a-game-made-without-the-skills-worked-examples-says-so-in-each-skill.md)):
+no part serves it, and its `no` is no limit. With `examples` = `no` each
+skill comes without its worked examples (`example.ron`, `example-*.ron`
+and the `example/` folder), its other files kept. A link of its Markdown
+to one of them becomes the link's words, and its `SKILL.md` ends with a
+sentence saying the game was made without them and that they are in the
+engine's `skills/<name>/`, at the version the game builds with.
+`shuyi check-skills` asks no worked example of a skill whose `SKILL.md`
+says so, so the game's `cargo shuyi check-skills .claude/skills` passes
+either way.
+
 ## The engine's template
 
 | Part | When | What it writes |
@@ -248,11 +296,13 @@ Its questions:
 | -------- | ---- | ------- | ------- |
 | `perspective` | many | `top-down-grid` | none |
 | `private-files` | one | `yes`: the game's writing, art and sounds in a second, private repository; `no` | `no` |
+| `examples` | one | `yes`: each skill's worked example; `no`: the skills alone (above) | `yes` |
 
 `--template blank` is `base` alone, and `--template grid` is `base` and
 the grid stage; neither has private files. CI makes a game with each
-short name, the grid one with private files too, runs its gates and
-builds it for the web.
+short name, the grid one with private files and without the worked
+examples, runs its gates (`check-skills` among them) and builds it for
+the web.
 
 ### The private files
 
@@ -267,7 +317,9 @@ it, checks it out in CI before the gates (failing a run on the game's
 own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
 fork's pull request) and tells the game's agent of it. No workflow of
 the template uploads an artifact **or saves a cache** that embeds the
-private files (ADR-0111 §5): a pull request's run, a fork's too, may
+private files (ADR-0111 §5), but `export.yml`'s package of a release,
+which the release publishes anyway, or of a private repository
+(ADR-0114): a pull request's run, a fork's too, may
 restore its base branch's caches, so with the part's action there the
 base's `ci.yml` caches only the cargo registry, not `target/`
 (`rust-cache`'s `cache-targets`). The grid stage's

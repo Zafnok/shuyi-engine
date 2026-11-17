@@ -39,6 +39,14 @@ pub const LINK_TOKEN: Code = Code("SH0004");
 /// `no-value`: `scene --path` was given a JSON Pointer that names nothing
 /// in the scene's data.
 pub const NO_VALUE: Code = Code("SH0005");
+/// `repo-name`: `repos` was given, or made, a repository name GitHub
+/// refuses, or one that is taken.
+pub const REPO_NAME: Code = Code("SH0006");
+/// `not-a-worktree`: `seed-target --into` names a folder that is no
+/// worktree of this repository.
+pub const NOT_A_WORKTREE: Code = Code("SH0007");
+/// `same-worktree`: `seed-target --into` names the worktree it runs in.
+pub const SAME_WORKTREE: Code = Code("SH0008");
 /// `no-project`: no `shuyi.ron` here or above.
 pub const NO_PROJECT: Code = Code("SH1001");
 /// `project-file`: `shuyi.ron` doesn't read, or lacks what the command
@@ -54,6 +62,18 @@ pub const NO_BUILD: Code = Code("SH1005");
 /// `link-version`: the build speaks another link version than this
 /// `shuyi`.
 pub const LINK_VERSION: Code = Code("SH1006");
+/// `no-gh`: `repos` needs GitHub's CLI, `gh`, which isn't installed.
+pub const NO_GH: Code = Code("SH1007");
+/// `gh-signed-out`: `gh` isn't signed in to github.com.
+pub const GH_SIGNED_OUT: Code = Code("SH1008");
+/// `gh-scope`: `gh`'s sign-in lacks a scope `repos` needs.
+pub const GH_SCOPE: Code = Code("SH1009");
+/// `no-repository`: `trim-targets` or `seed-target` found the game in no
+/// git repository of its own.
+pub const NO_REPOSITORY: Code = Code("SH1010");
+/// `no-donor-build`: `seed-target` runs in a worktree with no build to
+/// seed from (`target/debug/`).
+pub const NO_DONOR_BUILD: Code = Code("SH1011");
 /// `hard-coded-key`: the game's code or text names a key (`lint`'s
 /// `check-keys`).
 pub const HARD_CODED_KEY: Code = Code("SH2101");
@@ -97,6 +117,20 @@ pub const PACKAGE: Code = Code("SH3011");
 /// `disclosure`: `export` found what the game's `disclosure` part doesn't
 /// allow in the final package, and removed it.
 pub const DISCLOSURE: Code = Code("SH3012");
+/// `not-yours`: a repository `repos` would set up exists, and the
+/// signed-in user can't administer it.
+pub const NOT_YOURS: Code = Code("SH3013");
+/// `github`: a step of `repos` on GitHub or in git failed.
+pub const GITHUB: Code = Code("SH3014");
+/// `reveal-kit`: `reveal verify` found a reveal kit changed, incomplete or
+/// holding more than its manifest lists.
+pub const REVEAL_KIT: Code = Code("SH3015");
+/// `build-running`: `seed-target` found a cargo build running in one of
+/// the two worktrees.
+pub const BUILD_RUNNING: Code = Code("SH3016");
+/// `other-volume`: `seed-target`'s two worktrees are on different
+/// volumes, which a hard link can't cross.
+pub const OTHER_VOLUME: Code = Code("SH3017");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -234,6 +268,33 @@ pub static TABLE: &[Entry] = &[
          data, and `scene --shape` its shape"
     ),
     row!(
+        REPO_NAME,
+        "repo-name",
+        Usage,
+        "SH0006",
+        "GitHub refuses the repository's name, or it is taken",
+        "pass another name with --name (letters, digits, `.`, `-` and `_`), then run `shuyi \
+         repos` again"
+    ),
+    row!(
+        NOT_A_WORKTREE,
+        "not-a-worktree",
+        Usage,
+        "SH0007",
+        "The folder is no worktree of this repository",
+        "pass --into the new worktree's folder, one `git worktree list` lists, and run the \
+         command in the warm checkout"
+    ),
+    row!(
+        SAME_WORKTREE,
+        "same-worktree",
+        Usage,
+        "SH0008",
+        "The worktree to seed is the one the command runs in",
+        "run `seed-target` in the warm checkout (the first line of `git worktree list \
+         --porcelain`), with --into the new worktree"
+    ),
+    row!(
         NO_PROJECT,
         "no-project",
         Setup,
@@ -285,6 +346,48 @@ pub static TABLE: &[Entry] = &[
         "The build speaks another link version than this shuyi",
         "attach with the shuyi of the engine the build was made with (the game's own `cargo \
          shuyi`), or build the game again on this engine, then attach again"
+    ),
+    row!(
+        NO_GH,
+        "no-gh",
+        Setup,
+        "SH1007",
+        "GitHub's CLI, gh, isn't installed",
+        "install gh (https://cli.github.com; on Windows `winget install -e --id GitHub.cli`), \
+         sign in with `gh auth login`, then run `shuyi repos` again"
+    ),
+    row!(
+        GH_SIGNED_OUT,
+        "gh-signed-out",
+        Setup,
+        "SH1008",
+        "gh isn't signed in to GitHub",
+        "run `gh auth login` and sign in to github.com, then run `shuyi repos` again"
+    ),
+    row!(
+        GH_SCOPE,
+        "gh-scope",
+        Setup,
+        "SH1009",
+        "gh's sign-in lacks a scope shuyi repos needs",
+        "run `gh auth refresh -h github.com -s repo,workflow`, then run `shuyi repos` again"
+    ),
+    row!(
+        NO_REPOSITORY,
+        "no-repository",
+        Setup,
+        "SH1010",
+        "The game is in no git repository of its own",
+        "put the game in git (`git init`, or `shuyi repos`), then run the same command again"
+    ),
+    row!(
+        NO_DONOR_BUILD,
+        "no-donor-build",
+        Setup,
+        "SH1011",
+        "The warm checkout has no build to seed from",
+        "build there first (`cargo test --workspace --no-run`), or run `seed-target` in a \
+         worktree that has built"
     ),
     row!(
         content::PARSE,
@@ -503,6 +606,49 @@ pub static TABLE: &[Entry] = &[
         "The final package holds what the game's disclosure part doesn't allow",
         "for each file the message names, take it out of what is built, or add it to the part if \
          it is meant to ship, then export again"
+    ),
+    row!(
+        NOT_YOURS,
+        "not-yours",
+        Operation,
+        "SH3013",
+        "The repository exists, and you can't administer it",
+        "sign gh in as the repository's owner or an admin of it (`gh auth login`), or pick \
+         another --owner or --name, then run `shuyi repos` again"
+    ),
+    row!(
+        GITHUB,
+        "github",
+        Operation,
+        "SH3014",
+        "A step on GitHub or in git failed",
+        "fix what the message says gh or git said, then run `shuyi repos` again: it makes only \
+         what isn't there"
+    ),
+    row!(
+        REVEAL_KIT,
+        "reveal-kit",
+        Operation,
+        "SH3015",
+        "The reveal kit doesn't verify",
+        "each problem names a file of the kit: copy the kit again from a copy that verifies, or \
+         run `shuyi reveal prepare` for a new kit (with a new digest)"
+    ),
+    row!(
+        BUILD_RUNNING,
+        "build-running",
+        Operation,
+        "SH3016",
+        "A cargo build is running in one of the worktrees",
+        "wait for the build the message names to finish, then run `seed-target` again"
+    ),
+    row!(
+        OTHER_VOLUME,
+        "other-volume",
+        Operation,
+        "SH3017",
+        "The two worktrees are on different volumes",
+        "skip the seed: the new worktree builds from nothing, as it would have without it"
     ),
 ];
 

@@ -3,12 +3,16 @@
 
 {#- A project's landing page (ADR-0090 §2): its text, its steps in order,
     each with the chapter it comes after, and the pages before and after
-    it in the book's order, under the reader's filter (`book::filter`). -#}
+    it in the book's order, under the reader's filter (`book::filter`),
+    with the book's contents and its headings beside it
+    (`book::book_open` and `book::book_close`, ticket 2834). -#}
 {% block head %}{{ book::script() }}{% endblock head %}
 
+{% block main_class %} book-wide{% endblock main_class %}
+
 {% block content %}
-{{ book::filter() }}
-<article class="prose">
+{{ book::book_open(current=section.relative_path, toc=section.toc) }}
+<article class="prose" id="book-text">
   {{ book::where(p=section) }}
   <h1>{{ section.title }}</h1>
   {{ section.content | safe }}
@@ -22,4 +26,5 @@
   </ol>
 </article>
 {{ book::pager(current=section.relative_path) }}
+{{ book::book_close(toc=section.toc) }}
 {% endblock content %}

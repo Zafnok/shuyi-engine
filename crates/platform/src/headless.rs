@@ -43,7 +43,9 @@ pub enum Presented {
     Card(Card),
     /// Why the game couldn't start.
     Errors(String),
-    /// The game's console.
+    /// The game's console: built with [`Presented::game`], matched with
+    /// `..` (ADR-0039 kind 6).
+    #[non_exhaustive]
     Game {
         /// Its cells and pictures.
         buffer: GlyphBuffer,
@@ -55,6 +57,17 @@ pub enum Presented {
 }
 
 impl Presented {
+    /// The game's console `buffer` on `background`, filling the screen if
+    /// `fullscreen`.
+    #[must_use]
+    pub const fn game(buffer: GlyphBuffer, background: Rgb, fullscreen: bool) -> Self {
+        Self::Game {
+            buffer,
+            background,
+            fullscreen,
+        }
+    }
+
     /// The game's console, if this frame shows it.
     pub fn buffer(&self) -> Option<&GlyphBuffer> {
         match self {
@@ -316,12 +329,14 @@ impl Speaker {
     fn apply(&mut self, command: &MusicCommand, now: Millis) {
         match command {
             MusicCommand::Start { cue, .. } => self.started = Some((cue.clone(), now)),
-            MusicCommand::Stop { cue } | MusicCommand::Load { cue } => {
-                if self.started.as_ref().is_some_and(|(c, _)| c == cue) {
-                    self.started = None;
-                }
+            MusicCommand::Stop { cue } | MusicCommand::Load { cue }
+                if self.started.as_ref().is_some_and(|(c, _)| c == cue) =>
+            {
+                self.started = None;
             }
-            MusicCommand::Gain { .. } => {}
+            // A gain, another track's stop or load, and a command this
+            // speaker doesn't know yet.
+            _ => {}
         }
     }
 }

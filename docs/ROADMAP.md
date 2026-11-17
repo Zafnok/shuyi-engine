@@ -64,8 +64,14 @@ version view before going public, with the playground's chain (3069,
 2026-11-05 he made the first release (2005) the public launch: it comes
 after every other ticket of this phase but the blog (2805) and sponsors
 (2806), and after the breaks already planned (2544, 2391, 2388 and
-2389), which joined the phase ([`decisions.md`](decisions.md)). These
-tickets, in order:
+2389), which joined the phase ([`decisions.md`](decisions.md)). On
+2026-11-14 he asked for no run of breaking versions after the MVP: an
+audit of every open ticket put the types that can grow (2082–2086), pad
+events with their pad (2412), outside crates' types (2087), the
+contract's version (2088), the assets' lifetimes (2906, 2919, 2262) and the breaks
+no attribute softens (2347, 2348, 3218, 2405, 2409, 2133, 2136, 2239, 3041,
+3044) in the phase, before the release ([`decisions.md`](decisions.md)).
+These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
@@ -134,6 +140,7 @@ tickets, in order:
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
 | 2820 | The project's steps in the playground: each page edits its step's data files, and tries its before-and-afters there |
 | 2828 | Exercises in the book: a task done in a step's playground and checked by the game |
+| 2836 (done) | `cargo xtask exercises` can check a step with the step before it's build, when their newest files share a timestamp |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -146,6 +153,31 @@ tickets, in order:
 | 2391 | One RGBA picture type: the raster, glyph tiles and font atlas use `shuyi_assets::image::Image` |
 | 2388 | One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, rectangles that invert |
 | 2389 | The inks removed: one-bit screens draw only by roles' patterns (after 2388 and the game's 1253) |
+| 2082 (done) | The frame's and the widgets' types that open tickets grow move under ADR-0039, and the ADR says every such type moves before a release |
+| 2083 (done) | The input and controller types that open tickets grow move under ADR-0039, and `PadKind::ALL` becomes a slice |
+| 2084 (done) | The sound, music and cinematic types that open tickets grow move under ADR-0039, and `shuyi-app`'s sound features keep their names for good |
+| 2091 (done) | Giving up the sound replacement keeps the `in-house-sound` feature, doing nothing, so a game that names it still builds |
+| 2085 (done) | The target profiles, packs, language packs, credits and bot settings that open tickets grow move under ADR-0039 |
+| 2086 (done) | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
+| 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
+| 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
+| 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
+| 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
+| 2094 (done) | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
+| 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
+| 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0128) |
+| 2262 (done) | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0128's one break, before the release |
+| 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
+| 2348 (done) | Messages that choose their words: ICU's plural, ordinal and select, and CLDR's plural rules |
+| 3218 (done) | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
+| 2405 | Mouse and touch for menus and grid maps |
+| 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
+| 2133 | The bots' data made alike: the settings refuse unknown fields |
+| 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
+| 2239 | Translated dialogue lines get the text box's page check |
+| 3041 | Log sinks in shipped builds |
+| 3044 (done) | The window opens as it was left |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -172,7 +204,7 @@ What slipped was mostly at the seams, where nothing checked:
 These tickets make the checks deterministic where they can be. None
 holds up the first release (2005), so they are not in the MVP. They come
 **ahead of** the MVP's remaining tickets all the same: each one saves
-redone PRs on the rest. 2051, 2052 and 2054 are done. Whether they go into
+redone PRs on the rest. 2051, 2052, 2053 and 2054 are done. Whether they go into
 the release's `blocked_by` is Nick's call.
 
 | Ticket | What |
@@ -180,15 +212,15 @@ the release's `blocked_by` is Nick's call.
 | 2051 (done) | The ticket a PR is for comes from its title, and a branch the checks can't read fails; the ticket-only PR convention |
 | 2052 (done) | Ticket, ADR and contract numbers no open PR has taken: `cargo xtask next-id`, duplicate ADRs fail |
 | 2054 (done) | `cargo xtask gates` runs the gates a diff needs, and a pre-push hook runs the fast ones |
-| 2053 | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
+| 2053 (done) | An engine PR measures its size (the game's `pr-size`), and a ticket says what to split off |
 | 2055 | Mutants looked at before the push (listed, never run locally), and a plain verdict after |
 | 2059 (done) | Ticket lint: a blocked ticket nothing blocks, a follow-up left in prose, a game adopter left unnamed |
 | 2066 (done) | A `Behaviour:` line for a change a game sees without a break, read by the game's pin review |
 | 2584 (done) | The ticket skills check a ticket against the code before trusting it |
 | 2057 (done) | Dependabot PRs don't sit red: the give-up footprint reads keys, and a daily list of the waiting ones |
 | 2064 (done) | Flaky gates have a ledger, and a calibration run is one reusable workflow |
-| 2058 | A migration block's `since` is the workspace's version |
-| 2065 | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
+| 2058 (done) | A migration block's `since` is the workspace's version |
+| 2065 (done) | A merge commit brings no file of its own; `.codex/config.toml` tracked on purpose or not at all |
 | 2060 | Nick decides how `main` is guarded: required checks, merges on green, and the `model` line |
 
 Bugs and follow-ups the retro found left in prose, now tickets:
@@ -196,12 +228,12 @@ Bugs and follow-ups the retro found left in prose, now tickets:
 | Ticket | What |
 | ------ | ---- |
 | 2056 | Two workspace examples named `tools` collide on Windows and fail the link (LNK1104 in #272, #283, #307; done 2026-11-11) |
-| 2061 | `cargo xtask api` runs from a Windows worktree |
+| 2061 | `cargo xtask api` runs from a Windows worktree (done 2026-11-13) |
 | 2062 | The tutorial steps' lockfiles match what `cargo test` writes (done 2026-11-11) |
-| 2063 | The MCP server's forwarding tests pass under load |
-| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency |
-| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759) |
-| 2257 | The text checks say cells where they count cells |
+| 2063 | The MCP server's forwarding tests pass under load (done 2026-11-14: no forwarding test failed in 860 runs under load, on Windows and Linux) |
+| 2067 | The templates' manifests stay out of cargo's scan of the engine as a git dependency (done 2026-11-14: they are `Cargo.toml.tmpl`) |
+| 2256 | A dialogue line whose text starts with a bracket prints and parses back unchanged (game#0759; done 2026-11-14) |
+| 2257 | The text checks say cells where they count cells (done 2026-11-14) |
 | 2583 | The debug step plays over the live link and in a capture plan |
 | 3097 | A game's load runs over several update callbacks on the Playdate (game#1170) |
 
@@ -260,7 +292,7 @@ launches.
 
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
-screen transitions), 2347 (game#0250, key names that stand out), 2228
+screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
 (game#1013, mod tables merged by id), and 2226, 2253 and 2349
 (game#0825, the language option). 2342 (game#0826, the voices' volume)
 is done.
@@ -309,12 +341,18 @@ is done.
 | 2350 | The font atlas keeps the characters the text uses, and `shuyi check` fails on text it can't draw |
 | 2351 | Built-in English for the engine's own text keys, which a game's text overrides |
 | 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
-| 2348 | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 2348 (done) | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 3218 (done) | Typed text arguments: screen text and tips choose their words |
+| 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
 | 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
+| 2785 | Key names stand out in the template's and Hello, Grid's hints, with a key colour in their palettes (after 2347) |
+| 3215 (done) | Key caps: a key's name in text drawn as a key, boxed, bold and with room around it |
+| 3216 (done) | A bold face in the font atlas, which key caps draw from (after 3215) |
+| 3217 (done) | The cursor's four direction keys as one picture, with key caps on (after 3215) |
 | 2354 | A grid cursor: `ListCursor` in two dimensions |
 | 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
 
@@ -344,7 +382,8 @@ is done.
 | 2516 | References between assets checked, and unused shipped files reported |
 | 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
-| 2906 | Research: asset memory, lifetimes, groups and loading in steps |
+| 2906 (done) | Research: asset memory, what stays resident (`docs/research/2906-asset-memory.md`) |
+| 2919 (done) | Research: asset memory, part two: the ADR and the build tickets (ADR-0128) |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
 | 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
@@ -384,7 +423,8 @@ is done.
 | 3042 | Focus on the desktop and the web: held input let go on focus loss, and pads ignored without focus |
 | 3093 | A background policy the game sets: paused or muted while its window has no focus (after 3042) |
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
-| 3044 | The window opens as it was left, and the cursor hides when idle and in fullscreen |
+| 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
+| 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
@@ -699,6 +739,25 @@ The tickets, in order:
 dearer as code piles up. The game's own Playdate port is still its
 ticket 1025, parked until after launch.
 
+### Asset memory: a pack read file by file, and the web's first frame
+
+[ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+(2919, from 2906's numbers): a Playdate pack over about 6 MB doesn't fit
+its heap read whole, against a 40 MB budget, and a web pack over about
+12 MB can't arrive before the first frame, against 25 MB. Visions of
+Shuyi's public assets (0.6 MB packed) fit every budget in every way, so
+these come after the game's work, for a game that needs them. 2262, the
+one break, is in the MVP above. In order:
+
+| Ticket | What |
+| ------ | ---- |
+| 2263 | The pack read file by file: its index alone, a check per file, a layer over a source (after 2262) |
+| 2265 | The pack lays folders in the order the bake names, and `Bundle::arrived` says when a folder can be read (after 2263) |
+| 3315 | The Playdate reads its pack file by file through the SDK's seek and read (after 2263) |
+| 3316 | A load in steps counts its units and waits for the platform; the card shows the count |
+| 3317 | `shuyi-app` makes a picture's texture when it is first drawn |
+| 3318 | The web page fetches the `.wasm` beside the pack and streams the pack in, keeping no copy in JS (after 2265, 3316 and 3317) |
+
 ### Follow-ups the backlog audit wrote
 
 On 2026-10-23 Nick asked for the backlog to be checked for work left
@@ -711,7 +770,7 @@ The parked ones are under *Parked* below.
 | 2028 | Each release after the first checked against the last version on crates.io (after 2005 and 2040's complete API catalog) |
 | 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
 | 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
-| 2136 | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
+| 2136 (done) | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
 | 2234 | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
 | 2235 | Nine-slice frames in a data file, baked in the pack and read by `BasicData` (after 2338) |
 | 2236 | Frozen format fixtures: each release's copy read while the version rule covers it |
@@ -757,7 +816,12 @@ going public, with the one book (2823–2828).
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
 | 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
-| 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2916 (done) | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2837 (done) | The code pad: one Codespace of the book's project, every step built and prebuilt once, opened from each step's page (ADR-0126) |
+| 2839 | The book's steps resolve the engine's features alike, so its Codespace builds the engine once, not three times (after 2837) |
+| 2838 | Exercises that edit Rust: a command that runs one exercise's check on the step as the reader left it, and the first such exercise (after 2837) |
+| 2840 | The book served from its Codespace: the reader follows the book there, and each step's game is rebuilt when its files change (after 2837) |
+| 2841 | The step's Rust in the playground's tabs, in the book served from its Codespace (after 2840) |
 
 ### Public demo defenses
 
@@ -775,17 +839,18 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 3304 | The bake takes an edition's content root, so a Playdate edition ships only its own files (done 2026-11-10) |
 | 3306 | A Playdate edition's sounds and music come from its content root (done 2026-11-10) |
 | 3305 | NOTICES.txt lists the crates of the build as Cargo resolves it, default features included (after 3082; done 2026-11-10) |
-| 2816 | Prepare a verifiable public reveal kit from captures and tagged releases (after 2811 and 3050) |
+| 2816 | Prepare a verifiable public reveal kit from captures and tagged releases (after 2811 and 3050; done 2026-11-13) |
 | 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
 | 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
 | 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
-| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes |
+| 2917 | Research: the angles the track had not covered, confirmed at their sources, and the plain statements the book owes (done 2026-11-14; its [report](research/2917-reverse-engineering-angles-not-yet-covered.md) is the source of 3099, 3300, 3301 and 3302) |
 | 2918 | Two confirmation notes in 2917's draft ahead of its pass: the Needle takedown row corrected, and 2914's ground restated as the oracle, not its timing (done 2026-11-09) |
-| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently |
-| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (after 3099; done 2026-11-11) |
+| 3099 | Release exports strip their symbols, refuse the debug features, make the crash play-record opt-in and never skip wasm-opt silently (from 2917; done 2026-11-09) |
+| 3300 | Desktop and web exports ship a baked pack beside the program, not the files folder as text (from 2917; after 3099; done 2026-11-11) |
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
-| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (after 2816) |
-| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (after 2816 and 3300) |
+| 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
+| 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
+| 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
 
 ## Parked
 
@@ -813,7 +878,8 @@ unparked:
   3107, then the examples 3108 and 3109.
 - **The GBA and the DS:** 3017 and 3018 first, then 3019, 3020 and
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
-  3025, 3026). DS 3D (3025) also needs 3103 and 3107.
+  3025, 3026, and 2264, the pack's paths for the DS's heap). DS 3D
+  (3025) also needs 3103 and 3107.
 
 On 2026-11-08 Nick put the export targets in tiers
 ([`decisions.md`](decisions.md)): tier 1 is Windows, Linux, macOS and

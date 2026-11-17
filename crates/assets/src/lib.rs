@@ -22,7 +22,8 @@
 //! and a game registers its own kinds and formats beside the engine's in
 //! a [`Formats`] registry, then asks it for an asset by id. A game may
 //! ship its assets baked into one [`pack`] (`.shuyipak`), proven equal to
-//! its sources. A value read through the registry can reload when its files
+//! its sources. A closed build's copy names its recipient by a code in three
+//! marks ([`recipient`]). A value read through the registry can reload when its files
 //! change on disk ([`hot`]).
 //!
 //! For tests, behind the `golden` feature: golden tables (`golden`),
@@ -59,10 +60,12 @@ pub mod import_settings;
 pub mod keymap;
 pub mod lang;
 pub mod lighting;
+pub mod message;
 pub mod names;
 pub mod onebit;
 pub mod pack;
 pub mod palette;
+pub mod recipient;
 pub mod ron;
 pub mod target;
 pub mod text;
@@ -71,6 +74,14 @@ pub mod tip;
 pub mod voice;
 
 pub use bundle::{Bundle, Files, Layer};
+
+/// What [`files!`] expands to names: not part of the API, which semver
+/// doesn't cover (ADR-0119).
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub mod __embed {
+    pub use include_dir;
+}
 pub use error::{ContentError, ContentErrors, line_of};
 pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits};
 pub use grid_map::{GridMap, MapFeature, MapFormat, MapLook};

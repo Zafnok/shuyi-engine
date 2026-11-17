@@ -1,14 +1,15 @@
-// The playground's RON colors match the book's (ticket 2832): for each
-// sample, static/ron-paint.js must give every character the scopes Zola
-// gives it in a `ron` code block. Plain Node, no packages; CI's `site` job
+// The playground's colors match the book's (ticket 2832): for each sample,
+// static/ron-paint.js must give every character the scopes Zola gives it
+// in a `ron` or `dlg` code block. Plain Node, no packages; CI's `site` job
 // runs it with `zola` on PATH (or ZOLA naming it):
 //
 //     node site/tests/ron-paint.mjs [<a built site>]
 //
-// The samples are Hello, Grid's `.ron` files, the book's project's, and the
-// cases below, built by Zola into a small site of their own with the
-// website's grammars and settings. With a built site, every `ron` block of
-// its pages is checked too.
+// The samples are Hello, Grid's `.ron`, `.map` and `.dlg` files, the book's
+// project's, the skill pack's dialogue, and the cases below, built by Zola
+// into a small site of their own with the website's grammars and settings.
+// With a built site, every `ron` and `dlg` block of its pages is checked
+// too.
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -21,8 +22,9 @@ const site = join(here, "..");
 const repo = join(site, "..");
 const ronPaint = createRequire(import.meta.url)(join(site, "static", "ron-paint.js"));
 
-// What a file the editors hold may have, that no sample file has.
-const CASES = [
+// What a file the editors hold may have, that no sample file has, by
+// language.
+const RON_CASES = [
     "/* a block /* nested */ still the block */ (x: 1)\n",
     "/* over\n   two lines */ Some(\"a\\\"b\\n\")\n",
     "(text: \"over\nlines\", flag: true, none: None, n: -12, h: 0xFF_ff, o: 0o17, b: 0b1010, f: 1.5e-3)\n",
@@ -33,6 +35,27 @@ const CASES = [
     "tags: [Tag, true, \"x\"], <&> é: 1\n",
     "(a:1,b:\"\\u{1F600}\",c:'\\'')\n"
 ];
+const DLG_CASES = [
+    "# a comment: with a colon\n@scene intro\n@left guide calm\n> Narration: not a speaker.\n@end\n",
+    "@scene s\nguide[smile]: Hi.\nguide (softly): Hi.\nguide[smile] (softly): Hi.\n> (aside): Narration.\n@end\n",
+    "@scene s\n@choice\n* earnest: Then we go now.\n  guide: Good. Keep close.\n  @if guide\n  guide: x[1]: y\n  @endif\n* wry: Then.\n@endchoice\n@end\n",
+    "@scene s\nguide: A line\n  that goes on: here.\nno colon here\n  # indented comment\n*bad\n<&> é: \"x\"\n@end\n"
+];
+
+// Each language, by the name its code blocks are fenced with: its files'
+// endings, the folders its sample files are in, and its cases.
+const LANGUAGES = {
+    ron: {
+        ends: [".ron", ".map"],
+        dirs: [join(repo, "examples", "hello-grid", "files"), join(site, "tutorial")],
+        cases: RON_CASES
+    },
+    dlg: {
+        ends: [".dlg"],
+        dirs: [join(repo, "examples", "hello-grid", "files"), join(site, "tutorial"), join(repo, "skills")],
+        cases: DLG_CASES
+    }
+};
 
 // The files under `dir` whose names `keep`, builds' folders left out.
 function files(dir, keep) {
@@ -51,18 +74,18 @@ function files(dir, keep) {
     return found.sort();
 }
 
-function samples() {
-    const ron = (name) => name.endsWith(".ron");
-    const paths = files(join(repo, "examples", "hello-grid", "files"), ron)
-        .concat(files(join(site, "tutorial"), ron));
+function samples(lang) {
+    const { ends, dirs, cases } = LANGUAGES[lang];
+    const keep = (name) => ends.some((end) => name.endsWith(end));
+    const paths = dirs.flatMap((dir) => files(dir, keep));
     return paths.map((path) => ({ name: relative(repo, path), text: readFileSync(path, "utf8").replace(/\r\n/g, "\n") }))
-        .concat(CASES.map((text, i) => ({ name: "case " + (i + 1), text })));
+        .concat(cases.map((text, i) => ({ name: lang + " case " + (i + 1), text })));
 }
 
 // Zola's HTML of each sample, in order: a site of its own with the
-// website's grammars and highlighting, one page holding them as `ron`
+// website's grammars and highlighting, one page holding them as `lang`
 // blocks.
-function zola(list) {
+function zola(list, lang) {
     const dir = mkdtempSync(join(tmpdir(), "ron-paint-"));
     try {
         cpSync(join(site, "syntaxes"), join(dir, "syntaxes"), { recursive: true });
@@ -78,18 +101,18 @@ function zola(list) {
         writeFileSync(join(dir, "templates", "index.html"), "{{ section.content | safe }}\n");
         mkdirSync(join(dir, "content"));
         const fence = "``````";
-        writeFileSync(join(dir, "content", "_index.md"), "+++\n+++\n" + list.map((s) => fence + "ron\n" + s.text + fence + "\n").join("\n"));
+        writeFileSync(join(dir, "content", "_index.md"), "+++\n+++\n" + list.map((s) => fence + lang + "\n" + s.text + fence + "\n").join("\n"));
         execFileSync(process.env.ZOLA || "zola", ["build", "--output-dir", "public", "--force"], { cwd: dir, stdio: ["ignore", "ignore", "inherit"] });
-        return blocks(readFileSync(join(dir, "public", "index.html"), "utf8"));
+        return blocks(readFileSync(join(dir, "public", "index.html"), "utf8"), lang);
     } finally {
         rmSync(dir, { recursive: true, force: true });
     }
 }
 
-// Every `ron` block's inner HTML in a page.
-function blocks(html) {
+// Every `lang` block's inner HTML in a page.
+function blocks(html, lang) {
     const found = [];
-    const block = /<pre data-lang="ron"[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/g;
+    const block = new RegExp('<pre data-lang="' + lang + '"[^>]*><code[^>]*>([\\s\\S]*?)</code></pre>', "g");
     let m;
     while ((m = block.exec(html)) !== null) {
         found.push(m[1]);
@@ -107,9 +130,9 @@ function unescape(text) {
 }
 
 // Each character of Zola's block with the classes over it, outermost
-// first, `|` between spans. Zola wraps each line in `z-source z-ron`,
+// first, `|` between spans. Zola wraps each line in `z-source z-<lang>`,
 // which colors nothing: it is left out.
-function zolaChars(html) {
+function zolaChars(html, lang) {
     const chars = [];
     const stack = [];
     const part = /<span class="([^"]*)">|<\/span>|([^<]+)/g;
@@ -118,7 +141,7 @@ function zolaChars(html) {
         if (m[1] !== undefined) {
             stack.push(m[1]);
         } else if (m[2] !== undefined) {
-            const over = stack.filter((c) => c !== "z-source z-ron").join("|");
+            const over = stack.filter((c) => c !== "z-source z-" + lang).join("|");
             for (const ch of unescape(m[2])) {
                 chars.push({ ch, over });
             }
@@ -129,9 +152,9 @@ function zolaChars(html) {
     return chars;
 }
 
-function ourChars(text) {
+function ourChars(text, lang) {
     const chars = [];
-    for (const run of ronPaint.tokenize(text)) {
+    for (const run of ronPaint.tokenize(text, lang)) {
         const over = run.scopes.map(ronPaint.classes).join("|");
         for (const ch of run.text) {
             chars.push({ ch, over });
@@ -142,9 +165,9 @@ function ourChars(text) {
 
 // The first difference between the two, or null. Newlines are left out:
 // they color nothing, and Zola closes its spans at each line's end.
-function compare(name, text, html) {
-    const theirs = zolaChars(html);
-    const ours = ourChars(text);
+function compare(name, text, html, lang) {
+    const theirs = zolaChars(html, lang);
+    const ours = ourChars(text, lang);
     const got = theirs.map((c) => c.ch).join("");
     if (got !== text) {
         return name + ": Zola's block doesn't hold the sample's text (" + JSON.stringify(got.slice(0, 80)) + ")";
@@ -169,13 +192,15 @@ function compare(name, text, html) {
 const failures = [];
 let checked = 0;
 
-const list = samples();
-const built = zola(list);
-if (built.length !== list.length) {
-    failures.push("Zola made " + built.length + " ron blocks of " + list.length + " samples");
-} else {
+for (const lang of Object.keys(LANGUAGES)) {
+    const list = samples(lang);
+    const built = zola(list, lang);
+    if (built.length !== list.length) {
+        failures.push("Zola made " + built.length + " " + lang + " blocks of " + list.length + " samples");
+        continue;
+    }
     list.forEach((s, i) => {
-        const problem = compare(s.name, s.text, built[i]);
+        const problem = compare(s.name, s.text, built[i], lang);
         if (problem !== null) {
             failures.push(problem);
         }
@@ -183,18 +208,28 @@ if (built.length !== list.length) {
     });
 }
 
-// A built site's `ron` blocks: each one's own text.
+// Every language the painter colors has its samples here.
+for (const lang of ronPaint.languages) {
+    if (!Object.hasOwn(LANGUAGES, lang)) {
+        failures.push("ron-paint.js colors " + lang + ", which this test has no samples of");
+    }
+}
+
+// A built site's `ron` and `dlg` blocks: each one's own text.
 const out = process.argv[2];
 if (out !== undefined) {
     for (const page of files(out, (name) => name.endsWith(".html"))) {
-        blocks(readFileSync(page, "utf8")).forEach((html, i) => {
-            const text = zolaChars(html).map((c) => c.ch).join("");
-            const problem = compare(relative(out, page) + " block " + (i + 1), text, html);
-            if (problem !== null) {
-                failures.push(problem);
-            }
-            checked += 1;
-        });
+        const html = readFileSync(page, "utf8");
+        for (const lang of Object.keys(LANGUAGES)) {
+            blocks(html, lang).forEach((block, i) => {
+                const text = zolaChars(block, lang).map((c) => c.ch).join("");
+                const problem = compare(relative(out, page) + " " + lang + " block " + (i + 1), text, block, lang);
+                if (problem !== null) {
+                    failures.push(problem);
+                }
+                checked += 1;
+            });
+        }
     }
 }
 
@@ -204,4 +239,4 @@ if (failures.length > 0) {
     }
     process.exit(1);
 }
-console.log("ron-paint: " + checked + " ron blocks colored as Zola colors them");
+console.log("ron-paint: " + checked + " blocks colored as Zola colors them");

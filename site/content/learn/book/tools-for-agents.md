@@ -215,16 +215,16 @@ limits:
 {% check() %}
 A command run with `--json` exits with code 3. What does that say?
 
+- [x] There is a setup to fix: the tools couldn't get as far as looking at the game. — Check that you are in the game's folder, then run `cargo shuyi doctor` ([when it goes wrong](#when-it-goes-wrong)).
 - [ ] It ran and found something wrong in the game. — That is exit code 1, and code 0 is `ok` ([the tool contract](#the-tool-contract)).
 - [ ] The command was written wrong. — A wrong command is exit code 2 ([the tool contract](#the-tool-contract)).
-- [x] There is a setup to fix: the tools couldn't get as far as looking at the game. — Check that you are in the game's folder, then run `cargo shuyi doctor` ([when it goes wrong](#when-it-goes-wrong)).
 {% end %}
 
 {% check() %}
 An agent's call gives an error. What should the agent branch on?
 
-- [x] The problem code, such as `SH1002`. — Every error has a stable code, and the code won't change ([problem codes](#problem-codes)).
 - [ ] The words of the message. — A message's words may improve over time, so a program that matches them would break ([problem codes](#problem-codes)).
+- [x] The problem code, such as `SH1002`. — Every error has a stable code, and the code won't change ([problem codes](#problem-codes)).
 - [ ] Whether `limits` is empty. — `limits` says what an answer couldn't determine, not what went wrong, and an `ok` answer can have them too ([the tool contract](#the-tool-contract)).
 {% end %}
 
@@ -232,6 +232,6 @@ An agent's call gives an error. What should the agent branch on?
 An agent changed the game's code, but the MCP session still plays the old game. What brings in the new code?
 
 - [ ] Calling `reset`. — `reset` starts the game again as `start` did, from the same build ([the MCP server](#the-mcp-server)).
-- [x] Calling `start` again. — `start` builds the game's tool program, and the session runs the game as it was at `start` ([when it goes wrong](#when-it-goes-wrong)).
 - [ ] Calling `step` with no keys, so that frames run. — `step` plays the game the session already has ([the MCP server](#the-mcp-server)).
+- [x] Calling `start` again. — `start` builds the game's tool program, and the session runs the game as it was at `start` ([when it goes wrong](#when-it-goes-wrong)).
 {% end %}

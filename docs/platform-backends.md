@@ -212,11 +212,17 @@ next. `frame.show` is one of:
   `raster::compare`, within a `Tolerance`.
 
 `frame.fullscreen` is the player's Fullscreen setting: a windowed backend
-switches when it changes; a device that is always full screen ignores it.
+switches when a game frame's changes, and a card's or the errors' frames
+leave the window as it is (they carry `Frame::new`'s windowed); a device
+that is always full screen ignores it. *The window and the cursor (desktop)*, below,
+says how a desktop window opens and leaves fullscreen.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
 `_` arm, since later tickets add to them (more than one screen, 3023).
+So are the input types a backend reads or builds (`RawInputEvent`,
+`Key`, `Button`, `PadKind`, `PadState`; ticket 2083): a backend's match
+on one has a `_` arm, and it builds a `PadState` with `PadState::new`.
 
 ### `poll_input(&mut self, out: &mut Vec<RawInputEvent>)`
 
@@ -225,13 +231,18 @@ Add the input since the last call, in the order it happened:
 - keys as `Down(Chord)` and `Up(Key)` (the engine's `Key` names, with
   Shift in the chord), and typed characters as `Text(char)` after the
   key's `Down`;
-- controller buttons by position: read every pad's state and give it to
-  `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`, which gives
-  releases then presses and holds the rules (sticks as directions, the
-  Switch-style swap, several pads as one);
+- controller buttons by position: read every pad's state, with the
+  platform's own number for the pad (`PadId`, stable while it is plugged
+  in; 0 on a device with one pad), as a `PadState::new(buttons,
+  left_stick, right_stick)`, and give it to
+  `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`. It holds the
+  rules (sticks as directions, the Switch-style swap) and gives each
+  pad's own events with its id: every pad's releases, then
+  `PadRemoved` for each pad left out, then every pad's presses. `Game`
+  merges them, so several pads drive the game as one;
 - a crank through `RawInputEvent::from_crank`, or, where the device gives
   a float, `from_crank_steps` with whole steps (256 to the turn) made at
-  the backend's boundary.
+  the backend's boundary, each with the pad the crank is on.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home
@@ -305,6 +316,10 @@ file and flushing it, keeping the old value as `<key>.ron.bak`, renaming
 the `.tmp` onto `<key>.ron` and flushing the folder; a read of a damaged
 `.ron` falls back to the `.bak`. Its doc comment says what that promises
 on each OS.
+
+The key `window` beside the game's own keys is the backend's, not the
+game's: a desktop keeps the window's record there (*The window
+and the cursor (desktop)*, below), so a game must not use it for its own data.
 
 ### `audio(&mut self) -> &mut dyn Audio`
 
@@ -513,6 +528,58 @@ folder was read with `read_watched_folder`, and in a build without debug
 tools its poller looks at those folders only. The headless backend answers
 what `HeadlessPlatform::set_watches_files` set. A device with no files to
 watch leaves the default, `false`.
+
+## The window and the cursor (desktop)
+
+A desktop window opens as the player left it on that computer. The
+backend, not the game, keeps a record of it, never in a profile: `shuyi-app`
+writes the key `window` in the folder of the game's storage (beside the
+computer's `profiles`), one RON value,
+`(version: 1, width: 1024, height: 768, fullscreen: false)`:
+
+- `width` and `height` are the last windowed size, never the fullscreen
+  one, in the units the window system opens a window at (device pixels
+  on Windows and Linux, points on macOS). A size under 320 × 200 (a
+  minimized window) is never recorded.
+- It is written once the windowed size and the mode have held for a
+  second and differ from what was last written, and again as the game
+  quits. A crash loses at most the last second's change.
+- At the next launch the window opens at the record's size, clamped to
+  320 × 200 and 16384 a side, and in its mode, with no windowed frame
+  before fullscreen: the backend starts in that mode, and the loading
+  card's and the errors' frames don't change it. Without a record it
+  opens at the game's `Window` size, windowed. A record that doesn't
+  parse, or of another version, is ignored with one warning.
+- Leaving fullscreen puts the window back at its windowed size and where
+  it was (on Windows; centred in the screen if it opened fullscreen).
+- The web keeps no record (the page sizes the canvas), and neither does a
+  capture run (ADR-0052).
+
+A new desktop backend (the winit one, 3034) keeps the same record under
+the same key, so a player's window survives the move.
+
+The system's cursor hides over the picture when the mouse isn't in use,
+as keyboard-and-pad games expect, with no code in the game (ticket 3314).
+`shuyi-app` keeps the rule in `IdleCursor` (`crates/app/src/window.rs`),
+fed after each frame with the clock, the mouse's position in whole pixels,
+whether a mouse button was pressed, the window's mode and its focus:
+
+- It starts shown, as the system's. It hides once the mouse has neither
+  moved nor clicked for 2 seconds, and at once when the window enters
+  fullscreen, or on the first frame of a fullscreen start.
+- A move or a press of any mouse button shows it again.
+- For 200 ms after the mode changes, a change of the mouse's position is
+  the window moving under it (Windows sends one as the window enters or
+  leaves fullscreen): it becomes the mouse's resting place and shows
+  nothing. Leaving fullscreen alone doesn't show the cursor.
+- It shows while the window lacks focus, so it is never hidden over
+  another program.
+- The backend tells the system only when the answer changes. Reading the
+  mouse for this is not input: nothing of it reaches the game.
+
+The web does the same, through the canvas's CSS `cursor`. A capture run
+never reaches it. Both times are *tunable* (`CURSOR_IDLE`, `MODE_SETTLE`).
+A new desktop backend (3034) keeps the same rule.
 
 ## Files handed in at run time (optional)
 

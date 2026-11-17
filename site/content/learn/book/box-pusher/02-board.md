@@ -138,7 +138,7 @@ switch to a different level editor later, and only the format changes.
 {% end %}
 
 {% newcomer(to="shuyi", topic="the bundle") %}
-The **bundle** is your game's files, the ones `include_dir!` put inside it.
+The **bundle** is your game's files, the ones `shuyi::files!` put inside it.
 {% end %}
 
 {% newcomer(to="rust", topic="`Result`") %}
@@ -483,15 +483,30 @@ A level's `features` has `Start` twice. In `Puzzle::new`, the arm
 `Feature::Start if player.is_some() => return Err("two starts".to_owned())` comes before
 `Feature::Start => player = Some(pos)`. What happens?
 
-- [x] The second start returns the error "two starts", which `read` reports with the level's file as the game loads. — `match` tries each arm from the top, and the guarded arm takes a start once there is a player ([what can change](#what-can-change-rules-rs)).
 - [ ] The second start replaces the first, and the player begins there. — The guarded arm comes first, so the second start never reaches `player = Some(pos)` ([what can change](#what-can-change-rules-rs)).
+- [x] The second start returns the error "two starts", which `read` reports with the level's file as the game loads. — `match` tries each arm from the top, and the guarded arm takes a start once there is a player ([what can change](#what-can-change-rules-rs)).
 - [ ] The game panics when the player reaches that level. — `read` checks each level when the game loads, so you hear of it straight away ([reading it](#reading-it-level-rs)).
 {% end %}
 
 {% check() %}
 The rules keep the boxes in a `BTreeSet<Pos>`, not a `HashSet<Pos>`. Why?
 
-- [x] A `BTreeSet` keeps its items in the same order on every run, and the rules must do the same thing every time. — A `HashSet`'s order differs from one run to the next ([what can change](#what-can-change-rules-rs)).
 - [ ] A `HashSet` may hold the same position twice. — Both are sets, with no duplicates; the difference is the order ([what can change](#what-can-change-rules-rs)).
 - [ ] A `HashSet` can't be saved by serde. — The reason given is the order, which must be the same on every computer ([what can change](#what-can-change-rules-rs)).
+- [x] A `BTreeSet` keeps its items in the same order on every run, and the rules must do the same thing every time. — A `HashSet`'s order differs from one run to the next ([what can change](#what-can-change-rules-rs)).
+{% end %}
+
+{% exercise(check="second-box", file="levels/1.map") %}
+Add a second box to level 1, and a target for it to go on.
+
+Hint: A box is a feature, like the one there: `(3, 2): Box`. Add another, on a floor tile,
+then turn one more `.` into an `o`. Every box needs a target, so the game refuses a level
+with more boxes than targets, and says so under **Problems**.
+{% end %}
+
+{% exercise(check="blue-walls", file="palette.ron") %}
+Make the walls blue: both of their colors, `wall_fg` and `wall_bg`.
+
+Hint: A color is `#` and three pairs of digits, for red, green and blue, each from `00` to
+`ff`. Blue is a last pair well above the first two, like `#2040c0`.
 {% end %}

@@ -296,8 +296,8 @@ play on, as on a full disk.
 {% check() %}
 Why does a game save through `ctx.storage` and never open a file itself?
 
-- [ ] Writing a file is slower than writing to storage. — Speed isn't the reason. Not every target has files a game can write ([storage](#storage)).
 - [x] The platform hands it storage that fits the target, so the same code saves everywhere and a test needs no disk. — Files on desktop, `localStorage` on the web, a console's own saves and memory in tests, all behind one trait ([storage](#storage)).
+- [ ] Writing a file is slower than writing to storage. — Speed isn't the reason. Not every target has files a game can write ([storage](#storage)).
 - [ ] Storage keeps one save for every player who shares the computer. — `ctx.storage` is the storage of the profile in use, so each player keeps their own ([profiles](#profiles)).
 {% end %}
 
@@ -313,7 +313,7 @@ with a player's old save?
 {% check() %}
 What is the difference between `ctx.change_settings` and `ctx.preview_settings`?
 
-- [x] `change_settings` changes the settings and saves them in the profile, and `preview_settings` changes them without saving. — An options screen previews a change before the player keeps it ([settings](#settings)).
 - [ ] `preview_settings` only reads the settings, and `change_settings` writes them. — `ctx.settings()` reads them. `preview_settings` changes them too, but doesn't save ([settings](#settings)).
 - [ ] `change_settings` saves for every profile, and `preview_settings` for the one in use. — Settings are kept in the profile in use, and only `change_settings` saves them ([settings](#settings)).
+- [x] `change_settings` changes the settings and saves them in the profile, and `preview_settings` changes them without saving. — An options screen previews a change before the player keeps it ([settings](#settings)).
 {% end %}

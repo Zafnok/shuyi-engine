@@ -70,12 +70,12 @@ None. Our game doesn't use these unless a later ticket says so.
     without a pointer. The primary button comes from 2405's
     `PointerDown` and `PointerUp`, the others from the reader above.
 - **The OS cursor follows the pointer bindings.**
-  **Either order with 3044:** if 3044 is done, while the top screen
-  declares an action bound to a mouse button, `shuyi-app` sets
-  `keep_shown` on 3044's `IdleCursor` (`crates/app/src/window.rs`), so
-  the cursor stays shown, and otherwise 3044's rule hides it after 2 s
-  still and in fullscreen; if not, nothing to do (nothing hides the
-  cursor yet, and 3044 sets `keep_shown` from these bindings).
+  **From 3314 (done):** while the top screen declares an action bound
+  to a mouse button, `shuyi-app` sets `keep_shown` on 3314's
+  `CursorSeen` (`crates/app/src/window.rs`; `Macroquad::after_frame`
+  passes `false` today), with a test, so the cursor stays shown, and
+  otherwise 3314's `IdleCursor` hides it after 2 s still and in
+  fullscreen.
 - `TickInput` carries axes as `i16`, and the pointer in world pixels
   with the index of the layer it was mapped through (or none), so
   records replay exactly (1119). Each step takes the latest values:

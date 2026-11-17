@@ -226,13 +226,12 @@ fn a_moment_is_its_shot_how_far_into_it_and_the_wrapped_time() {
 #[test]
 fn the_timeline_of_a_cinematic_is_its_shots_starts_and_its_length() {
     use shuyi_assets::cinematic::ShotDef;
-    let shot = |at_ms| ShotDef { at_ms, shot: () };
-    let def = CinematicDef {
-        id: "t".to_owned(),
-        music: None,
-        length_ms: 20_000,
-        shots: vec![shot(0), shot(6000), shot(10_000)],
-    };
+    let shot = |at_ms| ShotDef::new(at_ms, ());
+    let def = CinematicDef::new(
+        "t".to_owned(),
+        20_000,
+        vec![shot(0), shot(6000), shot(10_000)],
+    );
     assert_eq!(
         Timeline::of(&def),
         Timeline::new(vec![0, 6000, 10_000], 20_000)
@@ -271,6 +270,40 @@ fn a_pan_eases_from_its_start_to_its_end() {
     // No screen: no window to fill.
     let none = pan.origin_px(console, (400, 100), Rect::new(0, 0, -3, 0), 0.0);
     assert!(near(none, (100.0, 40.0)));
+}
+
+/// A pan's centre as it was worked out by hand before ticket 2136: by
+/// `ease_in_out`, in `f32`.
+fn centre_before(pan: &Pan, progress: f32) -> (f32, f32) {
+    let eased = ease_in_out(progress);
+    let (from, to) = (pan.from, pan.to);
+    (
+        from.0 + (to.0 - from.0) * eased,
+        from.1 + (to.1 - from.1) * eased,
+    )
+}
+
+#[test]
+fn a_pan_stays_near_the_curve_it_replaced_and_starts_at_from_for_no_number() {
+    let pan = Pan {
+        from: (100.0, 40.0),
+        to: (1300.0, -500.0),
+        zoom: 1,
+    };
+    // 3/65536 of the distance, and the `f32` rounding of a centre that
+    // big.
+    let bound = |from: f32, to: f32| (to - from).abs() * 3.0 / 65_536.0 + 1e-4;
+    for k in 0..=1000_u16 {
+        let p = f32::from(k) / 1000.0;
+        let (now, before) = (pan.centre(p), centre_before(&pan, p));
+        assert!((now.0 - before.0).abs() <= bound(100.0, 1300.0), "{p}");
+        assert!((now.1 - before.1).abs() <= bound(40.0, -500.0), "{p}");
+    }
+    assert_eq!(pan.centre(0.0), pan.from);
+    assert_eq!(pan.centre(1.0), pan.to);
+    for p in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        assert_eq!(pan.centre(p), pan.from, "{p}");
+    }
 }
 
 #[test]

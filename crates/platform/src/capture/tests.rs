@@ -142,8 +142,8 @@ fn an_action_is_pressed_by_the_keymaps_key_or_button() {
         [
             with(vec![RawInputEvent::Down(chord("f"))]),
             with(vec![RawInputEvent::Up(Key::F)]),
-            with(vec![RawInputEvent::PadDown(Button::East, kind)]),
-            with(vec![RawInputEvent::PadUp(Button::East)]),
+            with(vec![RawInputEvent::PadDown(Button::East, kind, 0)]),
+            with(vec![RawInputEvent::PadUp(Button::East, 0)]),
         ]
     );
     // An action the keymap can't press is refused when the frames are
@@ -239,15 +239,15 @@ fn keys_and_buttons_go_down_in_one_frame_and_up_in_the_next() {
         frames(r#"pad("South+East DpadUp")"#),
         [
             with(vec![
-                RawInputEvent::PadDown(south, kind),
-                RawInputEvent::PadDown(east, kind),
+                RawInputEvent::PadDown(south, kind, 0),
+                RawInputEvent::PadDown(east, kind, 0),
             ]),
             with(vec![
-                RawInputEvent::PadUp(south),
-                RawInputEvent::PadUp(east)
+                RawInputEvent::PadUp(south, 0),
+                RawInputEvent::PadUp(east, 0)
             ]),
-            with(vec![RawInputEvent::PadDown(button("DpadUp"), kind)]),
-            with(vec![RawInputEvent::PadUp(button("DpadUp"))]),
+            with(vec![RawInputEvent::PadDown(button("DpadUp"), kind, 0)]),
+            with(vec![RawInputEvent::PadUp(button("DpadUp"), 0)]),
         ]
     );
 }

@@ -178,15 +178,23 @@ refuse the step?
 {% check() %}
 How does the game know the level is won?
 
-- [x] `outcome` asks the state each time: `(self.boxes == self.targets()).then_some(Won)`. — The outcome is a question about the state, so no command has to remember to say "you won" ([winning](#winning)).
 - [ ] `apply` sets a flag when it pushes the last box onto a target. — No command records the win; `outcome` works it out from the boxes and the targets ([winning](#winning)).
+- [x] `outcome` asks the state each time: `(self.boxes == self.targets()).then_some(Won)`. — The outcome is a question about the state, so no command has to remember to say "you won" ([winning](#winning)).
 - [ ] The board sees every box drawn in the `box_home` color. — The screen only draws the state; the rules' `outcome` decides ([winning](#winning)).
 {% end %}
 
 {% check() %}
 The level is won, and the player presses Right. What happens?
 
-- [x] `check` refuses with `Refusal::Over`, so nothing moves. — The start of `check` refuses every move once the level is won ([winning](#winning)).
 - [ ] The player walks, but the boxes can no longer be pushed. — The refusal comes before any step or push is looked at ([winning](#winning)).
 - [ ] The player walks as usual, since only the help line changes after a win. — The board's help line changes, but the rules also refuse every move with `Refusal::Over` ([winning](#winning)).
+- [x] `check` refuses with `Refusal::Over`, so nothing moves. — The start of `check` refuses every move once the level is won ([winning](#winning)).
+{% end %}
+
+{% exercise(check="eight-moves", file="levels/1.map") %}
+Make level 1 take at least 8 moves to win. The game tries every way of playing it through
+your rules, and counts the moves of the shortest win.
+
+Hint: Put the target where the box can only reach it the long way round: in a corner, with a
+wall beside it. A box can only be pushed, never pulled, so check the box can still get there.
 {% end %}

@@ -284,7 +284,15 @@ Two of the maps on the list are broken. What does `read_all` do?
 The board pops with `LevelWon(1)`, and the menu's `uncovered` runs
 `self.focus = (level + 1).min(last);`. What does the player see?
 
-- [x] The menu, with the focus on the third item, ready for Enter to start it. — The focus moves on to the next level, and `.min(last)` keeps it on the list ([a result](#a-result)).
 - [ ] The board of the next level, pushed by the menu at once. — `uncovered` only moves the focus. Enter, chosen in `update`, pushes a board ([a result](#a-result)).
 - [ ] The menu with its focus where it was, as the menu can't know which board was won. — The two screens agree on the type `LevelWon`, which carries the level ([a result](#a-result)).
+- [x] The menu, with the focus on the third item, ready for Enter to start it. — The focus moves on to the next level, and `.min(last)` keeps it on the list ([a result](#a-result)).
+{% end %}
+
+{% exercise(check="three-boxes", file="levels/2.map") %}
+Give level 2 a third box and a third target, and keep it a level that can be won. The game
+tries every way of playing it to check.
+
+Hint: A box needs room around it: one against a wall can only slide along it, and one in a
+corner can't move at all. Put the third box in a row of its own, with a target to its right.
 {% end %}

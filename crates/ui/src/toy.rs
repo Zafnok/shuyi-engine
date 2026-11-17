@@ -385,6 +385,32 @@ const ENGLISH: [(&str, &str); 20] = [
 /// screen, the layout picker, the options, the dialogue box).
 const SCREENS_ENGLISH: &str = include_str!("toy/en.ron");
 
+/// Every key of the toy's English text.
+#[cfg(test)]
+pub(crate) fn english_keys() -> Vec<String> {
+    let screens: BTreeMap<String, String> =
+        ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
+    let toy = ENGLISH.iter().map(|&(key, _)| key.to_owned());
+    screens.into_keys().chain(toy).collect()
+}
+
+/// `ctx`'s palette with `key` (`#ffc800`) and `key_bg` (`#28003c`), at
+/// colours no other name has: a key's name stands out in it.
+#[cfg(test)]
+pub(crate) fn key_palette(ctx: &ToyCtx) -> crate::frame::color::Palette {
+    use crate::frame::color::{KEY, KEY_BG, Palette};
+    let mut def = ctx.game.palette_def().clone();
+    def.colors.insert(KEY.to_owned(), [255, 200, 0]);
+    def.colors.insert(KEY_BG.to_owned(), [40, 0, 60]);
+    let palette = Palette::new::<EngineColor>(&def).unwrap();
+    assert!(
+        EngineColor::ALL
+            .iter()
+            .all(|&e| palette.engine(e) == ctx.palette.engine(e))
+    );
+    palette
+}
+
 /// The debug language's text: two keys of today's English, one of
 /// yesterday's.
 const DEBUG_UI: &str = r#"[
@@ -421,14 +447,7 @@ const CARD_SIZE: ImageInfo = ImageInfo::new(16, 16);
 
 /// A track of `cue`, looped, 10 s long.
 fn track(cue: &str) -> MusicCue {
-    MusicCue {
-        file: format!("{cue}.ogg"),
-        volume: 100,
-        looped: true,
-        length_ms: 10_000,
-        credit: CreditRef::Own,
-        group: None,
-    }
+    MusicCue::new(format!("{cue}.ogg"), 100, 10_000, CreditRef::Own)
 }
 
 /// The toy's game data and state.
@@ -479,15 +498,27 @@ impl Toy {
         }
     }
 
+    /// The toy game with the languages `lang` makes of its English text.
+    #[cfg(test)]
+    pub(crate) fn with_lang(self, lang: impl FnOnce(BTreeMap<String, String>) -> Lang) -> Self {
+        let mut english: BTreeMap<String, String> =
+            ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
+        english.extend(ENGLISH.iter().map(|&(k, v)| (k.to_owned(), v.to_owned())));
+        Self {
+            lang: lang(english),
+            ..self
+        }
+    }
+
     /// The toy game, its debug language's `lang.ron` written `info`.
     pub(crate) fn with_debug_info(info: &str) -> Self {
         let mut english: BTreeMap<String, String> =
             ron::from_str(SCREENS_ENGLISH).unwrap_or_else(|e| panic!("toy/en.ron: {e}"));
         english.extend(ENGLISH.iter().map(|&(k, v)| (k.to_owned(), v.to_owned())));
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &NoTokens,
-            limits: DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &NoTokens,
+            DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -496,9 +527,8 @@ impl Toy {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &shuyi_assets::font::CellWidths::NARROW,
-            variants: &[],
-        };
+            &shuyi_assets::font::CellWidths::NARROW,
+        );
         let pack = pack_from_sources(
             ("dbg/lang.ron", info),
             ("dbg/ui.ron", DEBUG_UI),
@@ -864,7 +894,7 @@ impl Talk {
     /// What its text box shows.
     pub fn view(&self, ctx: &ToyCtx) -> TextView {
         let waiting = self.text.is_revealed().then(|| WaitView {
-            key: ctx.text_with("talk.next", &[]),
+            key: ctx.text_styled("talk.next", &[]),
             log_hint: None,
             marker: self.text.marker_lit(),
         });
@@ -1118,5 +1148,25 @@ impl Screen<Toy> for Gallery {
         let panel = ctx.palette.engine(EngineColor::Panel);
         let last = i32::from(buf.height()) - 1;
         buf.print(0, last, &ctx.text_with("gallery.help", &[]), text, panel);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `toy/en.ron` is read as a plain map, not through
+    /// `english_from_source`, so its texts are checked as messages here
+    /// (ADR-0127).
+    #[test]
+    fn every_english_text_is_a_message() {
+        let screens: BTreeMap<String, String> = ron::from_str(SCREENS_ENGLISH).unwrap();
+        let toy = ENGLISH
+            .iter()
+            .map(|&(key, text)| (key.to_owned(), text.to_owned()));
+        for (key, text) in screens.into_iter().chain(toy) {
+            let parsed = shuyi_assets::message::Message::parse(&text);
+            assert!(parsed.is_ok(), "{key}: {parsed:?}");
+        }
     }
 }

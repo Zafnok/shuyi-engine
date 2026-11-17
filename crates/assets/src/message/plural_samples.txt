@@ -1,0 +1,57 @@
+# CLDR 49's integer samples (release-49, common/supplemental/plurals.xml
+# and ordinals.xml), for each language of shuyi_assets::message::plural:
+# <tag> <kind> <category>: <samples>, where a~b is every number from a to b.
+# Compact samples (1c6) and decimals are left out. Unicode's data, under
+# Unicode-3.0 (CLDR-LICENSE.txt).
+
+de cardinal one: 1
+de cardinal other: 0, 2~16, 100, 1000, 10000, 100000, 1000000
+en cardinal one: 1
+en cardinal other: 0, 2~16, 100, 1000, 10000, 100000, 1000000
+es cardinal one: 1
+es cardinal many: 1000000
+es cardinal other: 0, 2~16, 100, 1000, 10000, 100000
+fr cardinal one: 0, 1
+fr cardinal many: 1000000
+fr cardinal other: 2~17, 100, 1000, 10000, 100000
+it cardinal one: 1
+it cardinal many: 1000000
+it cardinal other: 0, 2~16, 100, 1000, 10000, 100000
+ja cardinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+ko cardinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+pl cardinal one: 1
+pl cardinal few: 2~4, 22~24, 32~34, 42~44, 52~54, 62, 102, 1002
+pl cardinal many: 0, 5~19, 100, 1000, 10000, 100000, 1000000
+pt cardinal one: 0, 1
+pt cardinal many: 1000000
+pt cardinal other: 2~17, 100, 1000, 10000, 100000
+pt-PT cardinal one: 1
+pt-PT cardinal many: 1000000
+pt-PT cardinal other: 0, 2~16, 100, 1000, 10000, 100000
+ru cardinal one: 1, 21, 31, 41, 51, 61, 71, 81, 101, 1001
+ru cardinal few: 2~4, 22~24, 32~34, 42~44, 52~54, 62, 102, 1002
+ru cardinal many: 0, 5~19, 100, 1000, 10000, 100000, 1000000
+uk cardinal one: 1, 21, 31, 41, 51, 61, 71, 81, 101, 1001
+uk cardinal few: 2~4, 22~24, 32~34, 42~44, 52~54, 62, 102, 1002
+uk cardinal many: 0, 5~19, 100, 1000, 10000, 100000, 1000000
+zh cardinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+de ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+en ordinal one: 1, 21, 31, 41, 51, 61, 71, 81, 101, 1001
+en ordinal two: 2, 22, 32, 42, 52, 62, 72, 82, 102, 1002
+en ordinal few: 3, 23, 33, 43, 53, 63, 73, 83, 103, 1003
+en ordinal other: 0, 4~18, 100, 1000, 10000, 100000, 1000000
+es ordinal one: 1, 3, 13, 21, 23, 31, 33, 41, 101, 1001
+es ordinal other: 0, 2, 4~12, 14~18, 100, 1000, 10000, 100000, 1000000
+fr ordinal one: 1
+fr ordinal other: 0, 2~16, 100, 1000, 10000, 100000, 1000000
+it ordinal many: 8, 11, 80, 800
+it ordinal other: 0~7, 9, 10, 12~17, 100, 1000, 10000, 100000, 1000000
+ja ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+ko ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+pl ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+pt ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+pt-PT ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+ru ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000
+uk ordinal few: 3, 23, 33, 43, 53, 63, 73, 83, 103, 1003
+uk ordinal other: 0~2, 4~16, 100, 1000, 10000, 100000, 1000000
+zh ordinal other: 0~15, 100, 1000, 10000, 100000, 1000000

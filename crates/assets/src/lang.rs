@@ -38,6 +38,7 @@ use crate::prelude::*;
 mod formats;
 mod lines;
 mod matching;
+mod messages;
 mod places;
 mod source;
 mod tag;
@@ -54,9 +55,9 @@ use crate::error::{ContentError, codes};
 use crate::font::CellWidths;
 use crate::format::AssetKind;
 use crate::import_settings::is_settings_file;
+use crate::message::plural::Category;
 use crate::names::Names;
 use crate::ron::{parse_ron, parse_ron_implicit_some};
-use crate::tip::placeholders;
 use places::UiValue;
 
 pub use formats::LangPackRon;
@@ -169,9 +170,11 @@ pub enum MadeBy {
     Human(String),
 }
 
-/// A pack's `lang.ron`.
+/// A pack's `lang.ron`: data read from a file (ADR-0039 kind 5). A field
+/// added later is `#[serde(default)]`, so every `lang.ron` still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct LangInfo {
     /// The language's own name for itself.
     pub name: String,
@@ -192,6 +195,18 @@ pub struct LangInfo {
 }
 
 impl LangInfo {
+    /// The language `name`, its text made by `made_by`, with no wide set
+    /// of its own and narrow punctuation. Assign the other fields.
+    #[must_use]
+    pub fn new(name: impl Into<String>, made_by: MadeBy) -> Self {
+        Self {
+            name: name.into(),
+            made_by,
+            wide_font: None,
+            wide_punctuation: false,
+        }
+    }
+
     /// The width table of this language over `base`, the atlas's
     /// ([`CellWidths::of`]): its wide set and its punctuation's width
     /// ([`CellWidths::in_lang`]).
@@ -235,7 +250,11 @@ impl LangPack {
 
 /// What a pack lacks ([`Lang::status`]): each list has the screen text's
 /// keys, then the data's, then the dialogue's, each in key order.
+///
+/// A view built only by [`Lang::status`] (ADR-0039, kind 3): read its
+/// fields.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct LangStatus {
     /// Keys the pack has no entry for.
     pub missing: Vec<String>,
@@ -244,6 +263,26 @@ pub struct LangStatus {
     /// Dialogue entries whose line the source no longer has (it was
     /// reworded or cut), each with the line it most likely became.
     pub orphans: Vec<Orphan>,
+    /// Screen-text and data entries whose plural or selectordinal has no
+    /// branch for a category the pack's language has: a number of that
+    /// category shows the `other` branch. CLDR's cardinal `many` of
+    /// French, Spanish, Italian and Portuguese, which only numbers of a
+    /// million or more pick, isn't asked for (ADR-0127 §8).
+    pub missing_forms: Vec<MissingForms>,
+}
+
+/// A pack entry whose plurals lack categories its language has
+/// ([`LangStatus::missing_forms`]).
+///
+/// A view built only by [`Lang::status`] (ADR-0039, kind 3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MissingForms {
+    /// The entry's key.
+    pub key: String,
+    /// The categories that one of its plurals or more has no branch for,
+    /// in CLDR's order.
+    pub lacks: Vec<Category>,
 }
 
 /// A game's English screen text by key, as one file (`en.ron`) holds it:
@@ -391,12 +430,24 @@ impl Lang {
     /// [`chain`](Self::chain) made from today's source text, else the
     /// source's. A key the source lacks comes back as it is.
     pub fn text<'a>(&'a self, code: &LangCode, key: &'a str) -> &'a str {
+        self.text_in(code, key).0
+    }
+
+    /// [`text`](Self::text), with the tag of the language it is in: the
+    /// pack's that gave it, else the source's. A message
+    /// ([`Message`](crate::message::Message)) picks its plurals by that
+    /// language's rules, not the player's (ADR-0127).
+    pub fn text_in<'a>(&'a self, code: &LangCode, key: &'a str) -> (&'a str, &'a str) {
+        let source_code = self.written_in.code.as_str();
         let Some(source) = self.ui.get(key) else {
-            return key;
+            return (key, source_code);
         };
         self.packs_along(code)
-            .find_map(|(_, pack)| pack.ui.get(key).filter(|entry| entry.source == *source))
-            .map_or(source, |entry| &entry.text)
+            .find_map(|(code, pack)| {
+                let entry = pack.ui.get(key).filter(|entry| entry.source == *source)?;
+                Some((entry.text.as_str(), code.as_str()))
+            })
+            .unwrap_or((source, source_code))
     }
 
     /// What `code`'s pack lacks, itself, without its chain. The source
@@ -422,6 +473,13 @@ impl Lang {
             check(key, &line.text, pack.lines.get(key).map(|e| &e.source));
         }
         status.orphans = pack.orphans(&self.source);
+        for (key, entry) in pack.ui.iter().chain(&pack.data) {
+            let lacks = messages::lacks(&entry.text, code);
+            if !lacks.is_empty() {
+                let key = key.clone();
+                status.missing_forms.push(MissingForms { key, lacks });
+            }
+        }
         Some(status)
     }
 }
@@ -501,6 +559,9 @@ pub fn english_and_places_from_source(
         if place.note.as_ref().is_some_and(|n| n.trim().is_empty()) {
             errors.push(at("a note must not be empty"));
         }
+        for problem in messages::source_problems(&text) {
+            errors.push(at(&problem));
+        }
         if place != Place::default() {
             places.insert(key.clone(), place);
         }
@@ -515,8 +576,10 @@ pub fn english_and_places_from_source(
 
 /// What a game's packs keep to besides matching English: the rules of its
 /// data text, its tokens, its dialogue's limits and the variants a line
-/// may have.
+/// may have. Config a game fills in (ADR-0039 kind 2): build it with
+/// [`PackRules::new`], in a `const` item if it likes.
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub struct PackRules<'a> {
     /// What is wrong with a pack's text `text` for the data key `key`, if
     /// anything (a tip over its box, say): the game's rules for the data
@@ -534,6 +597,34 @@ pub struct PackRules<'a> {
     /// `text` (`text_<variant>` fields, every one of them): one per hero
     /// a line can be said of, say. Empty for none.
     pub variants: &'a [&'a str],
+}
+
+impl<'a> PackRules<'a> {
+    /// The game's `data_problem`, its `tokens`, its dialogue's `limits`
+    /// counted in `widths`, with no variants.
+    #[must_use]
+    pub const fn new(
+        data_problem: fn(key: &str, text: &str) -> Option<String>,
+        tokens: &'a dyn Tokens,
+        limits: DialogueLimits,
+        widths: &'a CellWidths,
+    ) -> Self {
+        Self {
+            data_problem,
+            tokens,
+            limits,
+            widths,
+            variants: &[],
+        }
+    }
+
+    /// These rules, with `variants` the names of the variants a dialogue
+    /// entry may have.
+    #[must_use]
+    pub const fn with_variants(mut self, variants: &'a [&'a str]) -> Self {
+        self.variants = variants;
+        self
+    }
 }
 
 impl fmt::Debug for PackRules<'_> {
@@ -585,13 +676,16 @@ pub struct PackSources<'a> {
 /// `errors`. `no_key` is what an entry English has no key for is told.
 ///
 /// An entry's key must be one of English's and be there once. Its text
-/// must have the same placeholders as its `source`: the English it was
-/// made from, not today's, so that changing English can make an entry
-/// stale but never an error. And it keeps to the rules of data text.
+/// and its `source` are messages, the text with the same placeholders as
+/// its `source` (the English it was made from, not today's, so that
+/// changing English can make an entry stale but never an error), its
+/// source's select branches, and the plural categories of the pack's
+/// language `code`, when it is known ([`messages::entry_problems`]). And
+/// it keeps to the rules of data text.
 fn entries(
     (file, source): Source<'_>,
     english: &BTreeMap<String, String>,
-    no_key: &str,
+    (no_key, code): (&str, Option<&LangCode>),
     data_problem: fn(&str, &str) -> Option<String>,
     errors: &mut Vec<ContentError>,
 ) -> BTreeMap<String, Entry> {
@@ -607,11 +701,8 @@ fn entries(
         if by_key.contains_key(&entry.key) {
             errors.push(at("the key is used twice").with_code(codes::DUPLICATE));
         }
-        let names = |text| placeholders(text).into_iter().collect::<BTreeSet<_>>();
-        if names(&entry.text) != names(&entry.source) {
-            errors.push(at(
-                "the text and its source must have the same placeholders",
-            ));
+        for problem in messages::entry_problems(&entry.text, &entry.source, code) {
+            errors.push(at(&problem));
         }
         if let Some(problem) = data_text_problem(&entry.key, &entry.text, data_problem) {
             errors.push(at(&problem));
@@ -656,12 +747,14 @@ pub fn pack_from_files(
     data: Option<&SourceText>,
     rules: &PackRules<'_>,
 ) -> Result<LangPack, Vec<ContentError>> {
-    pack_from_files_in(&LangCode::default(), sources, english, data, rules)
+    pack_from_files_in((&LangCode::default(), None), sources, english, data, rules)
 }
 
-/// [`pack_from_files`], its messages naming the source by its tag `source`.
+/// [`pack_from_files`], its messages naming the source by its tag `source`,
+/// and its plurals checked against the categories of its own language
+/// `code`, when it is known.
 fn pack_from_files_in(
-    source: &LangCode,
+    (source, code): (&LangCode, Option<&LangCode>),
     sources: &PackSources<'_>,
     english: &BTreeMap<String, String>,
     data: Option<&SourceText>,
@@ -695,13 +788,13 @@ fn pack_from_files_in(
     };
     let problem = rules.data_problem;
     let no_key = format!("no such key in the source language ({source})");
-    let ui = entries(sources.ui, english, &no_key, problem, &mut errors);
+    let ui = entries(sources.ui, english, (&no_key, code), problem, &mut errors);
     let mut pack_data = BTreeMap::new();
     let mut pack_lines = BTreeMap::new();
     if let Some(data) = data {
         if let Some(file) = sources.data {
             let no_key = "no such key in the data";
-            pack_data = entries(file, &data.data, no_key, problem, &mut errors);
+            pack_data = entries(file, &data.data, (no_key, code), problem, &mut errors);
         }
         // The pack's names: what a name token in its lines is filled from.
         let name = |(id, english): (&String, &String)| {
@@ -860,7 +953,8 @@ pub fn from_files_in(
             data: data_source.map(|source| (data_name.as_str(), source)),
             dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), *s)).collect(),
         };
-        match pack_from_files_in(&source.code, &sources, english, data.as_ref(), rules) {
+        let codes = (&source.code, Some(&code));
+        match pack_from_files_in(codes, &sources, english, data.as_ref(), rules) {
             Ok(pack) => {
                 packs.insert(code, pack);
             }
@@ -920,13 +1014,12 @@ mod tests {
     const INFO: &str = r#"(name: "Test", made_by: Machine)"#;
 
     /// No data text rules of a game's, no tokens, no variants.
-    const RULES: PackRules<'static> = PackRules {
-        data_problem: |_, _| None,
-        tokens: &crate::dialogue::NoTokens,
-        limits: crate::dialogue::tests::LIMITS,
-        widths: &CellWidths::NARROW,
-        variants: &[],
-    };
+    const RULES: PackRules<'static> = PackRules::new(
+        |_, _| None,
+        &crate::dialogue::NoTokens,
+        crate::dialogue::tests::LIMITS,
+        &CellWidths::NARROW,
+    );
 
     fn english() -> BTreeMap<String, String> {
         english_from_source("en/ui.ron", ENGLISH_SOURCE).unwrap()
@@ -1297,6 +1390,93 @@ mod tests {
     }
 
     #[test]
+    fn a_text_that_is_no_message_or_drops_a_branch_fails_naming_file_and_key() {
+        let english = r#"{
+            "a.keys": "{n, plural, one {# key} other {# keys}}",
+            "a.turn": "{device, select, playdate {Crank} other {Turn}}",
+            "a.bad": "at most {n profiles",
+        }"#;
+        assert_eq!(
+            files(&[("en/ui.ron", english)]).unwrap_err(),
+            [
+                "lang/en/ui.ron: \"a.bad\": the text isn't a message: at character 11: expected \
+              `}` or `,` after the argument's name"
+            ]
+        );
+        let english = english.replace("at most {n profiles", "at most {n} profiles");
+        let fr = r#"[
+            (key: "a.keys", source: "{n, plural, one {# key} other {# keys}}",
+             text: "{n, plural, one {# clé} few {# clés} other {# clés}}"),
+            (key: "a.turn", source: "{device, select, playdate {Crank} other {Turn}}",
+             text: "{device, select, playdat {Manivelle} other {Tourne}}"),
+        ]"#;
+        let ru = r#"[
+            (key: "a.turn", source: "{device, select, playdate {Crank} other {Turn}}",
+             text: "{device, select, other {Крути}}"),
+            (key: "a.keys", source: "{n, plural, one {# key} other {# keys}}",
+             text: "{n, plural, one {# ключ} few {# ключа} other {# ключей}}"),
+        ]"#;
+        assert_eq!(
+            files(&[
+                ("en/ui.ron", &english),
+                ("fr/lang.ron", INFO),
+                ("fr/ui.ron", fr),
+                ("ru/lang.ron", INFO),
+                ("ru/ui.ron", ru),
+            ])
+            .unwrap_err(),
+            [
+                "lang/fr/ui.ron: \"a.keys\": fr has no plural category \"few\": its categories \
+                 are one, many, other",
+                "lang/fr/ui.ron: \"a.turn\": a select on {device} has \"playdat\", which no \
+                 device is: the devices are keyboard, xbox, playstation, playstation4, \
+                 nintendo, playdate, generic",
+                "lang/ru/ui.ron: \"a.turn\": its source's select on {device} has a branch \
+                 \"playdate\", which the text drops",
+            ]
+        );
+    }
+
+    /// A pack may wrap its source's `{n}` in a plural or drop its source's
+    /// plural, and loads; a plural lacking a form its language has is
+    /// listed, not refused, but French's `many` of a million isn't asked.
+    #[test]
+    fn a_plural_wrapped_or_dropped_loads_and_its_missing_forms_are_listed() {
+        let english = r#"{
+            "a.keys": "{n} keys",
+            "a.left": "{n, plural, one {# key left} other {# keys left}}",
+        }"#;
+        let ru = r#"[
+            (key: "a.keys", source: "{n} keys",
+             text: "{n, plural, one {# ключ} many {# ключей} other {# ключа}}"),
+            (key: "a.left", source: "{n, plural, one {# key left} other {# keys left}}",
+             text: "Осталось ключей: {n}"),
+        ]"#;
+        let fr = r#"[
+            (key: "a.keys", source: "{n} keys", text: "{n, plural, one {# clé} other {# clés}}"),
+        ]"#;
+        let lang = files(&[
+            ("en/ui.ron", english),
+            ("ru/lang.ron", INFO),
+            ("ru/ui.ron", ru),
+            ("fr/lang.ron", INFO),
+            ("fr/ui.ron", fr),
+        ])
+        .unwrap();
+        let ru = lang.status(&LangCode::new("ru").unwrap()).unwrap();
+        assert_eq!(
+            ru.missing_forms,
+            [MissingForms {
+                key: "a.keys".to_owned(),
+                lacks: vec![Category::Few],
+            }]
+        );
+        let fr = lang.status(&LangCode::new("fr").unwrap()).unwrap();
+        assert_eq!(fr.missing_forms, []);
+        assert_eq!(fr.missing, ["a.left"]);
+    }
+
+    #[test]
     fn with_english_broken_the_packs_are_not_checked() {
         let errors = files(&[
             ("en/ui.ron", r#"{"Bad Key": "x"}"#),
@@ -1318,5 +1498,50 @@ mod tests {
         let wide = &CellWidths::wide(['あ', 'い']);
         assert_eq!(text_width("あA", wide), 3);
         assert_eq!(text_width("あいう", wide), 5);
+    }
+
+    #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        let info = LangInfo {
+            name: "Test".to_owned(),
+            made_by: MadeBy::Machine,
+            wide_font: None,
+            wide_punctuation: false,
+        };
+        assert_eq!(LangInfo::new("Test", MadeBy::Machine), info);
+        let line = SourceLine {
+            scene: "gate".to_owned(),
+            text: "Hello.".to_owned(),
+            kind: LineKind::Reply,
+            file: "ch01".to_owned(),
+        };
+        assert_eq!(
+            SourceLine::new("gate", "Hello.", LineKind::Reply, "ch01"),
+            line
+        );
+    }
+
+    #[test]
+    fn the_pack_rules_constructor_builds_what_a_literal_built() {
+        use crate::dialogue::NoTokens;
+        use crate::dialogue::tests::LIMITS;
+
+        fn refuse(key: &str, text: &str) -> Option<String> {
+            (!text.is_empty()).then(|| format!("{key}: no"))
+        }
+        const VARIANTS: &[&str] = &["m", "f"];
+        const BUILT: PackRules<'static> =
+            PackRules::new(refuse, &NoTokens, LIMITS, &CellWidths::NARROW).with_variants(VARIANTS);
+        let literal = PackRules {
+            data_problem: refuse,
+            tokens: &NoTokens,
+            limits: LIMITS,
+            widths: &CellWidths::NARROW,
+            variants: VARIANTS,
+        };
+        assert_eq!(format!("{BUILT:?}"), format!("{literal:?}"));
+        assert_eq!((BUILT.data_problem)("k", "t"), Some("k: no".to_owned()));
+        let plain = PackRules::new(refuse, &NoTokens, LIMITS, &CellWidths::NARROW);
+        assert_eq!(plain.variants, [] as [&str; 0]);
     }
 }

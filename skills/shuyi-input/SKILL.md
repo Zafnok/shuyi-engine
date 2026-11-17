@@ -81,11 +81,21 @@ the player's keymap.
    "title.help": "{Confirm} play · {Cancel} leave",
    ```
 
-   A screen reads it with `ctx.text_with("title.help", &[])`. Text built
-   in code names a key with `key_name(ctx.help_keys(), action)`
-   (`shuyi::ui::input::help_keys`). Both follow the device the player
-   pressed last: keys on the keyboard, the pad's own button names on a
-   controller.
+   A screen reads it with `ctx.text_styled("title.help", &[])`, which
+   puts each key's name in a key span, and its skin prints it with
+   `buf.print_styled(x, y, &help, ctx.palette.text_colors_on(fg, bg))`:
+   the keys stand out once the palette has `key` (and `key_bg` for the
+   cells behind them). Text built in code names a key with
+   `key_name(ctx.help_keys(), action)` (`shuyi::ui::input::help_keys`),
+   and a help bar of such keys is `help_line_styled`. All follow the
+   device the player pressed last: keys on the keyboard, the pad's own
+   button names on a controller. To draw each key as a key cap (boxed,
+   bold, one letter as its capital), the game's `GameData::key_caps`
+   returns a `KeyCapStyle` (`shuyi::ui::frame::key_cap`); the box is
+   `key_bg` with a `key_edge`. A cap takes a cell more than its name:
+   measure a hint with the frame's widths, `help.width(buf.widths())`.
+   `KeyCapStyle::with_arrows(image, part)` draws `{Cursor}` on the arrow
+   keys as that picture of the arrow cluster.
 
 5. **Check it:** `cargo shuyi lint` (or `cargo shuyi check-keys`) fails
    on a key named in code or text, with its file and line, and `cargo
@@ -97,7 +107,10 @@ the player's keymap.
    of the game's own, never a key read in a screen.
 2. **Name keys only through the keymap**: `{Action}` placeholders, or
    `key_name` and `HelpKeys`. Never write "F", "[Space]", "Esc",
-   "arrows" or "WASD" into player text.
+   "arrows" or "WASD" into player text. Hint text keeps its keys in key
+   spans (`ctx.text_styled`, `help_line_styled`), so the palette's `key`
+   colours paint them; `text_with` and `help_line` give the same words
+   with no roles.
 3. **Expect any key, or none.** An optional action may have no key: the
    text shows the language's "not mapped" words (`keys.not_mapped`). Two
    actions may share a key in one layout.

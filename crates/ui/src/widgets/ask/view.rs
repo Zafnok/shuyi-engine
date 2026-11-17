@@ -3,9 +3,13 @@
 //! it ([`super::glyph::paint`] today).
 
 use crate::prelude::*;
+use crate::text::StyledText;
 
 /// A question, as it is this frame.
+///
+/// Kind 3 of ADR-0039: build it with [`AskView::new`] and assign the rest.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct AskView<T> {
     /// The question.
     pub text: String,
@@ -13,8 +17,19 @@ pub struct AskView<T> {
     /// alone ([`keys`](Self::keys)).
     pub answers: Vec<AnswerView<T>>,
     /// The line naming the keys that answer (a yes/no's "f yes / d no"),
-    /// shown instead of the answers.
-    pub keys: Option<String>,
+    /// shown instead of the answers, each key in a key span.
+    pub keys: Option<StyledText>,
+}
+
+impl<T> AskView<T> {
+    /// The question `text` with `answers`, and no line of keys.
+    pub fn new(text: impl Into<String>, answers: Vec<AnswerView<T>>) -> Self {
+        Self {
+            text: text.into(),
+            answers,
+            keys: None,
+        }
+    }
 }
 
 impl<T: Copy> AskView<T> {

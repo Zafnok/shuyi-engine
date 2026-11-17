@@ -29,6 +29,7 @@ use shuyi::ui::frame::ConsoleSpec;
 use shuyi::ui::frame::glyph_buffer::{GlyphBuffer, Rect};
 use shuyi::ui::grid::debug::{GRID, layout_gizmos};
 use shuyi::ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
+use shuyi::ui::text::StyledText;
 use shuyi::ui::{FrameInput, Screen, ScreenResult, Transition};
 
 use shuyi::assets::keymap::{ActionSet, UiAction};
@@ -198,9 +199,9 @@ impl StageScreen {
             turn: ctx.text_with("stage.turn", &[("turn", &self.stage.turn())]),
             message: ctx.text(message).to_owned(),
             help: if self.walk.is_some() {
-                String::new()
+                StyledText::new()
             } else {
-                ctx.text_with(help, &[])
+                ctx.text_styled(help, &[])
             },
         }
     }
@@ -376,7 +377,8 @@ impl Screen<Hello> for StageScreen {
                     self.leaving = true;
                     return Transition::Push(Box::new(Leave));
                 }
-                Some(UiAction::Debug) | None => {}
+                // Debug, and any action added later: nothing here.
+                _ => {}
             }
             if self.walk.is_some() {
                 break;

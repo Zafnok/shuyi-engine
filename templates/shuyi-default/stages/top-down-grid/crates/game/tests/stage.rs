@@ -11,9 +11,12 @@ use game::stages::top_down_grid::{
 use rules::{Command, Outcome, Stage};
 use shuyi::core::{Dir, Pos, TurnRules};
 use shuyi::platform::harness::Harness;
+use shuyi::prelude::{Cell, GlyphBuffer, Rgb, Screen};
 use shuyi::ui::frame::GizmoShape;
+use shuyi::ui::frame::color::KEY;
 use shuyi::ui::grid::GridSkin;
 use shuyi::ui::grid::debug::GRID;
+use shuyi::ui::text::TextRole;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::import::{ImportInput, import};
@@ -88,6 +91,31 @@ fn a_stage_plays_to_its_end_and_confirm_starts_the_next() {
     assert_eq!(h.screens(), ["title"]);
     h.keys("Backspace");
     assert!(h.quit_requested());
+}
+
+#[test]
+fn the_stages_help_line_paints_its_keys_in_the_palettes_key_colour() {
+    let h = on_stage(0);
+    let ctx = h.ctx();
+    let key = ctx.palette.lookup(KEY).expect("the palette names `key`");
+    let view = stage(&h).view(ctx);
+    let keys: String = view
+        .help
+        .spans()
+        .iter()
+        .filter(|span| matches!(span.role, Some(TextRole::Key | TextRole::Arrows)))
+        .map(|span| span.text.as_str())
+        .collect();
+    assert!(!keys.is_empty(), "{:?}", view.help);
+    let black = Rgb::new(0, 0, 0);
+    let mut buf = GlyphBuffer::new(60, 24, Cell::new(' ', black, black));
+    stage(&h).draw(ctx, &mut buf);
+    let cells: String = (0..60)
+        .filter_map(|x| buf.get(x, 23))
+        .filter(|cell| cell.fg == key)
+        .map(|cell| cell.glyph)
+        .collect();
+    assert_eq!(cells, keys);
 }
 
 #[test]

@@ -49,6 +49,9 @@ exclude_re = [
     "replace Sdk::stack_used -> Option<usize>",
     "replace Sdk::sample_from_data -> Option<Self::Sample>",
     'replace Sdk::sample_free with \(\)',
+    # The default `Source::arrived` is `true` (a source with every byte at
+    # once): its only viable mutant of that kind is itself.
+    "replace Source::arrived -> bool with true",
     # The default `frame` does nothing: its only viable mutant is itself.
     'replace Backend::frame with \(\)',
     # The default `hold_output` does nothing: its only viable mutant is itself.
@@ -71,6 +74,10 @@ exclude_re = [
     # plays its capture plan on the packed build, and `web-render` boots the
     # packed release page (ticket 3300).
     'hello-grid/src/lib.rs.*replace (packed|pack_problem) ->',
+    # A message's parser makes at most one piece per byte of its text, so
+    # `overrun` is `false` on every input: it only stops a parser another
+    # mutant keeps from moving on, before it fills the runner's memory.
+    "replace Parser<'a>::overrun -> bool with false",
     # `NoDirective` has no values, so its `print` can never run.
     "<impl Directive for NoDirective>::print",
     # The default `scene_problems` is `Vec::new()`: its only viable mutant,

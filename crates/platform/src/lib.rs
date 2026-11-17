@@ -106,6 +106,8 @@ pub const WATCH_PRIVATE_VAR: &str = "SHUYI_WATCH_PRIVATE";
 /// game names when it leaves it. Anything else is named by its module's
 /// path.
 pub mod prelude {
+    #[cfg(feature = "std")]
+    pub use shuyi_assets::bundle::Embedded;
     pub use shuyi_assets::keymap::{ActionSet, UiAction};
     pub use shuyi_assets::{Bundle, ContentError, Layer};
     pub use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};

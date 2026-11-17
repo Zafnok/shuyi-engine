@@ -93,7 +93,7 @@ fn view(side: Side) -> KeyBindingsView {
         message: None,
         question: None,
         choices: None,
-        help: "help".to_owned(),
+        help: "help".into(),
     }
 }
 
@@ -389,7 +389,7 @@ fn the_question_is_a_box_in_the_middle_with_its_answers_under_it() {
     v.question = Some(crate::widgets::AskView {
         text: "Restore the default keys for Right-handed?".to_owned(),
         answers: Vec::new(),
-        keys: Some("f yes / d no".to_owned()),
+        keys: Some("f yes / d no".into()),
     });
     let buf = painted(&c, &v);
     let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;

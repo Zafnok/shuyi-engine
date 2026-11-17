@@ -36,7 +36,13 @@ impl Bundle {
             paths.sort_unstable();
             for path in paths {
                 hash.sized(path.as_bytes());
-                hash.sized(layer.files.get(path).unwrap_or_default());
+                hash.sized(
+                    &layer
+                        .files
+                        .get(path)
+                        .and_then(Result::ok)
+                        .unwrap_or_default(),
+                );
             }
         }
         ContentHash(hash.0)

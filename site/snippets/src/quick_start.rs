@@ -5,7 +5,6 @@
 
 use std::process::ExitCode;
 
-use include_dir::{Dir, include_dir};
 use shuyi::prelude::*;
 use shuyi_cli::BasicTools;
 
@@ -16,7 +15,7 @@ use crate::screens::{GardenScreen, Leave, Title};
 /// The game's files, embedded: its English, its keys, its palette, its
 /// font and its own part.
 // check-text: not player text, a folder
-static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
 // ANCHOR_END: files
 
 // ANCHOR: data
@@ -41,7 +40,7 @@ pub const APP: AppInfo = AppInfo::new("Moon Garden", "com.example.moon-garden", 
 /// its features turn on.
 pub fn game() -> BasicGame<UiAction, Plan> {
     // check-text: not player text, a folder
-    let files = Layer::dir("files", &FILES);
+    let files = Layer::dir("files", FILES);
     BasicGame::with_own(APP, files, read_plan, |_| Box::new(Title))
         .screens(every_screen)
         .modules(shuyi::enabled_modules)

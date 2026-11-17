@@ -7,7 +7,9 @@ use std::path::Path;
 use game::title::Title;
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::Stamps;
-use shuyi::prelude::UiAction;
+use shuyi::prelude::{Cell, GlyphBuffer, Rgb, Screen, UiAction};
+use shuyi::ui::frame::color::KEY;
+use shuyi::ui::text::{StyledText, TextRole};
 use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::run::{RunInput, keys, run};
@@ -34,11 +36,47 @@ fn the_title_shows_the_games_name_and_cancel_leaves() {
     assert!(h.quit_requested());
 }
 
+/// The text of `line`'s key spans, and of the cells of row `y` of `buf`
+/// painted in `key`: the same, if the line's keys stand out.
+fn keys_and_key_cells(line: &StyledText, buf: &GlyphBuffer, y: i32, key: Rgb) -> (String, String) {
+    let keys = line
+        .spans()
+        .iter()
+        .filter(|span| matches!(span.role, Some(TextRole::Key | TextRole::Arrows)))
+        .map(|span| span.text.as_str())
+        .collect();
+    let cells = (0..i32::from(buf.width()))
+        .filter_map(|x| buf.get(x, y))
+        .filter(|cell| cell.fg == key)
+        .map(|cell| cell.glyph)
+        .collect();
+    (keys, cells)
+}
+
+#[test]
+fn the_titles_help_and_play_paint_their_keys_in_the_palettes_key_colour() {
+    let h = game::game().harness();
+    let ctx = h.ctx();
+    let key = ctx.palette.lookup(KEY).expect("the palette names `key`");
+    let view = Title::view(ctx);
+    let black = Rgb::new(0, 0, 0);
+    let mut buf = GlyphBuffer::new(60, 24, Cell::new(' ', black, black));
+    Title.draw(ctx, &mut buf);
+    let (keys, cells) = keys_and_key_cells(&view.help, &buf, 23, key);
+    assert!(!keys.is_empty(), "{:?}", view.help);
+    assert_eq!(cells, keys);
+    if let Some(play) = &view.play {
+        let (keys, cells) = keys_and_key_cells(play, &buf, 15, key);
+        assert!(!keys.is_empty(), "{play:?}");
+        assert_eq!(cells, keys);
+    }
+}
+
 #[test]
 fn the_title_quits_only_where_the_game_can() {
     let profiles = engine_profiles().unwrap();
     let mut h = game::game().harness().as_target(&profiles["web"].profile);
-    assert_eq!(Title::view(h.ctx()).help, "");
+    assert!(Title::view(h.ctx()).help.is_empty());
     h.keys("Backspace");
     assert!(!h.quit_requested());
     assert_eq!(h.screens(), ["title"]);
@@ -46,7 +84,7 @@ fn the_title_quits_only_where_the_game_can() {
     let mut h = game::game()
         .harness()
         .as_target(&profiles["desktop"].profile);
-    assert_ne!(Title::view(h.ctx()).help, "");
+    assert!(!Title::view(h.ctx()).help.is_empty());
     h.keys("Backspace");
     assert!(h.quit_requested());
 }

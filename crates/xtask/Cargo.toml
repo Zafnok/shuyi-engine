@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check, the public API check, the skill pack's worked examples, a new game's compile times, the sound parity gates, the changelog and the website's docs for agents; never shipped"
+description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check, the public API check, the skill pack's worked examples, the trim of idle worktrees' builds, a new game's compile times, the sound parity gates, the changelog and the website's docs for agents; never shipped"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -28,6 +28,10 @@ toml = { version = "1.1", default-features = false, features = ["parse", "serde"
 sha2 = { version = "0.11", default-features = false }
 # `sound-parity`'s decoder stage: the adapters held to the corpus (ticket 2210).
 shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
+# `seed-target` and `trim-targets`: the seed and the trim themselves are
+# `shuyi_cli::worktrees`, which a game's `cargo shuyi` shares (tickets 2078
+# and 2076).
+shuyi-cli = { path = "../cli" }
 
 [dev-dependencies]
 # `llms`'s snapshots of the fixture site.

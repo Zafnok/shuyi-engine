@@ -216,8 +216,10 @@ impl SoundCue {
     }
 }
 
-/// A music track.
+/// A music track. Data read from a file (ADR-0039, kind 5): build it with
+/// [`MusicCue::new`], and a field added later is `#[serde(default)]`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct MusicCue {
     /// The track, relative to the `music/` folder.
     pub file: String,
@@ -234,6 +236,36 @@ pub struct MusicCue {
     pub credit: CreditRef,
     /// The sound group it plays in: `None` is `music`.
     pub group: Option<String>,
+}
+
+impl MusicCue {
+    /// The track `file`, at `volume` percent, `length_ms` long, made by
+    /// `credit`, looped, in the `music` group.
+    #[must_use]
+    pub const fn new(file: String, volume: u8, length_ms: u32, credit: CreditRef) -> Self {
+        Self {
+            file,
+            volume,
+            looped: true,
+            length_ms,
+            credit,
+            group: None,
+        }
+    }
+
+    /// The same track, looped or played once.
+    #[must_use]
+    pub const fn with_looped(mut self, looped: bool) -> Self {
+        self.looped = looped;
+        self
+    }
+
+    /// The same track, played in sound group `group`.
+    #[must_use]
+    pub fn with_group(mut self, group: impl Into<String>) -> Self {
+        self.group = Some(group.into());
+        self
+    }
 }
 
 fn yes() -> bool {
@@ -784,6 +816,28 @@ mod tests {
     use alloc::borrow::Cow;
 
     use super::*;
+
+    #[test]
+    fn a_music_cues_constructor_builds_what_a_literal_built() {
+        assert_eq!(
+            MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own),
+            MusicCue {
+                file: "a.ogg".into(),
+                volume: 80,
+                looped: true,
+                length_ms: 1000,
+                credit: CreditRef::Own,
+                group: None,
+            }
+        );
+        let once = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own)
+            .with_looped(false)
+            .with_group("weather");
+        assert_eq!(
+            (once.looped, once.group.as_deref()),
+            (false, Some("weather"))
+        );
+    }
 
     #[test]
     fn without_extension_takes_the_last_names_extension_alone() {

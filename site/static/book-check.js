@@ -6,6 +6,11 @@
 // hidden and the answers with why in a `<details>`, which is all a reader
 // with no JavaScript gets. This file shows the buttons, hides the
 // `<details>`, and copies why from it. Nothing is kept or sent anywhere.
+//
+// The buttons are shuffled at each load (ticket 2833), so the right one's
+// place changes from reader to reader; each keeps its own why. The
+// `<details>` list keeps the written order, which `cargo xtask check-book`
+// keeps spread.
 (function () {
   "use strict";
 
@@ -33,6 +38,15 @@
     result.replaceChildren(...said);
   }
 
+  // Fisher–Yates, in place. `Math.random` is enough: this orders a page's
+  // buttons, not a simulation.
+  function shuffle(items) {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+  }
+
   function start() {
     for (const check of document.querySelectorAll(".check")) {
       const choices = check.querySelector(".check-choices");
@@ -40,10 +54,16 @@
       const result = check.querySelector(".check-result");
       if (!choices || !list || !result) continue;
       const whys = Array.from(list.querySelectorAll("li"), (li) => li.querySelector(".check-why"));
-      const buttons = Array.from(choices.querySelectorAll(".check-choice"));
-      buttons.forEach((button, i) => {
-        button.addEventListener("click", () => choose(buttons, button, whys[i], result));
-      });
+      const pairs = Array.from(choices.querySelectorAll(".check-choice"), (button, i) => ({
+        button,
+        why: whys[i],
+      }));
+      shuffle(pairs);
+      for (const pair of pairs) choices.insertBefore(pair.button, result);
+      const buttons = pairs.map((pair) => pair.button);
+      for (const { button, why } of pairs) {
+        button.addEventListener("click", () => choose(buttons, button, why, result));
+      }
       choices.hidden = false;
       list.hidden = true;
     }

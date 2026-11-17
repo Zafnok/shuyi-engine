@@ -39,7 +39,7 @@ pub mod view;
 use crate::prelude::*;
 pub use view::{MenuItemView, MenuView, SuffixKind};
 
-use core::fmt::Display;
+use crate::text::ToArg;
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
 
@@ -111,7 +111,7 @@ impl<T> MenuItem<T> {
     /// The same item with the placeholder `{name}` of its keyed label
     /// filled by `value` (a label of text as it is stays as it is).
     #[must_use]
-    pub fn with_arg(mut self, name: impl Into<String>, value: impl Display) -> Self {
+    pub fn with_arg(mut self, name: impl Into<String>, value: impl ToArg) -> Self {
         self.label = self.label.with_arg(name, value);
         self
     }

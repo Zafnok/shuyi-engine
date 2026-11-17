@@ -342,6 +342,18 @@ impl Exporter for Plan {
         "desktop"
     }
 
+    fn host(&self) -> crate::export::Host {
+        crate::export::Host::Linux
+    }
+
+    fn container(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn ci(&self) -> crate::export::InCi {
+        crate::export::InCi::Build
+    }
+
     fn triples(&self) -> &'static [&'static str] {
         &[]
     }

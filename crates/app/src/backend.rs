@@ -6,8 +6,12 @@
 //! folder or the browser's `localStorage`, the files the game hands the
 //! player and asks for ([`player_files`]), the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
-//! memory tags and its snapshots, in debug builds. It keeps the frame cap
-//! the last frame asked for, for [`run`](crate::run)'s pacer, and the input
+//! memory tags and its snapshots, in debug builds. On a desktop it keeps
+//! the window's record as the window changes ([`window`](crate::window)),
+//! and hides the cursor while the mouse rests and in fullscreen
+//! ([`IdleCursor`]).
+//! It keeps the frame cap
+//! the last frame asked for, for [`run_app`](crate::run_app)'s pacer, and the input
 //! of the web's skipped frames for the next that runs.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
@@ -15,6 +19,8 @@
 //! is made from the first game frame's [`Look`], its textures made again as
 //! their files change ([`pictures`]), and the sound player and the pads once
 //! the game has loaded ([`Macroquad::start`]).
+
+use std::borrow::Cow;
 
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
@@ -44,8 +50,12 @@ use crate::player_files::{self, PlayerFiles};
 use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
+#[cfg(windows)]
+use crate::window::Place;
+use crate::window::{
+    CursorSeen, IdleCursor, Mouse, Opened, Record, WindowMemory, wanted_fullscreen,
+};
 use crate::{AppConfig, keys, storage};
-#[cfg(not(target_arch = "wasm32"))]
 use shuyi_platform::Millis;
 
 /// The sound device: the shared player on this build's backend. Before the game
@@ -57,7 +67,7 @@ type Sound = PlayerDevice<audio::Chosen>;
 pub(crate) struct Macroquad {
     /// Where the storage is.
     storage_at: storage::StorageAt,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &'static str,
     /// What draws the game's frames, from the first one's look.
     renderer: Option<Renderer>,
@@ -67,12 +77,24 @@ pub(crate) struct Macroquad {
     /// The loading card's picture and its path, once decoded (`None` if it
     /// doesn't decode).
     card_picture: Option<(String, Option<Texture2D>)>,
-    /// Whether the window fills the screen: it starts windowed.
+    /// Whether the window fills the screen: it starts as it opened.
     fullscreen: bool,
+    /// Whether the next frame tells miniquad again that the window fills
+    /// the screen: on Windows, after a fullscreen start, so miniquad's own
+    /// flag agrees and keeps the screen saver off.
+    refresh_fullscreen: bool,
+    /// The window's last windowed size, and when its record is written
+    /// (never, where it isn't kept).
+    memory: WindowMemory,
+    /// Where the window was before it filled the screen (Windows).
+    #[cfg(windows)]
+    place: Place,
     /// The controllers, once the game's stick thresholds are known.
     pads: Option<PadInput>,
     /// Whether the window has focus, from miniquad's events.
     focus: WindowFocus,
+    /// Whether the cursor shows over the window.
+    cursor: IdleCursor,
     sound: Sound,
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
@@ -103,11 +125,13 @@ impl Macroquad {
     /// describe. Closing the window asks the game first
     /// ([`SystemEvent::QuitRequested`]) on native, where a window can be
     /// closed.
-    /// The storage is the one at `storage_at`.
+    /// The storage is the one at `storage_at`, and the window opened as
+    /// `opened` says.
     pub(crate) fn new(
         config: &mut AppConfig,
         facts: PlatformFacts,
         storage_at: storage::StorageAt,
+        opened: &Opened,
     ) -> Self {
         if !cfg!(target_arch = "wasm32") {
             prevent_quit();
@@ -121,9 +145,14 @@ impl Macroquad {
             renderer: None,
             broken: None,
             card_picture: None,
-            fullscreen: false,
+            fullscreen: opened.fullscreen,
+            refresh_fullscreen: cfg!(windows) && opened.fullscreen,
+            memory: WindowMemory::new(opened),
+            #[cfg(windows)]
+            place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
+            cursor: IdleCursor::default(),
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
@@ -165,6 +194,7 @@ impl Macroquad {
         self.system_events(&mut system);
         self.poll_input(&mut input);
         self.held.keep(input, system);
+        self.held.keep_press(mouse_pressed());
     }
 
     /// Readies what plays the loaded `game`: decodes its sounds (which takes
@@ -189,6 +219,68 @@ impl Macroquad {
         self.sound.set_player(player);
         self.pads = Some(PadInput::new(data.keymap_def().stick));
         self.started = true;
+    }
+
+    /// After `run_app`'s frame at `now`: the window is seen, and its record
+    /// written once it has settled; the cursor is shown or hidden as the
+    /// mouse and the window's mode and focus say ([`IdleCursor`]). Reading
+    /// the mouse here is not input: nothing of it reaches the game.
+    pub(crate) fn after_frame(&mut self, now: Millis) {
+        if std::mem::take(&mut self.refresh_fullscreen) {
+            set_fullscreen(true);
+        }
+        if let Some(record) = self.memory.see(now, window_size(), self.fullscreen) {
+            self.write_window(record);
+        }
+        let seen = CursorSeen {
+            now,
+            mouse: Mouse {
+                at: mouse_at(),
+                pressed: self.held.take_press() || mouse_pressed(),
+            },
+            fullscreen: self.fullscreen,
+            focused: self.focus.is_focused(),
+            keep_shown: false,
+        };
+        if let Some(shown) = self.cursor.see(seen) {
+            show_mouse(shown);
+        }
+    }
+
+    /// As the game quits: the window's record, if it changed since it was
+    /// last written.
+    pub(crate) fn save_window(&mut self) {
+        if let Some(record) = self.memory.at_quit() {
+            self.write_window(record);
+        }
+    }
+
+    /// Writes the window's `record` beside the game's storage.
+    fn write_window(&self, record: Record) {
+        if let Err(e) = self.storage_at.write_window(&record.to_text()) {
+            warn!("window: {}", e);
+        }
+    }
+
+    /// Makes the window fill the screen or not. On Windows, where miniquad
+    /// leaves fullscreen at the screen's size at (0, 0), the window goes
+    /// back to its windowed size and place.
+    fn switch_fullscreen(&mut self, fullscreen: bool) {
+        #[cfg(windows)]
+        let picture = window_size();
+        #[cfg(windows)]
+        if fullscreen {
+            self.place.entering(miniquad::window::get_window_position());
+        }
+        self.fullscreen = fullscreen;
+        set_fullscreen(fullscreen);
+        #[cfg(windows)]
+        if !fullscreen {
+            let (width, height) = self.memory.windowed();
+            let (x, y) = self.place.leaving((width, height), picture);
+            miniquad::window::set_window_size(width.cast_unsigned(), height.cast_unsigned());
+            miniquad::window::set_window_position(x, y);
+        }
     }
 
     /// Makes the textures of the pictures that changed again, from `look`.
@@ -232,7 +324,7 @@ impl Macroquad {
                     let files = self.files;
                     let png = pictures::read(files, self.font_png).unwrap_or_default();
                     let read = |path: &str| pictures::read(files, path);
-                    Renderer::with_files(look.font.clone(), png, background, look.images, read)
+                    Renderer::with_files(look.font.clone(), &png, background, look.images, read)
                 }
                 None => Err("the game gave no font and pictures to draw with".to_owned()),
             };
@@ -302,7 +394,7 @@ impl Macroquad {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
                     let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
-                        .and_then(upload);
+                        .and_then(|png| upload(&png));
                     if let Err(e) = &texture {
                         warn!("loading card: {}: {}", path, e);
                     }
@@ -351,6 +443,40 @@ fn pixels(x: f32) -> u32 {
     pixels
 }
 
+/// The window's size in the units its record keeps, those miniquad opens a
+/// window at: points on macOS, device pixels elsewhere. On Windows, the
+/// client area as the system says, which miniquad's own size rounds down
+/// on a scaled display ([`win32`](crate::window::win32)).
+fn window_size() -> (i32, i32) {
+    #[cfg(windows)]
+    if let Some(size) = crate::window::win32::client_size() {
+        return size;
+    }
+    let (width, height) = if cfg!(target_os = "macos") {
+        (screen_width(), screen_height())
+    } else {
+        miniquad::window::screen_size()
+    };
+    let side = |x: f32| i32::try_from(pixels(x)).unwrap_or(i32::MAX);
+    (side(width), side(height))
+}
+
+/// The mouse's position over the window, in whole pixels.
+fn mouse_at() -> (i32, i32) {
+    let (x, y) = mouse_position();
+    // A position over a window is far within an i32.
+    #[allow(clippy::cast_possible_truncation)]
+    let whole = |v: f32| v.round() as i32;
+    (whole(x), whole(y))
+}
+
+/// Whether a mouse button was pressed this frame.
+fn mouse_pressed() -> bool {
+    [MouseButton::Left, MouseButton::Right, MouseButton::Middle]
+        .into_iter()
+        .any(is_mouse_button_pressed)
+}
+
 impl Platform for Macroquad {
     fn display(&self) -> DisplayInfo {
         let dpi = screen_dpi_scale();
@@ -359,9 +485,10 @@ impl Platform for Macroquad {
 
     fn present(&mut self, frame: &Frame<'_>) {
         self.frame_cap = (frame.frame_cap, frame.frame_cap_serial);
-        if frame.fullscreen != self.fullscreen {
-            self.fullscreen = frame.fullscreen;
-            set_fullscreen(self.fullscreen);
+        if let Some(wanted) = wanted_fullscreen(frame)
+            && wanted != self.fullscreen
+        {
+            self.switch_fullscreen(wanted);
         }
         match frame.show {
             Show::Card(card) => self.draw_card(card),

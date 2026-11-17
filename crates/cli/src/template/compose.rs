@@ -35,6 +35,10 @@ pub const GENERATED_STAGES: &str = "crates/game/src/stages.rs";
 /// and their bytes.
 type Written = BTreeMap<String, Vec<(String, Vec<u8>)>>;
 
+/// The question whose answer `no` leaves the skills' worked examples out
+/// of the game (ADR-0113): the composer reads it, and no part serves it.
+pub const EXAMPLES: &str = "examples";
+
 /// Who writes [`GENERATED_STAGES`], as errors name it.
 const COMPOSER: &str = "shuyi new";
 
@@ -718,7 +722,11 @@ pub fn compose(
         let bytes = merged(&path, writers)?;
         files.insert(PathBuf::from(path), bytes);
     }
-    let skills = with_skills(catalog, &mut files);
+    let examples = answers
+        .0
+        .get(EXAMPLES)
+        .is_none_or(|picked| !picked.iter().any(|answer| answer == "no"));
+    let skills = with_skills(catalog, examples, &mut files);
 
     let mut modules = Vec::new();
     let mut features = Vec::new();
@@ -761,7 +769,10 @@ pub fn compose(
     for (question, picked) in &answers.0 {
         // A question's default answer that adds nothing does so by design
         // (`private-files` = `no`): only another answer no part serves is a
-        // limit.
+        // limit. The composer itself serves `examples`.
+        if question == EXAMPLES {
+            continue;
+        }
         let default = template
             .questions
             .iter()
@@ -793,9 +804,15 @@ pub fn compose(
 }
 
 /// The skills of `catalog`'s pack added to `files` under `.claude/skills/`,
-/// each with every file of its folder, and their names: all but a module's
-/// skill, and a skill whose folder a part already writes.
-fn with_skills(catalog: &Catalog, files: &mut BTreeMap<PathBuf, Vec<u8>>) -> Vec<String> {
+/// each with every file of its folder (its worked examples only if
+/// `examples`, [`crate::skills::Skill::without_examples`]), and their
+/// names: all but a module's skill, and a skill whose folder a part
+/// already writes.
+fn with_skills(
+    catalog: &Catalog,
+    examples: bool,
+    files: &mut BTreeMap<PathBuf, Vec<u8>>,
+) -> Vec<String> {
     let mut added = Vec::new();
     for skill in &catalog.skills.skills {
         let folder = format!("{}/{}/", catalog::SKILLS, skill.name);
@@ -803,8 +820,13 @@ fn with_skills(catalog: &Catalog, files: &mut BTreeMap<PathBuf, Vec<u8>>) -> Vec
         if catalog.is_module(&skill.name) || written {
             continue;
         }
-        for (path, bytes) in &skill.files {
-            files.insert(PathBuf::from(format!("{folder}{path}")), bytes.clone());
+        let copied = if examples {
+            skill.clone()
+        } else {
+            skill.without_examples()
+        };
+        for (path, bytes) in copied.files {
+            files.insert(PathBuf::from(format!("{folder}{path}")), bytes);
         }
         added.push(skill.name.clone());
     }

@@ -89,6 +89,44 @@ lends a list of pairs, each a **tuple**, values side by side: here the placehold
 name, and what to put there.
 {% end %}
 
+A key's name reads like a word when it is printed like one ("Enter plant"). To make it
+stand out, a screen asks for the text with `ctx.text_styled` instead: the same words, but
+each key's name marked as a key. Its skin prints it with `print_styled`, which takes the
+colours of each part from the palette:
+
+{{ snippet(file="src/actions.rs", anchor="styled") }}
+
+The palette decides how a key looks: a colour named `"key"` in `files/palette.ron` is the
+keys' text, and `"key_bg"` the cells behind them. A palette with neither prints the keys
+like the words around them. A game made with `shuyi new` has a `"key"` colour already,
+and its title and stage print their help with `print_styled`, so their keys stand out
+from the first run; change the colour, or add a `"key_bg"`, in `files/palette.ron`. A key's name passed in as an argument, as `plant_hint` does,
+is marked too when it goes to `ctx.text_styled_with_keys` as one of its key arguments.
+
+A game can draw each key as a key cap instead: its name in a small rounded box, in bold, a
+single letter as its capital (`F`, not `f`). It turns them on in its `GameData`, with
+`fn key_caps(&self) -> Option<KeyCapStyle> { Some(KeyCapStyle::new()) }`
+(`shuyi::ui::frame::key_cap`). The box is the palette's `"key_bg"`, its edge
+`"key_edge"`, the name `"key"`; the style sets the bold, the capitals and the margin. Every
+hint printed with `print_styled` gets caps, the engine's own screens' too. A cap takes a
+cell more than its name, so a hint with caps is wider: a skin that fits one by measuring it
+with the frame's widths, `help.width(buf.widths())`, fits it with caps.
+
+The cursor's keys can be a picture: when the four cursor actions are on the arrow keys,
+`{Cursor}` is one span in the role `TextRole::Arrows`, and a style with
+`.with_arrows(image, part)` draws it as that part of an image (the arrow cluster your game
+draws), one line tall, in the cells its width needs. Any other four keys are four caps,
+`w a s d`. Without a picture, the arrows are a cap of the language's word for them.
+
+Bold is the font's own bold face when the atlas has one, made with `font-atlas --bold`
+from a bold font of the same cell size (Terminus Bold, `ter-u16b.bdf`, beside Terminus):
+
+```text
+cargo shuyi font-atlas --bold files-src/ter-u16b.bdf files-src/ter-u16n.bdf crates/game/files/font
+```
+
+Without one, each letter is drawn twice, a pixel apart.
+
 So a placeholder's first letter says who fills it. A capital, `{Confirm}`, names a key: an
 action of the game, or `{Cursor}`. Lowercase, `{seeds}` or `{key}`, is a value the screen
 passes. `cargo shuyi check` fails on a capitalized name that is no action.
@@ -114,7 +152,8 @@ You don't write any of this. It works since your code only ever asked for action
 
 The short path plays with `UiAction`'s six moves, which the engine's menus and screens
 react to too. A game that needs more (a watering can, a debug key) writes its own action
-enum, and implements `ActionSet` for it.
+enum, and implements `ActionSet` for it. The engine may add moves to `UiAction`, so a
+`match` on it ends with a `_` arm.
 
 {% newcomer(to="rust", topic="an enum and a trait") %}
 An **enum** is a type that is one of a fixed list. A
@@ -233,8 +272,8 @@ its place?
 {% check() %}
 The player holds Right down. How does a screen move the cursor once per repeat?
 
-- [x] It does nothing extra: the held action comes again in `input.actions` at the keymap's repeat rate. — The keymap file gives the repeat timings, so a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
 - [ ] It reads the clock and moves again once enough time has passed. — The repeats come with the actions at the keymap's rate, and a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
+- [x] It does nothing extra: the held action comes again in `input.actions` at the keymap's repeat rate. — The keymap file gives the repeat timings, so a screen never times key presses itself ([reacting to an action](#reacting-to-an-action)).
 - [ ] It checks `input.is_held(action)` and moves on every frame it is held. — That would move once a frame, far faster than a repeat; repeats already arrive in `input.actions` ([reacting to an action](#reacting-to-an-action)).
 {% end %}
 
@@ -242,7 +281,7 @@ The player holds Right down. How does a screen move the cursor once per repeat?
 A screen's `update` reads `UiAction::Left`, but its `actions` leaves Left out. In a
 Harness test, what happens when Left is pressed?
 
-- [x] Left does nothing, since the Harness hands a screen only the actions it declares. — So a test that walks left fails on the plot it stayed on ([when it goes wrong](#when-it-goes-wrong)).
 - [ ] Left works as usual, since `actions` is only read by `cargo shuyi check`. — In tests the Harness holds back every action a screen doesn't declare ([reacting to an action](#reacting-to-an-action)).
 - [ ] The test stops at once with an error naming the undeclared action. — Nothing names it: Left is held back, and the test fails later on what didn't change ([when it goes wrong](#when-it-goes-wrong)).
+- [x] Left does nothing, since the Harness hands a screen only the actions it declares. — So a test that walks left fails on the plot it stayed on ([when it goes wrong](#when-it-goes-wrong)).
 {% end %}

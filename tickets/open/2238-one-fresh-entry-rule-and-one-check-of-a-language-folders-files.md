@@ -104,10 +104,9 @@ None.
   `files/` is a pack file, never read as text), and 2349's tests pass
   unchanged; if not, nothing to do (2349 adds it once, to
   `is_pack_file`).
-- **Either order with 2348:** if 2348 is done, `Lang::text_in` and
-  `Lang::data_text_in` hold the lookups that `text` and `data_text` are
-  built on: they test an entry with `fresh`; if not, nothing to do
-  (2348 builds them on `fresh`).
+- **From 2348 (done):** `Lang::text_in` and `Lang::data_text_in` hold
+  the lookups that `text` and `data_text` are built on: they test an
+  entry with `fresh`.
 - **Either order with 2352:** if 2352 is done, `Lang::text`'s test of
   an engine pack's entry goes through `fresh` too; if not, nothing to
   do (2352 tests the engine's entries with `fresh`).

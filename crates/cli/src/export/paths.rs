@@ -353,10 +353,8 @@ mod tests {
         let file = dir.join("game.pack");
         let needles = [PathBuf::from("/home/runner/")];
         let pack = |files: &[(&str, Vec<u8>)]| {
-            let info = PackInfo {
-                stamp: "game 1".to_owned(),
-                ..PackInfo::default()
-            };
+            let mut info = PackInfo::default();
+            info.stamp = "game 1".to_owned();
             let files = files
                 .iter()
                 .map(|(path, bytes)| ((*path).to_owned(), Content::Raw(bytes.clone())))

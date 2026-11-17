@@ -63,7 +63,9 @@ scout: I'll keep watch.
 - `<id>: text` is said by a character on screen; `<id>[sad]: text`
   changes its expression first. An indented line goes on with the line
   above.
-- `> text` is narration: nobody says it.
+- `> text` is narration: nobody says it. Narration that opens with `(`
+  and holds `):` would read as a direction (below): write it after an
+  empty one, `> (): (aside): text`.
 - `<id> (whispering, frightened): text` and `> (slowly): text` say how a
   line is spoken, for a voice tool or an actor. `@delivery <direction>`
   does it for the lines after it, until `@delivery clear`, the next

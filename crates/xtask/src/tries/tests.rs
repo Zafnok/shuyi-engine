@@ -185,3 +185,20 @@ fn touching_a_tree_sets_every_files_time() {
     }
     fs::remove_dir_all(&root).unwrap();
 }
+
+/// The renderer builds without an incremental cache in the folder it
+/// chose, and leaves a folder from the environment as it is.
+#[test]
+fn the_renderer_drops_the_incremental_cache_only_in_its_own_folder() {
+    let root = Path::new("repo");
+    let own = Renderer::with_target(root, None);
+    assert_eq!(
+        own.env(),
+        [
+            ("CARGO_TARGET_DIR", root.join("target/tutorial").as_os_str()),
+            ("CARGO_INCREMENTAL", "0".as_ref()),
+        ]
+    );
+    let given = Renderer::with_target(root, Some("elsewhere".into()));
+    assert_eq!(given.env(), [("CARGO_TARGET_DIR", "elsewhere".as_ref())]);
+}

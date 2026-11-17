@@ -245,7 +245,7 @@ Follow-ups: none new. Handed over in 2335, 2337, 2222 and 2783 (a
 Breaking: shuyi-ui: frame::glyph_buffer::Item: a new variant, `Painted`, and the enum is `#[non_exhaustive]`: a `match` on `Item` outside the engine adds a `_` arm.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: Item has a new variant for pictures a skin paints, and more may come.
 old: match item { Item::Rect(o) => .., Item::Sprite(s) => .. }
 new: match item { Item::Rect(o) => .., Item::Sprite(s) => .., _ => .. }

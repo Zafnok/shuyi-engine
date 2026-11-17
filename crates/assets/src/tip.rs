@@ -16,7 +16,9 @@ use serde::de::DeserializeOwned;
 use crate::error::ContentError;
 use crate::font::CellWidths;
 use crate::lang::text_width;
+use crate::message::{DEVICE, Message, TARGET};
 use crate::ron::parse_ron;
+use shuyi_core::text::{Part, split_tokens};
 
 /// How much text a tip's box holds, in cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,7 +45,9 @@ pub struct Tip<T> {
     /// Shown in the box's border.
     pub title: String,
     /// The body: lines separated by `\n`, with `{Action}` placeholders
-    /// for key names.
+    /// for key names. A message (ADR-0127): it may choose its words by
+    /// the device the player pressed last,
+    /// `{device, select, playdate {…} other {…}}`.
     pub text: String,
     /// What to do, apart from the text: plain instructions, lines
     /// separated by `\n`, with `{Action}` placeholders. Written `how:
@@ -103,7 +107,8 @@ pub struct TipRules<'a> {
     /// How many cells each character takes, which the limits count: the
     /// font atlas's ([`CellWidths::of`]), or [`CellWidths::NARROW`].
     pub widths: &'a CellWidths,
-    /// Whether `{name}` is a placeholder the game fills in.
+    /// Whether `{name}` is a placeholder the game fills in. The built-in
+    /// `device` and `target` always are.
     pub placeholder: &'a dyn Fn(&str) -> bool,
     /// What is wrong with a tip showing the face `face` (its own, or the
     /// game's default), if anything.
@@ -113,9 +118,11 @@ pub struct TipRules<'a> {
 }
 
 /// Parses and validates tips `source`, attributing errors to `file`: ids
-/// are lowercase and used once, a trigger has one tip, the title and text
-/// fit `rules`' box, every placeholder is one of the game's and every face
-/// is fine by the game. Reports every problem found.
+/// are lowercase and used once, a trigger has one tip, the title fits
+/// `rules`' box, the text and the how are messages and each text they can
+/// show ([`Message::forms`]) fits the box, every placeholder is one of the
+/// game's and every face is fine by the game. Reports every problem
+/// found.
 pub fn from_source<T: DeserializeOwned + Debug + Ord>(
     file: &str,
     source: &str,
@@ -153,31 +160,45 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
             err(format!("{:?} already has a tip", tip.trigger));
         }
         if tip.title.is_empty() || text_width(&tip.title, rules.widths) > title_chars {
-            err(format!("the title must be 1 to {title_chars} characters"));
+            err(format!("the title must be 1 to {title_chars} cells"));
         }
-        let lines: Vec<&str> = tip.text.lines().collect();
-        if lines.is_empty() || lines.len() > text_lines {
-            err(format!("the text must have 1 to {text_lines} lines"));
-        }
-        let how: Vec<&str> = tip
-            .how
-            .as_deref()
-            .map_or(Vec::new(), |h| h.lines().collect());
-        if tip.how.is_some() && (how.is_empty() || how.len() > how_lines) {
-            err(format!("the how must have 1 to {how_lines} lines"));
-        }
-        for line in lines.into_iter().chain(how) {
-            if text_width(line, rules.widths) > line_chars {
-                err(format!(
-                    "a text line is over {line_chars} characters: {line:?}"
-                ));
+        let mut problems = Vec::new();
+        let texts = [
+            ("text", Some(&tip.text), text_lines),
+            ("how", tip.how.as_ref(), how_lines),
+        ];
+        for (what, text, most) in texts {
+            let Some(text) = text else {
+                continue;
+            };
+            let message = match Message::parse(text) {
+                Ok(message) => message,
+                Err(e) => {
+                    problems.push(format!("the {what} isn't a message: {e}"));
+                    continue;
+                }
+            };
+            for form in message.forms() {
+                let lines: Vec<&str> = form.lines().collect();
+                if lines.is_empty() || lines.len() > most {
+                    problems.push(format!("the {what} must have 1 to {most} lines"));
+                }
+                for line in lines {
+                    if text_width(line, rules.widths) > line_chars {
+                        problems.push(format!("a text line is over {line_chars} cells: {line:?}"));
+                    }
+                }
+            }
+            for name in message.names() {
+                if ![DEVICE, TARGET].contains(&name) && !(rules.placeholder)(name) {
+                    problems.push(format!("unknown placeholder {{{name}}}"));
+                }
             }
         }
-        for text in core::iter::once(&tip.text).chain(&tip.how) {
-            for name in placeholders(text) {
-                if !(rules.placeholder)(name) {
-                    err(format!("unknown placeholder {{{name}}}"));
-                }
+        let mut seen = BTreeSet::new();
+        for problem in problems {
+            if seen.insert(problem.clone()) {
+                err(problem);
             }
         }
         if let Some(problem) = (rules.face_problem)(tip.face_or(rules.default_face)) {
@@ -191,19 +212,21 @@ pub fn from_source<T: DeserializeOwned + Debug + Ord>(
     }
 }
 
-/// The names between braces in `text`, in order (`{Confirm}` gives
-/// `Confirm`). An unclosed `{` is ignored.
+/// The names of the arguments of the message `text`
+/// ([`Message::names`]), each once, in the order first used:
+/// `{Confirm} {n, plural, one {#} other {# {Cancel}}}` gives `Confirm`,
+/// `n`, `Cancel`. For a text that isn't a message, the names between
+/// braces, in order ([`split_tokens`]), an unclosed `{` ignored.
 pub fn placeholders(text: &str) -> Vec<&str> {
-    let mut names = Vec::new();
-    let mut rest = text;
-    while let Some((_, after)) = rest.split_once('{') {
-        let Some((name, tail)) = after.split_once('}') else {
-            break;
-        };
-        names.push(name);
-        rest = tail;
+    match Message::parse(text) {
+        Ok(message) => message.names(),
+        Err(_) => split_tokens(text)
+            .filter_map(|part| match part {
+                Part::Token(name) => Some(name),
+                Part::Text(_) | Part::Unclosed(_) => None,
+            })
+            .collect(),
     }
-    names
 }
 
 #[cfg(test)]

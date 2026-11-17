@@ -28,7 +28,7 @@ then try on the page, with no install.
 
 This edits data files, not Rust. Hot reload (2905) doesn't change that: it
 rebuilds on the developer's own machine, and a browser has no compiler.
-Rust in the page is [2916](../open/2916-research-editing-a-games-rust-code-in-a-web-page.md)'s.
+Rust in the page is [2916](2916-research-editing-a-games-rust-code-in-a-web-page.md)'s.
 
 Nick, 2026-11-03 (*one book, read at the reader's level*): the tutorial
 becomes the book's project (2824), its interactive parts come before

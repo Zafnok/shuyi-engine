@@ -136,6 +136,10 @@ for project in "${projects[@]}"; do
     page="$out/one/learn/book/$folder/$name/index.html"
     [ -f "$page" ] || fail "the build has no learn/book/$folder/$name/"
     grep -qF "${one}learn/book/$folder/$name/play/" "$page" || fail "learn/book/$folder/$name/ doesn't link its play/"
+    # The book's Codespace, and the step's folder in it (ticket 2837).
+    grep -qF "devcontainer_path=.devcontainer/book/devcontainer.json" "$page" &&
+      grep -qF "<code>$name/</code>" "$page" ||
+      fail "learn/book/$folder/$name/ doesn't link the book's Codespace and name its folder, $name/"
   done
   for step in "$project"/*.md; do
     [ "$(basename "$step")" = _index.md ] && continue
@@ -170,9 +174,24 @@ audiences=" $(sed -nE 's/^ *const AUDIENCES = \[(.*)\];$/\1/p' "$site_dir/static
 [ "$audiences" != "  " ] || fail "site/static/book-filter.js has no AUDIENCES line"
 while IFS= read -r page; do
   grep -qE '<script src="[^"]*/book-filter\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-filter.js"
+  # Every page of the book but its front page has the book's contents
+  # beside it, marking the page itself (ticket 2834).
+  if [ "$page" != "$out/one/learn/book/index.html" ]; then
+    grep -qE '<script src="[^"]*/book-side\.js' "$page" || fail "${page#"$out"/one/} doesn't load book-side.js"
+    grep -qF '<nav class="book-side" id="book-side"' "$page" || fail "${page#"$out"/one/} has no book's contents beside it"
+    here="${page#"$out"/one/}"
+    grep -qF "href=\"${one}${here%index.html}\" aria-current=\"page\"" "$page" ||
+      fail "$here: the book's contents beside it doesn't mark it"
+  fi
   # A page with a quick check (ticket 2827) loads the script that answers it.
   if grep -qF 'class="check-choices"' "$page"; then
     grep -qE '<script src="[^"]*/book-check\.js' "$page" || fail "${page#"$out"/one/} has a quick check and doesn't load book-check.js"
+  fi
+  # A page with an exercise (ticket 2828) loads the script that runs its
+  # check, and has the playground it is done in.
+  if grep -qF 'class="exercise-actions"' "$page"; then
+    grep -qE '<script src="[^"]*/playground\.js' "$page" || fail "${page#"$out"/one/} has an exercise and doesn't load playground.js"
+    grep -qF '<section class="playground"' "$page" || fail "${page#"$out"/one/} has an exercise and no playground"
   fi
 done < <(find "$out/one/learn/book" -name index.html)
 for audience in $(grep -rhoE 'data-newcomer="[^"]*"' "$out/one/learn/book" | sort -u | sed -E 's/^data-newcomer="(.*)"$/\1/'); do

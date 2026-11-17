@@ -3,7 +3,7 @@
 //! window's pixels of the frames it names compared with the raster's
 //! picture of the same frame (`shuyi_ui::frame::raster`).
 //!
-//! [`run`](crate::run) reads `SHUYI_CAPTURE` on native: the path of a
+//! [`run_app`](crate::run_app) reads `SHUYI_CAPTURE` on native: the path of a
 //! plan. Unset, nothing changes. Set, the run follows the plan, then exits
 //! ([`PASSED`], [`FAILED`] or [`CANNOT_RUN`]):
 //!
@@ -37,6 +37,7 @@
 //! pieces it uses are [`window_layout`], [`read_window`], [`report`] and
 //! [`finish`].
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use macroquad::prelude::*;
@@ -56,6 +57,7 @@ use shuyi_ui::{GameData, PlatformFacts, RawInputEvent};
 use crate::AppConfig;
 use crate::backend::Macroquad;
 use crate::readback;
+use crate::window::Opened;
 
 /// The variable naming the plan to run.
 pub const PLAN_VAR: &str = "SHUYI_CAPTURE";
@@ -163,6 +165,7 @@ async fn play<G: GameData>(
             config,
             facts,
             crate::storage::StorageAt::find(config.storage_name, config.desktop_folder),
+            &Opened::unkept(&crate::window::conf_from(&config.window, None).0),
         ),
         files: config.files,
         font_png: config.font_png,
@@ -236,7 +239,7 @@ async fn play_frames<G: GameData>(app: &mut App<G>, platform: &mut Capturing, pl
 /// takes nothing from outside but the window's size and close button.
 struct Capturing {
     backend: Macroquad,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &'static str,
     tolerance: Tolerance,
     /// The plan's frame being run.
@@ -341,15 +344,15 @@ impl Platform for Capturing {
 fn painter(
     look: Look<'_>,
     background: Rgb,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &str,
 ) -> Result<Painter, String> {
-    let atlas = decode(files(font_png).unwrap_or_default())
+    let atlas = decode(&files(font_png).unwrap_or_default())
         .map_err(|e| format!("font atlas image: {e}"))?;
     let images = look
         .images
         .ids()
-        .filter_map(|id| Some((id, decode(files(id.path())?).ok()?)))
+        .filter_map(|id| Some((id, decode(&files(id.path())?).ok()?)))
         .collect();
     Ok(Painter::new(look.font.clone(), atlas, images, background))
 }

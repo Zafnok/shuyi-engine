@@ -59,7 +59,10 @@ Missing mandatory automated evidence still blocks removal.
   Do not call SDK traces emitted-audio parity or ignore an actual consumer.
 - Remove `quad-snd` from manifests/lock, macroquad `audio`, old device and
   `native_music.rs` paths, obsolete imports/plugins/features, web copied
-  scripts/requests and notices. Current test dependencies must not retain
+  scripts/requests and notices. **But keep the `in-house-sound` feature**,
+  doing nothing: a game may name it, and removing it would be a breaking
+  release (Nick, 2026-11-14: no breaking runs after the MVP). **From 2084
+  (done):** ADR-0068 §8 says so, and this follows it. Current test dependencies must not retain
   the old stack. Hound/lewton and CPAL's intentional dependencies remain.
 - Audit source/manifests and `cargo tree` for native/wasm targets and all
   relevant features; build exports and verify browser requests. Keep owned

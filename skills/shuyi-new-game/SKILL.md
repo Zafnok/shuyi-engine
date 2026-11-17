@@ -55,6 +55,15 @@ game one part at a time.
    the stages and the skills. A folder that isn't empty is refused
    (`SH0001`); `--force` writes into it.
 
+   In a terminal, `new` also asks whether to include the skills' worked
+   examples (yes by default; `--no-examples` leaves them out, and each
+   `SKILL.md` then says where the engine keeps them) and whether to put
+   the game on GitHub; run by an agent (no terminal, `--json` or the MCP
+   `new` tool) it asks nothing, keeps the examples unless `--set
+   examples=no`, and makes no repository. `--github`, like `cargo shuyi repos`
+   later, creates repositories, keys and secrets on the developer's
+   account: ask them first, and pass their answers as flags.
+
 3. **Read the game's `AGENTS.md`.** It holds the rules a game on the
    engine keeps (the layers, skins, actions), the tools, the short path
    and the gates. It names the engine's own rules and docs. Every later
@@ -135,8 +144,9 @@ Grow a game by adding a part, never by rewriting its start:
   adds what it has and calls `BasicTools`' methods for the rest. A
   `grid` game's stage has one.
 - **The long form:** a `GameData` of its own (sounds, voices, themes,
-  settings, `GameHooks`), and macroquad's entry point calling
-  `shuyi::app::run` with its `AppConfig`. Only when a part can't do it.
+  settings, `GameHooks`), and a plain `main` calling
+  `shuyi::app::run_app` with its `AppConfig` and its `Start`. Only when a
+  part can't do it.
 
 ## When it fails
 

@@ -139,8 +139,8 @@ Why should a game's id never change after you hand out a build?
 {% check() %}
 A screen needs a control that one of the game's targets doesn't have. Which gate tells you?
 
-- [x] `cargo shuyi check --target all`. — It holds the game to each target it lists: its frame fits, its text can be read, and every screen's controls exist there ([check it](#check-it)).
 - [ ] `cargo shuyi lint`. — `lint` reads your code for what breaks Shuyi's rules, such as a key named in text, not for what a target has ([check it](#check-it)).
+- [x] `cargo shuyi check --target all`. — It holds the game to each target it lists: its frame fits, its text can be read, and every screen's controls exist there ([check it](#check-it)).
 - [ ] `cargo test --workspace`. — The tests run what you and `shuyi new` wrote, and they don't hold the game to its targets ([check it](#check-it)).
 {% end %}
 
@@ -149,4 +149,11 @@ Can you leave `NOTICES.txt` out of `dist/web/` when you publish it?
 
 - [ ] Yes, it is a note for you, and players never need it. — It is part of what ships, written by the tools for the game's players ([build it](#build-it)).
 - [x] No, it must ship with the game. — It credits everyone whose code and fonts your game uses, as their licenses require ([build it](#build-it)).
+{% end %}
+
+{% exercise(check="made-by", file="en.ron") %}
+Before you ship it, put your name on the title: make its subtitle say `by` and your name.
+
+Hint: The subtitle is `title.subtitle`, under the game's name. Keep it to 40 characters, so it
+fits on the title's screen.
 {% end %}

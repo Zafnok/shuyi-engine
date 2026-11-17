@@ -53,6 +53,19 @@ the engine this game builds with, read:
 - `.devcontainer/devcontainer.json` runs it in a dev container or a
   GitHub Codespace.
 
+## Git's hooks and worktrees
+
+Set git's hooks once per clone, from the game's root: `git config
+core.hooksPath scripts/git-hooks` (`cargo shuyi repos` does it when it
+makes the repository). Its `post-checkout` hook, on Windows, compresses a
+new worktree's `target/` with NTFS: about half the disk, no slower. An
+agent working in many worktrees makes many `target/` folders.
+`cargo shuyi doctor` reports, as optional checks, hooks that aren't set
+and a `target/` without the compression, each with the line that fixes it.
+The `shuyi-worktrees` skill seeds a new worktree's first build from the
+main checkout (`cargo shuyi seed-target`) and trims the idle ones'
+caches (`cargo shuyi trim-targets`); neither ever removes a worktree.
+
 ## The tools
 
 `cargo shuyi <command>` runs the engine's tools on this game, in its own
@@ -77,6 +90,8 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi modules` | the engine's modules by concern (perspective, bodies and motion, online play, kind of game), each with its status, and the ones this game has on |
 | `cargo shuyi add <module>` | turns a module on (its feature of `shuyi` in `Cargo.toml`), says what it is for, and warns of an alternative already on; the game already installs every module it turns on (`shuyi::enabled_modules`) |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
+| `cargo shuyi seed-target --into <worktree>` | run in the main checkout: starts a new worktree's `target/` from its build, so the new one's first build compiles the game's own crates, not every dependency (the `shuyi-worktrees` skill) |
+| `cargo shuyi trim-targets` | deletes the incremental caches of the game's idle worktrees' `target/` (no build in 3 days), never a worktree; `--dry-run` says what it would delete |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one. The dev container runs it for you when it is created |
 
@@ -149,8 +164,22 @@ Grow it by adding a part, not by rewriting the start:
   which calls `BasicTools`' methods for the rest. `shuyi new --template
   grid` shows one.
 - **The long form:** its own `GameData` (sounds, voices, themes,
-  settings of its own, `GameHooks`), and macroquad's entry point calling
-  `shuyi::app::run` with its `AppConfig`.
+  settings of its own, `GameHooks`), and a plain `main` calling
+  `shuyi::app::run_app` with its `AppConfig` and its `Start`.
+
+## Releasing
+
+A pushed tag `vX.Y.Z` releases the game (`.github/workflows/release.yml`,
+README.md's "Releasing"): every package CI builds, on its own system, in
+a GitHub Release with `SHA256SUMS`. `cargo shuyi export --plan --tag
+vX.Y.Z` lists them and fails unless the tag names the version
+(`app.version` in `shuyi.ron`, else `Cargo.toml`'s; run `cargo shuyi
+app-info` after changing it). The tag's message (`git tag -a`) is the
+notes. Pushing a tag publishes the game: ask its owner first. The Release
+workflow run from the Actions tab is a dry run. itch.io is on when the
+repository has the variable `ITCH_GAME` and the secret `BUTLER_API_KEY`.
+The macOS app has no Developer ID signature, so players open it from
+System Settings, Privacy & Security.
 
 ## The gates
 
@@ -166,3 +195,6 @@ cargo shuyi check --target all
 cargo shuyi check-keys
 cargo shuyi lint
 ```
+
+then `cargo shuyi trim-targets`, which frees the disk of the game's
+other, idle worktrees.

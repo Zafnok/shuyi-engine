@@ -11,7 +11,7 @@ use shuyi::core::Pos;
 /// The game's own stage map.
 fn own_map() -> String {
     let bytes = file("stage.map").unwrap_or_default();
-    String::from_utf8_lossy(bytes).into_owned()
+    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 /// The game's stage map with `from` replaced by `to`.
@@ -47,7 +47,7 @@ fn files_laid_over_the_games_are_read_first_by_file() {
     let over = Layer::owned("files".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"));
     assert_eq!(file("from-the-page.txt"), None);
     lay_over_files(over);
-    assert_eq!(file("from-the-page.txt"), Some(&b"page"[..]));
+    assert_eq!(file("from-the-page.txt").as_deref(), Some(&b"page"[..]));
     assert!(file("stage.map").is_some_and(|map| map.starts_with(b"//")));
 }
 

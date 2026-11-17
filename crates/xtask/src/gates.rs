@@ -177,8 +177,10 @@ pub const GATES: &[Gate] = &[
         "cargo xtask changelog >null",
         "cargo xtask check-pins",
         "cargo xtask check-toolchain",
+        "cargo xtask check-devcontainers",
         "cargo xtask check-docs",
         "cargo xtask check-paths",
+        "cargo xtask check-merges",
     ]),
     gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem
@@ -234,6 +236,9 @@ pub const GATES: &[Gate] = &[
     gate("machete", "machete", CODE).steps(&["cargo-machete"]),
     gate("test", "test", CODE)
         .steps(&["cargo test --workspace --locked --no-fail-fast"]),
+    // The host test denies its warnings through cargo's `build.warnings`,
+    // not `RUSTFLAGS`: the flags are part of every unit's hash, so they
+    // built each dependency again; the setting is not (ticket 2079).
     gate("no-std", "no-std", CODE).steps(&[
         "cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked",
@@ -242,7 +247,7 @@ pub const GATES: &[Gate] = &[
         "RUSTFLAGS=\"--cfg shuyi_playdate_sdk\" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked",
         "cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked",
         "cargo xtask check-no-std",
-        "RUSTFLAGS=\"-D warnings -A unused-imports\" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
+        "CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast",
     ]),
     gate("modules", "modules", CODE).steps(&[
         "cargo xtask check-modules",
@@ -255,29 +260,37 @@ pub const GATES: &[Gate] = &[
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings",
         "examples/hello-grid: cargo shuyi web --release",
     ]),
+    // The demo games are made fresh each run and never edited, so their
+    // one target folder keeps no incremental cache: half its disk, and no
+    // slower (ticket 2074). Only these steps write there, so the flag,
+    // part of each unit's hash, never makes a second copy of a unit.
     gate("templates (grid)", "templates", CODE)
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
-            "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root}",
+            "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root} --no-examples",
+            "target/gates/demo-grid: cargo generate-lockfile",
             "target/gates/demo-grid: cargo fmt --all --check",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets -- -D warnings",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
-            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo test --workspace --locked",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check --target all",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-keys",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-skills .claude/skills",
+            "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi lint",
         ]),
     gate("templates (blank)", "templates", CODE)
         .fresh(&["target/gates/demo-blank"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-blank --template blank --engine-path {root}",
+            "target/gates/demo-blank: cargo generate-lockfile",
             "target/gates/demo-blank: cargo fmt --all --check",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo clippy --workspace --all-targets -- -D warnings",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo test --workspace",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check --target all",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi check-keys",
-            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games cargo shuyi lint",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets --locked -- -D warnings",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo test --workspace --locked",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check --target all",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-keys",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi check-skills .claude/skills",
+            "target/gates/demo-blank: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi lint",
         ]),
     // CI's job times the builds too; their budget is a runner's, so a
     // local run holds the crates' count alone.
@@ -286,6 +299,7 @@ pub const GATES: &[Gate] = &[
     gate("skill examples", "skills", CODE).steps(&["cargo xtask skill-examples"]),
     gate("tutorial-tries", "tutorial-tries", CODE)
         .steps(&["cargo xtask tutorial-tries --check"]),
+    gate("exercises", "exercises", CODE).steps(&["cargo xtask exercises"]),
     // CI's alone, with why.
     gate("tutorial", "tutorial", CODE).ci_only(
         "builds and tests the ten steps of the tutorial's game, each from its own checked-in lock, `--locked`",
@@ -707,6 +721,11 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
         .collect();
     let mut failed = false;
     if !options.list {
+        // A full run builds into `target/`: compress it first on Windows
+        // (ticket 2075). The pre-push hook's `--fast` doesn't wait for it.
+        if !options.fast {
+            crate::compress::ensure(root);
+        }
         for (gate, plan, outcome) in &mut rows {
             if *plan != Plan::Run {
                 continue;
@@ -719,6 +738,11 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
             let ran = run_gate(root, gate, &root_text, &pr_branch);
             failed = matches!(ran, Outcome::Failed(..));
             *outcome = Some(ran);
+        }
+        // A passing full run frees the disk of the idle worktrees' builds
+        // (ticket 2076); this one's own target/ is never touched.
+        if !options.fast && !failed {
+            crate::trim::after_gates(root);
         }
     }
     let short_base = merge_base.get(..12).unwrap_or(&merge_base);
@@ -878,9 +902,61 @@ mod tests {
         }
     }
 
+    /// Every step building in the demo games' target folder builds without
+    /// an incremental cache, so none makes a second copy of a unit there.
+    #[test]
+    fn the_demo_games_build_without_an_incremental_cache() {
+        let mut seen = 0;
+        for gate in GATES {
+            for step in gate.steps {
+                let command = parse_step(step, "/r", &[]);
+                let names_games = command.env.iter().any(|(name, value)| {
+                    name == "CARGO_TARGET_DIR" && value == "/r/target/gates/games"
+                });
+                if names_games {
+                    seen += 1;
+                    assert!(
+                        command
+                            .env
+                            .iter()
+                            .any(|(name, value)| name == "CARGO_INCREMENTAL" && value == "0"),
+                        "{}: {step}",
+                        gate.name
+                    );
+                }
+            }
+        }
+        assert!(seen > 0, "no step builds in target/gates/games");
+    }
+
+    /// The no-std gate's host test denies its warnings with cargo's
+    /// `build.warnings`, and sets no `RUSTFLAGS`: those are part of each
+    /// unit's hash, and built every dependency a second time (ticket 2079).
+    #[test]
+    fn the_no_std_host_test_denies_warnings_without_rustflags() {
+        let gate = GATES
+            .iter()
+            .find(|gate| gate.name == "no-std")
+            .expect("the no-std gate");
+        let tests: Vec<_> = gate
+            .steps
+            .iter()
+            .map(|step| parse_step(step, "/r", &[]))
+            .filter(|command| command.words.get(1).is_some_and(|word| word == "test"))
+            .collect();
+        assert_eq!(tests.len(), 1, "{:?}", gate.steps);
+        let env = &tests[0].env;
+        assert!(
+            env.iter()
+                .any(|(name, value)| name == "CARGO_BUILD_WARNINGS" && value == "deny"),
+            "{env:?}"
+        );
+        assert!(env.iter().all(|(name, _)| name != "RUSTFLAGS"), "{env:?}");
+    }
+
     #[test]
     fn a_template_change_runs_the_templates_and_the_skill_examples() {
-        let gates = running(&["templates/shuyi-default/base/Cargo.toml"], false);
+        let gates = running(&["templates/shuyi-default/base/Cargo.toml.tmpl"], false);
         for name in [
             "templates (grid)",
             "templates (blank)",

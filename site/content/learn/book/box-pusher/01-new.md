@@ -23,13 +23,15 @@ everything in it comes back in every later step.
 In your terminal, go to the folder where you want your game to live, and run:
 
 ```bash
-shuyi new box-pusher --template blank --name "Box Pusher"
+shuyi new box-pusher --template blank --name "Box Pusher" --no-github
 cd box-pusher
 ```
 
 `shuyi new` writes a new game in a new folder called `box-pusher`, and `cd` moves
 you into it. Use this name: the rest of the project expects it. `--template
-blank` asks for the smallest game there is, one screen with a title on it.
+blank` asks for the smallest game there is, one screen with a title on it. `--no-github`
+keeps it on your machine: without it, `shuyi new` asks whether to put the game on
+GitHub too.
 
 Now open that folder in your editor, and leave your terminal open beside it.
 
@@ -234,7 +236,7 @@ Then it gathers the data files:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="files") }}
 
-`include_dir!` takes the whole `files` folder and puts it **inside** the program
+`shuyi::files!` takes the whole `files` folder and puts it **inside** the program
 when it compiles. That is why your game needs no installer and works in a browser:
 it carries its files in itself.
 
@@ -243,11 +245,10 @@ The `!` means it's a **macro**, a kind of function that runs while compiling and
 writes code for you. `println!` and `vec!`, which you'll meet, are macros too.
 
 `static` makes a value that exists for as long as the program runs. `FILES` is its
-name, and `: Dir<'static>` says what **type** it is. A type says what kind of
-thing a value is: a number, some text, a list. Rust checks every type while
-compiling, which catches a whole family of mistakes, like handing a function text
-where it wants a number. (The `'static` you can ignore: it says this lasts for the
-whole program.)
+name, and `: Embedded` says what **type** it is: a folder embedded in the program.
+A type says what kind of thing a value is: a number, some text, a list. Rust checks
+every type while compiling, which catches a whole family of mistakes, like handing a
+function text where it wants a number.
 {% end %}
 
 Next, your game's data:
@@ -587,8 +588,8 @@ up the screen?
 `update` starts with `if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel)`.
 In the browser, the player presses Backspace on the title. What happens?
 
-- [x] Nothing: `can_quit()` is false on the web, so `update` answers `Transition::None`. — A game in a browser can't quit, as the player closes the tab, which is also why its help line is empty ([a screen](#a-screen-title-rs)).
 - [ ] The game quits, since Backspace gives Cancel. — `&&` needs both sides true, and on the web the game can't quit ([the screen's jobs](#the-screen-s-jobs)).
+- [x] Nothing: `can_quit()` is false on the web, so `update` answers `Transition::None`. — A game in a browser can't quit, as the player closes the tab, which is also why its help line is empty ([a screen](#a-screen-title-rs)).
 - [ ] The title is popped off the stack, leaving it empty. — `update` only answers `Quit`, `Push` or `None` here, never `Pop` ([the screen's jobs](#the-screen-s-jobs)).
 {% end %}
 
@@ -596,7 +597,21 @@ In the browser, the player presses Backspace on the title. What happens?
 `en.ron`'s help says `{Cancel} leave`. A player changes their Cancel key to Escape. What
 does the help line show?
 
-- [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
 - [ ] `Backspace leave`, until `en.ron` is changed. — The text names an action, never a key, so it follows the player's keymap ([the keys](#the-keys-keymap-ron)).
 - [ ] `{Cancel} leave`, as written. — `{Cancel}` is filled in, and on screen it came out as `Backspace` for the default keys ([the words](#the-words-en-ron)).
+- [x] `Escape leave`. — `{Cancel}` means the key this player presses to cancel, which the text asks the keymap for ([the keys](#the-keys-keymap-ron)).
+{% end %}
+
+{% exercise(check="confirm-key", file="keymap.ron", to="games") %}
+Let the player press `p` to start, as well as Enter and Space.
+
+Hint: Confirm's keys are a list in `keys`: `"Confirm": ["Enter", "Space", "z"]`. Each key is
+in quotes, with commas between them. Put `"p"` in place of `"z"`, or beside it.
+{% end %}
+
+{% exercise(check="quit-word", file="en.ron") %}
+Make the title's help line say `quit` where it says `leave`, and keep the key's name in it.
+
+Hint: The line is `title.help`. `{Cancel}` isn't a word to change: the game puts the player's
+key for Cancel there.
 {% end %}

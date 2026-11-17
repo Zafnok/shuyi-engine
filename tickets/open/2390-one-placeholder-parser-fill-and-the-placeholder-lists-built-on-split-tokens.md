@@ -38,9 +38,10 @@ places find those braces, each with its own loop:
 
 The three agree today on every input (an unclosed `{` and what follows
 it is plain text; `{}` is a token named nothing; `{a{b}` is the token
-`a{b`). Nothing keeps them agreeing, and 2348 adds a fourth parser
-(ICU messages, `Message::walk`), whose fallback for text that doesn't
-parse fills "simple placeholders only", as `fill` does.
+`a{b`). Nothing keeps them agreeing, and 2348 (done) added a fourth
+parser (ICU messages, `shuyi_assets::message`); 3218 (done) built
+`fill` on it, whose fallback for text that doesn't parse fills "simple
+placeholders only" on `split_tokens`.
 
 ## Nick input
 
@@ -56,21 +57,21 @@ None.
   `Token` is filled (arguments, then the lookup, else written back as
   `{name}`), an `Unclosed` part is copied as it is. Its signature, its
   docs' promises and its results don't change.
-- **`tip::placeholders`** is `tokens(text).collect()`. It stays public
-  with the same signature, since the game re-exports it.
+- **`tip::placeholders`** keeps a message's names (`Message::names`,
+  3218); its fallback for a text that isn't a message, today the
+  `Part::Token`s of `split_tokens`, becomes `tokens(text).collect()`. It
+  stays public with the same signature, since the game re-exports it.
 - **`lang`** calls `shuyi_core::text::tokens` instead of the tips
   module's function.
-- **Either order with 2348:** if 2348 is done, the text that still finds
-  braces by hand is `fill`'s fallback for a text that doesn't parse as a
-  message, and whatever is left of `tip::placeholders`: move those onto
-  `split_tokens` and `tokens`, and leave `Message`'s own parser alone
-  (it reads plural and select, which `split_tokens` can't); if not,
-  nothing to do (2348 builds its fallback on `split_tokens`).
-- **Either order with 2347:** if 2347 is done, `fill` is
-  `fill_styled(…).plain()` and `fill_styled` already walks
-  `split_tokens` (2347's clause): nothing is left to rewrite in `fill`,
-  and the property test runs on it as it is; if not, rewrite `fill`
-  here, and 2347 builds `fill_styled` on the same walk.
+- **From 3218 (done):** `fill`'s fallback for a text that doesn't parse
+  as a message walks `split_tokens` already, and so does
+  `tip::placeholders`' fallback (its `Part::Token`s): move the latter
+  onto `tokens`, and leave `Message`'s own parser alone (it reads
+  plural and select, which `split_tokens` can't).
+- **From 2347 (done):** `fill` is `fill_styled(…).plain()`, and
+  `fill_styled` already walks `split_tokens`: nothing is left to
+  rewrite in `fill` (step 2 is done), and the property test runs on it
+  as it is.
 - **From 2302 (done):** `fill` joins the words of what `lookup` gives
   (a key's name) with a no-break space where it fills a placeholder:
   keep that join in the `Token` arm, and its test passes unchanged.
@@ -93,10 +94,9 @@ None.
 
 1. Add `tokens` to `crates/core/src/text.rs` with its tests, and
    re-export it from `crates/core/src/lib.rs` beside `split_tokens`.
-2. Rewrite `fill`'s loop in `crates/ui/src/text.rs` over `split_tokens`.
+2. `fill` already walks `split_tokens` (2347): nothing to do.
 3. Make `tip::placeholders` call `tokens`; point `lang.rs` at `tokens`.
-4. Settle the 2348, 2347 and 2353 clauses above with what is
-   done.
+4. Settle the 2353 clause above with what is done.
 5. Run the gates.
 
 ## Acceptance criteria

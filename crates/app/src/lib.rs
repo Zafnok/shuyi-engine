@@ -1,7 +1,7 @@
 //! Shuyi Engine's macroquad backend (ADR-0008 §2, game ADR-0004): the
 //! window, blitting the frame ([`render`]), the keyboard ([`keys`]) and
 //! controllers ([`pads`]), the audio player and storage ([`storage`]),
-//! behind `shuyi_platform`'s `Platform`, and the loop ([`run`]) that calls
+//! behind `shuyi_platform`'s `Platform`, and the loop ([`run_app`]) that calls
 //! `shuyi_platform::App::frame` once per frame of macroquad's, on desktop,
 //! the web and the Steam Deck.
 //!
@@ -17,6 +17,10 @@
 //! beside the program, [`pack_beside_program`] (ADR-0110): on the web the
 //! page fetches it before the game starts.
 //!
+//! Every program reserves a field a closed build's overlay writes its
+//! recipient's code into (`shuyi export --recipient`, ADR-0118), which
+//! [`recipient`] reads: `None` in a public build.
+//!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
 //!
@@ -26,27 +30,59 @@
 //! }
 //! ```
 //!
-//! A game of its own shape keeps macroquad's entry point, which has to be
-//! in the binary, and hands over its [`AppConfig`] and how it starts
-//! ([`Start`]):
+//! [`run_game_checked`] runs it with checks a page may ask it to make of
+//! the files it was given ([`page::page_check`]), as the book's steps run
+//! their exercises' (ADR-0117).
 //!
-//! ```ignore
-//! fn window_conf() -> macroquad::window::Conf {
-//!     shuyi_app::window_conf(&WINDOW)
+//! A game of its own shape runs from a plain `main` too, with [`run_app`]:
+//! its [`AppConfig`] (the window, its storage, its files and sounds) and how
+//! it starts ([`Start`]), its own data, its look and its first screen:
+//!
+//! ```no_run
+//! # use std::borrow::Cow;
+//! # use shuyi_assets::audio::{Bytes, Files};
+//! # use shuyi_assets::font::FontAtlasDef;
+//! # use shuyi_assets::image::ImageTable;
+//! # use shuyi_ui::Ctx;
+//! # use shuyi_ui::toy::{self, Home as Title, Toy as MyGame};
+//! use shuyi_app::{AppConfig, Window};
+//! use shuyi_platform::{Card, Look, Start};
+//! use shuyi_ui::frame::ConsoleSpec;
+//! use shuyi_ui::{Game, GameHooks};
+//!
+//! const CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
+//! /// The console at twice its size, and 16 pixels of margin.
+//! const WINDOW: Window = Window::console("My Game", CONSOLE, 2, 16);
+//!
+//! fn config() -> AppConfig {
+//!     AppConfig::new(WINDOW, "my-game", my_file, "font/atlas.png", my_sounds())
 //! }
 //!
 //! fn look(game: &MyGame) -> Look<'_> {
-//!     Look::new(&game.font, &game.images)
+//!     Look::new(my_font(game), &game.images)
 //! }
 //!
-//! #[macroquad::main(window_conf)]
-//! async fn main() {
+//! fn main() {
 //!     let start = Start::new(Card::text("My Game"), look, |setup| {
-//!         let ctx = setup.ctx(my_ctx()?);
-//!         Ok(Game::new(ctx, Box::new(Title), GameHooks::default()))
+//!         let ctx = setup.ctx(my_ctx());
+//!         Ok(Game::new(ctx, Box::new(Title::default()), GameHooks::default()))
 //!     });
-//!     shuyi_app::run(config(), start).await;
+//!     shuyi_app::run_app(config(), start);
 //! }
+//! # fn my_file(_: &str) -> Option<Cow<'static, [u8]>> { None }
+//! # fn no_sound(_: &str) -> Bytes { None }
+//! # fn shown(name: &str) -> String { name.to_owned() }
+//! # fn not_left_out(_: &str) -> bool { false }
+//! # fn my_sounds() -> Files<'static> { Files::new(&no_sound, &shown, &not_left_out, "music") }
+//! # fn my_font(_: &MyGame) -> &'static FontAtlasDef {
+//! #     static FONT: std::sync::OnceLock<FontAtlasDef> = std::sync::OnceLock::new();
+//! #     FONT.get_or_init(|| FontAtlasDef {
+//! #         cell_w: 8, cell_h: 16, columns: 16,
+//! #         glyphs: Default::default(), wide: Default::default(), wide_sets: Default::default(),
+//! #         bold: Default::default(), ink: None, bold_ink: None,
+//! #     })
+//! # }
+//! # fn my_ctx() -> Ctx<MyGame> { toy::ctx() }
 //! ```
 //!
 //! With the `link` feature, a debug build listens for the live link
@@ -74,8 +110,9 @@
 //! line to the browser's console instead (ticket 2019).
 //!
 //! With the `sound-probe` feature, `SoundProbeBackend` names the sound
-//! backend, for the example `sound_probe` that the parity gates record. No
-//! game turns it on.
+//! backend, for the example `sound_probe` that the parity gates record. It
+//! is the gates' own: hidden from these docs, not covered by semver, and
+//! no game turns it on.
 //!
 //! With the `in-house-sound` feature, sound goes through `shuyi-sound`'s mixer and
 //! `shuyi-sound-out` instead of quad-snd.
@@ -164,13 +201,16 @@ mod player_files;
     feature = "capture"
 ))]
 mod readback;
+mod recipient;
 pub mod render;
 mod sessions;
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 mod watch;
+mod window;
 
 use core::fmt::Debug;
+use std::borrow::Cow;
 use std::path::Path;
 
 use macroquad::prelude::*;
@@ -181,9 +221,14 @@ use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Platform, Start, Text
 use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::dialogue::preview::PreviewGame;
+use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::log::{LogLevel, LogLine};
 
+/// The sound backend this build plays on, for the engine's own sound gates
+/// (the example `sound_probe`, ADR-0066). Not for games, and not covered by
+/// semver: its type changes when the backend does (ADR-0068).
 #[cfg(feature = "sound-probe")]
+#[doc(hidden)]
 pub use crate::audio::Chosen as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
@@ -194,6 +239,7 @@ pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_l
 pub(crate) use crate::folder::{Watched, watched_file, watched_layers};
 use crate::pacing::{Pacer, WebFrame};
 pub use crate::pack_file::{PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name};
+pub use crate::recipient::recipient;
 
 /// The web has no folders to watch.
 #[cfg(target_arch = "wasm32")]
@@ -203,7 +249,7 @@ pub fn watched_layer() -> Option<shuyi_assets::bundle::Layer> {
 
 /// The web has no folders to read through.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn watched_file(_: &str) -> Option<&'static [u8]> {
+pub(crate) fn watched_file(_: &str) -> Option<Cow<'static, [u8]>> {
     None
 }
 
@@ -308,6 +354,27 @@ impl Window {
     pub const fn with_vsync(self, vsync: bool) -> Self {
         Self { vsync, ..self }
     }
+
+    /// A window titled `title` that opens at the console `spec` drawn
+    /// `scale` times, with `margin` pixels more each way, with no icon and
+    /// vsync on: `Window::console("My Game", CONSOLE, 2, 16)`. The margin
+    /// keeps the console at `scale` when the framebuffer comes out a pixel
+    /// smaller than asked. Usable in a `const` item.
+    #[must_use]
+    pub const fn console(title: &'static str, spec: ConsoleSpec, scale: u16, margin: u16) -> Self {
+        /// `cells` cells of `cell` pixels, `scale` times, and the margin.
+        const fn side(cells: u16, cell: u16, scale: u16, margin: u16) -> i32 {
+            (cells as i32)
+                .saturating_mul(cell as i32)
+                .saturating_mul(scale as i32)
+                .saturating_add(margin as i32)
+        }
+        Self::new(
+            title,
+            side(spec.cols, spec.cell_w, scale, margin),
+            side(spec.rows, spec.cell_h, scale, margin),
+        )
+    }
 }
 
 /// A window icon: PNG files of 16, 32 and 64 pixels square. It is
@@ -359,7 +426,7 @@ pub struct AppConfig {
     /// picture and a loading card's picture are read with it. Under `cargo
     /// shuyi run --watch` the folder of its files on disk lies over it
     /// ([`watched_layer`]), and a picture saved there is drawn from then on.
-    pub files: fn(&str) -> Option<&'static [u8]>,
+    pub files: fn(&str) -> Option<Cow<'static, [u8]>>,
     /// The font atlas's picture: its path for [`files`](Self::files).
     pub font_png: &'static str,
     /// The sound files the audio manifest names, and the music folder
@@ -385,7 +452,7 @@ impl AppConfig {
     pub const fn new(
         window: Window,
         storage_name: &'static str,
-        files: fn(&str) -> Option<&'static [u8]>,
+        files: fn(&str) -> Option<Cow<'static, [u8]>>,
         font_png: &'static str,
         sounds: Files<'static>,
     ) -> Self {
@@ -403,25 +470,33 @@ impl AppConfig {
     }
 }
 
-/// The window settings for macroquad's entry point
-/// (`#[macroquad::main(window_conf)]`).
-pub fn window_conf(window: &Window) -> Conf {
-    Conf {
-        window_title: window.title.to_owned(),
-        window_width: window.width,
-        window_height: window.height,
-        window_resizable: true,
-        // Full-resolution framebuffer on scaled displays, so the console's
-        // integer scale is in real pixels (see render.rs).
-        high_dpi: true,
-        icon: window.icon.and_then(|icon| window_icon(&icon)),
-        platform: miniquad::conf::Platform {
-            // A hint the driver may ignore; miniquad reads it only here.
-            swap_interval: Some(i32::from(window.vsync)),
-            ..Default::default()
-        },
-        ..Default::default()
+/// The window settings macroquad opens `window` with, as the player left
+/// it on this computer: the record beside the storage at `storage_at`
+/// (the `window` module), on native outside a capture run. And what it
+/// opened as, for the backend.
+fn window_conf(window: &Window, storage_at: &storage::StorageAt) -> (Conf, window::Opened) {
+    if !keeps_window_record() {
+        let (conf, _) = window::conf_from(window, None);
+        let opened = window::Opened::unkept(&conf);
+        return (conf, opened);
     }
+    let (text, unread) = match storage_at.read_window() {
+        Ok(text) => (text, None),
+        Err(e) => (None, Some(e)),
+    };
+    let (conf, warning) = window::conf_from(window, text.as_deref());
+    let opened = window::Opened::new(&conf, text.as_deref(), warning.or(unread));
+    (conf, opened)
+}
+
+/// Whether this run keeps the window's record: on native, unless it is a
+/// capture run.
+fn keeps_window_record() -> bool {
+    #[cfg(feature = "capture")]
+    if capture::requested().is_some() {
+        return false;
+    }
+    !cfg!(target_arch = "wasm32")
 }
 
 /// The window's icon, or `None` if a picture doesn't decode or isn't the
@@ -438,11 +513,25 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
     })
 }
 
-/// Runs a game until it quits, as `start` says: the first frame shows its
-/// loading card, the next loads it (or shows why it can't: a wrong command
-/// line, a broken asset), and each frame after, `App` reads the keyboard
-/// and controllers, steps the game, plays its sounds, music and voices and
-/// draws its frame. Closing the window lets the game save first.
+/// Opens `window` and runs `main` in it until `main` ends: for the engine's
+/// own programs that draw without a game (the render card's capture). It
+/// opens at `window`'s size, windowed, and keeps no record of it. Not part
+/// of the API: semver doesn't cover it (ADR-0119).
+#[doc(hidden)]
+pub fn open_window(window: &Window, main: impl Future<Output = ()> + 'static) {
+    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
+    macroquad::Window::from_config(window::conf_from(window, None).0, main);
+}
+
+/// Runs a game of its own shape until it quits, from a plain `fn main`: it
+/// opens the game's window ([`AppConfig::window`]), and runs it as `start`
+/// says. The first frame shows its loading card, the next loads it (or
+/// shows why it can't: a wrong command line, a broken asset), and each
+/// frame after, `App` reads the keyboard and controllers, steps the game,
+/// plays its sounds, music and voices and draws its frame. Closing the
+/// window lets the game save first. A game on the short path runs with
+/// [`run_game`] instead, which makes its `AppConfig` and its `Start` of its
+/// `BasicGame`.
 ///
 /// The game's context gets this build's target's facts
 /// (`shuyi_ui::PlatformFacts`): the target is `SHUYI_TARGET` when the
@@ -458,12 +547,40 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
 ///
+/// On a desktop the window opens as the player left it on this computer:
+/// at its last windowed size and in its mode, kept beside the game's
+/// storage (`docs/platform-backends.md`, *The window and the cursor*). The
+/// first time, it opens at [`AppConfig::window`]'s size, windowed. The
+/// system's cursor hides over the window once the mouse has rested two
+/// seconds, and at once in fullscreen, and shows again when the mouse moves
+/// or a button is pressed, or the window loses focus (on the web too).
+///
 /// A panic writes a crash report as [`AppConfig::crash`] says ([`crash`]).
 /// On native a panic of the game's frame then stops the sound, adds the
 /// game's record of its play to the report and ends the process with exit
 /// code 101; the game's system hook isn't called, so a broken game never
 /// saves.
-pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+pub fn run_app<G: GameData>(config: AppConfig, start: Start<G>) {
+    let storage_at = storage::StorageAt::find(config.storage_name, config.desktop_folder);
+    let (conf, opened) = window_conf(&config.window, &storage_at);
+    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
+    macroquad::Window::from_config(conf, run(config, start, storage_at, opened));
+}
+
+/// The loop of [`run_app`], in the window it opened as `opened` says, with
+/// the game's storage at `storage_at`.
+async fn run<G: GameData>(
+    mut config: AppConfig,
+    start: Start<G>,
+    storage_at: storage::StorageAt,
+    opened: window::Opened,
+) {
+    if let Some(warning) = &opened.warning {
+        warn!("window: {}", warning);
+    }
+    // Read once, so every program keeps the recipient's field an overlay
+    // writes, whether or not the game reads it.
+    let _ = recipient();
     // Which target this build is: an unknown one is the load's error.
     let (start, facts) = facts::start_as(facts::this_target(), start);
     #[cfg(feature = "capture")]
@@ -488,12 +605,11 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
-    let storage_at = storage::StorageAt::find(config.storage_name, config.desktop_folder);
     let crash_storage = storage_at.clone();
     crash::install(config.crash, move || crash_storage.open());
     let panic_at = crash::panic_at_frame(config.crash);
     let records_play = config.crash.records_play();
-    let mut platform = Macroquad::new(&mut config, facts, storage_at.clone());
+    let mut platform = Macroquad::new(&mut config, facts, storage_at.clone(), &opened);
     let mut app = App::new(start);
     let kept = sessions::Kept::start(&mut app, &storage_at, recorded_manifest);
     let mut pacer = Pacer::new(config.window.vsync);
@@ -521,6 +637,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             link.before_frame(&app, platform.link_input());
         }
         let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at, records_play);
+        platform.after_frame(now);
         if app.take_session_save() {
             kept.save(&app);
         }
@@ -554,6 +671,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         // closed, so it keeps showing the last frame.
         if outcome == FrameOutcome::Quit && !cfg!(target_arch = "wasm32") {
             kept.save_at_quit(&app);
+            platform.save_window();
             break;
         }
         pace(&mut pacer, &platform, &mut app);
@@ -633,7 +751,7 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 
 /// Runs a game on the short path until it quits, in a window of its
 /// console at twice its size: its files become the process's bundle, and
-/// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
+/// [`run_app`] starts it as [`BasicGame::start`] says, with no sounds, no
 /// voices and no system keyboard. Called from a plain `fn main`. Under
 /// `cargo shuyi run --watch` the game's files on disk are laid over the
 /// embedded ones ([`watched_layer`]). On the web, the files the page holds
@@ -643,13 +761,36 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// are read before all of them, and `run --watch` watches their folder
 /// too when the game has a checkout of them (ADR-0111).
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
+    run_game_checked(game, &[]);
+}
+
+/// A check a page may ask a game on the short path to make of its files
+/// ([`run_game_checked`]): its name, and a function of the game's data as
+/// it loaded with the page's files, answering `Ok` with why they pass, or
+/// `Err` with why not, each a sentence the reader can act on.
+pub type PageCheck<A, T> = (&'static str, fn(&BasicData<A, T>) -> Result<String, String>);
+
+/// [`run_game`], with checks a page may ask for (the book's exercises,
+/// ADR-0117): when the page names one ([`page::page_check`]) and its files
+/// load, the game's data is read with them, the check of that name in
+/// `checks` runs on it, and the page hears its result
+/// ([`page::report_check`]); a name with no check is reported failed. Files
+/// with problems are reported as `run_game` reports them, with no check.
+/// Then the game plays as usual.
+pub fn run_game_checked<A: ActionSet, T: Debug + 'static>(
+    game: BasicGame<A, T>,
+    checks: &[PageCheck<A, T>],
+) {
     let game = if let Some(watched) = watched_game(&game) {
         watched
     } else {
         let page = page::page_layer(PAGE_FOLDER, page::PageLimits::default());
         let (game, heard) = lay_page(&game, page);
-        if let Some(text) = heard {
-            page::report(&text);
+        if let Some(text) = &heard {
+            page::report(text);
+        }
+        if let Some(report) = page_checked(&game, heard.as_deref(), page::page_check(), checks) {
+            page::report_check(&report);
         }
         game
     };
@@ -657,9 +798,35 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
     // the one the game's data holds, since one test process runs many
     // games. A bundle installed before (none is) would stay.
     let _ = shuyi_assets::bundle::install(game.bundle());
-    let window = basic_window(&game);
-    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
-    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+    run_app(basic_config(&game), game.start());
+}
+
+/// The result of the check `asked` (the page's [`page::page_check`]) of
+/// `checks` on `game` as [`lay_page`] left it, once the page heard `heard`:
+/// none when the page asks for none, or heard problems.
+fn page_checked<A: ActionSet, T: Debug + 'static>(
+    game: &BasicGame<A, T>,
+    heard: Option<&str>,
+    asked: Option<String>,
+    checks: &[PageCheck<A, T>],
+) -> Option<page::CheckReport> {
+    let name = asked?;
+    if heard.is_some_and(|text| !text.is_empty()) {
+        return None;
+    }
+    let Some((_, check)) = checks.iter().find(|(known, _)| *known == name) else {
+        let text = format!("This game has no check named `{name}`.");
+        return Some(page::CheckReport::new(name, false, text));
+    };
+    let result = game.data().map_err(|errors| {
+        let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        lines.join("\n")
+    });
+    let report = match result.and_then(|data| check(&data)) {
+        Ok(text) => page::CheckReport::new(name, true, text),
+        Err(text) => page::CheckReport::new(name, false, text),
+    };
+    Some(report)
 }
 
 /// The folder of a short-path game's project its files are in, and the
@@ -708,9 +875,7 @@ where
     let scenes = preview_folder(folder);
     let game = watched_game(&game).unwrap_or(game);
     let _ = shuyi_assets::bundle::install(game.bundle());
-    let window = basic_window(&game);
-    let start = game.preview_start(scenes, preview);
-    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), start));
+    run_app(basic_config(&game), game.preview_start(scenes, preview));
 }
 
 /// The name of the layer a dialogue preview reads its folder into.
@@ -733,24 +898,18 @@ fn preview_folder(_: &Path) -> Result<Layer, String> {
 }
 
 /// The margin around a short-path game's console, in pixels.
-const BASIC_MARGIN: i32 = 16;
+const BASIC_MARGIN: u16 = 16;
 
 /// The window of a game on the short path: its console at twice its size
 /// and a small margin, titled with its name (`AppInfo::name`), with its
 /// icon (`AppInfo::window_icon`).
 fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
-    let console = game.console_spec();
-    let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
-    Window::new(
-        game.name(),
-        side(console.cols, console.cell_w),
-        side(console.rows, console.cell_h),
-    )
-    .with_icon(game.app().window_icon)
+    Window::console(game.name(), game.console_spec(), 2, BASIC_MARGIN)
+        .with_icon(game.app().window_icon)
 }
 
 /// A file of the bundle [`run_game`] installed.
-fn installed_file(path: &str) -> Option<&'static [u8]> {
+fn installed_file(path: &str) -> Option<Cow<'static, [u8]>> {
     shuyi_assets::bundle::installed()?.bytes(path)
 }
 
@@ -854,7 +1013,7 @@ mod tests {
         let broken = Icon::new(b"not a png", b"not a png", b"not a png");
         assert!(window_icon(&broken).is_none());
         let window = Window::new("A game", 640, 480).with_icon(Some(broken));
-        let conf = window_conf(&window);
+        let (conf, _) = window::conf_from(&window, None);
         assert!(conf.icon.is_none());
         assert_eq!(
             (
@@ -877,12 +1036,39 @@ mod tests {
     fn a_window_asks_for_vsync_unless_told_not_to() {
         let window = Window::new("A game", 640, 480);
         assert!(window.vsync);
-        assert_eq!(window_conf(&window).platform.swap_interval, Some(1));
+        assert_eq!(
+            window::conf_from(&window, None).0.platform.swap_interval,
+            Some(1)
+        );
         let off = NO_VSYNC;
         assert!(!off.vsync);
-        assert_eq!(window_conf(&off).platform.swap_interval, Some(0));
+        assert_eq!(
+            window::conf_from(&off, None).0.platform.swap_interval,
+            Some(0)
+        );
         assert!(off.with_vsync(true).vsync);
         assert!(basic_window(&basic()).vsync);
+    }
+
+    /// A window of a console, built in a `const` item.
+    const CONSOLE: Window = Window::console("x", ConsoleSpec::text(48, 24), 2, 16);
+
+    #[test]
+    fn a_console_window_is_its_console_scaled_and_a_margin() {
+        assert_eq!(
+            (CONSOLE.title, CONSOLE.width, CONSOLE.height),
+            ("x", 784, 784)
+        );
+        assert!(CONSOLE.icon.is_none() && CONSOLE.vsync);
+        let spec = ConsoleSpec {
+            cell_w: 10,
+            ..ConsoleSpec::text(20, 10)
+        };
+        let window = Window::console("x", spec, 3, 0);
+        assert_eq!((window.width, window.height), (600, 480));
+        let huge = ConsoleSpec::text(u16::MAX, u16::MAX);
+        let window = Window::console("x", huge, u16::MAX, u16::MAX);
+        assert_eq!((window.width, window.height), (i32::MAX, i32::MAX));
     }
 
     #[test]
@@ -993,7 +1179,10 @@ mod tests {
         let palette = palette_with_text("#5a9bff");
         let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
         assert_eq!(heard.as_deref(), Some(""));
-        assert_eq!(game.bundle().file("palette.ron"), Some(palette.as_str()));
+        assert_eq!(
+            game.bundle().file("palette.ron").as_deref(),
+            Some(palette.as_str())
+        );
         assert_eq!(
             game.bundle().display_path("palette.ron"),
             "files/palette.ron"
@@ -1011,6 +1200,78 @@ mod tests {
         assert_eq!(
             game.bundle().file("palette.ron"),
             template().bundle().file("palette.ron")
+        );
+    }
+
+    /// A check of the palette's `text` colour: passes when it is blue.
+    fn text_is_blue(data: &BasicData<shuyi_assets::keymap::UiAction>) -> Result<String, String> {
+        match data.palette_def().get("text") {
+            Some([0x5a, 0x9b, 0xff]) => Ok("the text is blue".to_owned()),
+            other => Err(format!("the text is {other:?}")),
+        }
+    }
+
+    /// The checks the tests' game has.
+    const CHECKS: &[PageCheck<shuyi_assets::keymap::UiAction, ()>] = &[("text-blue", text_is_blue)];
+
+    #[test]
+    fn a_page_that_asks_no_check_gets_no_result() {
+        assert_eq!(page_checked(&template(), Some(""), None, CHECKS), None);
+        assert_eq!(page_checked(&template(), None, None, CHECKS), None);
+    }
+
+    #[test]
+    fn the_check_the_page_asks_for_runs_on_its_files() {
+        let (game, heard) = lay_page(
+            &template(),
+            Ok(Some(page_file(
+                "palette.ron",
+                &palette_with_text("#5a9bff"),
+            ))),
+        );
+        let report = page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS);
+        assert_eq!(
+            report,
+            Some(page::CheckReport::new(
+                "text-blue",
+                true,
+                "the text is blue"
+            ))
+        );
+    }
+
+    #[test]
+    fn with_no_page_files_the_check_runs_on_the_games_own() {
+        let (game, heard) = lay_page(&template(), Ok(None));
+        let report = page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS)
+            .expect("a result");
+        assert!(!report.passed);
+        assert!(report.text.starts_with("the text is"), "{report:?}");
+    }
+
+    #[test]
+    fn page_files_with_problems_get_no_check_result() {
+        let (game, heard) = lay_page(
+            &template(),
+            Ok(Some(page_file("palette.ron", &palette_with_text("blue")))),
+        );
+        assert!(heard.as_deref().is_some_and(|text| !text.is_empty()));
+        assert_eq!(
+            page_checked(&game, heard.as_deref(), Some("text-blue".into()), CHECKS),
+            None
+        );
+    }
+
+    #[test]
+    fn a_check_the_game_lacks_is_reported_failed_naming_it() {
+        let report = page_checked(&template(), None, Some("walls-red".into()), CHECKS);
+        assert_eq!(
+            report,
+            Some(page::CheckReport::new(
+                "walls-red",
+                false,
+                "This game has no check named `walls-red`."
+            ))
         );
     }
 

@@ -10,7 +10,7 @@ use crate::frame::color::EngineColor;
 use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
-use crate::screens::print_centred;
+use crate::screens::{print_centred, print_centred_styled};
 use crate::widgets::ask;
 
 /// The panel, in cells, at its widest and smallest, on a 100-cell
@@ -76,8 +76,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let panel = panel(view, buf);
     let look = PanelLook::new(BoxStyle::Single, text, bg)
-        .border(c(EngineColor::Border))
-        .title(c(EngineColor::Highlight));
+        .with_border(c(EngineColor::Border))
+        .with_title(c(EngineColor::Highlight));
     buf.panel(panel, &look, Some(&view.title));
 
     let mut y = panel.y + 2;
@@ -101,7 +101,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
         ask::glyph::paint(&ctx.palette, leaving, buf);
     }
     let bottom = i32::from(buf.height()) - 1;
-    print_centred(buf, bottom, &view.help, dim, black);
+    let colors = ctx.palette.text_colors_on(dim, black);
+    print_centred_styled(buf, bottom, &view.help, colors);
 }
 
 /// Paints `row` on console row `y` of `panel`: the focused row's label is a
@@ -183,7 +184,7 @@ mod tests {
             message: None,
             question: None,
             leaving: None,
-            help: "help".to_owned(),
+            help: "help".into(),
         }
     }
 
@@ -378,7 +379,7 @@ mod tests {
         v.question = Some(AskView {
             text: "Show every tip again?".to_owned(),
             answers: Vec::new(),
-            keys: Some("f yes / d no".to_owned()),
+            keys: Some("f yes / d no".into()),
         });
         let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
         assert!(painted_row(&c, &v, top).contains("╔═══════════════════════╗"));
@@ -498,6 +499,19 @@ mod tests {
     fn the_small_console_snapshot() {
         let c = ctx();
         let buf = painted_small(&c, &small_view());
+        insta::assert_snapshot!(buf.to_snapshot(&c.palette));
+    }
+
+    /// With `key` and `key_bg` in the palette, the help line's keys are in
+    /// them and its words as before.
+    #[test]
+    fn the_help_lines_keys_in_a_palette_with_key_colours_snapshot() {
+        let mut c = ctx();
+        c.palette = crate::toy::key_palette(&c);
+        let mut view = small_view();
+        view.message = None;
+        view.help = crate::screens::options::OptionsScreen::new(crate::toy::option_rows).help(&c);
+        let buf = painted_small(&c, &view);
         insta::assert_snapshot!(buf.to_snapshot(&c.palette));
     }
 }

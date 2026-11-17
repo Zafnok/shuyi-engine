@@ -34,6 +34,7 @@ use shuyi::ui::grid::{
     Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
     Terrains, UnitPainter, WalkSpeeds, glyph,
 };
+use shuyi::ui::text::StyledText;
 
 use crate::Data;
 
@@ -95,7 +96,7 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
     let text = bundle
         .file(MAP)
         .ok_or_else(|| problem("file not found".to_owned()))?;
-    let map = rules::parse_map(MAP, text).map_err(problem)?;
+    let map = rules::parse_map(MAP, &text).map_err(problem)?;
     Stage::new(&map, 0).map_err(problem)?;
     Ok(Own {
         map,
@@ -233,8 +234,8 @@ pub struct StageView {
     pub turn: String,
     /// What is happening.
     pub message: String,
-    /// The help line.
-    pub help: String,
+    /// The help line, its keys in key spans.
+    pub help: StyledText,
 }
 
 /// The stage screen.
@@ -297,7 +298,7 @@ impl StageScreen {
         StageView {
             turn: ctx.text_with("stage.turn", &[("turn", &turn)]),
             message: ctx.text_with(message, &[("turn", &turn)]),
-            help: ctx.text_with(help, &[]),
+            help: ctx.text_styled(help, &[]),
         }
     }
 
@@ -371,7 +372,8 @@ impl Screen<Data> for StageScreen {
             bg,
         );
         let last = i32::from(buf.height()) - 1;
-        buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
+        let colors = palette.text_colors_on(c(EngineColor::TextDim), bg);
+        buf.print_styled(1, last, &view.help, colors);
         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
         let scene = self.scene(Self::view_tiles());
         GLYPHS.paint(&looks, &scene, AREA, &Letters { palette }, buf);

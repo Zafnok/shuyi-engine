@@ -24,6 +24,9 @@ fn test_font() -> (FontAtlasDef, Vec<u8>) {
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4)].into(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        bold_ink: None,
+        ink: None,
     };
     let mut bits = vec![0u8; 5 * 16];
     bits[6] = 0b0001_1000;
@@ -531,8 +534,25 @@ fn a_one_bit_packs_bundle_gives_the_picture_at_each_images_path() {
         Layer::Over,
     );
     b.add_sprite(sprite);
-    let from_pack = text(&draw_with(&b, &bundle_of(file)), 0, 0, 8, 4);
+    let from_pack = text(&draw_with(&b, &bundle_of(file.clone())), 0, 0, 8, 4);
     assert_eq!(from_pack, sprite_frame(|s| s, false));
+    // The same picture in a pack read file by file is handed out owned,
+    // with nothing to lend the frame: no picture, a grey rectangle, and no
+    // failure (ADR-0128 §3: such a game keeps its pictures as its own).
+    let by_file = {
+        use shuyi_assets::pack::{self, Content, InMemory, Index, PackInfo};
+        let info = PackInfo::new("test", None, shuyi_core::ContentHash(0));
+        let files = [("p.png".to_owned(), Content::Raw(file))].into();
+        let bytes: &'static [u8] = pack::write(&info, &files).leak();
+        let source: &'static InMemory = Box::leak(Box::new(InMemory::new(bytes)));
+        let index = Index::read(bytes, "test").unwrap();
+        Bundle::new(vec![index.into_layer("pack", source)])
+    };
+    assert!(by_file.bytes("p.png").is_some());
+    assert_eq!(
+        text(&draw_with(&b, &by_file), 0, 0, 8, 4),
+        sprite_frame(|s| s, true)
+    );
     // A PNG at its path is no one-bit picture: a grey rectangle.
     let png = bundle_of(b"\x89PNG\r\n\x1a\n".to_vec());
     assert_eq!(
@@ -955,4 +975,55 @@ fn each_swatch_is_its_role() {
 fn the_renderers_grey_is_the_dither50_pattern() {
     assert_eq!(GREY, Shade::from(Pattern::new(Base::Dither50)));
     assert_eq!(WHITE, Shade::from(Pattern::new(Base::White)));
+}
+
+/// A help line on a white panel, its words in a black `text_dim` and its
+/// key in a white `key` on a black `key_bg`: the reference renderer draws
+/// the key's glyph white on black and the word's black on white.
+#[test]
+fn a_help_lines_key_is_drawn_in_its_key_roles() {
+    use crate::frame::color::{EngineColor, KEY, KEY_BG, Palette, tests::engine_def};
+    use crate::text::StyledText;
+    let mut def = engine_def();
+    for (name, rgb) in [
+        ("text_dim", [0; 3]),
+        ("panel", [255; 3]),
+        (KEY, [255; 3]),
+        (KEY_BG, [0; 3]),
+    ] {
+        def.colors.insert(name.to_owned(), rgb);
+    }
+    let palette = Palette::new::<EngineColor>(&def).unwrap();
+    let roles = r#"(roles: {
+        "text_dim": (fg: Black), "panel": (fg: White), "key": (fg: White), "key_bg": (fg: Black),
+    })"#;
+    let map = PatternMapDef::from_source("help@onebit.ron", roles).unwrap();
+    let shades = PatternMap::new(palette.iter(), &map);
+    let (dim, panel) = (
+        palette.engine(EngineColor::TextDim),
+        palette.engine(EngineColor::Panel),
+    );
+    let mut b = GlyphBuffer::with_spec(
+        ConsoleSpec::text(50, 15).sized(3, 1),
+        Cell::new(' ', dim, panel),
+    );
+    let mut hint = StyledText::new();
+    hint.push_key("X").push_plain(" X");
+    b.print_styled(0, 0, &hint, palette.text_colors_on(dim, panel));
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    reference::render(&b, &font, &(), &shades, &mut frame);
+    // The key's X (columns 3-4, rows 6-7 of its cell) white on black.
+    assert_eq!(
+        text(&frame, 0, 5, 8, 4),
+        ["########", "###..###", "###..###", "########"]
+    );
+    // The word's X black on white.
+    assert_eq!(
+        text(&frame, 16, 5, 8, 4),
+        ["........", "...##...", "...##...", "........"]
+    );
+    // The space between them is the panel's.
+    assert_eq!(text(&frame, 8, 5, 8, 1), ["........"]);
 }

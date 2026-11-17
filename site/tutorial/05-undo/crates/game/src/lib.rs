@@ -17,7 +17,6 @@ pub mod title;
 
 use std::sync::OnceLock;
 
-use include_dir::{Dir, include_dir};
 use shuyi::core::Made;
 use shuyi::prelude::*;
 
@@ -25,7 +24,7 @@ use crate::action::Action;
 
 /// The game's files, embedded.
 // check-text: not player text, a folder
-static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
 
 /// The game's data and state, which its screens share: the engine's, read
 /// from `files/`, with the six moves of `files/keymap.ron` as its actions,
@@ -38,7 +37,7 @@ pub type Data = BasicData<Action, stages::Own>;
 /// modules its features turn on (`Cargo.toml`).
 pub fn game() -> BasicGame<Action, stages::Own> {
     // check-text: not player text, a folder
-    let files = Layer::dir("files", &FILES);
+    let files = Layer::dir("files", FILES);
     BasicGame::with_own(app_info::APP, files, stages::own, |_| {
         Box::new(title::Title)
     })

@@ -4,11 +4,15 @@
     list, two to four answers: `- [x]` a right one, `- [ ]` a wrong one, and
     ` — ` before why. `to`, optional, is one of the four audiences: the
     reader's filter folds the check as it folds a passage.
-    - In the page, `static/book-check.js` shows the answers as buttons, and
-      choosing one says whether it is right and why in a `role="status"`.
-    - With no JavaScript, the answers and why are in a `<details>`.
-    - `cargo xtask check-book` checks the same shape, and `cargo xtask llms`
-      writes the check as text in the twins. -#}
+    - In the page, `static/book-check.js` shows the answers as buttons, in
+      an order shuffled at each load, and choosing one says whether it is
+      right and why in a `role="status"`.
+    - With no JavaScript, the answers and why are in a `<details>`, in the
+      written order.
+    - `cargo xtask check-book` checks the same shape, and that across the
+      book no one place holds the right answer of more than half of the
+      checks with one (ticket 2833); `cargo xtask llms` writes the check as
+      text in the twins. -#}
 {%- set label = "" -%}
 {%- if to is defined -%}
 {%- if to == "programming" -%}{%- set label = "New to programming?" -%}

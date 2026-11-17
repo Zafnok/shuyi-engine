@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389"]
+blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044", "2262"]
 nick_input: sign-off
 completed:
 ---
@@ -58,6 +58,37 @@ groups:
   (done: the `bots` operation and MCP tool are gone, folded into
   `playtest`), 2391 (one picture type), and 2389 with 2388 before it
   (the inks go).
+
+Nick, 2026-11-14 (`docs/decisions.md`, *no run of breaking versions
+after the MVP*): every planned break a release can't soften comes before
+it, so later features ship as compatible releases. An audit of every
+open ticket that day added a fourth group:
+
+- **Types that can grow, and shapes that must be right the first time:**
+  - 2082–2086 move every exhaustive type an open ticket plans to grow
+    under ADR-0039 (the frame and widgets; input and controllers; sound,
+    music and cinematics; the assets' and platform's data; the
+    contract);
+  - 2412 gives each pad event its pad;
+  - 2087 takes outside crates' types out of a game's way in;
+  - 2089 checks, on each PR, that the public API names no outside crate
+    ADR-0119 doesn't list;
+  - 2088 decides what the contract's version promises;
+  - 2262 (done) handed out the bundle's reads as `Cow` bytes, not
+    `&'static` (ADR-0128 §1, decided by 2919 from what 2906 measured),
+    before the bundle's API is published. The other builds of ADR-0128 only add,
+    so they come after the release.
+- **Breaks no attribute softens,** done before the release: 2347
+  (styled text) and 3218 (done, typed label arguments), 2405 and 2409 (mouse
+  and touch on the engine's widgets), 2133 (the bots' settings files),
+  2136 (motions moved onto `ease`), 2239 (a check on translated lines),
+  3041 (macroquad's `log-rs`) and 3044 (the window kept as it was left).
+
+The release ships with quad-snd as the default sound backend. While
+quad-snd is in the graph, the in-house backend needs the root
+`Cargo.toml`'s `[patch.crates-io]` of `alsa-sys` (ADR-0075), which a
+published crate can't carry. Making the in-house backend the default
+later (3084) breaks no game's code (2084, ADR-0068).
 
 ## Nick input
 
@@ -275,21 +306,24 @@ The sign-off also:
   install --locked shuyi-cli` from crates.io (the `--git` form goes),
   and Learn adds each crate's docs.rs link beside its `/api/` link
   (`site/templates/learn.html`, over `site/data/api.toml`).
-- **Either order with 3050** (release a game from a tag): if 3050 is
-  done, the tag workflow also exports Hello, Grid through the engine's
-  `.github/workflows/export.yml` (3050) for each `build` entry of
-  `cargo shuyi export --plan`, made without `--tag` (the workflow has
-  already checked the tag). It attaches the packages, a `SHA256SUMS`
-  and attestations (`actions/attest`; the repository is public) to the
-  engine's GitHub Release. If not, 3050 adds this job when it lands.
+- **From 3050 (done)** (release a game from a tag): the tag workflow
+  also exports Hello, Grid through the engine's
+  `.github/workflows/export.yml` (a byte-equal copy of the template's;
+  its inputs `target`, `host`, `container`, `dir: examples/hello-grid`)
+  for each `build` entry of `cargo shuyi export --plan --json` in
+  `examples/hello-grid`, made without `--tag` (the workflow has already
+  checked the tag against the crates' version). It attaches the
+  packages, a `SHA256SUMS` and attestations (`actions/attest`, as the
+  templates' `release.yml` does; the repository is public) to the
+  engine's GitHub Release. This ticket adds that job.
 - **2544 is done** (`bots` folded into `playtest`, which removed the
   `bots` operation and `GameTools::bots`): its break landed before the
   first release, so nothing is left here.
-- **Either order with 2906** (research on asset memory): if 2906 is
-  done, nothing to do: a build ticket of its ADR that changes the
-  `&'static` reads (`Bundle`, `DecodeCx`, `ImageId`) carries its own
-  `Breaking:` line. If not, nothing to do either: 2906 counts a change
-  of lifetimes after this release as a 0.x break, as this policy says.
+- **From 2919 (done):** ADR-0128's one break, 2262 (done: the bundle's
+  and `DecodeCx`'s reads, and `AppConfig::files`), carries its own
+  `Breaking:` lines. Paths stay `&'static`; a change to
+  them for the parked DS (2264) would come after this release, a 0.x
+  break as this policy says.
 - The names are held already: on 2026-10-21 Nick had the six crates
   published as empty 0.0.0 placeholders, `shuyi` on 2026-10-22, and
   `shuyi-alloc-count` and `shuyi-playdate` on 2026-11-01, all owned by

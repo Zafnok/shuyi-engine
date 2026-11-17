@@ -196,7 +196,7 @@ fn the_views_constructors_give_the_literals() {
     assert_eq!(
         WaitView::new("Enter", true),
         WaitView {
-            key: "Enter".to_owned(),
+            key: "Enter".into(),
             log_hint: None,
             marker: true,
         }

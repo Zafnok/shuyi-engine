@@ -19,6 +19,24 @@
 //! one, or one of its edition's `never_features`, by its default features, a
 //! feature that lists it or a dependency's ([`crate::export::live_link`]):
 //! nothing is built or run.
+//!
+//! `export --plan [--tag <tag>]` builds nothing: it answers the game's
+//! [`ExportPlan`], which a release workflow reads (ticket 3050). For each
+//! target of `shuyi.ron`'s `targets` (sorted by id), each exporter that
+//! checks it (in the order they are registered): the runner it builds on in
+//! CI, the image it builds in, and whether CI builds it or only checks it.
+//! A target no exporter builds is a limit, not an error. With `--tag`, the
+//! answer fails unless the tag is `v` and the game's version.
+//!
+//! `export <target> --release --recipient <id> [--label <text>]
+//! [--signing-key <file>]` makes the package, then a closed build's copy of
+//! it for one recipient in `dist/recipients/<id>/<target>`, its program, pack
+//! and picture marked with the recipient's code, held to the `disclosure`
+//! part too, and written in the ledger beside the reveal kit
+//! ([`crate::export::recipient`], ADR-0118). `export --detect-recipient
+//! <file>` builds nothing: it answers the marks a copy holds
+//! ([`RecipientFound`]). A mark is circumstantial evidence, never proof, and
+//! every answer says so.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -30,11 +48,12 @@ use serde::{Deserialize, Serialize};
 use super::check::{self, CheckInput};
 use super::target::{Level, TargetProblem};
 use super::{Answer, Op, codes};
+use crate::export::recipient::{self, ledger};
 use crate::export::{
-    self as exporters, ExportCx, ExportError, Exporter, RunCx, disclosure, live_link,
+    self as exporters, ExportCx, ExportError, Exporter, InCi, RunCx, disclosure, live_link,
 };
 use crate::game::GameTools;
-use crate::project::Project;
+use crate::project::{Config, Project};
 
 /// The report's file, beside the package.
 pub const REPORT: &str = "export-report.json";
@@ -47,7 +66,9 @@ pub const REPORT: &str = "export-report.json";
 #[non_exhaustive]
 pub struct ExportInput {
     /// The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other
-    /// target's check runs, and the answer says it has no exporter yet.
+    /// target's check runs, and the answer says it has no exporter yet. None
+    /// with `plan`.
+    #[serde(default)]
     pub target: String,
     /// The folder the package goes in, from the game's folder;
     /// `dist/export/<target>` without it.
@@ -75,6 +96,244 @@ pub struct ExportInput {
     /// one, the game as `export` builds it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edition: Option<String>,
+    /// Whether to answer the game's [`ExportPlan`] and build nothing: what
+    /// each target's exporters build, and where, in CI. It takes no target
+    /// and no other field but `tag`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub plan: bool,
+    /// With `plan`, the tag a release is made from: the answer fails unless
+    /// it is `v` and the game's version (`v0.1.0`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    /// With `release`, the recipient a closed build's copy is made for: an
+    /// id of 1 to 64 letters, digits, `.`, `_` and `-`. The package is made,
+    /// then the copy, marked with the recipient's code, in
+    /// `dist/recipients/<id>/<target>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recipient: Option<String>,
+    /// With `recipient`, who they are, for the ledger (the id if not given).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// With `recipient`, the game's SSH private key the ledger is signed
+    /// with, from the game's folder; `SHUYI_SIGNING_KEY` if not given.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signing_key: Option<String>,
+    /// A file to read a recipient's marks in, from the game's folder: a
+    /// package (zip, `tar.gz` or folder), a program, a pack or a picture. It
+    /// builds nothing and takes no other field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detect_recipient: Option<String>,
+}
+
+/// The runner a package builds on in CI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Host {
+    /// Linux on x86-64 (`ubuntu-latest`).
+    Linux,
+    /// Linux on Arm (`ubuntu-24.04-arm`).
+    LinuxArm64,
+    /// Windows (`windows-latest`).
+    Windows,
+    /// macOS (`macos-latest`).
+    Macos,
+}
+
+/// What CI does with a target's exporter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Ci {
+    /// It builds the package.
+    Build,
+    /// It only checks the game against the target (`check --target`): the
+    /// package is built elsewhere, and `why` says why.
+    CheckOnly,
+}
+
+/// One exporter of the plan: what CI does with it, and where.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PlannedExport {
+    /// The exporter: `shuyi export <exporter>`.
+    pub exporter: String,
+    /// The target of `shuyi.ron`'s `targets` it checks (its profile).
+    pub profile: String,
+    /// The runner it builds on.
+    pub host: Host,
+    /// The image it builds in, if any (the Steam Linux Runtime's for
+    /// `linux`).
+    pub container: Option<String>,
+    /// Whether CI builds it or only checks it.
+    pub ci: Ci,
+    /// Why CI only checks it, for `check-only`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub why: Option<String>,
+}
+
+impl PlannedExport {
+    /// What the plan says of `exporter`.
+    pub fn of(exporter: &dyn Exporter) -> Self {
+        let (ci, why) = match exporter.ci() {
+            InCi::Build => (Ci::Build, None),
+            InCi::CheckOnly(why) => (Ci::CheckOnly, Some(why.to_owned())),
+        };
+        Self {
+            exporter: exporter.id().to_owned(),
+            profile: exporter.profile().to_owned(),
+            host: exporter.host(),
+            container: exporter.container().map(str::to_owned),
+            ci,
+            why,
+        }
+    }
+}
+
+/// What `export --plan` answers: the packages a release of the game makes.
+/// Each target of `shuyi.ron` no exporter builds is a limit of the answer.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPlan {
+    /// The version the packages carry, as `export-report.json` writes it:
+    /// `shuyi.ron`'s `app.version` when it sets one, else the package's.
+    pub version: String,
+    /// Whether the version has a pre-release part (`1.2.0-beta.1`).
+    pub prerelease: bool,
+    /// Each exporter of each target, targets sorted by id and a target's
+    /// exporters in the order they are registered.
+    pub exports: Vec<PlannedExport>,
+}
+
+/// What `export` answers: a package's report, with `plan` the plan, or with
+/// `detect_recipient` the marks found. Only its schema is read: [`export`],
+/// [`plan`] and [`detect`] each answer one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum ExportResult {
+    /// What `export` made.
+    Package(Box<ExportOutput>),
+    /// What `export --plan` plans.
+    Plan(ExportPlan),
+    /// What `export --detect-recipient` found.
+    Detected(Box<RecipientFound>),
+}
+
+/// A recipient's copy of a closed build (`export --recipient`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecipientCopy {
+    /// The recipient's id.
+    pub recipient: String,
+    /// The code their copy carries: 8 characters of Crockford's base 32.
+    pub code: String,
+    /// The copy's folder, from the game's folder:
+    /// `dist/recipients/<id>/<target>`, with its `export-report.json` and
+    /// `exposure-report.json`.
+    pub out: String,
+    /// The copy's package, from its folder.
+    pub package: String,
+    /// The SHA-256 of the base package, the public one (a folder's: of
+    /// `sha256sum`'s lines for its files).
+    pub build: String,
+    /// The SHA-256 of the copy's package.
+    pub overlay: String,
+    /// The marks it carries, each in a few words.
+    pub marks: Vec<String>,
+    /// The ledger it was written in, from the game's folder.
+    pub ledger: String,
+    /// That a mark is circumstantial evidence, never proof.
+    pub note: String,
+}
+
+/// Which mark a code was read from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum MarkKind {
+    /// The program's field.
+    Program,
+    /// The pack's layout.
+    Pack,
+    /// A picture's lowest bits.
+    Picture,
+}
+
+/// One mark the detector read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FoundMark {
+    /// Which mark.
+    pub mark: MarkKind,
+    /// The file it is in (in a package, its path there; in a pack, the
+    /// pack's and the picture's).
+    pub file: String,
+    /// The code it holds, if it holds one.
+    pub code: Option<String>,
+    /// What was read, in a few words.
+    pub said: String,
+}
+
+/// A copy the ledger says was given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Given {
+    /// The recipient's id.
+    pub recipient: String,
+    /// Who they are, as the ledger says.
+    pub label: String,
+    /// The day the copy was made.
+    pub date: String,
+    /// Its code.
+    pub code: String,
+    /// Its target.
+    pub target: String,
+    /// Its edition, if one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition: Option<String>,
+    /// The game's version.
+    pub version: String,
+    /// The SHA-256 of the base package.
+    pub build: String,
+    /// The SHA-256 of the copy's package.
+    pub overlay: String,
+}
+
+impl From<ledger::Entry> for Given {
+    fn from(entry: ledger::Entry) -> Self {
+        Self {
+            recipient: entry.recipient,
+            label: entry.label,
+            date: entry.date,
+            code: entry.code,
+            target: entry.target,
+            edition: entry.edition,
+            version: entry.version,
+            build: entry.build,
+            overlay: entry.overlay,
+        }
+    }
+}
+
+/// What `export --detect-recipient` found in a file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecipientFound {
+    /// The file read, from the game's folder.
+    pub file: String,
+    /// Every mark read: each program field, each pack's layout, each
+    /// picture.
+    pub marks: Vec<FoundMark>,
+    /// The codes the marks name, each once.
+    pub codes: Vec<String>,
+    /// The copies the ledger says carry those codes.
+    pub recipients: Vec<Given>,
+    /// The ledger read, from the game's folder, if there is one.
+    pub ledger: Option<String>,
+    /// Whether the ledger's signature verifies against its signer; none when
+    /// it has no signature or there is no ledger.
+    pub signed: Option<bool>,
+    /// What the marks say together: "no mark found", or the code they name.
+    pub verdict: String,
+    /// That a mark is circumstantial evidence, never proof.
+    pub note: String,
 }
 
 /// How a package is signed.
@@ -144,6 +403,9 @@ pub struct ExportOutput {
     /// a `.app`'s `Contents/Resources` (ADR-0110).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pack: Option<FileSize>,
+    /// With `recipient`, the closed build's copy made for them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recipient: Option<RecipientCopy>,
 }
 
 /// `export` on `project`: the target's check, with the game's tools
@@ -154,6 +416,10 @@ pub fn export(
     game: Option<&dyn GameTools>,
 ) -> Answer<ExportOutput> {
     let op = Op::Export;
+    if input.plan {
+        let error = "`plan` answers with the plan, which `export::plan` gives";
+        return Answer::failed(op, codes::WRONG_ARGUMENTS, error);
+    }
     let exporter = exporters::find(&input.target);
     let profile = exporter.map_or(input.target.as_str(), |exporter| exporter.profile());
     let checked = check::targets(
@@ -187,26 +453,22 @@ pub fn export(
         );
         return Answer::failed(op, codes::NO_EXPORTER, error);
     };
-    let edition = input
-        .edition
-        .as_ref()
-        .and_then(|name| project.config.editions.get(name));
-    let part = edition
-        .and_then(|edition| edition.disclosure.as_ref())
-        .or(project.config.disclosure.as_ref());
-    if let Some(part) = part {
-        let problems = disclosure::problems(part);
-        if !problems.is_empty() {
-            let error = format!(
-                "{} can't be used; nothing was built:\n  {}",
-                crate::project::FILE,
-                problems.join("\n  ")
-            );
-            return Answer::failed(op, codes::PROJECT_FILE, error);
-        }
-    }
+    let part = match disclosure_part(project, input) {
+        Ok(part) => part,
+        Err(error) => return Answer::failed(op, codes::PROJECT_FILE, error),
+    };
     let cx = match ExportCx::of(project, exporter, input) {
         Ok(cx) => cx,
+        Err(e) => return failed(&e),
+    };
+    let asked = match asked_of(project, input).and_then(|asked| {
+        match &asked {
+            Some(asked) => recipient::refuse(&cx, exporter, project, asked),
+            None => Ok(()),
+        }
+        .map(|()| asked)
+    }) {
+        Ok(asked) => asked,
         Err(e) => return failed(&e),
     };
     let mut report = match build(&cx, exporter, project, game) {
@@ -229,6 +491,13 @@ pub fn export(
         let error = format!("write {}: {e}", cx.out.join(REPORT).display());
         return Answer::failed(op, codes::FILE, error);
     }
+    if let (Some(asked), Some(report)) = (&asked, answer.result.as_mut()) {
+        let made = recipient::overlay(&cx, exporter, project, part, report, asked);
+        match made {
+            Ok(copy) => report.recipient = Some(copy),
+            Err((code, error)) => return Answer::failed(op, code, error),
+        }
+    }
     if input.run
         && let Some(report) = &answer.result
         && let Err(e) = exporter.run(&RunCx {
@@ -241,6 +510,33 @@ pub fn export(
         answer = answer.with_code(e.code());
     }
     answer
+}
+
+/// The `disclosure` part an export of `input` is held to: its edition's, else
+/// the game's, if either has one. One that can't be used is refused, and
+/// nothing is built.
+fn disclosure_part<'a>(
+    project: &'a Project,
+    input: &ExportInput,
+) -> Result<Option<&'a crate::project::Disclosure>, String> {
+    let edition = input
+        .edition
+        .as_ref()
+        .and_then(|name| project.config.editions.get(name));
+    let part = edition
+        .and_then(|edition| edition.disclosure.as_ref())
+        .or(project.config.disclosure.as_ref());
+    if let Some(part) = part {
+        let problems = disclosure::problems(part);
+        if !problems.is_empty() {
+            return Err(format!(
+                "{} can't be used; nothing was built:\n  {}",
+                crate::project::FILE,
+                problems.join("\n  ")
+            ));
+        }
+    }
+    Ok(part)
 }
 
 /// The package `exporter` makes of `cx`: its builds refused first if one
@@ -259,8 +555,188 @@ fn build(
 }
 
 /// An answer of `export` that failed with `error`.
-fn failed(error: &ExportError) -> Answer<ExportOutput> {
+fn failed<T>(error: &ExportError) -> Answer<T> {
     Answer::failed(Op::Export, error.code(), error.message())
+}
+
+/// What `input` asks of a recipient's copy, if it names a recipient: its id,
+/// its label (the id if not given) and the signing key, which must be there.
+fn asked_of(
+    project: &Project,
+    input: &ExportInput,
+) -> Result<Option<recipient::Asked>, ExportError> {
+    let Some(id) = &input.recipient else {
+        if input.label.is_some() || input.signing_key.is_some() {
+            return Err(ExportError::Setup(
+                "--label and --signing-key go with --recipient".to_owned(),
+            ));
+        }
+        return Ok(None);
+    };
+    Ok(Some(recipient::Asked {
+        recipient: id.clone(),
+        label: input.label.clone().unwrap_or_else(|| id.clone()),
+        key: recipient::key_of(&project.root, input.signing_key.as_deref())?,
+    }))
+}
+
+/// `export --detect-recipient <file>` on `project` ([`RecipientFound`]): the
+/// marks the file holds. It builds nothing and runs no check.
+pub fn detect(project: &Project, input: &ExportInput) -> Answer<RecipientFound> {
+    let Some(file) = &input.detect_recipient else {
+        let error = "`detect_recipient` names the file to read";
+        return Answer::failed(Op::Export, codes::WRONG_ARGUMENTS, error);
+    };
+    match recipient::detect(project, file) {
+        Ok(found) => Answer::new(Op::Export, true, found, Vec::new()),
+        Err(e) => failed(&e),
+    }
+}
+
+/// What `export --detect-recipient` found, for people: every mark, the
+/// verdict, whom the ledger gave the code, and that it is circumstantial.
+pub fn detect_text(found: &RecipientFound) -> String {
+    let mut text = format!(
+        "export --detect-recipient {}: {}\n",
+        found.file, found.verdict
+    );
+    for mark in &found.marks {
+        let kind = match mark.mark {
+            MarkKind::Program => "program",
+            MarkKind::Pack => "pack",
+            MarkKind::Picture => "picture",
+        };
+        let code = mark.code.as_deref().unwrap_or("-");
+        let _ = writeln!(text, "  {kind}: {} ({code}): {}", mark.file, mark.said);
+    }
+    for given in &found.recipients {
+        let edition = given
+            .edition
+            .as_ref()
+            .map_or_else(String::new, |edition| format!(" {edition}"));
+        let _ = writeln!(
+            text,
+            "  the ledger: {} was given to {} ({}) on {}, {}{edition} {}",
+            given.code, given.recipient, given.label, given.date, given.target, given.version
+        );
+    }
+    match (&found.ledger, found.signed) {
+        (Some(ledger), Some(true)) => {
+            let _ = writeln!(text, "  ledger: {ledger}, its signature verifies");
+        }
+        (Some(ledger), Some(false)) => {
+            let _ = writeln!(
+                text,
+                "  ledger: {ledger}, its signature DOESN'T verify: it changed after it was signed"
+            );
+        }
+        (Some(ledger), None) => {
+            let _ = writeln!(text, "  ledger: {ledger}, not signed");
+        }
+        (None, _) => text.push_str("  ledger: none here\n"),
+    }
+    let _ = writeln!(text, "  {}", found.note);
+    text
+}
+
+/// `export --plan` on `project` ([`ExportPlan`]): the game's version, then
+/// [`plan_of`] with every registered exporter. It builds nothing and runs
+/// no check.
+pub fn plan(project: &Project, input: &ExportInput) -> Answer<ExportPlan> {
+    match exporters::version_of(project) {
+        Ok(version) => plan_of(
+            &project.config,
+            &version,
+            exporters::exporters(),
+            input.tag.as_deref(),
+        ),
+        Err(e) => failed(&e),
+    }
+}
+
+/// The plan of the game whose project file is `config` and whose version is
+/// `version`, with `exporters`, checked against `tag` if one is given.
+pub fn plan_of(
+    config: &Config,
+    version: &str,
+    exporters: &[&dyn Exporter],
+    tag: Option<&str>,
+) -> Answer<ExportPlan> {
+    let op = Op::Export;
+    let prerelease = match semver::Version::parse(version) {
+        Ok(parsed) => !parsed.pre.is_empty(),
+        Err(e) => {
+            let error = format!(
+                "the game's version `{version}` isn't a semantic version (`1.2.0`, \
+                 `1.2.0-beta.1`): {e}"
+            );
+            return Answer::failed(op, codes::PROJECT_FILE, error);
+        }
+    };
+    if let Some(tag) = tag
+        && tag.strip_prefix('v') != Some(version)
+    {
+        let error = format!(
+            "the tag `{tag}` doesn't name the game's version `{version}`: its tag is `v{version}`"
+        );
+        let help = format!(
+            "tag the version the game has (`git tag -a v{version} -m <notes>`), or set the \
+             version to the tag's (`app.version` in {}, else the package's) and tag that commit",
+            crate::project::FILE
+        );
+        return Answer::failed(op, codes::WRONG_ARGUMENTS, error).with_help(help);
+    }
+    let mut exports = Vec::new();
+    let mut limits = Vec::new();
+    for id in config.targets.keys() {
+        let before = exports.len();
+        exports.extend(
+            exporters
+                .iter()
+                .filter(|exporter| exporter.profile() == id)
+                .map(|exporter| PlannedExport::of(*exporter)),
+        );
+        if exports.len() == before {
+            limits.push(format!(
+                "`{id}` is checked (`check --target {id}`) but not packaged: no exporter builds \
+                 it yet"
+            ));
+        }
+    }
+    let plan = ExportPlan {
+        version: version.to_owned(),
+        prerelease,
+        exports,
+    };
+    Answer::new(op, true, plan, limits)
+}
+
+/// The plan, for people.
+pub fn plan_text(plan: &ExportPlan) -> String {
+    let pre = if plan.prerelease {
+        " (a prerelease)"
+    } else {
+        ""
+    };
+    let mut text = format!("export --plan: version {}{pre}\n", plan.version);
+    for planned in &plan.exports {
+        let _ = write!(text, "  {} ({}): ", planned.exporter, planned.profile);
+        match planned.ci {
+            Ci::CheckOnly => {
+                let why = planned.why.as_deref().unwrap_or_default();
+                let _ = write!(text, "checked only: {why}");
+            }
+            Ci::Build => {
+                let host = serde_json::to_value(planned.host).unwrap_or_default();
+                let _ = write!(text, "built on {}", host.as_str().unwrap_or_default());
+                if let Some(container) = &planned.container {
+                    let _ = write!(text, " in {container}");
+                }
+            }
+        }
+        text.push('\n');
+    }
+    text
 }
 
 /// `export`'s arguments (`--json` taken out): the target, then
@@ -300,12 +776,79 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
                 let name = rest.next().ok_or("--edition needs an edition's name")?;
                 input.edition = Some(name.clone());
             }
+            "--plan" => input.plan = once(input.plan)?,
+            "--tag" => {
+                once(input.tag.is_some())?;
+                let tag = rest.next().ok_or("--tag needs a tag (`v0.1.0`)")?;
+                input.tag = Some(tag.clone());
+            }
+            "--recipient" => {
+                once(input.recipient.is_some())?;
+                let id = rest.next().ok_or("--recipient needs the recipient's id")?;
+                input.recipient = Some(id.clone());
+            }
+            "--label" => {
+                once(input.label.is_some())?;
+                let label = rest.next().ok_or("--label needs who the recipient is")?;
+                input.label = Some(label.clone());
+            }
+            "--signing-key" => {
+                once(input.signing_key.is_some())?;
+                let key = rest
+                    .next()
+                    .ok_or("--signing-key needs an SSH private key's file")?;
+                input.signing_key = Some(key.clone());
+            }
+            "--detect-recipient" => {
+                once(input.detect_recipient.is_some())?;
+                let file = rest
+                    .next()
+                    .ok_or("--detect-recipient needs the file to read")?;
+                input.detect_recipient = Some(file.clone());
+            }
             flag if flag.starts_with("--") => return Err(format!("unknown option {flag}")),
             _ if target.is_none() => target = Some(arg.clone()),
             _ => return Err("one target".to_owned()),
         }
     }
+    if input.plan || input.detect_recipient.is_some() {
+        return builds_nothing(input, target.is_some());
+    }
+    if input.tag.is_some() {
+        return Err("--tag goes with --plan".to_owned());
+    }
     input.target = target.ok_or("a target: windows, linux, macos, web or playdate")?;
+    Ok(input)
+}
+
+/// `input`, an `export --plan` or `--detect-recipient`, which builds nothing,
+/// if it takes no target (`has_target`) and nothing that isn't its own:
+/// `--plan` takes `--tag`.
+fn builds_nothing(input: ExportInput, has_target: bool) -> Result<ExportInput, String> {
+    let (flag, alone, takes) = if input.plan {
+        let alone = ExportInput {
+            plan: true,
+            tag: input.tag.clone(),
+            ..ExportInput::default()
+        };
+        ("--plan", alone, "only --tag")
+    } else {
+        let alone = ExportInput {
+            detect_recipient: input.detect_recipient.clone(),
+            ..ExportInput::default()
+        };
+        ("--detect-recipient", alone, "no other option")
+    };
+    if has_target {
+        return Err(if input.plan {
+            "--plan takes no target: it plans every target of shuyi.ron".to_owned()
+        } else {
+            "--detect-recipient takes no target: it reads the file it names".to_owned()
+        });
+    }
+    if input != alone {
+        return Err(format!("{flag} builds nothing: it takes {takes}"));
+    }
     Ok(input)
 }
 
@@ -313,7 +856,10 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} export <windows | linux | macos | web | playdate> [--out <dir>] [--release] \
-         [--run] [--edition <name>] [--without <feature>] [--with <feature>] [--json]"
+         [--run] [--edition <name>] [--without <feature>] [--with <feature>] \
+         [--recipient <id> [--label <text>] [--signing-key <file>]] [--json]\n       \
+         {command} export --plan [--tag <tag>] [--json]\n       \
+         {command} export --detect-recipient <file> [--json]"
     )
 }
 
@@ -352,6 +898,22 @@ pub fn text(output: &ExportOutput) -> String {
     let _ = writeln!(text, "  exposure: {}", exposure.display());
     for warning in &output.warnings {
         let _ = writeln!(text, "  warning: {}: {}", warning.setting, warning.message);
+    }
+    if let Some(copy) = &output.recipient {
+        let _ = writeln!(
+            text,
+            "  recipient {}: {} (code {})",
+            copy.recipient,
+            Path::new(&copy.out).join(&copy.package).display(),
+            copy.code
+        );
+        for mark in &copy.marks {
+            let _ = writeln!(text, "    mark: {mark}");
+        }
+        let _ = writeln!(text, "    build: {}", copy.build);
+        let _ = writeln!(text, "    overlay: {}", copy.overlay);
+        let _ = writeln!(text, "    ledger: {} (signed)", copy.ledger);
+        let _ = writeln!(text, "    {}", copy.note);
     }
     text
 }

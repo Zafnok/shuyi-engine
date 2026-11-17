@@ -309,6 +309,7 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
             notices::FILE
         );
     }
+    works.extend(notices::engine_files(notices::Build::Web, &works));
     works.extend(shell_works());
     works.extend(game.iter().cloned());
     package(&RealWasmOpt, rules, root, &target, options, &works)
@@ -1815,10 +1816,12 @@ mod tests {
         assert_eq!(
             imported,
             [
+                "shuyi_page_check",
                 "shuyi_page_file_count",
                 "shuyi_page_file_path",
                 "shuyi_page_file_text",
-                "shuyi_page_report"
+                "shuyi_page_report",
+                "shuyi_page_report_check"
             ]
         );
         assert_eq!(provided, imported);

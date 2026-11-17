@@ -97,6 +97,31 @@ impl StorageAt {
         }
     }
 
+    /// The window's record (the `window` module's key, beside the
+    /// computer's `profiles`): its text, none where there is none or no
+    /// folder (the web has none), or why it can't be read.
+    pub(crate) fn read_window(&self) -> Result<Option<String>, String> {
+        let Some(dir) = &self.dir else {
+            return Ok(None);
+        };
+        folder_storage(dir)
+            .read(crate::window::WINDOW_KEY)
+            // check-text: not player text (a warning for the log)
+            .map_err(|e| format!("the window's record can't be read: {e}"))
+    }
+
+    /// Writes the window's record `text`, or says why it can't. Nothing
+    /// where there is no folder (the web has none).
+    pub(crate) fn write_window(&self, text: &str) -> Result<(), String> {
+        let Some(dir) = &self.dir else {
+            return Ok(());
+        };
+        folder_storage(dir)
+            .write(crate::window::WINDOW_KEY, text)
+            // check-text: not player text (a warning for the log)
+            .map_err(|e| format!("the window's record can't be written: {e}"))
+    }
+
     /// Where it is, to tell the player ([`place`]).
     pub(crate) fn place(&self) -> StoragePlace {
         #[cfg(not(target_arch = "wasm32"))]
@@ -108,6 +133,20 @@ impl StorageAt {
         {
             browser_place(self.name)
         }
+    }
+}
+
+/// The storage in the folder `dir` on a desktop. The web has no folders
+/// (a [`StorageAt`] there holds none), so there it is never reached.
+fn folder_storage(dir: &std::path::Path) -> Box<dyn Storage> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Box::new(FileStorage::in_folder(dir.to_owned()))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = dir;
+        Box::new(shuyi_ui::storage::MemoryStorage::new())
     }
 }
 
@@ -124,7 +163,7 @@ pub fn platform(name: &str) -> Box<dyn Storage> {
         match FileStorage::new(name) {
             Ok(storage) => Box::new(storage),
             Err(e) => {
-                macroquad::prelude::error!("storage: {e}; saves and settings will not persist");
+                macroquad::prelude::error!("storage: {}; saves and settings will not persist", e);
                 Box::new(shuyi_ui::storage::MemoryStorage::new())
             }
         }
@@ -188,7 +227,7 @@ pub fn smoke_check(storage: &mut dyn Storage) {
             info!("storage: smoke check passed");
         }
         Err(e) => {
-            error!("storage: smoke check failed: {e}");
+            error!("storage: smoke check failed: {}", e);
         }
     }
 }
@@ -234,5 +273,27 @@ mod tests {
             place("some-game"),
             folder_place(data_dir("some-game").as_deref())
         );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn the_windows_record_is_a_key_beside_the_games_and_reads_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let at = StorageAt {
+            name: "some-game",
+            dir: Some(dir.path().to_owned()),
+        };
+        assert_eq!(at.read_window(), Ok(None));
+        let record = crate::window::Record::new((1000, 700), true);
+        at.write_window(&record.to_text()).unwrap();
+        let text = at.read_window().unwrap().unwrap();
+        assert_eq!(crate::window::Record::read(&text), Ok(record));
+        assert_eq!(at.open().list().unwrap(), ["window"]);
+        let nowhere = StorageAt {
+            name: "some-game",
+            dir: None,
+        };
+        assert_eq!(nowhere.read_window(), Ok(None));
+        assert_eq!(nowhere.write_window("text"), Ok(()));
     }
 }

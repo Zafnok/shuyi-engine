@@ -1,18 +1,20 @@
-// The playground's editors' colors (ticket 2832): RON cut into tokens by
-// the rules of site/syntaxes/ron.sublime-syntax, the grammar Zola colors a
-// `ron` code block with, each token given the classes Zola writes for its
-// scope (`comment.line.ron` → `z-comment z-line z-ron`), so
-// static/style.css colors an editor as it colors a code block. Plain
-// JavaScript with no build step: the page loads it before playground.js,
-// and site/tests/ron-paint.mjs checks it against Zola's own output.
+// The playground's editors' colors (ticket 2832): RON (`.ron` and `.map`
+// files) and dialogue (`.dlg`) cut into tokens by the rules of
+// site/syntaxes/ron.sublime-syntax and dlg.sublime-syntax, the grammars
+// Zola colors a `ron` or `dlg` code block with, each token given the
+// classes Zola writes for its scope (`comment.line.ron` → `z-comment
+// z-line z-ron`), so static/style.css colors an editor as it colors a code
+// block. Plain JavaScript with no build step: the page loads it before
+// playground.js, and site/tests/ron-paint.mjs checks it against Zola's own
+// output.
 (function (root) {
     "use strict";
 
-    // The grammar's contexts, their rules in its order. A rule has a
+    // ron.sublime-syntax's contexts, their rules in its order. A rule has a
     // `scope`, or `push`es a context, or `pop`s back. `meta` scopes all a
     // context holds, the match that pushes it and the one that pops it too;
     // `content` scopes only what is between them.
-    var CONTEXTS = {
+    var RON = {
         main: {
             rules: [
                 { re: /^---\s*$/g, scope: "punctuation.separator.ron", push: "rows" },
@@ -48,6 +50,25 @@
         rows: { content: "text.plain.ron", rules: [] }
     };
 
+    // dlg.sublime-syntax: one context, its rules anchored to a line's start
+    // but the expression's, which follows the speaker.
+    var DLG = {
+        main: {
+            rules: [
+                { re: /^\s*#.*$/g, scope: "comment.line.dlg" },
+                { re: /^\s*@[A-Za-z]+/g, scope: "keyword.control.dlg" },
+                { re: /^\s*>/g, scope: "keyword.operator.dlg" },
+                { re: /^\*/g, scope: "keyword.operator.dlg" },
+                { re: /(?<=^\* )[A-Za-z0-9_-]+(?=:)/g, scope: "entity.name.tag.dlg" },
+                { re: /^\s*[A-Za-z0-9_-]+(?=(?:\[[^\]]*\])?(?: \([^)]*\))?:)/g, scope: "entity.name.tag.dlg" },
+                { re: /(?<=[A-Za-z0-9_-])\[[^\]]*\](?=(?: \([^)]*\))?:)/g, scope: "constant.other.dlg" }
+            ]
+        }
+    };
+
+    // Each language's grammar, by the name its code blocks are fenced with.
+    var GRAMMARS = { ron: RON, dlg: DLG };
+
     // The scopes over text in the contexts `stack` (bottom first): each
     // one's meta scope, and its content scope unless `edge` (the match
     // that pushes or pops the top one).
@@ -64,14 +85,15 @@
         return out;
     }
 
-    // The text cut into runs, `{ text, scopes }`, `scopes` the stack of
+    // The text cut into runs by language `lang`'s grammar, `{ text, scopes }`, `scopes` the stack of
     // scopes over it, outermost first ([] for plain text). As the grammar
     // reads it: line by line, the earliest match of the top context's rules
     // at each point, the first rule winning a tie, and what no rule matches
     // left plain. Every character is in exactly one run.
-    function tokenize(text) {
+    function tokenize(text, lang) {
+        var contexts = GRAMMARS[lang];
         var runs = [];
-        var stack = [CONTEXTS.main];
+        var stack = [contexts.main];
 
         function emit(part, over) {
             if (part === "") {
@@ -112,7 +134,7 @@
                     stack = stack.slice(0, -1);
                 } else if (rule.push) {
                     var under = rule.scope ? scopes(stack, false).concat([rule.scope]) : null;
-                    stack = stack.concat([CONTEXTS[rule.push]]);
+                    stack = stack.concat([contexts[rule.push]]);
                     emit(best[0], under !== null ? under : scopes(stack, true));
                 } else {
                     emit(best[0], scopes(stack, false).concat([rule.scope]));
@@ -138,12 +160,13 @@
         }).join(" ");
     }
 
-    // The text as HTML: colored spans if `lang` is "ron", else only escaped.
+    // The text as HTML: colored spans if `lang` names a grammar ("ron",
+    // "dlg"), else only escaped.
     function paint(text, lang) {
-        if (lang !== "ron") {
+        if (!Object.prototype.hasOwnProperty.call(GRAMMARS, lang)) {
             return escape(text);
         }
-        return tokenize(text).map(function (run) {
+        return tokenize(text, lang).map(function (run) {
             var open = run.scopes.map(function (scope) {
                 return '<span class="' + classes(scope) + '">';
             }).join("");
@@ -151,7 +174,7 @@
         }).join("");
     }
 
-    var api = { tokenize: tokenize, paint: paint, classes: classes };
+    var api = { tokenize: tokenize, paint: paint, classes: classes, languages: Object.keys(GRAMMARS) };
     if (typeof module === "object" && module.exports) {
         module.exports = api;
     } else {

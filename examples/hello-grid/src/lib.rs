@@ -52,13 +52,13 @@ use alloc::collections::BTreeMap;
 #[cfg(feature = "std")]
 use std::sync::OnceLock;
 
-#[cfg(all(feature = "std", not(feature = "packed")))]
-use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::ContentError;
 use shuyi::assets::audio::AudioManifest;
 use shuyi::assets::bitmap::OneBitFile;
 use shuyi::assets::bundle::Bundle;
+#[cfg(all(feature = "std", not(feature = "packed")))]
+use shuyi::assets::bundle::Embedded;
 #[cfg(feature = "std")]
 use shuyi::assets::bundle::Layer;
 use shuyi::assets::dialogue::{DialogueFile, DialogueTable};
@@ -97,7 +97,7 @@ pub use settings::{MapLook, Prefs};
 /// The game's files, embedded: in every build but a packed one, which
 /// reads them from the pack beside the program ([`layer`]).
 #[cfg(all(feature = "std", not(feature = "packed")))]
-static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
 
 /// The pack beside the program a packed build reads its files from, opened
 /// once: its layer, or why it couldn't be read ([`pack_problem`]).
@@ -130,7 +130,7 @@ static OVER: OnceLock<Bundle> = OnceLock::new();
 /// The file at `path` (relative to `files/`), if there is one: the file
 /// laid over the game's there ([`lay_over_files`]), else the embedded one.
 #[cfg(feature = "std")]
-pub fn file(path: &str) -> Option<&'static [u8]> {
+pub fn file(path: &str) -> Option<std::borrow::Cow<'static, [u8]>> {
     OVER.get()
         .and_then(|over| over.bytes(path))
         .or_else(|| Bundle::new(vec![layer()]).bytes(path))
@@ -162,7 +162,7 @@ pub fn problems_over(over: Layer) -> Option<String> {
 #[cfg(feature = "std")]
 pub fn layer() -> Layer {
     #[cfg(not(feature = "packed"))]
-    return Layer::dir("files", &FILES);
+    return Layer::dir("files", FILES);
     #[cfg(feature = "packed")]
     packed()
         .as_ref()
@@ -172,7 +172,7 @@ pub fn layer() -> Layer {
 
 /// The game's files drawn for the Playdate, embedded.
 #[cfg(all(feature = "std", not(feature = "packed")))]
-static PLAYDATE_FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files@playdate");
+static PLAYDATE_FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files@playdate");
 
 /// The game's layers for its targets, each over `files/` on its target
 /// alone: `files@playdate`, its tileset drawn in black and white. A packed
@@ -180,7 +180,7 @@ static PLAYDATE_FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files@pl
 #[cfg(feature = "std")]
 pub fn target_layers() -> [Layer; 1] {
     #[cfg(not(feature = "packed"))]
-    return [Layer::dir("files@playdate", &PLAYDATE_FILES)];
+    return [Layer::dir("files@playdate", PLAYDATE_FILES)];
     #[cfg(feature = "packed")]
     [Layer::table("files@playdate", &[])]
 }
@@ -406,6 +406,12 @@ impl Hello {
         let bits = bundle
             .bytes(FONT_1BIT)
             .ok_or_else(|| problem(format!("no {FONT_1BIT}")))?;
+        // The font is drawn with for the whole run: a pack read whole lends
+        // its bytes, and one read file by file hands them out to keep.
+        let bits: &'static [u8] = match bits {
+            alloc::borrow::Cow::Borrowed(bits) => bits,
+            alloc::borrow::Cow::Owned(bits) => Box::leak(bits.into_boxed_slice()),
+        };
         let atlas: &'static FontAtlasDef = Box::leak(Box::new(game.font.clone()));
         let font = Font::new(atlas, bits).map_err(|e| problem(e.to_owned()))?;
         let mut ctx = Ctx::new(game).map_err(|missing| problem(format!("colors: {missing:?}")))?;
@@ -726,6 +732,18 @@ mod tests {
         let app = app_info::APP;
         assert_eq!((app.name, app.storage), ("Hello, Grid", "shuyi-hello-grid"));
         assert_eq!(app.version, env!("CARGO_PKG_VERSION"));
+    }
+
+    /// `en.ron` is read as a plain map, not through `english_from_source`,
+    /// so its texts are checked as messages here (ADR-0127).
+    #[test]
+    fn every_english_text_is_a_message() {
+        let english: std::collections::BTreeMap<String, String> =
+            ron::from_str(include_str!("../files/en.ron")).unwrap();
+        for (key, text) in &english {
+            let parsed = shuyi::assets::message::Message::parse(text);
+            assert!(parsed.is_ok(), "{key}: {parsed:?}");
+        }
     }
 
     #[test]

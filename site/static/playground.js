@@ -2,8 +2,8 @@
 // an editor for each of a game's files beside the game in a frame, and the
 // buttons of the tries (`try_it`) that make their edit in it. Plain
 // JavaScript with no build step, loading nothing from another host. One
-// playground a page. Each editor paints its text under it, a RON file's
-// colored by ron-paint.js, which the page loads first (ticket 2832).
+// playground a page. Each editor paints its text under it, a RON, map or
+// dialogue file's colored by ron-paint.js, which the page loads first (ticket 2832).
 //
 // The game's web build reads each `sessionStorage` key
 // `shuyi-page-file:files/<name>` as a file laid over its own, and sends its
@@ -17,6 +17,13 @@
 // them to the game's keys as it loads, before its frame does, and takes
 // them back as it goes: the game's keys hold this page's files only while
 // this page is open.
+//
+// An exercise (ticket 2828, ADR-0117, `templates/shortcodes/exercise.html`)
+// asks the game for a check: **Check my work** writes its name under
+// `shuyi-page-check` and runs, and the game answers with
+// `postMessage({ kind: "shuyi-check", name, passed, text })`, after its
+// report. The key is removed once the answer, or a report of problems,
+// comes, by a run that checks nothing, and as the page goes.
 (function () {
     "use strict";
 
@@ -28,6 +35,8 @@
     var PAGE = window.location.pathname;
     var RUN = "shuyi-playground-run:" + PAGE + ":files/";
     var DRAFT = "shuyi-playground-draft:" + PAGE + ":files/";
+    // The game's key of the check the page asks for.
+    var CHECK = "shuyi-page-check";
 
     var LOADED = "Loaded with your files.";
 
@@ -93,6 +102,7 @@
         keys(GAME).forEach(function (key) {
             put(key, null);
         });
+        put(CHECK, null);
         if (away) {
             return;
         }
@@ -119,6 +129,9 @@
     // can report before the page is ready; the last report waits for it.
     var show = null;
     var waiting = null;
+    // What the exercises do with the game's messages, once the page is
+    // ready: none asks for a check before.
+    var exercise = null;
 
     window.addEventListener("message", function (event) {
         var frame = document.querySelector(".playground iframe");
@@ -126,7 +139,17 @@
             return;
         }
         var data = event.data;
-        if (data === null || typeof data !== "object" || data.kind !== "shuyi-report" || typeof data.text !== "string") {
+        if (data === null || typeof data !== "object") {
+            return;
+        }
+        if (data.kind === "shuyi-check") {
+            if (exercise !== null && typeof data.name === "string" && typeof data.passed === "boolean" &&
+                typeof data.text === "string") {
+                exercise.answered(data.name, data.passed, data.text);
+            }
+            return;
+        }
+        if (data.kind !== "shuyi-report" || typeof data.text !== "string") {
             return;
         }
         var text = data.text === "" ? LOADED : data.text;
@@ -134,6 +157,9 @@
             waiting = text;
         } else {
             show(text);
+        }
+        if (exercise !== null) {
+            exercise.reported(data.text);
         }
     });
 
@@ -154,9 +180,10 @@
         editors.hidden = false;
 
         // Each editor's painted copy under it (ticket 2832): its text, a RON
-        // file's colored as a `ron` code block is (ron-paint.js), at its
-        // scroll. A last newline, so a text that ends in one shows its empty
-        // last line as the textarea does. Called whenever its text changes.
+        // or dialogue file's colored as a `ron` or `dlg` code block is
+        // (ron-paint.js), at its scroll. A last newline, so a text that ends
+        // in one shows its empty last line as the textarea does. Called
+        // whenever its text changes.
         function paint(area) {
             var holder = area.parentNode;
             var pre = holder.querySelector(".playground-paint");
@@ -293,10 +320,15 @@
 
         // Run: each file whose text differs from the game's goes to the
         // game's key and this page's, the rest are removed, and the frame
-        // loads again.
-        function run() {
+        // loads again. With `check`, an exercise's, the game is asked for
+        // it; without, a check asked before is dropped.
+        function run(check) {
             back = document.activeElement;
-            var kept = true;
+            var asking = typeof check === "string";
+            if (!asking) {
+                drop_check();
+            }
+            var kept = put(CHECK, asking ? check : null) || !asking;
             areas.forEach(function (area) {
                 var name = area.dataset.file;
                 var changed = area.value !== own[name];
@@ -324,7 +356,9 @@
         buttons.forEach(function (button) {
             button.disabled = true;
         });
-        root.querySelector(".playground-run").addEventListener("click", run);
+        root.querySelector(".playground-run").addEventListener("click", function () {
+            run();
+        });
         root.querySelector(".playground-reset").addEventListener("click", function () {
             reset(areas[selected()]);
             run();
@@ -363,10 +397,117 @@
                 button.disabled = false;
             });
             tries();
+            exercises();
         }, function (error) {
             say("The game's files didn't load (" + error.message + "), so there is nothing to edit. " +
                 "On a local build, run copy-playground.sh first (site/README.md).");
         });
+
+        // The editor of `area`, shown: the playground unfolded on its tab,
+        // scrolled to, and the editor focused.
+        function open_editor(area) {
+            select(areas.indexOf(area), false);
+            if (fold !== null) {
+                unfold();
+            }
+            root.scrollIntoView({ block: "start" });
+            area.focus({ preventScroll: true });
+        }
+
+        // The check asked for and not yet answered: its name, its
+        // exercise's result line, and the timer that gives up on it.
+        var pending = null;
+
+        // How long the game may take to answer, in milliseconds: a first
+        // load fetches the game and starts it.
+        var PATIENCE = 60000;
+
+        // Shows `verdict`, in bold, and `text` in an exercise's result line
+        // `line`, marked `state`: "passed", "failed", or neither.
+        function tell(line, verdict, text, state) {
+            var strong = document.createElement("strong");
+            strong.textContent = verdict;
+            line.replaceChildren(strong, " " + text);
+            line.classList.toggle("is-passed", state === "passed");
+            line.classList.toggle("is-failed", state === "failed");
+        }
+
+        // Ends the pending check, if any, saying `verdict` and `text`.
+        function settle(verdict, text, state) {
+            if (pending === null) {
+                return;
+            }
+            window.clearTimeout(pending.timer);
+            put(CHECK, null);
+            tell(pending.line, verdict, text, state);
+            pending = null;
+        }
+
+        // Drops a pending check unanswered, its line emptied: a run that
+        // checks nothing, or another check, replaced it.
+        function drop_check() {
+            if (pending !== null) {
+                window.clearTimeout(pending.timer);
+                pending.line.replaceChildren();
+                pending.line.classList.remove("is-passed", "is-failed");
+                pending = null;
+            }
+        }
+
+        exercise = {
+            // The game's report: problems mean it checked nothing.
+            reported: function (text) {
+                if (text !== "") {
+                    settle("Not checked.", "Your files have problems, shown under Problems in the playground: " +
+                        "fix them, then check again.", "failed");
+                }
+            },
+            // The game's answer to the check `name`.
+            answered: function (name, passed, text) {
+                if (pending !== null && pending.name === name) {
+                    settle(passed ? "Done." : "Not yet.", text, passed ? "passed" : "failed");
+                }
+            }
+        };
+
+        // Each exercise's buttons (ticket 2828): shown once the game's text
+        // is here, and only when the playground holds the exercise's file.
+        function exercises() {
+            Array.prototype.slice.call(document.querySelectorAll(".exercise-actions")).forEach(function (actions) {
+                var area = areas.filter(function (a) {
+                    return a.dataset.file === actions.dataset.file;
+                })[0];
+                var line = actions.parentNode.querySelector(".exercise-result");
+                if (area === undefined || line === null) {
+                    return;
+                }
+                actions.hidden = false;
+                actions.querySelector(".exercise-open").addEventListener("click", function () {
+                    open_editor(area);
+                });
+                var button = actions.querySelector(".exercise-run");
+                button.addEventListener("click", function () {
+                    drop_check();
+                    var name = actions.dataset.check;
+                    tell(line, "Checking…", "The game runs on your files as the editors hold them.", null);
+                    pending = {
+                        name: name,
+                        line: line,
+                        timer: window.setTimeout(function () {
+                            settle("No answer.", "The game didn't answer. Open the playground, and check " +
+                                "again once the game has loaded.", "failed");
+                        }, PATIENCE)
+                    };
+                    if (fold !== null) {
+                        unfold();
+                    }
+                    run(name);
+                    // The game takes the focus as it starts: it comes back to
+                    // the button.
+                    back = button;
+                });
+            });
+        }
 
         // A try's button (the `try_it` shortcode, ticket 2820): each of its
         // edits made to the game's own text of its file, the playground

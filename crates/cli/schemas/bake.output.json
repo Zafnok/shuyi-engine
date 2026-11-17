@@ -186,6 +186,14 @@
           "format": "uint64",
           "minimum": 0
         },
+        "spans": {
+          "description": "The folders the pack lays first (`Bake::first`), in the order the\ngame named them, each with where its bytes lie: what a page that\nstreams the pack waits for before the game's first frame\n(ADR-0128 §3). None when the game names none.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PackSpan"
+          }
+        },
         "target": {
           "description": "The target it was baked for.",
           "type": [
@@ -205,6 +213,34 @@
         "bake_us",
         "load_sources_us",
         "load_pack_us"
+      ]
+    },
+    "PackSpan": {
+      "description": "A folder a pack lays first (`Bake::first`), and where its files' bytes\nlie in the pack.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "How many bytes it takes: from the first byte of its files to the\nlast, whatever lies between (none for a folder with no file).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "folder": {
+          "description": "The folder, with no `/` at its end (empty for the whole pack).",
+          "type": "string"
+        },
+        "start": {
+          "description": "Where its bytes start, from the pack's start.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "folder",
+        "start",
+        "bytes"
       ]
     },
     "Problem": {

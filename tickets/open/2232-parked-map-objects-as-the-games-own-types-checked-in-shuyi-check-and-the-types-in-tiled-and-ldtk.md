@@ -61,8 +61,9 @@ What Shuyi has today (read on 2026-10-21):
   position of two `i32`s.
 - `schemars` 1 (MIT) is a dependency of `shuyi-cli`
   (`crates/cli/Cargo.toml` line 44), for the contract's schemas.
-- `contract::Op` (`crates/cli/src/contract.rs` line 57) is an
-  exhaustive enum of the contract's operations.
+- `contract::Op` (`crates/cli/src/contract.rs` line 84) is the
+  `#[non_exhaustive]` enum of the contract's operations, and `Op::ALL`
+  a slice (2086, done).
 
 What is planned:
 
@@ -346,11 +347,8 @@ None.
 
 API: a new module, two new features, a new `GameTools` method with a
 default (2013's rule for traits), and a new operation. `Op` gains a
-variant: if `Op` is still exhaustive when this lands, it becomes
-`#[non_exhaustive]` here (2013's rule for enums that grow), and the PR
-has a `Breaking:` line (2010) saying no game matches on `Op`, so the
-game's next pin bump needs no change. If `Op` is already
-`#[non_exhaustive]`, nothing breaks.
+variant and the `Op::ALL` slice an entry. **From 2086 (done):** `Op` is
+`#[non_exhaustive]`, so nothing breaks.
 
 **Out (do not do):**
 - what 1124 keeps of an object, and worlds of several levels (1124,
@@ -395,8 +393,8 @@ game's next pin bump needs no change. If `Op` is already
    1127 and 2507 at it, and go to step 9.
 6. Add the `schema` features and the three `JsonSchema` impls.
 7. Write `map_types`: the conversion, the Tiled merge, the LDtk check,
-   the operation and its wiring (`Op` made `#[non_exhaustive]` if it
-   isn't). Regenerate the schemas and add the version line.
+   the operation and its wiring. Regenerate the schemas and add the
+   version line.
 8. Add `map-types` to the docs and to `docs/contract.md`.
 9. Run the gates.
 
@@ -435,8 +433,6 @@ game's next pin bump needs no change. If `Op` is already
       entity, the field and both types.
 - [ ] The contract's schema test passes with `VERSION` raised and the
       new schemas checked in.
-- [ ] If `Op` became `#[non_exhaustive]` here, the PR body has a
-      `Breaking:` line.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

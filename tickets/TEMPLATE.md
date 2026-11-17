@@ -32,6 +32,11 @@ repository (`game#NNNN`).
 **Out (do not do):**
 - …
 
+**Estimated size:** about … lines (a `feature` or `infra` ticket of effort
+`high` or above; the `write-ticket` skill, step 5).
+
+**Split:** past … lines, split off … (an estimate over 1,000 lines).
+
 ## Implementation steps
 
 1. …

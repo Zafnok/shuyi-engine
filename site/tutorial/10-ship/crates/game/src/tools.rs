@@ -37,7 +37,7 @@ impl LineBot {
         // check-text: not player text, a file name
         let name = format!("lines/{}.ron", level + 1);
         let text = bundle.file(&name).ok_or(format!("no {name}"))?;
-        let mut steps: Vec<Dir> = ron::from_str(text).map_err(|e| format!("{name}: {e}"))?;
+        let mut steps: Vec<Dir> = ron::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
         steps.reverse();
         Ok(Self { steps })
     }

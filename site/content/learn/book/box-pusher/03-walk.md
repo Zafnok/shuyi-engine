@@ -232,15 +232,23 @@ player walks into a wall?
 {% check() %}
 A player wants to walk up with `k`. What has to change in `board.rs`?
 
-- [x] Nothing: the board reacts to `UiAction::Up`, and the keys are in `files/keymap.ron`. — The board never reads a key; the keymap is the one place that says what Up means ([from actions to commands](#from-actions-to-commands)).
 - [ ] A new arm in `update`'s `match` for the `k` key. — `update` matches actions, never keys, and the keymap gives each action its keys ([from actions to commands](#from-actions-to-commands)).
+- [x] Nothing: the board reacts to `UiAction::Up`, and the keys are in `files/keymap.ron`. — The board never reads a key; the keymap is the one place that says what Up means ([from actions to commands](#from-actions-to-commands)).
 - [ ] `actions` has to list `k` beside `UiAction::Up`. — `actions` lists the actions the board listens to, never keys ([from actions to commands](#from-actions-to-commands)).
 {% end %}
 
 {% check() %}
 What does `legal_commands` give back?
 
-- [x] Each of the four steps that `check` accepts right now. — It turns each direction into a `Command::Step`, and keeps those that pass `check` ([the rules](#the-rules)).
 - [ ] All four steps, and `apply` refuses the bad ones later. — The list keeps only those `check` accepts, so a bot can pick from it ([the rules](#the-rules)).
 - [ ] The steps the player has taken so far. — It lists what is allowed now, not what happened ([the rules](#the-rules)).
+- [x] Each of the four steps that `check` accepts right now. — It turns each direction into a `Command::Step`, and keeps those that pass `check` ([the rules](#the-rules)).
+{% end %}
+
+{% exercise(check="wall-right", file="levels/1.map") %}
+Change level 1 so that the player's first step right bumps into a wall. The game plays that
+step through your rules to check.
+
+Hint: The start is `(2, 2)`, so the tile to its right is `(3, 2)`, where the box stands now.
+Move the box in `features`, then make that tile a `#`: the fourth character of the third row.
 {% end %}

@@ -960,6 +960,37 @@ fn a_project_has_its_twins_and_lines_but_stays_out_of_the_full_file() {
 }
 
 #[test]
+fn a_step_twin_names_the_books_codespace_and_its_folder() {
+    let fixture = with_project("codespace");
+    fixture.passes();
+    let step = fixture.read("learn/book/box-pusher/01-new/index.md");
+    assert!(
+        step.contains(&format!("Change its Rust in a Codespace: <{CODESPACE}>.")),
+        "{step}"
+    );
+    assert!(step.contains("this step is the folder `01-new/`"), "{step}");
+    assert!(step.contains("`cargo shuyi web` in `01-new/`"), "{step}");
+    assert!(
+        step.find("Codespace:") < step.find("First steps."),
+        "{step}"
+    );
+    // The project's own page isn't a step.
+    let project = fixture.read("learn/book/box-pusher/index.md");
+    assert!(!project.contains("Change its Rust"), "{project}");
+}
+
+#[test]
+fn the_codespace_is_the_sites() {
+    let config =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../site/config.toml"))
+            .unwrap();
+    assert!(
+        config.contains(&format!("codespace = \"{CODESPACE}\"")),
+        "site/config.toml's extra.codespace isn't {CODESPACE}"
+    );
+}
+
+#[test]
 fn an_aliased_page_gets_one_twin_at_its_new_address() {
     let fixture = with_project("aliased");
     fixture.passes();
@@ -1089,6 +1120,33 @@ fn the_full_file_leaves_out_a_check_for_a_newcomer_to_rust() {
     let full = fixture.read("llms-full.txt");
     assert!(full.contains("- Right: It returns the refusal."), "{full}");
     assert!(!full.contains("What does `?` do?"), "{full}");
+}
+
+#[test]
+fn an_exercise_is_its_task_where_it_is_done_and_its_hint_in_the_twin() {
+    let fixture = Fixture::new("exercise-twin");
+    put(
+        &fixture.root,
+        "site/content/learn/book/exercised.md",
+        "+++\ntitle = \"Exercised\"\n\n[extra]\nfiles = [\"levels/1.map\"]\n+++\n\nText.\n\n\
+         {% exercise(check=\"second-box\", file=\"levels/1.map\") %}\nAdd a second box.\n\n\
+         Hint: A box is a feature.\n{% end %}\n\n\
+         {% exercise(check=\"red\", file=\"levels/1.map\", to=\"games\") %}\nMake it red.\n\n\
+         Hint: Red is `#ff0000`.\n{% end %}\n",
+    );
+    put(&fixture.public, "learn/book/exercised/index.html", "");
+    fixture.passes();
+    let twin = fixture.read("learn/book/exercised/index.md");
+    assert!(
+        twin.contains(
+            "Text.\n\n**Exercise.** Add a second box.\n\n\
+             Do it in this step's playground, in `files/levels/1.map`: **Check my work** there runs \
+             the game on your files, and says whether the exercise is done, and why.\n\n\
+             Hint: A box is a feature.\n\n\
+             > **New to making games?** an exercise\n>\n> **Exercise.** Make it red.\n"
+        ),
+        "{twin}"
+    );
 }
 
 #[test]

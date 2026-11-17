@@ -749,8 +749,8 @@ fn a_context_reads_the_files_a_file_names_from_its_bundle() {
     let cx = DecodeCx::in_bundle(&bundle);
     assert_eq!(cx.limits, Limits::NONE);
     assert!(cx.has("a/b.txt") && !cx.has("a/x"));
-    assert_eq!(cx.bytes("a/c.bin"), Some(&[0xff][..]));
-    assert_eq!(cx.text("a/b.txt"), Some("b"));
+    assert_eq!(cx.bytes("a/c.bin").as_deref(), Some(&[0xff][..]));
+    assert_eq!(cx.text("a/b.txt").as_deref(), Some("b"));
     assert_eq!((cx.text("a/c.bin"), cx.bytes("a/x")), (None, None));
     assert_eq!(cx.shown("a/x"), "base/a/x");
     assert!(cx.left_out("a/gone.txt") && !cx.left_out("a/b.txt"));

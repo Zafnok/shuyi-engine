@@ -12,6 +12,8 @@
 //! public API that changes no file of the book needs a `Book:` line in the
 //! PR's ticket (ticket 2815). A change to the contract's `VERSION`
 //! raises it by exactly one over the base's ([`contract`], ticket 2052).
+//! A head's listing line that names an outside crate [`OUTSIDE_CRATES`]
+//! doesn't allow in its crate fails the run (ADR-0119, ticket 2089).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -165,6 +167,21 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
 ];
 
+/// The outside crates the public API may name (ADR-0119, ticket 2089): each
+/// crate's path, and the engine crates whose listing may name it (`&[]`:
+/// every one). A head's listing line naming the path of any other normal
+/// dependency of its crate fails the run. A new crate here is a choice for
+/// an ADR that amends ADR-0119.
+pub const OUTSIDE_CRATES: &[(&str, &[&str])] = &[
+    // `serde`'s traits are `serde_core`'s, and the listing names them there.
+    ("serde_core", &[]),
+    ("serde", &[]),
+    // Behind each crate's `schema` feature.
+    ("schemars", &[]),
+    ("serde_json", &["shuyi-cli"]),
+    ("semver", &["shuyi-cli"]),
+];
+
 /// The `cargo-semver-checks` this check runs, the one CI installs. It reads
 /// the rustdoc JSON of the pinned toolchain (`rust-toolchain.toml`).
 pub const SEMVER_CHECKS: &str = "0.51.0";
@@ -183,6 +200,14 @@ const BASE_DIR: &str = "target/api-base";
 /// Where the base is built, beside its tree in the head's target folder
 /// (which CI's cache keeps).
 const BASE_TARGET_DIR: &str = "target/api-base-target";
+/// Where `cargo-semver-checks` builds, given as its `CARGO_TARGET_DIR`
+/// (ticket 2061). Without it, it builds each crate in a placeholder crate's
+/// own target folder, `target/semver-checks/local-<crate>-<version>-<host>-
+/// <hash>/target`, about 90 characters deeper. From a worktree under
+/// `.claude/worktrees/` on Windows a build script's path there passed 259
+/// characters, and Windows starts no program at a longer path, even with
+/// long paths on: the build failed with "could not execute process".
+const SEMVER_TARGET_DIR: &str = "target/api-semver";
 
 /// The folders of the book: its words and its code. A change to the public
 /// API that changes a file under one of them needs no `Book:` line.
@@ -302,6 +327,9 @@ pub struct CrateApi {
     /// The head's listing lines the base doesn't have.
     pub added: Vec<String>,
     pub findings: Vec<Finding>,
+    /// The head's listing lines that name an outside crate [`OUTSIDE_CRATES`]
+    /// doesn't allow here, each with the crate's path (ticket 2089).
+    pub outside: Vec<(String, String)>,
 }
 
 impl CrateApi {
@@ -330,6 +358,7 @@ impl CrateApi {
                 .cloned()
                 .collect(),
             findings,
+            outside: Vec::new(),
         }
     }
 
@@ -438,6 +467,7 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
         })
         .collect();
     errors.extend(contract.err());
+    errors.extend(crates.iter().filter_map(outside_error));
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),
         label: Some(self::verdict(&crates)),
@@ -563,17 +593,86 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
         .iter()
         .map(|krate| {
             let name = krate.name;
-            let head_features = &in_head[name];
+            let head_package = &in_head[name];
+            let head_features = &head_package.features;
             let head = listing(root, krate, head_features, &target_dir, runner)?;
-            let Some(base_features) = in_base.get(name) else {
-                return Ok(CrateApi::new(name, None, &head, Vec::new()));
+            let outside = unlisted_outside(name, &head, &head_package.outside);
+            let mut api = match in_base.get(name) {
+                None => CrateApi::new(name, None, &head, Vec::new()),
+                Some(base_package) => {
+                    let base_features = &base_package.features;
+                    let base = listing(&base_root, krate, base_features, &base_target_dir, runner)?;
+                    let features = krate.features.semver_args(head_features, base_features);
+                    let findings = semver(root, name, &features, &base_root, runner)?;
+                    CrateApi::new(name, Some(&base), &head, findings)
+                }
             };
-            let base = listing(&base_root, krate, base_features, &base_target_dir, runner)?;
-            let features = krate.features.semver_args(head_features, base_features);
-            let findings = semver(root, name, &features, &base_root, runner)?;
-            Ok(CrateApi::new(name, Some(&base), &head, findings))
+            api.outside = outside;
+            Ok(api)
         })
         .collect()
+}
+
+/// The lines of `krate`'s `listing` that name the path of one of its
+/// `outside` dependencies (crate paths, `-` as `_`) that [`OUTSIDE_CRATES`]
+/// doesn't allow in `krate`, each with that path.
+pub fn unlisted_outside(
+    krate: &str,
+    listing: &[String],
+    outside: &[String],
+) -> Vec<(String, String)> {
+    let denied: Vec<&str> = outside
+        .iter()
+        .map(String::as_str)
+        .filter(|path| {
+            !OUTSIDE_CRATES.iter().any(|(allowed, crates)| {
+                allowed == path && (crates.is_empty() || crates.contains(&krate))
+            })
+        })
+        .collect();
+    listing
+        .iter()
+        .filter_map(|line| {
+            denied
+                .iter()
+                .find(|path| names_path(line, path))
+                .map(|path| (line.clone(), (*path).to_string()))
+        })
+        .collect()
+}
+
+/// Whether `line` names the crate path `path`: a `<path>::` with no `::` or
+/// word character before it, so `shuyi_assets::image::` isn't the `image`
+/// crate, nor `my_image::` it.
+fn names_path(line: &str, path: &str) -> bool {
+    let needle = format!("{path}::");
+    line.match_indices(&needle).any(|(at, _)| {
+        let before = &line[..at];
+        !before.ends_with("::")
+            && !before
+                .chars()
+                .next_back()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_')
+    })
+}
+
+/// The run's error for `krate`'s lines that name an outside crate it may not,
+/// if it has any.
+fn outside_error(krate: &CrateApi) -> Option<String> {
+    if krate.outside.is_empty() {
+        return None;
+    }
+    let mut lines = String::new();
+    for (line, path) in &krate.outside {
+        let _ = writeln!(lines, "  {line}\n    names `{path}`");
+    }
+    Some(format!(
+        "{}'s public API names an outside crate it may not:\n{lines}ADR-0119 lists the \
+         outside crates the public API may name. Put the type behind an engine type or a \
+         `#[doc(hidden)]` path, or amend ADR-0119 with an ADR and add the crate to \
+         `OUTSIDE_CRATES` (crates/xtask/src/api.rs).",
+        krate.name
+    ))
 }
 
 /// That `catalog` has each engine crate among the workspace's `members`, and
@@ -611,9 +710,19 @@ pub fn check_catalog(members: &HashSet<String>, catalog: &[ApiCrate]) -> Result<
     }
 }
 
+/// What a workspace's manifest of a crate says, for this check.
+#[derive(Debug, Default)]
+struct Package {
+    /// The features it has.
+    features: HashSet<String>,
+    /// Its normal dependencies that are no engine crate, as paths (`-` as
+    /// `_`, or the name it renames one to).
+    outside: Vec<String>,
+}
+
 /// The workspace's packages in `dir`, by name, each with the features its
-/// manifest has.
-fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, HashSet<String>>, String> {
+/// manifest has and its outside dependencies.
+fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, Package>, String> {
     let ran = run_ok(
         runner,
         dir,
@@ -633,7 +742,24 @@ fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, HashSet<S
                 .flat_map(serde_json::Map::keys)
                 .cloned()
                 .collect();
-            Some((package["name"].as_str()?.to_string(), features))
+            let mut outside: Vec<String> = package["dependencies"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|dep| dep["kind"].is_null())
+                .filter_map(|dep| {
+                    let name = dep["name"].as_str()?;
+                    let path = dep["rename"].as_str().unwrap_or(name);
+                    (!is_engine(name)).then(|| path.replace('-', "_"))
+                })
+                .collect();
+            // A dependency of one target and another (`cfg(…)`) is listed once each.
+            outside.sort_unstable();
+            outside.dedup();
+            Some((
+                package["name"].as_str()?.to_string(),
+                Package { features, outside },
+            ))
         })
         .collect())
 }
@@ -670,7 +796,7 @@ fn listing(
 
 /// `cargo-semver-checks`'s findings on `krate`, built with `features`,
 /// against the base. Only the lints that need a major version run (ADR-0038
-/// §4).
+/// §4). Both sides build in [`SEMVER_TARGET_DIR`].
 fn semver(
     root: &Path,
     krate: &str,
@@ -692,7 +818,14 @@ fn semver(
         "never",
     ];
     args.extend(features);
-    let ran = runner.run(root, "cargo", &args)?;
+    let target_dir = root.join(SEMVER_TARGET_DIR);
+    let target_dir = target_dir.to_string_lossy();
+    let ran = runner.run_with_env(
+        root,
+        "cargo",
+        &args,
+        &[("CARGO_TARGET_DIR", target_dir.as_ref())],
+    )?;
     parse_semver(krate, &ran)
 }
 
@@ -977,6 +1110,16 @@ pub fn summary(
     }
     for warning in warnings {
         let _ = write!(out, "\n> **Warning:** {warning}.\n");
+    }
+    for krate in crates {
+        for (line, path) in &krate.outside {
+            let _ = write!(
+                out,
+                "\n**Outside crate, fail:** `{}` names `{path}`, which ADR-0119 doesn't \
+                 allow there: `{line}`\n",
+                krate.name
+            );
+        }
     }
     for krate in crates
         .iter()

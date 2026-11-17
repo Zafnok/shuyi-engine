@@ -1,0 +1,7 @@
+# What systems and editors leave beside the files.
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.tmp

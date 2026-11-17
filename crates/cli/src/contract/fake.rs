@@ -562,10 +562,7 @@ impl GameTools for Fake {
         if let Err(e) = offered {
             return Some(Err(e));
         }
-        let title = ScreenActions::<Action> {
-            screen: "title",
-            actions: None,
-        };
+        let title = ScreenActions::<Action>::undeclared("title");
         Some(Ok(Box::new(
             GameControls::new(KeymapDef::default()).with(title),
         )))
@@ -613,7 +610,8 @@ impl GameTools for Fake {
         Ok(GameBake {
             bake: Bake::new(format!("fake for {}", target.unwrap_or("all")))
                 .asset::<Names>("data/names")
-                .asset::<PaletteDef>("data/palette"),
+                .asset::<PaletteDef>("data/palette")
+                .first("images/"),
             bundle: Bundle::new(vec![Layer::table("base", sources)]),
             formats: Formats::standard(),
         })

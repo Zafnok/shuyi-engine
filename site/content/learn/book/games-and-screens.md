@@ -244,6 +244,18 @@ action's name, as `{Confirm}`, with the player's own key for it. In a `grid` gam
 `check_text` yet, and `lint` says so). The keys `keys.not_mapped`, `keys.arrows`, `keys.chord_join`
 and `layout.arrows` are words the engine's own screens and help lines ask the game for.
 
+A value stays what it is until the text is shown: a number is a number, so a text that
+chooses its words by one ([chapter 3](@/learn/book/assets-and-formats.md)) picks the
+right form. With `"seeds.left": "{n, plural, one {# seed left} other {# seeds left}}"`,
+`ctx.text_with("seeds.left", &[("n", &seeds)])` says "1 seed left" or "3 seeds left", and
+so does a menu's label, `Label::key("seeds.left").with_arg("n", seeds)`. Numbers and text
+go in as they are; a value of a type of your own goes in as `value.to_string()`. Every
+text may also choose by `device`, the kind of controller the player pressed last
+(`keyboard`, `xbox`, `playdate`…), and by `target`, where the game runs:
+`{device, select, playdate {Turn the crank} other {Hold to water}}`. Text you already
+have, such as a tip's, is filled the same way by `ctx.fill_text(text, lang, args)`, with
+`lang` the language it is written in.
+
 {% newcomer(to="rust", topic="a tuple and `&[]`") %}
 `&[("seeds", &seeds)]` lends a list of pairs. `("seeds", &seeds)` is a
 **tuple**, values side by side: the placeholder's name, and what to put there. `&[]`
@@ -475,8 +487,14 @@ this game has none of its own.
 {% end %}
 
 Such a game makes its context with `Ctx::new(data)`, its game with `Game::new(ctx,
-first_screen, GameHooks::default())`, and its binary calls `shuyi::app::run` with its
-own window settings. The API docs of `shuyi_ui` and `shuyi_app` have the details.
+first_screen, GameHooks::default())`, and its binary's plain `main` calls
+`shuyi::app::run_app` with its own `AppConfig`, the window and its files, and how it
+starts, a `Start`. `Window::console("My Game", CONSOLE, 2, 16)` sizes the window to the
+console drawn twice, with a margin, as `run_game` does. On a desktop the window then opens
+as the player left it: its last size and whether it filled the screen, kept on that
+computer. The mouse's arrow hides once the mouse has rested 2 seconds, and at once in
+fullscreen, and comes back when the mouse moves or clicks. The API docs of `shuyi_ui` and
+`shuyi_app` have the details.
 
 ## Check yourself
 
@@ -484,8 +502,8 @@ own window settings. The API docs of `shuyi_ui` and `shuyi_app` have the details
 A pause screen whose `is_overlay` is `true` is pushed over the game. What happens on the
 next frame?
 
-- [ ] Both screens read the player's actions, the pause screen first. — `update` runs only for the screen on top, and the ones below wait ([a screen](#a-screen)).
 - [x] The stack draws the game, then the pause screen over it, and only the pause screen reads the actions. — An overlay lets the one below show through, but only the top screen updates ([the stack](#the-stack)).
+- [ ] Both screens read the player's actions, the pause screen first. — `update` runs only for the screen on top, and the ones below wait ([a screen](#a-screen)).
 - [ ] The game is no longer drawn until the pause screen pops. — That is a screen whose `is_overlay` is `false`. An overlay has the one below drawn first ([the stack](#the-stack)).
 {% end %}
 
@@ -493,8 +511,8 @@ next frame?
 The "Leave the garden?" screen closes with `Transition::pop_with(true)`. How does the
 garden get the answer?
 
-- [x] The stack hands it to the garden's `uncovered`, which takes it out as a `bool` and acts on it in the same frame. — The two screens agree only on the type of the value ([asking the screen below](#asking-the-screen-below)).
 - [ ] The question screen sets a global that the garden reads on its next `update`. — There are no globals: everything a screen reaches comes in the context ([the context](#the-context)).
+- [x] The stack hands it to the garden's `uncovered`, which takes it out as a `bool` and acts on it in the same frame. — The two screens agree only on the type of the value ([asking the screen below](#asking-the-screen-below)).
 - [ ] The question screen calls a function of the garden before it closes. — Neither screen knows what the other is. The stack carries the value down ([asking the screen below](#asking-the-screen-below)).
 {% end %}
 
@@ -503,6 +521,6 @@ A line in `en.ron` reads `"Press {Confirm} to start"`. What does
 `ctx.text_with(key, &[])` give back?
 
 - [ ] `Press {Confirm} to start`, as written, since `args` is empty. — Each action's name in braces is filled whatever `args` holds, and `&[]` is for a line with only actions to fill ([text by key](#text-by-key)).
-- [x] The line with the player's own key for Confirm in place of `{Confirm}`. — `text_with` fills each action's name with the player's key for it ([text by key](#text-by-key)).
 - [ ] The line with the game's default key for Confirm, whatever the player chose. — The key comes from the player's keymap, so a rebound key shows ([text by key](#text-by-key)).
+- [x] The line with the player's own key for Confirm in place of `{Confirm}`. — `text_with` fills each action's name with the player's key for it ([text by key](#text-by-key)).
 {% end %}

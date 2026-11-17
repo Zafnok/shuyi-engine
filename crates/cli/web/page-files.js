@@ -14,14 +14,22 @@
 // reloading its frame), and a read is synchronous, so the game has its files
 // before its first frame. Problems go back with `postMessage` to the parent
 // frame, at the page's own origin.
+//
+// A page may also ask the game to check the files it was given (the book's
+// exercises, ADR-0117): it writes the check's name under `shuyi-page-check`,
+// and the game sends back `{ kind: "shuyi-check", name, passed, text }` the
+// same way.
 (function () {
     "use strict";
 
     // Keep equal to PLUGIN_VERSION in crates/app/src/page.rs.
-    var VERSION = 1;
+    var VERSION = 2;
 
     // The start of every key that holds a file of the page.
     var PREFIX = "shuyi-page-file:";
+
+    // The key of the check the page asks for.
+    var CHECK = "shuyi-page-check";
 
     // The keys found by the last shuyi_page_file_count(), in key order.
     var keys = [];
@@ -97,6 +105,32 @@
                 window.parent.postMessage({ kind: "shuyi-report", text: message }, window.location.origin);
             } else {
                 console.info(message);
+            }
+        };
+        // The name of the check the page asks for; "" for none, or where
+        // sessionStorage throws.
+        importObject.env.shuyi_page_check = function () {
+            var name = null;
+            try {
+                name = window.sessionStorage.getItem(CHECK);
+            } catch (e) {
+                name = null;
+            }
+            return js_object(well_formed(name === null ? "" : name));
+        };
+        // Sends the page a check's result, `passed` 1 or 0, as a report is
+        // sent.
+        importObject.env.shuyi_page_report_check = function (name, passed, text) {
+            var result = {
+                kind: "shuyi-check",
+                name: get_js_object(name),
+                passed: passed !== 0,
+                text: get_js_object(text)
+            };
+            if (in_own_frame()) {
+                window.parent.postMessage(result, window.location.origin);
+            } else {
+                console.info(result.name + (result.passed ? ": passed. " : ": not passed. ") + result.text);
             }
         };
     }

@@ -1,8 +1,8 @@
 //! The project file, `shuyi.ron`, at a game's root: who the game is (its
 //! `app` part), which paths each check scans, the game's tool program (for the commands that run the game),
 //! the font atlas's rules, the web build's package, the game's own license
-//! texts and the private repository's settings, the game's preview, and the
-//! targets the game ships on. A command
+//! texts and the private repository's settings, the game's preview, its
+//! reveal kit, and the targets the game ships on. A command
 //! whose part is missing says so.
 //!
 //! Every path is relative to the project's root (the folder holding
@@ -95,9 +95,12 @@ pub struct Config {
     pub check_keys: Option<CheckKeys>,
     /// `check-text`.
     pub check_text: Option<CheckText>,
-    /// The game's rules package, which `lint` checks is fenced: clippy's
-    /// bans and no screen, device or tool crate under it (ADR-0032 §4).
-    pub rules: Option<String>,
+    /// The game's rules packages, which `lint` checks are fenced: clippy's
+    /// bans and no screen, device or tool crate under each (ADR-0032 §4).
+    /// Written as one name (`rules: "my-game-rules"`) or a list
+    /// (`rules: ["my-game-rules", "my-game-world"]`); empty when absent.
+    #[serde(deserialize_with = "one_or_many")]
+    pub rules: Vec<String>,
     /// `font-atlas`.
     pub font_atlas: Option<FontAtlas>,
     /// `web`.
@@ -118,6 +121,9 @@ pub struct Config {
     /// `frame-png --preview`: the animated `preview.png` a README and the
     /// website's Examples card show ([`crate::frame_png::preview`]).
     pub preview: Option<Preview>,
+    /// `reveal prepare`: what the reveal kit holds, the game's evidence
+    /// before its first public footage.
+    pub reveal: Option<Reveal>,
     /// `private-assets`.
     pub private_assets: Option<PrivateAssets>,
     /// `check --target`: the targets the game ships on, by the id of
@@ -130,6 +136,46 @@ pub struct Config {
     /// The folder of the game's files, which `run --watch` lays over the
     /// embedded ones: `assets` unless it says.
     pub assets: Option<String>,
+}
+
+/// `rules`, read from one name, a list of them, or either in `Some(…)`
+/// (as `shuyi.ron` wrote it while `rules` was an `Option`).
+fn one_or_many<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<Vec<String>, D::Error> {
+    reader.deserialize_any(OneOrMany)
+}
+
+/// The visitor of [`one_or_many`].
+struct OneOrMany;
+
+impl<'de> serde::de::Visitor<'de> for OneOrMany {
+    type Value = Vec<String>;
+
+    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("a package's name or a list of them")
+    }
+
+    fn visit_str<E: serde::de::Error>(self, name: &str) -> Result<Self::Value, E> {
+        Ok(vec![name.to_owned()])
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut names: A,
+    ) -> Result<Self::Value, A::Error> {
+        let mut read = Vec::new();
+        while let Some(name) = names.next_element()? {
+            read.push(name);
+        }
+        Ok(read)
+    }
+
+    fn visit_some<D: serde::Deserializer<'de>>(self, inner: D) -> Result<Self::Value, D::Error> {
+        inner.deserialize_any(self)
+    }
+
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(Vec::new())
+    }
 }
 
 impl Config {
@@ -425,6 +471,56 @@ impl Preview {
     }
 }
 
+/// `reveal prepare`: the reveal kit, a folder of the game's approved
+/// captures, its store page, its builds' hashes and its receipts, sealed by
+/// a manifest's SHA-256 (`shuyi reveal --help`). Read from `shuyi.ron`,
+/// never built by a literal (ADR-0039).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Reveal {
+    /// The game's name as the public sees it: `app`'s `name` unless this
+    /// says.
+    pub name: Option<String>,
+    /// The canonical store page, an `https://` address.
+    pub store_url: String,
+    /// Words a copy's title or text might use (a store watch reads them).
+    pub keywords: Vec<String>,
+    /// The approved captures, each copied in whole.
+    pub captures: Vec<RevealCapture>,
+    /// Builds whose hashes the kit records (a demo's package), never
+    /// copied. None for a store page alone.
+    pub artifacts: Vec<String>,
+    /// A release's `SHA256SUMS` (its GitHub Release's): each line is a
+    /// build the kit records, and the file is kept as a receipt.
+    pub sums: Option<String>,
+    /// Dated receipts kept in whole: a release's attestations, a
+    /// registration's receipt.
+    pub receipts: Vec<String>,
+    /// The private file of the salted commitments (`reveal commit`), whose
+    /// digests the kit records. Keep it out of any public repository.
+    pub salts: Option<String>,
+    /// Where the kit is written: `dist/reveal` unless this says.
+    pub out: Option<String>,
+}
+
+/// An approved capture of the reveal kit.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct RevealCapture {
+    /// The original, as made (`frame-png`'s picture, a recorded video).
+    pub file: String,
+    /// What it shows, in a few words.
+    pub what: String,
+    /// The same capture as each platform re-encoded it (the store's
+    /// copy, a trailer's upload), each copied in whole beside it.
+    pub encodes: Vec<String>,
+    /// The `frame-png` arguments that made it, after the output path: the
+    /// `preview` part's for `preview.png` unless this says.
+    pub args: Vec<String>,
+}
+
 /// The web build.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
@@ -479,6 +575,10 @@ pub struct ExportPart {
     /// Whether a release web export needs `wasm-opt` (`required` until
     /// said).
     pub wasm_opt: WasmOptRule,
+    /// The picture a closed build's copy is marked in (`export --recipient`,
+    /// ADR-0118), by its path in the pack (`tiles.png`): a picture of the
+    /// game's, not its text, with at least seven colors.
+    pub overlay_picture: Option<String>,
 }
 
 /// Whether a release web export needs Binaryen's `wasm-opt`.
@@ -670,6 +770,20 @@ mod tests {
         let config = Config::parse("()").unwrap();
         assert_eq!(config, Config::default());
         assert_eq!(config.command(), "shuyi");
+    }
+
+    #[test]
+    fn the_rules_packages_are_read_from_one_name_or_a_list() {
+        let one = Config::parse(r#"(rules: "rules")"#).unwrap();
+        assert_eq!(one.rules, ["rules"]);
+        let many = Config::parse(r#"(rules: ["rules", "world"])"#).unwrap();
+        assert_eq!(many.rules, ["rules", "world"]);
+        assert_eq!(Config::parse("(rules: [])").unwrap().rules, [""; 0]);
+        // As a `shuyi.ron` wrote it while `rules` was an `Option`.
+        let some = Config::parse(r#"(rules: Some("rules"))"#).unwrap();
+        assert_eq!(some.rules, ["rules"]);
+        assert_eq!(Config::parse("(rules: None)").unwrap().rules, [""; 0]);
+        assert!(Config::parse("(rules: 3)").is_err());
     }
 
     #[test]

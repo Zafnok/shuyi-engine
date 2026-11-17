@@ -257,7 +257,8 @@ starts.
   - the skill-pack skill that 2526 taught `shuyi add`'s outside
     sources learns `shuyi module new`. It starts a module with it,
     then fills the README's sections and the skill.
-- **For the game:** nothing changes. A new operation is no API break.
+- **For the game:** nothing changes. A new operation is no API break:
+  `Op` is `#[non_exhaustive]` and `Op::ALL` a slice since 2086 (done).
 
 **Out (do not do):**
 

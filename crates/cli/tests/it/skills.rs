@@ -59,7 +59,11 @@ fn the_binary_embeds_the_pack_as_it_is() {
 #[test]
 fn every_command_a_skill_may_name_is_in_the_usage() {
     let text = usage("shuyi");
-    for name in Op::ALL.iter().map(|op| op.name()).chain(COMMANDS) {
+    for name in Op::ALL
+        .iter()
+        .map(|op| op.name())
+        .chain(COMMANDS.iter().copied())
+    {
         let listed = text.lines().any(|l| {
             l.strip_prefix("  ")
                 .is_some_and(|l| l.split_whitespace().next() == Some(name))

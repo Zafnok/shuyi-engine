@@ -37,6 +37,14 @@ Harness-specific hooks do not run everywhere: execute the workflow's
 required checks explicitly. Do not alter another harness's settings to
 make a shared instruction work.
 
+Each harness's shared settings for this repository are tracked:
+`.mcp.json` and `.claude/settings.json` for Claude Code, and
+`.codex/config.toml` for Codex (the same `shuyi` MCP server, and the
+timeout its first build needs). One machine's settings stay out:
+`.claude/settings.local.json`, or Codex's `~/.codex/config.toml`. A merge
+commit brings no file of its own: `cargo xtask check-merges` fails one
+that changes more than resolving its parents needs (ticket 2065).
+
 ## Who decides what
 
 - **Nick (owner)** decides the product: the name, the license, when
@@ -161,7 +169,12 @@ make a shared instruction work.
   scripts/git-hooks` (`setup-linux.sh` does it on Linux). Its pre-push
   hook runs `cargo xtask gates --fast` (fmt, typos, the ticket lint, the
   engine lint) and refuses a push that fails one; git runs it, whatever
-  the harness.
+  the harness. Its post-checkout hook, on Windows, compresses a new
+  worktree's `target/` with NTFS (about half the disk, no slower), and
+  `cargo xtask gates` compresses one that lacks it. A passing full
+  `cargo xtask gates` then deletes the incremental caches of the other,
+  idle worktrees (`cargo xtask trim-targets`, ADR-0121), never a
+  worktree.
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`

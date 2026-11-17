@@ -12,7 +12,7 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
-use crate::screens::print_centred;
+use crate::screens::{print_centred, print_centred_styled};
 use crate::widgets::ask;
 use crate::widgets::name_entry::glyph::{TYPING_HEIGHT, grid_height, paint_grid, paint_typing};
 
@@ -94,7 +94,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &ProfilesView, buf: &mut GlyphBuff
         ask::glyph::paint(&ctx.palette, question, buf);
     }
     let bottom = i32::from(buf.height()) - 1;
-    print_centred(buf, bottom, &view.help, dim, black);
+    let colors = ctx.palette.text_colors_on(dim, black);
+    print_centred_styled(buf, bottom, &view.help, colors);
 }
 
 /// Paints `row` on console row `y` of the panel at column `x`: the focused
@@ -202,7 +203,7 @@ mod tests {
             leaving: None,
             deleting: None,
             message: None,
-            help: "help".to_owned(),
+            help: "help".into(),
         }
     }
 

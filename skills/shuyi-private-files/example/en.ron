@@ -1,0 +1,16 @@
+// The private files' English, laid over the game's `files/en.ron`: the
+// same keys, the title's subtitle changed.
+{
+    // The keys and layouts the engine names.
+    "keys.not_mapped": "! not mapped",
+    "keys.arrows": "arrows",
+    "keys.chord_join": "+",
+    "layout.arrows": "Arrows",
+
+    // The title.
+    "title.name": "shuyi-private-files",
+    "title.subtitle": "the private subtitle",
+    // Shown when the game has a stage to start.
+    "title.play": "{Confirm} play",
+    "title.help": "{Cancel} leave",
+}

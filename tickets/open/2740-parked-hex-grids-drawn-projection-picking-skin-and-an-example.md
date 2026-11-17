@@ -27,7 +27,7 @@ its hex layout: Godot's `TileMapLayer.map_to_local` and
 What Shuyi has today:
 
 - `crates/ui/src/grid/layout.rs`: `Projection` with one variant,
-  `TopDown`, not `#[non_exhaustive]`, and the `const fn`
+  `TopDown`, `#[non_exhaustive]` (2082), and the `const fn`
   `Projection::place(corner, tile, dx, dy)`; `Grid` (`origin`,
   `corner`, `tile`, `tiles`, `scale`, `projection`) with `top_down`,
   `offset`, `tile_px`, `rect_at`, `rect`, `at_art_size` and `bounds`.
@@ -105,8 +105,8 @@ None.
 **In:**
 - **`Projection::Hex(HexProjection)`** in
   `crates/ui/src/grid/layout.rs`:
-  - `Projection` becomes `#[non_exhaustive]` if it isn't yet (ADR-0039:
-    a set that will grow; 1126 adds two more variants).
+  - `Projection` is `#[non_exhaustive]` (2082; ADR-0039: a set that
+    will grow; 1126 adds two more variants).
     `HexProjection { layout: HexLayout, step: i32 }` is a plain value
     under that ADR: public fields, exhaustive, deriving `Debug`,
     `Clone`, `Copy`, `PartialEq` and `Eq`;
@@ -157,9 +157,9 @@ None.
   - `GlyphSkin` gets the field `hex_rows: Option<Offset>`, `None`
     (square rows) in `GlyphSkin::new`, and `#[must_use] pub const fn
     with_hex_rows(self, hex_rows: Option<Offset>) -> Self`. With
-    `Some(offset)` the skin lays a pointy-top map with that offset. A
-    new field breaks a struct literal, so `GlyphSkin` follows 2013's
-    ADR as config a game fills in: `#[non_exhaustive]` if it isn't yet.
+    `Some(offset)` the skin lays a pointy-top map with that offset.
+    `GlyphSkin` is already `#[non_exhaustive]` (2082), so the field is
+    additive.
     Literals inside `shuyi-ui` (`glyph/style/tests.rs`) may stay;
   - `Layout` keeps the offset in a private field, set by `#[must_use]
     pub const fn Layout::with_hex_rows(self, hex_rows: Option<Offset>)
@@ -262,11 +262,9 @@ None.
     page;
   - **the catalog:** set the `hex-grid` answer in `docs/modules.ron`
     to ready (2003 wrote it parked).
-- **What changes for the game:** `Projection` gains a variant and may
-  become `#[non_exhaustive]`, so an exhaustive `match` on it breaks;
-  `GlyphSkin` gains a field and may become `#[non_exhaustive]`, so a
-  struct literal of it breaks. Check the game at its pin and say in the
-  PR what its pin bump needs. No game snapshot changes.
+- **What changes for the game:** additive. `Projection` gains a
+  variant and `GlyphSkin` a field, and both are `#[non_exhaustive]`
+  since 2082. No game snapshot changes.
 - **Size:** if the PR passes about 600 changed lines without fixtures
   and snapshots, move the example and the guide, with their acceptance
   criteria, to a follow-up ticket, parked with this one (the
@@ -296,8 +294,7 @@ None.
    `glyph/cursor.rs`, `path.rs` and `threat.rs`, and 2405's picking if
    it is done.
 2. Write `HexProjection`, `place_at`, `Grid::hex`, `bounds`,
-   `at_art_size` and the picking, with unit and property tests; mark
-   `Projection` `#[non_exhaustive]` if it isn't.
+   `at_art_size` and the picking, with unit and property tests.
 3. Add `GlyphSkin::with_hex_rows` and `Layout::with_hex_rows`, move
    `draw_tiles` onto `tile_to_cell`, and lay the tiles, the cursor and
    the path on hex maps, with snapshots. Check every square snapshot is
@@ -322,9 +319,8 @@ None.
       drawn from middle to middle, and its snapshot is reviewed.
 - [ ] Every existing snapshot passes unchanged (the glyph and sprite
       skins, the toy, Hello, Grid).
-- [ ] `Projection` and `GlyphSkin` follow 2013's ADR (both
-      `#[non_exhaustive]`), and the PR says what the game's pin bump
-      needs.
+- [ ] `cargo xtask api` reports no break of `Projection` or
+      `GlyphSkin`.
 - [ ] The example's playthrough, bot, replay and `frame-png` pictures
       pass in CI, and CI's `wasm` job builds its web build and runs its
       `check --target all`.

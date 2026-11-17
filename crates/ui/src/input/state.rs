@@ -37,9 +37,12 @@ pub const MAX_REPEATS_PER_UPDATE: u64 = 5;
 /// What the player is playing with: whatever they pressed last
 /// (`docs/design/controls.md`, *Switching between keyboard and
 /// controller*). Help text names keys or this pad's buttons to match.
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
 )]
+#[non_exhaustive]
 pub enum Device {
     /// The keyboard.
     #[default]
@@ -48,9 +51,30 @@ pub enum Device {
     Pad(PadKind),
 }
 
+impl Device {
+    /// Its value as a message's built-in `device` argument, which a
+    /// `select` chooses its words by (ADR-0127): one of
+    /// [`DEVICES`](shuyi_assets::message::DEVICES), `keyboard` or the
+    /// pad's kind (`xbox`, `playdate`).
+    pub fn message_value(self) -> &'static str {
+        match self {
+            Self::Keyboard => "keyboard",
+            Self::Pad(PadKind::Xbox) => "xbox",
+            Self::Pad(PadKind::PlayStation) => "playstation",
+            Self::Pad(PadKind::PlayStation4) => "playstation4",
+            Self::Pad(PadKind::Nintendo) => "nintendo",
+            Self::Pad(PadKind::Playdate) => "playdate",
+            Self::Pad(PadKind::Generic) => "generic",
+        }
+    }
+}
+
 /// Something the player can hold down: a keyboard key or a controller
 /// button (a stick direction counts as a button).
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum Input {
     /// A keyboard key.
     Key(Key),

@@ -342,11 +342,12 @@ pub struct StopOutput {
 /// The tool named `name`: its operation, and whether it is a session
 /// tool ([`Op::SESSION`]).
 pub fn tool(name: &str) -> Option<(Op, bool)> {
-    if let Some(op) = Op::SESSION.into_iter().find(|op| op.name() == name) {
+    if let Some(op) = Op::SESSION.iter().copied().find(|op| op.name() == name) {
         return Some((op, true));
     }
     Op::ALL
-        .into_iter()
+        .iter()
+        .copied()
         .find(|op| op.name() == name)
         .map(|op| (op, false))
 }
@@ -382,7 +383,14 @@ const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `maco
      each with NOTICES.txt, and export-report.json and exposure-report.json beside it, in `out` \
      (dist/export/<target> by default). A package that breaks shuyi.ron's `disclosure` part is \
      removed. `release` remaps the build's paths and keeps the debug file beside the package; \
-     `run` runs the package after; `without` leaves features of shuyi.ron's `export` part off.";
+     `run` runs the package after; `without` leaves features of shuyi.ron's `export` part off. \
+     With `plan` (and no target), build nothing: answer what each target of shuyi.ron packages \
+     and where CI builds it, and with `tag` (`v0.1.0`) fail unless it names the game's version. \
+     With `release` and `recipient` (an id), also make a closed build's copy for that recipient \
+     in dist/recipients/<id>/<target>, its program, pack and one picture marked with their code, \
+     written in the ledger beside the reveal kit and signed with `signing_key` (an SSH key). With \
+     `detect_recipient` (a file), build nothing: say which marks a leaked copy holds and whom the \
+     ledger gave their code. A mark is circumstantial evidence, never proof.";
 
 /// `lint`'s description.
 const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \
@@ -544,10 +552,11 @@ fn tool_listing(op: Op, session: bool) -> Value {
 /// the one-off `scene` left out), then the session's ([`Op::SESSION`]).
 pub fn tools() -> Vec<Value> {
     let ops = Op::ALL
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|op| *op != Op::Scene)
         .map(|op| tool_listing(op, false));
-    let session = Op::SESSION.into_iter().map(|op| tool_listing(op, true));
+    let session = Op::SESSION.iter().copied().map(|op| tool_listing(op, true));
     ops.chain(session).collect()
 }
 

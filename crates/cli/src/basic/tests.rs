@@ -248,7 +248,7 @@ fn its_pack_holds_its_private_files_and_reads_back_as_them() {
     let has = |words: &[u8]| english.windows(words.len()).any(|w| w == words);
     assert!(has(b"Private"), "{english:?}");
     assert!(!has(b"{{name}}"), "{english:?}");
-    assert_eq!(pack.file("text/only.txt"), Some("only private"));
+    assert_eq!(pack.file("text/only.txt").as_deref(), Some("only private"));
     assert!(pack.has("palette.ron"), "the public files are there too");
     assert_eq!(
         crate::contract::bake::check_baked(&tools),

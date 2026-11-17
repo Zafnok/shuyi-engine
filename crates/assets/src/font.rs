@@ -82,7 +82,7 @@ impl Format for FontAtlasRon {
             file.shown(),
             source,
             &cx.shown(&png),
-            cx.bytes(&png),
+            cx.bytes(&png).as_deref(),
             &self.required,
         )
     }
@@ -131,6 +131,83 @@ pub struct FontAtlasDef {
     /// an atlas of one wide set or none, and left out of its file.
     #[serde(default)]
     pub wide_sets: BTreeMap<String, WideSet>,
+    /// The bold face (ticket 3216, ADR-0125): a narrow glyph → the cell of
+    /// its bold shape, which a key cap's name is drawn in. Empty in an
+    /// atlas made without a bold font, and left out of its file; a
+    /// renderer then draws bold by drawing the glyph twice, 1 px apart
+    /// ([`bold_strikes`](Self::bold_strikes)).
+    #[serde(default)]
+    pub bold: BTreeMap<char, u32>,
+    /// Where the glyphs put ink in their cell ([`FontInk`]): what a key
+    /// cap places its name by (ticket 3215). `None` in an atlas without
+    /// capitals, or made before, and left out of its file.
+    #[serde(default)]
+    pub ink: Option<FontInk>,
+    /// [`ink`](Self::ink) of the [`bold`](Self::bold) face; `None` without
+    /// one.
+    #[serde(default)]
+    pub bold_ink: Option<FontInk>,
+}
+
+/// Where a font's glyphs put ink in their cell (ticket 3215): its
+/// capitals' box, and the columns of each printable ASCII glyph whose ink
+/// doesn't span the capitals'. A key cap centres its name by the
+/// capitals' rows, and fits its box to its name's first and last glyph.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct FontInk {
+    /// The pixels most capitals `A`–`Z` share the edges of.
+    pub capitals: InkBox,
+    /// Each printable ASCII glyph whose leftmost or rightmost inked
+    /// column isn't the capitals': `[left, right]`. A blank glyph is left
+    /// out.
+    #[serde(default)]
+    pub columns: BTreeMap<char, [u32; 2]>,
+}
+
+impl FontInk {
+    /// Every glyph's ink in the columns of `capitals`.
+    pub const fn new(capitals: InkBox) -> Self {
+        Self {
+            capitals,
+            columns: BTreeMap::new(),
+        }
+    }
+
+    /// The leftmost and rightmost inked column of narrow glyph `c`: its
+    /// own if [`columns`](Self::columns) has it, else the capitals'.
+    pub fn columns_of(&self, c: char) -> (u32, u32) {
+        self.columns
+            .get(&c)
+            .map_or((self.capitals.left, self.capitals.right), |&[l, r]| (l, r))
+    }
+}
+
+/// The pixels of a cell a font's capitals put ink in: columns
+/// `left..=right` and rows `top..=bottom`, from the cell's top-left
+/// corner. Terminus 8 × 16's is columns 1 to 6, rows 2 to 11. A key cap
+/// places its name by it (ticket 3215).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct InkBox {
+    /// The leftmost column with ink.
+    pub left: u32,
+    /// The top row with ink.
+    pub top: u32,
+    /// The rightmost column with ink.
+    pub right: u32,
+    /// The bottom row with ink.
+    pub bottom: u32,
+}
+
+impl InkBox {
+    /// Columns `left..=right`, rows `top..=bottom`.
+    pub const fn new(left: u32, top: u32, right: u32, bottom: u32) -> Self {
+        Self {
+            left,
+            top,
+            right,
+            bottom,
+        }
+    }
 }
 
 /// A pixel rectangle inside the atlas image.
@@ -162,6 +239,24 @@ impl FontAtlasDef {
     /// lacks it or has it wide ([`wide_rect`](Self::wide_rect)).
     pub fn glyph_rect(&self, c: char) -> Option<AtlasRect> {
         self.glyphs.get(&c).map(|&i| self.cell_rect(i))
+    }
+
+    /// The pixel rectangle of narrow glyph `c`'s bold shape
+    /// ([`bold`](Self::bold)), or `None` if the atlas has none.
+    pub fn bold_rect(&self, c: char) -> Option<AtlasRect> {
+        self.bold.get(&c).map(|&i| self.cell_rect(i))
+    }
+
+    /// What a renderer draws for glyph `c`, which it found at `rect`, and
+    /// how many times, 1 px apart (ticket 3216): with `bold`, its bold
+    /// shape ([`bold_rect`](Self::bold_rect)) once, or without one `rect`
+    /// twice; else `rect` once. Every renderer draws bold so.
+    pub fn bold_strikes(&self, c: char, rect: AtlasRect, bold: bool) -> (AtlasRect, u8) {
+        match self.bold_rect(c) {
+            Some(shape) if bold => (shape, 1),
+            _ if bold => (rect, 2),
+            _ => (rect, 1),
+        }
     }
 
     /// The pixel rectangle of wide glyph `c`, both its cells, or `None` if
@@ -290,14 +385,45 @@ impl FontAtlasDef {
     }
 
     /// Every cell a glyph takes: `(cell index, glyph)`, a narrow glyph's
-    /// one and both of a wide glyph's, in every set.
+    /// one and its bold shape's, and both of a wide glyph's, in every set.
     fn cells(&self) -> impl Iterator<Item = (u32, char)> + '_ {
-        let narrow = self.glyphs.iter().map(|(&c, &i)| (i, c));
+        let narrow = self.glyphs.iter().chain(&self.bold).map(|(&c, &i)| (i, c));
         let wide = self
             .all_wide_sets()
             .flat_map(|(_, glyphs)| glyphs)
             .flat_map(|(&c, &i)| [(i, c), (i.saturating_add(1), c)]);
         narrow.chain(wide)
+    }
+
+    /// Problems of the bold face and the ink boxes: a bold glyph with no
+    /// narrow one, an ink box past its cell's edge or inside out.
+    fn bold_problems(&self, out: &mut Vec<String>) {
+        for &c in self.bold.keys().filter(|c| !self.glyphs.contains_key(c)) {
+            out.push(format!("bold {} has no narrow glyph", describe(c)));
+        }
+        for (name, ink) in [("ink", &self.ink), ("bold_ink", &self.bold_ink)] {
+            let Some(ink) = ink else {
+                continue;
+            };
+            let b = ink.capitals;
+            if b.left > b.right
+                || b.top > b.bottom
+                || b.right >= self.cell_w
+                || b.bottom >= self.cell_h
+            {
+                out.push(format!(
+                    "{name}'s capitals must lie inside the cell, left of right and above bottom"
+                ));
+            }
+            for (&c, &[left, right]) in &ink.columns {
+                if left > right || right >= self.cell_w {
+                    out.push(format!(
+                        "{name}'s columns of {} must lie inside the cell",
+                        describe(c)
+                    ));
+                }
+            }
+        }
     }
 
     /// Problems with the glyph map on its own, in plain words: a size of 0,
@@ -326,6 +452,7 @@ impl FontAtlasDef {
         if self.wide_sets.keys().any(|name| name.trim().is_empty()) {
             out.push("a wide set's name must not be empty".to_owned());
         }
+        self.bold_problems(&mut out);
         for (name, glyphs) in self.all_wide_sets() {
             let set = in_set(name);
             let both = glyphs
@@ -402,6 +529,13 @@ impl FontAtlasDef {
 /// set, which a renderer looks wide glyphs up in first
 /// ([`wide_font`](Self::wide_font)). [`CellWidths::NARROW`] has nothing
 /// wide. Cheap to clone: the set is shared.
+///
+/// It also carries what a key cap is measured and placed by (ticket
+/// 3215): the atlas's [`ink`](Self::ink) boxes, and, where a frame draws
+/// a key's name as a cap, the cells a cap takes beyond its name
+/// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts,
+/// and the cells of the picture of the arrow keys it draws in their place
+/// ([`arrows_cells`](Self::arrows_cells), ticket 3217).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CellWidths {
     /// The wide characters; `None` when there are none.
@@ -410,6 +544,22 @@ pub struct CellWidths {
     punctuation: bool,
     /// The language's wide set, if it names one.
     set: Option<Rc<str>>,
+    /// The atlas's glyphs' ink, and its bold face's; `None` when it has
+    /// neither. One pointer for both keeps a frame's buffer small.
+    inks: Option<Rc<FaceInks>>,
+    /// The cells a key cap takes beyond its name; `None` where keys aren't
+    /// drawn as caps.
+    key_cap: Option<u16>,
+    /// The cells the picture of the arrow keys takes; `None` where they
+    /// aren't drawn as one.
+    arrows: Option<u16>,
+}
+
+/// The inks [`CellWidths`] carries: the regular face's and the bold one's.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct FaceInks {
+    regular: Option<Rc<FontInk>>,
+    bold: Option<Rc<FontInk>>,
 }
 
 impl CellWidths {
@@ -418,14 +568,72 @@ impl CellWidths {
         wide: None,
         punctuation: false,
         set: None,
+        inks: None,
+        key_cap: None,
+        arrows: None,
     };
 
     /// The widths of `atlas`'s glyphs where no language is named: a
     /// character with a wide glyph in any set takes two cells, but one of
     /// [`WIDE_PUNCTUATION`] the atlas also has narrow takes one
-    /// ([`in_lang`](Self::in_lang) makes it wide).
+    /// ([`in_lang`](Self::in_lang) makes it wide). It carries the atlas's
+    /// [`ink`](Self::ink) boxes.
     pub fn of(atlas: &FontAtlasDef) -> Self {
-        Self::wide(atlas.wide_chars())
+        let inks = FaceInks {
+            regular: atlas.ink.clone().map(Rc::new),
+            bold: atlas.bold_ink.clone().map(Rc::new),
+        };
+        let any = inks.regular.is_some() || inks.bold.is_some();
+        Self {
+            inks: any.then(|| Rc::new(inks)),
+            ..Self::wide(atlas.wide_chars())
+        }
+    }
+
+    /// The atlas's glyphs' ink ([`FontAtlasDef::ink`]), or its bold
+    /// face's with `bold` ([`FontAtlasDef::bold_ink`]); `None` if it
+    /// doesn't say.
+    pub fn ink(&self, bold: bool) -> Option<&Rc<FontInk>> {
+        let inks = self.inks.as_deref()?;
+        if bold {
+            inks.bold.as_ref()
+        } else {
+            inks.regular.as_ref()
+        }
+    }
+
+    /// The same widths, with a key cap taking `cells` more cells than its
+    /// name (`None`: keys are not drawn as caps). What a frame that draws
+    /// caps measures with.
+    #[must_use]
+    pub fn with_key_cap_cells(self, cells: Option<u16>) -> Self {
+        Self {
+            key_cap: cells,
+            ..self
+        }
+    }
+
+    /// How many cells a key's name drawn as a cap takes beyond the name's
+    /// own; `None` where keys aren't drawn as caps.
+    pub fn key_cap_cells(&self) -> Option<u16> {
+        self.key_cap
+    }
+
+    /// The same widths, with the picture of the four arrow keys taking
+    /// `cells` cells in place of their word (`None`: they are drawn as
+    /// their word). What a frame that draws the picture measures with.
+    #[must_use]
+    pub fn with_arrows_cells(self, cells: Option<u16>) -> Self {
+        Self {
+            arrows: cells,
+            ..self
+        }
+    }
+
+    /// How many cells the picture of the four arrow keys takes in place of
+    /// their word; `None` where they are drawn as their word.
+    pub fn arrows_cells(&self) -> Option<u16> {
+        self.arrows
     }
 
     /// Widths where the characters of `wide` take two cells.
@@ -662,6 +870,11 @@ pub fn undrawn(atlas: &FontAtlasDef, lang: &Lang) -> Vec<ContentError> {
 }
 
 #[cfg(test)]
+mod bold_tests;
+#[cfg(test)]
+mod ink_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::image::png_header;
@@ -707,6 +920,9 @@ mod tests {
             glyphs: [('a', 0), ('b', 31), ('c', 32), ('d', 70)].into(),
             wide: [('あ', 33)].into(),
             wide_sets: BTreeMap::new(),
+            bold: BTreeMap::new(),
+            ink: None,
+            bold_ink: None,
         };
         let r = |x, y| Some(AtlasRect { x, y, w: 8, h: 16 });
         assert_eq!(def.glyph_rect('a'), r(0, 0));
@@ -1054,13 +1270,12 @@ mod tests {
         use super::super::*;
         use crate::lang::{PackRules, pack_from_sources};
 
-        const RULES: PackRules<'static> = PackRules {
-            data_problem: |_, _| None,
-            tokens: &crate::dialogue::NoTokens,
-            limits: crate::dialogue::tests::LIMITS,
-            widths: &crate::font::CellWidths::NARROW,
-            variants: &[],
-        };
+        const RULES: PackRules<'static> = PackRules::new(
+            |_, _| None,
+            &crate::dialogue::NoTokens,
+            crate::dialogue::tests::LIMITS,
+            &crate::font::CellWidths::NARROW,
+        );
 
         /// An atlas of ASCII's printable characters, and `extra`.
         fn ascii_and(extra: &str) -> FontAtlasDef {

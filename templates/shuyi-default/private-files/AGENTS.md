@@ -20,10 +20,18 @@ and its workflows' artifacts, are anyone's.
   which says to run `cargo clean -p {{crate_name}}`.
 - A change to them is two pull requests: one in the private repository,
   then one here moving `private.rev` with `cargo shuyi private-assets
-  --pin` once the first is merged into its `main`.
+  --pin` once the first is merged into its `main`. The
+  `shuyi-private-files` skill (`.claude/skills/shuyi-private-files/`)
+  has the steps: a branch there made with `--no-track`, never a push to
+  its `main`, and what to do when two pull requests both move the pin.
 - CI checks them out before the gates (`.github/actions/private-files`),
-  with the secret `PRIVATE_ASSETS_KEY`: the gates read the real game. A
+  with the secret `PRIVATE_ASSETS_KEY` (`cargo shuyi repos` makes it, with
+  the repositories: it acts on the developer's GitHub account, so ask
+  them before running it): the gates read the real game. A
   playtest workflow passes the secret to the engine's, by name, so the
   bots play them too. A fork's pull request builds on the public files.
-  No workflow may upload an artifact that embeds them.
+  No workflow may upload an artifact that embeds them, but
+  `export.yml` for a release (`release.yml` on a tag), which publishes
+  them inside the program anyway. A release's dry run builds without
+  uploading, and warns and builds on the public files without the key.
 - `cargo shuyi run --watch` watches `private/files/` too.

@@ -14,7 +14,7 @@ use core::marker::PhantomData;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Content, PackInfo, Packed, write};
+use super::{Content, MAX_FIRST, PackInfo, Packed, folder, write_first};
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, Encode, Formats, RegisterError};
@@ -276,6 +276,8 @@ where
 pub struct Bake {
     stamp: String,
     plan: Vec<(Box<dyn BakeKind>, Which)>,
+    /// The folders laid first, as named.
+    first: Vec<String>,
 }
 
 impl fmt::Debug for Bake {
@@ -288,6 +290,7 @@ impl fmt::Debug for Bake {
         f.debug_struct("Bake")
             .field("stamp", &self.stamp)
             .field("plan", &plan)
+            .field("first", &self.first)
             .finish()
     }
 }
@@ -333,6 +336,7 @@ impl Bake {
         Self {
             stamp: stamp.into(),
             plan: Vec::new(),
+            first: Vec::new(),
         }
     }
 
@@ -391,6 +395,36 @@ impl Bake {
         self.plan
             .push((Box::new(InFormat(format)), Which::Under(dir.to_owned())));
         self
+    }
+
+    /// This bake, laying the files under folder `dir` (`title/` or `title`)
+    /// at the front of the pack, after those of the folders named before it
+    /// (ADR-0128 §3): a game names the folders its first frame reads, and
+    /// a page that streams the pack in its order starts once they have
+    /// arrived ([`Bundle::arrived`]). A file under two named folders goes
+    /// with the first, a folder named twice is laid where first named, and
+    /// every other file follows in path order. The pack's index holds each
+    /// folder's span ([`Index::spans`](super::Index::spans)). Up to
+    /// [`MAX_FIRST`] folders; [`bake`](Self::bake) refuses more.
+    ///
+    /// What the game reads is the same whatever is laid first, and
+    /// [`check`](Self::check) holds as before.
+    ///
+    /// ```
+    /// use shuyi_assets::pack::Bake;
+    ///
+    /// let bake = Bake::new("my-game 1").first("title/").first("part1/");
+    /// assert_eq!(bake.firsts(), ["title/", "part1/"]);
+    /// ```
+    #[must_use]
+    pub fn first(mut self, dir: &str) -> Self {
+        self.first.push(dir.to_owned());
+        self
+    }
+
+    /// The folders it lays first, as named ([`first`](Self::first)).
+    pub fn firsts(&self) -> &[String] {
+        &self.first
     }
 
     /// The names of the kinds it bakes, each once, in the order first
@@ -475,6 +509,13 @@ impl Bake {
     ) -> Result<Baked, Vec<ContentError>> {
         let (planned, mut errors) = self.planned(formats, bundle);
         errors.extend(formats.check_import_settings(bundle));
+        let mut distinct: Vec<&str> = self.first.iter().map(|dir| folder(dir)).collect();
+        distinct.sort_unstable();
+        distinct.dedup();
+        if distinct.len() > MAX_FIRST {
+            let message = format!("the bake lays more than {MAX_FIRST} folders first");
+            errors.push(ContentError::new("bake", message));
+        }
         let mut contents = BTreeMap::new();
         let mut files = Vec::new();
         for path in bundle.files_under("") {
@@ -510,13 +551,13 @@ impl Bake {
         if !errors.is_empty() {
             return Err(errors);
         }
-        let info = PackInfo {
-            stamp: self.stamp.clone(),
-            target: target.map(ToOwned::to_owned),
-            content: bundle.fingerprint(),
-        };
+        let info = PackInfo::new(
+            self.stamp.clone(),
+            target.map(ToOwned::to_owned),
+            bundle.fingerprint(),
+        );
         Ok(Baked {
-            bytes: write(&info, &contents),
+            bytes: write_first(&info, &self.first, &contents),
             files,
         })
     }

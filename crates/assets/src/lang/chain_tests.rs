@@ -5,13 +5,12 @@ use super::*;
 use crate::dialogue::{DialogueTable, NoDirective, Scene, parse_dlg};
 
 /// No data text rules of a game's, no tokens, no variants.
-const RULES: PackRules<'static> = PackRules {
-    data_problem: |_, _| None,
-    tokens: &crate::dialogue::NoTokens,
-    limits: crate::dialogue::tests::LIMITS,
-    widths: &CellWidths::NARROW,
-    variants: &[],
-};
+const RULES: PackRules<'static> = PackRules::new(
+    |_, _| None,
+    &crate::dialogue::NoTokens,
+    crate::dialogue::tests::LIMITS,
+    &CellWidths::NARROW,
+);
 
 fn code(code: &str) -> LangCode {
     LangCode::new(code).unwrap()
@@ -181,6 +180,33 @@ fn screen_and_data_text_fall_back_along_the_chain() {
     let lang = portuguese(false);
     assert_eq!(lang.text(&br, "a"), "pt a");
     assert_eq!(lang.data_text(&br, || "a".to_owned(), "A"), "pt a");
+}
+
+#[test]
+fn text_in_and_data_text_in_say_which_language_gave_the_text() {
+    let lang = portuguese(true);
+    let br = code("pt-BR");
+    let text = |key| lang.text_in(&br, key);
+    assert_eq!(
+        [text("a"), text("b"), text("d"), text("nope")],
+        [
+            ("br a", "pt-BR"),
+            ("pt b", "pt"),
+            ("D", "en"),
+            ("nope", "en")
+        ]
+    );
+    let data = |key: &str, english| lang.data_text_in(&br, || key.to_owned(), english);
+    assert_eq!(
+        [data("a", "A"), data("c", "C"), data("d", "D")],
+        [("br a", "pt-BR"), ("pt c", "pt"), ("D", "en")]
+    );
+    // A stale entry is no current one: the source gives the text.
+    assert_eq!(data("a", "A changed"), ("A changed", "en"));
+    assert_eq!(
+        lang.data_text_in(&code("fr"), String::new, "X"),
+        ("X", "en")
+    );
 }
 
 #[test]

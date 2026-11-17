@@ -153,6 +153,35 @@ fn a_cinematic_is_its_shots_in_whole_milliseconds() {
 }
 
 #[test]
+fn each_constructor_builds_what_a_literal_built() {
+    assert_eq!(
+        CinematicDef::new("t".to_owned(), 2500, vec![ShotDef::new(0, 'A')]).with_music("theme"),
+        CinematicDef {
+            id: "t".to_owned(),
+            music: Some("theme".to_owned()),
+            length_ms: 2500,
+            shots: vec![ShotDef {
+                at_ms: 0,
+                shot: 'A'
+            }],
+        }
+    );
+    assert_eq!(
+        CinematicFile::<char, Vec<u8>>::new(
+            "t".to_owned(),
+            Length::Seconds(2.5),
+            vec![TimedShot::new(1.5, 'A')]
+        ),
+        CinematicFile {
+            id: "t".to_owned(),
+            length: Length::Seconds(2.5),
+            actions: BTreeMap::new(),
+            shots: vec![TimedShot { at: 1.5, shot: 'A' }],
+        }
+    );
+}
+
+#[test]
 fn a_cinematic_on_a_music_cue_is_as_long_as_the_cue() {
     let on_theme = |last: &str| {
         let shots = format!("{CARD}, (at: {last}, shot: Card('B'))");

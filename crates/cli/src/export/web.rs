@@ -7,7 +7,9 @@
 use std::fs;
 
 use super::disclosure::{FileKind, Shipped};
-use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
+use super::{
+    ExportCx, ExportError, ExportReport, Exporter, Host, InCi, Signing, archive, fresh, paths,
+};
 use crate::game::GameTools;
 use crate::project::{Project, WasmOptRule, Web};
 use crate::web::{self as build, Options};
@@ -43,6 +45,18 @@ impl Exporter for WebExporter {
 
     fn profile(&self) -> &'static str {
         "web"
+    }
+
+    fn host(&self) -> Host {
+        Host::Linux
+    }
+
+    fn container(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn ci(&self) -> InCi {
+        InCi::Build
     }
 
     fn triples(&self) -> &'static [&'static str] {
@@ -93,6 +107,17 @@ impl Exporter for WebExporter {
             }
         })?;
         pack(cx, rules, &dist)
+    }
+
+    fn overlays(&self) -> bool {
+        true
+    }
+
+    /// The zip made again from the folder, `index.html` at its root.
+    fn repackage(&self, cx: &ExportCx, report: &ExportReport) -> Result<(), ExportError> {
+        let folder = cx.out.join(&report.folder);
+        let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
+        archive::zip(&cx.out.join(&report.package), &entries).map_err(ExportError::Build)
     }
 
     /// A release build's, if the binary it shipped holds no `name` section.

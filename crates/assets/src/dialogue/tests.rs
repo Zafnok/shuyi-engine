@@ -250,6 +250,57 @@ fn narration_with_a_bracket_that_is_no_direction_stays_text() {
 }
 
 #[test]
+fn text_that_starts_with_a_bracket_prints_and_parses_back_as_text() {
+    // `():0` is the game's shrunk case (game#0759).
+    for text in ["()", "():0", "(soft) word", "(soft): word", "(a) b): c"] {
+        let scene = Scene {
+            id: "s".into(),
+            steps: vec![
+                narrate(text),
+                say("m", None, text),
+                Step::Choice {
+                    options: vec![ChoiceOption {
+                        tone: "t".into(),
+                        text: text.into(),
+                        line: LineId::default(),
+                        steps: vec![narrate(text)],
+                    }],
+                },
+            ],
+        };
+        let printed = print_scene(&scene);
+        let (parsed, errors) = parse_dlg::<Cue>("t.dlg", &printed);
+        assert_eq!(errors, [], "{printed}");
+        assert_eq!(bare(&parsed[0].scene.steps), scene.steps, "{printed}");
+    }
+    // Only text that would read as a direction gets the empty one.
+    let printed = |text: &str| {
+        print_scene(&Scene::<Cue> {
+            id: "s".into(),
+            steps: vec![narrate(text)],
+        })
+    };
+    assert_eq!(
+        printed("(soft): word"),
+        "@scene s\n> (): (soft): word\n@end\n"
+    );
+    assert_eq!(printed("(soft) word"), "@scene s\n> (soft) word\n@end\n");
+    assert_eq!(printed("soft): word"), "@scene s\n> soft): word\n@end\n");
+}
+
+#[test]
+fn narration_after_an_empty_bracket_is_all_text_under_the_delivery_in_force() {
+    let src = "@scene a\n> (): (soft): word\n@delivery low\n> ():(x)\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let lines = parsed[0].scene.lines();
+    assert_eq!(lines[0].text, "(soft): word");
+    assert_eq!(lines[0].direction, None);
+    assert_eq!(lines[1].text, "(x)");
+    assert_eq!(lines[1].direction, Some("low"));
+}
+
+#[test]
 fn delivery_holds_until_cleared_and_a_lines_own_wins() {
     let src = "@scene a\n@left m neutral\nm: One.\n@delivery low, tired\nm: Two.\nm (loud): Three.\n\
                > Four.\n@delivery calm\nm: Five.\n@delivery clear\nm: Six.\n@end\n\
@@ -490,10 +541,10 @@ fn a_fixture_script_parses_and_checks_with_custom_limits() {
     assert_eq!(
         errors,
         [
-            "gate.dlg:7: text is 42 characters; the limit is 20",
+            "gate.dlg:7: text is 42 cells; the limit is 20",
             "gate.dlg:11: @choice has 2 options; it needs 3",
-            "gate.dlg:12: option text is 13 characters; the limit is 10, so it fits the menu",
-            "gate.dlg:14: option text is 16 characters; the limit is 10, so it fits the menu",
+            "gate.dlg:12: option text is 13 cells; the limit is 10, so it fits the menu",
+            "gate.dlg:14: option text is 16 cells; the limit is 10, so it fits the menu",
         ]
     );
 }
@@ -985,8 +1036,8 @@ fn text_length_limits() {
     assert_eq!(
         errors(&scene(&format!("scout: {long}\n> {long}"))),
         [
-            "t.dlg:4: text is 81 characters; the limit is 80",
-            "t.dlg:5: text is 81 characters; the limit is 80",
+            "t.dlg:4: text is 81 cells; the limit is 80",
+            "t.dlg:5: text is 81 cells; the limit is 80",
         ]
     );
     let exact = "x".repeat(LIMITS.max_text);
@@ -1000,13 +1051,13 @@ fn text_length_limits() {
     assert_eq!(errors(&japanese), [] as [&str; 0]);
     assert_eq!(
         errors_with(&japanese, &wide),
-        ["t.dlg:4: text is 82 characters; the limit is 80"]
+        ["t.dlg:4: text is 82 cells; the limit is 80"]
     );
     // A token counts as its longest.
     let near = "x".repeat(LIMITS.max_text - 9);
     assert_eq!(
         errors(&scene(&format!("> {near}{{hero}}"))),
-        ["t.dlg:4: text is 81 characters; the limit is 80"]
+        ["t.dlg:4: text is 81 cells; the limit is 80"]
     );
 }
 
@@ -1020,7 +1071,7 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
     let three = format!("scout: {} {} {}", words[0], words[1], words[0]);
     assert_eq!(
         errors(&scene(&three)),
-        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+        ["t.dlg:4: text takes 3 lines of 40 cells; the box shows 2"]
     );
     // A short token leaves the line on two pages; its longest value doesn't.
     let pad = "a".repeat(27);
@@ -1029,7 +1080,7 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
     let spills = format!("scout: {pad} {} {{hero}}", "b".repeat(31));
     assert_eq!(
         errors(&scene(&spills)),
-        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+        ["t.dlg:4: text takes 3 lines of 40 cells; the box shows 2"]
     );
     // A wide character takes two cells of the box's width, and the line
     // breaks between two of them as the box does: 15 of them, a Latin run
@@ -1043,7 +1094,7 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
     assert_eq!(errors(&japanese), [] as [&str; 0]);
     assert_eq!(
         errors_with(&japanese, &wide),
-        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+        ["t.dlg:4: text takes 3 lines of 40 cells; the box shows 2"]
     );
 }
 
@@ -1073,7 +1124,7 @@ fn option_limits() {
              @choice\n* d: 1\n* e: 2\n* f: 3\n* g: 4\n@endchoice"
         ))),
         [
-            "t.dlg:5: option text is 31 characters; the limit is 30, so it fits the menu".to_owned(),
+            "t.dlg:5: option text is 31 cells; the limit is 30, so it fits the menu".to_owned(),
             "t.dlg:5: reaction has 5 speech or narration lines; the limit is 4, so the scene rejoins quickly".to_owned(),
             "t.dlg:13: @choice has 1 options; it needs 2 or 3".to_owned(),
             "t.dlg:16: @choice has 4 options; it needs 2 or 3".to_owned(),
@@ -1697,8 +1748,14 @@ fn arb_id() -> impl Strategy<Value = String> {
     "[a-z][a-z0-9_]{0,6}"
 }
 
+/// Printable ASCII, brackets and colons included, with no space at either
+/// end (the parser trims a line); often opening with a bracket, as a
+/// direction does (game#0759).
 fn arb_text() -> impl Strategy<Value = String> {
-    "[A-Za-z][A-Za-z ,.!?]{0,20}[A-Za-z.!?]"
+    prop_oneof![
+        "[!-~]([ -~]{0,20}[!-~])?",
+        r"\([ -~]{0,6}\)(:[ -~]{0,10}[!-~])?",
+    ]
 }
 
 fn arb_side() -> impl Strategy<Value = Side> {

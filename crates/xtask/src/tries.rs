@@ -368,19 +368,41 @@ struct Renderer {
     root: PathBuf,
     /// One target folder, so the engine's crates build once.
     target_dir: PathBuf,
+    /// Whether xtask chose `target_dir` (no `CARGO_TARGET_DIR` was set):
+    /// then it builds without an incremental cache, since the copies are
+    /// made fresh each run and never edited (ticket 2074). A folder from
+    /// the environment may be shared, and the flag, part of each unit's
+    /// hash, would make a second copy of every unit there.
+    chose_target: bool,
     /// The copy the target folder last built, if this run built one.
     built: RefCell<Option<PathBuf>>,
 }
 
 impl Renderer {
     fn new(root: &Path) -> Self {
-        let target_dir = std::env::var_os("CARGO_TARGET_DIR")
-            .map_or_else(|| root.join("target/tutorial"), PathBuf::from);
+        Self::with_target(root, std::env::var_os("CARGO_TARGET_DIR"))
+    }
+
+    /// A renderer building in `target` (the environment's
+    /// `CARGO_TARGET_DIR`), or in `target/tutorial` when there is none.
+    fn with_target(root: &Path, target: Option<std::ffi::OsString>) -> Self {
+        let chose_target = target.is_none();
+        let target_dir = target.map_or_else(|| root.join("target/tutorial"), PathBuf::from);
         Self {
             root: root.to_owned(),
             target_dir,
+            chose_target,
             built: RefCell::new(None),
         }
+    }
+
+    /// The variables each cargo command gets.
+    fn env(&self) -> Vec<(&'static str, &std::ffi::OsStr)> {
+        let mut env = vec![("CARGO_TARGET_DIR", self.target_dir.as_os_str())];
+        if self.chose_target {
+            env.push(("CARGO_INCREMENTAL", "0".as_ref()));
+        }
+        env
     }
 
     /// Makes cargo build the copy at `dir` again unless the target folder
@@ -484,7 +506,7 @@ impl Renderer {
         let output = Command::new("cargo")
             .args(args)
             .current_dir(dir)
-            .env("CARGO_TARGET_DIR", &self.target_dir)
+            .envs(self.env())
             .output()
             .map_err(|e| format!("cargo did not run: {e}"))?;
         if output.status.success() {
@@ -522,7 +544,7 @@ fn touch_tree(dir: &Path, now: SystemTime) -> std::io::Result<()> {
 }
 
 /// Copies the folder `from` to `to`, but for [`LEFT_OUT`].
-fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+pub(crate) fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::create_dir_all(to)?;
     for entry in fs::read_dir(from)? {
         let entry = entry?;

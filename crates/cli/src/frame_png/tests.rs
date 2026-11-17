@@ -27,6 +27,9 @@ fn tiny_atlas() -> (FontAtlasDef, Vec<u8>) {
         glyphs: BTreeMap::from([(' ', 0), ('A', 1), (FALLBACK_GLYPH, 2)]),
         wide: BTreeMap::new(),
         wide_sets: BTreeMap::new(),
+        bold: BTreeMap::new(),
+        bold_ink: None,
+        ink: None,
     };
     let mut rgba = vec![0; 24 * 16 * 4];
     let mut set = |x: usize, y: usize| rgba[(y * 24 + x) * 4..][..4].copy_from_slice(&[255; 4]);
@@ -162,7 +165,7 @@ fn a_missing_image_draws_magenta_where_the_sprite_shows() {
 fn a_bad_atlas_image_is_an_error() {
     let (atlas, _) = tiny_atlas();
     let table = ImageTable::default();
-    let err = Painter::new(atlas, b"not a png", &table, |_| None, CLEAR).err();
+    let err = Painter::new(atlas, b"not a png", &table, |_| None::<&[u8]>, CLEAR).err();
     assert!(err.unwrap().starts_with("font atlas image"));
 }
 
@@ -596,7 +599,7 @@ fn a_line_of_wide_and_narrow_glyphs_matches_its_reference() {
     let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
     let widths = CellWidths::of(&atlas.def);
     let table = ImageTable::new(BTreeMap::new());
-    let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
+    let painter = Painter::new(atlas.def, &png, &table, |_| None::<&[u8]>, CLEAR).unwrap();
     let mut buf = GlyphBuffer::new(14, 1, Cell::new(' ', CLEAR, CLEAR)).with_widths(widths);
     let (gold, white) = (Rgb::new(250, 200, 60), Rgb::new(255, 255, 255));
     let x = buf.print(0, 0, "A口b田", white, CLEAR);
@@ -674,10 +677,10 @@ fn a_character_draws_from_the_set_its_language_names() {
         path,
         source: Some(source),
     });
-    let rules = PackRules {
-        data_problem: |_, _| None,
-        tokens: &shuyi_assets::dialogue::NoTokens,
-        limits: shuyi_assets::dialogue::DialogueLimits {
+    let rules = PackRules::new(
+        |_, _| None,
+        &shuyi_assets::dialogue::NoTokens,
+        shuyi_assets::dialogue::DialogueLimits {
             box_width: 40,
             box_lines: 3,
             max_text: 200,
@@ -686,9 +689,8 @@ fn a_character_draws_from_the_set_its_language_names() {
             max_options: 4,
             max_reaction_texts: 3,
         },
-        widths: &CellWidths::NARROW,
-        variants: &[],
-    };
+        &CellWidths::NARROW,
+    );
     let lang: Lang = from_files(&files, None, str::to_owned, &rules).unwrap();
     let chars = AtlasChars::of_lang(&lang, "?");
     let atlas = build_atlas_with_sets(
@@ -700,7 +702,7 @@ fn a_character_draws_from_the_set_its_language_names() {
     let png = encode_png(atlas.image.width, atlas.image.height, &atlas.image.rgba).unwrap();
     let base = CellWidths::of(&atlas.def);
     let table = ImageTable::new(BTreeMap::new());
-    let painter = Painter::new(atlas.def, &png, &table, |_| None, CLEAR).unwrap();
+    let painter = Painter::new(atlas.def, &png, &table, |_| None::<&[u8]>, CLEAR).unwrap();
     let white = Rgb::new(255, 255, 255);
     let mut images = Vec::new();
     for (code, text) in [("ja", japanese), ("zh-Hans", chinese)] {

@@ -175,7 +175,7 @@ fn check_rows() -> Rows {
     );
     let pack = bundle(pack_files().into());
     let info = pack.bytes("lang/xx/lang.ron").unwrap_or_default();
-    rows.format(&lang_pack(), "lang/xx/lang.ron", info, Some(pack));
+    rows.format(&lang_pack(), "lang/xx/lang.ron", &info, Some(pack));
     rows.format(&Ron::<Table>::new(), "t.ron", TABLE.as_bytes(), None);
     // The fixed bundle's fingerprint (ticket 2111), which a game's stamps
     // carry.

@@ -399,7 +399,7 @@ Game: nothing to adopt, the game builds none of the changed types
 Breaking: shuyi-cli: frame_png::Options: a new public field, `capture`; a literal of it adds `capture: None`.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: frame-png's options hold frames over time, so a literal of Options names the new field.
 old: Options { out, script, scale, target, game }
 new: Options { out, script, scale, target, game, capture }
@@ -412,7 +412,7 @@ after: |
 Breaking: shuyi-cli: mcp::FramePngInput, mcp::FramePngOutput: `FramePngInput` gains `every`, `count` and `columns` and is no longer `Eq` (`every` is an `f32`); `FramePngOutput` gains `cells`. A literal of either names them.
 
 ```migration
-since: 0.2.0
+since: 0.1.0
 what: The MCP session's frame_png takes frames over time and answers their cells.
 old: FramePngInput { scale }, FramePngOutput { frames, top_screen, width, height }
 new: FramePngInput { scale, every, count, columns }, FramePngOutput { frames, top_screen, width, height, cells }

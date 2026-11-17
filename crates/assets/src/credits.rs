@@ -132,9 +132,12 @@ impl CreditGroup {
     }
 }
 
-/// One entry of the credits file.
+/// One entry of the credits file: data read from a file (ADR-0039 kind
+/// 5). A field added later is `#[serde(default)]`, so every credits file
+/// still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct FileCredit {
     /// Stable id, unique in the file.
     pub id: String,
@@ -159,6 +162,30 @@ pub struct FileCredit {
 }
 
 impl FileCredit {
+    /// The work `title` by `author`, with the stable `id`, of `group`,
+    /// from the page `source`, under `license`; shown, and covering no
+    /// bought file. Assign the other fields.
+    #[must_use]
+    pub fn new(
+        id: impl Into<String>,
+        group: CreditGroup,
+        title: impl Into<String>,
+        author: impl Into<String>,
+        source: impl Into<String>,
+        license: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            group,
+            title: title.into(),
+            author: author.into(),
+            source: source.into(),
+            license: license.into(),
+            hidden: false,
+            private: Vec::new(),
+        }
+    }
+
     /// Whether the credit covers the bought file at `path` (relative to
     /// the private folder).
     pub fn covers(&self, path: &str) -> bool {
@@ -193,11 +220,22 @@ struct RawFile {
     credits: Vec<FileCredit>,
 }
 
-/// The validated credits file, in file order, hidden entries included.
+/// The validated credits file, in file order, hidden entries included
+/// (ADR-0039 kind 5): build it with [`CreditsFile::new`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct CreditsFile {
     /// The entries.
     pub credits: Vec<FileCredit>,
+}
+
+impl CreditsFile {
+    /// The file of `credits`, unchecked: [`from_source`] is
+    /// what checks one.
+    #[must_use]
+    pub fn new(credits: Vec<FileCredit>) -> Self {
+        Self { credits }
+    }
 }
 
 /// One work as the credits screen shows it.
@@ -675,5 +713,32 @@ mod tests {
         let hidden = with_bought().replace("private: [", "hidden: true, private: [");
         let file = from_source("c.ron", &hidden).unwrap_or_default();
         assert_eq!(shown(&merge(&file, &none, &["units/a.png"])), without);
+    }
+
+    #[test]
+    fn each_constructor_builds_what_a_literal_built() {
+        let credit = FileCredit {
+            id: "font".to_owned(),
+            group: CreditGroup::Fonts,
+            title: "A Font".to_owned(),
+            author: "Ann".to_owned(),
+            source: "https://example.org/font".to_owned(),
+            license: "OFL-1.1".to_owned(),
+            hidden: false,
+            private: Vec::new(),
+        };
+        let built = FileCredit::new(
+            "font",
+            CreditGroup::Fonts,
+            "A Font",
+            "Ann",
+            "https://example.org/font",
+            "OFL-1.1",
+        );
+        assert_eq!(built, credit);
+        let file = CreditsFile {
+            credits: vec![credit.clone()],
+        };
+        assert_eq!(CreditsFile::new(vec![credit]), file);
     }
 }

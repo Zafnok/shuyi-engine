@@ -12,7 +12,8 @@
 // - A passage the answers leave out leaves nothing behind. Every passage
 //   shown has "hide", which folds it to a stub, a button that shows it.
 // - A page whose page-level mark the reader knows is passed over by the
-//   pager and tagged in the contents.
+//   pager and tagged in the contents, the front page's and the one beside
+//   each page.
 //
 // The templates (`book-macros.html`) hold the bar, the popup and the
 // book's order as JSON; this file holds no text but what it counts. It is
@@ -197,12 +198,16 @@
     }
   }
 
-  // "No notes hidden", "1 note hidden", "2 notes and 1 check hidden".
-  function counted(notes, checks) {
+  // "No notes hidden", "1 note hidden", "2 notes and 1 check hidden",
+  // "2 notes, 1 check and 1 exercise hidden".
+  function counted(notes, checks, exercises) {
     const some = (n, word) => n + " " + word + (n === 1 ? "" : "s");
-    if (checks === 0) return notes === 0 ? "No notes hidden" : some(notes, "note") + " hidden";
-    if (notes === 0) return some(checks, "check") + " hidden";
-    return some(notes, "note") + " and " + some(checks, "check") + " hidden";
+    const named = [some(notes, "note"), some(checks, "check"), some(exercises, "exercise")].filter(
+      (_, i) => [notes, checks, exercises][i] > 0,
+    );
+    if (named.length === 0) return "No notes hidden";
+    const last = named.pop();
+    return (named.length > 0 ? named.join(", ") + " and " + last : last) + " hidden";
   }
 
   // The bar: the toggles, how many passages are hidden, and Show all.
@@ -211,18 +216,21 @@
       toggle.setAttribute("aria-pressed", String(!knows(toggle.dataset.audience)));
     }
     // The passages the answers leave out, not those the reader hid: the
-    // notes, and the quick checks (ticket 2827), each counted in its word.
+    // notes, the quick checks (ticket 2827) and the exercises (ticket 2828),
+    // each counted in its word.
     let notes = 0;
     let checks = 0;
+    let exercises = 0;
     for (const aside of document.querySelectorAll("aside.newcomer")) {
       if (!folded(aside) || aside.classList.contains("is-shut")) continue;
       if (aside.classList.contains("check")) checks += 1;
+      else if (aside.classList.contains("exercise")) exercises += 1;
       else notes += 1;
     }
     const count = document.querySelector(".book-bar-count");
-    if (count) count.textContent = counted(notes, checks);
+    if (count) count.textContent = counted(notes, checks, exercises);
     const all = document.querySelector("[data-book-show-all]");
-    if (all) all.hidden = notes + checks === 0;
+    if (all) all.hidden = notes + checks + exercises === 0;
   }
 
   // A page the reader can skip says so at its top, with the next page they
@@ -265,12 +273,13 @@
 
   // The contents' tags, once the reader has answered: Start here, You can
   // skip this, and Read this first on appendix A for a reader from another
-  // engine.
+  // engine. On the front page's contents, and on the book's contents beside
+  // each page (`.book-side`, ticket 2834).
   function tags() {
     for (const tag of document.querySelectorAll(".book-tag")) tag.remove();
     if (answers === null) return;
     const start = order.find((entry) => !skipped(entry));
-    for (const a of document.querySelectorAll(".contents a")) {
+    for (const a of document.querySelectorAll(".contents a, .book-side a")) {
       const path = pathOf(a.href);
       const entry = order.find((e) => e.path === path);
       const names = [];

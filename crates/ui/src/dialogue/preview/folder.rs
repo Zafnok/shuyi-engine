@@ -5,6 +5,8 @@
 
 use crate::prelude::*;
 
+use alloc::borrow::Cow;
+
 use shuyi_assets::bundle::{Bundle, Layer};
 
 use crate::ctx::{Ctx, GameData};
@@ -20,7 +22,7 @@ const DLG: &str = ".dlg";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DialogueFiles {
     /// Each file's path in the folder and bytes, by path.
-    files: Vec<(&'static str, &'static [u8])>,
+    files: Vec<(&'static str, Cow<'static, [u8]>)>,
     /// How many times they were read again.
     version: u64,
 }
@@ -38,8 +40,8 @@ impl DialogueFiles {
     }
 
     /// Each file's path in the folder and bytes, by path.
-    pub fn files(&self) -> impl Iterator<Item = (&'static str, &'static [u8])> + '_ {
-        self.files.iter().copied()
+    pub fn files(&self) -> impl Iterator<Item = (&'static str, &[u8])> + '_ {
+        self.files.iter().map(|(path, bytes)| (*path, &**bytes))
     }
 
     /// How many times the files were read again: it moves on each time.

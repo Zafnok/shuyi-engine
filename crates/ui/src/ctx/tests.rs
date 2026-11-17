@@ -159,10 +159,89 @@ fn text_with_fills_values_then_the_keys_actions_are_on() {
     c.use_layout(LEFT_HANDED);
     assert_eq!(
         c.text_with("home.help", &[]),
-        "j opens · k quits · wasd {Nope}"
+        "j opens · k quits · w\u{a0}a\u{a0}s\u{a0}d {Nope}"
     );
     c.lang = code(DEBUG_LANG);
     assert_eq!(c.text_with("home.greeting", &[("name", &1)]), "HELLO, 1");
+}
+
+/// The toy with two messages in English, `keys.count` (a plural) and
+/// `keys.turn` (a select on the device), and a `ru` pack that lacks both;
+/// the player's language `ru`.
+fn russian_ctx() -> ToyCtx {
+    let pack = r#"(
+        info: (name: "Русский", made_by: Machine),
+        ui: {"menu.title": (key: "menu.title", source: "Menu", text: "Меню")},
+        data: {},
+        lines: {},
+    )"#;
+    let toy = Toy::default().with_lang(|mut english| {
+        let count = "{n, plural, one {# key} other {# keys}}";
+        english.insert("keys.count".into(), count.into());
+        let turn = "{device, select, playdate {Crank {Confirm}} other {Turn}} on {target}";
+        english.insert("keys.turn".into(), turn.into());
+        let pack = ron::from_str(pack).unwrap();
+        Lang::new(english, [(code("ru"), pack)].into())
+    });
+    let mut c = Ctx::new(toy).unwrap();
+    c.use_layout(crate::toy::RIGHT_HANDED);
+    c.lang = code("ru");
+    c
+}
+
+#[test]
+fn a_text_the_pack_lacks_is_filled_by_the_rules_of_the_language_it_is_in() {
+    let c = russian_ctx();
+    assert_eq!(c.text("menu.title"), "Меню");
+    // English's rules, not Russian's: 21 is `one` in Russian.
+    assert_eq!(c.text_with("keys.count", &[("n", &21)]), "21 keys");
+    assert_eq!(c.text_with("keys.count", &[("n", &1u8)]), "1 key");
+    let label = crate::text::Label::key("keys.count").with_arg("n", 21);
+    assert_eq!(c.label(&label), "21 keys");
+    // Text the caller has is filled by the language it names.
+    let ru = "{n, plural, one {# ключ} few {# ключа} many {# ключей} other {# ключа}}";
+    assert_eq!(c.fill_text(ru, "ru", &[("n", &21)]), "21 ключ");
+    assert_eq!(c.fill_text(ru, "ru", &[("n", &22)]), "22 ключа");
+    assert_eq!(c.fill_text(ru, "en", &[("n", &21)]), "21 ключа");
+}
+
+#[test]
+fn a_select_on_the_device_chooses_by_the_device_pressed_last() {
+    let mut c = russian_ctx();
+    let tip = "{device, select, playdate {A {Confirm}} other {B}}";
+    assert_eq!(c.text_with("keys.turn", &[]), "Turn on desktop");
+    assert_eq!(c.fill_text(tip, "en", &[]), "B");
+    c.device = Device::Pad(crate::input::pad::PadKind::Playdate);
+    let crank = c.text_with("keys.turn", &[]);
+    assert!(
+        crank.starts_with("Crank ") && crank.ends_with(" on desktop"),
+        "{crank}"
+    );
+    assert!(c.fill_text(tip, "en", &[]).starts_with("A "));
+    // The key's name in the chosen branch is a key span.
+    let styled = c.text_styled("keys.turn", &[]);
+    assert_eq!(styled.spans()[1].role, Some(crate::text::TextRole::Key));
+    // A value the caller passes under the same name wins.
+    assert_eq!(c.fill_text(tip, "en", &[("device", &"keyboard")]), "B");
+    c.platform.target = "web".into();
+    assert!(c.text_with("keys.turn", &[]).ends_with(" on web"));
+    c.device = Device::Keyboard;
+    assert_eq!(c.fill_text("{device}", "en", &[]), "keyboard");
+}
+
+#[test]
+fn every_device_has_a_value_a_message_knows() {
+    let mut devices = vec![Device::Keyboard];
+    devices.extend(
+        crate::input::pad::PadKind::ALL
+            .iter()
+            .map(|&k| Device::Pad(k)),
+    );
+    let mut values: Vec<&str> = devices.iter().map(|d| d.message_value()).collect();
+    let mut known = shuyi_assets::message::DEVICES.to_vec();
+    values.sort_unstable();
+    known.sort_unstable();
+    assert_eq!(values, known);
 }
 
 #[test]
@@ -947,10 +1026,10 @@ impl InJapanese {
         ]
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .into();
-        let rules = PackRules {
-            data_problem: |_, _| None,
-            tokens: &NoTokens,
-            limits: DialogueLimits {
+        let rules = PackRules::new(
+            |_, _| None,
+            &NoTokens,
+            DialogueLimits {
                 box_width: 40,
                 box_lines: 3,
                 max_text: 200,
@@ -959,9 +1038,8 @@ impl InJapanese {
                 max_options: 4,
                 max_reaction_texts: 3,
             },
-            widths: &CellWidths::NARROW,
-            variants: &[],
-        };
+            &CellWidths::NARROW,
+        );
         let en_ui = r#"[(key: "home.greeting", source: "こんにちは、{name}", text: "Hi, {name}")]"#;
         let info = r#"(name: "English", made_by: Machine)"#;
         let en = pack_from_sources(("en/lang.ron", info), ("en/ui.ron", en_ui), &ui, &rules);

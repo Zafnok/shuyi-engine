@@ -3,7 +3,7 @@
  made: Some((
   engine: "0.1.0",
   game: "hello-grid 0.1.0",
-  content: "fcd5e4d46558d0a0",
+  content: "babd9dc9d3dcc74e",
  )),
  display: (
   width: 1280,
@@ -18,6 +18,7 @@
   pointer: true,
   touch: false,
   device: None,
+  file_drops: Unheard,
  ),
  storage_complete: true,
  start: 0,

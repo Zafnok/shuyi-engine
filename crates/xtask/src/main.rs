@@ -4,6 +4,7 @@
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-paths`
+//! - `cargo xtask check-merges [--base <rev>] [--head <rev>]`
 //! - `cargo xtask check-book`
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
@@ -12,17 +13,22 @@
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
+//! - `cargo xtask check-devcontainers`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
-//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]`
+//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
+//! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
+//! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
-//! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
+//! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
 //! - `cargo xtask tutorial-tries [--check] [<name>...]`
+//! - `cargo xtask exercises [--copy] [<step>...]`
 //! - `cargo xtask golden --bless`
+//! - `cargo xtask seed-target --into <worktree>`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
 //! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
@@ -32,8 +38,11 @@ mod api;
 mod book;
 mod changelog;
 mod compile_times;
+mod compress;
 mod contract;
+mod devcontainers;
 mod docs;
+mod exercises;
 mod flaky;
 mod gates;
 mod golden;
@@ -41,10 +50,12 @@ mod ids;
 mod layers;
 mod links;
 mod llms;
+mod merges;
 mod modules;
 mod no_std;
 mod paths;
 mod pins;
+mod pr_size;
 mod script;
 mod site_data;
 mod skills;
@@ -53,6 +64,7 @@ mod targets;
 mod tickets;
 mod toolchain;
 mod tries;
+mod trim;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -77,6 +89,11 @@ usage:
   cargo xtask check-paths
       Check that no tracked path is over 150 characters: Cargo's git checkout
       on Windows adds about 80, and libgit2 stops at 260 (ticket 2071).
+  cargo xtask check-merges [--base <rev>] [--head <rev>]
+      Check that no merge commit in <base>..<head> (origin/main..HEAD) changes
+      more than resolving its two parents needs (`git show --remerge-diff`):
+      a file git merged without a conflict, or a line outside a conflict,
+      fails, named (ticket 2065).
   cargo xtask check-book
       Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
       audience of the four, a topic, closed, not nested, on lines of their
@@ -110,6 +127,10 @@ usage:
       Check that the pinned Rust is the same everywhere (the bump-rust skill):
       the root's exact channel, the templates' channels, every workspace's
       rust-version, the members' inherited one and Dependabot's folders.
+  cargo xtask check-devcontainers
+      Check that the book's dev container (.devcontainer/book/) builds every
+      step of site/tutorial/, no more, in order, and keeps the root's image,
+      setup and remoteEnv (ticket 2837).
   cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]
       Show the public API change of the engine's crates, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
@@ -125,13 +146,16 @@ usage:
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
       named, or of every <n>th from the <i>th: a verdict per step. The games
-      build in this repository's target folder unless CARGO_TARGET_DIR is set.
-  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>] [--count-only]
+      build in target/skill-examples-build with no incremental cache, `shuyi
+      new` in this repository's target folder, unless CARGO_TARGET_DIR is set.
+  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
-      in main.rs and the same for `cargo check`, and count a new `blank` game's
-      crates, on games made in <dir> (target/compile-times). With --budget,
-      fail over its numbers (tools/compile-budget.ron); with --summary, append
-      the table's Markdown to <file>. With --count-only, only count the crates
+      in main.rs and the same for `cargo check`, a fixed reference build, and
+      count a new `blank` game's crates, on games made in <dir>
+      (target/compile-times); the table names the CPU and its cores. With
+      --budget, fail over its numbers (tools/compile-budget.ron); with
+      --summary, append the table's Markdown to <file>; with --out, write the
+      JSON to <file>. With --count-only, only count the crates
       (and hold the count to the budget): seconds, not minutes.
   cargo xtask gates [--base <rev>] [--fast] [--list]
       Run the local gates the diff from <rev> (by default origin/main's merge
@@ -140,7 +164,33 @@ usage:
       commands are the run-gates skill's. Prints a summary block for the PR's
       body on stdout: HEAD, each gate's result, each gate left to CI and why.
       With --fast, only the quick gates (the pre-push hook's); with --list,
-      say what would run and run nothing.
+      say what would run and run nothing. Locally (not with CI set), a full run
+      that passes ends with `trim-targets` with its defaults, in one line;
+      SHUYI_NO_TRIM=1 turns it off.
+  cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]
+      Free the disk of this repository's other worktrees' target/, keeping
+      every worktree (ticket 2076): in each one idle (no build in N days, by
+      default 3) and not locked (no cargo running), delete the `incremental`
+      folder of each profile folder of target/, target/gates/games,
+      target/tutorial and target/skill-examples*. With --merged, all of
+      target/ of a worktree whose branch is merged into origin/main or whose
+      PR is merged (`gh`). With --stale-hashes (ticket 2092), also the older
+      hashes of a crate in those profile folders' deps/ that no build read in
+      the N days before the worktree's last build, keeping the newest-read
+      one; skipped, said in the summary, where last-access updates are off.
+      With --dry-run, list each with its target's size and delete nothing.
+  cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]
+      Count the PR's changed lines (added + removed) from <rev>'s merge base
+      (by default origin/main's) to the working tree, untracked files
+      included (ticket 2053): code, tests, docs and hand-written data, with
+      snapshots, golden tables, schemas, lock files and generated files left
+      out and totalled apart, as the tickets are. Past 1,000 lines it warns;
+      past 1,500 the PR's done ticket needs a `Size:` line with the measured
+      number and why it wasn't split. With --ticket <file>, or --pr-branch
+      (and --pr-title, CI), a missing or wrong `Size:` line fails; otherwise
+      it warns. --hook answers a Claude Code PreToolUse hook (its JSON on
+      stdin) with a warning before git commit, git push or gh pr create, or
+      nothing.
   cargo xtask flaky rerun --failures <file> --attempt <n> --decision <file>
   cargo xtask flaky report --failures <file> --attempt <n>
   cargo xtask flaky calibration --job <name> --jobs <file> --dir <dir> --revision <sha> --summary <file>
@@ -150,12 +200,15 @@ usage:
       failure is a listed cell is re-run once. `report` warns what attempt <n>
       failed on, for its re-run. `calibration` writes a calibration run's table
       (.github/workflows/calibrate.yml) to <file>.
-  cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]
+  cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]
       Write the changelog from tickets/done/ and the first-parent history
       (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
       and a post for each release, in news/generated/) in <content dir>; with
       --format keep-a-changelog, the shape of CHANGELOG.md. Needs the tags and
-      the whole history (a full clone).
+      the whole history (a full clone). Fails a migration block, in a ticket
+      added to tickets/done/ since <rev> (default: where HEAD left
+      origin/main, else main), whose `since` is not the workspace version
+      (ticket 2058).
   cargo xtask llms --public <dir> --base-url <url> --commit <sha>
       After `zola build` into <dir> at <url>, write the docs for agents there
       (ticket 2808): a Markdown twin of each Learn page (its URL + index.md),
@@ -178,12 +231,25 @@ usage:
       site/static/tutorial-tries/; with --check, compares with those kept and
       fails on a stale one. Fails on an edit that isn't exactly once in its
       file and, for the whole list, on an orphan or a try no page shows.
+  cargo xtask exercises [--copy] [<step>...]
+      Copy each step of site/tutorial/, or those named, to target/exercises/,
+      with site/exercises/'s checks of its page's exercises compiled into its
+      binary (ticket 2828, ADR-0117), and check them: each page's exercises
+      against its step's checks, and in each copy fmt, Clippy and the checks'
+      tests. With --copy, only make the copies, for the steps' web builds.
   cargo xtask golden --bless
       Write the golden tables (shuyi_assets::golden, ticket 2116): run every
       test with `golden` in its name with SHUYI_BLESS=1, write each table a
       failed test printed (never outside the repository), show `git diff
       --stat` over them, and run the tests again: they must pass. A changed
       or removed row needs a `Breaking:` line in the ticket.
+  cargo xtask seed-target --into <worktree>
+      Run in a warm worktree (usually the main one): start <worktree>'s
+      target/ from this one's target/debug (ticket 2078). Third-party output
+      is hard-linked, what cargo rewrites is copied, what <worktree> already
+      built is kept, and the workspace's crates are left to build fresh with
+      their own paths. Refuses while a build runs in either, and across
+      volumes.
   cargo xtask sound-parity corpus --out <dir> [--oracle]
       Write the sound gates' test signals into <dir>/corpus, each checked
       against tools/sound-parity/corpus.ron; with --oracle, what `oggdec` makes
@@ -212,6 +278,7 @@ fn main() -> ExitCode {
             report("check-docs", &errors, &[])
         }
         Some("check-paths") if args.len() == 1 => report("check-paths", &paths::run(&root), &[]),
+        Some("check-merges") => check_merges(&root, &args[1..]),
         Some("check-book") if args.len() == 1 => report("check-book", &book::run(&root), &[]),
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
@@ -226,10 +293,15 @@ fn main() -> ExitCode {
         Some("check-toolchain") if args.len() == 1 => {
             report("check-toolchain", &toolchain::run(&root), &[])
         }
+        Some("check-devcontainers") if args.len() == 1 => {
+            report("check-devcontainers", &devcontainers::run(&root), &[])
+        }
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
+        Some("pr-size") => pr_size(&root, &args[1..]),
+        Some("trim-targets") => trim_targets(&root, &args[1..]),
         Some("flaky") => {
             let (errors, warnings) = flaky::run(&root, &args[1..]);
             report("flaky", &errors, &warnings)
@@ -238,8 +310,10 @@ fn main() -> ExitCode {
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
         Some("tutorial-tries") => tutorial_tries(&root, &args[1..]),
+        Some("exercises") => exercises(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
+        Some("seed-target") => seed_target(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -255,6 +329,54 @@ fn repo_root() -> PathBuf {
         .and_then(Path::parent)
         .unwrap_or(manifest)
         .to_path_buf()
+}
+
+/// `seed-target --into <worktree>`: seeds `<worktree>`'s `target/` from
+/// this one's (`shuyi_cli::worktrees::seed`).
+fn seed_target(root: &Path, args: &[String]) -> ExitCode {
+    use shuyi_cli::worktrees::seed;
+    let [flag, into] = args else {
+        return report(
+            "seed-target",
+            &["usage: cargo xtask seed-target --into <worktree>".to_owned()],
+            &[],
+        );
+    };
+    if flag != "--into" {
+        return report(
+            "seed-target",
+            &[format!("unknown flag {flag}: use --into <worktree>")],
+            &[],
+        );
+    }
+    let packages = match seed::path_packages_of(root) {
+        Ok(packages) => packages,
+        Err(e) => return report("seed-target", &[e], &[]),
+    };
+    match seed::seed(root, Path::new(into), &packages) {
+        Ok(done) => {
+            eprintln!("{done}");
+            report("seed-target", &[], &[])
+        }
+        Err(e) => report("seed-target", &[e.to_string()], &[]),
+    }
+}
+
+fn check_merges(root: &Path, args: &[String]) -> ExitCode {
+    let mut base = "origin/main";
+    let mut head = "HEAD";
+    let mut rest = args.iter();
+    while let Some(flag) = rest.next() {
+        match (flag.as_str(), rest.next()) {
+            ("--base", Some(value)) => base = value,
+            ("--head", Some(value)) => head = value,
+            _ => {
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+    report("check-merges", &merges::run(root, base, head), &[])
 }
 
 fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
@@ -346,14 +468,8 @@ fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    // Games share this repository's target folder unless cargo is told
-    // otherwise, so the engine builds once for all of them.
-    let runner = script::System {
-        target_dir: std::env::var_os("CARGO_TARGET_DIR")
-            .is_none()
-            .then(|| root.join("target")),
-    };
-    let outcome = skills::run(root, &skills::games_dir(root), &options, &runner);
+    let (maker, game) = skills::runners(root, std::env::var_os("CARGO_TARGET_DIR").is_some());
+    let outcome = skills::run(root, &skills::games_dir(root), &options, &maker, &game);
     eprint!("{}", outcome.report);
     report("skill-examples", &outcome.errors, &[])
 }
@@ -375,7 +491,7 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         None => None,
     };
     let games = compile_times::games_dir(root, options.dir.as_deref());
-    let maker = script::System { target_dir: None };
+    let maker = script::System::default();
     let game = compile_times::Game {
         target_dir: games.join("timed").join("target"),
     };
@@ -419,6 +535,11 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
             verdict.errors.push(format!("{}: {e}", file.display()));
         }
     }
+    if let Some(file) = &options.out
+        && let Err(e) = std::fs::write(file, times.json().to_string())
+    {
+        verdict.errors.push(format!("{}: {e}", file.display()));
+    }
     if let Some((file, budget)) = &budget {
         let found = compile_times::check(&times, budget, file);
         verdict.errors.extend(found.errors);
@@ -443,6 +564,40 @@ fn gates(root: &Path, args: &[String]) -> ExitCode {
         }
         Err(e) => report("gates", &[e], &[]),
     }
+}
+
+fn trim_targets(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = trim::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    match shuyi_cli::worktrees::trim::run(root, &options, &mut std::io::stdout().lock()) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => report("trim-targets", &[e], &[]),
+    }
+}
+
+fn pr_size(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = pr_size::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    if options.hook {
+        let mut stdin = String::new();
+        // No input (a person running it by hand) measures this checkout.
+        let _ = std::io::Read::read_to_string(&mut std::io::stdin(), &mut stdin);
+        let answer = pr_size::hook_answer(&stdin, root, options.base.as_deref());
+        // The hook never gets in the way: it always succeeds.
+        let _ = write!(std::io::stdout().lock(), "{answer}");
+        return ExitCode::SUCCESS;
+    }
+    // The checkout it is run in, which may be another worktree or an older
+    // revision than the one xtask was built from.
+    let here = pr_size::repo_of(Path::new(".")).unwrap_or_else(|_| root.to_path_buf());
+    let outcome = pr_size::run(&here, &options);
+    // A report that can't be printed leaves the verdict as it is.
+    let _ = write!(std::io::stdout().lock(), "{}", outcome.report);
+    report("pr-size", &outcome.errors, &outcome.warnings)
 }
 
 fn changelog(root: &Path, args: &[String]) -> ExitCode {
@@ -497,6 +652,14 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
     };
     let errors = site_data::run(root, &options).err().unwrap_or_default();
     report("site-data", &errors, &[])
+}
+
+fn exercises(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = exercises::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    report("exercises", &exercises::run(root, &options), &[])
 }
 
 fn tutorial_tries(root: &Path, args: &[String]) -> ExitCode {

@@ -48,6 +48,11 @@
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part, or its edition's, if it has one ([`disclosure`]).
+//!
+//! With `--recipient`, a release export then makes a closed build's copy of
+//! the package for one recipient, marked with their code in its program, its
+//! pack and one picture, and written in a signed ledger: a deterrent with
+//! circumstantial evidence, never proof ([`recipient`], ADR-0118).
 
 pub mod archive;
 mod desktop;
@@ -55,6 +60,7 @@ pub mod disclosure;
 pub mod live_link;
 pub mod paths;
 pub mod playdate;
+pub mod recipient;
 mod web;
 
 use std::collections::BTreeMap;
@@ -64,10 +70,11 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+pub use self::desktop::SNIPER;
 use self::disclosure::Shipped;
 use crate::contract::codes::{self, Code};
 use crate::contract::export::ExportInput;
-pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
+pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Host, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
 use crate::project::{
@@ -76,7 +83,7 @@ use crate::project::{
 
 /// The variable an export of an edition with a content root sets for its
 /// builds: the folder's absolute path, which the game's build script hands to
-/// what embeds its files (`include_dir!`). A build of no such edition runs
+/// what embeds its files (`shuyi::files!`). A build of no such edition runs
 /// without it, whatever the shell has.
 pub const CONTENT: &str = "SHUYI_CONTENT";
 
@@ -85,6 +92,16 @@ pub const CONTENT: &str = "SHUYI_CONTENT";
 /// of a desktop or web target turns it on, and bakes the pack.
 pub const PACKED: &str = "packed";
 
+/// What CI does with an exporter (`export --plan`, ticket 3050).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InCi {
+    /// CI builds its package.
+    Build,
+    /// CI only checks the game against its profile, for the reason given:
+    /// the package is built elsewhere.
+    CheckOnly(&'static str),
+}
+
 /// A target's exporter.
 pub trait Exporter: Sync {
     /// The target's id: `shuyi export <id>`.
@@ -92,6 +109,16 @@ pub trait Exporter: Sync {
 
     /// The target profile its check runs with (`targets/<profile>.ron`).
     fn profile(&self) -> &'static str;
+
+    /// The runner it builds on in CI (`export --plan`).
+    fn host(&self) -> Host;
+
+    /// The image it builds in on that runner, if any (`export --plan`).
+    fn container(&self) -> Option<&'static str>;
+
+    /// Whether CI builds its package or only checks the game against its
+    /// profile (`export --plan`).
+    fn ci(&self) -> InCi;
 
     /// The Rust triples it builds for.
     fn triples(&self) -> &'static [&'static str];
@@ -152,6 +179,22 @@ pub trait Exporter: Sync {
     /// What a panic does in the program it ships: by default it unwinds.
     fn panic(&self) -> disclosure::Panic {
         disclosure::Panic::Unwind
+    }
+
+    /// Whether it makes a recipient's copy of a closed build
+    /// (`export --recipient`, [`recipient`]): by default not.
+    fn overlays(&self) -> bool {
+        false
+    }
+
+    /// Writes the package of the folder `report` names in `cx.out` again,
+    /// after a recipient's overlay changed files in it: its archive, and on
+    /// macOS its signature. By default the target has no overlay.
+    fn repackage(&self, _cx: &ExportCx, _report: &ExportReport) -> Result<(), ExportError> {
+        Err(ExportError::Setup(format!(
+            "--recipient: the {} package has no overlay",
+            self.id()
+        )))
     }
 
     /// Runs the package `export` wrote: by default there is no run step.
@@ -704,6 +747,7 @@ impl ExportCx {
             beside: Vec::new(),
             edition: self.edition.as_ref().map(|edition| edition.name.clone()),
             pack: None,
+            recipient: None,
         }
     }
 
@@ -1113,6 +1157,30 @@ fn beside_name(item: &Beside) -> Result<String, ExportError> {
             item.path
         ))
     })
+}
+
+/// The version `project`'s packages carry, as [`ExportCx::of`] finds it:
+/// `shuyi.ron`'s `app.version` when it sets one, else that of the package a
+/// desktop export builds (`cargo metadata --no-deps`, only then).
+pub fn version_of(project: &Project) -> Result<String, ExportError> {
+    let config = &project.config;
+    if let Some(version) = config.app.as_ref().and_then(|app| app.version.clone()) {
+        return Ok(version);
+    }
+    let named = config
+        .export
+        .as_ref()
+        .and_then(|part| part.package.as_deref());
+    let package = package_of("desktop", named, config.game.as_ref(), config.web.as_ref())
+        .ok_or_else(|| {
+            ExportError::Setup(format!(
+                "{} sets no `app.version` and names no package to read one from: its `game` \
+                 part names the game's",
+                crate::project::FILE
+            ))
+        })?;
+    let (version, _, _) = metadata(&project.root, &package)?;
+    Ok(version)
 }
 
 /// The game's version: `app`'s, when it sets one, else its package's,

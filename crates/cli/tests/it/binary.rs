@@ -181,15 +181,15 @@ fn bad_arguments_print_the_usage() {
     for (args, said) in [
         (
             &["font-atlas", "one"][..],
-            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... <font.bdf>... <out-dir> (one --wide a set)",
+            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... [--bold <bold.bdf>] <font.bdf>... <out-dir> (one --wide a set)",
         ),
         (
             &["font-atlas", "--no-text", "one"],
-            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... <font.bdf>... <out-dir> (one --wide a set)",
+            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... [--bold <bold.bdf>] <font.bdf>... <out-dir> (one --wide a set)",
         ),
         (
             &["font-atlas", "one.bdf", "out", "--wide"],
-            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... <font.bdf>... <out-dir> (one --wide a set)",
+            "usage: shuyi font-atlas [--no-text] [--wide [<set>=]<wide.bdf>]... [--bold <bold.bdf>] <font.bdf>... <out-dir> (one --wide a set)",
         ),
         (&["glyph-tiles", "one"], "usage: shuyi glyph-tiles"),
         (
@@ -595,6 +595,13 @@ fn a_project_in_another_workspace_is_answered_by_its_own_server_which_ends_with_
         said.contains("is answered by the project's own server"),
         "{said}"
     );
+    // The server has ended, and it killed and waited for its project's own
+    // server before it did (`Process`'s drop), so no timing of either is
+    // left to wait for: on Linux `runs` is already false. What the loop
+    // waits for is Windows letting go of the ended program's file, which a
+    // scan of the new `.exe` can hold for a moment. 10 seconds is the bound
+    // for that alone; ticket 2063 ran this test 260 times under load, on
+    // Windows, on Linux and on Linux pinned to 2 cores, and it never failed.
     let ended = Instant::now();
     while runs(&exe) {
         assert!(

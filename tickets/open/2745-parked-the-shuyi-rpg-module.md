@@ -64,8 +64,8 @@ None.
   is ready, planned or parked): if it still has none, add
   `Status::Building`, named `building`, with its doc, the `status` line
   of `docs/modules.ron`'s header, *How to read it* in `docs/modules.md`
-  and the `modules` schema, and a `Breaking:` line if CI's `api` job
-  reports one.
+  and the `modules` schema (no break: `Status` is
+  `#[non_exhaustive]` since 2086, done).
 - **`sheet.ron`**, asset kind `SheetDef`, format `sheet-ron`:
   - `stats`: names, each with a least and most value;
   - `pools`: names with a current and a most (the game's hit points,

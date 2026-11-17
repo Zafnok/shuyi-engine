@@ -31,8 +31,10 @@ pub enum LineKind {
     Caption,
 }
 
-/// One dialogue line or caption in English.
+/// One dialogue line or caption in English: a view the engine fills in
+/// and a game reads (ADR-0039 kind 3), built with [`SourceLine::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SourceLine {
     /// The id of its scene.
     pub scene: String,
@@ -43,6 +45,25 @@ pub struct SourceLine {
     /// The stem of the `.dlg` file its scene is in (`ch01` for
     /// `ch01.dlg`); empty if the dialogue wasn't read from files.
     pub file: String,
+}
+
+impl SourceLine {
+    /// The line `text`, of `kind`, in the scene `scene` of the file
+    /// `file` (its stem; empty if not read from files).
+    #[must_use]
+    pub fn new(
+        scene: impl Into<String>,
+        text: impl Into<String>,
+        kind: LineKind,
+        file: impl Into<String>,
+    ) -> Self {
+        Self {
+            scene: scene.into(),
+            text: text.into(),
+            kind,
+            file: file.into(),
+        }
+    }
 }
 
 /// Today's English for everything `data.ron` and `dialogue/*.ron` can
@@ -154,14 +175,34 @@ impl Lang {
         key: impl FnOnce() -> String,
         english: &'a str,
     ) -> &'a str {
+        self.data_text_in(code, key, english).0
+    }
+
+    /// [`data_text`](Self::data_text), with the tag of the language it is
+    /// in: the pack's that gave it, else the source's. A message
+    /// ([`Message`](crate::message::Message)) in it, a tip's text say,
+    /// picks its plurals by that language's rules (ADR-0127).
+    pub fn data_text_in<'a>(
+        &'a self,
+        code: &LangCode,
+        key: impl FnOnce() -> String,
+        english: &'a str,
+    ) -> (&'a str, &'a str) {
+        let source = self.source_lang().code.as_str();
         let mut packs = self.packs_along(code).peekable();
         if packs.peek().is_none() {
-            return english;
+            return (english, source);
         }
         let key = key();
         packs
-            .find_map(|(_, pack)| pack.data.get(&key).filter(|entry| entry.source == english))
-            .map_or(english, |entry| &entry.text)
+            .find_map(|(code, pack)| {
+                let entry = pack
+                    .data
+                    .get(&key)
+                    .filter(|entry| entry.source == english)?;
+                Some((entry.text.as_str(), code.as_str()))
+            })
+            .unwrap_or((english, source))
     }
 
     /// The display name `id` of the names table in language `code`;

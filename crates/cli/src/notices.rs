@@ -100,10 +100,11 @@ pub struct EngineFile {
 }
 
 /// The engine's files that aren't crates, as data: the web shell's
-/// vendored scripts, and the controller database `gilrs` compiles into
+/// vendored scripts, the controller database `gilrs` compiles into
 /// native builds (which the crates' walk misses, in a subfolder of its
-/// package).
-pub const FILES: [EngineFile; 3] = [
+/// package), and CLDR's plural rules, which `shuyi-assets` compiles in
+/// (ADR-0127).
+pub const FILES: [EngineFile; 4] = [
     EngineFile {
         file: "crates/cli/web/mq_js_bundle.js",
         work: "macroquad",
@@ -142,6 +143,19 @@ pub const FILES: [EngineFile; 3] = [
         ),
         builds: &[Build::Native],
         within: Some("gilrs"),
+    },
+    EngineFile {
+        file: "crates/assets/src/message/plural.rs",
+        work: "Unicode CLDR",
+        version: "49",
+        source: "https://cldr.unicode.org/",
+        license: "Unicode-3.0",
+        text: (
+            "crates/assets/src/message/CLDR-LICENSE.txt",
+            include_str!("../../assets/src/message/CLDR-LICENSE.txt"),
+        ),
+        builds: &[Build::Web, Build::Native],
+        within: Some("shuyi-assets"),
     },
 ];
 

@@ -46,18 +46,23 @@ pub struct Options {
     /// The Zola content folder to write the pages in, instead of stdout.
     pub site: Option<PathBuf>,
     pub format: Format,
+    /// The revision the PR's new done tickets are read against (`--base`);
+    /// without it, where `HEAD` left `origin/main`, else `main` (ticket 2058).
+    pub base: Option<String>,
 }
 
 impl Options {
-    /// Reads `[--site <dir>] [--format markdown|keep-a-changelog]`, or `None`
-    /// when they are wrong (`--site` has its own shape).
+    /// Reads `[--site <dir>] [--format markdown|keep-a-changelog] [--base
+    /// <rev>]`, or `None` when they are wrong (`--site` has its own shape).
     pub fn parse(args: &[String]) -> Option<Self> {
         let mut site = None;
         let mut format = Format::Markdown;
+        let mut base = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             match (arg.as_str(), rest.next()) {
                 ("--site", Some(dir)) => site = Some(PathBuf::from(dir)),
+                ("--base", Some(rev)) => base = Some(rev.clone()),
                 ("--format", Some(f)) if f == "markdown" => format = Format::Markdown,
                 ("--format", Some(f)) if f == "keep-a-changelog" => {
                     format = Format::KeepAChangelog;
@@ -68,7 +73,7 @@ impl Options {
         if site.is_some() && format != Format::Markdown {
             return None;
         }
-        Some(Self { site, format })
+        Some(Self { site, format, base })
     }
 }
 
@@ -93,10 +98,19 @@ pub(crate) struct Migration {
     /// site in a game's code.
     #[serde(default)]
     pub find: Vec<String>,
+    /// The line of the block's fence, counted from 1.
+    #[serde(skip)]
+    pub line: usize,
 }
 
 impl Migration {
     fn check(&self) -> Result<(), String> {
+        if self.since == SINCE_PLACEHOLDER {
+            return Err(format!(
+                "`since` is `{SINCE_PLACEHOLDER}`: write the workspace `version` of the root \
+                 `Cargo.toml`"
+            ));
+        }
         let parts: Vec<&str> = self.since.split('.').collect();
         if parts.len() != 3
             || parts
@@ -116,6 +130,10 @@ impl Migration {
         Ok(())
     }
 }
+
+/// What `tickets/README.md`'s example writes for `since`: a ticket that
+/// copies it is told what to write instead (ticket 2058).
+const SINCE_PLACEHOLDER: &str = "<workspace version>";
 
 /// The `migration` blocks under `## Completion notes` of a ticket's file, in
 /// order. A block that doesn't parse is an error naming `file` and the line
@@ -150,8 +168,9 @@ pub(crate) fn migrations(file: &str, content: &str) -> Result<Vec<Migration>, St
         if !closed {
             return Err(format!("{at}: migration block is never closed"));
         }
-        let block: Migration =
+        let mut block: Migration =
             serde_norway::from_str(&yaml).map_err(|e| format!("{at}: migration block: {e}"))?;
+        block.line = n + 1;
         block
             .check()
             .map_err(|e| format!("{at}: migration block: {e}"))?;
@@ -847,6 +866,72 @@ pub(crate) fn system_git(root: &Path) -> impl Fn(&[&str]) -> Result<String, Stri
     }
 }
 
+/// The files the PR adds to `tickets/done/` (a ticket moved there is one),
+/// read against `base`, else where `HEAD` left `origin/main`, else `main`.
+/// With none of them (a shallow clone), no ticket is new.
+fn added_tickets(
+    base: Option<&str>,
+    git: &dyn Fn(&[&str]) -> Result<String, String>,
+) -> Result<Vec<String>, String> {
+    let base = match base {
+        Some(base) => base.to_string(),
+        None => match git(&["merge-base", "HEAD", "origin/main"])
+            .or_else(|_| git(&["merge-base", "HEAD", "main"]))
+        {
+            Ok(base) => base.trim().to_string(),
+            Err(_) => return Ok(Vec::new()),
+        },
+    };
+    let diff = git(&[
+        "diff",
+        "--name-only",
+        "--no-renames",
+        "--diff-filter=A",
+        &base,
+        "--",
+        "tickets/done",
+    ])?;
+    Ok(diff
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("tickets/done/"))
+        .map(str::to_string)
+        .collect())
+}
+
+/// `[workspace.package] version` of the root `Cargo.toml`'s text.
+fn workspace_version(manifest: &str) -> Result<String, String> {
+    let table: toml::Table = toml::from_str(manifest).map_err(|e| format!("Cargo.toml: {e}"))?;
+    table
+        .get("workspace")
+        .and_then(|w| w.get("package"))
+        .and_then(|p| p.get("version"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| "Cargo.toml: no `version` in `[workspace.package]`".to_string())
+}
+
+/// A `migration` block of a ticket the PR moves to `done/` whose `since` is
+/// not `version`, the workspace's on the branch (ticket 2058): the migration
+/// would go under a release that doesn't have it. Blocks already on `main`
+/// are not checked.
+fn since_errors(tickets: &[(String, String)], added: &[String], version: &str) -> Vec<String> {
+    let mut errors = Vec::new();
+    for (file, content) in tickets.iter().filter(|(file, _)| added.contains(file)) {
+        let path = format!("tickets/done/{file}");
+        // A block that doesn't parse was already reported by `build`.
+        for m in migrations(&path, content).unwrap_or_default() {
+            if m.since != version {
+                errors.push(format!(
+                    "{path}:{}: migration block: `since` is `{}`, but the workspace `version` \
+                     is `{version}`; a change ships in the version the workspace has",
+                    m.line, m.since
+                ));
+            }
+        }
+    }
+    errors
+}
+
 /// What the command writes: Markdown for stdout, or the site's pages.
 pub enum Output {
     Stdout(String),
@@ -865,6 +950,16 @@ pub fn run(
         .map_err(|e| vec![format!("tickets/done: {e}")])?;
     let log = git(LOG_ARGS).map_err(|e| vec![e])?;
     let releases = build(&tickets, &log)?;
+    let added = added_tickets(options.base.as_deref(), git).map_err(|e| vec![e])?;
+    if tickets.iter().any(|(file, _)| added.contains(file)) {
+        let manifest = fs::read_to_string(root.join("Cargo.toml"))
+            .map_err(|e| vec![format!("Cargo.toml: {e}")])?;
+        let version = workspace_version(&manifest).map_err(|e| vec![e])?;
+        let errors = since_errors(&tickets, &added, &version);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+    }
     Ok(match (&options.site, options.format) {
         (Some(_), _) => Output::Pages(site_pages(&releases, &|tag| {
             fs::read_to_string(root.join(INTRO_DIR).join(format!("{tag}.md"))).ok()
@@ -1173,6 +1268,106 @@ mod tests {
         assert!(Options::parse(&args(&["--site", "c", "--format", "keep-a-changelog"])).is_none());
         assert!(Options::parse(&args(&["--format", "html"])).is_none());
         assert!(Options::parse(&args(&["--site"])).is_none());
+        let based = Options::parse(&args(&["--base", "HEAD^1"])).unwrap();
+        assert_eq!(based.base.as_deref(), Some("HEAD^1"));
+        assert!(Options::parse(&args(&["--base"])).is_none());
+    }
+
+    /// A ticket with one `migration` block whose `since` is `since`.
+    fn with_since(id: &str, since: &str) -> (String, String) {
+        ticket(
+            id,
+            "A break",
+            "feature",
+            "2026-11-14",
+            &BREAKING.replace("since: 0.2.0", &format!("since: {since}")),
+        )
+    }
+
+    #[test]
+    fn a_new_tickets_since_is_the_workspace_version() {
+        let equal = with_since("2101", "0.1.0");
+        let newer = with_since("2102", "0.2.0");
+        let added = vec![equal.0.clone(), newer.0.clone()];
+        let errors = since_errors(&[equal, newer.clone()], &added, "0.1.0");
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(
+            errors[0].starts_with(&format!("tickets/done/{}:", newer.0)),
+            "{errors:?}"
+        );
+        assert!(errors[0].contains("`since` is `0.2.0`"), "{errors:?}");
+        assert!(errors[0].contains("is `0.1.0`"), "{errors:?}");
+        // The fence's line is named.
+        let line: usize = errors[0].split(':').nth(1).unwrap().parse().unwrap();
+        assert_eq!(
+            newer.1.lines().nth(line - 1).map(str::trim),
+            Some("```migration")
+        );
+    }
+
+    #[test]
+    fn a_ticket_already_on_main_is_not_checked() {
+        let old = with_since("2103", "0.2.0");
+        assert_eq!(since_errors(&[old], &[], "0.1.0"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn the_readme_placeholder_says_what_to_write() {
+        let (file, content) = with_since("2104", SINCE_PLACEHOLDER);
+        let err = migrations(&file, &content).unwrap_err();
+        assert!(err.contains("write the workspace `version`"), "{err}");
+    }
+
+    #[test]
+    fn workspace_version_reads_the_root_manifest() {
+        let manifest = "[workspace]\nmembers = []\n\n[workspace.package]\nversion = \"0.3.1\"\n";
+        assert_eq!(workspace_version(manifest), Ok("0.3.1".to_string()));
+        assert!(workspace_version("[workspace]\n").is_err());
+        assert!(workspace_version("not toml [").is_err());
+    }
+
+    #[test]
+    fn run_fails_a_moved_ticket_whose_since_is_not_the_workspaces() {
+        let root =
+            std::env::temp_dir().join(format!("xtask-changelog-since-{}", std::process::id()));
+        let done = root.join("tickets").join("done");
+        fs::create_dir_all(&done).unwrap();
+        fs::write(
+            root.join("Cargo.toml"),
+            "[workspace.package]\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        let (file, content) = with_since("2105", "0.2.0");
+        fs::write(done.join(&file), content).unwrap();
+        let diff = format!("tickets/done/{file}\n");
+        let git = |args: &[&str]| {
+            if args[0] == "log" {
+                return Ok("2026-11-14\t\t[2105] A break (#30)\n".to_string());
+            }
+            assert!(args.contains(&"HEAD^1"), "{args:?}");
+            Ok(diff.clone())
+        };
+        let options = Options {
+            site: None,
+            format: Format::Markdown,
+            base: Some("HEAD^1".into()),
+        };
+        let Err(errors) = run(&root, &options, &git) else {
+            panic!("a since of 0.2.0 passed");
+        };
+        assert!(errors[0].contains("`since` is `0.2.0`"), "{errors:?}");
+        // Without git's history to compare with, nothing is new.
+        let shallow = |args: &[&str]| match args[0] {
+            "log" => Ok("2026-11-14\t\t[2105] A break (#30)\n".to_string()),
+            _ => Err("no merge base".to_string()),
+        };
+        let unbased = Options {
+            site: None,
+            format: Format::Markdown,
+            base: None,
+        };
+        assert!(run(&root, &unbased, &shallow).is_ok());
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]
@@ -1226,13 +1421,30 @@ mod tests {
         fs::create_dir_all(&done).unwrap();
         let (file, content) = ticket("2801", "The website", "feature", "2026-10-20", "Done.");
         fs::write(done.join(file), content).unwrap();
-        let git = |args: &[&str]| {
-            assert!(args.contains(&"--first-parent"));
-            Ok("2026-10-20\t\t[2801] The website (#25)\n".to_string())
+        let git = |args: &[&str]| match args[0] {
+            "log" => {
+                assert!(args.contains(&"--first-parent"));
+                Ok("2026-10-20\t\t[2801] The website (#25)\n".to_string())
+            }
+            "merge-base" => Ok("abc\n".to_string()),
+            _ => {
+                assert_eq!(
+                    args[..5],
+                    [
+                        "diff",
+                        "--name-only",
+                        "--no-renames",
+                        "--diff-filter=A",
+                        "abc"
+                    ]
+                );
+                Ok(String::new())
+            }
         };
         let options = Options {
             site: None,
             format: Format::Markdown,
+            base: None,
         };
         let Ok(Output::Stdout(text)) = run(&root, &options, &git) else {
             panic!("no markdown");
@@ -1243,6 +1455,7 @@ mod tests {
         let site = Options {
             site: Some(root.join("content")),
             format: Format::Markdown,
+            base: None,
         };
         let Ok(Output::Pages(pages)) = run(&root, &site, &git) else {
             panic!("no pages");
@@ -1266,6 +1479,7 @@ mod tests {
             before: "x y".into(),
             after: "z".into(),
             find: vec!["x".into()],
+            line: 0,
         };
         assert_eq!(m.check(), Ok(()));
         for bad in ["1.2", "1.2.3.4", "1..3", "1.x.3", ""] {

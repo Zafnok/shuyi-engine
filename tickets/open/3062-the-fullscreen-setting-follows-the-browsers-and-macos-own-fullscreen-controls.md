@@ -197,16 +197,21 @@ None.
 - **No key named** (`AGENTS.md` rule 8): the docs and comments say
   "the browser's own control" and "the window's fullscreen shortcut",
   never a key.
-- **Either order with 3044** (the window record and the cursor): both
-  change `Macroquad`'s fullscreen flag in `backend.rs`. If 3044 is
-  done, start the watch with `FullscreenWatch::new` and the mode in
-  its `Opened` (unsettled, so a fullscreen start on macOS waits for
-  its animation). Its first-frame `set_fullscreen(true)` on Windows
-  goes with an `ask` too. `present` asks for what `wanted_fullscreen`
-  gives, and its window record and `IdleCursor` read `mode()`. So a
-  mode changed with macOS's own control is recorded, and hides or
-  shows the cursor, as a switch from the game does. If not, the watch
-  starts windowed, and 3044 makes those changes (its clause says so).
+- **From 3044 (done)** (the window record): `Macroquad`'s fullscreen
+  flag starts at the mode in `window::Opened` and changes in
+  `switch_fullscreen` (`backend.rs`). Start the watch with
+  `FullscreenWatch::new` and the mode in `Opened` (unsettled, so a
+  fullscreen start on macOS waits for its animation). The first-frame
+  `set_fullscreen(true)` on Windows (`refresh_fullscreen` in
+  `after_frame`) goes with an `ask` too. `present` asks for what
+  `wanted_fullscreen` gives, and the window record (`WindowMemory::see`
+  in `after_frame`) reads `mode()`, so a mode changed with macOS's own
+  control is recorded as a switch from the game is.
+- **From 3314 (done)** (the idle cursor): its `IdleCursor` reads
+  `mode()` (the `fullscreen` of the `CursorSeen` that
+  `Macroquad::after_frame` builds, `self.fullscreen` today), so a mode
+  changed with macOS's own control hides or shows the cursor like any
+  other switch.
 - **For the game:** additive only. Its web build and a macOS build get
   it at the next pin bump with no code change. If its hook matches on
   `SystemEvent`, its `_` arm covers the new event. The game's PR that
@@ -226,8 +231,8 @@ None.
 - a fullscreen button on the page (3052's **Out** says why);
 - any change to `mq_js_bundle.js`, a new web plugin, or a change to
   `SHELL` in `crates/cli/src/web.rs`;
-- the window's size and place, and the cursor (3044), apart from the
-  clause above.
+- the window's size and place (3044) and the cursor (3314), apart from
+  the clauses above.
 
 ## Implementation steps
 
@@ -238,8 +243,8 @@ None.
    `docs/platform-backends.md`. In the cargo registry, read miniquad
    0.4.11's `src/native/wasm.rs` (`sapp_is_fullscreen` and the queued
    requests), `src/native/macos.rs` (`set_fullscreen` and the
-   delegate) and `src/native/apple/frameworks.rs`. Check whether 3044
-   and 3052 are done.
+   delegate) and `src/native/apple/frameworks.rs`. Check whether 3052
+   is done.
 2. Write `crates/app/src/fullscreen.rs` with `FullscreenWatch` and its
    tests.
 3. Add the readers in `fullscreen/web.rs` and `fullscreen/macos.rs`,

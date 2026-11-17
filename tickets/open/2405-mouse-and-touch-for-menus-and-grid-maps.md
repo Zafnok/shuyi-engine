@@ -2,7 +2,7 @@
 id: "2405"
 title: "Mouse and touch for menus and grid maps, split out of parked 1121: hover and click on the engine's menus, the grid cursor follows the pointer, and never required"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
@@ -66,7 +66,7 @@ half. Related: 2333 (scale modes: the placement whose inverse maps the
 mouse), 2355 (focus between widgets), 2354 (a grid cursor), 3042 (held
 input let go on focus loss), 2518 (session records), 2407 (parked:
 on-screen controls and swipes on phones' browsers, blocked by this),
-3053 (platform facts at run time), 3044 (the system cursor).
+3053 (platform facts at run time), 3314 (the system cursor).
 
 **Why it matters.**
 
@@ -350,11 +350,11 @@ MVP, not parked.
 12. The new public types follow ADR-0039.
 13. No new dependency.
 
-**For the game:** `RawInputEvent` gains variants, which breaks a
-`match` on it with no `_` arm, and `MenuView` gains a field, which
-breaks building one with a struct literal. The PR says so, with a
-`Breaking:` line (2010), and the game's PR that moves its pin
-follows it. The rest is additive.
+**For the game:** `RawInputEvent` gains variants additively (**from
+2083 (done):** it is `#[non_exhaustive]`, so a game's `match` on it
+already has a `_` arm), and so do `Device` and `Input`. `MenuView`
+gains a field additively (**from 2082 (done):** it is
+`#[non_exhaustive]`). The rest is additive.
 
 **Out (do not do):**
 - The pointer on the engine's other widgets and screens, and wheel
@@ -394,7 +394,7 @@ follows it. The rest is additive.
   it lands.
 - Picking isometric tiles: 1126 (parked) gives its projection a
   `tile_at`.
-- Hiding the system cursor: 3044. Telling a running game whether it has
+- Hiding the system cursor: 3314. Telling a running game whether it has
   a pointer: 3053.
 - Pointer steps in the tool contract and the MCP server: write a ticket
   when an agent needs them.

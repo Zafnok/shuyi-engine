@@ -13,7 +13,10 @@ use super::{Chord, Key};
 /// What the generic widgets (a menu), the Key bindings screen and the debug
 /// hook react to. A game maps some of its actions onto these with
 /// [`ActionSet::ui`]; the rest are its own business.
+///
+/// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum UiAction {
     /// Move up (a menu's focus, a cursor).
     Up,

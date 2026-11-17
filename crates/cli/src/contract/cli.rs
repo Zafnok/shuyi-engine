@@ -106,10 +106,20 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
     if name == "mcp" {
         return Some(crate::mcp::main(args, cwd));
     }
+    if name == "reveal" {
+        // The reveal kit: `verify` and `open` need no project, and the
+        // others find it from `cwd`.
+        return Some(crate::reveal::main(cwd, args));
+    }
     let (json, args) = split_json(args);
     Some(match name {
-        "new" => match new::parse_args(&args) {
-            Ok(input) => print(json, &new::new(cwd, &input), new::text),
+        "new" => match new::questions::parse(&args) {
+            Ok((input, flags)) => {
+                let made = new::questions::main(cwd, input, &flags, json);
+                print(json, &made.answer, new::text);
+                new::questions::print_repos(&made);
+                made.exit_code()
+            }
             Err(e) => wrong(json, Op::New, &e, &new::usage(command)),
         },
         "doctor" => {
@@ -225,6 +235,10 @@ pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameT
 pub fn export(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
     let (json, args) = split_json(args);
     match export::parse_args(&args) {
+        Ok(input) if input.plan => print(json, &export::plan(project, &input), export::plan_text),
+        Ok(input) if input.detect_recipient.is_some() => {
+            print(json, &export::detect(project, &input), export::detect_text)
+        }
         Ok(input) => print(json, &export::export(project, &input, game), export::text),
         Err(e) => wrong(
             json,
@@ -307,15 +321,19 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
     let options = game.frame_options();
     match name {
         "check" => match check::parse_args(&args) {
-            Ok(input) if input.target.is_some() => print(
-                json,
-                &check::targets(&project.config, &project.root, &input, Some(game)),
-                check::text,
-            ),
-            Ok(input) => print(json, &check::check(game, &input), check::text),
+            Ok(mut input) => {
+                input.project = Some(project.clone());
+                print(json, &check::check(game, &input), check::text)
+            }
             Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
         },
         "export" => match export::parse_args(&args) {
+            Ok(input) if input.plan => {
+                print(json, &export::plan(project, &input), export::plan_text)
+            }
+            Ok(input) if input.detect_recipient.is_some() => {
+                print(json, &export::detect(project, &input), export::detect_text)
+            }
             Ok(input) => print(
                 json,
                 &export::export(project, &input, Some(game)),
@@ -633,7 +651,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("src")).unwrap();
         let mut p = project(dir.clone());
-        p.config.rules = Some("r".to_owned());
+        p.config.rules = vec!["r".to_owned()];
         assert_eq!(lint(&p, &[], &QuietCargo), 0);
         assert_eq!(lint(&p, &args(&["--json"]), &QuietCargo), 0);
         assert_eq!(lint(&p, &args(&["x"]), &QuietCargo), 2);

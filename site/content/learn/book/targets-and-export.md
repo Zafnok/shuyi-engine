@@ -290,10 +290,18 @@ This finds what is written plainly: in a file, in what a pack unpacks to, or as 
 program. It can't find what your code compresses itself, or say that a rule isn't in the machine code.
 What a game must not give away, leave out of the build.
 
+Shipping it packed or hidden doesn't change that. Whatever the game decodes, draws, plays or simulates
+on the player's machine can be taken from that machine as it runs, by tools anyone can download, and
+no setting of the engine changes that
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#5-runtime-extraction-on-desktop-defeats-any-at-rest-protection)).
+
 ## A public demo
 
 A demo that hides the rest of the game behind a menu still ships the rest of the game. A web demo is
-a published copy of every file and rule it was built with: anyone can open it. So a demo is built from
+a published copy of every file and rule it was built with: anyone can open it, and every file is a
+download its page already makes
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#4-the-web-build-is-the-cheapest-extraction-surface)).
+So a demo is built from
 less, as an *edition* of the game: `shuyi.ron`'s `editions` name each one, and `export --edition <name>`
 builds it, on any target.
 
@@ -312,7 +320,7 @@ editions: {
 An edition says, before anything is compiled:
 
 - `content`: the folder of files its program embeds. The export hands it to the build as
-  `SHUYI_CONTENT`, and a new game's `build.rs` points `include_dir!` at it, so the demo's program holds
+  `SHUYI_CONTENT`, and a new game's `build.rs` points `shuyi::files!` at it, so the demo's program holds
   only that folder. Without it, the build embeds `files/`, as `cargo run` does. A release build's pack
   is baked from that folder too.
 - `default_features`, always written: whether the build keeps the package's `default` features. The full
@@ -375,13 +383,182 @@ the web every step runs in one frame. On the Playdate a second's worth runs each
 on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
 says how long each frame took.
 
+## Releasing
+
+Your machine builds the packages its own system can. The others come from CI: a game made with
+`shuyi new` has `.github/workflows/release.yml`, and pushing a tag `vX.Y.Z` releases it. CI runs the
+gates, builds each package on its own system, and makes a GitHub Release of the tag with every
+package, its debug file and `SHA256SUMS`.
+
+What it builds is the game's own target list, `shuyi.ron`'s `targets`. Ask before you tag:
+
+```bash
+cargo shuyi export --plan --tag v0.1.0
+```
+
+It lists each package and where CI builds it, and fails unless the tag is `v` and the game's
+version (`app.version`, else the workspace's in `Cargo.toml`). A target with no exporter yet is
+checked but not packaged. The Playdate is checked only: its SDK can't be downloaded in CI, so you
+export it on a machine that has it. To release:
+
+1. set the version, run `cargo shuyi app-info`, and commit;
+2. `git tag -a v0.1.0 -m "What changed"`, the message being the release's notes;
+3. `git push origin v0.1.0`.
+
+A version with a pre-release part (`1.2.0-beta.1`) is a prerelease. Run the Release workflow from
+the repository's Actions tab for a dry run: the packages are built, and nothing is published.
+
+To push each release to itch.io too, set the repository variable `ITCH_GAME` to `user/game` and the
+secret `BUTLER_API_KEY` to a key of your account. Each package goes to its channel (`windows`,
+`linux`, `macos`, `web`); on the game's itch.io page, set the `web` file to be played in the browser
+once. A prerelease isn't pushed.
+
+The macOS app is signed ad hoc, with no Developer ID, so macOS stops it the first time: the player
+opens it from System Settings, Privacy & Security, as its `HOW-TO-OPEN.txt` says. On a public
+repository each file is attested, and `gh attestation verify <file> --repo <owner>/<repo>` says
+your repository's release built it.
+
+To let a few people play before the game is public, the stores' own tools are a controlled preview at
+no cost: a Steam Playtest with limited signup, or release override keys and a password-protected beta
+branch, or an itch.io page set to Restricted with download keys. What they don't give: an NDA, a key
+you can take back from one person alone, or a way to tell who leaked a copy
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#8-what-steam-and-itchio-already-give-for-free)).
+For the last, [*Closed builds*](#closed-builds) below marks each person's copy: a deterrent, not
+proof.
+
+## Before the reveal
+
+The day you first show the game in public, its idea can be copied from the footage alone: a
+clone needs no build of yours. Nothing stops that. Once a build is out, agents now port whole games from shipped
+programs as a matter of routine, so assume someone can rebuild yours from its files
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#6-attacker-capability-has-moved-whole-game-ports-are-routine)).
+Tools that add noise to pictures to spoil an AI's copy of a style are unproven on small sprites with
+few colors, so don't count on them for pixel art
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#10-art-style-cloning-and-asset-side-protection)).
+What helps later is evidence: which pictures
+and clips are yours, which build made them, which store page is the real one, and when each
+existed. The **reveal kit** keeps that, made before the first trailer or screenshot goes out.
+
+List the approved captures and the store page in a `reveal` part of `shuyi.ron`:
+
+```ron
+reveal: (
+    store_url: "https://store.steampowered.com/app/123/Moon_Garden/",
+    keywords: ["moon", "garden"],
+    captures: [
+        (file: "preview.png", what: "the walk to the well",
+         encodes: ["shots/preview-steam.webp"]),
+    ],
+),
+```
+
+A capture is the file as you made it (with `frame-png`, or recorded), and `encodes` are the
+same capture as a platform re-encoded it. A store page with no demo needs nothing more; a
+release's `SHA256SUMS` (`sums`) and any dated receipt (`receipts`) go in too when there are some.
+Then:
+
+```bash
+cargo shuyi reveal prepare
+cargo shuyi reveal verify dist/reveal
+```
+
+`prepare` copies each file whole into `dist/reveal` and writes `reveal.ron`, which names the
+SHA-256 of every file: a fingerprint that changes if one byte changes. The fingerprint of
+`reveal.ron` itself is the kit's **digest**, in `reveal.ron.sha256`. `verify` checks a copy of the
+folder anywhere, with no project: a changed frame, a changed line of `reveal.ron`, or a file added,
+and it fails, naming the file.
+
+The kit's own date is your computer's clock, which anyone can set. So publish the digest where
+someone else records the date: a commit or a tag pushed to your repository, or a release's notes.
+`verify --digest <digest>` then checks a copy against the one you published.
+
+`CHECKLIST.md` in the kit lists what to do before the footage goes out: check the store page shows
+the approved captures, publish the digest, and consider registering the copyright of the art, music
+and text. In the US, registering before an infringement, or within three months of first
+publication, is what makes statutory damages possible (17 U.S.C. 412); the fee is about US$65.
+Whether to register is your decision: the kit only reminds, and none of this is legal advice.
+
+To show later something you haven't shown yet, a design note or a level, `cargo shuyi reveal
+commit <file>` keeps a **salted commitment**: a fingerprint of the file mixed with a random salt,
+which the next kit records. Anyone can see the fingerprint and learn nothing from it; later, the
+file and its salt open it (`cargo shuyi reveal open <file>`), and a file changed by one byte
+doesn't. Keep the salts file private and backed up, out of any public repository: without it,
+nothing opens.
+
+## Closed builds
+
+**What this can't do, first.** A mark in a copy is circumstantial evidence, never proof. It says
+which copy leaked, not who leaked it: a copy can be stolen, or passed on. Two recipients who
+compare their copies find every mark and can remove them all, and changing a copy removes some of
+them. It deters a casual leak. It doesn't stop a determined one
+([the research](https://github.com/Zafnok/shuyi-engine/blob/main/docs/research/2917-reverse-engineering-angles-not-yet-covered.md#7-fingerprinting-the-build-artifact-to-trace-a-leak)).
+
+A press, playtest or publisher build is a **closed build**: a copy you give one person before the
+public has the game. Make each recipient's copy from your release build, which needs the reveal
+kit (`dist/reveal`, above) and an SSH key of yours kept outside the repository:
+
+```bash
+cargo shuyi export windows --release --recipient press-jane --label "Jane, Example Magazine" --signing-key ~/.ssh/id_ed25519
+```
+
+The export makes the ordinary package first, the same one a release publishes. Then it copies it
+into `dist/recipients/press-jane/windows/` and writes the recipient's **code** (8 characters, such
+as `7K2Q9MXA`) into three places, each holding the whole code:
+
+- the program, which reserves a field for it: `shuyi::app::recipient()` gives the code in a copy
+  and `None` in the public build, for a faint line your game may draw in a corner;
+- the pack beside the program, in the order of its files and the bytes between them;
+- the lowest bits of one picture, which `shuyi.ron`'s `export` part names, never the player's text.
+  Each of its colors changes by at most 3 in 255, and it keeps exactly as many colors:
+
+```ron
+export: (
+    overlay_picture: "tiles.png",
+),
+```
+
+The picture needs at least seven colors. The copy goes through the same disclosure check as the
+public package. Then `dist/recipients.ron`, beside the kit, gets a line: who, under what label,
+when, the code, and the fingerprints of the public package and of the copy. It is signed with your
+key, in `recipients.ron.sig`. The game is the same in every copy: the same rules, the same play,
+the same files but for that picture's lowest bits.
+
+When a copy turns up somewhere, ask what it holds:
+
+```bash
+cargo shuyi export --detect-recipient leaked/game-0.1.0-windows.zip
+```
+
+It reads a package, a folder, a program, a pack or a picture. It says which marks it found, the
+code each holds, and whom your ledger gave that code, and whether the ledger's signature still
+holds. On the public build it says "no mark found". Its answer calls a match circumstantial evidence
+every time.
+
+What each change to a copy leaves, measured on Hello, Grid:
+
+| What was done to the copy | The program | The pack | The picture |
+| ------------------------- | ----------- | -------- | ----------- |
+| nothing | names them | names them | names them |
+| the program's field overwritten or cut out | no mark | names them | names them |
+| the pack repacked | names them | no mark | names them |
+| the picture saved again at a lower quality | names them | no mark | no mark |
+| the picture cropped, every color kept | | | names them |
+| the picture cropped to half its tiles | | | no mark |
+
+Saving the picture again inside the pack means repacking it, which removes the pack's mark too.
+Two copies compared differ in 10 bytes of the program, the order of the pack's files, and one
+picture's lowest bits: every mark. Give each recipient a Steam key of their own as well. It names
+the account that played, which no mark in a file can.
+
 ## When a player's game crashes
 
 If the game panics, the engine writes a crash report beside its saves: `crash-<when>.ron` in its
 data folder on a computer, and in the browser's storage on the web. It holds the panic's message and
 place, the versions, the frame, the screen on top and the log's last lines, never the player's
 settings or saves, and it stays on the player's machine. The player sends it to you; the game's
-version in it is `shuyi.ron`'s `app.version`.
+version in it is `shuyi.ron`'s `app.version`. On Windows and Linux its `frames` are the stack as
+offsets into the program, which that version's debug file turns into functions and lines with
+`addr2line` ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
 
 At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
 anything, and in what words, is up to the game. A panic the game survived, like a sound library's on a
@@ -460,6 +637,14 @@ You ran `cargo shuyi web --release` and double-clicked `dist/web/index.html`. Th
 A public web demo must not hold chapter two. What keeps it out?
 
 - [ ] A menu in the demo that hides chapter two. — A menu that hides a level doesn't hide its file: anyone can open a package and read what is in it ([what a package gives away](#what-a-package-gives-away)).
-- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
 - [ ] A `disclosure` part, which removes the files it forbids from the package. — `disclosure` removes nothing: a forbidden path or a canary refuses the whole export with `SH3012` ([what a package gives away](#what-a-package-gives-away)).
+- [x] An edition with its own `content` folder and a `never_features` list, built with `export --edition`. — The demo is built from less, so the rest of the game's files and code are never compiled in ([a public demo](#a-public-demo)).
+{% end %}
+
+{% check() %}
+You prepared a reveal kit on 2026-11-13. What shows a stranger it existed on that day?
+
+- [ ] The `prepared` date in `reveal.ron`. — That is your computer's clock, which anyone can set ([before the reveal](#before-the-reveal)).
+- [x] The kit's digest in a commit you pushed that day, and `reveal verify --digest` passing on the kit. — Someone else recorded the date of the digest, and the digest names every byte of the kit ([before the reveal](#before-the-reveal)).
+- [ ] `reveal verify` passing on the kit. — That shows the folder agrees with itself; a folder made later agrees with itself too ([before the reveal](#before-the-reveal)).
 {% end %}

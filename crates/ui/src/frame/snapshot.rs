@@ -55,6 +55,15 @@
 //! over  gizmo grid note label 32,48 "0"
 //! ```
 //!
+//! The glyph styles section lists the cells whose glyph is drawn moved or
+//! bold (a key cap's name, ticket 3215), row by row, as `x,y  dx,dy`
+//! (signed pixels) and ` bold`; it is left out when there are none:
+//!
+//! ```text
+//! --- glyph styles ---
+//! 2,0  +3,+1 bold
+//! ```
+//!
 //! A see-through cell (game ADR-0048) gets a key of its own, whose legend line
 //! says `bg:see-through`: in the colour rows a hole can't be taken for a
 //! blank cell. When the buffer has a backdrop, a line
@@ -151,6 +160,17 @@ impl GlyphBuffer {
                     let _ = writeln!(out, "{layer:<5} {}", gizmo_line(g));
                 }
             }
+        }
+        let mut styles = self.glyph_styles().peekable();
+        if styles.peek().is_some() {
+            out.push_str(
+                "--- glyph styles ---
+",
+            );
+        }
+        for (x, y, style) in styles {
+            let bold = if style.bold { " bold" } else { "" };
+            let _ = writeln!(out, "{x},{y}  {:+},{:+}{bold}", style.dx, style.dy);
         }
         if let Some(backdrop) = self.backdrop() {
             let _ = writeln!(out, "--- backdrop: {} ---", backdrop_line(backdrop));

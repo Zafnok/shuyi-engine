@@ -43,6 +43,11 @@ None.
   every game while quad-snd is in the graph. Settle that first: make quad-snd
   optional, the feature's other side, so a default build has one `links = "alsa"`, or
   put the patch in `shuyi new`'s template and the game's `Cargo.toml` in this PR.
+- **No feature named for quad-snd** (Nick's no breaking runs after the MVP,
+  2026-11-14): a feature added here and removed by 3079 would be a breaking
+  release. quad-snd becomes an optional dependency named with `dep:`, so it
+  makes no feature of its own, and going back is `default-features = false`.
+  **From 2084 (done):** follow the rule it wrote in ADR-0068 §8.
 - Hand the game's pin move to the
   game (`engine-change`), naming what to listen for.
 

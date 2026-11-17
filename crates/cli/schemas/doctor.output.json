@@ -92,6 +92,11 @@
         "ok": {
           "description": "Whether it passed.",
           "type": "boolean"
+        },
+        "optional": {
+          "description": "Whether it is optional: a tool only one command needs, whose\ncheck failing doesn't fail `doctor`.",
+          "type": "boolean",
+          "default": false
         }
       },
       "additionalProperties": false,

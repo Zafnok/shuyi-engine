@@ -184,10 +184,10 @@ Record the answers with the `ask-nick` skill in `docs/decisions.md`.
     game shows machine-translated (`Lang::engine_pack_codes` of the
     game's `Lang`, read through `GameTools::lang` as `lang-status`
     reads it); if not, 2223 adds that, as its clause says.
-  - **2348** (plurals): if it is done, `profile.message.too_many` is a
-    plural message in each engine pack, with the categories of the
-    pack's language; if not, 2348 makes it one in each engine pack, as
-    its clause says (the upkeep test holds its PR to that).
+  - **From 3218 (done):** `profile.message.too_many` is a plural message
+    in the engine's English; each engine pack writes it as a plural
+    message with the categories of the pack's language (the upkeep test
+    holds its PR to that).
   - **From 2302 (done):** give the engine's English keys a `max_cells`
     where their place on the engine's screens has a fixed width (the
     `(text: …, max_cells: …)` form, read by

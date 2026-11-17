@@ -11,6 +11,7 @@
 //! a texture of its own, uploaded only in a frame whose revision moved
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use macroquad::prelude::*;
@@ -69,7 +70,7 @@ pub struct Renderer {
     warned_images: HashSet<ImageId>,
     /// The file of each texture of [`images`](Self::images), for the
     /// recoloured copies: a save that doesn't decode never comes here.
-    sources: HashMap<ImageId, &'static [u8]>,
+    sources: HashMap<ImageId, Cow<'static, [u8]>>,
     /// The size of each image made again since the start, for what its
     /// sprites may show ([`src_fits`]).
     remade: HashMap<ImageId, (u16, u16)>,
@@ -87,7 +88,7 @@ impl Renderer {
         png: &[u8],
         clear: Rgb,
         images: &ImageTable,
-        bytes: fn(&str) -> Option<&'static [u8]>,
+        bytes: fn(&str) -> Option<Cow<'static, [u8]>>,
     ) -> Result<Self, String> {
         Self::with_files(atlas, png, clear, images, bytes)
     }
@@ -98,14 +99,14 @@ impl Renderer {
         png: &[u8],
         clear: Rgb,
         images: &ImageTable,
-        bytes: impl Fn(&str) -> Option<&'static [u8]>,
+        bytes: impl Fn(&str) -> Option<Cow<'static, [u8]>>,
     ) -> Result<Self, String> {
         let texture = upload(png).map_err(|e| format!("font atlas image: {e}"))?;
         let mut textures = HashMap::new();
         let mut sources = HashMap::new();
         for id in images.ids() {
             let source = bytes(id.path()).unwrap_or_default();
-            match upload(source) {
+            match upload(&source) {
                 Ok(texture) => {
                     textures.insert(id, texture);
                     sources.insert(id, source);
@@ -283,19 +284,29 @@ impl Renderer {
             let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide, set) else {
                 continue;
             };
+            // A key cap's glyph: moved off the grid, and bold (ticket 3215).
+            let style = buf.glyph_style(x, y);
+            let (rect, strikes) = self
+                .atlas
+                .bold_strikes(cell.glyph, rect, style.bold && !wide);
             #[allow(clippy::cast_precision_loss)] // cell coords < 2^16
-            let (px, py) = (offset_x + x as f32 * cell_w, offset_y + y as f32 * cell_h);
-            draw_texture_ex(
-                &self.texture,
-                px,
-                py,
-                fg,
-                DrawTextureParams {
-                    dest_size: Some(vec2(cell_w * cells, cell_h)),
-                    source: Some(source_rect(rect)),
-                    ..Default::default()
-                },
+            let (px, py) = (
+                offset_x + x as f32 * cell_w + f32::from(style.dx) * scale,
+                offset_y + y as f32 * cell_h + f32::from(style.dy) * scale,
             );
+            for strike in 0..strikes {
+                draw_texture_ex(
+                    &self.texture,
+                    px + f32::from(strike) * scale,
+                    py,
+                    fg,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(cell_w * cells, cell_h)),
+                        source: Some(source_rect(rect)),
+                        ..Default::default()
+                    },
+                );
+            }
         }
         self.draw_items((buf, pictures), Layer::Over, origin, scale);
     }
@@ -360,12 +371,14 @@ impl Renderer {
             return;
         }
         let (recolour, tint) = match sprite.paint {
-            Paint::Image => (None, Rgb::new(255, 255, 255)),
             Paint::Solid(color) => (Some(Recolour::Silhouette), color),
             Paint::Dimmed => (Some(Recolour::Dimmed), Rgb::new(255, 255, 255)),
             Paint::Shaded(light) => (Some(Recolour::Shaded(light)), Rgb::new(255, 255, 255)),
+            // `Paint::Image`, and a paint newer than this backend: the
+            // image's own colours.
+            _ => (None, Rgb::new(255, 255, 255)),
         };
-        let source = self.sources.get(&sprite.image).copied();
+        let source = self.sources.get(&sprite.image);
         let texture = match recolour {
             None => self.images.get(&sprite.image),
             Some(recolour) => self

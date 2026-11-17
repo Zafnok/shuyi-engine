@@ -50,7 +50,10 @@ fn a_changed_file_is_told_on_the_next_frame_once_before_the_update() {
     assert!(log.borrow().is_empty(), "not before the frame");
     h.wait(FRAME_DT);
     assert_eq!(*log.borrow(), ["a.ron", "update"]);
-    assert_eq!(Bundle::new(vec![layer]).file("a.ron"), Some("new"));
+    assert_eq!(
+        Bundle::new(vec![layer]).file("a.ron").as_deref(),
+        Some("new")
+    );
     h.wait(FRAME_DT);
     assert_eq!(*log.borrow(), ["a.ron", "update", "update"]);
     assert_eq!(h.platform().changed_asks(), 2);
@@ -87,7 +90,10 @@ fn with_debug_tools_off_a_folder_watched_in_every_build_still_reaches_the_game()
     h.change_file(layer, "scene.dlg", b"saved".to_vec());
     h.wait(FRAME_DT);
     assert_eq!(*log.borrow(), ["scene.dlg", "update"]);
-    assert_eq!(Bundle::new(vec![layer]).file("scene.dlg"), Some("saved"));
+    assert_eq!(
+        Bundle::new(vec![layer]).file("scene.dlg").as_deref(),
+        Some("saved")
+    );
     assert_eq!(h.platform().changed_asks(), 1);
     // Watched no more: never asked again.
     h.watch_files(false);

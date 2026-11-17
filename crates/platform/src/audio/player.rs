@@ -751,6 +751,8 @@ impl<B: Backend> Player<B> {
                 }
             }
             MusicCommand::Stop { cue } => self.stop_track(backend, cue),
+            // A command this player doesn't know yet plays nothing.
+            _ => {}
         }
     }
 
@@ -1210,13 +1212,8 @@ mod tests {
         m.sounds.insert("step".into(), sound(&steps, 100));
         m.sounds
             .insert("broken".into(), sound(&["sfx/broken.wav"], 100));
-        let track = |file: &str, volume, looped| MusicCue {
-            file: file.into(),
-            volume,
-            looped,
-            length_ms: 60_000,
-            credit: CreditRef::Own,
-            group: None,
+        let track = |file: &str, volume, looped| {
+            MusicCue::new(file.into(), volume, 60_000, CreditRef::Own).with_looped(looped)
         };
         m.music.insert("title".into(), track("title.ogg", 80, true));
         m.music
@@ -1262,10 +1259,7 @@ mod tests {
     }
 
     fn sound(cue: &str, volume: f32) -> Request {
-        Request::PlaySound {
-            cue: cue.into(),
-            volume,
-        }
+        Request::play_sound(cue, volume)
     }
 
     fn cmd(f: fn(String) -> MusicCommand, cue: &str) -> MusicCommand {

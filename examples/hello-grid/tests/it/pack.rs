@@ -40,7 +40,10 @@ fn the_game_loads_from_its_pack_what_it_loads_from_its_files() {
     assert_eq!(kinds("stage.map"), ["map"]);
     let found = kinds("tiles.png");
     assert!(found.is_empty(), "{found:?}");
-    assert_eq!(pack.get("tiles.png"), hello_grid::file("tiles.png"));
+    assert_eq!(
+        pack.get("tiles.png"),
+        hello_grid::file("tiles.png").as_deref()
+    );
 }
 
 /// A mod's files, laid over the game's.

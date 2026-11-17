@@ -12,6 +12,7 @@ fn full() -> CrashReport {
     report.location = Some("src/stage.rs:12:5".into());
     report.thread = Some("main".into());
     report.backtrace = "   0: <unknown>\n".into();
+    report.frames = vec![CodeFrame::new(Some(0x1a2b)), CodeFrame::new(None)];
     report.game = "0.3.1".into();
     report.target = "linux x86_64 release".into();
     report.frame = 42;
@@ -88,6 +89,7 @@ fn an_older_report_without_the_optional_fields_still_reads() {
     assert_eq!((report.version, report.message.as_str()), (1, "boom"));
     assert_eq!((report.when, report.frame), (0, 0));
     assert!(report.location.is_none() && report.record.is_none() && report.log.is_empty());
+    assert_eq!(report.frames, Vec::<CodeFrame>::new());
     assert!(CrashReport::parse("(version: 1)").is_err());
 }
 
@@ -174,7 +176,12 @@ fn the_message_backtrace_and_log_are_cut_to_their_limits() {
     report.backtrace = "b".repeat(BACKTRACE_BYTES + 5);
     report.log = (0..LOG_LINES + 3).map(|i| format!("{i}")).collect();
     report.log.push("l".repeat(LOG_LINE_BYTES * 2));
+    report.frames = (0..FRAMES as u64 + 2)
+        .map(|i| CodeFrame::new(Some(i)))
+        .collect();
     report.limit();
+    assert_eq!(report.frames.len(), FRAMES);
+    assert_eq!(report.frames[0], CodeFrame::new(Some(0)));
     assert_eq!(report.backtrace.len(), BACKTRACE_BYTES);
     assert_eq!(report.log.len(), LOG_LINES);
     assert_eq!(report.log[0], "4");
@@ -244,4 +251,11 @@ proptest! {
         report.record = record;
         prop_assert_eq!(CrashReport::parse(&report.to_text()), Ok(report));
     }
+}
+
+#[test]
+fn a_frames_offset_is_written_as_a_number_and_another_modules_as_none() {
+    let text = full().to_text();
+    assert!(text.contains("offset: Some(6699)"), "{text}");
+    assert!(text.contains("offset: None"), "{text}");
 }

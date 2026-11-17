@@ -235,10 +235,13 @@ None.
    `Harness::typing()` and on `shuyi-app`'s IME function. The PR says
    so.
 
-**For the game:** mostly additive. `GridCell` gains a variant;
-`LangInfo`, `Presented::Game` and `FrameOutput` gain a field, so code
-that matches them exhaustively or builds them adds the new one (`Frame`
-gains one too, but it is `#[non_exhaustive]`). Unless 2351 is done, the
+**For the game:** mostly additive. `GridCell` gains a variant, which
+is additive (**from 2082 (done):** it is `#[non_exhaustive]`).
+`FrameOutput` gains a field, so code that matches it exhaustively or
+builds it adds the new one. `LangInfo` and `Presented::Game` gain one
+too, additively (**from 2085 (done):** both are `#[non_exhaustive]`,
+built with `LangInfo::new` and `Presented::game`), and so does `Frame`
+(`#[non_exhaustive]`). Unless 2351 is done, the
 game's English gains `name_entry.grid.page`, which a language with two
 pages shows. A pack baked before this is refused with a message to bake
 it again (`pack::VERSION`). The PR says so, with a `Breaking:` line

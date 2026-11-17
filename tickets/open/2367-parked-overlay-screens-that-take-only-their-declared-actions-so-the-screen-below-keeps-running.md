@@ -210,13 +210,11 @@ None.
   - These reach the contract as `TargetCheck::Controls` problems, as now
     (`controls` in `crates/cli/src/contract/target.rs`), with the
     overlay's name in `screen`. That schema doesn't change.
-  - The two types this grows follow 2013's ADR: `FitRule` is a set that
-    grows, so it gets `#[non_exhaustive]`. `ScreenActions` is built by
-    games through `of` and `declared`, so it gets `#[non_exhaustive]`
-    too, with a new `ScreenActions::undeclared(screen)` for the struct
-    literal in `crates/cli/src/contract/fake.rs`, which can't compile
-    outside `shuyi-ui` then. If ADR-0039 puts either type in another
-    kind, do what the ADR says for that kind.
+  - **From 2082 (done):** the two types this grows already follow
+    ADR-0039: `FitRule` and `ScreenActions` are `#[non_exhaustive]`,
+    and `ScreenActions::undeclared(screen)` builds the one in
+    `crates/cli/src/contract/fake.rs`. The new variant and fields are
+    additive; `of`, `declared` and `undeclared` set the new fields.
 - **Either order with 2316** (the debug pause): if 2316 is done, add a
   Harness test that its pause stops an `Everything` overlay's timer and
   the screen under it alike. If not, 2316 adds that test (an edit to
@@ -279,18 +277,10 @@ None.
   screen" or "on its own". `FrameInput::ticks` says every running screen
   sees the same count. `Game::act` hands its action through the same
   walk.
-- **For the game:** a screen that doesn't override `passes` works as
-  before. `Passes`, `FitRule::Taken`, `ScreenActions::undeclared` and
-  two fields of `ScreenActions` are new. A game that matches `FitRule`
-  with no wildcard arm, or builds `ScreenActions` as a struct literal,
-  changes at its pin bump; a `tools.rs` that uses `ScreenActions::of`
-  (as the templates and `examples/hello-grid` do) needs no change. The
-  PR says so, and the game's PR that moves the pin follows it. The
-  completion notes carry 2010's `Breaking:` lines
-  (`Breaking: shuyi-ui: FitRule: #[non_exhaustive] and a new variant,
-  Taken; add a wildcard arm` and `Breaking: shuyi-ui: ScreenActions:
-  #[non_exhaustive] with two new fields; build it with of, declared or
-  undeclared`).
+- **For the game:** additive. A screen that doesn't override `passes`
+  works as before. `Passes`, `FitRule::Taken` and two fields of
+  `ScreenActions` are new; since 2082 both types are
+  `#[non_exhaustive]`, so no game's `match` or literal breaks.
 
 **Out (do not do):**
 
@@ -329,19 +319,17 @@ None.
 7. Add `running()`, `running_screens()`, `Session::running`, the
    contract field, the version bump, the schemas and the
    `docs/contract.md` row.
-8. Add `passes` and `over` to `ScreenActions`, `ScreenActions::undeclared`,
-   `FitRule::Taken`, the two `#[non_exhaustive]` attributes, the pair
-   checks in `controls_fit` and the skip in `GameControls::fit`, with
-   tests in `fit/tests.rs`. Update the struct literals in
-   `fit/tests.rs`, and use `ScreenActions::undeclared("title")` in
-   `crates/cli/src/contract/fake.rs`.
+8. Add `passes` and `over` to `ScreenActions` (set in `of`,
+   `declared` and `undeclared`), `FitRule::Taken`, the pair checks in
+   `controls_fit` and the skip in `GameControls::fit`, with tests in
+   `fit/tests.rs`. Update the struct literals in `fit/tests.rs`.
 9. Update the docs in the code.
 10. Run the gates, including the `no_std` build of `shuyi-ui`.
 
 Size: expect about 1,000 changed lines. If the diff runs well past 600,
 step 8 (the controls check of overlays: `passes` and `over`,
-`FitRule::Taken`, `ScreenActions::undeclared` and the two
-`#[non_exhaustive]`) goes to a follow-up ticket written in this PR.
+`FitRule::Taken` and the two new fields) goes to a follow-up ticket
+written in this PR.
 
 ## Acceptance criteria
 
@@ -377,8 +365,8 @@ step 8 (the controls check of overlays: `passes` and `over`,
 - [ ] `controls_fit` reports `Taken` and the shared input across an
       overlay and the screen below; `over` narrows the pairs; an
       `Everything` screen is neither checked nor warned about.
-- [ ] `FitRule` and `ScreenActions` are `#[non_exhaustive]` (or as
-      2013's ADR says for their kind).
+- [ ] `cargo xtask api` reports no break of `FitRule` or
+      `ScreenActions`.
 - [ ] A sound started by the screen under a notice
       stays that screen's after a push lands between them, and stops
       when that screen leaves.

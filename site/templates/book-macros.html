@@ -57,10 +57,13 @@
 
 {#- The reader's filter's script, in the `<head>` of every page of the
     book: it runs before the page is drawn, so a passage the reader knows
-    never shows before it folds. Then the quick checks' script (ticket
-    2827), which waits for the page. -#}
+    never shows before it folds. Then the sidebar's script (ticket 2834),
+    which marks `<html>` with the folds the reader chose before the page is
+    drawn too, and the quick checks' script (ticket 2827), which waits for
+    the page. -#}
 {% macro script() -%}
 <script src="{{ get_url(path='book-filter.js', cachebust=true) }}"></script>
+<script src="{{ get_url(path='book-side.js', cachebust=true) }}"></script>
 <script src="{{ get_url(path='book-check.js', cachebust=true) }}" defer></script>
 {%- endmacro script %}
 
@@ -189,3 +192,119 @@
 {%- endif -%}
 {%- endif %}{% endfor -%}
 {%- endmacro then_steps %}
+
+{#- The book's contents beside a page of the book (ticket 2834): every page
+    in the book's order, the one at the content path `current` marked
+    `aria-current="page"`. It walks `order()`, the order the pager walks,
+    so a page in the book's order can't be missing from it, nor be in
+    another place: that holds by construction, and no check repeats it.
+
+    A chapter is numbered by its `extra.chapter`, and the project's pages
+    after it (its landing page, `extra.project`, and its steps,
+    `extra.step`) are listed under it; an appendix is lettered by its
+    `extra.appendix`. A part with a `title` in `extra.parts` starts under
+    that title, as on the front page. On a narrow screen `book-side.js`
+    opens it over the text, with its Close button. -#}
+{% macro contents(current) -%}
+{%- set book = get_section(path="learn/book/_index.md", metadata_only=true) -%}
+{%- set order = self::order() | trim | split(pat="
+") -%}
+{%- set_global prev = "" -%}
+{%- set_global group = "" -%}
+<nav class="book-side" id="book-side" aria-label="The book's contents">
+  <p class="book-side-top"><a href="{{ book.permalink | safe }}">The book</a>
+    <button type="button" class="book-side-close" aria-controls="book-side">Close</button></p>
+  <ul>
+  {%- for path in order %}
+  {%- if path is ending_with("_index.md") %}{% set p = get_section(path=path, metadata_only=true) %}{% else %}{% set p = get_page(path=path) %}{% endif %}
+  {%- if p.extra.project or p.extra.step %}{% set kind = "then" %}{% else %}{% set kind = "item" %}{% endif %}
+  {%- if kind == "then" %}
+  {%- if prev == "item" %}
+    <ul>
+  {%- elif prev == "then" %}</li>
+  {%- endif %}
+  {%- else %}
+  {%- if prev == "then" %}</li>
+    </ul></li>
+  {%- elif prev == "item" %}</li>
+  {%- endif %}
+  {%- set here = p.extra.part | default(value="") %}
+  {%- if here != group %}
+  {%- set_global group = here %}
+  {%- for entry in book.extra.parts %}{% if entry.part and entry.part == here and entry.title %}
+  </ul>
+  <p class="book-side-part">{{ entry.title }}</p>
+  <ul>
+  {%- endif %}{% endfor %}
+  {%- endif %}
+  {%- endif %}
+  {%- set_global prev = kind %}
+  <li><a href="{{ p.permalink | safe }}"{% if path == current %} aria-current="page"{% endif %}>
+    {%- if p.extra.chapter %}<span class="book-side-n">{{ p.extra.chapter }}</span> {% elif p.extra.appendix %}<span class="book-side-n">{{ p.extra.appendix }}</span> {% elif p.extra.step %}<span class="book-side-n">Step {{ p.extra.step }}</span> {% endif %}{{ p.title }}</a>
+  {%- endfor %}
+  {%- if prev == "then" %}</li>
+    </ul></li>
+  {%- elif prev == "item" %}</li>
+  {%- endif %}
+  </ul>
+</nav>
+{%- endmacro contents %}
+
+{#- A page's headings as links (ticket 2834), from Zola's `toc`: its `##`
+    headings and the `###` under each. `book-side.js` marks the one being
+    read. -#}
+{% macro page_toc(toc) -%}
+<ul>
+  {%- for h in toc %}
+  <li><a href="#{{ h.id }}">{{ h.title }}</a>
+    {%- if h.children %}
+    <ul>
+      {%- for c in h.children %}
+      <li><a href="#{{ c.id }}">{{ c.title }}</a></li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}</li>
+  {%- endfor %}
+</ul>
+{%- endmacro page_toc %}
+
+{#- What goes before a book page's text (ticket 2834): a link past the
+    contents for the keyboard, the book's contents, then the text's own
+    column, which opens with the buttons that fold the contents and this
+    page's headings (shown once `book-side.js` runs), the reader's filter,
+    and the page's headings folded in a `<details>` (shown below the width
+    where they have their own column). `book_close` ends it. -#}
+{% macro book_open(current, toc) -%}
+<a class="skip-link" href="#book-text">Skip to the text</a>
+<div class="book-layout{% if toc %} has-toc{% endif %}">
+{{ self::contents(current=current) }}
+<div class="book-main">
+<div class="book-folds">
+  <button type="button" class="book-fold" aria-controls="book-side" aria-expanded="true">Contents</button>
+  {%- if toc %}
+  <button type="button" class="book-fold book-fold-toc" aria-controls="book-toc" aria-expanded="true">On this page</button>
+  {%- endif %}
+</div>
+{{ self::filter() }}
+{%- if toc %}
+<details class="book-toc-fold">
+  <summary>On this page</summary>
+  <nav aria-label="On this page">
+  {{ self::page_toc(toc=toc) }}
+  </nav>
+</details>
+{%- endif %}
+{%- endmacro book_open %}
+
+{#- The end of what `book_open` began: this page's headings in their own
+    column, on a wide screen. -#}
+{% macro book_close(toc) -%}
+</div>
+{%- if toc %}
+<nav class="book-toc" id="book-toc" aria-label="On this page">
+  <p class="book-toc-title">On this page</p>
+  {{ self::page_toc(toc=toc) }}
+</nav>
+{%- endif %}
+</div>
+{%- endmacro book_close %}

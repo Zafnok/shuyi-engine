@@ -5,13 +5,20 @@
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
-//! thin wrapper here; `bench`, which plays the game's benchmark scenarios
+//! thin wrapper here; `repos`, which puts the game on GitHub with its
+//! private files' repository, keys and secrets (its `--help`; not part
+//! of the library's API: it acts on the developer's GitHub account); `reveal`,
+//! the reveal kit, the evidence a game keeps before its first public
+//! footage (its `--help`; not part of the library's API); `bench`, which plays the game's benchmark scenarios
 //! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
 //! and `check-skills` checks ([`skills`]); the notices a package carries
 //! ([`notices`]); and the pool of threads the slow
-//! ones play on ([`pool`]).
+//! ones play on ([`pool`]); and the seed and the trim of a repository's
+//! worktrees' build output ([`worktrees`]), as `seed-target` and
+//! `trim-targets` (not operations of the contract: they act on the
+//! repository's other worktrees).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
@@ -43,12 +50,16 @@ pub mod notices;
 pub mod pool;
 pub mod private_assets;
 pub mod project;
+mod repos;
+mod reveal;
+mod sha256;
 pub mod skills;
 pub mod template;
 #[cfg(feature = "toy")]
 pub mod toy;
 pub mod watch;
 pub mod web;
+pub mod worktrees;
 
 use std::path::{Path, PathBuf};
 
@@ -70,8 +81,8 @@ pub use shuyi_ui::frame::raster::test_card;
 /// The commands of `shuyi` that aren't operations of the contract
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
-/// ([`skills::check`]).
-pub const COMMANDS: [&str; 15] = [
+/// ([`skills::check`]). A slice, so that a new command changes no type.
+pub const COMMANDS: &[&str] = &[
     "schema",
     "mcp",
     "mcp-host",
@@ -85,8 +96,12 @@ pub const COMMANDS: [&str; 15] = [
     "frame-png",
     "web",
     "private-assets",
+    "repos",
+    "reveal",
     "bench",
     "bench-play",
+    "trim-targets",
+    "seed-target",
 ];
 
 /// The usage text, with `command` as the tool's name.
@@ -146,10 +161,11 @@ commands:
                                      its length, its worked example and its problem codes
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
-  font-atlas [--no-text] [--wide <wide.bdf>] <font.bdf>... <out-dir>
+  font-atlas [--no-text] [--wide <wide.bdf>] [--bold <bold.bdf>] <font.bdf>... <out-dir>
                                      build the font atlas from BDF fonts, with the characters
                                      the game's text uses; --no-text: without them; --wide:
-                                     two cells wide from a font twice as wide (Japanese)
+                                     two cells wide from a font twice as wide (Japanese);
+                                     --bold: the font's bold face, for key caps
   app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
@@ -163,11 +179,26 @@ commands:
                                      the package's size against its targets' budgets
   web [--release] [--<feature>...]   build and package the web (WASM) build
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
+  repos [--dry-run] [--json] [...]   put the game on GitHub: it creates its repository, its
+                                     private files' one, their deploy keys and secrets on
+                                     your account (repos --help)
+  reveal <prepare | verify | commit | open>
+                                     the reveal kit: the approved captures, the store page,
+                                     the builds' hashes and receipts, sealed by one digest
+                                     and checked anywhere (reveal --help)
+  trim-targets [--idle-days N] [--dry-run] [--stale-hashes] [--merged]
+                                     delete the incremental caches of this repository's
+                                     idle worktrees' target/, never a worktree
+                                     (trim-targets --help)
+  seed-target --into <worktree>      in the warm checkout: start a new worktree's target/
+                                     from this one's, before its first build
+                                     (seed-target --help)
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain, attach, schema, check-skills and mcp need none). An error has a problem
+{file} (new, doctor, explain, attach, schema, check-skills, mcp, reveal verify
+and reveal open need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
 ({command} doctor, {file}) before running it again.",
@@ -242,6 +273,13 @@ fn mcp_host(project: &Project, args: &[String], game: Option<&dyn GameTools>) ->
     }
 }
 
+/// Whether op `name` with `args`, one that checks targets, runs in the game's
+/// tool program: when `project` names one, unless it is `export --plan`, which
+/// reads the project file alone.
+fn in_tools(project: &Project, name: &str, args: &[String]) -> bool {
+    project.config.game.is_some() && !(name == "export" && args.iter().any(|arg| arg == "--plan"))
+}
+
 /// Runs the command `args` on `project`, with the game's tools if they are
 /// at hand (otherwise a command that runs the game runs the game's tool
 /// program), and returns the exit code (see [`main_with`]).
@@ -284,7 +322,7 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         };
         return match game {
             Some(game) => checked(Some(game)),
-            None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
+            None if in_tools(project, name, args) => game::run_in_game_program(project, name, args),
             None => checked(None),
         };
     }
@@ -337,19 +375,29 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         },
         "web" => web(project, args),
         "private-assets" => private_assets(project, args),
-        other => {
-            let error = format!("unknown command: {other}");
-            eprint!(
-                "{}",
-                codes::said(command, codes::WRONG_ARGUMENTS.0, &error, None)
-            );
-            eprintln!("{}", usage(command));
-            Ok(2)
-        }
+        "repos" => Ok(repos::main(project, args)),
+        other => Ok(other_command(project, other, args)),
     };
     outcome.unwrap_or_else(|missing| {
         contract::cli::setup_failed(name, args, codes::PROJECT_FILE, &missing)
     })
+}
+
+/// The commands on the repository's worktrees, which need no game and run
+/// in either program ([`worktrees`]), or else an unknown command: its exit
+/// code.
+fn other_command(project: &Project, name: &str, args: &[String]) -> u8 {
+    if let Some(code) = worktrees::command::main(project, name, args) {
+        return code;
+    }
+    let command = project.config.command();
+    let error = format!("unknown command: {name}");
+    eprint!(
+        "{}",
+        codes::said(command, codes::WRONG_ARGUMENTS.0, &error, None)
+    );
+    eprintln!("{}", usage(command));
+    2
 }
 
 /// A command's exit code, or the error that the project file lacks its
@@ -518,6 +566,9 @@ const NO_TEXT: &str = "--no-text";
 /// `font-atlas`'s option naming the wide font.
 const WIDE: &str = "--wide";
 
+/// `font-atlas`'s option naming the font's bold face (ticket 3216).
+const BOLD: &str = "--bold";
+
 /// `args` (paths), each relative one made relative to `project`'s root
 /// rather than the working folder, for the game's tool program, which runs
 /// there.
@@ -542,17 +593,23 @@ fn from_the_root(project: &Project, args: &[String]) -> Vec<String> {
 /// `font-atlas`: with the game's tools, the atlas keeps the characters its
 /// text uses too; without them (or with `--no-text`), the ranges and the
 /// required glyphs only. `--wide [<set>=]<font>` adds a wide font, once
-/// per set.
+/// per set; `--bold <font>` the font's bold face, once.
 fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> Outcome {
     let rules = project.part(&project.config.font_atlas, "font_atlas")?;
     let command = project.config.command();
     let no_text = args.iter().any(|a| a == NO_TEXT);
     let mut rest: Vec<&String> = Vec::new();
     let mut wides: Vec<font_atlas::WideFont> = Vec::new();
+    let mut bold: Option<PathBuf> = None;
     let mut words = args.iter().filter(|a| *a != NO_TEXT);
     let mut usage = false;
     while let Some(word) = words.next() {
-        if word == WIDE {
+        if word == BOLD {
+            match words.next() {
+                Some(path) if bold.is_none() => bold = Some(PathBuf::from(path)),
+                _ => usage = true,
+            }
+        } else if word == WIDE {
             let wide = words.next().map(|arg| font_atlas::WideFont::parse(arg));
             match wide {
                 Some(wide) if !wides.iter().any(|w| w.set == wide.set) => wides.push(wide),
@@ -564,8 +621,8 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
     }
     let Some((out_dir, fonts @ [_, ..])) = rest.split_last().filter(|_| !usage) else {
         eprintln!(
-            "usage: {command} font-atlas [{NO_TEXT}] [{WIDE} [<set>=]<wide.bdf>]... <font.bdf>... \
-             <out-dir> (one {WIDE} a set)"
+            "usage: {command} font-atlas [{NO_TEXT}] [{WIDE} [<set>=]<wide.bdf>]... \
+             [{BOLD} <bold.bdf>] <font.bdf>... <out-dir> (one {WIDE} a set)"
         );
         return Ok(2);
     };
@@ -596,19 +653,25 @@ fn font_atlas(project: &Project, args: &[String], game: Option<&dyn GameTools>) 
     for (set, glyphs) in &rules.wide_set_glyphs {
         chars = chars.with_wide_set(Some(set), glyphs);
     }
-    let out_dir = Path::new(out_dir);
-    Ok(
-        match font_atlas::run(rules, command, &fonts, &wides, out_dir, &chars) {
-            Ok(summary) => {
-                println!("{summary}");
-                0
-            }
-            Err(e) => {
-                eprintln!("font-atlas: {e}");
-                1
-            }
-        },
-    )
+    let options = font_atlas::RunOptions {
+        rules: rules.clone(),
+        command: command.to_owned(),
+        fonts,
+        wides,
+        out_dir: PathBuf::from(out_dir),
+        chars,
+        bold,
+    };
+    Ok(match font_atlas::run(&options) {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(e) => {
+            eprintln!("font-atlas: {e}");
+            1
+        }
+    })
 }
 
 fn app_info(project: &Project, args: &[String]) -> Outcome {

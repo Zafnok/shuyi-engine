@@ -311,10 +311,7 @@ mod tests {
     }
 
     fn play(i: usize) -> Request {
-        Request::PlayVoice {
-            line: line(i),
-            variant: Take::Only,
-        }
+        Request::play_voice(line(i), Take::Only)
     }
 
     fn preload(lines: &[usize]) -> Request {
@@ -629,10 +626,7 @@ mod tests {
         audio.hear(&mut fake, &[play(0)], &[], 0.0);
         fake.calls();
         let others = [
-            Request::PlaySound {
-                cue: "beep".into(),
-                volume: 1.0,
-            },
+            Request::play_sound("beep", 1.0),
             Request::play_music("title", None),
             Request::StopMusic,
         ];

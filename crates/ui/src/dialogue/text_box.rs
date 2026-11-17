@@ -9,6 +9,7 @@ pub mod glyph;
 use crate::prelude::*;
 
 use crate::hurry::{HURRY_DELAY, HURRY_FACTOR, HurryClock};
+use crate::text::StyledText;
 use crate::widgets::menu::MenuView;
 use crate::widgets::word_wrap;
 use shuyi_assets::font::CellWidths;
@@ -153,6 +154,12 @@ impl TextBox {
     /// `dt` seconds of typing at `chars_per_s` (`None`: the whole page at
     /// once), faster for the part of them past [`FAST_FORWARD_DELAY`] of
     /// holding; once the page is revealed, the time it has waited.
+    ///
+    /// It is a rate, not a [`Tween`](shuyi_core::Tween): the player's text
+    /// speed may change in the middle of a page, and holding the key
+    /// speeds it up, where a tween runs from one value to another in a set
+    /// time. A game that wants a reveal eased over a set time tweens the
+    /// count of characters itself.
     pub fn type_on(&mut self, dt: f32, chars_per_s: Option<f32>) {
         if self.is_revealed() {
             self.waiting += dt;
@@ -233,12 +240,26 @@ impl TextView {
 }
 
 /// The question asked before skipping the scene.
+///
+/// Kind 3 of ADR-0039: build it with [`SkipView::new`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SkipView {
     /// The question.
     pub question: String,
-    /// How to answer, with the keys.
-    pub answers: String,
+    /// How to answer, with the keys (each in a key span:
+    /// [`Ctx::text_styled`](crate::Ctx::text_styled)).
+    pub answers: StyledText,
+}
+
+impl SkipView {
+    /// The question `question`, answered as `answers` says.
+    pub fn new(question: impl Into<String>, answers: impl Into<StyledText>) -> Self {
+        Self {
+            question: question.into(),
+            answers: answers.into(),
+        }
+    }
 }
 
 /// What shows while a page waits for the key that goes on. Build it with
@@ -246,10 +267,11 @@ pub struct SkipView {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WaitView {
-    /// The name of the key that goes on.
-    pub key: String,
-    /// How to open the log, if its action has a key.
-    pub log_hint: Option<String>,
+    /// The name of the key that goes on, in a key span
+    /// ([`Ctx::text_styled`](crate::Ctx::text_styled)).
+    pub key: StyledText,
+    /// How to open the log, if its action has a key, the key in a key span.
+    pub log_hint: Option<StyledText>,
     /// Whether the marker that says "press to go on" is lit: it blinks.
     pub marker: bool,
 }
@@ -257,7 +279,7 @@ pub struct WaitView {
 impl WaitView {
     /// Waiting for the key named `key`, the marker lit as `marker` says,
     /// with no log hint.
-    pub fn new(key: impl Into<String>, marker: bool) -> Self {
+    pub fn new(key: impl Into<StyledText>, marker: bool) -> Self {
         Self {
             key: key.into(),
             log_hint: None,

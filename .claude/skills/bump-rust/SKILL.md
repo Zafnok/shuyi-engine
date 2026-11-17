@@ -31,7 +31,7 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
 1. **Move every pin** on the Dependabot branch. Dependabot moved the
    channels. For a new minor (`1.98.x` to `1.99.0`), move `rust-version`
    in `[workspace.package]` of the root `Cargo.toml` and of every
-   template's `Cargo.toml` that has that table. A point release (`1.98.1`
+   template's `Cargo.toml.tmpl` that has that table. A point release (`1.98.1`
    to `1.98.2`) moves only the channels. `cargo xtask check-toolchain`
    passes.
 2. **Fix the new lints.** Read the release's notes on

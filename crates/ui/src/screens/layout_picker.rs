@@ -15,6 +15,8 @@ pub mod glyph;
 pub mod view;
 
 use crate::prelude::*;
+use crate::text::StyledText;
+use crate::text::ToArg;
 use core::fmt;
 pub use view::{KeyCapView, KeyRole, LayoutPickerView, LayoutView, LegendRow};
 
@@ -145,26 +147,24 @@ impl<G: GameData> LayoutPickerScreen<G> {
     /// The bottom help line: every Cursor up and Cursor down key, then every
     /// Confirm key, from the active keymap (before any layout is chosen,
     /// the layout picker's own keys).
-    pub fn help(ctx: &Ctx<G>) -> String {
+    pub fn help(ctx: &Ctx<G>) -> StyledText {
         Self::help_with(ctx, false)
     }
 
     /// [`help`](Self::help); when the picker can be backed out of
     /// (`cancellable`, from Options), the line that also names the Cancel
     /// key.
-    fn help_with(ctx: &Ctx<G>, cancellable: bool) -> String {
+    fn help_with(ctx: &Ctx<G>, cancellable: bool) -> StyledText {
         if cancellable {
-            return ctx.text_with(HELP_CHANGE, &[]);
+            return ctx.text_styled(HELP_CHANGE, &[]);
         }
         let km = ctx.help_keys();
         let names = |ui| G::Action::for_ui(ui).map_or_else(String::new, |a| all_key_names(km, a));
         let up = names(UiAction::Up);
         let down = names(UiAction::Down);
         let confirm = names(UiAction::Confirm);
-        ctx.text_with(
-            HELP_FIRST,
-            &[("up", &up), ("down", &down), ("confirm", &confirm)],
-        )
+        let keys: [(&str, &dyn ToArg); 3] = [("up", &up), ("down", &down), ("confirm", &confirm)];
+        ctx.text_styled_with_keys(HELP_FIRST, km, &[], &keys)
     }
 
     /// The legend for `km`, in `ctx`'s language: the keys and what they

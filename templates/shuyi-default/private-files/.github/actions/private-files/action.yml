@@ -20,6 +20,13 @@ inputs:
       way.
     required: false
     default: ""
+  required:
+    description: >-
+      Whether a run on the game's own repository without the key fails:
+      "true" but on a release's dry run (the release workflow's
+      workflow_dispatch), which warns and builds on the public files.
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -29,6 +36,7 @@ runs:
       shell: bash
       env:
         HAS_KEY: ${{ inputs.key != '' }}
+        REQUIRED: ${{ inputs.required }}
         FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         OWNER: ${{ github.repository_owner }}
         URL: "{{private_url}}"
@@ -38,8 +46,8 @@ runs:
         repository=${repository%.git}
         private_owner=${repository%%/*}
         if [ "$HAS_KEY" != "true" ]; then
-          if [ "$FORK_PR" = "true" ] || [ "${OWNER,,}" != "${private_owner,,}" ]; then
-            echo "::warning::This run can't read the private repository $repository (a fork's pull request, or a copy of the game, has no key to it): the gates run on the public files."
+          if [ "$FORK_PR" = "true" ] || [ "${OWNER,,}" != "${private_owner,,}" ] || [ "$REQUIRED" != "true" ]; then
+            echo "::warning::This run can't read the private repository $repository (a fork's pull request, a copy of the game or a dry run has no key to it): the gates run on the public files."
             exit 0
           fi
           echo "::error::The secret PRIVATE_ASSETS_KEY is missing, so the gates can't read the private repository $repository. Run \`shuyi repos\` in the game's folder: it makes the read-only deploy key and sets the secret, for Actions and for Dependabot."

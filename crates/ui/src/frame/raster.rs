@@ -260,19 +260,26 @@ impl Painter {
             let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide, set) else {
                 continue;
             };
+            let style = buf.glyph_style(cx, cy);
+            let (rect, strikes) = self
+                .atlas
+                .bold_strikes(cell.glyph, rect, style.bold && !wide);
             let fg = unit(fg);
             #[allow(clippy::cast_precision_loss)] // atlas coordinates are small
             let src = [rect.x, rect.y, rect.w, rect.h].map(|v| v as f32);
             let (x, y) = at(cx, cy);
-            blit(
-                out,
-                &self.atlas_image,
-                src,
-                (x, y, cell_w * cells, cell_h),
-                false,
-                Paint::Image,
-                [fg[0], fg[1], fg[2], 1.0],
-            );
+            let (x, y) = (x + i64::from(style.dx) * px, y + i64::from(style.dy) * px);
+            for strike in 0..i64::from(strikes) {
+                blit(
+                    out,
+                    &self.atlas_image,
+                    src,
+                    (x + strike * px, y, cell_w * cells, cell_h),
+                    false,
+                    Paint::Image,
+                    [fg[0], fg[1], fg[2], 1.0],
+                );
+            }
         }
         self.draw_items(out, (buf, pictures), Layer::Over, corner, px);
     }

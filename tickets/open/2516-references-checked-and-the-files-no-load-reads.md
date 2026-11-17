@@ -267,7 +267,8 @@ None.
   land the references first.
 
 No API break: a new module, new methods with defaults, and a new answer
-field. `decode_with` changes only inside `collecting`. The game's next
+field (**from 2086 (done):** `CheckOutput` is `#[non_exhaustive]`, so
+`files` is additive). `decode_with` changes only inside `collecting`. The game's next
 pin bump needs no change; its tools get the report through `bake` or by
 writing `assets`. Say so in the PR.
 

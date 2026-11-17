@@ -23,7 +23,10 @@ use shuyi_assets::bitmap::dither::{Dither, OneBitSettings, dither};
 use shuyi_assets::image::Image;
 
 use super::disclosure::{FileKind, Shipped};
-use super::{ExportCx, ExportError, ExportReport, Exporter, RunCx, Signing, archive, fresh, paths};
+use super::{
+    ExportCx, ExportError, ExportReport, Exporter, Host, InCi, RunCx, Signing, archive, fresh,
+    paths,
+};
 use crate::app_info;
 use crate::codec;
 use crate::contract::bake::{BakeInput, bake};
@@ -802,6 +805,23 @@ impl Exporter for PlaydateExporter {
 
     fn profile(&self) -> &'static str {
         "playdate"
+    }
+
+    fn host(&self) -> Host {
+        Host::Linux
+    }
+
+    fn container(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// The SDK's license says "You can't distribute our SDK", so CI can't
+    /// fetch it (ticket 3010).
+    fn ci(&self) -> InCi {
+        InCi::CheckOnly(
+            "the Playdate SDK's license doesn't let CI download it: run `shuyi export \
+             playdate` on a machine with the SDK installed",
+        )
     }
 
     fn triples(&self) -> &'static [&'static str] {

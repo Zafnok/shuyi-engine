@@ -1801,3 +1801,139 @@ many commits setting up its private assets repository:
   template.
 
 Tickets 2590–2593.
+
+## 2026-11-13: a new game's example files are optional
+
+Source: Nick, in the sign-off of ticket 2592 on 2026-11-13, after a run
+of `shuyi new` listed every file it wrote:
+
+> "there's a lot of crap included in a default setup, probably should be
+> an option ticked by default to include example stuff, otherwise a more
+> skilled person might not want all this default stuff like bots.rs,
+> playtest.ron, etc"
+
+**Rules:**
+
+- `shuyi new` asks whether to include the example files; the answer is
+  yes by default, so a newcomer gets them as today.
+- Answering no leaves them out, and the game it makes still builds,
+  passes its gates and keeps its skills.
+
+Ticket 2597.
+
+## 2026-11-13: a chapter's quick checks have no most
+
+Source: Nick, during ticket 2816 on 2026-11-13, after `check-book`
+refused a fourth quick check in chapter 9:
+
+> "imo, quick checks don't need to be limited to 3. Go ahead and alter
+> that restriction and add your quick check"
+
+**Rules:**
+
+- A concept chapter or a project step ends with `## Check yourself`
+  holding two quick checks or more; there is no most.
+
+Made in ticket 2816's PR, at Nick's word.
+
+## 2026-11-14: no run of breaking versions after the MVP
+
+Source: Nick, in a session of this repository on 2026-11-14:
+
+> "I want to ensure we're not gonna have a thousand version bumps after
+> mvp. We'll follow semver. So I want all major feature plans to be
+> surfaced to me now if they will require a ver bump. Some that I know of
+> that I am fine to have a ver bump are things like 3D game support and
+> such. But maybe sound backend and controller backend should be worked
+> out now."
+
+An audit of every open ticket found about 120 that would break a game's
+code as planned. Shown the result, he chose "Write them": the tickets
+that remove those breaks come before the first release.
+
+**Rules:**
+
+- The engine follows semver. Before the first release (2005), every
+  planned break that a release can't soften is done, or its shape is
+  settled:
+  - every exhaustive public type an open ticket plans to grow moves
+    under ADR-0039 (2082–2086);
+  - pad events carry their pad (2412);
+  - no outside crate's type is in a game's way in (2087);
+  - the contract's version says what a client may rely on (2088);
+  - the assets' lifetimes are decided (2906);
+  - the breaks no attribute softens land: 2347, 2348, 2405, 2409, 2133,
+    2136, 2239, 3041 and 3044.
+- The sound backend's swap and the controllers' swap stay internal
+  after the release: games never see quad-snd or gilrs. The
+  `in-house-sound` feature keeps its name for good, and no feature is
+  named for quad-snd (2084). The release ships with quad-snd as the
+  default.
+- A breaking release after the MVP is fine for 3D (31xx) and other work
+  of that size. Parked work that would break stays parked; when it is
+  unparked, its ticket says whether it needs a breaking release.
+
+## 2026-11-17: the code pad is a Codespace, with one free prebuild
+
+Source: Nick, in a session of this repository on 2026-11-17, shown
+2916's research (`docs/research/2916-code-pad.md`): a build server
+compiles a step's edit in about 1.3 s and would cost about $10 a month on
+one small box, plus its upkeep and the risk of running strangers' code; a
+Codespace per step costs him nothing, as each reader's own GitHub account
+pays, and takes about 10 minutes to the first game, then about 5 s an
+edit.
+
+Asked how a reader edits a step's Rust, he chose **"Codespaces only
+(Recommended)"**. Asked whether to turn on Codespaces prebuilds, he asked:
+
+> "does this use my free allotment? or it actually bills me some amount?
+> I am on pro plan. If prebuild each step is better then probably that
+> unless it costs $"
+
+Told that his Pro plan includes 20 GB-month of Codespaces storage, shared
+with his own Codespaces, that one prebuild of about 5 GB fits in it ($0),
+and that one a step (about 50 GB) would bill about $2 a month past it, he
+chose **"One shared, free"**.
+
+**Rules:**
+
+- The code pad is a Codespace on the reader's own GitHub account, opened
+  from the book, with a command that checks an exercise that edits Rust
+  (ADR-0126, 2837, 2838). No build server: editing Rust inside the page
+  waits until Nick asks for it again, and costs money then.
+- One Codespaces prebuild, kept within his included storage: one
+  configuration with every step of the book's project built in it, one
+  region, one version kept, made when its dev container changes, not on
+  every push. Nothing on his account bills for it; if it would, it isn't
+  turned on, and he is asked again (2837).
+
+## 2026-11-17: the book's Codespace hosts the book
+
+Source: Nick, in a session of this repository on 2026-11-17, after 2837
+made the book's Codespace (VS Code at the book's project, a step's game
+served beside it):
+
+> "we added codespace option for changing the rust but why cant it just
+> host the book and unlock new tabs for the rust code like we have tabs
+> for the .ron files
+>
+> it opens a vscode session and we cant follow along the book now? seems
+> weird"
+
+Told that the public site can't build Rust (no build server, the decision
+above) nor reach a reader's Codespace, but that the Codespace can serve
+the book itself, its playground's tabs then editing the step's Rust and
+rebuilding it there, he said: "Write the ticket".
+
+**Rules:**
+
+- The book's Codespace serves the book, and a step's page there plays the
+  step as the reader has changed it (2840); its playground edits the
+  step's Rust in tabs as it edits the data files (2841). The reader
+  follows the book in the Codespace, not only in the editor.
+- The public site is unchanged: it edits data files only, and links the
+  Codespace for the Rust. Still no build server: the Rust is built in the
+  reader's own Codespace, on their account.
+- It stays within the one free prebuild (the decision above): if the
+  book's site and tools would push it past his included storage, he is
+  asked again.

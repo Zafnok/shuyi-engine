@@ -42,6 +42,61 @@ and refuses the push when one fails. Set it up once per clone:
 git config core.hooksPath scripts/git-hooks
 ```
 
+The post-checkout hook, `scripts/git-hooks/post-checkout`, runs on
+`git worktree add` (and a clone), on Windows only: it creates `target/`
+and marks it compressed (`compact /c /s:target /i`), so every file a
+build writes there is stored about half its size; a branch switch does
+nothing, and it never fails the checkout. A full `cargo xtask gates` run
+on Windows, not on CI, compresses a `target/` that lacks the attribute
+first, saying so (minutes on a large folder, once); a failure there is a
+warning, not a failed gate. `--fast` and `--list` skip it.
+
+A new worktree's first build can start from a warm one: `cargo xtask
+seed-target --into <worktree>`, run in the warm worktree (the
+`work-ticket` skill's §2 has the commands; ticket 2078). It fills only
+`target/debug/`'s `deps`, `build` and `.fingerprint`: third-party output
+hard-linked, the files cargo rewrites in place copied with their times,
+and no fingerprint of a workspace crate, so each of those builds fresh
+with its own worktree's paths. Never share a `target/` between worktrees
+another way (`CARGO_TARGET_DIR`, `build-dir`, a junction): workspace
+crates hash the same in every worktree, so one would test another's code.
+
+The gates build in these target folders (ticket 2074):
+
+| Folder | What builds there | Incremental cache |
+| --- | --- | --- |
+| `target/` | the workspace, and `shuyi new` for the skill examples | on: the edit loop is about twice as fast with it |
+| `target/gates/games` | the `templates` gate's demo games | off |
+| `target/tutorial` | the tutorial tries' renderer | off, unless `CARGO_TARGET_DIR` is set |
+| `target/skill-examples-build` | the skill examples' games | off, unless `CARGO_TARGET_DIR` is set |
+| `target/compile-times/timed/target` | the timed game | on, as a real game builds |
+
+The games of the last four are made fresh each run and never edited, so
+an incremental cache there only costs disk (about half of each folder).
+`CARGO_INCREMENTAL` is part of each unit's hash: never set it for one
+command in a folder another command writes to, or every unit builds a
+second copy. A `CARGO_TARGET_DIR` from the environment is left as it is.
+
+A passing full run, locally (not with `CI` set), ends with `cargo xtask
+trim-targets` with its defaults, in one line on stderr (ticket 2076,
+[ADR-0121](../../../docs/adr/0121-a-worktrees-build-output-kept-compressed-and-trimmed.md)):
+in every other worktree of the repository (Claude Code's, Codex's,
+any) with no build in 3 days and no cargo running, it deletes the
+`incremental/` of each profile folder of `target/`, `target/gates/games`,
+`target/tutorial` and `target/skill-examples*`. The next build there is
+still Fresh; only its first edit is slower. It never removes a worktree,
+never touches this one, and never fails the gates. `SHUYI_NO_TRIM=1`
+turns it off; `--fast` and `--list` skip it. Run it alone with
+`--dry-run` to see each worktree's `target/` size and what it would
+delete, `--idle-days N`, `--merged` to empty all of `target/` of an
+idle worktree whose branch or PR is merged, and `--stale-hashes` to
+delete, in those profile folders' `deps/`, the older hashes of a crate
+not read in the N days before the worktree's last build (ticket 2092,
+[ADR-0123](../../../docs/adr/0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md);
+skipped, and said, where Windows doesn't update last access). Git Bash's
+`ls -l`, `du` and `find` over a `target/` refresh its last access, and the
+trim then finds less there.
+
 On a `tNNNN-…` branch the hook's ticket lint reads the ticket from the
 branch, as CI does: until the ticket is in `tickets/done/`, a push is
 refused. Archive the ticket first (the `work-ticket` skill, §5), or push
@@ -71,6 +126,11 @@ tutorial-tries --check` (CI's `tutorial-tries` job, ticket 2818). It takes
 minutes, as it builds a copy of a step for each picture; name a try to check
 only it. After a change on purpose, `cargo xtask tutorial-tries` remakes them:
 look at each picture before you keep it.
+
+A change to a step, to the book's exercises or to `site/exercises/` also runs
+`cargo xtask exercises` (CI's `exercises` job, ticket 2828): it copies each
+step with its exercises' checks compiled in, and runs fmt, Clippy and the
+checks' tests in each copy. Name a step to check only it.
 
 ```bash
 cargo fmt --all --check
@@ -159,13 +219,14 @@ cargo build -p shuyi-platform --no-default-features --features capture --target 
 RUSTFLAGS="--cfg shuyi_playdate_sdk" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
 cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
-RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
+CARGO_BUILD_WARNINGS=deny cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 ```
 
 The last runs their tests without `std` on the host, the headless
-backend's included. The tests bring `std` in, and with it `std`'s float
-methods, so the `Float` imports the `no_std` code needs are unused there
-only; the target build denies every warning.
+backend's included, and fails on a warning in them. It denies warnings
+with cargo's `build.warnings` setting, not `RUSTFLAGS`: the flags are
+part of every unit's hash, so a `RUSTFLAGS` of its own built each
+dependency again (ticket 2079).
 
 Code that needs `std` goes behind `cfg(feature = "std")`: on the line
 with its `std::` path, or in a module whose file starts with
@@ -313,10 +374,11 @@ golden`, its window feature off, as Hello, Grid's is.
 ## A new game from each template (CI's `templates` job)
 
 `shuyi new` makes a game from each template, and the made game runs its
-own gates. From the repository root, for `grid` and then `blank`:
+own gates. From the repository root, for `grid` (made with
+`--no-examples`, as CI makes it) and then `blank`:
 
 ```bash
-cargo run -q -p shuyi-cli --locked -- new ../demo-grid --template grid --engine-path "$PWD"
+cargo run -q -p shuyi-cli --locked -- new ../demo-grid --template grid --engine-path "$PWD" --no-examples
 cd ../demo-grid
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -324,6 +386,7 @@ cargo test --workspace
 cargo shuyi check
 cargo shuyi check --target all
 cargo shuyi check-keys
+cargo shuyi check-skills .claude/skills
 cargo shuyi lint
 ```
 
@@ -373,8 +436,9 @@ template:
 cargo xtask skill-examples shuyi-gates shuyi-test   # or no names for every one
 ```
 
-The games are made in `target/skill-examples/<skill>`, and build in this
-repository's target folder.
+The games are made in `target/skill-examples/<skill>` (`shuyi new` builds
+in this repository's target folder), and build in
+`target/skill-examples-build` with no incremental cache.
 
 ## A game's compile times (CI's `compile-times` job)
 
@@ -405,8 +469,10 @@ cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
+cargo xtask check-devcontainers   # the book's dev container builds every step of site/tutorial/ and keeps the root's image and setup (ticket 2837)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
+cargo xtask check-merges  # no merge commit in origin/main..HEAD changes a file or line beyond resolving its parents (ticket 2065); CI: --base HEAD^1 --head HEAD^2
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
 
@@ -476,7 +542,11 @@ ticket (its title's, else its branch's) has no `Breaking:` line for (the `work-t
 fails a change to the public API that changes no file of the book
 (`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
 `Book:` line saying why (ticket 2815), and a change to the contract's
-`VERSION` other than one over the base's (ticket 2052). Before pushing a change you think
+`VERSION` other than one over the base's (ticket 2052). And it fails a
+line of the head's listing that names an outside crate (a normal
+dependency of that crate) ADR-0119 doesn't allow there, as
+`OUTSIDE_CRATES` in `crates/xtask/src/api.rs` holds it (ticket 2089).
+Before pushing a change you think
 breaks, run it from the repository root:
 
 ```bash
@@ -495,6 +565,14 @@ yet builds without it. That file's docs say the same.
 
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).
+
+It runs from a worktree under `.claude/worktrees/` on Windows, too
+(ticket 2061). The base is checked out in `target/api-base` and built in
+`target/api-base-target`; `cargo-semver-checks` builds in
+`target/api-semver`, its `CARGO_TARGET_DIR`. Left to its own folder, a
+build script's path there reached 260 characters from a long worktree's
+name, and Windows starts no program at such a path ("could not execute
+process … (never executed)"), even with long paths on.
 
 ## The game at the next pin
 

@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["2010", "2013"]
+blocked_by: ["2010", "2013", "2412", "2082", "2083", "2085"]
 nick_input: none
 completed:
 ---
@@ -16,6 +16,15 @@ completed:
 > **Parked** (Nick, 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): this is real-time work, so it waits until Visions of Shuyi launches, unless the game needs it first (its ticket 0053, which picks the multiplayer modes after the single-player launch, chooses hotseat played over Steam Remote Play Together, or co-op skirmishes, and wants each player's pad to act only for that player; hotseat with one shared pad works today and needs nothing here). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
+
+**From 2412 (done):** the pad ids on the raw events (`PadDown` and
+`PadUp` with their pad, `PadRemoved`, `Pads::update` per pad,
+`kind_holding` gone, `from_crank`'s pad, and the merge of pads in
+`Game`) came before the first release, so this ticket's break isn't one
+after it. This ticket starts from its events, and moves its merge in
+`Game` (`PadMerge`, `crates/ui/src/game/pads.rs`) from every pad to each
+seat's pads. The Scope's bullet *Pad ids on the raw events* says what
+2412 left.
 
 Found by the 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6
 and Unreal 5.8. Each of them gives every local player their own
@@ -40,18 +49,18 @@ netcode.
 
 What Shuyi has today:
 
-- `crates/ui/src/input/pad.rs`: the module's rule is "Several pads drive
-  the game as one". `Pads::update` merges every pad's buttons into one
-  stream: a button held on two pads is one press, released when the
-  last pad lets go. `PadId` (a `usize`, the platform's own number for a
-  pad, stable while it stays plugged in) exists, and gilrs
+- `crates/ui/src/input/pad.rs`: `Pads::update` reports each pad's own
+  changes with its `PadId` (a `usize`, the platform's own number for a
+  pad, stable while it stays plugged in, which gilrs
   (`crates/app/src/pads/native.rs`) and the browser's Gamepad API
-  (`crates/app/src/pads/web.rs`) both fill it, but it stops at `Pads`.
-- `crates/ui/src/game.rs`: `RawInputEvent::PadDown(Button, PadKind)`
-  (line 39) and `PadUp(Button)` (line 41) carry no pad. `from_pads` finds
-  the kind with `Pads::kind_holding`. `Game` holds one
-  `InputState<G::Action>` (line 161), which keys and every pad feed, and
-  `Game::input()` hands it out.
+  (`crates/app/src/pads/web.rs`) both fill).
+- `crates/ui/src/game.rs`: `RawInputEvent::PadDown(Button, PadKind,
+  PadId)`, `PadUp(Button, PadId)` and `PadRemoved(PadId)` (2412).
+  `Game`'s `PadMerge` (`crates/ui/src/game/pads.rs`) merges every pad
+  into one stream: a button held on two pads is one press, released
+  when the last pad lets go. `Game` holds one `InputState<G::Action>`,
+  which keys and the merged pads feed, and `Game::input()` hands it
+  out.
 - `crates/platform/src/harness.rs`: `pad`, `hold_pad` and `use_pad`
   drive one pad (one `pad_kind`). `frame-png --pad` and the contract's
   `run --pad` go through `Script::parse_step`, which checks each step
@@ -167,20 +176,29 @@ online)?
     - an unseated device's other presses are dropped (under `Fixed`,
       each gives one `Unseated`).
   - `Ctx::seats() -> &Seats<A>` and the setters above.
-- **Pad ids on the raw events. This breaks the API:** the PR's
-  `Breaking:` line (2010) names it, and the game's PR that moves the pin
-  follows it.
+- **Pad ids on the raw events: 2412 (done) did this.** What this ticket
+  starts from:
   - `RawInputEvent::PadDown(Button, PadKind, PadId)`,
-    `PadUp(Button, PadId)`, and a new `PadRemoved(PadId)`.
-  - `Pads::update` reports each pad's own changes and no longer merges:
-    every pad's releases (by pad id, then in `Button::ALL` order), then
-    each removed pad's `PadRemoved`, then every pad's presses.
-    `kind_holding` goes, since each event carries its pad's kind.
-    `RawInputEvent::from_pads` keeps its signature and passes each pad's
-    id and kind through, so `crates/app/src/pads.rs` doesn't change.
-  - `RawInputEvent::from_crank` takes the `PadId` of the pad with the
-    crank. A front end with one pad passes pad 0 (the game's Playdate
-    front end builds `PadDown` itself, in its `crates/playdate/src/pads.rs`).
+    `PadUp(Button, PadId)`, and `PadRemoved(PadId)`.
+  - `Pads::update` reports each pad's own changes and doesn't merge:
+    every pad's releases (in `Button::ALL` order, then by pad id, so a
+    poll's presses from several pads stay in one pad's order once
+    merged), then each removed pad's `PadRemoved`, then every pad's
+    presses.
+  - `RawInputEvent::from_crank` and `from_crank_steps` take the `PadId`
+    of the pad with the crank; the Harness and a script's steps use pad
+    0, and so does the Playdate.
+  - `PadMerge` (`crates/ui/src/game/pads.rs`) is `Pads`'s old merge,
+    with one rule more: a button let go on one pad and pressed on
+    another in one poll stays held. `game/pads/tests.rs` holds its
+    tests and the property test against the old merge (`OldMerge`),
+    which the property test under `Shared` below can reuse.
+  - A session record written before 2412 reads its pad events as pad
+    0, at the same `FORMAT_VERSION` (`serde(default)` on the pad).
+  - The unfocused pad filter (`pad_events`, `crates/app/src/pads.rs`)
+    still hands `from_pads` no pads (ADR-0076 §4), so a window losing
+    focus gives each pad's `PadRemoved`. The 3042 bullet below changes
+    that.
 - **`Game` routes each event to a seat** (`Game::step`):
   - a key `Down` goes to the seat holding `Keyboard`. With halves
     seated, it goes to the seat whose half's layout binds the chord (by
@@ -322,14 +340,15 @@ online)?
     hands
     `RawInputEvent::from_pads` every connected pad with an empty
     `PadState`, not an empty list, so an alt-tab releases what pads hold
-    but no pad loses its seat;
-  - 2518: the recorded `RawInputEvent`s carry pad ids and `PadRemoved`,
-    so its `FORMAT_VERSION` goes up by one. An older record is refused,
-    as 2518 rules (never migrated).
+    but no pad loses its seat (an ADR amending ADR-0076 §4 says so);
+  - 2518: 2412 gave the recorded `RawInputEvent`s their pad ids and
+    `PadRemoved` at the same `FORMAT_VERSION`, an older record's pad
+    events reading as pad 0. Seats add nothing to a record's events, so
+    nothing more here.
   For each one still open, this PR adds a line to its ticket saying what
   it does for seats.
-- **Docs:** `docs/platform-backends.md` (`poll_input`: pad ids and
-  removals, replacing "several pads as one" at line 143), `pad.rs`'s
+- **Docs:** `docs/platform-backends.md` (`poll_input`: what seats do with
+  the pad ids and removals, where it says `Game` merges every pad), `pad.rs`'s
   module docs, and the `input-actions` skill (a rule: devices belong to
   seats; a stage that has players reads `FrameInput::seat`).
 
@@ -366,13 +385,9 @@ online)?
    `fit.rs`, `target.rs` and 2137's `tick.rs`. Check which of 1120,
    1121, 2405 and 2408 are done.
 2. Write the ADR.
-3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,
-   `from_crank`'s pad. Move `two_pads_holding_one_button_are_one_press`
-   and `a_removed_pad_releases_what_it_held` (`pad/tests.rs`) to the
-   level of `Game`, where the merge now is. Delete
-   `the_pad_holding_a_button_is_the_first_connected_that_does` with
-   `kind_holding`, and make the property test `events_track_what_is_down`
-   track each pad on its own.
+3. Move 2412's merge in `Game` (`PadMerge`, `crates/ui/src/game/pads.rs`)
+   from every pad to each seat's pads, with its tests
+   (`game/pads/tests.rs`).
 4. The `seat` module and its state machine, with unit tests.
 5. Routing in `Game`, the merge per seat, an `InputState` per seat,
    `Game::seat_input`, `FrameInput::seat` and `seat_events`, and
@@ -426,11 +441,10 @@ online)?
       and no error; a split keyboard missing a required action in one
       half gives a `SplitKeyboard` error on `desktop`.
 - [ ] The PR has a `Breaking:` line naming every break 2010's check
-      reports: `RawInputEvent`'s pad variants and `PadRemoved`,
-      `Pads::update`, `kind_holding`, `from_crank`, and any new field or
-      variant on a type 2013 left exhaustive (`KeymapDef`,
-      `target::Input`, `FitRule`). It says what the game's Playdate front
-      end changes (pad 0).
+      reports. The pad events were 2412's, and `KeymapDef`,
+      `target::Input` and `FitRule` take new fields and variants
+      without a break since 2083, 2085 and 2082, so the line is empty
+      unless the check finds one.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.
 
@@ -441,7 +455,7 @@ online)?
   `SeatError`, switching policy both ways, with and without a split
   keyboard); routing a key with halves (bound in one half, bound in
   both, a fixed key, an unbound key, an `Up` after its `Down`);
-  `Pads::update` per pad and `PadRemoved`; the `N:` prefix and its
+  the `N:` prefix and its
   bounds; the keymap's errors; `local_players` bounds; each new
   `FitRule`.
 - Property: under `Shared`, any sequence of key and pad events from up

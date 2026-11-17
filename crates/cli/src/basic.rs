@@ -69,7 +69,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicTools<A, T> {
         let clear = data.blank_cell(&ctx.palette).bg;
         let painter = Painter::new(
             data.font.clone(),
-            png,
+            &png,
             &data.images,
             |path| data.bundle.bytes(path),
             clear,

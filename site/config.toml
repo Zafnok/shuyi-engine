@@ -30,3 +30,7 @@ internal_level = "error"
 
 [extra]
 repo = "https://github.com/Zafnok/shuyi-engine"
+# The book's Codespace (ticket 2837, ADR-0126 §1): the book's dev container,
+# on a 2-core machine, which each step's page links. `cargo xtask llms`
+# writes the same into the steps' twins (its `CODESPACE`).
+codespace = "https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb"
