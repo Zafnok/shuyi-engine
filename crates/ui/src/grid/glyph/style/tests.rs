@@ -61,6 +61,7 @@ fn the_plain_style_is_the_default_and_the_glyph_skins_own() {
         walk: GLYPH.walk,
         foot_px: 2,
         style: GlyphStyle::PLAIN,
+        threat_shape: crate::grid::threat::Shape::Straight,
     };
     assert_eq!(GLYPH, skin);
     assert_eq!(GLYPH.with_style(ONE), ONE_BIT);

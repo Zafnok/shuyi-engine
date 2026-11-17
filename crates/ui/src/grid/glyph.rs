@@ -438,6 +438,20 @@ pub(crate) mod tests {
         assert!(arrows.iter().all(|o| o.layer == Layer::Over));
         let marks: Vec<_> = expect.iter().filter(|o| o.color == colors.mark).collect();
         assert_eq!(marks[0].rect, Rect::new(134, 84, 3, 6));
+        // A skin built with another shape draws that one (ticket 3220).
+        let arcs = GLYPH.with_threat_shape(threat::Shape::ArcAndFrame);
+        assert_eq!(GLYPH.threat_shape, threat::Shape::Straight);
+        let mut buf = blank();
+        arcs.paint(&looks, &scene, area, &Letters, &mut buf);
+        let shaped = threat::threat_overlays_shaped(
+            &threat,
+            &grid,
+            threat::Start::Edge,
+            threat::Shape::ArcAndFrame,
+            colors,
+        );
+        assert!(buf.overlays().ends_with(&shaped));
+        assert_ne!(shaped, expect);
         assert_eq!(marks[1].rect, Rect::new(134, 91, 3, 2));
         assert_eq!(marks.len(), 2);
     }

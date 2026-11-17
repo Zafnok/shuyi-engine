@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3220 — Threat arrows as arcs, and a frame on the threatened tile
@@ -69,12 +69,12 @@ units (unchanged); an option screen (the game's).
 
 ## Acceptance criteria
 
-- [ ] An arc starts where the straight arrow starts, bows above both
+- [x] An arc starts where the straight arrow starts, bows above both
       ends, and ends 4 px short of the tile's middle under a filled head.
-- [ ] `ArcAndFrame` adds the ring on the threatened tile, and only there.
-- [ ] `Straight` (and a skin built without a shape) draws exactly what it
+- [x] `ArcAndFrame` adds the ring on the threatened tile, and only there.
+- [x] `Straight` (and a skin built without a shape) draws exactly what it
       draws today.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -83,4 +83,22 @@ units (unchanged); an option screen (the game's).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `threat::Shape` (`Straight`, the default; `Arc`; `ArcAndFrame`),
+  `threat_overlays_shaped` and `paint_shaped`; `threat_overlays` and
+  `paint` draw the straight shape as before. `GlyphSkin::with_threat_shape`
+  and its `threat_shape` field; the sprite skin draws its glyph skin's.
+- The arc's numbers are the game's mockup that Nick picked (game ticket
+  0908, round 3): bow 0.4 of the distance, 2-pixel line, 4 px short of
+  the middle, a 6-pixel filled head at about 34°; all *tunable* constants.
+- Checked on the game's Chapter 1 battle at the pin plus this change, both
+  looks (the pictures stay local: the map is the game's private content).
+- The engine's `main` is past the game's pin; the game moves the pin in
+  its own PR.
+
+No break.
+
+Book: none, the book's grid chapter doesn't show the threat arrows; the
+new items are documented in their rustdoc.
+
+Game: game#0908 moves the pin and gives its players the three shapes as
+an option (arcs by default).

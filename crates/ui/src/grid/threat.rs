@@ -780,4 +780,141 @@ mod tests {
         let found = buf.overlays();
         assert!(!found.is_empty(), "{found:?}");
     }
+
+    /// The colored rectangles of `threat` on `grid` drawn in `shape`.
+    fn shaped(threat: &ThreatView, start: Start, shape: Shape) -> Vec<PxRect> {
+        let all = threat_overlays_shaped(threat, &grid(), start, shape, COLORS);
+        assert!(all.iter().all(|o| o.layer == Layer::Over));
+        all.iter()
+            .filter(|o| o.color == COLORS.arrow)
+            .map(|o| o.rect)
+            .collect()
+    }
+
+    #[test]
+    fn straight_is_the_default_and_what_threat_overlays_draws() {
+        assert_eq!(Shape::default(), Shape::Straight);
+        let t = threat(p(1, 1), &[p(4, 2), p(0, 5)]);
+        for start in [Start::Middle, Start::Edge] {
+            assert_eq!(
+                threat_overlays_shaped(&t, &grid(), start, Shape::Straight, COLORS),
+                threat_overlays(&t, &grid(), start, COLORS)
+            );
+        }
+    }
+
+    #[test]
+    fn an_arc_bows_up_from_the_enemy_and_stops_short_of_the_tile_under_its_head() {
+        // The enemy three tiles east of tile (4, 4): middles (120, 72) and
+        // (72, 72).
+        let t = threat(p(4, 4), &[p(7, 4)]);
+        let px = pixels(&shaped(&t, Start::Middle, Shape::Arc));
+        assert!(px.contains(&(120, 72)), "starts in the enemy's middle");
+        // Bowing up: its highest pixel is above both ends by most of
+        // 0.4 × 48 / 2 (the curve's peak is half its control point's).
+        let top = px.iter().map(|q| q.1).min().unwrap();
+        assert!((60..=64).contains(&top), "{top}");
+        assert!(px.iter().all(|q| q.1 <= 73), "never below the ends");
+        // The head's tip is the nearest it comes to the tile's middle: 2 px
+        // past the arc's end, which stops 4 px short.
+        let near = |q: &(i32, i32)| (q.0 - 72).pow(2) + (q.1 - 72).pow(2);
+        let nearest = px.iter().map(near).min().unwrap();
+        assert!((1..=9).contains(&nearest), "{nearest}");
+        assert!(!px.contains(&(72, 72)));
+        // A filled head: some row of it is wider than the 2-pixel line.
+        let rows = shaped(&t, Start::Middle, Shape::Arc);
+        assert!(rows.iter().any(|r| r.h == 1 && r.w >= 4), "{rows:?}");
+        // The same from the west, mirrored.
+        let west = threat(p(4, 4), &[p(1, 4)]);
+        let wpx = pixels(&shaped(&west, Start::Middle, Shape::Arc));
+        assert!(wpx.contains(&(24, 72)));
+        assert_eq!(wpx.iter().map(|q| q.1).min().unwrap(), top);
+    }
+
+    #[test]
+    fn an_arc_is_two_pixels_thick_and_edged_dark_under_all_the_color() {
+        let t = threat(p(1, 1), &[p(6, 3)]);
+        let all = threat_overlays_shaped(&t, &grid(), Start::Middle, Shape::Arc, COLORS);
+        let dark: Vec<_> = all.iter().take_while(|o| o.color == COLORS.edge).collect();
+        let red = shaped(&t, Start::Middle, Shape::Arc);
+        assert_eq!(dark.len(), red.len());
+        for (edge, line) in dark.iter().zip(&red) {
+            assert_eq!(edge.rect, grown(*line));
+        }
+        // Every run of the line is 2 pixels across (the head's rows 1).
+        let line: Vec<_> = red.iter().filter(|r| r.w.min(r.h) != 1).collect();
+        assert!(!line.is_empty());
+        assert!(line.iter().all(|r| r.w.min(r.h) == 2), "{line:?}");
+    }
+
+    #[test]
+    fn an_arc_from_a_tiles_edge_leaves_the_enemys_tile_clear() {
+        let tile = Rect::new(112, 64, 16, 16); // tile (7, 4)
+        let t = threat(p(4, 4), &[p(7, 4)]);
+        let px = pixels(&shaped(&t, Start::Edge, Shape::Arc));
+        // Inside the tile, at most the line's second pixel row at its rim.
+        let inner = Rect::new(113, 65, 14, 14);
+        assert!(px.iter().all(|&(x, y)| !inner.contains(x, y)), "{px:?}");
+        assert!(px.iter().any(|&(x, y)| !tile.contains(x, y)));
+        // Next to the tile, an arc still has its head.
+        let next = threat(p(4, 4), &[p(5, 4)]);
+        assert!(!shaped(&next, Start::Edge, Shape::Arc).is_empty());
+        // None for an enemy on the tile itself.
+        let none = threat(p(4, 4), &[p(4, 4)]);
+        assert!(shaped(&none, Start::Middle, Shape::Arc).is_empty());
+    }
+
+    #[test]
+    fn arc_and_frame_adds_a_ring_inside_the_threatened_tile_only() {
+        let t = threat(p(1, 1), &[p(4, 2)]);
+        let arcs = shaped(&t, Start::Middle, Shape::Arc);
+        let framed = shaped(&t, Start::Middle, Shape::ArcAndFrame);
+        // Tile (1, 1): 16..32 each way; the ring a pixel inside it.
+        let ring = [
+            Rect::new(17, 17, 14, 1),
+            Rect::new(17, 30, 14, 1),
+            Rect::new(17, 18, 1, 12),
+            Rect::new(30, 18, 1, 12),
+        ];
+        assert_eq!(framed.len(), arcs.len() + 4);
+        assert_eq!(&framed[arcs.len()..], ring);
+        // Its dark edge fills the tile's rim and the pixel inside the ring.
+        let all = threat_overlays_shaped(&t, &grid(), Start::Middle, Shape::ArcAndFrame, COLORS);
+        let dark: Vec<_> = all.iter().filter(|o| o.color == COLORS.edge).collect();
+        assert!(dark.iter().any(|o| o.rect == Rect::new(16, 16, 16, 3)));
+        // No enemy, nothing at all.
+        let alone = threat(p(1, 1), &[]);
+        let found = threat_overlays_shaped(&alone, &grid(), Start::Middle, Shape::ArcAndFrame, COLORS);
+        assert!(found.is_empty(), "{found:?}");
+    }
+
+    #[test]
+    fn a_triangle_is_its_rows_with_its_corners() {
+        let rows = triangle((0, 0), (4, 4), (0, 4));
+        assert_eq!(rows.len(), 5);
+        assert_eq!(rows[0], Rect::new(0, 0, 1, 1));
+        assert_eq!(rows[4], Rect::new(0, 4, 5, 1));
+        // A flat one is a single row; one pixel, one pixel.
+        assert_eq!(triangle((0, 2), (5, 2), (3, 2)), [Rect::new(0, 2, 6, 1)]);
+        assert_eq!(triangle((1, 1), (1, 1), (1, 1)), [Rect::new(1, 1, 1, 1)]);
+    }
+
+    #[test]
+    fn paint_shaped_draws_the_shape_it_is_given() {
+        let mut scene = MapScene::<crate::toy::grid::Piece>::new(p(0, 0), (10, 10));
+        let blank = || {
+            let c = crate::frame::glyph_buffer::Cell::new('.', COLORS.edge, COLORS.edge);
+            GlyphBuffer::new(20, 10, c)
+        };
+        let mut buf = blank();
+        paint_shaped(&scene, &grid(), Start::Edge, Shape::Arc, COLORS, &mut buf);
+        assert_eq!(buf, blank());
+        let t = threat(p(1, 1), &[p(4, 2)]);
+        scene.threat = Some(t.clone());
+        paint_shaped(&scene, &grid(), Start::Edge, Shape::ArcAndFrame, COLORS, &mut buf);
+        assert_eq!(
+            buf.overlays(),
+            threat_overlays_shaped(&t, &grid(), Start::Edge, Shape::ArcAndFrame, COLORS)
+        );
+    }
 }
