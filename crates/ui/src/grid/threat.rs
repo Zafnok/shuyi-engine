@@ -884,7 +884,8 @@ mod tests {
         assert!(dark.iter().any(|o| o.rect == Rect::new(16, 16, 16, 3)));
         // No enemy, nothing at all.
         let alone = threat(p(1, 1), &[]);
-        let found = threat_overlays_shaped(&alone, &grid(), Start::Middle, Shape::ArcAndFrame, COLORS);
+        let found =
+            threat_overlays_shaped(&alone, &grid(), Start::Middle, Shape::ArcAndFrame, COLORS);
         assert!(found.is_empty(), "{found:?}");
     }
 
@@ -911,7 +912,14 @@ mod tests {
         assert_eq!(buf, blank());
         let t = threat(p(1, 1), &[p(4, 2)]);
         scene.threat = Some(t.clone());
-        paint_shaped(&scene, &grid(), Start::Edge, Shape::ArcAndFrame, COLORS, &mut buf);
+        paint_shaped(
+            &scene,
+            &grid(),
+            Start::Edge,
+            Shape::ArcAndFrame,
+            COLORS,
+            &mut buf,
+        );
         assert_eq!(
             buf.overlays(),
             threat_overlays_shaped(&t, &grid(), Start::Edge, Shape::ArcAndFrame, COLORS)
