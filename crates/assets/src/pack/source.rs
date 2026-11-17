@@ -11,7 +11,7 @@ use once_cell::race::OnceBox;
 use core::panic::RefUnwindSafe;
 use core::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
-use super::{Codec, Index, Kept, PackError, checked};
+use super::{Codec, Index, Kept, PackError, checked, folder, under};
 use crate::bundle::{Files, Layer, Unread};
 
 /// Where a layer read file by file finds a pack's bytes: a backend's file
@@ -28,6 +28,16 @@ pub trait Source: Send + Sync + RefUnwindSafe {
     /// [`SourceError::NotYet`] when those bytes haven't arrived, and
     /// [`SourceError::Failed`] when they can't be read.
     fn read(&self, at: u64, into: &mut [u8]) -> Result<(), SourceError>;
+
+    /// Whether the `len` bytes of the pack from `at` can be read now: what
+    /// [`Bundle::arrived`](crate::bundle::Bundle::arrived) asks of a folder's
+    /// span ([`Index::spans`]). A source that has every byte at once (a
+    /// file, bytes in memory) keeps this default, `true`; one whose bytes
+    /// arrive in time (the web's stream) says whether they have.
+    fn arrived(&self, at: u64, len: u64) -> bool {
+        let _ = (at, len);
+        true
+    }
 }
 
 /// Why a [`Source`] gave no bytes.
@@ -120,6 +130,14 @@ struct Failure {
     next: OnceBox<Failure>,
 }
 
+/// A folder a pack lays first, and where its files lie in the pack, from its
+/// start ([`Index::spans`]).
+struct SourceSpan {
+    dir: Box<str>,
+    at: u64,
+    length: u64,
+}
+
 /// The files of a pack read file by file ([`Index::into_layer`]): its
 /// paths, leaked once, and where each file lies, kept for the life of the
 /// program; every file's bytes are read from the source when asked for,
@@ -129,6 +147,8 @@ pub struct SourceFiles {
     files: Box<[SourceFile]>,
     /// Every file's path, one after the other.
     paths: &'static str,
+    /// The folders laid first.
+    spans: Box<[SourceSpan]>,
     source: &'static dyn Source,
     /// The files that couldn't be read, in the order they failed.
     failures: OnceBox<Failure>,
@@ -174,6 +194,24 @@ impl SourceFiles {
     /// The paths of the files, sorted: read from the index alone.
     pub(crate) fn paths(&self) -> impl Iterator<Item = &'static str> + '_ {
         (0..self.files.len()).map(|at| self.path(at))
+    }
+
+    /// Whether every file under folder `dir` can be read from the source
+    /// now: its span, if the pack lays it first, else each file under it.
+    /// A file that can't be read for another reason (its read failed, or its
+    /// bytes are refused) has arrived all the same.
+    pub(crate) fn arrived(&self, dir: &str) -> bool {
+        let dir = folder(dir);
+        if let Some(span) = self.spans.iter().find(|span| &*span.dir == dir) {
+            return self.source.arrived(span.at, span.length);
+        }
+        (0..self.files.len())
+            .filter(|&at| under(self.path(at), dir))
+            .all(|at| {
+                let file = &self.files[at];
+                self.source
+                    .arrived(u64::from(file.at), u64::from(file.stored))
+            })
     }
 
     /// The bytes of the file at `path`, read from the source, checked and
@@ -284,6 +322,14 @@ impl Index {
     /// ```
     pub fn into_layer(self, name: &'static str, source: &'static dyn Source) -> Layer {
         let content = self.listing.info.content;
+        let spans = self
+            .spans()
+            .map(|(dir, range)| SourceSpan {
+                dir: dir.into(),
+                at: range.start,
+                length: range.end - range.start,
+            })
+            .collect();
         let entries = self.listing.entries;
         let mut paths = String::with_capacity(entries.iter().map(|e| e.path.len()).sum());
         // `listing` checked every file's bytes end below 4 GiB from the
@@ -310,6 +356,7 @@ impl Index {
         let files: &'static SourceFiles = Box::leak(Box::new(SourceFiles {
             files,
             paths: paths.leak(),
+            spans,
             source,
             failures: OnceBox::new(),
         }));

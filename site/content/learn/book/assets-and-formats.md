@@ -303,6 +303,13 @@ read from the pack equal to the one read from its source, so the text files stay
 the game is made of. The formats page says [how a pack is
 built](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-pack).
 
+A group of assets is a **folder**. A game whose pack is big, as a web game's can be,
+names the folders its first frame reads in its bake, `.first("title/")`, and the bake
+lays them at the front of the pack, so the page that fetches the pack can start the
+game as soon as they arrive. A screen that opens a later part asks the bundle's
+`arrived("part2/")` first, and shows its own wait until it says yes. On desktop and the
+Playdate every folder has always arrived.
+
 ## A target's own files
 
 A **target** is a kind of machine a game runs on. A folder `assets@playdate/` beside

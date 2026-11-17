@@ -743,13 +743,40 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
 - **Laid out in any order.** The index lists the files in path order, and
-  `shuyi bake` lays their bytes in that order with nothing between them.
-  From version 15 a reader takes them in any order and with bytes between
-  them, so long as no two overlap and the last ends the pack. A closed
-  build's copy (`export --recipient`) lays its pack out by its
-  recipient's code (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
+  `shuyi bake` lays their bytes in that order with nothing between them,
+  but for the folders laid first (below). From version 15 a reader takes
+  them in any order and with bytes between them, so long as no two
+  overlap and the last ends the pack. A closed build's copy (`export
+  --recipient`) lays its pack out by its recipient's code
+  (`pack::Raw::write_marked`, [ADR-0118](adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)),
   and the game reads the same files from it. No checksum covers the bytes
   between files: one changed changes nothing the game reads.
+- **Folders laid first** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §3, version 19). A group of assets is a folder. `Bake::first(dir)` lays
+  the files under `dir` at the front of the pack, after those of the
+  folders named before it, and every other file follows in path order:
+  a web game names the folders its first frame reads
+  (`.first("title/")`), and the page that streams the pack in its order
+  starts the game once they have arrived. `title/` and `title` are the
+  same folder; a file under two named folders goes with the first, a
+  folder named twice is laid where first named, and a bake names up to
+  `pack::MAX_FIRST` (256). The index holds each folder's **span**: from
+  the first byte of its files to the last (`Index::spans()`, each folder
+  and its byte range from the pack's start), and `Index::read` refuses a
+  span that doesn't hold every file under its folder. A recipient's code
+  shuffles each named folder's files among their own places, and the
+  rest among theirs, so each span still holds its folder; with no folder
+  named, the order is the one it laid before spans. `pack::write_first`
+  is the same without a `Bake`. `shuyi bake` names each span it laid
+  (`PackMade::spans`).
+- **Whether a folder has arrived.** `Bundle::arrived(dir)` says whether
+  every file under `dir` can be read now: always for a layer read whole,
+  and for a layer over a `Source`, once the folder's span has arrived, or
+  for a folder not laid first, once each file under it has. It asks the
+  source's `arrived(at, len)`, which a source whose bytes arrive in time
+  (the web's stream) implements; one that has every byte at once keeps
+  its default, `true`. A screen that opens a later part asks it first
+  and shows its own wait. Like `Bundle::has`, it reads nothing.
 - **Read file by file** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
   §2), for a pack too big to hold whole (the Playdate's heap, a web page
   that starts before the pack has arrived). `pack::Index::read(prefix,

@@ -610,7 +610,8 @@ impl GameTools for Fake {
         Ok(GameBake {
             bake: Bake::new(format!("fake for {}", target.unwrap_or("all")))
                 .asset::<Names>("data/names")
-                .asset::<PaletteDef>("data/palette"),
+                .asset::<PaletteDef>("data/palette")
+                .first("images/"),
             bundle: Bundle::new(vec![Layer::table("base", sources)]),
             formats: Formats::standard(),
         })
