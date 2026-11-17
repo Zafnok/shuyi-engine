@@ -46,10 +46,14 @@ What there is:
   the step's folder and the two commands, `cargo shuyi web` and `bash
   ../serve.sh` (`site/templates/chapter.html`; the twin, `codespace` in
   `crates/xtask/src/llms.rs`). Every step's web build is built into one
-  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target` (step 2
-  before the Codespace opens, the other nine behind it, or all from a
-  prebuild): a command run there builds into it too, and waits for its
-  lock while those builds run.
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`, all ten
+  before the Codespace opens (or from a prebuild): a command run there
+  builds into it too.
+- **From 2839 (done):** the ten steps resolve one set of features of
+  every crate they build (`cargo xtask check-devcontainers` fails
+  otherwise), so a step after the first builds only its own crate, about
+  10 s on 2 cores. A step an exercise copies or changes keeps asking for
+  its crates with the engine's features.
 
 ## Nick input
 
