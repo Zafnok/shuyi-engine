@@ -119,7 +119,42 @@ fn limits_count_cells_and_are_inclusive() {
 }
 
 #[test]
+fn each_wording_of_a_messages_text_fits_the_box() {
+    let tip = |text: &str| {
+        format!(r#"(tips: [(id: "crank", trigger: Jumped, title: "Crank", text: "{text}")])"#)
+    };
+    let short = "{device, select, playdate {Crank it} other {Turn it}}\n{Jump}!";
+    assert_eq!(errors(&tip(short)), [] as [&str; 0]);
+    let long = "{device, select, playdate {Crank it now} other {Turn it}}";
+    assert_eq!(
+        errors(&tip(long)),
+        ["tip \"crank\": a text line is over 10 cells: \"Crank it now\""]
+    );
+    let lines = "{target, select, web {a\nb\nc} other {a}}";
+    assert_eq!(
+        errors(&tip(lines)),
+        ["tip \"crank\": the text must have 1 to 2 lines"]
+    );
+    assert_eq!(
+        errors(&tip("{device, select, playdate {a}}")),
+        [
+            "tip \"crank\": the text isn't a message: at character 0: a plural, \
+             selectordinal or select needs an `other` branch"
+        ]
+    );
+    // Each placeholder of every branch is checked, once.
+    assert_eq!(
+        errors(&tip("{device, select, xbox {{Run}} other {{Run}}}")),
+        ["tip \"crank\": unknown placeholder {Run}"]
+    );
+}
+
+#[test]
 fn placeholders_are_the_names_between_braces() {
+    assert_eq!(
+        placeholders("{Confirm} {n, plural, one {#} other {# {Cancel}}} {Confirm}"),
+        ["Confirm", "n", "Cancel"]
+    );
     assert_eq!(
         placeholders("{Confirm} then {Cancel}"),
         ["Confirm", "Cancel"]

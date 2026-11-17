@@ -5,10 +5,15 @@
 //! each with the untranslated line of its scene nearest to what it
 //! translated. All show in the game as a shorter tag's pack or the source
 //! language has them ([`Lang::chain`]) and fail no gate; this lists them
-//! for whoever translates. After the screen text's missing and
-//! stale keys come its entries **too long** for their place: wider than
-//! their key's `max_cells` in the source's `ui.ron` ([`Lang::overflow`]),
-//! measured with the font atlas's wide glyphs. They fail no gate either. Screen text comes first, then the
+//! for whoever translates. After a part's stale keys come its entries
+//! with **missing forms**, when it has any: a plural or selectordinal with
+//! no branch for a category the pack's language has, so a number of that
+//! category shows `other` ([`LangStatus::missing_forms`]; French's,
+//! Spanish's, Italian's and Portuguese's `many` of a million isn't asked).
+//! Then, for the screen text, its entries **too long** for their place:
+//! wider than their key's `max_cells` in the source's `ui.ron`
+//! ([`Lang::overflow`]), each message's widest form, measured with the
+//! font atlas's wide glyphs. They fail no gate either. Screen text comes first, then the
 //! data's, then the dialogue's, each with its counts. Test text (the
 //! `test*.dlg` scenes, data ids starting with `test`) is left out, and
 //! counted, except in the report of the test pack (code `test`); `--only`
@@ -18,7 +23,9 @@
 use std::fmt::Write as _;
 
 use shuyi_assets::font::CellWidths;
-use shuyi_assets::lang::{Lang, LangCode, LineText, MadeBy, Orphan, Overflow};
+use shuyi_assets::lang::{
+    Lang, LangCode, LangPack, LineText, MadeBy, MissingForms, Orphan, Overflow,
+};
 
 /// The code of the pack whose report keeps the test text.
 pub const TEST_PACK: &str = "test";
@@ -90,6 +97,16 @@ pub fn parse_args(args: &[String]) -> Result<(String, Options), String> {
     Ok((code, options))
 }
 
+/// Whether the report lists a key ([`Scope::listed`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Listed {
+    Yes,
+    /// Not in the parts or the file asked for.
+    No,
+    /// Test text, left out of every pack's report but the test pack's.
+    TestText,
+}
+
 /// What the report counts and prints for one pack.
 struct Scope<'a> {
     lang: &'a Lang,
@@ -122,15 +139,27 @@ impl Scope<'_> {
     /// Whether the report lists `key`; counts it when it is left out as
     /// test text.
     fn keeps(&mut self, key: &str) -> bool {
+        match self.listed(key) {
+            Listed::Yes => true,
+            Listed::No => false,
+            Listed::TestText => {
+                self.left_out += 1;
+                false
+            }
+        }
+    }
+
+    /// Whether the report lists `key`, or leaves it out as test text.
+    fn listed(&self, key: &str) -> Listed {
         let part = self.part_of(key);
         if !self.shows(part) {
-            return false;
+            return Listed::No;
         }
         let line = self.lang.source().lines.get(key);
         if let (Some(stem), Some(line)) = (&self.options.file, line)
             && line.file != *stem
         {
-            return false;
+            return Listed::No;
         }
         // Test text is the `test*.dlg` scenes' and the data whose id
         // starts with `test` (`names.test_guide`, `chapters.test.title`).
@@ -143,10 +172,10 @@ impl Scope<'_> {
             _ => false,
         };
         if test && !self.tests {
-            self.left_out += 1;
-            return false;
+            Listed::TestText
+        } else {
+            Listed::Yes
         }
-        true
     }
 
     fn keeps_orphan(&self, orphan: &Orphan) -> bool {
@@ -196,6 +225,12 @@ pub fn report<S: AsRef<str>>(
     };
     let missing: Vec<&String> = status.missing.iter().filter(|k| scope.keeps(k)).collect();
     let stale: Vec<&String> = status.stale.iter().filter(|k| scope.keeps(k)).collect();
+    // Not counted as left out: an entry with missing forms is translated.
+    let missing_forms: Vec<&MissingForms> = status
+        .missing_forms
+        .iter()
+        .filter(|m| scope.listed(&m.key) == Listed::Yes)
+        .collect();
     let overflow = if scope.shows(Part::Screen) {
         lang.overflow(&code, widths).unwrap_or_default()
     } else {
@@ -265,6 +300,12 @@ pub fn report<S: AsRef<str>>(
             let now = lang.source_text(key).unwrap_or_default();
             let _ = writeln!(out, "  {key}\n    was: {was:?}\n    now: {now:?}");
         }
+        let forms: Vec<&MissingForms> = missing_forms
+            .iter()
+            .copied()
+            .filter(|m| scope.part_of(&m.key) == part)
+            .collect();
+        write_missing_forms(&mut out, pack, &forms);
         if part == Part::Screen {
             write_overflow(&mut out, &overflow);
         }
@@ -276,6 +317,22 @@ pub fn report<S: AsRef<str>>(
         }
     }
     Ok(out)
+}
+
+fn write_missing_forms(out: &mut String, pack: &LangPack, forms: &[&MissingForms]) {
+    if !forms.is_empty() {
+        out.push_str("missing forms:\n");
+    }
+    for entry in forms {
+        let lacks: Vec<&str> = entry.lacks.iter().map(|c| c.name()).collect();
+        let text = pack.entry(&entry.key).map_or("", |e| e.text.as_str());
+        let _ = writeln!(
+            out,
+            "  {}\n    lacks: {}\n    text: {text:?}",
+            entry.key,
+            lacks.join(", ")
+        );
+    }
 }
 
 fn write_overflow(out: &mut String, overflow: &[Overflow]) {
@@ -439,6 +496,56 @@ mod tests {
         };
         let said = super::report(&lang, &ONE_TEXT, &wide, "xx", &only_data).unwrap();
         assert!(!said.contains("too long"), "{said}");
+    }
+
+    /// A `ru` plural without `few` is listed and its pack loads; a `fr`
+    /// plural without `many` (a million's) isn't; `--only data` leaves
+    /// the screen text's out.
+    #[test]
+    fn lists_the_plurals_that_lack_a_form_of_their_language() {
+        let english = r#"{"a.keys": "{n, plural, one {# key} other {# keys}}", "a.one": "One"}"#;
+        let source = "{n, plural, one {# key} other {# keys}}";
+        let ru = format!(
+            r#"[(key: "a.keys", source: "{source}",
+                 text: "{{n, plural, one {{# ключ}} many {{# ключей}} other {{# ключа}}}}"),
+                (key: "a.one", source: "One", text: "Один")]"#
+        );
+        let fr = format!(
+            r#"[(key: "a.keys", source: "{source}",
+                 text: "{{n, plural, one {{# clé}} other {{# clés}}}}"),
+                (key: "a.one", source: "One", text: "Un")]"#
+        );
+        let info = r#"(name: "Xx", made_by: Machine)"#;
+        let files = [
+            ("en/ui.ron", english),
+            ("ru/lang.ron", info),
+            ("ru/ui.ron", &ru),
+            ("fr/lang.ron", info),
+            ("fr/ui.ron", &fr),
+        ]
+        .map(|(path, source)| LangFile {
+            path,
+            source: Some(source),
+        });
+        let lang = from_files(&files, None, str::to_owned, &RULES).unwrap();
+        assert_eq!(
+            report(&lang, "ru", &Options::default()).unwrap(),
+            "lang-status ru (Xx, machine-made): 0 missing, 0 stale, 0 orphaned\n\
+             screen text: 0 missing, 0 stale, 0 too long\n\
+             missing forms:\n\
+             \x20 a.keys\n    lacks: few\n    \
+             text: \"{n, plural, one {# ключ} many {# ключей} other {# ключа}}\"\n\
+             data: 0 missing, 0 stale\n\
+             dialogue: 0 missing, 0 stale, 0 orphaned\n"
+        );
+        let said = report(&lang, "fr", &Options::default()).unwrap();
+        assert!(!said.contains("missing forms"), "{said}");
+        let only_data = Options {
+            only: Some(Part::Data),
+            ..Options::default()
+        };
+        let said = report(&lang, "ru", &only_data).unwrap();
+        assert!(!said.contains("missing forms"), "{said}");
     }
 
     #[test]

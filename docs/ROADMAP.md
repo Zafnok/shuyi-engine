@@ -343,7 +343,7 @@ is done.
 | 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
 | 2348 (done) | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
 | 3218 (done) | Typed text arguments: screen text and tips choose their words |
-| 2261 | Messages checked when the languages load, and missing forms in `lang-status` |
+| 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
 | 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |

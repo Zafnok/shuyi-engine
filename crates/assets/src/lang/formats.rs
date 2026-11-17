@@ -155,9 +155,10 @@ impl Format for LangPackRon {
             let message = format!("{NOT_A_LANGUAGE_FILE}: a pack is read from its {INFO_FILE}");
             return Err(vec![ContentError::new(file.shown(), message)]);
         }
-        if let Err(message) = pack_code(code) {
-            return Err(vec![ContentError::new(cx.shown(dir), message)]);
-        }
+        let code = match pack_code(code) {
+            Ok(code) => code,
+            Err(message) => return Err(vec![ContentError::new(cx.shown(dir), message)]),
+        };
         let english_path = join(&join(languages, source.as_str()), UI_FILE);
         let english_shown = cx.shown(&english_path);
         let english = english_from_source(
@@ -204,7 +205,8 @@ impl Format for LangPackRon {
         let widths = CellWidths::wide(self.wide.iter().copied());
         let rules = PackRules::new(self.data_problem, self.tokens, self.limits, &widths)
             .with_variants(self.variants);
-        let pack = pack_from_files_in(source, &sources, &english, self.data.as_ref(), &rules);
+        let codes = (source, Some(&code));
+        let pack = pack_from_files_in(codes, &sources, &english, self.data.as_ref(), &rules);
         if let (Ok(pack), Some(sets)) = (&pack, &self.sets)
             && let Some(set) = pack.info.wide_font.as_deref()
             && !sets.contains(set)

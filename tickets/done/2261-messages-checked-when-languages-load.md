@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2348"]
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2261 — Messages checked when the languages load
@@ -138,23 +138,23 @@ the draft of steps 2–5 measured 490.
 
 ## Acceptance criteria
 
-- [ ] Each of these is a load error naming the file and the key, through
+- [x] Each of these is a load error naming the file and the key, through
       `from_files`: an English text that doesn't parse; a pack select
       that drops a branch value of its source; a select on `device` with
       an unknown value; a plural category the pack's language lacks.
-- [ ] A pack entry may wrap its source's `{n}` in a plural with its
+- [x] A pack entry may wrap its source's `{n}` in a plural with its
       language's categories, or drop its source's plural, and loads.
-- [ ] A tip whose text is a select of two short wordings passes the box
+- [x] A tip whose text is a select of two short wordings passes the box
       check, and one whose longer form is too wide fails, naming the
       tip; a tip text that doesn't parse fails naming the tip.
-- [ ] `Lang::overflow` reports a message's widest form.
-- [ ] `lang-status` lists a `ru` pack plural that lacks `few` under
+- [x] `Lang::overflow` reports a message's widest form.
+- [x] `lang-status` lists a `ru` pack plural that lacks `few` under
       missing forms, and the pack still loads (a fixture pack); a `fr`
       plural without `many` isn't listed. The existing tests in
       `lang_status.rs` pass unchanged.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -166,4 +166,69 @@ the draft of steps 2–5 measured 490.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Steps 2–5 are the draft of `wip/2348-full` (`c3fa207b`), taken onto
+`main` and checked against it: its `messages.rs` and its uses in
+`lang.rs`, `formats.rs`, `places.rs` and `tip.rs`, with their tests.
+Its `text_in`, `data_text_in` and `placeholders` had landed with 2348
+and 3218, so only the checks came over. Step 6 is new:
+
+- `message::plural::expected` (crate-private): a language's categories
+  without the cardinal `many` of `fr`, `es`, `it` and `pt`.
+- `lang::messages::lacks`: the categories an entry's plurals lack.
+- `LangStatus::missing_forms`, a list of `MissingForms { key, lacks }`,
+  the screen text's entries then the data's, in key order.
+- `lang-status` prints `missing forms:` after each part's stale list,
+  only when there are any, with each entry's key, what it lacks and its
+  text. They are left out of the counts line, so no report without them
+  changes. Test text is filtered as for the other lists, but isn't
+  counted as left out a second time (`Scope::listed`).
+
+Deviations:
+
+- The ticket and the code named the messages ADR as ADR-0124 (the draft)
+  and ADR-0129 (`message.rs`, `Lang::text_in`, `data_text_in`, the CLI's
+  `notices.rs`). It is ADR-0127 (ADR-0124 is key caps, ADR-0129 the
+  arrow keys). Corrected in the files this PR touches.
+- `LangStatus` became `#[non_exhaustive]` beside its new field. It is a
+  view only `Lang::status` builds (ADR-0039, kind 3), and the new field
+  breaks a struct literal either way, so later fields won't.
+
+The game's text (searched on its `main`, 2026-11-17): its
+`assets/lang/en/ui.ron` (841 keys) loads through `english_from_source`
+with these checks, and the 30 texts and hows of `assets/data/tips.ron`
+all parse as messages, so no game text needs a change. `gh search code
+--repo Zafnok/visions-of-shuyi LangStatus` finds `crates/content/src/lang.rs`
+and `lib.rs`, which read its fields and never build one. The game's
+fixtures with `{open` and `{}` are dialogue lines, which these checks
+leave alone, and its data test's error text ("the text and its source
+must have the same placeholders") is unchanged.
+
+Breaking: shuyi-assets: `lang::LangStatus`: it has a new field `missing_forms` and is `#[non_exhaustive]`; a game that builds one with a struct literal compares fields instead, or starts from `LangStatus::default()`
+
+```migration
+since: 0.1.0
+what: lang::LangStatus is a view only Lang::status builds; it gained missing_forms and can't be written as a literal.
+old: "LangStatus { missing, stale, orphans }"
+new: "lang.status(&code), its fields read"
+before: |
+  assert_eq!(status, LangStatus { missing: vec![], stale: vec![], orphans: vec![] });
+after: |
+  assert_eq!(status, LangStatus::default());
+find: ["LangStatus {"]
+```
+
+Behaviour: shuyi-assets: English screen text that doesn't parse as a message (an unclosed `{`, `{}`, a comma inside braces) is a load error naming its file and key, as is a select on `device` with a value no device has (`english_from_source`, `from_files`, `LangPackRon`).
+
+Behaviour: shuyi-assets: a pack's `ui.ron` or `data.ron` entry whose text or source doesn't parse, whose text drops a branch value of its source's select, or whose select on `device` names no device is a load error naming its file and key; read with its tag (`from_files`, `LangPackRon`), so is a plural or selectordinal category its language lacks (`fr` with `few`).
+
+Behaviour: shuyi-assets: a pack entry may wrap its source's `{n}` in a plural or drop its source's plural: the placeholder rule compares arguments' names (`Message::names`), not the raw inside of each pair of braces.
+
+Behaviour: shuyi-assets: `tip::from_source` fails a text or how that doesn't parse, naming the tip; it checks each form of a message against the box's lines and cells, each problem once, and takes `{device}` and `{target}` as known placeholders whatever `TipRules::placeholder` says.
+
+Behaviour: shuyi-assets: `Lang::overflow` measures each form of a message and reports the widest: its `width` and `text` are that form's.
+
+Behaviour: shuyi-cli: `lang-status` lists `missing forms:` after a part's stale keys when a plural lacks a category the pack's language has; a report with none is unchanged.
+
+Book: `site/content/learn/book/assets-and-formats.md`, after "A text can choose its words", says what the languages check as they load and what `lang-status` lists.
+
+Game: nothing to adopt. Its English and tips load unchanged (above); it reads `LangStatus`'s fields only, and `lang-status` gains a list only when a pack's plural lacks a form, which the game's packs have none of yet.
