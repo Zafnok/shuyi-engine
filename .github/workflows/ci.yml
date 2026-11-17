@@ -1280,8 +1280,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # The ticket lint, the Markdown links, the pins (`check-pins`), the
-  # pinned Rust (`check-toolchain`), the docs map (`check-docs`), the paths'
-  # length (`check-paths`) and typos.
+  # pinned Rust (`check-toolchain`), the book's dev container
+  # (`check-devcontainers`), the docs map (`check-docs`), the paths' length
+  # (`check-paths`) and typos.
   # Cheap, and tickets and
   # docs are what they check, so this always runs: never gated on
   # `needs.changes` (game ADR-0014), like the game's `tickets` job.
@@ -1349,6 +1350,8 @@ jobs:
         run: cargo xtask check-pins
       - name: Check the pinned Rust
         run: cargo xtask check-toolchain
+      - name: Check the book's dev container against the steps and the root's
+        run: cargo xtask check-devcontainers
       - name: Check the docs map
         run: cargo xtask check-docs
       # A game's Windows checkout of this repository by Cargo adds about 80

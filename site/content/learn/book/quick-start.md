@@ -42,6 +42,13 @@ engine. The rest of this chapter works as written, but there's no window to open
 use the commands below that run the game with no window, which the engine calls
 running **headless**.
 
+The book's project, the box-pushing puzzle you build after this chapter, has a
+Codespace of its own: [open the book's project in a
+Codespace](https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb).
+It opens at the project's folder, with the project's game built and served: the
+editor's **Ports** tab opens it. [The project's first page](@/learn/book/box-pusher/_index.md)
+says how to use it.
+
 ## Install Rust
 
 Install Rust with [rustup](https://rustup.rs), Rust's installer. A game names the

@@ -41,9 +41,15 @@ What there is:
   one of the page's `extra.files`, `to`), written in the twins by
   `crates/xtask/src/llms.rs`, run by `site/static/playground.js`'s
   **Check my work**.
-- **From 2837:** `.devcontainer/book/devcontainer.json` opens a
-  Codespace at `site/tutorial/` with every step's web build built, linked
-  from each step's page, which names the step's folder.
+- **From 2837 (done):** `.devcontainer/book/devcontainer.json` opens a
+  Codespace at `site/tutorial/`, linked from each step's page, which names
+  the step's folder and the two commands, `cargo shuyi web` and `bash
+  ../serve.sh` (`site/templates/chapter.html`; the twin, `codespace` in
+  `crates/xtask/src/llms.rs`). Every step's web build is built into one
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target` (step 2
+  before the Codespace opens, the other nine behind it, or all from a
+  prebuild): a command run there builds into it too, and waits for its
+  lock while those builds run.
 
 ## Nick input
 

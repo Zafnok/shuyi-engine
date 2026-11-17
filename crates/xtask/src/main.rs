@@ -13,6 +13,7 @@
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
+//! - `cargo xtask check-devcontainers`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
@@ -39,6 +40,7 @@ mod changelog;
 mod compile_times;
 mod compress;
 mod contract;
+mod devcontainers;
 mod docs;
 mod exercises;
 mod flaky;
@@ -125,6 +127,10 @@ usage:
       Check that the pinned Rust is the same everywhere (the bump-rust skill):
       the root's exact channel, the templates' channels, every workspace's
       rust-version, the members' inherited one and Dependabot's folders.
+  cargo xtask check-devcontainers
+      Check that the book's dev container (.devcontainer/book/) builds every
+      step of site/tutorial/, no more, in order, and keeps the root's image,
+      setup and remoteEnv (ticket 2837).
   cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]
       Show the public API change of the engine's crates, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
@@ -286,6 +292,9 @@ fn main() -> ExitCode {
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         Some("check-toolchain") if args.len() == 1 => {
             report("check-toolchain", &toolchain::run(&root), &[])
+        }
+        Some("check-devcontainers") if args.len() == 1 => {
+            report("check-devcontainers", &devcontainers::run(&root), &[])
         }
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),

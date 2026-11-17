@@ -40,6 +40,18 @@ also has pictures of what you should see, and things to try: make this color
 blue, make this room twice as big, and see the picture of what happens. Trying
 them is the fastest way to learn what each line does.
 
+To change a step's Rust code with nothing installed, each step's page links
+**Change its Rust in a Codespace**: one computer in your browser for the whole
+project, with Rust ready, paid from your own GitHub account's free hours (a free
+account has 60 hours a month of the small machine it opens). Making it can take
+some minutes the first time, while it builds the game. Then it opens at the
+project's folder, with step 2's game served: the editor's **Ports** tab opens it,
+on port 4000. Change a step's
+code in its folder, run `cargo shuyi web` there to build it again and `bash
+../serve.sh` to show that step, and reload the game's tab to play it. Keep the
+same Codespace for the whole project: it stops itself when you leave it, and
+keeps your changes for when you come back.
+
 Every piece of code on these pages comes from that step's real files, and those
 are built and tested each time the engine changes, as are the things to try. So
 what you read here works.
