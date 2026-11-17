@@ -43,6 +43,9 @@ fn drawn() -> &'static Drawn {
             glyphs: BTreeMap::from([('?', 0)]),
             wide: BTreeMap::new(),
             wide_sets: BTreeMap::new(),
+            bold: BTreeMap::new(),
+            ink: None,
+            bold_ink: None,
         }));
         Drawn {
             atlas,

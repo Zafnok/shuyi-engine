@@ -67,6 +67,9 @@ fn font_parts() -> (FontAtlasDef, Vec<u8>) {
         glyphs: [('#', 0), ('|', 1), ('?', 2)].into(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        ink: None,
+        bold_ink: None,
     };
     let mut bits = vec![0u8; 3 * 16];
     bits[..16].fill(u8::MAX);

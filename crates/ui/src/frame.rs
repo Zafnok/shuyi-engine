@@ -27,6 +27,7 @@ pub mod console;
 pub mod draw;
 pub mod gizmo;
 pub mod glyph_buffer;
+pub mod key_cap;
 pub mod onebit;
 pub mod painted;
 pub mod portrait;
@@ -39,8 +40,10 @@ pub use color::{ColorSet, EngineColor, Palette, Rgb};
 pub use console::ConsoleSpec;
 pub use gizmo::{GizmoItem, GizmoRole, GizmoShape, LabelText};
 pub use glyph_buffer::{
-    Backdrop, BoxStyle, Cell, GlyphBuffer, Item, Layer, Overlay, Paint, PxRect, Rect, Sprite,
+    Backdrop, BoxStyle, Cell, GlyphBuffer, GlyphStyle, Item, Layer, Overlay, Paint, PxRect, Rect,
+    Sprite,
 };
+pub use key_cap::{KeyCapStyle, KeyCaps};
 pub use painted::{Painted, PaintedId, PaintedKind, PaintedSprite, PaintedTable};
 
 #[cfg(test)]

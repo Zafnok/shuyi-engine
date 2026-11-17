@@ -283,19 +283,27 @@ impl Renderer {
             let Some((rect, fg, cells)) = self.atlas_cell(cell.glyph, cell.fg, wide, set) else {
                 continue;
             };
+            // A key cap's glyph: moved off the grid, and bold (ticket 3215).
+            let style = buf.glyph_style(x, y);
+            let (rect, strikes) = self.atlas.bold_strikes(cell.glyph, rect, style.bold && !wide);
             #[allow(clippy::cast_precision_loss)] // cell coords < 2^16
-            let (px, py) = (offset_x + x as f32 * cell_w, offset_y + y as f32 * cell_h);
-            draw_texture_ex(
-                &self.texture,
-                px,
-                py,
-                fg,
-                DrawTextureParams {
-                    dest_size: Some(vec2(cell_w * cells, cell_h)),
-                    source: Some(source_rect(rect)),
-                    ..Default::default()
-                },
+            let (px, py) = (
+                offset_x + x as f32 * cell_w + f32::from(style.dx) * scale,
+                offset_y + y as f32 * cell_h + f32::from(style.dy) * scale,
             );
+            for strike in 0..strikes {
+                draw_texture_ex(
+                    &self.texture,
+                    px + f32::from(strike) * scale,
+                    py,
+                    fg,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(cell_w * cells, cell_h)),
+                        source: Some(source_rect(rect)),
+                        ..Default::default()
+                    },
+                );
+            }
         }
         self.draw_items((buf, pictures), Layer::Over, origin, scale);
     }

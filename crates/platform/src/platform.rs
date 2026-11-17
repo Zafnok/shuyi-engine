@@ -520,6 +520,9 @@ mod tests {
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
             wide_sets: alloc::collections::BTreeMap::new(),
+            bold: alloc::collections::BTreeMap::new(),
+            ink: None,
+            bold_ink: None,
         };
         let images = ImageTable::default();
         let map = PatternMap::default();
@@ -541,6 +544,9 @@ mod tests {
             glyphs: alloc::collections::BTreeMap::new(),
             wide: alloc::collections::BTreeMap::new(),
             wide_sets: alloc::collections::BTreeMap::new(),
+            bold: alloc::collections::BTreeMap::new(),
+            ink: None,
+            bold_ink: None,
         };
         let images = ImageTable::default();
         let look = Look::new(&font, &images);

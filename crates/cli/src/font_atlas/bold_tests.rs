@@ -1,0 +1,119 @@
+//! The bold face and the capitals' ink (ticket 3215).
+
+use shuyi_assets::font::{FontInk, InkBox};
+
+use super::*;
+use crate::codec::decode_png;
+
+/// A 4 × 4 font of `glyphs`, each drawn as four rows of `#` and `.`.
+fn font(glyphs: &[(char, [&str; 4])]) -> BitmapFont {
+    let pixels = |rows: &[&str; 4]| rows.iter().flat_map(|r| r.chars().map(|c| c == '#')).collect();
+    BitmapFont {
+        cell_w: 4,
+        cell_h: 4,
+        glyphs: glyphs.iter().map(|(c, rows)| (*c, pixels(rows))).collect(),
+    }
+}
+
+const A: [&str; 4] = ["....", "##..", "#...", "...."];
+const BOLD_A: [&str; 4] = ["....", "###.", "##..", "...."];
+
+/// Ink of capitals `(left, top, right, bottom)`, and `columns`.
+fn ink((l, t, r, b): (u32, u32, u32, u32), columns: &[(char, [u32; 2])]) -> FontInk {
+    let mut ink = FontInk::new(InkBox::new(l, t, r, b));
+    ink.columns.extend(columns.iter().copied());
+    ink
+}
+
+#[test]
+fn the_ink_is_the_edges_most_capitals_share() {
+    let b = ["....", "##..", "##..", "...."];
+    let q = ["....", ".##.", ".##.", "..#."];
+    let lower = ["####", "####", "####", "####"];
+    let face = font(&[('A', A), ('B', b), ('Q', q), ('q', lower)]);
+    let all: BTreeMap<char, u32> = face.glyphs.keys().copied().zip(0..).collect();
+    // Q's columns and q's differ from the capitals': they are listed.
+    let found = ink((0, 1, 1, 2), &[('Q', [1, 2]), ('q', [0, 3])]);
+    assert_eq!(ink_of(&face, &all), Some(found));
+    // Only the glyphs the atlas keeps count.
+    let q_only = BTreeMap::from([('Q', 0), ('q', 1)]);
+    assert_eq!(ink_of(&face, &q_only), Some(ink((1, 1, 2, 3), &[('q', [0, 3])])));
+    assert_eq!(ink_of(&face, &BTreeMap::from([('q', 0)])), None);
+    let blank = font(&[('A', ["....", "....", "....", "...."])]);
+    assert_eq!(ink_of(&blank, &BTreeMap::from([('A', 0)])), None);
+}
+
+#[test]
+fn a_bold_face_is_laid_out_after_the_glyphs_and_named_in_the_ron() {
+    let regular = font(&[('A', A), ('b', ["....", "....", "....", "..#."])]);
+    let bold = font(&[('A', BOLD_A), ('z', A)]);
+    let atlas = add_bold(build_atlas(&regular, &AtlasChars::default()), &bold).unwrap();
+    // `z` isn't in the atlas: it gets no bold shape.
+    assert_eq!(atlas.def.bold, BTreeMap::from([('A', 2)]));
+    assert_eq!(atlas.def.ink, Some(ink((0, 1, 1, 2), &[('b', [2, 2])])));
+    assert_eq!(atlas.def.bold_ink, Some(ink((0, 1, 2, 2), &[])));
+    assert!(atlas.def.problems("Ab").is_empty());
+    assert!(atlas.def.image_problems(atlas.image.width, atlas.image.height).is_empty());
+    let rect = atlas.def.bold_rect('A').unwrap();
+    assert_eq!((rect.x, rect.y), (8, 0));
+    let lit = |x: u32, y: u32| atlas.image.pixel(x, y).is_some_and(|p| p[3] == 255);
+    assert!(lit(8, 1) && lit(9, 1) && lit(10, 1) && !lit(11, 1));
+    assert!(lit(8, 2) && lit(9, 2) && !lit(10, 2));
+    let ron = atlas_ron(&atlas.def, "a + b", "shuyi", None).unwrap();
+    assert!(ron.contains("    bold: {\n        'A': 2,\n    },\n"), "{ron}");
+    assert!(ron.contains("    bold_ink: Some((\n"), "{ron}");
+    let columns = "        columns: {\n            'b': (2, 2),\n        },\n";
+    assert!(ron.contains(columns), "{ron}");
+    let read: FontAtlasDef = ron::from_str(&ron).unwrap();
+    assert_eq!(read, atlas.def);
+}
+
+#[test]
+fn a_bold_face_of_another_cell_size_is_refused() {
+    let regular = font(&[('A', A)]);
+    let mut tall = font(&[('A', BOLD_A)]);
+    tall.cell_h = 5;
+    let atlas = build_atlas(&regular, &AtlasChars::default());
+    let refused = add_bold(atlas, &tall).unwrap_err();
+    assert_eq!(refused, "a bold font's cells are the font's size: 4×4, not 4×5");
+}
+
+#[test]
+fn run_with_a_bold_font_writes_it_and_says_so() {
+    let dir = std::env::temp_dir().join(format!("shuyi-font-bold-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let bdf = |glyphs: &str| format!("STARTFONT 2.1\nFONTBOUNDINGBOX 4 4 0 -1\n{glyphs}ENDFONT\n");
+    let glyph = |name: &str, code: u32, rows: &str| {
+        format!("STARTCHAR {name}\nENCODING {code}\nBBX 3 2 0 0\nBITMAP\n{rows}ENDCHAR\n")
+    };
+    let regular = dir.join("tiny.bdf");
+    let question = glyph("q", 63, "80\n80\n");
+    fs::write(&regular, bdf(&(glyph("A", 65, "C0\n80\n") + &question))).unwrap();
+    let bold = dir.join("tiny-bold.bdf");
+    fs::write(&bold, bdf(&glyph("A", 65, "E0\nC0\n"))).unwrap();
+    let out = dir.join("out");
+    let rules = crate::project::FontAtlas {
+        required_glyphs: "?A".to_owned(),
+        ..crate::project::FontAtlas::default()
+    };
+    let fonts = [regular];
+    let said = run_with_bold(
+        &rules,
+        "shuyi",
+        (&fonts, Some(bold.as_path())),
+        &[],
+        &out,
+        &AtlasChars::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        said,
+        format!("font-atlas: 2 glyphs and 1 bold, 128×4 px → {}", out.display())
+    );
+    let ron = fs::read_to_string(out.join("atlas.ron")).unwrap();
+    assert!(ron.starts_with("// Generated by `shuyi font-atlas` from tiny.bdf + tiny-bold.bdf."));
+    let (w, h, _) = decode_png(&fs::read(out.join("atlas.png")).unwrap()).unwrap();
+    assert_eq!((w, h), (128, 4));
+    assert_eq!(fs::read(out.join(ONE_BIT_FILE)).unwrap().len(), 3 * 4);
+    fs::remove_dir_all(&dir).unwrap();
+}

@@ -11,7 +11,7 @@
 use crate::prelude::*;
 
 pub use shuyi_assets::target::Quit;
-use shuyi_assets::target::TargetProfile;
+use shuyi_assets::target::{Color, TargetProfile};
 
 use crate::ctx::Keyboard;
 use crate::input::state::Device;
@@ -70,6 +70,19 @@ pub struct PlatformFacts {
     /// [`FilePicker::Absent`], as a session record made before it does.
     #[serde(default, skip_serializing_if = "FilePicker::is_absent")]
     pub file_picker: FilePicker,
+    /// Whether the screen is one-bit, black and white (the Playdate): its
+    /// profile's display colour. Key caps aren't drawn there unless a
+    /// game's style says ([`KeyCapStyle::one_bit`]).
+    ///
+    /// [`KeyCapStyle::one_bit`]: crate::frame::key_cap::KeyCapStyle::one_bit
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub one_bit: bool,
+}
+
+/// Whether `value` is `false`: a fact left out of a record when it is.
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde's signature
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 /// Whether the game can open a file picker
@@ -149,6 +162,7 @@ impl PlatformFacts {
             file_drops: FileDrops::Unheard,
             storage_place: StoragePlace::Unknown,
             file_picker: FilePicker::Absent,
+            one_bit: profile.display.color == Color::OneBit,
         }
     }
 
@@ -223,6 +237,7 @@ impl Default for PlatformFacts {
             file_drops: FileDrops::Unheard,
             storage_place: StoragePlace::Unknown,
             file_picker: FilePicker::Absent,
+            one_bit: false,
         }
     }
 }
@@ -278,6 +293,7 @@ mod tests {
         assert!(!playdate.can_quit() && !playdate.windowed);
         assert!(!playdate.pointer && !playdate.touch);
         assert_eq!(playdate.keyboard, Keyboard::Absent);
+        assert!(playdate.one_bit && !web.one_bit && !deck.one_bit);
         let desktop = PlatformFacts::from_profile(&desktop());
         assert!(desktop.can_quit() && !desktop.can_drop_files());
         let heard = desktop.with_file_drops(FileDrops::Heard);

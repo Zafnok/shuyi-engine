@@ -25,8 +25,10 @@
 //! the other a space, so a continuation always follows its first half.
 
 mod backdrop;
+mod caps;
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use core::ops::Range;
 
@@ -40,6 +42,7 @@ use shuyi_assets::text::NO_BREAK_SPACE;
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::gizmo::{GizmoItem, GizmoShape};
+use crate::frame::key_cap::KeyCaps;
 use crate::frame::painted::{PaintedSprite, PaintedTable};
 use crate::text::{StyledText, TextRole};
 
@@ -92,6 +95,33 @@ impl Cell {
 /// What the second cell of a wide character holds (a noncharacter, never
 /// in text). Ask [`Cell::is_continuation`], never compare with this.
 const CONTINUATION: char = '\u{ffff}';
+
+/// How a cell's glyph is drawn besides its colours (ticket 3215): moved
+/// off the cell grid by `dx`, `dy` console pixels, and in bold. A key
+/// cap's name is drawn so ([`GlyphBuffer::print_styled`]); every other
+/// glyph is [`PLAIN`](Self::PLAIN). A buffer keeps it beside the cell
+/// ([`GlyphBuffer::glyph_style`]), and anything that replaces the cell
+/// makes it plain again.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
+pub struct GlyphStyle {
+    /// Console pixels to the right (negative: to the left).
+    pub dx: i8,
+    /// Console pixels down (negative: up).
+    pub dy: i8,
+    /// Drawn from the font atlas's bold face, or, without one, twice,
+    /// 1 px apart.
+    pub bold: bool,
+}
+
+impl GlyphStyle {
+    /// On the grid, not bold.
+    pub const PLAIN: Self = Self::new(0, 0, false);
+
+    /// Moved by `dx`, `dy` pixels, in bold or not.
+    pub const fn new(dx: i8, dy: i8, bold: bool) -> Self {
+        Self { dx, dy, bold }
+    }
+}
 
 /// A rectangle of cells. A non-positive `w` or `h` means empty.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -500,6 +530,10 @@ pub struct GlyphBuffer {
     /// The pictures skins paint (ADR-0078): kept when the frame is drawn
     /// again, so the frame's owner keeps them between frames.
     pictures: PaintedTable,
+    /// The glyphs not drawn plain, by cell index (few: a key cap's).
+    styles: BTreeMap<usize, GlyphStyle>,
+    /// How a key's name in styled text is drawn: as a cap, or `None`.
+    key_caps: Option<KeyCaps>,
 }
 
 impl GlyphBuffer {
@@ -520,6 +554,8 @@ impl GlyphBuffer {
             backdrop: None,
             widths: CellWidths::NARROW,
             pictures: PaintedTable::default(),
+            styles: BTreeMap::new(),
+            key_caps: None,
         }
     }
 
@@ -528,20 +564,97 @@ impl GlyphBuffer {
     /// ([`CellWidths::of`]).
     #[must_use]
     pub fn with_widths(mut self, widths: CellWidths) -> Self {
-        self.widths = widths;
+        self.set_widths(widths);
         self
     }
 
     /// Prints the characters `widths` has wide in two cells from now on;
-    /// what is already printed stays.
+    /// what is already printed stays. A key cap's cells
+    /// ([`key_caps`](Self::key_caps)) stay as they are.
     pub fn set_widths(&mut self, widths: CellWidths) {
-        self.widths = widths;
+        let cap = self.key_caps.as_ref().map(KeyCaps::extra_cells);
+        self.widths = widths.with_key_cap_cells(cap);
     }
 
-    /// Which characters it prints in two cells: what text drawn into it is
-    /// measured with ([`text_width`](shuyi_assets::lang::text_width)).
+    /// Which characters it prints in two cells, and the cells a key cap
+    /// takes beyond its name: what text drawn into it is measured with
+    /// ([`text_width`](shuyi_assets::lang::text_width),
+    /// [`StyledText::width`]).
     pub fn widths(&self) -> &CellWidths {
         &self.widths
+    }
+
+    /// The same buffer, drawing a key's name in styled text as `caps` say
+    /// ([`set_key_caps`](Self::set_key_caps)).
+    #[must_use]
+    pub fn with_key_caps(mut self, caps: Option<KeyCaps>) -> Self {
+        self.set_key_caps(caps);
+        self
+    }
+
+    /// From now on, draws a key's name in styled text
+    /// ([`print_styled`](Self::print_styled)) as a key cap, as `caps` say,
+    /// or as text with `None`; its [`widths`](Self::widths) count a cap's
+    /// cells. What is already printed stays.
+    pub fn set_key_caps(&mut self, caps: Option<KeyCaps>) {
+        let cap = caps.as_ref().map(KeyCaps::extra_cells);
+        self.key_caps = caps;
+        self.widths = self.widths.clone().with_key_cap_cells(cap);
+    }
+
+    /// How it draws a key's name in styled text: as a cap, or `None`.
+    pub fn key_caps(&self) -> Option<&KeyCaps> {
+        self.key_caps.as_ref()
+    }
+
+    /// How the glyph of cell `(x, y)` is drawn besides its colours:
+    /// [`GlyphStyle::PLAIN`] but where a key cap's name, or
+    /// [`set_glyph_style`](Self::set_glyph_style), set one. Plain off the
+    /// buffer.
+    pub fn glyph_style(&self, x: i32, y: i32) -> GlyphStyle {
+        self.index(x, y)
+            .and_then(|i| self.styles.get(&i))
+            .copied()
+            .unwrap_or_default()
+    }
+
+    /// Draws the glyph of cell `(x, y)` as `style` says until the cell is
+    /// replaced; out of bounds is ignored.
+    pub fn set_glyph_style(&mut self, x: i32, y: i32, style: GlyphStyle) {
+        if let Some(i) = self.index(x, y) {
+            if style == GlyphStyle::PLAIN {
+                self.styles.remove(&i);
+            } else {
+                self.styles.insert(i, style);
+            }
+        }
+    }
+
+    /// Every glyph not drawn plain: `(x, y, style)`, row by row.
+    pub fn glyph_styles(&self) -> impl Iterator<Item = (i32, i32, GlyphStyle)> + '_ {
+        let cols = usize::from(self.spec.cols).max(1);
+        self.styles.iter().map(move |(&i, &style)| {
+            // A cell index of the buffer: its column and row fit in `u16`.
+            let at = |v: usize| i32::try_from(v).unwrap_or(0);
+            (at(i % cols), at(i / cols), style)
+        })
+    }
+
+    /// Makes the glyphs of `rect`'s cells plain: they were just replaced.
+    fn clear_styles(&mut self, rect: Rect) {
+        if self.styles.is_empty() {
+            return;
+        }
+        let row = clip_span(rect.x, rect.w, self.spec.cols);
+        if row.is_empty() {
+            return;
+        }
+        for y in clip_span(rect.y, rect.h, self.spec.rows) {
+            if let (Some(first), Some(last)) = (self.index(row.start, y), self.index(row.end - 1, y))
+            {
+                self.styles.retain(|&i, _| !(first..=last).contains(&i));
+            }
+        }
     }
 
     /// How many cells `text` takes here ([`text_width`] with
@@ -822,8 +935,9 @@ impl GlyphBuffer {
     /// Sets the cell at `(x, y)`; out of bounds is silently ignored. A wide
     /// character's other half, if this was one, becomes a space.
     pub fn set(&mut self, x: i32, y: i32, cell: Cell) {
-        if self.index(x, y).is_some() {
+        if let Some(i) = self.index(x, y) {
             self.unpair(y, x..x + 1);
+            self.styles.remove(&i);
         }
         if let Some(c) = self.get_mut(x, y) {
             *c = cell;
@@ -897,6 +1011,14 @@ impl GlyphBuffer {
     /// or [`text_colors_on`](crate::frame::color::Palette::text_colors_on)
     /// to paint as [`print`](Self::print) does).
     ///
+    /// With [`key_caps`](Self::key_caps) set, a [`TextRole::Key`] span is
+    /// a key cap (ADR-0124): its name in the key's glyph colour, on the
+    /// background plain text gets, followed by the cap's
+    /// [extra cells](KeyCaps::extra_cells) as spaces; the name's glyphs
+    /// moved and bold ([`glyph_style`](Self::glyph_style)), and the box
+    /// under them as rectangles ([`Layer::Under`]) inside the cap's cells.
+    /// A cap the buffer's edge cuts has no box, and its name is plain.
+    ///
     /// ```
     /// use shuyi_ui::frame::{Cell, GlyphBuffer, Rgb};
     /// use shuyi_ui::text::{StyledText, TextRole};
@@ -922,6 +1044,10 @@ impl GlyphBuffer {
         let mut cx = i64::from(x);
         let mut written = 0;
         for span in text.spans() {
+            if let (Some(TextRole::Key), Some(caps)) = (span.role, self.key_caps.clone()) {
+                written += self.print_cap(&mut cx, y, &span.text, &caps, &colors);
+                continue;
+            }
             let (fg, bg) = colors(span.role);
             written += self.print_from(&mut cx, y, &span.text, |c, glyph| {
                 c.glyph = glyph;
@@ -964,6 +1090,7 @@ impl GlyphBuffer {
                 // Inside the buffer: below `columns`, a `u16`.
                 let at = i32::try_from(*cx).unwrap_or(0);
                 self.unpair(y, at..at + i32::from(cells));
+                self.clear_styles(Rect::new(at, y, i32::from(cells), 1));
                 if let Some(c) = self.get_mut(at, y) {
                     f(c, glyph);
                 }
@@ -997,6 +1124,7 @@ impl GlyphBuffer {
     pub fn fill_rect(&mut self, rect: Rect, cell: Cell) {
         self.unpair_rect(rect);
         self.for_each_in(rect, |_, _, c| *c = cell);
+        self.clear_styles(rect);
         self.cut_items(rect);
         if !cell.see_through && rect.intersect(&self.bounds()) == Some(self.bounds()) {
             self.backdrop = None;
@@ -1102,6 +1230,14 @@ impl GlyphBuffer {
             }
         });
         self.mend_edges(other, dest_x, target);
+        self.clear_styles(target);
+        for (x, y, style) in other.glyph_styles() {
+            // `other`'s cells are in `u16` range, so this fits in `i64`.
+            let at = |v: i32, d: i32| i32::try_from(i64::from(v) + i64::from(d)).ok();
+            if let (Some(x), Some(y)) = (at(x, dest_x), at(y, dest_y)) {
+                self.set_glyph_style(x, y, style);
+            }
+        }
         self.cut_items(target);
         let bounds = self.pixel_bounds();
         let (dx, dy) = (
@@ -1142,6 +1278,8 @@ impl GlyphBuffer {
 
 #[cfg(test)]
 mod backdrop_tests;
+#[cfg(test)]
+mod caps_tests;
 #[cfg(test)]
 mod gizmo_tests;
 #[cfg(test)]

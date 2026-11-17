@@ -207,8 +207,8 @@ impl TextSpan {
 /// A line of text in spans, each with an optional [`TextRole`] that a skin
 /// paints from the palette
 /// ([`GlyphBuffer::print_styled`](crate::frame::glyph_buffer::GlyphBuffer::print_styled)):
-/// a hint whose keys stand out (ADR-0122). A role never changes the text
-/// or how many cells it takes.
+/// a hint whose keys stand out (ADR-0122). A role never changes the text;
+/// only a key drawn as a cap takes more cells than its name (ADR-0124).
 ///
 /// Its spans are kept joined: a push next to a span of the same role joins
 /// it, and an empty push adds nothing, so two texts that read the same in
@@ -281,14 +281,19 @@ impl StyledText {
     }
 
     /// How many cells it takes: [`text_width`] of its
-    /// [`plain`](Self::plain) text.
+    /// [`plain`](Self::plain) text, and where `widths` draw keys as caps
+    /// ([`CellWidths::key_cap_cells`], a frame's
+    /// [`widths`](crate::frame::GlyphBuffer::widths) with key caps on), each
+    /// [`TextRole::Key`] span's extra cells (ADR-0124).
     pub fn width(&self, widths: &CellWidths) -> usize {
-        self.spans.iter().map(|s| text_width(&s.text, widths)).sum()
+        self.spans.iter().map(|s| span_width(s, widths)).sum()
     }
 
     /// It in at most `w` cells: as [`cut`](crate::frame::draw::cut) cuts
     /// its plain text, each kept character in its role and the `…` in the
-    /// role of the first character it stands for.
+    /// role of the first character it stands for. Where `widths` draw
+    /// keys as caps, a key is kept whole or not at all, and the `…` that
+    /// stands for it is plain.
     #[must_use]
     pub fn cut(&self, w: usize, widths: &CellWidths) -> StyledText {
         if self.width(widths) <= w {
@@ -297,23 +302,48 @@ impl StyledText {
         let room = w.saturating_sub(1);
         let mut used = 0;
         let mut out = StyledText::new();
-        let chars = self
-            .spans
-            .iter()
-            .flat_map(|s| s.text.chars().map(|c| (c, s.role)));
-        for (c, role) in chars {
-            used += widths.of_char(c);
-            if used > room {
-                if w > 0 {
-                    out.push("…", role);
+        for span in &self.spans {
+            if is_cap(span, widths) {
+                used += span_width(span, widths);
+                if used > room {
+                    if w > 0 {
+                        out.push_plain("…");
+                    }
+                    return out;
                 }
-                break;
+                out.push(&span.text, span.role);
+                continue;
             }
-            let mut buf = [0; 4];
-            out.push(c.encode_utf8(&mut buf), role);
+            for c in span.text.chars() {
+                used += widths.of_char(c);
+                if used > room {
+                    if w > 0 {
+                        out.push("…", span.role);
+                    }
+                    return out;
+                }
+                let mut buf = [0; 4];
+                out.push(c.encode_utf8(&mut buf), span.role);
+            }
         }
         out
     }
+}
+
+/// Whether `span` is drawn as a key cap with `widths`.
+fn is_cap(span: &TextSpan, widths: &CellWidths) -> bool {
+    span.role == Some(TextRole::Key) && widths.key_cap_cells().is_some()
+}
+
+/// How many cells `span` takes with `widths`: its text's, and a key cap's
+/// extra cells.
+fn span_width(span: &TextSpan, widths: &CellWidths) -> usize {
+    let extra = if is_cap(span, widths) {
+        widths.key_cap_cells().map_or(0, usize::from)
+    } else {
+        0
+    };
+    text_width(&span.text, widths) + extra
 }
 
 impl Display for StyledText {
