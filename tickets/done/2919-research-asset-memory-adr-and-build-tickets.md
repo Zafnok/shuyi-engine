@@ -5,10 +5,10 @@ type: research
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2906"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 2919 — Research: asset memory, part two: the ADR and the build tickets
@@ -211,17 +211,17 @@ ticket that only adds stays after the MVP.
 
 ## Acceptance criteria
 
-- [ ] The ADR decides all seven points, each with its numbers from
+- [x] The ADR decides all seven points, each with its numbers from
       `docs/research/2906-asset-memory.md`.
-- [ ] Each trigger the numbers cross has a build ticket in
+- [x] Each trigger the numbers cross has a build ticket in
       `tickets/open/`; each one not crossed is in the ADR with its
       number.
-- [ ] 2222, 2228 and 3011 match the ADR, or the completion notes say
+- [x] 2222, 2228 and 3011 match the ADR, or the completion notes say
       why one needs no change; what the ADR asks of 2207, 2220, 3008 and
       3010 is a build ticket, or the notes say why none is needed.
-- [ ] Each build ticket that changes the bundle's or the formats' public
+- [x] Each build ticket that changes the bundle's or the formats' public
       API is in 2005's `blocked_by`, milestone MVP.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -230,5 +230,74 @@ ticket that only adds stays after the MVP.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done:**
+
+- [ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  decides the seven points from 2906's numbers, and extends ADR-0008 §6,
+  ADR-0023 §3, ADR-0024 §6 and ADR-0097 (their status lines and rows in
+  `docs/adr/README.md` say so):
+  1. **Lifetimes:** a read hands out `Cow<'static, [u8]>` (borrowed from
+     every layer of today, owned from a pack read file by file); paths
+     stay `&'static` (52 bytes a file); no asset store; `Layer::owned` and
+     hot reload stay leaked. The call sites of each option are counted in
+     the ADR, in the engine and in the game.
+  2. **Reading on demand:** a pack with its index read alone and a
+     checksum per file (`pack::VERSION` 17), read through a
+     `pack::Source` the backend implements. The Playdate reads with the
+     SDK's seek and read; the web streams the pack; desktop keeps reading
+     it whole.
+  3. **Groups:** a folder, laid at the front of the pack by
+     `Bake::first`, with `Bundle::arrived(dir)`.
+  4. **Progress:** `Progress::Of { done, of }` counts units, never time,
+     and `Progress::Wait` ends a frame's steps; the card shows a bar.
+  5. **Textures:** made when first drawn; never freed until textures
+     pass a quarter of `peak_heap_bytes` (the game's are 3.8 MB).
+  6. **Budgets:** `startup_ms` is to the game's first frame; what must not
+     stay on `playdate` and `web`; the page fetches the `.wasm` beside the
+     pack. The `nds` row is noted. Only the comment on `startup_ms` in
+     `targets/web.ron` changed.
+  7. **Triggers:** a table of each build, its number, whether it is
+     crossed, and its ticket.
+- **Build tickets:** 2262 (MVP, the one break, in 2005's `blocked_by`),
+  2263, 3315, 3316, 3317 and 3318 (After MVP), and 2264 (parked: only the
+  DS's heap needs it). They are in `docs/ROADMAP.md`: 2262 before 2005,
+  the others in a section of their own after the game's work, 2264 with
+  the DS.
+- **Tickets changed:** 2222 (a page is a texture kept for the run;
+  either order with 3317), 2228 (`LayerCopy`'s lifetimes; either order
+  with 2262), 3011 (peak heap during the load and in play, and how the
+  pack was read; either order with 3315), 2005 (2262 in `blocked_by`, its
+  clause rewritten), 3009 (its clause rewritten; either order with 3316),
+  3052 (either order with 3318), 1124 (its Out line names ADR-0126), and
+  the parked 2368, 2909 and 3024 (their clauses only).
+- **Done tickets:** 2207 and 2220 need no build: their layers stay
+  leaked, bounded by what is handed in and what a developer saves
+  (ADR-0126 §1). 3008 needs no bench scenario over the load: its peak is
+  the program's high-water from its start, so it already holds the
+  load's (`crates/cli/src/bench.rs`, `measured_start`). 3010's whole read
+  becomes 3315. 2909 isn't done, so there was no video note to weigh.
+- `docs/research/2906-asset-memory.md` names the ADR.
+
+**Deviations:**
+
+- **The platform hook is a `pack::Source` trait, not a `Platform`
+  method** (point 2): the bundle's readers run inside the game's load and
+  screens, which have a `Setup` or a `Ctx`, not the `Platform`. The ADR's
+  *Alternatives* say so.
+- **The web streams one GET, not `Range` requests:** the web's heap holds
+  the whole pack (42 MB of 256 MB), and a stream works on every host,
+  Python's `http.server` included. The order of the bytes (`Bake::first`)
+  gives the first frame its files first.
+- **New tickets in 33xx, not 30xx:** 30xx filled up on 2026-11-08
+  (`tickets/README.md`).
+- No number was measured again: every one the ADR needs is on 2906's page.
+
+**Follow-up tickets:** 2262, 2263, 2264, 3315, 3316, 3317 and 3318.
+
+**Notes for Nick:** nothing to decide. The engine gets one break before
+the first release (2262: the bundle hands out its bytes so a pack needn't
+stay in memory). The rest waits until a game needs a Playdate pack over
+about 6 MB or a web pack over about 12 MB; Visions of Shuyi's is 0.6 MB.
+
+No break: an ADR, tickets, and a comment in `targets/web.ron`; no public
+item changes.

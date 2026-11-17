@@ -6,7 +6,9 @@
   "over the MIT `playdate` crates" changed by ADR-0062 (a C shim); §6
   extended and narrowed by ADR-0081 (the bench measures per frame under
   Callgrind, and gates only the profiles the game's `targets` lists, not
-  "every `supported` profile")
+  "every `supported` profile"); §6 extended by ADR-0126 (`startup_ms`
+  is to the game's first frame; what must not stay in memory on
+  `playdate` and `web`)
 - **Date:** 2026-10-15
 - **Related tickets:** 3001–3016; game 1025 (the parked Playdate port),
   game 0903 (Steam readiness)

@@ -68,7 +68,7 @@ after every other ticket of this phase but the blog (2805) and sponsors
 2026-11-14 he asked for no run of breaking versions after the MVP: an
 audit of every open ticket put the types that can grow (2082–2086), pad
 events with their pad (2412), outside crates' types (2087), the
-contract's version (2088), the assets' lifetimes (2906, 2919) and the breaks
+contract's version (2088), the assets' lifetimes (2906, 2919, 2262) and the breaks
 no attribute softens (2347, 2348, 2405, 2409, 2133, 2136, 2239, 3041,
 3044) in the phase, before the release ([`decisions.md`](decisions.md)).
 These tickets, in order:
@@ -165,7 +165,8 @@ These tickets, in order:
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
-| 2919 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers |
+| 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0126) |
+| 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0126's one break, before the release |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |
 | 2405 | Mouse and touch for menus and grid maps |
@@ -378,7 +379,7 @@ is done.
 | 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
 | 2906 (done) | Research: asset memory, what stays resident (`docs/research/2906-asset-memory.md`) |
-| 2919 | Research: asset memory, part two: the ADR and the build tickets |
+| 2919 (done) | Research: asset memory, part two: the ADR and the build tickets (ADR-0126) |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
 | 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
@@ -733,6 +734,24 @@ The tickets, in order:
 dearer as code piles up. The game's own Playdate port is still its
 ticket 1025, parked until after launch.
 
+### Asset memory: a pack read file by file, and the web's first frame
+
+[ADR-0126](adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+(2919, from 2906's numbers): a Playdate pack over about 6 MB doesn't fit
+its heap read whole, against a 40 MB budget, and a web pack over about
+12 MB can't arrive before the first frame, against 25 MB. Visions of
+Shuyi's public assets (0.6 MB packed) fit every budget in every way, so
+these come after the game's work, for a game that needs them. 2262, the
+one break, is in the MVP above. In order:
+
+| Ticket | What |
+| ------ | ---- |
+| 2263 | The pack read file by file: its index alone, a check per file, folders laid in the order the bake names, a layer over a source (after 2262) |
+| 3315 | The Playdate reads its pack file by file through the SDK's seek and read (after 2263) |
+| 3316 | A load in steps counts its units and waits for the platform; the card shows the count |
+| 3317 | `shuyi-app` makes a picture's texture when it is first drawn |
+| 3318 | The web page fetches the `.wasm` beside the pack and streams the pack in, keeping no copy in JS (after 2263, 3316 and 3317) |
+
 ### Follow-ups the backlog audit wrote
 
 On 2026-10-23 Nick asked for the backlog to be checked for work left
@@ -848,7 +867,8 @@ unparked:
   3107, then the examples 3108 and 3109.
 - **The GBA and the DS:** 3017 and 3018 first, then 3019, 3020 and
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
-  3025, 3026). DS 3D (3025) also needs 3103 and 3107.
+  3025, 3026, and 2264, the pack's paths for the DS's heap). DS 3D
+  (3025) also needs 3103 and 3107.
 
 On 2026-11-08 Nick put the export targets in tiers
 ([`decisions.md`](decisions.md)): tier 1 is Windows, Linux, macOS and

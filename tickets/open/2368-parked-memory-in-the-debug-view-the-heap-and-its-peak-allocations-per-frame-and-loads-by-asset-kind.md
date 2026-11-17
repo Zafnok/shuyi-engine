@@ -104,8 +104,8 @@ a developer where memory goes while the game runs:
   through the SDK's `realloc` (3064 counts it, by 3010's clause), and
   its bench build that logs peak heap on the device.
 - 2906 (done) measured what stays resident
-  (`docs/research/2906-asset-memory.md`); 2919's ADR may decide an
-  asset store.
+  (`docs/research/2906-asset-memory.md`); 2919 (done) decided, in
+  ADR-0126 §1, that the engine keeps no asset store.
 
 So CI and the device bench builds measure peak heap, and agents read
 the heap through the trace. Nothing shows the heap, the allocations per
@@ -244,10 +244,10 @@ None.
   snapshots show them to agents; a line here is a follow-up if a
   developer asks;
 - resident bytes per asset. A game keeps what it loads in its own data,
-  so nothing knows which asset is still in memory. That needs an asset
-  store owned by the engine, if 2919's ADR decides one; the store's
-  build ticket then shows them in the `memory` channel (2919's clause
-  says so);
+  so nothing knows which asset is still in memory. ADR-0126 §1 (2919,
+  done) keeps no asset store, and its trigger for one (a value two parts
+  of a game share, which neither can drop) isn't crossed; a store's
+  ticket would show them here;
 - a budget line in `shuyi-app`. Its target's facts at run time (3053,
   done) carry no budgets, and a 64-bit desktop heap is only a proxy for
   a Playdate's; `shuyi bench` (3008) gates the proxies. A follow-up if a

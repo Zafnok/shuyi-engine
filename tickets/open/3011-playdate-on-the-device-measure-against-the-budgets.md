@@ -55,7 +55,10 @@ check on the numbers.
   (`main!(start, report = RunReport::new().phases(true))`, from 3090:
   it gives the times of `App::frame` and of the draw and flush, and the
   stack mark), adding only per-frame times and the peak heap over the
-  SDK's console log.
+  SDK's console log. **From 2919 (done):** the peak heap is logged twice,
+  the load's (up to the game's first frame) and the play's (after it): on
+  first read a load's peak sets the whole run's (ADR-0126 §2, 2906's
+  0.6 MB for a 40 MB pack), so the two are told apart.
 
 - **Collecting the log** over USB, with the SDK's tools (the Simulator's
   device console, or `pdutil`; record which one works on Windows).
@@ -69,7 +72,9 @@ check on the numbers.
 - **The report** in `docs/targets/playdate.md`, per scenario:
   - frame time p50, p99 and the worst frame;
   - dropped frames (frames over 33.3 ms);
-  - peak heap;
+  - peak heap, during the load and in play;
+  - the pack's size, and whether it was read whole (`pack()`) or file by
+    file (3315's `pack_layer`), against the 10 MB heap;
   - the stack's high-water mark (3028's `stack_high_water()`), which
     also shows that the load ran on the heap stack (the device check
     3028's acceptance criteria leave here);
@@ -101,7 +106,10 @@ check on the numbers.
   3090, split out of this ticket by the game/engine boundary audit of
   2026-11-03 so `game#1170` needn't wait for a device;
 - the game's own content (a game ticket runs the game's scenarios once
-  its port starts, game 1025).
+  its port starts, game 1025);
+- reading the pack file by file (3315). **Either order with 3315:** if
+  3315 is done, the bench build reads its pack with `pack_layer` and the
+  report says so; if not, it reads it whole, and the report says that.
 
 ## Implementation steps
 
