@@ -401,7 +401,7 @@ MVP, blocked by 2348), and say so in the completion notes.
 ## Acceptance criteria
 
 - [x] The ADR is in `docs/adr/` and its README, and ADR-0020 says it
-      is amended (ADR-0125).
+      is amended (ADR-0126).
 - [x] In `en`, `{n, plural, one {# key} other {# keys}}` gives "1 key"
       and "2 keys". In `ru`, a message with `one`, `few`, `many` and
       `other` picks `one` for 1 and 21, `few` for 2 and 22, and `many`
@@ -494,8 +494,8 @@ load checks split off (below).
   license. The web build now lists `notices::engine_files(Build::Web,
   …)` too (it listed none before, as no file was for the web and
   within a crate).
-- **Docs:** ADR-0125 (the next free number: 0124 was taken by an open
-  PR), ADR-0020's status, `docs/formats.md`'s paragraph on messages, and
+- **Docs:** ADR-0126 (the next free number: 0124 and 0125 were taken by
+  PRs merged meanwhile), ADR-0020's status, `docs/formats.md`'s paragraph on messages, and
   the book's chapter 3 (*Assets and formats*), a passage on messages.
 
 Deviations:

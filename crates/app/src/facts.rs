@@ -134,6 +134,8 @@ mod tests {
         glyphs: BTreeMap::new(),
         wide: BTreeMap::new(),
         wide_sets: BTreeMap::new(),
+        bold: std::collections::BTreeMap::new(),
+        bold_ink: None,
         ink: None,
     };
     static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());

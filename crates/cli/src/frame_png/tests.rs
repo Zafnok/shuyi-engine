@@ -27,6 +27,8 @@ fn tiny_atlas() -> (FontAtlasDef, Vec<u8>) {
         glyphs: BTreeMap::from([(' ', 0), ('A', 1), (FALLBACK_GLYPH, 2)]),
         wide: BTreeMap::new(),
         wide_sets: BTreeMap::new(),
+        bold: BTreeMap::new(),
+        bold_ink: None,
         ink: None,
     };
     let mut rgba = vec![0; 24 * 16 * 4];

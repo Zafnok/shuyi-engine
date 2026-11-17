@@ -202,6 +202,13 @@ What each one reads:
   printable ASCII glyph whose leftmost and rightmost inked columns
   differ (`'W': (0, 6)`). `font-atlas` measures it; a key cap places its
   name by it, and an atlas without it counts the whole cell as ink.
+  **Bold face** (ticket 3216): `bold`, left out when empty, gives a
+  narrow glyph the cell of its bold shape, and `bold_ink` that face's
+  ink. `font-atlas --bold <bold.bdf>` makes them from a bold font of the
+  same cell size (Terminus Bold beside Terminus), after the wide sets.
+  A key cap's name is drawn from it, once, and placed by its ink; a
+  glyph without a bold shape is drawn twice, 1 px apart
+  (`FontAtlasDef::bold_strikes`, which every renderer uses).
   **What the cells draw:** text left to right, one character to a cell
   and two to a wide one (`font::CellWidths` says which, in the language
   the text is in, and `lang::text_width` counts with it). A cell holds one character: no
@@ -271,7 +278,7 @@ What each one reads:
   `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
   they fail no gate.
 - **A text that chooses its words** is a message, a subset of ICU
-  MessageFormat 1 ([ADR-0125](adr/0125-messages-choose-their-words.md),
+  MessageFormat 1 ([ADR-0126](adr/0126-messages-choose-their-words.md),
   `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
   other {# keys}}` and `{n, selectordinal, one {#st} two {#nd} few {#rd}
   other {#th}}` by CLDR's categories (and `=0 {…}`), `#` the number, and

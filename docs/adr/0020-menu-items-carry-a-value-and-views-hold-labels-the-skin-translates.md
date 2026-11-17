@@ -1,6 +1,6 @@
 # ADR-0020: Menu items carry a value, and views hold labels the skin translates
 
-- **Status:** Accepted; amended by ADR-0125 (a label's values are typed)
+- **Status:** Accepted; amended by ADR-0126 (a label's values are typed)
 - **Date:** 2026-10-19
 - **Related tickets:** 2308 (game#1162)
 
