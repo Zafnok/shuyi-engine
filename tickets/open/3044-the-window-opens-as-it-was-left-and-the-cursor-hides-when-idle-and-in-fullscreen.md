@@ -1,17 +1,17 @@
 ---
 id: "3044"
-title: "The window opens as it was left: its size and mode kept per computer, a start size in whole multiples of the console, and the cursor hidden when idle and in fullscreen"
+title: "The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples of the console"
 type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:
 ---
 
-# 3044 — The window opens as it was left, and the cursor hides when idle and in fullscreen
+# 3044 — The window opens as it was left
 
 ## Context
 
@@ -39,10 +39,11 @@ Shuyi today (read 2026-10-20):
 
 - `crates/app/src/lib.rs`: `Window { title, width, height, icon }`.
   `window_conf` opens it at that size, resizable, `high_dpi`, and
-  windowed. The templates (`templates/blank` and `templates/grid`,
-  `crates/game/src/main.rs`) and hello-grid
-  (`examples/hello-grid/src/main.rs`) work the size out by hand:
-  `48 * 8 * 2 + 16`, the console at 2× plus a margin.
+  windowed. `run_game`'s `basic_window` and hello-grid
+  (`examples/hello-grid/src/main.rs`, `src/bin/preview.rs`) work the
+  size out by hand: `48 * 8 * 2 + 16`, the console at 2× plus a margin.
+  (Re-read 2026-11-16: the one template, `templates/shuyi-default`, runs
+  through `run_game` and has no `Window`.)
 - `crates/app/src/backend.rs`: `Macroquad::fullscreen` starts `false`,
   and `present` calls `set_fullscreen` whenever a frame's `fullscreen`
   differs. The loading card's and the errors' frames come from
@@ -124,12 +125,12 @@ None.
     `Window::with_icon` (`const`, taking `Option<Icon>`, the field's own
     type), as ADR-0039 asks. This ticket adds only `Window::console`,
     built on `Window::new`, and keeps `with_icon`;
-  - the grid template and hello-grid use it, and `shuyi_app::run_game`
-    (2511) builds its window with it (its `basic_window`, in
-    `crates/app/src/lib.rs`), since the blank template has no `WINDOW`:
-    `Window::console("…", CONSOLE, 2, 16)`, which is today's 784 × 784
-    (`game::CONSOLE` in the grid template, `hello_grid::CONSOLE` in
-    hello-grid, the `BasicGame`'s console in `run_game`).
+  - hello-grid (its game and its dialogue preview) uses it, and
+    `shuyi_app::run_game` (2511) builds its window with it (its
+    `basic_window`, in `crates/app/src/lib.rs`), since the template has
+    no `WINDOW`: `Window::console("…", CONSOLE, 2, 16)`, which is today's
+    784 × 784 (`hello_grid::CONSOLE` in hello-grid, the `BasicGame`'s
+    console in `run_game`).
 - **A record per computer**, owned by the backend, never by the game or
   a profile (`crates/app/src/window.rs`, new):
   - the storage key `window` (`WINDOW_KEY`), beside the computer's
@@ -154,21 +155,19 @@ None.
   a game of its own shape (hello-grid, the game) calls
   `shuyi_app::run_app(config, start)` from a plain `main`, and
   `run_app` opens the window with `window_conf(&config.window)` before
-  `run` starts. So below, `run_app` calls `window_conf(&config.window,
-  config.storage_name)`, `run_game` and `run_dialogue_preview` go
-  through `run_app`, hello-grid and the game change nothing for it, and
-  the change to `window_conf` is no break. Where the text says
-  `macroquad::main` calls `window_conf` before the game's `main`, read
-  `run_app` calls it before `run`; the private `static` still carries
-  what it decided.
+  `run` starts. So below, `run_app` finds the game's storage folder
+  (`StorageAt::find`, which 3310's `DesktopFolder` may move) and calls
+  `window_conf(&config.window, &storage_at)`, then hands both what it
+  decided and the `StorageAt` to `run`. `run_game` and
+  `run_dialogue_preview` go through `run_app`, hello-grid and the game
+  change nothing for it, and the change to `window_conf` is no break.
+  `open_window` (the render card's) reads no record.
 - **Opening as it was left:**
-  - `window_conf(window: &Window, storage_name: &str) -> Conf` reads the
-    record on native. The grid template and hello-grid call
-    `window_conf(&WINDOW, STORAGE_NAME)`; `run_game` calls
-    `window_conf(&window, storage)` with its `BasicGame`'s storage name.
-    The work is a pure `conf_from(window: &Window, record: Option<&str>)
-    -> (Conf, Option<String>)` (the warning), so tests never touch the
-    real data folder;
+  - `window_conf(window: &Window, storage_at: &StorageAt) -> (Conf,
+    Opened)` reads the record on native, from the folder the game's
+    storage is in. The work is a pure `conf_from(window: &Window,
+    record: Option<&str>) -> (Conf, Option<String>)` (the warning), so
+    tests never touch the real data folder;
   - with a record, the window opens at its size, clamped to `MIN_WINDOW`
     and 16384 a side, and in its mode. Without one, it opens at
     `Window`'s size, windowed, as today;
@@ -178,13 +177,11 @@ None.
     screen saver stays off. On macOS and Linux nothing more is called:
     macOS's window delegate sets its flag itself, and a second call
     there would leave fullscreen;
-  - `macroquad::main` calls `window_conf` before the game's `main` runs,
-    so `window_conf` keeps what it decided (the mode it opened in, and
-    the warning if any) in a private `static`
-    (`std::sync::Mutex<Option<Opened>>`). `run` takes it first thing,
-    logs the warning, and starts `Macroquad` in that mode. A game that
-    builds its own `Conf` leaves it `None`: windowed, as today. On the
-    web it is always `None`.
+  - `window_conf` returns what it decided (`Opened`: the mode it opened
+    in, the record it read and the warning if any), and `run_app` hands
+    it to `run`, which logs the warning and starts `Macroquad` in that
+    mode. No `static` is needed since 2087: `run_app` holds both ends.
+    On the web, and in a capture run, it opens windowed with no record.
 - **No windowed flash:** `Macroquad::fullscreen` starts at the mode the
   window opened in (from `run`, above). `present` applies
   `frame.fullscreen` from `Show::Game` frames only, through a pure
@@ -204,61 +201,45 @@ None.
     the size the fullscreen picture had (`Platform::display`'s size
     while fullscreen);
   - on Linux and macOS leaving fullscreen stays as miniquad does it.
-- **The cursor:** a pure `IdleCursor` in `window.rs`, on native and the
-  web:
-  - moving the mouse or pressing a mouse button shows the cursor
-    (`mouse_position()` changed since the last frame, or
-    `is_mouse_button_pressed` for any button);
-  - it hides after 2 s with neither (`CURSOR_IDLE`, *tunable*);
-  - it hides at once when the window enters fullscreen, and on the
-    first frame of a fullscreen start;
-  - `keep_shown: bool` keeps it shown.
-    **Either order with 1121 (parked):** if 1121 is done, `shuyi-app`
-    sets it while the top screen declares an action bound to a mouse
-    button, with a test; if not, it is `false` everywhere here, and 1121
-    sets it (its scope says so);
-  - `show_mouse` is called only when the answer changes;
-  - reading the mouse here is not input: nothing reaches `poll_input` or
-    the game, and no action is read (`AGENTS.md` rule 8).
+- **The cursor** (a pure `IdleCursor`: hidden after 2 s still and at
+  once in fullscreen, shown on a move, a button or focus lost): moved
+  to 3314 by the *Size* clause below, with its clauses for 1121, 3106,
+  3062 and 3042.
 - **The clock stays in the backend:** `run` (`crates/app/src/lib.rs`)
   hands its `now` (`Millis`) to a new `Macroquad::after_frame(now)` after
-  `App::frame`, which updates the cursor and the record. The pure parts
+  `App::frame`, which updates the record. The pure parts
   take `Millis` and are tested with made-up times.
 - **Docs:**
-  - `docs/platform-backends.md`: a section "The window and the cursor
-    (desktop)" with the record, its key (a game must not use `window` for
-    its own data), the open and leave rules and the cursor rule, so the
-    winit backend (3034) does the same. The storage section names the
-    key;
+  - `docs/platform-backends.md`: a section "The window (desktop)" with
+    the record, its key (a game must not use `window` for its own data)
+    and the open and leave rules, so the winit backend (3034) does the
+    same (3314 adds the cursor rule). The storage section names the key;
   - `Frame::fullscreen` and `Frame::new` say only a game frame's
     `fullscreen` is applied;
   - `crates/app/src/lib.rs`'s module docs: the example uses
-    `Window::console` and `window_conf(&WINDOW, STORAGE_NAME)`.
+    `Window::console`.
 - **Dependencies:** `serde` and `ron` become normal dependencies of
   `shuyi-app` (`workspace = true`; `ron` with its `std` feature). Both
   are already in the tree through `shuyi-ui`, under MIT OR Apache-2.0, so
   `deny.toml` doesn't change and `cargo deny` sees no new crate.
-- **For the game:** `window_conf` takes the storage name, a one-line
-  change in its `main.rs`. The game builds `Window` with
-  `Window::new`, which compiles unchanged, and it may move to
-  `Window::console`. The game's PR that moves the pin follows this one,
-  and the PR description says so. The PR carries any `Breaking:` line
-  2010's job asks for.
+- **For the game:** nothing to change: `window_conf` is private since
+  2087. The game builds `Window` with `Window::new`, which compiles
+  unchanged, and it may move to `Window::console`. Its window opens as
+  the player left it from the pin bump on.
 - **Either order:**
   - **from 2321 (`Window::vsync`, done):** `Window::new` sets `vsync`
     to its default (`true`), so `Window::console` gets it by building
     on `Window::new`; `conf_from` sets `platform.swap_interval` to
     `Some(i32::from(window.vsync))`, as `window_conf` does now;
-  - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
-    `window_conf`, and `run_game`'s window function (`basic_window`)
-    uses `Window::console` and the new `window_conf` as above;
+  - 2511 (`run_game`) is done: the template has no `WINDOW`, and
+    `run_game`'s window function (`basic_window`) uses `Window::console`;
   - **from 3048 (done):** hello-grid's `main.rs` reads who the game is
     from `hello_grid::app_info::APP`: `Window::new(APP.name, …)` and
     `AppConfig::new(WINDOW, APP.storage, …)`. The template has no
     `WINDOW` (its window is `run_game`'s, titled with `game.name()`).
     This ticket writes hello-grid's as
-    `Window::console(APP.name, CONSOLE, 2, 16)` and calls
-    `window_conf(&WINDOW, APP.storage)`. From 3072 (done): `APP`
+    `Window::console(TITLE, CONSOLE, 2, 16)` (its binaries title it with
+    `TITLE`). From 3072 (done): `APP`
     carries the window's icon (`AppInfo::window_icon`, `None` for
     hello-grid, which has no icon) and `run_game` sets it; hello-grid's
     `WINDOW` keeps `.with_icon(APP.window_icon)`;
@@ -274,27 +255,11 @@ None.
     scope says so);
   - the capture mode (2018, done): `window_conf` reads no record when
     `SHUYI_CAPTURE` (`shuyi_app::capture::PLAN_VAR`) is set, with the
-    `capture` feature, and a capture run writes none and leaves the
-    cursor alone;
-  - **From 3042 (done):** `IdleCursor` shows the cursor on
-    `FocusLost`, so it is never hidden over another program;
-  - with 3106 (3D cameras, parked): a locked pointer is never shown.
-    If 3106 is done, `IdleCursor` takes a `locked: bool`, set while
-    3106's pointer lock holds, that hides the cursor and wins over
-    mouse motion and `keep_shown`, with a unit test; if not, 3106 adds
-    it (its scope says so);
+    `capture` feature, and a capture run writes none;
   - with 2333 (scale modes): both touch `backend.rs`; whichever is
     second rebases;
-  - with 3062 (the Fullscreen setting follows the system's own
-    control): if 3062 is done, `Macroquad`'s flag is its
-    `FullscreenWatch`. Start it with `FullscreenWatch::new` and the
-    mode in `Opened`. Every `set_fullscreen` call, the first-frame one
-    on Windows too, goes with an `ask` of the same mode; `present`
-    asks for what `wanted_fullscreen` gives; the record and
-    `IdleCursor` read `mode()`. So a mode changed with macOS's own
-    control is recorded, and hides or shows the cursor, like any other
-    switch. If not, nothing to do here (3062 does it, its clause says
-    so).
+  - 3062 (the Fullscreen setting follows the system's own control) is
+    not done: nothing to do here (3062 does it, its clause says so);
 - **Size:** if the PR passes about 600 changed lines, the cursor
   (`IdleCursor`, its wiring and its docs) goes to a follow-up ticket
   (the `write-ticket` skill, After MVP, blocked by this one), and the
@@ -315,12 +280,10 @@ None.
   off screen (3034);
 - leaving fullscreen on Linux (miniquad's X11 TODO; 3034);
 - exclusive fullscreen and display modes (3034);
-- custom cursor images and confining the cursor (the winit backend,
-  3034, whose scope lists them); pointer lock (3106, parked, for 3D
-  cameras), apart from its clause under *Either order*;
-- pointer input for menus and grid maps (2405) and for games (1121).
-  2405 needs nothing from here: moving the mouse or clicking shows the
-  cursor;
+- the cursor: 3314 (split off by the *Size* clause); custom cursor
+  images and confining it (the winit backend, 3034); pointer lock
+  (3106, parked);
+- pointer input for menus and grid maps (2405) and for games (1121);
 - a game's default for the Fullscreen setting (a `GameSettings` constant
   like 2321's `DEFAULT_FRAME_CAP`): a follow-up if a game asks;
 - the Steam Deck's display (3012), apart from its clause under *Either
@@ -339,22 +302,19 @@ None.
    `src/conf.rs`, `src/native/windows.rs` and `src/native/macos.rs`.
 2. Write `crates/app/src/window.rs`: the record (`WINDOW_KEY`,
    `WINDOW_VERSION`, `MIN_WINDOW`, `SAVE_AFTER`), `conf_from`, the
-   memory that decides when to write, the place on leaving fullscreen,
-   `wanted_fullscreen` and `IdleCursor`, all pure, with their tests.
-3. Add `Window::console`, change `window_conf`, and add the `Opened`
-   static it fills.
+   memory that decides when to write, the place on leaving fullscreen
+   and `wanted_fullscreen`, all pure, with their tests.
+3. Add `Window::console`, and change `window_conf` to return `Opened`.
 4. Wire `Macroquad` and `run`: `run` takes `Opened` and logs its
    warning; the starting mode; game frames only for `fullscreen`; the
    first-frame `set_fullscreen(true)` (Windows only); leaving fullscreen
    on Windows; `after_frame`; and the write at quit in `run`.
-5. Move the grid template, hello-grid and `run_game` from
-   `Window::new` to `Window::console` and the new
-   `window_conf`. `cargo fmt --all` doesn't reach `templates/`, so format
-   their files by hand (CI's template job checks them).
+5. Move hello-grid and `run_game` from `Window::new` to
+   `Window::console`.
 6. Write the docs. Run hello-grid on Windows and check: resize, quit,
    reopen at that size; go fullscreen, quit, reopen fullscreen with no
-   windowed card; leave fullscreen and get the window back where it was;
-   leave the mouse still for 2 s in a window and in fullscreen. Say in
+   windowed card; leave fullscreen and get the window back where it
+   was. Say in
    the PR what was seen, and that macOS and Linux were not checked by
    hand. Run the gates, the web build included.
 
@@ -375,31 +335,24 @@ None.
       record if it differs from the last written, and nothing if it
       doesn't.
 - [ ] A record written and read back gives the same size and mode.
-- [ ] `IdleCursor`, with made-up times: shown at a windowed start, still
-      shown at 1999 ms, hidden at 2000 ms; shown again on a move or a
-      button; hidden at once on entering fullscreen and at a fullscreen
-      start; never hidden with `keep_shown`; a change is reported only
-      when the answer changes.
 - [ ] The place on leaving fullscreen: the place read on entering comes
       back, a negative x included (`(-1200i32) as u32` from miniquad
       comes back as -1200); with no place, a 1000 × 700 window in a
       1920 × 1080 picture is centred at (460, 190).
 - [ ] `wanted_fullscreen` gives `None` for a card and for errors, and
       `Some` of the frame's `fullscreen` for a game frame.
-- [ ] `Opened`: what `window_conf` stores from `conf_from`'s answer
-      (the mode and the warning) is taken once; with nothing stored,
-      the take gives `None`. One test touches the `static`.
-- [ ] The grid template, hello-grid and `run_game` open with
-      `Window::console`, and
-      CI's template job passes.
+- [ ] `Opened`: what `window_conf` builds from `conf_from`'s answer
+      keeps the mode, the windowed size, the good record and the
+      warning, and an unkept one (the web, a capture run) never writes.
+- [ ] hello-grid and `run_game` open with `Window::console`.
 - [ ] The PR says what was seen on Windows for the checks in step 6.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit (`crates/app/src/window.rs`): every case in the criteria above.
-- Unit (`crates/app/src/lib.rs`): `Window::console`; `Opened` filled
-  and taken once; the existing `an_icon_that_does_not_decode_is_none`
+- Unit (`crates/app/src/lib.rs`): `Window::console`; the existing
+  `an_icon_that_does_not_decode_is_none`
   moves to `conf_from` with no record and still passes.
 - Manual: the checks on Windows in step 6, said in the PR.
 

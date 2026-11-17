@@ -6,7 +6,9 @@
 //! folder or the browser's `localStorage`, the files the game hands the
 //! player and asks for ([`player_files`]), the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
-//! memory tags and its snapshots, in debug builds. It keeps the frame cap
+//! memory tags and its snapshots, in debug builds. On a desktop it keeps
+//! the window's record as the window changes ([`window`](crate::window)).
+//! It keeps the frame cap
 //! the last frame asked for, for [`run_app`](crate::run_app)'s pacer, and the input
 //! of the web's skipped frames for the next that runs.
 //!
@@ -44,8 +46,8 @@ use crate::player_files::{self, PlayerFiles};
 use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
+use crate::window::{Opened, Place, Record, WindowMemory, wanted_fullscreen};
 use crate::{AppConfig, keys, storage};
-#[cfg(not(target_arch = "wasm32"))]
 use shuyi_platform::Millis;
 
 /// The sound device: the shared player on this build's backend. Before the game
@@ -67,8 +69,17 @@ pub(crate) struct Macroquad {
     /// The loading card's picture and its path, once decoded (`None` if it
     /// doesn't decode).
     card_picture: Option<(String, Option<Texture2D>)>,
-    /// Whether the window fills the screen: it starts windowed.
+    /// Whether the window fills the screen: it starts as it opened.
     fullscreen: bool,
+    /// Whether the next frame tells miniquad again that the window fills
+    /// the screen: on Windows, after a fullscreen start, so miniquad's own
+    /// flag agrees and keeps the screen saver off.
+    refresh_fullscreen: bool,
+    /// The window's last windowed size, and when its record is written
+    /// (never, where it isn't kept).
+    memory: WindowMemory,
+    /// Where the window was before it filled the screen (Windows).
+    place: Place,
     /// The controllers, once the game's stick thresholds are known.
     pads: Option<PadInput>,
     /// Whether the window has focus, from miniquad's events.
@@ -103,11 +114,13 @@ impl Macroquad {
     /// describe. Closing the window asks the game first
     /// ([`SystemEvent::QuitRequested`]) on native, where a window can be
     /// closed.
-    /// The storage is the one at `storage_at`.
+    /// The storage is the one at `storage_at`, and the window opened as
+    /// `opened` says.
     pub(crate) fn new(
         config: &mut AppConfig,
         facts: PlatformFacts,
         storage_at: storage::StorageAt,
+        opened: &Opened,
     ) -> Self {
         if !cfg!(target_arch = "wasm32") {
             prevent_quit();
@@ -121,7 +134,10 @@ impl Macroquad {
             renderer: None,
             broken: None,
             card_picture: None,
-            fullscreen: false,
+            fullscreen: opened.fullscreen,
+            refresh_fullscreen: cfg!(windows) && opened.fullscreen,
+            memory: WindowMemory::new(opened),
+            place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
             sound: Sound::new(audio::Chosen::default()),
@@ -189,6 +205,55 @@ impl Macroquad {
         self.sound.set_player(player);
         self.pads = Some(PadInput::new(data.keymap_def().stick));
         self.started = true;
+    }
+
+    /// After `run_app`'s frame at `now`: the window is seen, and its record
+    /// written once it has settled.
+    pub(crate) fn after_frame(&mut self, now: Millis) {
+        if std::mem::take(&mut self.refresh_fullscreen) {
+            set_fullscreen(true);
+        }
+        if let Some(record) = self.memory.see(now, window_size(), self.fullscreen) {
+            self.write_window(record);
+        }
+    }
+
+    /// As the game quits: the window's record, if it changed since it was
+    /// last written.
+    pub(crate) fn save_window(&mut self) {
+        if let Some(record) = self.memory.at_quit() {
+            self.write_window(record);
+        }
+    }
+
+    /// Writes the window's `record` beside the game's storage.
+    fn write_window(&self, record: Record) {
+        if let Err(e) = self.storage_at.write_window(&record.to_text()) {
+            warn!("window: {}", e);
+        }
+    }
+
+    /// Makes the window fill the screen or not. On Windows, where miniquad
+    /// leaves fullscreen at the screen's size at (0, 0), the window goes
+    /// back to its windowed size and place.
+    fn switch_fullscreen(&mut self, fullscreen: bool) {
+        #[cfg(windows)]
+        let picture = window_size();
+        #[cfg(windows)]
+        if fullscreen {
+            self.place.entering(miniquad::window::get_window_position());
+        }
+        self.fullscreen = fullscreen;
+        set_fullscreen(fullscreen);
+        #[cfg(windows)]
+        if !fullscreen {
+            let (width, height) = self.memory.windowed();
+            let (x, y) = self.place.leaving((width, height), picture);
+            miniquad::window::set_window_size(width.cast_unsigned(), height.cast_unsigned());
+            miniquad::window::set_window_position(x, y);
+        }
+        #[cfg(not(windows))]
+        let _ = &mut self.place;
     }
 
     /// Makes the textures of the pictures that changed again, from `look`.
@@ -351,6 +416,18 @@ fn pixels(x: f32) -> u32 {
     pixels
 }
 
+/// The window's size in the units its record keeps, those miniquad opens a
+/// window at: points on macOS, device pixels elsewhere.
+fn window_size() -> (i32, i32) {
+    let (width, height) = if cfg!(target_os = "macos") {
+        (screen_width(), screen_height())
+    } else {
+        miniquad::window::screen_size()
+    };
+    let side = |x: f32| i32::try_from(pixels(x)).unwrap_or(i32::MAX);
+    (side(width), side(height))
+}
+
 impl Platform for Macroquad {
     fn display(&self) -> DisplayInfo {
         let dpi = screen_dpi_scale();
@@ -359,9 +436,10 @@ impl Platform for Macroquad {
 
     fn present(&mut self, frame: &Frame<'_>) {
         self.frame_cap = (frame.frame_cap, frame.frame_cap_serial);
-        if frame.fullscreen != self.fullscreen {
-            self.fullscreen = frame.fullscreen;
-            set_fullscreen(self.fullscreen);
+        if let Some(wanted) = wanted_fullscreen(frame)
+            && wanted != self.fullscreen
+        {
+            self.switch_fullscreen(wanted);
         }
         match frame.show {
             Show::Card(card) => self.draw_card(card),

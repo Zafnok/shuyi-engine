@@ -74,12 +74,12 @@ None.
     way its ADR says a game asks for the grab (macroquad's
     `set_cursor_grab` until the winit backend replaces macroquad); if
     not, use macroquad's cursor grab, and 3034 plans keeping it.
-  - **Either order with 3044** (the idle cursor): a locked pointer is
-    never shown. If 3044 is done, give its `IdleCursor`
+  - **Either order with 3314** (the idle cursor): a locked pointer is
+    never shown. If 3314 is done, give its `IdleCursor`
     (`crates/app/src/window.rs`) a `locked: bool`, set while the lock
     holds, that hides the cursor and wins over mouse motion and 1121's
     `keep_shown`, with a unit test; if not, hide the cursor while the
-    lock holds (`show_mouse(false)`), and 3044 adds `locked` (its scope
+    lock holds (`show_mouse(false)`), and 3314 adds `locked` (its scope
     says so).
   - sensitivity and invert-y are the player's settings in their keymap
     file, never constants in a game.

@@ -97,6 +97,37 @@ impl StorageAt {
         }
     }
 
+    /// The window's record (the `window` module's key, beside the
+    /// computer's `profiles`): its text, none where there is none or no
+    /// folder, or why it can't be read. None on the web, which keeps no
+    /// window.
+    pub(crate) fn read_window(&self) -> Result<Option<String>, String> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(dir) = &self.dir {
+            let key = crate::window::WINDOW_KEY;
+            return FileStorage::in_folder(dir.clone())
+                .read(key)
+                // check-text: not player text (a warning for the log)
+                .map_err(|e| format!("the window's record can't be read: {e}"));
+        }
+        Ok(None)
+    }
+
+    /// Writes the window's record `text`, or says why it can't. Nothing on
+    /// the web, or where there is no folder.
+    pub(crate) fn write_window(&self, text: &str) -> Result<(), String> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(dir) = &self.dir {
+            let key = crate::window::WINDOW_KEY;
+            return FileStorage::in_folder(dir.clone())
+                .write(key, text)
+                // check-text: not player text (a warning for the log)
+                .map_err(|e| format!("the window's record can't be written: {e}"));
+        }
+        let _ = text;
+        Ok(())
+    }
+
     /// Where it is, to tell the player ([`place`]).
     pub(crate) fn place(&self) -> StoragePlace {
         #[cfg(not(target_arch = "wasm32"))]
@@ -234,5 +265,27 @@ mod tests {
             place("some-game"),
             folder_place(data_dir("some-game").as_deref())
         );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn the_windows_record_is_a_key_beside_the_games_and_reads_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let at = StorageAt {
+            name: "some-game",
+            dir: Some(dir.path().to_owned()),
+        };
+        assert_eq!(at.read_window(), Ok(None));
+        let record = crate::window::Record::new((1000, 700), true);
+        at.write_window(&record.to_text()).unwrap();
+        let text = at.read_window().unwrap().unwrap();
+        assert_eq!(crate::window::Record::read(&text), Ok(record));
+        assert_eq!(at.open().list().unwrap(), ["window"]);
+        let nowhere = StorageAt {
+            name: "some-game",
+            dir: None,
+        };
+        assert_eq!(nowhere.read_window(), Ok(None));
+        assert_eq!(nowhere.write_window("text"), Ok(()));
     }
 }
