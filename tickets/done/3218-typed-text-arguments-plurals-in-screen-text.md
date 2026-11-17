@@ -341,6 +341,8 @@ after: |
 find: ["as &dyn Display"]
 ```
 
+Breaking: hello-grid: tests/golden/hello-grid.ron "asset en.ron" and "fingerprint files": the example's English has the plural `profile.message.too_many`; only the example's table moves (and `tests/sessions/stage.session.ron`'s content stamp with it), and a game changes nothing.
+
 Behaviour: shuyi-ui: a screen's text that parses as a message is written by ICU's rules: two apostrophes show one, a quoted brace shows a brace, and `{n, number}` shows the digits; a text that doesn't parse is filled as before.
 
 Behaviour: shuyi-ui: `{device}` and `{target}` in screen text are filled by the device pressed last (`keyboard`, `xbox`, `playdate`…) and the target's id unless the caller passes values of those names; they were left as written.
