@@ -73,12 +73,13 @@ None.
     `FocusError` becomes an error naming the file and the node path;
   - **text is always a text key**, translated when painted (ADR-0020);
     a literal string is an error; a key whose text takes values (`{n}`,
-    or 2348's plural and select) gets them from the game's code
+    or a message's plural and select, ADR-0127) gets them from the game's code
     (`DocScreen::set_arg(id, name, value)`, on the node with that
     `id`), never from the file. The values are typed as `Label`'s args
-    are: 2348's `Arg` (`impl ToArg`) if 2348 is done, else text (an
-    `impl Display`, as `Label::with_arg` takes it today), and 2348
-    retypes `set_arg` when it lands (its clause says so);
+    are. **Either order with 3218:** if 3218 is done, its `Arg` (`impl
+    ToArg`); if not, text (an `impl Display`, as `Label::with_arg` takes
+    it today), and 3218 retypes `set_arg` when it lands (its clause says
+    so);
     - a `.ui.ron` may name the engine's own keys. **Either order with
       2351:** if 2351 is done, they resolve through the engine's
       English (`Lang::with_engine_english`), so the moved engine screen
@@ -126,7 +127,7 @@ None.
    `check-keys` test over a `.ui.ron` in a game's asset folder.
 4. Move that screen over.
 5. Do the either-order parts whose tickets are done: 2334's `font`,
-   2338's `frame`, 2347's styled text, 2348's typed values for
+   2338's `frame`, 2347's styled text, 3218's typed values for
    `set_arg`, 2351's test over the engine's `.ui.ron` keys, and the
    moved screen's folder in the root `shuyi.ron` (2006, done).
 6. Run the gates.

@@ -69,7 +69,7 @@ after every other ticket of this phase but the blog (2805) and sponsors
 audit of every open ticket put the types that can grow (2082–2086), pad
 events with their pad (2412), outside crates' types (2087), the
 contract's version (2088), the assets' lifetimes (2906, 2919, 2262) and the breaks
-no attribute softens (2347, 2348, 2405, 2409, 2133, 2136, 2239, 3041,
+no attribute softens (2347, 2348, 3218, 2405, 2409, 2133, 2136, 2239, 3041,
 3044) in the phase, before the release ([`decisions.md`](decisions.md)).
 These tickets, in order:
 
@@ -169,7 +169,8 @@ These tickets, in order:
 | 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0127) |
 | 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0127's one break, before the release |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
-| 2348 | Messages that choose their words, and typed label arguments |
+| 2348 (done) | Messages that choose their words: ICU's plural, ordinal and select, and CLDR's plural rules |
+| 3218 | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
 | 2405 | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
@@ -340,7 +341,9 @@ is done.
 | 2350 | The font atlas keeps the characters the text uses, and `shuyi check` fails on text it can't draw |
 | 2351 | Built-in English for the engine's own text keys, which a game's text overrides |
 | 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
-| 2348 | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 2348 (done) | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 3218 | Typed text arguments: screen text and tips choose their words |
+| 2261 | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
 | 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |

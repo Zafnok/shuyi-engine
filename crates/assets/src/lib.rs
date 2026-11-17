@@ -60,6 +60,7 @@ pub mod import_settings;
 pub mod keymap;
 pub mod lang;
 pub mod lighting;
+pub mod message;
 pub mod names;
 pub mod onebit;
 pub mod pack;

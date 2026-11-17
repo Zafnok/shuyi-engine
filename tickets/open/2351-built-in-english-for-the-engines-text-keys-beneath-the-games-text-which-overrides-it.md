@@ -166,9 +166,9 @@ None.
     whatever language the game declares (`Lang::source_lang`), and the
     lookups that fall back to the source (`Lang::text` after the packs
     along `Lang::chain`) fall back to it last.
-  - **2348** (plurals in text): if it is done,
-    `profile.message.too_many` uses its plural form; if not, 2348
-    changes it with the rest.
+  - **3218** (typed arguments, and the engine's English made a plural
+    message): if it is done, `profile.message.too_many` uses its plural
+    form; if not, 3218 changes it with the rest.
   - **3047** (parked, crash reports; adds four engine keys:
     `options.row.crash_reports`, `options.value.ask`,
     `options.value.always`, `options.value.never`): if it is done, they
@@ -250,7 +250,7 @@ None.
    `crates/assets/src/lang/formats.rs`, `crates/cli/src/lang_status.rs`,
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
    `crates/ui/src/toy.rs` (lines 339 to 478). Check which of
-   2226, 2330, 2333, 2340, 2346, 2348, 2349, 2353, 2511,
+   2226, 2330, 2333, 2340, 2346, 2349, 2353, 2511, 3218,
    and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
    `Lang::with_engine_english`, `Lang::is_engine`,
