@@ -62,11 +62,11 @@ None. Running it on a real Deck is 3013.
     Fullscreen row), `Keyboard::Absent` (the first-key screen never
     opens), and Quit by the game (`quit: Game`);
   - fullscreen at the display's size from the start;
-    - either order with 3044 (the window record): the Deck's fullscreen
+    - from 3044 (done, the window record): the Deck's fullscreen
       applies when there is no record, and a record's mode never takes
-      the Deck out of fullscreen, since the Deck is not windowed. If
-      3044 is done, set it through its `conf_from`; if not, 3044 keeps
-      the Deck's fullscreen;
+      the Deck out of fullscreen, since the Deck is not windowed: set it
+      through `window::conf_from` (`crates/app/src/window.rs`), and keep
+      `present`'s full screen whatever the frame says;
   - the frame is placed by the game's scale mode through
     `shuyi_ui::frame::console::place` (2333): `integer` by default, the
     largest whole number that fits, with letterboxing in the skin's

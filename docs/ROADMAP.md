@@ -164,6 +164,7 @@ These tickets, in order:
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
+| 2094 | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
 | 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0126) |
 | 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0126's one break, before the release |
@@ -175,7 +176,7 @@ These tickets, in order:
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
 | 2239 | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
-| 3044 | The window opens as it was left |
+| 3044 (done) | The window opens as it was left |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -347,7 +348,7 @@ is done.
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
 | 2785 | Key names stand out in the template's and Hello, Grid's hints, with a key colour in their palettes (after 2347) |
 | 3215 (done) | Key caps: a key's name in text drawn as a key, boxed, bold and with room around it |
-| 3216 | A bold face in the font atlas, which key caps draw from (after 3215) |
+| 3216 (done) | A bold face in the font atlas, which key caps draw from (after 3215) |
 | 3217 | The cursor's four direction keys as one picture, with key caps on (after 3215) |
 | 2354 | A grid cursor: `ListCursor` in two dimensions |
 | 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
@@ -419,7 +420,8 @@ is done.
 | 3042 | Focus on the desktop and the web: held input let go on focus loss, and pads ignored without focus |
 | 3093 | A background policy the game sets: paused or muted while its window has no focus (after 3042) |
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
-| 3044 | The window opens as it was left, and the cursor hides when idle and in fullscreen |
+| 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
+| 3314 | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
@@ -810,7 +812,9 @@ going public, with the one book (2823–2828).
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
 | 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |
-| 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2916 (done) | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free (unparked 2026-11-03) |
+| 2837 | The code pad: one Codespace of the book's project, every step built and prebuilt once, opened from each step's page (ADR-0126) |
+| 2838 | Exercises that edit Rust: a command that runs one exercise's check on the step as the reader left it, and the first such exercise (after 2837) |
 
 ### Public demo defenses
 

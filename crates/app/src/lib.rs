@@ -46,9 +46,12 @@
 //! # use shuyi_ui::toy::{self, Home as Title, Toy as MyGame};
 //! use shuyi_app::{AppConfig, Window};
 //! use shuyi_platform::{Card, Look, Start};
+//! use shuyi_ui::frame::ConsoleSpec;
 //! use shuyi_ui::{Game, GameHooks};
 //!
-//! const WINDOW: Window = Window::new("My Game", 640, 480);
+//! const CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
+//! /// The console at twice its size, and 16 pixels of margin.
+//! const WINDOW: Window = Window::console("My Game", CONSOLE, 2, 16);
 //!
 //! fn config() -> AppConfig {
 //!     AppConfig::new(WINDOW, "my-game", my_file, "font/atlas.png", my_sounds())
@@ -75,7 +78,7 @@
 //! #     FONT.get_or_init(|| FontAtlasDef {
 //! #         cell_w: 8, cell_h: 16, columns: 16,
 //! #         glyphs: Default::default(), wide: Default::default(), wide_sets: Default::default(),
-//! #         ink: None,
+//! #         bold: Default::default(), ink: None, bold_ink: None,
 //! #     })
 //! # }
 //! # fn my_ctx() -> Ctx<MyGame> { toy::ctx() }
@@ -203,6 +206,7 @@ mod sessions;
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 mod watch;
+mod window;
 
 use core::fmt::Debug;
 use std::path::Path;
@@ -215,6 +219,7 @@ use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Platform, Start, Text
 use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::dialogue::preview::PreviewGame;
+use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::log::{LogLevel, LogLine};
 
 /// The sound backend this build plays on, for the engine's own sound gates
@@ -347,6 +352,27 @@ impl Window {
     pub const fn with_vsync(self, vsync: bool) -> Self {
         Self { vsync, ..self }
     }
+
+    /// A window titled `title` that opens at the console `spec` drawn
+    /// `scale` times, with `margin` pixels more each way, with no icon and
+    /// vsync on: `Window::console("My Game", CONSOLE, 2, 16)`. The margin
+    /// keeps the console at `scale` when the framebuffer comes out a pixel
+    /// smaller than asked. Usable in a `const` item.
+    #[must_use]
+    pub const fn console(title: &'static str, spec: ConsoleSpec, scale: u16, margin: u16) -> Self {
+        /// `cells` cells of `cell` pixels, `scale` times, and the margin.
+        const fn side(cells: u16, cell: u16, scale: u16, margin: u16) -> i32 {
+            (cells as i32)
+                .saturating_mul(cell as i32)
+                .saturating_mul(scale as i32)
+                .saturating_add(margin as i32)
+        }
+        Self::new(
+            title,
+            side(spec.cols, spec.cell_w, scale, margin),
+            side(spec.rows, spec.cell_h, scale, margin),
+        )
+    }
 }
 
 /// A window icon: PNG files of 16, 32 and 64 pixels square. It is
@@ -442,24 +468,33 @@ impl AppConfig {
     }
 }
 
-/// The window settings macroquad opens `window` with.
-fn window_conf(window: &Window) -> Conf {
-    Conf {
-        window_title: window.title.to_owned(),
-        window_width: window.width,
-        window_height: window.height,
-        window_resizable: true,
-        // Full-resolution framebuffer on scaled displays, so the console's
-        // integer scale is in real pixels (see render.rs).
-        high_dpi: true,
-        icon: window.icon.and_then(|icon| window_icon(&icon)),
-        platform: miniquad::conf::Platform {
-            // A hint the driver may ignore; miniquad reads it only here.
-            swap_interval: Some(i32::from(window.vsync)),
-            ..Default::default()
-        },
-        ..Default::default()
+/// The window settings macroquad opens `window` with, as the player left
+/// it on this computer: the record beside the storage at `storage_at`
+/// (the `window` module), on native outside a capture run. And what it
+/// opened as, for the backend.
+fn window_conf(window: &Window, storage_at: &storage::StorageAt) -> (Conf, window::Opened) {
+    if !keeps_window_record() {
+        let (conf, _) = window::conf_from(window, None);
+        let opened = window::Opened::unkept(&conf);
+        return (conf, opened);
     }
+    let (text, unread) = match storage_at.read_window() {
+        Ok(text) => (text, None),
+        Err(e) => (None, Some(e)),
+    };
+    let (conf, warning) = window::conf_from(window, text.as_deref());
+    let opened = window::Opened::new(&conf, text.as_deref(), warning.or(unread));
+    (conf, opened)
+}
+
+/// Whether this run keeps the window's record: on native, unless it is a
+/// capture run.
+fn keeps_window_record() -> bool {
+    #[cfg(feature = "capture")]
+    if capture::requested().is_some() {
+        return false;
+    }
+    !cfg!(target_arch = "wasm32")
 }
 
 /// The window's icon, or `None` if a picture doesn't decode or isn't the
@@ -477,12 +512,13 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 }
 
 /// Opens `window` and runs `main` in it until `main` ends: for the engine's
-/// own programs that draw without a game (the render card's capture). Not
-/// part of the API: semver doesn't cover it (ADR-0119).
+/// own programs that draw without a game (the render card's capture). It
+/// opens at `window`'s size, windowed, and keeps no record of it. Not part
+/// of the API: semver doesn't cover it (ADR-0119).
 #[doc(hidden)]
 pub fn open_window(window: &Window, main: impl Future<Output = ()> + 'static) {
     // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
-    macroquad::Window::from_config(window_conf(window), main);
+    macroquad::Window::from_config(window::conf_from(window, None).0, main);
 }
 
 /// Runs a game of its own shape until it quits, from a plain `fn main`: it
@@ -509,18 +545,34 @@ pub fn open_window(window: &Window, main: impl Future<Output = ()> + 'static) {
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
 ///
+/// On a desktop the window opens as the player left it on this computer:
+/// at its last windowed size and in its mode, kept beside the game's
+/// storage (`docs/platform-backends.md`, *The window and the cursor*). The
+/// first time, it opens at [`AppConfig::window`]'s size, windowed.
+///
 /// A panic writes a crash report as [`AppConfig::crash`] says ([`crash`]).
 /// On native a panic of the game's frame then stops the sound, adds the
 /// game's record of its play to the report and ends the process with exit
 /// code 101; the game's system hook isn't called, so a broken game never
 /// saves.
 pub fn run_app<G: GameData>(config: AppConfig, start: Start<G>) {
-    let window = config.window;
-    open_window(&window, run(config, start));
+    let storage_at = storage::StorageAt::find(config.storage_name, config.desktop_folder);
+    let (conf, opened) = window_conf(&config.window, &storage_at);
+    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
+    macroquad::Window::from_config(conf, run(config, start, storage_at, opened));
 }
 
-/// The loop of [`run_app`], in the window it opened.
-async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+/// The loop of [`run_app`], in the window it opened as `opened` says, with
+/// the game's storage at `storage_at`.
+async fn run<G: GameData>(
+    mut config: AppConfig,
+    start: Start<G>,
+    storage_at: storage::StorageAt,
+    opened: window::Opened,
+) {
+    if let Some(warning) = &opened.warning {
+        warn!("window: {}", warning);
+    }
     // Read once, so every program keeps the recipient's field an overlay
     // writes, whether or not the game reads it.
     let _ = recipient();
@@ -548,12 +600,11 @@ async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
-    let storage_at = storage::StorageAt::find(config.storage_name, config.desktop_folder);
     let crash_storage = storage_at.clone();
     crash::install(config.crash, move || crash_storage.open());
     let panic_at = crash::panic_at_frame(config.crash);
     let records_play = config.crash.records_play();
-    let mut platform = Macroquad::new(&mut config, facts, storage_at.clone());
+    let mut platform = Macroquad::new(&mut config, facts, storage_at.clone(), &opened);
     let mut app = App::new(start);
     let kept = sessions::Kept::start(&mut app, &storage_at, recorded_manifest);
     let mut pacer = Pacer::new(config.window.vsync);
@@ -581,6 +632,7 @@ async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             link.before_frame(&app, platform.link_input());
         }
         let outcome = frame_or_crash(&mut app, &mut platform, now, panic_at, records_play);
+        platform.after_frame(now);
         if app.take_session_save() {
             kept.save(&app);
         }
@@ -614,6 +666,7 @@ async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         // closed, so it keeps showing the last frame.
         if outcome == FrameOutcome::Quit && !cfg!(target_arch = "wasm32") {
             kept.save_at_quit(&app);
+            platform.save_window();
             break;
         }
         pace(&mut pacer, &platform, &mut app);
@@ -840,20 +893,14 @@ fn preview_folder(_: &Path) -> Result<Layer, String> {
 }
 
 /// The margin around a short-path game's console, in pixels.
-const BASIC_MARGIN: i32 = 16;
+const BASIC_MARGIN: u16 = 16;
 
 /// The window of a game on the short path: its console at twice its size
 /// and a small margin, titled with its name (`AppInfo::name`), with its
 /// icon (`AppInfo::window_icon`).
 fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
-    let console = game.console_spec();
-    let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
-    Window::new(
-        game.name(),
-        side(console.cols, console.cell_w),
-        side(console.rows, console.cell_h),
-    )
-    .with_icon(game.app().window_icon)
+    Window::console(game.name(), game.console_spec(), 2, BASIC_MARGIN)
+        .with_icon(game.app().window_icon)
 }
 
 /// A file of the bundle [`run_game`] installed.
@@ -961,7 +1008,7 @@ mod tests {
         let broken = Icon::new(b"not a png", b"not a png", b"not a png");
         assert!(window_icon(&broken).is_none());
         let window = Window::new("A game", 640, 480).with_icon(Some(broken));
-        let conf = window_conf(&window);
+        let (conf, _) = window::conf_from(&window, None);
         assert!(conf.icon.is_none());
         assert_eq!(
             (
@@ -984,12 +1031,39 @@ mod tests {
     fn a_window_asks_for_vsync_unless_told_not_to() {
         let window = Window::new("A game", 640, 480);
         assert!(window.vsync);
-        assert_eq!(window_conf(&window).platform.swap_interval, Some(1));
+        assert_eq!(
+            window::conf_from(&window, None).0.platform.swap_interval,
+            Some(1)
+        );
         let off = NO_VSYNC;
         assert!(!off.vsync);
-        assert_eq!(window_conf(&off).platform.swap_interval, Some(0));
+        assert_eq!(
+            window::conf_from(&off, None).0.platform.swap_interval,
+            Some(0)
+        );
         assert!(off.with_vsync(true).vsync);
         assert!(basic_window(&basic()).vsync);
+    }
+
+    /// A window of a console, built in a `const` item.
+    const CONSOLE: Window = Window::console("x", ConsoleSpec::text(48, 24), 2, 16);
+
+    #[test]
+    fn a_console_window_is_its_console_scaled_and_a_margin() {
+        assert_eq!(
+            (CONSOLE.title, CONSOLE.width, CONSOLE.height),
+            ("x", 784, 784)
+        );
+        assert!(CONSOLE.icon.is_none() && CONSOLE.vsync);
+        let spec = ConsoleSpec {
+            cell_w: 10,
+            ..ConsoleSpec::text(20, 10)
+        };
+        let window = Window::console("x", spec, 3, 0);
+        assert_eq!((window.width, window.height), (600, 480));
+        let huge = ConsoleSpec::text(u16::MAX, u16::MAX);
+        let window = Window::console("x", huge, u16::MAX, u16::MAX);
+        assert_eq!((window.width, window.height), (i32::MAX, i32::MAX));
     }
 
     #[test]

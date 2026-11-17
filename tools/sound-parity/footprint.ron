@@ -302,11 +302,6 @@ sound-probe = []
 "##,
             with: "",
         ),
-        Replace(
-            file: "crates/app/Cargo.toml",
-            find: "# The sound probe's plan.\nserde.workspace = true\nron.workspace = true\n",
-            with: "",
-        ),
         Cut(
             file: "crates/app/Cargo.toml",
             from: "[[example]]\n# The parity gates' probe",

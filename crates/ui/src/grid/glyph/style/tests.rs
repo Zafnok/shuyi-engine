@@ -289,6 +289,8 @@ fn a_flash_on_a_one_bit_frame_flips_its_tile() {
         glyphs: [('?', 0)].into(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        bold_ink: None,
         ink: None,
     };
     let mut bits = vec![0u8; 16];
