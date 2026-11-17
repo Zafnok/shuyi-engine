@@ -1,7 +1,7 @@
 # ADR-0024: The platform boundary as built: App runs a frame, time in milliseconds, storage handed over, and the Harness on the headless backend
 
 - **Status:** Accepted; amended by ADR-0056 (§2: `Audio::suspend` and
-  `resume`; §5: `Suspend` holds the audio); §6 extended by ADR-0127
+  `resume`; §5: `Suspend` holds the audio); §6 extended by ADR-0128
   (the bundle's reads hand out `Cow` bytes; the card shows the load's
   count; textures made when first drawn)
 - **Date:** 2026-10-20

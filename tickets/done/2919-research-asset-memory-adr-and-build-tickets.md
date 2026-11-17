@@ -232,7 +232,7 @@ ticket that only adds stays after the MVP.
 
 **What was done:**
 
-- [ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+- [ADR-0128](../../docs/adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
   decides the seven points from 2906's numbers, and extends ADR-0008 §6,
   ADR-0023 §3, ADR-0024 §6 and ADR-0097 (their status lines and rows in
   `docs/adr/README.md` say so):
@@ -268,11 +268,11 @@ ticket that only adds stays after the MVP.
   with 2262), 3011 (peak heap during the load and in play, and how the
   pack was read; either order with 3315), 2005 (2262 in `blocked_by`, its
   clause rewritten), 3009 (its clause rewritten; either order with 3316),
-  3052 (either order with 3318), 1124 (its Out line names ADR-0127), and
+  3052 (either order with 3318), 1124 (its Out line names ADR-0128), and
   the parked 2368, 2909 and 3024 (their clauses only).
 - **Done tickets:** 2207 and 2220 need no build: their layers stay
   leaked, bounded by what is handed in and what a developer saves
-  (ADR-0127 §1). 3008 needs no bench scenario over the load: its peak is
+  (ADR-0128 §1). 3008 needs no bench scenario over the load: its peak is
   the program's high-water from its start, so it already holds the
   load's (`crates/cli/src/bench.rs`, `measured_start`). 3010's whole read
   becomes 3315. 2909 isn't done, so there was no video note to weigh.

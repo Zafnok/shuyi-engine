@@ -186,7 +186,7 @@ None.
 - drawing the map: 2360;
 - streaming a world's levels around the camera (loading and freeing a
   `MapWorld`'s levels as it moves): every level loads whole here.
-  ADR-0127 §3 notes it (each level a folder, loaded and dropped as a
+  ADR-0128 §3 notes it (each level a folder, loaded and dropped as a
   group); a ticket, parked like this one, when a game asks;
 - typed map objects, the game's types written to the editors, and
   checking objects against them (2232);

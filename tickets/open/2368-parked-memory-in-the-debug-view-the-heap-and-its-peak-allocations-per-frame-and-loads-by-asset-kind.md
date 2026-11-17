@@ -105,7 +105,7 @@ a developer where memory goes while the game runs:
   its bench build that logs peak heap on the device.
 - 2906 (done) measured what stays resident
   (`docs/research/2906-asset-memory.md`); 2919 (done) decided, in
-  ADR-0127 §1, that the engine keeps no asset store.
+  ADR-0128 §1, that the engine keeps no asset store.
 
 So CI and the device bench builds measure peak heap, and agents read
 the heap through the trace. Nothing shows the heap, the allocations per
@@ -244,7 +244,7 @@ None.
   snapshots show them to agents; a line here is a follow-up if a
   developer asks;
 - resident bytes per asset. A game keeps what it loads in its own data,
-  so nothing knows which asset is still in memory. ADR-0127 §1 (2919,
+  so nothing knows which asset is still in memory. ADR-0128 §1 (2919,
   done) keeps no asset store, and its trigger for one (a value two parts
   of a game share, which neither can drop) isn't crossed; a store's
   ticket would show them here;

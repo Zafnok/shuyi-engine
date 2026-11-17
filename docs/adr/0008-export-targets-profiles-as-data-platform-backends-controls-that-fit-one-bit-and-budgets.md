@@ -6,7 +6,7 @@
   "over the MIT `playdate` crates" changed by ADR-0062 (a C shim); §6
   extended and narrowed by ADR-0081 (the bench measures per frame under
   Callgrind, and gates only the profiles the game's `targets` lists, not
-  "every `supported` profile"); §6 extended by ADR-0127 (`startup_ms`
+  "every `supported` profile"); §6 extended by ADR-0128 (`startup_ms`
   is to the game's first frame; what must not stay in memory on
   `playdate` and `web`)
 - **Date:** 2026-10-15

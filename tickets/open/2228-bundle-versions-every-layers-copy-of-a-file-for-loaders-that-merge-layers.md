@@ -139,7 +139,7 @@ None.
   through the shared helper as `bytes` does, found or not, so a `Hot<T>`
   follows a merged value, and a unit test checks that a path read through
   `versions` is in the recording.
-- **From 2919 (done):** ADR-0127 §1 keeps a layer's name `&'static str`
+- **From 2919 (done):** ADR-0128 §1 keeps a layer's name `&'static str`
   and hands out a read's bytes as `Cow<'static, [u8]>`. So `LayerCopy`'s
   `layer` stays `&'static str`. **Either order with 2262:** if 2262 is
   done, `bytes` is a `Cow<'static, [u8]>` and `text()` gives

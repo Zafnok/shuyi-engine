@@ -75,8 +75,8 @@ open ticket that day added a fourth group:
     ADR-0119 doesn't list;
   - 2088 decides what the contract's version promises;
   - 2262 hands out the bundle's reads as `Cow` bytes, not `&'static`
-    (ADR-0127 §1, decided by 2919 from what 2906 measured), before the
-    bundle's API is published. The other builds of ADR-0127 only add,
+    (ADR-0128 §1, decided by 2919 from what 2906 measured), before the
+    bundle's API is published. The other builds of ADR-0128 only add,
     so they come after the release.
 - **Breaks no attribute softens,** done before the release: 2347
   (styled text) and 3218 (typed label arguments), 2405 and 2409 (mouse
@@ -319,7 +319,7 @@ The sign-off also:
 - **2544 is done** (`bots` folded into `playtest`, which removed the
   `bots` operation and `GameTools::bots`): its break landed before the
   first release, so nothing is left here.
-- **From 2919 (done):** ADR-0127's one break, 2262 (the bundle's and
+- **From 2919 (done):** ADR-0128's one break, 2262 (the bundle's and
   `DecodeCx`'s reads, and `AppConfig::files`), is in `blocked_by` and
   carries its own `Breaking:` lines. Paths stay `&'static`; a change to
   them for the parked DS (2264) would come after this release, a 0.x

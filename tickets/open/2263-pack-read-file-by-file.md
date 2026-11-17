@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0128](../../docs/adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §2 and §3, from ticket 2906's numbers
 ([`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md)):
 
@@ -100,9 +100,9 @@ None.
 
 - the Playdate's source (3315), the web's (3318), and the load that waits
   for a folder (3316);
-- reading a desktop pack file by file (ADR-0127 §7: not crossed);
+- reading a desktop pack file by file (ADR-0128 §7: not crossed);
 - paths read from the index on demand, not leaked (2264, parked);
-- a group type or a list of paths in data (ADR-0127 §3: a group is a
+- a group type or a list of paths in data (ADR-0128 §3: a group is a
   folder);
 - encrypted or signed packs (ADR-0023, *Alternatives*).
 

@@ -3,7 +3,7 @@
 Research for ticket 2906, measured **2026-11-16**. The decisions it
 leads to (lifetimes, reading on demand, asset groups, loading in steps
 with progress, freeing textures, the budgets, and the triggers for each
-build) are [ADR-0127](../adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+build) are [ADR-0128](../adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 (ticket 2919). This page holds the numbers.
 
 **Today every file of a pack stays in memory for the whole run, and
