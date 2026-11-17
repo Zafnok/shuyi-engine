@@ -76,13 +76,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A first `apt-get` failure is retried, and the script passes when a
+- [x] A first `apt-get` failure is retried, and the script passes when a
       later try does.
-- [ ] Three failures exit non-zero with the command to run again.
-- [ ] A new Codespace of the branch has Rust, the web target and the MCP
-      server registered when it opens.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Three failures exit non-zero with the command to run again.
+- [x] ~~A new Codespace of the branch has Rust, the web target and the MCP
+      server registered when it opens.~~ (not done: making a Codespace
+      bills Nick's account and the session's permissions refused it; the
+      dev container's own image stood in, below)
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -90,5 +92,42 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `scripts/setup-linux.sh`, its `apt` branch: `add` runs `apt-get
+  update` and `apt-get install` up to three times, 10 s apart, and says
+  on stderr which try failed (`setup-linux: apt-get failed on try 1 of
+  3; trying again in 10 s`). After the third it says to run `bash
+  scripts/setup-linux.sh` again by hand and exits 1. `dnf` and `pacman`
+  keep one try. The template's copy
+  (`templates/shuyi-default/base/scripts/setup-linux.sh`) changes the
+  same: `shuyi new`'s test keeps it byte for byte the engine's.
+  `crates/cli/src/template/plans.golden` is blessed for it: only the
+  three `scripts/setup-linux.sh` hashes moved.
+- `.devcontainer/devcontainer.json` is unchanged: the retry is inside the
+  script, so the `postCreateCommand` needs no split.
+- Step 2, in Docker on `ubuntu:24.04` (as root), with the mirror in
+  `ubuntu.sources` set to `mirror.invalid` and a fixture that puts it
+  back once stderr says try 1 failed: try 1 failed ("Unable to locate
+  package"), try 2 installed the eight packages, curl and rustup, the
+  pinned Rust and the web target; exit 0. Run again in the same
+  container: "everything was there already", exit 0. In a fresh
+  container with the mirror broken throughout: three tries, the
+  command to run again, exit 1 after 43 s.
+- Step 3, deviation: no Codespace was made (making one bills Nick's
+  account, and this session's permissions refused `gh codespace
+  create`). In its place, the dev container's own image
+  (`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`) as its `vscode`
+  user, through `sudo`, with the same broken-then-fixed mirror: try 1
+  failed, try 2 passed, then `. "$HOME/.cargo/env" && cargo --version`
+  answered `cargo 1.99.1` with `wasm32-unknown-unknown` installed. The
+  MCP server's registration was left out there (it builds the whole
+  CLI, and the change doesn't touch it). The race itself (something
+  else in apt's `partial/` folder at first boot) can't be made on
+  purpose, so a Codespace would show only that the happy path still
+  runs.
+- The book's quick start (*Try it with nothing installed*) now says
+  what to do when the Codespace's terminal doesn't find `cargo`: run
+  `bash scripts/setup-linux.sh` there and open a new terminal.
+- 2837's note on the race now says the script retries.
+- Behaviour: templates: a new game's `scripts/setup-linux.sh` tries
+  `apt-get` three times, 10 s apart, before it fails.
+- No break: no Rust changed.
