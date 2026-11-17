@@ -1,0 +1,29 @@
+// The worked example of shuyi-worktrees, a script of contract commands run
+// on a game made with `shuyi new <dir> --template blank`, put in git: the
+// trim finds one worktree, the one it runs in, and trims nothing; the seed
+// refuses a folder that is no worktree, and the worktree it runs in. A real
+// seed needs a second worktree with a build, which this doesn't make.
+Example(
+    template: "blank",
+    steps: [
+        // The game in git of its own: both commands act on its worktrees.
+        Git(args: ["init", "-q"]),
+        // One worktree, this one, left alone: nothing to trim.
+        Shuyi(args: ["trim-targets", "--dry-run"], expect: [
+            Is("/result/idle", "0"),
+            Is("/result/kept", "1"),
+            Is("/result/freed", "0"),
+            Is("/result/dry_run", "true"),
+            Holds("/result/worktrees/0", "this worktree, left alone"),
+        ]),
+        // A folder of the game, not a worktree: refused, nothing written.
+        Shuyi(args: ["seed-target", "--into", "crates"], ok: false, expect: [
+            Is("/code", "SH0007"),
+        ]),
+        // The worktree it runs in: a seed runs in the warm checkout, into
+        // the new one.
+        Shuyi(args: ["seed-target", "--into", "."], ok: false, expect: [
+            Is("/code", "SH0008"),
+        ]),
+    ],
+)

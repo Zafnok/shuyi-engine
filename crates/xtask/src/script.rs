@@ -10,7 +10,8 @@
 //! - [`Step::Shuyi`]: `cargo shuyi <args> --json`, its answer read as JSON:
 //!   its `ok` must be the step's, and each [`Expect`] must hold of it;
 //! - [`Step::Cargo`]: `cargo <args>`, which must succeed or fail as `ok`
-//!   says;
+//!   says, and [`Step::Git`], `git <args>` the same way (a game put in
+//!   git, ticket 3403);
 //! - [`Step::Write`] and [`Step::Edit`]: a file of the game written from the
 //!   script's own files, or one piece of its text replaced;
 //! - [`Step::Holds`]: a file of the game holds a piece of text;
@@ -64,6 +65,16 @@ pub enum Step {
     /// with another code when not.
     Cargo {
         /// The arguments after `cargo`.
+        args: Vec<String>,
+        /// Whether it must succeed.
+        #[serde(default = "yes")]
+        ok: bool,
+    },
+    /// `git <args>` in the game's folder: it must exit 0 when `ok`, and
+    /// with another code when not (`git init`, for a command that acts on
+    /// the game's repository).
+    Git {
+        /// The arguments after `git`.
         args: Vec<String>,
         /// Whether it must succeed.
         #[serde(default = "yes")]
@@ -303,9 +314,14 @@ pub fn what(step: &Step) -> String {
             let fails = if *ok { "" } else { " (fails)" };
             format!("cargo shuyi {} --json{fails}", shown(args))
         }
-        Step::Cargo { args, ok } => {
+        Step::Cargo { args, ok } | Step::Git { args, ok } => {
             let fails = if *ok { "" } else { " (fails)" };
-            format!("cargo {}{fails}", shown(args))
+            let program = if matches!(step, Step::Git { .. }) {
+                "git"
+            } else {
+                "cargo"
+            };
+            format!("{program} {}{fails}", shown(args))
         }
         Step::Write { to, from } => format!("write {to} from {from}"),
         Step::Edit { file, .. } => format!("edit {file}"),
@@ -372,8 +388,13 @@ fn run_step(step: &Step, files: &Path, game: &Path, runner: &dyn Runner) -> Resu
             }
             Ok(())
         }
-        Step::Cargo { args, ok } => {
-            let ran = runner.run(game, "cargo", args)?;
+        Step::Cargo { args, ok } | Step::Git { args, ok } => {
+            let program = if matches!(step, Step::Git { .. }) {
+                "git"
+            } else {
+                "cargo"
+            };
+            let ran = runner.run(game, program, args)?;
             if (ran.code == Some(0)) == *ok {
                 Ok(())
             } else {
