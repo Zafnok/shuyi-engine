@@ -270,6 +270,11 @@ None.
     In a Codespace the page is reached through GitHub's forwarded address
     (`https://<codespace>-<port>.app.github.dev`), not `127.0.0.1`: check
     that the Host and Origin rules let it in;
+  - **Either order with 2840:** if 2840 is done, the book's Codespace
+    serves the whole book with `cargo xtask book-pad`, which rebuilds each
+    step when its files change, and `serve.sh` is gone: make none of the
+    *From 2837* change above; if not, make it, and 2840 replaces
+    `serve.sh` afterwards (its own clause says so);
   - **from 3004 (done):** this ticket gives its `web` exporter
     (`crates/cli/src/export/web.rs`) the run step (`shuyi export web
     --run`, the `Exporter` trait's `run`, whose `RunCx` gives the

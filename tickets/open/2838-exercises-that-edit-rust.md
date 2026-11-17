@@ -55,6 +55,14 @@ What there is:
   10 s on 2 cores. A step an exercise copies or changes keeps asking for
   its crates with the engine's features.
 
+**Either order with 2841:** if 2841 is done, a `code` exercise on a page
+served from the book's Codespace (where 2841's `GET /pad/status` answers)
+shows **Check my work**, which posts to the book's server's `POST
+/pad/check/<step>/<check>` (added here, in `crates/xtask/src/book_pad.rs`,
+with 2841's `Origin` check) to run this command, and shows its `Done.` or
+`Not yet.` and text as the page's other exercises do, a compile error in
+Problems; if not, nothing to do (2841 adds it).
+
 ## Nick input
 
 None.
@@ -87,8 +95,9 @@ None.
   so nothing there changes.
 
 **Out (do not do):**
-- running a Rust exercise's check from the page (no build server,
-  ADR-0126 §3);
+- running a Rust exercise's check from the public page (no build
+  server, ADR-0126 §3); from the page the book's Codespace serves, the
+  clause with 2841 says who;
 - more than one Rust exercise; the book's later steps can take more in
   their own tickets.
 

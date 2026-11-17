@@ -1906,3 +1906,34 @@ chose **"One shared, free"**.
   region, one version kept, made when its dev container changes, not on
   every push. Nothing on his account bills for it; if it would, it isn't
   turned on, and he is asked again (2837).
+
+## 2026-11-17: the book's Codespace hosts the book
+
+Source: Nick, in a session of this repository on 2026-11-17, after 2837
+made the book's Codespace (VS Code at the book's project, a step's game
+served beside it):
+
+> "we added codespace option for changing the rust but why cant it just
+> host the book and unlock new tabs for the rust code like we have tabs
+> for the .ron files
+>
+> it opens a vscode session and we cant follow along the book now? seems
+> weird"
+
+Told that the public site can't build Rust (no build server, the decision
+above) nor reach a reader's Codespace, but that the Codespace can serve
+the book itself, its playground's tabs then editing the step's Rust and
+rebuilding it there, he said: "Write the ticket".
+
+**Rules:**
+
+- The book's Codespace serves the book, and a step's page there plays the
+  step as the reader has changed it (2840); its playground edits the
+  step's Rust in tabs as it edits the data files (2841). The reader
+  follows the book in the Codespace, not only in the editor.
+- The public site is unchanged: it edits data files only, and links the
+  Codespace for the Rust. Still no build server: the Rust is built in the
+  reader's own Codespace, on their account.
+- It stays within the one free prebuild (the decision above): if the
+  book's site and tools would push it past his included storage, he is
+  asked again.
