@@ -524,6 +524,9 @@ impl<'a> Parser<'a> {
     ) -> Result<Vec<Node<'a>>, MessageError> {
         let mut nodes = Vec::new();
         loop {
+            if self.overrun(nodes.len()) {
+                return Err(self.error(self.at, "the parser stopped moving on"));
+            }
             let Some(c) = self.peek() else {
                 if depth > 0 {
                     return Err(self.error(self.at, "expected `}` to close the branch"));
@@ -570,7 +573,7 @@ impl<'a> Parser<'a> {
     /// Quoted text, from after its opening `'` to the next lone `'` or the
     /// end; `''` in it is one apostrophe.
     fn quoted(&mut self, nodes: &mut Vec<Node<'a>>) {
-        loop {
+        while !self.overrun(nodes.len()) {
             let text = self.until(|c| c == '\'');
             if !text.is_empty() {
                 nodes.push(Node::Text(text));
@@ -584,6 +587,13 @@ impl<'a> Parser<'a> {
             nodes.push(Node::Text(self.one(self.at)));
             self.at += 1;
         }
+    }
+
+    /// Whether `made` pieces are more than the text has bytes: each piece
+    /// of a parse that moves on takes at least one, so a loop that stopped
+    /// moving ends here rather than filling the memory.
+    fn overrun(&self, made: usize) -> bool {
+        made > self.text.len()
     }
 
     /// An argument, from its `{` to its `}`.
@@ -632,6 +642,9 @@ impl<'a> Parser<'a> {
         let inner = if plural.is_some() { Some(name) } else { hash };
         let mut branches: Vec<Branch<'a>> = Vec::new();
         loop {
+            if self.overrun(branches.len()) {
+                return Err(self.error(self.at, "the parser stopped moving on"));
+            }
             self.skip_space();
             if self.eat('}') {
                 break;

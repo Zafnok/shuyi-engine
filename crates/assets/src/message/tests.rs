@@ -112,6 +112,9 @@ fn quoting_writes_braces_and_apostrophes() {
     assert_eq!(format("'{name}' is {name}"), "{name} is {name}");
     assert_eq!(format("it''s '{a}''s'"), "it's {a}'s");
     assert_eq!(format("'}' and a lone } and #"), "} and a lone } and #");
+    // As many pieces as bytes: each a letter of its own.
+    assert_eq!(format("}"), "}");
+    assert_eq!(format("}''"), "}'");
     assert_eq!(format("open '{ to the end"), "open { to the end");
     assert_eq!(with_n("{n, plural, other {'#' is #}}", "en", 5), "# is 5");
     // Outside a plural, `#` is a letter, and so is the `'` before it.
