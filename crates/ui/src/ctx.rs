@@ -31,6 +31,7 @@ use crate::debug::gizmo::DebugView;
 use crate::frame::color::{ColorSet, EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
+use crate::frame::key_cap::{KeyCapStyle, KeyCaps};
 use crate::frame_cap::{CapRequest, CapStatus, FrameCap, Pacing};
 use crate::input::bindings::{LayoutBindings, PadBindings, PlayerKeys};
 use crate::input::help_keys::HelpKeys;
@@ -39,7 +40,7 @@ use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
 use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
-use crate::platform_facts::PlatformFacts;
+use crate::platform_facts::{PlatformFacts, ScreenColor};
 use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
@@ -158,6 +159,17 @@ pub trait GameData: Debug + Sized + 'static {
         _now: &Settings<Self::Settings>,
         _before: Option<&Settings<Self::Settings>>,
     ) {
+    }
+
+    /// How a key's name in styled text is drawn (ticket 3215, ADR-0124):
+    /// as a key cap in this style, in the palette's
+    /// [`KEY`](crate::frame::color::KEY),
+    /// [`KEY_BG`](crate::frame::color::KEY_BG) and
+    /// [`KEY_EDGE`](crate::frame::color::KEY_EDGE) of whichever theme is
+    /// on, or as text with `None`. By default `None`: no game's look
+    /// changes until it says.
+    fn key_caps(&self) -> Option<KeyCapStyle> {
+        None
     }
 
     /// The cell the frame is cleared to before the screens draw: by
@@ -459,6 +471,24 @@ impl<G: GameData> Ctx<G> {
         self.lang_widths
             .get(self.effective_lang())
             .unwrap_or(&self.widths)
+    }
+
+    /// How the frame draws a key's name in styled text: as the game's key
+    /// caps ([`GameData::key_caps`]) in the palette's colours, placed by
+    /// the font's ink ([`widths`](Self::widths)); `None` where the game
+    /// has none, and on a one-bit screen ([`PlatformFacts::screen`])
+    /// unless its style is drawn there ([`KeyCapStyle::one_bit`]).
+    pub fn key_caps(&self) -> Option<KeyCaps> {
+        let style = self.game.key_caps()?;
+        if self.platform.screen == ScreenColor::OneBit && !style.one_bit {
+            return None;
+        }
+        Some(KeyCaps::new(
+            style,
+            &self.palette,
+            self.widths(),
+            self.console,
+        ))
     }
 
     /// Sets the font atlas's widths, which [`widths`](Self::widths) are

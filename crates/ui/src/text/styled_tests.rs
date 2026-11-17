@@ -172,4 +172,51 @@ proptest! {
         prop_assert_eq!(s.width(&widths), text_width(&s.plain(), &widths));
         prop_assert_eq!(s.cut(w, &widths).plain(), cut(&s.plain(), w, &widths));
     }
+
+    /// With caps on, the text is the same, and the width is the plain
+    /// text's and a cap's room a key; a cut fits.
+    #[test]
+    fn with_caps_the_width_is_the_plain_texts_and_the_keys_room(
+        s in styled(),
+        w in 0..20_usize,
+    ) {
+        let keys = s.spans().iter().filter(|span| span.role == KEY).count();
+        let plain = text_width(&s.plain(), &capped());
+        prop_assert_eq!(s.width(&capped()), plain + keys);
+        prop_assert!(s.cut(w, &capped()).width(&capped()) <= w);
+    }
+}
+
+/// Widths that draw a key as a cap a cell wider than its name.
+fn capped() -> CellWidths {
+    CellWidths::wide(['あ']).with_key_cap_cells(Some(1))
+}
+
+#[test]
+fn with_caps_a_hints_width_counts_each_keys_room() {
+    let mut hint = StyledText::new();
+    hint.push_key("F")
+        .push_plain(" select · ")
+        .push_key("Space");
+    hint.push_plain(" end turn");
+    assert_eq!(hint.plain(), "F select · Space end turn");
+    assert_eq!(hint.width(&CellWidths::NARROW), 25);
+    assert_eq!(hint.width(&capped()), 27);
+}
+
+#[test]
+fn with_caps_a_cut_keeps_a_key_whole_or_puts_a_plain_ellipsis_for_it() {
+    let mut hint = StyledText::new();
+    hint.push_plain("a ").push_key("Space").push_plain(" b");
+    // "a " 2, the cap 6, " b" 2: 10.
+    assert_eq!(hint.cut(10, &capped()), hint);
+    let mut kept = StyledText::new();
+    kept.push_plain("a ").push_key("Space").push_plain("…");
+    assert_eq!(hint.cut(9, &capped()), kept);
+    let mut dropped = StyledText::new();
+    dropped.push_plain("a …");
+    for w in 3..=8 {
+        assert_eq!(hint.cut(w, &capped()), dropped, "{w}");
+    }
+    assert!(hint.cut(0, &capped()).is_empty());
 }

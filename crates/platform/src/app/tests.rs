@@ -311,6 +311,7 @@ static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef
     glyphs: BTreeMap::new(),
     wide: BTreeMap::new(),
     wide_sets: BTreeMap::new(),
+    ink: None,
 };
 static IMAGES: shuyi_assets::image::ImageTable =
     shuyi_assets::image::ImageTable::new(BTreeMap::new());

@@ -101,7 +101,7 @@ pub use basic::BasicData;
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
 pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
 pub use hurry::HurryClock;
-pub use platform_facts::{FileDrops, FilePicker, PlatformFacts, StoragePlace};
+pub use platform_facts::{FileDrops, FilePicker, PlatformFacts, ScreenColor, StoragePlace};
 pub use screen::{FrameInput, Screen, ScreenResult, ScreenStack, Transition};
 
 /// Whether this build offers the developer's tools: debug builds, and

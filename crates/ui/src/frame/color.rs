@@ -228,6 +228,11 @@ pub const KEY: &str = "key";
 /// background.
 pub const KEY_BG: &str = "key_bg";
 
+/// The palette's name for the 1 px edge of a key cap's box (ticket 3215,
+/// [`KeyCapStyle`](crate::frame::key_cap::KeyCapStyle)). Optional:
+/// without it, the edge is the box's fill, [`KEY_BG`].
+pub const KEY_EDGE: &str = "key_edge";
+
 /// Every name a palette for the set `C` must have: the set's, in its
 /// order, then the engine colors' that it doesn't already name.
 pub fn required_names<C: ColorSet>() -> Vec<&'static str> {
