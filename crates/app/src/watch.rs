@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(poll_at(&mut poller, &disk, 0), Vec::<String>::new());
         disk.write("a.txt", 2, b"new");
         assert_eq!(poll_at(&mut poller, &disk, 1000), ["a.txt"]);
-        assert_eq!(bundle.file("a.txt"), Some("new"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("new"));
         assert_eq!(poll_at(&mut poller, &disk, 2000), Vec::<String>::new());
         // The same time with another size is a change too.
         disk.write("a.txt", 2, b"newer");
@@ -347,7 +347,7 @@ mod tests {
         // A new file is added.
         disk.write("c.txt", 2, b"c");
         assert_eq!(poll_at(&mut poller, &disk, 4000), ["c.txt"]);
-        assert_eq!(bundle.file("c.txt"), Some("c"));
+        assert_eq!(bundle.file("c.txt").as_deref(), Some("c"));
     }
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
         let mut out = Vec::new();
         off.poll(|| clock(0), &disk, &mut out);
         assert_eq!(out, ["a.txt"]);
-        assert_eq!(bundle.file("a.txt"), Some("new"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("new"));
         // Once a second, as with debug tools on.
         disk.write("a.txt", 3, b"newer");
         off.poll(|| clock(500), &disk, &mut out);
@@ -427,10 +427,10 @@ mod tests {
         disk.write("a.txt", 2, b"new");
         disk.locked.set(true);
         assert_eq!(poll_at(&mut poller, &disk, 0), Vec::<String>::new());
-        assert_eq!(bundle.file("a.txt"), Some("old"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("old"));
         disk.locked.set(false);
         assert_eq!(poll_at(&mut poller, &disk, 1000), ["a.txt"]);
-        assert_eq!(bundle.file("a.txt"), Some("new"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("new"));
     }
 
     #[test]
@@ -440,7 +440,7 @@ mod tests {
         let (mut poller, bundle) = watching(&disk);
         disk.write("a.txt", 2, b"far too long a file");
         assert_eq!(poll_at(&mut poller, &disk, 0), Vec::<String>::new());
-        assert_eq!(bundle.file("a.txt"), Some("old"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("old"));
         disk.write("a.txt", 3, b"short");
         assert_eq!(poll_at(&mut poller, &disk, 1000), ["a.txt"]);
     }
@@ -452,7 +452,7 @@ mod tests {
         let (mut poller, bundle) = watching(&disk);
         disk.files.borrow_mut().clear();
         assert_eq!(poll_at(&mut poller, &disk, 0), Vec::<String>::new());
-        assert_eq!(bundle.file("a.txt"), Some("old"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("old"));
     }
 
     #[test]
@@ -488,7 +488,10 @@ mod tests {
         let mut out = Vec::new();
         poller.poll(|| Millis(0), &RealDisk, &mut out);
         assert_eq!(out, ["a.txt"]);
-        assert_eq!(Bundle::new(vec![layer]).file("a.txt"), Some("new!"));
+        assert_eq!(
+            Bundle::new(vec![layer]).file("a.txt").as_deref(),
+            Some("new!")
+        );
     }
 
     /// `read_watched_folder` hands its folder over to a poller that is off:
@@ -508,6 +511,9 @@ mod tests {
         let mut out = Vec::new();
         off.poll(|| Millis(0), &RealDisk, &mut out);
         assert_eq!(out, ["scene.dlg"]);
-        assert_eq!(Bundle::new(vec![layer]).file("scene.dlg"), Some("saved"));
+        assert_eq!(
+            Bundle::new(vec![layer]).file("scene.dlg").as_deref(),
+            Some("saved")
+        );
     }
 }

@@ -281,7 +281,7 @@ fn painter(h: &Harness<Toy>) -> Result<Painter, String> {
     let ctx = h.ctx();
     let (atlas, png) = box_atlas()?;
     let clear = ctx.game.blank_cell(&ctx.palette).bg;
-    Painter::new(atlas, &png, &ctx.game.images, |_| None, clear)
+    Painter::new(atlas, &png, &ctx.game.images, |_| None::<&[u8]>, clear)
 }
 
 /// Whether pixel `(x, y)` of an 8 × 16 cell is on the box every letter of

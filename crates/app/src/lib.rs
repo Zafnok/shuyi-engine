@@ -68,7 +68,7 @@
 //!     });
 //!     shuyi_app::run_app(config(), start);
 //! }
-//! # fn my_file(_: &str) -> Option<&'static [u8]> { None }
+//! # fn my_file(_: &str) -> Option<Cow<'static, [u8]>> { None }
 //! # fn no_sound(_: &str) -> Bytes { None }
 //! # fn shown(name: &str) -> String { name.to_owned() }
 //! # fn not_left_out(_: &str) -> bool { false }
@@ -209,6 +209,7 @@ mod watch;
 mod window;
 
 use core::fmt::Debug;
+use std::borrow::Cow;
 use std::path::Path;
 
 use macroquad::prelude::*;
@@ -247,7 +248,7 @@ pub fn watched_layer() -> Option<shuyi_assets::bundle::Layer> {
 
 /// The web has no folders to read through.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn watched_file(_: &str) -> Option<&'static [u8]> {
+pub(crate) fn watched_file(_: &str) -> Option<Cow<'static, [u8]>> {
     None
 }
 
@@ -424,7 +425,7 @@ pub struct AppConfig {
     /// picture and a loading card's picture are read with it. Under `cargo
     /// shuyi run --watch` the folder of its files on disk lies over it
     /// ([`watched_layer`]), and a picture saved there is drawn from then on.
-    pub files: fn(&str) -> Option<&'static [u8]>,
+    pub files: fn(&str) -> Option<Cow<'static, [u8]>>,
     /// The font atlas's picture: its path for [`files`](Self::files).
     pub font_png: &'static str,
     /// The sound files the audio manifest names, and the music folder
@@ -450,7 +451,7 @@ impl AppConfig {
     pub const fn new(
         window: Window,
         storage_name: &'static str,
-        files: fn(&str) -> Option<&'static [u8]>,
+        files: fn(&str) -> Option<Cow<'static, [u8]>>,
         font_png: &'static str,
         sounds: Files<'static>,
     ) -> Self {
@@ -904,7 +905,7 @@ fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Win
 }
 
 /// A file of the bundle [`run_game`] installed.
-fn installed_file(path: &str) -> Option<&'static [u8]> {
+fn installed_file(path: &str) -> Option<Cow<'static, [u8]>> {
     shuyi_assets::bundle::installed()?.bytes(path)
 }
 
@@ -1174,7 +1175,10 @@ mod tests {
         let palette = palette_with_text("#5a9bff");
         let (game, heard) = lay_page(&template(), Ok(Some(page_file("palette.ron", &palette))));
         assert_eq!(heard.as_deref(), Some(""));
-        assert_eq!(game.bundle().file("palette.ron"), Some(palette.as_str()));
+        assert_eq!(
+            game.bundle().file("palette.ron").as_deref(),
+            Some(palette.as_str())
+        );
         assert_eq!(
             game.bundle().display_path("palette.ron"),
             "files/palette.ron"

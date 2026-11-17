@@ -75,6 +75,13 @@ None.
   - `Bundle::bytes` reads the file's stored bytes from the source,
     checks them and unpacks them, and hands them out as `Cow::Owned`
     (2262): nothing is kept;
+  - **From 2262 (done):** `shuyi-ui`'s `Images for Bundle` (the one-bit
+    frame's pictures, read where they lie) draws only a file its layer
+    lends (`Cow::Borrowed`): a file of this layer is no picture there.
+    This ticket says, in the doc of `Index::into_layer` and in
+    `docs/formats.md`, that a game over this layer keeps its one-bit
+    pictures as values of its own (ADR-0128 §3), and a test shows the
+    one-bit frame draws such a file as no picture rather than failing;
   - a file that is `NotYet` reads as missing, and a `Failed` read or a
     bad checksum as missing too, told to the `watch`er; the layer's
     `problems()` lists each failure once, for the backend to log;

@@ -18,6 +18,7 @@
 //! it writes nothing: it logs the capture's line to the browser's console,
 //! then `shuyi-capture: done`, and keeps showing the card.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
@@ -107,8 +108,11 @@ async fn draw_and_capture(
 }
 
 /// The card's picture at `path`, as a PNG file.
-fn file(path: &str) -> Option<&'static [u8]> {
-    FILES.get()?.get(path).map(Vec::as_slice)
+fn file(path: &str) -> Option<Cow<'static, [u8]>> {
+    FILES
+        .get()?
+        .get(path)
+        .map(|bytes| Cow::Borrowed(bytes.as_slice()))
 }
 
 /// `image` as a PNG file.

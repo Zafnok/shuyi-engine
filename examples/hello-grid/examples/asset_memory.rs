@@ -367,7 +367,7 @@ fn engine_load(bundle: &Bundle) -> Result<Box<dyn Any>, String> {
     let mut sounds = Vec::new();
     for path in bundle.files_under("") {
         let bytes = bundle.bytes(path).unwrap_or_default();
-        if let Some(samples) = decoded(path, bytes).map_err(|e| format!("{path}: {e}"))? {
+        if let Some(samples) = decoded(path, &bytes).map_err(|e| format!("{path}: {e}"))? {
             sounds.push(samples);
         }
     }
@@ -824,12 +824,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("asset-memory-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("art")).unwrap();
         let png = hello_grid::file("tiles.png").unwrap();
-        std::fs::write(dir.join("art/tiles.png"), png).unwrap();
+        std::fs::write(dir.join("art/tiles.png"), &png).unwrap();
         std::fs::write(dir.join("notes.txt"), "notes").unwrap();
         let bytes: &'static [u8] = folder_pack(&dir).unwrap().leak();
         std::fs::remove_dir_all(&dir).unwrap();
         let pack = Pack::open(bytes, FOLDER_STAMP).unwrap();
-        assert_eq!(pack.get("art/tiles.png"), Some(png));
+        assert_eq!(pack.get("art/tiles.png"), Some(&*png));
         assert_eq!(pack.get("notes.txt"), Some(&b"notes"[..]));
         if let Some(report) = measure_pack(bytes, FOLDER_STAMP, engine_load).unwrap() {
             assert_eq!(report.shape.classes[Class::Png.at()].files, 1);

@@ -9,6 +9,7 @@
 //! source is past the edge of one that shrank draws as a missing picture
 //! ([`src_fits`]).
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use macroquad::logging::warn;
@@ -48,7 +49,7 @@ pub(crate) struct Fresh<T> {
     /// The decoded picture.
     pub(crate) decoded: T,
     /// The file it decoded from.
-    pub(crate) bytes: &'static [u8],
+    pub(crate) bytes: Cow<'static, [u8]>,
 }
 
 /// Why pictures didn't decode, by path, until their next good save.
@@ -75,7 +76,7 @@ impl PictureErrors {
 pub(crate) fn decode_each<T>(
     wanted: &[Remake],
     font_png: &str,
-    read: impl Fn(&str) -> Option<&'static [u8]>,
+    read: impl Fn(&str) -> Option<Cow<'static, [u8]>>,
     decode: impl Fn(&[u8]) -> Result<T, String>,
     errors: &mut PictureErrors,
 ) -> Vec<Fresh<T>> {
@@ -86,7 +87,10 @@ pub(crate) fn decode_each<T>(
             Remake::Image(id) => id.path(),
         };
         let bytes = read(path).ok_or_else(|| "not among the game's files".to_owned());
-        match bytes.and_then(|bytes| Ok((bytes, decode(bytes)?))) {
+        match bytes.and_then(|bytes| {
+            let decoded = decode(&bytes)?;
+            Ok((bytes, decoded))
+        }) {
             Ok((bytes, decoded)) => {
                 errors.0.remove(path);
                 fresh.push(Fresh {
@@ -115,16 +119,19 @@ pub(crate) fn src_fits(src: PxRect, size: (u16, u16)) -> bool {
 
 /// The file at `path`: from `disk` if it has it, else from `files`.
 fn read_over(
-    disk: Option<&'static [u8]>,
-    files: fn(&str) -> Option<&'static [u8]>,
+    disk: Option<Cow<'static, [u8]>>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     path: &str,
-) -> Option<&'static [u8]> {
+) -> Option<Cow<'static, [u8]>> {
     disk.or_else(|| files(path))
 }
 
 /// The game's file at `path`: the folder `cargo shuyi run --watch` named lies
 /// over `files`, its [`AppConfig::files`](crate::AppConfig::files).
-pub(crate) fn read(files: fn(&str) -> Option<&'static [u8]>, path: &str) -> Option<&'static [u8]> {
+pub(crate) fn read(
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
+    path: &str,
+) -> Option<Cow<'static, [u8]>> {
     read_over(crate::watched_file(path), files, path)
 }
 
@@ -145,10 +152,10 @@ mod tests {
     }
 
     /// The files of a test: `good.png` and `bad.png`.
-    fn file(path: &str) -> Option<&'static [u8]> {
+    fn file(path: &str) -> Option<Cow<'static, [u8]>> {
         match path {
-            "good.png" | "font.png" => Some(b"good"),
-            "bad.png" => Some(b"bad"),
+            "good.png" | "font.png" => Some(Cow::Borrowed(b"good")),
+            "bad.png" => Some(Cow::Borrowed(b"bad")),
             _ => None,
         }
     }
@@ -208,7 +215,7 @@ mod tests {
         let made: Vec<Remake> = fresh.iter().map(|f| f.remake).collect();
         assert_eq!(made, [Remake::Image(good), Remake::Font]);
         assert_eq!(fresh[0].decoded, b'g');
-        assert_eq!(fresh[0].bytes, b"good");
+        assert_eq!(*fresh[0].bytes, *b"good");
         // Its error shows, and a good picture beside it doesn't clear it.
         let lines = |errors: &PictureErrors| errors.lines().collect::<Vec<_>>();
         assert_eq!(lines(&errors), ["bad.png: not a picture"]);
@@ -221,7 +228,7 @@ mod tests {
         );
         assert!(!errors.is_empty());
         // The next good save clears it.
-        let mended = |path: &str| Some(file(path).map_or(&b"good"[..], |_| b"good"));
+        let mended = |_: &str| Some(Cow::Borrowed(&b"good"[..]));
         let fresh = decode_each(
             &[Remake::Image(bad)],
             "font.png",
@@ -273,10 +280,13 @@ mod tests {
 
     #[test]
     fn a_file_on_disk_lies_over_the_embedded_one() {
-        let disk: &'static [u8] = b"disk";
-        assert_eq!(read_over(Some(disk), file, "good.png"), Some(disk));
-        assert_eq!(read_over(None, file, "good.png"), Some(&b"good"[..]));
-        assert_eq!(read_over(Some(disk), file, "new.png"), Some(disk));
+        let disk = || Some(Cow::Borrowed(&b"disk"[..]));
+        assert_eq!(read_over(disk(), file, "good.png"), disk());
+        assert_eq!(
+            read_over(None, file, "good.png").as_deref(),
+            Some(&b"good"[..])
+        );
+        assert_eq!(read_over(disk(), file, "new.png"), disk());
         assert_eq!(read_over(None, file, "new.png"), None);
     }
 }

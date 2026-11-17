@@ -296,17 +296,17 @@ impl ImageTable {
     /// formats of `formats` ([`Formats::decode`]). With
     /// [`Formats::standard`] it gives what `from_files` gives for files
     /// named `.png`.
-    pub fn from_files_with<'a>(
+    pub fn from_files_with(
         bundle: &Bundle,
         formats: &Formats,
-        files: impl IntoIterator<Item = (&'static str, &'a [u8])>,
+        files: impl IntoIterator<Item = (&'static str, impl AsRef<[u8]>)>,
     ) -> Result<Self, Vec<ContentError>> {
         let cx = DecodeCx::in_bundle(bundle).with_limits(formats.limits);
         let mut images = BTreeMap::new();
         let mut errors = Vec::new();
         for (path, bytes) in files {
             let file = AssetPath::in_bundle(bundle, path);
-            match formats.decode::<ImageInfo>(&file, bytes, &cx) {
+            match formats.decode::<ImageInfo>(&file, bytes.as_ref(), &cx) {
                 Ok(info) => {
                     images.insert(path, info);
                 }
@@ -324,14 +324,14 @@ impl ImageTable {
     /// found: a file that isn't a PNG (or a one-bit picture in a PNG's
     /// place), an empty image, or one with a side
     /// over [`MAX_SIDE`]. Errors name each file as `bundle` shows it.
-    pub fn from_files<'a>(
+    pub fn from_files(
         bundle: &Bundle,
-        files: impl IntoIterator<Item = (&'static str, &'a [u8])>,
+        files: impl IntoIterator<Item = (&'static str, impl AsRef<[u8]>)>,
     ) -> Result<Self, Vec<ContentError>> {
         let mut images = BTreeMap::new();
         let mut errors = Vec::new();
         for (path, bytes) in files {
-            match read_info(bytes) {
+            match read_info(bytes.as_ref()) {
                 Ok(info) => {
                     images.insert(path, info);
                 }
@@ -483,7 +483,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            ImageTable::from_files(&bundle(&[]), []),
+            ImageTable::from_files(&bundle(&[]), [] as [(&str, &[u8]); 0]),
             Ok(ImageTable::default())
         );
     }

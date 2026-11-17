@@ -70,7 +70,7 @@ pub fn check_key_placeholders<A: ActionSet>(
                 known.join(", ")
             );
             let mut error = ContentError::new(&file, message).with_code(codes::UNKNOWN_NAME);
-            if let Some(line) = line_of_key(source, key) {
+            if let Some(line) = line_of_key(&source, key) {
                 error = error.at(line, None);
             }
             errors.push(error);

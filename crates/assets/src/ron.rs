@@ -82,7 +82,7 @@ pub fn load_ron<T: DeserializeOwned>(bundle: &Bundle, path: &str) -> Result<T, C
     let text = bundle
         .file(path)
         .ok_or_else(|| ContentError::not_found(&display))?;
-    parse_ron(&display, text)
+    parse_ron(&display, &text)
 }
 
 /// Deserializes RON `source`; errors are attributed to `file` (a

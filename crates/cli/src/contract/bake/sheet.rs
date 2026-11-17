@@ -47,12 +47,16 @@ impl Row<'_> {
 /// names a picture that is no PNG in the sources or no one-bit picture
 /// in the pack.
 pub fn draw(source: &Bundle, pack: &Bundle, paths: &[String]) -> Result<Vec<u8>, String> {
+    // The pack's pictures, read first: each row's lends them.
+    let one_bits: Vec<_> = paths
+        .iter()
+        .map(|path| pack.bytes(path).unwrap_or_default())
+        .collect();
     let mut rows = Vec::with_capacity(paths.len());
-    for path in paths {
+    for (path, one_bit) in paths.iter().zip(&one_bits) {
         let colour = source.bytes(path).ok_or_else(|| format!("no {path}"))?;
         let (width, height, rgba) =
-            png_pixels(colour).map_err(|e| format!("{}: {e}", source.display_path(path)))?;
-        let one_bit = pack.bytes(path).unwrap_or_default();
+            png_pixels(&colour).map_err(|e| format!("{}: {e}", source.display_path(path)))?;
         let bitmap = Bitmap::parse(one_bit).map_err(|e| format!("{path} in the pack: {e}"))?;
         rows.push(Row {
             width,

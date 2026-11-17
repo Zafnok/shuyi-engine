@@ -11,6 +11,7 @@
 //! a texture of its own, uploaded only in a frame whose revision moved
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use macroquad::prelude::*;
@@ -69,7 +70,7 @@ pub struct Renderer {
     warned_images: HashSet<ImageId>,
     /// The file of each texture of [`images`](Self::images), for the
     /// recoloured copies: a save that doesn't decode never comes here.
-    sources: HashMap<ImageId, &'static [u8]>,
+    sources: HashMap<ImageId, Cow<'static, [u8]>>,
     /// The size of each image made again since the start, for what its
     /// sprites may show ([`src_fits`]).
     remade: HashMap<ImageId, (u16, u16)>,
@@ -87,7 +88,7 @@ impl Renderer {
         png: &[u8],
         clear: Rgb,
         images: &ImageTable,
-        bytes: fn(&str) -> Option<&'static [u8]>,
+        bytes: fn(&str) -> Option<Cow<'static, [u8]>>,
     ) -> Result<Self, String> {
         Self::with_files(atlas, png, clear, images, bytes)
     }
@@ -98,14 +99,14 @@ impl Renderer {
         png: &[u8],
         clear: Rgb,
         images: &ImageTable,
-        bytes: impl Fn(&str) -> Option<&'static [u8]>,
+        bytes: impl Fn(&str) -> Option<Cow<'static, [u8]>>,
     ) -> Result<Self, String> {
         let texture = upload(png).map_err(|e| format!("font atlas image: {e}"))?;
         let mut textures = HashMap::new();
         let mut sources = HashMap::new();
         for id in images.ids() {
             let source = bytes(id.path()).unwrap_or_default();
-            match upload(source) {
+            match upload(&source) {
                 Ok(texture) => {
                     textures.insert(id, texture);
                     sources.insert(id, source);
@@ -377,7 +378,7 @@ impl Renderer {
             // image's own colours.
             _ => (None, Rgb::new(255, 255, 255)),
         };
-        let source = self.sources.get(&sprite.image).copied();
+        let source = self.sources.get(&sprite.image);
         let texture = match recolour {
             None => self.images.get(&sprite.image),
             Some(recolour) => self

@@ -312,9 +312,9 @@ mod tests {
             .unwrap()
             .unwrap();
         let bundle = over(layer);
-        assert_eq!(bundle.file("stage.map"), Some("the page's map"));
+        assert_eq!(bundle.file("stage.map").as_deref(), Some("the page's map"));
         assert_eq!(bundle.display_path("stage.map"), "files/stage.map");
-        assert_eq!(bundle.file("en.ron"), Some("text"));
+        assert_eq!(bundle.file("en.ron").as_deref(), Some("text"));
     }
 
     #[test]
@@ -324,8 +324,8 @@ mod tests {
             .unwrap()
             .unwrap();
         let bundle = over(layer);
-        assert_eq!(bundle.file("more/new.ron"), Some("new"));
-        assert_eq!(bundle.file("stage.map"), Some("the game's map"));
+        assert_eq!(bundle.file("more/new.ron").as_deref(), Some("new"));
+        assert_eq!(bundle.file("stage.map").as_deref(), Some("the game's map"));
     }
 
     #[test]
@@ -339,7 +339,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(
-            Bundle::new(vec![layer]).file("other/stage.map"),
+            Bundle::new(vec![layer]).file("other/stage.map").as_deref(),
             Some("all of them")
         );
     }

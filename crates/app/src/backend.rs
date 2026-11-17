@@ -18,6 +18,8 @@
 //! their files change ([`pictures`]), and the sound player and the pads once
 //! the game has loaded ([`Macroquad::start`]).
 
+use std::borrow::Cow;
+
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
@@ -61,7 +63,7 @@ type Sound = PlayerDevice<audio::Chosen>;
 pub(crate) struct Macroquad {
     /// Where the storage is.
     storage_at: storage::StorageAt,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &'static str,
     /// What draws the game's frames, from the first one's look.
     renderer: Option<Renderer>,
@@ -299,7 +301,7 @@ impl Macroquad {
                     let files = self.files;
                     let png = pictures::read(files, self.font_png).unwrap_or_default();
                     let read = |path: &str| pictures::read(files, path);
-                    Renderer::with_files(look.font.clone(), png, background, look.images, read)
+                    Renderer::with_files(look.font.clone(), &png, background, look.images, read)
                 }
                 None => Err("the game gave no font and pictures to draw with".to_owned()),
             };
@@ -369,7 +371,7 @@ impl Macroquad {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
                     let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
-                        .and_then(upload);
+                        .and_then(|png| upload(&png));
                     if let Err(e) = &texture {
                         warn!("loading card: {}: {}", path, e);
                     }
