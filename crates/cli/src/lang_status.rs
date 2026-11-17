@@ -25,6 +25,9 @@ pub const TEST_PACK: &str = "test";
 
 /// The three parts of a pack's text, in the order the report gives them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new parts come, so a `match`
+// outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum Part {
     /// `ui.ron`: the screens' text.
     Screen,

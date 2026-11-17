@@ -41,6 +41,10 @@ pub struct ModulesOutput {
 /// A module the engine builds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields, so a
+// game reads its fields and never builds it by literal or matches it
+// without `..`.
+#[non_exhaustive]
 pub struct ModuleEntry {
     /// Its crate (`shuyi-physics`).
     pub name: String,

@@ -29,8 +29,8 @@ MCP server and `--json`. Nick wants no run of breaking versions after
 the MVP (2082 has his words of 2026-11-14). Today a version that rises
 on every change says nothing about whether a client written for 52
 still works with 60. 2005's version policy ADR covers the crates, not
-the contract. 2086 moves the contract's Rust types under ADR-0039 and
-leaves the JSON's promise to this ticket.
+the contract. 2086 (done) moved the contract's Rust types under ADR-0039 and
+left the JSON's promise to this ticket.
 
 ## Nick input
 

@@ -262,10 +262,9 @@ None.
   examples and `shuyi kinds`.
 
 **The public API.** The rest is new methods, new types and a new
-feature. `Op` gains a variant and `Op::ALL` a length. If 2010's check
-reports that as a break (it does: `Op` is still exhaustive), the PR has
-its `Breaking:` line, saying the game
-builds unchanged at its next pin bump.
+feature. `Op` gains a variant and the `Op::ALL` slice an entry.
+**From 2086 (done):** `Op` is `#[non_exhaustive]` and `Op::ALL` a
+slice, so that is no break, and the PR needs no `Breaking:` line for it.
 
 **Size.** If the PR passes about 600 changed lines (the ADR, the docs,
 the generated schemas, the examples and the snapshots not counted),

@@ -229,10 +229,11 @@ None.
     `Op::ALL`: give `crash` its arms in `mcp::host::one_off` and
     `mcp::description`, and `replay`'s `crash` flag comes with its
     input;
-  - with 2010 (done, public API diffs): the completion notes carry a
-    `Breaking:` line for each public struct that gained a field
-    (`ReplayInput`, `ReplayStep`, `ReplayOutput`, and `CrashReport`
-    unless it is `#[non_exhaustive]`), and the PR body repeats them;
+  - with 2010 (done, public API diffs): the structs that gain a field
+    (`ReplayInput`, `ReplayStep`, `ReplayOutput`, `CrashReport`) are
+    `#[non_exhaustive]`, and so is `Op`, with `Op::ALL` a slice
+    (**from 2086, done**), so neither the new fields nor the new
+    operation is a break, and no `Breaking:` line is planned for them;
   - the new public types (`CodeFrame`, `CrashInput`, `CrashOutput`,
     `NamedFrame`, `PanicAt`, `CrashReplay`) follow ADR-0039
     (`#[non_exhaustive]` and constructors).

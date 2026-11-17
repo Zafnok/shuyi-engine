@@ -333,7 +333,7 @@ fn lint_answers_every_checks_findings_in_one_list() {
     let (keys, text_rules) = rules("src");
     project.config.check_keys = Some(keys);
     project.config.check_text = Some(text_rules);
-    project.config.rules = Some("demo-rules".to_owned());
+    project.config.rules = vec!["demo-rules".to_owned()];
     let cargo = FakeCargo {
         clippy: Ran {
             success: false,
@@ -399,7 +399,7 @@ fn lint_answers_every_checks_findings_in_one_list() {
 #[test]
 fn a_cargo_that_fails_is_a_limit_and_one_that_doesnt_start_an_error() {
     let mut project = game("cargo");
-    project.config.rules = Some("demo-rules".to_owned());
+    project.config.rules = vec!["demo-rules".to_owned()];
     let failed = Ran {
         success: false,
         stdout: String::new(),
@@ -487,7 +487,7 @@ fn a_findings_place_is_its_primary_span_not_its_first() {
 #[test]
 fn rules_that_fail_only_on_other_lints_are_checked() {
     let mut project = game("other");
-    project.config.rules = Some("demo-rules".to_owned());
+    project.config.rules = vec!["demo-rules".to_owned()];
     let cargo = FakeCargo {
         clippy: Ran {
             success: false,

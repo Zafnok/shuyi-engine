@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn every_op_has_a_name_it_is_found_by() {
-    for op in Op::ALL {
+    for &op in Op::ALL {
         assert_eq!(Op::named(op.name()), Some(op));
         let json = serde_json::to_string(&op).unwrap();
         assert_eq!(json, format!("\"{}\"", op.name()));
@@ -132,13 +132,13 @@ fn every_op_has_an_input_and_an_output_schema() {
     // And the file `export` writes beside its package.
     assert_eq!(names.len(), (Op::ALL.len() + Op::SESSION.len()) * 2 + 1);
     assert_eq!(names.last(), Some(&"export.exposure.json"));
-    for op in Op::ALL {
+    for &op in Op::ALL {
         for side in ["input", "output"] {
             let name = format!("{}.{side}.json", op.name());
             assert!(names.contains(&name.as_str()), "{name}");
         }
     }
-    for op in Op::SESSION {
+    for &op in Op::SESSION {
         for side in ["input", "output"] {
             let name = format!("session.{}.{side}.json", op.name());
             assert!(names.contains(&name.as_str()), "{name}");
@@ -177,7 +177,7 @@ fn a_validators_problem_carries_its_code_and_help() {
 
 #[test]
 fn each_answers_schema_names_its_own_op_and_no_other() {
-    for op in Op::ALL {
+    for &op in Op::ALL {
         let name = format!("{}.output.json", op.name());
         let file = schemas().into_iter().find(|f| f.name == name).unwrap();
         assert_eq!(serde_json::to_value(op).unwrap(), op.name());
@@ -186,7 +186,7 @@ fn each_answers_schema_names_its_own_op_and_no_other() {
         // No other op's name is anywhere as an `op` value, and `Op`'s list
         // isn't in the schema.
         assert!(schema["$defs"].get("Op").is_none(), "{name}");
-        for other in Op::ALL.into_iter().filter(|other| *other != op) {
+        for other in Op::ALL.iter().copied().filter(|other| *other != op) {
             let quoted = format!("\"const\": \"{}\"", other.name());
             assert!(!file.text.contains(&quoted), "{name} holds {quoted}");
         }

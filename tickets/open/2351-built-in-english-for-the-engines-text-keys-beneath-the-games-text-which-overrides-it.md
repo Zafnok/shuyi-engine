@@ -129,10 +129,8 @@ None.
   text. `--only engine` shows it alone; `--only ui` shows the game's
   screen text alone. The parse error and both usage lines
   (`crates/cli/src/lib.rs:66` and `:245`) name `engine`.
-  - `Part` is a public enum without `#[non_exhaustive]`, so the new
-    variant is a break by the Cargo book's rules. No code in this
-    repository outside `lang_status.rs` matches on it. The PR says so
-    (see 2010 below).
+  - **From 2086 (done):** `Part` is `#[non_exhaustive]`, so the new
+    variant is no break.
 - **The users:**
   - the toy (`Toy::new`, `crates/ui/src/toy.rs:451`) builds its `Lang`
     with `with_engine_english`. Its debug pack (`DEBUG_UI`, which
@@ -216,9 +214,6 @@ None.
   - **From 2006 (done):** the root `shuyi.ron`'s `check_keys.assets`
     gets `crates/ui/lang`, and `cargo run -q -p shuyi-cli -- lint`
     passes on it.
-  - **2010** (done, public API diffs): the completion notes and the PR
-    body have the `Breaking:` line its check asks for, for
-    `Part::Engine`.
   - **From 2802 (done):** the book's chapter 6
     (`site/content/learn/book/games-and-screens.md`, *Text by key*) gets
     a paragraph on the engine's words beneath the game's and on
@@ -305,7 +300,8 @@ None.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] The ADR is merged. The PR says what changes for the game:
       nothing breaks in `shuyi-assets` or `shuyi-ui`, `lang_status::Part`
-      gains a variant, and the game may later delete its copies.
+      gains a variant (no break: it is `#[non_exhaustive]` since 2086),
+      and the game may later delete its copies.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -79,6 +79,9 @@ pub struct LintInput {}
 /// Which check found a finding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// `#[non_exhaustive]` (ADR-0039, kind 6): new checks come, so a `match`
+// outside this crate keeps a `_` arm.
+#[non_exhaustive]
 pub enum LintCheck {
     /// `check-keys`: a key named in code or text.
     CheckKeys,
@@ -195,14 +198,16 @@ pub fn lint(cargo: &dyn Cargo, project: &Project, _input: &LintInput) -> Answer<
         Some(rules) => findings.extend(text_findings(rules, root)),
         None => limits.push(format!("check-text wasn't run: {FILE} has no `check_text`")),
     }
-    match &config.rules {
-        Some(package) => match fence(cargo, root, package, &mut limits) {
+    if config.rules.is_empty() {
+        limits.push(format!(
+            "the rules crate's fence wasn't checked: {FILE} names no rules package (`rules`)"
+        ));
+    }
+    for package in &config.rules {
+        match fence(cargo, root, package, &mut limits) {
             Ok(found) => findings.extend(found),
             Err(e) => return Answer::failed(Op::Lint, codes::TOOLCHAIN, e),
-        },
-        None => limits.push(format!(
-            "the rules crate's fence wasn't checked: {FILE} names no rules package (`rules`)"
-        )),
+        }
     }
     let ok = findings.is_empty();
     Answer::new(Op::Lint, ok, LintOutput { findings }, limits)

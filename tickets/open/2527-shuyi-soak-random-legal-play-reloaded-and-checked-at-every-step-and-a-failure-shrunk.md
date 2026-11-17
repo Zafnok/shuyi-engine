@@ -340,11 +340,10 @@ the game's errors `SH3001` or `SH3002` through the same helpers as
 `playtest`, and a record `--save` can't write `SH3004`. A failure the
 soak finds is a verdict (`ok: false`), not an error, and gets no code.
 
-**The public API.** `Op` gains a variant, and `Op::ALL` grows by one
-(`[Op; 16]` today, `crates/cli/src/contract.rs`; count again when this
-lands, since other ops may land first). `Op` is exhaustive, so CI's
-`api` job (2010) reports a break, as it did for 2003's `Modules` and
-`Add`: the PR has its `Breaking:` line. A new
+**The public API.** `Op` gains a variant, and the `Op::ALL` slice an
+entry (`crates/cli/src/contract.rs`). **From 2086 (done):** `Op` is
+`#[non_exhaustive]` and `Op::ALL` a slice, so that is no break and the
+PR needs no `Breaking:` line for it. A new
 `GameTools` method with a default breaks no
 game's tools. Follow ADR-0039 for every new public type: `SoakInput` as an
 input with a `Default`, `Check` and `Verdict` as enums that may grow,

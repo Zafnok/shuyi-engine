@@ -136,10 +136,11 @@ pub fn one_off(
         Op::Explain => answered(op, input, |i| explain::explain(&i)),
         Op::Attach => answered(op, input, |i| attach::attach(&i, cwd)),
         Op::Check => {
-            let input: check::CheckInput = match read(input) {
+            let mut input: check::CheckInput = match read(input) {
                 Ok(input) => input,
                 Err(e) => return failed(op, codes::WRONG_ARGUMENTS, e),
             };
+            input.project = project.as_ref().ok().cloned();
             match (&input.target, project) {
                 (Some(_), Ok(p)) => to_json(&check::targets(&p.config, &p.root, &input, game)),
                 (None, _) => needs(&|game, _| to_json(&check::check(game, &input))),

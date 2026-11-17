@@ -133,12 +133,10 @@ None.
     whichever stage parts a game has;
   - the merged `shuyi.ron` names the hex rules crate in `rules` (for
     `lint`), and `crates/hex-rules/src` in `check_keys`'s `rust` list,
-    through the same pieces the grid part adds. `Project::rules`
-    (`crates/cli/src/project.rs`) names one package today. If it still
-    does, and both stage parts are picked, make it take one name or a
-    list (a lone string still reads, so no game's `shuyi.ron` breaks),
-    and fence each in `lint`. The field's type changes, so write the
-    `Breaking:` line CI's `api` job asks for (ADR-0038 §6).
+    through the same pieces the grid part adds. **From 2086 (done):**
+    `Config::rules` (`crates/cli/src/project.rs`) is a list, read from
+    one name or many, and `lint` fences each, so with both stage parts
+    picked it names both rules crates.
 - **The map**, `crates/game/files/hex/stage.map`: Hello, Hex's 9 × 7
   map, the rows of a pointy-top, odd-r layout. It leaves a winning
   line. It joins the `credits` part's `own` list through the merged

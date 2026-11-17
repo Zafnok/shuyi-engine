@@ -242,10 +242,12 @@ None.
   through its `Deserialize`, not given a kind of its own.
 - **For the game:** additive. `Screen` gains defaulted methods, and
   with the console `Ctx` gains a field (it has private fields, so no
-  game builds it field by field). A game that matches `frame_png::Step` or
-  `session::Event` exhaustively must add an arm. The new public types
-  follow ADR-0039. If 2010's check calls the new variants a break,
-  the PR carries its `Breaking:` line. The game's PR
+  game builds it field by field). A game that matches `frame_png::Step`
+  exhaustively must add an arm. **From 2086 (done):** `session::Event`
+  is `#[non_exhaustive]`, so its new variant is no break. The new public
+  types follow ADR-0039. If 2010's check calls the new variant of
+  `frame_png::Step` a break, the PR carries its `Breaking:` line. The
+  game's PR
   that moves the pin follows this one.
 - **The console** (the last step; step 9 says when it moves to a
   follow-up ticket):
