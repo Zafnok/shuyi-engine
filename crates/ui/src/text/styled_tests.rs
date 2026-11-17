@@ -275,6 +275,7 @@ fn fill_styled_with_keeps_the_roles_of_what_it_fills_in() {
     };
     let filled = fill_styled_with(
         "{Cursor} · {Arrows} · {x} {y}",
+        "en",
         &[],
         &[("x", &"Num Enter")],
         cursor,

@@ -276,6 +276,10 @@ Deviations:
   `device`, and its raw text is measured whole.
 - The draft named the messages ADR "ADR-0124"; it is ADR-0127 (ADR-0124
   is key caps).
+- Merged with 3217 (done), which added `fill_styled_with` (a lookup
+  that gives spans, for the cursor keys drawn as one arrows picture) and
+  moved `Ctx` onto it: it takes the text's language and `&Args` too, and
+  walks the message as `fill_styled` does, which now calls it.
 - Either-order clauses: 2261, 2351, 2390, 2330, 2352 and 2758 are open,
   so the *if not* branch of each was taken: the two English files
   changed, both fallbacks built on `split_tokens`, and nothing else.
@@ -297,7 +301,7 @@ after: |
 find: ["n.to_string())] }"]
 ```
 
-Breaking: shuyi-ui: text::fill, text::fill_values, text::fill_styled: each takes the language the text is in after the text, and its values as `&Args` (`&[(&str, &dyn ToArg)]`); a game passes the tag (`Lang::text_in` gives it with the text) and casts a value to `&dyn ToArg`, or passes its own `Display` type as a `String`.
+Breaking: shuyi-ui: text::fill, text::fill_values, text::fill_styled, text::fill_styled_with: each takes the language the text is in after the text, and its values as `&Args` (`&[(&str, &dyn ToArg)]`); a game passes the tag (`Lang::text_in` gives it with the text) and casts a value to `&dyn ToArg`, or passes its own `Display` type as a `String`.
 
 ```migration
 since: 0.1.0

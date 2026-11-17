@@ -168,7 +168,7 @@ pub fn fill_styled(
     key_args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<String>,
 ) -> StyledText {
-    fill_styled_with(text, args, key_args, |name| {
+    fill_styled_with(text, lang, args, key_args, |name| {
         let mut key = StyledText::new();
         key.push_key(&lookup(name)?);
         Some(key)
@@ -188,14 +188,15 @@ pub fn fill_styled(
 ///     keys.push_key("w").push_plain(" ").push_key("a");
 ///     (name == "Cursor").then_some(keys)
 /// };
-/// let filled = fill_styled_with("{Cursor} move", &[], &[], cursor);
+/// let filled = fill_styled_with("{Cursor} move", "en", &[], &[], cursor);
 /// assert_eq!(filled.plain(), "w\u{a0}a move");
 /// assert_eq!(filled.spans().len(), 4);
 /// ```
 pub fn fill_styled_with(
     text: &str,
-    args: &[(&str, &dyn Display)],
-    key_args: &[(&str, &dyn Display)],
+    lang: &str,
+    args: &Args<'_>,
+    key_args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<StyledText>,
 ) -> StyledText {
     let mut out = StyledText::new();
