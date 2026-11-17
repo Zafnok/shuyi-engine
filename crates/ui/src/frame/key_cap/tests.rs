@@ -188,3 +188,54 @@ fn the_box_takes_the_palettes_key_colours_its_edge_the_fill_without_one() {
     let caps = KeyCaps::new(thin, &edged, &CellWidths::NARROW, spec);
     assert_eq!(caps.style(), &thin);
 }
+
+/// [`terminus`] with a bold face (ticket 3216): Terminus Bold's ink, its
+/// capitals' columns 1 to 6 and rows 2 to 11, `W` from column 0, `E`
+/// and `F` to column 7.
+fn terminus_bold() -> CellWidths {
+    let mut bold = FontInk::new(InkBox::new(1, 2, 6, 11));
+    bold.columns.insert('W', [0, 6]);
+    bold.columns.insert('E', [1, 7]);
+    bold.columns.insert('F', [1, 7]);
+    CellWidths::of(&shuyi_assets::font::FontAtlasDef {
+        cell_w: 8,
+        cell_h: 16,
+        ink: Some(terminus_ink()),
+        bold_ink: Some(bold),
+        ..Default::default()
+    })
+}
+
+#[test]
+fn a_letter_from_a_bold_face_sits_two_pixels_inside_its_box_on_every_side() {
+    let widths = terminus_bold();
+    let caps = caps(KeyCapStyle::new(), &widths);
+    for (name, [left, right]) in [("W", [0, 6]), ("D", [1, 6]), ("F", [1, 7]), ("E", [1, 7])] {
+        let layout = caps.layout(name, &widths);
+        assert!(layout.style.bold, "{name}");
+        let f = layout.frame;
+        let (dx, dy) = (i32::from(layout.style.dx), i32::from(layout.style.dy));
+        assert_eq!(dx + left - (f.x + 1), 2, "{name} left");
+        assert_eq!((f.x + f.w - 2) - (dx + right), 2, "{name} right");
+        assert_eq!(dy + 2 - (f.y + 1), 2, "{name} top");
+        assert_eq!((f.y + f.h - 2) - (dy + 11), 2, "{name} bottom");
+    }
+    // D's bold ink is the capitals', columns 1 to 6, and no column wider:
+    // a 12 px box, not the 13 px of the regular face struck twice.
+    assert_eq!(caps.layout("D", &widths).frame.w, 12);
+    let struck = self::caps(KeyCapStyle::new(), &terminus());
+    assert_eq!(struck.layout("D", &terminus()).frame.w, 13);
+}
+
+#[test]
+fn a_bold_face_counts_no_extra_column_and_plain_names_keep_the_regular_ink() {
+    // 8 + 2 × 4 = 16 px: two cells, one more than the name; struck twice
+    // it is 17, three cells.
+    let margin = KeyCapStyle::new().with_margin_px(3);
+    assert_eq!(caps(margin, &terminus_bold()).extra_cells(), 1);
+    assert_eq!(caps(margin, &terminus()).extra_cells(), 2);
+    let widths = terminus_bold();
+    let plain = caps(KeyCapStyle::new().with_bold(false), &widths).layout("F", &widths);
+    assert_eq!(plain.frame, Rect::new(2, 0, 12, 16));
+    assert_eq!(plain.style, GlyphStyle::new(4, 1, false));
+}

@@ -47,14 +47,14 @@ fn ink_must_lie_inside_the_cell() {
 #[test]
 fn widths_carry_the_ink_and_a_caps_cells() {
     let widths = CellWidths::of(&atlas());
-    let ink = widths.ink().unwrap();
+    let ink = widths.ink(false).unwrap();
     assert_eq!(ink.columns_of('b'), (1, 5));
     assert_eq!(ink.columns_of('A'), (1, 6));
     assert_eq!(widths.key_cap_cells(), None);
     let capped = widths.clone().with_key_cap_cells(Some(1));
     assert_eq!(capped.key_cap_cells(), Some(1));
     assert_ne!(capped, widths);
-    assert_eq!(CellWidths::NARROW.ink(), None);
+    assert_eq!(CellWidths::NARROW.ink(false), None);
 }
 
 #[test]

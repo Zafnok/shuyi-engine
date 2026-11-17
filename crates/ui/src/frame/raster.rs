@@ -261,13 +261,15 @@ impl Painter {
                 continue;
             };
             let style = buf.glyph_style(cx, cy);
-            let strikes = if style.bold { 2 } else { 1 };
+            let (rect, strikes) = self
+                .atlas
+                .bold_strikes(cell.glyph, rect, style.bold && !wide);
             let fg = unit(fg);
             #[allow(clippy::cast_precision_loss)] // atlas coordinates are small
             let src = [rect.x, rect.y, rect.w, rect.h].map(|v| v as f32);
             let (x, y) = at(cx, cy);
             let (x, y) = (x + i64::from(style.dx) * px, y + i64::from(style.dy) * px);
-            for strike in 0..strikes {
+            for strike in 0..i64::from(strikes) {
                 blit(
                     out,
                     &self.atlas_image,
