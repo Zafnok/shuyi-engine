@@ -146,7 +146,7 @@ templates and book 200).
       the notes.
 - [x] Each step's page links the book's Codespace and names its folder,
       and the twin says so.
-- [ ] Nick's prebuild is set as *Nick input* says, within his included
+- [x] Nick's prebuild is set as *Nick input* says, within his included
       storage, or the notes say why not.
 - [x] The book's chapter is updated (2802): the quick start and the
       project's front page.
@@ -286,6 +286,10 @@ Game: nothing to adopt, the change is the site, a dev container and an
 xtask check; no crate changed.
 
 No break. No `Behaviour:` line: no crate changed.
+
+**The prebuild isn't set yet:** GitHub makes it from a branch's
+container, and Nick's is on `main`, so it waits for this PR's merge. Its
+size, measured above, fits his included storage.
 
 **Nick input, setup** (once this is on `main`): the prebuild, measured
 at about 5 GB, so 5 of his 20 included GB-month. In
