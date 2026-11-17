@@ -627,11 +627,6 @@ fn an_index_that_doesnt_hold_together_is_refused() {
         opened(vec![entry("a", Codec::Lz4, 0, 2, 2)], b"ab"),
         "the pack is broken: a is compressed to no fewer bytes than it has"
     );
-    let far = u64::from(u32::MAX) - 30;
-    assert_eq!(
-        opened(vec![entry("a", stored, far, 0, 0)], b""),
-        "the pack is broken: its files' bytes reach past 4 GiB"
-    );
     assert_eq!(
         opened(vec![entry("a", stored, 0, 0, MAX_UNPACKED_BYTES + 1)], b""),
         format!("the pack is broken: its files add up to more than {MAX_UNPACKED_BYTES} bytes")
@@ -865,6 +860,29 @@ fn the_limits_hold_at_their_edges() {
     assert_eq!(
         opened(vec![entry("a", Codec::Lz4, 0, length, 18)], &short),
         "ok: 1 file(s)"
+    );
+    // A file may end 4 GiB from the pack's start, not a byte further (an
+    // offset near 4 GiB takes as many bytes in the index, whatever it is).
+    let ending_at = |offset| {
+        let entries = vec![entry("a", stored, offset, 1, 1)];
+        assembled(
+            &Listing {
+                info: test_info(),
+                entries,
+            },
+            b"",
+        )
+    };
+    let Err(IndexError::Short { needs }) = Index::read(&ending_at(1 << 31)[..HEADER], STAMP) else {
+        panic!("a header alone");
+    };
+    let last = u64::from(u32::MAX) - needs - 1;
+    assert!(Index::read(&ending_at(last), STAMP).is_ok());
+    assert_eq!(
+        Index::read(&ending_at(last + 1), STAMP),
+        Err(IndexError::Pack(broken(
+            "its files' bytes reach past 4 GiB"
+        )))
     );
     // Exactly the most files opens.
     let most = (0..MAX_FILES)

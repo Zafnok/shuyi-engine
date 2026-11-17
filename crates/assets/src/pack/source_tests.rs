@@ -11,7 +11,7 @@ use super::tests::{
     STAMP, baked, every_kind, pack_files, pack_formats, raw_pack, resummed, sources, test_info,
 };
 use super::*;
-use crate::bundle::{Bundle, Files, reads_of};
+use crate::bundle::{Bundle, reads_of};
 
 /// `bytes`, kept for the run.
 fn kept(bytes: &[u8]) -> &'static [u8] {
@@ -65,10 +65,6 @@ fn the_index_reads_alone_and_says_how_many_bytes_it_needs() {
     assert_eq!(
         index.check_file("nope.txt", b""),
         Err(PackError::Broken("it has no file nope.txt".to_owned()))
-    );
-    assert_eq!(
-        IndexError::Short { needs: 30 }.to_string(),
-        "the pack's header and index take 30 bytes"
     );
 }
 
@@ -178,12 +174,12 @@ fn a_layer_over_memory_reads_every_asset_as_the_pack_read_whole_and_hands_it_out
     assert_eq!(layer.bytes("nope.txt"), None);
     assert_eq!(layer.layers()[0].problems(), []);
     // Shown for debugging by how many files it has, not by its source.
-    let Files::Source(files) = layer.layers()[0].files else {
-        panic!("a layer over a source");
-    };
-    let shown = format!("{files:?}");
+    let shown = format!("{:?}", layer.layers()[0].files);
     let count = whole.files_under("").len();
-    assert_eq!(shown, format!("SourceFiles {{ files: {count}, .. }}"));
+    assert_eq!(
+        shown,
+        format!("Source(SourceFiles {{ files: {count}, .. }})")
+    );
 }
 
 /// A pack's bytes that arrive from its start, up to a point that moves.

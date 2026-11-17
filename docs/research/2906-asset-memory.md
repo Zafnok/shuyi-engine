@@ -197,12 +197,10 @@ files (24,866,105 unpacked, 14,010,188 stored).
 
 ### On first read, measured (ticket 2263)
 
-Ticket 2263 built the layer that reads a pack file by file
-(`pack::Index::into_layer` over `pack::InMemory`), and the program measures
-it as a fourth way. On 2026-11-17, engine `191986d0` with 2263's change, the
-same machine and build. The load's decoded values have grown since the
-tables above (43,248 bytes against 42,168), so each row is set beside the
-computed one of the same run:
+The layer that reads a pack file by file (`pack::Index::into_layer` over
+`pack::InMemory`), measured on 2026-11-17 (engine `191986d0` with 2263's
+change, the same machine and build) beside the computed row of the same
+run, as the load's decoded values have grown (43,248 bytes, not 42,168):
 
 | Pack | Measured peak | Measured resident | Computed peak | Computed resident | Table, measured / computed |
 | ---- | ------------: | ----------------: | ------------: | ----------------: | -------------------------: |
@@ -213,10 +211,9 @@ computed one of the same run:
 - **Resident:** the computed row and 72 bytes, whatever the pack: each
   file takes 32 bytes and its path, as in the table of a pack read whole,
   and the layer adds its own record (56 bytes) and its source (16).
-- **Peak:** set by opening, not the load, on a big pack: the index read
-  (each path a `String`) and the layer's table are live at once. That is
-  1.2 MB on the `playdate` pack, against its 10 MB heap. On Hello, Grid it is
-  below the computed peak, which counted the largest file read twice.
+- **Peak:** on a big pack, set by opening: the index read (each path a
+  `String`) and the layer's table are live at once, 1.2 MB on the
+  `playdate` pack against its 10 MB heap.
 
 ## The web
 

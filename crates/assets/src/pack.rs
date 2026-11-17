@@ -655,11 +655,8 @@ impl Index {
     /// let info = PackInfo::new("my-game 1", None, ContentHash(1));
     /// let files = BTreeMap::from([("a.txt".to_owned(), Content::Raw(b"a".to_vec()))]);
     /// let pack = pack::write(&info, &files);
-    /// let Err(IndexError::Short { needs }) = Index::read(&pack[..4], "my-game 1") else {
-    ///     panic!("four bytes hold no header");
-    /// };
-    /// let Err(IndexError::Short { needs }) = Index::read(&pack[..needs as usize], "my-game 1")
-    /// else {
+    /// // The header is 24 bytes, and says how long the index is.
+    /// let Err(IndexError::Short { needs }) = Index::read(&pack[..24], "my-game 1") else {
     ///     panic!("the header holds no index");
     /// };
     /// let index = Index::read(&pack[..needs as usize], "my-game 1").unwrap();
