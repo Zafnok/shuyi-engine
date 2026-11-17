@@ -69,7 +69,7 @@ What Shuyi has today:
 
 Planned work this touches: 2364 (tracks and cues in the cinematic file,
 parked), 2365 (a beat clock, parked), 2366 (captions for sounds, not
-speech, parked), 2906 (asset memory research, done) and 2919 (its ADR, ADR-0126, done), 3017 (target
+speech, parked), 2906 (asset memory research, done) and 2919 (its ADR, ADR-0127, done), 3017 (target
 capabilities, parked), 3010 (the Playdate backend), 3029 (audio on the
 Playdate, music streamed through the SDK's file players), 3034
 (research on replacing macroquad, parked), 2902 (sound plan recorded),
@@ -227,7 +227,7 @@ skill), not a choice made here.
   - the frames streamed at play time, past the size caps of ADR-0019
     §4;
   - how a video is stored in the pack and streamed from it (ADR-0023
-    leaves streaming out today), and what that needs from ADR-0126's
+    leaves streaming out today), and what that needs from ADR-0127's
     terms (2919, done): a pack read file by file through a `pack::Source`
     (2263), reads handed out as `Cow` bytes (2262), folders as groups,
     and a load that waits (`Progress::Wait`, 3316);
@@ -285,7 +285,7 @@ skill), not a choice made here.
   tracks are 2364), screen transitions (2339) and the beat clock (2365);
 - still and animated images used as sprites (2203, 1123);
 - captions for sound effects and music (2366);
-- reading files on demand and asset lifetimes for every kind (ADR-0126,
+- reading files on demand and asset lifetimes for every kind (ADR-0127,
   2919, done):
   this ticket says only what video needs from them;
 - reading a decoder's source to copy it (ADR-0021 §2). Reading its docs
@@ -294,7 +294,7 @@ skill), not a choice made here.
 ## Implementation steps
 
 1. Read the code and ADRs named in *Context*, and 2721, 2722, 2724,
-   2364, 3017, 3010 and 3034 as they stand, and ADR-0126. Note which of
+   2364, 3017, 3010 and 3034 as they stand, and ADR-0127. Note which of
    2020, 2514, 3017 and 3034 are in `tickets/done/`, for the either-order
    rules above.
 2. Write the needs into the report.

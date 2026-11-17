@@ -57,7 +57,7 @@ check on the numbers.
   stack mark), adding only per-frame times and the peak heap over the
   SDK's console log. **From 2919 (done):** the peak heap is logged twice,
   the load's (up to the game's first frame) and the play's (after it): on
-  first read a load's peak sets the whole run's (ADR-0126 §2, 2906's
+  first read a load's peak sets the whole run's (ADR-0127 §2, 2906's
   0.6 MB for a 40 MB pack), so the two are told apart.
 
 - **Collecting the log** over USB, with the SDK's tools (the Simulator's

@@ -63,7 +63,7 @@ None.
     Progress<C> { Working, Chosen(C) }`, which the rollout bot and the
     turn planner step with. `think::Progress` replaces it: one type, not
     two of the same name.
-  - **From 2919 (done):** ADR-0126 §4 counts a load's work in units of
+  - **From 2919 (done):** ADR-0127 §4 counts a load's work in units of
     its own, as this ticket counts a bot's, with the load's own
     `Progress` in `shuyi-platform` (it carries the game it made). It asks
     nothing of `Think` or `think::Progress`. **Either order with 3316:**

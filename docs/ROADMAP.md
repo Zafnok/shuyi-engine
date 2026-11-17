@@ -166,8 +166,8 @@ These tickets, in order:
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
 | 2094 | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
-| 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0126) |
-| 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0126's one break, before the release |
+| 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0127) |
+| 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0127's one break, before the release |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 | Messages that choose their words, and typed label arguments |
 | 2405 | Mouse and touch for menus and grid maps |
@@ -380,7 +380,7 @@ is done.
 | 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
 | 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
 | 2906 (done) | Research: asset memory, what stays resident (`docs/research/2906-asset-memory.md`) |
-| 2919 (done) | Research: asset memory, part two: the ADR and the build tickets (ADR-0126) |
+| 2919 (done) | Research: asset memory, part two: the ADR and the build tickets (ADR-0127) |
 | 2907 (done) | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
 | 2581 (done) | Scene data derived from the game's state, and one value or its shape read by pointer through the contract (after 2907) |
 
@@ -738,7 +738,7 @@ ticket 1025, parked until after launch.
 
 ### Asset memory: a pack read file by file, and the web's first frame
 
-[ADR-0126](adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 (2919, from 2906's numbers): a Playdate pack over about 6 MB doesn't fit
 its heap read whole, against a 40 MB budget, and a web pack over about
 12 MB can't arrive before the first frame, against 25 MB. Visions of

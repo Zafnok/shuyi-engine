@@ -142,7 +142,7 @@ None. Selling is 3018's question.
      variable);
   4. it bakes the pack for `nds` and adds it to the ROM's file system.
      **From 2919 (done):** the backend reads it file by file through a
-     `pack::Source` over that file system (ADR-0126 §2, 2263), never
+     `pack::Source` over that file system (ADR-0127 §2, 2263), never
      whole: the 2.5 MB heap holds a pack read whole only under about
      1.5 MB. **Either order with 2264:** if 2264 is done, its paths are
      read as 2264 decided; if not, they are leaked once as every layer's

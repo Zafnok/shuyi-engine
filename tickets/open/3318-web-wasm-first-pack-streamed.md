@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §2, §3 and §6, from ticket 2906's numbers
 ([`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md),
 *The web*):
@@ -25,7 +25,7 @@ completed:
   only then the `.wasm`. The card is the `.wasm`'s first frame, so it
   waits for every byte: a pack at the `web` budget (25 MB) puts it at
   9.5 s at 25 Mbit/s, against `startup_ms` 5,000, which is to the game's
-  first frame (ADR-0126 §6). About 12 MB of pack is the most that fits.
+  first frame (ADR-0127 §6). About 12 MB of pack is the most that fits.
 - With the `.wasm` first, the card shows at about 1.2 s, and the first
   frame waits only for the files it reads.
 - `pack-file.js` keeps the bytes it fetched for the whole run: the page's
@@ -86,10 +86,10 @@ None.
 
 **Out (do not do):**
 
-- `Range` requests (ADR-0126, *Alternatives*);
-- reading a desktop pack file by file (ADR-0126 §7: not crossed);
+- `Range` requests (ADR-0127, *Alternatives*);
+- reading a desktop pack file by file (ADR-0127 §7: not crossed);
 - the page's progress bar and its errors (3052);
-- freeing textures (ADR-0126 §7: not crossed).
+- freeing textures (ADR-0127 §7: not crossed).
 
 **Estimated size:** about 900 lines (code 400, tests 300, docs 200).
 

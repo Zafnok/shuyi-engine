@@ -17,20 +17,20 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §1, §6 and §7, from ticket 2906's numbers
 ([`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md)):
 
 - A layer's paths are `&'static str`, leaked once when it is made, so a
   pack read file by file (2263) still keeps its table: about 52 bytes a
   file, 376 KB for the 7,248 files of a 40 MB pack.
-- That is 3.6% of the Playdate's 10 MB heap, under ADR-0126's trigger (a
+- That is 3.6% of the Playdate's 10 MB heap, under ADR-0127's trigger (a
   tenth of the heap). ADR-0012's parked `nds` row allows a 2.5 MB heap
   and a 64 MB ROM: about 11,000 files in the game's proportions, whose
   table takes about 575 KB, 23% of the heap.
 - The paths reach far: `files_in`, `files_under`, `ImageId`, `ImageTable`
   and the keys of `Formats::load_under` and `load_each` are `&'static
-  str` (ADR-0126, *The call sites, counted*: `ImageId` alone is in 72
+  str` (ADR-0127, *The call sites, counted*: `ImageId` alone is in 72
   lines of 19 files in the engine and 20 files of the game).
 
 ## Nick input
@@ -48,7 +48,7 @@ None.
   `peak_heap_bytes`, write that number in the completion notes, close
   this ticket and change nothing else.
 - **Otherwise, the smallest way under it**, decided in an ADR that
-  extends ADR-0126 §1, weighing:
+  extends ADR-0127 §1, weighing:
   - the index kept as its postcard bytes, with each path read from it
     when asked (a sorted table of offsets and a binary search), and paths
     handed out as `Cow<'static, str>` as 2262 does bytes;
@@ -63,7 +63,7 @@ None.
 
 **Out (do not do):**
 
-- the Playdate (3.6% of its heap: ADR-0126 §7, not crossed);
+- the Playdate (3.6% of its heap: ADR-0127 §7, not crossed);
 - the DS backend itself (3024).
 
 **Estimated size:** about 1,200 lines (code 500, tests 500, docs 200), if

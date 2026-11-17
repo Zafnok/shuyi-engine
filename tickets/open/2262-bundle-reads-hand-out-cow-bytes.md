@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0126](../../docs/adr/0126-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+[ADR-0127](../../docs/adr/0127-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
 §1, from ticket 2906's numbers
 ([`docs/research/2906-asset-memory.md`](../../docs/research/2906-asset-memory.md)):
 
@@ -36,7 +36,7 @@ Every layer that exists today hands out `Cow::Borrowed`, so nothing is
 copied; 2263's layer read file by file hands out `Cow::Owned`. Paths stay
 `&'static`.
 
-**The call sites** (ADR-0126, *The call sites, counted*, 2026-11-16):
+**The call sites** (ADR-0127, *The call sites, counted*, 2026-11-16):
 
 - the engine: 16 reads in 12 files of code, the `&'static [u8]`
   signatures that carry them (45 lines, 20 in `shuyi-app`), and about 110
@@ -67,7 +67,7 @@ None.
   - `LoadFile::text: &'a str`, borrowed for the parse call from the
     `Cow` `load_each` holds;
   - every layer kind of today (`Files::Dir`, `Table`, `Owned`) hands out
-    `Cow::Borrowed`. `Layer::owned` and hot reload stay leaked (ADR-0126
+    `Cow::Borrowed`. `Layer::owned` and hot reload stay leaked (ADR-0127
     §1);
   - the module comment says what a read hands out and why.
 - **`shuyi_assets::format`:** `DecodeCx::bytes` and `DecodeCx::text`
@@ -96,8 +96,8 @@ None.
 
 - a layer read file by file, and the pack's new version (2263);
 - paths that aren't `&'static` (2264, parked);
-- an asset store, handles or reference counts (ADR-0126 §1: none);
-- `Arc` (ADR-0126, *Alternatives*).
+- an asset store, handles or reference counts (ADR-0127 §1: none);
+- `Arc` (ADR-0127, *Alternatives*).
 
 **Estimated size:** about 900 lines (code 300, tests 450, docs 150).
 
@@ -116,7 +116,7 @@ None.
 
 - [ ] `Bundle::bytes`, `Bundle::file`, `Bundle::test_part`,
       `LoadFile::text`, `DecodeCx::bytes`, `DecodeCx::text` and
-      `AppConfig::files` hand out the bytes as ADR-0126 §1 says.
+      `AppConfig::files` hand out the bytes as ADR-0127 §1 says.
 - [ ] A read of each layer kind of today is `Cow::Borrowed` (a test per
       kind).
 - [ ] No path type changes: `files_in`, `files_under`, `ImageId`,
