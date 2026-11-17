@@ -200,7 +200,9 @@ templates and book 200).
   run-gates skill's list.
 
 **Measured** (on 2-core Codespaces, `basicLinux32gb`, US East, from the
-branch at `d60152a6` and `8ff8eba4`):
+branch at `d60152a6` and `8ff8eba4`, both on `main` at `191986d0`; the
+`main` merged after, `c345aab4` (3218), changes the engine's screen text
+only, nothing the container, the scripts or the pages read):
 
 | What | Time |
 | ---- | ---- |
