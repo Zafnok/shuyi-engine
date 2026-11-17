@@ -114,6 +114,8 @@ fn quoting_writes_braces_and_apostrophes() {
     assert_eq!(format("'}' and a lone } and #"), "} and a lone } and #");
     assert_eq!(format("open '{ to the end"), "open { to the end");
     assert_eq!(with_n("{n, plural, other {'#' is #}}", "en", 5), "# is 5");
+    // Outside a plural, `#` is a letter, and so is the `'` before it.
+    assert_eq!(format("'#' and '#"), "'#' and '#");
 }
 
 #[test]
@@ -303,7 +305,9 @@ fn nesting_deeper_than_eight_is_an_error() {
 fn every_integer_type_text_and_a_char_are_arguments() {
     assert_eq!(3u8.to_arg(), Arg::Int(3));
     assert_eq!((-3i32).to_arg(), Arg::Int(-3));
-    assert_eq!(usize::MAX.to_arg(), Arg::Text(usize::MAX.to_string()));
+    // `usize` is 32 bits on wasm32: one that fits is an `Int`.
+    assert_eq!(7usize.to_arg(), Arg::Int(7));
+    assert_eq!(u128::MAX.to_arg(), Arg::Text(u128::MAX.to_string()));
     assert_eq!(u64::MAX.to_arg(), Arg::Text("18446744073709551615".into()));
     assert_eq!((i64::MAX as u64).to_arg(), Arg::Int(i64::MAX));
     assert_eq!(i128::MIN.to_arg(), Arg::Text(i128::MIN.to_string()));
