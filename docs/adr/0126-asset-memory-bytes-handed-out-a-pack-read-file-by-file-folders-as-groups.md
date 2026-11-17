@@ -258,7 +258,7 @@ Paths are a separate question: `files_in`, `files_under`, the keys of
 - **`web`:**
   - must not stay: the page's JS copy of the pack (3318). The pack in
     linear memory may: about its own bytes once LZ4 files are unpacked
-    per read (§1), against 256 MB;
+    per read (§2), against 256 MB;
   - must arrive after the first frame: everything but the folders the
     game names first, once the pack passes about 12 MB;
   - **the page fetches the `.wasm` and the pack together**, and starts
