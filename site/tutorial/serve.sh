@@ -65,4 +65,7 @@ fi
 
 echo "Serving $step's game on port $port: the Ports tab opens it."
 echo "After an edit: \`cargo shuyi web\` in $step/, then reload the game's tab."
-echo "Another step: \`bash serve.sh <step>\` here, or \`bash ../serve.sh\` in the step's folder."
+echo "Another step: \`bash ../serve.sh\` in its folder."
+if pgrep -f "book/build.sh" > /dev/null; then
+  echo "The other steps are still building: a build waits for them."
+fi

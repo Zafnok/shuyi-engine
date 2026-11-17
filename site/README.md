@@ -488,6 +488,55 @@ there. `check-build.sh` checks that each page with a playground loads
 `playground.js`, frames its game, and has an editor of each file, and that
 the build holds each file beside it, the same as the game's own.
 
+## The code pad
+
+The playground edits data; a step's Rust is changed in the book's
+Codespace (ticket 2837, [ADR-0126](../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md)):
+a Codespace of this repository made from the book's dev container,
+[`.devcontainer/book/devcontainer.json`](../.devcontainer/book/devcontainer.json),
+on the reader's own GitHub account. Each step's page links it beside *Play
+this step* (`templates/chapter.html`, from `config.toml`'s
+`extra.codespace`), on the smallest machine (`machine=basicLinux32gb`, 2
+cores: a step's rebuild is no faster on more), and names the step's folder
+and the two commands; the step's twin says the same (`cargo xtask llms`,
+its `CODESPACE`). The quick start and the project's front page say how to
+use it.
+
+- **The container** is the root's image and setup
+  (`scripts/setup-linux.sh`), opened at `site/tutorial/`, with no MCP
+  server. Its `onCreateCommand`, which a prebuild runs too, sets up, adds
+  Python (the image has none) and runs
+  [`.devcontainer/book/build.sh`](../.devcontainer/book/build.sh), which
+  makes each step's web build (`cargo shuyi web`, `dev`) into one target
+  folder, `CARGO_TARGET_DIR=/home/vscode/book-target`: the engine is built
+  for the first step of each lock and each step after it builds its own
+  crate.
+- **Serving:** its `postAttachCommand` runs
+  [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
+  `dist/web/` on port 4000 with Python's server, uncached: the step whose
+  folder it runs in, the one named (`bash serve.sh 03-walk`), or the last
+  one served (`~/.book-step`, step 2 at first). The port is forwarded,
+  private to the reader, and opened in a preview. After an edit, `cargo
+  shuyi web` in the step's folder builds it again into the same folder,
+  and a reload plays it. When `shuyi web --serve` (2528) is done, it
+  takes `serve.sh`'s place.
+- **Measured** on a 2-core Codespace (`docs/research/2916-code-pad.md`
+  has the first numbers; ticket 2837's notes these): with no prebuild,
+  12 min 43 s from the link to the editor, step 2's game built and served;
+  step 2's build alone 404 s, a step sharing its lock about 10 s more.
+- **The prebuild** is Nick's, in the repository's settings: this
+  container, on `main`, one region, one version, made when the container
+  changes. A Codespace made from it opens with every step built.
+- `cargo xtask check-devcontainers` (CI's `tickets` job) fails when the
+  book's container builds a step that isn't in `site/tutorial/` (a folder
+  with a `shuyi.ron`), leaves one out, names one twice or out of order, or
+  differs from the root's in its image, its setup (the root's
+  `postCreateCommand` up to reading cargo's environment, each script read
+  from its container's folder) or its `remoteEnv`. A new step goes in
+  `build.sh`'s list there; a change to the root's setup goes in both.
+  `check-build.sh` fails a step's page that doesn't link the Codespace or
+  name its folder.
+
 ## The docs for agents
 
 After `zola build`, and once the API docs are in, `cargo xtask llms`

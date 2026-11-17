@@ -18,9 +18,10 @@
 //!    folder, so `bash scripts/setup-linux.sh` at the root is `bash
 //!    ../../scripts/setup-linux.sh` in the book's;
 //! 5. the book's `remoteEnv` isn't the root's;
-//! 6. its build (`bash <…>/.devcontainer/book/build.sh <step>…`, in the
-//!    `onCreateCommand`, which a prebuild runs) names a step that isn't
-//!    there, misses one, names one twice, or names them out of order.
+//! 6. its builds (`bash <…>/.devcontainer/book/build.sh <step>…`, in the
+//!    `onCreateCommand` and the `updateContentCommand`, the commands a
+//!    prebuild runs) name a step that isn't there, miss one, or name one
+//!    twice.
 //!
 //! [`check`] is pure over the two files' text and the steps; [`run`] feeds
 //! it the repository's.
@@ -142,14 +143,16 @@ pub fn check(root: &str, book: &str, steps: &[String]) -> Vec<String> {
         }
         Err(e) => errors.push(format!("{ROOT}: {e}")),
     }
-    errors.extend(check_steps(create, &book_folder, steps));
+    let update = book.get("updateContentCommand").and_then(Value::as_str);
+    let commands: Vec<&str> = [Some(create), update].into_iter().flatten().collect();
+    errors.extend(check_steps(&commands, &book_folder, steps));
     errors
 }
 
-/// The steps the `onCreateCommand` `create` builds, against `steps`.
-fn check_steps(create: &str, folder: &str, steps: &[String]) -> Vec<String> {
+/// The steps the `commands` build, against `steps`.
+fn check_steps(commands: &[&str], folder: &str, steps: &[String]) -> Vec<String> {
     let mut built: Vec<String> = Vec::new();
-    for part in parts(create) {
+    for part in commands.iter().flat_map(|command| parts(command)) {
         let mut words = part.split_whitespace();
         if words.next() == Some("bash")
             && words
@@ -163,7 +166,8 @@ fn check_steps(create: &str, folder: &str, steps: &[String]) -> Vec<String> {
     }
     if built.is_empty() {
         return vec![format!(
-            "{BOOK}: its `onCreateCommand` runs no `bash <…>/{BUILD} <step>…`: it builds every step of {TUTORIAL}"
+            "{BOOK}: neither its `onCreateCommand` nor its `updateContentCommand` runs `bash <…>/{BUILD} <step>…`: \
+             they build every step of {TUTORIAL}"
         )];
     }
     let mut errors = Vec::new();
@@ -184,13 +188,6 @@ fn check_steps(create: &str, folder: &str, steps: &[String]) -> Vec<String> {
                 "{BOOK}: it doesn't build step `{step}` of {TUTORIAL}: add it to `build.sh`'s steps"
             ));
         }
-    }
-    if errors.is_empty() && built.iter().zip(steps).any(|(b, s)| b != s) {
-        errors.push(format!(
-            "{BOOK}: it builds the steps out of order: {}; the steps are {}",
-            built.join(" "),
-            steps.join(" ")
-        ));
     }
     errors
 }

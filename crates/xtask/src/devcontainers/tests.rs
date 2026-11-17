@@ -85,16 +85,46 @@ fn a_step_that_isnt_there_fails() {
 }
 
 #[test]
-fn a_step_twice_or_out_of_order_fails() {
+fn a_step_twice_fails() {
     let twice = BOOK_JSON.replace("02-board 03-walk", "02-board 02-board 03-walk");
     assert_eq!(
         check(ROOT_JSON, &twice, &three()),
         [format!("{BOOK}: it builds step `02-board` twice")]
     );
-    let swapped = BOOK_JSON.replace("01-new 02-board", "02-board 01-new");
-    let errors = check(ROOT_JSON, &swapped, &three());
-    assert_eq!(errors.len(), 1, "{errors:?}");
-    assert!(errors[0].contains("out of order"), "{errors:?}");
+}
+
+#[test]
+fn the_steps_may_be_split_between_the_two_commands_a_prebuild_runs() {
+    // Step 2 first, then the rest behind it, in any order.
+    let split = BOOK_JSON
+        .replace("build.sh 01-new 02-board 03-walk", "build.sh 02-board")
+        .replace(
+            "\"postAttachCommand\"",
+            "\"updateContentCommand\": \"bash ../../.devcontainer/book/build.sh 03-walk 01-new\", \"postAttachCommand\"",
+        );
+    assert_eq!(check(ROOT_JSON, &split, &three()), Vec::<String>::new());
+    // A build in a command a prebuild doesn't run doesn't count.
+    let late = split.replace("updateContentCommand", "postCreateCommand");
+    assert_eq!(
+        check(ROOT_JSON, &late, &three()),
+        [
+            format!(
+                "{BOOK}: it doesn't build step `01-new` of {TUTORIAL}: add it to `build.sh`'s steps"
+            ),
+            format!(
+                "{BOOK}: it doesn't build step `03-walk` of {TUTORIAL}: add it to `build.sh`'s steps"
+            ),
+        ]
+    );
+    // Nor do both name one step.
+    let both = split.replace(
+        "build.sh 03-walk 01-new",
+        "build.sh 03-walk 01-new 02-board",
+    );
+    assert_eq!(
+        check(ROOT_JSON, &both, &three()),
+        [format!("{BOOK}: it builds step `02-board` twice")]
+    );
 }
 
 #[test]
@@ -105,10 +135,15 @@ fn no_build_fails() {
     );
     let errors = check(ROOT_JSON, &none, &three());
     assert_eq!(errors.len(), 1, "{errors:?}");
-    assert!(errors[0].contains("runs no `bash"), "{errors:?}");
+    assert!(
+        errors[0].contains("nor its `updateContentCommand` runs"),
+        "{errors:?}"
+    );
     // A script of the same name elsewhere isn't the build.
     let elsewhere = BOOK_JSON.replace(".devcontainer/book/build.sh", "build.sh");
-    assert!(check(ROOT_JSON, &elsewhere, &three())[0].contains("runs no `bash"));
+    assert!(
+        check(ROOT_JSON, &elsewhere, &three())[0].contains("nor its `updateContentCommand` runs")
+    );
 }
 
 #[test]
