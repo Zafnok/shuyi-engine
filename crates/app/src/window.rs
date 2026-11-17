@@ -194,7 +194,8 @@ impl WindowMemory {
         }
     }
 
-    /// The last windowed size seen: the one to come back to.
+    /// The last windowed size seen: the one to come back to (on Windows).
+    #[cfg(any(windows, test))]
     pub(crate) fn windowed(&self) -> (i32, i32) {
         self.windowed
     }
@@ -243,9 +244,11 @@ impl WindowMemory {
 
 /// Where the window was before it filled the screen, for Windows, where
 /// miniquad leaves fullscreen at the screen's size at (0, 0).
+#[cfg(any(windows, test))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Place(Option<(i32, i32)>);
 
+#[cfg(any(windows, test))]
 impl Place {
     /// The window enters fullscreen: its place as miniquad reads it,
     /// `read`, which crosses as `u32` (a negative x, on a monitor left of

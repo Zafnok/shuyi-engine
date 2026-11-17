@@ -46,7 +46,9 @@ use crate::player_files::{self, PlayerFiles};
 use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
-use crate::window::{Opened, Place, Record, WindowMemory, wanted_fullscreen};
+#[cfg(windows)]
+use crate::window::Place;
+use crate::window::{Opened, Record, WindowMemory, wanted_fullscreen};
 use crate::{AppConfig, keys, storage};
 use shuyi_platform::Millis;
 
@@ -79,6 +81,7 @@ pub(crate) struct Macroquad {
     /// (never, where it isn't kept).
     memory: WindowMemory,
     /// Where the window was before it filled the screen (Windows).
+    #[cfg(windows)]
     place: Place,
     /// The controllers, once the game's stick thresholds are known.
     pads: Option<PadInput>,
@@ -137,6 +140,7 @@ impl Macroquad {
             fullscreen: opened.fullscreen,
             refresh_fullscreen: cfg!(windows) && opened.fullscreen,
             memory: WindowMemory::new(opened),
+            #[cfg(windows)]
             place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
@@ -252,8 +256,6 @@ impl Macroquad {
             miniquad::window::set_window_size(width.cast_unsigned(), height.cast_unsigned());
             miniquad::window::set_window_position(x, y);
         }
-        #[cfg(not(windows))]
-        let _ = &mut self.place;
     }
 
     /// Makes the textures of the pictures that changed again, from `look`.

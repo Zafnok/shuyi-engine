@@ -99,33 +99,27 @@ impl StorageAt {
 
     /// The window's record (the `window` module's key, beside the
     /// computer's `profiles`): its text, none where there is none or no
-    /// folder, or why it can't be read. None on the web, which keeps no
-    /// window.
+    /// folder (the web has none), or why it can't be read.
     pub(crate) fn read_window(&self) -> Result<Option<String>, String> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(dir) = &self.dir {
-            let key = crate::window::WINDOW_KEY;
-            return FileStorage::in_folder(dir.clone())
-                .read(key)
-                // check-text: not player text (a warning for the log)
-                .map_err(|e| format!("the window's record can't be read: {e}"));
-        }
-        Ok(None)
+        let Some(dir) = &self.dir else {
+            return Ok(None);
+        };
+        folder_storage(dir)
+            .read(crate::window::WINDOW_KEY)
+            // check-text: not player text (a warning for the log)
+            .map_err(|e| format!("the window's record can't be read: {e}"))
     }
 
-    /// Writes the window's record `text`, or says why it can't. Nothing on
-    /// the web, or where there is no folder.
+    /// Writes the window's record `text`, or says why it can't. Nothing
+    /// where there is no folder (the web has none).
     pub(crate) fn write_window(&self, text: &str) -> Result<(), String> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(dir) = &self.dir {
-            let key = crate::window::WINDOW_KEY;
-            return FileStorage::in_folder(dir.clone())
-                .write(key, text)
-                // check-text: not player text (a warning for the log)
-                .map_err(|e| format!("the window's record can't be written: {e}"));
-        }
-        let _ = text;
-        Ok(())
+        let Some(dir) = &self.dir else {
+            return Ok(());
+        };
+        folder_storage(dir)
+            .write(crate::window::WINDOW_KEY, text)
+            // check-text: not player text (a warning for the log)
+            .map_err(|e| format!("the window's record can't be written: {e}"))
     }
 
     /// Where it is, to tell the player ([`place`]).
@@ -139,6 +133,20 @@ impl StorageAt {
         {
             browser_place(self.name)
         }
+    }
+}
+
+/// The storage in the folder `dir` on a desktop. The web has no folders
+/// (a [`StorageAt`] there holds none), so there it is never reached.
+fn folder_storage(dir: &std::path::Path) -> Box<dyn Storage> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Box::new(FileStorage::in_folder(dir.to_owned()))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = dir;
+        Box::new(shuyi_ui::storage::MemoryStorage::new())
     }
 }
 
