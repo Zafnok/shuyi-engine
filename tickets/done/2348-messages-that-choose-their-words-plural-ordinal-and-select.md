@@ -528,7 +528,7 @@ Deviations:
   text value writes the text, and with no value is handed out as the
   plural's argument (`{n}` when `format` has none).
 
-Size: 1,763 counted lines, the parser picks its branches by the plural table and the table has no other user, so neither lands without the other; the ADR, the CLDR fixture and credit are theirs.
+Size: 1,787 counted lines, the parser picks its branches by the plural table and the table has no other user, so neither lands without the other; the ADR, the CLDR fixture and credit are theirs.
 
 Breaking: shuyi-cli: notices::FILES: an array of 4 rather than 3, with CLDR's plural rules; a game that names its type writes `[EngineFile; 4]`, or iterates it.
 
