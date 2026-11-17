@@ -153,18 +153,17 @@ impl SourceFiles {
         self.paths.get(start..end).unwrap_or_default()
     }
 
-    /// The place of the file at `path`.
+    /// The place of the file at `path`. A file's path ends where the next
+    /// one's starts, so the search takes each file's place from where it
+    /// lies in the list.
     fn find(&self, path: &str) -> Option<usize> {
-        let (mut low, mut high) = (0, self.files.len());
-        while low < high {
-            let mid = low + (high - low) / 2;
-            match self.path(mid).cmp(path) {
-                core::cmp::Ordering::Equal => return Some(mid),
-                core::cmp::Ordering::Less => low = mid + 1,
-                core::cmp::Ordering::Greater => high = mid,
-            }
-        }
-        None
+        let first = self.files.as_ptr().addr();
+        let place = |file: &SourceFile| {
+            (core::ptr::from_ref(file).addr() - first) / size_of::<SourceFile>()
+        };
+        self.files
+            .binary_search_by(|file| self.path(place(file)).cmp(path))
+            .ok()
     }
 
     /// Whether the pack has a file at `path`: read from the index alone.
