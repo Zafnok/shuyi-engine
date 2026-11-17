@@ -289,7 +289,7 @@ launches.
 
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
-screen transitions), 2347 (game#0250, key names that stand out), 2228
+screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
 (game#1013, mod tables merged by id), and 2226, 2253 and 2349
 (game#0825, the language option). 2342 (game#0826, the voices' volume)
 is done.
@@ -345,6 +345,9 @@ is done.
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
 | 2785 | Key names stand out in the template's and Hello, Grid's hints, with a key colour in their palettes (after 2347) |
+| 3215 (done) | Key caps: a key's name in text drawn as a key, boxed, bold and with room around it |
+| 3216 | A bold face in the font atlas, which key caps draw from (after 3215) |
+| 3217 | The cursor's four direction keys as one picture, with key caps on (after 3215) |
 | 2354 | A grid cursor: `ListCursor` in two dimensions |
 | 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
 

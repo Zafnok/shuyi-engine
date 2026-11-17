@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2347"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 3215 — Key caps: a key's name in text drawn as a key
@@ -161,26 +161,29 @@ builds what the game's theme asks for, and changes no other game's look.
 
 ## Acceptance criteria
 
-- [ ] With the style off (every existing palette and theme), every
-      engine snapshot is unchanged.
-- [ ] With the style on and a 2 px margin, a test reads the pixels of a
+- [x] With the style off (every existing palette and theme), every
+      engine snapshot is unchanged. (The render card's snapshot changed:
+      it holds every kind of thing a frame draws, and now two caps.)
+- [x] With the style on and a 2 px margin, a test reads the pixels of a
       one-letter cap (`W`, `D`, `F`, `E`) and finds 2 px between the
       ink and the box on all four sides.
-- [ ] A cap followed by `.` and by `,`: a test finds every pixel of the
+- [x] A cap followed by `.` and by `,`: a test finds every pixel of the
       `.` and `,` glyphs drawn as without the cap.
-- [ ] `StyledText::width` of `"F select · Space end turn"` with caps
+- [x] `StyledText::width` of `"F select · Space end turn"` with caps
       on counts the caps' extra cells, and `print_styled` advances by
       the same.
-- [ ] Capitals on: `f` is drawn `F`; `Space` and `Shift+Space` as
+- [x] Capitals on: `f` is drawn `F`; `Space` and `Shift+Space` as
       written. `plain()` is unchanged either way.
-- [ ] Bold: with a bold face in the atlas a cap draws its glyphs from
-      it; without one, double-struck. `frame-png` of both reviewed.
-- [ ] The cursor on the arrow keys gives one cluster span, drawn as the
+- [x] Bold without a bold face: double-struck, `frame-png` reviewed.
+      ~~With a bold face in the atlas a cap draws its glyphs from it.~~
+      (not done: the bold face moved to 3216, to keep the PR's size)
+- [x] ~~The cursor on the arrow keys gives one cluster span, drawn as the
       theme's picture; on W A S D, four `Key` spans in up, left, down,
-      right order with spaces between.
-- [ ] On a one-bit target with no one-bit setting, nothing changes.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+      right order with spaces between.~~ (not done: the direction
+      cluster moved to 3217, at the ticket's size valve)
+- [x] On a one-bit target with no one-bit setting, nothing changes.
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -193,4 +196,148 @@ builds what the game's theme asks for, and changes no other game's look.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done (ADR-0124, which supersedes ADR-0122 §4):
+
+- **The style:** `KeyCapStyle` (`shuyi_ui::frame::key_cap`: bold,
+  capitals, `margin_px` 2, `one_bit`), turned on by
+  `GameData::key_caps` (default `None`). Its colours are the palette's
+  `key`, `key_bg` (the box) and a new optional `key_edge` (its 1 px edge,
+  else the fill). `Ctx::key_caps` makes the `KeyCaps` the frame draws
+  with; `Game` hands it to its buffer before each drawing. A one-bit
+  screen (`PlatformFacts::screen`, new, from the profile's display
+  colour) gets none unless `KeyCapStyle::one_bit`.
+- **Room:** a cap takes its name's cells and a fixed number more
+  (`KeyCaps::extra_cells`: one for Terminus and 2 px). `CellWidths`
+  carries it (`with_key_cap_cells`), so `StyledText::width` and `cut`
+  count it with a frame's `buf.widths()`; a cut keeps a cap whole.
+- **Drawing:** `print_styled` prints the name (one letter as its
+  capital), the extra cells, the box as `Under` rectangles inside the
+  cap's cells (corners left out, rounded), and a `GlyphStyle` (moved
+  `dx`, `dy` pixels, bold) on the name's cells, kept in a sparse map
+  beside the cells (`glyph_style`, `set_glyph_style`), cleared by
+  whatever replaces a cell. Both renderers (`shuyi-app`, the raster's
+  `Painter`, so `frame-png` and the web) draw a styled glyph moved, and
+  bold struck twice; snapshots list the styles; the render card has two
+  caps.
+- **Even margins:** `font-atlas` measures the font's ink into
+  `atlas.ron` (`FontInk`: the box most capitals share the edges of, and
+  the columns of each printable ASCII glyph that differs). Terminus:
+  columns 1–6, rows 2–11, as the game measured; `W` 0–6. The template's
+  and Hello, Grid's atlases carry it (tests make each again and
+  compare), so Hello, Grid's golden table and its recorded session's
+  content stamp were blessed again; the book's and the tutorial's copies
+  stay as they were (nothing checks them, and none draws caps). A pack
+  holds the ink: the pack format is version 16.
+
+Deviations:
+
+- **The direction cluster is split off** to 3217, at the ticket's own
+  size valve (past 900 lines).
+- **The bold face is split off** to 3216 (`FontAtlasDef::bold`,
+  `font-atlas --bold`, renderers drawing from it): the PR was at 2,162
+  counted lines with it, and it lands apart cleanly, as bold struck
+  twice works without it. It was built and taken out; commit `3f6b8875`
+  on this branch has it, and 3216 says to start from there.
+- **Ink per glyph, not one box per font.** The ticket's numbers are
+  Terminus's capitals, but `W` inks column 0: one box for every letter
+  gave `W` 1 px on its left. The atlas records the columns of each
+  printable ASCII glyph that differs, and a cap fits its box to its
+  name's first and last glyph.
+- **The style is code, not the theme's file.** A palette file holds
+  only colours; the theme's colours (`key`, `key_bg`, `key_edge`) are
+  the palette's, the switches and the margin `GameData::key_caps`
+  (ADR-0124 §3).
+- **Vertical margin:** the box is never taller than the line; with a
+  margin too big for it, the ink is centred (ADR-0124 §6). Terminus at
+  2 px is the line's height, 2 px all round.
+- **Pictures:** the review pictures are written by an ignored test,
+  `cargo test -p shuyi-cli key_caps_pictures -- --ignored`
+  (`target/key-caps/`), not committed: a help line, a text box's
+  corner (`b log  f ▼`) and a line of prose, caps off and on.
+
+Size: 2,170 counted lines, not split further: the cluster and the bold
+face went to 3217 and 3216, and what is left lands together. A cap's
+room (`CellWidths`, `width`, `cut`), its printing and its glyph style
+in the renderers only work as a whole (a cap counted but not drawn
+misaligns every hint; drawn but not counted, it covers its neighbour),
+and its margins need the atlas's ink; 1,008 of the lines are the tests
+that read its pixels.
+
+Tickets written here:
+
+- 3216: the bold face in the font atlas (above).
+- 3217: the direction cluster (above).
+- No ticket: a bold face's pictures for the game, and Terminus Bold, are
+  the game's (game#0254).
+
+Game: game#0254 (the game turns the style on, adds its bold face and
+the cluster's picture); it now waits for 3216 and 3217 as well, and its
+`blocked_by` should name them. Its pin move breaks one struct literal:
+`gh search code --repo Zafnok/visions-of-shuyi 'FontAtlasDef {'` finds
+`crates/xtask/src/icon.rs`'s test atlas, which adds `ink: None`. The
+game's other uses of the changed types (`gh search code --repo
+Zafnok/visions-of-shuyi CellWidths`, `PlatformFacts`, `print_styled`)
+read them or build them by their functions: no change. With no
+`key_caps` the game's look and snapshots are unchanged.
+
+Breaking: shuyi-assets: FontAtlasDef: a new field `ink` (the font's ink, `Option<FontInk>`); a struct literal adds `ink: None`, and an atlas file without it still reads
+
+```migration
+since: 0.1.0
+what: The font atlas's description has a new field, ink, which font-atlas writes; a game that builds a FontAtlasDef by hand adds it.
+old: "FontAtlasDef { cell_w, cell_h, columns, glyphs, wide, wide_sets }"
+new: "FontAtlasDef { cell_w, cell_h, columns, glyphs, wide, wide_sets, ink }"
+before: |
+  FontAtlasDef {
+      cell_w: 2,
+      cell_h: 4,
+      columns: 2,
+      glyphs: [('b', 0), ('a', 1)].into_iter().collect(),
+      wide: BTreeMap::new(),
+      wide_sets: BTreeMap::new(),
+  }
+after: |
+  FontAtlasDef {
+      cell_w: 2,
+      cell_h: 4,
+      columns: 2,
+      glyphs: [('b', 0), ('a', 1)].into_iter().collect(),
+      wide: BTreeMap::new(),
+      wide_sets: BTreeMap::new(),
+      ink: None,
+  }
+```
+
+Breaking: shuyi-assets: pack::VERSION: 16 (a font atlas's ink); a pack baked before is refused, so a game bakes again with `shuyi bake`
+
+```migration
+since: 0.1.0
+what: The pack format is version 16; a pack of version 15 is refused.
+old: "pack::VERSION == 15"
+new: "pack::VERSION == 16"
+before: |
+  cargo shuyi bake   # with the engine before 3215
+after: |
+  cargo shuyi bake   # again, with this engine
+```
+
+Breaking: shuyi-assets: the golden value `font atlas: font-atlas` (`crates/assets/tests/golden/formats.ron`): a decoded atlas has `ink`, so its state hash changed; a game's golden table of a font atlas is blessed again
+
+```migration
+since: 0.1.0
+what: A decoded font atlas has an ink field, so its state hash in a golden table changes.
+old: "golden font atlas hash before 3215"
+new: "golden font atlas hash with ink: None"
+before: |
+  cargo xtask golden
+after: |
+  cargo xtask golden --bless
+```
+
+Behaviour: shuyi-cli: `font-atlas` writes an `ink` block at the end of `atlas.ron` (the capitals' box and the columns of the ASCII glyphs that differ); an atlas made again differs from one made before by that block
+
+Behaviour: shuyi-ui: with a game's `key_caps` on, `StyledText::width` and `cut` measured with a frame's widths count a key cap's extra cells, and a key's name in the frame's cells is followed by a space (its room) and, if one letter, is its capital; with it off (every game today), nothing changes
+
+Book: chapter 4, *Naming a key in text* (`site/content/learn/book/actions.md`), says how a game turns key caps on; the `shuyi-input` skill and `docs/formats.md` (the atlas's `ink`) too.
+
+Nick input: none.

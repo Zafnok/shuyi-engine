@@ -27,6 +27,9 @@
 //! `wide_set_glyphs` for it. An unnamed `--wide` keeps those of the
 //! languages that name no set. The sets are laid out one after another,
 //! in the order given, after the narrow glyphs.
+//!
+//! Every atlas says where its glyphs put ink (`ink`, [`ink_of`]), which
+//! a key cap places its name by (ticket 3215).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -34,7 +37,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use shuyi_assets::font::{
-    AtlasRect, CellWidths, FontAtlasDef, WideSet, describe, is_combining_mark, is_wide_punctuation,
+    AtlasRect, CellWidths, FontAtlasDef, FontInk, InkBox, WideSet, describe, is_combining_mark,
+    is_wide_punctuation,
 };
 use shuyi_assets::image::Image;
 use shuyi_assets::lang::Lang;
@@ -467,6 +471,7 @@ pub fn build_atlas_with_sets(
             }
         }
     }
+    def.ink = ink_of(font, &def.glyphs);
     let rows = next.div_ceil(COLUMNS).max(1);
     let (width, height) = (COLUMNS * font.cell_w, rows * font.cell_h);
     let mut rgba = vec![0u8; to_usize(i64::from(width) * i64::from(height) * 4)];
@@ -504,6 +509,66 @@ pub fn build_atlas_with_sets(
             rgba,
         },
     }
+}
+
+/// The leftmost, top, rightmost and bottom pixel `pixels` (a glyph of a
+/// font `w` pixels wide) ink; `None` for a blank glyph.
+fn ink_box(pixels: &[bool], w: usize) -> Option<InkBox> {
+    let at = |v: usize| u32::try_from(v).unwrap_or(u32::MAX);
+    let lit = pixels.iter().enumerate().filter(|&(_, &on)| on);
+    lit.map(|(i, _)| (at(i % w), at(i / w)))
+        .fold(None, |ink: Option<InkBox>, (x, y)| {
+            Some(match ink {
+                None => InkBox::new(x, y, x, y),
+                Some(b) => {
+                    InkBox::new(b.left.min(x), b.top.min(y), b.right.max(x), b.bottom.max(y))
+                }
+            })
+        })
+}
+
+/// Where the glyphs of `font` that `glyphs` keeps put ink ([`FontInk`]):
+/// the capitals' box, each edge the one most capitals `A`–`Z` share (the
+/// smaller of two as common), so a `Q`'s tail doesn't move it; and the
+/// columns of each printable ASCII glyph whose ink doesn't span the
+/// capitals'. Terminus 8 × 16's capitals are columns 1 to 6, rows 2 to 11,
+/// and its `W` columns 0 to 6. `None` if it keeps no capital with ink.
+pub fn ink_of(font: &BitmapFont, glyphs: &BTreeMap<char, u32>) -> Option<FontInk> {
+    let w = to_usize(i64::from(font.cell_w)).max(1);
+    let kept = |c: &char| glyphs.contains_key(c);
+    let boxes: Vec<InkBox> = ('A'..='Z')
+        .filter(kept)
+        .filter_map(|c| font.glyphs.get(&c))
+        .filter_map(|pixels| ink_box(pixels, w))
+        .collect();
+    let most = |edge: fn(&InkBox) -> u32| {
+        let mut counts: BTreeMap<u32, usize> = BTreeMap::new();
+        for ink in &boxes {
+            *counts.entry(edge(ink)).or_default() += 1;
+        }
+        // The first of the most common: `max_by_key` keeps the last.
+        counts
+            .into_iter()
+            .rev()
+            .max_by_key(|&(_, n)| n)
+            .map(|(v, _)| v)
+    };
+    let capitals = InkBox::new(
+        most(|b| b.left)?,
+        most(|b| b.top)?,
+        most(|b| b.right)?,
+        most(|b| b.bottom)?,
+    );
+    let mut ink = FontInk::new(capitals);
+    for c in (' '..='~').filter(kept) {
+        let Some(own) = font.glyphs.get(&c).and_then(|pixels| ink_box(pixels, w)) else {
+            continue;
+        };
+        if (own.left, own.right) != (capitals.left, capitals.right) {
+            ink.columns.insert(c, [own.left, own.right]);
+        }
+    }
+    Some(ink)
 }
 
 /// Whether `wide` fits beside `font` as its wide font: its cells twice as
@@ -551,9 +616,9 @@ pub fn one_bit(def: &FontAtlasDef, image: &Image) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
-/// What `atlas.ron` holds: a [`FontAtlasDef`], without its `wide` or its
-/// `wide_sets` when there are none, so an atlas without them is written as
-/// before.
+/// What `atlas.ron` holds: a [`FontAtlasDef`], without its `wide`, its
+/// `wide_sets` or its ink when there are none, so an atlas without them is
+/// written as before.
 #[derive(Serialize)]
 struct AtlasRonBody<'a> {
     cell_w: u32,
@@ -564,6 +629,8 @@ struct AtlasRonBody<'a> {
     wide: &'a WideSet,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     wide_sets: &'a BTreeMap<String, WideSet>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ink: Option<&'a FontInk>,
 }
 
 /// The `atlas.ron` text for `def`, with a generated-file header naming
@@ -575,7 +642,10 @@ pub fn atlas_ron(
     readme: Option<&str>,
 ) -> Result<String, String> {
     // LF on every OS, so regenerating never churns line endings.
-    let config = ron::ser::PrettyConfig::default().new_line("\n");
+    // A glyph's ink columns on one line each (`'W': (0, 6),`).
+    let config = ron::ser::PrettyConfig::default()
+        .new_line("\n")
+        .compact_arrays(true);
     let body = AtlasRonBody {
         cell_w: def.cell_w,
         cell_h: def.cell_h,
@@ -583,6 +653,7 @@ pub fn atlas_ron(
         glyphs: &def.glyphs,
         wide: &def.wide,
         wide_sets: &def.wide_sets,
+        ink: def.ink.as_ref(),
     };
     let body = ron::ser::to_string_pretty(&body, config).map_err(|e| e.to_string())?;
     let first = format!("// Generated by `{command} font-atlas` from {source_name}. Do not edit");
@@ -792,6 +863,9 @@ fn wide_count(def: &FontAtlasDef, wides: &[WideFont]) -> String {
         }
     }
 }
+
+#[cfg(test)]
+mod ink_tests;
 
 #[cfg(test)]
 mod tests {

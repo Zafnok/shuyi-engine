@@ -27,6 +27,7 @@ use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::debug;
 use crate::frame::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
+use crate::frame::key_cap::KeyCaps;
 use crate::frame_cap::{FrameCap, Pacing};
 use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
@@ -713,9 +714,16 @@ impl<G: GameData> Game<G> {
     /// [`CellWidths::of`]: shuyi_assets::font::CellWidths::of
     pub fn set_widths(&mut self, widths: CellWidths) {
         self.ctx.set_widths(widths);
-        if self.buffer.widths() != self.ctx.widths() {
+        if *self.buffer.widths() != self.frame_widths(self.ctx.key_caps().as_ref()) {
             self.redraw();
         }
+    }
+
+    /// What the frame measures text with when it draws keys as `caps`:
+    /// [`Ctx::widths`] with a cap's extra cells.
+    fn frame_widths(&self, caps: Option<&KeyCaps>) -> CellWidths {
+        let cap = caps.map(KeyCaps::extra_cells);
+        self.ctx.widths().clone().with_key_cap_cells(cap)
     }
 
     /// Clears the buffer and draws the stack into it, then the modules
@@ -724,7 +732,12 @@ impl<G: GameData> Game<G> {
     /// changing the context). The buffer takes the widths of the language
     /// text is shown in first ([`Ctx::widths`]).
     pub fn redraw(&mut self) {
-        if self.buffer.widths() != self.ctx.widths() {
+        let caps = self.ctx.key_caps();
+        let widths = self.frame_widths(caps.as_ref());
+        if self.buffer.key_caps() != caps.as_ref() {
+            self.buffer.set_key_caps(caps);
+        }
+        if *self.buffer.widths() != widths {
             self.buffer.set_widths(self.ctx.widths().clone());
         }
         let blank = self.ctx.game.blank_cell(&self.ctx.palette);
@@ -909,6 +922,8 @@ fn plays_a_loop<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool 
         if manifest.sounds.get(cue).is_some_and(|s| s.looped))
 }
 
+#[cfg(test)]
+mod key_caps_tests;
 mod pads;
 #[cfg(test)]
 mod tests;
