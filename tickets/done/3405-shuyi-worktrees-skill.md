@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3403"]
 nick_input: none
-completed:
+completed: 2026-11-16
 ---
 
 # 3405 — The shuyi-worktrees skill: when a game seeds a new worktree and trims its idle ones, with its worked example
@@ -101,13 +101,13 @@ its example 200, docs 30, doubled where the estimate is code).
 
 ## Acceptance criteria
 
-- [ ] `shuyi-worktrees` passes `check-skills`, and its worked example
+- [x] `shuyi-worktrees` passes `check-skills`, and its worked example
       passes `cargo xtask skill-examples`.
-- [ ] A new game's `.claude/skills/` has `shuyi-worktrees`.
-- [ ] A `Git` step that exits otherwise than its `ok` fails its verdict,
+- [x] A new game's `.claude/skills/` has `shuyi-worktrees`.
+- [x] A `Git` step that exits otherwise than its `ok` fails its verdict,
       naming the exit code.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -116,5 +116,25 @@ its example 200, docs 30, doubled where the estimate is code).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- The runner's `Git` step (`crates/xtask/src/script.rs`): `git <args>`
+  in the game's folder, checked against `ok` like `Cargo`; in the
+  module's doc list and `skills/README.md`. Its test runs a `Fake`
+  runner and reads the step from RON.
+- `skills/shuyi-worktrees/` (`SKILL.md` and `example.ron`), the skill
+  pack's list in `skills/README.md`, the template's `AGENTS.md` (its
+  worktrees section and the `seed-target` row) and the book's quick
+  start.
+- Taken from 3403's first commit, `96ecf2ef`, as the ticket said; it
+  matched `main` (the files outside the draft hadn't moved since), and
+  the flags and problem codes the skill names were checked against
+  `crates/cli/src/worktrees/command.rs`.
+- Checked: `cargo shuyi check-skills skills --tickets tickets/open`
+  (18 skills OK), `cargo xtask skill-examples shuyi-worktrees` (4 steps
+  ok), and the example's new game has `.claude/skills/shuyi-worktrees`.
+- `crates/cli/src/template/plans.golden` re-blessed: only the
+  template's `AGENTS.md` hashes moved.
+- Deviations: none.
+
+No break: the `Git` step is the xtask runner's, not a published crate's.
+
+Book: the quick start's worktrees paragraph names the skill.
