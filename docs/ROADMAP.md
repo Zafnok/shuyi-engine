@@ -420,7 +420,7 @@ is done.
 | 3093 | A background policy the game sets: paused or muted while its window has no focus (after 3042) |
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
-| 3314 | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
+| 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |

@@ -263,6 +263,8 @@ pub(crate) enum WebFrame {
 pub(crate) struct Held {
     input: Vec<RawInputEvent>,
     system: Vec<SystemEvent>,
+    /// Whether a mouse button was pressed, for the cursor (3314).
+    press: bool,
 }
 
 impl Held {
@@ -285,6 +287,17 @@ impl Held {
     /// Moves the kept system events into `out`, ahead of what comes after.
     pub(crate) fn take_system(&mut self, out: &mut Vec<SystemEvent>) {
         out.append(&mut self.system);
+    }
+
+    /// Keeps whether a skipped frame had a mouse button pressed.
+    pub(crate) fn keep_press(&mut self, pressed: bool) {
+        self.press |= pressed;
+    }
+
+    /// Whether a skipped frame since the last call had a mouse button
+    /// pressed.
+    pub(crate) fn take_press(&mut self) -> bool {
+        std::mem::take(&mut self.press)
     }
 }
 
@@ -618,6 +631,17 @@ mod tests {
         held.take_input(&mut out);
         held.take_system(&mut system);
         assert!(out.is_empty() && system.is_empty());
+    }
+
+    /// A mouse press on a skipped frame reaches the next that runs, once.
+    #[test]
+    fn a_press_on_a_skipped_frame_reaches_the_next_that_runs_once() {
+        let mut held = Held::default();
+        assert!(!held.take_press());
+        held.keep_press(true);
+        held.keep_press(false);
+        assert!(held.take_press());
+        assert!(!held.take_press());
     }
 
     #[test]
