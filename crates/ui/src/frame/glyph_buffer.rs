@@ -108,7 +108,8 @@ pub struct GlyphStyle {
     pub dx: i8,
     /// Console pixels down (negative: up).
     pub dy: i8,
-    /// In bold: drawn twice, 1 px apart.
+    /// In bold: from the atlas's bold face, else drawn twice, 1 px apart
+    /// ([`FontAtlasDef::bold_strikes`](shuyi_assets::font::FontAtlasDef::bold_strikes)).
     pub bold: bool,
 }
 

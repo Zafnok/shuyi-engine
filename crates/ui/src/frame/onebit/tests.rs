@@ -24,6 +24,8 @@ fn test_font() -> (FontAtlasDef, Vec<u8>) {
         glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4)].into(),
         wide: alloc::collections::BTreeMap::default(),
         wide_sets: alloc::collections::BTreeMap::new(),
+        bold: alloc::collections::BTreeMap::new(),
+        bold_ink: None,
         ink: None,
     };
     let mut bits = vec![0u8; 5 * 16];
