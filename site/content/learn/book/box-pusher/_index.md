@@ -45,7 +45,8 @@ To change a step's Rust code with nothing installed, each step's page links
 project, with Rust ready, paid from your own GitHub account's free hours (a free
 account has 60 hours a month of the small machine it opens). Making it can take
 some minutes the first time, while it builds the game. Then it opens at the
-project's folder, with step 2's game showing in a tab beside the editor. Change a step's
+project's folder, with step 2's game served: the editor's **Ports** tab opens it,
+on port 4000. Change a step's
 code in its folder, run `cargo shuyi web` there to build it again and `bash
 ../serve.sh` to show that step, and reload the game's tab to play it. Keep the
 same Codespace for the whole project: it stops itself when you leave it, and

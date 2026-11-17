@@ -516,12 +516,14 @@ use it.
   step built. One made without it opens after the first (`waitFor`), and
   builds the rest behind it: a build the reader starts meanwhile waits for
   the target folder's lock.
-- **Serving:** its `postAttachCommand` runs
-  [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
+- **Serving:** the `onCreateCommand`, once step 2 is built, and the
+  `postAttachCommand`, which runs only after the `updateContentCommand`,
+  run [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
   `dist/web/` on port 4000 with Python's server, uncached: the step whose
   folder it runs in, the one named (`bash serve.sh 03-walk`), or the last
   one served (`~/.book-step`, step 2 at first). The port is forwarded,
-  private to the reader, and opened in a preview. After an edit, `cargo
+  private to the reader; the Ports tab opens it (`openPreview` doesn't
+  fire for a server already listening as the editor attaches). After an edit, `cargo
   shuyi web` in the step's folder builds it again into the same folder,
   and a reload plays it. When `shuyi web --serve` (2528) is done, it
   takes `serve.sh`'s place.

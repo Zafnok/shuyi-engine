@@ -37,11 +37,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["rust-lang.rust-analyzer"],
-      // The repository is the folder's parent: its changes show, unasked.
-      "settings": {
-        "git.openRepositoryInParentFolders": "always"
-      }
+      "extensions": ["rust-lang.rust-analyzer"]
     }
   }
 }
