@@ -140,7 +140,13 @@ None. Selling is 3018's question.
   3. it links it with `libnds` and the stock ARM7 core, using the
      BlocksDS the developer installed (found through its environment
      variable);
-  4. it bakes the pack for `nds` and adds it to the ROM's file system;
+  4. it bakes the pack for `nds` and adds it to the ROM's file system.
+     **From 2919 (done):** the backend reads it file by file through a
+     `pack::Source` over that file system (ADR-0128 §2, 2263), never
+     whole: the 2.5 MB heap holds a pack read whole only under about
+     1.5 MB. **Either order with 2264:** if 2264 is done, its paths are
+     read as 2264 decided; if not, they are leaked once as every layer's
+     are, and 2264 measures this backend's table;
   5. it calls the installed `ndstool` (or the tool 3018 named) to write
      the `.nds` and its header, saying which tool it ran;
   6. it reports the ROM's size against `package_bytes` (64 MB, prov.).

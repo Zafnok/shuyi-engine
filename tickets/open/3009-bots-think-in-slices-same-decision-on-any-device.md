@@ -63,11 +63,13 @@ None.
     Progress<C> { Working, Chosen(C) }`, which the rollout bot and the
     turn planner step with. `think::Progress` replaces it: one type, not
     two of the same name.
-  - **Either order with 2919** (the asset memory ADR): if 2919 is
-    done, read its ADR's point 4. If a load steps with `Think` or
-    `Progress`, keep both fit for it (a unit could be a file decoded)
-    and add what the ADR asks of them. If not, nothing to do: 2919
-    counts units as this ticket plans.
+  - **From 2919 (done):** ADR-0128 §4 counts a load's work in units of
+    its own, as this ticket counts a bot's, with the load's own
+    `Progress` in `shuyi-platform` (it carries the game it made). It asks
+    nothing of `Think` or `think::Progress`. **Either order with 3316:**
+    if 3316 is done, name the load's `Progress::Of` in `think`'s module
+    comment as the other count of work; if not, nothing to do (3316 names
+    `think::Progress` in its doc comment).
 - **The engine's search implements `Think`.** 2112's
   `shuyi_core::search::Solver` already runs in `step(units)` slices,
   with its state in the value: add `impl Think for Solver`, where a unit
