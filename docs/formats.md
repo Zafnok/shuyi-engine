@@ -278,7 +278,7 @@ What each one reads:
   `max_cells` (`Lang::overflow`), measured with the font atlas's widths;
   they fail no gate.
 - **A text that chooses its words** is a message, a subset of ICU
-  MessageFormat 1 ([ADR-0125](adr/0125-messages-choose-their-words.md),
+  MessageFormat 1 ([ADR-0126](adr/0126-messages-choose-their-words.md),
   `shuyi_assets::message`): `{name}` as always, `{n, plural, one {# key}
   other {# keys}}` and `{n, selectordinal, one {#st} two {#nd} few {#rd}
   other {#th}}` by CLDR's categories (and `=0 {…}`), `#` the number, and

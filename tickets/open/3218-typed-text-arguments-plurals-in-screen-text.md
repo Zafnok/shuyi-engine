@@ -17,7 +17,7 @@ completed:
 
 Split from 2348 (*Messages that choose their words*), which landed
 `shuyi_assets::message` (ICU MessageFormat's plural, selectordinal and
-select, ADR-0125), its plural table and `Lang::text_in` /
+select, ADR-0126), its plural table and `Lang::text_in` /
 `Lang::data_text_in`, and stopped at 1,500 lines. This ticket is the
 half a game sees: the values a screen hands its text become typed, so a
 plural can choose by a number, and the engine's fills go through
@@ -31,7 +31,7 @@ plural can choose by a number, and the engine's fills go through
   device without colour or keys and another elsewhere. A farming game's
   tutorial sign that says "click" on a PC and "press" on a handheld
   needs the same.
-- ADR-0125 decides the syntax, the typed arguments (`Arg::Int`,
+- ADR-0126 decides the syntax, the typed arguments (`Arg::Int`,
   `Arg::Text`, `ToArg`), the built-in `device` and `target` arguments,
   and that a text's plurals follow the rules of the language it is in.
   It amends ADR-0020, whose label values were "already text".
@@ -158,7 +158,7 @@ None.
   a plural category the language lacks), tips checked by form, the
   overflow list by form and `missing_forms`: 2261.
 - Numbers formatted by language: `{n, number}` writes plain digits
-  (ADR-0125).
+  (ADR-0126).
 - Dialogue lines and captions: they keep their `{tokens}`.
 - Reading the device anywhere but the `Ctx::device` field.
 
@@ -167,7 +167,7 @@ the draft measured 490.
 
 ## Implementation steps
 
-1. Read ADR-0125, `crates/ui/src/text.rs`, `crates/ui/src/ctx.rs`
+1. Read ADR-0126, `crates/ui/src/text.rs`, `crates/ui/src/ctx.rs`
    (`text`, `label`, `text_with` and the styled ones, `help_keys`,
    `numbered_profile`), `shuyi_assets::message` and
    `crates/assets/src/tip.rs`.
