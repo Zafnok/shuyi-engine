@@ -55,8 +55,8 @@ fn a_folder_bundle_holds_every_file_below_it_up_to_its_limits() {
     fs::write(dir.join("a.txt"), "aa").unwrap();
     fs::write(dir.join("sub/b.txt"), "bbb").unwrap();
     let bundle = folder_bundle(&dir, 2, 5).unwrap();
-    assert_eq!(bundle.bytes("a.txt"), Some(&b"aa"[..]));
-    assert_eq!(bundle.bytes("sub/b.txt"), Some(&b"bbb"[..]));
+    assert_eq!(bundle.bytes("a.txt").as_deref(), Some(&b"aa"[..]));
+    assert_eq!(bundle.bytes("sub/b.txt").as_deref(), Some(&b"bbb"[..]));
     let error = folder_bundle(&dir, 1, 5).unwrap_err();
     assert_eq!(error, "its folder holds more than 1 files or 5 bytes");
     assert!(folder_bundle(&dir, 2, 4).is_err());

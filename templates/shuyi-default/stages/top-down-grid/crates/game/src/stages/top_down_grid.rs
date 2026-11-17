@@ -96,7 +96,7 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
     let text = bundle
         .file(MAP)
         .ok_or_else(|| problem("file not found".to_owned()))?;
-    let map = rules::parse_map(MAP, text).map_err(problem)?;
+    let map = rules::parse_map(MAP, &text).map_err(problem)?;
     Stage::new(&map, 0).map_err(problem)?;
     Ok(Own {
         map,

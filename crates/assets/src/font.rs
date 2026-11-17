@@ -82,7 +82,7 @@ impl Format for FontAtlasRon {
             file.shown(),
             source,
             &cx.shown(&png),
-            cx.bytes(&png),
+            cx.bytes(&png).as_deref(),
             &self.required,
         )
     }

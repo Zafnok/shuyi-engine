@@ -37,6 +37,7 @@
 //! pieces it uses are [`window_layout`], [`read_window`], [`report`] and
 //! [`finish`].
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use macroquad::prelude::*;
@@ -238,7 +239,7 @@ async fn play_frames<G: GameData>(app: &mut App<G>, platform: &mut Capturing, pl
 /// takes nothing from outside but the window's size and close button.
 struct Capturing {
     backend: Macroquad,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &'static str,
     tolerance: Tolerance,
     /// The plan's frame being run.
@@ -343,15 +344,15 @@ impl Platform for Capturing {
 fn painter(
     look: Look<'_>,
     background: Rgb,
-    files: fn(&str) -> Option<&'static [u8]>,
+    files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &str,
 ) -> Result<Painter, String> {
-    let atlas = decode(files(font_png).unwrap_or_default())
+    let atlas = decode(&files(font_png).unwrap_or_default())
         .map_err(|e| format!("font atlas image: {e}"))?;
     let images = look
         .images
         .ids()
-        .filter_map(|id| Some((id, decode(files(id.path())?).ok()?)))
+        .filter_map(|id| Some((id, decode(&files(id.path())?).ok()?)))
         .collect();
     Ok(Painter::new(look.font.clone(), atlas, images, background))
 }

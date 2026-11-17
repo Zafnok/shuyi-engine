@@ -172,13 +172,22 @@ fn its_private_files_are_read_before_every_other_layer() {
     let public: &'static [(&str, &[u8])] = &[("sprites/x.png", b"public x")];
     let game = BasicGame::<UiAction>::new(DEMO, Layer::table("files", public), |_| Box::new(Hello));
     let shown = |bundle: &Bundle, path: &str| bundle.display_path(path);
-    assert_eq!(game.bundle().bytes("sprites/x.png"), Some(&b"public x"[..]));
+    assert_eq!(
+        game.bundle().bytes("sprites/x.png").as_deref(),
+        Some(&b"public x"[..])
+    );
 
     // Not marked private by the game: `private` marks it.
     let game = game.private(Layer::table("private", PRIVATE));
     let bundle = game.bundle();
-    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"private x"[..]));
-    assert_eq!(bundle.file("text/only.txt"), Some("only private"));
+    assert_eq!(
+        bundle.bytes("sprites/x.png").as_deref(),
+        Some(&b"private x"[..])
+    );
+    assert_eq!(
+        bundle.file("text/only.txt").as_deref(),
+        Some("only private")
+    );
     for path in ["sprites/x.png", "text/only.txt"] {
         assert_eq!(shown(&bundle, path), format!("private/{path}"));
         assert!(bundle.is_private(&shown(&bundle, path)), "{path}");
@@ -191,14 +200,23 @@ fn its_private_files_are_read_before_every_other_layer() {
         ("palette.ron", b"public palette"),
     ];
     let bundle = game.over(Layer::table("files", watched)).bundle();
-    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"private x"[..]));
-    assert_eq!(bundle.file("palette.ron"), Some("public palette"));
+    assert_eq!(
+        bundle.bytes("sprites/x.png").as_deref(),
+        Some(&b"private x"[..])
+    );
+    assert_eq!(
+        bundle.file("palette.ron").as_deref(),
+        Some("public palette")
+    );
     assert!(!bundle.is_private(&shown(&bundle, "palette.ron")));
 
     // A second call replaces the first's layer.
     let empty: &'static [(&str, &[u8])] = &[];
     let bundle = game.private(Layer::table("private", empty)).bundle();
-    assert_eq!(bundle.bytes("sprites/x.png"), Some(&b"public x"[..]));
+    assert_eq!(
+        bundle.bytes("sprites/x.png").as_deref(),
+        Some(&b"public x"[..])
+    );
     assert!(!bundle.has("text/only.txt"));
 }
 

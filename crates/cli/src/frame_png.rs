@@ -607,20 +607,21 @@ pub struct Painter(raster::Painter);
 
 impl Painter {
     /// Decodes atlas image `atlas_png` and every image in `images`, whose
-    /// files `read` returns (an image `read` lacks, or that doesn't decode,
+    /// files `read` returns, lent or owned (`&[u8]`, or the `Cow` a
+    /// bundle's read hands out) (an image `read` lacks, or that doesn't decode,
     /// draws as a [`MISSING_COLOR`](raster::MISSING_COLOR) rectangle).
     /// `clear` is the console background (the palette's `black`).
-    pub fn new<'a>(
+    pub fn new<B: AsRef<[u8]>>(
         atlas: FontAtlasDef,
         atlas_png: &[u8],
         images: &ImageTable,
-        read: impl Fn(&str) -> Option<&'a [u8]>,
+        read: impl Fn(&str) -> Option<B>,
         clear: Rgb,
     ) -> Result<Self, String> {
         let atlas_image = decode_image(atlas_png).map_err(|e| format!("font atlas image: {e}"))?;
         let images = images
             .ids()
-            .filter_map(|id| Some((id, decode_image(read(id.path())?).ok()?)))
+            .filter_map(|id| Some((id, decode_image(read(id.path())?.as_ref()).ok()?)))
             .collect();
         Ok(Self(raster::Painter::new(
             atlas,

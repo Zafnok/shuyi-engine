@@ -14,7 +14,7 @@ use shuyi::ui::frame::EngineColor;
 /// The game's palette file with its panel colour changed to `panel`.
 fn palette(panel: &str) -> Vec<u8> {
     let bytes = file("palette.ron").unwrap_or_default();
-    let text = String::from_utf8_lossy(bytes);
+    let text = String::from_utf8_lossy(&bytes);
     text.replace("\"panel\": \"#16161c\"", &format!("\"panel\": \"{panel}\""))
         .into_bytes()
 }

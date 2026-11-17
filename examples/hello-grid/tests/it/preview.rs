@@ -18,7 +18,7 @@ use shuyi::ui::dialogue::preview::{DialoguePreview, PreviewView, Tab};
 
 /// The game's scene file.
 fn intro() -> String {
-    String::from_utf8_lossy(file("intro.dlg").unwrap_or_default()).into_owned()
+    String::from_utf8_lossy(&file("intro.dlg").unwrap_or_default()).into_owned()
 }
 
 /// The preview over a folder holding the game's scene, watched in every

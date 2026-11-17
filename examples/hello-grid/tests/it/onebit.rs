@@ -169,7 +169,7 @@ fn the_playdate_pack_holds_every_picture_one_bit_and_the_game_plays_from_it() {
     let skin = one_bit_skin().unwrap_or_else(|e| panic!("{e}"));
     let map = PatternMap::new(h.ctx().palette.iter(), &skin.map);
     let bits = pack.bytes(FONT_1BIT).unwrap_or_default();
-    let font = Font::new(&h.ctx().game.font, bits).unwrap_or_else(|e| panic!("{e}"));
+    let font = Font::new(&h.ctx().game.font, &bits).unwrap_or_else(|e| panic!("{e}"));
     let drawn = to_one_bit(h.game().buffer(), &map, &font, &pack);
     let grey = to_one_bit(h.game().buffer(), &map, &font, &());
     assert_ne!(drawn.bytes(), grey.bytes());

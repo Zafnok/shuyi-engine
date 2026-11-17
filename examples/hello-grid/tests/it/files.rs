@@ -4,6 +4,7 @@
 //! from its `frame-png` arguments), so an edit that forgets to regenerate
 //! them fails here.
 
+use std::borrow::Cow;
 use std::path::Path;
 
 use hello_grid::map::{FOE_TILE, HERO_TILE, TERRAIN_LOOKS, TILE_COLUMNS, TILE_PX, piece_look};
@@ -25,7 +26,7 @@ fn project() -> Project {
     Project::load(root()).unwrap_or_else(|e| panic!("{e}"))
 }
 
-fn embedded(path: &str) -> &'static [u8] {
+fn embedded(path: &str) -> Cow<'static, [u8]> {
     hello_grid::file(path).unwrap_or_else(|| panic!("no {path}"))
 }
 
@@ -51,7 +52,7 @@ fn the_font_atlas_is_what_font_atlas_makes_of_the_bdf() {
     let game = Hello::load().unwrap_or_else(|e| panic!("{e:?}"));
     let chars = AtlasChars::of_lang(game.lang(), &rules.required_glyphs);
     let atlas = build_atlas(&font, &chars);
-    let (width, height, rgba) = decode_png(embedded(FONT_PNG)).unwrap();
+    let (width, height, rgba) = decode_png(&embedded(FONT_PNG)).unwrap();
     assert_eq!((width, height), (atlas.image.width, atlas.image.height));
     assert!(rgba == atlas.image.rgba, "files/font/atlas.png is stale");
     let ron = atlas_ron(
@@ -61,7 +62,8 @@ fn the_font_atlas_is_what_font_atlas_makes_of_the_bdf() {
         rules.readme.as_deref(),
     )
     .unwrap();
-    let committed = std::str::from_utf8(embedded(FONT_RON)).unwrap();
+    let committed = embedded(FONT_RON);
+    let committed = std::str::from_utf8(&committed).unwrap();
     assert_eq!(committed, ron, "files/font/atlas.ron is stale");
     let found = atlas.def.problems(REQUIRED_GLYPHS);
     assert!(found.is_empty(), "{found:?}");
@@ -88,7 +90,7 @@ fn the_tileset_is_what_glyph_tiles_makes_of_the_codes_looks() {
     assert_eq!((HERO_TILE, FOE_TILE), (3, 4));
     assert_eq!(rules.tiles.len(), 5);
     let drawn = glyph_tiles::render_files(&rules, root()).unwrap();
-    let (width, height, rgba) = decode_png(embedded("tiles.png")).unwrap();
+    let (width, height, rgba) = decode_png(&embedded("tiles.png")).unwrap();
     assert_eq!((width, height), (drawn.width, drawn.height));
     assert!(rgba == drawn.rgba, "files/tiles.png is stale");
 }

@@ -166,7 +166,7 @@ mod tests {
         for path in paths {
             let on_disk = std::fs::read(checkout.join(&path)).unwrap_or_default();
             assert!(
-                bundle.bytes(&path) == Some(&on_disk[..]),
+                bundle.bytes(&path).as_deref() == Some(&on_disk[..]),
                 "private/files/{path} isn't the game's {path}: the build was made before the \
                  checkout, or before the file changed: run `cargo clean -p {}`",
                 env!("CARGO_PKG_NAME")

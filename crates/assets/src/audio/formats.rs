@@ -4,8 +4,6 @@
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use alloc::borrow::Cow;
-
 use super::{
     AudioManifest, Files, NO_LENGTH, from_source, ogg_length_ms, playable_problem, vorbis_format,
     wav_format,
@@ -216,7 +214,7 @@ impl Format for AudioManifestRon {
         let source = text(file, bytes)?;
         let path = |name: &str| join(file.dir(), name);
         let files = Files {
-            sound: &|name| cx.bytes(&path(name)).map(Cow::Borrowed),
+            sound: &|name| cx.bytes(&path(name)),
             sound_shown: &|name| cx.shown(&path(name)),
             sound_left_out: &|name| cx.left_out(&path(name)),
             music_dir: "",

@@ -167,7 +167,7 @@ These tickets, in order:
 | 2094 | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
 | 2919 (done) | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers (ADR-0128) |
-| 2262 | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0128's one break, before the release |
+| 2262 (done) | The bundle's reads hand out their bytes as a `Cow`, not `&'static`: ADR-0128's one break, before the release |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 (done) | Messages that choose their words: ICU's plural, ordinal and select, and CLDR's plural rules |
 | 3218 | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |

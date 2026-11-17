@@ -88,11 +88,11 @@ fn decoding_a_baked_picture_equals_dithering_its_decoded_source() {
         let cx = DecodeCx::new();
         // The pack's file is a one-bit picture, read as it is…
         let in_pack = pack.bytes(&path).unwrap_or_default();
-        assert!(Bitmap::is_bitmap(in_pack), "{path}");
-        let decoded = OneBitFile.decode(&file, in_pack, &cx);
+        assert!(Bitmap::is_bitmap(&in_pack), "{path}");
+        let decoded = OneBitFile.decode(&file, &in_pack, &cx);
         // …and the source, decoded, then dithered by its settings, is it.
         let image: Image = Png
-            .decode(&file, source.bytes(&path).unwrap_or_default(), &cx)
+            .decode(&file, &source.bytes(&path).unwrap_or_default(), &cx)
             .unwrap_or_else(|e| panic!("{e:?}"));
         let again = dither(&image, settings_of(name).0).map(OneBitPicture::new);
         assert_eq!(decoded.ok(), again.ok().and_then(Result::ok), "{path}");
@@ -114,7 +114,7 @@ fn decoding_a_baked_picture_equals_dithering_its_decoded_source() {
     assert_eq!(errors[0].file, "broken/images/ramp.png");
     // The check proves the same of every picture, and the rest is kept.
     assert_eq!(bake.check(&formats, &source, &pack), []);
-    assert_eq!(pack.bytes("data/palette.ron"), Some(&b"{}"[..]));
+    assert_eq!(pack.bytes("data/palette.ron").as_deref(), Some(&b"{}"[..]));
     assert_eq!(
         pack.bytes("images/art.png.meta"),
         source.bytes("images/art.png.meta")
@@ -172,7 +172,8 @@ fn a_file_in_the_targets_layer_replaces_the_dithered_picture() {
         other.map(|f| f.shown.as_str()),
         Some("assets/images/noise.png")
     );
-    let bitmap = Bitmap::parse(pack.bytes("images/ramp.png").unwrap_or_default());
+    let ramp = pack.bytes("images/ramp.png").unwrap_or_default();
+    let bitmap = Bitmap::parse(&ramp);
     let bitmap = bitmap.unwrap_or_else(|e| panic!("{e}"));
     assert_eq!((bitmap.width(), bitmap.height()), (2, 1));
     assert_eq!(bitmap.style(0), Some(&[0b0100_0000][..]));

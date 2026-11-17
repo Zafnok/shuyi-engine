@@ -30,7 +30,11 @@
 //! stamped with (`shuyi_core::made`).
 //!
 //! The game registers its bundle once ([`install`] or [`get_or_install`]),
-//! and its loaders read files as `&'static` data from it. A front end can
+//! and its loaders read files from it. A read hands out its bytes as a
+//! `Cow<'static, [u8]>` (ADR-0128 §1): every kind of layer there is lends
+//! them (`Cow::Borrowed`, no copy), and a layer that reads its files on
+//! demand, from a pack too big to keep, hands them out owned, for the
+//! reader to drop. Paths stay `&'static`. A front end can
 //! [`watch`] every file read, to log or time what it loads; with `std`,
 //! [`reading`] makes one thread read another bundle (a test of a smaller
 //! build's bundle), and [`recording`] lists the files a stretch of code
@@ -39,6 +43,7 @@
 //! In a debug build a file of a run-time layer may change on disk:
 //! [`Bundle::replace`] takes its new bytes, and [`hot`](crate::hot) values
 //! decode again.
+use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
 #[cfg(feature = "std")]
 use alloc::collections::BTreeSet;
@@ -49,6 +54,8 @@ use crate::error::ContentError;
 use crate::prelude::*;
 
 mod fingerprint;
+#[cfg(test)]
+mod read_tests;
 /// The fixed bundle whose fingerprint `formats.ron` pins (`format::golden_tests`).
 #[cfg(test)]
 pub(crate) use fingerprint::tests::fixed as fixed_fingerprint_bundle;
@@ -90,8 +97,10 @@ impl Embedded {
     }
 
     /// The contents of the file at `path`.
-    fn get(self, path: &str) -> Option<&'static [u8]> {
-        self.0.get_file(path).map(include_dir::File::contents)
+    fn get(self, path: &str) -> Option<Cow<'static, [u8]>> {
+        self.0
+            .get_file(path)
+            .map(|file| Cow::Borrowed(file.contents()))
     }
 
     /// Adds the paths of the files inside `dir` to `paths`, as
@@ -137,7 +146,7 @@ impl core::fmt::Debug for Embedded {
 /// static FILES: Embedded = shuyi_assets::files!("$CARGO_MANIFEST_DIR/tests/fixtures/embedded");
 ///
 /// let bundle = Bundle::new(vec![Layer::dir("files", FILES)]);
-/// assert_eq!(bundle.file("data/a.ron"), Some("embedded a\n"));
+/// assert_eq!(bundle.file("data/a.ron").as_deref(), Some("embedded a\n"));
 /// assert!(!FILES.is_empty());
 /// ```
 ///
@@ -175,7 +184,7 @@ type TableFile = (&'static str, &'static [u8]);
 
 /// The files of a layer handed in at run time ([`Layer::owned`]), with
 /// checked paths, kept for the life of the program so every read of them
-/// is `&'static`. With `std` a file can be replaced ([`Layer::replace`]);
+/// is lent (`Cow::Borrowed`). With `std` a file can be replaced ([`Layer::replace`]);
 /// its old bytes stay, so what was read of them stays valid.
 #[derive(Debug)]
 pub struct OwnedFiles {
@@ -232,8 +241,9 @@ impl OwnedFiles {
 }
 
 impl Files {
-    /// The contents of the file at `path`.
-    fn get(self, path: &str) -> Option<&'static [u8]> {
+    /// The contents of the file at `path`: borrowed, for every kind of
+    /// layer there is.
+    fn get(self, path: &str) -> Option<Cow<'static, [u8]>> {
         match self {
             #[cfg(feature = "std")]
             Self::Dir(dir) => dir.get(path),
@@ -255,9 +265,9 @@ impl Files {
 }
 
 /// The contents of the file at `path` in `files` (sorted by path).
-fn table_get(files: &[TableFile], path: &str) -> Option<&'static [u8]> {
+fn table_get(files: &[TableFile], path: &str) -> Option<Cow<'static, [u8]>> {
     let at = files.binary_search_by(|(p, _)| (*p).cmp(path)).ok()?;
-    Some(files[at].1)
+    Some(Cow::Borrowed(files[at].1))
 }
 
 /// Adds the paths of the files of `files` inside `dir` to `paths`, as
@@ -373,8 +383,9 @@ impl Layer {
     /// A layer of `files` handed in at run time (a mod, a folder read from
     /// disk), each at its path (relative to the layer's root,
     /// `/`-separated), shown as `name`. The name, paths and bytes are kept
-    /// for the life of the program (leaked once), so reads of them are
-    /// `&'static` like the embedded layers'. Make each layer once.
+    /// for the life of the program (leaked once, ADR-0128 §1), so reads of
+    /// them are lent (`Cow::Borrowed`) like the embedded layers'. Make each
+    /// layer once.
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -384,7 +395,7 @@ impl Layer {
     /// let files = BTreeMap::from([("data/a.ron".to_owned(), b"mod a".to_vec())]);
     /// let layer = Layer::owned("mods/more".to_owned(), files).unwrap();
     /// let bundle = Bundle::new(vec![layer, Layer::table("base", BASE)]);
-    /// assert_eq!(bundle.file("data/a.ron"), Some("mod a"));
+    /// assert_eq!(bundle.file("data/a.ron").as_deref(), Some("mod a"));
     /// assert_eq!(bundle.display_path("data/a.ron"), "mods/more/data/a.ron");
     /// ```
     ///
@@ -423,7 +434,7 @@ impl Layer {
     /// path it could have been made with.
     ///
     /// A hot reload's way in, in debug builds: the old bytes are leaked, as
-    /// the layer's files are, so every `&'static` read of them stays valid.
+    /// the layer's files are, so every read lent of them stays valid.
     #[cfg(feature = "std")]
     #[must_use]
     pub fn replace(&self, path: &str, bytes: Vec<u8>) -> bool {
@@ -546,11 +557,11 @@ impl Bundle {
     /// let targets = [Layer::table("assets@playdate", PLAYDATE)];
     ///
     /// let bundle = Bundle::for_target(layers(), &targets, Some("playdate"));
-    /// assert_eq!(bundle.file("hero.png"), Some("drawn in black and white"));
+    /// assert_eq!(bundle.file("hero.png").as_deref(), Some("drawn in black and white"));
     /// assert_eq!(bundle.display_path("hero.png"), "assets@playdate/hero.png");
-    /// assert_eq!(bundle.file("map.ron"), Some("map"));
+    /// assert_eq!(bundle.file("map.ron").as_deref(), Some("map"));
     /// let web = Bundle::for_target(layers(), &targets, Some("web"));
-    /// assert_eq!(web.file("hero.png"), Some("colour"));
+    /// assert_eq!(web.file("hero.png").as_deref(), Some("colour"));
     /// ```
     pub fn for_target(layers: Vec<Layer>, per_target: &[Layer], target: Option<&str>) -> Self {
         let Some(target) = target else {
@@ -608,13 +619,17 @@ impl Bundle {
     /// Returns the UTF-8 contents of the file at `path` (relative to a
     /// layer's root, `/`-separated), or `None` if it is missing or not
     /// valid UTF-8.
-    pub fn file(&self, path: &str) -> Option<&'static str> {
-        core::str::from_utf8(self.bytes(path)?).ok()
+    /// A file borrowed from its layer stays borrowed; one handed out owned
+    /// is checked and moved into a `String`, never copied.
+    pub fn file(&self, path: &str) -> Option<Cow<'static, str>> {
+        text_of(self.bytes(path)?)
     }
 
     /// Returns the raw bytes of the file at `path` (relative to a layer's
     /// root, `/`-separated), e.g. an image, or `None` if it is missing.
-    pub fn bytes(&self, path: &str) -> Option<&'static [u8]> {
+    /// Every kind of layer there is hands them out borrowed, so nothing is
+    /// copied (ADR-0128 §1).
+    pub fn bytes(&self, path: &str) -> Option<Cow<'static, [u8]>> {
         let bytes = find(self.read(), path).map(|(_, bytes)| bytes);
         if let Some(watcher) = WATCHER.get() {
             watcher(path, bytes.is_some());
@@ -637,7 +652,7 @@ impl Bundle {
     /// as it is, so a layer above one still wins over it.
     ///
     /// Debug builds only, for a hot reload: the old bytes are leaked, so
-    /// every `&'static` read of them stays valid.
+    /// every read lent of them stays valid.
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -648,8 +663,8 @@ impl Bundle {
     /// let bundle = Bundle::new(vec![layer]);
     /// let old = bundle.file("a.txt");
     /// assert!(bundle.replace("a.txt", b"new".to_vec()));
-    /// assert_eq!(bundle.file("a.txt"), Some("new"));
-    /// assert_eq!(old, Some("old"));
+    /// assert_eq!(bundle.file("a.txt").as_deref(), Some("new"));
+    /// assert_eq!(old.as_deref(), Some("old"));
     /// ```
     #[cfg(feature = "std")]
     #[must_use]
@@ -678,14 +693,14 @@ impl Bundle {
     /// table gains in a build with the test files. [`Bundle::file`] reads
     /// the shipped one. `None` without test layers, inside [`story_only`],
     /// and for a path only one of the two has.
-    pub fn test_part(&self, path: &str) -> Option<(String, &'static str)> {
+    pub fn test_part(&self, path: &str) -> Option<(String, Cow<'static, str>)> {
         if story_only_now() {
             return None;
         }
         find(self.shipped(), path)?;
         let (layer, bytes) = find(self.tests(), path)?;
         let display = format!("{}/{path}", layer.name);
-        Some((display, core::str::from_utf8(bytes).ok()?))
+        Some((display, text_of(bytes)?))
     }
 
     /// Lists the paths (relative to a layer's root, `/`-separated, sorted,
@@ -752,7 +767,7 @@ impl Bundle {
             match parse(&LoadFile {
                 stem,
                 path: &shown,
-                text,
+                text: &text,
             }) {
                 Ok(value) => {
                     loaded.insert(stem.to_owned(), value);
@@ -794,8 +809,9 @@ pub struct LoadFile<'a> {
     pub stem: &'a str,
     /// The file's human-facing name ([`Bundle::display_path`]), for errors.
     pub path: &'a str,
-    /// The file's text.
-    pub text: &'static str,
+    /// The file's text, borrowed for the parse: a parser that keeps some of
+    /// it copies that part.
+    pub text: &'a str,
 }
 
 /// A file that is not valid UTF-8: what [`Bundle::load_each`] turns into
@@ -823,10 +839,19 @@ pub fn shown_under(shown: &str, name: &str) -> bool {
 
 /// The file at `path` and the layer it is read from: the first of `layers`
 /// that has it.
-fn find<'a>(layers: &'a [Layer], path: &str) -> Option<(&'a Layer, &'static [u8])> {
+fn find<'a>(layers: &'a [Layer], path: &str) -> Option<(&'a Layer, Cow<'static, [u8]>)> {
     layers
         .iter()
         .find_map(|layer| Some((layer, layer.files.get(path)?)))
+}
+
+/// `bytes` as text, if they are UTF-8: borrowed bytes stay borrowed, and
+/// owned ones move into the `String`, uncopied.
+fn text_of(bytes: Cow<'static, [u8]>) -> Option<Cow<'static, str>> {
+    match bytes {
+        Cow::Borrowed(bytes) => core::str::from_utf8(bytes).ok().map(Cow::Borrowed),
+        Cow::Owned(bytes) => String::from_utf8(bytes).ok().map(Cow::Owned),
+    }
 }
 
 /// The paths (sorted, each once) of the files of every layer inside `dir`:
@@ -1088,7 +1113,7 @@ mod tests {
             ["data/a.ron", "data/b.ron", "data/deep/c.txt", "top.txt"]
         );
         for (path, bytes) in FOLDER_TABLE {
-            assert_eq!(from_macro.bytes(path), Some(*bytes), "{path}");
+            assert_eq!(from_macro.bytes(path).as_deref(), Some(*bytes), "{path}");
             assert_eq!(from_macro.display_path(path), format!("files/{path}"));
         }
         assert_eq!(from_macro.bytes("data"), None);
@@ -1255,9 +1280,9 @@ mod tests {
             names(bundle.layers()),
             ["mods@playdate", "mods", "assets@playdate", "assets"]
         );
-        assert_eq!(bundle.file("b.png"), Some("playdate b"));
+        assert_eq!(bundle.file("b.png").as_deref(), Some("playdate b"));
         assert_eq!(bundle.display_path("b.png"), "assets@playdate/b.png");
-        assert_eq!(bundle.file("c.png"), Some("playdate c"));
+        assert_eq!(bundle.file("c.png").as_deref(), Some("playdate c"));
         // A layer above the game's still wins over the game's target layer.
         assert_eq!(bundle.display_path("a.png"), "mods@playdate/a.png");
         let layer = |path| bundle.layer_of(path).map(Layer::target);
@@ -1267,7 +1292,7 @@ mod tests {
         // target.
         let gba = Bundle::for_target(layers(), &per_target(), Some("gba"));
         assert_eq!(names(gba.layers()), ["mods", "assets@gba", "assets"]);
-        assert_eq!(gba.file("b.png"), Some("gba b"));
+        assert_eq!(gba.file("b.png").as_deref(), Some("gba b"));
         let none = Bundle::for_target(layers(), &per_target(), None);
         assert_eq!(names(none.layers()), ["mods", "assets"]);
         let web = Bundle::for_target(layers(), &per_target(), Some("web"));
@@ -1290,11 +1315,11 @@ mod tests {
     #[test]
     fn a_test_file_is_added_after_the_shipped_files() {
         let bundle = with_tests();
-        assert_eq!(bundle.file("data/t.ron"), Some("test t"));
+        assert_eq!(bundle.file("data/t.ron").as_deref(), Some("test t"));
         assert_eq!(bundle.display_path("data/t.ron"), "tests/data/t.ron");
         assert_eq!(story_only(|| bundle.file("data/t.ron")), None);
         // The shipped file is the one read where both have one.
-        assert_eq!(bundle.file("data/b.ron"), Some("public b"));
+        assert_eq!(bundle.file("data/b.ron").as_deref(), Some("public b"));
         assert_eq!(
             bundle.files_in("data"),
             ["data/a.ron", "data/b.ron", "data/t.ron"]
@@ -1306,7 +1331,7 @@ mod tests {
         let bundle = with_tests();
         assert_eq!(
             bundle.test_part("data/b.ron"),
-            Some(("tests/data/b.ron".to_owned(), "test b"))
+            Some(("tests/data/b.ron".to_owned(), Cow::Borrowed("test b")))
         );
         // Only the test files have it: an ordinary file, read whole.
         assert_eq!(bundle.test_part("data/t.ron"), None);
@@ -1321,7 +1346,7 @@ mod tests {
     #[test]
     fn a_private_test_file_replaces_the_placeholder_and_is_private() {
         let bundle = with_tests();
-        assert_eq!(bundle.file("portraits/t.png"), Some("bought t"));
+        assert_eq!(bundle.file("portraits/t.png").as_deref(), Some("bought t"));
         let shown = |path| bundle.display_path(path);
         assert_eq!(shown("portraits/t.png"), "bought-tests/portraits/t.png");
         assert!(bundle.is_private(&shown("portraits/t.png")));
@@ -1332,7 +1357,10 @@ mod tests {
         assert!(!bundle.is_private(&shown("data/nope.ron")));
         // Without the private test files the placeholder is back.
         let placeholders = Bundle::new(vec![PRIVATE, PUBLIC, TEST]);
-        assert_eq!(placeholders.file("portraits/t.png"), Some("placeholder t"));
+        assert_eq!(
+            placeholders.file("portraits/t.png").as_deref(),
+            Some("placeholder t")
+        );
         let shown = placeholders.display_path("portraits/t.png");
         assert!(!placeholders.is_private(&shown));
         // Only a name under one of the private layers.
@@ -1346,17 +1374,17 @@ mod tests {
 
     #[test]
     fn a_private_file_replaces_the_public_file_at_the_same_path() {
-        assert_eq!(merged().file("data/a.ron"), Some("private a"));
+        assert_eq!(merged().file("data/a.ron").as_deref(), Some("private a"));
         assert_eq!(merged().display_path("data/a.ron"), "bought/data/a.ron");
         // Without the private layer the public file is back.
         let public = Bundle::new(vec![PUBLIC]);
-        assert_eq!(public.file("data/a.ron"), Some("public a"));
+        assert_eq!(public.file("data/a.ron").as_deref(), Some("public a"));
     }
 
     #[test]
     fn a_private_only_file_is_added() {
         let path = "portraits/new.portrait";
-        assert_eq!(merged().file(path), Some("private only"));
+        assert_eq!(merged().file(path).as_deref(), Some("private only"));
         assert_eq!(merged().files_in("portraits"), [path]);
         let public = Bundle::new(vec![PUBLIC]);
         assert_eq!(public.file(path), None);
@@ -1366,7 +1394,7 @@ mod tests {
 
     #[test]
     fn a_public_only_file_is_still_read() {
-        assert_eq!(merged().file("data/b.ron"), Some("public b"));
+        assert_eq!(merged().file("data/b.ron").as_deref(), Some("public b"));
         assert_eq!(merged().display_path("data/b.ron"), "base/data/b.ron");
     }
 
@@ -1446,10 +1474,10 @@ mod tests {
     #[test]
     fn reads_bytes_and_text() {
         let bundle = merged();
-        assert_eq!(bundle.bytes("top.txt"), Some(&b"public top"[..]));
-        assert_eq!(bundle.file("top.txt"), Some("public top"));
+        assert_eq!(bundle.bytes("top.txt").as_deref(), Some(&b"public top"[..]));
+        assert_eq!(bundle.file("top.txt").as_deref(), Some("public top"));
         let binary = Bundle::new(vec![Layer::table("base", BINARY)]);
-        assert_eq!(binary.bytes("x.bin"), Some(&[0xff, 0xfe][..]));
+        assert_eq!(binary.bytes("x.bin").as_deref(), Some(&[0xff, 0xfe][..]));
         assert_eq!(binary.file("x.bin"), None);
     }
 
@@ -1479,7 +1507,7 @@ mod tests {
         }
         // Over a directory layer, a table layer replaces its files too.
         let laid = Bundle::new(vec![Layer::table("over", OVER), PUBLIC]);
-        assert_eq!(laid.file("data/a.ron"), Some("table a"));
+        assert_eq!(laid.file("data/a.ron").as_deref(), Some("table a"));
         assert_eq!(laid.display_path("data/a.ron"), "over/data/a.ron");
         assert_eq!(laid.files_in("data"), ["data/a.ron", "data/b.ron"]);
     }
@@ -1505,9 +1533,9 @@ mod tests {
         );
         let over_table = Bundle::new(vec![layer, Layer::table("base", PUBLIC_TABLE)]);
         for bundle in [&over_table, &Bundle::new(vec![layer, PUBLIC])] {
-            assert_eq!(bundle.file("data/a.ron"), Some("mod a"));
-            assert_eq!(bundle.file("data/c.ron"), Some("mod c"));
-            assert_eq!(bundle.file("data/b.ron"), Some("public b"));
+            assert_eq!(bundle.file("data/a.ron").as_deref(), Some("mod a"));
+            assert_eq!(bundle.file("data/c.ron").as_deref(), Some("mod c"));
+            assert_eq!(bundle.file("data/b.ron").as_deref(), Some("public b"));
             assert_eq!(
                 bundle.files_in("data"),
                 ["data/a.ron", "data/b.ron", "data/c.ron"]
@@ -1528,8 +1556,8 @@ mod tests {
         }
         // Under the embedded layer, the embedded file is read.
         let under = Bundle::new(vec![PUBLIC, layer]);
-        assert_eq!(under.file("data/a.ron"), Some("public a"));
-        assert_eq!(under.file("data/c.ron"), Some("mod c"));
+        assert_eq!(under.file("data/a.ron").as_deref(), Some("public a"));
+        assert_eq!(under.file("data/c.ron").as_deref(), Some("mod c"));
     }
 
     #[test]
@@ -1537,11 +1565,11 @@ mod tests {
         let first = owned("first", &[("a.txt", "first a"), ("b.txt", "first b")]);
         let second = owned("second", &[("a.txt", "second a"), ("c.txt", "second c")]);
         let bundle = Bundle::new(vec![first, second]);
-        assert_eq!(bundle.file("a.txt"), Some("first a"));
-        assert_eq!(bundle.file("c.txt"), Some("second c"));
+        assert_eq!(bundle.file("a.txt").as_deref(), Some("first a"));
+        assert_eq!(bundle.file("c.txt").as_deref(), Some("second c"));
         assert_eq!(bundle.files_in(""), ["a.txt", "b.txt", "c.txt"]);
         let swapped = Bundle::new(vec![second, first]);
-        assert_eq!(swapped.file("a.txt"), Some("second a"));
+        assert_eq!(swapped.file("a.txt").as_deref(), Some("second a"));
     }
 
     #[test]
@@ -1561,10 +1589,10 @@ mod tests {
         let tests = owned("tests", &[("data/t.ron", "test t"), ("data/a.ron", "t")]).test();
         let bundle = Bundle::new(vec![tests, bought, PUBLIC]);
         assert_eq!(names(bundle.layers()), ["bought", "base", "tests"]);
-        assert_eq!(bundle.file("data/a.ron"), Some("bought a"));
+        assert_eq!(bundle.file("data/a.ron").as_deref(), Some("bought a"));
         assert!(bundle.is_private(&bundle.display_path("data/a.ron")));
         assert!(!bundle.is_private(&bundle.display_path("data/b.ron")));
-        assert_eq!(bundle.file("data/t.ron"), Some("test t"));
+        assert_eq!(bundle.file("data/t.ron").as_deref(), Some("test t"));
         assert_eq!(story_only(|| bundle.file("data/t.ron")), None);
         let trimmed = owned("base", &[("a.txt", "a")]).leaving_out(&["b.txt"]);
         let bundle = Bundle::new(vec![trimmed]);
@@ -1911,7 +1939,7 @@ mod tests {
     fn a_bundle_is_installed_once() {
         assert!(installed().is_none());
         let first = get_or_install(merged);
-        assert_eq!(first.file("data/a.ron"), Some("private a"));
+        assert_eq!(first.file("data/a.ron").as_deref(), Some("private a"));
         // A second install changes nothing.
         let refused = install(Bundle::new(vec![PUBLIC]));
         assert!(refused.is_err_and(|bundle| names(bundle.layers()) == ["base"]));

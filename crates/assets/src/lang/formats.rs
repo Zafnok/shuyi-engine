@@ -162,7 +162,7 @@ impl Format for LangPackRon {
         let english_shown = cx.shown(&english_path);
         let english = english_from_source(
             &english_shown,
-            cx.text(&english_path)
+            &cx.text(&english_path)
                 .ok_or_else(|| vec![ContentError::not_found(&english_shown)])?,
         )?;
         let mut errors = Vec::new();
@@ -195,11 +195,11 @@ impl Format for LangPackRon {
         };
         let sources = PackSources {
             info: (file.shown(), info),
-            ui: (&ui_shown, ui),
+            ui: (&ui_shown, &ui),
             data: data
                 .as_ref()
-                .map(|(shown, source)| (shown.as_str(), *source)),
-            dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), *s)).collect(),
+                .map(|(shown, source)| (shown.as_str(), &**source)),
+            dialogue: dialogue.iter().map(|(n, s)| (n.as_str(), &**s)).collect(),
         };
         let widths = CellWidths::wide(self.wide.iter().copied());
         let rules = PackRules::new(self.data_problem, self.tokens, self.limits, &widths)
