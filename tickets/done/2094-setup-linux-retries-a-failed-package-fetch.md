@@ -5,10 +5,10 @@ type: bug
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2094 — `setup-linux.sh` retries a failed package fetch

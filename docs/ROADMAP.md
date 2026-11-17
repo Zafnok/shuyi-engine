@@ -164,7 +164,7 @@ These tickets, in order:
 | 2088 | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
-| 2094 | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
+| 2094 (done) | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
 | 2906 (done) | Asset memory measured: what stays resident in each way a game holds its pack, and what arrives before the first frame |
 | 2919 | Asset memory: lifetimes, groups and loading in steps decided before the bundle's API is published, from 2906's numbers |
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
