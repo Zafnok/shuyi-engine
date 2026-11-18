@@ -1,8 +1,10 @@
 // The book's project in a Codespace: the code pad (ticket 2837, ADR-0126
 // §1). Each step's page links it, by `devcontainer_path`. The root's image
 // and setup, opened at the project's folder, with every step's web build
-// made in `dev` into one target folder as it is created, and a step served
-// on a private forwarded port. No MCP server: the root's container
+// made in `dev` into one target folder as it is created, and the book
+// itself served on a private forwarded port (`cargo xtask book-pad`, ticket
+// 2840), each step's game from its own build, built again when its files
+// change. No MCP server: the root's container
 // registers it, and a reader of the book doesn't need it. `cargo xtask
 // check-devcontainers` checks that it builds every step and keeps the
 // root's image and setup.
@@ -16,17 +18,20 @@
   },
   // The commands run in the workspace folder, `site/tutorial`. A prebuild
   // runs the `onCreateCommand`, so a Codespace made from it opens with every
-  // step built. One made without it opens once every step is built and step
-  // 2 served: the steps resolve one set of features of the engine's crates
-  // (`cargo xtask check-devcontainers`, ticket 2839), so the engine is built
-  // once and each step after the first adds its own crate, about 10 seconds.
-  // The image has no Python, which serves a step (`serve.sh`).
-  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && sudo apt-get install -y -qq --no-install-recommends python3 && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship && bash serve.sh",
-  "postAttachCommand": "bash serve.sh",
+  // step built. One made without it opens once every step is built: the
+  // steps resolve one set of features of the engine's crates (`cargo xtask
+  // check-devcontainers`, ticket 2839), so the engine is built once and each
+  // step after the first adds its own crate, about 10 seconds. It adds Zola,
+  // which builds the site (`setup-zola.sh`, the version CI's), and builds
+  // `xtask`, which serves it. The `postAttachCommand` starts the server
+  // (`pad.sh`, ticket 2840) once VS Code is there, so VS Code sees the port
+  // open and shows the book in a preview; a second window finds it served.
+  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../scripts/setup-zola.sh && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship && cargo build -q --bin xtask --manifest-path ../../Cargo.toml",
+  "postAttachCommand": "bash ../../.devcontainer/book/pad.sh",
   "forwardPorts": [4000],
   "portsAttributes": {
     "4000": {
-      "label": "The step's game",
+      "label": "The book",
       "onAutoForward": "openPreview"
     }
   },

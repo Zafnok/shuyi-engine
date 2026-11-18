@@ -1,10 +1,13 @@
 //! The data types games build in code, built from outside the crate as a
 //! game builds them: through their constructors, since they are
-//! `#[non_exhaustive]` (ADR-0039, ticket 2085).
+//! `#[non_exhaustive]` (ADR-0039, tickets 2085 and 2095).
 
+use std::collections::BTreeMap;
+
+use shuyi_assets::audio::{SAMPLE_RATE, Sound};
 use shuyi_assets::credits::{CreditGroup, CreditsFile, FileCredit};
 use shuyi_assets::dialogue::{DialogueLimits, NoTokens};
-use shuyi_assets::font::CellWidths;
+use shuyi_assets::font::{CellWidths, FontAtlasDef, FontInk, InkBox};
 use shuyi_assets::lang::{LangInfo, LineKind, MadeBy, PackRules, SourceLine};
 use shuyi_assets::pack::PackInfo;
 use shuyi_assets::target::{
@@ -25,6 +28,32 @@ const LIMITS: DialogueLimits = DialogueLimits {
 /// A game's pack rules, in a `const` item as a game writes them.
 const RULES: PackRules<'static> =
     PackRules::new(|_, _| None, &NoTokens, LIMITS, &CellWidths::NARROW).with_variants(&["m", "f"]);
+
+/// A font atlas in a `const` item, as a game's tests or tools may hold one.
+const ATLAS: FontAtlasDef = FontAtlasDef::new(8, 16, BTreeMap::new(), 16);
+
+#[test]
+fn a_font_atlas_is_built_in_a_const_and_its_optional_fields_assigned() {
+    assert_eq!((ATLAS.cell_w, ATLAS.cell_h, ATLAS.columns), (8, 16, 16));
+    assert!(ATLAS.glyphs.is_empty() && ATLAS.wide.is_empty() && ATLAS.bold.is_empty());
+    assert_eq!((ATLAS.ink.as_ref(), ATLAS.bold_ink.as_ref()), (None, None));
+
+    let mut atlas = FontAtlasDef::new(8, 16, BTreeMap::from([('A', 0), ('?', 1)]), 16);
+    atlas.wide.insert('田', 2);
+    let mut ink = FontInk::new(InkBox::new(1, 2, 6, 11));
+    ink.columns.insert('W', [0, 6]);
+    atlas.ink = Some(ink);
+    assert_eq!(atlas.glyph_rect('?').map(|r| (r.x, r.w)), Some((8, 8)));
+    assert_eq!(atlas.ink.map(|ink| ink.columns_of('W')), Some((0, 6)));
+}
+
+#[test]
+fn a_sound_is_built_mono_or_stereo() {
+    let mono = Sound::mono(SAMPLE_RATE);
+    assert_eq!((mono.channels, mono.sample_rate), (1, SAMPLE_RATE));
+    let stereo = Sound::stereo(SAMPLE_RATE);
+    assert_eq!((stereo.channels, stereo.sample_rate), (2, SAMPLE_RATE));
+}
 
 #[test]
 fn a_target_profile_is_built_and_its_optional_fields_assigned() {

@@ -191,12 +191,12 @@ These tickets, in order:
 | 2239 | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
-| 2095 | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
+| 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 | A public game's tag release publishes what Nick decided, and never a debug file |
-| 3407 | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
+| 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -272,7 +272,7 @@ tickets above and 2267 and 3220 under *Asset memory*:
 
 | Ticket | What |
 | ------ | ---- |
-| 3501 | Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates |
+| 3501 (done) | Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates |
 | 3502 | The tutorial's web builds boot in parallel, built from one folder |
 | 3319 | The bench job compares each frame's instructions with `main`'s and fails a rise past a margin unless the PR says why |
 | 2266 (done) | A language's texts are parsed once, when they load, and a fill reuses what the load learned |
@@ -285,6 +285,9 @@ tickets above and 2267 and 3220 under *Asset memory*:
 
 The game's half is its 0171: its workflows cache no build that embeds
 its private content.
+
+The method itself is now a skill, `/retro` (3408, done 2026-11-18). The
+next retro starts from it.
 
 ### Bevy's homepage
 

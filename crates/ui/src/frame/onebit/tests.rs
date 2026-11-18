@@ -17,17 +17,12 @@ use crate::prelude::*;
 /// 6–7), `?` the two top corners, `[` its left column, `]` its right one,
 /// `"` two dots one pixel apart (columns 2 and 4 of row 8).
 fn test_font() -> (FontAtlasDef, Vec<u8>) {
-    let atlas = FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 32,
-        glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4)].into(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas = FontAtlasDef::new(
+        8,
+        16,
+        [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4)].into(),
+        32,
+    );
     let mut bits = vec![0u8; 5 * 16];
     bits[6] = 0b0001_1000;
     bits[7] = 0b0001_1000;
@@ -219,10 +214,8 @@ fn a_missing_glyph_is_the_fallback_and_a_space_is_nothing() {
         ["#......#........", "................"]
     );
     // A font without the fallback draws nothing for a glyph it lacks.
-    let atlas = FontAtlasDef {
-        glyphs: [('X', 0)].into(),
-        ..test_font().0
-    };
+    let mut atlas = test_font().0;
+    atlas.glyphs = [('X', 0)].into();
     let bits = test_font().1;
     let font = Font::new(&atlas, &bits).unwrap();
     let mut frame = Box::new([0u8; FRAME_BYTES]);
@@ -759,10 +752,8 @@ fn a_font_must_fit_the_one_bit_atlas() {
     let (atlas, bits) = test_font();
     assert!(Font::new(&atlas, &bits).is_ok());
     assert!(Font::new(&atlas, &bits[..79]).is_err());
-    let wide = FontAtlasDef {
-        cell_w: 9,
-        ..atlas.clone()
-    };
+    let mut wide = atlas.clone();
+    wide.cell_w = 9;
     assert!(Font::new(&wide, &bits).is_err());
     let none = FontAtlasDef::default();
     assert!(Font::new(&none, &[]).is_ok());

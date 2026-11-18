@@ -45,9 +45,11 @@ running **headless**.
 The book's project, the box-pushing puzzle you build after this chapter, has a
 Codespace of its own: [open the book's project in a
 Codespace](https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb).
-It opens at the project's folder, with the project's game built and served: the
-editor's **Ports** tab opens it. [The project's first page](@/learn/book/box-pusher/_index.md)
-says how to use it.
+It opens this book in the editor's preview, beside the project's folder, and each
+step's game there is your own build of that step, built again each time you save a
+change to its files. If the preview isn't open, the editor's **Ports** tab opens
+the book in a tab of your browser, on port 4000. [The project's first
+page](@/learn/book/box-pusher/_index.md) says how to use it.
 
 ## Install Rust
 
@@ -393,8 +395,9 @@ repository on your account named from the game (Moon Garden's is `moon-garden`),
 public unless you say `--visibility private`, since GitHub's CI is free for a public
 one, and it pushes the game there. A game with private files also gets their
 private repository, with a README and a folder for each kind of file, the game
-pinned to it, and the read-only key and secret its CI reads them with. It creates
-these on your account, so a coding agent should ask you before running it. Run it
+pinned to it, and the read-only key and secret its CI reads them with. Anyone you
+give write access to the game's repository can read the private one too, since a
+workflow they push runs with that key. It creates these on your account, so a coding agent should ask you before running it. Run it
 again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
 and `ssh-keygen` as optional, since only this command needs them.
 

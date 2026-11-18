@@ -184,7 +184,7 @@ parked.
     implements `Encode` with RON's pretty writer (as
     `crates/ui/src/input/bindings.rs` line 498 uses it);
   - `SfxRon` (id `sfx`, extension `ron`) reads the `Sound` kind:
-    `Sound { channels: 1, sample_rate: SAMPLE_RATE }` once the file
+    `Sound::mono(SAMPLE_RATE)` (2095) once the file
     reads as an `SfxDef`. A name that doesn't end in `.sfx.ron` is an
     error that says so, so a stray RON file in a folder of sounds is
     reported, not read as a sound. Conflicts are per kind (ADR-0019 §2),

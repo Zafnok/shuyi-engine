@@ -41,6 +41,9 @@ pub const MSYS2_GCC: &str = "C:/msys64/mingw64/bin/gcc.exe";
 /// What `doctor` checks: everything (nothing to choose yet).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An input (ADR-0039, kind 4): built with `default()` and its fields
+// assigned, it may grow.
+#[non_exhaustive]
 pub struct DoctorInput {}
 
 /// One check.

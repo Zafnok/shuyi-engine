@@ -90,7 +90,6 @@ async fn draw_and_capture(
         card.atlas.clone(),
         &atlas_png,
         card.clear,
-        &card.table,
         file,
     )?);
     for _ in 0..FRAMES_BEFORE {

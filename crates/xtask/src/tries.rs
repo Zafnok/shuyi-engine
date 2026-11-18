@@ -29,11 +29,11 @@ mod tests;
 /// The list of tries, from the repository's root.
 const TRIES: &str = "site/tutorial/tries.toml";
 /// The steps' projects, from the repository's root.
-const STEPS: &str = "site/tutorial";
+pub(crate) const STEPS: &str = "site/tutorial";
 /// The pictures, from the repository's root.
-const PICTURES: &str = "site/static/tutorial-tries";
+pub(crate) const PICTURES: &str = "site/static/tutorial-tries";
 /// The pages that show them, from the repository's root.
-const PAGES: [&str; 2] = [
+pub(crate) const PAGES: [&str; 2] = [
     "site/content/learn/book",
     "site/content/learn/book/box-pusher",
 ];
@@ -44,7 +44,7 @@ const COPIES: &str = "target/tutorial-tries";
 /// and no step of the tutorial.
 pub const BOOK: &str = "book";
 /// The book's game, from the repository's root.
-const SNIPPETS: &str = "site/snippets";
+pub(crate) const SNIPPETS: &str = "site/snippets";
 /// The start of a copy of the book's game's folder name, under `target/`: two
 /// folders down, like the crate, so its path dependencies still resolve.
 const BOOK_COPIES: &str = "book-tries-";

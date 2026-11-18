@@ -101,9 +101,8 @@ None.
   listing lines (`api/exhaustive.rs`) and its set of
   `#[non_exhaustive]` paths; if not, write the parser here, and 2096
   reuses it. The two files and the two error kinds stay apart.
-- **Either order with 2095:** if 2095 is done, `FontAtlasDef::new`
-  (a cell's width then its height) goes in the file; if not, nothing to
-  do (2095 adds it to the file if this is done).
+- **From 2095 (done):** `FontAtlasDef::new(cell_w, cell_h, glyphs,
+  columns)` (a cell's width then its height) goes in the file.
 
 **Out (do not do):**
 - Constructors of exhaustive types (kind 1, `Pos::new(x, y)`,

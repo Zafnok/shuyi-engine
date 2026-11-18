@@ -158,15 +158,11 @@ impl Fake {
                 self.repo(repo).keys.push((id, (*title).to_owned(), public));
                 ok("")
             }
-            ("gh", ["secret", "set", name, "--repo", repo, rest @ ..]) => {
+            // An Actions secret only: `repos` sets no Dependabot secret
+            // (ADR-0130), so a call that would is no call the fake knows.
+            ("gh", ["secret", "set", name, "--repo", repo]) => {
                 let value = call.stdin.clone().unwrap_or_default();
-                let repo = self.repo(repo);
-                let secrets = if rest == ["--app", "dependabot"] {
-                    &mut repo.dependabot
-                } else {
-                    &mut repo.actions
-                };
-                secrets.insert((*name).to_owned(), value);
+                self.repo(repo).actions.insert((*name).to_owned(), value);
                 ok("")
             }
             ("git", args) if at_root => self.git_here(args),

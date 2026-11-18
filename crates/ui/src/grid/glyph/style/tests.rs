@@ -61,6 +61,7 @@ fn the_plain_style_is_the_default_and_the_glyph_skins_own() {
         walk: GLYPH.walk,
         foot_px: 2,
         style: GlyphStyle::PLAIN,
+        threat_shape: crate::grid::threat::Shape::Straight,
     };
     assert_eq!(GLYPH, skin);
     assert_eq!(GLYPH.with_style(ONE), ONE_BIT);
@@ -282,17 +283,7 @@ fn a_flash_on_a_one_bit_frame_flips_its_tile() {
     let kit = Kit::new();
     let looks = kit.looks();
     let map = toy_pattern_map(&looks);
-    let atlas = FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 32,
-        glyphs: [('?', 0)].into(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas = FontAtlasDef::new(8, 16, [('?', 0)].into(), 32);
     let mut bits = vec![0u8; 16];
     bits[3] = 0b0110_0110;
     let font = Font::new(&atlas, &bits).unwrap();

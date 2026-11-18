@@ -39,9 +39,10 @@ jobs:
       # the real game: the build lays `private/files/` over
       # `crates/game/files/` whenever it is there. Its action fails a run
       # on the game's own repository without the secret, and warns on a
-      # fork's pull request, which builds on the public files. Dependabot's
-      # runs get only Dependabot secrets: `shuyi repos` sets one of the same
-      # name. No step may upload an artifact that embeds them.
+      # fork's or Dependabot's pull request, which builds on the public
+      # files: no dependency's new version builds next to them before a
+      # person merges it (the engine's ADR-0130). No step may upload an
+      # artifact that embeds them.
       - name: The private files
         if: hashFiles('.github/actions/private-files/action.yml') != ''
         uses: ./.github/actions/private-files

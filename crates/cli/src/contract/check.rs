@@ -426,13 +426,8 @@ mod tests {
 
     /// An atlas of ASCII's printable characters, and `extra`.
     fn ascii_and(extra: &str) -> FontAtlasDef {
-        FontAtlasDef {
-            cell_w: 8,
-            cell_h: 16,
-            columns: 16,
-            glyphs: (' '..='~').chain(extra.chars()).zip(0..).collect(),
-            ..FontAtlasDef::default()
-        }
+        let glyphs = (' '..='~').chain(extra.chars()).zip(0..).collect();
+        FontAtlasDef::new(8, 16, glyphs, 16)
     }
 
     #[test]

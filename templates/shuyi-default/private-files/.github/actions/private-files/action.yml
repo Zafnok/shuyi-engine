@@ -5,19 +5,19 @@ description: >-
   engine's ADR-0111): the build lays private/files/ over crates/game/files/
   whenever it is there. Run it after the repository's own checkout and
   before the first cargo command. A run on the game's own repository fails
-  without the key; a fork's pull request, which gets no secrets, warns and
-  builds on the public files. Never upload an artifact that embeds the
-  private files: anyone signed in to GitHub can download a public
-  repository's artifacts.
+  without the key; a fork's pull request, which gets no secrets, and a
+  Dependabot pull request, which gets no key (the engine's ADR-0130), warn
+  and build on the public files. Never upload an artifact or cache a
+  build that embeds the private files: anyone signed in to GitHub can
+  download a public repository's artifacts, and a pull request's run may
+  restore its base branch's caches.
 
 inputs:
   key:
     description: >-
       secrets.PRIVATE_ASSETS_KEY: the private half of a read-only deploy key
       of the private repository (`shuyi repos` makes it). Empty on a fork's
-      pull request. Dependabot's runs get only Dependabot secrets: `shuyi
-      repos` sets a Dependabot secret of the same name, read here the same
-      way.
+      pull request and on Dependabot's.
     required: false
     default: ""
   required:
@@ -38,6 +38,9 @@ runs:
         HAS_KEY: ${{ inputs.key != '' }}
         REQUIRED: ${{ inputs.required }}
         FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        # Who opened the pull request, which a re-run keeps (`github.actor`
+        # is whoever re-ran it).
+        DEPENDABOT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' }}
         OWNER: ${{ github.repository_owner }}
         URL: "{{private_url}}"
       run: |
@@ -46,11 +49,11 @@ runs:
         repository=${repository%.git}
         private_owner=${repository%%/*}
         if [ "$HAS_KEY" != "true" ]; then
-          if [ "$FORK_PR" = "true" ] || [ "${OWNER,,}" != "${private_owner,,}" ] || [ "$REQUIRED" != "true" ]; then
-            echo "::warning::This run can't read the private repository $repository (a fork's pull request, a copy of the game or a dry run has no key to it): the gates run on the public files."
+          if [ "$FORK_PR" = "true" ] || [ "$DEPENDABOT_PR" = "true" ] || [ "${OWNER,,}" != "${private_owner,,}" ] || [ "$REQUIRED" != "true" ]; then
+            echo "::warning::This run can't read the private repository $repository (a fork's or Dependabot's pull request, a copy of the game or a dry run has no key to it): the gates run on the public files."
             exit 0
           fi
-          echo "::error::The secret PRIVATE_ASSETS_KEY is missing, so the gates can't read the private repository $repository. Run \`shuyi repos\` in the game's folder: it makes the read-only deploy key and sets the secret, for Actions and for Dependabot."
+          echo "::error::The secret PRIVATE_ASSETS_KEY is missing, so the gates can't read the private repository $repository. Run \`shuyi repos\` in the game's folder: it makes the read-only deploy key and sets the Actions secret."
           exit 1
         fi
         rev=""

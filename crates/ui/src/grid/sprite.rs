@@ -295,7 +295,8 @@ impl<U> GridSkin<U> for SpriteSkin {
             self.glyph.draw_cursor(looks, buf, scene, &layout);
         }
         let colors = looks.threat(&self.glyph.colors);
-        threat::paint(scene, &grid, threat::Start::Middle, colors, buf);
+        let shape = self.glyph.threat_shape;
+        threat::paint_shaped(scene, &grid, threat::Start::Middle, shape, colors, buf);
     }
 }
 
