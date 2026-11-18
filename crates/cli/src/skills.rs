@@ -77,7 +77,7 @@ impl Skill {
     }
 
     /// Whether its `SKILL.md` says its game was made without the worked
-    /// examples ([`WITHOUT_EXAMPLES`]).
+    /// examples (`WITHOUT_EXAMPLES`).
     pub fn left_out_examples(&self) -> bool {
         self.text()
             .is_some_and(|text| text.contains(WITHOUT_EXAMPLES))
@@ -86,7 +86,7 @@ impl Skill {
     /// It without its worked examples ([`is_example`]), for a game made
     /// without them (ADR-0113): each link of its Markdown files to one of
     /// them made its words alone, and, if it had any, its `SKILL.md`
-    /// ending with [`WITHOUT_EXAMPLES`] and where the engine keeps them.
+    /// ending with `WITHOUT_EXAMPLES` and where the engine keeps them.
     #[must_use]
     pub fn without_examples(&self) -> Self {
         let had = self.files.keys().any(|path| is_example(path));
@@ -129,7 +129,12 @@ impl Skill {
 /// What a skill's `SKILL.md` says when `shuyi new` left its worked
 /// examples out (`--no-examples`, ADR-0113); `check` asks no example of
 /// it then.
-pub const WITHOUT_EXAMPLES: &str =
+///
+/// Games' files hold this sentence ([`Skill::left_out_examples`] finds it
+/// with `contains`), so it is a format: changing it needs
+/// `left_out_examples` to read the old sentence too, and a `Behaviour:`
+/// line. A test pins it as a literal.
+pub(crate) const WITHOUT_EXAMPLES: &str =
     "This game was made without the skills' worked examples (`shuyi new --no-examples`)";
 
 /// Whether the file `path` of a skill's folder is one of its worked
@@ -434,7 +439,7 @@ impl Against {
 /// 5. every id in its `waits_for` is an open ticket (when they are
 ///    known), and a skill of the engine's pack ([`Pack::embedded`], by
 ///    name) that waits for nothing has a worked example, unless its
-///    `SKILL.md` says its game was made without them ([`WITHOUT_EXAMPLES`],
+///    `SKILL.md` says its game was made without them (`WITHOUT_EXAMPLES`,
 ///    ADR-0113). A project's own skill, one the embedded pack doesn't have,
 ///    needs none: it teaches the project's own workflow, with nothing for a
 ///    new game to run;

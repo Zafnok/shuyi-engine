@@ -838,6 +838,43 @@ fn a_file_lz4_cant_make_smaller_is_stored_and_borrowed() {
 }
 
 #[test]
+fn a_pack_of_a_stored_a_compressed_and_a_baked_file_is_pinned() {
+    // Taken before `write` borrowed raw files again (2098): how a file's
+    // bytes are held while the pack is assembled changes no byte of it.
+    let noise: Vec<u8> = (0..64_u8).map(|i| i.wrapping_mul(73) ^ 0x5a).collect();
+    assert!(lz4_flex::block::compress(&noise).len() >= noise.len());
+    let files = BTreeMap::from([
+        ("a.bin".to_owned(), Content::Raw(noise)),
+        ("b.bin".to_owned(), Content::Raw(vec![7; 256])),
+        (
+            "c.baked".to_owned(),
+            Content::Baked(BTreeMap::from([("kind", b"section".to_vec())])),
+        ),
+    ]);
+    let bytes = write_first(&test_info(), &["c.baked"], &files);
+    let mut out = String::new();
+    for line in bytes.chunks(32) {
+        for byte in line {
+            write!(out, "{byte:02x}").unwrap();
+        }
+        out.push('\n');
+    }
+    insta::assert_snapshot!(out);
+}
+
+#[test]
+fn a_stored_file_is_borrowed_while_the_pack_is_assembled() {
+    let noise: Vec<u8> = (0..64_u8).map(|i| i.wrapping_mul(73) ^ 0x5a).collect();
+    let stored = RawFile::kept("a.bin".to_owned(), Vec::new(), Cow::Borrowed(&noise));
+    assert_eq!(stored.codec, Codec::Stored);
+    assert!(matches!(stored.kept, Cow::Borrowed(_)), "{stored:?}");
+    let run = vec![7; 256];
+    let packed = RawFile::kept("b.bin".to_owned(), Vec::new(), Cow::Borrowed(&run));
+    assert_eq!(packed.codec, Codec::Lz4);
+    assert!(matches!(packed.kept, Cow::Owned(_)), "{packed:?}");
+}
+
+#[test]
 fn the_limits_hold_at_their_edges() {
     let stored = Codec::Stored;
     // Exactly the most bytes passes that check (and fails the next).

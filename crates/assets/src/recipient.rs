@@ -15,11 +15,15 @@
 //!   writes, and which a game reads with `shuyi_app::recipient`;
 //! - the **pack's layout**: the order of its files' bytes and the bytes
 //!   between them (`pack::Raw::write_marked`, `pack::Raw::mark`);
-//! - one **picture**'s lowest bits (`image::mark`).
+//! - one **picture**'s lowest bits (`shuyi-cli`'s own `mark`).
 //!
 //! The public build has none of them: its field holds no code, its pack is
 //! laid in path order with nothing between files, and its picture is the
 //! game's own.
+//!
+//! The engine's own, for `shuyi-app` and `shuyi export --recipient`: not
+//! part of the API, which semver doesn't cover (ADR-0119). A game reads
+//! its copy's code with `shuyi_app::recipient`.
 use crate::prelude::*;
 
 use core::fmt;

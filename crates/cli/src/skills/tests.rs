@@ -10,6 +10,16 @@ fn skill_md(name: &str, description: &str, metadata: &str, body: &str) -> String
 
 const GOOD: &str = "Start a game. Use when making one. Not for an engine change.";
 
+#[test]
+fn the_sentence_games_files_hold_when_examples_were_left_out_is_pinned() {
+    // Games' `SKILL.md` files hold it: a new wording must still find the
+    // old one, and is a `Behaviour:` line.
+    assert_eq!(
+        WITHOUT_EXAMPLES,
+        "This game was made without the skills' worked examples (`shuyi new --no-examples`)"
+    );
+}
+
 /// A skill named `name` with `files` (path, text).
 fn skill(name: &str, files: &[(&str, &str)]) -> Skill {
     Skill {

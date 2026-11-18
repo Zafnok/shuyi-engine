@@ -175,6 +175,10 @@ pub fn report(text: &str) {
 /// The name of the check the page asks the game to make of its files
 /// (`sessionStorage`'s `shuyi-page-check`, which the book's exercises
 /// write); `None` when it asks for none, and on every target but the web.
+///
+/// The book's exercises' own (ADR-0117): not part of the API, which semver
+/// doesn't cover (ADR-0119). A game that wants checks asks for them.
+#[doc(hidden)]
 pub fn page_check() -> Option<String> {
     #[cfg(target_arch = "wasm32")]
     let name = {
@@ -198,6 +202,10 @@ fn asked(name: &str) -> Option<String> {
 /// act on. Build it with [`CheckReport::new`]: a struct literal doesn't
 /// compile outside this crate, so a new field never breaks a game
 /// (ADR-0039).
+///
+/// The book's exercises' own (ADR-0117): not part of the API, which semver
+/// doesn't cover (ADR-0119). A game that wants checks asks for them.
+#[doc(hidden)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CheckReport {
@@ -225,6 +233,10 @@ impl CheckReport {
 /// `{ kind: "shuyi-check", name, passed, text }` message when it has the
 /// page's origin, and the console otherwise. On every target but the web it
 /// does nothing.
+///
+/// The book's exercises' own (ADR-0117): not part of the API, which semver
+/// doesn't cover (ADR-0119). A game that wants checks asks for them.
+#[doc(hidden)]
 pub fn report_check(result: &CheckReport) {
     #[cfg(target_arch = "wasm32")]
     shuyi_page_report_check(

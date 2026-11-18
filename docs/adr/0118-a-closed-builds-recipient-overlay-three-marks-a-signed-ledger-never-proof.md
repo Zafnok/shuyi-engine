@@ -44,7 +44,9 @@
 
 ### 1. The code
 
-- `shuyi_assets::recipient::Code`: 32 bits and their CRC-8 (polynomial
+- `shuyi_assets::recipient::Code` (the module is `#[doc(hidden)]`, the
+  engine's own for `shuyi-app` and `shuyi-cli`, ticket 2098): 32 bits and
+  their CRC-8 (polynomial
   `0x07`), 40 bits, written as 8 characters of Crockford's base 32. Zero is no
   code.
 - The CRC refuses a mark read wrong, so a damaged mark is "no mark", not
@@ -90,7 +92,9 @@ One surviving mark names the recipient; two agreeing say more.
   every byte.
 - `pack::write` lays the files as before: in path order, nothing between
   them.
-- `pack::Raw` reads a pack whatever its stamp:
+- `pack::Raw` (with `pack::PackMark`, both `#[doc(hidden)]` since ticket
+  2098: they need the pack's private index, and semver doesn't cover
+  them) reads a pack whatever its stamp:
   - `Raw::write_marked(code)` lays its files in an order drawn from the code
     (a Fisher–Yates shuffle over SplitMix64), with the code twice (10 bytes,
     XOR-ed with a stream) between the first of them;
@@ -98,8 +102,10 @@ One surviving mark names the recipient; two agreeing say more.
 
 **(c) One picture's lowest bits.**
 
-- `shuyi_assets::image::mark` marks by color, not by pixel, so the picture
-  keeps its palette (a pixel-art game's strict colors).
+- The picture's mark (`shuyi-cli`'s private `export::recipient::mark`,
+  moved there from `shuyi_assets::image::mark` by ticket 2098, since
+  `shuyi export` is its only caller) marks by color, not by pixel, so the
+  picture keeps its palette (a pixel-art game's strict colors).
 - Each visible color alone in its group (equal to no other color but in the
   two lowest bits of red, green and blue) carries 6 bits there. Every pixel
   of that color changes the same way, by at most 3 in a channel.

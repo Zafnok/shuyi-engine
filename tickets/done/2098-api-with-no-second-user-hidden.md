@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-18
 ---
 
 # 2098 — Before the first release, public API with no second user is hidden or moved out of the engine crates
@@ -110,7 +110,7 @@ None.
   with `kept: Cow<'a, [u8]>`. A stored file from `Content::Raw` is
   borrowed; a baked file, a compressed one and every file `Raw::read`
   reads are owned. The bytes a pack holds don't change, and neither does
-  `pack::VERSION` (15).
+  `pack::VERSION` (19).
 - One `Breaking:` line for each of `shuyi-assets`, `shuyi-app` and
   `shuyi-cli`. Each has a `migration` block saying a game changes
   nothing, since no game uses these items (the search above).
@@ -183,32 +183,32 @@ move of `image::mark` and its tests (about 380 lines) counted once if
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask api` (CI's `api` job) shows, for each item in the
+- [x] `cargo xtask api` (CI's `api` job) shows, for each item in the
       table, only lines removed from the listing, and no line added in
       `shuyi-assets`, `shuyi-app` or `shuyi-cli`. `image::mark` is gone
       from `shuyi-assets`.
-- [ ] `run_game_checked`, `PageCheck`, `page_check`, `CheckReport`,
+- [x] `run_game_checked`, `PageCheck`, `page_check`, `CheckReport`,
       `report_check`, `recipient::*`, `Raw` and `PackMark` are each
       `#[doc(hidden)]`, and each doc says semver doesn't cover it.
-- [ ] `cargo xtask exercises` passes: the site still builds with the
+- [x] `cargo xtask exercises` passes: the site still builds with the
       hidden items, through `shuyi::app::run_game_checked`.
-- [ ] The step-1 snapshot and
+- [x] The step-1 snapshot and
       `the_binary_form_of_every_engine_kind_is_pinned_by_the_pack_version`'s
-      are unchanged, and `pack::VERSION` is still 15.
-- [ ] A unit test shows `RawFile::kept` of incompressible borrowed bytes
+      are unchanged, and `pack::VERSION` is still 19.
+- [x] A unit test shows `RawFile::kept` of incompressible borrowed bytes
       keeps them `Cow::Borrowed`.
-- [ ] A test asserts `WITHOUT_EXAMPLES` equals its literal sentence
+- [x] A test asserts `WITHOUT_EXAMPLES` equals its literal sentence
       ("This game was made without the skills' worked examples (`shuyi
       new --no-examples`)").
-- [ ] `export --recipient` and `detect` work as before:
+- [x] `export --recipient` and `detect` work as before:
       `export::recipient::tests`, the ledger's tests, the moved `mark`
-      tests and `tools/export-check/recipient.sh` pass unchanged but for
+      tests and `tools/export-check/recipient.sh` (CI's `export` job) pass unchanged but for
       paths.
-- [ ] The completion notes have a `Breaking:` line naming
+- [x] The completion notes have a `Breaking:` line naming
       `shuyi-assets`, `shuyi-app` and `shuyi-cli` with their items, each
       with a `migration` block.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -221,5 +221,102 @@ move of `image::mark` and its tests (about 380 lines) counted once if
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **Pinned first.** `pack::tests::a_pack_of_a_stored_a_compressed_and_a_baked_file_is_pinned`
+  was committed with its snapshot before `pack.rs` changed, and still
+  passes unchanged after. `pack::VERSION` is still 19, and the
+  binary-form snapshot is untouched.
+- **`pack::write` borrows again.** `RawFile<'a>` keeps `Cow<'a, [u8]>`:
+  `write_first` passes a stored `Content::Raw` file borrowed, a baked
+  file owned, and LZ4's output is always owned. `Raw` holds
+  `RawFile<'static>`: `Raw::read` and `Raw::replace` own their bytes.
+  `a_stored_file_is_borrowed_while_the_pack_is_assembled` checks both
+  cases.
+- **Hidden** (`#[doc(hidden)]`, each doc saying semver doesn't cover it,
+  ADR-0119): `shuyi_assets::recipient` (the module), `pack::Raw`,
+  `pack::PackMark`; `shuyi_app::run_game_checked`, `PageCheck`,
+  `page::page_check`, `page::CheckReport`, `page::report_check`.
+- **Moved:** `shuyi_assets::image::mark` and its tests went to
+  `crates/cli/src/export/recipient/mark.rs` and `mark/tests.rs` with
+  `git mv`, a private `mod mark` of `export::recipient`.
+- **Narrowed:** `shuyi_cli::export::recipient` and `ledger` are
+  `pub(crate)`, as are their items; `WITHOUT_EXAMPLES` is `pub(crate)`
+  with a test pinning its sentence and a doc saying games' files hold
+  it; `FILE_ATTRIBUTE_COMPRESSED` is a private `const`.
+- ADR-0117's *Consequences* line and ADR-0118's three paragraphs say
+  where each item lives now and that it is hidden. `docs/formats.md`
+  still reads right (it names `pack::Raw::write_marked`, which still
+  exists).
+- `cargo xtask api` shows only removed lines in `shuyi-assets`,
+  `shuyi-app` and `shuyi-cli`, and none added.
+
+Deviations:
+
+- The ticket said `pack::VERSION` is 15; it is 19 on `main` (versions
+  16–19 came since the retro). Fixed in the Scope and the acceptance
+  criteria before the code.
+- Step 2 kept `write_first` going through `Raw`. `Raw` holds
+  `RawFile<'static>`, so `write_first` borrows only if it doesn't:
+  it now orders the files with `grouped` and calls `assemble` itself,
+  which is what `Raw::write` did for it. Same bytes (the snapshot).
+- `mark::capacity` was used only by its own test once private, so it is
+  removed (step 5: no `#[allow]`), and that test reads `carriers`.
+  `BITS_PER_COLOR` and `MIN_CARRIERS` are private consts.
+- `MarkError` derived `thiserror::Error`. `shuyi-cli` has no
+  `thiserror`, and its `export` only formats the error, so `MarkError`
+  has a hand-written `Display` with the same text rather than a new
+  dependency.
+- `FILE_ATTRIBUTE_COMPRESSED` sits inside the `cfg(windows)` block
+  that reads it: a module-level private const would be dead code on
+  Linux and macOS.
+- Five doc links in `shuyi-cli`'s public docs pointed at the items now
+  private (`export::recipient`, `WITHOUT_EXAMPLES`); rustdoc refuses
+  that, so they are plain code spans.
+- `tools/export-check/recipient.sh` runs in CI's `export` job only
+  (a release build and `ssh-keygen`); it is not run locally.
+
+Breaking: shuyi-assets: `recipient` (the module), `pack::Raw`, `pack::PackMark` are `#[doc(hidden)]`, and `image::mark` (`mark`, `read`, `capacity`, `palette_count`, `MarkError`, `PictureRead`, `BITS_PER_COLOR`, `MIN_CARRIERS`) is gone: a game changes nothing, since no game uses them
+
+```migration
+since: 0.1.0
+what: The recipient overlay's own items in shuyi-assets are hidden, and the picture's mark moved into shuyi-cli, before the first release.
+old: shuyi_assets::recipient, shuyi_assets::pack::{Raw, PackMark}, shuyi_assets::image::mark
+new: "the same paths, #[doc(hidden)] and not covered by semver; image::mark is private to shuyi-cli"
+before: |
+  // No game calls these: a game reads its copy's code with shuyi_app::recipient().
+after: |
+  // Nothing changes.
+```
+
+Breaking: shuyi-app: `run_game_checked`, `PageCheck`, `page::page_check`, `page::CheckReport`, `page::report_check` are `#[doc(hidden)]`: a game changes nothing, since no game uses them (only the book's exercises do)
+
+```migration
+since: 0.1.0
+what: The book's exercises' checks are hidden before the first release; a game that wants checks asks for a public shape.
+old: shuyi_app::{run_game_checked, PageCheck}, shuyi_app::page::{page_check, CheckReport, report_check}
+new: "the same paths, #[doc(hidden)] and not covered by semver"
+before: |
+  // No game calls these: games call shuyi_app::run_game.
+after: |
+  // Nothing changes.
+```
+
+Breaking: shuyi-cli: `export::recipient` and `export::recipient::ledger` are private to the crate, and so are `skills::WITHOUT_EXAMPLES` and `contract::doctor::FILE_ATTRIBUTE_COMPRESSED`: a game changes nothing, since no game uses them
+
+```migration
+since: 0.1.0
+what: shuyi-cli's own items behind export --recipient, the skills' marker and a doctor constant are private before the first release.
+old: shuyi_cli::export::recipient, shuyi_cli::skills::WITHOUT_EXAMPLES, shuyi_cli::contract::doctor::FILE_ATTRIBUTE_COMPRESSED
+new: "private to shuyi-cli; the export operation's answer (contract::export) is unchanged"
+before: |
+  // No game calls these: a game runs `shuyi export --recipient` and reads its JSON.
+after: |
+  // Nothing changes.
+```
+
+Book: none, the book names none of these items (the exercises' `main.rs`, which calls `run_game_checked`, is never shown to a reader, ADR-0117 §2).
+
+Game: nothing to adopt, the game uses none of these items. `gh search code --repo Zafnok/visions-of-shuyi` for `PackMark`, `shuyi_assets::recipient`, `image::mark`, `Raw::read`, `export::recipient`, `FILE_ATTRIBUTE_COMPRESSED`, `WITHOUT_EXAMPLES`, `page_check`, `CheckReport` and `report_check` finds nothing (2026-11-18); `run_game_checked` and `PageCheck` appear only in `docs/engine/pins.md`, a pin review's notes.
+
+Follow-up tickets: none. 2096 (the `api` check classifying new public types) and 2095 (`#[non_exhaustive]` on `FontAtlasDef`, `Sound`, `DoctorInput`) are their own (2095 is done).

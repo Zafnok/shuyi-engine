@@ -185,8 +185,15 @@ Nothing is kept past the tab: no score, no progress, no account.
   it.
 - Each step's crate is built twice in CI (the `tutorial` job and the
   `exercises` job), on top of one shared build of the engine.
-- `run_game_checked` is public: any game on the short path with a page
-  can have checks, not only the book's.
+- `run_game_checked` was public at first, so any game on the short path
+  with a page could have checks. No game asked for them, and a public
+  item is a promise under semver, so ticket 2098 hid it before the first
+  release: `run_game_checked`, `PageCheck`, `page::page_check`,
+  `page::CheckReport` and `page::report_check` are `#[doc(hidden)]`, the
+  book's exercises' own, and semver doesn't cover them (ADR-0119 §2). The
+  exercises still call `shuyi::app::run_game_checked`. A game that wants
+  checks asks for them, and gets a public shape then: a struct under
+  ADR-0039, not the `PageCheck` tuple, which can't grow.
 
 ## Alternatives considered
 

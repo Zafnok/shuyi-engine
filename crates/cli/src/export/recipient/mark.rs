@@ -16,46 +16,58 @@
 //!
 //! A picture with fewer than seven carriers can't hold a code
 //! ([`MarkError::TooFewColors`]): choose another.
-use crate::prelude::*;
+//!
+//! `shuyi export --recipient` and `--detect` are its only callers, so it
+//! lives here, private to `shuyi-cli`, and reads only [`Image`]'s public
+//! fields and a [`Code`] (ticket 2098).
 
-use alloc::collections::BTreeMap;
+use std::collections::BTreeMap;
+use std::fmt;
 
-use super::Image;
-use crate::recipient::{CODE_BYTES, Code};
+use shuyi_assets::image::Image;
+use shuyi_assets::recipient::{CODE_BYTES, Code};
 
 /// The bits one color carries: the two lowest of red, green and blue.
-pub const BITS_PER_COLOR: usize = 6;
+const BITS_PER_COLOR: usize = 6;
 
 /// The bits a code takes.
 const CODE_BITS: usize = CODE_BYTES * 8;
 
 /// The fewest colors that carry a code.
-pub const MIN_CARRIERS: usize = CODE_BITS.div_ceil(BITS_PER_COLOR);
+const MIN_CARRIERS: usize = CODE_BITS.div_ceil(BITS_PER_COLOR);
 
 /// The bits a color's group ignores.
 const LOW: u8 = 0b11;
 
 /// Why a picture can't carry a mark.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum MarkError {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum MarkError {
     /// It has too few colors that carry bits.
-    #[error(
-        "the picture has {found} color(s) that can carry a mark and a code needs {MIN_CARRIERS}: \
-         choose a picture with more colors (each visible, and differing from the others above \
-         its two lowest bits)"
-    )]
     TooFewColors {
         /// Its carriers.
         found: usize,
     },
     /// Its bytes aren't four per pixel.
-    #[error("the picture's pixels aren't 4 bytes each")]
     Shape,
+}
+
+impl fmt::Display for MarkError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooFewColors { found } => write!(
+                f,
+                "the picture has {found} color(s) that can carry a mark and a code needs \
+                 {MIN_CARRIERS}: choose a picture with more colors (each visible, and differing \
+                 from the others above its two lowest bits)"
+            ),
+            Self::Shape => f.write_str("the picture's pixels aren't 4 bytes each"),
+        }
+    }
 }
 
 /// What [`read`] found in a picture.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PictureRead {
+pub(super) enum PictureRead {
     /// A code, every copy of each bit agreeing and its check right.
     Code(Code),
     /// No code: the bits don't hold one, or two copies of a bit differ.
@@ -89,7 +101,7 @@ fn colors(image: &Image) -> Result<Vec<[u8; 4]>, MarkError> {
 
 /// How many distinct colors the picture has: its palette, which a mark
 /// keeps.
-pub fn palette_count(image: &Image) -> usize {
+pub(super) fn palette_count(image: &Image) -> usize {
     colors(image).map_or(0, |colors| colors.len())
 }
 
@@ -107,11 +119,6 @@ fn carriers(image: &Image) -> Result<Vec<[u8; 4]>, MarkError> {
         .filter(|colors| colors.len() == 1)
         .map(|colors| colors[0])
         .collect())
-}
-
-/// How many bits the picture can carry: six for each carrier.
-pub fn capacity(image: &Image) -> usize {
-    carriers(image).map_or(0, |carriers| carriers.len() * BITS_PER_COLOR)
 }
 
 /// The color `color` becomes carrying `bits` (six, highest first: red's,
@@ -144,7 +151,7 @@ fn carried(color: [u8; 4]) -> [bool; BITS_PER_COLOR] {
 /// Writes `code` into `image`'s lowest bits, keeping its palette: every
 /// pixel of a carrier changes as its color does, and no other pixel
 /// changes.
-pub fn mark(image: &mut Image, code: Code) -> Result<(), MarkError> {
+pub(super) fn mark(image: &mut Image, code: Code) -> Result<(), MarkError> {
     let carriers = carriers(image)?;
     if carriers.len() < MIN_CARRIERS {
         return Err(MarkError::TooFewColors {
@@ -169,7 +176,7 @@ pub fn mark(image: &mut Image, code: Code) -> Result<(), MarkError> {
 }
 
 /// The code `image` carries, if it carries one.
-pub fn read(image: &Image) -> PictureRead {
+pub(super) fn read(image: &Image) -> PictureRead {
     let Ok(carriers) = carriers(image) else {
         return PictureRead::NoMark;
     };

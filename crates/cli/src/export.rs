@@ -52,7 +52,7 @@
 //! With `--recipient`, a release export then makes a closed build's copy of
 //! the package for one recipient, marked with their code in its program, its
 //! pack and one picture, and written in a signed ledger: a deterrent with
-//! circumstantial evidence, never proof ([`recipient`], ADR-0118).
+//! circumstantial evidence, never proof (`recipient`, ADR-0118).
 
 pub mod archive;
 mod desktop;
@@ -60,7 +60,7 @@ pub mod disclosure;
 pub mod live_link;
 pub mod paths;
 pub mod playdate;
-pub mod recipient;
+pub(crate) mod recipient;
 mod web;
 
 use std::collections::BTreeMap;
@@ -182,7 +182,7 @@ pub trait Exporter: Sync {
     }
 
     /// Whether it makes a recipient's copy of a closed build
-    /// (`export --recipient`, [`recipient`]): by default not.
+    /// (`export --recipient`, `recipient`): by default not.
     fn overlays(&self) -> bool {
         false
     }

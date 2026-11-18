@@ -765,6 +765,10 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
 /// ([`run_game_checked`]): its name, and a function of the game's data as
 /// it loaded with the page's files, answering `Ok` with why they pass, or
 /// `Err` with why not, each a sentence the reader can act on.
+///
+/// The book's exercises' own (ADR-0117): not part of the API, which semver
+/// doesn't cover (ADR-0119). A game that wants checks asks for them.
+#[doc(hidden)]
 pub type PageCheck<A, T> = (&'static str, fn(&BasicData<A, T>) -> Result<String, String>);
 
 /// [`run_game`], with checks a page may ask for (the book's exercises,
@@ -774,6 +778,10 @@ pub type PageCheck<A, T> = (&'static str, fn(&BasicData<A, T>) -> Result<String,
 /// ([`page::report_check`]); a name with no check is reported failed. Files
 /// with problems are reported as `run_game` reports them, with no check.
 /// Then the game plays as usual.
+///
+/// The book's exercises' own (ADR-0117): not part of the API, which semver
+/// doesn't cover (ADR-0119). A game that wants checks asks for them.
+#[doc(hidden)]
 pub fn run_game_checked<A: ActionSet, T: Debug + 'static>(
     game: BasicGame<A, T>,
     checks: &[PageCheck<A, T>],

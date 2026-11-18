@@ -51,7 +51,7 @@ fn png(image: &Image) -> Vec<u8> {
 
 /// `bytes` decoded as the engine's PNG format reads a picture's pixels.
 fn decoded(bytes: &[u8]) -> Image {
-    let (width, height, rgba) = crate::bitmap::convert::png_pixels(bytes).expect("a PNG");
+    let (width, height, rgba) = shuyi_assets::bitmap::convert::png_pixels(bytes).expect("a PNG");
     Image {
         width,
         height,
@@ -112,7 +112,7 @@ fn too_few_colors_are_refused_and_said() {
         Err(MarkError::TooFewColors { found: 6 })
     );
     assert_eq!(read(&six), PictureRead::TooFewColors { found: 6 });
-    assert_eq!(capacity(&six), 36);
+    assert_eq!(carriers(&six).map(|colors| colors.len()), Ok(6));
 }
 
 #[test]
