@@ -33,8 +33,10 @@ and its workflows' artifacts, are anyone's.
   the public files. Anyone with write access to this repository can read
   the private one through CI: ask the developer before suggesting a
   collaborator. No job that checks them out caches `target/`, and no
-  workflow may upload an artifact that embeds them, but
-  `export.yml` for a release (`release.yml` on a tag), which publishes
-  them inside the program anyway. A release's dry run builds without
-  uploading, and warns and builds on the public files without the key.
+  workflow may upload an artifact that embeds them readable: on a tag,
+  `export.yml` seals each package with `PRIVATE_ASSETS_KEY` before its
+  upload (a private repository's go as they are), and only the release's
+  jobs open them. The release itself is a draft unless the owner asks
+  for a public one. A release's dry run builds without uploading, and
+  warns and builds on the public files without the key.
 - `cargo shuyi run --watch` watches `private/files/` too.

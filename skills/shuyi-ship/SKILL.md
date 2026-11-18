@@ -71,8 +71,9 @@ Ship only what `check --target` passes.
      developer, so players open them once by hand.
    - `--release` remaps the build's paths and refuses a program that
      still holds one of this machine's. On `windows` and `linux` it
-     keeps `<package>.debug` beside the package: keep it with the
-     release for crash reports, and never ship it.
+     keeps `<package>.debug` beside the package: keep it for crash
+     reports, and never ship it. A release from a tag (step 8) keeps
+     each one in the draft `<tag>-debug`.
    - `--release` on `windows`, `linux`, `macos` and `web` ships the game's
      files baked into `<package>.pack` beside the program (in a `.app`, in
      `Contents/Resources`; on the web beside `index.html`), when the
@@ -267,8 +268,15 @@ Ship only what `check --target` passes.
 
 8. **A release from a tag.** The game's `.github/workflows/release.yml`
    builds every package CI can on its own system, then makes a GitHub
-   Release of the tag with them, their debug files and `SHA256SUMS`.
-   First see what it builds, and that the tag names the version:
+   Release of the tag with them and `SHA256SUMS`: a **draft**, which only
+   people who can change the game see, unless the owner set the
+   repository variable `PUBLISH_ON_GITHUB` to `true` (a free download for
+   anyone; a private repository's release is published, and private).
+   The debug files go in a draft of their own, `<tag>-debug`, which
+   nothing publishes (`gh release download <tag>-debug`). A public
+   repository's packages with the private files pass between its jobs
+   sealed with `PRIVATE_ASSETS_KEY`, never as plain artifacts. First see
+   what it builds, and that the tag names the version:
 
    ```bash
    cargo shuyi export --plan --tag v0.1.0
@@ -286,7 +294,9 @@ Ship only what `check --target` passes.
    git push origin v0.1.0
    ```
 
-   Ask the game's owner before pushing a tag: it publishes the game. A
+   Ask the game's owner before pushing a tag: it can publish the game
+   (itch.io, `PUBLISH_ON_GITHUB`). Where it publishes is the owner's
+   choice, each place an option they turn on; by default, nowhere. A
    dry run, the Release workflow run from the repository's Actions tab,
    builds the packages and publishes nothing. itch.io is the owner's to
    turn on: the repository variable `ITCH_GAME` (`user/game`) and the

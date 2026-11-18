@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: decision
-completed:
+completed: 2026-11-18
 ---
 
 # 3406 — A public game's tag release publishes what Nick decided, and never a debug file
@@ -289,28 +289,28 @@ the tests stay here: they are what stops the leak.
 
 ## Acceptance criteria
 
-- [ ] `docs/decisions.md` holds Nick's answer verbatim, dated, and the rule.
-- [ ] On a public repository no `*.debug` file is in the published
+- [x] `docs/decisions.md` holds Nick's answer verbatim, dated, and the rule.
+- [x] On a public repository no `*.debug` file is in the published
       release, an itch.io push or a plain artifact a stranger can read
       that holds private files. A tag's run puts each CI-built debug file
       in the draft `<tag>-debug`, or in the private repository's release
       under C.
-- [ ] A public private-files game's packages go where the decision says,
+- [x] A public private-files game's packages go where the decision says,
       and nowhere else: under A, B or C no artifact of the run holds one
       unencrypted.
-- [ ] A private repository's release, and a game without private files,
+- [x] A private repository's release, and a game without private files,
       do what the Scope says.
-- [ ] A dry run (`workflow_dispatch`) still publishes nothing and uploads
+- [x] A dry run (`workflow_dispatch`) still publishes nothing and uploads
       no package of a public private-files game.
-- [ ] `skills/shuyi-ship/SKILL.md` steps 2 and 8 agree, and so do the
+- [x] `skills/shuyi-ship/SKILL.md` steps 2 and 8 agree, and so do the
       README, `AGENTS.md`, `docs/templates.md`, `docs/contract.md` and
       `docs/crash-reports.md`.
-- [ ] A new ADR amends ADR-0114 §3, the circular reasoning is gone, and
+- [x] A new ADR amends ADR-0114 §3, the circular reasoning is gone, and
       the status lines and the index name it.
-- [ ] Either a real tag release ran on a scratch repository (its links in
+- [x] Either a real tag release ran on a scratch repository (its links in
       the completion notes) or a ticket for it exists and is named.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -335,5 +335,113 @@ the tests stay here: they are what stops the leak.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Nick's answer** (2026-11-18, `docs/decisions.md`, *a release publishes
+nowhere until the developer picks where*): none of A–D as written. "should
+have options for all major storefronts. otherwise its not set by default.
+we should absolutely not publish to public github pages by default", and
+a public GitHub download "can be another option, for where to publish",
+for games with or without private files. He said yes to the scratch run.
+
+**What was done** ([ADR-0133](../../docs/adr/0133-a-release-publishes-nowhere-by-default-debug-files-in-a-draft-sealed-packages.md),
+amending ADR-0114 §2 and §3 and ADR-0111 §5):
+
+- `release.yml`'s `release` job: the tag's release is a **draft**
+  (`--draft`) unless the repository variable `PUBLISH_ON_GITHUB` is
+  `true` or the repository is private. Every game, private files or not
+  (Nick's second answer). The debug files are moved to `debug/` before
+  the rest go to `release/`, and go in the draft `<tag>-debug` with
+  their own `SHA256SUMS`; a re-run uploads into the drafts that exist
+  (`--clobber`) instead of making a second one. itch.io is unchanged, an
+  option.
+- `export.yml`: a public repository's package with the private files is
+  sealed (`openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -md sha256`,
+  `-pass env:PRIVATE_ASSETS_KEY`) into `dist/sealed/<target>/`, and only
+  that folder is uploaded; the release and itch.io jobs open it with the
+  same key. The plain upload keeps a game without private files and a
+  private repository's release. The engine's copy is byte-equal.
+- Tests (`crates/cli/src/contract/new/tests.rs`):
+  `a_release_publishes_nowhere_by_default_and_never_a_debug_file`,
+  `a_public_games_package_leaves_its_runner_sealed`; 3407's leak test
+  now allows a plain upload only as `UPLOAD_INPUTS` (a private
+  repository's) or `hashFiles(…) == ''`, or a sealed one
+  (`uploads_sealed`: the sealed folder only, after `Seal the package`
+  under the same `if:`), with cases that refuse the old
+  `inputs.upload-private` alone and each broken sealed shape.
+- Docs: the base's README and AGENTS.md *Releasing*, the private part's
+  README and AGENTS.md, `skills/shuyi-ship` steps 2 and 8,
+  `docs/templates.md`, `docs/contract.md`, `docs/crash-reports.md` (how
+  to fetch a CI release's debug files), `docs/targets/desktop.md`, the
+  book's *Releasing*.
+
+**The scratch run** (Nick's yes; `shuyi new --template grid --github`,
+so `Zafnok/scratch-release-3406`, public, and
+`Zafnok/scratch-release-3406-assets`, private; on this branch's
+template, engine at `main` 60a7ca47):
+
+- The first tag run (run 44412606416) failed in `export (linux)` before
+  any of this ticket's steps: the sniper image has no `ssh`, which the
+  private files' checkout needs. A bug of its own, from before this
+  ticket: **3504**. The scratch repository's own `export.yml` got a step
+  installing `openssh-client` in the container to go on; nothing of that
+  patch is in this PR.
+- The second tag run (run 44413611718) passed: each export sealed its
+  files with the runner's own `openssl`: OpenSSL 1.1.1w in the sniper
+  image, 3.5.9 on `macos-latest` (Homebrew's, ahead of LibreSSL) and in
+  `windows-latest`'s Git Bash, 3.5.5 on `ubuntu-latest`. The artifact
+  `package-windows` held `…-windows.zip.sealed` and
+  `…-windows.debug.sealed` (each starting `Salted__`) and the two
+  reports. The release job opened them, and made two drafts: `v0.1.0`
+  (the four packages and `SHA256SUMS`) and `v0.1.0-debug` (the Linux and
+  Windows debug files and their `SHA256SUMS`; macOS and the web have
+  none). itch.io was skipped (no `ITCH_GAME`).
+- Signed out: the API listed no release (`[]`), the page of
+  `v0.1.0-debug` was a 404, the tag's page named no package, and an
+  artifact's download was refused (401).
+- `gh release download v0.1.0-debug` fetched both debug files, and
+  `sha256sum -c SHA256SUMS` passed.
+- Re-running the release job uploaded into both drafts: still two
+  releases, with 5 and 3 files.
+- A dry run (run 44415425846) built all four packages, skipped every
+  upload and the seal ("Not uploaded"), uploaded no artifact, and made no
+  release.
+- actionlint on the made game: 0 errors in 4 files.
+- `PUBLISH_ON_GITHUB=true` wasn't run: it only drops `--draft`, which the
+  test reads.
+- Both repositories were deleted after the run by Nick, by hand: the
+  session's `gh` has no `delete_repo` scope, which he chose not to grant.
+
+**Deviations:**
+
+- The answer was none of A–D, so the Scope's per-answer bullets map so:
+  A's draft is the default for every game; D (published, without debug
+  files) is the option `PUBLISH_ON_GITHUB`; B's itch.io stays an option.
+  There's no published notes-only release (B): Nick ruled out public
+  GitHub pages by default.
+- The variable is `PUBLISH_ON_GITHUB`: GitHub refuses a variable named
+  `GITHUB_…`.
+- The sealed files are `<name>.sealed`, in `dist/sealed/<target>/`, a
+  second upload step, rather than encrypting in place before the one
+  upload, so the test can read that the upload takes only sealed files.
+- The ticket's steps named the `itch` job's own handoff; it opens the
+  sealed files as the release job does.
+
+**Tickets written (3504, 3321, 3322, 3323, 3410):**
+
+- 3504: a game with private files exports for Linux (`ssh` in the
+  sniper image). MVP, in 2005's `blocked_by`.
+- 3321, 3322, 3323: Steam, GOG and the Epic Games Store, each an option
+  (Nick: "options for all major storefronts"). After MVP, `nick_input:
+  setup` for each real run.
+- 3410: `shuyi repos` asks where releases publish, nowhere by default.
+
+**For Nick:** "the major storefronts" is recorded as Steam, GOG and the
+Epic Games Store beside itch.io, After MVP. Name others, or move them to
+the MVP, if you want.
+
+Behaviour: shuyi-cli: a game made with `shuyi new` releases a tag as a draft GitHub Release (published only with the repository variable `PUBLISH_ON_GITHUB` set to `true`, or in a private repository), keeps its debug files in the draft `<tag>-debug`, and, public with private files, uploads its packages sealed with `PRIVATE_ASSETS_KEY`.
+
+No break: only the template's workflows and docs change, and `shuyi-cli`'s tests.
+
+Game: nothing to adopt, its workflows are its own and game ADR-0127 already keeps its packages off GitHub (its `release.yml`, read on 2026-11-18, makes no GitHub Release and sends its debug files to its assets repository).
+
+Book: `site/content/learn/book/targets-and-export.md`, *Releasing*.

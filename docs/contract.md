@@ -769,11 +769,16 @@ Each also has `.github/workflows/release.yml` and `export.yml`
 a pushed tag `vX.Y.Z` runs the gates (`ci.yml`, called as a reusable
 workflow), `export --plan --tag`, `export.yml` once for each entry CI
 builds (one target's `export <target> --release` on its runner and in its
-image, uploaded as the artifact `package-<target>`), then a GitHub
-Release of the tag with each package, its debug file and `SHA256SUMS`,
-attested on a public repository; with the repository variable
-`ITCH_GAME` and the secret `BUTLER_API_KEY`, butler pushes each package
-but a prerelease's to itch.io. Run from the Actions tab, it is a dry
+image, uploaded as the artifact `package-<target>`, sealed with
+`PRIVATE_ASSETS_KEY` when a public repository's package holds the private
+files), then a GitHub Release of the tag with each package and
+`SHA256SUMS`, attested on a public repository. It publishes nowhere by
+default ([ADR-0133](adr/0133-a-release-publishes-nowhere-by-default-debug-files-in-a-draft-sealed-packages.md)):
+the release is a draft unless the repository variable
+`PUBLISH_ON_GITHUB` is `true` or the repository is private, and the debug
+files go in a draft of their own, `<tag>-debug`; with the repository
+variable `ITCH_GAME` and the secret `BUTLER_API_KEY`, butler pushes each
+package but a prerelease's to itch.io. Run from the Actions tab, it is a dry
 run: no release and nothing pushed. Its `ci.yml` fails first when
 `Cargo.lock` isn't committed, runs `clippy` and the tests `--locked`, and,
 as every job of these workflows, reads no Actions cache on a tag. The

@@ -1,6 +1,6 @@
 # ADR-0114: A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release
 
-- **Status:** Accepted
+- **Status:** Accepted; §2 and §3 amended by ADR-0133 (a tag's release is a draft unless the developer asks, its debug files in a draft of their own, a public game's packages sealed between jobs)
 - **Date:** 2026-11-13
 - **Related tickets:** 3050, 3004, 2011, 2513, 2590
 - **Amends:** ADR-0111 §5 (no workflow of the template uploads an artifact

@@ -1937,3 +1937,51 @@ rebuilding it there, he said: "Write the ticket".
 - It stays within the one free prebuild (the decision above): if the
   book's site and tools would push it past his included storage, he is
   asked again.
+
+## 2026-11-18: a release publishes nowhere until the developer picks where
+
+Source: Nick, in a session of this repository on 2026-11-18 (3406).
+Asked where a game's downloads go when the developer pushes a version
+tag, when its code is public and its writing, art and sounds private (the
+default `shuyi new` sets up, which until then put the whole game on the
+public GitHub page as a free download), with four options (a hidden
+draft the developer publishes by hand; itch.io or a store only, else the
+draft; the private repository's own release page; a free public download
+as before):
+
+> "should have options for all major storefronts. otherwise its not set
+> by default. we should absolutely not publish to public github pages by
+> default"
+
+Asked whether a game with no private files should follow the same rule
+or keep the free public download on GitHub:
+
+> "it can be another option, for where to publish. so if they want they
+> can publish to public github pages."
+
+Asked whether the session may make a scratch game repository and its
+private repository on his GitHub account with `shuyi repos`, push a tag
+to run the release for real, and delete both afterwards: "Yes, then
+delete them".
+
+**Rules:**
+
+- **A tag's release publishes nowhere by default,** whether or not the
+  game has private files. CI builds the packages and keeps them in a
+  **draft** GitHub Release of the tag, which only people who can change
+  the game see; nothing is public until the developer chooses.
+- **The developer picks where it publishes,** each place an option they
+  turn on: itch.io (`ITCH_GAME`, there already), the major storefronts,
+  and a public GitHub Release with the packages (`PUBLISH_ON_GITHUB`),
+  which is never the default.
+- "The major storefronts" is read as Steam, GOG and the Epic Games Store
+  beside itch.io, each its own ticket (3321, 3322, 3323), and `shuyi
+  repos` asking which ones the developer wants (3410). Nick may name
+  others.
+- A private repository's release is private already: it is published
+  there as before.
+- A game's debug files are never published anywhere: each release keeps
+  them in a draft of their own, `<tag>-debug`.
+- The scratch run: made and run by the session that works 3406; Nick
+  deleted the two repositories himself, keeping `delete_repo` from the
+  session.

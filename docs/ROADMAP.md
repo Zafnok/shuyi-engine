@@ -195,7 +195,8 @@ These tickets, in order:
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
-| 3406 | A public game's tag release publishes what Nick decided, and never a debug file |
+| 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
+| 3504 | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
 | 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
 | 2005 | The first release on crates.io, and the game on versions |
 
@@ -288,6 +289,18 @@ its private content.
 
 The method itself is now a skill, `/retro` (3408, done 2026-11-18). The
 next retro starts from it.
+
+### Where a release publishes (Nick, 2026-11-18)
+
+A tag's release publishes nowhere until the developer picks where (3406,
+ADR-0133); each store is an option they turn on.
+
+| Ticket | What |
+| ------ | ---- |
+| 3321 | A game's tag release can publish to Steam, when the developer turns it on |
+| 3322 | A game's tag release can publish to GOG, when the developer turns it on |
+| 3323 | A game's tag release can publish to the Epic Games Store, when the developer turns it on |
+| 3410 | `shuyi repos` asks where a game's releases publish, nowhere by default, and sets the repository's variables |
 
 ### Bevy's homepage
 

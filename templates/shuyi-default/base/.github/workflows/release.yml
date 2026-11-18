@@ -3,10 +3,17 @@ name: Release
 # A pushed tag `vX.Y.Z` releases the game (README.md, "Releasing"): the
 # gates (ci.yml), then every package `cargo shuyi export --plan` says CI
 # builds, each on its own runner (export.yml), then a GitHub Release of the
-# tag with every package, its debug file, SHA256SUMS and, on a public
-# repository, attestations of where each was built. With the repository
-# variable ITCH_GAME (`user/game`) and the secret BUTLER_API_KEY, each
-# package but a prerelease's is pushed to itch.io too.
+# tag with every package and SHA256SUMS and, on a public repository,
+# attestations of where each was built. It publishes nowhere until the
+# developer says where (the engine's decision of 2026-11-18, ADR-0133):
+#
+# - the release is a draft, which only people who can change the game see,
+#   unless the repository variable PUBLISH_ON_GITHUB is `true` (a public
+#   download for anyone) or the repository is private;
+# - with the repository variable ITCH_GAME (`user/game`) and the secret
+#   BUTLER_API_KEY, each package but a prerelease's is pushed to itch.io;
+# - the debug files go in a draft of their own, `<tag>-debug`, which
+#   nothing publishes: `gh release download <tag>-debug` fetches them.
 #
 # Run it from the Actions tab (workflow_dispatch) for a dry run: the gates,
 # the plan and the packages, with no release and nothing pushed.
@@ -114,25 +121,49 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
       PRERELEASE: ${{ needs.plan.outputs.prerelease }}
       CRATE: "{{crate_name}}"
+      # A public release on GitHub only when the developer asks for one, or
+      # in a private repository, whose releases are private.
+      PUBLISH: ${{ vars.PUBLISH_ON_GITHUB == 'true' || github.event.repository.private }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: package-*
           path: artifacts
-      # Each package (`<crate>-<version>-<exporter>.<ext>`) and its debug
-      # file, if any: a private repository's release is private, and a public
-      # one's source is public already.
+      # A public repository's package with the private files comes sealed
+      # (export.yml), opened here with the same key.
+      - name: Open the sealed files
+        env:
+          PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PRIVATE_ASSETS_KEY" ] && [ -n "$(find artifacts -type f -name '*.sealed')" ]; then
+            echo "::error::The packages are sealed, but the secret PRIVATE_ASSETS_KEY is missing: run \`shuyi repos\` in the game's folder."
+            exit 1
+          fi
+          find artifacts -type f -name '*.sealed' -print0 | while IFS= read -r -d '' file; do
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 \
+              -pass env:PRIVATE_ASSETS_KEY -in "$file" -out "${file%.sealed}"
+            rm "$file"
+          done
+      # Each package (`<crate>-<version>-<exporter>.<ext>`) in release/, and
+      # each debug file in debug/: a debug file is the program before
+      # stripping, for crash reports, and is never published.
       - name: The files and their checksums
         run: |
           set -euo pipefail
-          mkdir release
+          mkdir release debug
+          find artifacts -type f -name '*.debug' -exec mv -n {} debug/ \;
           find artifacts -type f ! -name '*.json' -exec mv -n {} release/ \;
           (cd release && sha256sum -- *) > SHA256SUMS
           mv SHA256SUMS release/
           cat release/SHA256SUMS
-      # Where each file was built, which `gh attestation verify <file> --repo
-      # <owner>/<repo>` checks. A private repository needs GitHub Enterprise
-      # Cloud for them.
+          if [ -n "$(ls -A debug)" ]; then
+            (cd debug && sha256sum -- *) > debug-sums
+            mv debug-sums debug/SHA256SUMS
+          fi
+      # Where each package was built, which `gh attestation verify <file>
+      # --repo <owner>/<repo>` checks. A private repository needs GitHub
+      # Enterprise Cloud for them.
       - name: Attest the files
         if: ${{ !github.event.repository.private }}
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -156,6 +187,27 @@ jobs:
             notes="$CRATE $VERSION"
           fi
           printf '%s\n' "$notes" > notes.md
+      # The debug files, in a draft only people who can change the game see,
+      # which nothing publishes. A re-run replaces its files.
+      - name: The debug files' draft
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(debug/*)
+          if [ "${#files[@]}" = 0 ]; then
+            echo "No debug files." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          draft="$TAG-debug"
+          if gh release view "$draft" > /dev/null 2>&1; then
+            gh release upload "$draft" --clobber "${files[@]}"
+          else
+            gh release create "$draft" --draft --target "$GITHUB_SHA" \
+              --title "Debug files of $TAG: never publish" \
+              --notes "The debug files of $TAG's packages, for crash reports: \`gh release download $draft\`. A debug file is the program before stripping: never publish this draft." \
+              "${files[@]}"
+          fi
+          echo "Debug files: the draft \`$draft\` (\`gh release download $draft\`)." >> "$GITHUB_STEP_SUMMARY"
       - name: Release
         run: |
           set -euo pipefail
@@ -163,7 +215,19 @@ jobs:
           if [ "$PRERELEASE" = true ]; then
             flags+=(--prerelease)
           fi
-          gh release create "$TAG" --verify-tag --notes-file notes.md "${flags[@]}" release/*
+          if [ "$PUBLISH" != true ]; then
+            flags+=(--draft)
+          fi
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" --clobber release/*
+          else
+            gh release create "$TAG" --verify-tag --notes-file notes.md "${flags[@]}" release/*
+          fi
+          if [ "$PUBLISH" = true ]; then
+            echo "The release of $TAG is published on GitHub." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "The release of $TAG is a draft: only people who can change the game see it. Publish it on GitHub by hand, or set the repository variable PUBLISH_ON_GITHUB to \`true\` for every release." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   itch:
     name: itch.io
@@ -178,6 +242,21 @@ jobs:
         with:
           pattern: package-*
           path: artifacts
+      # As the release job does.
+      - name: Open the sealed files
+        env:
+          PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PRIVATE_ASSETS_KEY" ] && [ -n "$(find artifacts -type f -name '*.sealed')" ]; then
+            echo "::error::The packages are sealed, but the secret PRIVATE_ASSETS_KEY is missing: run \`shuyi repos\` in the game's folder."
+            exit 1
+          fi
+          find artifacts -type f -name '*.sealed' -print0 | while IFS= read -r -d '' file; do
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 \
+              -pass env:PRIVATE_ASSETS_KEY -in "$file" -out "${file%.sealed}"
+            rm "$file"
+          done
       # butler (MIT), from its GitHub release; the release publishes no
       # checksum file, so the zip's SHA-256 is written here.
       - name: Install butler

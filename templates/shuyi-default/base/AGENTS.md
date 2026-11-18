@@ -171,15 +171,21 @@ Grow it by adding a part, not by rewriting the start:
 
 A pushed tag `vX.Y.Z` releases the game (`.github/workflows/release.yml`,
 README.md's "Releasing"): every package CI builds, on its own system, in
-a GitHub Release with `SHA256SUMS`. `cargo shuyi export --plan --tag
-vX.Y.Z` lists them and fails unless the tag names the version
+a **draft** GitHub Release with `SHA256SUMS`, which only people who can
+change the game see; the repository variable `PUBLISH_ON_GITHUB` set to
+`true` publishes it for anyone. `cargo shuyi export --plan --tag vX.Y.Z`
+lists the packages and fails unless the tag names the version
 (`app.version` in `shuyi.ron`, else `Cargo.toml`'s; run `cargo shuyi
 app-info` after changing it). The tag's message (`git tag -a`) is the
-notes. Pushing a tag publishes the game: ask its owner first. The Release
-workflow run from the Actions tab is a dry run. itch.io is on when the
-repository has the variable `ITCH_GAME` and the secret `BUTLER_API_KEY`.
-The macOS app has no Developer ID signature, so players open it from
-System Settings, Privacy & Security.
+notes. The debug files go in the draft `vX.Y.Z-debug`, which nothing
+publishes: never publish it, nor attach a debug file anywhere a player
+sees. Where a release publishes is the owner's choice, and nowhere by
+default: pushing a tag can publish the game (itch.io,
+`PUBLISH_ON_GITHUB`), so ask its owner first. The Release workflow run
+from the Actions tab is a dry run. itch.io is on when the repository has
+the variable `ITCH_GAME` and the secret `BUTLER_API_KEY`. The macOS app
+has no Developer ID signature, so players open it from System Settings,
+Privacy & Security.
 
 ## The gates
 

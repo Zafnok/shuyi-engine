@@ -11,4 +11,7 @@ cargo shuyi private-assets --pin # after a change there is merged into its main:
 The build lays `private/files/` over `crates/game/files/` whenever the
 checkout is there; without it, the game builds and runs on its public
 files. A release ships the private files inside the program, or in its
-pack.
+pack: so a tag's release is a draft unless you publish it (README's
+*Releasing*), and the packages pass between its jobs sealed with
+`PRIVATE_ASSETS_KEY`, so this public repository's artifacts never hold
+them readable.

@@ -72,7 +72,15 @@ A release build is stripped, so its `backtrace` names nothing. Its `frames` say
 where each call was, as an offset from the start of the program in memory
 (the program loads at another address each run). The debug file of the same
 build (`<game>-<version>-<target>.debug`, kept beside the package by `shuyi
-export --release`: [targets/desktop.md](targets/desktop.md)) names them:
+export --release`: [targets/desktop.md](targets/desktop.md)) names them.
+A game's release from a tag keeps each CI-built debug file in the draft
+release `<tag>-debug`, which only people who can change the game see and
+nothing publishes
+([ADR-0133](adr/0133-a-release-publishes-nowhere-by-default-debug-files-in-a-draft-sealed-packages.md)):
+
+```bash
+gh release download v1.2.0-debug --repo <owner>/<game> --pattern '*-windows.debug'
+```
 
 ```bash
 # The image base the debug file was linked at: Windows has one, Linux 0.

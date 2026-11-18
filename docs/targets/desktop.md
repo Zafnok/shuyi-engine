@@ -69,7 +69,9 @@ tools are that system's. On another one, `export` says where it builds.
   Linux; `shuyi doctor` checks it on Windows), which moves no code, so a
   crash's addresses in the shipped program name the same functions and
   lines in the debug file (`addr2line -f -e <the .debug file> <address>`).
-  Keep the debug file with each release. On macOS the program is built
+  Keep the debug file for each release, and never ship it: a game's
+  release from a tag keeps CI's in the draft `<tag>-debug` (ADR-0133). On
+  macOS the program is built
   stripped (`strip = true`, whatever the game's profile says).
 - **No debug surfaces.** Without debug tools a build drops its log's info
   and debug lines, doesn't read `SHUYI_PERF`, and writes no record of play
