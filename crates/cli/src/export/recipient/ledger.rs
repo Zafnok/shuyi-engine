@@ -22,27 +22,27 @@ use crate::export::ExportError;
 use crate::sha256;
 
 /// The ledger's file name.
-pub const FILE: &str = "recipients.ron";
+pub(crate) const FILE: &str = "recipients.ron";
 
 /// Its signature's file name.
-pub const SIGNATURE: &str = "recipients.ron.sig";
+pub(crate) const SIGNATURE: &str = "recipients.ron.sig";
 
 /// The namespace its signature is made in (`ssh-keygen -Y sign -n`), so a
 /// signature over it means nothing anywhere else.
-pub const NAMESPACE: &str = "shuyi-recipients";
+pub(crate) const NAMESPACE: &str = "shuyi-recipients";
 
 /// The namespace a recipient's code is drawn in.
 const CODE_NAMESPACE: &str = "shuyi-recipient-code";
 
 /// The ledger's first line of text, which every copy of it carries.
-pub const ABOUT: &str = "Who got which closed build. A code found in a copy that leaked is \
+pub(crate) const ABOUT: &str = "Who got which closed build. A code found in a copy that leaked is \
                          circumstantial evidence that this copy was the one given to that \
                          recipient, never proof of who leaked it.";
 
 /// The ledger.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Ledger {
+pub(crate) struct Ledger {
     /// [`ABOUT`].
     pub about: String,
     /// The public key that signs it (`ssh-ed25519 AAAA…`), as its first
@@ -55,7 +55,7 @@ pub struct Ledger {
 /// One closed build, given to one recipient.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Entry {
+pub(crate) struct Entry {
     /// The recipient's id (`--recipient`).
     pub recipient: String,
     /// Who they are, as the developer wrote it (`--label`).
@@ -81,18 +81,18 @@ pub struct Entry {
 }
 
 /// Where the ledger of the kit in `kit` is: beside it.
-pub fn path_beside(kit: &Path) -> PathBuf {
+pub(crate) fn path_beside(kit: &Path) -> PathBuf {
     kit.parent()
         .map_or_else(|| PathBuf::from(FILE), |dir| dir.join(FILE))
 }
 
 /// Its signature's path, beside the ledger at `ledger`.
-pub fn signature_path(ledger: &Path) -> PathBuf {
+pub(crate) fn signature_path(ledger: &Path) -> PathBuf {
     ledger.with_file_name(SIGNATURE)
 }
 
 /// The ledger at `path`, if there is one.
-pub fn load(path: &Path) -> Result<Option<Ledger>, ExportError> {
+pub(crate) fn load(path: &Path) -> Result<Option<Ledger>, ExportError> {
     if !path.exists() {
         return Ok(None);
     }
@@ -104,7 +104,7 @@ pub fn load(path: &Path) -> Result<Option<Ledger>, ExportError> {
 }
 
 /// The ledger as text.
-pub fn text(ledger: &Ledger) -> String {
+pub(crate) fn text(ledger: &Ledger) -> String {
     let pretty = ron::ser::PrettyConfig::new().struct_names(false);
     let body = ron::ser::to_string_pretty(ledger, pretty).unwrap_or_default();
     format!("// {FILE}: written by `shuyi export --recipient`; signed in {SIGNATURE}.\n{body}\n")
@@ -166,7 +166,7 @@ fn shown(path: &Path) -> String {
 /// The public half of the private key at `key`: `<key>.pub` beside it, else
 /// what `ssh-keygen -y` derives (a key with no passphrase). Its type and
 /// base64, without the comment.
-pub fn public_key(key: &Path) -> Result<String, ExportError> {
+pub(crate) fn public_key(key: &Path) -> Result<String, ExportError> {
     let beside = PathBuf::from(format!("{}.pub", key.display()));
     let text = if beside.is_file() {
         fs::read_to_string(&beside)
@@ -208,7 +208,7 @@ fn sign_file(key: &Path, namespace: &str, file: &Path) -> Result<String, ExportE
 }
 
 /// Whether `signature` is `signer`'s over `bytes` in `namespace`.
-pub fn verifies(signer: &str, namespace: &str, bytes: &[u8], signature: &str) -> bool {
+pub(crate) fn verifies(signer: &str, namespace: &str, bytes: &[u8], signature: &str) -> bool {
     let dir = scratch("verify");
     let allowed = dir.join("allowed_signers");
     let sig = dir.join("file.sig");
@@ -248,7 +248,12 @@ fn scratch(what: &str) -> PathBuf {
 /// package's SHA-256 is `build`, as `key` signs them (`try` counts up when
 /// one is taken): only the key's holder can draw them, and a key that signs
 /// the same way twice (Ed25519) draws the same.
-pub fn draw_code(key: &Path, recipient: &str, build: &str, round: u32) -> Result<u32, ExportError> {
+pub(crate) fn draw_code(
+    key: &Path,
+    recipient: &str,
+    build: &str,
+    round: u32,
+) -> Result<u32, ExportError> {
     let dir = scratch("code");
     let file = dir.join("code.txt");
     fs::create_dir_all(&dir)
@@ -262,7 +267,7 @@ pub fn draw_code(key: &Path, recipient: &str, build: &str, round: u32) -> Result
 }
 
 /// Writes `ledger` to `path` and signs it with `key` (`recipients.ron.sig`).
-pub fn save(path: &Path, ledger: &Ledger, key: &Path) -> Result<(), ExportError> {
+pub(crate) fn save(path: &Path, ledger: &Ledger, key: &Path) -> Result<(), ExportError> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)
             .map_err(|e| ExportError::Build(format!("create {}: {e}", dir.display())))?;
@@ -277,7 +282,7 @@ pub fn save(path: &Path, ledger: &Ledger, key: &Path) -> Result<(), ExportError>
 
 /// Whether the ledger at `path` verifies: signed by its `signer`, over its
 /// bytes as they are. `None` when it has no signature.
-pub fn check(path: &Path, ledger: &Ledger) -> Option<bool> {
+pub(crate) fn check(path: &Path, ledger: &Ledger) -> Option<bool> {
     let signature = fs::read_to_string(signature_path(path)).ok()?;
     let bytes = fs::read(path).ok()?;
     Some(verifies(&ledger.signer, NAMESPACE, &bytes, &signature))

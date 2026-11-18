@@ -33,7 +33,7 @@
 //! it for one recipient in `dist/recipients/<id>/<target>`, its program, pack
 //! and picture marked with the recipient's code, held to the `disclosure`
 //! part too, and written in the ledger beside the reveal kit
-//! ([`crate::export::recipient`], ADR-0118). `export --detect-recipient
+//! (`export::recipient`, ADR-0118). `export --detect-recipient
 //! <file>` builds nothing: it answers the marks a copy holds
 //! ([`RecipientFound`]). A mark is circumstantial evidence, never proof, and
 //! every answer says so.

@@ -24,13 +24,14 @@
 //! remove them; a repacked pack loses (b), a re-encoded or reduced picture
 //! loses (c), and an overwritten field loses (a).
 
-pub mod ledger;
+pub(crate) mod ledger;
+mod mark;
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use shuyi_assets::image::{Image, PNG_SIGNATURE, mark};
+use shuyi_assets::image::{Image, PNG_SIGNATURE};
 use shuyi_assets::pack::{self, PackMark, Raw};
 use shuyi_assets::recipient::{self as code, Code, FieldRead};
 
@@ -41,23 +42,23 @@ use crate::project::{Disclosure, Project};
 use crate::sha256;
 
 /// The sentence every answer that names a code carries.
-pub const CIRCUMSTANTIAL: &str = "A mark is circumstantial evidence, never proof: it says which \
+pub(crate) const CIRCUMSTANTIAL: &str = "A mark is circumstantial evidence, never proof: it says which \
                                   copy this was, not who leaked it, and two recipients who \
                                   compare their copies can find and remove every mark.";
 
 /// The variable that names the SSH key the ledger is signed with, when
 /// `--signing-key` doesn't.
-pub const KEY_VARIABLE: &str = "SHUYI_SIGNING_KEY";
+pub(crate) const KEY_VARIABLE: &str = "SHUYI_SIGNING_KEY";
 
 /// The folder, from the project's root, the recipients' copies go in.
-pub const COPIES: &str = "dist/recipients";
+pub(crate) const COPIES: &str = "dist/recipients";
 
 /// The most bytes the detector reads of a package, unpacked.
 const MAX_READ: u64 = 1 << 31;
 
 /// What an overlay needs that the export's input gives.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Asked {
+pub(crate) struct Asked {
     /// The recipient's id.
     pub recipient: String,
     /// Who they are, for the ledger.
@@ -68,7 +69,7 @@ pub struct Asked {
 
 /// Whether `id` can name a recipient: 1 to 64 letters, digits, `.`, `_` and
 /// `-`, not starting with `.`.
-pub fn plain_id(id: &str) -> bool {
+pub(crate) fn plain_id(id: &str) -> bool {
     (1..=64).contains(&id.len())
         && !id.starts_with('.')
         && id
@@ -77,7 +78,7 @@ pub fn plain_id(id: &str) -> bool {
 }
 
 /// The key `--signing-key` names (from `root`), else [`KEY_VARIABLE`]'s.
-pub fn key_of(root: &Path, named: Option<&str>) -> Result<PathBuf, ExportError> {
+pub(crate) fn key_of(root: &Path, named: Option<&str>) -> Result<PathBuf, ExportError> {
     let named = named
         .map(str::to_owned)
         .or_else(|| std::env::var(KEY_VARIABLE).ok().filter(|v| !v.is_empty()));
@@ -100,7 +101,7 @@ pub fn key_of(root: &Path, named: Option<&str>) -> Result<PathBuf, ExportError> 
 
 /// The reveal kit's folder of `project`: its `reveal` part's `out`, else
 /// `dist/reveal`.
-pub fn kit_of(project: &Project) -> PathBuf {
+pub(crate) fn kit_of(project: &Project) -> PathBuf {
     let out = project
         .config
         .reveal
@@ -113,7 +114,7 @@ pub fn kit_of(project: &Project) -> PathBuf {
 /// The SHA-256 of the package at `path`: a file's, or for a folder (a macOS
 /// package) the SHA-256 of `sha256sum`'s lines for every file in it, by
 /// path.
-pub fn digest(path: &Path) -> Result<String, ExportError> {
+pub(crate) fn digest(path: &Path) -> Result<String, ExportError> {
     if path.is_file() {
         return sha256::file(path)
             .map(|(hex, _)| hex)
@@ -134,7 +135,7 @@ pub fn digest(path: &Path) -> Result<String, ExportError> {
 /// that isn't a release, or isn't packed, a target with no overlay, a game
 /// that names no picture, a recipient's id that isn't plain, and a missing or
 /// broken reveal kit.
-pub fn refuse(
+pub(crate) fn refuse(
     cx: &ExportCx,
     exporter: &dyn Exporter,
     project: &Project,
@@ -389,7 +390,7 @@ fn mark_copy(
 /// Makes `asked.recipient`'s copy of the package `report` names, which `cx`
 /// exported with `exporter`: copied, marked, packaged again, held to
 /// `part`, and written in the ledger.
-pub fn overlay(
+pub(crate) fn overlay(
     cx: &ExportCx,
     exporter: &dyn Exporter,
     project: &Project,
@@ -638,7 +639,7 @@ fn program_marks(name: &str, bytes: &[u8]) -> Vec<FoundMark> {
 
 /// `export --detect-recipient <file>` on `project`: every mark in the file,
 /// the codes they name and whom the ledger gave them.
-pub fn detect(project: &Project, file: &str) -> Result<RecipientFound, ExportError> {
+pub(crate) fn detect(project: &Project, file: &str) -> Result<RecipientFound, ExportError> {
     let path = project.root.join(file);
     let files = files_of(&path).map_err(ExportError::Setup)?;
     let picture = picture_of(project);

@@ -109,9 +109,6 @@ pub trait Probe {
     }
 }
 
-/// `FILE_ATTRIBUTE_COMPRESSED`, as Windows reports a file's attributes.
-pub const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
-
 /// The machine `doctor` runs on.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ThisMachine;
@@ -144,6 +141,9 @@ impl Probe for ThisMachine {
         #[cfg(windows)]
         {
             use std::os::windows::fs::MetadataExt as _;
+            /// `FILE_ATTRIBUTE_COMPRESSED`, as Windows reports a file's
+            /// attributes.
+            const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
             fs::metadata(path)
                 .ok()
                 .map(|m| m.file_attributes() & FILE_ATTRIBUTE_COMPRESSED != 0)

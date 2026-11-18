@@ -461,30 +461,26 @@ pub fn write_first<S: AsRef<str>>(
     first: &[S],
     files: &BTreeMap<String, Content>,
 ) -> Vec<u8> {
-    let files = files
+    let files: Vec<RawFile> = files
         .iter()
         .map(|(path, content)| match content {
-            Content::Raw(bytes) => RawFile::kept(path.clone(), Vec::new(), bytes),
+            Content::Raw(bytes) => RawFile::kept(path.clone(), Vec::new(), Cow::Borrowed(bytes)),
             Content::Baked(sections) => RawFile::kept(
                 path.clone(),
                 sections.keys().map(|&kind| kind.to_owned()).collect(),
-                &baked_file(sections),
+                Cow::Owned(baked_file(sections)),
             ),
         })
         .collect();
-    Raw {
-        info: info.clone(),
-        files,
-        first: folders(first),
-        order: Vec::new(),
-        gaps: Vec::new(),
-    }
-    .write()
+    let first = folders(first);
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let (order, _) = grouped(&paths, &first);
+    assemble(info, &files, &first, &order, &[])
 }
 
 /// The span of each folder of `first` once `files` lie at `offsets`: from
 /// the first byte of its files to the last (none for a folder with no file).
-fn spans_of(files: &[RawFile], offsets: &[u64], first: &[String]) -> Vec<Span> {
+fn spans_of(files: &[RawFile<'_>], offsets: &[u64], first: &[String]) -> Vec<Span> {
     first
         .iter()
         .map(|dir| {
@@ -510,7 +506,7 @@ fn spans_of(files: &[RawFile], offsets: &[u64], first: &[String]) -> Vec<Span> {
 /// the same place in `gaps`, with the span of each folder of `first`.
 fn assemble(
     info: &PackInfo,
-    files: &[RawFile],
+    files: &[RawFile<'_>],
     first: &[String],
     order: &[usize],
     gaps: &[Vec<u8>],
@@ -912,39 +908,47 @@ impl Index {
     }
 }
 
-/// One file of a [`Raw`] pack, as the pack keeps it.
+/// One file of a pack, as the pack keeps it: a stored file's bytes are
+/// borrowed from the caller's while [`write_first`] assembles the pack, so
+/// pictures and sounds are not copied twice.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct RawFile {
+struct RawFile<'a> {
     path: String,
     kinds: Vec<String>,
     codec: Codec,
     /// Its bytes unpacked.
     size: u64,
     /// Its bytes as kept.
-    kept: Vec<u8>,
+    kept: Cow<'a, [u8]>,
 }
 
-impl RawFile {
+impl<'a> RawFile<'a> {
     /// The file at `path` of `kinds` whose bytes are `bytes`, compressed when
-    /// that makes them smaller.
-    fn kept(path: String, kinds: Vec<String>, bytes: &[u8]) -> Self {
-        let packed = lz4_flex::block::compress(bytes);
+    /// that makes them smaller, and kept as they come (borrowed or owned)
+    /// when not.
+    fn kept(path: String, kinds: Vec<String>, bytes: Cow<'a, [u8]>) -> Self {
+        let packed = lz4_flex::block::compress(&bytes);
+        let size = bytes.len() as u64;
         let (codec, kept) = if packed.len() < bytes.len() {
-            (Codec::Lz4, packed)
+            (Codec::Lz4, Cow::Owned(packed))
         } else {
-            (Codec::Stored, bytes.to_vec())
+            (Codec::Stored, bytes)
         };
         Self {
             path,
             kinds,
             codec,
-            size: bytes.len() as u64,
+            size,
             kept,
         }
     }
 }
 
 /// What a pack's layout holds ([`Raw::mark`]).
+///
+/// The engine's own, for `shuyi export --recipient` (ADR-0118): not part
+/// of the API, which semver doesn't cover (ADR-0119).
+#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackMark {
     /// No mark: its files are in path order with nothing between them, as
@@ -1025,11 +1029,15 @@ fn gaps_of(code: Code, count: usize) -> Vec<Vec<u8>> {
 /// changes a pack after it was baked works on. A closed build's overlay
 /// replaces its picture and lays it out by a recipient's code (ADR-0118);
 /// the detector reads the code back.
+///
+/// The engine's own, for `shuyi export --recipient` (ADR-0118): not part
+/// of the API, which semver doesn't cover (ADR-0119).
+#[doc(hidden)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Raw {
     info: PackInfo,
     /// Its files in path order.
-    files: Vec<RawFile>,
+    files: Vec<RawFile<'static>>,
     /// The folders laid first, in the order named, each once.
     first: Vec<String>,
     /// Each data place's file, as read; empty for a pack made here.
@@ -1070,7 +1078,7 @@ impl Raw {
                     kinds: entry.kinds.clone(),
                     codec: entry.codec,
                     size: entry.size,
-                    kept: data[start..end].to_vec(),
+                    kept: Cow::Owned(data[start..end].to_vec()),
                 }
             })
             .collect();
@@ -1118,7 +1126,7 @@ impl Raw {
             .iter()
             .find(|file| file.path == path && file.kinds.is_empty())?;
         match file.codec {
-            Codec::Stored => Some(file.kept.clone()),
+            Codec::Stored => Some(file.kept.to_vec()),
             Codec::Lz4 => {
                 let size = usize::try_from(file.size).ok()?;
                 lz4_flex::block::decompress(&file.kept, size).ok()
@@ -1136,7 +1144,7 @@ impl Raw {
         else {
             return false;
         };
-        *file = RawFile::kept(path.to_owned(), Vec::new(), bytes);
+        *file = RawFile::kept(path.to_owned(), Vec::new(), Cow::Owned(bytes.to_vec()));
         true
     }
 

@@ -65,6 +65,8 @@ pub mod names;
 pub mod onebit;
 pub mod pack;
 pub mod palette;
+// The engine's own: semver doesn't cover it (its doc, ADR-0119).
+#[doc(hidden)]
 pub mod recipient;
 pub mod ron;
 pub mod target;
