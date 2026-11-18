@@ -1,6 +1,6 @@
 # ADR-0131: A language text's form is learned when it loads and kept, a parse on byte ranges
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0132 (a fill copies none of its values)
 - **Date:** 2026-11-17
 - **Related tickets:** 2266; 3219 (the plain check), 3218 (every fill parsed), 2268 (the walk's values lent)
 - **Amends:** ADR-0127 §4 and §9 (a fill reads the form its language learned; the parse is kept apart from its text)

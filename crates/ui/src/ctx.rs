@@ -653,10 +653,11 @@ impl<G: GameData> Ctx<G> {
     ) -> StyledText {
         let device = self.device.message_value();
         let target = self.platform.target.as_str();
+        // Lent to the walk, never copied (ticket 2268).
         let value = |name: &str| {
-            crate::text::value_of(args, name).or_else(|| match name {
-                message::DEVICE => Some(device.to_arg()),
-                message::TARGET => Some(target.to_arg()),
+            crate::text::value_of(args, name).or(match name {
+                message::DEVICE => Some(&device as &dyn ToArg),
+                message::TARGET => Some(&target as &dyn ToArg),
                 _ => None,
             })
         };

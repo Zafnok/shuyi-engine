@@ -143,6 +143,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0128](0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md) | Asset memory: bytes handed out, not leaked; a pack read file by file; folders as groups; a load that counts and waits | Accepted; extends ADR-0008 §6, ADR-0023 §3, ADR-0024 §6 and ADR-0097 |
 | [0129](0129-the-arrow-keys-as-one-picture-a-role-of-their-own.md) | The cursor's arrow keys as one picture: a role of their own, a picture in the key caps' style | Accepted; extends ADR-0124 |
 | [0130](0130-no-cache-of-a-build-with-the-private-files-and-who-can-read-them.md) | No cache of a build with the private files, one test over every workflow, no key for Dependabot, and who can read them | Accepted; amends ADR-0111 §5 and ADR-0112 §2 |
-| [0131](0131-a-texts-form-learned-at-load.md) | A language text's form is learned when it loads and kept, a parse on byte ranges | Accepted; amends ADR-0127 §4 and §9 |
+| [0131](0131-a-texts-form-learned-at-load.md) | A language text's form is learned when it loads and kept, a parse on byte ranges | Accepted; amends ADR-0127 §4 and §9; amended by ADR-0132 |
+| [0132](0132-a-messages-walk-borrows-its-values.md) | A message's walk borrows its values, lent through a callback | Accepted; amends ADR-0131 |
 
 Template: [`0000-template.md`](0000-template.md).

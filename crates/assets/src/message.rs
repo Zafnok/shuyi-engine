@@ -18,7 +18,8 @@
 //!
 //! [`Message::parse`] reads one; [`Message::walk`] hands out what it says
 //! for some values, in [`Piece`]s, by the plural rules of a language
-//! ([`plural`]); [`Message::format`] writes it.
+//! ([`plural`]), and [`Message::walk_lent`] the same for values lent
+//! ([`ArgRef`]), copying none; [`Message::format`] writes it.
 use crate::prelude::*;
 
 use alloc::borrow::Cow;
@@ -77,12 +78,111 @@ impl fmt::Display for Arg {
     }
 }
 
+impl Arg {
+    /// It borrowed: what a walk reads ([`ArgRef`]).
+    pub fn as_arg_ref(&self) -> ArgRef<'_> {
+        match self {
+            Self::Int(n) => ArgRef::Int(*n),
+            Self::Text(text) => ArgRef::Text(text),
+        }
+    }
+}
+
+/// A value a message is given, borrowed ([`Arg`] without its `String`):
+/// what [`ToArg::with_arg_ref`] lends a walk ([`Message::walk_lent`]), so
+/// a select and a `{name}` filled with text copy nothing (ticket 2268).
+///
+/// A set that grows, as [`Arg`] does (ADR-0039, kind 6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ArgRef<'a> {
+    /// A whole number: a plural picks by it, `{name}` and `#` write its
+    /// digits.
+    Int(i64),
+    /// Text: a plural picks `other` for it, a select compares it.
+    Text(&'a str),
+}
+
+impl ArgRef<'_> {
+    /// Hands `f` it as text: an [`Int`](Self::Int)'s digits, written on
+    /// the stack, or the text. What a select compares and a `{name}`
+    /// writes; nothing is allocated.
+    pub fn with_str<R>(self, f: impl FnOnce(&str) -> R) -> R {
+        match self {
+            Self::Int(n) => {
+                let mut digits = Digits::new();
+                let _ = write!(digits, "{n}");
+                f(digits.as_str())
+            }
+            Self::Text(text) => f(text),
+        }
+    }
+}
+
+impl From<ArgRef<'_>> for Arg {
+    fn from(arg: ArgRef<'_>) -> Self {
+        match arg {
+            ArgRef::Int(n) => Self::Int(n),
+            ArgRef::Text(text) => Self::Text(text.to_owned()),
+        }
+    }
+}
+
+/// Text written on the stack: the digits of any integer (an `i128`'s
+/// take 40 bytes, its sign among them) or a character. More is cut off.
+struct Digits {
+    buf: [u8; 40],
+    len: usize,
+}
+
+impl Digits {
+    fn new() -> Self {
+        Self {
+            buf: [0; 40],
+            len: 0,
+        }
+    }
+
+    fn as_str(&self) -> &str {
+        core::str::from_utf8(&self.buf[..self.len]).unwrap_or_default()
+    }
+}
+
+impl fmt::Write for Digits {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let end = self.len + s.len();
+        let room = self.buf.get_mut(self.len..end).ok_or(fmt::Error)?;
+        room.copy_from_slice(s.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
 /// What may be handed to a message as a value ([`Arg`]): every integer
 /// type, text and characters. An integer too big for an `i64` becomes
 /// [`Arg::Text`] of its digits.
+///
+/// A game's own type implements [`to_arg`](Self::to_arg) and may
+/// implement [`with_arg_ref`](Self::with_arg_ref) too, to lend its value
+/// without copying it.
 pub trait ToArg {
     /// It as an argument.
     fn to_arg(&self) -> Arg;
+
+    /// Lends it, borrowed, to `lend`, called once: what a walk reads
+    /// ([`Message::walk_lent`]). By default it lends
+    /// [`to_arg`](Self::to_arg)'s result, which may allocate; text, a
+    /// character and every integer type lend theirs without allocating (a
+    /// character and an integer too big for an `i64` written on the
+    /// stack). A callback rather than a return value, as a character has
+    /// no `str` to borrow.
+    ///
+    /// An implementation that never calls `lend` is read as no value:
+    /// a plural or select picks `other`, and a `{name}` writes nothing.
+    /// One that calls it again is heard once.
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        lend(self.to_arg().as_arg_ref());
+    }
 }
 
 macro_rules! int_args {
@@ -90,6 +190,17 @@ macro_rules! int_args {
         impl ToArg for $t {
             fn to_arg(&self) -> Arg {
                 i64::try_from(*self).map_or_else(|_| Arg::Text(self.to_string()), Arg::Int)
+            }
+
+            fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+                // `map_err`: an `i64`'s own conversion never fails.
+                if let Ok(n) = i64::try_from(*self).map_err(|_| ()) {
+                    lend(ArgRef::Int(n));
+                } else {
+                    let mut digits = Digits::new();
+                    let _ = write!(digits, "{self}");
+                    lend(ArgRef::Text(digits.as_str()));
+                }
             }
         }
     )*};
@@ -103,11 +214,19 @@ impl ToArg for str {
     fn to_arg(&self) -> Arg {
         Arg::Text(self.to_owned())
     }
+
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        lend(ArgRef::Text(self));
+    }
 }
 
 impl ToArg for String {
     fn to_arg(&self) -> Arg {
         Arg::Text(self.clone())
+    }
+
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        lend(ArgRef::Text(self));
     }
 }
 
@@ -115,11 +234,20 @@ impl ToArg for char {
     fn to_arg(&self) -> Arg {
         Arg::Text(self.to_string())
     }
+
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        let mut buf = [0; 4];
+        lend(ArgRef::Text(self.encode_utf8(&mut buf)));
+    }
 }
 
 impl ToArg for Arg {
     fn to_arg(&self) -> Arg {
         self.clone()
+    }
+
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        lend(self.as_arg_ref());
     }
 }
 
@@ -127,7 +255,32 @@ impl<T: ToArg + ?Sized> ToArg for &T {
     fn to_arg(&self) -> Arg {
         (**self).to_arg()
     }
+
+    fn with_arg_ref(&self, lend: &mut dyn FnMut(ArgRef<'_>)) {
+        (**self).with_arg_ref(lend);
+    }
 }
+
+/// Lends `value` to `then` ([`ToArg::with_arg_ref`]), `None` if it lends
+/// nothing: `then` is called exactly once.
+fn lend_once(value: Option<&dyn ToArg>, then: &mut dyn FnMut(Option<ArgRef<'_>>)) {
+    let mut lent = false;
+    if let Some(value) = value {
+        value.with_arg_ref(&mut |arg| {
+            if !lent {
+                lent = true;
+                then(Some(arg));
+            }
+        });
+    }
+    if !lent {
+        then(None);
+    }
+}
+
+/// How a walk looks a value up: it hands the value of a name, borrowed, to
+/// a continuation, which walks on inside it.
+type Lookup<'l> = dyn Fn(&str, &mut dyn FnMut(Option<ArgRef<'_>>)) + 'l;
 
 /// A piece of what a message says ([`Message::walk`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -354,7 +507,42 @@ impl<'a> Message<'a> {
         value: impl Fn(&str) -> Option<Arg>,
         mut each: impl FnMut(Piece<'_>),
     ) {
-        walk(&self.nodes, self.text, lang, &value, &mut each, None);
+        let lookup = |name: &str, then: &mut dyn FnMut(Option<ArgRef<'_>>)| {
+            then(value(name).as_ref().map(Arg::as_arg_ref));
+        };
+        walk(&self.nodes, self.text, lang, &lookup, &mut each, None);
+    }
+
+    /// [`walk`](Self::walk), each value lent rather than given
+    /// ([`ToArg::with_arg_ref`]): a select compares a text value, or a
+    /// number's digits written on the stack, and copies nothing, so a
+    /// walk on text, characters and integers allocates nothing (ticket
+    /// 2268). A `#` of a number too big for an `i64` is handed out as
+    /// [`Piece::Text`] of its digits, as `walk` hands it.
+    ///
+    /// ```
+    /// use shuyi_assets::message::{Message, Piece, ToArg};
+    /// let hint = Message::parse("{device, select, playdate {Crank} other {Turn}} · {coins}")
+    ///     .unwrap();
+    /// let value = |name: &str| match name {
+    ///     "device" => Some(&"playdate" as &dyn ToArg),
+    ///     "coins" => Some(&120u32 as &dyn ToArg),
+    ///     _ => None,
+    /// };
+    /// let mut pieces = Vec::new();
+    /// hint.walk_lent("en", value, |piece| pieces.push(format!("{piece:?}")));
+    /// assert_eq!(pieces, [r#"Text("Crank")"#, r#"Text(" · ")"#, r#"Arg("coins")"#]);
+    /// ```
+    pub fn walk_lent<'v>(
+        &self,
+        lang: &str,
+        value: impl Fn(&str) -> Option<&'v dyn ToArg>,
+        mut each: impl FnMut(Piece<'_>),
+    ) {
+        let lookup = |name: &str, then: &mut dyn FnMut(Option<ArgRef<'_>>)| {
+            lend_once(value(name), then);
+        };
+        walk(&self.nodes, self.text, lang, &lookup, &mut each, None);
     }
 
     /// What the message says in language `lang`, each argument written by
@@ -511,32 +699,32 @@ fn count(nodes: &[Node]) -> usize {
     })
 }
 
+/// Hands `each` the pieces of `nodes`, `number` the value of the plural a
+/// `#` stands for. A choice looks its value up by `value`, and walks its
+/// branch inside the lookup, where the value is lent.
 fn walk(
     nodes: &[Node],
     text: &str,
     lang: &str,
-    value: &dyn Fn(&str) -> Option<Arg>,
+    value: &Lookup<'_>,
     each: &mut dyn FnMut(Piece<'_>),
-    number: Option<&Arg>,
+    number: Option<ArgRef<'_>>,
 ) {
     for node in nodes {
         match node {
             Node::Text(piece) => each(Piece::Text(piece.of(text))),
             Node::Simple(name) => each(Piece::Arg(name.of(text))),
             Node::Hash(name) => match number {
-                Some(Arg::Int(n)) => each(Piece::Number(*n)),
-                Some(Arg::Text(number)) => each(Piece::Text(number)),
+                Some(ArgRef::Int(n)) => each(Piece::Number(n)),
+                Some(ArgRef::Text(number)) => each(Piece::Text(number)),
                 None => each(Piece::Arg(name.of(text))),
             },
             Node::Choice(choice) => {
-                let arg = value(choice.name.of(text));
-                let branch = choice.pick(text, lang, arg.as_ref());
-                let number = if choice.plural.is_some() {
-                    arg.as_ref()
-                } else {
-                    number
-                };
-                walk(&branch.body, text, lang, value, each, number);
+                value(choice.name.of(text), &mut |arg| {
+                    let branch = choice.pick(text, lang, arg);
+                    let number = if choice.plural.is_some() { arg } else { number };
+                    walk(&branch.body, text, lang, value, each, number);
+                });
             }
         }
     }
@@ -544,23 +732,23 @@ fn walk(
 
 impl Choice {
     /// The branch `arg` picks in `lang`: a plural's `=N`, else its
-    /// category's; a select's value; else `other`.
-    fn pick(&self, text: &str, lang: &str, arg: Option<&Arg>) -> &Branch {
+    /// category's; a select's value (a number by its digits); else
+    /// `other`.
+    fn pick(&self, text: &str, lang: &str, arg: Option<ArgRef<'_>>) -> &Branch {
         let find = |key: Selector| self.branches.iter().find(|b| b.key == key);
         let found = match (self.plural, arg) {
-            (Some(kind), Some(Arg::Int(n))) => find(Selector::Exact(*n)).or_else(|| {
+            (Some(kind), Some(ArgRef::Int(n))) => find(Selector::Exact(n)).or_else(|| {
                 let n = n.unsigned_abs();
                 find(Selector::Category(match kind {
                     Kind::Cardinal => plural::cardinal(lang, n),
                     Kind::Ordinal => plural::ordinal(lang, n),
                 }))
             }),
-            (None, Some(arg)) => {
-                let value = arg.to_string();
+            (None, Some(arg)) => arg.with_str(|value| {
                 self.branches
                     .iter()
                     .find(|b| matches!(b.key, Selector::Value(v) if v.of(text) == value))
-            }
+            }),
             _ => None,
         };
         found.unwrap_or(&self.branches[self.other])
@@ -884,3 +1072,6 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod lent_tests;

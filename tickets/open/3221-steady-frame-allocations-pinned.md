@@ -156,12 +156,10 @@ None.
   Public signatures don't change, and every text fills byte for byte as
   before: 3219's equivalence tests in `crates/ui/src/text/plain_tests.rs`
   still pass. The select's comparison and an argument written once are
-  2268's, with its borrowed walk. The counts are pinned on top of 3219
-  and of 2266 (done: no frame parses a text).
-- **Either order with 2268:** if 2268 is done, pin the counts the test
-  measures after it; if not, pin today's counts, and 2268's PR lowers
-  the pins to what the test then measures (the test fails until it
-  does).
+  2268's (done: its walk borrows its values). The counts are pinned on
+  top of 3219, of 2266 (done: no frame parses a text) and of 2268.
+- **After 2268 (done):** pin the counts the test measures, which take
+  2268's borrowed walk.
 
 No public API changes, and nothing a game sees changes: every frame
 draws the same cells, styles and items as before, so no `Breaking:` or
@@ -169,8 +167,8 @@ draws the same cells, styles and items as before, so no `Breaking:` or
 
 **Out (do not do):**
 - `Message::parse` on each fill of a message: 2266 (done) took it out
-  of the frame. A select's comparison and an argument's copy: 2268 does
-  them (the clause above). This ticket pins the count either way.
+  of the frame. A select's comparison and an argument's copy: 2268
+  (done) took them out. This ticket pins the count either way.
 - Rebuilding `Ctx::key_caps()` and `Game::frame_widths` only when what
   they read changes: they allocate nothing, and a cache would have to
   follow the palette's reloads, the theme, the language and the screen.
@@ -221,8 +219,7 @@ keep the test, the styles store and the caps here.
 5. Move `Ctx::label`, `label_styled` and the plain fills onto 3219's
    lookup and a private sink (*Scope*). 3219's equivalence tests must
    still pass.
-6. Run the test, pin the counts it measures, and check the 2268 clause
-   against `tickets/done/`.
+6. Run the test and pin the counts it measures.
 7. List in the completion notes what still allocates in a steady frame
    and where (read with a breakpoint or a backtrace in the counter, or
    by bisecting the drawing), and the counts before and after.

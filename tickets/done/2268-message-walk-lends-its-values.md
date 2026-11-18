@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2266"]
 nick_input: none
-completed:
+completed: 2026-11-18
 ---
 
 # 2268 — A message's walk borrows its values
@@ -109,20 +109,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A select on `device` and a `{name}` filled with a text value
+- [x] A select on `device` and a `{name}` filled with a text value
       allocate nothing while the message is walked with `walk_lent`
       (an allocation count with `shuyi-alloc-count`'s global counter,
       alone in its test binary).
-- [ ] `walk_lent` gives what `walk` gives for every message test of
+- [x] `walk_lent` gives what `walk` gives for every message test of
       `message/tests.rs`, with the same values.
-- [ ] Every text of the toy's and Hello, Grid's languages fills the
+- [x] Every text of the toy's and Hello, Grid's languages fills the
       same as before, byte for byte (2266's equality test passes
       unchanged).
-- [ ] A game's own `ToArg` that implements only `to_arg` compiles and
+- [x] A game's own `ToArg` that implements only `to_arg` compiles and
       fills as before (a test type in the tests).
-- [ ] An `Int` matches a select's branch by its digits: `7` picks `7`,
+- [x] An `Int` matches a select's branch by its digits: `7` picks `7`,
       not `007`; `u128::MAX` picks its digits' branch.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -134,5 +134,53 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi_assets::message`: `ArgRef<'a>` (`Int(i64)`, `Text(&'a str)`,
+  `Copy`, `#[non_exhaustive]`), `Arg::as_arg_ref`, `ArgRef::with_str`
+  (an `Int`'s digits written into a 40-byte stack buffer) and
+  `From<ArgRef> for Arg`. `ToArg::with_arg_ref`, provided (its default
+  lends `to_arg()`'s result), overridden for `str`, `String`, `char`,
+  every integer type, `Arg` and `&T`.
+- `Message::walk_lent` beside `walk`: one private walk serves both, by a
+  lookup in continuation style; `Choice::pick` compares a select's value
+  by `&str` or by an `Int`'s digits on the stack. A `with_arg_ref` that
+  never lends is read as no value (`other`); a second call is ignored.
+- `text::fill_form` takes `Option<&dyn ToArg>` values and walks with
+  `walk_lent`; a value, a `#` and `{name}` with no value are pushed with
+  no `String` of their own, and a key's name is pushed in pieces between
+  its spaces (`push_joined`, `joined` gone). `Ctx::fill_styled` lends
+  `device` and `target` as `&dyn ToArg`.
+- ADR-0132 amends ADR-0131 (the ticket's "amendment": an ADR of its own
+  with an `Amends:` line, as the `write-adr` skill says).
+- Tests: `message/lent_tests.rs` (each type lends what `to_arg` gives,
+  once; a select by an `Int`, a `char`, `u128::MAX` and `007`; a game's
+  own `ToArg`; a value that lends nothing or twice; `walk_lent` against
+  `walk` over every message literal of `message/tests.rs` and a
+  property over random messages and values);
+  `crates/assets/tests/walk_alloc.rs` (ten walks of a hint with a
+  select on `device`, a plural, a text `{name}`, a `u128::MAX` select
+  and `{big}`, and a `char` select: 0 allocations; the same test on
+  `walk` counts 30); `text/plain_tests.rs` checks every text of the toy
+  and Hello, Grid, and random texts, against a copy of `fill_form` as it
+  was before this ticket, with screens' values, a game's own `ToArg`, a
+  `String`, a `char` and `u128::MAX`, as values and as key values.
+
+Deviations:
+
+- 3221 is not done, so `examples/hello-grid/tests/frame_alloc.rs` doesn't
+  exist yet: nothing to lower (the ticket's Out line). 3221's clauses
+  that waited on this ticket now say it is done.
+- A `{name}` with no value is pushed as `{`, the name and `}` rather than
+  `format!`ed: the same text, one allocation fewer.
+
+No break: the trait method is provided, every signature stays.
+
+Book: none, the book says numbers and text go in as they are; how the engine reads a value (lent, not copied) is nothing a game writes, and a game's own `ToArg` compiles as before.
+
+No `Behaviour:` line: every text fills to what it filled to (the tests
+above). Searched the game for `impl ToArg` and `Message::walk`
+(`gh search code --repo Zafnok/visions-of-shuyi`): it only passes
+values as `&dyn ToArg`, which lend without copying from now on.
+
+Nick input: none.
