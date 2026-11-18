@@ -2,9 +2,9 @@
 //! to (ADR-0112). It makes the game's repository and, for a game with
 //! private files (`shuyi.ron`'s `private_assets`, ADR-0111), the private
 //! repository its `url` names, with its first commit; pins the game to it
-//! and checks it out; makes the two read-only deploy keys whose private
-//! halves are the game's secret `PRIVATE_ASSETS_KEY`, for Actions and for
-//! Dependabot; puts a ruleset on the private repository's default branch;
+//! and checks it out; makes the read-only deploy key whose private half is
+//! the game's Actions secret `PRIVATE_ASSETS_KEY` (none for Dependabot,
+//! ADR-0130); puts a ruleset on the private repository's default branch;
 //! and pushes the game, last, so its first CI run has the key. A game
 //! with `scripts/git-hooks` (the template's) gets git's hooks set to it,
 //! its hooks committed executable (ticket 3402).
@@ -35,8 +35,8 @@ mod host;
 
 pub use host::{Host, Ran, TempDir, ThisMachine};
 
-/// The game's secret holding the private half of a deploy key, for
-/// Actions and for Dependabot (ADR-0111 §5).
+/// The game's Actions secret holding the private half of a deploy key
+/// (ADR-0111 §5); never a Dependabot secret (ADR-0130).
 pub const SECRET: &str = "PRIVATE_ASSETS_KEY";
 
 /// The name of the ruleset `repos` puts on the private repository.
@@ -222,7 +222,7 @@ pub struct Args {
     pub assets_visibility: Visibility,
     /// `--private-folders`: the kind folders of `files/`.
     pub folders: Vec<String>,
-    /// `--new-keys`: replace both deploy keys and both secrets.
+    /// `--new-keys`: replace the deploy key and its secret.
     pub new_keys: bool,
     /// `--dry-run`: the plan, and change nothing.
     pub dry_run: bool,
@@ -268,11 +268,16 @@ default) unless the folder already has an `origin`, and sets git's hooks to
 the game's scripts/git-hooks when it has one; for a game with private
 files (shuyi.ron's private_assets), the private repository its url names
 (private by default) with a README and the folders of files/, pins the game
-to its commit and checks it out; two read-only deploy keys there, whose
-private halves are the game's secret {SECRET} for Actions and for
-Dependabot; a ruleset on its default branch; then pushes the game, so its
-first CI run reads the private files. What is there already is left alone:
-run it again to finish what a failure left.
+to its commit and checks it out; a read-only deploy key there, whose
+private half is the game's Actions secret {SECRET} (Dependabot gets none:
+its pull requests build on the public files); a ruleset on its default
+branch; then pushes the game, so its first CI run reads the private files.
+What is there already is left alone: run it again to finish what a failure
+left.
+
+Anyone with write access to the game's repository can read the private
+one: a workflow they push runs with the key. Give it only to people you
+would give the private files to.
 
   --owner <login>              the game's repository's owner (default: you)
   --name <repository>          its name (default: from shuyi.ron's app name)
@@ -281,7 +286,7 @@ run it again to finish what a failure left.
                                the private files' repository (default: private;
                                public needs --yes, and makes the files anyone's)
   --private-folders <list>     the folders of files/ (default: {folders})
-  --new-keys                   replace both deploy keys and both secrets
+  --new-keys                   replace the deploy key and its secret
   --dry-run                    print the plan and change nothing
   --json                       the plan or the outcome as JSON",
         usage = usage(command),
@@ -364,7 +369,7 @@ pub struct Inputs {
     pub visibility: Visibility,
     /// The private repository, for a game with private files.
     pub private: Option<Private>,
-    /// Replace both deploy keys and both secrets.
+    /// Replace the deploy key and its secret.
     pub new_keys: bool,
 }
 
@@ -475,7 +480,9 @@ pub enum Pin {
 pub enum Use {
     /// The game's Actions runs.
     Builds,
-    /// Its Dependabot runs, which read only Dependabot secrets.
+    /// Its Dependabot runs, which read only Dependabot secrets. `repos`
+    /// made a key and a secret for them before ADR-0130; now it only warns
+    /// of the ones it finds.
     Dependabot,
 }
 
@@ -510,8 +517,8 @@ pub enum Thing {
     Pin,
     /// The checkout of the private files.
     Checkout,
-    /// A read-only deploy key and its secret.
-    Key(Use),
+    /// The read-only deploy key of the game's builds, and its secret.
+    Key,
     /// The ruleset on the private repository's default branch.
     Ruleset,
     /// The pin file committed.
@@ -530,8 +537,7 @@ impl Thing {
             Self::PrivateRepo => "private-repository",
             Self::Pin => "pin",
             Self::Checkout => "checkout",
-            Self::Key(Use::Builds) => "builds-key",
-            Self::Key(Use::Dependabot) => "dependabot-key",
+            Self::Key => "builds-key",
             Self::Ruleset => "ruleset",
             Self::PinCommit => "pin-commit",
             Self::Push => "push",
@@ -573,25 +579,17 @@ pub fn plan(inputs: &Inputs, state: &State) -> Vec<Step> {
         steps.push(Step::new(Thing::PrivateRepo, private.is_none()));
         steps.push(Step::new(Thing::Pin, state.pin == Pin::Missing));
         steps.push(Step::new(Thing::Checkout, !state.checkout));
-        for key in [Use::Builds, Use::Dependabot] {
-            let title = key.title(&inputs.game.name);
-            let old: Vec<u64> = private
-                .iter()
-                .flat_map(|p| &p.keys)
-                .filter(|k| k.title == title)
-                .map(|k| k.id)
-                .collect();
-            let secret = state
-                .game_repo
-                .as_ref()
-                .is_some_and(|g| g.secrets.contains(&key));
-            let make = inputs.new_keys || !secret || old.is_empty();
-            steps.push(Step {
-                thing: Thing::Key(key),
-                make,
-                replaces: if make { old } else { Vec::new() },
-            });
-        }
+        let old = keys_titled(state, &Use::Builds.title(&inputs.game.name));
+        let secret = state
+            .game_repo
+            .as_ref()
+            .is_some_and(|g| g.secrets.contains(&Use::Builds));
+        let make = inputs.new_keys || !secret || old.is_empty();
+        steps.push(Step {
+            thing: Thing::Key,
+            make,
+            replaces: if make { old } else { Vec::new() },
+        });
         let ruleset = private.is_some_and(|p| p.ruleset);
         steps.push(Step::new(Thing::Ruleset, !ruleset));
         steps.push(Step::new(Thing::PinCommit, state.pin != Pin::Committed));
@@ -599,6 +597,53 @@ pub fn plan(inputs: &Inputs, state: &State) -> Vec<Step> {
     let pushed = state.game_repo.as_ref().is_some_and(|g| g.pushed);
     steps.push(Step::new(Thing::Push, !pushed));
     steps
+}
+
+/// The ids of the private repository's deploy keys titled `title`.
+fn keys_titled(state: &State, title: &str) -> Vec<u64> {
+    state
+        .private_repo
+        .iter()
+        .flat_map(|p| &p.keys)
+        .filter(|k| k.title == title)
+        .map(|k| k.id)
+        .collect()
+}
+
+/// The warning for what `repos` made for Dependabot before ADR-0130, if it
+/// is there: a Dependabot secret [`SECRET`] and its deploy key, no longer
+/// used. `repos` never deletes them; the warning names the commands that
+/// do.
+fn old_dependabot_key(inputs: &Inputs, state: &State) -> Option<String> {
+    let secret = state
+        .game_repo
+        .as_ref()
+        .is_some_and(|g| g.secrets.contains(&Use::Dependabot));
+    let title = Use::Dependabot.title(&inputs.game.name);
+    let mut commands = Vec::new();
+    if secret {
+        commands.push(format!(
+            "gh secret delete {SECRET} --app dependabot --repo {}",
+            inputs.game.path()
+        ));
+    }
+    if let Some(private) = &inputs.private {
+        for id in keys_titled(state, &title) {
+            commands.push(format!(
+                "gh repo deploy-key delete {id} --repo {}",
+                private.repo.path()
+            ));
+        }
+    }
+    (!commands.is_empty()).then(|| {
+        format!(
+            "Dependabot's pull requests no longer read the private files (ADR-0130): they build \
+             on the public files, so no dependency's new version builds next to them before you \
+             merge it. Its secret {SECRET} and the deploy key \"{title}\" are not used, and this \
+             command leaves them. Delete them with:\n  {}",
+            commands.join("\n  ")
+        )
+    })
 }
 
 /// An error, with its problem code.
@@ -987,6 +1032,7 @@ fn observe_game(
         )));
     }
     let mut secrets = Vec::new();
+    // Dependabot's is read only to warn of it (ADR-0130).
     for (key, path) in [(Use::Builds, "actions"), (Use::Dependabot, "dependabot")] {
         let list = format!("repos/{}/{path}/secrets?per_page=100", game.path());
         if let Got::Json(json) = gh_get(host, root, &list)?
@@ -1300,20 +1346,16 @@ fn about(step: &Step, inputs: &Inputs, state: &State, rules: Option<&PrivateAsse
             "the private files checked out in {}/",
             rules.map_or("private", |r| r.checkout.as_str())
         ),
-        Thing::Key(key) => {
-            let kind = match key {
-                Use::Builds => "Actions",
-                Use::Dependabot => "Dependabot",
-            };
+        Thing::Key => {
             let replaced = if step.replaces.is_empty() {
                 String::new()
             } else {
                 format!(", replacing {} old one(s)", step.replaces.len())
             };
             format!(
-                "the read-only deploy key \"{}\" of {}, its private half the {kind} secret \
+                "the read-only deploy key \"{}\" of {}, its private half the Actions secret \
                  {SECRET} of {}{replaced}",
-                key.title(&game.name),
+                Use::Builds.title(&game.name),
                 private.map_or_default(|p| p.repo.path()),
                 game.path()
             )
@@ -1406,7 +1448,7 @@ fn make(ctx: &mut Ctx, step: &Step) -> Result<Option<String>, Failure> {
                 )));
             }
         }
-        Thing::Key(key) => make_key(ctx, key, &step.replaces)?,
+        Thing::Key => make_key(ctx, &step.replaces)?,
         Thing::Ruleset => return make_ruleset(ctx),
         Thing::PinCommit => {
             let pin_file = ctx.private()?.1.pin_file.clone();
@@ -1551,10 +1593,10 @@ fn make_pin(ctx: &mut Ctx) -> Result<(), Failure> {
     fs::write(&file, format!("{sha}\n")).map_err(|e| write_failed(&file, &e))
 }
 
-/// Makes the deploy key for `key` and sets its secret, after deleting the
-/// old keys `replaces` names. The private half goes to `gh` on stdin only,
-/// and its folder is removed whatever happens.
-fn make_key(ctx: &mut Ctx, key: Use, replaces: &[u64]) -> Result<(), Failure> {
+/// Makes the builds' deploy key and sets its Actions secret, after
+/// deleting the old keys `replaces` names. The private half goes to `gh` on
+/// stdin only, and its folder is removed whatever happens.
+fn make_key(ctx: &mut Ctx, replaces: &[u64]) -> Result<(), Failure> {
     let (private, _) = ctx.private()?;
     let repo = private.repo.path();
     let game = ctx.inputs.game.clone();
@@ -1566,7 +1608,7 @@ fn make_key(ctx: &mut Ctx, key: Use, replaces: &[u64]) -> Result<(), Failure> {
             None,
         )?;
     }
-    let title = key.title(&game.name);
+    let title = Use::Builds.title(&game.name);
     let temp =
         TempDir::new(&ctx.host.temp_root(), "key").map_err(|e| Failure::new(codes::FILE, e))?;
     let file = temp.path().join("key");
@@ -1599,12 +1641,8 @@ fn make_key(ctx: &mut Ctx, key: Use, replaces: &[u64]) -> Result<(), Failure> {
         None,
     )?;
     drop(temp);
-    let mut args = vec!["secret", "set", SECRET, "--repo"];
     let game_path = game.path();
-    args.push(&game_path);
-    if key == Use::Dependabot {
-        args.extend(["--app", "dependabot"]);
-    }
+    let args = ["secret", "set", SECRET, "--repo", &game_path];
     ctx.gh("gh secret set", &args, Some(&secret)).map(drop)
 }
 
@@ -1661,6 +1699,7 @@ pub fn repos(project: &Project, args: &Args, host: &mut dyn Host) -> Report {
     if rules.is_none() {
         report.warnings.push(no_private(command));
     }
+    report.warnings.extend(old_dependabot_key(&inputs, &state));
     let steps = plan(&inputs, &state);
     let mut ctx = Ctx {
         host,
@@ -1699,10 +1738,21 @@ pub fn repos(project: &Project, args: &Args, host: &mut dyn Host) -> Report {
     }
     report.ok = true;
     if !args.dry_run {
-        report.next = Some(format!(
+        let mut next = format!(
             "`{command} run` plays the game; its CI runs at {}/actions",
             inputs.game.url()
-        ));
+        );
+        if let Some(private) = &inputs.private {
+            // Writing to a `String` can't fail.
+            let _ = write!(
+                next,
+                ". Anyone with write access to {} can read {}: a workflow they push runs with \
+                 its key. Give it only to people you would give the private files to",
+                inputs.game.path(),
+                private.repo.path()
+            );
+        }
+        report.next = Some(next);
     }
     report
 }

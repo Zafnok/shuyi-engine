@@ -315,9 +315,13 @@ before every other, the folder `run --watch` lays over the files
 included. The part adds the rest: what fetches the checkout, ignores
 it, checks it out in CI before the gates (failing a run on the game's
 own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
-fork's pull request) and tells the game's agent of it. No workflow of
-the template uploads an artifact **or saves a cache** that embeds the
-private files (ADR-0111 §5), but `export.yml`'s package of a release,
+fork's or Dependabot's pull request) and tells the game's agent of it.
+No workflow of the template uploads an artifact **or saves a cache**
+that embeds the private files (ADR-0111 §5 as
+[ADR-0130](adr/0130-no-cache-of-a-build-with-the-private-files-and-who-can-read-them.md)
+amends it; `crates/cli/src/contract/new/tests.rs`'s
+`every_job_with_the_private_files_caches_no_build_and_uploads_none`
+reads every workflow to check it), but `export.yml`'s package of a release,
 which the release publishes anyway, or of a private repository
 (ADR-0114): a pull request's run, a fork's too, may
 restore its base branch's caches, so with the part's action there the

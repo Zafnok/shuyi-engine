@@ -129,19 +129,13 @@ fn everything() -> State {
         origin: Some("https://github.com/you/moon-garden.git".to_owned()),
         game_repo: Some(GameRepo {
             pushed: true,
-            secrets: vec![Use::Builds, Use::Dependabot],
+            secrets: vec![Use::Builds],
         }),
         private_repo: Some(PrivateRepo {
-            keys: vec![
-                DeployKey {
-                    id: 1,
-                    title: "moon-garden builds (read-only)".to_owned(),
-                },
-                DeployKey {
-                    id: 2,
-                    title: "moon-garden dependabot (read-only)".to_owned(),
-                },
-            ],
+            keys: vec![DeployKey {
+                id: 1,
+                title: "moon-garden builds (read-only)".to_owned(),
+            }],
             ruleset: true,
         }),
         pin: Pin::Committed,
@@ -172,7 +166,6 @@ fn with_nothing_there_the_plan_makes_every_step_in_order() {
             "pin",
             "checkout",
             "builds-key",
-            "dependabot-key",
             "ruleset",
             "pin-commit",
             "push"
@@ -196,7 +189,7 @@ fn each_piece_missing_alone_is_all_the_plan_makes() {
         state.private_repo.as_mut().unwrap()
     }
     type Case = (&'static str, fn(&mut State), &'static [&'static str]);
-    let cases: [Case; 12] = [
+    let cases: [Case; 11] = [
         ("no git", |s| s.git = Git::None, &["git"]),
         ("no commit", |s| s.git = Git::NoCommit, &["git"]),
         ("no origin", |s| s.origin = None, &["game-repository"]),
@@ -204,12 +197,7 @@ fn each_piece_missing_alone_is_all_the_plan_makes() {
         (
             "no private repository",
             |s| s.private_repo = None,
-            &[
-                "private-repository",
-                "builds-key",
-                "dependabot-key",
-                "ruleset",
-            ],
+            &["private-repository", "builds-key", "ruleset"],
         ),
         ("no pin", |s| s.pin = Pin::Missing, &["pin", "pin-commit"]),
         (
@@ -223,11 +211,6 @@ fn each_piece_missing_alone_is_all_the_plan_makes() {
             |s| game(s).secrets.retain(|u| *u != Use::Builds),
             &["builds-key"],
         ),
-        (
-            "no Dependabot secret",
-            |s| game(s).secrets.retain(|u| *u != Use::Dependabot),
-            &["dependabot-key"],
-        ),
         ("no ruleset", |s| private(s).ruleset = false, &["ruleset"]),
         ("not pushed", |s| game(s).pushed = false, &["push"]),
         // A game's repository that isn't there has no secret, and nothing
@@ -235,7 +218,7 @@ fn each_piece_missing_alone_is_all_the_plan_makes() {
         (
             "no game's repository",
             |s| s.game_repo = None,
-            &["builds-key", "dependabot-key", "push"],
+            &["builds-key", "push"],
         ),
     ];
     for (name, change, expected) in cases {
@@ -245,21 +228,76 @@ fn each_piece_missing_alone_is_all_the_plan_makes() {
     }
     // A key whose deploy key is gone, its secret there: made again.
     let mut state = everything();
-    private(&mut state).keys.retain(|k| k.id != 2);
-    assert_eq!(made(&inputs(true), &state), ["dependabot-key"]);
+    private(&mut state).keys.clear();
+    assert_eq!(made(&inputs(true), &state), ["builds-key"]);
     // A secret gone, its deploy key there: the key is replaced, so no key
     // whose private half is lost stays.
     let mut state = everything();
-    game(&mut state).secrets.retain(|u| *u != Use::Dependabot);
+    game(&mut state).secrets.clear();
     let step = plan(&inputs(true), &state)
         .into_iter()
-        .find(|s| s.thing == Thing::Key(Use::Dependabot))
+        .find(|s| s.thing == Thing::Key)
         .unwrap();
-    assert_eq!(step.replaces, [2]);
+    assert_eq!(step.replaces, [1]);
 }
 
 #[test]
-fn new_keys_replaces_both_keys() {
+fn dependabot_gets_no_key_and_its_old_one_is_warned_of() {
+    // What an earlier `repos` made for Dependabot: neither is made again,
+    // nor replaced.
+    let mut old = everything();
+    old.game_repo
+        .as_mut()
+        .unwrap()
+        .secrets
+        .push(Use::Dependabot);
+    old.private_repo.as_mut().unwrap().keys.push(DeployKey {
+        id: 2,
+        title: "moon-garden dependabot (read-only)".to_owned(),
+    });
+    assert_eq!(made(&inputs(true), &old), Vec::<&str>::new());
+    let new_keys = Inputs {
+        new_keys: true,
+        ..inputs(true)
+    };
+    let replaced: Vec<Vec<u64>> = plan(&new_keys, &old)
+        .into_iter()
+        .filter(|s| s.make)
+        .map(|s| s.replaces)
+        .collect();
+    assert_eq!(replaced, [vec![1]]);
+    assert_eq!(old_dependabot_key(&inputs(true), &everything()), None);
+    let warning = old_dependabot_key(&inputs(true), &old).unwrap();
+    assert!(
+        warning.ends_with(
+            "Delete them with:\n  gh secret delete PRIVATE_ASSETS_KEY --app dependabot --repo \
+             you/moon-garden\n  gh repo deploy-key delete 2 --repo you/moon-garden-assets"
+        ),
+        "{warning}"
+    );
+    // Either alone is named alone.
+    let mut secret_only = old.clone();
+    secret_only
+        .private_repo
+        .as_mut()
+        .unwrap()
+        .keys
+        .retain(|k| k.id != 2);
+    let warning = old_dependabot_key(&inputs(true), &secret_only).unwrap();
+    assert!(warning.contains("gh secret delete") && !warning.contains("deploy-key"));
+    let mut key_only = old;
+    key_only
+        .game_repo
+        .as_mut()
+        .unwrap()
+        .secrets
+        .retain(|u| *u != Use::Dependabot);
+    let warning = old_dependabot_key(&inputs(true), &key_only).unwrap();
+    assert!(!warning.contains("gh secret delete") && warning.contains("deploy-key delete 2"));
+}
+
+#[test]
+fn new_keys_replaces_the_key() {
     let asked = Inputs {
         new_keys: true,
         ..inputs(true)
@@ -270,7 +308,7 @@ fn new_keys_replaces_both_keys() {
         .filter(|s| s.make)
         .map(|s| (s.thing.id(), s.replaces.clone()))
         .collect();
-    assert_eq!(keys, [("builds-key", vec![1]), ("dependabot-key", vec![2])]);
+    assert_eq!(keys, [("builds-key", vec![1])]);
 }
 
 #[test]
@@ -511,10 +549,6 @@ fn a_full_run_makes_everything_in_order_then_a_second_makes_nothing() {
             "gh repo deploy-key add <temp>/key.pub --repo you/moon-garden-assets --title \
              moon-garden builds (read-only)",
             "gh secret set PRIVATE_ASSETS_KEY --repo you/moon-garden",
-            "ssh-keygen -q -t ed25519 -N  -C moon-garden dependabot (read-only) -f <temp>/key",
-            "gh repo deploy-key add <temp>/key.pub --repo you/moon-garden-assets --title \
-             moon-garden dependabot (read-only)",
-            "gh secret set PRIVATE_ASSETS_KEY --repo you/moon-garden --app dependabot",
             "gh api repos/you/moon-garden-assets/rulesets -X POST --input -",
             "git add -- private.rev",
             "git commit --quiet -m Pin the private files -- private.rev",
@@ -533,7 +567,7 @@ fn a_full_run_makes_everything_in_order_then_a_second_makes_nothing() {
     assert!(!game.private);
     assert_eq!(game.branches, ["main"]);
     assert_eq!(game.actions.keys().collect::<Vec<_>>(), [SECRET]);
-    assert_eq!(game.dependabot.keys().collect::<Vec<_>>(), [SECRET]);
+    assert!(game.dependabot.is_empty());
     let private = &fake.repos[PRIVATE];
     assert!(private.private);
     assert_eq!(
@@ -541,17 +575,20 @@ fn a_full_run_makes_everything_in_order_then_a_second_makes_nothing() {
         "Private files of Moon Garden. Must stay private."
     );
     let titles: Vec<&str> = private.keys.iter().map(|k| k.1.as_str()).collect();
-    assert_eq!(
-        titles,
-        [
-            "moon-garden builds (read-only)",
-            "moon-garden dependabot (read-only)"
-        ]
-    );
+    assert_eq!(titles, ["moon-garden builds (read-only)"]);
     assert_eq!(private.rulesets, [RULESET]);
     assert!(scratch.root().join("private/.git").is_dir());
     assert!(scratch.temp_is_empty());
     assert!(report.text().contains("next: `shuyi run` plays the game"));
+    // Who else reads the private files.
+    assert!(
+        report.text().contains(
+            "Anyone with write access to you/moon-garden can read you/moon-garden-assets"
+        ),
+        "{}",
+        report.text()
+    );
+    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
 
     // A second run makes nothing and says everything is there.
     fake.calls.clear();
@@ -580,8 +617,7 @@ fn the_private_half_goes_to_gh_secret_set_on_stdin_alone() {
     let report = repos(&project, &Args::default(), &mut fake);
     assert!(report.ok, "{report:?}");
     let game = &fake.repos[GAME];
-    let halves = [&game.actions[SECRET], &game.dependabot[SECRET]];
-    assert_ne!(halves[0], halves[1]);
+    let halves = [&game.actions[SECRET]];
     let json = serde_json::to_string(&report).unwrap();
     for half in halves {
         assert!(half.starts_with("PRIVATE-HALF-"), "{half}");
@@ -610,49 +646,51 @@ fn the_private_half_goes_to_gh_secret_set_on_stdin_alone() {
 }
 
 #[test]
-fn a_missing_dependabot_secret_makes_only_that_key_and_secret() {
+fn an_old_dependabot_secret_and_key_are_warned_of_and_left() {
     let scratch = Scratch::new("dependabot");
     let project = scratch.project(true);
     let mut fake = scratch.fake();
     assert!(repos(&project, &Args::default(), &mut fake).ok);
-    fake.repo(GAME).dependabot.clear();
+    // What an earlier `repos` made for Dependabot.
+    fake.repo(GAME)
+        .dependabot
+        .insert(SECRET.to_owned(), "PRIVATE-HALF-old".to_owned());
+    fake.repo(PRIVATE).keys.push((
+        99,
+        "moon-garden dependabot (read-only)".to_owned(),
+        "ssh-ed25519 old".to_owned(),
+    ));
     fake.calls.clear();
     let report = repos(&project, &Args::default(), &mut fake);
     assert!(report.ok, "{report:?}");
-    let made: Vec<&str> = statuses(&report)
-        .into_iter()
-        .filter(|(_, s)| *s == Status::Made)
-        .map(|(id, _)| id)
-        .collect();
-    assert_eq!(made, ["dependabot-key"]);
-    let changes = fake.changes();
-    assert_eq!(changes.len(), 4, "{changes:#?}");
-    assert!(changes[0].starts_with("gh api -X DELETE repos/you/moon-garden-assets/keys/"));
-    assert!(changes[3].ends_with("--app dependabot"));
-    // The old deploy key is gone: one key of each title.
+    assert!(statuses(&report).iter().all(|(_, s)| *s == Status::There));
+    // Nothing is deleted: the warning says how.
+    assert_eq!(fake.changes(), Vec::<String>::new());
+    assert!(fake.repos[GAME].dependabot.contains_key(SECRET));
     assert_eq!(fake.repos[PRIVATE].keys.len(), 2);
-    assert!(scratch.temp_is_empty());
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+    let text = report.text();
+    for command in [
+        "gh secret delete PRIVATE_ASSETS_KEY --app dependabot --repo you/moon-garden",
+        "gh repo deploy-key delete 99 --repo you/moon-garden-assets",
+    ] {
+        assert!(text.contains(command), "{text}");
+    }
 }
 
 #[test]
-fn new_keys_replaces_both_deploy_keys_and_both_secrets() {
+fn new_keys_replaces_the_deploy_key_and_its_secret() {
     let scratch = Scratch::new("new-keys");
     let project = scratch.project(true);
     let mut fake = scratch.fake();
     assert!(repos(&project, &Args::default(), &mut fake).ok);
     let before = fake.repos[PRIVATE].keys.clone();
-    let secrets = |fake: &Fake| {
-        let game = &fake.repos[GAME];
-        (
-            game.actions[SECRET].clone(),
-            game.dependabot[SECRET].clone(),
-        )
-    };
+    let secrets = |fake: &Fake| fake.repos[GAME].actions[SECRET].clone();
     let old = secrets(&fake);
     let report = repos(&project, &parsed(&["--new-keys"]), &mut fake);
     assert!(report.ok, "{report:?}");
     let after = &fake.repos[PRIVATE].keys;
-    assert_eq!(after.len(), 2);
+    assert_eq!(after.len(), 1);
     for (id, title, public) in after {
         assert!(
             before
@@ -662,7 +700,7 @@ fn new_keys_replaces_both_deploy_keys_and_both_secrets() {
         );
     }
     let new = secrets(&fake);
-    assert!(old.0 != new.0 && old.1 != new.1);
+    assert_ne!(old, new);
     assert!(scratch.temp_is_empty());
 }
 
@@ -720,7 +758,7 @@ fn a_failure_at_any_step_stops_and_a_second_run_finishes() {
         "commits/main",
         "ssh-keygen",
         "deploy-key add",
-        "secret set PRIVATE_ASSETS_KEY --repo you/moon-garden --app",
+        "secret set PRIVATE_ASSETS_KEY --repo you/moon-garden",
         "rulesets -X POST",
         "Pin the private",
         "git push",
@@ -770,7 +808,7 @@ fn a_failure_at_any_step_stops_and_a_second_run_finishes() {
         let third = repos(&project, &Args::default(), &mut fake);
         assert!(third.ok);
         assert_eq!(fake.changes(), Vec::<String>::new(), "{fail}");
-        assert_eq!(fake.repos[PRIVATE].keys.len(), 2, "{fail}");
+        assert_eq!(fake.repos[PRIVATE].keys.len(), 1, "{fail}");
         assert_eq!(fake.repos[GAME].branches, ["main"], "{fail}");
     }
 }
@@ -1025,7 +1063,7 @@ fn an_existing_origin_is_left_as_it_is() {
     );
     let moon = &fake.repos["studio/moon"];
     assert_eq!(moon.branches, ["trunk"]);
-    assert!(moon.actions.contains_key(SECRET) && moon.dependabot.contains_key(SECRET));
+    assert!(moon.actions.contains_key(SECRET) && moon.dependabot.is_empty());
     // The keys are named from the repository's name.
     assert_eq!(fake.repos[PRIVATE].keys[0].1, "moon builds (read-only)");
 }

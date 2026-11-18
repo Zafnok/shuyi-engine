@@ -91,11 +91,12 @@ engine's CI runs `export.yml` for Hello, Grid, never `release.yml`
 (ADR-0114, *Consequences*), and no game has used the template's release
 yet.
 
-**Either order with 3407:** if 3407 is done, its test over every
-workflow already holds `export.yml`'s upload guard, so change the guard
-it allows (its list of inputs that may open the upload) to match what
-this ticket does, in the same PR. If not, nothing to do there: 3407
-writes its test against the `export.yml` this ticket leaves.
+**From 3407 (done):** its test over every workflow
+(`every_job_with_the_private_files_caches_no_build_and_uploads_none` in
+`crates/cli/src/contract/new/tests.rs`) already holds `export.yml`'s
+upload guard, so change the inputs it allows to open an upload (its
+constant `UPLOAD_INPUTS`, today `inputs.upload-private`) to match what
+this ticket does, in the same PR.
 
 ## Nick input
 

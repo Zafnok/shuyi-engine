@@ -495,7 +495,9 @@ fn the_private_part_writes_the_repository_its_ignore_line_and_its_ci_step() {
 }
 
 /// The CI step is the base's, run when the part's action is there, and
-/// no artifact or cache of the template's workflows embeds the files.
+/// only export.yml uploads an artifact. What a job with the private files
+/// may cache and upload is
+/// `every_job_with_the_private_files_caches_no_build_and_uploads_none`'s.
 fn assert_the_ci_runs_the_part_and_keeps_its_files(
     private: &Plan,
     blank: &Plan,
@@ -513,28 +515,9 @@ fn assert_the_ci_runs_the_part_and_keeps_its_files(
     let cargo = ci.find("run: cargo").unwrap();
     assert!(step < cargo, "the step runs before the first cargo command");
     assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
-    // No cache embeds them: `target/` is cached only when the action isn't
-    // there (ADR-0111 §5, 2596).
-    let cache = ci.find("Swatinem/rust-cache").unwrap();
-    assert!(
-        ci[cache..].contains(&format!(
-            "cache-targets: ${{{{ hashFiles('{action}') == '' }}}}"
-        )),
-        "the rust-cache step caches no target with the private files"
-    );
-    assert_eq!(ci.matches("rust-cache").count(), 1, "one cache, guarded");
-    // Only export.yml uploads an artifact, and one holding the private files
-    // only when its caller says the release publishes it anyway (ticket
-    // 3050), or the repository is private.
-    let export = text(private, EXPORT_WORKFLOW);
-    let upload = export.find("upload-artifact").unwrap();
-    let guard = export[..upload].rfind("if: ").unwrap();
-    assert_eq!(
-        export[guard..].lines().next(),
-        Some(&*format!(
-            "if: inputs.upload-private || hashFiles('{action}') == ''"
-        ))
-    );
+    // A release's packages hold the private files: its caller says the
+    // release publishes them anyway (ticket 3050), or the repository is
+    // private.
     let release = text(private, RELEASE_WORKFLOW);
     assert!(release.contains(
         "upload-private: ${{ github.event_name == 'push' || github.event.repository.private }}"
@@ -1059,4 +1042,479 @@ fn no_workflow_installs_doctors_packages_by_hand() {
     for package in default.split_whitespace() {
         assert!(apt.contains(&package), "playtest.yml's default: {package}");
     }
+}
+
+/// True when the game has no private files: the guard of every cache of
+/// `target/` and every upload in a job that checks them out (ADR-0111 §5,
+/// as ADR-0130 amends it).
+const NO_PRIVATE_FILES: &str = "hashFiles('.github/actions/private-files/action.yml') == ''";
+
+/// The private files' action, as a step's `uses:`.
+const PRIVATE_FILES_ACTION: &str = "./.github/actions/private-files";
+
+/// The inputs that may open an upload in a job with the private files: the
+/// caller's word that the package is published anyway (ADR-0114 §3).
+const UPLOAD_INPUTS: &[&str] = &["inputs.upload-private"];
+
+/// A workflow the test reads: the game it is in (its short name) or
+/// `engine`, its path there, and its YAML.
+struct Workflow {
+    origin: String,
+    path: String,
+    yaml: serde_norway::Value,
+}
+
+impl Workflow {
+    fn parse(origin: &str, path: &str, bytes: &[u8]) -> Self {
+        let yaml =
+            serde_norway::from_slice(bytes).unwrap_or_else(|e| panic!("{origin}: {path}: {e}"));
+        Self {
+            origin: origin.to_owned(),
+            path: path.to_owned(),
+            yaml,
+        }
+    }
+
+    /// Its jobs, by name.
+    fn jobs(&self) -> Vec<(&str, &serde_norway::Value)> {
+        self.yaml
+            .get("jobs")
+            .and_then(serde_norway::Value::as_mapping)
+            .map_or_default(|jobs| {
+                jobs.iter()
+                    .map(|(name, job)| (name.as_str().unwrap_or("?"), job))
+                    .collect()
+            })
+    }
+
+    /// The events of its `on:`, whether one word, a list or a map.
+    fn events(&self) -> Vec<&str> {
+        use serde_norway::Value;
+        match self.yaml.get("on") {
+            Some(Value::String(event)) => vec![event.as_str()],
+            Some(Value::Sequence(events)) => events.iter().filter_map(Value::as_str).collect(),
+            Some(Value::Mapping(events)) => events.keys().filter_map(Value::as_str).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The jobs that check the private files out, by name.
+    fn jobs_with_the_private_files(&self) -> Vec<&str> {
+        self.jobs()
+            .into_iter()
+            .filter(|(_, job)| has_the_private_files(job))
+            .map(|(name, _)| name)
+            .collect()
+    }
+}
+
+/// A string field's text, or empty.
+fn text_of(value: Option<&serde_norway::Value>) -> &str {
+    value
+        .and_then(serde_norway::Value::as_str)
+        .unwrap_or_default()
+}
+
+/// The steps of a job, or none.
+fn steps_of(job: &serde_norway::Value) -> &[serde_norway::Value] {
+    job.get("steps")
+        .and_then(serde_norway::Value::as_sequence)
+        .map_or(&[], Vec::as_slice)
+}
+
+/// Whether a job checks the private files out.
+fn has_the_private_files(job: &serde_norway::Value) -> bool {
+    steps_of(job)
+        .iter()
+        .any(|step| text_of(step.get("uses")) == PRIVATE_FILES_ACTION)
+}
+
+/// An expression without its `${{ }}`, if any.
+fn bare(expression: &str) -> &str {
+    let trimmed = expression.trim();
+    trimmed
+        .strip_prefix("${{")
+        .and_then(|inner| inner.strip_suffix("}}"))
+        .map_or(trimmed, str::trim)
+}
+
+/// Whether a job that calls a workflow passes it the private files' key,
+/// by name or with every secret.
+fn passes_the_key(job: &serde_norway::Value) -> bool {
+    match job.get("secrets") {
+        Some(serde_norway::Value::String(all)) => all == "inherit",
+        Some(named) => named.get("PRIVATE_ASSETS_KEY").is_some(),
+        None => false,
+    }
+}
+
+/// The workflow a job's `uses:` calls, among those the test reads: one of
+/// its own game's (`./…`), or one of the engine's at any commit.
+fn called<'a>(workflows: &'a [Workflow], from: &Workflow, uses: &str) -> Option<&'a Workflow> {
+    let (origin, path) = if let Some(local) = uses.strip_prefix("./") {
+        (from.origin.as_str(), local)
+    } else {
+        let engine = uses.strip_prefix("Zafnok/shuyi-engine/")?;
+        ("engine", engine.split('@').next()?)
+    };
+    workflows
+        .iter()
+        .find(|w| w.origin == origin && w.path == path)
+}
+
+/// Each way a job of `workflows` that has the private files could let them
+/// out through a cache, an artifact or its triggers, named by its file, job
+/// and step. None is the rule kept.
+fn private_files_leaks(workflows: &[Workflow]) -> Vec<String> {
+    let mut leaks = Vec::new();
+    for workflow in workflows {
+        let file = format!("{}: {}", workflow.origin, workflow.path);
+        let events = workflow.events();
+        if events.is_empty() {
+            leaks.push(format!("{file}: no `on:` read"));
+        }
+        let unsafe_events: Vec<&str> = events
+            .iter()
+            .copied()
+            .filter(|e| ["pull_request_target", "workflow_run"].contains(e))
+            .collect();
+        for (name, job) in workflow.jobs() {
+            let at = format!("{file}: the job {name}");
+            if let Some(uses) = job.get("uses").and_then(serde_norway::Value::as_str) {
+                if passes_the_key(job) {
+                    if called(workflows, workflow, uses).is_none() {
+                        leaks.push(format!(
+                            "{at} passes PRIVATE_ASSETS_KEY to {uses}, a workflow this test \
+                             doesn't read"
+                        ));
+                    }
+                    for event in &unsafe_events {
+                        leaks.push(format!("{at} passes PRIVATE_ASSETS_KEY on {event}"));
+                    }
+                }
+                continue;
+            }
+            if !has_the_private_files(job) {
+                continue;
+            }
+            for event in &unsafe_events {
+                leaks.push(format!("{at} checks out the private files on {event}"));
+            }
+            for (i, step) in steps_of(job).iter().enumerate() {
+                let label = [step.get("name"), step.get("uses"), step.get("run")]
+                    .into_iter()
+                    .map(text_of)
+                    .find(|t| !t.is_empty())
+                    .unwrap_or_default();
+                let at = format!("{at}: step {} ({label})", i + 1);
+                leaks.extend(step_leak(step).map(|why| format!("{at} {why}")));
+            }
+        }
+    }
+    leaks
+}
+
+/// How one step of a job with the private files lets them out, if it does.
+fn step_leak(step: &serde_norway::Value) -> Option<String> {
+    let action = text_of(step.get("uses"))
+        .split('@')
+        .next()
+        .unwrap_or_default();
+    let condition = bare(text_of(step.get("if")));
+    let with = step.get("with");
+    if action == "Swatinem/rust-cache" {
+        let targets = bare(text_of(with.and_then(|w| w.get("cache-targets"))));
+        return (targets != NO_PRIVATE_FILES).then(|| {
+            format!("caches target/: its cache-targets isn't ${{{{ {NO_PRIVATE_FILES} }}}}")
+        });
+    }
+    let caches =
+        action.to_lowercase().contains("cache") || with.and_then(|w| w.get("cache")).is_some();
+    if caches {
+        let guarded = !condition.contains("||")
+            && condition.split("&&").any(|c| c.trim() == NO_PRIVATE_FILES);
+        return (!guarded).then(|| format!("caches, and its if: doesn't hold {NO_PRIVATE_FILES}"));
+    }
+    if action.starts_with("actions/upload-artifact")
+        || action.starts_with("actions/upload-pages-artifact")
+    {
+        let guarded = !condition.is_empty()
+            && condition
+                .split("||")
+                .map(str::trim)
+                .all(|c| c == NO_PRIVATE_FILES || UPLOAD_INPUTS.contains(&c));
+        return (!guarded).then(|| {
+            format!(
+                "uploads an artifact, and its if: isn't {NO_PRIVATE_FILES} or one of \
+                 {UPLOAD_INPUTS:?}: `{condition}`"
+            )
+        });
+    }
+    None
+}
+
+/// Every file of `dir`, at any depth.
+fn files_under(dir: &Path) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    for entry in fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            files.extend(files_under(&path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
+}
+
+#[test]
+fn every_job_with_the_private_files_caches_no_build_and_uploads_none() {
+    let template = built_in();
+    let mut games = every_short_names_game();
+    let mut input = private_input(Some("yes"), Some("https://github.com/o/g-assets.git"));
+    input.template = Some("grid".to_owned());
+    let (private, _) = plan(&engine_checkout(), &template, &input, "Moon", "moon")
+        .unwrap_or_else(|(_, e)| panic!("{e}"));
+    let private_name = "grid, private-files=yes";
+    games.push((private_name.to_owned(), private));
+
+    let mut workflows = Vec::new();
+    for (short, plan) in &games {
+        for (path, bytes) in &plan.files {
+            let shown = path.to_string_lossy().replace('\\', "/");
+            if shown.starts_with(".github/workflows/") {
+                workflows.push(Workflow::parse(short, &shown, bytes));
+            }
+        }
+    }
+    for path in [".github/workflows/playtest.yml", EXPORT_WORKFLOW] {
+        let bytes = fs::read(engine_checkout().join(path)).unwrap();
+        workflows.push(Workflow::parse("engine", path, &bytes));
+    }
+    let leaks = private_files_leaks(&workflows);
+    assert!(leaks.is_empty(), "{}", leaks.join("\n"));
+
+    // The rules bite: each of these has a job that checks the files out.
+    for (origin, path) in [
+        (private_name, ".github/workflows/ci.yml"),
+        (private_name, EXPORT_WORKFLOW),
+        ("engine", ".github/workflows/playtest.yml"),
+        ("engine", EXPORT_WORKFLOW),
+    ] {
+        let workflow = workflows
+            .iter()
+            .find(|w| w.origin == origin && w.path == path)
+            .unwrap_or_else(|| panic!("{origin}: {path} not read"));
+        assert!(
+            !workflow.jobs_with_the_private_files().is_empty(),
+            "{origin}: {path}: no job checks out the private files"
+        );
+    }
+
+    // Nothing left out: every workflow file of the template is in a game
+    // composed here, from the part whose folder holds it.
+    let templates = engine_checkout().join("templates");
+    for file in files_under(&templates) {
+        let shown = file
+            .strip_prefix(&templates)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        let Some((folder, name)) = shown.split_once("/.github/workflows/") else {
+            continue;
+        };
+        let part = folder
+            .strip_prefix(&format!("{}/", template.id))
+            .and_then(|folder| {
+                template
+                    .parts
+                    .iter()
+                    .find(|p| p.files.to_string_lossy().replace('\\', "/") == folder)
+            })
+            .unwrap_or_else(|| {
+                panic!("templates/{shown}: in no part of the template composed here")
+            });
+        let path = format!(".github/workflows/{name}");
+        let held = games.iter().any(|(_, plan)| {
+            plan.parts.contains(&part.id) && plan.files.contains_key(Path::new(&path))
+        });
+        assert!(
+            held,
+            "templates/{shown}: no game composed here has the part {}: make one with it",
+            part.id
+        );
+    }
+}
+
+/// A workflow on `on`, of one job that checks out the private files and
+/// then runs `steps` (YAML list items, indented six spaces).
+fn private_job(on: &str, steps: &str) -> String {
+    format!(
+        "on: {on}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      \
+         - uses: ./.github/actions/private-files\n{steps}"
+    )
+}
+
+/// The leaks of the one workflow `text`, read with `others` (path, text)
+/// of the same game.
+fn leaks_of(text: &str, others: &[(&str, &str)]) -> Vec<String> {
+    let mut workflows = vec![Workflow::parse(
+        "case",
+        ".github/workflows/case.yml",
+        text.as_bytes(),
+    )];
+    for (path, other) in others {
+        workflows.push(Workflow::parse("case", path, other.as_bytes()));
+    }
+    private_files_leaks(&workflows)
+}
+
+/// A rust-cache step whose `cache-targets` is `targets`.
+fn rust_cache(targets: &str) -> String {
+    format!(
+        "      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0\n        \
+         with:\n          cache-targets: {targets}\n"
+    )
+}
+
+/// An upload step under `condition`, none if empty.
+fn upload(condition: &str) -> String {
+    let condition = if condition.is_empty() {
+        String::new()
+    } else {
+        format!("        if: {condition}\n")
+    };
+    format!("      - name: Upload\n{condition}        uses: actions/upload-artifact@v7\n")
+}
+
+/// Asserts that the workflow `text` keeps the rules.
+fn assert_kept(text: &str) {
+    assert_eq!(leaks_of(text, &[]), Vec::<String>::new(), "{text}");
+}
+
+/// Asserts that a leak of the workflow `text` says `why`.
+fn assert_refused(text: &str, why: &str) {
+    let leaks = leaks_of(text, &[]);
+    assert!(
+        leaks.iter().any(|l| l.contains(why)),
+        "{why}: {leaks:?}\n{text}"
+    );
+}
+
+#[test]
+fn each_rule_on_a_job_with_the_private_files_refuses_its_leak() {
+    let guard = format!("${{{{ {NO_PRIVATE_FILES} }}}}");
+    // The rules kept: the base's steps.
+    let good = format!(
+        "{}{}{}",
+        rust_cache(&guard),
+        upload(&format!("inputs.upload-private || {NO_PRIVATE_FILES}")),
+        upload(&guard)
+    );
+    assert_kept(&private_job("pull_request", &good));
+    assert_kept(&private_job("[push, workflow_call]", &good));
+
+    // A second rust-cache, unguarded or guarded the wrong way.
+    for targets in ["true", "false", "${{ hashFiles('x') == '' }}"] {
+        assert_refused(
+            &private_job("pull_request", &format!("{good}{}", rust_cache(targets))),
+            "caches target/",
+        );
+    }
+    assert_refused(
+        &private_job("pull_request", "      - uses: Swatinem/rust-cache@v2\n"),
+        "caches target/",
+    );
+    // An upload with no if:, or one opened by anything else.
+    for condition in [
+        String::new(),
+        "always()".to_owned(),
+        "inputs.upload-private || always()".to_owned(),
+        "inputs.other".to_owned(),
+        format!("{NO_PRIVATE_FILES} && always()"),
+    ] {
+        assert_refused(
+            &private_job("pull_request", &upload(&condition)),
+            "uploads an artifact",
+        );
+    }
+    assert_refused(
+        &private_job(
+            "pull_request",
+            "      - uses: actions/upload-pages-artifact@v4\n        if: success()\n",
+        ),
+        "uploads an artifact",
+    );
+    // Any other cache: kept only behind the guard.
+    for step in [
+        "      - uses: actions/cache@v4\n".to_owned(),
+        "      - uses: actions/cache/save@v4\n        if: always()\n".to_owned(),
+        format!("      - uses: actions/cache@v4\n        if: always() || {NO_PRIVATE_FILES}\n"),
+        "      - uses: actions/setup-node@v4\n        with:\n          cache: npm\n".to_owned(),
+    ] {
+        assert_refused(&private_job("pull_request", &step), "caches, and its if:");
+    }
+    assert_kept(&private_job(
+        "pull_request",
+        &format!(
+            "      - uses: actions/cache@v4\n        if: github.ref == 'x' && {NO_PRIVATE_FILES}\n"
+        ),
+    ));
+    // A trigger that runs a fork's changes with the secrets.
+    for on in [
+        "pull_request_target",
+        "[push, workflow_run]",
+        "{ workflow_run: { workflows: [CI] } }",
+    ] {
+        assert_refused(&private_job(on, ""), "checks out the private files on");
+    }
+    // A job without the private files' step isn't held to them.
+    assert_kept(
+        "on: pull_request_target\njobs:\n  a:\n    steps:\n      - uses: actions/cache@v4\n",
+    );
+}
+
+#[test]
+fn a_workflow_given_the_private_files_key_is_one_the_test_reads() {
+    let caller = |handover: &str| {
+        format!("on: push\njobs:\n  call:\n    uses: ./.github/workflows/other.yml\n{handover}")
+    };
+    let by_name = "    secrets:\n      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}\n";
+    let guard = format!("${{{{ {NO_PRIVATE_FILES} }}}}");
+    let other = private_job("workflow_call", &rust_cache(&guard));
+    let read = [(".github/workflows/other.yml", other.as_str())];
+    for handover in [by_name, "    secrets: inherit\n"] {
+        assert_refused(&caller(handover), "a workflow this test doesn't read");
+        assert_eq!(leaks_of(&caller(handover), &read), Vec::<String>::new());
+    }
+    // No key, nothing to read.
+    assert_kept(&caller(""));
+    assert_refused(
+        "on: push\njobs:\n  call:\n    \
+         uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@main\n    secrets: inherit\n",
+        "a workflow this test doesn't read",
+    );
+    // A caller on a fork's trigger hands the key over too.
+    let leaks = leaks_of(
+        &caller(by_name).replace("on: push", "on: pull_request_target"),
+        &read,
+    );
+    assert!(
+        leaks
+            .iter()
+            .any(|l| l.contains("passes PRIVATE_ASSETS_KEY on pull_request_target")),
+        "{leaks:?}"
+    );
+    // The called workflow's own leak is found in it.
+    let unguarded = private_job("workflow_call", &rust_cache("true"));
+    let leaks = leaks_of(
+        &caller(by_name),
+        &[(".github/workflows/other.yml", &unguarded)],
+    );
+    assert!(
+        leaks
+            .iter()
+            .any(|l| l.starts_with("case: .github/workflows/other.yml: the job build")),
+        "{leaks:?}"
+    );
 }
