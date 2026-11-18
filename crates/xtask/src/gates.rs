@@ -1289,7 +1289,10 @@ mod tests {
         only("crates/xtask/src/skills.rs", &["skill examples"]);
         only("crates/xtask/src/script.rs", &["skill examples"]);
         only("crates/xtask/src/skills/tests.rs", &["skill examples"]);
-        only("crates/xtask/src/tries.rs", &["tutorial-tries", "exercises"]);
+        only(
+            "crates/xtask/src/tries.rs",
+            &["tutorial-tries", "exercises"],
+        );
         only("crates/xtask/src/exercises.rs", &["exercises"]);
         only("crates/xtask/src/book.rs", &["exercises"]);
         only("crates/xtask/src/llms.rs", &["exercises"]);
@@ -1318,9 +1321,13 @@ mod tests {
     fn the_runners_constants_run_their_gates() {
         let other = "scripts/x.sh";
         assert_skips(&running(&[other], false), &GAME_GATES);
-        let tries = [crate::tries::STEPS, crate::tries::PICTURES, crate::tries::SNIPPETS]
-            .into_iter()
-            .chain(crate::tries::PAGES);
+        let tries = [
+            crate::tries::STEPS,
+            crate::tries::PICTURES,
+            crate::tries::SNIPPETS,
+        ]
+        .into_iter()
+        .chain(crate::tries::PAGES);
         for dir in tries {
             let path = format!("{dir}/x");
             assert!(touches_tutorial_tries(&path), "{path}");
@@ -1396,7 +1403,11 @@ mod tests {
             "site/README.md",
         ] {
             let (outputs, _) = outputs_for(&[path]);
-            assert_eq!(outputs.values().filter(|v| **v).count(), 0, "{path}: {outputs:?}");
+            assert_eq!(
+                outputs.values().filter(|v| **v).count(),
+                0,
+                "{path}: {outputs:?}"
+            );
         }
     }
 
