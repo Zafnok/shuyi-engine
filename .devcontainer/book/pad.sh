@@ -4,9 +4,10 @@
 # site at the Codespace's forwarded port 4000 and serves it there, each
 # step's game from the step's own build, built again when its files change.
 # Its log is `~/.book-pad.log`. The book's dev container (`devcontainer.json`
-# beside this) runs it as its `onCreateCommand` ends, once step 2 is built,
-# and as its `postAttachCommand`. A second start finds the port taken, and
-# says the book is already served.
+# beside this) runs it as its `postAttachCommand`, so VS Code, there by then,
+# sees the port open and shows the book in a preview; its `onCreateCommand`
+# has built `xtask`. A second start finds the port taken, and says the book
+# is already served.
 #
 #   bash pad.sh
 set -euo pipefail

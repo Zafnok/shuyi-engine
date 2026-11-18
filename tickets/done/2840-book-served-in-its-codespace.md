@@ -36,9 +36,10 @@ the reader's signed-in browser, and making it public opens it to anyone).
 What there is:
 
 - `.devcontainer/book/devcontainer.json`: the `onCreateCommand` sets up,
-  installs Python, builds step 2 (`.devcontainer/book/build.sh 02-board`)
-  and runs `serve.sh`; the `updateContentCommand` builds the other nine;
-  `waitFor: onCreateCommand`; the `postAttachCommand` runs `serve.sh`;
+  installs Python, builds the ten steps (`.devcontainer/book/build.sh
+  01-new … 10-ship`, about 7 minutes on 2 cores: the steps resolve one set
+  of features, 2839) and runs `serve.sh`; the `postAttachCommand` runs
+  `serve.sh`;
   port 4000 forwarded with `onAutoForward: openPreview`.
   `CARGO_TARGET_DIR=/home/vscode/book-target`.
 - The site is built in CI (`.github/workflows/pages.yml`): `cargo xtask
@@ -108,9 +109,7 @@ storage: the measure below says.)
     (403).
 - **The container:** `serve.sh` goes; the `onCreateCommand` adds Zola and
   builds `xtask` into the shared target folder; the `postAttachCommand`,
-  and the `onCreateCommand`'s last part as `serve.sh` was (so a Codespace
-  without the prebuild shows the book while the other steps build),
-  start `cargo xtask book-pad` in the background, once (a second start
+  and the `onCreateCommand`'s last part as `serve.sh` was, start `cargo xtask book-pad` in the background, once (a second start
   finds the port taken and says the book is already served). Port 4000
   stays forwarded, private, `openPreview`. `cargo xtask
   check-devcontainers` keeps passing (it checks the steps and the root's
@@ -140,7 +139,8 @@ storage: the measure below says.)
 - a build server, or reaching the Codespace from the public site
   (ADR-0126 §3);
 - `shuyi web --serve` itself (2528; the clause above);
-- the steps' features (2839).
+- the steps' features (2839, done: one set, checked by `cargo xtask
+  check-devcontainers`).
 
 **Estimated size:** about 900 lines (code 350, tests 300, scripts and
 container 80, templates and book 70, docs 100).
@@ -235,14 +235,15 @@ container 80, templates and book 70, docs 100).
   frame reloaded on a new good build (if it has loaded), and a failed
   build's output in Problems (or in `pad-output` on a step without a
   playground). On the public site the 404 leaves the page as it is.
-- The container: Python and `serve.sh` gone; the `onCreateCommand` adds
-  Zola after the setup, builds step 2 and runs `.devcontainer/book/pad.sh`,
-  which builds `xtask` into the shared target folder and starts `cargo
-  xtask book-pad` in the background (`setsid nohup`, log
-  `~/.book-pad.log`), printing the log if it stopped at once; the
-  `postAttachCommand` runs `pad.sh` too. Port 4000 stays forwarded,
-  private, `openPreview`, labelled "The book". `check-devcontainers`
-  passes unchanged.
+- The container (as merged with 2839, which builds the ten steps in the
+  `onCreateCommand`): Python and `serve.sh` gone; the `onCreateCommand`
+  adds Zola after the setup, builds the ten steps, then `xtask` into the
+  shared target folder; the `postAttachCommand` runs
+  `.devcontainer/book/pad.sh`, which builds `xtask` if it must and starts
+  `cargo xtask book-pad` in the background (`setsid nohup`, log
+  `~/.book-pad.log`), printing the log if it stopped at once. Port 4000
+  stays forwarded, private, `openPreview`, labelled "The book".
+  `check-devcontainers` passes unchanged.
 - The pages: **Open this book in a Codespace**, and its line (the book in
   the Codespace, *Play this step* and the playground playing the reader's
   own build of the step's folder, built again on each save, its Rust's
@@ -356,6 +357,14 @@ whatever writes them.
   on the Codespace now say nothing is left there for it. 2838's note on
   the Codespace (the two commands) says what holds now, and 2841 has what
   it builds on (**From 2840 (done)**).
+- The server is started by the `postAttachCommand` only, not at the end
+  of the `onCreateCommand` too, which builds `xtask` instead. 2839, merged
+  into this branch after the measure, builds the ten steps before the
+  Codespace opens, so the reason to serve before the other nine are built
+  is gone; and the measure showed VS Code opens a preview only for a
+  server started after it attaches. Not measured again after the merge:
+  the Codespace's measure above was made before 2839, with three sets of
+  features and the server started in the `onCreateCommand`.
 - A step is queued when two reads a second apart agree, not at the first
   read of a change: up to a second more before a build starts, and no
   build for an editor's file of a moment.
@@ -366,7 +375,7 @@ branch `scratch-2840-book-pad`, deleted.
 **Follow-up:** none. 2841 adds the Rust tabs on top of this; 2839 makes
 the steps build the engine once, which shortens the first build here too.
 
-Size: 1,867 counted lines against the 900 estimated: the server (its
+Size: 1,876 counted lines against the 900 estimated: the server (its
 routes, the watcher, the site's build) and its tests came to 1,270 after
 `rustfmt`. Not split: the server, the container that starts it and the
 page that follows it are one thing a reader sees, and none of them does
