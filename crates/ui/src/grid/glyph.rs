@@ -10,6 +10,7 @@ use shuyi_core::{Pos, TerrainId};
 
 use super::layout::{CELL_PX, Grid};
 use super::path;
+use super::ranges::RangeShow;
 use super::scene::MapScene;
 use super::skin::{GridSkin, Looks, MapColors, UnitPainter, WalkSpeeds};
 use super::threat;
@@ -53,6 +54,9 @@ pub struct GlyphSkin {
     /// How the threat arrows are drawn ([`with_threat_shape`](Self::with_threat_shape)):
     /// straight unless given.
     pub threat_shape: threat::Shape,
+    /// How the ranges show ([`with_range_show`](Self::with_range_show)):
+    /// [tinted](RangeShow::TINT) unless given.
+    pub range_show: RangeShow,
 }
 
 impl<U> GridSkin<U> for GlyphSkin {
@@ -91,7 +95,7 @@ impl<U> GridSkin<U> for GlyphSkin {
         let style = &self.style;
         let layout = style.layout(scene, area);
         let grid = layout.grid();
-        style.draw_tiles(looks, &self.colors, buf, scene, &layout);
+        style.draw_tiles_shown(self.range_show, looks, &self.colors, buf, scene, &layout);
         units.paint_under(scene, &grid, buf);
         units.paint(scene, &grid, buf);
         let color = looks.path(&self.colors);
@@ -117,7 +121,16 @@ impl GlyphSkin {
             foot_px,
             style: GlyphStyle::PLAIN,
             threat_shape: threat::Shape::Straight,
+            range_show: RangeShow::TINT,
         }
+    }
+
+    /// The same skin, showing its ranges as `show` (ticket 3224). The
+    /// sprite skin built on it shows them so too.
+    #[must_use]
+    pub const fn with_range_show(mut self, show: RangeShow) -> Self {
+        self.range_show = show;
+        self
     }
 
     /// The same skin, drawing the threat arrows in `shape` (ticket 3223).

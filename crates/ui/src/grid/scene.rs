@@ -58,6 +58,32 @@ pub struct MapScene<U> {
     /// The screen's animation clock, in milliseconds: what a skin or a
     /// unit painter moves its marks by. It only ever goes forward.
     pub clock_ms: u64,
+    /// Where and when the ranges were opened (a unit selected), for a
+    /// skin whose ranges spread out from there
+    /// ([`RangeShow`](super::ranges::RangeShow), ticket 3224); `None` =
+    /// they show at once.
+    pub ranges_shown: Option<RangesShown>,
+}
+
+/// Where and when a scene's ranges were opened: a skin whose ranges spread
+/// shows them ring by ring from `from`, starting at `at_ms` of the scene's
+/// clock (ticket 3224).
+///
+/// Kind 3 of ADR-0039: build it with [`RangesShown::new`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct RangesShown {
+    /// The tile they spread from (the selected unit's).
+    pub from: Pos,
+    /// When, on the scene's [clock](MapScene::clock_ms).
+    pub at_ms: u64,
+}
+
+impl RangesShown {
+    /// Ranges opened at `from` at `at_ms`.
+    pub const fn new(from: Pos, at_ms: u64) -> Self {
+        Self { from, at_ms }
+    }
 }
 
 /// The sides of a view the map goes on past: there is more map to its
@@ -318,6 +344,7 @@ impl<U> MapScene<U> {
             path: Vec::new(),
             threat: None,
             clock_ms: 0,
+            ranges_shown: None,
         }
     }
 

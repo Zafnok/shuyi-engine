@@ -853,3 +853,46 @@ fn the_sprite_skin_draws_its_glyph_skins_threat_shape() {
     let straight = threat::threat_overlays(&arrows, &grid, threat::Start::Middle, colors);
     assert_ne!(expect.len(), straight.len());
 }
+
+#[test]
+fn the_sprite_skin_shows_its_glyph_skins_range_show() {
+    use crate::grid::ranges::{RangeShow, Relief, Wave};
+    use crate::grid::scene::RangesShown;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let show = RangeShow::TINT
+        .spreading()
+        .with_wave(Wave::Glint)
+        .outlined()
+        .with_relief(Relief::Slab);
+    let terrain = || Some(tiles(kit.tiles_image()));
+    let skin = SpriteSkin::new(terrain(), GLYPH.with_range_show(show), GLYPH.walk);
+    let mut scene = plains();
+    scene.tint([p(0, 0), p(0, 1)], RangeName("move"));
+    scene.ranges_shown = Some(RangesShown::new(p(0, 0), 0));
+    scene.clock_ms = 5000;
+    let buf = painted(&kit, &skin, &scene);
+    let grid = skin.grid(&scene, Rect::new(2, 1, 6, 4));
+    let tints = scene.tints();
+    let color = |kind| looks.range(kind);
+    let mut expect = Vec::new();
+    for at in [(0, 0), (0, 1)] {
+        let rect = grid.rect_at(at.0, at.1);
+        expect.extend(show.overlays(
+            &scene,
+            &tints,
+            at,
+            rect,
+            2,
+            ground::LIT,
+            color,
+            grid.bounds(),
+        ));
+    }
+    assert!(!expect.is_empty(), "no outline");
+    let found = buf.overlays();
+    assert!(expect.iter().all(|o| found.contains(o)), "{found:?}");
+    // The tinted skin draws none of them.
+    let plain = painted(&kit, &SpriteSkin::new(terrain(), GLYPH, GLYPH.walk), &scene);
+    assert!(expect.iter().all(|o| !plain.overlays().contains(o)));
+}

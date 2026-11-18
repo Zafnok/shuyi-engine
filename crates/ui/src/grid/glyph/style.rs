@@ -12,9 +12,16 @@ use super::{CELL_PX, Layout, OVERLAY_BLEND, TILE_W_CELLS, draw_terrain, tile_to_
 use crate::frame::color::{EngineColor, Rgb};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, PxRect, Rect};
 use crate::grid::layout::px_rect;
+use crate::grid::ranges::RangeShow;
 use crate::grid::scene::{CursorStyle, CursorView, MapScene, RangeName};
 use crate::grid::skin::{Looks, MapColors};
 use crate::grid::threat;
+use shuyi_core::Pos;
+
+/// How far a range's outline and a raised tile's lit edges go from its
+/// color toward white on the glyph skin's dark ground (ticket 3224).
+/// *Tunable.*
+pub const LIT: f32 = 0.25;
 
 /// How strong a flash must still be to show as [`FlashLook::Invert`]: one
 /// bit has no fading, so the tile is flipped for the first half of a flash.
@@ -174,8 +181,26 @@ impl GlyphStyle {
         scene: &MapScene<U>,
         layout: &Layout,
     ) {
+        self.draw_tiles_shown(RangeShow::TINT, looks, colors, buf, scene, layout);
+    }
+
+    /// [`draw_tiles`](Self::draw_tiles), its ranges shown as `show` (ticket
+    /// 3224): tinted as strongly as it says, with its outline and relief
+    /// under the glyphs ([`RangeShow::overlays`], 1-pixel lines). A
+    /// [fill](RangeLook::Fill) takes only its spread: a tile fills once the
+    /// spread has reached it.
+    pub fn draw_tiles_shown<U>(
+        &self,
+        show: RangeShow,
+        looks: &Looks,
+        colors: &MapColors,
+        buf: &mut GlyphBuffer,
+        scene: &MapScene<U>,
+        layout: &Layout,
+    ) {
         let tints = scene.tints();
         let grid = layout.grid();
+        let clip = grid.bounds();
         for dy in 0..layout.tiles.1 {
             for dx in 0..layout.tiles.0 {
                 let Some(tile) = scene.tile_at(dx, dy) else {
@@ -205,13 +230,21 @@ impl GlyphStyle {
                 let ranges = tints.at(dx, dy);
                 match self.range {
                     RangeLook::Tint => {
+                        let strength = show.strength(scene, (dx, dy));
                         for &kind in ranges {
-                            buf.blend_bg(cells, looks.range(kind), OVERLAY_BLEND);
+                            buf.blend_bg(cells, looks.range(kind), strength);
+                        }
+                        let rect = grid.rect_at(dx, dy);
+                        let color = |kind| looks.range(kind);
+                        for o in show.overlays(scene, &tints, (dx, dy), rect, 1, LIT, color, clip) {
+                            buf.add_overlay(o);
                         }
                     }
                     RangeLook::Fill { glyphs, skip } => {
+                        let pos = Pos::new(scene.origin.x + dx, scene.origin.y + dy);
+                        let reached = show.spread_at(pos, scene.ranges_shown, scene.clock_ms) > 0.0;
                         let last = ranges.iter().rev().find(|kind| !skip.contains(kind));
-                        if let Some(&kind) = last {
+                        if let Some(&kind) = last.filter(|_| reached) {
                             let fg = looks.named(glyphs, EngineColor::Text);
                             fill(buf, cells, fg, looks.range(kind));
                         }
