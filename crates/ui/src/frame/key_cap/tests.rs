@@ -13,7 +13,8 @@ fn terminus_ink() -> FontInk {
 }
 
 fn terminus() -> CellWidths {
-    let mut atlas = shuyi_assets::font::FontAtlasDef::new(8, 16, Default::default(), 0);
+    let mut atlas =
+        shuyi_assets::font::FontAtlasDef::new(8, 16, alloc::collections::BTreeMap::new(), 0);
     atlas.ink = Some(terminus_ink());
     CellWidths::of(&atlas)
 }
@@ -194,7 +195,8 @@ fn terminus_bold() -> CellWidths {
     bold.columns.insert('W', [0, 6]);
     bold.columns.insert('E', [1, 7]);
     bold.columns.insert('F', [1, 7]);
-    let mut atlas = shuyi_assets::font::FontAtlasDef::new(8, 16, Default::default(), 0);
+    let mut atlas =
+        shuyi_assets::font::FontAtlasDef::new(8, 16, alloc::collections::BTreeMap::new(), 0);
     atlas.ink = Some(terminus_ink());
     atlas.bold_ink = Some(bold);
     CellWidths::of(&atlas)
