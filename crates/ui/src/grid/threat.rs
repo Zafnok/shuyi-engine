@@ -66,6 +66,10 @@ const ARC_HEAD_TURN: (f32, f32) = (0.83, 0.56);
 /// How far past the arc's last point its head's tip reaches, in pixels.
 const ARC_HEAD_PAST: f32 = 2.0;
 
+/// About how many pixels apart, along the straight line between its ends,
+/// the points of an arc are worked out; straight lines join them.
+const ARC_STEP: f32 = 2.0;
+
 /// The mark's width, in pixels.
 pub const MARK_W: i32 = 3;
 
@@ -256,6 +260,8 @@ fn arc(from: Pos, to: Pos, art: &Grid, start: Start) -> Vec<PxRect> {
     let (ax, ay, bx, by) = (a.0 as f32, a.1 as f32, b.0 as f32, b.1 as f32);
     let len = (bx - ax).hypot(by - ay);
     let (cx, cy) = (f32::midpoint(ax, bx), f32::midpoint(ay, by) - ARC_BOW * len);
+    // The curve at `t` (0 at the enemy, 1 at the tile), and which way it
+    // runs there.
     let at = |t: f32| {
         let u = 1.0 - t;
         (
@@ -263,50 +269,54 @@ fn arc(from: Pos, to: Pos, art: &Grid, start: Start) -> Vec<PxRect> {
             u * u * ay + 2.0 * u * t * cy + t * t * by,
         )
     };
-    // About two points a pixel: neighbours are never more than one apart.
-    let steps = ((len * 2.0).clamp(3.0, 4095.0) as i32) + 1;
-    let mut points: Vec<(f32, f32)> = (0..=steps).map(|i| at(i as f32 / steps as f32)).collect();
-    while points.len() > 2
-        && points
-            .last()
-            .is_some_and(|&(x, y)| (x - bx).hypot(y - by) < ARC_TIP_SHORT)
-    {
-        points.pop();
-    }
+    let along = |t: f32| {
+        let u = 1.0 - t;
+        (u * (cx - ax) + t * (bx - cx), u * (cy - ay) + t * (by - cy))
+    };
+    // A point every [`ARC_STEP`] pixels or so, joined by straight lines.
+    let steps = (len / ARC_STEP) as i32 + 1;
+    let mut ts: Vec<f32> = (0..=steps).map(|i| i as f32 / steps as f32).collect();
+    // Up to the last point that is far enough from the tile's middle.
+    let far = |&t: &f32| {
+        let (x, y) = at(t);
+        (x - bx).hypot(y - by) >= ARC_TIP_SHORT
+    };
+    let keep = ts.iter().rposition(far).map_or(ts.len(), |last| last + 1);
+    ts.truncate(keep);
     if start == Start::Edge {
         // From the first point off the enemy's tile.
         let (x, y) = art.tile_px(from);
         let tile = Rect::new(x, y, art.tile.0, art.tile.1);
-        let off = points.iter().position(|&(x, y)| {
+        let on = |&t: &f32| {
+            let (x, y) = at(t);
             let (x, y) = pixel(x, y);
-            !tile.contains(x, y)
-        });
-        if let Some(first) = off.filter(|&i| i + 2 <= points.len()) {
-            points.drain(..first);
-        }
-    }
-    let mut pixels: Vec<(i32, i32)> = points.iter().map(|&(x, y)| pixel(x, y)).collect();
-    pixels.dedup();
-    let mut rects: Vec<PxRect> = if pixels.len() == 1 {
-        line(pixels[0], pixels[0])
-    } else {
-        pixels.windows(2).flat_map(|w| line(w[0], w[1])).collect()
-    };
-    rects = rects.into_iter().map(thick).collect();
-    // The head, pointing along the arc's last few points.
-    let (ex, ey) = points[points.len() - 1];
-    let (px, py) = points[points.len().saturating_sub(6)];
-    let d = (ex - px).hypot(ey - py);
-    if d > 0.0 {
-        let (ux, uy) = ((ex - px) / d, (ey - py) / d);
-        let (tx, ty) = (ex + ux * ARC_HEAD_PAST, ey + uy * ARC_HEAD_PAST);
-        let (cos, sin) = ARC_HEAD_TURN;
-        let corner = |sin: f32| {
-            let (bx, by) = (-ux * cos + uy * sin, -uy * cos - ux * sin);
-            pixel(tx + bx * ARC_HEAD_LEN, ty + by * ARC_HEAD_LEN)
+            tile.contains(x, y)
         };
-        rects.extend(triangle(pixel(tx, ty), corner(sin), corner(-sin)));
+        let first = ts.iter().position(|t| !on(t)).unwrap_or(0);
+        ts.drain(..first);
     }
+    let points: Vec<(i32, i32)> = ts
+        .iter()
+        .map(|&t| at(t))
+        .map(|(x, y)| pixel(x, y))
+        .collect();
+    let mut rects: Vec<PxRect> = points
+        .windows(2)
+        .flat_map(|w| line(w[0], w[1]))
+        .map(thick)
+        .collect();
+    // The head, pointing the way the curve runs at its last point.
+    let end = ts.last().copied().unwrap_or(1.0);
+    let ((ex, ey), (dx, dy)) = (at(end), along(end));
+    let d = dx.hypot(dy);
+    let (ux, uy) = (dx / d, dy / d);
+    let (tx, ty) = (ex + ux * ARC_HEAD_PAST, ey + uy * ARC_HEAD_PAST);
+    let (cos, sin) = ARC_HEAD_TURN;
+    let corner = |sin: f32| {
+        let (bx, by) = (-ux * cos + uy * sin, -uy * cos - ux * sin);
+        pixel(tx + bx * ARC_HEAD_LEN, ty + by * ARC_HEAD_LEN)
+    };
+    rects.extend(triangle(pixel(tx, ty), corner(sin), corner(-sin)));
     rects
 }
 
@@ -890,6 +900,15 @@ mod tests {
     }
 
     #[test]
+    fn a_run_is_made_thicker_across_itself() {
+        // A flat run grows a row below; an upright one a column right.
+        assert_eq!(thick(Rect::new(2, 3, 5, 1)), Rect::new(2, 3, 5, 2));
+        assert_eq!(thick(Rect::new(2, 3, 1, 5)), Rect::new(2, 3, 2, 5));
+        // A single pixel counts as flat.
+        assert_eq!(thick(Rect::new(4, 4, 1, 1)), Rect::new(4, 4, 1, 2));
+    }
+
+    #[test]
     fn a_triangle_is_its_rows_with_its_corners() {
         let rows = triangle((0, 0), (4, 4), (0, 4));
         assert_eq!(rows.len(), 5);
@@ -924,5 +943,120 @@ mod tests {
             buf.overlays(),
             threat_overlays_shaped(&t, &grid(), Start::Edge, Shape::ArcAndFrame, COLORS)
         );
+    }
+
+    /// `arc` as `(x, y, w, h)`s, to tile (3, 5) of the 16-px [`grid`].
+    fn arc_rects(from: Pos, start: Start) -> Vec<(i32, i32, i32, i32)> {
+        let found = arc(from, p(3, 5), &grid(), start);
+        found.iter().map(|r| (r.x, r.y, r.w, r.h)).collect()
+    }
+
+    /// How many rectangles, and the sums of their x, their y and their
+    /// areas: a fingerprint that a change to any pixel of an arc moves.
+    fn fingerprint(rects: &[(i32, i32, i32, i32)]) -> (usize, i32, i32, i32) {
+        let sum = |f: fn(&(i32, i32, i32, i32)) -> i32| rects.iter().map(f).sum::<i32>();
+        (rects.len(), sum(|r| r.0), sum(|r| r.1), sum(|r| r.2 * r.3))
+    }
+
+    /// Pinned by hand from the first run (ticket 3223): a change to where
+    /// an arc's pixels are is a change to the look, and should be meant.
+    #[test]
+    fn arcs_are_where_they_were() {
+        // From below and to the right, from the tile's edge: every pixel.
+        assert_eq!(
+            arc_rects(p(5, 7), Start::Edge),
+            [
+                (82, 108, 2, 2),
+                (81, 107, 1, 2),
+                (81, 106, 2, 2),
+                (80, 105, 1, 2),
+                (80, 105, 1, 2),
+                (79, 104, 1, 2),
+                (78, 103, 1, 2),
+                (78, 102, 2, 2),
+                (77, 101, 1, 2),
+                (77, 101, 1, 2),
+                (76, 100, 1, 2),
+                (75, 99, 1, 2),
+                (75, 98, 2, 2),
+                (74, 97, 1, 2),
+                (74, 97, 1, 2),
+                (73, 96, 1, 2),
+                (73, 96, 1, 2),
+                (72, 95, 1, 2),
+                (71, 94, 1, 2),
+                (71, 94, 1, 2),
+                (70, 93, 1, 2),
+                (70, 93, 1, 2),
+                (69, 92, 1, 2),
+                (68, 92, 2, 2),
+                (67, 91, 1, 2),
+                (67, 91, 1, 2),
+                (66, 90, 1, 2),
+                (65, 90, 2, 2),
+                (64, 89, 1, 2),
+                (63, 89, 2, 2),
+                (63, 89, 1, 2),
+                (62, 88, 1, 2),
+                (60, 88, 3, 2),
+                (64, 85, 1, 1),
+                (62, 86, 2, 1),
+                (60, 87, 4, 1),
+                (58, 88, 6, 1),
+                (60, 89, 4, 1),
+                (61, 90, 3, 1),
+                (62, 91, 2, 1),
+                (63, 92, 1, 1)
+            ]
+        );
+        // Longer ones, from above, below and the side, by fingerprint.
+        assert_eq!(
+            fingerprint(&arc_rects(p(7, 1), Start::Middle)),
+            (94, 7819, 4507, 260)
+        );
+        assert_eq!(
+            fingerprint(&arc_rects(p(7, 1), Start::Edge)),
+            (87, 7018, 4339, 226)
+        );
+        assert_eq!(
+            fingerprint(&arc_rects(p(1, 8), Start::Middle)),
+            (57, 2208, 5990, 170)
+        );
+    }
+
+    #[test]
+    fn a_triangle_is_every_pixel_inside_it_whichever_way_round() {
+        // Inside or on the edges, by the pixel's side of each edge, worked
+        // out with floats.
+        let inside = |t: [(i32, i32); 3], (x, y): (i32, i32)| {
+            let side = |p: (i32, i32), q: (i32, i32)| {
+                let (px, py, qx, qy) = (
+                    f64::from(p.0),
+                    f64::from(p.1),
+                    f64::from(q.0),
+                    f64::from(q.1),
+                );
+                (qx - px) * (f64::from(y) - py) - (qy - py) * (f64::from(x) - px)
+            };
+            let d = [side(t[0], t[1]), side(t[1], t[2]), side(t[2], t[0])];
+            d.iter().all(|&v| v >= 0.0) || d.iter().all(|&v| v <= 0.0)
+        };
+        let shapes = [
+            [(5, 0), (9, 7), (0, 6)],
+            [(0, 6), (9, 7), (5, 0)],
+            [(2, 9), (8, 1), (1, 1)],
+            [(1, 1), (8, 1), (2, 9)],
+            [(10, 3), (0, 0), (3, 8)],
+        ];
+        for t in shapes {
+            let got = pixels(&triangle(t[0], t[1], t[2]));
+            let want: Vec<(i32, i32)> = (-1..=11)
+                .flat_map(|y| (-1..=11).map(move |x| (x, y)))
+                .filter(|&q| inside(t, q))
+                .collect();
+            assert_eq!(got, want, "{t:?}");
+            // Each row is one rectangle a pixel high.
+            assert!(triangle(t[0], t[1], t[2]).iter().all(|r| r.h == 1), "{t:?}");
+        }
     }
 }
