@@ -507,33 +507,29 @@ use it.
   server.
   [`.devcontainer/book/build.sh`](../.devcontainer/book/build.sh) makes
   each step's web build it is given (`cargo shuyi web`, `dev`) into one
-  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`, so the
-  engine is built once for each set of features the steps' locks resolve
-  (01; 02 to 06; 07 to 10, today), and each other step builds only its own
-  crate. The `onCreateCommand` sets up, adds Python (the image has none),
-  builds step 2 and serves it; the `updateContentCommand` builds the other
-  nine. A prebuild runs both, so a Codespace made from it opens with every
-  step built. One made without it opens after the first (`waitFor`), and
-  builds the rest behind it: a build the reader starts meanwhile waits for
-  the target folder's lock.
-- **Serving:** the `onCreateCommand`, once step 2 is built, and the
-  `postAttachCommand`, which runs only after the `updateContentCommand`,
-  run [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`. The steps
+  resolve one set of features of every crate they build (ticket 2839: a
+  step asks for `serde` and `ron` with the features the engine turns on,
+  not their `default`), so the engine is built once and each other step
+  builds only its own crate. The `onCreateCommand` sets up, adds Python
+  (the image has none), builds the ten steps and serves step 2. A prebuild
+  runs it, so a Codespace made from it opens with every step built; one
+  made without it opens once they are.
+- **Serving:** the `onCreateCommand`, once the steps are built, and the
+  `postAttachCommand` run [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
   `dist/web/` on port 4000 with Python's server, uncached: the step whose
   folder it runs in, the one named (`bash serve.sh 03-walk`), or the last
   one served (`~/.book-step`, step 2 at first). The port is forwarded,
   private to the reader; the Ports tab opens it, and a preview opens by
-  itself when the `postAttachCommand` starts the server again (at once
-  from a prebuild; after the other nine steps without one). After an edit, `cargo
+  itself when the `postAttachCommand` starts the server again. After an edit, `cargo
   shuyi web` in the step's folder builds it again into the same folder,
   and a reload plays it. When `shuyi web --serve` (2528) is done, it
   takes `serve.sh`'s place.
-- **Measured** on a 2-core Codespace (ticket 2837's notes; 2916's
-  research has the first numbers): step 2's build 404 s from nothing; a
-  step sharing its lock about 10 s more, step 1 73 s and step 7 239 s
-  (their locks rebuild part of the engine); all ten 786 s, into 2.7 GB of
-  target folder, 4.8 GB of disk in all. An edit to step 2's Rust rebuilds
-  in 8 s.
+- **Measured** on a 2-core Codespace (ticket 2839's notes; 2837's had
+  the first, with three sets of features): the first step's build 357 s
+  from nothing, each of the other nine 7 to 11 s; all ten 440 s, into
+  1.7 GB of target folder; the Codespace open 9 minutes after it was
+  made. An edit to step 2's Rust rebuilds in 8 s (2837).
 - **The prebuild** is Nick's, in the repository's settings: this
   container, on `main`, one region, one version, made when the container
   changes. A Codespace made from it opens with every step built.
@@ -542,8 +538,11 @@ use it.
   with a `shuyi.ron`), leaves one out, names one twice or out of order, or
   differs from the root's in its image, its setup (the root's
   `postCreateCommand` up to reading cargo's environment, each script read
-  from its container's folder) or its `remoteEnv`. A new step goes in
-  `build.sh`'s list there; a change to the root's setup goes in both.
+  from its container's folder) or its `remoteEnv`; and when two steps
+  resolve a crate they build with different features, for Linux or the
+  web (`cargo tree` of each step: `cargo metadata`'s `resolve` mixes the
+  targets and misses it). A new step goes in `build.sh`'s list there; a
+  change to the root's setup goes in both.
   `check-build.sh` fails a step's page that doesn't link the Codespace or
   name its folder.
 

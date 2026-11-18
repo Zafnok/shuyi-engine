@@ -74,8 +74,15 @@ Rust has a well-known library for that called **serde**.
 
 Add **serde** to your game's
 dependencies. In the top `Cargo.toml`, under `[workspace.dependencies]`, add the
-line `serde = { version = "1", features = ["derive"] }`, and in
+line `serde = { version = "1", default-features = false, features = ["derive", "std"] }`, and in
 `crates/game/Cargo.toml`, under `[dependencies]`, add `serde.workspace = true`.
+
+{% newcomer(to="rust", topic="`default-features = false`") %}
+A library's **features** are parts you can turn on. `derive` writes the code that turns your
+types into text; `std` is the part that needs a computer's standard library. Turning off the
+default ones and naming these two asks for exactly what the engine already uses, so Rust builds
+**serde** once, for the engine and your game together, and not a second time with other parts.
+{% end %}
 
 Then, in `crates/game/src/lib.rs`, name the three files you're about to write:
 
