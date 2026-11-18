@@ -43,6 +43,10 @@ None.
   crate and nothing reached only through one.
 - A faked run naming `miniquad::conf::Conf` in `shuyi-app` fails, as 2089's
   `gilrs` case does.
+- **Either order with 2096:** if 2096 is done, its exhaustive-type check
+  reads the same head listing in `compare_crates`: keep the two checks
+  and their errors apart; if not, nothing to do (2096 works around
+  this one).
 
 **Out (do not do):**
 - Changing `OUTSIDE_CRATES` or ADR-0119: `serde_core` is allowed already.

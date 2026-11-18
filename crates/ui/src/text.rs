@@ -17,7 +17,7 @@ use shuyi_assets::font::CellWidths;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::lang::text_width;
 pub use shuyi_assets::message::{Arg, ToArg};
-use shuyi_assets::message::{Message, Piece};
+use shuyi_assets::message::{Message, MessageError, Piece};
 use shuyi_assets::palette::line_of_key;
 use shuyi_assets::text::NO_BREAK_SPACE;
 use shuyi_assets::tip::placeholders;
@@ -199,15 +199,44 @@ pub fn fill_styled_with(
     key_args: &Args<'_>,
     lookup: impl Fn(&str) -> Option<StyledText>,
 ) -> StyledText {
+    fill_styled_by(text, lang, |name| value_of(args, name), key_args, lookup)
+}
+
+/// The value `values` names `name` by, the first if it names it twice.
+pub(crate) fn value_of(values: &Args<'_>, name: &str) -> Option<Arg> {
+    let found = values.iter().find(|(arg, _)| *arg == name);
+    found.map(|(_, value)| value.to_arg())
+}
+
+/// [`fill_styled_with`], its plain values given by `args` for each name
+/// rather than in a list: what [`Ctx`](crate::Ctx) fills with, which adds
+/// the built-in `device` and `target` after a screen's values without
+/// copying them into a new list each time.
+pub(crate) fn fill_styled_by(
+    text: &str,
+    lang: &str,
+    args: impl Fn(&str) -> Option<Arg>,
+    key_args: &Args<'_>,
+    lookup: impl Fn(&str) -> Option<StyledText>,
+) -> StyledText {
+    fill_parsed(text, message_of(text), lang, args, key_args, lookup)
+}
+
+/// [`fill_styled_by`] with `text` read as `message` already, or, if
+/// `None`, filled by its `{name}`s alone.
+fn fill_parsed(
+    text: &str,
+    message: Option<Message<'_>>,
+    lang: &str,
+    args: impl Fn(&str) -> Option<Arg>,
+    key_args: &Args<'_>,
+    lookup: impl Fn(&str) -> Option<StyledText>,
+) -> StyledText {
     let mut out = StyledText::new();
-    let value = |values: &Args<'_>, name: &str| {
-        let found = values.iter().find(|(arg, _)| *arg == name);
-        found.map(|(_, value)| value.to_arg())
-    };
     let arg = |out: &mut StyledText, name: &str| {
-        if let Some(plain) = value(args, name) {
+        if let Some(plain) = args(name) {
             out.push_plain(&plain.to_string());
-        } else if let Some(key) = value(key_args, name) {
+        } else if let Some(key) = value_of(key_args, name) {
             out.push_key(&joined(&key.to_string()));
         } else if let Some(keys) = lookup(name) {
             for span in keys.spans() {
@@ -217,7 +246,7 @@ pub fn fill_styled_with(
             out.push_plain(&format!("{{{name}}}"));
         }
     };
-    let Ok(message) = Message::parse(text) else {
+    let Some(message) = message else {
         for part in split_tokens(text) {
             match part {
                 Part::Text(plain) | Part::Unclosed(plain) => {
@@ -228,7 +257,7 @@ pub fn fill_styled_with(
         }
         return out;
     };
-    let chosen_by = |name: &str| value(args, name).or_else(|| value(key_args, name));
+    let chosen_by = |name: &str| args(name).or_else(|| value_of(key_args, name));
     message.walk(lang, chosen_by, |piece| match piece {
         Piece::Text(plain) => {
             out.push_plain(plain);
@@ -240,6 +269,51 @@ pub fn fill_styled_with(
         _ => {}
     });
     out
+}
+
+/// `text` as a [`Message`], or `None` where filling its `{name}`s alone
+/// gives what the message would: where it has no message syntax
+/// ([`has_message_syntax`]), which is never parsed, or isn't a message.
+fn message_of(text: &str) -> Option<Message<'_>> {
+    message_by(text, Message::parse)
+}
+
+/// [`message_of`], reading `text` with `parse`: a test counts its calls.
+fn message_by<'a>(
+    text: &'a str,
+    parse: impl FnOnce(&'a str) -> Result<Message<'a>, MessageError>,
+) -> Option<Message<'a>> {
+    if !has_message_syntax(text) {
+        return None;
+    }
+    parse(text).ok()
+}
+
+/// Whether `text` may say more as a message than its `{name}`s filled in
+/// ([`split_tokens`]) say: a `'` before a `'` or a brace (a quote), or,
+/// after a `{` and before its `}`, a `,` (a plural, select or number), a
+/// space (`{ n }`, which a message trims), another `{`, or any letter
+/// outside ASCII (which may be a space too). A text without any of them
+/// fills the same either way, which a fill checks before parsing it, in
+/// one pass over its bytes (ticket 3219: a help bar's text is filled each
+/// frame).
+fn has_message_syntax(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut in_braces = false;
+    for (at, &byte) in bytes.iter().enumerate() {
+        match byte {
+            b'\'' => {
+                if matches!(bytes.get(at + 1), Some(b'\'' | b'{' | b'}')) {
+                    return true;
+                }
+            }
+            b'{' | b',' | b'\t'..=b'\r' | b' ' | 0x80.. if in_braces => return true,
+            b'{' => in_braces = true,
+            b'}' => in_braces = false,
+            _ => {}
+        }
+    }
+    false
 }
 
 /// `name` with its spaces as [`NO_BREAK_SPACE`]s: a key's name on one line.
@@ -654,3 +728,6 @@ mod styled_tests;
 
 #[cfg(test)]
 mod hint_tests;
+
+#[cfg(test)]
+mod plain_tests;

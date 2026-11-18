@@ -74,6 +74,17 @@ None.
   `shuyi-app`'s web backend copies the chunks the page received into it,
   in order, and marks how far it is filled; `read` answers `NotYet`
   beyond that, and `arrived` from it.
+- **A stream that breaks:** when the fetch fails or the body ends short
+  after the game has started, the page tells the source, which marks
+  itself failed: a read past what arrived answers `SourceError::Failed`
+  (the file reads as missing and `Layer::problems()` lists it once), and
+  `arrived` answers `true`, as `SourceFiles::arrived` counts a failed
+  file as arrived. A load waiting on a folder then reads it, gets the
+  missing file and fails with its error, instead of waiting forever.
+- **Either order with 2267:** if 2267 is done, the source implements
+  `Source::lend` for the bytes that have arrived (they never change
+  again), so a read of a stored file copies nothing; if not, nothing to
+  do (2267 adds `lend` to this source).
 - **`pack_beside_program`** on the web gives the layer over that source
   (2263's `Index::into_layer`) in place of the pack read whole. On
   desktop it stays as it is.
@@ -126,6 +137,9 @@ None.
       notes give both).
 - [ ] The source answers `NotYet` past what arrived and the bytes before
       it (unit tests, off the browser).
+- [ ] A stream marked failed at half the pack answers `Failed` past what
+      arrived and `arrived` true, and a load in steps waiting on a folder
+      past it ends with the missing file's error, not `Wait` (unit tests).
 - [ ] Served by Python's `http.server`, which answers no `Range`, the
       game runs.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
@@ -133,8 +147,8 @@ None.
 
 ## Tests required
 
-- Unit: the source over chunks handed in order; `arrived`; the plugin's
-  version test.
+- Unit: the source over chunks handed in order; `arrived`; a stream
+  that fails half way; the plugin's version test.
 - Browser, by hand: the timings and the JS heap above, recorded in the
   completion notes after merging the tip of `main`.
 
