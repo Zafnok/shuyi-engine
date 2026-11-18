@@ -375,9 +375,7 @@ pub fn listed(line: &str) -> Vec<String> {
 /// The front matter's playground files of the page `text`, none when it has
 /// none or doesn't read.
 pub fn page_files(text: &str) -> Vec<String> {
-    front_matter("", text)
-        .map(|front| front.files)
-        .unwrap_or_default()
+    front_matter("", text).map_or_default(|front| front.files)
 }
 
 /// The exercises of the page `shown`, whose whole text is `text`, that

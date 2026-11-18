@@ -646,7 +646,7 @@ impl<G: GameData> ProfilesScreen<G> {
 fn profile_name<G: GameData>(ctx: &Ctx<G>, id: ProfileId) -> String {
     let profile = ctx.profiles().get(id);
     // check-text: not a data name (the player typed it)
-    profile.map(|p| p.name.clone()).unwrap_or_default()
+    profile.map_or_default(|p| p.name.clone())
 }
 
 impl<G: GameData> Screen<G> for ProfilesScreen<G> {

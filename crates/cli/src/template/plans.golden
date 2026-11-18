@@ -12,7 +12,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
 4586420c0c2fbfd6 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
-cba348f0d96f3d9e Cargo.toml
+a1a1807ca2fe62dd Cargo.toml
 ccc3cc9eb75d2e66 README.md
 b7bf83dcce2fb717 clippy.toml
 f86200d2c2994b57 crates/game/Cargo.toml
@@ -31,7 +31,7 @@ c2a32153feca5b36 crates/game/src/main.rs
 41aca60d4a6de86c crates/game/src/title.rs
 2508a4241dbfbf4e crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
-d269a8a87c41fdb0 rust-toolchain.toml
+a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh
@@ -47,7 +47,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
 4586420c0c2fbfd6 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
-9edeedb2e455e769 Cargo.toml
+01e6e36f14004658 Cargo.toml
 ccc3cc9eb75d2e66 README.md
 b7bf83dcce2fb717 clippy.toml
 402ed856d365adfd crates/game/Cargo.toml
@@ -63,7 +63,7 @@ ba791d69f803381d crates/game/files/keymap.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
 8f5cca645095efc8 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
-1fc4d13b7d9f8c5b crates/game/src/stages/top_down_grid/tools.rs
+0b30c475c42fd857 crates/game/src/stages/top_down_grid/tools.rs
 e597a3596870bbd8 crates/game/src/stages/top_down_grid.rs
 990e9c3f7a8a2ef1 crates/game/src/stages.rs
 41aca60d4a6de86c crates/game/src/title.rs
@@ -75,7 +75,7 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 df741fbc5c3d017e crates/rules/src/lib.rs
 61400620a286df3d crates/rules/tests/layers.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
-d269a8a87c41fdb0 rust-toolchain.toml
+a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh
@@ -91,7 +91,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 49ee40e211c25cec .gitignore
 46106eea46a184b4 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
-cba348f0d96f3d9e Cargo.toml
+a1a1807ca2fe62dd Cargo.toml
 46fb49ccbf09cc1d README.md
 b7bf83dcce2fb717 clippy.toml
 f86200d2c2994b57 crates/game/Cargo.toml
@@ -111,7 +111,7 @@ c2a32153feca5b36 crates/game/src/main.rs
 2508a4241dbfbf4e crates/game/tests/it/main.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 cbf29ce484222325 private.rev
-d269a8a87c41fdb0 rust-toolchain.toml
+a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh

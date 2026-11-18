@@ -50,8 +50,7 @@ impl Medium {
 
 fn name(path: &Path) -> String {
     path.file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default()
+        .map_or_default(|name| name.to_string_lossy().into_owned())
 }
 
 /// A handle on the one fake folder, shared by the rig and its storage.

@@ -1080,12 +1080,11 @@ impl Workflow {
         self.yaml
             .get("jobs")
             .and_then(serde_norway::Value::as_mapping)
-            .map(|jobs| {
+            .map_or_default(|jobs| {
                 jobs.iter()
                     .map(|(name, job)| (name.as_str().unwrap_or("?"), job))
                     .collect()
             })
-            .unwrap_or_default()
     }
 
     /// The events of its `on:`, whether one word, a list or a map.
