@@ -176,7 +176,7 @@ What was done:
   them), `pack::VERSION` stays, and `cargo shuyi schema --out
   crates/cli/schemas` changes no file, so the contract's `VERSION`
   stays.
-- Every literal outside `shuyi-assets`, 25 in all, became
+- Every literal outside `shuyi-assets`, in 21 files, became
   `FontAtlasDef::new` with the rest assigned, or a clone with a field
   assigned where a test wrote `..other` (`shuyi-app`, `shuyi-cli`,
   `shuyi-platform`, `shuyi-playdate`, `shuyi-ui`, and the doc example
