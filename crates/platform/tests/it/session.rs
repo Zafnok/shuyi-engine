@@ -27,7 +27,7 @@ use shuyi_ui::{Game, GameHooks, KeyPrompt, RawInputEvent, ScreenHook};
 static FONT: FontAtlasDef = FontAtlasDef::new(0, 0, BTreeMap::new(), 0);
 static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 
-fn look(_: &Toy) -> Look<'_> {
+pub(crate) fn look(_: &Toy) -> Look<'_> {
     Look::new(&FONT, &IMAGES)
 }
 
@@ -105,21 +105,21 @@ fn probe() -> (Start<Toy>, Rc<RefCell<Seen>>) {
 }
 
 /// Unwraps a Harness's start, which isn't `Debug`.
-fn started<E: core::fmt::Display>(harness: Result<Harness<Toy>, E>) -> Harness<Toy> {
+pub(crate) fn started<E: core::fmt::Display>(harness: Result<Harness<Toy>, E>) -> Harness<Toy> {
     harness.unwrap_or_else(|error| panic!("{error}"))
 }
 
-fn recording(start: Start<Toy>) -> Harness<Toy> {
+pub(crate) fn recording(start: Start<Toy>) -> Harness<Toy> {
     started(Harness::start_recording(start))
 }
 
-fn record_of(h: &Harness<Toy>) -> SessionRecord {
+pub(crate) fn record_of(h: &Harness<Toy>) -> SessionRecord {
     h.session()
         .cloned()
         .unwrap_or_else(|| panic!("not recording"))
 }
 
-fn playing(start: Start<Toy>, record: &SessionRecord) -> Harness<Toy> {
+pub(crate) fn playing(start: Start<Toy>, record: &SessionRecord) -> Harness<Toy> {
     started(Harness::from_session(start, record, Stamps::Check))
 }
 

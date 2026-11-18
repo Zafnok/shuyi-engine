@@ -35,6 +35,7 @@ pub mod action;
 pub mod app_info;
 #[cfg(feature = "std")]
 pub mod hot_palette;
+pub mod loading;
 pub mod map;
 #[cfg(feature = "playdate")]
 pub mod playdate;
@@ -86,10 +87,10 @@ use shuyi::ui::debug::DebugMenuScreen;
 use shuyi::ui::frame::onebit::{Font, PatternMap};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
-use shuyi::ui::text::check_key_placeholders;
 use shuyi::ui::{Ctx, Game, GameData, GameHooks, ScreenHook};
 
 pub use action::Action;
+pub use loading::DataLoad;
 use prelude::*;
 use rules::Feature;
 pub use settings::{MapLook, Prefs};
@@ -378,10 +379,7 @@ impl Hello {
     /// and buttons, or every problem found.
     #[cfg(feature = "std")]
     fn load_from_on(bundle: &Bundle, target: &str) -> Result<Self, Vec<ContentError>> {
-        let mut game = Self::load_from(bundle, &formats())?;
-        game.keymap = game.keymap.for_target(target);
-        game.console = console_on(target);
-        Ok(game)
+        Ok(Self::load_from(bundle, &formats())?.on_target(target))
     }
 
     /// The context of the game on the Playdate, from the pack `bytes` that
@@ -389,6 +387,22 @@ impl Hello {
     /// for as long as the game runs, with its one-bit look; or every
     /// problem found.
     pub fn one_bit_ctx(bytes: &'static [u8]) -> Result<Ctx<Self>, Vec<ContentError>> {
+        let (bundle, formats) = Self::one_bit_files(bytes)?;
+        Self::one_bit_ctx_of(Self::load_from(bundle, &formats), bundle, &formats)
+    }
+
+    /// The files in the Playdate's pack `bytes` ([`one_bit_ctx`]), and the
+    /// formats they are read with: what the game's load in steps reads its
+    /// data from, a file a step ([`loading::in_steps`]).
+    ///
+    /// [`one_bit_ctx`]: Self::one_bit_ctx
+    ///
+    /// # Errors
+    ///
+    /// The pack's problem, if it doesn't open.
+    pub fn one_bit_files(
+        bytes: &'static [u8],
+    ) -> Result<(&'static Bundle, Formats), Vec<ContentError>> {
         let problem = |e: String| vec![ContentError::new("pack", e)];
         let pack = Pack::open(bytes, PACK_STAMP).map_err(|e| problem(e.to_string()))?;
         let mut formats = formats();
@@ -399,8 +413,24 @@ impl Hello {
         // runs it: the font and the pictures read from it.
         let bundle: &'static Bundle =
             Box::leak(Box::new(Bundle::new(vec![pack.into_layer("pack")])));
-        let mut game = Self::load_from(bundle, &formats)?;
-        game.keymap = game.keymap.for_target(PLAYDATE);
+        Ok((bundle, formats))
+    }
+
+    /// The context of the game on the Playdate from its `data`, read from
+    /// `bundle` with `formats` ([`one_bit_files`]), with its one-bit look.
+    ///
+    /// [`one_bit_files`]: Self::one_bit_files
+    ///
+    /// # Errors
+    ///
+    /// The data's problems, or its one-bit look's.
+    pub fn one_bit_ctx_of(
+        data: Result<Self, Vec<ContentError>>,
+        bundle: &'static Bundle,
+        formats: &Formats,
+    ) -> Result<Ctx<Self>, Vec<ContentError>> {
+        let problem = |e: String| vec![ContentError::new("pack", e)];
+        let mut game = data?.on_target(PLAYDATE);
         game.console = PLAYDATE_CONSOLE;
         let patterns = formats.load::<PatternMapDef>(bundle, PATTERN_MAP)?;
         let bits = bundle
@@ -453,71 +483,17 @@ impl Hello {
     }
 
     /// The game's data from `bundle`, read with `formats`, or every
-    /// problem found.
+    /// problem found: every file at once ([`DataLoad`]).
     pub fn load_from(bundle: &Bundle, formats: &Formats) -> Result<Self, Vec<ContentError>> {
-        let mut errors = Vec::new();
-        let english = gather(&mut errors, || {
-            let english = formats.load::<English>(bundle, "en.ron")?;
-            check_key_placeholders::<Action>(bundle, "en.ron", &english.0)?;
-            Ok(english)
-        });
-        let keymap = gather(&mut errors, || {
-            formats.load::<KeymapDef<Action>>(bundle, "keymap.ron")
-        });
-        let palette = gather(&mut errors, || {
-            formats.load::<PaletteDef>(bundle, "palette.ron")
-        });
-        let dialogue = gather(&mut errors, || {
-            let file = formats.load::<DialogueFile>(bundle, DIALOGUE)?;
-            let scenes = file
-                .scenes
-                .into_iter()
-                .map(|p| (p.scene.id.clone(), p.scene));
-            let mut table = DialogueTable::new(scenes.collect());
-            table.files = table
-                .scenes
-                .keys()
-                .map(|id| (id.clone(), DIALOGUE.to_owned()))
-                .collect();
-            Ok(table)
-        });
-        let stage_map = gather(&mut errors, || {
-            let map = formats.load::<GridMap<TerrainId, Feature>>(bundle, "stage.map")?;
-            rules::Stage::new(&map, 0)
-                .map_err(|e| vec![ContentError::new(bundle.display_path("stage.map"), e)])?;
-            Ok(map)
-        });
-        let font = gather(&mut errors, || {
-            formats.load::<FontAtlasDef>(bundle, FONT_RON)
-        });
-        let images = gather(&mut errors, || {
-            ImageTable::load_with(bundle, formats, &[FONT_PNG])
-        });
-        match (english, keymap, palette, dialogue, stage_map, font, images) {
-            (
-                Some(english),
-                Some(keymap),
-                Some(palette),
-                Some(dialogue),
-                Some(stage_map),
-                Some(font),
-                Some(images),
-            ) => Ok(Self {
-                console: CONSOLE,
-                lang: Lang::with_source(english.0, dialogue_text(&dialogue), BTreeMap::new()),
-                keymap,
-                audio: sound::manifest(),
-                palette,
-                dialogue,
-                stage_map,
-                font,
-                images,
-                lights: Lighting::default(),
-                seed: 0,
-                one_bit: None,
-            }),
-            _ => Err(errors),
-        }
+        DataLoad::all(bundle, formats)
+    }
+
+    /// The same data with the keys and console of target `target`.
+    #[must_use]
+    pub fn on_target(mut self, target: &str) -> Self {
+        self.keymap = self.keymap.for_target(target);
+        self.console = console_on(target);
+        self
     }
 
     /// `tiles.png`'s id.
@@ -655,27 +631,41 @@ pub fn start() -> Start<Hello> {
 /// rules state in it.
 #[cfg(feature = "std")]
 pub fn start_over(over: Option<Layer>) -> Start<Hello> {
-    Start::new(Card::text(TITLE), Hello::look, move |setup| {
-        load(setup, over)
+    Start::in_steps(Card::text(TITLE), Hello::look, move |setup: Setup| {
+        let target = setup.platform.target.clone();
+        loading::in_steps(
+            move || match pack_problem() {
+                Some(problem) => Err(problem),
+                None => Ok((bundle_over(over, &target), formats())),
+            },
+            move |data, bundle, _| load(setup, data, bundle, over),
+        )
     })
     .made(made())
     .state_hash(stage_hash)
     .crash_record(screens::stage::crash_record)
 }
 
-/// The game on the platform's `setup`, at its title, with its files as
-/// the target the platform names has them. The stages' luck is seeded
-/// from the clock (the platform's music seed), so each launch plays
+/// The game on the platform's `setup`, at its title, from its `data` read
+/// from `bundle` (a file a step, [`loading::in_steps`]), with its keys and
+/// console as the target the platform names has them. The stages' luck is
+/// seeded from the clock (the platform's music seed), so each launch plays
 /// differently. With `over`, its palette reloads as its file changes. A
-/// packed build whose pack couldn't be read shows why, in place of the game.
+/// packed build whose pack couldn't be read shows why, in place of the game
+/// ([`pack_problem`], before the first file).
+///
+/// # Panics
+///
+/// As [`ctx`], if its files don't load.
 #[cfg(feature = "std")]
-fn load(setup: Setup, over: Option<Layer>) -> Result<Game<Hello>, String> {
-    if let Some(problem) = pack_problem() {
-        return Err(problem);
-    }
+fn load(
+    setup: Setup,
+    data: Result<Hello, Vec<ContentError>>,
+    bundle: &Bundle,
+    over: Option<Layer>,
+) -> Result<Game<Hello>, String> {
     let target = setup.platform.target.clone();
-    let bundle = bundle_over(over, &target);
-    let mut ctx = setup.ctx(ctx_from(&bundle, &target, 0));
+    let mut ctx = setup.ctx(ctx_of(data.map(|data| data.on_target(&target)), 0));
     ctx.game.seed = ctx.music_seed;
     let game = game(ctx);
     if over.is_none() {
@@ -688,7 +678,7 @@ fn load(setup: Setup, over: Option<Layer>) -> Result<Game<Hello>, String> {
 ",
         )
     };
-    let palette = hot_palette::HotPalette::new(&bundle).map_err(lines)?;
+    let palette = hot_palette::HotPalette::new(bundle).map_err(lines)?;
     game.with_module(palette).map_err(|e| e.to_string())
 }
 

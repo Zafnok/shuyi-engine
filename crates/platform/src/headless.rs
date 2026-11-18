@@ -564,6 +564,8 @@ pub struct HeadlessPlatform {
     presented: u32,
     /// The last of them.
     last: Option<Presented>,
+    /// The load's count on the last of them, if it was a card's.
+    loading: Option<(u32, u32)>,
     /// The frame cap the last of them asked for, and its serial.
     frame_cap: Option<(FrameCap, u32)>,
     /// The reload errors the last of them asked to show.
@@ -647,6 +649,7 @@ impl HeadlessPlatform {
             snapshots: None,
             presented: 0,
             last: None,
+            loading: None,
             frame_cap: None,
             reload_errors: Vec::new(),
             #[cfg(feature = "std")]
@@ -887,6 +890,13 @@ impl HeadlessPlatform {
         self.last.as_ref()
     }
 
+    /// The count the last frame presented showed under its card
+    /// ([`Frame::loading`]): the units done, and of how many. `None` if it
+    /// wasn't a card's, or the load had given no count.
+    pub fn card_count(&self) -> Option<(u32, u32)> {
+        self.loading
+    }
+
     /// The frame cap the last frame presented asked for, and its serial:
     /// the headless backend doesn't pace, and reports nothing.
     pub fn frame_cap(&self) -> Option<(FrameCap, u32)> {
@@ -920,6 +930,10 @@ impl Platform for HeadlessPlatform {
         self.reload_errors.clear();
         self.reload_errors.extend_from_slice(frame.reload_errors);
         Presented::keep(&mut self.last, frame);
+        self.loading = match frame.show {
+            Show::Card(_) => frame.loading,
+            _ => None,
+        };
         if let Some(Hook(hook)) = &mut self.present_hook {
             hook(frame);
         }

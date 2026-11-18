@@ -379,9 +379,23 @@ impl Macroquad {
     }
 
     /// Draws the loading card: its line in macroquad's built-in font, or its
-    /// picture at the largest whole scale that fits, centred.
-    fn draw_card(&mut self, card: &shuyi_platform::Card) {
+    /// picture at the largest whole scale that fits, centred; and under it
+    /// the load's `count` as a bar, in the card's ink ([`card_bar`]).
+    fn draw_card(&mut self, card: &shuyi_platform::Card, count: Option<(u32, u32)>) {
         clear_background(color(card.background()));
+        let below = self.draw_card_face(card);
+        if let Some(count) = count {
+            let bar = card_bar((screen_width(), screen_height()), below, count);
+            let ink = color(card.ink());
+            let (track, filled) = (bar.track, bar.filled);
+            draw_rectangle_lines(track.x, track.y, track.w, track.h, 2.0, ink);
+            draw_rectangle(filled.x, filled.y, filled.w, filled.h, ink);
+        }
+    }
+
+    /// Draws the card's line or picture: the window's row just under it.
+    fn draw_card_face(&mut self, card: &shuyi_platform::Card) -> f32 {
+        let middle = screen_height() / 2.0;
         match card {
             shuyi_platform::Card::Text { line, ink, .. } => {
                 let size = text_size();
@@ -389,6 +403,7 @@ impl Macroquad {
                 let x = (screen_width() - measured.width) / 2.0;
                 let y = f32::midpoint(screen_height(), measured.offset_y);
                 draw_text(line, x, y, f32::from(size), color(*ink));
+                y - measured.offset_y + measured.height
             }
             shuyi_platform::Card::Picture { path, .. } => {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
@@ -400,12 +415,47 @@ impl Macroquad {
                     }
                     self.card_picture = Some((path.clone(), texture.ok()));
                 }
-                if let Some((_, Some(texture))) = &self.card_picture {
-                    draw_centred(texture);
+                match &self.card_picture {
+                    Some((_, Some(texture))) => draw_centred(texture),
+                    _ => middle,
                 }
             }
-            _ => {}
+            _ => middle,
         }
+    }
+}
+
+/// The share of the window's width a loading card's bar spans.
+const BAR_SHARE: f32 = 0.5;
+
+/// A loading card's bar: the whole of it, outlined, and its filled part.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CardBar {
+    track: Rect,
+    filled: Rect,
+}
+
+/// The bar a loading card shows for its load's count, `done` of `of`, in a
+/// `window` of that width and height: a fixed share of the window's width
+/// ([`BAR_SHARE`]), centred, a little `below` the card's line or picture
+/// and within the window, its filled part `done ÷ of` of that from the
+/// left (none for a load of no units, never past its end).
+fn card_bar(window: (f32, f32), below: f32, (done, of): (u32, u32)) -> CardBar {
+    let (width, height) = window;
+    let thick = (height / 60.0).clamp(4.0, 16.0);
+    let length = (width * BAR_SHARE).floor();
+    let x = ((width - length) / 2.0).floor();
+    let y = (below + 2.0 * thick).min(height - 2.0 * thick).floor();
+    // Whole units of a load, far below 2^24, are exact as f32.
+    #[allow(clippy::cast_precision_loss)]
+    let share = if of == 0 {
+        0.0
+    } else {
+        done.min(of) as f32 / of as f32
+    };
+    CardBar {
+        track: Rect::new(x, y, length, thick),
+        filled: Rect::new(x, y, (length * share).round(), thick),
     }
 }
 
@@ -419,8 +469,8 @@ fn text_size() -> u16 {
 }
 
 /// Draws `texture` centred at the largest whole scale that fits the window
-/// (at least 1).
-fn draw_centred(texture: &Texture2D) {
+/// (at least 1): the window's row just under it.
+fn draw_centred(texture: &Texture2D) -> f32 {
     let (w, h) = (texture.width(), texture.height());
     let fit = (screen_width() / w)
         .min(screen_height() / h)
@@ -433,6 +483,7 @@ fn draw_centred(texture: &Texture2D) {
     };
     let (x, y) = ((screen_width() - dw) / 2.0, (screen_height() - dh) / 2.0);
     draw_texture_ex(texture, x.floor(), y.floor(), WHITE, params);
+    y.floor() + dh
 }
 
 /// `x` window pixels as a whole number.
@@ -491,7 +542,7 @@ impl Platform for Macroquad {
             self.switch_fullscreen(wanted);
         }
         match frame.show {
-            Show::Card(card) => self.draw_card(card),
+            Show::Card(card) => self.draw_card(card, frame.loading),
             Show::Errors(text) => Self::draw_errors(text),
             Show::Game {
                 buffer,
@@ -665,6 +716,28 @@ fn now_us() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_cards_bar_is_as_long_as_its_count_says() {
+        let bar = card_bar((800.0, 600.0), 330.0, (1, 4));
+        assert_eq!(bar.track, Rect::new(200.0, 350.0, 400.0, 10.0));
+        assert_eq!(bar.filled, Rect::new(200.0, 350.0, 100.0, 10.0));
+        let full = card_bar((800.0, 600.0), 330.0, (4, 4));
+        assert_eq!(full.filled, full.track);
+        let past = card_bar((800.0, 600.0), 330.0, (9, 4));
+        assert_eq!(past.filled, past.track, "never past its end");
+        let none = card_bar((800.0, 600.0), 330.0, (3, 0));
+        assert_eq!(none.filled.w, 0.0, "a load of no units");
+        let thirds = card_bar((800.0, 600.0), 330.0, (1, 3));
+        assert_eq!(thirds.filled.w, 133.0);
+    }
+
+    #[test]
+    fn a_cards_bar_stays_in_the_window_under_a_picture_that_fills_it() {
+        let bar = card_bar((320.0, 240.0), 240.0, (1, 2));
+        assert_eq!(bar.track, Rect::new(80.0, 232.0, 160.0, 4.0));
+        assert_eq!(bar.filled.w, 80.0);
+    }
 
     #[test]
     fn the_perf_clock_never_goes_back() {

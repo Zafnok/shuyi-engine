@@ -168,6 +168,11 @@ frame; frames after run the game. A load in steps (`Start::in_steps`) asks
 take several frames, each presenting the card again until the last
 presents the game
 ([ADR-0097](adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
+A step that waits for the platform (`Progress::Wait`, a file not arrived)
+ends its frame's steps whatever the slice, and the next frame calls it
+again; between those frames is where a backend hands the load what arrived
+([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+§4).
 A failed load presents its errors until the player quits.
 
 ## Each method
@@ -189,7 +194,13 @@ next. `frame.show` is one of:
   Paint it with what the backend has of its own, since the game's font
   isn't loaded: `Card::Text` is a line centred in the backend's font, in
   `ink` on `background`; `Card::Picture` is an image from the game's
-  files by path, centred at the largest whole scale that fits.
+  files by path, centred at the largest whole scale that fits. When
+  `frame.loading` is `Some((done, of))`, the last count a step of the load
+  gave (`Progress::Of`), draw a bar under the line or picture in
+  `card.ink()`, `done ÷ of` of its full length: `shuyi-app` makes it half
+  the window's width, and the Playdate's display half the screen's,
+  redrawn only when its filled part moves. The headless backend keeps the
+  count for tests (`HeadlessPlatform::card_count`).
 - `Show::Errors(&str)`: why the game couldn't start. Show the text (the
   backend's font, wrapped). `App` logs it once, at `Error`, so the
   backend needn't.
@@ -452,7 +463,10 @@ system ends a game whose frame runs too long gives one, from its target
 profile's `budgets.load_slice_ms`; `shuyi-playdate` gives a second of the
 SDK's timer, a tenth of the system's 10 seconds. `App` asks in every frame
 that runs steps, in every build, and runs steps until the slice is used,
-and at least one. A run being recorded or hashed takes no slice. The
+and at least one, or until a step waits (`Progress::Wait`). A run being
+recorded or hashed takes no slice; a wait ends its frame all the same,
+and the record counts the frames the load waited in as one with the frame
+after, so it plays back where nothing waits. The
 default, `None`, runs all the steps in one frame: right where a long frame
 only shows the card longer (a PC, the web).
 

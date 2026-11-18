@@ -109,3 +109,75 @@ fn the_web_build_is_the_games_binary() {
     );
     assert_eq!(web.dist, "dist/web");
 }
+
+/// The data read a file a step is the data read at once, and a load
+/// finished early says how many files it didn't read.
+#[test]
+fn the_data_reads_a_file_a_step_and_says_what_it_did_not_read() {
+    use hello_grid::DataLoad;
+    use shuyi::assets::bundle::Bundle;
+
+    let bundle = Bundle::new(vec![hello_grid::layer()]);
+    let formats = hello_grid::formats();
+    let mut data = DataLoad::default();
+    let read: Vec<u32> = (0..DataLoad::FILES + 2)
+        .map(|_| data.step(&bundle, &formats))
+        .collect();
+    assert_eq!(read, [1, 2, 3, 4, 5, 6, 7, 7, 7], "none past the last");
+    let stepped = data.finish().unwrap_or_else(|e| panic!("{e:?}"));
+    let at_once = Hello::load().unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(stepped.stage_map, at_once.stage_map);
+    assert_eq!(stepped.dialogue.get("intro"), at_once.dialogue.get("intro"));
+    let unread = |steps: u32| {
+        let mut data = DataLoad::default();
+        for _ in 0..steps {
+            data.step(&bundle, &formats);
+        }
+        let errors = data.finish().err().unwrap_or_default();
+        errors.iter().map(ToString::to_string).collect::<Vec<_>>()
+    };
+    assert!(
+        unread(0)
+            .iter()
+            .any(|e| e.contains("7 of its files not read")),
+        "{:?}",
+        unread(0)
+    );
+    assert!(
+        unread(6)
+            .iter()
+            .any(|e| e.contains("1 of its files not read")),
+        "{:?}",
+        unread(6)
+    );
+}
+
+/// Where a load takes more than a frame (a slice a step long, as on a slow
+/// device), the card counts the game's files as they are read.
+#[test]
+fn the_card_counts_the_games_files_where_its_load_takes_more_than_a_frame() {
+    use hello_grid::DataLoad;
+    use shuyi::platform::headless::HeadlessPlatform;
+    use shuyi::platform::{App, LoadSlice, Millis};
+    use shuyi::ui::perf::PerfClock;
+
+    let slice = LoadSlice::new(0, PerfClock::fake());
+    let mut platform = HeadlessPlatform::new().with_load_slice(slice);
+    let mut app = App::new(hello_grid::start());
+    let mut counts = Vec::new();
+    for frame in 0..20 {
+        let _ = app.frame(&mut platform, Millis(16 * frame));
+        if !app.is_loading() {
+            break;
+        }
+        counts.extend(platform.card_count());
+    }
+    let of = DataLoad::FILES;
+    let expected: Vec<(u32, u32)> = (0..=of).map(|done| (done, of)).collect();
+    assert_eq!(counts, expected, "a frame a file, after the card's");
+    assert_eq!(app.errors(), None);
+    assert_eq!(
+        app.game().map(shuyi::ui::Game::screens),
+        Some(vec!["title"])
+    );
+}
