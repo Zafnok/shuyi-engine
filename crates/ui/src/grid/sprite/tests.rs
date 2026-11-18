@@ -896,3 +896,32 @@ fn the_sprite_skin_shows_its_glyph_skins_range_show() {
     let plain = painted(&kit, &SpriteSkin::new(terrain(), GLYPH, GLYPH.walk), &scene);
     assert!(expect.iter().all(|o| !plain.overlays().contains(o)));
 }
+
+#[test]
+fn the_range_lines_are_twice_as_thick_at_twice_the_zoom_and_shown_without_tiles() {
+    use crate::grid::ranges::RangeShow;
+    let kit = Kit::new();
+    let show = RangeShow::TINT.outlined();
+    let mut scene = plains();
+    scene.tint([p(0, 0)], RangeName("move"));
+    let glyph = GLYPH.with_range_show(show);
+    let zoomable =
+        SpriteSkin::new(Some(tiles(kit.tiles_image())), glyph, GLYPH.walk).with_zooms(&[1, 2]);
+    let thickness = |skin: &dyn GridSkin<Piece>, area| {
+        let mut buf = blank();
+        let cards = Cards { card: kit.card() };
+        skin.paint(&kit.looks(), &scene, area, &cards, &mut buf);
+        let lines: Vec<Overlay> = buf
+            .overlays()
+            .into_iter()
+            .filter(|o| o.rect.w < o.rect.h)
+            .collect();
+        lines.iter().map(|o| o.rect.w).min().expect("an outline")
+    };
+    assert_eq!(thickness(&zoomable, Rect::new(0, 0, 9, 5)), 2);
+    let twice = GridSkin::<Piece>::at_zoom(&zoomable, 2).unwrap();
+    assert_eq!(thickness(twice.as_ref(), Rect::new(0, 0, 18, 10)), 4);
+    // With no terrain tiles, on the glyph skin's ground: outlined still.
+    let bare = SpriteSkin::new(None, glyph, GLYPH.walk);
+    assert_eq!(thickness(&bare, Rect::new(0, 0, 9, 5)), 1);
+}
