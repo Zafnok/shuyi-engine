@@ -29,6 +29,8 @@ use std::time::{Duration, Instant};
 
 use serde_norway::Value;
 
+use crate::{exercises, tries};
+
 /// Which of CI's filters a gate's job runs under: the output of
 /// `changes.yml` its `if:` reads, or none. The output is named, not a
 /// variant of its own, so giving up the sound replacement (ADR-0068) takes
@@ -241,7 +243,6 @@ fn touches_skill_examples(path: &str) -> bool {
 /// [`tries::PICTURES`]; the pages, [`tries::PAGES`]; the book's game,
 /// [`tries::SNIPPETS`]), or its runner.
 fn touches_tutorial_tries(path: &str) -> bool {
-    use crate::tries;
     builds_a_game(path)
         || [tries::STEPS, tries::PICTURES, tries::SNIPPETS]
             .iter()
@@ -256,7 +257,6 @@ fn touches_tutorial_tries(path: &str) -> bool {
 /// pages, [`exercises::PAGES`]), or its runner and what it calls (`book`,
 /// `llms` through it, and `tries`' `copy_tree`).
 fn touches_exercises(path: &str) -> bool {
-    use crate::exercises;
     builds_a_game(path)
         || [exercises::STEPS, exercises::EXERCISES, exercises::PAGES]
             .iter()
@@ -1323,23 +1323,15 @@ mod tests {
     fn the_runners_constants_run_their_gates() {
         let other = "scripts/x.sh";
         assert_skips(&running(&[other], false), &GAME_GATES);
-        let tries = [
-            crate::tries::STEPS,
-            crate::tries::PICTURES,
-            crate::tries::SNIPPETS,
-        ]
-        .into_iter()
-        .chain(crate::tries::PAGES);
+        let tries = [tries::STEPS, tries::PICTURES, tries::SNIPPETS]
+            .into_iter()
+            .chain(tries::PAGES);
         for dir in tries {
             let path = format!("{dir}/x");
             assert!(touches_tutorial_tries(&path), "{path}");
             assert_runs(&running(&[&path, other], false), &["tutorial-tries"]);
         }
-        for dir in [
-            crate::exercises::STEPS,
-            crate::exercises::EXERCISES,
-            crate::exercises::PAGES,
-        ] {
+        for dir in [exercises::STEPS, exercises::EXERCISES, exercises::PAGES] {
             let path = format!("{dir}/x");
             assert!(touches_exercises(&path), "{path}");
             assert_runs(&running(&[&path, other], false), &["exercises"]);
