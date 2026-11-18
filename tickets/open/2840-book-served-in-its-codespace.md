@@ -197,5 +197,104 @@ container 80, templates and book 70, docs 100).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done:**
+
+- `scripts/setup-zola.sh`: Zola v0.21.0, its SHA-256 checked, installed
+  in `/usr/local/bin` (kept when that version is there). The action
+  `.github/actions/setup-zola/` runs it, and so does the book's
+  `onCreateCommand`: the version and checksum are written there only.
+- `cargo xtask book-pad [--out <dir>] [--no-build]`
+  (`crates/xtask/src/book_pad.rs`, `std::net` and `std::thread`, no new
+  dependency): binds `127.0.0.1:4000` first (taken: it says the book is
+  served already, and exits 0), builds the site as CI does (`site-data`
+  in-process, `errors.sh`, `copy-playground.sh`, `copy-previews.sh`,
+  `zola build --force`) into `~/book-site` at the forwarded address read
+  at start (`https://${CODESPACE_NAME}-4000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/`,
+  or `http://127.0.0.1:4000/`), then serves it, a thread a connection,
+  `Connection: close`, `Cache-Control: no-store`, `.wasm` as
+  `application/wasm`. Routes: a step's `play/…` from its `dist/web/`,
+  `/` a 302 to the last step page served (step 2's at first),
+  `/pad/status` (`{"pad":true}`), `/pad/build/<step>` (`number`, `good`,
+  `state`, `output`), the site's files, its `404.html`. `GET` only (405
+  otherwise), a `Host` other than `127.0.0.1:4000`, `localhost:4000` or
+  the forwarded host refused (403), a `..`/`.` segment, `\`, `:`, NUL or
+  bad escape refused (400).
+- The watcher (`Watcher::tick`, once a second on its own thread): each
+  step's files under `crates/` and its `Cargo.toml` by path, time and
+  length (a new or removed file counts), a step queued once, one build a
+  tick behind a `Builder` trait (`cargo shuyi web` in the step's folder;
+  a fake in the tests), a change during a build queued again at the next
+  tick. A failed build keeps its output and the last good `dist/web/`
+  (the web build replaces it only whole).
+- `site/static/book-pad.js`, loaded by every step page: asks
+  `pad/status` at the site's base; served from the Codespace it swaps the
+  Codespace's button and line (`pad-away`) for a line saying the reader is
+  in it (`pad-here`), and polls `pad/build/<step>` each second while the
+  page is shown: *Building…* beside *Play this step*, the playground's
+  frame reloaded on a new good build (if it has loaded), and a failed
+  build's output in Problems (or in `pad-output` on a step without a
+  playground). On the public site the 404 leaves the page as it is.
+- The container: Python and `serve.sh` gone; the `onCreateCommand` adds
+  Zola after the setup, builds step 2 and runs `.devcontainer/book/pad.sh`,
+  which builds `xtask` into the shared target folder and starts `cargo
+  xtask book-pad` in the background (`setsid nohup`, log
+  `~/.book-pad.log`), printing the log if it stopped at once; the
+  `postAttachCommand` runs `pad.sh` too. Port 4000 stays forwarded,
+  private, `openPreview`, labelled "The book". `check-devcontainers`
+  passes unchanged.
+- The pages: **Open this book in a Codespace**, and its line (the book in
+  the Codespace, *Play this step* and the playground playing the reader's
+  own build of the step's folder, built again on each save, its Rust's
+  folder, the other steps maybe still building); the twin says the same
+  (`codespace` in `llms.rs`, its test). The quick start and the project's
+  front page say the book opens in the preview, or from the Ports tab.
+- Docs: `site/README.md` (*Preview it*: the script; the files' table;
+  *The playground*: its frame and files in the Codespace; *The code pad*:
+  the server, its routes, the rebuilding, the page), the docs map's row
+  of the book's project, the container's comments, `xtask`'s usage.
+- Tests: 15 unit tests in `crates/xtask/src/book_pad/tests.rs`: the
+  options, the address, a step's `play/` and `files/` from its folder, the
+  site's files uncached, a folder without its `/`, `/` to the last step
+  page, nine paths that leave their folder (400), a wrong or missing
+  `Host` and a `POST` refused, the pad's routes, a request read from bytes
+  (and three that aren't one), and with a fake builder: a change under
+  one step's `crates/` builds that step only (a new file and a manifest
+  count, a file outside `crates/` doesn't), a change during a build builds
+  it once more, changes queue each step once in order, a failed build
+  keeps the last good one and says why, a build made another way is a
+  good one and its own isn't counted twice; and one over TCP.
+
+**Checked locally** (Windows, at `a500dbdb`): the site built at
+`http://127.0.0.1:4000/`, step 3 built, `book-pad --no-build` serving it in
+the browser pane: a compile error saved in `03-walk/crates/game/src/title.rs`
+showed cargo's error in Problems 2 s later, the frame kept playing; the
+file put back, the line said *Building…*, and the frame reloaded 7 s after
+the save, Problems emptied.
+
+MEASURED
+
+**Deviations:**
+
+- Each step's playground `files/` is served from the step's
+  `crates/game/files/` too (the ticket named `play/` only): its frame
+  plays the reader's files, so **Reset** and the editors' own text must
+  be the reader's, not CI's copy.
+- The build state has a fourth value, `none`, for a step not built yet
+  (a Codespace without the prebuild serves the book before the other
+  nine are built); the page says so, and a `dist/web/index.html` that
+  appears (the container's `build.sh`, or the reader's own `cargo shuyi
+  web`) counts as a good build, so the frame follows those too.
+- The page's script is its own file, `static/book-pad.js`, loaded by
+  every step page (`chapter.html`), not `playground.js`: steps without a
+  playground follow their builds too. Served from the Codespace, the
+  Codespace's button and line give way to a line saying the reader is in
+  it.
+- `--out` and `--no-build`, for serving a site built elsewhere (how it was
+  checked on Windows, where `bash` from a program is WSL's).
+- The pad's routes are found at the site's base (`get_url(path='pad')`),
+  so on the public site the 404 is the site's own, not the host's root.
+- The server shuts the socket's writing side and drains it before
+  closing: Windows resets a socket closed with unread bytes, which the
+  TCP test met about one run in four.
+- 2528 isn't done: `serve.sh` was replaced as it was, and 2528's clauses
+  on the Codespace now say nothing is left there for it.

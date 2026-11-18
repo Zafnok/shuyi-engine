@@ -236,8 +236,10 @@ type Stamp = Vec<(PathBuf, Option<SystemTime>, u64)>;
 /// Watches the steps' sources and builds the ones that change.
 pub struct Watcher {
     tutorial: PathBuf,
-    /// Each step's sources as last read.
+    /// Each step's sources as last queued (or at the start).
     sources: BTreeMap<String, Stamp>,
+    /// Each step's sources as the last tick read them.
+    seen: BTreeMap<String, Stamp>,
     /// Each step's `dist/web/index.html`'s time as last read.
     dists: BTreeMap<String, Option<SystemTime>>,
     /// The steps waiting for a build, in order.
@@ -247,12 +249,14 @@ pub struct Watcher {
 impl Watcher {
     /// A watcher of `steps` in `tutorial`, as they are now: nothing to build.
     pub fn new(tutorial: &Path, steps: &[String]) -> Self {
+        let sources: BTreeMap<String, Stamp> = steps
+            .iter()
+            .map(|step| (step.clone(), stamp(&tutorial.join(step))))
+            .collect();
         Self {
             tutorial: tutorial.to_path_buf(),
-            sources: steps
-                .iter()
-                .map(|step| (step.clone(), stamp(&tutorial.join(step))))
-                .collect(),
+            seen: sources.clone(),
+            sources,
             dists: steps
                 .iter()
                 .map(|step| (step.clone(), dist_time(&tutorial.join(step))))
@@ -267,18 +271,22 @@ impl Watcher {
         self.queue.iter().map(String::as_str).collect()
     }
 
-    /// Reads every step again, queues each one changed, and builds the
-    /// first queued, if any. A change made during a build is read at the
-    /// next tick, and queues that step once more.
+    /// Reads every step again, queues each one changed and read the same
+    /// at the tick before (so an editor's or `sed -i`'s file of a moment,
+    /// written beside the one it replaces, makes no build of its own), and
+    /// builds the first queued, if any. A change made during a build is
+    /// read at the next ticks, and queues that step once more.
     pub fn tick(&mut self, builder: &mut dyn Builder, pad: &Mutex<Pad>) {
         for (step, known) in &mut self.sources {
             let now = stamp(&self.tutorial.join(step));
-            if now != *known {
-                *known = now;
+            let settled = self.seen.get(step) == Some(&now);
+            if settled && now != *known {
+                known.clone_from(&now);
                 if !self.queue.contains(step) {
                     self.queue.push_back(step.clone());
                 }
             }
+            self.seen.insert(step.clone(), now);
         }
         for (step, known) in &mut self.dists {
             let now = dist_time(&self.tutorial.join(step));
@@ -299,6 +307,10 @@ impl Watcher {
         let Some(step) = self.queue.pop_front() else {
             return;
         };
+        // What this build reads: a change made since it was queued is in it.
+        let now = stamp(&self.tutorial.join(&step));
+        self.seen.insert(step.clone(), now.clone());
+        self.sources.insert(step.clone(), now);
         if let Some(build) = lock(pad).steps.get_mut(&step) {
             build.number += 1;
             build.state = State::Building;

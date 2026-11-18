@@ -332,6 +332,9 @@ fn a_change_under_one_steps_crates_builds_that_step_only() {
     assert!(fake.built.is_empty(), "{:?}", fake.built);
 
     fixture.touch("tutorial/03-walk/crates/game/src/main.rs", 1_000);
+    // Read once, then the same a tick later: built.
+    watcher.tick(&mut fake, &server.pad);
+    assert_eq!(fake.built, Vec::<String>::new());
     watcher.tick(&mut fake, &server.pad);
     assert_eq!(fake.built, ["03-walk"]);
     let pad = lock(&server.pad);
@@ -345,10 +348,31 @@ fn a_change_under_one_steps_crates_builds_that_step_only() {
     fixture.write("tutorial/02-board/crates/game/src/new.rs", "");
     fixture.touch("tutorial/03-walk/Cargo.toml", 1_000);
     fixture.write("tutorial/03-walk/notes.txt", "");
-    watcher.tick(&mut fake, &server.pad);
-    watcher.tick(&mut fake, &server.pad);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 4);
     assert_eq!(fake.built, ["03-walk", "02-board", "03-walk"]);
+}
+
+/// `n` ticks of `watcher`.
+fn ticks(watcher: &mut Watcher, fake: &mut Fake<'_>, pad: &Mutex<Pad>, n: usize) {
+    for _ in 0..n {
+        watcher.tick(fake, pad);
+    }
+}
+
+#[test]
+fn a_file_of_a_moment_beside_the_one_saved_makes_no_build_of_its_own() {
+    let fixture = Fixture::new("moment", &["03-walk"]);
+    let server = fixture.server(&["03-walk"]);
+    let mut watcher = Watcher::new(&server.tutorial, &["03-walk".to_owned()]);
+    let mut fake = Fake::new();
+    // `sed -i`, or an editor's safe save: a new file, then renamed over
+    // the one it replaces.
+    fixture.write("tutorial/03-walk/crates/game/src/sedX1b2c3", "fn main() {}");
+    watcher.tick(&mut fake, &server.pad);
+    fs::remove_file(fixture.path("tutorial/03-walk/crates/game/src/sedX1b2c3")).unwrap();
+    fixture.touch("tutorial/03-walk/crates/game/src/main.rs", 1_000);
+    ticks(&mut watcher, &mut fake, &server.pad, 4);
+    assert_eq!(fake.built, ["03-walk"]);
 }
 
 #[test]
@@ -366,10 +390,9 @@ fn a_change_during_a_build_builds_it_once_more() {
         saves += 1;
     });
     fixture.touch("tutorial/03-walk/crates/game/src/main.rs", 1_000);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 2);
     assert_eq!(watcher.queued(), Vec::<&str>::new());
-    watcher.tick(&mut fake, &server.pad);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 3);
     assert_eq!(fake.built, ["03-walk", "03-walk"]);
     assert_eq!(lock(&server.pad).steps["03-walk"].number, 2);
 }
@@ -385,13 +408,12 @@ fn changes_queue_each_step_once_in_order() {
         fixture.touch(&format!("tutorial/{step}/crates/game/src/main.rs"), 1_000);
     }
     let mut fake = Fake::new();
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 2);
     assert_eq!(fake.built, ["02-board"]);
     assert_eq!(watcher.queued(), ["04-push"]);
-    // Changed again while it waits: still once.
+    // Changed again while it waits: built once, with the change.
     fixture.touch("tutorial/04-push/crates/game/src/main.rs", 2_000);
-    watcher.tick(&mut fake, &server.pad);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 4);
     assert_eq!(fake.built, ["02-board", "04-push"]);
 }
 
@@ -403,7 +425,7 @@ fn a_failed_build_keeps_the_last_good_one_and_says_why() {
     let mut fake = Fake::with(|_| {});
     fake.fail = true;
     fixture.touch("tutorial/03-walk/crates/game/src/main.rs", 1_000);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 2);
     let build = server.answer(&get("/pad/build/03-walk"));
     let value: serde_json::Value = serde_json::from_slice(&build.body).unwrap();
     assert_eq!(value["state"], "failed");
@@ -416,7 +438,7 @@ fn a_failed_build_keeps_the_last_good_one_and_says_why() {
 
     fake.fail = false;
     fixture.touch("tutorial/03-walk/crates/game/src/main.rs", 2_000);
-    watcher.tick(&mut fake, &server.pad);
+    ticks(&mut watcher, &mut fake, &server.pad, 2);
     let build = lock(&server.pad).steps["03-walk"].clone();
     assert_eq!(
         build,
@@ -450,8 +472,7 @@ fn a_build_made_another_way_is_a_good_build() {
         fixture.touch("tutorial/05-undo/dist/web/index.html", 5_000);
     });
     fixture.touch("tutorial/05-undo/crates/game/src/main.rs", 1_000);
-    watcher.tick(&mut rebuild, &server.pad);
-    watcher.tick(&mut rebuild, &server.pad);
+    ticks(&mut watcher, &mut rebuild, &server.pad, 3);
     assert_eq!(rebuild.built, ["05-undo"]);
     let build = lock(&server.pad).steps["05-undo"].clone();
     assert_eq!((build.number, build.good), (2, 2));
@@ -473,6 +494,8 @@ fn the_server_answers_over_tcp() {
         .unwrap();
     let mut answer = String::new();
     client.read_to_string(&mut answer).unwrap();
+    // Closed, as a browser closes it after `Connection: close`.
+    drop(client);
     handle.join().unwrap();
     assert!(answer.starts_with("HTTP/1.1 200 OK\r\n"), "{answer}");
     assert!(answer.ends_with(r#"{"pad":true}"#), "{answer}");
