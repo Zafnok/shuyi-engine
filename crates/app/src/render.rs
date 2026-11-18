@@ -10,19 +10,22 @@
 //! both its cells, as the raster paints it. A painted picture (ADR-0078) is
 //! a texture of its own, uploaded only in a frame whose revision moved
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
+//! An image's texture is made the first frame a sprite draws it
+//! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5).
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use macroquad::prelude::*;
 use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
-use shuyi_assets::image::{ImageId, ImageTable};
+use shuyi_assets::image::ImageId;
 use shuyi_assets::lighting::Light;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::console::{Layout, layout};
 use shuyi_ui::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, Sprite};
 use shuyi_ui::frame::painted::{PaintedSprite, PaintedTable};
 
+use crate::image_textures::{ImageTextures, Missing, Read};
 use crate::painted::PaintedTextures;
 use crate::pictures::{Fresh, Remake, src_fits};
 
@@ -61,16 +64,14 @@ pub struct Renderer {
     clear: Rgb,
     /// Missing glyphs already logged, so each is reported once.
     warned: HashSet<char>,
-    /// A texture per image of the image table.
-    images: HashMap<ImageId, Texture2D>,
+    /// The images' textures, each made the first frame a sprite draws it.
+    images: ImageTextures<Texture2D>,
     /// The recoloured copies made so far: each is made the first time a
-    /// sprite needs it. `None` for an image that can't be decoded.
+    /// sprite needs it, from its image's file. `None` if that can't be
+    /// decoded.
     recoloured: HashMap<(ImageId, Recolour), Option<Texture2D>>,
     /// Images without a texture already logged, so each is reported once.
     warned_images: HashSet<ImageId>,
-    /// The file of each texture of [`images`](Self::images), for the
-    /// recoloured copies: a save that doesn't decode never comes here.
-    sources: HashMap<ImageId, Cow<'static, [u8]>>,
     /// The size of each image made again since the start, for what its
     /// sprites may show ([`src_fits`]).
     remade: HashMap<ImageId, (u16, u16)>,
@@ -79,18 +80,19 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Uploads the atlas image (`png`) and every image in `images` (read
-    /// with `bytes`, the game's embedded files by path). `clear` is the
-    /// console background (the palette's `black`). An image that can't be
-    /// decoded is logged and left without a texture.
+    /// Uploads the atlas image (`png`). `clear` is the console background
+    /// (the palette's `black`). An image's texture is made the first frame
+    /// a sprite draws it, from what `bytes` (the game's files by path)
+    /// gives then (ADR-0128 §5): an image it gives nothing for is drawn
+    /// in magenta and read again the next frame that draws it; one
+    /// that can't be decoded is logged once and drawn so for the run.
     pub fn new(
         atlas: FontAtlasDef,
         png: &[u8],
         clear: Rgb,
-        images: &ImageTable,
         bytes: fn(&str) -> Option<Cow<'static, [u8]>>,
     ) -> Result<Self, String> {
-        Self::with_files(atlas, png, clear, images, bytes)
+        Self::with_files(atlas, png, clear, bytes)
     }
 
     /// [`new`](Self::new), with `bytes` any way of reading the files.
@@ -98,33 +100,18 @@ impl Renderer {
         atlas: FontAtlasDef,
         png: &[u8],
         clear: Rgb,
-        images: &ImageTable,
-        bytes: impl Fn(&str) -> Option<Cow<'static, [u8]>>,
+        bytes: impl Fn(&str) -> Option<Cow<'static, [u8]>> + 'static,
     ) -> Result<Self, String> {
         let texture = upload(png).map_err(|e| format!("font atlas image: {e}"))?;
-        let mut textures = HashMap::new();
-        let mut sources = HashMap::new();
-        for id in images.ids() {
-            let source = bytes(id.path()).unwrap_or_default();
-            match upload(&source) {
-                Ok(texture) => {
-                    textures.insert(id, texture);
-                    sources.insert(id, source);
-                }
-                Err(e) => {
-                    warn!("image {}: {}", id.path(), e);
-                }
-            }
-        }
+        let read: Read = Box::new(bytes);
         Ok(Self {
             texture,
             atlas,
             clear,
             warned: HashSet::new(),
-            images: textures,
+            images: ImageTextures::new(read),
             recoloured: HashMap::new(),
             warned_images: HashSet::new(),
-            sources,
             remade: HashMap::new(),
             painted: PaintedTextures::new(),
         })
@@ -148,8 +135,7 @@ impl Renderer {
                     self.warned.clear();
                 }
                 Remake::Image(id) => {
-                    self.images.insert(id, texture);
-                    self.sources.insert(id, bytes);
+                    self.images.replace(id, texture, bytes);
                     self.remade.insert(id, (decoded.width, decoded.height));
                     self.recoloured.retain(|(image, _), _| *image != id);
                     self.warned_images.remove(&id);
@@ -352,9 +338,10 @@ impl Renderer {
     }
 
     /// Draws the visible part of `sprite` (its `clip`) at `(x, y)`, `size`
-    /// big: the matching part of its image, or a [`MISSING_COLOR`]
-    /// rectangle if the image has no texture, or was saved too small for
-    /// the sprite since the start (logged once per image).
+    /// big: the matching part of its image, its texture made now if it has
+    /// none yet, or a [`MISSING_COLOR`] rectangle if the image has no
+    /// texture, or was saved too small for the sprite since the start
+    /// (logged once per image).
     fn draw_sprite(&mut self, sprite: &Sprite, x: f32, y: f32, size: Vec2) {
         if let Some(&picture) = self.remade.get(&sprite.image)
             && !src_fits(sprite.src, picture)
@@ -378,19 +365,31 @@ impl Renderer {
             // image's own colours.
             _ => (None, Rgb::new(255, 255, 255)),
         };
-        let source = self.sources.get(&sprite.image);
+        if let Err(missing) = self.images.texture(sprite.image, upload) {
+            let path = sprite.image.path();
+            match missing {
+                Missing::Undecodable(Some(e)) => {
+                    warn!("image {}: {}", path, e);
+                }
+                Missing::NotRead if self.warned_images.insert(sprite.image) => {
+                    warn!("image {}: nothing read yet", path);
+                }
+                _ => {}
+            }
+            draw_rectangle(x, y, size.x, size.y, MISSING_COLOR);
+            return;
+        }
         let texture = match recolour {
-            None => self.images.get(&sprite.image),
-            Some(recolour) => self
-                .recoloured
-                .entry((sprite.image, recolour))
-                .or_insert_with(|| recoloured(source?, recolour))
-                .as_ref(),
+            None => self.images.get(sprite.image),
+            Some(recolour) => {
+                let source = self.images.source(sprite.image);
+                self.recoloured
+                    .entry((sprite.image, recolour))
+                    .or_insert_with(|| recoloured(source?, recolour))
+                    .as_ref()
+            }
         };
         let Some(texture) = texture else {
-            if self.warned_images.insert(sprite.image) {
-                warn!("image {} has no texture", sprite.image.path());
-            }
             draw_rectangle(x, y, size.x, size.y, MISSING_COLOR);
             return;
         };

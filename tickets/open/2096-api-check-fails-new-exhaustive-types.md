@@ -57,8 +57,8 @@ None.
     ADR-0039 in the PR that grows it, with a `Breaking:` line. This list
     only shrinks.
 
-  One line may hold several paths. A type an open ticket grows goes to
-  2095, not to `open` (the clause below).
+  One line may hold several paths. A type an open ticket grows moves
+  under ADR-0039 in this PR, not to `open` (step 2).
 - **The check** goes in a new `crates/xtask/src/api/exhaustive.rs` and
   reads the head's listing of each crate. It fails:
   - an exhaustive `pub struct` or `pub enum` line that the file doesn't
@@ -76,10 +76,8 @@ None.
 - ADR-0039's *How it is held* names the check and the file. The
   ADR-0039 lines of the `write-ticket` and `work-ticket` skills say that
   a new exhaustive public type is listed in the file with its kind.
-- **Either order with 2095:** if 2095 is done, its types are
-  `#[non_exhaustive]` and stay out of the file; if not, list
-  `FontAtlasDef`, `FontInk`, `Sound` and `DoctorInput` as `open`, and
-  2095 takes them out.
+- **From 2095 (done):** `FontAtlasDef`, `FontInk`, `Sound` and
+  `DoctorInput` are `#[non_exhaustive]` and stay out of the file.
 - **Either order with 3503:** if 3503 is done, reuse its parser of
   listing lines (`api/constructors.rs`) for the struct and enum lines;
   if not, write the parser here, in `api/exhaustive.rs`, and 3503 reuses
@@ -108,8 +106,7 @@ docs 100).
 2. List the head of each catalog crate with its features, as `listing`
    does. Sort its exhaustive structs and enums by kind into
    `tools/exhaustive.ron`. Search `tickets/open` for each name you would
-   put in `open`. A type a ticket grows goes to 2095 if 2095 is still
-   open; otherwise it moves under ADR-0039 here.
+   put in `open`. A type a ticket grows moves under ADR-0039 here.
 3. In `api/exhaustive.rs`, parse the file with the `ron` crate xtask
    already has. Parse the listing's lines: any `#[...]` before `pub`,
    then `struct` or `enum`, then the path up to `<`, `(` or the end of

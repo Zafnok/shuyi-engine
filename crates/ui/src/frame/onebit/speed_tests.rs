@@ -21,17 +21,9 @@ mod timing;
 /// `[` and `]` a column at either side, `"` two dots, `#` every pixel, and
 /// a wide `田`, its left half's left column and its right half's top row.
 pub(super) fn test_font() -> (FontAtlasDef, Vec<u8>) {
-    let atlas = FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 32,
-        glyphs: [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4), ('#', 5)].into(),
-        wide: [('田', 6)].into(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let glyphs = [('X', 0), ('?', 1), ('[', 2), (']', 3), ('"', 4), ('#', 5)].into();
+    let mut atlas = FontAtlasDef::new(8, 16, glyphs, 32);
+    atlas.wide = [('田', 6)].into();
     let mut bits = vec![0u8; 8 * 16];
     bits[6] = 0b0001_1000;
     bits[7] = 0b0001_1000;

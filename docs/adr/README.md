@@ -123,8 +123,8 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0108](0108-a-behaviour-line-for-a-change-a-game-sees-without-a-break.md) | A `Behaviour:` line for a change a game sees without a break | Accepted; amends ADR-0038 §6 |
 | [0109](0109-a-desktop-keeps-its-storage-in-the-folder-the-game-names-my-games-on-windows-the-old-folder-moved-there-once.md) | A desktop keeps its storage in the folder the game names: My Games on Windows, the old folder moved there once | Accepted |
 | [0110](0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md) | Desktop and web exports ship a baked pack beside the program | Accepted; extends ADR-0023, ADR-0058 and ADR-0101 §4 |
-| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112; §5 amended by ADR-0114 |
-| [0112](0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md) | `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again | Accepted; extends ADR-0111 §1 and §5 |
+| [0111](0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md) | A game's private files: a second repository, laid over its files whenever it is checked out | Accepted; carries game ADR-0040 and ADR-0117 into the template; extended by ADR-0112; §5 amended by ADR-0114 and ADR-0130 |
+| [0112](0112-shuyi-repos-makes-a-games-repositories-keys-and-secrets.md) | `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again | Accepted; extends ADR-0111 §1 and §5; §2 step 6 amended by ADR-0130 |
 | [0113](0113-a-game-made-without-the-skills-worked-examples-says-so-in-each-skill.md) | A game made without the skills' worked examples says so in each skill, and `check-skills` reads it | Accepted; amends ADR-0043 §3 |
 | [0114](0114-a-games-release-from-a-tag-one-plan-one-export-workflow.md) | A game's release from a tag: one plan of its targets, one export workflow shared with the engine, and a package holding private files uploaded only for a release | Accepted; amends ADR-0111 §5 |
 | [0115](0115-moving-a-program-aside-leaves-no-gap-of-its-own.md) | Moving a program aside leaves no gap of its own; the system's replacing of a name may, rarely, and the test counts separate gaps | Accepted |
@@ -142,5 +142,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0127](0127-messages-choose-their-words.md) | Messages choose their words: a subset of ICU MessageFormat 1, our own plural table, and typed arguments | Accepted; amends ADR-0020 |
 | [0128](0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md) | Asset memory: bytes handed out, not leaked; a pack read file by file; folders as groups; a load that counts and waits | Accepted; extends ADR-0008 §6, ADR-0023 §3, ADR-0024 §6 and ADR-0097 |
 | [0129](0129-the-arrow-keys-as-one-picture-a-role-of-their-own.md) | The cursor's arrow keys as one picture: a role of their own, a picture in the key caps' style | Accepted; extends ADR-0124 |
+| [0130](0130-no-cache-of-a-build-with-the-private-files-and-who-can-read-them.md) | No cache of a build with the private files, one test over every workflow, no key for Dependabot, and who can read them | Accepted; amends ADR-0111 §5 and ADR-0112 §2 |
 
 Template: [`0000-template.md`](0000-template.md).

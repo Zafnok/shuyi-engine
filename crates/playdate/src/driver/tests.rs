@@ -36,17 +36,12 @@ struct Drawn {
 fn drawn() -> &'static Drawn {
     static DRAWN: OnceLock<Drawn> = OnceLock::new();
     DRAWN.get_or_init(|| {
-        let atlas: &'static FontAtlasDef = Box::leak(Box::new(FontAtlasDef {
-            cell_w: 8,
-            cell_h: 16,
-            columns: 16,
-            glyphs: BTreeMap::from([('?', 0)]),
-            wide: BTreeMap::new(),
-            wide_sets: BTreeMap::new(),
-            bold: BTreeMap::new(),
-            bold_ink: None,
-            ink: None,
-        }));
+        let atlas: &'static FontAtlasDef = Box::leak(Box::new(FontAtlasDef::new(
+            8,
+            16,
+            BTreeMap::from([('?', 0)]),
+            16,
+        )));
         Drawn {
             atlas,
             font: Font::new(atlas, &[0xFF; 16]).unwrap_or_else(|e| panic!("{e}")),

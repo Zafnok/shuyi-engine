@@ -323,8 +323,8 @@ impl Macroquad {
                 Some(look) => {
                     let files = self.files;
                     let png = pictures::read(files, self.font_png).unwrap_or_default();
-                    let read = |path: &str| pictures::read(files, path);
-                    Renderer::with_files(look.font.clone(), &png, background, look.images, read)
+                    let read = move |path: &str| pictures::read(files, path);
+                    Renderer::with_files(look.font.clone(), &png, background, read)
                 }
                 None => Err("the game gave no font and pictures to draw with".to_owned()),
             };

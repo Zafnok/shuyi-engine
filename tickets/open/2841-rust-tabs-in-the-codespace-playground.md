@@ -43,6 +43,17 @@ What there is:
   output; the page polls it, reloads the frame on a new good build and
   shows a failed one in Problems. `/pad/…` answers only `GET`, and checks
   the `Host`.
+  **From 2840 (done):** `/pad/status` answers `{"pad":true}` (add `rust`
+  beside it); `/pad/build/<step>` answers `number` (builds since the
+  server started), `good` (the last good one's number), `state` (`none`,
+  `building`, `ok`, `failed`) and `output`. The polling is its own script,
+  `site/static/book-pad.js`, loaded by every step page (`chapter.html`),
+  which finds the playground's frame and Problems in the page: **Run**'s
+  wait for the next good build can read the same route, or hand off to
+  it. A step's `files/` is served from the step's
+  `crates/game/files/` on disk, so the playground's own text is the
+  reader's. The server answers every method but `GET` with 405
+  (`Server::answer`): the `POST` routes go before that refusal.
 - Each step's page names its files in a table (*Is it new?*); its
   Rust is under `site/tutorial/<step>/crates/game/src/`.
 

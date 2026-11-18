@@ -531,17 +531,7 @@ mod tests {
 
     #[test]
     fn a_one_bit_look_is_part_of_a_look_and_says_what_it_holds() {
-        let font = FontAtlasDef {
-            cell_w: 8,
-            cell_h: 8,
-            columns: 16,
-            glyphs: alloc::collections::BTreeMap::new(),
-            wide: alloc::collections::BTreeMap::new(),
-            wide_sets: alloc::collections::BTreeMap::new(),
-            bold: alloc::collections::BTreeMap::new(),
-            bold_ink: None,
-            ink: None,
-        };
+        let font = FontAtlasDef::new(8, 8, alloc::collections::BTreeMap::new(), 16);
         let images = ImageTable::default();
         let map = PatternMap::default();
         let rows = Font::new(&font, &[]).unwrap_or_else(|e| panic!("{e}"));
@@ -555,17 +545,7 @@ mod tests {
 
     #[test]
     fn a_new_look_is_the_literal() {
-        let font = FontAtlasDef {
-            cell_w: 8,
-            cell_h: 8,
-            columns: 16,
-            glyphs: alloc::collections::BTreeMap::new(),
-            wide: alloc::collections::BTreeMap::new(),
-            wide_sets: alloc::collections::BTreeMap::new(),
-            bold: alloc::collections::BTreeMap::new(),
-            bold_ink: None,
-            ink: None,
-        };
+        let font = FontAtlasDef::new(8, 8, alloc::collections::BTreeMap::new(), 16);
         let images = ImageTable::default();
         let look = Look::new(&font, &images);
         let literal = Look {

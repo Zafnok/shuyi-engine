@@ -16,7 +16,10 @@ winget install -e --id getzola.zola --version 0.21.0
 ```
 
 On Linux or macOS, take `zola-v0.21.0-*` from
-[its release](https://github.com/getzola/zola/releases/tag/v0.21.0).
+[its release](https://github.com/getzola/zola/releases/tag/v0.21.0); on
+Linux on x86_64, [`scripts/setup-zola.sh`](../scripts/setup-zola.sh) does,
+and checks its SHA-256: the one place the version is written, which CI's
+action (`.github/actions/setup-zola/`) and the book's dev container run.
 Then, in this folder, write the problem codes' pages and the feature
 cards' statuses, and serve the site:
 
@@ -70,6 +73,7 @@ python -m http.server --directory public 1111
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
 | `static/book-side.js` | The folds of the book's contents and of the page's headings beside each page of the book, and the heading being read: plain JavaScript ([Beside each page](#beside-each-page)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
+| `static/book-pad.js` | A step's page served from the book's Codespace following the step's builds there; nothing on the public site ([The code pad](#the-code-pad)) |
 | `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script, which runs the exercises' checks too ([The playground](#the-playground), [Exercises](#exercises)) |
 | `static/ron-paint.js`, `tests/ron-paint.mjs` | The playground's RON colors: a tokenizer by `syntaxes/ron.sublime-syntax`'s rules, and its test against Zola's own output, which CI's `site` job runs with Node ([The playground](#the-playground)) |
 | `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
@@ -447,7 +451,10 @@ the tab's storage. It edits data, never Rust: a page can't build Rust.
   `extra.files` has one, folded under *Play this step* until the reader
   opens it: the step's `play/` beside the files its page lists, from its
   folder's `crates/game/files/` (the project's `extra.game_files`). The
-  frame loads only once the fold is open. A step's try of those files has
+  frame loads only once the fold is open. In the book served from its
+  Codespace ([The code pad](#the-code-pad)), the frame plays the reader's
+  own build of the step, loaded again on each new good build, and the
+  files are the step's own as they are on its disk. A step's try of those files has
   a **Try this here** button, which makes the try's edits to the game's own
   text of its files, opens the playground on the first, and runs it.
 - `templates/playground-macros.html` is the playground both show, and
@@ -494,13 +501,16 @@ The playground edits data; a step's Rust is changed in the book's
 Codespace (ticket 2837, [ADR-0126](../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md)):
 a Codespace of this repository made from the book's dev container,
 [`.devcontainer/book/devcontainer.json`](../.devcontainer/book/devcontainer.json),
-on the reader's own GitHub account. Each step's page links it beside *Play
-this step* (`templates/chapter.html`, from `config.toml`'s
-`extra.codespace`), on the smallest machine (`machine=basicLinux32gb`, 2
-cores: a step's rebuild is no faster on more), and names the step's folder
-and the two commands; the step's twin says the same (`cargo xtask llms`,
-its `CODESPACE`). The quick start and the project's front page say how to
-use it.
+on the reader's own GitHub account. It serves this book (ticket 2840), so
+the reader follows it in the editor's preview beside the project, and each
+step's game there is the reader's own build of the step, built again when
+its files change. Each step's page links it beside *Play this step*
+(**Open this book in a Codespace**, `templates/chapter.html`, from
+`config.toml`'s `extra.codespace`), on the smallest machine
+(`machine=basicLinux32gb`, 2 cores: a step's rebuild is no faster on more),
+and names the step's folder; the step's twin says the same (`cargo xtask
+llms`, its `CODESPACE`). The quick start and the project's front page say
+how to use it.
 
 - **The container** is the root's image and setup
   (`scripts/setup-linux.sh`), opened at `site/tutorial/`, with no MCP
@@ -511,25 +521,71 @@ use it.
   resolve one set of features of every crate they build (ticket 2839: a
   step asks for `serde` and `ron` with the features the engine turns on,
   not their `default`), so the engine is built once and each other step
-  builds only its own crate. The `onCreateCommand` sets up, adds Python
-  (the image has none), builds the ten steps and serves step 2. A prebuild
-  runs it, so a Codespace made from it opens with every step built; one
-  made without it opens once they are.
-- **Serving:** the `onCreateCommand`, once the steps are built, and the
-  `postAttachCommand` run [`site/tutorial/serve.sh`](tutorial/serve.sh), which serves a step's
-  `dist/web/` on port 4000 with Python's server, uncached: the step whose
-  folder it runs in, the one named (`bash serve.sh 03-walk`), or the last
-  one served (`~/.book-step`, step 2 at first). The port is forwarded,
-  private to the reader; the Ports tab opens it, and a preview opens by
-  itself when the `postAttachCommand` starts the server again. After an edit, `cargo
-  shuyi web` in the step's folder builds it again into the same folder,
-  and a reload plays it. When `shuyi web --serve` (2528) is done, it
-  takes `serve.sh`'s place.
+  builds only its own crate. The `onCreateCommand` sets up, adds Zola
+  ([`scripts/setup-zola.sh`](../scripts/setup-zola.sh), CI's version and
+  checksum, from the one place both read), builds the ten steps and builds
+  `xtask`, into the same target folder. A prebuild runs it, so a Codespace
+  made from it opens with every step built; one made without it opens once
+  they are.
+- **The server** is `cargo xtask book-pad`
+  ([`crates/xtask/src/book_pad.rs`](../crates/xtask/src/book_pad.rs),
+  `std::net` alone). The `postAttachCommand` starts it in the background
+  with [`.devcontainer/book/pad.sh`](../.devcontainer/book/pad.sh); its log
+  is `~/.book-pad.log`. A second start (another window) finds port 4000
+  taken and says the book is served already. As it starts, it builds the
+  site as CI does (`site-data`, `errors.sh`, `copy-playground.sh`,
+  `copy-previews.sh`, `zola build`) into `~/book-site`, outside the
+  repository, at the forwarded address
+  (`https://${CODESPACE_NAME}-4000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/`,
+  read then: a prebuild's name isn't the reader's), or at
+  `http://127.0.0.1:4000/` outside a Codespace (`--out <dir>` builds it
+  elsewhere, `--no-build` serves what is there). The port is forwarded,
+  private to the reader. VS Code, attached by then, sees it open and shows
+  the book in a preview (it opens none for a port already open as it
+  attaches, which is why the server isn't started before it); the Ports
+  tab opens it too.
+- **Its routes**, `GET` only, on `127.0.0.1:4000`, uncached, and refused
+  (403) to a request whose `Host` is not `127.0.0.1:4000`, `localhost:4000`
+  or the forwarded host:
+  - `/learn/book/box-pusher/<step>/play/…`: the step's own web build,
+    `site/tutorial/<step>/dist/web/…`, not CI's; and its `files/…`, the
+    playground's own text, from the step's `crates/game/files/`;
+  - `/`: a redirect to the last step page served (step 2's at first);
+  - `/pad/status`: `{"pad":true}`, which the public site answers with a
+    404;
+  - `/pad/build/<step>`: the step's build as JSON, `number` (builds since
+    the server started), `good` (the last good one's number, 0 for the one
+    there at the start), `state` (`none` before its first, `building`,
+    `ok`, `failed`) and a failed build's `output`, cargo's;
+  - anything else: the built site's file, a folder's `index.html`, its
+    `404.html`; a path with a `..` or `.` segment, a `\`, a `:` or a bad
+    escape is a 400.
+- **The rebuilding:** once a second the server reads the modification
+  times under each step's `crates/` and its `Cargo.toml`, and queues a step
+  that changed, once, when two reads in a row agree (an editor's safe save,
+  or `sed -i`, writes a file of a moment beside the one it replaces, which
+  would otherwise make a build of its own); it builds one at a time (`cargo shuyi web` in the
+  step's folder), and a change saved during a build queues one more. A
+  failed build leaves the last good one in `dist/web/` (the web build
+  replaces it only whole), which `play/` keeps serving. A new
+  `dist/web/index.html` it didn't make (the container's `build.sh`, or the
+  reader's own `cargo shuyi web`) counts as a good build.
+- **The page follows it:** each step's page loads
+  [`static/book-pad.js`](static/book-pad.js), which asks `pad/status` at
+  the site's base. Served from the Codespace, it shows the page's
+  `pad-here` line in place of the Codespace's button and line
+  (`pad-away`), and polls `pad/build/<step>` each second while the page is
+  shown: *Building…* beside *Play this step*, the playground's frame loaded
+  again on each new good build, and a failed build's output in the
+  playground's Problems (in `pad-output`, under the line, on a step with
+  no playground). On the public site the 404 leaves the page as it is.
 - **Measured** on a 2-core Codespace (ticket 2839's notes; 2837's had
   the first, with three sets of features): the first step's build 357 s
   from nothing, each of the other nine 7 to 11 s; all ten 440 s, into
   1.7 GB of target folder; the Codespace open 9 minutes after it was
-  made. An edit to step 2's Rust rebuilds in 8 s (2837).
+  made. With the server (ticket 2840's notes, before 2839): `xtask` 125
+  s from nothing and about 1.7 GB more, the site seconds, an edit to a
+  step's Rust in its page's frame 5 to 8 s.
 - **The prebuild** is Nick's, in the repository's settings: this
   container, on `main`, one region, one version, made when the container
   changes. A Codespace made from it opens with every step built.
@@ -544,7 +600,8 @@ use it.
   targets and misses it). A new step goes in `build.sh`'s list there; a
   change to the root's setup goes in both.
   `check-build.sh` fails a step's page that doesn't link the Codespace or
-  name its folder.
+  name its folder. `book-pad`'s tests (its routes, the watcher and the build
+  states, with a fake builder) are `xtask`'s.
 
 ## The docs for agents
 

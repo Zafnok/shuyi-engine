@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3501 — Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates
@@ -219,37 +219,37 @@ classifier 150).
 
 ## Acceptance criteria
 
-- [ ] For #420's files (`crates/cli/tests/it/binary.rs`, `docs/ROADMAP.md`,
+- [x] For #420's files (`crates/cli/tests/it/binary.rs`, `docs/ROADMAP.md`,
       `tickets/done/2063-….md`, `tickets/open/2063-….md`), the plan runs
       clippy and test. It runs neither template, nor skill examples,
       tutorial-tries or exercises.
-- [ ] For #415's files (`tools/compile-budget.ron`, `tickets/done/2080-….md`),
+- [x] For #415's files (`tools/compile-budget.ron`, `tickets/done/2080-….md`),
       the plan runs `compile-times (crates)` and `test`, and none of the
       five game-building gates.
-- [ ] For #405's files (the list in Context), the classifier says
+- [x] For #405's files (the list in Context), the classifier says
       `code=false`. The plan runs `site` and the tickets' checks, and no
       Rust gate: no fmt, clippy, test, docs, no-std, modules, wasm,
       templates, skill examples or tutorial-tries.
-- [ ] For `crates/app/src/lib.rs` alone, the plan runs both templates,
+- [x] For `crates/app/src/lib.rs` alone, the plan runs both templates,
       skill examples, tutorial-tries and exercises.
-- [ ] A runner file runs exactly the game-building gates that use it:
+- [x] A runner file runs exactly the game-building gates that use it:
       `crates/xtask/src/skills.rs` runs skill examples only,
       `crates/xtask/src/tries.rs` runs tutorial-tries and exercises
       (`copy_tree`), `crates/xtask/src/exercises.rs` runs exercises only,
       and `crates/xtask/src/gates.rs` runs none of the five.
-- [ ] `site/static/tutorial-tries/<any>.png` runs tutorial-tries.
+- [x] `site/static/tutorial-tries/<any>.png` runs tutorial-tries.
       `site/exercises/<any>` runs exercises. `skills/shuyi-gates/example.ron`
       and `templates/<any>` run all five.
-- [ ] `site/config.toml`, `site/snippets/src/lib.rs`,
+- [x] `site/config.toml`, `site/snippets/src/lib.rs`,
       `site/tutorial/03-walk/crates/game/src/main.rs` and
       `site/exercises/<any>` classify as code. `site/templates/base.html`,
       `site/static/style.css` and `site/check-build.sh` don't.
-- [ ] The summary of a run puts every CI-only gate on one line after the
+- [x] The summary of a run puts every CI-only gate on one line after the
       table. `--list` still gives each one's reason.
-- [ ] CI's `ci.yml` is unchanged. Its jobs run on every PR whose
+- [x] CI's `ci.yml` is unchanged. Its jobs run on every PR whose
       `code` output is true, as before.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -271,5 +271,68 @@ classifier 150).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `gates.rs` gains `builds_a_game(path)`: the crates' code outside xtask
+  and the tests (a `tests` or `benches` folder, a `tests.rs`, a `.snap`),
+  `templates/`, `skills/`, `targets/`, `.cargo/`, and the root's
+  `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `docs/modules.ron`
+  and the two licenses. `touches_skill_examples`, `touches_tutorial_tries`
+  and `touches_exercises` add each gate's own paths, read from
+  `tries`' and `exercises`' constants (now `pub(crate)`: `tries::STEPS`,
+  `PICTURES`, `PAGES`, `SNIPPETS`; `exercises::STEPS`, `EXERCISES`,
+  `PAGES`), and its runner modules in xtask (`skills`, `script`; `tries`;
+  `exercises`, `book`, `llms`, `tries`), file or folder.
+- The two templates, skill examples, tutorial-tries and exercises take
+  those as `Local::When` rules. A `When` rule's text is now the whole
+  reason in the summary (the `tutorial locks` text starts "nothing
+  changed:" itself), so the new texts read "not needed: nothing changed
+  that a new game builds from (…)". The list of inputs is written once,
+  in a `game_inputs!` macro the texts `concat!`.
+- `changes.yml`'s code arm also names `site/tutorial/*`,
+  `site/exercises/*`, `site/snippets/*`, `site/static/tutorial-tries/*`
+  and `site/config.toml`; a new `site/*` arm after the docs arm sets no
+  output. The comment at the top says which `site/` paths stay code and
+  why the rest sets nothing. No new output; `ci.yml` is unchanged.
+- The summary puts the CI-only gates on one line after the table;
+  `--list` keeps a row each with its reason (`Header` gains `list`, and
+  the block's first line names `--list` when it was given).
+- The `run-gates` skill says when the local run picks each of the five,
+  what a game is built from, the summary's CI-only line, and where the
+  site split lives. The `work-ticket` skill's §6 still holds: the block
+  names each gate that ran and which CI alone runs. `gates.rs`' module
+  doc names the new rules.
+
+The plans for the evidence diffs (`cargo xtask gates --list --base
+<this branch>` on a scratch commit touching each PR's files), CI-only
+line left out:
+
+- #420 (`crates/cli/tests/it/binary.rs`, `docs/ROADMAP.md`, the 2063
+  ticket in `open/` and `done/`): fmt, typos, ticket-lint, engine lint,
+  skill loaders, tickets' checks, layers, site (for `tickets/`), clippy,
+  docs, deny, machete, test, no-std, modules, wasm and compile-times
+  run; tutorial locks, both templates, skill examples, tutorial-tries
+  and exercises are "not needed".
+- #415 (`tools/compile-budget.ron`, the 2080 ticket): the same plan as
+  #420: compile-times and test run, none of the five game-building
+  gates.
+- #405 (the site's templates, statics, `check-build.sh`, Markdown and
+  the 2834 ticket): `code` is false; typos, ticket-lint, skill loaders,
+  tickets' checks and site run, and every Rust gate is "not needed:
+  CI's `code` filter is false for this diff".
+
+Deviations: none from the steps. The ticket was written today, so §0's
+age check found nothing to re-check.
+
+What CI does differently: a pull request whose only non-docs paths are website-only
+files under `site/` (not the tutorial, the exercises, the snippets, the
+tries' pictures or `site/config.toml`) no longer runs the `code` jobs;
+the `site` job runs as before. No game sees it: the game runs no engine
+workflow and no xtask.
+
+No break: only xtask (unpublished) and the workflows change.
+
+Book: none, no public API or behaviour a game sees changed; the change
+is the engine's own gates.
+
+Nick input: none.

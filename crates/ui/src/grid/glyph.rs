@@ -50,6 +50,9 @@ pub struct GlyphSkin {
     /// cells left at the sides. (The sprite skin's glyph ground is always
     /// in the plain style.)
     pub style: GlyphStyle,
+    /// How the threat arrows are drawn ([`with_threat_shape`](Self::with_threat_shape)):
+    /// straight unless given.
+    pub threat_shape: threat::Shape,
 }
 
 impl<U> GridSkin<U> for GlyphSkin {
@@ -99,7 +102,8 @@ impl<U> GridSkin<U> for GlyphSkin {
         style.draw_cursor(self.cursor_ink(looks), buf, scene, &layout, area);
         // From the edge of each enemy's tile: never over its letters.
         let colors = style.threat_colors(looks, &self.colors);
-        threat::paint(scene, &grid, threat::Start::Edge, colors, buf);
+        let shape = self.threat_shape;
+        threat::paint_shaped(scene, &grid, threat::Start::Edge, shape, colors, buf);
     }
 }
 
@@ -112,7 +116,16 @@ impl GlyphSkin {
             walk,
             foot_px,
             style: GlyphStyle::PLAIN,
+            threat_shape: threat::Shape::Straight,
         }
+    }
+
+    /// The same skin, drawing the threat arrows in `shape` (ticket 3223).
+    /// The sprite skin built on it draws them so too.
+    #[must_use]
+    pub const fn with_threat_shape(mut self, shape: threat::Shape) -> Self {
+        self.threat_shape = shape;
+        self
     }
 
     /// The same skin in `style`.
@@ -425,6 +438,20 @@ pub(crate) mod tests {
         assert!(arrows.iter().all(|o| o.layer == Layer::Over));
         let marks: Vec<_> = expect.iter().filter(|o| o.color == colors.mark).collect();
         assert_eq!(marks[0].rect, Rect::new(134, 84, 3, 6));
+        // A skin built with another shape draws that one (ticket 3223).
+        let arcs = GLYPH.with_threat_shape(threat::Shape::ArcAndFrame);
+        assert_eq!(GLYPH.threat_shape, threat::Shape::Straight);
+        let mut buf = blank();
+        arcs.paint(&looks, &scene, area, &Letters, &mut buf);
+        let shaped = threat::threat_overlays_shaped(
+            &threat,
+            &grid,
+            threat::Start::Edge,
+            threat::Shape::ArcAndFrame,
+            colors,
+        );
+        assert!(buf.overlays().ends_with(&shaped));
+        assert_ne!(shaped, expect);
         assert_eq!(marks[1].rect, Rect::new(134, 91, 3, 2));
         assert_eq!(marks.len(), 2);
     }

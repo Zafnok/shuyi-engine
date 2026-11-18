@@ -26,17 +26,8 @@ use crate::headless::ScriptedKeyboard;
 use crate::platform::{Look, Platform};
 
 /// An empty font and image table: the toy draws neither.
-static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef {
-    cell_w: 0,
-    cell_h: 0,
-    columns: 0,
-    glyphs: BTreeMap::new(),
-    wide: BTreeMap::new(),
-    wide_sets: BTreeMap::new(),
-    bold: BTreeMap::new(),
-    bold_ink: None,
-    ink: None,
-};
+static FONT: shuyi_assets::font::FontAtlasDef =
+    shuyi_assets::font::FontAtlasDef::new(0, 0, BTreeMap::new(), 0);
 static IMAGES: shuyi_assets::image::ImageTable =
     shuyi_assets::image::ImageTable::new(BTreeMap::new());
 

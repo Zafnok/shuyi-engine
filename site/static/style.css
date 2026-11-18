@@ -270,6 +270,20 @@ h3 {
   font-size: 0.95rem;
 }
 
+/* Served from the book's Codespace (ticket 2840, `book-pad.js`): the step's
+   build beside Play this step, and a failed build's output on a step with
+   no playground. */
+.pad-state {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.pad-output {
+  max-height: 24rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 .status-key {
   color: var(--muted);
   font-size: 0.95rem;

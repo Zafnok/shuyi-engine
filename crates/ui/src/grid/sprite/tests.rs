@@ -826,3 +826,30 @@ fn a_size_of_the_art_too_big_for_the_console_is_the_largest_there_is() {
     };
     assert_eq!(src_rect(rect), Rect::new(1, 2, 3, 4));
 }
+
+/// A sprite skin draws the threat arrows in its glyph skin's shape
+/// (ticket 3223).
+#[test]
+fn the_sprite_skin_draws_its_glyph_skins_threat_shape() {
+    let kit = Kit::new();
+    let colors = kit.looks().threat(&GLYPH.colors);
+    let area = Rect::new(2, 1, 24, 8);
+    let shape = threat::Shape::Arc;
+    let skin = SpriteSkin::new(None, GLYPH.with_threat_shape(shape), GLYPH.walk);
+    let mut scene = plains();
+    scene.push_unit(Piece::new(4, 'f', p(2, 1)));
+    let arrows = threat(p(0, 0), &[p(2, 1)]);
+    scene.threat = Some(arrows.clone());
+    let mut buf = blank();
+    let cards = Cards { card: kit.card() };
+    skin.paint(&kit.looks(), &scene, area, &cards, &mut buf);
+    let grid = skin.grid(&scene, area);
+    let expect: Vec<Item> =
+        threat::threat_overlays_shaped(&arrows, &grid, threat::Start::Middle, shape, colors)
+            .into_iter()
+            .map(Item::Rect)
+            .collect();
+    assert!(buf.items().ends_with(&expect));
+    let straight = threat::threat_overlays(&arrows, &grid, threat::Start::Middle, colors);
+    assert_ne!(expect.len(), straight.len());
+}

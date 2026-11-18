@@ -24,17 +24,7 @@ use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
 use shuyi_ui::{Game, GameHooks, KeyPrompt, RawInputEvent, ScreenHook};
 
 /// An empty font and image table: the toy draws neither.
-static FONT: FontAtlasDef = FontAtlasDef {
-    cell_w: 0,
-    cell_h: 0,
-    columns: 0,
-    glyphs: BTreeMap::new(),
-    wide: BTreeMap::new(),
-    wide_sets: BTreeMap::new(),
-    bold: BTreeMap::new(),
-    bold_ink: None,
-    ink: None,
-};
+static FONT: FontAtlasDef = FontAtlasDef::new(0, 0, BTreeMap::new(), 0);
 static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 
 pub(crate) fn look(_: &Toy) -> Look<'_> {

@@ -29,8 +29,11 @@ and its workflows' artifacts, are anyone's.
   the repositories: it acts on the developer's GitHub account, so ask
   them before running it): the gates read the real game. A
   playtest workflow passes the secret to the engine's, by name, so the
-  bots play them too. A fork's pull request builds on the public files.
-  No workflow may upload an artifact that embeds them, but
+  bots play them too. A fork's or Dependabot's pull request builds on
+  the public files. Anyone with write access to this repository can read
+  the private one through CI: ask the developer before suggesting a
+  collaborator. No job that checks them out caches `target/`, and no
+  workflow may upload an artifact that embeds them, but
   `export.yml` for a release (`release.yml` on a tag), which publishes
   them inside the program anyway. A release's dry run builds without
   uploading, and warns and builds on the public files without the key.
