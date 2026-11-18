@@ -1143,7 +1143,7 @@ fn bare(expression: &str) -> &str {
 fn passes_the_key(job: &serde_norway::Value) -> bool {
     match job.get("secrets") {
         Some(serde_norway::Value::String(all)) => all == "inherit",
-        Some(secrets) => secrets.get("PRIVATE_ASSETS_KEY").is_some(),
+        Some(named) => named.get("PRIVATE_ASSETS_KEY").is_some(),
         None => false,
     }
 }
@@ -1476,16 +1476,16 @@ fn each_rule_on_a_job_with_the_private_files_refuses_its_leak() {
 
 #[test]
 fn a_workflow_given_the_private_files_key_is_one_the_test_reads() {
-    let caller = |secrets: &str| {
-        format!("on: push\njobs:\n  call:\n    uses: ./.github/workflows/other.yml\n{secrets}")
+    let caller = |handover: &str| {
+        format!("on: push\njobs:\n  call:\n    uses: ./.github/workflows/other.yml\n{handover}")
     };
     let by_name = "    secrets:\n      PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}\n";
     let guard = format!("${{{{ {NO_PRIVATE_FILES} }}}}");
     let other = private_job("workflow_call", &rust_cache(&guard));
     let read = [(".github/workflows/other.yml", other.as_str())];
-    for secrets in [by_name, "    secrets: inherit\n"] {
-        assert_refused(&caller(secrets), "a workflow this test doesn't read");
-        assert_eq!(leaks_of(&caller(secrets), &read), Vec::<String>::new());
+    for handover in [by_name, "    secrets: inherit\n"] {
+        assert_refused(&caller(handover), "a workflow this test doesn't read");
+        assert_eq!(leaks_of(&caller(handover), &read), Vec::<String>::new());
     }
     // No key, nothing to read.
     assert_kept(&caller(""));
