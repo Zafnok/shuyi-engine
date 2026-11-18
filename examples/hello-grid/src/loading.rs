@@ -113,7 +113,8 @@ impl DataLoad {
     ///
     /// # Errors
     ///
-    /// Each file's problems, and how many files aren't read yet.
+    /// Each file's problems; before every file is read, those so far and how
+    /// many files aren't read yet.
     pub fn finish(self) -> Result<Hello, Vec<ContentError>> {
         let Self {
             english,
@@ -129,6 +130,7 @@ impl DataLoad {
         if read < Self::FILES {
             let left = format!("{} of its files not read", Self::FILES - read);
             errors.push(ContentError::new("the game's data", left));
+            return Err(errors);
         }
         match (english, keymap, palette, dialogue, stage_map, font, images) {
             (
