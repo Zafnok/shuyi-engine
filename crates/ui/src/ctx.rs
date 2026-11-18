@@ -652,11 +652,15 @@ impl<G: GameData> Ctx<G> {
     ) -> StyledText {
         let device = self.device.message_value();
         let target = self.platform.target.as_str();
-        let mut all: Vec<(&str, &dyn ToArg)> = args.to_vec();
-        all.push((message::DEVICE, &device));
-        all.push((message::TARGET, &target));
+        let value = |name: &str| {
+            crate::text::value_of(args, name).or_else(|| match name {
+                message::DEVICE => Some(device.to_arg()),
+                message::TARGET => Some(target.to_arg()),
+                _ => None,
+            })
+        };
         let lookup = |name: &str| self.game.key_text_styled(name, keys);
-        crate::text::fill_styled_with(text, lang, &all, key_args, lookup)
+        crate::text::fill_styled_by(text, lang, value, key_args, lookup)
     }
 
     /// [`label`](Self::label), each key's name in a key span

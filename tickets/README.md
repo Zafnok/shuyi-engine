@@ -36,6 +36,7 @@ words, not the whole title: no tracked path may be over 150 characters
 | `32xx` | Frame, screens and skins, continued: `23xx` filled up on 2026-11-03, so new tickets of that area start here |
 | `33xx` | Export targets, continued: `30xx` filled up on 2026-11-08, so new tickets of that area start here |
 | `34xx` | Tools and AI support, continued: `25xx` filled up on 2026-11-14, so new tickets of that area start here |
+| `35xx` | Repository and foundation, continued: `20xx` filled up on 2026-11-17, so new tickets of that area start here |
 
 Any other four-digit id in a ticket's text is the **game repository's**
 ticket (`github.com/Zafnok/visions-of-shuyi/tree/main/tickets`): for

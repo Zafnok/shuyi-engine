@@ -246,6 +246,10 @@ A frame number here counts `App::frame` calls from 1, as 2518's
     actions are (`crates/ui/src/widgets/ask.rs`,
     `widgets/name_entry.rs`, `toy/grid.rs`,
     `examples/hello-grid/src/screens/stage.rs`);
+  - **Either order with 2097:** if 2097 is done, `cargo xtask
+    omitted-patterns` fails every other engine match on `UiAction`
+    that doesn't name it: name it there too; if not, nothing to do
+    (2097 names it);
   - each press asks to go back one second.
 - **The request.** 2315's `DebugView` (`Ctx::debug_view`) gains
   `rewind: Option<Rewind>`, with `Rewind::Back { seconds: u8 }` and
