@@ -109,9 +109,8 @@ impl Machine {
         let home = std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
             .map(PathBuf::from);
-        let path = std::env::var_os("PATH")
-            .map(|path| std::env::split_paths(&path).collect())
-            .unwrap_or_default();
+        let path =
+            std::env::var_os("PATH").map_or_default(|path| std::env::split_paths(&path).collect());
         Self { home, path }
     }
 

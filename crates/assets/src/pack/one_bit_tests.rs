@@ -121,7 +121,7 @@ fn decoding_a_baked_picture_equals_dithering_its_decoded_source() {
     );
     let kinds = |path: &str| {
         let file = made.files.iter().find(|f| f.path == path);
-        file.map(|f| f.kinds.clone()).unwrap_or_default()
+        file.map_or_default(|f| f.kinds.clone())
     };
     assert_eq!(kinds("images/ramp.png"), ["one-bit picture"]);
     assert_eq!(kinds("data/palette.ron"), [] as [&str; 0]);

@@ -164,8 +164,7 @@ impl Status {
         };
         let screens: Vec<String> = app
             .game()
-            .map(|game| game.screens().into_iter().map(str::to_owned).collect())
-            .unwrap_or_default();
+            .map_or_default(|game| game.screens().into_iter().map(str::to_owned).collect());
         Self {
             frames: app.frame_number(),
             phase,

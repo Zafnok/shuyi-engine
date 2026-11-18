@@ -101,8 +101,7 @@ fn act(h: &mut Harness<Toy>, act: Do) -> &[SystemEvent] {
 
 fn heard(h: &Harness<Toy>) -> Vec<SystemEvent> {
     h.screen::<Files>()
-        .map(|files| files.heard.clone())
-        .unwrap_or_default()
+        .map_or_default(|files| files.heard.clone())
 }
 
 #[test]

@@ -471,8 +471,7 @@ fn build_inputs(cx: &ExportCx, exporter: &dyn Exporter) -> Result<BuildInputs, S
         .current_dir(&cx.root)
         .output()
         .ok()
-        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-        .unwrap_or_default();
+        .map_or_default(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned());
     let hash = |file: PathBuf| fs::read(file).ok().map(|bytes| sha256::hex(&bytes));
     Ok(BuildInputs {
         target: cx.target.clone(),

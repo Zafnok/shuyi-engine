@@ -251,8 +251,7 @@ pub fn parse_graph(json: &str) -> Result<Graph, String> {
         let dir = package
             .manifest_path
             .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_default();
+            .map_or_default(Path::to_path_buf);
         let member = Member {
             dir,
             deps,

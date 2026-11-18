@@ -520,7 +520,7 @@ impl Bake {
         let mut files = Vec::new();
         for path in bundle.files_under("") {
             let source = bundle.bytes(path).unwrap_or_default();
-            let kinds = planned.get(path).map(Vec::as_slice).unwrap_or_default();
+            let kinds = planned.get(path).map_or_default(Vec::as_slice);
             let content = if kinds.is_empty() {
                 Content::Raw(source.to_vec())
             } else if let [kind] = kinds

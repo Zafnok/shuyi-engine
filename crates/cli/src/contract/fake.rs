@@ -449,10 +449,7 @@ impl GameTools for Fake {
     }
 
     fn playtest_stages(&self) -> Vec<String> {
-        self.playtest
-            .as_ref()
-            .map(|p| p.stages.clone())
-            .unwrap_or_default()
+        self.playtest.as_ref().map_or_default(|p| p.stages.clone())
     }
 
     fn playtest_defaults(&self) -> Tries {

@@ -437,8 +437,7 @@ fn what_it_found_reads_for_people() {
 fn keys(value: &serde_json::Value) -> Vec<&str> {
     let mut keys: Vec<&str> = value
         .as_object()
-        .map(|o| o.keys().map(String::as_str).collect())
-        .unwrap_or_default();
+        .map_or_default(|o| o.keys().map(String::as_str).collect());
     keys.sort_unstable();
     keys
 }

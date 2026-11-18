@@ -326,8 +326,7 @@ impl Process {
         let tail = self
             .tail
             .lock()
-            .map(|tail| String::from_utf8_lossy(&tail).trim().to_owned())
-            .unwrap_or_default();
+            .map_or_default(|tail| String::from_utf8_lossy(&tail).trim().to_owned());
         let mut out = format!("{} stopped before it answered", self.named);
         if let Some(code) = status {
             let _ = write!(out, " (exit code {code})");
