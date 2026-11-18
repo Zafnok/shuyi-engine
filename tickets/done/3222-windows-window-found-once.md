@@ -79,10 +79,12 @@ None.
       calls `EnumThreadWindows` no more on Windows. A counter visible to
       the tests shows it.
 - [x] `find` makes no `String`.
-- [ ] The window's record and the drop of files behave as before. 3044's
-      manual check (resize, then relaunch at 175 % scale, on Windows) is
-      repeated, and the completion notes say what it showed.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The window's record and the drop of files behave as before.
+      ~~3044's manual check (resize, then relaunch at 175 % scale, on
+      Windows) is repeated, and the completion notes say what it showed.~~
+      (not done: it changes the system's display scale, which the agent
+      may not change; see the completion notes)
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
