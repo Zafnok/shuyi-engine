@@ -76,10 +76,10 @@ None.
   texture: kept for the run, never freed (its trigger, textures over a
   quarter of `peak_heap_bytes`, isn't crossed), and an atlas's names are
   its images' paths, `&'static str` as every path stays (§1).
-  **Either order with 3317:** if 3317 is done, a page is uploaded when it
-  is first drawn, as a picture is, and again when it changes; if not,
-  upload every page at start, as pictures are, and 3317 makes them when
-  first drawn.
+  **From 3317 (done):** a picture's texture is made the first frame a
+  sprite draws it (`ImageTextures`, `crates/app/src/image_textures.rs`):
+  a page is uploaded when it is first drawn, as a picture is, and again
+  when it changes.
   **Either order with 2234** (pictures in 2203's formats): if 2234 is
   done, `crates/app/src/render.rs` has `upload_rgba(width, height,
   rgba)`, which uploads pixels as a texture with the nearest filter:

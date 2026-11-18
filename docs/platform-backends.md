@@ -196,8 +196,13 @@ next. `frame.show` is one of:
 - `Show::Game { buffer, background, look, .. }`: the game's console, a
   `GlyphBuffer` of glyph cells and sprite items in full colour, on
   `background` (also the letterbox's). `look` holds the game's font atlas
-  and image table: make the backend's textures from them the first time
-  and keep them. If they can't be made, show why instead, as for `Errors`.
+  and image table: make the font's texture the first time, and an
+  image's the first frame a sprite draws it, from the game's files then
+  (ADR-0128 §5; on the web a picture may arrive after the first frame).
+  An image whose files give nothing yet draws as missing and is read
+  again the next frame that draws it; one that doesn't decode is logged
+  once and draws as missing for the run. Keep every texture made. If the
+  font's can't be made, show why instead, as for `Errors`.
   A painted item (`Item::Painted`, ADR-0078) shows a picture of the
   buffer's own table (`buffer.pictures()`), also for an item of a
   backdrop's scene: keep a texture per `PaintedId`, upload it again only

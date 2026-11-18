@@ -180,6 +180,7 @@ mod facts;
 mod focus;
 #[cfg(not(target_arch = "wasm32"))]
 mod folder;
+mod image_textures;
 pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
