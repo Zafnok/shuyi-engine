@@ -30,11 +30,11 @@ use crate::tries::copy_tree;
 mod tests;
 
 /// The steps' projects, from the repository's root.
-const STEPS: &str = "site/tutorial";
+pub(crate) const STEPS: &str = "site/tutorial";
 /// The checks, from the repository's root.
-const EXERCISES: &str = "site/exercises";
+pub(crate) const EXERCISES: &str = "site/exercises";
 /// The steps' pages, from the repository's root.
-const PAGES: &str = "site/content/learn/book/box-pusher";
+pub(crate) const PAGES: &str = "site/content/learn/book/box-pusher";
 /// Where the copies are made, from the repository's root.
 pub const COPIES: &str = "target/exercises";
 /// The copies' one target folder, from the repository's root.
