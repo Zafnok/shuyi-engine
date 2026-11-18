@@ -469,7 +469,7 @@ cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
-cargo xtask check-devcontainers   # the book's dev container builds every step of site/tutorial/ and keeps the root's image and setup (ticket 2837)
+cargo xtask check-devcontainers   # the book's dev container builds every step of site/tutorial/ and keeps the root's image and setup (ticket 2837); the steps resolve one set of features, native and web (`cargo tree`, ticket 2839)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
 cargo xtask check-merges  # no merge commit in origin/main..HEAD changes a file or line beyond resolving its parents (ticket 2065); CI: --base HEAD^1 --head HEAD^2
