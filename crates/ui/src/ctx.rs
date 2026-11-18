@@ -578,7 +578,8 @@ impl<G: GameData> Ctx<G> {
     /// [`text_with`](Self::text_with) fills a key's: by `lang`'s plural
     /// rules, with `device`, `target` and the player's keys.
     pub fn fill_text(&self, text: &str, lang: &str, args: &Args<'_>) -> String {
-        self.fill_styled(text, lang, self.help_keys(), args, &[])
+        let form = message::Form::of(text);
+        self.fill_styled(&form, lang, self.help_keys(), args, &[])
             .plain()
     }
 
@@ -634,17 +635,17 @@ impl<G: GameData> Ctx<G> {
     ) -> StyledText {
         let lang = self.game.lang();
         debug_assert!(lang.has(key), "text key not in the source text: {key:?}");
-        let (text, code) = lang.text_in(self.effective_lang(), key);
-        self.fill_styled(text, code, keys, args, key_args)
+        let (form, code) = lang.form_in(self.effective_lang(), key);
+        self.fill_styled(&form, code, keys, args, key_args)
     }
 
-    /// `text` in language `lang` filled as
+    /// `form`, a text in language `lang`, filled as
     /// [`text_styled_with_keys`](Self::text_styled_with_keys) fills a
     /// key's: `args`, then the built-in `device` and `target`, then
     /// `key_args` and the names `keys` has.
     fn fill_styled(
         &self,
-        text: &str,
+        form: &message::Form<'_>,
         lang: &str,
         keys: HelpKeys<'_, G::Action>,
         args: &Args<'_>,
@@ -660,7 +661,7 @@ impl<G: GameData> Ctx<G> {
             })
         };
         let lookup = |name: &str| self.game.key_text_styled(name, keys);
-        crate::text::fill_styled_by(text, lang, value, key_args, lookup)
+        crate::text::fill_form(form, lang, value, key_args, lookup)
     }
 
     /// [`label`](Self::label), each key's name in a key span

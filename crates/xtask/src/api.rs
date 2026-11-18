@@ -110,7 +110,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi-assets",
-        features: Features::Only(&["std", "png", "sample-actions", "golden"]),
+        features: Features::Only(&["std", "png", "sample-actions", "golden", "parse-count"]),
     },
     ApiCrate {
         name: "shuyi-ui",

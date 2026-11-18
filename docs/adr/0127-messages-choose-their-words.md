@@ -1,6 +1,6 @@
 # ADR-0127: Messages choose their words: a subset of ICU MessageFormat 1, our own plural table, and typed arguments
 
-- **Status:** Accepted
+- **Status:** Accepted; §4 and §9 amended by ADR-0131 (a text's form learned when it loads)
 - **Date:** 2026-11-16
 - **Related tickets:** 2348; 3218 (typed arguments in `shuyi-ui`), 2261 (the load checks), game#1062
 - **Amends:** ADR-0020 (a label's values are typed, not "already text")

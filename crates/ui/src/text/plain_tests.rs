@@ -2,9 +2,9 @@
 //! is filled by its `{name}`s alone, never parsed, and fills to what the
 //! message path fills it to.
 
-use core::cell::Cell;
-
 use proptest::prelude::*;
+use shuyi_assets::lang::Lang;
+use shuyi_assets::message::{Message, has_message_syntax, parse_count};
 
 use super::*;
 
@@ -43,7 +43,8 @@ fn both(text: &str, lang: &str, args: &Args<'_>, as_keys: bool) -> (StyledText, 
     };
     let fast = fill_styled_with(text, lang, values, key_args, keys);
     let by = |name: &str| value_of(values, name);
-    let parsed = fill_parsed(text, Message::parse(text).ok(), lang, by, key_args, keys);
+    let form = Message::parse(text).map_or(Form::NotAMessage(text), Form::Message);
+    let parsed = fill_form(&form, lang, by, key_args, keys);
     (fast, parsed)
 }
 
@@ -117,11 +118,7 @@ fn every_text_of_the_toy_hello_grid_and_the_text_tests_fills_the_same_either_way
 
 #[test]
 fn a_text_with_no_message_syntax_is_never_parsed() {
-    let parses = Cell::new(0);
-    let counted = |text| {
-        parses.set(parses.get() + 1);
-        Message::parse(text)
-    };
+    parse_count::take();
     for text in [
         "",
         "no braces",
@@ -131,9 +128,9 @@ fn a_text_with_no_message_syntax_is_never_parsed() {
         "{} {a}} #",
         "{n} keys, # left",
     ] {
-        assert!(message_by(text, counted).is_none(), "{text:?}");
+        assert!(matches!(Form::of(text), Form::Plain(_)), "{text:?}");
     }
-    assert_eq!(parses.get(), 0);
+    assert_eq!(parse_count::take(), 0);
     for text in [
         "{n, plural, one {# key} other {# keys}}",
         "{device, select, playdate {Crank} other {Turn}}",
@@ -141,9 +138,9 @@ fn a_text_with_no_message_syntax_is_never_parsed() {
         "'{'Confirm'}'",
         "it''s",
     ] {
-        assert!(message_by(text, counted).is_some(), "{text:?}");
+        assert!(matches!(Form::of(text), Form::Message(_)), "{text:?}");
     }
-    assert_eq!(parses.get(), 5);
+    assert_eq!(parse_count::take(), 5);
 }
 
 #[test]
@@ -170,5 +167,67 @@ proptest! {
     ) {
         let (fast, parsed) = both(&text, "en", &values(&n), as_keys);
         prop_assert_eq!(fast, parsed);
+    }
+}
+
+/// `text` filled from the form `lang` learned of it when it was built, and
+/// by [`fill_styled_with`] of its text, with `args` as values or as key
+/// values.
+fn from_form(key: &str, lang: &Lang, args: &Args<'_>, as_keys: bool) -> (StyledText, StyledText) {
+    let (values, key_args) = if as_keys {
+        (&[][..], args)
+    } else {
+        (args, &[][..])
+    };
+    let source = lang.source_lang().code.clone();
+    let (form, code) = lang.form_in(&source, key);
+    let by = |name: &str| value_of(values, name);
+    let kept = fill_form(&form, code, by, key_args, keys);
+    let text = fill_styled_with(lang.text(&source, key), code, values, key_args, keys);
+    (kept, text)
+}
+
+#[test]
+fn every_text_of_the_toy_and_hello_grid_fills_from_its_form_as_from_its_text() {
+    let mut english = lang_map(include_str!("../toy/en.ron"));
+    english.extend(lang_map(include_str!(
+        "../../../../examples/hello-grid/files/en.ron"
+    )));
+    let lang = Lang::new(english.clone(), BTreeMap::new());
+    parse_count::take();
+    for n in [0, 1, 2, 5, 21, -3] {
+        for as_keys in [false, true] {
+            for key in english.keys() {
+                let (kept, text) = from_form(key, &lang, &values(&n), as_keys);
+                assert_eq!(kept, text, "{key}, n = {n}, keys {as_keys}");
+                let (kept, text) = from_form(key, &lang, &[], as_keys);
+                assert_eq!(kept, text, "{key} with no values");
+            }
+        }
+    }
+    // Only the fills of the texts, never the forms, parsed.
+    let messages = english.values().filter(|t| has_message_syntax(t)).count();
+    assert_eq!(parse_count::take(), messages * 6 * 2 * 2);
+}
+
+/// The texts of a language file written `source`, by key.
+fn lang_map(source: &str) -> BTreeMap<String, String> {
+    let text: shuyi_assets::lang::English = ron::from_str(source).unwrap();
+    text.0
+}
+
+proptest! {
+    #[test]
+    fn a_text_fills_from_its_form_as_from_its_text(
+        text in r"([a-z]{1,3}|[{}',# \t\u{a0}é]|\{[a-zA-Z]{1,4}\}|\{n, plural, one \{#\} other \{# x\}\}|\{device, select, playdate \{p\} other \{o\}\}){0,12}",
+        n in -5i64..30,
+        as_keys in proptest::bool::ANY,
+    ) {
+        let lang = Lang::new(BTreeMap::from([("k".to_owned(), text.clone())]), BTreeMap::new());
+        let (kept, filled) = from_form("k", &lang, &values(&n), as_keys);
+        prop_assert_eq!(kept, filled);
+        let (form, _) = lang.form_in(&lang.source_lang().code, "k");
+        // Plain is the check alone: the record parsed nothing it calls so.
+        prop_assert_eq!(matches!(form, Form::Plain(_)), !has_message_syntax(&text));
     }
 }

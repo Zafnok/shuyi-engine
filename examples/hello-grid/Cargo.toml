@@ -106,5 +106,6 @@ insta.workspace = true
 shuyi-alloc-count = { path = "../../crates/alloc-count", features = ["global"] }
 lewton = { version = "0.9", default-features = false, features = ["ogg"] }
 hound = "3.5"
-# The golden table of `tests/golden.rs`.
-shuyi-assets = { path = "../../crates/assets", features = ["golden"] }
+# The golden table of `tests/golden.rs`, and the count of parses, which no
+# frame makes (`tests/it/parses.rs`, ticket 2266).
+shuyi-assets = { path = "../../crates/assets", features = ["golden", "parse-count"] }

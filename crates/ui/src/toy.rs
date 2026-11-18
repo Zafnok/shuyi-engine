@@ -355,7 +355,7 @@ pub const LEGEND: [(LegendKeys<Action>, &str); 10] = [
 pub const CARD: &str = "card.png";
 
 /// The toy's English text.
-const ENGLISH: [(&str, &str); 20] = [
+const ENGLISH: [(&str, &str); 21] = [
     ("talk.next", "{Confirm}"),
     ("toy.speed", "Speed"),
     ("toy.speed.calm", "Calm"),
@@ -379,6 +379,10 @@ const ENGLISH: [(&str, &str); 20] = [
     ("layout_picker.left_handed", "Left-handed"),
     ("menu.title", "Menu"),
     ("gallery.help", "{Cancel} back"),
+    (
+        "toy.turn",
+        "{device, select, playdate {Crank} other {Turn}} with {Cursor}",
+    ),
 ];
 
 /// The toy's English text of the engine's screens (the Key bindings

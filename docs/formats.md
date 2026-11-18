@@ -306,7 +306,10 @@ What each one reads:
   rules. `message::plural` holds the rules of `de`, `en`, `es`, `fr`,
   `it`, `ja`, `ko`, `pl`, `pt`, `ru`, `uk` and `zh`; another language has
   only `other`. A text that isn't a message is filled as plain
-  placeholders.
+  placeholders. Each screen and data text's form (plain, a message with
+  its parse, not a message) is learned once, when the `Lang` is built,
+  and `Ctx`'s fills read it (`Lang::form_in`, ADR-0131): no frame parses
+  a text.
 
   The languages check their texts as messages when they load, each
   problem an error naming the file and the key. The source's screen text

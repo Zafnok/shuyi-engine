@@ -201,7 +201,9 @@ French counts 0 as `one`. A message follows the rules of the language it is writ
 and `lang.text_in(code, key)` gives a text with that language's tag. Every choice has an
 `other` branch, and an apostrophe is a letter (`l'arrosoir`); `'{'` writes a brace.
 `shuyi::assets::message::Message` reads one (`Message::parse`) and fills it
-(`Message::format`).
+(`Message::format`). The languages read each text once, as they load, and keep what it is:
+`lang.form_in(code, key)` gives it as a `Form` (plain, a message with its parse, or not a
+message), which every `ctx.text_with` fills from, so no frame parses a text.
 
 The languages check their messages as they load. A text that doesn't parse (an unclosed
 `{`, or `{}`) fails, naming its file and key, and so does a translation that loses one of

@@ -21,6 +21,7 @@ mod onebit;
 mod options;
 mod pack;
 mod page;
+mod parses;
 mod playtest;
 mod playthrough;
 mod preview;
