@@ -174,6 +174,12 @@ Deviations:
 - 3009's clause on this ticket is rewritten as a **From 3316 (done)**
   note.
 
+Size: about 1,250 counted lines against the 700 estimated, under 1,500.
+It would have split cleanly at Hello, Grid's move onto `Of`
+(`examples/hello-grid/`, about 400 lines), which only uses the engine's
+part; most of the rest is the tests the ticket lists and the Playdate's
+bar, drawn into the frame buffer with no SDK call to draw a rectangle.
+
 Follow-ups: none. 3318 gives the `Wait` its streamed pack needs, as its
 ticket says.
 
