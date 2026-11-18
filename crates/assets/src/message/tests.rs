@@ -121,6 +121,45 @@ fn quoting_writes_braces_and_apostrophes() {
     assert_eq!(format("'#' and '#"), "'#' and '#");
 }
 
+/// What may read differently as a message than by its `{name}`s alone
+/// (tickets 3219 and 2266): a quote, and inside braces a comma, a space,
+/// a brace or a letter outside ASCII.
+#[test]
+fn message_syntax_is_a_quote_or_more_than_a_name_in_braces() {
+    for text in [
+        "'{'",
+        "it''s",
+        "'}' and",
+        "{n, plural, other {#}}",
+        "{ n }",
+        "{a{b}}",
+        "{é}",
+    ] {
+        assert!(has_message_syntax(text), "{text:?}");
+    }
+    for text in [
+        "",
+        "l'épée, don't",
+        "{Confirm} pick, {n} é",
+        "} {a} {",
+        "'a'",
+        "{n}'",
+    ] {
+        assert!(!has_message_syntax(text), "{text:?}");
+    }
+}
+
+/// A quote's pieces: nothing empty between two quotes, so a parse kept
+/// with its text holds only what it shows.
+#[test]
+fn a_quote_keeps_no_empty_piece() {
+    let pieces = |text| Message::parse(text).unwrap().nodes.len();
+    // `'{` then `''` (one apostrophe) right after it: two pieces.
+    assert_eq!(pieces("'{'''"), 2);
+    // `{`, `'` and `}`: three.
+    assert_eq!(pieces("'{''}'"), 3);
+}
+
 #[test]
 fn a_number_is_a_simple_argument_written_in_digits() {
     assert_eq!(with_n("{n, number} and { n }", "en", 1234), "1234 and 1234");

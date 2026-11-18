@@ -749,7 +749,7 @@ impl<'a> Parser<'a> {
     fn quoted(&mut self, nodes: &mut Vec<Node>) {
         while !self.overrun(nodes.len()) {
             let text = self.until(|c| c == '\'');
-            if text.end > text.start {
+            if !text.of(self.text).is_empty() {
                 nodes.push(Node::Text(text));
             }
             if !self.eat('\'') {
