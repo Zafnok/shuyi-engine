@@ -25,10 +25,17 @@ cargo xtask gates --base <rev>
 It decides from the diff (committed, and anything uncommitted) which
 gates apply, with CI's own rules: it reads the classifier in
 `.github/workflows/changes.yml`, and each gate follows its `ci.yml` job's
-filter. It runs them with the commands of the sections below, stops at
-the first failure, and prints on stdout a summary block: `HEAD`, each
-gate's result and each gate left to CI with why. Paste the block into
-the PR's body (the `work-ticket` skill, §6). The table of gates is in
+filter. A few gates add a narrower local rule, said in their sections
+below: the website, the tutorial's locks, and the five gates that build
+whole games (the two templates, the skill examples, the tutorial's tries
+and the exercises), which run only when the diff touches what a game is
+built from, or the gate's own paths (ticket 3501). CI still runs those
+five on every code diff. It runs them with the commands of the sections
+below, stops at the first failure, and prints on stdout a summary block:
+`HEAD`, a row for each gate that ran or wasn't needed (with why), and
+one line after the table naming the gates CI alone runs; `--list` gives
+each of those its row and its reason. Paste the block into the PR's body
+(the `work-ticket` skill, §6). The table of gates is in
 `crates/xtask/src/gates.rs`; a test fails when `ci.yml` gains a job it
 doesn't name. The sections below stay the reference for what each gate
 checks, how to run one alone, and the gates it leaves out (the
@@ -124,13 +131,27 @@ pin, and Nick's machine.
 A change that can move what the tutorial's game draws also runs `cargo xtask
 tutorial-tries --check` (CI's `tutorial-tries` job, ticket 2818). It takes
 minutes, as it builds a copy of a step for each picture; name a try to check
-only it. After a change on purpose, `cargo xtask tutorial-tries` remakes them:
+only it. `cargo xtask gates` runs it when the diff touches what a game is
+built from (below), the tutorial's steps (`site/tutorial/`), its pictures
+(`site/static/tutorial-tries/`), the book's pages or its game
+(`site/snippets/`), or the runner (`crates/xtask/src/tries.rs`). After a change on purpose, `cargo xtask tutorial-tries` remakes them:
 look at each picture before you keep it.
 
 A change to a step, to the book's exercises or to `site/exercises/` also runs
 `cargo xtask exercises` (CI's `exercises` job, ticket 2828): it copies each
 step with its exercises' checks compiled in, and runs fmt, Clippy and the
-checks' tests in each copy. Name a step to check only it.
+checks' tests in each copy. Name a step to check only it. `cargo xtask
+gates` runs it when the diff touches what a game is built from, the
+steps, `site/exercises/`, the box-pusher pages, or the runner and what it
+calls (xtask's `exercises`, `book`, `llms` and `tries`).
+
+**What a game is built from** (`builds_a_game` in `gates.rs`): the
+crates' code under `crates/` (not xtask's, and not a test's: a `tests/`
+or `benches/` folder, a `tests.rs`, a `.snap`), `templates/`, `skills/`,
+`targets/`, `.cargo/`, `docs/modules.ron`, `LICENSE-MIT`,
+`LICENSE-APACHE`, and the root's `Cargo.toml`, `Cargo.lock` and
+`rust-toolchain.toml`. A diff touching none of those, such as a crate's
+test or `tools/compile-budget.ron`, builds no game locally.
 
 ```bash
 cargo fmt --all --check
@@ -374,7 +395,8 @@ golden`, its window feature off, as Hello, Grid's is.
 ## A new game from each template (CI's `templates` job)
 
 `shuyi new` makes a game from each template, and the made game runs its
-own gates. From the repository root, for `grid` (made with
+own gates. `cargo xtask gates` runs both when the diff touches what a
+game is built from (*The code gates*, above). From the repository root, for `grid` (made with
 `--no-examples`, as CI makes it) and then `blank`:
 
 ```bash
@@ -428,9 +450,11 @@ cargo test --workspace --locked
 
 Each skill in `skills/` has a worked example, `example.ron`, that runs on
 a game fresh from `shuyi new` (ADR-0043). CI runs them all, in three
-shards. Locally, run the examples of the skills a change touches, or of
-every skill when a change touches the contract, a problem code or a
-template:
+shards. `cargo xtask gates` runs them all when the diff touches what a
+game is built from (*The code gates*, above) or their runner
+(`crates/xtask/src/skills.rs`, `script.rs`). By hand, run the examples
+of the skills a change touches, or of every skill when a change touches
+the contract, a problem code or a template:
 
 ```bash
 cargo xtask skill-examples shuyi-gates shuyi-test   # or no names for every one
@@ -505,7 +529,15 @@ names no ticket, and fails a `game#NNNN` with no `Game:` line (the
 
 CI runs it on every PR; `cargo xtask gates` runs it when the diff
 touches `site/`, the problem codes (`crates/cli/errors/`), Hello, Grid
-(the playground's files) or `tickets/` (the feature cards). It needs
+(the playground's files) or `tickets/` (the feature cards).
+
+Most of `site/` is website-only: neither code nor docs to CI's
+classifier (ticket 3501; the comment at the top of
+`.github/workflows/changes.yml`). A diff of the site's templates,
+styles, scripts or data runs this job and none of the Rust ones. The
+parts a code job or a crate's test reads stay code: `site/tutorial/`,
+`site/exercises/`, `site/snippets/`, `site/static/tutorial-tries/` and
+`site/config.toml`. It needs
 [Zola](https://www.getzola.org/) on `PATH` and, on Windows, Git's
 `bash`:
 

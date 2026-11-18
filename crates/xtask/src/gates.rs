@@ -9,6 +9,15 @@
 //! to `ci.yml`'s jobs, so a job CI gains is a gate here, or a CI-only one
 //! with its reason.
 //!
+//! A local run narrows some gates further ([`Local`]), never CI: the site
+//! runs only for what it reads, the tutorial's locks for a manifest or a
+//! lock (ticket 2073), and the five gates that build whole games (the
+//! templates, the skill examples, the tutorial's tries and the exercises)
+//! only when a path a game is built from changed ([`builds_a_game`]), or
+//! one of the gate's own paths or its runner in xtask (ticket 3501). CI
+//! still runs those on every code diff: it is the net for anything a local
+//! rule misses.
+//!
 //! The commands are the `run-gates` skill's: that skill stays the
 //! reference for what each gate checks and how to fix it.
 
@@ -156,6 +165,114 @@ fn touches_tutorial_locks(path: &str) -> bool {
         || path.starts_with("site/tutorial/")
 }
 
+/// What [`builds_a_game`] looks for, in words, for the summary's reasons.
+macro_rules! game_inputs {
+    () => {
+        "crates/ outside xtask and the tests, templates/, skills/, targets/, .cargo/, docs/modules.ron, the licenses, the root's Cargo.toml, Cargo.lock and rust-toolchain.toml"
+    };
+}
+
+/// The folders whose files every game the gates build reads: `shuyi new`
+/// embeds the templates and the skill pack, and the targets' profiles; the
+/// engine's crates are its dependencies.
+const GAME_FOLDERS: [&str; 4] = ["templates", "skills", "targets", ".cargo"];
+
+/// The files every game the gates build reads: the catalog (`shuyi new`'s
+/// modules), the licenses (its notices) and what builds the engine.
+const GAME_FILES: [&str; 6] = [
+    "Cargo.toml",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    "docs/modules.ron",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+];
+
+/// Whether `path` is `dir` or under it.
+fn under(path: &str, dir: &str) -> bool {
+    path.strip_prefix(dir)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+}
+
+/// Whether `path` is a test's alone: under a `tests` or `benches` folder, a
+/// `tests.rs`, or an insta snapshot. No game is built from it.
+fn test_only(path: &str) -> bool {
+    let mut segments = path.split('/').collect::<Vec<_>>();
+    let file = segments.pop().unwrap_or(path);
+    file == "tests.rs"
+        || path.ends_with(".snap")
+        || segments.iter().any(|s| *s == "tests" || *s == "benches")
+}
+
+/// Whether a changed path can change a game the slow gates build (ticket
+/// 3501): a new game's from `shuyi new`, a skill's worked example, a
+/// tutorial step's copy or the book's game. Each is made by `shuyi-cli` or
+/// depends on the engine's crates, so it reads their code outside the tests
+/// (not xtask's, which builds none of them), the folders of
+/// [`GAME_FOLDERS`] and the files of [`GAME_FILES`].
+pub(crate) fn builds_a_game(path: &str) -> bool {
+    if under(path, "crates") {
+        return !under(path, "crates/xtask") && !test_only(path);
+    }
+    GAME_FOLDERS.iter().any(|dir| under(path, dir)) || GAME_FILES.contains(&path)
+}
+
+/// Whether `path` is one of xtask's modules `names`: its file or its folder.
+fn xtask_module(path: &str, names: &[&str]) -> bool {
+    names.iter().any(|name| {
+        path.strip_prefix("crates/xtask/src/")
+            .and_then(|rest| rest.strip_prefix(name))
+            .is_some_and(|rest| rest == ".rs" || rest.starts_with('/'))
+    })
+}
+
+/// Whether a changed path can change what `cargo xtask skill-examples`
+/// does: a game's inputs, or its runner (`skills`, and `script`, which
+/// runs each example's steps).
+fn touches_skill_examples(path: &str) -> bool {
+    builds_a_game(path) || xtask_module(path, &["skills", "script"])
+}
+
+/// Whether a changed path can change what `cargo xtask tutorial-tries
+/// --check` does: a game's inputs, the paths of `tries`' constants (the
+/// steps, [`tries::STEPS`], with the list of tries; the pictures,
+/// [`tries::PICTURES`]; the pages, [`tries::PAGES`]; the book's game,
+/// [`tries::SNIPPETS`]), or its runner.
+fn touches_tutorial_tries(path: &str) -> bool {
+    use crate::tries;
+    builds_a_game(path)
+        || [tries::STEPS, tries::PICTURES, tries::SNIPPETS]
+            .iter()
+            .chain(&tries::PAGES)
+            .any(|dir| under(path, dir))
+        || xtask_module(path, &["tries"])
+}
+
+/// Whether a changed path can change what `cargo xtask exercises` does: a
+/// game's inputs, the paths of `exercises`' constants (the steps,
+/// [`exercises::STEPS`]; the checks, [`exercises::EXERCISES`]; the steps'
+/// pages, [`exercises::PAGES`]), or its runner and what it calls (`book`,
+/// `llms` through it, and `tries`' `copy_tree`).
+fn touches_exercises(path: &str) -> bool {
+    use crate::exercises;
+    builds_a_game(path)
+        || [exercises::STEPS, exercises::EXERCISES, exercises::PAGES]
+            .iter()
+            .any(|dir| under(path, dir))
+        || xtask_module(path, &["exercises", "book", "llms", "tries"])
+}
+
+/// The templates' rule: both build a new game, and their steps are their
+/// gate's own, so no runner of xtask's matters.
+const BUILDS_A_GAME: Local = Local::When(
+    concat!(
+        "nothing changed that a new game builds from (",
+        game_inputs!(),
+        ")"
+    ),
+    builds_a_game,
+);
+
 /// Every gate, fast to slow: a run stops at the first failure.
 pub const GATES: &[Gate] = &[
     gate("fmt", "fmt", CODE)
@@ -207,7 +324,7 @@ pub const GATES: &[Gate] = &[
     // would have to change (ticket 2073).
     gate("tutorial locks", "tutorial", CODE)
         .local(Local::When(
-            "no Cargo.toml or Cargo.lock under crates/, no root Cargo.toml or Cargo.lock, nothing under site/tutorial/",
+            "nothing changed: no Cargo.toml or Cargo.lock under crates/, no root Cargo.toml or Cargo.lock, nothing under site/tutorial/",
             touches_tutorial_locks,
         ))
         .hint(
@@ -265,6 +382,7 @@ pub const GATES: &[Gate] = &[
     // slower (ticket 2074). Only these steps write there, so the flag,
     // part of each unit's hash, never makes a second copy of a unit.
     gate("templates (grid)", "templates", CODE)
+        .local(BUILDS_A_GAME)
         .fresh(&["target/gates/demo-grid"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-grid --template grid --engine-path {root} --no-examples",
@@ -279,6 +397,7 @@ pub const GATES: &[Gate] = &[
             "target/gates/demo-grid: CARGO_TARGET_DIR={root}/target/gates/games CARGO_INCREMENTAL=0 cargo shuyi lint",
         ]),
     gate("templates (blank)", "templates", CODE)
+        .local(BUILDS_A_GAME)
         .fresh(&["target/gates/demo-blank"])
         .steps(&[
             "cargo run -q -p shuyi-cli --locked -- new target/gates/demo-blank --template blank --engine-path {root}",
@@ -296,10 +415,36 @@ pub const GATES: &[Gate] = &[
     // local run holds the crates' count alone.
     gate("compile-times (crates)", "compile-times", CODE)
         .steps(&["cargo xtask compile-times --budget tools/compile-budget.ron --count-only"]),
-    gate("skill examples", "skills", CODE).steps(&["cargo xtask skill-examples"]),
+    gate("skill examples", "skills", CODE)
+        .local(Local::When(
+            concat!(
+                "nothing changed that a new game builds from (",
+                game_inputs!(),
+                ") or that runs the examples (xtask's skills and script)"
+            ),
+            touches_skill_examples,
+        ))
+        .steps(&["cargo xtask skill-examples"]),
     gate("tutorial-tries", "tutorial-tries", CODE)
+        .local(Local::When(
+            concat!(
+                "nothing changed that a new game builds from (",
+                game_inputs!(),
+                "), nor the tutorial's steps, site/snippets/, the pictures or the book's pages, nor the runner (xtask's tries)"
+            ),
+            touches_tutorial_tries,
+        ))
         .steps(&["cargo xtask tutorial-tries --check"]),
-    gate("exercises", "exercises", CODE).steps(&["cargo xtask exercises"]),
+    gate("exercises", "exercises", CODE)
+        .local(Local::When(
+            concat!(
+                "nothing changed that a new game builds from (",
+                game_inputs!(),
+                "), nor the tutorial's steps, site/exercises/ or the box-pusher pages, nor the runner (xtask's exercises, book, llms and tries)"
+            ),
+            touches_exercises,
+        ))
+        .steps(&["cargo xtask exercises"]),
     // CI's alone, with why.
     gate("tutorial", "tutorial", CODE).ci_only(
         "builds and tests the ten steps of the tutorial's game, each from its own checked-in lock, `--locked`",
@@ -511,7 +656,7 @@ pub fn plan(gate: &Gate, outputs: &BTreeMap<String, bool>, paths: &[String], fas
     if let Local::When(what, test) = gate.local
         && !paths.iter().any(|p| test(p))
     {
-        return Plan::NotNeeded(format!("nothing changed: {what}"));
+        return Plan::NotNeeded(what.to_owned());
     }
     if fast {
         match gate.fast {
@@ -636,15 +781,20 @@ pub struct Header<'a> {
     pub changed: usize,
     pub dirty: bool,
     pub fast: bool,
+    /// `--list`: each CI-only gate gets its row, with why.
+    pub list: bool,
 }
 
-/// The summary block, Markdown for the PR's body.
+/// The summary block, Markdown for the PR's body. The gates CI alone runs
+/// are one line after the table (ticket 3501), and a row each with
+/// `--list`, which gives why.
 pub fn summary(header: &Header, rows: &[(&Gate, Plan, Option<Outcome>)]) -> String {
     let mut out = String::new();
-    let command = if header.fast {
-        "cargo xtask gates --fast"
-    } else {
-        "cargo xtask gates"
+    let command = match (header.fast, header.list) {
+        (true, true) => "cargo xtask gates --fast --list",
+        (true, false) => "cargo xtask gates --fast",
+        (false, true) => "cargo xtask gates --list",
+        (false, false) => "cargo xtask gates",
     };
     let _ = writeln!(
         out,
@@ -660,7 +810,12 @@ pub fn summary(header: &Header, rows: &[(&Gate, Plan, Option<Outcome>)]) -> Stri
     let _ = writeln!(out);
     let _ = writeln!(out, "| Gate | CI job | Result |");
     let _ = writeln!(out, "| --- | --- | --- |");
+    let mut ci_only = Vec::new();
     for (gate, plan, outcome) in rows {
+        if matches!(plan, Plan::CiOnly(_)) && !header.list {
+            ci_only.push(gate.name);
+            continue;
+        }
         let result = match (plan, outcome) {
             (Plan::CiOnly(why), _) => format!("CI only: {why}"),
             (Plan::NotNeeded(why), _) => format!("not needed: {why}"),
@@ -672,6 +827,14 @@ pub fn summary(header: &Header, rows: &[(&Gate, Plan, Option<Outcome>)]) -> Stri
             (Plan::Run, Some(Outcome::NotRun)) => "not run: an earlier gate failed".to_owned(),
         };
         let _ = writeln!(out, "| {} | `{}` | {result} |", gate.name, gate.job);
+    }
+    if !ci_only.is_empty() {
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "CI only (`cargo xtask gates --list` gives each reason): {}.",
+            ci_only.join(", ")
+        );
     }
     out
 }
@@ -753,6 +916,7 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
         changed: paths.len(),
         dirty,
         fast: options.fast,
+        list: options.list,
     };
     Ok((summary(&header, &rows), !failed))
 }
@@ -1017,6 +1181,225 @@ mod tests {
         assert!(step.contains(&"bash site/check-build.sh"));
     }
 
+    /// The five gates that build whole games (ticket 3501).
+    const GAME_GATES: [&str; 5] = [
+        "templates (grid)",
+        "templates (blank)",
+        "skill examples",
+        "tutorial-tries",
+        "exercises",
+    ];
+
+    fn assert_runs(gates: &[&str], names: &[&str]) {
+        for name in names {
+            assert!(gates.contains(name), "{name} missing from {gates:?}");
+        }
+    }
+
+    fn assert_skips(gates: &[&str], names: &[&str]) {
+        for name in names {
+            assert!(!gates.contains(name), "{name} in {gates:?}");
+        }
+    }
+
+    /// #420: a test of the CLI and its ticket.
+    #[test]
+    fn a_crates_test_alone_runs_clippy_and_test_and_builds_no_game() {
+        let gates = running(
+            &[
+                "crates/cli/tests/it/binary.rs",
+                "docs/ROADMAP.md",
+                "tickets/done/2063-the-mcp-servers-forwarding-tests-pass-under-load.md",
+                "tickets/open/2063-the-mcp-servers-forwarding-tests-pass-under-load.md",
+            ],
+            false,
+        );
+        assert_runs(&gates, &["clippy", "test"]);
+        assert_skips(&gates, &GAME_GATES);
+    }
+
+    /// #415: a number of the compile-times budget and its ticket.
+    #[test]
+    fn the_compile_budget_alone_runs_its_gate_and_builds_no_game() {
+        let gates = running(
+            &[
+                "tickets/done/2080-set-the-dependency-budget-to-143.md",
+                "tools/compile-budget.ron",
+            ],
+            false,
+        );
+        assert_runs(&gates, &["compile-times (crates)", "test"]);
+        assert_skips(&gates, &GAME_GATES);
+    }
+
+    /// #405: the website's templates, styles and build check, Markdown and
+    /// a ticket.
+    #[test]
+    fn a_website_only_diff_runs_the_site_and_no_rust_gate() {
+        let paths = [
+            "site/README.md",
+            "site/check-build.sh",
+            "site/content/learn/book/_index.md",
+            "site/static/book-filter.js",
+            "site/static/book-side.js",
+            "site/static/style.css",
+            "site/templates/base.html",
+            "site/templates/book-macros.html",
+            "site/templates/chapter.html",
+            "site/templates/project.html",
+            "tickets/done/2834-book-contents-sidebar.md",
+            "tickets/open/2834-book-contents-sidebar.md",
+        ];
+        let (outputs, _) = outputs_for(&paths);
+        assert!(!outputs["code"], "{outputs:?}");
+        let gates = running(&paths, false);
+        assert_runs(&gates, &["site", "tickets' checks"]);
+        assert_skips(
+            &gates,
+            &[
+                "fmt",
+                "clippy",
+                "test",
+                "docs",
+                "no-std",
+                "modules",
+                "wasm",
+                "tutorial locks",
+            ],
+        );
+        assert_skips(&gates, &GAME_GATES);
+    }
+
+    #[test]
+    fn an_engine_crates_code_builds_every_game() {
+        let gates = running(&["crates/app/src/lib.rs"], false);
+        assert_runs(&gates, &GAME_GATES);
+    }
+
+    #[test]
+    fn a_runner_runs_the_game_gates_that_use_it() {
+        let only = |path: &str, expected: &[&str]| {
+            let gates = running(&[path], false);
+            let ran: Vec<&str> = GAME_GATES
+                .into_iter()
+                .filter(|g| gates.contains(g))
+                .collect();
+            assert_eq!(ran, expected, "{path}");
+        };
+        only("crates/xtask/src/skills.rs", &["skill examples"]);
+        only("crates/xtask/src/script.rs", &["skill examples"]);
+        only("crates/xtask/src/skills/tests.rs", &["skill examples"]);
+        only("crates/xtask/src/tries.rs", &["tutorial-tries", "exercises"]);
+        only("crates/xtask/src/exercises.rs", &["exercises"]);
+        only("crates/xtask/src/book.rs", &["exercises"]);
+        only("crates/xtask/src/llms.rs", &["exercises"]);
+        only("crates/xtask/src/gates.rs", &[]);
+        only("crates/xtask/src/scripts.rs", &[]);
+    }
+
+    #[test]
+    fn the_games_own_paths_run_their_gates() {
+        let gates = running(&["site/static/tutorial-tries/03-walk/after.png"], false);
+        assert_runs(&gates, &["tutorial-tries"]);
+        assert_skips(&gates, &["exercises", "skill examples", "templates (grid)"]);
+        let gates = running(&["site/exercises/02-board.rs"], false);
+        assert_runs(&gates, &["exercises"]);
+        assert_skips(&gates, &["tutorial-tries", "skill examples"]);
+        for path in ["skills/shuyi-gates/example.ron", "templates/grid/x.rs"] {
+            assert_runs(&running(&[path], false), &GAME_GATES);
+        }
+    }
+
+    /// The rules read `tries`' and `exercises`' own constants, so a path
+    /// either runner reads makes its gate run. A code path no game reads
+    /// goes with each, as a page is Markdown, which CI's filter alone
+    /// counts as docs.
+    #[test]
+    fn the_runners_constants_run_their_gates() {
+        let other = "scripts/x.sh";
+        assert_skips(&running(&[other], false), &GAME_GATES);
+        let tries = [crate::tries::STEPS, crate::tries::PICTURES, crate::tries::SNIPPETS]
+            .into_iter()
+            .chain(crate::tries::PAGES);
+        for dir in tries {
+            let path = format!("{dir}/x");
+            assert!(touches_tutorial_tries(&path), "{path}");
+            assert_runs(&running(&[&path, other], false), &["tutorial-tries"]);
+        }
+        for dir in [
+            crate::exercises::STEPS,
+            crate::exercises::EXERCISES,
+            crate::exercises::PAGES,
+        ] {
+            let path = format!("{dir}/x");
+            assert!(touches_exercises(&path), "{path}");
+            assert_runs(&running(&[&path, other], false), &["exercises"]);
+        }
+        assert!(!touches_tutorial_tries("site/tutorial-x/a"));
+    }
+
+    #[test]
+    fn a_game_is_built_from_the_crates_code_the_pack_and_the_root_files() {
+        for path in [
+            "crates/app/src/lib.rs",
+            "crates/cli/errors/SH0001.md",
+            "crates/core/Cargo.toml",
+            "templates/grid/src/main.rs.tmpl",
+            "templates/grid/tests/x.rs",
+            "skills/shuyi-gates/example.ron",
+            "targets/web.ron",
+            ".cargo/config.toml",
+            "Cargo.toml",
+            "Cargo.lock",
+            "rust-toolchain.toml",
+            "docs/modules.ron",
+            "LICENSE-MIT",
+            "LICENSE-APACHE",
+        ] {
+            assert!(builds_a_game(path), "{path}");
+        }
+        for path in [
+            "crates/assets/tests/golden/formats.ron",
+            "crates/xtask/src/api/tests.rs",
+            "crates/ui/src/x/tests/y.rs",
+            "crates/app/benches/frame.rs",
+            "crates/ui/src/snapshots/shuyi_ui__x.snap",
+            "crates/xtask/src/gates.rs",
+            "crates/xtask/Cargo.toml",
+            "tools/compile-budget.ron",
+            "docs/modules.md",
+            "site/config.toml",
+            "templatesx/a",
+            "crates-x/a.rs",
+            "examples/hello-grid/src/main.rs",
+        ] {
+            assert!(!builds_a_game(path), "{path}");
+        }
+    }
+
+    #[test]
+    fn the_classifier_splits_the_website_from_the_code_it_reads() {
+        for path in [
+            "site/config.toml",
+            "site/snippets/src/lib.rs",
+            "site/tutorial/03-walk/crates/game/src/main.rs",
+            "site/exercises/02-board.rs",
+            "site/static/tutorial-tries/03-walk/after.png",
+        ] {
+            let (outputs, _) = outputs_for(&[path]);
+            assert!(outputs["code"], "{path}: {outputs:?}");
+        }
+        for path in [
+            "site/templates/base.html",
+            "site/static/style.css",
+            "site/check-build.sh",
+            "site/README.md",
+        ] {
+            let (outputs, _) = outputs_for(&[path]);
+            assert_eq!(outputs.values().filter(|v| **v).count(), 0, "{path}: {outputs:?}");
+        }
+    }
+
     #[test]
     fn fast_runs_the_quick_gates_and_the_lint_only_on_rust() {
         assert_eq!(
@@ -1190,6 +1573,7 @@ done
             changed: 2,
             dirty: false,
             fast: false,
+            list: false,
         };
         let rows = [
             (
@@ -1208,6 +1592,7 @@ done
             (&GATES[2], Plan::Run, Some(Outcome::NotRun)),
             (&GATES[3], Plan::NotNeeded("why".into()), None),
             (&GATES[4], Plan::CiOnly("needs Xvfb"), None),
+            (&GATES[5], Plan::CiOnly("needs Chromium"), None),
         ];
         let text = summary(&header, &rows);
         assert!(text.contains("at `abc123`"), "{text}");
@@ -1224,6 +1609,31 @@ done
             text.contains("| engine lint | `test` | not needed: why |"),
             "{text}"
         );
-        assert!(text.contains("CI only: needs Xvfb"), "{text}");
+        // The CI-only gates are one line after the table, and `--list`
+        // gives each its row and its reason.
+        assert!(
+            text.ends_with(
+                "|
+
+CI only (`cargo xtask gates --list` gives each reason): skill loaders, tickets' checks.
+"
+            ),
+            "{text}"
+        );
+        assert!(!text.contains("needs Xvfb"), "{text}");
+        let listed = summary(
+            &Header {
+                list: true,
+                ..header
+            },
+            &rows,
+        );
+        assert!(listed.contains("(`cargo xtask gates --list`)"), "{listed}");
+        assert!(
+            listed.contains("| skill loaders | `tickets` | CI only: needs Xvfb |"),
+            "{listed}"
+        );
+        assert!(listed.contains("CI only: needs Chromium"), "{listed}");
+        assert!(!listed.contains("gives each reason"), "{listed}");
     }
 }
