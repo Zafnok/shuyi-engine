@@ -79,7 +79,7 @@ fn source() -> SourceText {
 fn id(text: &str) -> String {
     let source = source();
     let found = source.lines.iter().find(|(_, l)| l.text == text);
-    found.map(|(k, _)| k.clone()).unwrap_or_default()
+    found.map_or_default(|(k, _)| k.clone())
 }
 
 const INFO: &str = r#"(name: "Xx", made_by: Machine)"#;

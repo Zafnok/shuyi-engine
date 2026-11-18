@@ -1016,7 +1016,7 @@ fn data_text() -> (SourceText, String) {
     let mut source = SourceText::new(data.into(), Names::default());
     source.add_dialogue(&table);
     let line = source.lines.iter().find(|(_, l)| l.text == "Open it.");
-    let key = line.map(|(key, _)| key.clone()).unwrap_or_default();
+    let key = line.map_or_default(|(key, _)| key.clone());
     (source, key)
 }
 

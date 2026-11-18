@@ -305,7 +305,7 @@ impl<T> Answer<T> {
     /// The answer for people: the result as `text` writes it, then the
     /// error with its code and help ([`codes::said`]), then the limits.
     pub fn to_text(&self, text: impl FnOnce(&T) -> String) -> String {
-        let mut out = self.result.as_ref().map(text).unwrap_or_default();
+        let mut out = self.result.as_ref().map_or_default(text);
         match (&self.code, &self.error) {
             (Some(code), error) => {
                 let title = codes::entry(code).map_or("", |entry| entry.title);
@@ -501,9 +501,7 @@ pub fn fingerprint(files: &[SchemaFile]) -> String {
         .iter()
         .map(|f| (f.name.as_str(), f.text.as_str()))
         .collect();
-    shuyi_core::state_hash(&parts)
-        .map(|hash| hash.to_string())
-        .unwrap_or_default()
+    shuyi_core::state_hash(&parts).map_or_default(|hash| hash.to_string())
 }
 
 /// One line of `schemas/versions.json`: a version and its schemas'

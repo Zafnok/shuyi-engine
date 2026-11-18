@@ -104,8 +104,7 @@ impl Program {
         let tail = self
             .tail
             .lock()
-            .map(|tail| String::from_utf8_lossy(&tail).trim().to_owned())
-            .unwrap_or_default();
+            .map_or_default(|tail| String::from_utf8_lossy(&tail).trim().to_owned());
         let mut out = "the game's tool program stopped before it answered".to_owned();
         if let Some(code) = status {
             let _ = write!(out, " (exit code {code})");

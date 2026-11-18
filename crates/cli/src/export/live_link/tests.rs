@@ -319,8 +319,7 @@ fn the_engines_debug_features_are_its_crates_features() {
         let mut table: Vec<String> = crate::export::ENGINE_DEBUG_FEATURES
             .iter()
             .find(|(name, _)| name == feature)
-            .map(|(_, engine)| engine.iter().map(|&p| p.to_owned()).collect())
-            .unwrap_or_default();
+            .map_or_default(|(_, engine)| engine.iter().map(|&p| p.to_owned()).collect());
         table.sort();
         assert_eq!(*packages, table, "the engine's crates with `{feature}`");
     }

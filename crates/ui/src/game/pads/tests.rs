@@ -243,7 +243,7 @@ impl OldMerge {
         let kind = |b| {
             let holds = |id: &PadId| self.held.get(id).is_some_and(|set| set.contains(b));
             let pad = connected.iter().find(|(id, _, _)| holds(id));
-            pad.map(|&(_, kind, _)| kind).unwrap_or_default()
+            pad.map_or_default(|&(_, kind, _)| kind)
         };
         let released = before.iter().filter(|&b| !after.contains(b));
         let pressed = after.iter().filter(|&b| !before.contains(b));

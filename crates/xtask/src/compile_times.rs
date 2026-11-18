@@ -380,8 +380,7 @@ pub fn dependencies(metadata: &str) -> Result<usize, String> {
         serde_json::from_str(metadata).map_err(|e| format!("cargo metadata: {e}"))?;
     let members: Vec<&Value> = metadata["workspace_members"]
         .as_array()
-        .map(|members| members.iter().collect())
-        .unwrap_or_default();
+        .map_or_default(|members| members.iter().collect());
     let nodes = metadata["resolve"]["nodes"]
         .as_array()
         .ok_or("cargo metadata: no resolve")?;

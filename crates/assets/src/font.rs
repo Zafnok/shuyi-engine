@@ -684,8 +684,7 @@ impl CellWidths {
 /// ` in wide set "ja"` for a named set, nothing for the unnamed one: what a
 /// message about a wide glyph adds to say which set.
 fn in_set(name: Option<&str>) -> String {
-    name.map(|name| format!(" in wide set {name:?}"))
-        .unwrap_or_default()
+    name.map_or_default(|name| format!(" in wide set {name:?}"))
 }
 
 /// `'x' (U+0078)`, readable even for invisible or confusable glyphs.
@@ -746,8 +745,7 @@ impl Undrawn<'_> {
             )
         } else {
             let instead = ascii_spelling(self.c)
-                .map(|ascii| format!(", or write {ascii} instead"))
-                .unwrap_or_default();
+                .map_or_default(|ascii| format!(", or write {ascii} instead"));
             format!(
                 "{c} isn't in the font atlas ({keys}); remake the atlas with font-atlas from a \
                  font that has it{instead}"

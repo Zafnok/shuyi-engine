@@ -198,14 +198,12 @@ impl PackSpan {
 
 /// The spans of the folders `baked` lays first, read from its index.
 fn spans_of(baked: &Baked, stamp: &str) -> Vec<PackSpan> {
-    Index::read(&baked.bytes, stamp)
-        .map(|index| {
-            index
-                .spans()
-                .map(|(folder, range)| PackSpan::new(folder, range.start, range.end - range.start))
-                .collect()
-        })
-        .unwrap_or_default()
+    Index::read(&baked.bytes, stamp).map_or_default(|index| {
+        index
+            .spans()
+            .map(|(folder, range)| PackSpan::new(folder, range.start, range.end - range.start))
+            .collect()
+    })
 }
 
 /// The pictures of `baked`, baked from `bundle` for `target` as one-bit
@@ -675,11 +673,7 @@ pub fn text(output: &BakeOutput) -> String {
         );
     }
     if let Some(pack) = &output.pack {
-        let target = pack
-            .target
-            .as_ref()
-            .map(|t| format!(" for {t}"))
-            .unwrap_or_default();
+        let target = pack.target.as_ref().map_or_default(|t| format!(" for {t}"));
         let percent = (pack.pack_bytes * 100)
             .checked_div(pack.source_bytes)
             .unwrap_or(100);

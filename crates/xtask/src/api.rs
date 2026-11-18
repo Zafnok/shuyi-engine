@@ -189,11 +189,11 @@ pub const SEMVER_CHECKS: &str = "0.51.0";
 /// The `cargo-public-api` this check runs, the one CI installs.
 pub const PUBLIC_API: &str = "0.52.0";
 
-/// The nightly `cargo-public-api` builds rustdoc JSON with: the first 1.99
-/// nightly (the workspace's `rust-version`). Its JSON is format 60, which
+/// The nightly `cargo-public-api` builds rustdoc JSON with: the first 1.100
+/// nightly (the workspace's `rust-version`). Its JSON is format 61, which
 /// `cargo-public-api` 0.52.0 (built for format 57) still reads for the
 /// engine's crates.
-pub const NIGHTLY: &str = "nightly-2026-07-06";
+pub const NIGHTLY: &str = "nightly-2026-08-16";
 
 /// Where the base is checked out, under the repository's root.
 const BASE_DIR: &str = "target/api-base";
