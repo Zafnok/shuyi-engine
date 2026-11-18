@@ -43,9 +43,11 @@ What there is:
   **Check my work**.
 - **From 2837 (done):** `.devcontainer/book/devcontainer.json` opens a
   Codespace at `site/tutorial/`, linked from each step's page, which names
-  the step's folder and the two commands, `cargo shuyi web` and `bash
-  ../serve.sh` (`site/templates/chapter.html`; the twin, `codespace` in
-  `crates/xtask/src/llms.rs`). Every step's web build is built into one
+  the step's folder (`site/templates/chapter.html`; the twin, `codespace`
+  in `crates/xtask/src/llms.rs`). **From 2840 (done):** the Codespace
+  serves the book (`cargo xtask book-pad`), each step's game its own
+  build, built again when its files change; there is no `serve.sh`.
+  Every step's web build is built into one
   target folder, `CARGO_TARGET_DIR=/home/vscode/book-target` (step 2
   before the Codespace opens, the other nine behind it, or all from a
   prebuild): a command run there builds into it too, and waits for its

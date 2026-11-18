@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: in-progress
+status: done
 blocked_by: ["2837"]
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2840 — The book served from its Codespace
@@ -169,22 +169,22 @@ container 80, templates and book 70, docs 100).
 
 ## Acceptance criteria
 
-- [ ] In a Codespace of the branch, the preview shows the book; a step's
+- [x] In a Codespace of the branch, the preview shows the book; a step's
       *Play this step* and playground play that step's build from the
       Codespace, not CI's.
-- [ ] An edit saved under a step's `crates/` rebuilds that step, and its
+- [x] An edit saved under a step's `crates/` rebuilds that step, and its
       page's frame shows the change without a reload by hand; a failed
       build shows cargo's output in the page and keeps the last good one.
-- [ ] On the public site nothing changes but the button's text and line
+- [x] On the public site nothing changes but the button's text and line
       (`/pad/status` is a 404 there).
-- [ ] Zola's version and checksum are in one place, which CI and the
+- [x] Zola's version and checksum are in one place, which CI and the
       container both use.
-- [ ] The notes have the time to the book, the time from a save to the
+- [x] The notes have the time to the book, the time from a save to the
       frame, and the disk; the prebuild's size fits Nick's included
       storage, or the notes say why not and he is asked.
-- [ ] The book's chapter is updated (2802): the quick start and the
+- [x] The book's chapter is updated (2802): the quick start and the
       project's front page.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -223,8 +223,9 @@ container 80, templates and book 70, docs 100).
   step's files under `crates/` and its `Cargo.toml` by path, time and
   length (a new or removed file counts), a step queued once, one build a
   tick behind a `Builder` trait (`cargo shuyi web` in the step's folder;
-  a fake in the tests), a change during a build queued again at the next
-  tick. A failed build keeps its output and the last good `dist/web/`
+  a fake in the tests), a step queued only when two reads in a row agree
+  (below), a change during a build queued again at the next ticks. A
+  failed build keeps its output and the last good `dist/web/`
   (the web build replaces it only whole).
 - `site/static/book-pad.js`, loaded by every step page: asks
   `pad/status` at the site's base; served from the Codespace it swaps the
@@ -252,7 +253,7 @@ container 80, templates and book 70, docs 100).
   *The playground*: its frame and files in the Codespace; *The code pad*:
   the server, its routes, the rebuilding, the page), the docs map's row
   of the book's project, the container's comments, `xtask`'s usage.
-- Tests: 15 unit tests in `crates/xtask/src/book_pad/tests.rs`: the
+- Tests: 16 unit tests in `crates/xtask/src/book_pad/tests.rs`: the
   options, the address, a step's `play/` and `files/` from its folder, the
   site's files uncached, a folder without its `/`, `/` to the last step
   page, nine paths that leave their folder (400), a wrong or missing
@@ -260,7 +261,8 @@ container 80, templates and book 70, docs 100).
   (and three that aren't one), and with a fake builder: a change under
   one step's `crates/` builds that step only (a new file and a manifest
   count, a file outside `crates/` doesn't), a change during a build builds
-  it once more, changes queue each step once in order, a failed build
+  it once more, a file of a moment beside the one saved makes no build of
+  its own, changes queue each step once in order, a failed build
   keeps the last good one and says why, a build made another way is a
   good one and its own isn't counted twice; and one over TCP.
 
@@ -271,7 +273,61 @@ showed cargo's error in Problems 2 s later, the frame kept playing; the
 file put back, the line said *Building…*, and the frame reloaded 7 s after
 the save, Problems emptied.
 
-MEASURED
+**Measured** in a Codespace of the branch (`ideal-potato-69g5gjjg96x3r5p4`,
+2 cores, `basicLinux32gb`, no prebuild; made from the scratch
+branch `scratch-2840-book-pad` at `a500dbdb`, then `91fbf818` for the
+last two rows; both on `main` at `5a1b6e29`, and the `main` merged after,
+`e3709a4b` (3219's text fills and tickets only), changes nothing the
+container, the server or the pages read):
+
+| What | Time |
+| ---- | ---- |
+| The link (`gh codespace create`) to *Available* | 9 min 45 s (18:59:44 to 19:09:29) |
+| of which: setup and Zola, then step 2 from nothing | 360 s for step 2 |
+| then `xtask` from nothing (`pad.sh`) | 125 s |
+| then the site built and served (`book-pad`) | seconds (Zola 3.6 s): the book answered at the forwarded port at 19:10:07, when first asked, `/` sent to step 2's page in pad mode |
+| The other nine behind it (`build.sh`, rust-analyzer sharing the cores) | step 1 136 s, step 3 51 s, steps 4–6 15–16 s each, step 7 about 4 min, steps 9 and 10 about 12 s each |
+| A step built by `build.sh` to its open page's frame reloading by itself | under 1 s after it (step 3, 19:12:39) |
+| A one-line edit to step 3's `title.rs` to *Building…* on the page | 1.4 s (`a500dbdb`); 3.4–3.7 s (`91fbf818`, two reads agreeing) |
+| The same edit to the frame playing it, while `build.sh` built the other steps | 41.7 s |
+| The same, quiet (every step built) | 4.7 s (`a500dbdb`); 8.4 s and 5.1 s (`91fbf818`) |
+| A compile error saved while step 7 built (the lock held) | about 3 min to cargo's error in Problems; `play/` kept the last good build |
+
+The frame showed the edit: its title screen read "Edited in the
+Codespace" under *Box Pusher*. A build the reader causes while the
+container still builds the other steps waits for the target folder's
+lock (step 7 holds it about 4 minutes): the page says *Building…* all
+that while. The edits were saved from a terminal of the Codespace, in
+place (as VS Code saves) and with `sed -i`; the watcher reads the files,
+whatever writes them.
+
+- **Disk**, every step, the site and `xtask` built: the target folder
+  4.4 GB (`debug` 3.4 GB: `xtask`'s build beside the steps' build
+  scripts; `wasm32-unknown-unknown` 1.1 GB), the site 5.2 MB, the
+  container 6.5 GB in all (`du -shx /`), against 2837's 4.8 GB: `xtask`
+  adds about 1.7 GB. **The prebuild is about 6.5 GB**, so 6.5 of the
+  20 GB-month Nick's plan includes, one region and one version: it fits,
+  with about 13 GB-month left for his own Codespaces.
+- **The preview:** without the prebuild, the server is started by the
+  `onCreateCommand`, before VS Code attaches, and VS Code opened no
+  preview for a port already listening; the `postAttachCommand` then
+  found it taken and said the book is served ("port 4000 is taken: the
+  book is already served"). The Ports tab opens it, as the pages say.
+  When the server was started again (`pad.sh` after a `git pull`), VS
+  Code opened the preview by itself, on the book's step 2 with the line
+  saying the reader is in the Codespace: a Codespace made from the
+  prebuild starts it from its `postAttachCommand` (a prebuild keeps the
+  disk, not the processes), so it opens the preview.
+- VS Code asked once whether to trust the folder's authors, when a
+  terminal was first opened (as 2837 saw).
+- The footer's *The changelog* is a 404 in the Codespace: the site is
+  built as CI's `site` job builds it, without `cargo xtask changelog`
+  (the published site's `pages.yml` runs it).
+- Found and fixed in the Codespace: `sed -i` writes a file beside the
+  one it edits and renames it, and a read that caught that file queued a
+  build of its own (step 3 built twice for one edit). A step is now
+  queued only when two reads in a row agree (`91fbf818`), and a build
+  takes the files as they are when it starts; a test holds it.
 
 **Deviations:**
 
@@ -297,4 +353,33 @@ MEASURED
   closing: Windows resets a socket closed with unread bytes, which the
   TCP test met about one run in four.
 - 2528 isn't done: `serve.sh` was replaced as it was, and 2528's clauses
-  on the Codespace now say nothing is left there for it.
+  on the Codespace now say nothing is left there for it. 2838's note on
+  the Codespace (the two commands) says what holds now, and 2841 has what
+  it builds on (**From 2840 (done)**).
+- A step is queued when two reads a second apart agree, not at the first
+  read of a change: up to a second more before a build starts, and no
+  build for an editor's file of a moment.
+
+**Codespace made:** `ideal-potato-69g5gjjg96x3r5p4`, deleted; the scratch
+branch `scratch-2840-book-pad`, deleted.
+
+**Follow-up:** none. 2841 adds the Rust tabs on top of this; 2839 makes
+the steps build the engine once, which shortens the first build here too.
+
+Size: 1,867 counted lines against the 900 estimated: the server (its
+routes, the watcher, the site's build) and its tests came to 1,270 after
+`rustfmt`. Not split: the server, the container that starts it and the
+page that follows it are one thing a reader sees, and none of them does
+anything alone (a page with no server polls nothing; a server whose
+pages don't follow it is `serve.sh` again).
+
+Book: the quick start and the project's front page say the book opens in
+the Codespace's preview, or from its Ports tab; each step's page says it.
+
+Game: nothing to adopt, the change is the site, a dev container and
+`xtask`; no crate the game uses changed.
+
+No break. No `Behaviour:` line: no crate the game uses changed.
+
+**Nick input:** none needed. The prebuild he sets up from 2837's notes
+fits his included storage at about 6.5 GB (above).

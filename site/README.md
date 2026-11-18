@@ -564,7 +564,9 @@ how to use it.
     escape is a 400.
 - **The rebuilding:** once a second the server reads the modification
   times under each step's `crates/` and its `Cargo.toml`, and queues a step
-  that changed, once; it builds one at a time (`cargo shuyi web` in the
+  that changed, once, when two reads in a row agree (an editor's safe save,
+  or `sed -i`, writes a file of a moment beside the one it replaces, which
+  would otherwise make a build of its own); it builds one at a time (`cargo shuyi web` in the
   step's folder), and a change saved during a build queues one more. A
   failed build leaves the last good one in `dist/web/` (the web build
   replaces it only whole), which `play/` keeps serving. A new
