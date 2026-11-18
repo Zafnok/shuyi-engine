@@ -110,6 +110,48 @@ fn the_web_build_is_the_games_binary() {
     assert_eq!(web.dist, "dist/web");
 }
 
+/// The data read a file a step is the data read at once, and a load
+/// finished early says how many files it didn't read.
+#[test]
+fn the_data_reads_a_file_a_step_and_says_what_it_did_not_read() {
+    use hello_grid::DataLoad;
+    use shuyi::assets::bundle::Bundle;
+
+    let bundle = Bundle::new(vec![hello_grid::layer()]);
+    let formats = hello_grid::formats();
+    let mut data = DataLoad::default();
+    let read: Vec<u32> = (0..DataLoad::FILES + 2)
+        .map(|_| data.step(&bundle, &formats))
+        .collect();
+    assert_eq!(read, [1, 2, 3, 4, 5, 6, 7, 7, 7], "none past the last");
+    let stepped = data.finish().unwrap_or_else(|e| panic!("{e:?}"));
+    let at_once = Hello::load().unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(stepped.stage_map, at_once.stage_map);
+    assert_eq!(stepped.dialogue.get("intro"), at_once.dialogue.get("intro"));
+    let unread = |steps: u32| {
+        let mut data = DataLoad::default();
+        for _ in 0..steps {
+            data.step(&bundle, &formats);
+        }
+        let errors = data.finish().err().unwrap_or_default();
+        errors.iter().map(ToString::to_string).collect::<Vec<_>>()
+    };
+    assert!(
+        unread(0)
+            .iter()
+            .any(|e| e.contains("7 of its files not read")),
+        "{:?}",
+        unread(0)
+    );
+    assert!(
+        unread(6)
+            .iter()
+            .any(|e| e.contains("1 of its files not read")),
+        "{:?}",
+        unread(6)
+    );
+}
+
 /// Where a load takes more than a frame (a slice a step long, as on a slow
 /// device), the card counts the game's files as they are read.
 #[test]

@@ -401,6 +401,43 @@ mod tests {
         assert_eq!(inside(&sdk), pixels);
     }
 
+    /// Whether each pixel of the screen is black, row by row.
+    fn black(sdk: &FakeSdk) -> Vec<bool> {
+        let frame = sdk.frame();
+        (0..HEIGHT)
+            .flat_map(|y| (0..WIDTH).map(move |x| (x, y)))
+            .map(|(x, y)| !is_white(&frame, x, y))
+            .collect()
+    }
+
+    /// The screen with black wherever `inked` says, row by row.
+    fn screen_where(inked: impl Fn(i32, i32) -> bool) -> Vec<bool> {
+        (0..HEIGHT)
+            .flat_map(|y| (0..WIDTH).map(move |x| (x, y)))
+            .map(|(x, y)| inked(x, y))
+            .collect()
+    }
+
+    /// The bar, in figures of its own: columns 100 to 299 and rows 192 to
+    /// 199, half the screen wide, centred, under the middle.
+    #[test]
+    fn the_bar_is_an_outline_half_the_screen_wide_filled_from_the_left() {
+        let (left, right, top, bottom) = (100, 299, 192, 199);
+        let in_bar = |x: i32, y: i32| (left..=right).contains(&x) && (top..=bottom).contains(&y);
+        let on_edge =
+            |x: i32, y: i32| in_bar(x, y) && (x == left || x == right || y == top || y == bottom);
+        let white_card = Card::text("Toy").colored(Rgb::new(0, 0, 0), Rgb::new(255, 255, 255));
+        let sdk = FakeSdk::default();
+        let mut screen = Screen::default();
+        card_with(&mut screen, &sdk, &white_card, (0, 4));
+        assert!(black(&sdk) == screen_where(on_edge), "the outline alone");
+        card_with(&mut screen, &sdk, &white_card, (1, 2));
+        let half = |x: i32, y: i32| on_edge(x, y) || (in_bar(x, y) && x <= left + 99);
+        assert!(black(&sdk) == screen_where(half), "half its inside");
+        card_with(&mut screen, &sdk, &white_card, (2, 2));
+        assert!(black(&sdk) == screen_where(in_bar), "all of it");
+    }
+
     #[test]
     fn a_card_without_a_count_has_no_bar() {
         let sdk = FakeSdk::default();

@@ -52,9 +52,17 @@ impl DataLoad {
     /// The files the game's data is read from: the units of its load.
     pub const FILES: u32 = 7;
 
-    /// The files read so far, of [`FILES`](Self::FILES).
-    pub fn read(&self) -> u32 {
-        self.read
+    /// The data of every file in `bundle`, read with `formats` at once.
+    ///
+    /// # Errors
+    ///
+    /// Every problem found ([`finish`](Self::finish)).
+    pub fn all(bundle: &Bundle, formats: &Formats) -> Result<Hello, Vec<ContentError>> {
+        let mut data = Self::default();
+        for _ in 0..Self::FILES {
+            data.step(bundle, formats);
+        }
+        data.finish()
     }
 
     /// Reads the next file from `bundle` with `formats`, if one is left:
@@ -105,7 +113,7 @@ impl DataLoad {
     ///
     /// # Errors
     ///
-    /// Each file's problems, and a file not read yet is one.
+    /// Each file's problems, and how many files aren't read yet.
     pub fn finish(self) -> Result<Hello, Vec<ContentError>> {
         let Self {
             english,
@@ -131,7 +139,7 @@ impl DataLoad {
                 Some(stage_map),
                 Some(font),
                 Some(images),
-            ) if errors.is_empty() => Ok(Hello {
+            ) => Ok(Hello {
                 console: CONSOLE,
                 lang: Lang::with_source(english.0, dialogue_text(&dialogue), BTreeMap::new()),
                 keymap,
@@ -170,7 +178,8 @@ fn dialogue(bundle: &Bundle, formats: &Formats) -> Result<DialogueTable, Vec<Con
 /// files its data is read from (or says why it can't), a step reads each
 /// file ([`DataLoad::step`]), each a unit of the card's count
 /// ([`Progress::Of`]), and the last `finish`es the game from the data, the
-/// files and their formats.
+/// files and their formats. A step after that says the load ran past its
+/// end.
 pub fn in_steps<B: Borrow<Bundle>>(
     open: impl FnOnce() -> Result<(B, Formats), String>,
     finish: impl FnOnce(Result<Hello, Vec<ContentError>>, &B, &Formats) -> Result<Game<Hello>, String>,
@@ -180,6 +189,8 @@ pub fn in_steps<B: Borrow<Bundle>>(
     let mut files = None;
     let mut data = DataLoad::default();
     let of = DataLoad::FILES;
+    // One step a file, counted here, so the load ends whatever a step says.
+    let mut unread = 0..of;
     move || {
         if let Some(open) = open.take() {
             return match open() {
@@ -190,16 +201,16 @@ pub fn in_steps<B: Borrow<Bundle>>(
                 Err(why) => Progress::done(Err(why)),
             };
         }
-        let (Some((bundle, formats)), Some(last)) = (&files, finish.as_ref()) else {
-            return Progress::done(Err("the game's load ran past its end".to_owned()));
+        let past = || Progress::done(Err("the game's load ran past its end".to_owned()));
+        let Some((bundle, formats)) = &files else {
+            return past();
         };
-        let _ = last;
-        if data.read() < of {
+        if unread.next().is_some() {
             let done = data.step(bundle.borrow(), formats);
             return Progress::Of { done, of };
         }
         let Some(finish) = finish.take() else {
-            return Progress::done(Err("the game's load ran past its end".to_owned()));
+            return past();
         };
         Progress::done(finish(core::mem::take(&mut data).finish(), bundle, formats))
     }

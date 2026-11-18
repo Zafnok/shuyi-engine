@@ -485,9 +485,7 @@ impl Hello {
     /// The game's data from `bundle`, read with `formats`, or every
     /// problem found: every file at once ([`DataLoad`]).
     pub fn load_from(bundle: &Bundle, formats: &Formats) -> Result<Self, Vec<ContentError>> {
-        let mut data = DataLoad::default();
-        while data.step(bundle, formats) < DataLoad::FILES {}
-        data.finish()
+        DataLoad::all(bundle, formats)
     }
 
     /// The same data with the keys and console of target `target`.
