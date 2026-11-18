@@ -175,8 +175,9 @@ draws the same cells, styles and items as before, so no `Breaking:` or
   they read changes: they allocate nothing, and a cache would have to
   follow the palette's reloads, the theme, the language and the screen.
 - The Windows window lookup in `shuyi-app` (`miniquad_window`, called
-  every frame through `window_size()`): the backend's, Windows only,
-  and out of this test's reach. 3222 caches it.
+  through `window_size()`): the backend's, Windows only, and out of
+  this test's reach. Since 3222 it lists the thread's windows only
+  until it finds miniquad's, and keeps it.
 - The renderer's lookup of each glyph's style in `shuyi-app`: a binary
   search over the few styled cells, no allocation.
 - `shuyi bench`'s `allocs_per_frame` and the budgets of the GBA and the

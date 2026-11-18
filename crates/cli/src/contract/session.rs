@@ -732,8 +732,7 @@ impl<G: GameData> Session for Headless<G> {
 
     fn actions(&self) -> Vec<String> {
         let game = self.harness.app().game();
-        game.map(|game| pressable(game.input().keymap()))
-            .unwrap_or_default()
+        game.map_or_default(|game| pressable(game.input().keymap()))
     }
 
     fn play_record(&mut self) -> Option<Played> {

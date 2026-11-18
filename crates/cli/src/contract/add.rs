@@ -267,8 +267,7 @@ pub fn text(output: &AddOutput) -> String {
             output
                 .beside
                 .as_ref()
-                .map(|beside| format!("; see {beside}"))
-                .unwrap_or_default()
+                .map_or_default(|beside| format!("; see {beside}"))
         );
     }
     for to_do in output.install.iter().chain(&output.formats) {

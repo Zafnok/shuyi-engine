@@ -305,9 +305,7 @@ impl<'a> DecodeCx<'a> {
     /// The paths of the files inside directory `dir` or below it
     /// ([`Bundle::files_under`]); none without a bundle.
     pub fn files_under(&self, dir: &str) -> Vec<&'static str> {
-        self.bundle
-            .map(|bundle| bundle.files_under(dir))
-            .unwrap_or_default()
+        self.bundle.map_or_default(|bundle| bundle.files_under(dir))
     }
 
     /// The import settings `S` of `file` (ADR-0057): its section in the

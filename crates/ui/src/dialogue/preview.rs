@@ -382,7 +382,7 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
             let scenes = if broken {
                 // The last good version, if there was one.
                 let last = self.files.iter().find(|f| f.file == file);
-                last.map(|f| f.scenes.clone()).unwrap_or_default()
+                last.map_or_default(|f| f.scenes.clone())
             } else {
                 scenes
             };
@@ -475,9 +475,7 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
 
     /// The characters of the scene picked's switches.
     fn condition_rows(&self) -> Vec<CharacterId> {
-        self.picked_scene()
-            .map(|p| p.scene.conditions())
-            .unwrap_or_default()
+        self.picked_scene().map_or_default(|p| p.scene.conditions())
     }
 
     /// The scene picked's text boxes as they play now: their source lines

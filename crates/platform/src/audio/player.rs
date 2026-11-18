@@ -1090,7 +1090,7 @@ mod tests {
         };
         let ok =
             field(0) == Some(*b"RIFF") && field(8) == Some(*b"WAVE") && field(36) == Some(*b"data");
-        let len = field(40).map(u32::from_le_bytes).unwrap_or_default() as usize;
+        let len = field(40).map_or_default(u32::from_le_bytes) as usize;
         if ok && bytes.len() == 44 + len {
             Ok(len / 2)
         } else {

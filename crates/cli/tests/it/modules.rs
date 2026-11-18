@@ -100,8 +100,7 @@ fn game(root: &Path, template: &str, engine: &Path) -> Project {
 fn keys(value: &serde_json::Value) -> Vec<&str> {
     let mut keys: Vec<&str> = value
         .as_object()
-        .map(|o| o.keys().map(String::as_str).collect())
-        .unwrap_or_default();
+        .map_or_default(|o| o.keys().map(String::as_str).collect());
     keys.sort_unstable();
     keys
 }
