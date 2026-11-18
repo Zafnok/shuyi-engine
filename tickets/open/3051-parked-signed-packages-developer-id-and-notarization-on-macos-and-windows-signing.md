@@ -322,9 +322,12 @@ account, its identity check and a certificate profile).
   - Plain `doctor` is unchanged, so Nick's machine still passes it.
   - This changes `shuyi-cli`'s public API: `Probe` gains a required
     method (nothing outside `shuyi-cli`'s own tests implements it, so a
-    game builds unchanged), and `DoctorInput` gains a field. The PR
-    says so, and if 2010's job reports a break, the completion notes
-    carry its `Breaking:` line.
+    game builds unchanged), and `DoctorInput` gains a field. **Either
+    order with 2095:** if 2095 is done, `DoctorInput` is
+    `#[non_exhaustive]`, built with `default()`, so `signing` (`false`
+    by default) is additive; if not, the field is a break. The PR says
+    so, and if 2010's job reports a break, the completion notes carry
+    its `Breaking:` line.
 - **The contract:** `VERSION` goes up, the schemas are regenerated with
   `cargo shuyi schema --out crates/cli/schemas`, `versions.json` gets
   the new line, and `docs/contract.md`'s `export` and `doctor` rows name

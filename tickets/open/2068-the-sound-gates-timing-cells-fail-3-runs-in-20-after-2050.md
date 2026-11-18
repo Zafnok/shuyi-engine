@@ -74,6 +74,10 @@ None.
   `version`.
 - Twenty `sound-parity` runs on one revision (`calibrate.yml`), with the result
   in the notes.
+- **Either order with 3320:** if 3320 is done, judge the timing cells on a
+  revision with its feeder change (it may move `windows-in-house` `cpu_ms`), and
+  take the timing cells its runs failed from its **From 3320** note; if not,
+  nothing to do (3320's runs must then pass the cells fixed here).
 
 **Out (do not do):**
 - A limit raised without runs named beside it.
