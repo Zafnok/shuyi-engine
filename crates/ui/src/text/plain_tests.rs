@@ -231,3 +231,117 @@ proptest! {
         prop_assert_eq!(matches!(form, Form::Plain(_)), !has_message_syntax(&text));
     }
 }
+
+/// What [`fill_form`] filled `form` to before ticket 2268: each value
+/// copied into an [`Arg`], each key's name into a joined `String`.
+fn filled_before(
+    form: &Form<'_>,
+    lang: &str,
+    values: &Args<'_>,
+    key_args: &Args<'_>,
+) -> StyledText {
+    let joined = |name: &str| name.replace(' ', "\u{a0}");
+    let to_arg = |values: &Args<'_>, name: &str| value_of(values, name).map(ToArg::to_arg);
+    let mut out = StyledText::new();
+    let arg = |out: &mut StyledText, name: &str| {
+        if let Some(plain) = to_arg(values, name) {
+            out.push_plain(&plain.to_string());
+        } else if let Some(key) = to_arg(key_args, name) {
+            out.push_key(&joined(&key.to_string()));
+        } else if let Some(found) = keys(name) {
+            for span in found.spans() {
+                out.push(&joined(&span.text), span.role);
+            }
+        } else {
+            out.push_plain(&format!("{{{name}}}"));
+        }
+    };
+    let Form::Message(message) = form else {
+        for part in split_tokens(form.text()) {
+            match part {
+                Part::Text(plain) | Part::Unclosed(plain) => {
+                    out.push_plain(plain);
+                }
+                Part::Token(name) => arg(&mut out, name),
+            }
+        }
+        return out;
+    };
+    let chosen_by = |name: &str| to_arg(values, name).or_else(|| to_arg(key_args, name));
+    message.walk(lang, chosen_by, |piece| match piece {
+        Piece::Text(plain) => {
+            out.push_plain(plain);
+        }
+        Piece::Number(n) => {
+            out.push_plain(&n.to_string());
+        }
+        Piece::Arg(name) => arg(&mut out, name),
+        _ => {}
+    });
+    out
+}
+
+/// A game's own value, which only says what it is as an [`Arg`].
+struct Coins(i64);
+
+impl ToArg for Coins {
+    fn to_arg(&self) -> Arg {
+        Arg::Int(self.0)
+    }
+}
+
+#[test]
+fn every_text_of_the_toy_and_hello_grid_fills_with_lent_values_as_it_did_with_copies() {
+    let mut english = lang_map(include_str!("../toy/en.ron"));
+    english.extend(lang_map(include_str!(
+        "../../../../examples/hello-grid/files/en.ron"
+    )));
+    let lang = Lang::new(english.clone(), BTreeMap::new());
+    let source = lang.source_lang().code.clone();
+    let name = String::from("Ada Brook");
+    for n in [0, 1, 2, 5, 21, -3] {
+        let coins = Coins(n);
+        let mut sets = vec![values(&n).to_vec()];
+        // A game's own value, a `String`, a `char` and integers of every
+        // size, a select's `device` given as a number.
+        sets.push(vec![
+            ("n", &coins as &dyn ToArg),
+            ("count", &u128::MAX),
+            ("name", &name),
+            ("done", &'é'),
+            ("device", &7u8),
+        ]);
+        for set in &sets {
+            for as_keys in [false, true] {
+                let (values, key_args) = if as_keys {
+                    (&[][..], &set[..])
+                } else {
+                    (&set[..], &[][..])
+                };
+                for key in english.keys() {
+                    let (form, code) = lang.form_in(&source, key);
+                    let by = |name: &str| value_of(values, name);
+                    let now = fill_form(&form, code, by, key_args, keys);
+                    let before = filled_before(&form, code, values, key_args);
+                    assert_eq!(now, before, "{key}, n = {n}, keys {as_keys}");
+                }
+            }
+        }
+    }
+}
+
+proptest! {
+    #[test]
+    fn a_text_fills_with_lent_values_as_it_did_with_copies(
+        text in r"([a-z]{1,3}|[{}',# \t\u{a0}é]|\{[a-zA-Z]{1,4}\}|\{n, plural, one \{#\} other \{# x\}\}|\{device, select, playdate \{p\} 7 \{s\} other \{o\}\}){0,12}",
+        n in -5i64..30,
+        as_keys in proptest::bool::ANY,
+    ) {
+        let args = values(&n);
+        let (values, key_args) = if as_keys { (&[][..], &args[..]) } else { (&args[..], &[][..]) };
+        let form = Form::of(&text);
+        let by = |name: &str| value_of(values, name);
+        let now = fill_form(&form, "en", by, key_args, keys);
+        prop_assert_eq!(now, filled_before(&form, "en", values, key_args));
+    }
+}

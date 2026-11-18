@@ -276,7 +276,7 @@ tickets above and 2267 and 3220 under *Asset memory*:
 | 3502 | The tutorial's web builds boot in parallel, built from one folder |
 | 3319 | The bench job compares each frame's instructions with `main`'s and fails a rise past a margin unless the PR says why |
 | 2266 (done) | A language's texts are parsed once, when they load, and a fill reuses what the load learned |
-| 2268 | A message's walk borrows its values: a select and a fill copy no value into a String |
+| 2268 (done) | A message's walk borrows its values: a select and a fill copy no value into a String |
 | 3221 | A steady frame of Hello, Grid with key caps on allocates no more than a count its test pins |
 | 3222 | On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame |
 | 3320 | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |

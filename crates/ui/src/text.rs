@@ -17,7 +17,7 @@ use shuyi_assets::font::CellWidths;
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::lang::text_width;
 pub use shuyi_assets::message::{Arg, ToArg};
-use shuyi_assets::message::{Form, Piece};
+use shuyi_assets::message::{ArgRef, Form, Piece};
 use shuyi_assets::palette::line_of_key;
 use shuyi_assets::text::NO_BREAK_SPACE;
 use shuyi_assets::tip::placeholders;
@@ -204,9 +204,9 @@ pub fn fill_styled_with(
 }
 
 /// The value `values` names `name` by, the first if it names it twice.
-pub(crate) fn value_of(values: &Args<'_>, name: &str) -> Option<Arg> {
+pub(crate) fn value_of<'v>(values: &Args<'v>, name: &str) -> Option<&'v dyn ToArg> {
     let found = values.iter().find(|(arg, _)| *arg == name);
-    found.map(|(_, value)| value.to_arg())
+    found.map(|(_, value)| *value)
 }
 
 /// [`fill_styled_with`], `text` read as `form` already, and its plain
@@ -214,25 +214,34 @@ pub(crate) fn value_of(values: &Args<'_>, name: &str) -> Option<Arg> {
 /// [`Ctx`](crate::Ctx) fills with, from the form its language learned when
 /// it loaded (ADR-0131), adding the built-in `device` and `target` after
 /// a screen's values without copying them into a new list each time.
-pub(crate) fn fill_form(
+///
+/// Each value is lent ([`ToArg::with_arg_ref`], ticket 2268): a select
+/// and a value written copy nothing, and only the [`StyledText`] it fills
+/// allocates.
+pub(crate) fn fill_form<'v>(
     form: &Form<'_>,
     lang: &str,
-    args: impl Fn(&str) -> Option<Arg>,
-    key_args: &Args<'_>,
+    args: impl Fn(&str) -> Option<&'v dyn ToArg>,
+    key_args: &Args<'v>,
     lookup: impl Fn(&str) -> Option<StyledText>,
 ) -> StyledText {
     let mut out = StyledText::new();
     let arg = |out: &mut StyledText, name: &str| {
         if let Some(plain) = args(name) {
-            out.push_plain(&plain.to_string());
+            plain.with_arg_ref(&mut |value| {
+                value.with_str(|text| {
+                    out.push_plain(text);
+                });
+            });
         } else if let Some(key) = value_of(key_args, name) {
-            out.push_key(&joined(&key.to_string()));
+            let role = Some(TextRole::Key);
+            key.with_arg_ref(&mut |value| value.with_str(|text| push_joined(out, text, role)));
         } else if let Some(keys) = lookup(name) {
             for span in keys.spans() {
-                out.push(&joined(&span.text), span.role);
+                push_joined(out, &span.text, span.role);
             }
         } else {
-            out.push_plain(&format!("{{{name}}}"));
+            out.push_plain("{").push_plain(name).push_plain("}");
         }
     };
     // Plain text, and text that isn't a message: by its `{name}`s alone.
@@ -248,12 +257,14 @@ pub(crate) fn fill_form(
         return out;
     };
     let chosen_by = |name: &str| args(name).or_else(|| value_of(key_args, name));
-    message.walk(lang, chosen_by, |piece| match piece {
+    message.walk_lent(lang, chosen_by, |piece| match piece {
         Piece::Text(plain) => {
             out.push_plain(plain);
         }
         Piece::Number(n) => {
-            out.push_plain(&n.to_string());
+            ArgRef::Int(n).with_str(|digits| {
+                out.push_plain(digits);
+            });
         }
         Piece::Arg(name) => arg(&mut out, name),
         _ => {}
@@ -261,11 +272,18 @@ pub(crate) fn fill_form(
     out
 }
 
-/// `name` with its spaces as [`NO_BREAK_SPACE`]s: a key's name on one line.
-fn joined(name: &str) -> String {
-    name.chars()
-        .map(|c| if c == ' ' { NO_BREAK_SPACE } else { c })
-        .collect()
+/// Pushes `name` in `role` with its spaces as [`NO_BREAK_SPACE`]s: a
+/// key's name on one line. It goes in pieces between the spaces, which
+/// the span joins, so no copy of it is made.
+fn push_joined(out: &mut StyledText, name: &str, role: Option<TextRole>) {
+    let mut buf = [0; 4];
+    let space = NO_BREAK_SPACE.encode_utf8(&mut buf);
+    for (at, piece) in name.split(' ').enumerate() {
+        if at > 0 {
+            out.push(space, role);
+        }
+        out.push(piece, role);
+    }
 }
 
 /// What a span of a [`StyledText`] is, for the skin to paint it: never its
