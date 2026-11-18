@@ -116,7 +116,7 @@ pub fn fill_values(text: &str, lang: &str, args: &Args<'_>) -> String {
     fill(text, lang, args, |_| None)
 }
 
-/// `text`, a message in language `lang` ([`Message`]), with each plural,
+/// `text`, a message in language `lang` ([`Message`](shuyi_assets::message::Message)), with each plural,
 /// selectordinal and select choosing by its value in `args`, and each
 /// `{name}` replaced by its value in `args`, else by what `lookup` gives
 /// for it, else left as written. What is filled in is not looked at
