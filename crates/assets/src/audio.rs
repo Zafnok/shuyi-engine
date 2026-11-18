@@ -818,6 +818,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_sounds_constructors_build_what_a_literal_built() {
+        assert_eq!(
+            Sound::mono(SAMPLE_RATE),
+            Sound {
+                channels: 1,
+                sample_rate: SAMPLE_RATE,
+            }
+        );
+        assert_eq!(
+            Sound::stereo(22_050),
+            Sound {
+                channels: 2,
+                sample_rate: 22_050,
+            }
+        );
+    }
+
+    #[test]
     fn a_music_cues_constructor_builds_what_a_literal_built() {
         assert_eq!(
             MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own),

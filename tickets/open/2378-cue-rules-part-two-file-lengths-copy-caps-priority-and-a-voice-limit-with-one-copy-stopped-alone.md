@@ -124,10 +124,9 @@ None.
   - the `Sound` kind gains `length_ms: Option<u32>`, from
     `sound_length_ms`. Fix its literal in
     `crates/assets/src/format/builtin_tests.rs` and its pattern in
-    `formats.rs`. **Either order with 2095:** if 2095 is done, the kind
-    is `#[non_exhaustive]`, `Sound::mono` and `Sound::stereo` start
-    `length_ms` at `None`, and the field is additive; if not, the field
-    is a break, with its `Breaking:` line (*For the game*);
+    `formats.rs`. **From 2095 (done):** the kind is
+    `#[non_exhaustive]`, so `Sound::mono` and `Sound::stereo` start
+    `length_ms` at `None`, and the field is additive;
   - the manifest's binary form changes, so `pack::VERSION`
     (`crates/assets/src/pack.rs`) becomes the next number, and the
     pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted;
@@ -237,8 +236,8 @@ None.
   `SoundRequest::sound`, and `SoundRequest` is `#[non_exhaustive]`.
   `AudioManifest` gains `max_voices` additively too (**from 2341
   (done):** it is `#[non_exhaustive]`, built with `default()` and its
-  fields assigned). The `Sound` kind gains `length_ms`, additively once
-  2095 is done (the clause on `length_ms` above). Each break that is
+  fields assigned). The `Sound` kind gains `length_ms` additively too
+  (**from 2095 (done)**, the line on `length_ms` above). Each break that is
   left gets a `Breaking:` line in the completion notes (ADR-0038). The pack's
   version goes up, so a pack baked before this is refused and rebaked.
   A backend of the game's own, such as its Playdate front end
@@ -249,8 +248,8 @@ None.
 snapshots not counted), the lengths go first as a ticket of their own
 (`write-ticket`, 23xx, After MVP, blocked by 2345): `sound_length_ms`,
 `lengths_ms`, `measure_sounds`, the `Sound` kind's `length_ms`, the pack
-version and the 2225 and 2095 clauses. That PR adds it to this ticket's
-`blocked_by` and points 2225's and 2095's clauses at it.
+version and the 2225 clause. That PR adds it to this ticket's
+`blocked_by` and points 2225's clause at it.
 
 **Out (do not do):**
 - what 2345 does: the cue rules' place in `App`, variants, the random

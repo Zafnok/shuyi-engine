@@ -32,17 +32,8 @@ fn frame_of(picture: Option<Painted>, src: Rect, dest: Rect) -> GlyphBuffer {
 
 /// `buf` drawn by the fast renderer, checked equal to the reference's.
 fn draw(buf: &GlyphBuffer) -> Box<Frame> {
-    let atlas = shuyi_assets::font::FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 1,
-        glyphs: alloc::collections::BTreeMap::default(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas =
+        shuyi_assets::font::FontAtlasDef::new(8, 16, alloc::collections::BTreeMap::default(), 1);
     let font = Font::new(&atlas, &[]).unwrap();
     let mut fast = Box::new([0u8; FRAME_BYTES]);
     render(buf, &font, &(), &test_map(), &mut fast);
@@ -243,17 +234,8 @@ fn a_repainted_picture_is_drawn_again_where_it_changed() {
         .unwrap()
         .pixels_mut()
         .fill(u8::MAX);
-    let atlas = shuyi_assets::font::FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 1,
-        glyphs: alloc::collections::BTreeMap::default(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas =
+        shuyi_assets::font::FontAtlasDef::new(8, 16, alloc::collections::BTreeMap::default(), 1);
     let font = Font::new(&atlas, &[]).unwrap();
     let mut frame = draw(&old);
     assert_eq!(text(&frame, 40, 40, 4, 1), ["####"]);

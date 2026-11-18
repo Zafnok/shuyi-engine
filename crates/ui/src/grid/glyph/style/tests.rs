@@ -282,17 +282,7 @@ fn a_flash_on_a_one_bit_frame_flips_its_tile() {
     let kit = Kit::new();
     let looks = kit.looks();
     let map = toy_pattern_map(&looks);
-    let atlas = FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 32,
-        glyphs: [('?', 0)].into(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas = FontAtlasDef::new(8, 16, [('?', 0)].into(), 32);
     let mut bits = vec![0u8; 16];
     bits[3] = 0b0110_0110;
     let font = Font::new(&atlas, &bits).unwrap();

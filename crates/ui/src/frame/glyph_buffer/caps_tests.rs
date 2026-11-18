@@ -17,12 +17,9 @@ const EDGE: Rgb = Rgb::new(128, 112, 82);
 /// Terminus 8 × 16's widths: its capitals' ink at columns 1 to 6, rows
 /// 2 to 11.
 fn terminus() -> CellWidths {
-    CellWidths::of(&FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        ink: Some(FontInk::new(InkBox::new(1, 2, 6, 11))),
-        ..FontAtlasDef::default()
-    })
+    let mut atlas = FontAtlasDef::new(8, 16, BTreeMap::new(), 0);
+    atlas.ink = Some(FontInk::new(InkBox::new(1, 2, 6, 11)));
+    CellWidths::of(&atlas)
 }
 
 /// A `w × 2` buffer drawing key caps boxed in `FILL` and `EDGE`.

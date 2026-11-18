@@ -12,9 +12,10 @@ std::thread_local! {
 
 /// The font after a reload: `あ` is wide.
 static WIDE_FONT: std::sync::LazyLock<shuyi_assets::font::FontAtlasDef> =
-    std::sync::LazyLock::new(|| shuyi_assets::font::FontAtlasDef {
-        wide: [('あ', 0)].into(),
-        ..shuyi_assets::font::FontAtlasDef::default()
+    std::sync::LazyLock::new(|| {
+        let mut atlas = shuyi_assets::font::FontAtlasDef::default();
+        atlas.wide = [('あ', 0)].into();
+        atlas
     });
 
 #[test]
