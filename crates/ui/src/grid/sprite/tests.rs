@@ -828,7 +828,7 @@ fn a_size_of_the_art_too_big_for_the_console_is_the_largest_there_is() {
 }
 
 /// A sprite skin draws the threat arrows in its glyph skin's shape
-/// (ticket 3220).
+/// (ticket 3223).
 #[test]
 fn the_sprite_skin_draws_its_glyph_skins_threat_shape() {
     let kit = Kit::new();

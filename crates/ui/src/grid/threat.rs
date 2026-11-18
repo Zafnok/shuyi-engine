@@ -11,7 +11,7 @@
 //! rectangles, one per step across it. An enemy outside the view has its
 //! arrow cut at the view's edge and no mark.
 //!
-//! A skin may draw the arrows in another [`Shape`] (ticket 3220): as arcs
+//! A skin may draw the arrows in another [`Shape`] (ticket 3223): as arcs
 //! that bow up the screen over what lies between, 2 pixels thick under a
 //! filled head, and with a frame on the threatened tile as well.
 
@@ -34,7 +34,7 @@ pub const BARB_LEN: f32 = 4.0;
 /// (about 35°). *Tunable.*
 const BARB_TURN: (f32, f32) = (0.82, 0.57);
 
-/// How a threat's arrows are drawn (ticket 3220). Kind 6 of ADR-0039:
+/// How a threat's arrows are drawn (ticket 3223). Kind 6 of ADR-0039:
 /// more shapes may come, so a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[non_exhaustive]

@@ -1,5 +1,5 @@
 ---
-id: "3220"
+id: "3223"
 title: "Threat arrows as arcs, with a frame on the threatened tile, beside today's straight ones"
 type: feature
 milestone: MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed: 2026-11-17
 ---
 
-# 3220 — Threat arrows as arcs, and a frame on the threatened tile
+# 3223 — Threat arrows as arcs, and a frame on the threatened tile
 
 ## Context
 

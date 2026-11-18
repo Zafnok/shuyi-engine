@@ -120,7 +120,7 @@ impl GlyphSkin {
         }
     }
 
-    /// The same skin, drawing the threat arrows in `shape` (ticket 3220).
+    /// The same skin, drawing the threat arrows in `shape` (ticket 3223).
     /// The sprite skin built on it draws them so too.
     #[must_use]
     pub const fn with_threat_shape(mut self, shape: threat::Shape) -> Self {
@@ -438,7 +438,7 @@ pub(crate) mod tests {
         assert!(arrows.iter().all(|o| o.layer == Layer::Over));
         let marks: Vec<_> = expect.iter().filter(|o| o.color == colors.mark).collect();
         assert_eq!(marks[0].rect, Rect::new(134, 84, 3, 6));
-        // A skin built with another shape draws that one (ticket 3220).
+        // A skin built with another shape draws that one (ticket 3223).
         let arcs = GLYPH.with_threat_shape(threat::Shape::ArcAndFrame);
         assert_eq!(GLYPH.threat_shape, threat::Shape::Straight);
         let mut buf = blank();
