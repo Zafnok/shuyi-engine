@@ -1716,7 +1716,10 @@ const UI_LISTING: &str = " --no-default-features --features std --features debug
 /// 2041), spelled out here rather than read from [`API_CRATES`].
 const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-core", &["std", "schema", "toy"]),
-    ("shuyi-assets", &["std", "png", "sample-actions", "golden"]),
+    (
+        "shuyi-assets",
+        &["std", "png", "sample-actions", "golden", "parse-count"],
+    ),
     (
         "shuyi-ui",
         &[
