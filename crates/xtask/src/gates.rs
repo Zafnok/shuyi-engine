@@ -200,7 +200,9 @@ fn test_only(path: &str) -> bool {
     let mut segments = path.split('/').collect::<Vec<_>>();
     let file = segments.pop().unwrap_or(path);
     file == "tests.rs"
-        || path.ends_with(".snap")
+        || Path::new(file)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("snap"))
         || segments.iter().any(|s| *s == "tests" || *s == "benches")
 }
 
