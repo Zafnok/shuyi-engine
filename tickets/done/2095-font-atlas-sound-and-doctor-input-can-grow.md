@@ -256,7 +256,7 @@ before: |
   };
 after: |
   let def = FontAtlasDef::new(2, 4, [('b', 0), ('a', 1)].into_iter().collect(), 2);
-find: ["FontAtlasDef {", "FontInk {"]
+find: ["FontAtlasDef {"]
 ```
 
 Breaking: shuyi-assets: audio::Sound: #[non_exhaustive]; a format of a game's own builds it with Sound::mono or Sound::stereo
