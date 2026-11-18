@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2095 — Before the first release, the font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039
@@ -130,22 +130,22 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `FontAtlasDef`, `FontInk`, `Sound` and `DoctorInput` are
+- [x] `FontAtlasDef`, `FontInk`, `Sound` and `DoctorInput` are
       `#[non_exhaustive]`, each with a doc line naming its ADR-0039 kind.
-- [ ] A test outside `shuyi-assets` (`crates/assets/tests/it/constructors.rs`)
+- [x] A test outside `shuyi-assets` (`crates/assets/tests/it/constructors.rs`)
       builds a `FontAtlasDef` in a `const` item and a `Sound` with
       `mono` and `stereo`; one in `crates/cli/tests/it` builds a
       `DoctorInput` with `default()`.
-- [ ] `FontAtlasDef::new(8, 16, glyphs, 16)` equals the literal with the
+- [x] `FontAtlasDef::new(8, 16, glyphs, 16)` equals the literal with the
       same values and every set empty.
-- [ ] Every font atlas, sound and pack in the repository and the
+- [x] Every font atlas, sound and pack in the repository and the
       templates loads unchanged; `crates/cli/schemas` is unchanged.
-- [ ] No open ticket plans a `Breaking:` line for one of these types or
+- [x] No open ticket plans a `Breaking:` line for one of these types or
       for `AudioManifest`'s fields.
-- [ ] `cargo xtask api` lists each change, and the completion notes have
+- [x] `cargo xtask api` lists each change, and the completion notes have
       a `Breaking:` line naming each type.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -157,5 +157,132 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `FontAtlasDef` and `FontInk` (kind 5, data read from files) and the
+  `Sound` kind (kind 5) are `#[non_exhaustive]`, and `DoctorInput`
+  (kind 4) too; each has a doc line naming its ADR-0039 kind
+  (`DoctorInput`'s is a `//` comment, as the contract's other inputs
+  have, so its schema keeps its description).
+  - `FontAtlasDef::new(cell_w, cell_h, glyphs, columns)`, a `const fn`:
+    no wide set, no named sets, no bold face, no ink. `FontInk::new`
+    was there already.
+  - `Sound::mono(sample_rate)` and `Sound::stereo(sample_rate)`, both
+    `const fn`.
+  - `DoctorInput` keeps `Default` and `#[serde(deny_unknown_fields)]`.
+- No field and no serde attribute changed: every `atlas.ron`, sound
+  and pack loads as before (the assets crate's 761 unit tests and its
+  integration tests pass, the font-atlas, audio and pack fixtures among
+  them), `pack::VERSION` stays, and `cargo shuyi schema --out
+  crates/cli/schemas` changes no file, so the contract's `VERSION`
+  stays.
+- Every literal outside `shuyi-assets`, 25 in all, became
+  `FontAtlasDef::new` with the rest assigned, or a clone with a field
+  assigned where a test wrote `..other` (`shuyi-app`, `shuyi-cli`,
+  `shuyi-platform`, `shuyi-playdate`, `shuyi-ui`, and the doc example
+  in `crates/app/src/lib.rs`). `Sound` and `DoctorInput` had no literal
+  outside their crates. The templates, the tutorial's steps, the
+  site's snippets and the skill pack build none of the four.
+- Tests: `the_constructor_builds_what_a_literal_built` (`font.rs`) and
+  `a_sounds_constructors_build_what_a_literal_built` (`audio.rs`);
+  outside the crates, `crates/assets/tests/it/constructors.rs` builds a
+  `FontAtlasDef` in a `const` item and another with its wide set and
+  ink assigned, and a `Sound` with `mono` and `stereo`;
+  `crates/cli/tests/it/doctor.rs` builds a `DoctorInput` with
+  `default()` and reads it as `{}`.
+- `docs/formats.md`, *Writing a format*, says a format outside the
+  engine builds an engine kind with its constructors.
+
+The audit (Scope), over the 139 exhaustive `pub struct` and `pub enum`
+names of `crates/assets/src` (parsed from the source; the ticket's 142
+counted differently), each searched in `tickets/open` in the same
+sentence as "gains", "new field" or `Type::field:`. It found nothing
+beyond the table:
+
+| Hit | Why it doesn't move |
+| --- | ------------------- |
+| `AtlasRect` (2224), `ImageRect` (2231, 2235) | gain derives only |
+| `Bundle` (2228), `Formats` (2228, 2232, 2517, 3220, 3316), `Ron` (2230), `Lang`, `Message` (2266), `LangPackRon` (2241), `Layout` (2333) | private fields (kind 8): no literal to break |
+| `CinematicRon` (2364) | a marker; its file's types are 2084's, and 2364 already adds their fields additively |
+| `Step` (2361), `Action` (2374) | other types of the same name (`frame_png::Step`, the game's `Action`) |
+
+The clauses that waited on this ticket now say what holds: 2096 (the
+four types stay out of `tools/exhaustive.ron`, and a type a ticket grows
+moves in 2096's PR), 2378 (`length_ms` is additive), 3051 (parked;
+`signing` is additive) and 3503 (`FontAtlasDef::new` goes in its file).
+2225's `SfxRon` now builds its kind with `Sound::mono(SAMPLE_RATE)`. No
+open ticket plans a `Breaking:` line for these types or for
+`AudioManifest`'s fields.
+
+Deviations:
+
+- Some existing tests changed, against "pass unchanged": those outside
+  `shuyi-assets` that built a `FontAtlasDef` by literal or with `..`,
+  which the attribute makes necessary. Their assertions are unchanged.
+
+The game, searched with `gh search code --repo Zafnok/visions-of-shuyi`
+for `FontAtlasDef`, `FontInk`, `DoctorInput`, `audio::Sound` and
+`formats::Sound` on 2026-11-17 (its `main` at `58176da0`, pin
+`e738ffc2`): one literal, `crates/xtask/src/icon.rs` line 237 (a test's
+tiny atlas). `crates/content/src/font.rs` re-exports the type and loads
+it from files; the `audio::Sound` hit (`crates/xtask/src/playdate_audio.rs`)
+is a comment. Nothing names `FontInk`, the `Sound` kind or `DoctorInput`.
+
+Game: nothing to adopt beyond the pin move: the game's next pin move past
+this change rewrites its one `FontAtlasDef` literal; no game ticket is
+needed before it.
+
+Book: none, no page of the book or snippet builds a `FontAtlasDef`,
+`FontInk`, `Sound` or `DoctorInput` (`grep` over `site/`).
+
+Breaking: shuyi-assets: font::FontAtlasDef, font::FontInk: #[non_exhaustive]; build an atlas with the const fn FontAtlasDef::new and assign its other fields, and ink with FontInk::new
+
+```migration
+since: 0.1.0
+what: A FontAtlasDef built in code uses FontAtlasDef::new, and its wide sets, bold face and ink are assigned.
+old: FontAtlasDef { cell_w, cell_h, columns, glyphs, wide, wide_sets, bold, ink, bold_ink }
+new: FontAtlasDef::new(cell_w, cell_h, glyphs, columns)
+before: |
+  let def = FontAtlasDef {
+      cell_w: 2,
+      cell_h: 4,
+      columns: 2,
+      glyphs: [('b', 0), ('a', 1)].into_iter().collect(),
+      wide: BTreeMap::new(),
+      wide_sets: BTreeMap::new(),
+      bold: BTreeMap::new(),
+      ink: None,
+      bold_ink: None,
+  };
+after: |
+  let def = FontAtlasDef::new(2, 4, [('b', 0), ('a', 1)].into_iter().collect(), 2);
+find: ["FontAtlasDef {", "FontInk {"]
+```
+
+Breaking: shuyi-assets: audio::Sound: #[non_exhaustive]; a format of a game's own builds it with Sound::mono or Sound::stereo
+
+```migration
+since: 0.1.0
+what: The Sound kind is built with Sound::mono or Sound::stereo, not by a literal.
+old: Sound { channels, sample_rate }
+new: Sound::mono(sample_rate), Sound::stereo(sample_rate)
+before: |
+  Ok(Sound { channels: 2, sample_rate: SAMPLE_RATE })
+after: |
+  Ok(Sound::stereo(SAMPLE_RATE))
+find: ["Sound {"]
+```
+
+Breaking: shuyi-cli: contract::doctor::DoctorInput: #[non_exhaustive]; build it with DoctorInput::default()
+
+```migration
+since: 0.1.0
+what: DoctorInput is built with default(), not by the literal DoctorInput {}.
+old: DoctorInput {}
+new: DoctorInput::default()
+before: |
+  let answer = doctor(&ThisMachine, &DoctorInput {});
+after: |
+  let answer = doctor(&ThisMachine, &DoctorInput::default());
+find: ["DoctorInput {}"]
+```

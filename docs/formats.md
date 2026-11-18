@@ -442,6 +442,12 @@ impl AssetKind for ClassTable {
 }
 ```
 
+An engine kind that may gain fields is `#[non_exhaustive]` (ADR-0039), so
+a format outside the engine builds it with its constructors, never a
+literal: `Sound::mono(rate)` or `Sound::stereo(rate)` for a sound's
+header, `FontAtlasDef::new(cell_w, cell_h, glyphs, columns)` for a font
+atlas, then the fields it has assigned.
+
 ### 2. The format
 
 ```rust

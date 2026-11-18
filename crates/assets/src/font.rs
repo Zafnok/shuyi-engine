@@ -108,7 +108,12 @@ pub fn is_wide_punctuation(c: char) -> bool {
 pub type WideSet = BTreeMap<char, u32>;
 
 /// The validated font atlas layout.
+///
+/// Data read from a file (ADR-0039 kind 5): build one in code with
+/// [`FontAtlasDef::new`] and assign the rest. A field added later is
+/// `#[serde(default)]`, so every `atlas.ron` still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FontAtlasDef {
     /// Cell width in pixels.
     pub cell_w: u32,
@@ -153,7 +158,12 @@ pub struct FontAtlasDef {
 /// capitals' box, and the columns of each printable ASCII glyph whose ink
 /// doesn't span the capitals'. A key cap centres its name by the
 /// capitals' rows, and fits its box to its name's first and last glyph.
+///
+/// Data read from a file (ADR-0039 kind 5): build one in code with
+/// [`FontInk::new`] and assign the rest. A field added later is
+/// `#[serde(default)]`, so every `atlas.ron` still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FontInk {
     /// The pixels most capitals `A`–`Z` share the edges of.
     pub capitals: InkBox,
@@ -224,6 +234,24 @@ pub struct AtlasRect {
 }
 
 impl FontAtlasDef {
+    /// An atlas of `cell_w` × `cell_h` pixel cells, `columns` to a row,
+    /// with `glyphs` narrow (each → its cell index): no wide set, no named
+    /// wide sets, no bold face and no ink. Assign those fields to add them.
+    #[must_use]
+    pub const fn new(cell_w: u32, cell_h: u32, glyphs: BTreeMap<char, u32>, columns: u32) -> Self {
+        Self {
+            cell_w,
+            cell_h,
+            columns,
+            glyphs,
+            wide: BTreeMap::new(),
+            wide_sets: BTreeMap::new(),
+            bold: BTreeMap::new(),
+            ink: None,
+            bold_ink: None,
+        }
+    }
+
     /// The pixel rectangle of cell `index`. `columns` must be non-zero (a
     /// validated atlas guarantees it).
     pub fn cell_rect(&self, index: u32) -> AtlasRect {
@@ -891,6 +919,25 @@ mod tests {
             glyphs: REQUIRED.chars().zip(0..).collect(),
             ..FontAtlasDef::default()
         }
+    }
+
+    #[test]
+    fn the_constructor_builds_what_a_literal_built() {
+        let glyphs: BTreeMap<char, u32> = REQUIRED.chars().zip(0..).collect();
+        assert_eq!(
+            FontAtlasDef::new(8, 16, glyphs.clone(), 16),
+            FontAtlasDef {
+                cell_w: 8,
+                cell_h: 16,
+                columns: 16,
+                glyphs,
+                wide: BTreeMap::new(),
+                wide_sets: BTreeMap::new(),
+                bold: BTreeMap::new(),
+                ink: None,
+                bold_ink: None,
+            }
+        );
     }
 
     fn rows_for(def: &FontAtlasDef) -> u32 {

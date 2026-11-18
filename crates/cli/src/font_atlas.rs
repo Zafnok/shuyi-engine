@@ -448,13 +448,8 @@ pub fn build_atlas_with_sets(
         .filter(|&(&c, _)| chars.wants(c))
         .collect();
     let mut next = u32::try_from(chosen.len()).unwrap_or(u32::MAX);
-    let mut def = FontAtlasDef {
-        cell_w: font.cell_w,
-        cell_h: font.cell_h,
-        columns: COLUMNS,
-        glyphs: chosen.iter().map(|&(&c, _)| c).zip(0..).collect(),
-        ..FontAtlasDef::default()
-    };
+    let glyphs = chosen.iter().map(|&(&c, _)| c).zip(0..).collect();
+    let mut def = FontAtlasDef::new(font.cell_w, font.cell_h, glyphs, COLUMNS);
     let mut placed_wide: Vec<(u32, &Vec<bool>)> = Vec::new();
     for &(set, wide) in wides {
         let mut cells = WideSet::new();
@@ -1685,10 +1680,8 @@ mod tests {
         let bits = one_bit(&atlas.def, &atlas.image).unwrap();
         // 'A' (index 0) then 'b' (index 1), four rows each.
         assert_eq!(bits, [0, 0b1100_0000, 0b1000_0000, 0, 0, 0, 0, 0b0010_0000]);
-        let wide = FontAtlasDef {
-            cell_w: 9,
-            ..atlas.def
-        };
+        let mut wide = atlas.def;
+        wide.cell_w = 9;
         assert_eq!(
             one_bit(&wide, &atlas.image).unwrap_err(),
             "the one-bit atlas holds cells up to 8 pixels wide, not 9"

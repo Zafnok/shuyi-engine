@@ -212,23 +212,15 @@ fn atlas() -> (FontAtlasDef, Image) {
             [if on { 255 } else { 0 }; 4]
         })
         .collect();
-    let def = FontAtlasDef {
-        cell_w: CELL.0,
-        cell_h: CELL.1,
-        columns,
-        glyphs,
-        wide: BTreeMap::from([(WIDE_GLYPH, narrow)]),
-        wide_sets: BTreeMap::new(),
-        bold: BTreeMap::from([('o', narrow + 2)]),
-        ink: Some(FontInk {
-            capitals: InkBox::new(1, 2, 6, 13),
-            columns: BTreeMap::from([('|', [3, 4])]),
-        }),
-        bold_ink: Some(FontInk {
-            capitals: InkBox::new(1, 2, 7, 13),
-            columns: BTreeMap::from([('|', [3, 5])]),
-        }),
-    };
+    let mut def = FontAtlasDef::new(CELL.0, CELL.1, glyphs, columns);
+    def.wide = BTreeMap::from([(WIDE_GLYPH, narrow)]);
+    def.bold = BTreeMap::from([('o', narrow + 2)]);
+    let mut ink = FontInk::new(InkBox::new(1, 2, 6, 13));
+    ink.columns = BTreeMap::from([('|', [3, 4])]);
+    def.ink = Some(ink);
+    let mut bold_ink = FontInk::new(InkBox::new(1, 2, 7, 13));
+    bold_ink.columns = BTreeMap::from([('|', [3, 5])]);
+    def.bold_ink = Some(bold_ink);
     (
         def,
         Image {

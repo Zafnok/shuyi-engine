@@ -127,17 +127,7 @@ mod tests {
         assert!(error.contains("desktop, web, steam-deck"), "{error}");
     }
 
-    static FONT: FontAtlasDef = FontAtlasDef {
-        cell_w: 0,
-        cell_h: 0,
-        columns: 0,
-        glyphs: BTreeMap::new(),
-        wide: BTreeMap::new(),
-        wide_sets: BTreeMap::new(),
-        bold: std::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    static FONT: FontAtlasDef = FontAtlasDef::new(0, 0, BTreeMap::new(), 0);
     static IMAGES: ImageTable = ImageTable::new(BTreeMap::new());
 
     /// The toy's look, for a start: it draws with neither.

@@ -18,12 +18,37 @@ pub const MAX_SOUND_BYTES: usize = 64 << 20;
 /// A sound file's header: what the engine knows of a sound before the
 /// platform plays it. Every one is mono or stereo, at
 /// [`SAMPLE_RATE`](super::SAMPLE_RATE).
+///
+/// Data read from a file (ADR-0039 kind 5): a game's own sound format
+/// (ADR-0007) builds one with [`Sound::mono`] or [`Sound::stereo`]. A
+/// field added later is `#[serde(default)]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Sound {
     /// 1 or 2.
     pub channels: u16,
     /// Samples a second.
     pub sample_rate: u32,
+}
+
+impl Sound {
+    /// A mono sound of `sample_rate` samples a second.
+    #[must_use]
+    pub const fn mono(sample_rate: u32) -> Self {
+        Self {
+            channels: 1,
+            sample_rate,
+        }
+    }
+
+    /// A stereo sound of `sample_rate` samples a second.
+    #[must_use]
+    pub const fn stereo(sample_rate: u32) -> Self {
+        Self {
+            channels: 2,
+            sample_rate,
+        }
+    }
 }
 
 impl AssetKind for Sound {

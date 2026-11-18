@@ -6,6 +6,7 @@
 
 mod binary;
 mod docs;
+mod doctor;
 mod mcp;
 mod modules;
 mod schemas;

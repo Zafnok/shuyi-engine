@@ -60,17 +60,7 @@ fn map() -> PatternMap {
 /// A font of 8 × 16 cells: `#` every pixel, `|` its left column, `?`
 /// (the fallback) nothing.
 fn font_parts() -> (FontAtlasDef, Vec<u8>) {
-    let atlas = FontAtlasDef {
-        cell_w: 8,
-        cell_h: 16,
-        columns: 32,
-        glyphs: [('#', 0), ('|', 1), ('?', 2)].into(),
-        wide: alloc::collections::BTreeMap::default(),
-        wide_sets: alloc::collections::BTreeMap::new(),
-        bold: alloc::collections::BTreeMap::new(),
-        bold_ink: None,
-        ink: None,
-    };
+    let atlas = FontAtlasDef::new(8, 16, [('#', 0), ('|', 1), ('?', 2)].into(), 32);
     let mut bits = vec![0u8; 3 * 16];
     bits[..16].fill(u8::MAX);
     bits[16..32].fill(0x80);

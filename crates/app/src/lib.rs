@@ -76,11 +76,7 @@
 //! # fn my_sounds() -> Files<'static> { Files::new(&no_sound, &shown, &not_left_out, "music") }
 //! # fn my_font(_: &MyGame) -> &'static FontAtlasDef {
 //! #     static FONT: std::sync::OnceLock<FontAtlasDef> = std::sync::OnceLock::new();
-//! #     FONT.get_or_init(|| FontAtlasDef {
-//! #         cell_w: 8, cell_h: 16, columns: 16,
-//! #         glyphs: Default::default(), wide: Default::default(), wide_sets: Default::default(),
-//! #         bold: Default::default(), ink: None, bold_ink: None,
-//! #     })
+//! #     FONT.get_or_init(|| FontAtlasDef::new(8, 16, Default::default(), 16))
 //! # }
 //! # fn my_ctx() -> Ctx<MyGame> { toy::ctx() }
 //! ```
