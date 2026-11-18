@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 2266 — A language's texts are parsed once, when they load
@@ -167,29 +167,31 @@ and keep the stored parse, `form_in` and `Ctx` on it here.
 
 ## Acceptance criteria
 
-- [ ] A test drives the toy (`shuyi_platform` harness) and Hello,
+- [x] A test drives the toy (`shuyi_platform` harness) and Hello,
       Grid through screens whose texts include plain text, keys, a
       plural and a select on `device`, for several frames after the
       load, and counts zero calls to `Message::parse` in those frames
       (a counter in `shuyi-assets` behind a feature only tests turn
-      on, reset after the load).
-- [ ] For every text of the toy's and Hello, Grid's languages, a fill
+      on, reset after the load). (Hello, Grid has no select on
+      `device`: see the deviations.)
+- [x] For every text of the toy's and Hello, Grid's languages, a fill
       from its form gives byte for byte what `fill_styled` of its text
       gives, with and without values and keys.
-- [ ] Building a `Lang` of only plain texts allocates no more than
+- [x] Building a `Lang` of only plain texts allocates no more than
       before this ticket (an allocation count with
       `shuyi-alloc-count`), so only messages cost a kept parse.
-- [ ] A select on `device` and a `{name}` filled with a text value
-      allocate nothing while the message is walked (the same counter).
-- [ ] Two `Lang`s built from the same files are equal (`==`), and a
+- [x] ~~A select on `device` and a `{name}` filled with a text value
+      allocate nothing while the message is walked (the same counter).~~
+      (not done: moved to 2268 with the borrowed walk, at the split)
+- [x] Two `Lang`s built from the same files are equal (`==`), and a
       clone fills the same as the original.
-- [ ] The PR states the synthetic load's instructions and heap peak
+- [x] The PR states the synthetic load's instructions and heap peak
       and Hello, Grid's `start_instructions` and options-menu frame,
       before and after.
-- [ ] The ADR amending ADR-0127 is written and indexed.
-- [ ] The book's chapter is updated (2802), or the completion notes
+- [x] The ADR amending ADR-0127 is written and indexed.
+- [x] The book's chapter is updated (2802), or the completion notes
       have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -206,5 +208,93 @@ and keep the stored parse, `form_in` and `Ctx` on it here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi_assets::message`: the parser records byte ranges (`Span`), and
+  `Message<'a>` is its text and its nodes as a `Cow<'a, [Node]>`, owned
+  from `parse` and borrowed from a kept parse (`Parsed`, crate-private).
+  `parse`, `walk`, `format`, `args`, `names` and `forms` keep their
+  signatures, and `message/tests.rs` passes unchanged. Added:
+  `Message::text`, `Form` (`Plain`, `Message`, `NotAMessage`;
+  `#[non_exhaustive]`), `Form::of`, `Form::text`, `has_message_syntax`
+  (3219's check, moved here from `shuyi-ui`, public), and the
+  `parse-count` feature's `message::parse_count::take` (a thread's
+  count, so parallel tests don't disturb it).
+- `shuyi_assets::lang`: `Lang::with_source` (so `Lang::new` and
+  `from_files_in`) learns each screen and data text's form, the source's
+  and each pack's (`lang/forms.rs`), keeping only what isn't plain.
+  `Lang::form_in` and `Lang::data_form_in` hand it out.
+- `shuyi-ui`: `Ctx`'s key fills (`text_with`, `text_with_keys`,
+  `text_styled`, `text_styled_with_keys`, `label`, `label_styled`) read
+  `form_in`; `text::fill_form` fills a `Form`; text a caller holds goes
+  through `Form::of`.
+- Tests: `lang/forms/tests.rs` (each kind of form along the chain, for
+  screen and data text, no parse after the load, equality and clones),
+  `crates/ui/tests/it/parses.rs` and
+  `examples/hello-grid/tests/it/parses.rs` (no parse in a frame),
+  `plain_tests.rs` (every toy and Hello, Grid text fills from its form
+  as from its text; a property over random texts), and
+  `crates/assets/tests/lang_load.rs` (a language of plain texts
+  allocates nothing to learn them; the synthetic load parses each text
+  at most twice).
+- ADR-0130 amends ADR-0127 §4 and §9; the book's text section and
+  `docs/formats.md` say a text's form is learned once.
+
+**The numbers.** The synthetic load (833 screen texts: 33 plurals and
+selects, 350 with placeholders; `ja` and `zh-Hans` packs of every key),
+`crates/assets/tests/lang_load.rs`, on `main` (`f1ddc531`) and here:
+
+| | `main` | this PR |
+| --- | ---: | ---: |
+| Instructions (Callgrind, release with debug assertions, `lang_load::load`) | 69,188,062 | 73,336,699 (+6.0%) |
+| Allocations | 29,238 | 29,732 (+1.7%) |
+| Heap peak | 653,935 bytes | 669,855 bytes (+2.4%) |
+
+The instructions were counted in WSL on a build for
+`x86_64-unknown-linux-musl` linked by `rust-lld` on Windows (WSL has no
+C toolchain), under Callgrind (`--toggle-collect='lang_load::load'`).
+Hello, Grid's `start_instructions` and options-menu frame, from CI's
+`bench` job, are in the PR (`main`'s from run 44205329027).
+
+**Deviations.**
+
+- **Split at the ticket's valve** (`**Split:**`): the code of the stored
+  parse, `form_in` and `Ctx` alone came to 988 counted lines before the
+  tests, the ADR and the docs. The borrowed walk (`ArgRef`, the `ToArg`
+  method, `Message::walk_lent`, a select comparing without a `String`,
+  an argument written once and a key's name joined without a `String`)
+  went to **2268**, with the design that compiled and passed here. The
+  acceptance criterion on a select and a `{name}` allocating nothing
+  went with it. 3221's clause now names 2268.
+- **Plain is 3219's check alone**, not "or the parse finding only text
+  and simple arguments": `{ n }` (a trimmed name) and `'{'` (a quote)
+  parse to text and simple arguments but fill differently by their
+  `{name}`s alone (ADR-0130 §5).
+- **A pack's forms are learned when the `Lang` is built**, not as the
+  pack is read: `LangPack` is public and serialized, so a pack can come
+  from anywhere, and `Lang::new` must learn it anyway. `from_files_in`
+  builds the `Lang` right after reading its packs, so it is still at
+  the load.
+- **The toy has a select on `device`** (`toy.turn`), for the frame
+  test; Hello, Grid has none, and none was added: its texts are a
+  shipped example's, and a select by device would change what its
+  Playdate build shows. Its frame test covers plain text, keys and its
+  plural (`profile.message.too_many`).
+- **Either order with 3221:** 3221 isn't done; nothing to do.
+
+No ticket: nothing else is left to a later ticket.
+
+Breaking: none. `api: added` only: `Message::text`, `Form`,
+`has_message_syntax`, `Lang::form_in`, `Lang::data_form_in`, and the
+`parse-count` feature. The game calls `Lang::text_in`
+(`crates/ui/src/words.rs`), which stays; `gh search code --repo
+Zafnok/visions-of-shuyi 'Message::parse'` and `'has_message_syntax'`
+find nothing (the game pins `e738ffc2`).
+
+Book: updated, `site/content/learn/book/assets-and-formats.md` (the
+messages section names `lang.form_in`).
+
+Game: nothing to adopt, no API breaks and no text fills differently;
+the game's `Ctx` fills gain it at its next pin move.
+
+Nick input: none.

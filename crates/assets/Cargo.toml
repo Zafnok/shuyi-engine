@@ -25,6 +25,9 @@ sample-actions = []
 # the tests (ticket 2116). For tests: a crate turns it on in its
 # dev-dependency on this one.
 golden = []
+# `message::parse_count`, which counts `Message::parse` on the thread: a
+# test that no frame parses a text turns it on (ticket 2266).
+parse-count = ["std"]
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -51,4 +54,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count"] }
+# The heap counter `tests/lang_load.rs` reads (ticket 2266).
+shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

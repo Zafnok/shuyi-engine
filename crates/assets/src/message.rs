@@ -21,6 +21,7 @@
 //! ([`plural`]); [`Message::format`] writes it.
 use crate::prelude::*;
 
+use alloc::borrow::Cow;
 use core::fmt::{self, Write as _};
 
 pub mod plural;
@@ -213,41 +214,98 @@ impl<'a> ArgUse<'a> {
 }
 
 /// A text read as a message ([`Message::parse`]), borrowing its text.
+///
+/// Its pieces are where they are in the text, in bytes, so a parse can be
+/// kept apart from its text: a language keeps its messages' parses when it
+/// loads, and lends each with its text ([`Lang::form_in`], ADR-0130).
+///
+/// [`Lang::form_in`]: crate::lang::Lang::form_in
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message<'a> {
-    nodes: Vec<Node<'a>>,
+    text: &'a str,
+    nodes: Cow<'a, [Node]>,
+}
+
+/// Where a piece is in its message's text, in bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Span {
+    start: usize,
+    end: usize,
+}
+
+impl Span {
+    /// The piece in `text`: empty if `text` isn't the message's (never, as
+    /// a parse is only ever lent with its own text).
+    fn of(self, text: &str) -> &str {
+        text.get(self.start..self.end).unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Node<'a> {
-    Text(&'a str),
+enum Node {
+    Text(Span),
     /// A `#`, and the name of the plural it stands for.
-    Hash(&'a str),
-    Simple(&'a str),
-    Choice(Choice<'a>),
+    Hash(Span),
+    Simple(Span),
+    Choice(Choice),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Choice<'a> {
-    name: &'a str,
+struct Choice {
+    name: Span,
     /// `None` for a select.
     plural: Option<Kind>,
-    branches: Vec<Branch<'a>>,
+    branches: Vec<Branch>,
     /// Which branch is `other`.
     other: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Branch<'a> {
-    key: Selector<'a>,
-    body: Vec<Node<'a>>,
+struct Branch {
+    key: Selector,
+    body: Vec<Node>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Selector<'a> {
+enum Selector {
     Exact(i64),
     Category(Category),
-    Value(&'a str),
+    Value(Span),
+}
+
+impl Selector {
+    /// Whether it is `other` in `text`.
+    fn is_other(self, text: &str) -> bool {
+        match self {
+            Self::Category(category) => category == Category::Other,
+            Self::Value(value) => value.of(text) == "other",
+            Self::Exact(_) => false,
+        }
+    }
+
+    /// Whether it selects what `other` does, both in `text`.
+    fn same(self, other: Self, text: &str) -> bool {
+        match (self, other) {
+            (Self::Value(a), Self::Value(b)) => a.of(text) == b.of(text),
+            _ => self == other,
+        }
+    }
+}
+
+/// A message's parse, kept apart from its text: what a language keeps of
+/// each of its messages, and lends with its text ([`Parsed::with`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Parsed(Vec<Node>);
+
+impl Parsed {
+    /// The message `text` was read as: `text` must be the text it was
+    /// parsed from.
+    pub(crate) fn with<'a>(&'a self, text: &'a str) -> Message<'a> {
+        Message {
+            text,
+            nodes: Cow::Borrowed(&self.0),
+        }
+    }
 }
 
 impl<'a> Message<'a> {
@@ -261,13 +319,28 @@ impl<'a> Message<'a> {
     /// that is no category and no `=N`, a branch written twice, no
     /// `other`, nesting deeper than 8, or more than [`MAX_FORMS`] forms.
     pub fn parse(text: &'a str) -> Result<Self, MessageError> {
+        #[cfg(feature = "parse-count")]
+        parse_count::count();
         let mut parser = Parser { text, at: 0 };
         let nodes = parser.pattern(None, 0)?;
         if count(&nodes) > MAX_FORMS {
             let problem = format!("too many forms: a message shows at most {MAX_FORMS} texts");
             return Err(MessageError::new(0, problem));
         }
-        Ok(Self { nodes })
+        Ok(Self {
+            text,
+            nodes: Cow::Owned(nodes),
+        })
+    }
+
+    /// Its text.
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+
+    /// Its parse, kept apart from its text.
+    pub(crate) fn keep(self) -> Parsed {
+        Parsed(self.nodes.into_owned())
     }
 
     /// Hands `each` what the message says in language `lang` (a BCP 47
@@ -281,7 +354,7 @@ impl<'a> Message<'a> {
         value: impl Fn(&str) -> Option<Arg>,
         mut each: impl FnMut(Piece<'_>),
     ) {
-        walk(&self.nodes, lang, &value, &mut each, None);
+        walk(&self.nodes, self.text, lang, &value, &mut each, None);
     }
 
     /// What the message says in language `lang`, each argument written by
@@ -308,7 +381,7 @@ impl<'a> Message<'a> {
     /// choice's).
     pub fn args(&self) -> Vec<ArgUse<'a>> {
         let mut out = Vec::new();
-        uses(&self.nodes, &mut out);
+        uses(&self.nodes, self.text, &mut out);
         out
     }
 
@@ -327,7 +400,7 @@ impl<'a> Message<'a> {
     /// written as `{name}`: what a box's width is checked against.
     pub fn forms(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
-        for form in forms(&self.nodes) {
+        for form in forms(&self.nodes, self.text) {
             if !out.contains(&form) {
                 out.push(form);
             }
@@ -336,8 +409,96 @@ impl<'a> Message<'a> {
     }
 }
 
+/// Whether `text` may say more as a message than its `{name}`s filled in
+/// ([`split_tokens`](shuyi_core::text::split_tokens)) say: a `'` before a
+/// `'` or a brace (a quote), or, after a `{` and before its `}`, a `,` (a
+/// plural, select or number), a space (`{ n }`, which a message trims),
+/// another `{`, or any letter outside ASCII (which may be a space too). A
+/// text without any of them fills the same either way, in one pass over
+/// its bytes, never parsed: plain text ([`Form::Plain`], tickets 3219 and
+/// 2266).
+pub fn has_message_syntax(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut in_braces = false;
+    for (at, &byte) in bytes.iter().enumerate() {
+        match byte {
+            b'\'' => {
+                if matches!(bytes.get(at + 1), Some(b'\'' | b'{' | b'}')) {
+                    return true;
+                }
+            }
+            b'{' | b',' | b'\t'..=b'\r' | b' ' | 0x80.. if in_braces => return true,
+            b'{' => in_braces = true,
+            b'}' => in_braces = false,
+            _ => {}
+        }
+    }
+    false
+}
+
+/// What a text of a language is, learned when it loads
+/// ([`Lang::form_in`], ADR-0130), or when a caller reads it
+/// ([`Form::of`]): with it, a fill parses nothing.
+///
+/// Config read by a match (ADR-0039, kind 2): a set that may grow.
+///
+/// [`Lang::form_in`]: crate::lang::Lang::form_in
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Form<'a> {
+    /// Text with no message syntax ([`has_message_syntax`]): filled by its
+    /// `{name}`s alone.
+    Plain(&'a str),
+    /// A message, its parse lent.
+    Message(Message<'a>),
+    /// Text with message syntax that doesn't parse as a message (text from
+    /// outside the checked language files): filled by its `{name}`s alone,
+    /// an unclosed `{` and what follows it plain text.
+    NotAMessage(&'a str),
+}
+
+impl<'a> Form<'a> {
+    /// The form of `text`, which parses it if it has message syntax.
+    pub fn of(text: &'a str) -> Self {
+        if !has_message_syntax(text) {
+            return Self::Plain(text);
+        }
+        Message::parse(text).map_or(Self::NotAMessage(text), Self::Message)
+    }
+
+    /// Its text.
+    pub fn text(&self) -> &'a str {
+        match self {
+            Self::Plain(text) | Self::NotAMessage(text) => text,
+            Self::Message(message) => message.text(),
+        }
+    }
+}
+
+/// How many [`Message::parse`] calls the thread has made: what a test
+/// reads to check that no frame parses a text (ticket 2266). Only with the
+/// `parse-count` feature, which only tests turn on.
+#[cfg(feature = "parse-count")]
+pub mod parse_count {
+    use std::cell::Cell;
+
+    std::thread_local! {
+        static PARSES: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(super) fn count() {
+        PARSES.with(|parses| parses.set(parses.get() + 1));
+    }
+
+    /// The parses on this thread since the last `take`, and starts again
+    /// from none.
+    pub fn take() -> usize {
+        PARSES.with(|parses| parses.replace(0))
+    }
+}
+
 /// How many texts `nodes` can show (at most `usize::MAX`).
-fn count(nodes: &[Node<'_>]) -> usize {
+fn count(nodes: &[Node]) -> usize {
     nodes.iter().fold(1, |total, node| match node {
         Node::Choice(choice) => {
             let alternatives = choice
@@ -351,7 +512,8 @@ fn count(nodes: &[Node<'_>]) -> usize {
 }
 
 fn walk(
-    nodes: &[Node<'_>],
+    nodes: &[Node],
+    text: &str,
     lang: &str,
     value: &dyn Fn(&str) -> Option<Arg>,
     each: &mut dyn FnMut(Piece<'_>),
@@ -359,32 +521,32 @@ fn walk(
 ) {
     for node in nodes {
         match node {
-            Node::Text(text) => each(Piece::Text(text)),
-            Node::Simple(name) => each(Piece::Arg(name)),
+            Node::Text(piece) => each(Piece::Text(piece.of(text))),
+            Node::Simple(name) => each(Piece::Arg(name.of(text))),
             Node::Hash(name) => match number {
                 Some(Arg::Int(n)) => each(Piece::Number(*n)),
-                Some(Arg::Text(text)) => each(Piece::Text(text)),
-                None => each(Piece::Arg(name)),
+                Some(Arg::Text(number)) => each(Piece::Text(number)),
+                None => each(Piece::Arg(name.of(text))),
             },
             Node::Choice(choice) => {
-                let arg = value(choice.name);
-                let branch = choice.pick(lang, arg.as_ref());
+                let arg = value(choice.name.of(text));
+                let branch = choice.pick(text, lang, arg.as_ref());
                 let number = if choice.plural.is_some() {
                     arg.as_ref()
                 } else {
                     number
                 };
-                walk(&branch.body, lang, value, each, number);
+                walk(&branch.body, text, lang, value, each, number);
             }
         }
     }
 }
 
-impl<'a> Choice<'a> {
+impl Choice {
     /// The branch `arg` picks in `lang`: a plural's `=N`, else its
     /// category's; a select's value; else `other`.
-    fn pick(&self, lang: &str, arg: Option<&Arg>) -> &Branch<'a> {
-        let find = |key: Selector<'_>| self.branches.iter().find(|b| b.key == key);
+    fn pick(&self, text: &str, lang: &str, arg: Option<&Arg>) -> &Branch {
+        let find = |key: Selector| self.branches.iter().find(|b| b.key == key);
         let found = match (self.plural, arg) {
             (Some(kind), Some(Arg::Int(n))) => find(Selector::Exact(*n)).or_else(|| {
                 let n = n.unsigned_abs();
@@ -394,10 +556,10 @@ impl<'a> Choice<'a> {
                 }))
             }),
             (None, Some(arg)) => {
-                let text = arg.to_string();
+                let value = arg.to_string();
                 self.branches
                     .iter()
-                    .find(|b| matches!(b.key, Selector::Value(v) if v == text))
+                    .find(|b| matches!(b.key, Selector::Value(v) if v.of(text) == value))
             }
             _ => None,
         };
@@ -405,10 +567,10 @@ impl<'a> Choice<'a> {
     }
 }
 
-fn uses<'a>(nodes: &[Node<'a>], out: &mut Vec<ArgUse<'a>>) {
+fn uses<'a>(nodes: &[Node], text: &'a str, out: &mut Vec<ArgUse<'a>>) {
     for node in nodes {
         match node {
-            Node::Simple(name) => out.push(ArgUse::new(name, ArgKind::Simple)),
+            Node::Simple(name) => out.push(ArgUse::new(name.of(text), ArgKind::Simple)),
             Node::Choice(choice) => {
                 let kind = match choice.plural {
                     Some(kind) => ArgKind::Plural {
@@ -427,15 +589,15 @@ fn uses<'a>(nodes: &[Node<'a>], out: &mut Vec<ArgUse<'a>>) {
                             .branches
                             .iter()
                             .filter_map(|b| match b.key {
-                                Selector::Value(v) => Some(v),
+                                Selector::Value(v) => Some(v.of(text)),
                                 _ => None,
                             })
                             .collect(),
                     },
                 };
-                out.push(ArgUse::new(choice.name, kind));
+                out.push(ArgUse::new(choice.name.of(text), kind));
                 for branch in &choice.branches {
-                    uses(&branch.body, out);
+                    uses(&branch.body, text, out);
                 }
             }
             Node::Text(_) | Node::Hash(_) => {}
@@ -443,12 +605,15 @@ fn uses<'a>(nodes: &[Node<'a>], out: &mut Vec<ArgUse<'a>>) {
     }
 }
 
-fn forms(nodes: &[Node<'_>]) -> Vec<String> {
+fn forms(nodes: &[Node], text: &str) -> Vec<String> {
     let mut acc = vec![String::new()];
     for node in nodes {
         match node {
-            Node::Text(text) => acc.iter_mut().for_each(|form| form.push_str(text)),
+            Node::Text(piece) => acc
+                .iter_mut()
+                .for_each(|form| form.push_str(piece.of(text))),
             Node::Simple(name) | Node::Hash(name) => {
+                let name = name.of(text);
                 for form in &mut acc {
                     let _ = write!(form, "{{{name}}}");
                 }
@@ -457,7 +622,7 @@ fn forms(nodes: &[Node<'_>]) -> Vec<String> {
                 let alternatives: Vec<String> = choice
                     .branches
                     .iter()
-                    .flat_map(|b| forms(&b.body))
+                    .flat_map(|b| forms(&b.body, text))
                     .collect();
                 acc = acc
                     .iter()
@@ -501,27 +666,30 @@ impl<'a> Parser<'a> {
         found
     }
 
-    /// The text up to the first character `stop` is true of, or the end.
-    fn until(&mut self, stop: impl Fn(char) -> bool) -> &'a str {
+    /// Where the text up to the first character `stop` is true of, or the
+    /// end, is.
+    fn until(&mut self, stop: impl Fn(char) -> bool) -> Span {
         let rest = self.rest();
-        let end = rest.find(stop).unwrap_or(rest.len());
-        self.at += end;
-        &rest[..end]
+        let start = self.at;
+        self.at += rest.find(stop).unwrap_or(rest.len());
+        Span {
+            start,
+            end: self.at,
+        }
     }
 
     /// The byte at `at` as text: one ASCII character.
-    fn one(&self, at: usize) -> &'a str {
-        &self.text[at..=at]
+    fn one(at: usize) -> Span {
+        Span {
+            start: at,
+            end: at + 1,
+        }
     }
 
     /// Text and arguments up to the end or, in a branch (`depth` > 0), up
     /// to the `}` that closes it, which is left. `hash` is the plural a
     /// `#` stands for.
-    fn pattern(
-        &mut self,
-        hash: Option<&'a str>,
-        depth: usize,
-    ) -> Result<Vec<Node<'a>>, MessageError> {
+    fn pattern(&mut self, hash: Option<Span>, depth: usize) -> Result<Vec<Node>, MessageError> {
         let mut nodes = Vec::new();
         loop {
             if self.overrun(nodes.len()) {
@@ -539,7 +707,7 @@ impl<'a> Parser<'a> {
                 ('}', _) if depth > 0 => return Ok(nodes),
                 ('}', _) => {
                     // A lone `}` outside every argument is a letter.
-                    nodes.push(Node::Text(self.one(self.at)));
+                    nodes.push(Node::Text(Self::one(self.at)));
                     self.at += 1;
                 }
                 ('#', Some(name)) => {
@@ -562,26 +730,26 @@ impl<'a> Parser<'a> {
 
     /// An apostrophe: `''` is one, one before `{`, `}` or (in a plural)
     /// `#` starts quoted text, and any other is a letter.
-    fn apostrophe(&mut self, in_plural: bool, nodes: &mut Vec<Node<'a>>) {
+    fn apostrophe(&mut self, in_plural: bool, nodes: &mut Vec<Node>) {
         let start = self.at;
         self.at += 1;
         match self.peek() {
             Some('\'') => {
-                nodes.push(Node::Text(self.one(start)));
+                nodes.push(Node::Text(Self::one(start)));
                 self.at += 1;
             }
             Some('{' | '}') => self.quoted(nodes),
             Some('#') if in_plural => self.quoted(nodes),
-            _ => nodes.push(Node::Text(self.one(start))),
+            _ => nodes.push(Node::Text(Self::one(start))),
         }
     }
 
     /// Quoted text, from after its opening `'` to the next lone `'` or the
     /// end; `''` in it is one apostrophe.
-    fn quoted(&mut self, nodes: &mut Vec<Node<'a>>) {
+    fn quoted(&mut self, nodes: &mut Vec<Node>) {
         while !self.overrun(nodes.len()) {
             let text = self.until(|c| c == '\'');
-            if !text.is_empty() {
+            if text.end > text.start {
                 nodes.push(Node::Text(text));
             }
             if !self.eat('\'') {
@@ -590,7 +758,7 @@ impl<'a> Parser<'a> {
             if self.peek() != Some('\'') {
                 return;
             }
-            nodes.push(Node::Text(self.one(self.at)));
+            nodes.push(Node::Text(Self::one(self.at)));
             self.at += 1;
         }
     }
@@ -603,13 +771,13 @@ impl<'a> Parser<'a> {
     }
 
     /// An argument, from its `{` to its `}`.
-    fn argument(&mut self, hash: Option<&'a str>, depth: usize) -> Result<Node<'a>, MessageError> {
+    fn argument(&mut self, hash: Option<Span>, depth: usize) -> Result<Node, MessageError> {
         let open = self.at;
         self.at += 1;
         self.skip_space();
         let name_at = self.at;
         let name = self.until(|c| c.is_whitespace() || matches!(c, '{' | '}' | ','));
-        if name.is_empty() {
+        if name.end == name.start {
             return Err(self.error(name_at, "expected an argument's name"));
         }
         self.skip_space();
@@ -622,7 +790,7 @@ impl<'a> Parser<'a> {
         }
         self.skip_space();
         let type_at = self.at;
-        let kind = self.until(|c| !c.is_ascii_alphanumeric());
+        let kind = self.until(|c| !c.is_ascii_alphanumeric()).of(self.text);
         self.skip_space();
         let plural = match kind {
             "number" if self.eat('}') => return Ok(Node::Simple(name)),
@@ -646,7 +814,7 @@ impl<'a> Parser<'a> {
             return Err(self.error(self.at, "expected `,` before the branches"));
         }
         let inner = if plural.is_some() { Some(name) } else { hash };
-        let mut branches: Vec<Branch<'a>> = Vec::new();
+        let mut branches: Vec<Branch> = Vec::new();
         loop {
             if self.overrun(branches.len()) {
                 return Err(self.error(self.at, "the parser stopped moving on"));
@@ -657,11 +825,12 @@ impl<'a> Parser<'a> {
             }
             let key_at = self.at;
             let word = self.until(|c| c.is_whitespace() || matches!(c, '{' | '}'));
-            if word.is_empty() {
+            if word.end == word.start {
                 return Err(self.error(key_at, "expected a branch or `}`"));
             }
             let key = self.key(plural.is_some(), word, key_at)?;
-            if branches.iter().any(|b| b.key == key) {
+            if branches.iter().any(|b| b.key.same(key, self.text)) {
+                let word = word.of(self.text);
                 let problem = format!("the branch {word:?} is written twice");
                 return Err(self.error(key_at, problem));
             }
@@ -673,13 +842,7 @@ impl<'a> Parser<'a> {
             self.at += 1;
             branches.push(Branch { key, body });
         }
-        let is_other = |b: &Branch<'_>| {
-            matches!(
-                b.key,
-                Selector::Category(Category::Other) | Selector::Value("other")
-            )
-        };
-        let Some(other) = branches.iter().position(is_other) else {
+        let Some(other) = branches.iter().position(|b| b.key.is_other(self.text)) else {
             return Err(self.error(
                 open,
                 "a plural, selectordinal or select needs an `other` branch",
@@ -695,10 +858,11 @@ impl<'a> Parser<'a> {
 
     /// A branch's key `word`, at byte `at`: a plural's category or `=N`,
     /// or a select's value.
-    fn key(&self, plural: bool, word: &'a str, at: usize) -> Result<Selector<'a>, MessageError> {
+    fn key(&self, plural: bool, word: Span, at: usize) -> Result<Selector, MessageError> {
         if !plural {
             return Ok(Selector::Value(word));
         }
+        let word = word.of(self.text);
         if word.starts_with("offset:") {
             return Err(self.error(at, "`offset:` isn't supported"));
         }

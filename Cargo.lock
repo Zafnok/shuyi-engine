@@ -1688,6 +1688,7 @@ dependencies = [
  "proptest",
  "ron",
  "serde",
+ "shuyi-alloc-count",
  "shuyi-assets",
  "shuyi-core",
  "thiserror 2.0.21",

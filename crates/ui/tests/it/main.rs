@@ -12,6 +12,7 @@ mod key_bindings;
 mod layout_picker;
 mod memory_tags;
 mod modules;
+mod parses;
 mod perf;
 mod plasma;
 mod resume;

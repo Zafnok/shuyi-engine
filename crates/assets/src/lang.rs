@@ -36,6 +36,7 @@
 use crate::prelude::*;
 
 mod formats;
+mod forms;
 mod lines;
 mod matching;
 mod messages;
@@ -310,6 +311,9 @@ pub struct Lang {
     /// Where the source's screen text is drawn, by key
     /// ([`Lang::with_places`]).
     places: Places,
+    /// What each screen and data text is, learned as it is built
+    /// ([`Lang::form_in`]).
+    forms: forms::Forms,
 }
 
 impl Lang {
@@ -329,12 +333,14 @@ impl Lang {
         source: SourceText,
         packs: BTreeMap<LangCode, LangPack>,
     ) -> Self {
+        let forms = forms::Forms::of(&ui, &source.data, &packs);
         Self {
             written_in: SourceLang::default(),
             ui,
             source,
             packs,
             places: BTreeMap::new(),
+            forms,
         }
     }
 
