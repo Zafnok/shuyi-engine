@@ -264,7 +264,7 @@ fn arc(from: Pos, to: Pos, art: &Grid, start: Start) -> Vec<PxRect> {
         )
     };
     // About two points a pixel: neighbours are never more than one apart.
-    let steps = (len * 2.0).ceil().clamp(4.0, 4096.0) as i32;
+    let steps = ((len * 2.0).clamp(3.0, 4095.0) as i32) + 1;
     let mut points: Vec<(f32, f32)> = (0..=steps).map(|i| at(i as f32 / steps as f32)).collect();
     while points.len() > 2
         && points
