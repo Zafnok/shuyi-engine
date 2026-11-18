@@ -383,6 +383,19 @@ the web every step runs in one frame. On the Playdate a second's worth runs each
 on the screen, and the [run report](https://github.com/Zafnok/shuyi-engine/blob/main/docs/targets/playdate.md#the-run-report)
 says how long each frame took.
 
+A step can also say how far the load is: `Progress::Of { done, of }` means `done` of `of` units are done,
+where a unit is whatever your load counts, such as a file read. The card then shows a bar under its line
+or picture, in its ink, that long, and keeps it until a step gives another count; `Progress::More` is a
+unit with no count. Count work, never time: a slow device takes longer over the same files and shows the
+same bar. `of` may grow as the load finds more to read. Hello, Grid counts its seven files this way
+(`examples/hello-grid/src/loading.rs`).
+
+A step that needs something the platform hasn't given yet, such as a file the web page is still
+fetching, gives `Progress::Wait`. The engine runs no more steps in that frame, shows the card, and calls
+the same step again in the next frame. Without it a step on the web, where every step runs in one frame,
+would wait forever. A run recorded while its load waited plays back in a test, where nothing waits: the
+record counts the frames the load waited in as one.
+
 ## Releasing
 
 Your machine builds the packages its own system can. The others come from CI: a game made with

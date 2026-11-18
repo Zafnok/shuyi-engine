@@ -66,10 +66,12 @@ None.
   - **From 2919 (done):** ADR-0128 §4 counts a load's work in units of
     its own, as this ticket counts a bot's, with the load's own
     `Progress` in `shuyi-platform` (it carries the game it made). It asks
-    nothing of `Think` or `think::Progress`. **Either order with 3316:**
-    if 3316 is done, name the load's `Progress::Of` in `think`'s module
-    comment as the other count of work; if not, nothing to do (3316 names
-    `think::Progress` in its doc comment).
+    nothing of `Think` or `think::Progress`.
+  - **From 3316 (done):** a load's step says `Progress::Of { done, of }`
+    in units of its own (`crates/platform/src/app.rs`), whose doc comment
+    says a bot's thinking counts its work the same way in a type of its
+    own. Name the load's `Progress::Of` in `think`'s module comment as the
+    other count of work.
 - **The engine's search implements `Think`.** 2112's
   `shuyi_core::search::Solver` already runs in `step(units)` slices,
   with its state in the value: add `impl Think for Solver`, where a unit

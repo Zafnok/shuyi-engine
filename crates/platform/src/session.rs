@@ -9,7 +9,11 @@
 //! [`Playback`] plays a record on the [`HeadlessPlatform`], from the game's
 //! real [`Start`], and says at which frame the game first did something
 //! else. Frames count [`App::frame`] calls from 1, as
-//! [`App::frame_number`] does.
+//! [`App::frame_number`] does, but for a load that waited for the platform
+//! ([`Progress::Wait`](crate::Progress::Wait)): the record counts the frames
+//! it waited in as one with the frame after, so a run recorded where a load
+//! waits (the web) plays back where nothing waits (the headless backend);
+//! from there, a record's frame is the run's less the frames it waited.
 //!
 //! A game's rules records (a seed and commands, a hash per step) are one
 //! level up, and stay the game's: playing a session runs the same rules, so
@@ -409,6 +413,9 @@ pub(crate) struct Recorder {
     voice: String,
     pacing: Option<Pacing>,
     hash: Option<u64>,
+    /// Whether the last frame ran the game's load and left it not over: the
+    /// next frame is counted with it.
+    fold: bool,
 }
 
 impl Recorder {
@@ -425,6 +432,7 @@ impl Recorder {
             voice: String::new(),
             pacing: None,
             hash: None,
+            fold: false,
         }
     }
 
@@ -440,12 +448,20 @@ impl Recorder {
         }
     }
 
-    /// A frame starts at `now` on the backend's clock.
+    /// A frame starts at `now` on the backend's clock. After a frame the
+    /// game's load was left in, it goes on noting that frame, at that
+    /// frame's time ([`end`](Self::end)).
     pub(crate) fn begin(&mut self, now: u64) {
         if self.record.frames.len() >= MAX_SESSION_FRAMES {
             self.stop();
         }
         if !self.on {
+            return;
+        }
+        if core::mem::take(&mut self.fold)
+            && let Some(last) = self.record.frames.pop()
+        {
+            self.frame = last;
             return;
         }
         self.frame = FrameRecord::default();
@@ -478,9 +494,13 @@ impl Recorder {
         }
     }
 
-    /// The files the platform said changed reached the game in `frame`.
-    pub(crate) fn reloaded(&mut self, frame: u32) {
+    /// The files the platform said changed reached the game in this frame:
+    /// the record's, counted from 1, which is the run's less the frames a
+    /// load waited in ([`end`](Self::end)).
+    pub(crate) fn reloaded(&mut self) {
         if self.on {
+            let frame =
+                u32::try_from(self.record.frames.len()).map_or(u32::MAX, |n| n.saturating_add(1));
             self.record.reloaded_at.get_or_insert(frame);
         }
     }
@@ -541,11 +561,19 @@ impl Recorder {
         }
     }
 
-    /// The frame ends: its poll of the input, and its hash.
-    pub(crate) fn end(&mut self, input: &[RawInputEvent], hash: StateHash) {
+    /// The frame ends: its poll of the input, and its hash. If it ran the
+    /// game's load and `left` it not over (a step waited for the platform),
+    /// the next frame is counted with it, as one frame: so the frames before
+    /// the game's first count as one, however many a load waited, and a run
+    /// recorded where the load waits (the web) plays back where nothing
+    /// waits (the headless backend). The frame keeps its own time, at which
+    /// the load began, and its events, input and hash are those of the
+    /// frames it counts, in order.
+    pub(crate) fn end(&mut self, input: &[RawInputEvent], hash: StateHash, left: bool) {
         if !self.on {
             return;
         }
+        self.fold = left;
         let mut frame = core::mem::take(&mut self.frame);
         frame.input.extend_from_slice(input);
         if self.hash != Some(hash.0) {

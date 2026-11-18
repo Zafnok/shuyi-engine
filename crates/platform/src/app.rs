@@ -9,7 +9,11 @@
 //! [`Card`] the game gives, the next loads the game behind it, and the
 //! frames after run it. A load in steps ([`Start::in_steps`]) goes on over
 //! as many frames as the platform's slice needs ([`Platform::load_slice`]),
-//! the card on the screen. On [`SystemEvent::Suspend`] the game's hook saves,
+//! the card on the screen. Its steps count the load's own units, never time
+//! ([`Progress::Of`]), and the card shows the last count as a bar
+//! ([`Frame::loading`], [`App::load_progress`]); a step that waits for the
+//! platform ([`Progress::Wait`]) ends the frame's steps, and the next frame
+//! calls it again (ADR-0128 §4). On [`SystemEvent::Suspend`] the game's hook saves,
 //! `App` stops stepping and the device holds the audio
 //! ([`Audio::suspend`](crate::Audio::suspend)); on [`SystemEvent::Resume`]
 //! the audio comes back and `App` forgets the time it was away, so a sleep
@@ -54,6 +58,7 @@ use shuyi_core::made::Made;
 use shuyi_core::{StateHash, state_hash};
 use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand};
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame::onebit::luminance;
 use shuyi_ui::frame_cap::Pacing;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
@@ -156,6 +161,22 @@ impl Card {
             Self::Text { background, .. } | Self::Picture { background, .. } => *background,
         }
     }
+
+    /// The colour it draws in: a line's ink, and for a picture, which has
+    /// none, white or black, whichever stands out on its background. The
+    /// load's bar is drawn in it ([`Frame::loading`]).
+    pub fn ink(&self) -> Rgb {
+        match self {
+            Self::Text { ink, .. } => *ink,
+            Self::Picture { background, .. } => {
+                if luminance(*background) >= 128 {
+                    BLACK
+                } else {
+                    WHITE
+                }
+            }
+        }
+    }
 }
 
 /// What the platform gives a game as it loads: what goes into its context
@@ -216,10 +237,34 @@ impl Setup {
 pub type Load<G> = Box<dyn FnOnce(Setup) -> Result<Game<G>, String>>;
 
 /// What a step of a load in steps says ([`LoadStep`]).
+///
+/// A load counts its own units (ADR-0128 §4): a file decoded, say, as
+/// `Formats::load_each` reads a folder file by file. A unit is never time:
+/// a slow device takes longer over the same units, and its card shows the
+/// same count. The platform's slice ([`Platform::load_slice`]) stays time;
+/// the units only say how far the load is. A bot's thinking counts its work
+/// the same way, in a type of its own, since this one carries the game.
 #[non_exhaustive]
 pub enum Progress<G: GameData> {
-    /// More steps are to come: the next call runs the next.
+    /// More steps are to come: the next call runs the next. A unit with no
+    /// count, so the card shows the last [`Of`](Self::Of) as it was.
     More,
+    /// A unit is done, and more steps are to come: `done` units of `of`.
+    /// `of` may grow as the load finds more to do. The card shows the last
+    /// count a step gave ([`App::load_progress`]).
+    Of {
+        /// The units done so far.
+        done: u32,
+        /// The units the load knows of so far.
+        of: u32,
+    },
+    /// The step waits for the platform: what it needs hasn't arrived (a
+    /// file of a pack the page is still fetching). `App` runs no more steps
+    /// this frame, presents the card, and calls the same step again in the
+    /// next frame, whatever the slice: without a slice (a PC, the web, the
+    /// headless backend) every step runs in one frame, and a step that
+    /// waited there would wait forever.
+    Wait,
     /// The load is over: the game it made, or why it can't start
     /// ([`done`](Self::done) boxes the game).
     Done(Result<Box<Game<G>>, String>),
@@ -235,7 +280,8 @@ impl<G: GameData> Progress<G> {
 /// The steps of a load in steps, one a call, until one says the load is
 /// [`Done`](Progress::Done). A step should be short (a file read, a part of
 /// a check): a frame runs as many as fit in the platform's slice
-/// ([`Platform::load_slice`]), and at least one.
+/// ([`Platform::load_slice`]), and at least one, until one
+/// [`Wait`](Progress::Wait)s.
 pub type LoadStep<G> = Box<dyn FnMut() -> Progress<G>>;
 
 /// A game's load in steps: given the [`Setup`], its steps. It runs once,
@@ -403,8 +449,18 @@ enum Pending<G: GameData> {
 enum Ran<G: GameData> {
     /// The load is over.
     Over(Result<Box<Game<G>>, String>),
-    /// The slice is used: the next step, for the next frame.
+    /// The slice is used, or a step waits: the next step, for the next
+    /// frame.
     More(LoadStep<G>),
+}
+
+/// What a frame's part of a load ran: its steps, and the last count one gave.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct StepsRun {
+    /// The calls of a step, a [`Progress::Wait`] among them.
+    calls: u32,
+    /// The last [`Progress::Of`] a step gave: done, of.
+    count: Option<(u32, u32)>,
 }
 
 /// When a frame's slice of a load in steps is used.
@@ -430,14 +486,21 @@ impl Deadline {
     }
 }
 
-/// Runs `step` until a step says the load is over or the `deadline` has
-/// passed, and at least once: what that came to, and the steps run.
-fn run_steps<G: GameData>(mut step: LoadStep<G>, mut deadline: Option<Deadline>) -> (Ran<G>, u32) {
-    let mut ran: u32 = 0;
+/// Runs `step` until a step says the load is over, a step waits, or the
+/// `deadline` has passed, and at least once: what that came to, and what
+/// ran.
+fn run_steps<G: GameData>(
+    mut step: LoadStep<G>,
+    mut deadline: Option<Deadline>,
+) -> (Ran<G>, StepsRun) {
+    let mut ran = StepsRun::default();
     loop {
-        ran = ran.saturating_add(1);
-        if let Progress::Done(over) = step() {
-            return (Ran::Over(over), ran);
+        ran.calls = ran.calls.saturating_add(1);
+        match step() {
+            Progress::Done(over) => return (Ran::Over(over), ran),
+            Progress::Wait => return (Ran::More(step), ran),
+            Progress::Of { done, of } => ran.count = Some((done, of)),
+            Progress::More => {}
         }
         if deadline.as_mut().is_some_and(Deadline::passed) {
             return (Ran::More(step), ran);
@@ -674,8 +737,20 @@ pub struct App<G: GameData> {
     frame_hashes: FrameHashes,
     /// The fixed steps the last frame handed the game ([`ticks`](Self::ticks)).
     ticks: u32,
-    /// The steps the game's load has run ([`load_steps`](Self::load_steps)).
-    load_steps: u32,
+    /// What the game's load has run, and how far it is.
+    load_ran: LoadRan,
+}
+
+/// What the game's load has run, and how far it is.
+#[derive(Debug, Clone, Copy, Default)]
+struct LoadRan {
+    /// The steps run ([`App::load_steps`]).
+    steps: u32,
+    /// The last count a step gave ([`App::load_progress`]).
+    progress: Option<(u32, u32)>,
+    /// Whether this frame ran the load and left it not over: a recording
+    /// counts the frame with the next.
+    left: bool,
 }
 
 impl<G: GameData> App<G> {
@@ -750,7 +825,7 @@ impl<G: GameData> App<G> {
             recorder: None,
             frame_hashes: FrameHashes::default(),
             ticks: 0,
-            load_steps: 0,
+            load_ran: LoadRan::default(),
         }
     }
 
@@ -794,7 +869,7 @@ impl<G: GameData> App<G> {
         match &self.phase {
             Phase::Loading {
                 card, shown: true, ..
-            } => platform.present(&Frame::new(Show::Card(card))),
+            } => platform.present(&card_frame(card, self.load_ran.progress)),
             Phase::Loading { .. } => {}
             Phase::Running(game) => present_tagged(platform, game, self.look),
             Phase::Failed(errors) => platform.present(&Frame::new(Show::Errors(errors))),
@@ -872,7 +947,7 @@ impl<G: GameData> App<G> {
         let hash = state_hash(&facts).unwrap_or_default();
         self.frame_hashes.last = Some(hash);
         if let Some(recorder) = &mut self.recorder {
-            recorder.end(&self.lists.input, hash);
+            recorder.end(&self.lists.input, hash, self.load_ran.left);
         }
     }
 
@@ -1128,6 +1203,7 @@ impl<G: GameData> App<G> {
         self.lists.music.clear();
         self.lists.sounds.clear();
         self.ticks = 0;
+        self.load_ran.left = false;
         if self.suspended && !self.quit {
             // Suspended: nothing steps and nothing is shown.
             drain(platform, &mut self.lists.input);
@@ -1142,7 +1218,7 @@ impl<G: GameData> App<G> {
                     loading = load.take();
                 } else {
                     *shown = true;
-                    platform.present(&Frame::new(Show::Card(card)));
+                    platform.present(&card_frame(card, self.load_ran.progress));
                     drain(platform, &mut self.lists.input);
                 }
             }
@@ -1174,7 +1250,7 @@ impl<G: GameData> App<G> {
                     use_look_widths(game, self.look);
                 }
                 if let Some(recorder) = recorder.as_deref_mut().filter(|_| told) {
-                    recorder.reloaded(self.frames);
+                    recorder.reloaded();
                 }
                 step(platform, game, &mut self.lists, elapsed, muted, recorder);
                 self.ticks = elapsed.ticks;
@@ -1213,6 +1289,10 @@ impl<G: GameData> App<G> {
     /// game prints wide what its look's font atlas has wide
     /// ([`Game::set_widths`]). A recorded or hashed run takes no slice: where
     /// a slice ends depends on the clock, which a playback doesn't repeat.
+    /// A step that waits ends the frame's steps all the same, and a
+    /// recording counts the frames the load waited in as one with the frame
+    /// after ([`Recorder::end`]), so a run that waited (on the web) plays
+    /// back where nothing waits (the headless backend).
     fn load(&mut self, platform: &mut impl Platform, pending: Pending<G>, now: Millis) {
         let started = match pending {
             Pending::Begin(loader) => Ok((loader, self.setup(platform, now))),
@@ -1223,8 +1303,12 @@ impl<G: GameData> App<G> {
         let slice = platform.load_slice().filter(|_| !recorded);
         let tagged = enter(self.perf.scopes, "load");
         let loading = self.perf.clock.as_mut().map(PerfClock::read);
+        let once = StepsRun {
+            calls: 1,
+            count: None,
+        };
         let (ran, steps) = match started {
-            Ok((Loader::Once(load), setup)) => (Ran::Over(load(setup).map(Box::new)), 1),
+            Ok((Loader::Once(load), setup)) => (Ran::Over(load(setup).map(Box::new)), once),
             Ok((Loader::Steps(begin), setup)) => {
                 let deadline = slice.map(Deadline::start);
                 run_steps(begin(setup), deadline)
@@ -1235,13 +1319,15 @@ impl<G: GameData> App<G> {
         leave(tagged);
         let us = loading.zip(done).map(|(from, to)| micros(from, to));
         self.perf.load_us = us.map(|us| self.perf.load_us.unwrap_or(0).saturating_add(us));
-        self.load_steps = self.load_steps.saturating_add(steps);
+        self.load_ran.steps = self.load_ran.steps.saturating_add(steps.calls);
+        self.load_ran.progress = steps.count.or(self.load_ran.progress);
         match ran {
             Ran::Over(loaded) => self.loaded(platform, loaded),
             Ran::More(step) => {
                 if let Phase::Loading { card, load, .. } = &mut self.phase {
                     *load = Some(Pending::Next(step));
-                    platform.present(&Frame::new(Show::Card(card)));
+                    platform.present(&card_frame(card, self.load_ran.progress));
+                    self.load_ran.left = true;
                 }
             }
         }
@@ -1477,9 +1563,18 @@ impl<G: GameData> App<G> {
 
     /// The steps the game's load has run: none before it begins, one for a
     /// load at once, and so far for a load in steps
-    /// ([`Start::in_steps`]).
+    /// ([`Start::in_steps`]), each call of a step that waited
+    /// ([`Progress::Wait`]) among them.
     pub fn load_steps(&self) -> u32 {
-        self.load_steps
+        self.load_ran.steps
+    }
+
+    /// The last count a step of the load gave ([`Progress::Of`]): the units
+    /// done, and of how many. `None` before a step gives one, and for a load
+    /// that gives none; it stays once the game runs. The card's frames carry
+    /// it ([`Frame::loading`]).
+    pub fn load_progress(&self) -> Option<(u32, u32)> {
+        self.load_ran.progress
     }
 
     /// What holds the heap now, by memory tag (ADR-0046 §6): `platform`'s
@@ -1510,6 +1605,11 @@ impl<G: GameData> App<G> {
     pub fn music(&self) -> &[MusicCommand] {
         &self.lists.music
     }
+}
+
+/// The frame of the loading `card`, with the load's last `count`.
+fn card_frame(card: &Card, count: Option<(u32, u32)>) -> Frame<'_> {
+    Frame::new(Show::Card(card)).with_loading(count)
 }
 
 /// Reads the input into `input`, where nothing takes it: it stays there

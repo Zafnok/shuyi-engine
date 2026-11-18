@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3316 — A load that counts and waits
@@ -97,17 +97,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A load whose steps say `Wait` twice, then `Done`, takes three
+- [x] A load whose steps say `Wait` twice, then `Done`, takes three
       frames on the headless backend with no slice, the card on each (a
       Harness test).
-- [ ] `App::load_progress` and the card's frame give the last `Of`.
-- [ ] A run recorded with waits plays back on the headless backend with
+- [x] `App::load_progress` and the card's frame give the last `Of`.
+- [x] A run recorded with waits plays back on the headless backend with
       the same hashes from the game's first frame (a test).
-- [ ] `shuyi-app`'s bar for a count has the length `done ÷ of` says (a
+- [x] `shuyi-app`'s bar for a count has the length `done ÷ of` says (a
       unit test of its rectangle), and the Playdate's fake display draws
       it.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -120,5 +120,73 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **`Progress`** gains `Of { done, of }` and `Wait`
+  (`crates/platform/src/app.rs`). `run_steps` keeps the last `Of` and
+  ends a frame's steps at a `Wait`, with a slice or without. Its doc
+  comment says a unit is the load's own, never time, that `More` is a
+  unit with no count, and that a bot's thinking counts its work the same
+  way in a type of its own (3009 isn't done, so it isn't named).
+- **`App`** keeps the last count (`App::load_progress`); every card frame
+  it presents carries it (`Frame::loading`, `Frame::with_loading`),
+  `present_again` too. `App::load_steps` counts each call of a step, a
+  wait among them. `Card::ink` gives a picture card an ink (white or
+  black, whichever stands out on its background) for the bar.
+- **Backends:** `shuyi-app`'s `draw_card` draws the bar under the line
+  or picture, half the window's width, outlined, filled `done ÷ of`
+  (`card_bar`, unit-tested); the Playdate's display draws it half the
+  screen wide at row 192 into the frame buffer, marks its rows, and
+  draws it again only when its filled part moves or the screen was
+  cleared (tested on the fake SDK); the headless backend keeps the count
+  with the last card (`HeadlessPlatform::card_count`).
+- **A recorded run:** the record did count every loading frame (a
+  recorded run takes no slice, so before `Wait` its load always took one
+  frame). Now `Recorder::end` folds a frame that left the load not over
+  into the next: the frames before the game's first count as the card's
+  and one more, the folded frame keeps its own time (the setup's seed
+  comes from it) and its events, input and last hash are those of the
+  frames it counts. `SessionRecord::reloaded_at` now counts the record's
+  frames, not the run's. Tested in `crates/platform/tests/it/waits.rs`: a
+  run whose load waited twice plays back on the headless backend, where
+  it doesn't wait, with no frame differing.
+- **Hello, Grid** loads a file a step (`examples/hello-grid/src/loading.rs`:
+  `DataLoad`, 7 files, and `loading::in_steps`), on the PC and web
+  (`start_over`) and on the Playdate (`playdate::start`, over
+  `Hello::one_bit_files` and `Hello::one_bit_ctx_of`, split out of
+  `one_bit_ctx`). `Hello::load_from` reads through `DataLoad` too, so
+  there is one reader. A test with a slice a step long sees the card
+  count 0 to 7 of 7, a frame a file.
+- **Docs:** the module comment of `app.rs` and of `session.rs`;
+  `docs/platform-backends.md` (the first frames, `Show::Card`,
+  `load_slice`); `docs/targets/playdate.md`; the book's chapter
+  *Targets and export* (where `Start::in_steps` is taught) and *Testing*
+  (a record's load frames).
+
+Deviations:
+
+- The headless backend keeps the count beside the last frame
+  (`HeadlessPlatform::card_count`) rather than in `Presented::Card`,
+  whose variant isn't `#[non_exhaustive]`: changing it would break every
+  test that matches it.
+- `Card::ink` is new: the bar is drawn "in the card's ink", and a
+  picture card has none.
+- 3009's clause on this ticket is rewritten as a **From 3316 (done)**
+  note.
+
+Follow-ups: none. 3318 gives the `Wait` its streamed pack needs, as its
+ticket says.
+
+No break: `Progress` and `Frame` are `#[non_exhaustive]`, and the rest is
+added (`App::load_progress`, `Frame::loading`, `Frame::with_loading`,
+`Card::ink`, `HeadlessPlatform::card_count`). Searched the game with
+`gh search code --repo Zafnok/visions-of-shuyi` for `Progress::`
+(only the game's own battle-progress types), `load_steps`, `reloaded_at`,
+`Show::Card` and `in_steps` (none).
+
+Behaviour: shuyi-platform: `App::load_steps` counts a step that waited as a call.
+Behaviour: shuyi-platform: a session record counts the frames a load waited in as one with the frame after, so its frame numbers after the load are the run's less those frames; `SessionRecord::reloaded_at` counts the record's frames.
+
+Game: nothing to adopt, the game's start is a load at once and gives no count.
+
+Nick input: none.

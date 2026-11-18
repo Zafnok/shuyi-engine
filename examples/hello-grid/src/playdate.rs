@@ -6,11 +6,11 @@
 use crate::prelude::*;
 
 use shuyi::assets::ContentError;
-use shuyi::platform::{Card, Look, Setup, Start};
+use shuyi::platform::{Card, Look, Progress, Setup, Start};
 use shuyi::ui::{Ctx, Game};
 
 use crate::app_info::APP;
-use crate::{Hello, game};
+use crate::{Hello, game, loading};
 
 shuyi_playdate::main!(start);
 
@@ -32,14 +32,22 @@ pub fn started(setup: Setup, ctx: Ctx<Hello>) -> Game<Hello> {
     game(ctx)
 }
 
-/// The game read from the pack in the `.pdx`.
-fn load(setup: Setup) -> Result<Game<Hello>, String> {
-    let pack = shuyi_playdate::pack()?;
-    let ctx = Hello::one_bit_ctx(pack).map_err(|errors| lines(&errors))?;
-    Ok(started(setup, ctx))
+/// The game read from the pack in the `.pdx`, a file a step: the card
+/// counts them, as many a frame as the profile's slice holds.
+fn load(setup: Setup) -> impl FnMut() -> Progress<Hello> {
+    loading::in_steps(
+        || {
+            let pack = shuyi_playdate::pack()?;
+            Hello::one_bit_files(pack).map_err(|errors| lines(&errors))
+        },
+        move |data, bundle, formats| {
+            let ctx = Hello::one_bit_ctx_of(data, bundle, formats);
+            Ok(started(setup, ctx.map_err(|errors| lines(&errors))?))
+        },
+    )
 }
 
 /// How the game starts on the Playdate.
 pub fn start() -> Start<Hello> {
-    Start::new(Card::text(APP.name), look, load)
+    Start::in_steps(Card::text(APP.name), look, load)
 }

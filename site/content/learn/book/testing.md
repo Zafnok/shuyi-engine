@@ -227,7 +227,8 @@ Each frame of a record also holds a hash of what happened in it: the screens ope
 and music asked for, and whether the game quit. It never covers the picture, so a new color
 breaks no record. `played.first_difference` names the first frame that happened differently,
 with both hashes, and the game stops on that frame, so a test can read `screens()` right
-there. Frames count from 1, and the first two are the card and the load. Until the game has
+there. Frames count from 1, and the first two are the card and the load, however many frames
+the load took while recording. Until the game has
 loaded, `screens()` is empty, and what needs the game itself, such as `ctx()`, stops the test.
 
 `played.limits` lists what the playing can't promise, such as a record made without a stamp

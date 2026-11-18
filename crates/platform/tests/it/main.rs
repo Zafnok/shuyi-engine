@@ -12,6 +12,7 @@ mod reload;
 mod session;
 mod sounds;
 mod steps;
+mod waits;
 
 use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};

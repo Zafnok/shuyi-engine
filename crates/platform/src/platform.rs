@@ -211,6 +211,12 @@ pub struct Frame<'a> {
     /// backend with a debug overlay shows them at the top of the frame. In
     /// a build with debug tools; empty otherwise.
     pub reload_errors: &'a [String],
+    /// How far the game's load is, on a card's frame: the units done and of
+    /// how many, the last count a step gave
+    /// ([`Progress::Of`](crate::Progress::Of)). A backend draws it as a bar
+    /// under the card, in its ink ([`Card::ink`](crate::Card::ink)).
+    /// `None` on a game's frame or the errors', and before the load counts.
+    pub loading: Option<(u32, u32)>,
 }
 
 impl<'a> Frame<'a> {
@@ -225,7 +231,15 @@ impl<'a> Frame<'a> {
             frame_cap: FrameCap::DEFAULT,
             frame_cap_serial: 0,
             reload_errors: &[],
+            loading: None,
         }
+    }
+
+    /// The same frame with the load's count ([`loading`](Self::loading)).
+    #[must_use]
+    pub fn with_loading(mut self, loading: Option<(u32, u32)>) -> Self {
+        self.loading = loading;
+        self
     }
 }
 

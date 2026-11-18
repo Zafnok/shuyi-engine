@@ -47,7 +47,9 @@ The device has no standard library, so the game's library builds without
    screen
    ([ADR-0097](../adr/0097-a-load-in-steps-a-slice-a-frame-from-the-platform-and-the-one-shot-load-kept-beside-it.md)).
    A step is the unit: one that alone takes 10 seconds still stalls, so
-   make each a file or a part of a check. The run report's `Start, ms per
+   make each a file or a part of a check. A step that gives
+   `Progress::Of { done, of }` puts a bar under the card, half the
+   screen wide, `done ÷ of` of it filled. The run report's `Start, ms per
    update callback` line says how long each callback took.
 
 [`examples/hello-grid`](../../examples/hello-grid/README.md) does all of it

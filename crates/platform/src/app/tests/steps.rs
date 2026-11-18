@@ -223,3 +223,184 @@ fn a_load_at_once_is_one_step() {
     let _ = app.frame(&mut p, Millis(16));
     assert_eq!((app.is_loading(), app.load_steps()), (false, 1));
 }
+
+/// What a scripted step says: [`Progress`] without the game.
+#[derive(Debug, Clone, Copy)]
+enum Say {
+    More,
+    Of(u32, u32),
+    Wait,
+    Done,
+}
+
+/// A load whose steps say `script` in turn, each moving `clock` on by
+/// `us`; `Done` makes the toy's game.
+fn scripted(
+    script: &'static [Say],
+    us: u64,
+    clock: &'static AtomicU64,
+) -> impl FnOnce(Setup) -> LoadStep<Toy> {
+    move |setup| {
+        let mut ctx = Some(setup.ctx(toy::ctx()));
+        let mut said = script.iter();
+        Box::new(move || {
+            advance(clock, us);
+            match said.next() {
+                Some(Say::More) => Progress::More,
+                Some(Say::Of(done, of)) => Progress::Of {
+                    done: *done,
+                    of: *of,
+                },
+                Some(Say::Wait) => Progress::Wait,
+                Some(Say::Done) | None => {
+                    let game = ctx.take().map(toy::game_on);
+                    Progress::done(game.ok_or_else(|| "loaded twice".to_owned()))
+                }
+            }
+        })
+    }
+}
+
+/// The steps of `script`, begun, for `run_steps`.
+fn begun(script: &'static [Say], us: u64, clock: &'static AtomicU64) -> LoadStep<Toy> {
+    let mut p = HeadlessPlatform::new();
+    let setup = Setup {
+        display: p.display(),
+        storage: p.storage(),
+        seed: 0,
+        voice_manifest: None,
+        platform: p.facts(),
+        key_prompt: KeyPrompt::Off,
+        last_crash: None,
+    };
+    scripted(script, us, clock)(setup)
+}
+
+/// What `run_steps` came to: whether the load is over, what ran; and the
+/// step, if not over.
+fn ran(step: LoadStep<Toy>, deadline: Option<Deadline>) -> (bool, StepsRun, Option<LoadStep<Toy>>) {
+    let (ran, steps) = run_steps(step, deadline);
+    match ran {
+        Ran::Over(game) => (game.is_ok(), steps, None),
+        Ran::More(next) => (false, steps, Some(next)),
+    }
+}
+
+/// `calls` calls of a step, the last count `count`.
+fn run(calls: u32, count: Option<(u32, u32)>) -> StepsRun {
+    StepsRun { calls, count }
+}
+
+static UNSLICED: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn without_a_slice_a_wait_ends_the_frames_steps_and_the_next_call_goes_on() {
+    const SCRIPT: &[Say] = &[
+        Say::Of(1, 3),
+        Say::Wait,
+        Say::Of(2, 3),
+        Say::Wait,
+        Say::Done,
+    ];
+    let (over, steps, next) = ran(begun(SCRIPT, 1, &UNSLICED), None);
+    assert_eq!((over, steps), (false, run(2, Some((1, 3)))));
+    let (over, steps, next) = ran(next.expect("waiting"), None);
+    assert_eq!((over, steps), (false, run(2, Some((2, 3)))));
+    let (over, steps, next) = ran(next.expect("waiting"), None);
+    assert_eq!((over, steps), (true, run(1, None)));
+    assert!(next.is_none());
+}
+
+static SLICED: AtomicU64 = AtomicU64::new(0);
+
+fn sliced_now() -> u64 {
+    SLICED.load(Ordering::Relaxed)
+}
+
+#[test]
+fn with_a_slice_a_wait_ends_the_frames_steps_before_the_slice_is_used() {
+    const SCRIPT: &[Say] = &[Say::More, Say::Wait, Say::More, Say::Done];
+    // Steps of 1 µs in a slice of a second: the wait ends it.
+    let deadline = Deadline::start(a_second(sliced_now));
+    let (over, steps, next) = ran(begun(SCRIPT, 1, &SLICED), Some(deadline));
+    assert_eq!((over, steps), (false, run(2, None)));
+    let began = sliced_now();
+    let deadline = Deadline::start(a_second(sliced_now));
+    let (over, steps, _) = ran(next.expect("waiting"), Some(deadline));
+    assert_eq!((over, steps.calls), (true, 2));
+    assert_eq!(sliced_now() - began, 2, "far from the slice's end");
+}
+
+static COUNTED: AtomicU64 = AtomicU64::new(0);
+
+fn counted_now() -> u64 {
+    COUNTED.load(Ordering::Relaxed)
+}
+
+/// Ten steps of 400 ms in slices of a second, counting to 5 units (`of`
+/// grows as the load finds more); the steps with no count leave the card's
+/// count as it was.
+#[test]
+fn the_last_count_is_kept_across_frames_and_on_the_cards_frames() {
+    const SCRIPT: &[Say] = &[
+        Say::Of(1, 4),
+        Say::More,
+        Say::Of(2, 4),
+        Say::More,
+        Say::More,
+        Say::More,
+        Say::Of(3, 5),
+        Say::Of(4, 5),
+        Say::Of(5, 5),
+        Say::Done,
+    ];
+    let start = Start::in_steps(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        scripted(SCRIPT, 400_000, &COUNTED),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new().with_load_slice(a_second(counted_now));
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!((app.load_progress(), p.card_count()), (None, None));
+    let mut counts = Vec::new();
+    for n in 1..=4 {
+        let _ = app.frame(&mut p, Millis(33 * n));
+        counts.push((app.load_progress(), p.card_count()));
+    }
+    // Three steps a frame: the count after steps 3, 6 (three with none)
+    // and 9, then the game, whose frame has no card.
+    let shown = |done, of| (Some((done, of)), Some((done, of)));
+    let over = (Some((5, 5)), None);
+    assert_eq!(counts, [shown(2, 4), shown(2, 4), shown(5, 5), over]);
+    assert!(!app.is_loading());
+}
+
+static AGAIN: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn a_card_shown_again_shows_its_count() {
+    const SCRIPT: &[Say] = &[Say::Of(1, 2), Say::Wait, Say::Done];
+    let start = Start::in_steps(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        scripted(SCRIPT, 1, &AGAIN),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    app.present_again(&mut p);
+    assert_eq!(p.card_count(), Some((1, 2)));
+    assert_eq!(p.last_frame(), Some(&Presented::Card(Card::text("A toy"))));
+}
+
+#[test]
+fn a_pictures_ink_stands_out_on_its_background() {
+    let dark = Card::picture("card.png");
+    assert_eq!(dark.ink(), Rgb::new(255, 255, 255));
+    let light = dark.colored(Rgb::new(9, 9, 9), Rgb::new(250, 240, 200));
+    assert_eq!(light.ink(), Rgb::new(0, 0, 0));
+    let line = Card::text("A toy").colored(Rgb::new(9, 8, 7), Rgb::new(250, 240, 200));
+    assert_eq!(line.ink(), Rgb::new(9, 8, 7));
+}
