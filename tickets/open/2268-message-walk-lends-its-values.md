@@ -18,7 +18,7 @@ completed:
 Split from 2266 at its **Split** point (2266 grew past 1,000 lines with
 its stored parse alone). 2266 made a language learn each text's form
 when it loads (`Lang::form_in`, `shuyi_assets::message::Form`), so a
-`Ctx` fill parses nothing in a frame (ADR-0130). What is left is the
+`Ctx` fill parses nothing in a frame (ADR-0131). What is left is the
 copies a fill still makes of its values, which 3219 found and left
 (its scope's two items, handed to 2266 and now here):
 
@@ -81,7 +81,7 @@ None.
   is pushed with its spaces as `NO_BREAK_SPACE`, in pieces between the
   spaces, with no `joined` `String`. `Ctx::fill_styled` hands `device`
   and `target` as `&dyn ToArg`.
-- An amendment to ADR-0130 (the `write-adr` skill): arguments are lent
+- An amendment to ADR-0131 (the `write-adr` skill): arguments are lent
   to the walk.
 - Docs: rustdoc of `ArgRef`, `with_arg_ref` and `walk_lent`.
 
@@ -100,7 +100,7 @@ None.
 ## Implementation steps
 
 1. Read `message.rs` (`walk`, `Choice::pick`, `ToArg`), `text.rs`'s
-   `fill_form` and `ctx.rs`'s `fill_styled`, and ADR-0130.
+   `fill_form` and `ctx.rs`'s `fill_styled`, and ADR-0131.
 2. `ArgRef`, `Arg::as_arg_ref`, `ArgRef::with_str`, the stack digits.
 3. `ToArg::with_arg_ref` and its overrides.
 4. The walk on lent values; `walk_lent`; `pick` on `ArgRef`.

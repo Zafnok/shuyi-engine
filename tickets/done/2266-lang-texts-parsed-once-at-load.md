@@ -237,7 +237,7 @@ and keep the stored parse, `form_in` and `Ctx` on it here.
   `crates/assets/tests/lang_load.rs` (a language of plain texts
   allocates nothing to learn them; the synthetic load parses each text
   at most twice).
-- ADR-0130 amends ADR-0127 §4 and §9; the book's text section and
+- ADR-0131 amends ADR-0127 §4 and §9; the book's text section and
   `docs/formats.md` say a text's form is learned once.
 
 **The numbers.** The synthetic load (833 screen texts: 33 plurals and
@@ -269,7 +269,7 @@ Hello, Grid's `start_instructions` and options-menu frame, from CI's
 - **Plain is 3219's check alone**, not "or the parse finding only text
   and simple arguments": `{ n }` (a trimmed name) and `'{'` (a quote)
   parse to text and simple arguments but fill differently by their
-  `{name}`s alone (ADR-0130 §5).
+  `{name}`s alone (ADR-0131 §5).
 - **A pack's forms are learned when the `Lang` is built**, not as the
   pack is read: `LangPack` is public and serialized, so a pack can come
   from anywhere, and `Lang::new` must learn it anyway. `from_files_in`

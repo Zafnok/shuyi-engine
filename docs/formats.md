@@ -308,7 +308,7 @@ What each one reads:
   only `other`. A text that isn't a message is filled as plain
   placeholders. Each screen and data text's form (plain, a message with
   its parse, not a message) is learned once, when the `Lang` is built,
-  and `Ctx`'s fills read it (`Lang::form_in`, ADR-0130): no frame parses
+  and `Ctx`'s fills read it (`Lang::form_in`, ADR-0131): no frame parses
   a text.
 
   The languages check their texts as messages when they load, each

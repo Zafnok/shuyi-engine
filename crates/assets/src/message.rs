@@ -217,7 +217,7 @@ impl<'a> ArgUse<'a> {
 ///
 /// Its pieces are where they are in the text, in bytes, so a parse can be
 /// kept apart from its text: a language keeps its messages' parses when it
-/// loads, and lends each with its text ([`Lang::form_in`], ADR-0130).
+/// loads, and lends each with its text ([`Lang::form_in`], ADR-0131).
 ///
 /// [`Lang::form_in`]: crate::lang::Lang::form_in
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -437,7 +437,7 @@ pub fn has_message_syntax(text: &str) -> bool {
 }
 
 /// What a text of a language is, learned when it loads
-/// ([`Lang::form_in`], ADR-0130), or when a caller reads it
+/// ([`Lang::form_in`], ADR-0131), or when a caller reads it
 /// ([`Form::of`]): with it, a fill parses nothing.
 ///
 /// Config read by a match (ADR-0039, kind 2): a set that may grow.

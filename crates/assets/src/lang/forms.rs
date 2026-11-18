@@ -1,5 +1,5 @@
 //! What each text of a language is, learned once when the languages are
-//! built (ADR-0130): plain, a message with its parse kept, or not a
+//! built (ADR-0131): plain, a message with its parse kept, or not a
 //! message. A fill reads it ([`Lang::form_in`]) and parses nothing.
 //!
 //! Only what isn't plain is kept: a language of plain texts keeps no more
@@ -95,7 +95,7 @@ impl Forms {
 
 impl Lang {
     /// [`text_in`](Self::text_in), as the form learned when the languages
-    /// were built: a fill from it parses nothing (ADR-0130). A key the
+    /// were built: a fill from it parses nothing (ADR-0131). A key the
     /// source lacks comes back as itself, its form read from it.
     pub fn form_in<'a>(&'a self, code: &LangCode, key: &'a str) -> (Form<'a>, &'a str) {
         let source_code = self.written_in.code.as_str();
