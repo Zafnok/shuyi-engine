@@ -1,6 +1,6 @@
 # ADR-0112: `shuyi repos` makes a game's repositories, keys and secrets, and repairs them when run again
 
-- **Status:** Accepted
+- **Status:** Accepted; §2 step 6 amended by ADR-0130 (one key, for builds; no Dependabot secret)
 - **Date:** 2026-11-12
 - **Related tickets:** 2591, 2592, 2593
 - **Extends:** ADR-0111 (§1 and §5: who makes the private repository, its

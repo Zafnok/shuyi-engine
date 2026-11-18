@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3407 — Every job that checks out private files caches no build and uploads none
@@ -261,26 +261,26 @@ None.
 
 ## Acceptance criteria
 
-- [ ] One test reads every workflow of the template (every part) and the
+- [x] One test reads every workflow of the template (every part) and the
       engine's `playtest.yml` and `export.yml`, and fails a job that
       checks out the private files and caches `target/`, caches by any
       other step without the guard, or uploads an artifact without the
       guard.
-- [ ] Each rule has a case in the test that it fails.
-- [ ] A workflow file under `templates/` that no composed game holds
+- [x] Each rule has a case in the test that it fails.
+- [x] A workflow file under `templates/` that no composed game holds
       fails the test.
-- [ ] ADR-0111 §5 says "no artifact and no cache", through a new ADR that
+- [x] ADR-0111 §5 says "no artifact and no cache", through a new ADR that
       also lists who can read the private files (CI, collaborators with
       write access, dependencies' build scripts) and drops Dependabot's
       secret from ADR-0112 §2.
-- [ ] `shuyi repos` on a new game sets no Dependabot secret and makes one
+- [x] `shuyi repos` on a new game sets no Dependabot secret and makes one
       deploy key, and on a game that has the old one warns, with the
       commands, without deleting anything.
-- [ ] A Dependabot pull request's run without a key warns and builds on
+- [x] A Dependabot pull request's run without a key warns and builds on
       the public files; a run on the game's own repository without the
       key otherwise still fails.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -294,5 +294,68 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **The test.** `every_job_with_the_private_files_caches_no_build_and_uploads_none`
+  composes every short name's game and the grid one with
+  `private-files=yes`, adds the engine's `playtest.yml` and `export.yml`,
+  parses each with `serde_norway`, and runs `private_files_leaks` over
+  them (the rules of the Scope, the guard one constant,
+  `NO_PRIVATE_FILES`; the allowed upload inputs `UPLOAD_INPUTS`). It also
+  checks that the private game's `ci.yml` and `export.yml` and the
+  engine's two have a job with the action, so the rules can't pass on
+  nothing, and that every file under `templates/**/.github/workflows/`
+  belongs to a part of the template and is in a composed game of that
+  part. `each_rule_on_a_job_with_the_private_files_refuses_its_leak` and
+  `a_workflow_given_the_private_files_key_is_one_the_test_reads` give each
+  rule a case it refuses, and cases it keeps. The text checks of
+  `assert_the_ci_runs_the_part_and_keeps_its_files` for the
+  `cache-targets` line, the one-cache count and the upload `if:` are
+  gone; the rest stays.
+- **What "other caching step" means** (the ticket left it open): an
+  action whose name holds `cache`, or any step given a `with.cache`
+  (`setup-node`'s `cache: npm`). A guard is kept only as an `&&` term of
+  the `if:`, never under an `||`. A caller on `pull_request_target` or
+  `workflow_run` that passes the key is refused too, since a called
+  workflow runs on its caller's event.
+- **`shuyi repos`:** `Thing::Key(Use)` became `Thing::Key` (the builds
+  key, step id `builds-key` as before); `plan` makes only it; `observe`
+  still reads the Dependabot secrets; `old_dependabot_key` warns of a
+  Dependabot secret or a deploy key titled `<name> dependabot
+  (read-only)`, naming `gh secret delete PRIVATE_ASSETS_KEY --app
+  dependabot --repo …` and `gh repo deploy-key delete <id> --repo …`.
+  `--help` and the report's `next` say that write access to the game's
+  repository reads the private one. The fake's `gh secret set` takes an
+  Actions secret only. `Use` is private to the module: no public API
+  change.
+- **The action:** `DEPENDABOT_PR` is `github.event_name ==
+  'pull_request' && github.event.pull_request.user.login ==
+  'dependabot[bot]'`, the condition GitHub's *Automating Dependabot with
+  GitHub Actions* uses in its examples (read on 2026-11-17; the page
+  doesn't discuss re-runs, so "the opener, which a re-run keeps" rests on
+  what the field is). It joins the fork case in the warning branch; every
+  other run on the game's own repository without the key still fails.
+  This shell is checked by reading only: no test runs the composite
+  action, as before.
+- **ADR-0130** amends ADR-0111 §5 and ADR-0112 §2 step 6; both status
+  lines and the index name it.
+- **Docs:** the base's `ci.yml` comment, the action's descriptions and
+  error, the private part's `AGENTS.md`, `docs/templates.md`, the
+  `shuyi-private-files` skill (the cache rule, one key, who can read the
+  files), the book's quick start (one sentence on write access), and
+  3406's either-order clause rewritten as what holds.
+- **Deviation:** the step-2 test lives beside two companion tests, not in
+  one function, so each rule's cases read on their own.
+- Game: nothing to adopt, the game's own workflows and its Dependabot key
+  are game#0171's, which needs nothing from this ticket; the game's copy
+  of the `shuyi-private-files` skill changes at its next pin bump.
+- No ticket: game#0171 (the game's) doesn't name this ticket, and this
+  repository can't edit it; it needs nothing from here.
+- Behaviour: shuyi-cli: `shuyi repos` makes one deploy key and sets no
+  Dependabot secret; its step `dependabot-key` is gone from the report;
+  a game with the old Dependabot secret or key gets a warning with the
+  commands that delete them; `next` says who can read the private files.
+- Behaviour: shuyi-cli: the template's private-files action warns and
+  builds on the public files on a Dependabot pull request without a key,
+  where it failed before.
+- Book: `site/content/learn/book/quick-start.md` says that write access to
+  the game's repository reads the private one.
+- Size: 1,114 counted lines: the test and its cases are about half; it splits cleanly at the `shuyi repos` and action change (ADR-0130 §3), which is already one piece of the ADR the test guards, so it stays one PR.

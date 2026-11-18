@@ -196,7 +196,7 @@ These tickets, in order:
 | 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 | A public game's tag release publishes what Nick decided, and never a debug file |
-| 3407 | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
+| 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP

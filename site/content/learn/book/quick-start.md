@@ -393,8 +393,9 @@ repository on your account named from the game (Moon Garden's is `moon-garden`),
 public unless you say `--visibility private`, since GitHub's CI is free for a public
 one, and it pushes the game there. A game with private files also gets their
 private repository, with a README and a folder for each kind of file, the game
-pinned to it, and the read-only key and secret its CI reads them with. It creates
-these on your account, so a coding agent should ask you before running it. Run it
+pinned to it, and the read-only key and secret its CI reads them with. Anyone you
+give write access to the game's repository can read the private one too, since a
+workflow they push runs with that key. It creates these on your account, so a coding agent should ask you before running it. Run it
 again if a step fails: it makes only what isn't there. `shuyi doctor` lists `gh`
 and `ssh-keygen` as optional, since only this command needs them.
 

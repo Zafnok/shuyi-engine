@@ -161,7 +161,11 @@ its workflows' artifacts are anyone's. So:
   review, beyond the file's path and what the change needs to be
   understood;
 - no workflow uploads an artifact that embeds them, but a release's
-  packages, which publish them inside the program anyway.
+  packages, which publish them inside the program anyway;
+- no job that checks them out caches `target/`: its `rust-cache` step
+  keeps `cache-targets` false when the private files' action is there,
+  and any other cache waits on the same guard. A pull request's run may
+  restore its base branch's caches.
 
 A failing test's log may quote a line of a private file. That is the
 price of testing the real files: keep it to what the failure needs.
@@ -170,12 +174,22 @@ price of testing the real files: keep it to what the failure needs.
 
 `cargo shuyi repos` makes, or repairs when run again, the game's
 repository, the private one with its folders, the pin and the checkout,
-two read-only deploy keys whose private halves are the secret
-`PRIVATE_ASSETS_KEY`, and a ruleset on the private `main`. **It acts on
+one read-only deploy key whose private half is the Actions secret
+`PRIVATE_ASSETS_KEY`, and a ruleset on the private `main`. Dependabot
+gets no key: its pull requests build on the public files, so a
+dependency's new version never runs its build next to the private
+files before a person merges it. A Dependabot secret an older `repos`
+made is warned of, with the commands that delete it. **It acts on
 the developer's GitHub account: ask the developer before running it, and
 never run it on your own.** With their yes, show them `cargo shuyi repos
 --dry-run`'s plan first, then run it with their answers as flags.
-`--new-keys` replaces both keys and both secrets: only when they ask.
+`--new-keys` replaces the key and its secret: only when they ask.
+
+Who can read the private files: the game's own CI, and so **anyone with
+write access to the game's repository**, since a workflow they push runs
+with the key. Tell the developer this before they add a collaborator:
+write access to the public repository is read access to the private
+one.
 
 The same holds for `shuyi new --github`. The MCP `new` tool and `new
 --json` never make a repository (`--github` is refused with `--json`),
