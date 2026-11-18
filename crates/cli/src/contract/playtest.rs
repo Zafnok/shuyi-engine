@@ -268,7 +268,7 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<Playt
             .filter(|t| t.outcome.is_none())
             .count();
         if unfinished > 0 {
-            let on = stage.as_ref().map(|s| format!("{s}: ")).unwrap_or_default();
+            let on = stage.as_ref().map_or_default(|s| format!("{s}: "));
             limits.push(format!(
                 "{on}{unfinished} of the tries reached turn {} without an end: their outcome is unknown",
                 tries.turns

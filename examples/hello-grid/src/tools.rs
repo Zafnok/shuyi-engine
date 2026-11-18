@@ -450,8 +450,7 @@ pub fn scene(h: &Harness<Hello>) -> Result<Scene, String> {
 /// What happened in the rules of the stage in `h`, if one is open.
 pub fn events(h: &Harness<Hello>) -> Vec<String> {
     h.screen::<StageScreen>()
-        .map(|stage| stage.events.iter().map(|e| format!("{e:?}")).collect())
-        .unwrap_or_default()
+        .map_or_default(|stage| stage.events.iter().map(|e| format!("{e:?}")).collect())
 }
 
 /// How a playtest measures a try of the stage: `won` (1 if your piece

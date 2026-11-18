@@ -698,8 +698,7 @@ fn gh_get(host: &mut dyn Host, dir: &Path, path: &str) -> Result<Got, Failure> {
 fn secret_names(json: &Value) -> Vec<&str> {
     json["secrets"]
         .as_array()
-        .map(|list| list.iter().filter_map(|s| s["name"].as_str()).collect())
-        .unwrap_or_default()
+        .map_or_default(|list| list.iter().filter_map(|s| s["name"].as_str()).collect())
 }
 
 /// Whether `repo` is on GitHub, failing when the signed-in user can't
@@ -1071,19 +1070,16 @@ fn deploy_keys(host: &mut dyn Host, dir: &Path, repo: &Slug) -> Result<Vec<Deplo
     let Got::Json(json) = gh_get(host, dir, &path)? else {
         return Ok(Vec::new());
     };
-    Ok(json
-        .as_array()
-        .map(|list| {
-            list.iter()
-                .filter_map(|k| {
-                    Some(DeployKey {
-                        id: k["id"].as_u64()?,
-                        title: k["title"].as_str()?.to_owned(),
-                    })
+    Ok(json.as_array().map_or_default(|list| {
+        list.iter()
+            .filter_map(|k| {
+                Some(DeployKey {
+                    id: k["id"].as_u64()?,
+                    title: k["title"].as_str()?.to_owned(),
                 })
-                .collect()
-        })
-        .unwrap_or_default())
+            })
+            .collect()
+    }))
 }
 
 /// The ruleset `repos` puts on the private repository's default branch:
@@ -1278,7 +1274,7 @@ impl Report {
 fn about(step: &Step, inputs: &Inputs, state: &State, rules: Option<&PrivateAssets>) -> String {
     let game = &inputs.game;
     let private = inputs.private.as_ref();
-    let private_url = private.map(|p| p.repo.url()).unwrap_or_default();
+    let private_url = private.map_or_default(|p| p.repo.url());
     let pin_file = rules.map_or("private.rev", |r| r.pin_file.as_str());
     match step.thing {
         Thing::Git => "the game's folder as a git repository, with a first commit".to_owned(),
@@ -1294,7 +1290,7 @@ fn about(step: &Step, inputs: &Inputs, state: &State, rules: Option<&PrivateAsse
         },
         Thing::PrivateRepo => {
             let visibility = private.map_or("private", |p| p.visibility.name());
-            let folders = private.map(|p| p.folders.join(", ")).unwrap_or_default();
+            let folders = private.map_or_default(|p| p.folders.join(", "));
             format!(
                 "{private_url} ({visibility}), its README and files/ ({folders}), docs/, library/"
             )
@@ -1318,14 +1314,14 @@ fn about(step: &Step, inputs: &Inputs, state: &State, rules: Option<&PrivateAsse
                 "the read-only deploy key \"{}\" of {}, its private half the {kind} secret \
                  {SECRET} of {}{replaced}",
                 key.title(&game.name),
-                private.map(|p| p.repo.path()).unwrap_or_default(),
+                private.map_or_default(|p| p.repo.path()),
                 game.path()
             )
         }
         Thing::Ruleset => format!(
             "the ruleset \"{RULESET}\" on {}'s default branch: no deletion, no force push, a pull \
              request, admins may bypass",
-            private.map(|p| p.repo.path()).unwrap_or_default()
+            private.map_or_default(|p| p.repo.path())
         ),
         Thing::PinCommit => format!("{pin_file} committed (\"Pin the private files\")"),
         Thing::Push => format!("{} pushed to origin", state.branch),

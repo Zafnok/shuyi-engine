@@ -293,8 +293,7 @@ fn pin(rules: &PrivateAssets, command: &str, root: &Path, url: &str) -> Result<S
                 let hint = credited
                     .hint
                     .as_ref()
-                    .map(|hint| format!(" ({hint})"))
-                    .unwrap_or_default();
+                    .map_or_default(|hint| format!(" ({hint})"));
                 return Err(format!(
                     "these files in {name}/{dir}/ have no credit:\n  {}\n\
                      add their path to an entry's `private` list in {}{hint}, then run \

@@ -65,8 +65,7 @@ pub fn outside(root: &Path, workspace: &Path) -> Vec<(PathBuf, String)> {
         .output()
         .ok()
         .filter(|output| output.status.success())
-        .map(|output| outside_of(&String::from_utf8_lossy(&output.stdout), workspace))
-        .unwrap_or_default()
+        .map_or_default(|output| outside_of(&String::from_utf8_lossy(&output.stdout), workspace))
 }
 
 /// [`outside`] from `cargo metadata`'s answer, `json`: the packages with

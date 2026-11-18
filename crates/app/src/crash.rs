@@ -315,9 +315,7 @@ fn build(info: &PanicHookInfo<'_>, reports: CrashReports, on_game_thread: bool) 
     report.top_screen = try_lock(&TOP_SCREEN)
         .and_then(|top| *top)
         .map(ToOwned::to_owned);
-    report.log = try_lock(&LOG)
-        .map(|log| log.iter().cloned().collect())
-        .unwrap_or_default();
+    report.log = try_lock(&LOG).map_or_default(|log| log.iter().cloned().collect());
     report.limit();
     report
 }

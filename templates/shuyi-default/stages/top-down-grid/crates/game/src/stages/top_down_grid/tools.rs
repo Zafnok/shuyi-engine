@@ -81,8 +81,7 @@ pub fn scene(h: &Harness<Data>) -> Result<Scene, String> {
 /// What happened in the rules of the stage in `h`.
 pub fn events(h: &Harness<Data>) -> Vec<String> {
     h.screen::<StageScreen>()
-        .map(|screen| screen.events.iter().map(|e| format!("{e:?}")).collect())
-        .unwrap_or_default()
+        .map_or_default(|screen| screen.events.iter().map(|e| format!("{e:?}")).collect())
 }
 
 /// The stage's bot run for `playtest` (`cargo shuyi playtest --tries 20`):

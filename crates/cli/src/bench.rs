@@ -724,8 +724,7 @@ fn packages(
     let mut found = Vec::new();
     let mut limits = Vec::new();
     let mut dirs: Vec<PathBuf> = fs::read_dir(root.join(EXPORTS))
-        .map(|entries| entries.flatten().map(|e| e.path()).collect())
-        .unwrap_or_default();
+        .map_or_default(|entries| entries.flatten().map(|e| e.path()).collect());
     dirs.sort();
     for dir in dirs {
         let path = dir.join(REPORT);
