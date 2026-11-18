@@ -124,7 +124,10 @@ None.
   - the `Sound` kind gains `length_ms: Option<u32>`, from
     `sound_length_ms`. Fix its literal in
     `crates/assets/src/format/builtin_tests.rs` and its pattern in
-    `formats.rs`;
+    `formats.rs`. **Either order with 2095:** if 2095 is done, the kind
+    is `#[non_exhaustive]`, `Sound::mono` and `Sound::stereo` start
+    `length_ms` at `None`, and the field is additive; if not, the field
+    is a break, with its `Breaking:` line (*For the game*);
   - the manifest's binary form changes, so `pack::VERSION`
     (`crates/assets/src/pack.rs`) becomes the next number, and the
     pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted;
@@ -228,13 +231,15 @@ None.
   `write-adr` skill).
 - **Public types (ADR-0039):** `WhenFull` may grow (a "stop quietest"
   rule), so it is `#[non_exhaustive]`; `CopyId` is a plain value.
-- **For the game:** the API breaks. `SoundRequest::Sound` gains `copy`
+- **For the game:** the API grows. `SoundRequest::Sound` gains `copy`
   and `SoundRequest` gains `StopCopy`, which are additive: **from 2084
   (done)** `Sound` is a `#[non_exhaustive]` variant built with
   `SoundRequest::sound`, and `SoundRequest` is `#[non_exhaustive]`.
-  `AudioManifest` gains `max_voices` (a literal without
-  `..` breaks), and the `Sound` kind gains `length_ms`. Each break gets
-  a `Breaking:` line in the completion notes (ADR-0038). The pack's
+  `AudioManifest` gains `max_voices` additively too (**from 2341
+  (done):** it is `#[non_exhaustive]`, built with `default()` and its
+  fields assigned). The `Sound` kind gains `length_ms`, additively once
+  2095 is done (the clause on `length_ms` above). Each break that is
+  left gets a `Breaking:` line in the completion notes (ADR-0038). The pack's
   version goes up, so a pack baked before this is refused and rebaked.
   A backend of the game's own, such as its Playdate front end
   (game#1170), stops the one copy `StopCopy` names. The PR says so, and
@@ -244,8 +249,8 @@ None.
 snapshots not counted), the lengths go first as a ticket of their own
 (`write-ticket`, 23xx, After MVP, blocked by 2345): `sound_length_ms`,
 `lengths_ms`, `measure_sounds`, the `Sound` kind's `length_ms`, the pack
-version and the 2225 clause. That PR adds it to this ticket's
-`blocked_by` and points 2225's clause at it.
+version and the 2225 and 2095 clauses. That PR adds it to this ticket's
+`blocked_by` and points 2225's and 2095's clauses at it.
 
 **Out (do not do):**
 - what 2345 does: the cue rules' place in `App`, variants, the random

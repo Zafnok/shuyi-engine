@@ -56,7 +56,13 @@ None.
 
 **Out (do not do):**
 - changing what a step teaches;
-- a prebuild (Nick's, 2837).
+- a prebuild (Nick's, 2837);
+- how CI builds the steps' web builds (3502).
+
+**Either order with 3502:** if 3502 is done, CI's `web-tutorial` job
+builds every step from one folder, so the one set of features shows there
+too: put that job's per-step times, before and after, in the notes; if
+not, nothing to do (3502 measures with this ticket's locks when it lands).
 
 **Estimated size:** about 200 lines (manifests and locks 60, the check and
 its tests 120, the container and docs 20).

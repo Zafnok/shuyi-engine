@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2262", "2263"]
+blocked_by: ["2262", "2263", "3220"]
 nick_input: none
 completed:
 ---
@@ -42,6 +42,14 @@ completed:
   over it stays `RefUnwindSafe`. A failed read or a refused file is
   listed once by `Layer::problems()`, for the backend to log. A pack's
   files may not reach past 4 GiB from its start.
+- **Waits for 3220.** The one-bit frame draws a picture only where the
+  bundle lends it (`impl Images for Bundle`,
+  `crates/ui/src/frame/onebit.rs`), and a layer read file by file lends
+  nothing: Hello, Grid, which hands its bundle in as its pictures, would
+  draw every sprite grey and read its file each frame. 3220 gives
+  `OneBitPictures` (pictures kept as values), moves Hello, Grid's
+  pictures onto it, and splits `Hello::one_bit_ctx` so it takes any
+  layer (`Hello::one_bit_ctx_over`).
 
 ## Nick input
 
@@ -71,7 +79,8 @@ None.
 - **The run report** (3090's `RunReport`): the slow reads it already
   lists count the pack's reads too, so a part that reads many small files
   shows.
-- **`examples/hello-grid`'s Playdate build** uses `pack_layer`.
+- **`examples/hello-grid`'s Playdate build** uses `pack_layer`, through
+  `Hello::one_bit_ctx_over` (3220), its pictures in its `OneBitPictures`.
 - **Docs:** `crates/playdate/README.md` (or its module comment) and the
   book's Playdate chapter: a pack is read file by file; what stays (the
   index, about 52 bytes a file) and what a game keeps (its values).
@@ -108,6 +117,9 @@ None.
       --write-synthetic playdate`) loads Hello, Grid with a peak under
       1 MB of heap, against 68 MB read whole (a test, its number in the
       completion notes).
+- [ ] On the fake SDK, Hello, Grid's one-bit frame of the stage with its
+      tiles, over `pack_layer`, equals the frame from the pack read whole
+      (`pack()` and `Pack::open`), pixel for pixel: no sprite is grey.
 - [ ] A read that fails in the SDK leaves the file missing and is logged
       once, never a panic.
 - [ ] CI's jobs that build the Playdate's device crate (the C shim)
