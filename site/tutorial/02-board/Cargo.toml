@@ -19,7 +19,7 @@ shuyi-cli = { path = "../../../crates/cli" }
 # feature (the game crate's).
 shuyi-app = { path = "../../../crates/app" }
 # Its own part of the data, and its rules' state, are plain data.
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["derive", "std"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
