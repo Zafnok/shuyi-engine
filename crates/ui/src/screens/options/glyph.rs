@@ -23,8 +23,9 @@ const LABEL_DX: i32 = 4;
 /// Column of the row values, from the panel's left edge.
 const VALUE_DX: i32 = 30;
 /// The highest the panel's top border rises when its rows need the room
-/// ([`panel`]).
-const TOP_MIN: i32 = 1;
+/// ([`panel`]): the screen's top row (game ticket 0923: a game's rows
+/// filled it to row 1).
+const TOP_MIN: i32 = 0;
 /// Rows under the panel at the least: a blank one, the message's and the
 /// help line's.
 const BELOW_PANEL: i32 = 3;
@@ -347,11 +348,11 @@ mod tests {
 
     /// A panel whose message fits under it stays at its row; rows that
     /// would push the message onto the help line raise the panel instead,
-    /// a row at a time, up to row 1.
+    /// a row at a time, up to the top row.
     #[test]
     fn a_taller_panel_rises_so_the_message_fits() {
         let c = ctx();
-        for (count, top) in [(22, PANEL.y), (23, PANEL.y), (24, 2), (25, 1)] {
+        for (count, top) in [(22, PANEL.y), (23, PANEL.y), (24, 2), (25, 1), (26, 0)] {
             let rows: Vec<RowView> = (0..count)
                 .map(|i| row(&format!("Row {i}"), ValueView::None, false))
                 .collect();
@@ -363,13 +364,12 @@ mod tests {
             assert_eq!(painted_row(&c, &v, bottom + 1), "Defaults restored");
             assert_eq!(painted_row(&c, &v, 31), "help", "{count}");
         }
-        // Taller still, the panel rises no higher than row 1.
-        let rows: Vec<RowView> = (0..26)
+        // Taller still, the panel rises no higher than the top row.
+        let rows: Vec<RowView> = (0..27)
             .map(|i| row(&format!("Row {i}"), ValueView::None, false))
             .collect();
         let v = view(rows);
-        assert!(painted_row(&c, &v, 1).starts_with('┌'));
-        assert!(!painted_row(&c, &v, 0).starts_with('┌'));
+        assert!(painted_row(&c, &v, 0).starts_with('┌'));
     }
 
     #[test]
