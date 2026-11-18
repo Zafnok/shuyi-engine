@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044", "2262", "2090", "3219", "2095", "2096", "3503", "2098", "3406", "3407"]
+blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044", "2262", "2090", "2095", "2096", "3503", "2098", "3406", "3407"]
 nick_input: sign-off
 completed:
 ---
@@ -90,8 +90,8 @@ The retro of 2026-11-17 (the last 100 PRs) found what the list missed:
   the crates a dependency's types come from), which 2089 wrote. The
   rule of 2026-11-05 puts every open MVP ticket here.
 - **A blocker's own regression:** 3218 put the game's Playdate frame
-  over its budget, so 3219 (plain text fills without parsing a message)
-  moves to the MVP.
+  over its budget. Its fix, 3219, was filed after the MVP but done the
+  same day (#485), so the release need not wait for it.
 - **Types the sweep of 2082–2086 missed:** 2095 (`FontAtlasDef`, the
   `Sound` kind and `DoctorInput` under ADR-0039), and 2096 (`cargo
   xtask api` classifies every new public type, so the next one isn't

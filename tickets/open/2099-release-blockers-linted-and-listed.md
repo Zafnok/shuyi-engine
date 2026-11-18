@@ -28,7 +28,8 @@ gate checks this, and the retro of 2026-11-17 (the last 100 PRs, #379 to
   that retro added it by hand.
 - **A blocker's own fix filed after the MVP.** 3218, which blocks 2005,
   put the game's Playdate frame over its budget, and its fix, 3219, was
-  `milestone: After MVP`. The same PR moved 3219 to the MVP. Nothing
+  `milestone: After MVP`. It was done the same day (#485), but only
+  because the game's bench caught it. Nothing
   would have caught an open ticket in 2005's list whose milestone says
   it comes after the release.
 
@@ -100,7 +101,7 @@ None.
 - Checking the game's tickets that 2005's blockers name.
 - Any other release than 2005.
 - Changing any ticket's milestone or 2005's `blocked_by`: the retro's
-  ticket-only PR already put 2090 and 3219 there. If the lint finds
+  ticket-only PR already put 2090 there. If the lint finds
   another, fix it in this PR (add it to 2005, or move its milestone if
   it really comes after the release) and say which in the completion
   notes.

@@ -72,15 +72,14 @@ contract's version (2088), the assets' lifetimes (2906, 2919, 2262) and the brea
 no attribute softens (2347, 2348, 3218, 2405, 2409, 2133, 2136, 2239, 3041,
 3044) in the phase, before the release ([`decisions.md`](decisions.md)).
 On 2026-11-17 a retro of PRs #379–#484 added the rest of that decision's
-work, which the audit missed. It also added three more tickets. The
+work, which the audit missed. It also added two more tickets. The
 rest of that decision's work:
 - the types that grow but were missed (2095);
 - a check that classifies every new public type (2096);
 - constructors that can't take their arguments swapped (3503);
 - public API with no second user, hidden before it freezes (2098).
 
-The three more:
-- 3219, because 3218 put the game's Playdate frame over its budget;
+The two more:
 - 3406 and 3407, because a public game's release must not publish its
   private files;
 - 2090 joined 2005's `blocked_by` as an MVP ticket.
@@ -192,7 +191,6 @@ These tickets, in order:
 | 2239 | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
-| 3219 | Plain text fills without parsing a message, and a fill allocates nothing it doesn't keep (the game's Playdate frame is over budget after 3218) |
 | 2095 | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
@@ -277,7 +275,7 @@ tickets above and 2267 and 3220 under *Asset memory*:
 | 3501 | Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates |
 | 3502 | The tutorial's web builds boot in parallel, built from one folder |
 | 3319 | The bench job compares each frame's instructions with `main`'s and fails a rise past a margin unless the PR says why |
-| 2266 | A language's texts are parsed once, when they load, and a fill reuses what the load learned (after 3219, either order) |
+| 2266 | A language's texts are parsed once, when they load, and a fill reuses what the load learned |
 | 3221 | A steady frame of Hello, Grid with key caps on allocates no more than a count its test pins |
 | 3222 | On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame |
 | 3320 | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |

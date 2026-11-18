@@ -141,10 +141,22 @@ None.
     `KeyCaps::shown` stays public and as it is. A private sibling returns
     the capital as a `char`, and the cap encodes it into a `[u8; 4]`
     (`char::encode_utf8`) for `print_from`, `text_width` and `layout`.
-- **Either order with 3219:** if 3219 is done, pin the counts the test
-  measures after it; if not, pin today's counts, and 3219's PR lowers
-  the pins to what the test then measures (the test fails until it
-  does).
+- **The text fill's lists and joins, which 3219 (done in #485) left:**
+  - **No list per label:** `Ctx::label` and `Ctx::label_styled`
+    (`crates/ui/src/ctx.rs`) collect a `Vec` of values on every call.
+    They hand their values to the fill through 3219's private lookup
+    (`text::fill_styled_by`) instead. A `Label::Key`'s `[(String, Arg)]`
+    gives that lookup as `&Args` does.
+  - **A plain fill writes a `String`:** `fill`, `fill_values`,
+    `Ctx::text_with`, `text_with_keys`, `fill_text` and `label` build a
+    whole `StyledText` and then join it with `.plain()`
+    (`text.rs`, `fill`). Instead they write into the `String` they
+    return, through a private sink that a `StyledText` also takes.
+
+  Public signatures don't change, and every text fills byte for byte as
+  before: 3219's equivalence tests in `crates/ui/src/text/plain_tests.rs`
+  still pass. The select's comparison and an argument written once are
+  2266's, with its borrowed walk. The counts are pinned on top of 3219.
 - **Either order with 2266:** if 2266 is done, pin the counts the test
   measures after it; if not, pin today's counts, and 2266's PR lowers
   the pins to what the test then measures (the test fails until it
@@ -155,9 +167,9 @@ draws the same cells, styles and items as before, so no `Breaking:` or
 `Behaviour:` line. The game's next pin move needs nothing for it.
 
 **Out (do not do):**
-- The text fill's own allocations: `Ctx::fill_styled`'s and the
-  labels' lists, and `Message::parse` on each fill. 3219 and 2266 do
-  them (the clauses above); this ticket pins the count either way.
+- `Message::parse` on each fill of a message, a select's comparison and
+  an argument's copy: 2266 does them (the clause above). This ticket
+  pins the count either way.
 - Rebuilding `Ctx::key_caps()` and `Game::frame_widths` only when what
   they read changes: they allocate nothing, and a cache would have to
   follow the palette's reloads, the theme, the language and the screen.
@@ -175,7 +187,11 @@ draws the same cells, styles and items as before, so no `Breaking:` or
   needs more allocations a frame says why in its PR and in the pin's
   comment.
 
-**Estimated size:** about 900 lines (code 300, tests 500, docs 100).
+**Estimated size:** about 1,150 lines (code 400, tests 650, docs 100).
+
+**Split:** past 1,000 lines, split off the text fill's lists and joins
+(the labels' lookup and the plain fill's sink) into a new ticket, and
+keep the test, the styles store and the caps here.
 
 ## Implementation steps
 
@@ -200,9 +216,12 @@ draws the same cells, styles and items as before, so no `Breaking:` or
    from outside, `glyph_styles` row by row as today.
 4. Make `print_cap`, `print_arrows` and `add_cap_box` allocate nothing
    (*Scope*).
-5. Run the test, pin the counts it measures, and check each clause
-   (3219, 2266) against `tickets/done/`.
-6. List in the completion notes what still allocates in a steady frame
+5. Move `Ctx::label`, `label_styled` and the plain fills onto 3219's
+   lookup and a private sink (*Scope*). 3219's equivalence tests must
+   still pass.
+6. Run the test, pin the counts it measures, and check the 2266 clause
+   against `tickets/done/`.
+7. List in the completion notes what still allocates in a steady frame
    and where (read with a breakpoint or a backtrace in the counter, or
    by bisecting the drawing), and the counts before and after.
 
@@ -222,6 +241,9 @@ draws the same cells, styles and items as before, so no `Breaking:` or
       the whole store).
 - [ ] `print_cap`, `print_arrows`, `add_cap_box` and the one-letter
       capital make no `String` or `Vec`.
+- [ ] `Ctx::label` and `label_styled` build no `Vec`, and a plain fill
+      builds no `StyledText` to join. Checked by the code, and by 3219's
+      equivalence tests still passing.
 - [ ] Every existing frame, cap and snapshot test passes unchanged.
 - [ ] Hello, Grid looks as before: no snapshot of it changes.
 - [ ] The PR states each screen's count per frame before and after the

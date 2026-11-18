@@ -39,8 +39,8 @@ What the load does today, checked in the code on 2026-11-17 (`main` at
   `Entry { key, source, text }`, and `SourceText`'s data. `Lang::text_in`
   hands back `(&str, &str)`, and `Ctx::text_styled_with_keys`
   (`crates/ui/src/ctx.rs`) gives that text to
-  `text::fill_styled_with`, which parses it again (after 3219, scans it
-  again and parses it if it is a message).
+  `text::fill_styled_with`, which scans it again (3219's check) and
+  parses it again if it is a message.
 - `Message<'a>` borrows its text (`crates/assets/src/message.rs`,
   `Node::Text(&'a str)`, `Selector::Value(&'a str)`), so `Lang` can't
   keep one beside the `String` it reads without borrowing from itself.
@@ -110,14 +110,20 @@ None.
 - **For the game:** no break; added API only (`api: added`). The game
   needs no change to gain it: its `Ctx` fills go through the record.
   A game that calls `text::fill` on text it holds keeps 3219's check.
-- **Either order with 3219:** if 3219 is done, its fast check is the
-  test for plain at load, its private value lookup and sink are what
-  `Ctx`'s fills from a form use, and if its **Split** moved the
-  select's comparison and the argument written once here, do them now
-  with the borrowed walk; if not, write the plain test here (every
-  `{…}` a name with no whitespace, `,` or `{`, no `'` next to a brace
-  or another `'`), and 3219 then keeps its check for text from outside
-  the language files and leaves `Ctx`'s key fills on this record.
+- **3219 is done (#485):** its check `has_message_syntax`
+  (`crates/ui/src/text.rs`) is the test for plain at load, and its
+  private value lookup (`text::fill_styled_by`) is what `Ctx`'s fills
+  from a form use. It did not reach two items its scope had grown, so
+  do them here, with the borrowed walk:
+  - **A select compares without a `String`:** `Choice::pick` compares an
+    `Arg::Text` by `&str`, and an `Arg::Int` by its digits written into a
+    stack buffer. An `Int` still matches a branch by its digits: `7`
+    matches `7`, not `007`.
+  - **An argument is written once:** each argument is pushed into the
+    fill with no `.to_string()`. A key name's spaces become
+    `NO_BREAK_SPACE` as it is pushed, with no `joined` `String`.
+
+  The labels' lists and a plain fill's sink went to 3221.
 - **Either order with 3221:** if 3221 is done, lower the counts pinned
   in `examples/hello-grid/tests/frame_alloc.rs` to what it measures (it
   fails until you do); if not, nothing to do.
@@ -143,7 +149,8 @@ and keep the stored parse, `form_in` and `Ctx` on it here.
 
 1. Read `message.rs`'s parser and `walk`, `lang.rs`'s `Lang`,
    `text_in` and `entries`, `lang/source.rs`'s `data_text_in`, and
-   `ctx.rs`'s fills. Settle the 3219 clause.
+   `ctx.rs`'s fills, and 3219's `has_message_syntax` and
+   `fill_styled_by` (done in #485).
 2. Measure first: Hello, Grid's `start_instructions` and a frame of
    its options menu (`cargo shuyi bench`, in WSL or CI), and the
    synthetic load, on today's `main`.
