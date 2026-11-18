@@ -56,8 +56,9 @@ The cause:
 - The flags are part of every unit's hash (as ticket 2079 found for
   `RUSTFLAGS`), so no unit of one step is reused by the next.
 
-Steps 1 and 7 cost more again because their locks resolve other features
-of `serde` and `ron`. That is 2839's subject.
+Steps 1 and 7 cost more again because their locks resolved other
+features of `serde` and `ron`. **From 2839 (done):** the ten steps now
+resolve one set (`cargo xtask check-devcontainers` fails otherwise).
 
 **After this ticket**, the critical path is expected to be `bench`. It
 waits for the whole `export` matrix (`needs: [changes, export]`, though it
@@ -121,8 +122,7 @@ None.
 **Out (do not do):**
 - The `bench` chain (`bench` waiting for the whole `export` matrix). It
   is the next critical path, and it needs its own ticket and measurement.
-- Making the ten steps resolve one set of features. That is 2839 (see
-  below).
+- Making the ten steps resolve one set of features: 2839 did it.
 - Changing `shuyi web`'s remapping (the `trim-paths` Cargo lacks on the
   pinned Rust; `crates/cli/src/export/paths.rs` says why it is rustc's
   `--remap-path-prefix`). A game builds from one folder, so only this
@@ -131,10 +131,9 @@ None.
   PR).
 - Any other step of `web-render`.
 
-**Either order with 2839:** if 2839 is done, the ten steps resolve one
-set of features, so measure with it: steps 1 and 7 should take about as
-long as the others after the first; if not, nothing to do (2839 measures
-this job again when it lands, and this ticket's bounds hold without it).
+**With 2839 (done):** the ten steps resolve one set of features, so
+measure with it: steps 1 and 7 should take about as long as the others
+after the first.
 
 **Estimated size:** about 250 lines (the workflow 90, gates.rs 10, the
 ADR amendments and docs 150).
@@ -161,8 +160,7 @@ ADR amendments and docs 150).
 ## Acceptance criteria
 
 - [ ] In the new job's log, the second and later steps of a leg compile
-      no dependency from crates.io, only the step's own crates (and, until
-      2839 lands, what a change of features rebuilds).
+      no dependency from crates.io, only the step's own crates.
 - [ ] `web-render`'s median over 10 PR runs is 8 minutes or less.
 - [ ] Each leg of `web-tutorial` has a median of 8 minutes or less over
       the same runs.

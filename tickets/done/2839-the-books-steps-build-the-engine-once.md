@@ -56,7 +56,12 @@ None.
 
 **Out (do not do):**
 - changing what a step teaches;
-- a prebuild (Nick's, 2837).
+- a prebuild (Nick's, 2837);
+- how CI builds the steps' web builds (3502).
+
+**From 3502 (open):** 3502 isn't done, so CI's `web-tutorial` job
+doesn't exist yet and nothing is measured there; 3502 measures with this
+ticket's locks when it lands.
 
 **Estimated size:** about 200 lines (manifests and locks 60, the check and
 its tests 120, the container and docs 20).
@@ -151,7 +156,8 @@ asks for `serde` and `ron` with their default features too, but in a
 game's own crate, with no shared target folder to rebuild; it costs a
 game nothing it would build once anyway.
 
-**Handoffs:** 2838 and 2840 now say the ten steps build before the
+**Handoffs:** 3502 now says the ten steps resolve one set of features,
+so its steps 1 and 7 should build as fast as the others. 2838 and 2840 now say the ten steps build before the
 Codespace opens, in one command.
 
 Book: step 2's and step 7's pages give the new lines and say why.
