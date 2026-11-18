@@ -45,9 +45,11 @@ running **headless**.
 The book's project, the box-pushing puzzle you build after this chapter, has a
 Codespace of its own: [open the book's project in a
 Codespace](https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb).
-It opens at the project's folder, with the project's game built and served: the
-editor's **Ports** tab opens it. [The project's first page](@/learn/book/box-pusher/_index.md)
-says how to use it.
+It opens this book in the editor's preview, beside the project's folder, and each
+step's game there is your own build of that step, built again each time you save a
+change to its files. If the preview isn't open, the editor's **Ports** tab opens
+the book in a tab of your browser, on port 4000. [The project's first
+page](@/learn/book/box-pusher/_index.md) says how to use it.
 
 ## Install Rust
 

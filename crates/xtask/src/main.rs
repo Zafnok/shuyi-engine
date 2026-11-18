@@ -14,6 +14,7 @@
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask check-devcontainers`
+//! - `cargo xtask book-pad [--out <dir>] [--no-build]`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
@@ -36,6 +37,7 @@
 
 mod api;
 mod book;
+mod book_pad;
 mod changelog;
 mod compile_times;
 mod compress;
@@ -131,7 +133,15 @@ usage:
       Check that the book's dev container (.devcontainer/book/) builds every
       step of site/tutorial/, no more, in order, and keeps the root's image,
       setup and remoteEnv (ticket 2837).
-  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]
+  cargo xtask book-pad [--out <dir>] [--no-build]
+      Serve the book from its Codespace (ticket 2840): build the site as CI
+      does into <dir> (~/book-site), at the Codespace's forwarded port 4000
+      (http://127.0.0.1:4000/ outside one), and serve it on 127.0.0.1:4000,
+      each step's play/ from its own dist/web/. A step whose crates/ or
+      Cargo.toml changes is built again (`cargo shuyi web`), and its page
+      follows it (GET /pad/build/<step>). With --no-build, serve the site
+      already in <dir>. A port already taken: says the book is served.
+  cargo xtask api[--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]
       Show the public API change of the engine's crates, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
@@ -298,6 +308,7 @@ fn main() -> ExitCode {
             errors.extend(devcontainers::run_features(&root));
             report("check-devcontainers", &errors, &[])
         }
+        Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
@@ -654,6 +665,18 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
     };
     let errors = site_data::run(root, &options).err().unwrap_or_default();
     report("site-data", &errors, &[])
+}
+
+fn book_pad(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = book_pad::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let errors: Vec<String> = book_pad::run_pad(root, &options)
+        .err()
+        .into_iter()
+        .collect();
+    report("book-pad", &errors, &[])
 }
 
 fn exercises(root: &Path, args: &[String]) -> ExitCode {

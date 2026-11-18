@@ -19,7 +19,7 @@ const BOOK_JSON: &str = r#"// The book's project.
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/site/tutorial",
   // A comment's "quotes" and a URL in a string: "https://example.com/x"
   "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk",
-  "postAttachCommand": "bash serve.sh",
+  "postAttachCommand": "bash ../../.devcontainer/book/pad.sh",
   "remoteEnv": { "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin" },
   "docs": "https://example.com/a // not a comment /* nor this */"
 }"#;

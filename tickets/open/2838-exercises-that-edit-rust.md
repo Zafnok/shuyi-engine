@@ -43,9 +43,8 @@ What there is:
   **Check my work**.
 - **From 2837 (done):** `.devcontainer/book/devcontainer.json` opens a
   Codespace at `site/tutorial/`, linked from each step's page, which names
-  the step's folder and the two commands, `cargo shuyi web` and `bash
-  ../serve.sh` (`site/templates/chapter.html`; the twin, `codespace` in
-  `crates/xtask/src/llms.rs`). Every step's web build is built into one
+  the step's folder (`site/templates/chapter.html`; the twin, `codespace`
+  in `crates/xtask/src/llms.rs`). Every step's web build is built into one
   target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`, all ten
   before the Codespace opens (or from a prebuild): a command run there
   builds into it too.
@@ -54,6 +53,9 @@ What there is:
   otherwise), so a step after the first builds only its own crate, about
   10 s on 2 cores. A step an exercise copies or changes keeps asking for
   its crates with the engine's features.
+- **From 2840 (done):** the Codespace serves the book (`cargo xtask
+  book-pad`, `crates/xtask/src/book_pad.rs`), each step's game its own
+  build, built again when its files change; there is no `serve.sh`.
 
 **Either order with 2841:** if 2841 is done, a `code` exercise on a page
 served from the book's Codespace (where 2841's `GET /pad/status` answers)

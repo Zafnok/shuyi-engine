@@ -965,18 +965,21 @@ fn a_step_twin_names_the_books_codespace_and_its_folder() {
     fixture.passes();
     let step = fixture.read("learn/book/box-pusher/01-new/index.md");
     assert!(
-        step.contains(&format!("Change its Rust in a Codespace: <{CODESPACE}>.")),
+        step.contains(&format!("Open this book in a Codespace: <{CODESPACE}>.")),
         "{step}"
     );
-    assert!(step.contains("this step is the folder `01-new/`"), "{step}");
-    assert!(step.contains("`cargo shuyi web` in `01-new/`"), "{step}");
+    assert!(
+        step.contains("your own build of this step, the folder `01-new/`"),
+        "{step}"
+    );
+    assert!(step.contains("built again each time you save"), "{step}");
     assert!(
         step.find("Codespace:") < step.find("First steps."),
         "{step}"
     );
     // The project's own page isn't a step.
     let project = fixture.read("learn/book/box-pusher/index.md");
-    assert!(!project.contains("Change its Rust"), "{project}");
+    assert!(!project.contains("Open this book"), "{project}");
 }
 
 #[test]
