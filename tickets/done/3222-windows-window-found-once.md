@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-17
 ---
 
 # 3222 — On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame
@@ -75,10 +75,10 @@ None.
 
 ## Acceptance criteria
 
-- [ ] After the first frame that finds miniquad's window, `after_frame`
+- [x] After the first frame that finds miniquad's window, `after_frame`
       calls `EnumThreadWindows` no more on Windows. A counter visible to
       the tests shows it.
-- [ ] `find` makes no `String`.
+- [x] `find` makes no `String`.
 - [ ] The window's record and the drop of files behave as before. 3044's
       manual check (resize, then relaunch at 175 % scale, on Windows) is
       repeated, and the completion notes say what it showed.
@@ -94,5 +94,27 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `drops/windows.rs` keeps miniquad's window in a static `AtomicPtr`
+  (`WINDOW`), null until found. `miniquad_window()` returns it once set,
+  and otherwise lists the thread's windows as before, keeping what it
+  finds; a miss isn't kept. `install()` and `window::win32::client_size()`
+  still call `miniquad_window()`, so they share the one lookup.
+- `find` compares the class name's UTF-16 units with a `const` UTF-16
+  copy of `MINIQUAD_CLASS` (`MINIQUAD_CLASS_UTF16`, built by a `const fn`),
+  with no `String`.
+- Tests (`drops::windows::tests`, Windows only as the module is): the
+  comparison accepts `MINIQUADAPP` and refuses another name, a prefix and
+  a longer name; `cached` searches again on each miss and once only after
+  a find; and a real window of miniquad's class, made on the test's
+  thread, is found with one listing over 100 calls, after two listings
+  that found nothing. A `#[cfg(test)]` counter, `ENUMERATIONS`, counts the
+  listings.
+- Deviations: none. The ticket was written today, so no age check.
+- Docs: none. The change is inside the backend, with no public item,
+  format or rule.
+- No break, and no `Behaviour:` line: a game sees the same window size
+  and the same drops.
+- Manual check: not repeated by the agent. 3044's check (resize, then
+  relaunch at 175 % scale) changes the system's display scale, which the
+  agent may not change. The real-window test covers the lookup itself;
+  Nick can repeat the check on his machine if he wants it seen.
