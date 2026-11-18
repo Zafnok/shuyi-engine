@@ -71,6 +71,19 @@ events with their pad (2412), outside crates' types (2087), the
 contract's version (2088), the assets' lifetimes (2906, 2919, 2262) and the breaks
 no attribute softens (2347, 2348, 3218, 2405, 2409, 2133, 2136, 2239, 3041,
 3044) in the phase, before the release ([`decisions.md`](decisions.md)).
+On 2026-11-17 a retro of PRs #379–#484 added the rest of that decision's
+work, which the audit missed. It also added two more tickets. The
+rest of that decision's work:
+- the types that grow but were missed (2095);
+- a check that classifies every new public type (2096);
+- constructors that can't take their arguments swapped (3503);
+- public API with no second user, hidden before it freezes (2098).
+
+The two more:
+- 3406 and 3407, because a public game's release must not publish its
+  private files;
+- 2090 joined 2005's `blocked_by` as an MVP ticket.
+
 These tickets, in order:
 
 | Ticket | What |
@@ -178,6 +191,12 @@ These tickets, in order:
 | 2239 | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
+| 2095 | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
+| 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
+| 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
+| 2098 | Public API with no second user is hidden or moved out of the engine crates |
+| 3406 | A public game's tag release publishes what Nick decided, and never a debug file |
+| 3407 | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -241,6 +260,30 @@ The retro also set 2397, 3032 and 3082 to `todo` (every blocker done),
 added 2049 and 2050 to 3084's `blocked_by`, and noted on 2343 that
 game#0865 now waits on it. The game's own tickets from the retro are its
 0143–0151, 0911 and 1254–1258.
+
+### From the retro of PRs #379–#484
+
+A retro of PRs #379–#484 (2026-11-17) found these, besides the MVP
+tickets above and 2267 and 3220 under *Asset memory*:
+- the local gates and CI spend most of their time on builds the change
+  can't affect;
+- the engine's own bench didn't catch a slowdown the game measured;
+- a steady frame allocates in a few places it needn't.
+
+| Ticket | What |
+| ------ | ---- |
+| 3501 | Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates |
+| 3502 | The tutorial's web builds boot in parallel, built from one folder |
+| 3319 | The bench job compares each frame's instructions with `main`'s and fails a rise past a margin unless the PR says why |
+| 2266 | A language's texts are parsed once, when they load, and a fill reuses what the load learned |
+| 3221 | A steady frame of Hello, Grid with key caps on allocates no more than a count its test pins |
+| 3222 | On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame |
+| 3320 | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |
+| 2097 | The engine's own matches on its non-exhaustive enums name every variant, checked on nightly |
+| 2099 | The ticket lint fails an open MVP ticket the first release doesn't wait for, and the roadmap lists what is left before the release |
+
+The game's half is its 0171: its workflows cache no build that embeds
+its private content.
 
 ### Bevy's homepage
 
@@ -753,7 +796,9 @@ one break, is in the MVP above. In order:
 | ------ | ---- |
 | 2263 | The pack read file by file: its index alone, a check per file, a layer over a source (after 2262) |
 | 2265 | The pack lays folders in the order the bake names, and `Bundle::arrived` says when a folder can be read (after 2263) |
-| 3315 | The Playdate reads its pack file by file through the SDK's seek and read (after 2263) |
+| 2267 | A file read from a pack file by file is copied once, a source that holds the pack can lend it, and a folder's files are found by search |
+| 3220 | A one-bit game over a pack read file by file draws its pictures, and the frame never reads a file only to throw it away |
+| 3315 | The Playdate reads its pack file by file through the SDK's seek and read (after 2263 and 3220) |
 | 3316 | A load in steps counts its units and waits for the platform; the card shows the count |
 | 3317 | `shuyi-app` makes a picture's texture when it is first drawn |
 | 3318 | The web page fetches the `.wasm` beside the pack and streams the pack in, keeping no copy in JS (after 2265, 3316 and 3317) |
