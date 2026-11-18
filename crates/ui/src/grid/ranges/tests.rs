@@ -1,5 +1,7 @@
 use proptest::prelude::*;
 
+use core::f32::consts::TAU;
+
 use super::*;
 use crate::grid::testing::any_scene;
 
@@ -120,7 +122,12 @@ fn the_shimmer_runs_along_the_diagonal() {
         blend((0, 0), WAVE_MS * 7 / 4)
     );
     assert_eq!(blend((1, 0), 500), blend((0, 1), 500));
-    assert_ne!(blend((1, 0), 500), blend((0, 0), 500));
+    let behind = SHOWN_BLEND + SHIMMER_DEPTH * (TAU * SHIMMER_PER_TILE).sin();
+    assert!(
+        (blend((1, 0), 0) - behind).abs() < 1e-6,
+        "{}",
+        blend((1, 0), 0)
+    );
 }
 
 #[test]
@@ -225,6 +232,43 @@ fn a_slab_casts_its_shadow_below_and_right_of_the_range_inside_the_clip() {
             Layer::Under
         )]
     );
+}
+
+#[test]
+fn the_outline_and_the_shadow_look_up_and_down_and_scale_with_the_line() {
+    // A move tile above (12, 21): the outline's top there is closed, its
+    // bottom open; the shadow is twice a 2-pixel line deep.
+    let mut scene = row(5000);
+    scene.tint([p(12, 20)], MOVE);
+    let show = RangeShow::TINT.outlined().with_relief(Relief::Slab);
+    let at = (2, 1);
+    let r = rect(at);
+    let got = show.overlays(&scene, &scene.tints(), at, r, 2, 0.5, color, ALL);
+    let shadow = Rgb::new(0, 0, 0).lerp(BLUE, SHADOW);
+    let light = BLUE.lerp(Rgb::new(255, 255, 255), 0.5);
+    let expect = [
+        Overlay::new(Rect::new(r.x + 4, r.y + 16, 16, 4), shadow, Layer::Under),
+        Overlay::new(Rect::new(r.x, r.y + 14, 16, 2), light, Layer::Under),
+    ];
+    assert_eq!(got, expect);
+    // The tile above: open on top, left and right; closed below.
+    let above = show.overlays(
+        &scene,
+        &scene.tints(),
+        (2, 0),
+        rect((2, 0)),
+        2,
+        0.5,
+        color,
+        ALL,
+    );
+    let top = rect((2, 0));
+    assert!(above.contains(&Overlay::new(
+        Rect::new(top.x, top.y, 16, 2),
+        light,
+        Layer::Under
+    )));
+    assert!(!above.iter().any(|o| o.rect.y == top.y + 14));
 }
 
 #[test]

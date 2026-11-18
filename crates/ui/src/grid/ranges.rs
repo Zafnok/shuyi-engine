@@ -198,10 +198,10 @@ impl RangeShow {
         };
         let distance = pos.x.abs_diff(shown.from.x) + pos.y.abs_diff(shown.from.y);
         let reached = shown.at_ms + u64::from(distance) * SPREAD_STEP_MS;
-        if clock_ms < reached {
+        let Some(since) = clock_ms.checked_sub(reached) else {
             return 0.0;
-        }
-        let since = (clock_ms - reached).min(SPREAD_FADE_MS);
+        };
+        let since = since.min(SPREAD_FADE_MS);
         since as f32 / SPREAD_FADE_MS as f32
     }
 

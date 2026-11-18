@@ -536,7 +536,7 @@ fn slab() -> crate::grid::ranges::RangeShow {
         .with_relief(Relief::Slab)
 }
 
-/// `scene` at `clock_ms` painted by `skin` into a console's first row.
+/// `scene` at `clock_ms` painted by `skin` into a console's first two rows.
 fn shown_at(skin: &GlyphSkin, scene: &mut MapScene<Piece>, clock_ms: u64) -> GlyphBuffer {
     scene.clock_ms = clock_ms;
     let mut buf = console();
@@ -544,7 +544,7 @@ fn shown_at(skin: &GlyphSkin, scene: &mut MapScene<Piece>, clock_ms: u64) -> Gly
     skin.paint(
         &kit.looks(),
         scene,
-        Rect::new(0, 0, 6, 1),
+        Rect::new(0, 0, 6, 2),
         &NoUnits,
         &mut buf,
     );
@@ -572,7 +572,7 @@ fn the_glyph_skin_shows_its_ranges_as_its_range_show() {
     // says, and its outline and the slab's shadow under the glyphs.
     for ms in [10_000, 10_900] {
         let buf = shown_at(&skin, &mut scene, ms);
-        let grid = GridSkin::<Piece>::grid(&skin, &scene, Rect::new(0, 0, 6, 1));
+        let grid = GridSkin::<Piece>::grid(&skin, &scene, Rect::new(0, 0, 6, 2));
         let tints = scene.tints();
         let mut expect = Vec::new();
         for dx in 0..3 {
@@ -613,21 +613,21 @@ fn a_fill_waits_for_the_spread() {
     let kit = Kit::new();
     let looks = kit.looks();
     let skin = ONE_BIT.with_range_show(RangeShow::TINT.spreading());
-    let mut scene = grass(2, 1);
-    scene.tint([p(0, 0), p(1, 0)], MOVE);
-    scene.ranges_shown = Some(RangesShown::new(p(0, 0), 100));
+    // A 2 × 2 view from (5, 7), opened from its second tile down, (6, 8).
+    let mut scene = grass(2, 2);
+    scene.origin = p(5, 7);
+    scene.tint([p(5, 7), p(6, 7), p(5, 8), p(6, 8)], MOVE);
+    scene.ranges_shown = Some(RangesShown::new(p(6, 8), 100));
     let moved = looks.range(MOVE);
-    let filled = |buf: &GlyphBuffer, x| buf.get(x, 0).unwrap().bg == moved;
     // One-bit side cells: the first tile from cell 1, the second from 3.
+    let filled = |buf: &GlyphBuffer, x, y| buf.get(x, y).unwrap().bg == moved;
     let buf = shown_at(&skin, &mut scene, 101);
-    assert!(filled(&buf, 1) && !filled(&buf, 3));
-    let buf = shown_at(
-        &skin,
-        &mut scene,
-        100 + crate::grid::ranges::SPREAD_STEP_MS + 1,
-    );
-    assert!(filled(&buf, 1) && filled(&buf, 3));
-    // Without a spread, both at once.
+    assert!(filled(&buf, 3, 1), "its own tile");
+    assert!(!filled(&buf, 1, 1) && !filled(&buf, 3, 0) && !filled(&buf, 1, 0));
+    let step = crate::grid::ranges::SPREAD_STEP_MS;
+    let buf = shown_at(&skin, &mut scene, 100 + step + 1);
+    assert!(filled(&buf, 1, 1) && filled(&buf, 3, 0) && !filled(&buf, 1, 0));
+    // Without a spread, all at once.
     let buf = shown_at(&ONE_BIT, &mut scene, 101);
-    assert!(filled(&buf, 1) && filled(&buf, 3));
+    assert!(filled(&buf, 1, 0) && filled(&buf, 3, 1));
 }
