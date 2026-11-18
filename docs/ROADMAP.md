@@ -285,6 +285,9 @@ tickets above and 2267 and 3220 under *Asset memory*:
 The game's half is its 0171: its workflows cache no build that embeds
 its private content.
 
+The method itself is now a skill, `/retro` (3408, done 2026-11-18). The
+next retro starts from it.
+
 ### Bevy's homepage
 
 Nick, 2026-10-20 ([`decisions.md`](decisions.md)): "every feature outlined
