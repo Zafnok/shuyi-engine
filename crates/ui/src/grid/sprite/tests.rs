@@ -883,7 +883,7 @@ fn the_sprite_skin_shows_its_glyph_skins_range_show() {
             &tints,
             at,
             rect,
-            2,
+            grid.zoom(),
             ground::LIT,
             color,
             grid.bounds(),
@@ -918,9 +918,9 @@ fn the_range_lines_are_twice_as_thick_at_twice_the_zoom_and_shown_without_tiles(
             .collect();
         lines.iter().map(|o| o.rect.w).min().expect("an outline")
     };
-    assert_eq!(thickness(&zoomable, Rect::new(0, 0, 9, 5)), 2);
+    assert_eq!(thickness(&zoomable, Rect::new(0, 0, 9, 5)), 1);
     let twice = GridSkin::<Piece>::at_zoom(&zoomable, 2).unwrap();
-    assert_eq!(thickness(twice.as_ref(), Rect::new(0, 0, 18, 10)), 4);
+    assert_eq!(thickness(twice.as_ref(), Rect::new(0, 0, 18, 10)), 2);
     // With no terrain tiles, on the glyph skin's ground: outlined still.
     let bare = SpriteSkin::new(None, glyph, GLYPH.walk);
     assert_eq!(thickness(&bare, Rect::new(0, 0, 9, 5)), 1);

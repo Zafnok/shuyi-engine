@@ -172,12 +172,12 @@ impl<U> Ground<'_, U> {
 
     /// What tints each tile, over its pictures, as `show` says (ticket
     /// 3224): the tints as strong as it says, then its outline and relief
-    /// in lines 2 pixels thick at the art's size (so twice that at twice
-    /// the zoom).
+    /// in lines a pixel thick at the art's size (so 2 at twice the zoom,
+    /// as the game's renders that picked it were drawn).
     fn paint_tints(&self, looks: &Looks, show: RangeShow, buf: &mut GlyphBuffer) {
         let black = looks.dark();
         let clip = self.grid.bounds();
-        let line = 2 * self.grid.zoom();
+        let line = self.grid.zoom();
         let (across, down) = self.grid.tiles;
         for (dx, dy) in (0..down).flat_map(|dy| (0..across).map(move |dx| (dx, dy))) {
             let Some(tile) = self.scene.tile_at(dx, dy) else {

@@ -98,10 +98,10 @@ game's); the danger zone's rules; an options screen (the game's).
   `RangesShown`, `GlyphSkin::with_range_show`, `GlyphStyle::draw_tiles_shown`
   and `glyph::style::LIT`. A skin built as before draws as before.
 - The outline and relief are overlays under the glyphs: 1 pixel on the
-  glyph skin, 2 on the sprite skin, lighter there over the pictures.
-- The sprite skin shows its glyph skin's look on its fallback ground too
-  (no terrain tiles), and its lines are 2 pixels at the art's size, so
-  twice that at twice the zoom (found by the game's zoom test).
+  glyph skin; on the sprite skin a pixel at the art's size, so 2 at
+  twice the zoom (as the game's renders were), lighter there over the
+  pictures. The sprite skin shows its glyph skin's look on its fallback
+  ground too (no terrain tiles). Both found by the game's tests.
 - Checked on the game's Chapter 1 battle at the pin plus this change,
   both looks (the pictures stay local: the map is the game's private
   content).
