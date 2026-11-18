@@ -21,16 +21,21 @@
 //! 6. its builds (`bash <…>/.devcontainer/book/build.sh <step>…`, in the
 //!    `onCreateCommand` and the `updateContentCommand`, the commands a
 //!    prebuild runs) name a step that isn't there, miss one, or name one
-//!    twice.
+//!    twice;
+//! 7. two steps resolve a crate they build with different features, for
+//!    the Codespace's own target or the web's ([`features`], ticket 2839):
+//!    the Codespace's one target folder would build it twice.
 //!
 //! [`check`] is pure over the two files' text and the steps; [`run`] feeds
-//! it the repository's.
+//! it the repository's; [`run_features`] runs [`features`] over the steps.
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
 use serde_json::Value;
+
+mod features;
 
 /// The root's dev container, which the quick start's Codespace opens.
 pub const ROOT: &str = ".devcontainer/devcontainer.json";
@@ -66,6 +71,16 @@ pub fn run(repo_root: &Path) -> Vec<String> {
         errors.extend(check(&root, &book, &steps));
     }
     errors
+}
+
+/// Checks that the steps of the repository at `repo_root` resolve one set
+/// of features ([`features`]), and returns every error.
+pub fn run_features(repo_root: &Path) -> Vec<String> {
+    let tutorial = repo_root.join(TUTORIAL);
+    match steps(&tutorial) {
+        Ok(steps) => features::run(&tutorial, &steps),
+        Err(e) => vec![format!("{TUTORIAL}: {e}")],
+    }
 }
 
 /// The steps in `tutorial`: each folder with a `shuyi.ron`, by name.

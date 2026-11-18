@@ -517,35 +517,33 @@ how to use it.
   server.
   [`.devcontainer/book/build.sh`](../.devcontainer/book/build.sh) makes
   each step's web build it is given (`cargo shuyi web`, `dev`) into one
-  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`, so the
-  engine is built once for each set of features the steps' locks resolve
-  (01; 02 to 06; 07 to 10, today), and each other step builds only its own
-  crate. The `onCreateCommand` sets up, adds Zola
+  target folder, `CARGO_TARGET_DIR=/home/vscode/book-target`. The steps
+  resolve one set of features of every crate they build (ticket 2839: a
+  step asks for `serde` and `ron` with the features the engine turns on,
+  not their `default`), so the engine is built once and each other step
+  builds only its own crate. The `onCreateCommand` sets up, adds Zola
   ([`scripts/setup-zola.sh`](../scripts/setup-zola.sh), CI's version and
-  checksum, from the one place both read), builds step 2 and starts the
-  server; the `updateContentCommand` builds the other nine. A prebuild runs both, so a Codespace made from it opens with every
-  step built. One made without it opens after the first (`waitFor`), and
-  builds the rest behind it: a build the reader starts meanwhile waits for
-  the target folder's lock.
+  checksum, from the one place both read), builds the ten steps and builds
+  `xtask`, into the same target folder. A prebuild runs it, so a Codespace
+  made from it opens with every step built; one made without it opens once
+  they are.
 - **The server** is `cargo xtask book-pad`
   ([`crates/xtask/src/book_pad.rs`](../crates/xtask/src/book_pad.rs),
-  `std::net` alone). The `onCreateCommand`, once step 2 is built, and the
-  `postAttachCommand`, which runs only after the `updateContentCommand`,
-  start it in the background with
-  [`.devcontainer/book/pad.sh`](../.devcontainer/book/pad.sh), which builds
-  `xtask` into the shared target folder first; its log is
-  `~/.book-pad.log`. A second start finds port 4000 taken and says the book
-  is served already. As it starts, it builds the site as CI does
-  (`site-data`, `errors.sh`, `copy-playground.sh`, `copy-previews.sh`,
-  `zola build`) into `~/book-site`, outside the repository, at the
-  forwarded address
+  `std::net` alone). The `postAttachCommand` starts it in the background
+  with [`.devcontainer/book/pad.sh`](../.devcontainer/book/pad.sh); its log
+  is `~/.book-pad.log`. A second start (another window) finds port 4000
+  taken and says the book is served already. As it starts, it builds the
+  site as CI does (`site-data`, `errors.sh`, `copy-playground.sh`,
+  `copy-previews.sh`, `zola build`) into `~/book-site`, outside the
+  repository, at the forwarded address
   (`https://${CODESPACE_NAME}-4000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/`,
   read then: a prebuild's name isn't the reader's), or at
   `http://127.0.0.1:4000/` outside a Codespace (`--out <dir>` builds it
   elsewhere, `--no-build` serves what is there). The port is forwarded,
-  private to the reader; the Ports tab opens it, and a preview opens by
-  itself when the `postAttachCommand` starts the server (at once from a
-  prebuild; after the other nine steps without one).
+  private to the reader. VS Code, attached by then, sees it open and shows
+  the book in a preview (it opens none for a port already open as it
+  attaches, which is why the server isn't started before it); the Ports
+  tab opens it too.
 - **Its routes**, `GET` only, on `127.0.0.1:4000`, uncached, and refused
   (403) to a request whose `Host` is not `127.0.0.1:4000`, `localhost:4000`
   or the forwarded host:
@@ -581,12 +579,13 @@ how to use it.
   again on each new good build, and a failed build's output in the
   playground's Problems (in `pad-output`, under the line, on a step with
   no playground). On the public site the 404 leaves the page as it is.
-- **Measured** on a 2-core Codespace (ticket 2837's notes; 2916's
-  research has the first numbers): step 2's build 404 s from nothing; a
-  step sharing its lock about 10 s more, step 1 73 s and step 7 239 s
-  (their locks rebuild part of the engine); all ten 786 s, into 2.7 GB of
-  target folder, 4.8 GB of disk in all. An edit to step 2's Rust rebuilds
-  in 8 s.
+- **Measured** on a 2-core Codespace (ticket 2839's notes; 2837's had
+  the first, with three sets of features): the first step's build 357 s
+  from nothing, each of the other nine 7 to 11 s; all ten 440 s, into
+  1.7 GB of target folder; the Codespace open 9 minutes after it was
+  made. With the server (ticket 2840's notes, before 2839): `xtask` 125
+  s from nothing and about 1.7 GB more, the site seconds, an edit to a
+  step's Rust in its page's frame 5 to 8 s.
 - **The prebuild** is Nick's, in the repository's settings: this
   container, on `main`, one region, one version, made when the container
   changes. A Codespace made from it opens with every step built.
@@ -595,8 +594,11 @@ how to use it.
   with a `shuyi.ron`), leaves one out, names one twice or out of order, or
   differs from the root's in its image, its setup (the root's
   `postCreateCommand` up to reading cargo's environment, each script read
-  from its container's folder) or its `remoteEnv`. A new step goes in
-  `build.sh`'s list there; a change to the root's setup goes in both.
+  from its container's folder) or its `remoteEnv`; and when two steps
+  resolve a crate they build with different features, for Linux or the
+  web (`cargo tree` of each step: `cargo metadata`'s `resolve` mixes the
+  targets and misses it). A new step goes in `build.sh`'s list there; a
+  change to the root's setup goes in both.
   `check-build.sh` fails a step's page that doesn't link the Codespace or
   name its folder. `book-pad`'s tests (its routes, the watcher and the build
   states, with a fake builder) are `xtask`'s.

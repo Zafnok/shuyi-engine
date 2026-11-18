@@ -30,7 +30,9 @@ Levels not reached are dim. Win the first, and the next lights up:
 | `crates/game/tests/board.rs` | Tests of saving |
 
 Add `ron` as you added `serde`. In the top `Cargo.toml`, under `[workspace.dependencies]`, add the line
-`ron = "0.12"`, and in `crates/game/Cargo.toml`, under `[dependencies]`, add `ron.workspace = true`.
+`ron = { version = "0.12", default-features = false, features = ["std"] }`, and in
+`crates/game/Cargo.toml`, under `[dependencies]`, add `ron.workspace = true`. As with **serde**, it
+names just the features the engine already uses, so the engine isn't built again.
 
 ## Where saves go
 

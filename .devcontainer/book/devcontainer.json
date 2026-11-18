@@ -17,19 +17,16 @@
     "CARGO_TARGET_DIR": "/home/vscode/book-target"
   },
   // The commands run in the workspace folder, `site/tutorial`. A prebuild
-  // runs both of the first two, so a Codespace made from it opens with
-  // every step built. One made without it opens once step 2 is built and
-  // the book served (about 8 minutes on 2 cores), and builds the other nine
-  // behind it (about 6 more: steps 1 and 7 lock other features of the
-  // engine's crates, the others take about 10 seconds each). The
-  // `onCreateCommand` adds Zola, which builds the site (`setup-zola.sh`, the
-  // version CI's), and ends by starting the server (`pad.sh`, which builds
-  // `xtask` first); the `postAttachCommand`, which runs after the
-  // `updateContentCommand`, starts it again in a Codespace made from the
-  // prebuild, or says it is served already.
-  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../scripts/setup-zola.sh && bash ../../.devcontainer/book/build.sh 02-board && bash ../../.devcontainer/book/pad.sh",
-  "updateContentCommand": "bash ../../.devcontainer/book/build.sh 01-new 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship",
-  "waitFor": "onCreateCommand",
+  // runs the `onCreateCommand`, so a Codespace made from it opens with every
+  // step built. One made without it opens once every step is built: the
+  // steps resolve one set of features of the engine's crates (`cargo xtask
+  // check-devcontainers`, ticket 2839), so the engine is built once and each
+  // step after the first adds its own crate, about 10 seconds. It adds Zola,
+  // which builds the site (`setup-zola.sh`, the version CI's), and builds
+  // `xtask`, which serves it. The `postAttachCommand` starts the server
+  // (`pad.sh`, ticket 2840) once VS Code is there, so VS Code sees the port
+  // open and shows the book in a preview; a second window finds it served.
+  "onCreateCommand": "bash ../../scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && bash ../../scripts/setup-zola.sh && bash ../../.devcontainer/book/build.sh 01-new 02-board 03-walk 04-push 05-undo 06-levels 07-save 08-polish 09-test 10-ship && cargo build -q --bin xtask --manifest-path ../../Cargo.toml",
   "postAttachCommand": "bash ../../.devcontainer/book/pad.sh",
   "forwardPorts": [4000],
   "portsAttributes": {

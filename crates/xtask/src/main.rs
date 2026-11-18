@@ -304,7 +304,9 @@ fn main() -> ExitCode {
             report("check-toolchain", &toolchain::run(&root), &[])
         }
         Some("check-devcontainers") if args.len() == 1 => {
-            report("check-devcontainers", &devcontainers::run(&root), &[])
+            let mut errors = devcontainers::run(&root);
+            errors.extend(devcontainers::run_features(&root));
+            report("check-devcontainers", &errors, &[])
         }
         Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
