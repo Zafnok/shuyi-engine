@@ -220,7 +220,8 @@ for name in $names; do
 done
 # Each step's playground (ticket 2820): a step whose page names files has
 # them in the build beside its page, the same as its project's own, an
-# editor of each, and frames its play/.
+# editor of each, and frames its play/; and a tab of each Rust file its
+# page names (`rust`).
 for project in "${projects[@]}"; do
   folder="$(basename "$project")"
   code="$(sed -nE 's/^code = "(.*)"$/\1/p' "$project/_index.md")"
@@ -241,6 +242,14 @@ for project in "${projects[@]}"; do
       cmp -s "$site_dir/$code/$name/$game_files/$file" "$out/one/learn/book/$folder/$name/files/$file" ||
         fail "the build's learn/book/$folder/$name/files/$file isn't site/$code/$name/$game_files/$file"
       grep -qF "data-file=\"$file\"" <<<"$decoded" || fail "learn/book/$folder/$name/ has no editor of $file"
+    done
+    # Its Rust tabs (ticket 2841): each file its page names is in its
+    # folder, and its playground's markup holds a hidden tab of it, which
+    # only the book's Codespace shows.
+    rust="$(sed -nE 's/^rust = \[(.*)\]$/\1/p' "$step" | tr -d '",')"
+    for path in $rust; do
+      [ -f "$site_dir/$code/$name/$path" ] || fail "learn/book/$folder/$name/ names the Rust file $path, which site/$code/$name/ doesn't have"
+      grep -qF "data-rust=\"$path\"" <<<"$decoded" || fail "learn/book/$folder/$name/ has no Rust tab of $path"
     done
   done
 done

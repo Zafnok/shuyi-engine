@@ -68,9 +68,61 @@ impl Fixture {
         Server {
             site: self.path("site"),
             pad: Arc::new(Mutex::new(Pad::new(&tutorial, &steps))),
+            rust: Arc::new(rust_tabs(&self.root, &steps)),
             tutorial,
             address: Address::from_env(|_| None),
         }
+    }
+
+    /// A fixture of step `03-walk` whose page lists `rules.rs` as its Rust
+    /// tab (`board.rs` is there, not listed), committed in a git repository
+    /// of its own.
+    fn with_rust(name: &str) -> Self {
+        let fixture = Self::new(name, &["03-walk"]);
+        fixture.write(
+            &format!("{PAGES}/03-walk.md"),
+            "+++\ntitle = \"Walking\"\n\n[extra]\nstep = 3\nfiles = [\"levels/1.map\"]\n\
+             rust = [\"crates/game/src/rules.rs\"]\n+++\n",
+        );
+        fixture.write(RULES, "pub fn walk() {}\n");
+        fixture.write(
+            "tutorial/03-walk/crates/game/src/board.rs",
+            "pub fn draw() {}\n",
+        );
+        let git = |args: &[&str]| {
+            let status = Command::new("git")
+                .args(["-c", "user.name=Book", "-c", "user.email=book@example.com"])
+                .args(["-c", "core.autocrlf=false", "-c", "commit.gpgsign=false"])
+                .args(args)
+                .current_dir(&fixture.root)
+                .output()
+                .unwrap()
+                .status;
+            assert!(status.success(), "git {args:?}");
+        };
+        git(&["init", "-q"]);
+        git(&["config", "core.autocrlf", "false"]);
+        git(&["add", "tutorial"]);
+        git(&["commit", "-q", "-m", "steps"]);
+        fixture
+    }
+
+    fn read(&self, file: &str) -> String {
+        fs::read_to_string(self.path(file)).unwrap()
+    }
+}
+
+/// Step 3's listed Rust tab, from the fixture's root.
+const RULES: &str = "tutorial/03-walk/crates/game/src/rules.rs";
+
+/// A `POST` to `path` from the served origin, of `text`.
+fn post(path: &str, text: &str) -> Request {
+    Request {
+        method: "POST".to_owned(),
+        origin: Some("http://127.0.0.1:4000".to_owned()),
+        length: text.len(),
+        body: text.as_bytes().to_vec(),
+        ..get(path)
     }
 }
 
@@ -85,6 +137,7 @@ fn get(path: &str) -> Request {
         method: "GET".to_owned(),
         path: path.to_owned(),
         host: Some("127.0.0.1:4000".to_owned()),
+        ..Request::default()
     }
 }
 
@@ -286,7 +339,7 @@ fn the_pad_answers_its_status_and_each_steps_build() {
     let status = server.answer(&get("/pad/status"));
     assert_eq!(
         (status.status, body(&status).as_str()),
-        (200, r#"{"pad":true}"#)
+        (200, r#"{"pad":true,"rust":true}"#)
     );
     assert_eq!(status.header("Content-Type"), Some("application/json"));
     let build = server.answer(&get("/pad/build/02-board"));
@@ -308,6 +361,7 @@ fn a_request_is_read_with_its_host_and_without_its_query() {
             method: "GET".to_owned(),
             path: "/learn/".to_owned(),
             host: Some("127.0.0.1:4000".to_owned()),
+            ..Request::default()
         })
     );
     // Not a request: no version, no end of the headers, or too long.
@@ -318,6 +372,183 @@ fn a_request_is_read_with_its_host_and_without_its_query() {
     );
     let long = format!("GET / HTTP/1.1\r\nX: {}\r\n\r\n", "a".repeat(MAX_HEAD));
     assert_eq!(read_request(&mut Cursor::new(long)), None);
+}
+
+#[test]
+fn a_post_is_read_with_its_origin_and_its_body_unless_too_long() {
+    let text = "POST /pad/file/a HTTP/1.1\r\nHost: h\r\nOrigin: http://h\r\nContent-Length: 5\r\n\r\nhello";
+    assert_eq!(
+        read_request(&mut Cursor::new(text)),
+        Some(Request {
+            method: "POST".to_owned(),
+            path: "/pad/file/a".to_owned(),
+            host: Some("h".to_owned()),
+            origin: Some("http://h".to_owned()),
+            length: 5,
+            body: b"hello".to_vec(),
+        })
+    );
+    // A body over the limit isn't read; a body cut short, or a length that
+    // isn't a number, isn't a request.
+    let long = format!(
+        "POST / HTTP/1.1\r\nContent-Length: {}\r\n\r\nx",
+        MAX_BODY + 1
+    );
+    let read = read_request(&mut Cursor::new(long)).unwrap();
+    assert_eq!((read.length, read.body.len()), (MAX_BODY + 1, 0));
+    let short = "POST / HTTP/1.1\r\nContent-Length: 9\r\n\r\nhello";
+    assert_eq!(read_request(&mut Cursor::new(short)), None);
+    let nan = "POST / HTTP/1.1\r\nContent-Length: many\r\n\r\n";
+    assert_eq!(read_request(&mut Cursor::new(nan)), None);
+}
+
+#[test]
+fn a_steps_listed_rust_file_is_read_and_its_status_says_rust() {
+    let fixture = Fixture::with_rust("rust-read");
+    let server = fixture.server(&["03-walk"]);
+    assert_eq!(
+        server.rust.get("03-walk").map(Vec::as_slice),
+        Some(["crates/game/src/rules.rs".to_owned()].as_slice())
+    );
+    let read = server.answer(&get("/pad/file/03-walk/crates/game/src/rules.rs"));
+    assert_eq!(
+        (read.status, body(&read).as_str()),
+        (200, "pub fn walk() {}\n")
+    );
+    assert_eq!(
+        read.header("Content-Type"),
+        Some("text/plain; charset=utf-8")
+    );
+    // A file the page doesn't list isn't read, though it is there.
+    for path in [
+        "/pad/file/03-walk/crates/game/src/board.rs",
+        "/pad/file/03-walk/Cargo.toml",
+        "/pad/file/02-board/crates/game/src/rules.rs",
+    ] {
+        assert_eq!(server.answer(&get(path)).status, 404, "{path}");
+    }
+}
+
+#[test]
+fn a_post_writes_a_listed_rust_file_and_only_when_it_changes() {
+    let fixture = Fixture::with_rust("rust-write");
+    let server = fixture.server(&["03-walk"]);
+    let path = "/pad/file/03-walk/crates/game/src/rules.rs";
+    let written = server.answer(&post(path, "pub fn walk() { run(); }\n"));
+    assert_eq!(
+        (written.status, body(&written).as_str()),
+        (200, "pub fn walk() { run(); }\n")
+    );
+    assert_eq!(fixture.read(RULES), "pub fn walk() { run(); }\n");
+    // The same text again leaves the file alone: no build.
+    fixture.touch(RULES, 100);
+    assert_eq!(
+        server
+            .answer(&post(path, "pub fn walk() { run(); }\n"))
+            .status,
+        200
+    );
+    let modified = fs::metadata(fixture.path(RULES))
+        .unwrap()
+        .modified()
+        .unwrap();
+    assert_eq!(modified, UNIX_EPOCH + Duration::from_secs(100));
+    // From the Codespace's forwarded address too.
+    let mut forwarded = fixture.server(&["03-walk"]);
+    forwarded.address = Address::from_env(|name| match name {
+        "CODESPACE_NAME" => Some("robot".to_owned()),
+        "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" => Some("app.github.dev".to_owned()),
+        _ => None,
+    });
+    let there = Request {
+        origin: Some("https://robot-4000.app.github.dev".to_owned()),
+        host: Some("robot-4000.app.github.dev".to_owned()),
+        ..post(path, "pub fn walk() {}\n")
+    };
+    assert_eq!(forwarded.answer(&there).status, 200);
+    assert_eq!(fixture.read(RULES), "pub fn walk() {}\n");
+}
+
+#[test]
+fn a_reset_puts_back_the_file_as_head_has_it() {
+    let fixture = Fixture::with_rust("rust-reset");
+    let server = fixture.server(&["03-walk"]);
+    fixture.write(RULES, "pub fn broken( {\n");
+    let reset = server.answer(&post("/pad/reset/03-walk/crates/game/src/rules.rs", ""));
+    assert_eq!(
+        (reset.status, body(&reset).as_str()),
+        (200, "pub fn walk() {}\n")
+    );
+    assert_eq!(fixture.read(RULES), "pub fn walk() {}\n");
+}
+
+#[test]
+fn a_post_from_elsewhere_or_of_another_file_is_refused_and_writes_nothing() {
+    let fixture = Fixture::with_rust("rust-refused");
+    fixture.write("tutorial/03-walk/Cargo.toml", "[workspace]");
+    let server = fixture.server(&["03-walk"]);
+    let rules = "/pad/file/03-walk/crates/game/src/rules.rs";
+    let from = |origin: Option<&str>| Request {
+        origin: origin.map(str::to_owned),
+        ..post(rules, "evil")
+    };
+    let refused = [
+        // Another origin, none, or the loopback on another port.
+        (from(Some("https://evil.example")), 403),
+        (from(None), 403),
+        (from(Some("http://127.0.0.1:4001")), 403),
+        (from(Some("null")), 403),
+        // A file the page doesn't list, there or not, or another step's.
+        (
+            post("/pad/file/03-walk/crates/game/src/board.rs", "evil"),
+            403,
+        ),
+        (post("/pad/file/03-walk/Cargo.toml", "evil"), 403),
+        (post("/pad/reset/03-walk/crates/game/src/board.rs", ""), 403),
+        (
+            post("/pad/file/02-board/crates/game/src/rules.rs", "evil"),
+            403,
+        ),
+        // A path that leaves its folder.
+        (
+            post(
+                "/pad/file/03-walk/crates/game/src/../../../Cargo.toml",
+                "evil",
+            ),
+            400,
+        ),
+        (
+            post("/pad/file/03-walk/crates/game/src/%2e%2e/rules.rs", "evil"),
+            400,
+        ),
+        // A body over the limit, or not text.
+        (
+            Request {
+                length: MAX_BODY + 1,
+                body: Vec::new(),
+                ..post(rules, "")
+            },
+            413,
+        ),
+        (
+            Request {
+                body: vec![0xff, 0xfe],
+                ..post(rules, "")
+            },
+            400,
+        ),
+    ];
+    for (request, status) in refused {
+        assert_eq!(server.answer(&request).status, status, "{request:?}");
+    }
+    assert_eq!(fixture.read(RULES), "pub fn walk() {}\n");
+    assert_eq!(fixture.read("tutorial/03-walk/Cargo.toml"), "[workspace]");
+    assert_eq!(
+        fixture.read("tutorial/03-walk/crates/game/src/board.rs"),
+        "pub fn draw() {}\n"
+    );
+    // Another POST is still refused as before.
+    assert_eq!(server.answer(&post("/pad/status", "")).status, 405);
 }
 
 #[test]
@@ -498,5 +729,5 @@ fn the_server_answers_over_tcp() {
     drop(client);
     handle.join().unwrap();
     assert!(answer.starts_with("HTTP/1.1 200 OK\r\n"), "{answer}");
-    assert!(answer.ends_with(r#"{"pad":true}"#), "{answer}");
+    assert!(answer.ends_with(r#"{"pad":true,"rust":true}"#), "{answer}");
 }

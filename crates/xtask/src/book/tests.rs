@@ -641,3 +641,82 @@ fn only_a_step_with_a_playground_has_exercises() {
         );
     }
 }
+
+/// A page whose front matter's `[extra]` is `extra`, with `rust` after it.
+fn with_rust(extra: &str, rust: &str) -> String {
+    format!("+++\ntitle = \"A\"\n\n[extra]\n{extra}rust = [{rust}]\n+++\n\nText.\n")
+}
+
+/// A step's folder holding `crates/game/src/rules.rs` and `board.rs`, in a
+/// temporary folder named after `name`.
+fn rust_folder(name: &str) -> PathBuf {
+    let folder =
+        std::env::temp_dir().join(format!("xtask-book-rust-{name}-{}", std::process::id()));
+    let src = folder.join("crates/game/src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("rules.rs"), "pub fn walk() {}").unwrap();
+    fs::write(src.join("board.rs"), "pub fn draw() {}").unwrap();
+    folder
+}
+
+#[test]
+fn a_steps_rust_tabs_are_read_and_pass_when_there() {
+    let folder = rust_folder("good");
+    let text = with_rust(
+        "step = 3\nfiles = [\"levels/1.map\"]\n",
+        r#""crates/game/src/rules.rs", "crates/game/src/board.rs""#,
+    );
+    assert_eq!(
+        page_rust(&text),
+        ["crates/game/src/rules.rs", "crates/game/src/board.rs"]
+    );
+    assert_eq!(rust_problems("a.md", &text, &folder), Vec::<String>::new());
+    // A page with none has nothing to check.
+    assert_eq!(
+        rust_problems("a.md", &step_with(""), &folder),
+        Vec::<String>::new()
+    );
+    let _ = fs::remove_dir_all(folder);
+}
+
+#[test]
+fn a_wrong_rust_tab_fails_on_its_line() {
+    let folder = rust_folder("bad");
+    let step = "step = 3\nfiles = [\"levels/1.map\"]\n";
+    for (rust, part) in [
+        (
+            r#""crates/game/src/gone.rs""#,
+            "`crates/game/src/gone.rs` isn't in",
+        ),
+        (
+            r#""crates/game/tests/board.rs""#,
+            "isn't under `crates/game/src/`",
+        ),
+        (r#""Cargo.toml""#, "isn't under `crates/game/src/`"),
+        (
+            r#""crates/game/src/../../../Cargo.toml""#,
+            "isn't a plain path",
+        ),
+        (r#""crates/game/src//rules.rs""#, "isn't a plain path"),
+        (r#""crates/game/src/a\b.rs""#, "isn't a plain path"),
+        (r#""crates/game/src/notes.txt""#, "isn't a `.rs` file"),
+        (
+            r#""crates/game/src/rules.rs", "crates/game/src/rules.rs""#,
+            "names `crates/game/src/rules.rs` twice",
+        ),
+    ] {
+        let errors = rust_problems("a.md", &with_rust(step, rust), &folder);
+        assert!(has(&errors, "a.md:7: `rust`"), "{rust}: {errors:#?}");
+        assert!(has(&errors, part), "{rust}: {errors:#?}");
+    }
+    let rules = r#""crates/game/src/rules.rs""#;
+    let no_files = rust_problems("a.md", &with_rust("step = 3\n", rules), &folder);
+    assert!(has(&no_files, "it has none (`files`)"), "{no_files:#?}");
+    let no_step = rust_problems(
+        "a.md",
+        &with_rust("files = [\"levels/1.map\"]\n", rules),
+        &folder,
+    );
+    assert!(has(&no_step, "is for a project step"), "{no_step:#?}");
+    let _ = fs::remove_dir_all(folder);
+}

@@ -8,6 +8,8 @@ aliases = ["learn/tutorial/08-polish/", "learn/tutorial/08-polish/play/"]
 step = 8
 # The files its playground edits, in their tabs' order (ticket 2820).
 files = ["levels.ron", "levels/1.map", "levels/2.map", "levels/3.map", "levels/4.map", "levels/5.map", "palette.ron", "en.ron", "keymap.ron"]
+# The Rust files its playground edits in the book's Codespace, in their tabs' order (ticket 2841).
+rust = ["crates/game/src/board.rs", "crates/game/src/options.rs", "crates/game/src/levels.rs", "crates/game/src/stages.rs", "crates/game/src/lib.rs"]
 follows = "saves-and-settings"
 +++
 

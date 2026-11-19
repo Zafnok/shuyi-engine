@@ -390,6 +390,9 @@ struct Page {
     newcomer: Option<String>,
     /// `extra.step`: it is a step of one of the book's projects.
     step: bool,
+    /// `extra.rust`: the Rust files its playground edits in the book's
+    /// Codespace (ticket 2841), from its step's folder.
+    rust: Vec<String>,
     /// The text after the front matter.
     body: String,
     /// The number of the body's first line in the file.
@@ -495,6 +498,7 @@ fn page(source: &str, shown: &str, text: &str) -> Result<Option<Page>, String> {
         project: front.project,
         newcomer: front.newcomer,
         step: front.step,
+        rust: front.rust,
         body: text[front.body..].to_owned(),
         body_line: front.body_line,
     }))
@@ -530,6 +534,8 @@ struct Front {
     newcomer: Option<String>,
     /// Whether it has `extra.step`.
     step: bool,
+    /// `extra.rust`, its Rust tabs.
+    rust: Vec<String>,
     /// Where its body starts, in bytes.
     body: usize,
     /// Its body's first line's number.
@@ -608,6 +614,15 @@ fn front_matter(shown: &str, text: &str) -> Result<Front, String> {
             .and_then(toml::Value::as_str)
             .map(str::to_owned),
         step: extra.is_some_and(|extra| extra.contains_key("step")),
+        rust: extra
+            .and_then(|extra| extra.get("rust"))
+            .and_then(toml::Value::as_array)
+            .map_or_default(|list| {
+                list.iter()
+                    .filter_map(toml::Value::as_str)
+                    .map(str::to_owned)
+                    .collect()
+            }),
         body,
         body_line,
     })
@@ -736,7 +751,7 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
         .map_or_default(|label| format!("> **{label}** This whole page.\n\n"));
     let pad = if page.step {
         let file = page.source.rsplit('/').next().unwrap_or(&page.source);
-        codespace(file.trim_end_matches(".md"))
+        codespace(file.trim_end_matches(".md"), &page.rust)
     } else {
         String::new()
     };
@@ -752,16 +767,27 @@ fn twin(page: &Page, site: &Site, snippets: &Path, leave_out: &[&str]) -> (Strin
 
 /// What a step's page says under **Play this step** of the book's
 /// Codespace (`templates/chapter.html`), for the step whose folder is
-/// `step`.
-fn codespace(step: &str) -> String {
-    format!(
+/// `step`, and the Rust files its playground edits there (`rust`, from its
+/// folder; ticket 2841).
+fn codespace(step: &str, rust: &[String]) -> String {
+    let mut text = format!(
         "Open this book in a Codespace: <{CODESPACE}>. A Codespace is a computer in your browser, \
          with Rust and the book's project ready, paid from your own GitHub account's free hours. \
          It opens this book beside an editor of the project, and there **Play this step** and the \
          playground play your own build of this step, the folder `{step}/`, built again each time \
          you save a change to its files. Its Rust is in `{step}/crates/game/src/`. A Codespace that \
          has just opened may still be building the other steps for a few minutes.\n\n"
-    )
+    );
+    if !rust.is_empty() {
+        let files: Vec<String> = rust.iter().map(|path| format!("`{step}/{path}`")).collect();
+        let _ = write!(
+            text,
+            "In the Codespace, this step's playground edits its Rust too, a tab for each of {}: \
+             **Run** saves your change to the file, and the game is built again and plays it.\n\n",
+            files.join(", ")
+        );
+    }
+    text
 }
 
 /// A quick check as text (ticket 2827): its question, then each answer,

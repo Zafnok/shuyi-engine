@@ -22,10 +22,18 @@
 //!   answers it with a 404), and `GET /pad/build/<step>` gives the step's
 //!   build: its number, the number of its last good one, its state and,
 //!   failed, cargo's output. The step's page polls it (`static/book-pad.js`).
+//! - The playground's Rust tabs (ticket 2841): `GET /pad/file/<step>/<path>`
+//!   reads one of the step's Rust files its page lists (`extra.rust`, read
+//!   from the pages as the server starts), `POST` there writes it (UTF-8, at
+//!   most [`MAX_BODY`] bytes), which the watcher then builds, and `POST
+//!   /pad/reset/<step>/<path>` puts it back as `HEAD` has it and answers
+//!   that text.
 //!
-//! It answers `GET` only, and refuses a request whose `Host` isn't this
-//! server's (403), so another site open in the reader's browser can't read
-//! it through a name of its own pointing here.
+//! It answers `GET` and those two `POST`s only, and refuses a request whose
+//! `Host` isn't this server's (403), so another site open in the reader's
+//! browser can't read it through a name of its own pointing here. A `POST`
+//! is refused (403) unless its `Origin` is this server's and its file is
+//! one its step's page lists: no other file can be written from a page.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Write as _;
@@ -38,6 +46,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::book;
 use crate::devcontainers;
 use crate::site_data;
 
@@ -50,6 +59,9 @@ pub const PORT: u16 = 4000;
 const TUTORIAL: &str = "site/tutorial";
 /// The project's pages in the site, each step's at `<step>/`.
 const PROJECT: &str = "/learn/book/box-pusher/";
+/// The project's pages' sources, from the repository's root, each step's
+/// at `<step>.md`.
+const PAGES: &str = "site/content/learn/book/box-pusher";
 /// A step's web build, in its folder.
 const DIST: &str = "dist/web";
 /// The files a step's playground edits, in its folder (the project's
@@ -61,6 +73,8 @@ const FIRST: &str = "02-board";
 const READ_TIMEOUT: Duration = Duration::from_secs(10);
 /// The longest request line and headers read.
 const MAX_HEAD: usize = 16 * 1024;
+/// The longest Rust file a page may write, in bytes.
+pub const MAX_BODY: usize = 256 * 1024;
 
 /// `cargo xtask book-pad`'s options.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -379,7 +393,7 @@ fn dist_time(folder: &Path) -> Option<SystemTime> {
 }
 
 /// A request, as far as the server reads it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Request {
     /// `GET`, say.
     pub method: String,
@@ -387,6 +401,12 @@ pub struct Request {
     pub path: String,
     /// The `Host` header, if any.
     pub host: Option<String>,
+    /// The `Origin` header, if any.
+    pub origin: Option<String>,
+    /// The body's length, as its `Content-Length` says.
+    pub length: usize,
+    /// The body, read when it is at most [`MAX_BODY`] bytes.
+    pub body: Vec<u8>,
 }
 
 /// Reads a request's line and headers from `input`; `None` on anything
@@ -411,19 +431,40 @@ pub fn read_request(input: &mut impl BufRead) -> Option<Request> {
         .unwrap_or_default()
         .to_owned();
     let mut host = None;
+    let mut origin = None;
+    let mut length = 0;
     loop {
         next(&mut line)?;
         let header = line.trim_end_matches(['\r', '\n']);
         if header.is_empty() {
             break;
         }
-        if let Some((name, value)) = header.split_once(':')
-            && name.trim().eq_ignore_ascii_case("host")
-        {
-            host = Some(value.trim().to_owned());
+        let Some((name, value)) = header.split_once(':') else {
+            continue;
+        };
+        let (name, value) = (name.trim(), value.trim());
+        if name.eq_ignore_ascii_case("host") {
+            host = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("origin") {
+            origin = Some(value.to_owned());
+        } else if name.eq_ignore_ascii_case("content-length") {
+            length = value.parse().ok()?;
         }
     }
-    Some(Request { method, path, host })
+    // A body longer than a page may write isn't read: it is refused.
+    let mut body = Vec::new();
+    if length <= MAX_BODY {
+        body.resize(length, 0);
+        input.read_exact(&mut body).ok()?;
+    }
+    Some(Request {
+        method,
+        path,
+        host,
+        origin,
+        length,
+        body,
+    })
 }
 
 /// An answer.
@@ -497,6 +538,7 @@ fn reason(status: u16) -> &'static str {
         403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
+        413 => "Content Too Large",
         _ => "Internal Server Error",
     }
 }
@@ -512,6 +554,9 @@ pub struct Server {
     pub address: Address,
     /// What it shares with the watcher.
     pub pad: Arc<Mutex<Pad>>,
+    /// Each step's Rust files its page's playground edits (`extra.rust`),
+    /// from its folder, by the step's folder's name.
+    pub rust: Arc<BTreeMap<String, Vec<String>>>,
 }
 
 impl Server {
@@ -525,6 +570,11 @@ impl Server {
         }) {
             return Response::text(403, "This server answers its own address only.");
         }
+        if request.method == "POST"
+            && (request.path.starts_with("/pad/file/") || request.path.starts_with("/pad/reset/"))
+        {
+            return self.post(request);
+        }
         if request.method != "GET" {
             let mut response = Response::text(405, "This server answers GET only.");
             response.headers.push(("Allow", "GET".to_owned()));
@@ -537,10 +587,10 @@ impl Server {
         let Some(segments) = segments(&request.path) else {
             return Response::text(400, "That path isn't one this server reads.");
         };
-        if let Some(pad) = request.path.strip_prefix("/pad/") {
-            return self.pad_route(pad);
-        }
         let parts: Vec<&str> = segments.iter().map(String::as_str).collect();
+        if let ["pad", route @ ..] = parts.as_slice() {
+            return self.pad_route(route);
+        }
         let project: Vec<&str> = PROJECT.split('/').filter(|s| !s.is_empty()).collect();
         if let Some(rest) = parts.strip_prefix(project.as_slice())
             && let [step, kind, inner @ ..] = rest
@@ -565,13 +615,25 @@ impl Server {
         response
     }
 
-    /// `/pad/<route>`.
-    fn pad_route(&self, route: &str) -> Response {
-        if route == "status" {
-            return Response::json(&serde_json::json!({ "pad": true }));
+    /// `GET /pad/<route>`, its segments decoded.
+    fn pad_route(&self, route: &[&str]) -> Response {
+        if route == ["status"] {
+            return Response::json(&serde_json::json!({ "pad": true, "rust": true }));
         }
-        if let Some(step) = route.strip_prefix("build/")
-            && let Some(build) = lock(&self.pad).steps.get(step)
+        if let ["file", step, path @ ..] = route
+            && let Some(file) = self.rust_file(step, path)
+        {
+            return match fs::read(&file) {
+                Ok(body) => Response {
+                    status: 200,
+                    headers: vec![("Content-Type", content_type(&file).to_owned())],
+                    body,
+                },
+                Err(_) => self.not_found(),
+            };
+        }
+        if let ["build", step] = route
+            && let Some(build) = lock(&self.pad).steps.get(*step)
         {
             return Response::json(&serde_json::json!({
                 "step": step,
@@ -582,6 +644,93 @@ impl Server {
             }));
         }
         Response::text(404, "No such route.")
+    }
+
+    /// The file of `step`'s Rust tab `path` (the segments of its path from
+    /// the step's folder), if the step's page lists it.
+    fn rust_file(&self, step: &str, path: &[&str]) -> Option<PathBuf> {
+        let path = path.join("/");
+        self.rust
+            .get(step)?
+            .iter()
+            .any(|listed| *listed == path && book::rust_path_problem(listed).is_none())
+            .then(|| self.tutorial.join(step).join(&path))
+    }
+
+    /// Whether `origin` is this server's, as the reader's browser names it:
+    /// the address the site is built at, or the loopback's.
+    fn own_origin(&self, origin: Option<&str>) -> bool {
+        let Some(origin) = origin else {
+            return false;
+        };
+        origin.eq_ignore_ascii_case(self.address.base.trim_end_matches('/'))
+            || [format!("127.0.0.1:{PORT}"), format!("localhost:{PORT}")]
+                .iter()
+                .any(|host| origin.eq_ignore_ascii_case(&format!("http://{host}")))
+    }
+
+    /// `POST /pad/file/<step>/<path>`, which writes one of a step's Rust
+    /// tabs, or `POST /pad/reset/<step>/<path>`, which puts it back as
+    /// `HEAD` has it; either answers the file's text. A file left as it is
+    /// isn't written, so it makes no build.
+    fn post(&self, request: &Request) -> Response {
+        let Some(segments) = segments(&request.path) else {
+            return Response::text(400, "That path isn't one this server reads.");
+        };
+        if !self.own_origin(request.origin.as_deref()) {
+            return Response::text(403, "Only a page of this book may change its files.");
+        }
+        let parts: Vec<&str> = segments.iter().map(String::as_str).collect();
+        let ["pad", kind, step, path @ ..] = parts.as_slice() else {
+            return Response::text(404, "No such route.");
+        };
+        let Some(file) = self.rust_file(step, path) else {
+            return Response::text(
+                403,
+                "That file isn't one of the Rust files this step's page edits.",
+            );
+        };
+        let text = if *kind == "reset" {
+            match self.committed(step, &path.join("/")) {
+                Ok(text) => text,
+                Err(e) => return Response::text(500, &e),
+            }
+        } else if request.length > MAX_BODY {
+            return Response::text(413, "That file is longer than a page may write.");
+        } else {
+            match String::from_utf8(request.body.clone()) {
+                Ok(text) => text,
+                Err(_) => return Response::text(400, "That text isn't UTF-8."),
+            }
+        };
+        if fs::read(&file).ok().as_deref() != Some(text.as_bytes()) {
+            if let Err(e) = fs::write(&file, &text) {
+                return Response::text(500, &format!("{}: {e}", file.display()));
+            }
+            eprintln!("book-pad: {step}/{} {kind}: written", path.join("/"));
+        }
+        Response {
+            status: 200,
+            headers: vec![("Content-Type", "text/plain; charset=utf-8".to_owned())],
+            body: text.into_bytes(),
+        }
+    }
+
+    /// The text `HEAD` has of `path` in `step`'s folder, as a checkout
+    /// writes it (`git cat-file --filters`, so with its line ends).
+    fn committed(&self, step: &str, path: &str) -> Result<String, String> {
+        let output = Command::new("git")
+            .args(["cat-file", "--filters", &format!("HEAD:./{step}/{path}")])
+            .current_dir(&self.tutorial)
+            .output()
+            .map_err(|e| format!("git: {e}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "git cat-file: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        String::from_utf8(output.stdout).map_err(|_| format!("{step}/{path} isn't UTF-8 at HEAD"))
     }
 
     /// The file at `parts` under `root`, a folder's `index.html`; `path` is
@@ -742,6 +891,19 @@ fn default_out() -> PathBuf {
         .join("book-site")
 }
 
+/// Each of `steps`' Rust tabs, its page's `extra.rust` in `root`'s
+/// [`PAGES`]: none for a step whose page lists none, or doesn't read.
+pub fn rust_tabs(root: &Path, steps: &[String]) -> BTreeMap<String, Vec<String>> {
+    steps
+        .iter()
+        .map(|step| {
+            let page = root.join(PAGES).join(format!("{step}.md"));
+            let listed = fs::read_to_string(page).map_or_default(|text| book::page_rust(&text));
+            (step.clone(), listed)
+        })
+        .collect()
+}
+
 /// Serves the book until stopped. A port already taken means the book is
 /// served already: said, and not an error.
 pub fn run_pad(root: &Path, options: &Options) -> Result<(), String> {
@@ -768,6 +930,7 @@ pub fn run_pad(root: &Path, options: &Options) -> Result<(), String> {
     let tutorial = root.join(TUTORIAL);
     let steps = devcontainers::steps(&tutorial).map_err(|e| format!("{TUTORIAL}: {e}"))?;
     let pad = Arc::new(Mutex::new(Pad::new(&tutorial, &steps)));
+    let rust = Arc::new(rust_tabs(root, &steps));
     let mut watcher = Watcher::new(&tutorial, &steps);
     let mut builder = Cargo {
         tutorial: tutorial.clone(),
@@ -784,6 +947,7 @@ pub fn run_pad(root: &Path, options: &Options) -> Result<(), String> {
         tutorial,
         address,
         pad,
+        rust,
     };
     eprintln!(
         "book-pad: serving the book at {} (the Ports tab opens it); a step is built again when its files change",

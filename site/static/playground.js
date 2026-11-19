@@ -24,6 +24,15 @@
 // `postMessage({ kind: "shuyi-check", name, passed, text })`, after its
 // report. The key is removed once the answer, or a report of problems,
 // comes, by a run that checks nothing, and as the page goes.
+//
+// A step's Rust tabs (ticket 2841, `data-rust`): served from the book's
+// Codespace (`cargo xtask book-pad`), whose `<pad>status` says `rust`, they
+// are shown, each read from `<pad>file/<step>/<path>`. **Run** posts each one
+// whose text differs from the file's there, and the server's watcher builds
+// the step again: book-pad.js, which follows its builds, loads the frame
+// again on the next good one, or shows a failed one's output in Problems.
+// **Reset** posts to `<pad>reset/…`, which puts the file back as the
+// repository's `HEAD` has it. Anywhere else the tabs are removed.
 (function () {
     "use strict";
 
@@ -35,10 +44,14 @@
     var PAGE = window.location.pathname;
     var RUN = "shuyi-playground-run:" + PAGE + ":files/";
     var DRAFT = "shuyi-playground-draft:" + PAGE + ":files/";
+    // This page's key of what the reader has typed in a Rust tab and not
+    // yet run: what has run is in the file itself.
+    var RUST_DRAFT = "shuyi-playground-draft:" + PAGE + ":rust/";
     // The game's key of the check the page asks for.
     var CHECK = "shuyi-page-check";
 
     var LOADED = "Loaded with your files.";
+    var BUILDING = "Building… Your Rust is saved in this step's folder, and the game plays it once it is built.";
 
     function storage() {
         try {
@@ -170,8 +183,16 @@
         }
         var frame = root.querySelector("iframe");
         var editors = root.querySelector(".playground-editors");
-        var tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]'));
+        // The tabs shown, the data files' first; the Rust tabs join them in
+        // the Codespace.
+        var tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]:not([data-rust-tab])'));
+        var rust_tabs = Array.prototype.slice.call(root.querySelectorAll("[data-rust-tab]"));
         var areas = Array.prototype.slice.call(root.querySelectorAll("textarea[data-file]"));
+        var rusts = Array.prototype.slice.call(root.querySelectorAll("textarea[data-rust]"));
+        // The text of each Rust file in the step's folder, by its path, once
+        // read; and the pad's address, with its last `/`.
+        var disk = {};
+        var pad = (root.dataset.pad || "").replace(/\/?$/, "/");
         var problems = root.querySelector(".playground-problems");
         var buttons = Array.prototype.slice.call(root.querySelectorAll(".playground-actions button"));
         // The game's own text of each file, by name, once fetched.
@@ -210,7 +231,7 @@
             paint(area);
         }
 
-        areas.forEach(function (area) {
+        areas.concat(rusts).forEach(function (area) {
             area.addEventListener("input", function () {
                 paint(area);
             });
@@ -244,6 +265,11 @@
         frame.addEventListener("load", function () {
             give_back();
             back = null;
+            // The new build is playing: a game given no file reports
+            // nothing, so *Building…* goes.
+            if (problems.textContent === BUILDING) {
+                say("");
+            }
         });
 
         // A folded playground (a step's) loads its game only once it is
@@ -296,7 +322,12 @@
             return 0;
         }
 
-        tabs.forEach(function (tab, i) {
+        // The editor of the tab `tab`.
+        function editor(tab) {
+            return document.getElementById(tab.getAttribute("aria-controls")).querySelector("textarea");
+        }
+
+        function wire(tab, i) {
             tab.addEventListener("click", function () {
                 select(i, false);
             });
@@ -316,13 +347,53 @@
                     select(to, true);
                 }
             });
-        });
+        }
+        tabs.forEach(wire);
+
+        // A Rust tab's file in the step's folder, posted to the pad: `kind`
+        // "file" writes the editor's text, "reset" puts back `HEAD`'s. Either
+        // gives the file's text as it now is.
+        function send(kind, area) {
+            var path = area.dataset.rust;
+            var url = pad + kind + "/" + encodeURIComponent(root.dataset.step) + "/" +
+                path.split("/").map(encodeURIComponent).join("/");
+            return fetch(url, {
+                method: "POST",
+                cache: "no-store",
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+                body: kind === "file" ? area.value : ""
+            }).then(function (response) {
+                return response.text().then(function (text) {
+                    if (!response.ok) {
+                        throw new Error(path + ": " + text);
+                    }
+                    disk[path] = text;
+                    put(RUST_DRAFT + path, area.value === text ? null : area.value);
+                    return text;
+                });
+            });
+        }
+
+        // The Rust tabs whose text differs from their file's.
+        function rust_changed() {
+            return rusts.filter(function (area) {
+                var path = area.dataset.rust;
+                return disk[path] !== undefined && area.value !== disk[path];
+            });
+        }
+
+        function unsaved(error) {
+            say("Your Rust wasn't saved (" + error.message + "), so the game wasn't built again.");
+        }
 
         // Run: each file whose text differs from the game's goes to the
         // game's key and this page's, the rest are removed, and the frame
         // loads again. With `check`, an exercise's, the game is asked for
-        // it; without, a check asked before is dropped.
-        function run(check) {
+        // it; without, a check asked before is dropped. Each Rust tab whose
+        // text differs from its file's is written there instead, or with
+        // `rebuilt` a reset has written one: the step is built again, and
+        // book-pad.js loads the frame again once it is.
+        function run(check, rebuilt) {
             back = document.activeElement;
             var asking = typeof check === "string";
             if (!asking) {
@@ -336,7 +407,16 @@
                 put(RUN + name, changed ? area.value : null);
                 put(DRAFT + name, changed ? area.value : null);
             });
-            say(kept ? "" : "Your browser wouldn't keep the files (session storage is off or full), so the game plays its own.");
+            var lost = "Your browser wouldn't keep the files (session storage is off or full), so the game plays its own.";
+            var changed = rust_changed();
+            if (changed.length > 0 || rebuilt === true) {
+                say(kept ? BUILDING : lost);
+                Promise.all(changed.map(function (area) {
+                    return send("file", area);
+                })).then(null, unsaved);
+                return;
+            }
+            say(kept ? "" : lost);
             if (!started()) {
                 // Not loaded yet: it reads the files as it does.
                 return;
@@ -353,6 +433,25 @@
             set(area, own[area.dataset.file]);
         }
 
+        // Each of `areas`, Rust tabs, put back as `HEAD` has its file; then
+        // a run, rebuilding if a file changed.
+        function reset_rust(list) {
+            var before = list.map(function (area) {
+                return disk[area.dataset.rust];
+            });
+            Promise.all(list.map(function (area) {
+                return send("reset", area).then(function (text) {
+                    set(area, text);
+                    put(RUST_DRAFT + area.dataset.rust, null);
+                    return text;
+                });
+            })).then(function (texts) {
+                run(undefined, texts.some(function (text, i) {
+                    return text !== before[i];
+                }));
+            }, unsaved);
+        }
+
         buttons.forEach(function (button) {
             button.disabled = true;
         });
@@ -360,12 +459,25 @@
             run();
         });
         root.querySelector(".playground-reset").addEventListener("click", function () {
-            reset(areas[selected()]);
+            var area = editor(tabs[selected()]);
+            if (area.dataset.rust !== undefined) {
+                back = document.activeElement;
+                reset_rust([area]);
+                return;
+            }
+            reset(area);
             run();
         });
         root.querySelector(".playground-reset-all").addEventListener("click", function () {
             areas.forEach(reset);
-            run();
+            var shown = rusts.filter(function (area) {
+                return disk[area.dataset.rust] !== undefined;
+            });
+            if (shown.length > 0) {
+                reset_rust(shown);
+            } else {
+                run();
+            }
         });
 
         // Keep what the reader types, so a reload of the page shows it.
@@ -375,6 +487,63 @@
                 put(DRAFT + name, area.value === own[name] ? null : area.value);
             });
         });
+        rusts.forEach(function (area) {
+            area.addEventListener("input", function () {
+                var path = area.dataset.rust;
+                if (disk[path] !== undefined) {
+                    put(RUST_DRAFT + path, area.value === disk[path] ? null : area.value);
+                }
+            });
+        });
+
+        // The Rust tabs, in the book's Codespace only: its pad says `rust`.
+        // Each is shown once its file is read; anywhere else they go.
+        function drop_rust() {
+            rust_tabs.forEach(function (tab) {
+                var panel = document.getElementById(tab.getAttribute("aria-controls"));
+                tab.remove();
+                panel.remove();
+            });
+            rust_tabs = [];
+            rusts = [];
+        }
+        if (rusts.length === 0 || root.dataset.pad === undefined || typeof window.fetch !== "function") {
+            drop_rust();
+        } else {
+            fetch(pad + "status", { cache: "no-store" }).then(function (response) {
+                return response.ok ? response.json() : null;
+            }).then(function (status) {
+                if (status === null || typeof status !== "object" || status.rust !== true) {
+                    throw new Error("not the Codespace");
+                }
+                return Promise.all(rusts.map(function (area) {
+                    var path = area.dataset.rust;
+                    var url = pad + "file/" + encodeURIComponent(root.dataset.step) + "/" +
+                        path.split("/").map(encodeURIComponent).join("/");
+                    return fetch(url, { cache: "no-store" }).then(function (response) {
+                        if (!response.ok) {
+                            throw new Error(path + ": " + response.status);
+                        }
+                        return response.text();
+                    }).then(function (text) {
+                        disk[path] = text;
+                        var draft = get(RUST_DRAFT + path);
+                        set(area, draft !== null ? draft : text);
+                    });
+                }));
+            }).then(function () {
+                rust_tabs.forEach(function (tab) {
+                    tab.hidden = false;
+                    tabs.push(tab);
+                    wire(tab, tabs.length - 1);
+                });
+            }, function () {
+                // The public site, or a file the pad wouldn't give: the
+                // data files only.
+                disk = {};
+                drop_rust();
+            });
+        }
 
         // The game's own text, then each editor's: the reader's if kept.
         var base = root.dataset.files;
