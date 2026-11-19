@@ -172,10 +172,7 @@ fn load_over(bundle: Bundle, waits: u32) -> (Option<String>, Option<(u32, u32)>)
                     .iter()
                     .map(ToString::to_string)
                     .collect::<Vec<_>>()
-                    .join(
-                        "
-",
-                    ),
+                    .join("\n"),
             })
         },
     );
@@ -194,6 +191,22 @@ fn load_over(bundle: Bundle, waits: u32) -> (Option<String>, Option<(u32, u32)>)
         }
     }
     panic!("the load neither ended nor waited");
+}
+
+/// The first `count` steps of the game's load over `bundle`: `of done/of`
+/// for a count, `wait` for a wait.
+fn first_steps(bundle: Bundle, count: usize) -> Vec<String> {
+    let mut step = hello_grid::loading::in_steps(
+        move || Ok((bundle, hello_grid::formats())),
+        |_, _, _| Err("loaded".to_owned()),
+    );
+    (0..count)
+        .map(|_| match step() {
+            Progress::Wait => "wait".to_owned(),
+            Progress::Of { done, of } => format!("of {done}/{of}"),
+            _ => "done".to_owned(),
+        })
+        .collect()
 }
 
 #[test]
@@ -220,6 +233,20 @@ fn the_load_waits_for_the_first_frames_files_and_reads_them_once_they_arrive() {
     let span_end = index.spans().nth(2).unwrap().1.end;
     let (_, bundle) = streaming(span_end);
     assert_eq!(load_over(bundle, 3), (None, Some((3, of))));
+    // Each frame gives the count first, then waits: the frame that waits
+    // shows it on the card.
+    let (_, bundle) = streaming(span_end);
+    let count = format!("of 3/{of}");
+    assert_eq!(
+        first_steps(bundle, 5),
+        [
+            format!("of 0/{of}"),
+            count.clone(),
+            "wait".to_owned(),
+            count,
+            "wait".to_owned()
+        ]
+    );
     // The first frame's files, and nothing after them: it loads.
     let (_, bundle) = streaming(first_end);
     assert_eq!(
