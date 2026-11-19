@@ -254,7 +254,7 @@ built-in pane, hidden, frames driven by `wasm_exports.frame()` every
   49,086,464 before (2906): one copy of the pack, not a copy and its
   read.
 
-**Size:** `cargo xtask pr-size` counts 1,293 lines, past the 1,000
+**Size:** `cargo xtask pr-size` counts 1,310 lines, past the 1,000
 planned (`stream.rs` counts its 250 lines of unit tests as code). It
 would split cleanly at the pack's file groups (`in_group`, its tests and
 docs, about 120 lines), which Hello, Grid's move needs and nothing else
