@@ -32,6 +32,9 @@ const BELOW_PANEL: i32 = 3;
 /// Panel rows that aren't the screen's rows: the top border, a blank row
 /// under it and the bottom border.
 const PANEL_FRAME_H: i32 = 3;
+/// Rows the tallest panel leaves to the rest: those above [`TOP_MIN`] and
+/// [`BELOW_PANEL`]'s.
+const OFF_PANEL: i32 = TOP_MIN + BELOW_PANEL;
 /// Cells in a volume's bar.
 const VOLUME_BAR: u8 = 10;
 /// Cells of the number box, inside its highlight.
@@ -65,7 +68,7 @@ fn panel(view: &OptionsView, buf: &GlyphBuffer) -> Rect {
     let room = fits - 1;
     // The tallest panel: from TOP_MIN to the message's blank row, with a
     // row for a line at the least.
-    let most = (i32::from(buf.height()) - TOP_MIN - BELOW_PANEL).max(PANEL_FRAME_H + 1);
+    let most = (i32::from(buf.height()) - OFF_PANEL).max(PANEL_FRAME_H + 1);
     let lines = i32::try_from(lines(view).len()).unwrap_or(i32::MAX);
     let h = PANEL
         .h
@@ -447,6 +450,16 @@ mod tests {
         // The last row focused: the list ends on the panel's last line.
         let v = long_view(28, 27);
         assert!(painted_row(&c, &v, 2).ends_with('▲'));
+        // On the border's own cell.
+        let black = c.palette.engine(EngineColor::Background);
+        let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+        paint(&c, &v, &mut buf);
+        let right = PANEL.x + PANEL.w - 1;
+        assert_eq!(buf.get(right, 2).map(|cell| cell.glyph), Some('▲'));
+        assert_eq!(buf.get(right, 3).map(|cell| cell.glyph), Some('│'));
+        let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+        paint(&c, &long_view(28, 0), &mut buf);
+        assert_eq!(buf.get(right, 27).map(|cell| cell.glyph), Some('▼'));
         assert!(
             painted_row(&c, &v, 27).starts_with("│  ")
                 && painted_row(&c, &v, 27).contains(" Row 27 ")
@@ -481,6 +494,16 @@ mod tests {
         // Down to a row that fits doesn't scroll: Row 0 still on top.
         let v = long_view(28, 20);
         assert!(painted_row(&c, &v, 2).starts_with("│   Row 0"));
+    }
+
+    /// On a console too short for any row under the message, the panel
+    /// still has a line for one.
+    #[test]
+    fn on_a_tiny_console_the_panel_keeps_a_line() {
+        let c = ctx();
+        let black = c.palette.engine(EngineColor::Background);
+        let buf = GlyphBuffer::with_spec(ConsoleSpec::text(48, 6), Cell::new(' ', black, black));
+        assert_eq!(panel(&long_view(28, 0), &buf).h, PANEL_FRAME_H + 1);
     }
 
     #[test]
