@@ -8,6 +8,8 @@ aliases = ["learn/tutorial/03-walk/", "learn/tutorial/03-walk/play/"]
 step = 3
 # The files its playground edits, in their tabs' order (ticket 2820).
 files = ["levels/1.map", "palette.ron", "en.ron", "keymap.ron"]
+# The Rust files its playground edits in the book's Codespace, in their tabs' order (ticket 2841).
+rust = ["crates/game/src/rules.rs", "crates/game/src/board.rs"]
 follows = "rules-as-commands"
 +++
 

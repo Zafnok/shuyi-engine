@@ -51,7 +51,9 @@ port 4000. Follow the book there: on each step's page, **Play this step** and th
 playground play your own build of that step's folder. Change a step's code in the
 editor and save it, and the page says *Building…*, then plays your change; if it
 doesn't build, the page shows what Rust said, and keeps playing the last build
-that worked. A Codespace that has just opened may still be building the other
+that worked. There, the playground on a step's page edits that step's Rust too,
+a tab for each file the page teaches, beside its data files: change one and press
+**Run**, and the game is built again with your change. A Codespace that has just opened may still be building the other
 steps for a few minutes. Keep the same Codespace for the whole project: it stops
 itself when you leave it, and keeps your changes for when you come back.
 

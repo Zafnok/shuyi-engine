@@ -16,7 +16,8 @@
     in `pad-output` on a step with none. A step with `extra.files` has a playground under
     them, folded (ticket 2820): its game beside an editor of each of those
     files, from its project's `extra.game_files`, copied beside its page by
-    `copy-playground.sh`. A chapter with steps after it ends with a line
+    `copy-playground.sh`; and with `extra.rust`, a tab for each of those
+    Rust files when served from the Codespace (ticket 2841). A chapter with steps after it ends with a line
     naming them. The reader's filter (`book::filter`) goes above it all,
     and the book's contents and the page's headings beside it
     (`book::book_open` and `book::book_close`, ticket 2834). -#}
@@ -58,9 +59,15 @@
     <p>These are this step's files from <code>{{ project.extra.game_files }}/</code>. Change one, press
       <strong>Run</strong>, and the game starts again with your change, or <strong>Problems</strong> says
       what is wrong with it. Nothing is installed and nothing is built: these files are data, read as
-      the game starts. A change to the Rust code needs a build: on your own machine, or in the
-      Codespace above.</p>
-    {{ pg::playground(game=project.extra.game, frame=page.permalink ~ "play/", files_url=page.permalink ~ "files/", files=page.extra.files, lazy=true) }}
+      the game starts.{% if page.extra.rust %}
+      <span class="pad-away">A change to the Rust code needs a build: in the book's Codespace (the button
+      above), this playground has a tab for each of this step's Rust files too, and <strong>Run</strong>
+      builds the game again with your change.</span>
+      <span class="pad-here" hidden>Here, in the book's Codespace, the tabs after the data files hold this
+      step's Rust: <strong>Run</strong> saves your change to its file in <code>{{ page.slug }}/</code>,
+      the game is built again, and it plays once built.</span>{% else %} A change to the Rust code needs
+      a build: on your own machine, or in the Codespace above.{% endif %}</p>
+    {{ pg::playground(game=project.extra.game, frame=page.permalink ~ "play/", files_url=page.permalink ~ "files/", files=page.extra.files, lazy=true, rust=page.extra.rust | default(value=false), pad=get_url(path='pad/'), step=page.slug) }}
   </details>
   {%- endif %}
   {%- endif %}

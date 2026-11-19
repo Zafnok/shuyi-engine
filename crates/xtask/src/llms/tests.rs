@@ -980,6 +980,32 @@ fn a_step_twin_names_the_books_codespace_and_its_folder() {
     // The project's own page isn't a step.
     let project = fixture.read("learn/book/box-pusher/index.md");
     assert!(!project.contains("Open this book"), "{project}");
+    // A step with no Rust tabs names none.
+    assert!(!step.contains("edits its Rust too"), "{step}");
+}
+
+#[test]
+fn a_step_twin_names_the_rust_files_its_playground_edits_in_the_codespace() {
+    let fixture = with_project("rust-tabs");
+    put(
+        &fixture.root,
+        "site/content/learn/book/box-pusher/01-new.md",
+        "+++\ntitle = \"A new game\"\nweight = 1\naliases = [\"learn/tutorial/01-new/\"]\n\n[extra]\nstep = 1\n\
+         files = [\"en.ron\"]\nrust = [\"crates/game/src/title.rs\", \"crates/game/src/lib.rs\"]\nfollows = \"start\"\n+++\n\nFirst steps.\n",
+    );
+    fixture.passes();
+    let step = fixture.read("learn/book/box-pusher/01-new/index.md");
+    assert!(
+        step.contains(
+            "In the Codespace, this step's playground edits its Rust too, a tab for each of \
+             `01-new/crates/game/src/title.rs`, `01-new/crates/game/src/lib.rs`: **Run** saves"
+        ),
+        "{step}"
+    );
+    assert!(
+        step.find("edits its Rust too") < step.find("First steps."),
+        "{step}"
+    );
 }
 
 #[test]

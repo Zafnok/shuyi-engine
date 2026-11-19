@@ -37,6 +37,12 @@
 //! - a project step with playground files has one or two, in its `## Check
 //!   yourself` after its checks, and no other page has one.
 //!
+//! And a step's Rust tabs (ticket 2841), `[extra] rust = ["crates/game/src/
+//! rules.rs", …]`: the files its playground edits when the book is served
+//! from its Codespace. Each is a `.rs` file under `crates/game/src/` of the
+//! step's folder (`site/tutorial/<step>/`), there, and listed once, on a
+//! project step with playground files (`extra.files`).
+//!
 //! [`parts`] splits a page at its marks, checks and exercises for
 //! `llms.rs`, which writes each passage in the twins as a blockquote under
 //! its label, and each check and exercise as text.
@@ -51,6 +57,11 @@ mod tests;
 
 /// Learn's pages, from the repository's root.
 const LEARN: &str = "site/content/learn";
+/// The steps' projects, from the repository's root: a step's folder is
+/// named as its page.
+const TUTORIAL: &str = "site/tutorial";
+/// Where a step's Rust tabs are (`extra.rust`), in its folder.
+pub const RUST_FOLDER: &str = "crates/game/src/";
 
 /// The four audiences a passage or a page may be marked for, and each one's
 /// label (ADR-0090 §4). An unmarked passage is for everyone.
@@ -159,7 +170,15 @@ pub fn run(root: &Path) -> Vec<String> {
             .to_string_lossy()
             .replace('\\', "/");
         match fs::read_to_string(&file) {
-            Ok(text) => pages.push((shown, text)),
+            Ok(text) => {
+                let stem = file.file_stem().unwrap_or_default();
+                errors.extend(rust_problems(
+                    &shown,
+                    &text,
+                    &root.join(TUTORIAL).join(stem),
+                ));
+                pages.push((shown, text));
+            }
             Err(e) => errors.push(format!("{shown}: {e}")),
         }
     }
@@ -255,6 +274,7 @@ pub fn check(shown: &str, text: &str) -> Vec<String> {
         mut errors,
         kind,
         files,
+        ..
     } = match front_matter(shown, text) {
         Ok(found) => found,
         Err(e) => return vec![e],
@@ -304,6 +324,10 @@ struct Front<'a> {
     kind: PageKind,
     /// Its playground's files (`files = [...]`, ticket 2820), in order.
     files: Vec<String>,
+    /// Its playground's Rust files in the Codespace (`rust = [...]`, ticket
+    /// 2841), in order, and the line naming them.
+    rust: Vec<String>,
+    rust_line: usize,
 }
 
 /// The body of the page `shown` after its `+++` front matter, the number of
@@ -318,6 +342,8 @@ fn front_matter<'a>(shown: &str, text: &'a str) -> Result<Front<'a>, String> {
     let mut errors = Vec::new();
     let mut kind = PageKind::Other;
     let mut files = Vec::new();
+    let mut rust = Vec::new();
+    let mut rust_line = 0;
     let mut at = text.find('\n').map_or(text.len(), |end| end + 1);
     for (number, line) in lines.enumerate() {
         let number = number + 2;
@@ -330,12 +356,18 @@ fn front_matter<'a>(shown: &str, text: &'a str) -> Result<Front<'a>, String> {
                 errors,
                 kind,
                 files,
+                rust,
+                rust_line,
             });
         }
         match bare.split('=').next().map(str::trim) {
             Some("chapter") => kind = PageKind::Chapter,
             Some("step") => kind = PageKind::Step,
             Some("files") => files = listed(bare),
+            Some("rust") => {
+                rust = listed(bare);
+                rust_line = number;
+            }
             _ => {}
         }
         if let Some(value) = bare
@@ -376,6 +408,69 @@ pub fn listed(line: &str) -> Vec<String> {
 /// none or doesn't read.
 pub fn page_files(text: &str) -> Vec<String> {
     front_matter("", text).map_or_default(|front| front.files)
+}
+
+/// The Rust files of the page `text`'s playground in the book's Codespace
+/// (`extra.rust`), from its step's folder; none when it has none or doesn't
+/// read.
+pub fn page_rust(text: &str) -> Vec<String> {
+    front_matter("", text).map_or_default(|front| front.rust)
+}
+
+/// Why `path` can't be one of a step's Rust tabs, from its folder: a `.rs`
+/// file under [`RUST_FOLDER`], each segment a plain name.
+pub fn rust_path_problem(path: &str) -> Option<&'static str> {
+    let Some(rest) = path.strip_prefix(RUST_FOLDER) else {
+        return Some("isn't under `crates/game/src/`");
+    };
+    if rest
+        .split('/')
+        .any(|s| s.is_empty() || s == "." || s == ".." || s.contains(['\\', ':']))
+    {
+        return Some("isn't a plain path");
+    }
+    if Path::new(rest).extension().and_then(|ext| ext.to_str()) != Some("rs") {
+        return Some("isn't a `.rs` file");
+    }
+    None
+}
+
+/// What is wrong with the page `shown`'s Rust tabs (`extra.rust`), its
+/// step's folder `folder`: a page with them is a step with playground
+/// files, and each is a `.rs` file of `folder`'s `crates/game/src/`,
+/// there, listed once.
+pub fn rust_problems(shown: &str, text: &str, folder: &Path) -> Vec<String> {
+    let Ok(front) = front_matter(shown, text) else {
+        return Vec::new();
+    };
+    let line = front.rust_line;
+    if front.rust.is_empty() {
+        return Vec::new();
+    }
+    let mut errors = Vec::new();
+    if front.kind != PageKind::Step {
+        errors.push(format!(
+            "{shown}:{line}: `rust` is for a project step (`extra.step`)"
+        ));
+    }
+    if front.files.is_empty() {
+        errors.push(format!(
+            "{shown}:{line}: `rust` names the Rust tabs of the step's playground, and it has none (`files`)"
+        ));
+    }
+    for (at, path) in front.rust.iter().enumerate() {
+        if front.rust[..at].contains(path) {
+            errors.push(format!("{shown}:{line}: `rust` names `{path}` twice"));
+        } else if let Some(problem) = rust_path_problem(path) {
+            errors.push(format!("{shown}:{line}: `rust`'s `{path}` {problem}"));
+        } else if !folder.join(path).is_file() {
+            errors.push(format!(
+                "{shown}:{line}: `rust`'s `{path}` isn't in {}",
+                folder.display()
+            ));
+        }
+    }
+    errors
 }
 
 /// The exercises of the page `shown`, whose whole text is `text`, that

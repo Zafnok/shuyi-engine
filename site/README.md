@@ -440,7 +440,9 @@ of its data files. The game lays the files the page holds in
 ([`page-files.js`](../crates/cli/web/page-files.js), ticket 3069): Hello,
 Grid in its `main.rs`, and every game on the short path in
 `shuyi_app::run_game`. The page and the frame are one origin, so they share
-the tab's storage. It edits data, never Rust: a page can't build Rust.
+the tab's storage. On the public site it edits data, never Rust: a page
+can't build Rust. In the book served from its Codespace, a step's
+playground edits the step's Rust too (ticket 2841, below).
 
 - `/learn/playground/` (ticket 2814) plays Hello, Grid, framing
   `/examples/hello-grid/`. `content/learn/playground.md` is its text: before
@@ -489,22 +491,47 @@ the tab's storage. It edits data, never Rust: a page can't build Rust.
   `PATH`) checks they agree, on Hello, Grid's and the project's `.ron`
   files, its own cases, and each `ron` block of a build. Whatever sets an
   editor's text calls `set`, which paints it.
+- **A step's Rust tabs** (ticket 2841): a step's page lists in
+  `extra.rust` the Rust files its playground edits in the book's
+  Codespace, from the step's folder, in their tabs' order: the files its
+  table names as new or changed, each under `crates/game/src/` (steps 2
+  to 9; step 1's table names the folder, step 10's page has no table).
+  `cargo xtask check-book` fails a path that isn't a `.rs` file under
+  `crates/game/src/`, isn't there, or is listed twice, and a page with
+  `extra.rust` and no `extra.step` or `extra.files`. The playground's
+  markup holds a hidden tab and editor of each (`data-rust`, plain: no
+  painting) after the data files'; `playground.js` asks the pad's
+  `status`, and only where it says `rust` (the Codespace) shows them,
+  each read from `pad/file/<step>/<path>`, its draft kept under
+  `shuyi-playground-draft:<page's path>:rust/<path>`. Anywhere else it
+  removes them, and the fold's line says the Rust can be changed in the
+  book's Codespace. **Run** posts each Rust tab whose text differs from its
+  file's to `pad/file/…`, says *Building…* in Problems, and leaves the
+  frame to `book-pad.js`, which loads it again on the step's next good
+  build or shows a failed build's output in Problems, the frame playing
+  the last good one; the data files run as before, read as the frame
+  loads again. **Reset this file** on a Rust tab posts to
+  `pad/reset/…`, which puts the file back as `HEAD` has it; **Reset
+  all** does that for each Rust tab too.
 
 `copy-playground.sh` copies each list's files, and fails one that isn't
 there. `check-build.sh` checks that each page with a playground loads
 `playground.js`, frames its game, and has an editor of each file, and that
-the build holds each file beside it, the same as the game's own.
+the build holds each file beside it, the same as the game's own; and that
+a step's page has a Rust tab (`data-rust`) of each file its `extra.rust`
+names, there in the step's folder.
 
 ## The code pad
 
-The playground edits data; a step's Rust is changed in the book's
-Codespace (ticket 2837, [ADR-0126](../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md)):
+On the public site the playground edits data; a step's Rust is changed in
+the book's Codespace (ticket 2837, [ADR-0126](../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md)):
 a Codespace of this repository made from the book's dev container,
 [`.devcontainer/book/devcontainer.json`](../.devcontainer/book/devcontainer.json),
 on the reader's own GitHub account. It serves this book (ticket 2840), so
 the reader follows it in the editor's preview beside the project, and each
 step's game there is the reader's own build of the step, built again when
-its files change. Each step's page links it beside *Play this step*
+its files change, and its playground edits the step's Rust too (ticket
+2841, [The playground](#the-playground)). Each step's page links it beside *Play this step*
 (**Open this book in a Codespace**, `templates/chapter.html`, from
 `config.toml`'s `extra.codespace`), on the smallest machine
 (`machine=basicLinux32gb`, 2 cores: a step's rebuild is no faster on more),
@@ -544,15 +571,28 @@ how to use it.
   the book in a preview (it opens none for a port already open as it
   attaches, which is why the server isn't started before it); the Ports
   tab opens it too.
-- **Its routes**, `GET` only, on `127.0.0.1:4000`, uncached, and refused
-  (403) to a request whose `Host` is not `127.0.0.1:4000`, `localhost:4000`
-  or the forwarded host:
+- **Its routes**, `GET` and two `POST`s, on `127.0.0.1:4000`, uncached,
+  and refused (403) to a request whose `Host` is not `127.0.0.1:4000`,
+  `localhost:4000` or the forwarded host:
   - `/learn/book/box-pusher/<step>/play/…`: the step's own web build,
     `site/tutorial/<step>/dist/web/…`, not CI's; and its `files/…`, the
     playground's own text, from the step's `crates/game/files/`;
   - `/`: a redirect to the last step page served (step 2's at first);
-  - `/pad/status`: `{"pad":true}`, which the public site answers with a
-    404;
+  - `/pad/status`: `{"pad":true,"rust":true}`, which the public site
+    answers with a 404 (`rust`: the playground's Rust tabs are on);
+  - `/pad/file/<step>/<path>`: one of the step's Rust files its page lists
+    (`extra.rust`, read from `content/learn/book/box-pusher/<step>.md` as
+    the server starts), as it is on disk; another file is a 404;
+  - `POST /pad/file/<step>/<path>`, its body the file's text (UTF-8, at
+    most 256 KiB, else a 413): writes it, which the rebuilding below then
+    builds, and answers the text; `POST /pad/reset/<step>/<path>`: puts the
+    file back as `HEAD` has it (`git cat-file --filters`, so with the
+    checkout's line ends), and answers that text. A file whose text is
+    already that isn't written, so it makes no build. A `POST` is refused
+    (403) unless its `Origin` is the served origin (the forwarded address,
+    or `http://127.0.0.1:4000` or `http://localhost:4000`) and its path is
+    one its step's page lists: no other file of the repository can be
+    written from a page. Any other method or path is a 405;
   - `/pad/build/<step>`: the step's build as JSON, `number` (builds since
     the server started), `good` (the last good one's number, 0 for the one
     there at the start), `state` (`none` before its first, `building`,
@@ -600,8 +640,9 @@ how to use it.
   targets and misses it). A new step goes in `build.sh`'s list there; a
   change to the root's setup goes in both.
   `check-build.sh` fails a step's page that doesn't link the Codespace or
-  name its folder. `book-pad`'s tests (its routes, the watcher and the build
-  states, with a fake builder) are `xtask`'s.
+  name its folder. `book-pad`'s tests (its routes, the Rust tabs' reads,
+  writes and resets on a fixture repository, the refusals, the watcher and
+  the build states, with a fake builder) are `xtask`'s.
 
 ## The docs for agents
 
