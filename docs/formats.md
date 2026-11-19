@@ -792,19 +792,24 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   a web game names the folders its first frame reads
   (`.first("title/")`), and the page that streams the pack in its order
   starts the game once they have arrived. `title/` and `title` are the
-  same folder; a file under two named folders goes with the first, a
+  same folder. A name that is a file's path (`en.ron`) lays that file
+  alone, a group of one, for a game that keeps files its first frame
+  reads beside the others (Hello, Grid names its seven, ticket 3318). A
+  file under two named folders goes with the first, a
   folder named twice is laid where first named, and a bake names up to
   `pack::MAX_FIRST` (256). The index holds each folder's **span**: from
   the first byte of its files to the last (`Index::spans()`, each folder
   and its byte range from the pack's start), and `Index::read` refuses a
-  span that doesn't hold every file under its folder. A recipient's code
+  span that doesn't hold every file under its folder, or the file it names.
+  A recipient's code
   shuffles each named folder's files among their own places, and the
   rest among theirs, so each span still holds its folder; with no folder
   named, the order is the one it laid before spans. `pack::write_first`
   is the same without a `Bake`. `shuyi bake` names each span it laid
   (`PackMade::spans`).
 - **Whether a folder has arrived.** `Bundle::arrived(dir)` says whether
-  every file under `dir` can be read now: always for a layer read whole,
+  every file under `dir`, and the file at `dir` if there is one, can be
+  read now: always for a layer read whole,
   and for a layer over a `Source`, once the folder's span has arrived, or
   for a folder not laid first, once each file under it has. It asks the
   source's `arrived(at, len)`, which a source whose bytes arrive in time
@@ -859,11 +864,34 @@ the Playdate's ships one in its `.pdx`. A development build (`cargo run`,
   tools, proves it equal to its sources (`bake --check`), and builds the
   program with `packed`: in a `.app` the pack is in `Contents/Resources`, on
   the web beside `index.html`.
-- **The game** reads it with `shuyi_app::pack_beside_program(name, stamp)`
-  and lays it in its bundle (`Pack::into_layer`). On the web the page fetches
-  it before the game starts and hands it over, so the call is the same on
-  every target. A pack that is missing, of another version or another stamp,
-  is refused with a message to bake it again.
+- **The game** opens it with `shuyi_app::pack_beside_program(name,
+  stamp)` and lays it in its bundle (`OpenedPack::into_layer`). Desktop
+  reads it whole. A pack that is missing, of another version or another
+  stamp, is refused with a message to bake it again.
+- **On the web the pack streams** ([ADR-0128](adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §2, §3 and §6, ticket 3318). The page fetches the `.wasm` and the pack
+  together (`index.html` preloads the `.wasm`), and starts the game once
+  the pack's header and index have arrived (`crates/cli/web/pack-file.js`
+  reads the index's length from the header). It reads the rest as a
+  stream (`response.body.getReader()`, a plain GET with no `Range`, so
+  any host serves it, Python's `http.server` included; a host with no
+  body stream gives the whole pack at once), in the order the bake laid
+  it, and keeps each chunk only until the game takes it. The game's call
+  is the same: `pack_beside_program` reads the index from the page's
+  first bytes, and gives a layer over a source of the pack's whole length
+  in the program's memory, one copy. Between frames `shuyi-app` copies
+  the chunks the page received into it, in order. A file whose bytes
+  haven't arrived reads as missing for now (`SourceError::NotYet`), so a
+  load in steps that needs a folder returns `Progress::Wait` until
+  `Bundle::arrived(dir)` says it has, and counts it on the card with
+  `Progress::Of`; the folders its first frame reads are the ones it lays
+  first (`Bake::first`). When the fetch fails or the body ends short
+  after the game started, the source is failed: a file past what arrived
+  reads as missing, and `Layer::problems` lists it once, and every
+  folder counts as arrived, so a load waiting for one reads it and fails
+  with the missing file's error instead of waiting forever. A fetch that
+  fails before the index arrives is the error `pack_beside_program`
+  gives (`PackFileError::Missing`, with what the page said).
 - **A game on the short path** (`BasicGame`) bakes its English, palette and
   font atlas (`BasicData::bake`), with its id and version as the stamp
   (`AppInfo::pack_stamp`); its keymap, pictures and its stages' files go in

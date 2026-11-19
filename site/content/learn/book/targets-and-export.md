@@ -206,9 +206,12 @@ program, `<package>.pack`: every file of `files/`, its text read and stored in a
 game loads faster and its program holds none of your files as text. The export bakes it with the
 game's tools (`cargo shuyi bake`), checks that every asset in it reads the same as from its file, and
 builds the program with the `packed` feature a new game has, which reads the pack in place of the files
-it would embed. In a `.app` the pack is in `Contents/Resources`; on the web the page fetches it before
-the game starts. `cargo run` and `cargo shuyi run` still embed the files, so you never need a pack to
-play. A player who copies the program without its pack sees why the game can't start.
+it would embed. In a `.app` the pack is in `Contents/Resources`. On the web the page fetches the pack
+and the game's `.wasm` together, starts the game once the pack's index has arrived, and streams the
+rest to it in the order the bake laid it, so name the folders your first frame reads with
+`Bake::first` and let your load wait for them ([the pack](@/learn/book/assets-and-formats.md#the-pack)). Any web
+host serves it, even `python -m http.server`. `cargo run` and `cargo shuyi run` still embed the files,
+so you never need a pack to play. A player who copies the program without its pack sees why the game can't start.
 
 A game whose build needs a feature, or whose soundtrack ships as loose files, says so in the `export`
 part of `shuyi.ron`:

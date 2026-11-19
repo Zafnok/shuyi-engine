@@ -2,7 +2,10 @@
 //! (ADR-0128 §4): [`DataLoad`] reads them, and [`in_steps`] makes a
 //! platform's load in steps of it (`Start::in_steps`). Where the platform
 //! gives a slice (the Playdate), a frame runs as many files as fit and the
-//! card shows how many are read; elsewhere they all load in one frame.
+//! card shows how many are read; elsewhere they all load in one frame. Where
+//! the files arrive in time (the web, which streams the pack), the load
+//! first waits for what its first frame reads ([`FIRST`]), and the card
+//! counts it as it arrives.
 
 use alloc::collections::BTreeMap;
 use core::borrow::Borrow;
@@ -27,7 +30,8 @@ use shuyi::ui::text::check_key_placeholders;
 
 use crate::rules::{self, Feature};
 use crate::{
-    Action, CONSOLE, DIALOGUE, English, FONT_PNG, FONT_RON, Hello, dialogue_text, gather, sound,
+    Action, CONSOLE, DIALOGUE, English, FIRST, FONT_PNG, FONT_RON, Hello, dialogue_text, gather,
+    sound,
 };
 
 /// The game's data as it is read, a file a [`step`](Self::step): the
@@ -177,11 +181,15 @@ fn dialogue(bundle: &Bundle, formats: &Formats) -> Result<DialogueTable, Vec<Con
 }
 
 /// The steps of the game's load (`Start::in_steps`): the first `open`s the
-/// files its data is read from (or says why it can't), a step reads each
-/// file ([`DataLoad::step`]), each a unit of the card's count
-/// ([`Progress::Of`]), and the last `finish`es the game from the data, the
-/// files and their formats. A step after that says the load ran past its
-/// end.
+/// files its data is read from (or says why it can't); until each of
+/// [`FIRST`] has arrived (`Bundle::arrived`), a step gives the card how
+/// many have and the next waits for the platform ([`Progress::Wait`]), a
+/// frame each; then a step reads each file ([`DataLoad::step`]). Each of
+/// [`FIRST`] arrived and each file read is a unit of the card's count
+/// ([`Progress::Of`]), and the last step `finish`es the game from the data,
+/// the files and their formats. A step after that says the load ran past
+/// its end. Should the files stop arriving (the page's fetch broke), each
+/// counts as arrived, and the load reads the missing one and says so.
 pub fn in_steps<B: Borrow<Bundle>>(
     open: impl FnOnce() -> Result<(B, Formats), String>,
     finish: impl FnOnce(Result<Hello, Vec<ContentError>>, &B, &Formats) -> Result<Game<Hello>, String>,
@@ -190,9 +198,13 @@ pub fn in_steps<B: Borrow<Bundle>>(
     let mut finish = Some(finish);
     let mut files = None;
     let mut data = DataLoad::default();
-    let of = DataLoad::FILES;
+    let first = u32::try_from(FIRST.len()).unwrap_or(u32::MAX);
+    let of = first + DataLoad::FILES;
     // One step a file, counted here, so the load ends whatever a step says.
-    let mut unread = 0..of;
+    let mut unread = 0..DataLoad::FILES;
+    // Whether the last step gave the count of what has arrived, and the
+    // next one waits.
+    let mut counted = false;
     move || {
         if let Some(open) = open.take() {
             return match open() {
@@ -207,8 +219,20 @@ pub fn in_steps<B: Borrow<Bundle>>(
         let Some((bundle, formats)) = &files else {
             return past();
         };
+        let arrived = FIRST
+            .iter()
+            .filter(|first| bundle.borrow().arrived(first))
+            .count();
+        if arrived < FIRST.len() {
+            counted = !counted;
+            if !counted {
+                return Progress::Wait;
+            }
+            let done = u32::try_from(arrived).unwrap_or(first);
+            return Progress::Of { done, of };
+        }
         if unread.next().is_some() {
-            let done = data.step(bundle.borrow(), formats);
+            let done = first + data.step(bundle.borrow(), formats);
             return Progress::Of { done, of };
         }
         let Some(finish) = finish.take() else {

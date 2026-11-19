@@ -114,6 +114,48 @@ fn a_folder_named_first_is_laid_at_the_front_in_the_order_named() {
 }
 
 #[test]
+fn a_file_named_first_is_laid_alone_and_waited_for_alone() {
+    let files = named(PATHS);
+    let pack = first_pack(&["part2/map.ron", "a.txt", "title"], &files);
+    assert_eq!(
+        laid(&pack),
+        [
+            "part2/map.ron",
+            "a.txt",
+            "title/logo.txt",
+            "title/menu.ron",
+            "part1/inner/deep.ron",
+            "part1/map.ron",
+        ]
+    );
+    assert_eq!(
+        spans(&pack),
+        [
+            ("part2/map.ron".to_owned(), hull(&pack, &["part2/map.ron"])),
+            ("a.txt".to_owned(), hull(&pack, &["a.txt"])),
+            (
+                "title".to_owned(),
+                hull(&pack, &["title/logo.txt", "title/menu.ron"])
+            ),
+        ]
+    );
+    assert_eq!(files_of(&pack), files_of(&raw_pack(&test_info(), &files)));
+    // The file's span has arrived, and nothing after it.
+    let bundle = streamed(&pack, hull(&pack, &["a.txt"]).end..u64::MAX);
+    assert!(bundle.arrived("part2/map.ron"));
+    assert!(bundle.arrived("a.txt"));
+    assert!(!bundle.arrived("title"));
+    assert!(!bundle.arrived("part1"));
+    // The folder of the file laid first has no other file.
+    assert!(bundle.arrived("part2"));
+    // Its last byte hasn't.
+    let a = hull(&pack, &["a.txt"]);
+    let bundle = streamed(&pack, a.end - 1..a.end);
+    assert!(!bundle.arrived("a.txt"));
+    assert!(bundle.arrived("title"));
+}
+
+#[test]
 fn a_file_under_two_named_folders_goes_with_the_first() {
     let files = named(PATHS);
     // The inner folder first: the outer one's span holds both groups.
@@ -269,6 +311,14 @@ fn an_index_whose_spans_dont_hold_their_folders_is_refused() {
     assert_eq!(
         read_with(&files, &[("t", 0, 2)]),
         broken("t/z lies outside its span of t/")
+    );
+    // A span may name a file, which it holds; a file whose path only
+    // starts as its name isn't in it.
+    assert_eq!(read_with(&files, &[("t.y", 1, 1)]), Ok(()));
+    assert_eq!(read_with(&files, &[("t", 2, 1), ("t-x", 0, 1)]), Ok(()));
+    assert_eq!(
+        read_with(&files, &[("t.y", 0, 1)]),
+        broken("t.y lies outside its span of t.y/")
     );
     // A file named as the folder with its `/` (no pack `shuyi bake` makes
     // holds one) is under it, and checked.
@@ -436,8 +486,11 @@ fn a_folder_has_arrived_once_its_span_has() {
     assert!(bundle.arrived("title"));
     assert!(!bundle.arrived("part1"));
     assert!(!bundle.arrived("part2"));
-    // A file's path is no folder: nothing is under it, and nothing waits.
-    assert!(bundle.arrived("a.txt"));
+    // A file's path asks for that file (3318), and a path of nothing has
+    // nothing to wait for.
+    assert!(!bundle.arrived("a.txt"));
+    assert!(bundle.arrived("title/logo.txt"));
+    assert!(bundle.arrived("a.tx"));
     // Every byte has.
     let bundle = streamed(&pack, 0..0);
     for dir in ["", "title", "part1", "part1/inner", "part2"] {

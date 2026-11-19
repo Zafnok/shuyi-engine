@@ -153,7 +153,8 @@ fn the_data_reads_a_file_a_step_and_says_what_it_did_not_read() {
 }
 
 /// Where a load takes more than a frame (a slice a step long, as on a slow
-/// device), the card counts the game's files as they are read.
+/// device), the card counts the game's files as they are read, after those
+/// of its first frame, which have all arrived at once ([`hello_grid::FIRST`]).
 #[test]
 fn the_card_counts_the_games_files_where_its_load_takes_more_than_a_frame() {
     use hello_grid::DataLoad;
@@ -172,8 +173,12 @@ fn the_card_counts_the_games_files_where_its_load_takes_more_than_a_frame() {
         }
         counts.extend(platform.card_count());
     }
-    let of = DataLoad::FILES;
-    let expected: Vec<(u32, u32)> = (0..=of).map(|done| (done, of)).collect();
+    let first = u32::try_from(hello_grid::FIRST.len()).unwrap();
+    let of = first + DataLoad::FILES;
+    let expected: Vec<(u32, u32)> = core::iter::once(0)
+        .chain(first + 1..=of)
+        .map(|done| (done, of))
+        .collect();
     assert_eq!(counts, expected, "a frame a file, after the card's");
     assert_eq!(app.errors(), None);
     assert_eq!(

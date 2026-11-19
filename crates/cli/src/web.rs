@@ -1840,7 +1840,11 @@ mod tests {
             .collect();
         assert_eq!(
             imported,
-            ["shuyi_pack_file_bytes", "shuyi_pack_file_problem"]
+            [
+                "shuyi_pack_file_ended",
+                "shuyi_pack_file_problem",
+                "shuyi_pack_file_take"
+            ]
         );
         assert_eq!(provided, imported);
         assert_eq!(
@@ -1853,17 +1857,43 @@ mod tests {
     }
 
     #[test]
-    fn index_html_fetches_the_pack_after_its_plugin_loads_and_then_starts_the_game() {
+    fn index_html_fetches_the_wasm_beside_the_pack_and_starts_the_game_once() {
         let html = shell("index.html");
         let at = |needle: &str| {
             html.find(needle)
                 .unwrap_or_else(|| panic!("index.html has `{needle}`"))
         };
+        // The .wasm is fetched from the start, as the fetch `load` makes
+        // (ADR-0128 §6).
+        let preload = at(r#"<link rel="preload" href="%WASM%" as="fetch" crossorigin>"#);
+        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
         let jsutils = at(r#"<script src="sapp_jsutils.js">"#);
         let plugin = at(r#"<script src="pack-file.js">"#);
         let fetch = at(r#"shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); });"#);
-        assert!(jsutils < plugin && plugin < fetch);
+        assert!(preload < bundle && jsutils < plugin && plugin < fetch);
+        assert!(preload < at("</head>"));
         assert_eq!(html.matches("load(").count(), 1, "the game starts once");
+    }
+
+    #[test]
+    fn pack_file_js_streams_the_pack_and_keeps_none_of_it() {
+        let js = shell("pack-file.js");
+        // A streamed GET, no `Range`, and the whole response where there is
+        // no body stream.
+        assert!(js.contains("response.body.getReader()"));
+        assert!(js.contains("response.arrayBuffer()"));
+        assert!(js.contains(
+            "fetch(name)
+"
+        ));
+        assert!(!js.contains("headers"));
+        // The game starts once the header and the index have arrived: the
+        // header's length is the pack's (`crates/assets/src/pack.rs`).
+        assert!(js.contains("var HEADER = 24;"));
+        assert!(js.contains("queued >= needs()"));
+        // Bytes go straight into the game's memory, and are dropped.
+        assert!(js.contains("new Uint8Array(wasm_memory.buffer, buffer, capacity)"));
+        assert!(js.contains("queue.shift()"));
     }
 
     #[test]

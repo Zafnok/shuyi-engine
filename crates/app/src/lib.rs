@@ -15,7 +15,8 @@
 //!
 //! A shipped build reads its files from the pack a release export bakes
 //! beside the program, [`pack_beside_program`] (ADR-0110): on the web the
-//! page fetches it before the game starts.
+//! page streams it, the game started once its index has arrived (ADR-0128
+//! §2), and the backend hands the game the rest between frames.
 //!
 //! Every program reserves a field a closed build's overlay writes its
 //! recipient's code into (`shuyi export --recipient`, ADR-0118), which
@@ -235,7 +236,9 @@ pub use crate::folder::{FolderError, read_folder, read_watched_folder, watched_l
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use crate::folder::{Watched, watched_file, watched_layers};
 use crate::pacing::{Pacer, WebFrame};
-pub use crate::pack_file::{PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name};
+pub use crate::pack_file::{
+    OpenedPack, PACK_EXTENSION, PackFileError, pack_beside_program, pack_file_name,
+};
 pub use crate::recipient::recipient;
 
 /// The web has no folders to watch.
@@ -615,6 +618,8 @@ async fn run<G: GameData>(
     #[cfg(not(target_arch = "wasm32"))]
     let mut perf_file = perf_file::start();
     loop {
+        // The chunks of the pack the page received since (the web).
+        pack_file::pump();
         let start = pacing::seconds();
         if cfg!(target_arch = "wasm32") {
             if pacer.web_frame(start) == WebFrame::Skip {

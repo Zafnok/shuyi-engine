@@ -316,10 +316,12 @@ built](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-pack
 
 A group of assets is a **folder**. A game whose pack is big, as a web game's can be,
 names the folders its first frame reads in its bake, `.first("title/")`, and the bake
-lays them at the front of the pack, so the page that fetches the pack can start the
-game as soon as they arrive. A screen that opens a later part asks the bundle's
-`arrived("part2/")` first, and shows its own wait until it says yes. On desktop and the
-Playdate every folder has always arrived.
+lays them at the front of the pack. On the web the page streams the pack in that order:
+the game starts once the pack's index has arrived, and its load waits until the bundle's
+`arrived("title/")` says yes (`Progress::Wait`, counting what arrived on the card with
+`Progress::Of`). A file you keep beside the others, `en.ron`, can be named on its own. A
+screen that opens a later part asks `arrived("part2/")` first, and shows its own wait
+until it says yes. On desktop and the Playdate every folder has always arrived.
 
 ## A target's own files
 
