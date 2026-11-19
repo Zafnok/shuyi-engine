@@ -33,6 +33,7 @@ pub mod glyph;
 pub mod layout;
 pub mod path;
 pub mod picture;
+pub mod ranges;
 pub mod scene;
 pub mod skin;
 pub mod sprite;

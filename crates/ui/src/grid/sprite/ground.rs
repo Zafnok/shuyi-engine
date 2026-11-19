@@ -20,6 +20,12 @@ use crate::frame::glyph_buffer::{
 use crate::grid::corners::{Shown, mix_of};
 use crate::grid::glyph::OVERLAY_BLEND;
 use crate::grid::layout::Grid;
+use crate::grid::ranges::RangeShow;
+
+/// How far a range's outline and a raised tile's lit edges go from its
+/// color toward white over the pictures, brighter than on the glyph
+/// skin's dark ground (ticket 3224). *Tunable.*
+pub(super) const LIT: f32 = 0.55;
 use crate::grid::scene::{MapScene, RangeName, TileView, Tints};
 use crate::grid::skin::Looks;
 
@@ -31,6 +37,7 @@ pub(super) fn paint<U>(
     terrain: &TerrainTiles,
     scene: &MapScene<U>,
     grid: &Grid,
+    show: RangeShow,
     buf: &mut GlyphBuffer,
 ) {
     let light = looks.lights.get(&scene.look.light);
@@ -53,7 +60,7 @@ pub(super) fn paint<U>(
             Layer::Tiles(layer) => ground.paint_singles(layer, buf),
         }
     }
-    ground.paint_tints(looks, buf);
+    ground.paint_tints(looks, show, buf);
 }
 
 /// One scene's ground being painted.
@@ -163,9 +170,14 @@ impl<U> Ground<'_, U> {
         }
     }
 
-    /// What tints each tile, over its pictures.
-    fn paint_tints(&self, looks: &Looks, buf: &mut GlyphBuffer) {
+    /// What tints each tile, over its pictures, as `show` says (ticket
+    /// 3224): the tints as strong as it says, then its outline and relief
+    /// in lines a pixel thick at the art's size (so 2 at twice the zoom,
+    /// as the game's renders that picked it were drawn).
+    fn paint_tints(&self, looks: &Looks, show: RangeShow, buf: &mut GlyphBuffer) {
         let black = looks.dark();
+        let clip = self.grid.bounds();
+        let line = self.grid.zoom();
         let (across, down) = self.grid.tiles;
         for (dx, dy) in (0..down).flat_map(|dy| (0..across).map(move |dx| (dx, dy))) {
             let Some(tile) = self.scene.tile_at(dx, dy) else {
@@ -173,8 +185,16 @@ impl<U> Ground<'_, U> {
             };
             let own = self.tile(dx, dy).and_then(|_| self.own(dx, dy));
             let rect = self.grid.rect_at(dx, dy);
-            let tints = tints(looks, tile, self.tints.at(dx, dy));
+            let strength = show.strength(self.scene, (dx, dy));
+            let tints = tints(looks, tile, self.tints.at(dx, dy), strength);
             paint_tinted(buf, rect, own, &tints, black);
+            if tile.becomes.is_none() {
+                let color = |kind| looks.range(kind);
+                let at = (dx, dy);
+                for o in show.overlays(self.scene, &self.tints, at, rect, line, LIT, color, clip) {
+                    buf.add_overlay(o);
+                }
+            }
         }
     }
 }
@@ -184,7 +204,7 @@ impl<U> Ground<'_, U> {
 /// its ranges. A tile that would change is drawn as what it would become,
 /// so nothing tints it. (The cursor never tints a picture: game ticket
 /// 0444.)
-fn tints(looks: &Looks, tile: &TileView, ranges: &[RangeName]) -> Vec<(Rgb, f32)> {
+fn tints(looks: &Looks, tile: &TileView, ranges: &[RangeName], strength: f32) -> Vec<(Rgb, f32)> {
     let mut out = Vec::new();
     if tile.becomes.is_none() {
         let fg = tile
@@ -195,7 +215,7 @@ fn tints(looks: &Looks, tile: &TileView, ranges: &[RangeName]) -> Vec<(Rgb, f32)
             out.extend(tile.flashes.iter().map(|&s| (fg, OVERLAY_BLEND * s)));
         }
         for &kind in ranges {
-            out.push((looks.range(kind), OVERLAY_BLEND));
+            out.push((looks.range(kind), strength));
         }
     }
     out
@@ -722,7 +742,7 @@ mod tests {
             becomes: None,
         };
         assert_eq!(
-            tints(&looks, &tile, &[ATTACK]),
+            tints(&looks, &tile, &[ATTACK], OVERLAY_BLEND),
             [
                 (fg, OVERLAY_BLEND),
                 (fg, OVERLAY_BLEND * 0.5),
@@ -731,7 +751,7 @@ mod tests {
         );
         // A tile that would change: nothing.
         tile.becomes = Some(WATER);
-        let found = tints(&looks, &tile, &[ATTACK]);
+        let found = tints(&looks, &tile, &[ATTACK], OVERLAY_BLEND);
         assert!(found.is_empty(), "{found:?}");
         // Off the map, a flash has no color to go towards.
         let off = TileView {
@@ -739,13 +759,16 @@ mod tests {
             flashes: vec![1.0],
             becomes: None,
         };
-        assert_eq!(tints(&looks, &off, &[ATTACK]), [(attack, OVERLAY_BLEND)]);
+        assert_eq!(
+            tints(&looks, &off, &[ATTACK], OVERLAY_BLEND),
+            [(attack, OVERLAY_BLEND)]
+        );
         // A terrain the game lacks: no color either.
         let unknown = TileView {
             terrain: Some(TerrainId(999)),
             ..off
         };
-        assert_eq!(tints(&looks, &unknown, &[]), []);
+        assert_eq!(tints(&looks, &unknown, &[], OVERLAY_BLEND), []);
     }
 
     proptest! {

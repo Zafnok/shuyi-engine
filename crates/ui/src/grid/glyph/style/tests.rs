@@ -62,6 +62,7 @@ fn the_plain_style_is_the_default_and_the_glyph_skins_own() {
         foot_px: 2,
         style: GlyphStyle::PLAIN,
         threat_shape: crate::grid::threat::Shape::Straight,
+        range_show: crate::grid::ranges::RangeShow::TINT,
     };
     assert_eq!(GLYPH, skin);
     assert_eq!(GLYPH.with_style(ONE), ONE_BIT);
@@ -522,4 +523,111 @@ proptest! {
             prop_assert_eq!(seen.intersect(&px), Some(seen), "{:?} in {:?}", item, area);
         }
     }
+}
+
+/// The game's pick (game ticket 0923): spreading, a glint, one outline,
+/// a slab.
+fn slab() -> crate::grid::ranges::RangeShow {
+    use crate::grid::ranges::{RangeShow, Relief, Wave};
+    RangeShow::TINT
+        .spreading()
+        .with_wave(Wave::Glint)
+        .outlined()
+        .with_relief(Relief::Slab)
+}
+
+/// `scene` at `clock_ms` painted by `skin` into a console's first two rows.
+fn shown_at(skin: &GlyphSkin, scene: &mut MapScene<Piece>, clock_ms: u64) -> GlyphBuffer {
+    scene.clock_ms = clock_ms;
+    let mut buf = console();
+    let kit = Kit::new();
+    skin.paint(
+        &kit.looks(),
+        scene,
+        Rect::new(0, 0, 6, 2),
+        &NoUnits,
+        &mut buf,
+    );
+    buf
+}
+
+#[test]
+fn the_glyph_skin_shows_its_ranges_as_its_range_show() {
+    use crate::grid::scene::RangesShown;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let show = slab();
+    let skin = GLYPH.with_range_show(show);
+    assert_eq!(skin.range_show, show);
+    assert_eq!(GLYPH.range_show, crate::grid::ranges::RangeShow::TINT);
+    let mut scene = grass(3, 1);
+    scene.tint([p(0, 0), p(1, 0)], MOVE);
+    scene.ranges_shown = Some(RangesShown::new(p(0, 0), 100));
+    let grass_bg = shown_at(&GLYPH, &mut grass(3, 1), 0).get(0, 0).unwrap().bg;
+    // Opened this moment: nothing shows yet.
+    let buf = shown_at(&skin, &mut scene, 100);
+    assert_eq!(buf.get(0, 0).unwrap().bg, grass_bg);
+    assert!(buf.overlays().is_empty(), "{:?}", buf.overlays());
+    // Later, at two moments of the glint: each tile as strong as the look
+    // says, and its outline and the slab's shadow under the glyphs.
+    for ms in [10_000, 10_900] {
+        let buf = shown_at(&skin, &mut scene, ms);
+        let grid = GridSkin::<Piece>::grid(&skin, &scene, Rect::new(0, 0, 6, 2));
+        let tints = scene.tints();
+        let mut expect = Vec::new();
+        for dx in 0..3 {
+            let strength = show.strength(&scene, (dx, 0));
+            let bg = if dx < 2 {
+                grass_bg.lerp(looks.range(MOVE), strength)
+            } else {
+                grass_bg
+            };
+            assert_eq!(buf.get(2 * dx, 0).unwrap().bg, bg, "{ms} {dx}");
+            let rect = grid.rect_at(dx, 0);
+            let color = |kind| looks.range(kind);
+            expect.extend(show.overlays(
+                &scene,
+                &tints,
+                (dx, 0),
+                rect,
+                1,
+                LIT,
+                color,
+                grid.bounds(),
+            ));
+        }
+        assert!(!expect.is_empty(), "{ms}: no outline");
+        assert_eq!(buf.overlays(), expect, "{ms}");
+    }
+    // The glint has moved between the two.
+    scene.clock_ms = 10_000;
+    let before = show.strength(&scene, (0, 0));
+    scene.clock_ms = 10_900;
+    assert_ne!(show.strength(&scene, (0, 0)), before);
+}
+
+#[test]
+fn a_fill_waits_for_the_spread() {
+    use crate::grid::ranges::RangeShow;
+    use crate::grid::scene::RangesShown;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let skin = ONE_BIT.with_range_show(RangeShow::TINT.spreading());
+    // A 2 × 2 view from (5, 7), opened from its second tile down, (6, 8).
+    let mut scene = grass(2, 2);
+    scene.origin = p(5, 7);
+    scene.tint([p(5, 7), p(6, 7), p(5, 8), p(6, 8)], MOVE);
+    scene.ranges_shown = Some(RangesShown::new(p(6, 8), 100));
+    let moved = looks.range(MOVE);
+    // One-bit side cells: the first tile from cell 1, the second from 3.
+    let filled = |buf: &GlyphBuffer, x, y| buf.get(x, y).unwrap().bg == moved;
+    let buf = shown_at(&skin, &mut scene, 101);
+    assert!(filled(&buf, 3, 1), "its own tile");
+    assert!(!filled(&buf, 1, 1) && !filled(&buf, 3, 0) && !filled(&buf, 1, 0));
+    let step = crate::grid::ranges::SPREAD_STEP_MS;
+    let buf = shown_at(&skin, &mut scene, 100 + step + 1);
+    assert!(filled(&buf, 1, 1) && filled(&buf, 3, 0) && !filled(&buf, 1, 0));
+    // Without a spread, all at once.
+    let buf = shown_at(&ONE_BIT, &mut scene, 101);
+    assert!(filled(&buf, 1, 0) && filled(&buf, 3, 1));
 }

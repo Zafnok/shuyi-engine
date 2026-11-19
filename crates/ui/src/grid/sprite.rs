@@ -271,9 +271,12 @@ impl<U> GridSkin<U> for SpriteSkin {
     ) {
         let grid = SpriteSkin::grid(self, scene, area);
         let layout = glyph::Layout::new(scene, area);
-        match &self.terrain {
-            Some(terrain) => ground::paint(looks, terrain, scene, &grid, buf),
-            None => glyph::draw_tiles(looks, buf, scene, &layout),
+        if let Some(terrain) = &self.terrain {
+            ground::paint(looks, terrain, scene, &grid, self.glyph.range_show, buf);
+        } else {
+            let (show, colors) = (self.glyph.range_show, &self.glyph.colors);
+            let plain = glyph::GlyphStyle::PLAIN;
+            plain.draw_tiles_shown(show, looks, colors, buf, scene, &layout);
         }
         units.paint_under(scene, &grid, buf);
         let color = looks.path(&self.glyph.colors);

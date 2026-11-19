@@ -853,3 +853,75 @@ fn the_sprite_skin_draws_its_glyph_skins_threat_shape() {
     let straight = threat::threat_overlays(&arrows, &grid, threat::Start::Middle, colors);
     assert_ne!(expect.len(), straight.len());
 }
+
+#[test]
+fn the_sprite_skin_shows_its_glyph_skins_range_show() {
+    use crate::grid::ranges::{RangeShow, Relief, Wave};
+    use crate::grid::scene::RangesShown;
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let show = RangeShow::TINT
+        .spreading()
+        .with_wave(Wave::Glint)
+        .outlined()
+        .with_relief(Relief::Slab);
+    let terrain = || Some(tiles(kit.tiles_image()));
+    let skin = SpriteSkin::new(terrain(), GLYPH.with_range_show(show), GLYPH.walk);
+    let mut scene = plains();
+    scene.tint([p(0, 0), p(0, 1)], RangeName("move"));
+    scene.ranges_shown = Some(RangesShown::new(p(0, 0), 0));
+    scene.clock_ms = 5000;
+    let buf = painted(&kit, &skin, &scene);
+    let grid = skin.grid(&scene, Rect::new(2, 1, 6, 4));
+    let tints = scene.tints();
+    let color = |kind| looks.range(kind);
+    let mut expect = Vec::new();
+    for at in [(0, 0), (0, 1)] {
+        let rect = grid.rect_at(at.0, at.1);
+        expect.extend(show.overlays(
+            &scene,
+            &tints,
+            at,
+            rect,
+            grid.zoom(),
+            ground::LIT,
+            color,
+            grid.bounds(),
+        ));
+    }
+    assert!(!expect.is_empty(), "no outline");
+    let found = buf.overlays();
+    assert!(expect.iter().all(|o| found.contains(o)), "{found:?}");
+    // The tinted skin draws none of them.
+    let plain = painted(&kit, &SpriteSkin::new(terrain(), GLYPH, GLYPH.walk), &scene);
+    assert!(expect.iter().all(|o| !plain.overlays().contains(o)));
+}
+
+#[test]
+fn the_range_lines_are_twice_as_thick_at_twice_the_zoom_and_shown_without_tiles() {
+    use crate::grid::ranges::RangeShow;
+    let kit = Kit::new();
+    let show = RangeShow::TINT.outlined();
+    let mut scene = plains();
+    scene.tint([p(0, 0)], RangeName("move"));
+    let glyph = GLYPH.with_range_show(show);
+    let zoomable =
+        SpriteSkin::new(Some(tiles(kit.tiles_image())), glyph, GLYPH.walk).with_zooms(&[1, 2]);
+    let thickness = |skin: &dyn GridSkin<Piece>, area| {
+        let mut buf = blank();
+        let cards = Cards { card: kit.card() };
+        skin.paint(&kit.looks(), &scene, area, &cards, &mut buf);
+        let lines: Vec<Overlay> = buf
+            .overlays()
+            .into_iter()
+            .filter(|o| o.rect.w < o.rect.h)
+            .collect();
+        lines.iter().map(|o| o.rect.w).min().expect("an outline")
+    };
+    assert_eq!(thickness(&zoomable, Rect::new(0, 0, 9, 5)), 1);
+    let twice = GridSkin::<Piece>::at_zoom(&zoomable, 2).unwrap();
+    assert_eq!(thickness(twice.as_ref(), Rect::new(0, 0, 18, 10)), 2);
+    // With no terrain tiles, on the glyph skin's ground: outlined still.
+    let bare = SpriteSkin::new(None, glyph, GLYPH.walk);
+    assert_eq!(thickness(&bare, Rect::new(0, 0, 9, 5)), 1);
+}
