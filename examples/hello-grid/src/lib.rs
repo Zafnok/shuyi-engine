@@ -246,17 +246,34 @@ pub fn made() -> Made {
         .clone()
 }
 
+/// What the game's first frame reads, each a file or a folder (ADR-0128
+/// §3): its pack lays them first, in this order ([`bake`]), and its load
+/// waits until they have arrived where they arrive in time (the web, where
+/// the page streams the pack), counting them on its card. Whatever else a
+/// pack holds comes after them.
+pub const FIRST: &[&str] = &[
+    "en.ron",
+    "keymap.ron",
+    "palette.ron",
+    DIALOGUE,
+    "stage.map",
+    "font",
+    "tiles.png",
+];
+
 /// What `cargo shuyi bake` bakes of the game: every text file it loads.
 /// Its pictures stay as they are: the platform draws them, and the font
-/// atlas's format reads its picture beside it.
+/// atlas's format reads its picture beside it. What its first frame reads
+/// is laid first ([`FIRST`]).
 pub fn bake() -> Bake {
-    Bake::new(PACK_STAMP)
+    let bake = Bake::new(PACK_STAMP)
         .asset::<English>("en.ron")
         .asset::<KeymapDef<Action>>("keymap.ron")
         .asset::<PaletteDef>("palette.ron")
         .asset::<DialogueFile>(DIALOGUE)
         .asset::<GridMap<TerrainId, Feature>>("stage.map")
-        .asset::<FontAtlasDef>(FONT_RON)
+        .asset::<FontAtlasDef>(FONT_RON);
+    FIRST.iter().fold(bake, |bake, first| bake.first(first))
 }
 
 /// What `cargo shuyi bake` bakes for a one-bit target: [`bake`], and

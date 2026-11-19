@@ -399,7 +399,10 @@ impl Bake {
 
     /// This bake, laying the files under folder `dir` (`title/` or `title`)
     /// at the front of the pack, after those of the folders named before it
-    /// (ADR-0128 §3): a game names the folders its first frame reads, and
+    /// (ADR-0128 §3); a `dir` that is a file's path (`en.ron`) lays that
+    /// file, a group of one, for a game that keeps files its first frame
+    /// reads beside the others. A game names the folders its first frame
+    /// reads, and
     /// a page that streams the pack in its order starts once they have
     /// arrived ([`Bundle::arrived`]). A file under two named folders goes
     /// with the first, a folder named twice is laid where first named, and

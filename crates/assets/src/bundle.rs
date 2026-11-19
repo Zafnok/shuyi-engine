@@ -699,7 +699,8 @@ impl Bundle {
     }
 
     /// Whether every file under folder `dir` (`title` or `title/`; `""` for
-    /// the whole bundle) can be read now, in every layer this thread reads
+    /// the whole bundle), and the file at `dir` if there is one (`en.ron`),
+    /// can be read now, in every layer this thread reads
     /// (ADR-0128 §3). A layer read whole has every file at once; a layer
     /// over a pack's [`Source`](crate::pack::Source) has them once the
     /// folder's span has arrived, if the pack lays it first

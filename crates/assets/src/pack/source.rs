@@ -11,7 +11,7 @@ use once_cell::race::OnceBox;
 use core::panic::RefUnwindSafe;
 use core::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
-use super::{Codec, Index, Kept, PackError, checked, folder, under};
+use super::{Codec, Index, Kept, PackError, checked, folder, in_group};
 use crate::bundle::{Files, Layer, Unread};
 
 /// Where a layer read file by file finds a pack's bytes: a backend's file
@@ -196,8 +196,9 @@ impl SourceFiles {
         (0..self.files.len()).map(|at| self.path(at))
     }
 
-    /// Whether every file under folder `dir` can be read from the source
-    /// now: its span, if the pack lays it first, else each file under it.
+    /// Whether every file under folder `dir`, or the file at `dir`, can be
+    /// read from the source now: its span, if the pack lays it first, else
+    /// each file under it.
     /// A file that can't be read for another reason (its read failed, or its
     /// bytes are refused) has arrived all the same.
     pub(crate) fn arrived(&self, dir: &str) -> bool {
@@ -206,7 +207,7 @@ impl SourceFiles {
             return self.source.arrived(span.at, span.length);
         }
         (0..self.files.len())
-            .filter(|&at| under(self.path(at), dir))
+            .filter(|&at| in_group(self.path(at), dir))
             .all(|at| {
                 let file = &self.files[at];
                 self.source

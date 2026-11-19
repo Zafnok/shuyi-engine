@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%TITLE%</title>
 <link rel="license" href="NOTICES.txt">
+<!-- The game's .wasm, fetched from the start, beside its pack (3318): the
+     game's `load` below takes this fetch over once the pack's index has
+     arrived. `crossorigin` makes it the fetch `load` makes. -->
+<link rel="preload" href="%WASM%" as="fetch" crossorigin>
 <style>
   html, body {
     margin: 0;
@@ -73,8 +77,9 @@
 <!-- Files from the page (3069): its sessionStorage's files laid over the
      game's, and its problems sent back; our own plugin, after sapp_jsutils.js. -->
 <script src="page-files.js"></script>
-<!-- The pack beside the page (3300): a release export's files, baked, fetched
-     once before the game starts; our own plugin, after sapp_jsutils.js. -->
+<!-- The pack beside the page (3300, 3318): a release export's files, baked,
+     streamed in the order the bake laid them, the game started once their
+     index has arrived; our own plugin, after sapp_jsutils.js. -->
 <script src="pack-file.js"></script>
 <script>
   // Note: `mq_js_bundle.js` already declares a top-level `canvas` (and runs
@@ -95,8 +100,10 @@
       event.preventDefault();
     }
   }, false);
-  // A release export names its pack (`%PACK%`); a build that embeds its
-  // files names none, and the game starts at once.
+  // A release export names its pack (`%PACK%`), and the game starts once
+  // the pack's index has arrived, its .wasm fetched meanwhile (the preload
+  // above); a build that embeds its files names none, and the game starts
+  // at once.
   shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); });
 </script>
 </body>

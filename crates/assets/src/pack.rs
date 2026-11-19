@@ -245,6 +245,13 @@ pub(crate) fn under(path: &str, dir: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
+/// Whether the file at `path` is in the group `dir` names (with no `/` at
+/// its end) when it is laid first ([`Bake::first`]): under the folder, or
+/// the file at that path itself, a group of one.
+pub(crate) fn in_group(path: &str, dir: &str) -> bool {
+    path == dir || under(path, dir)
+}
+
 /// Folder `dir` as a span names it: with no `/` at its end.
 pub(crate) fn folder(dir: &str) -> &str {
     dir.trim_end_matches('/')
@@ -272,7 +279,7 @@ fn grouped(paths: &[&str], first: &[String]) -> (Vec<usize>, Vec<usize>) {
     let group_of = |path: &str| {
         first
             .iter()
-            .position(|dir| under(path, dir))
+            .position(|dir| in_group(path, dir))
             .unwrap_or(first.len())
     };
     let groups: Vec<usize> = paths.iter().map(|path| group_of(path)).collect();
@@ -486,7 +493,7 @@ fn spans_of(files: &[RawFile<'_>], offsets: &[u64], first: &[String]) -> Vec<Spa
         .map(|dir| {
             let (mut start, mut end) = (u64::MAX, 0);
             for (file, &offset) in files.iter().zip(offsets) {
-                if under(&file.path, dir) {
+                if in_group(&file.path, dir) {
                     start = start.min(offset);
                     end = end.max(offset + file.kept.len() as u64);
                 }
@@ -674,7 +681,7 @@ fn check_listing(listing: &Listing) -> Result<(), PackError> {
 /// Whether the spans of `listing` hold together, its files' bytes ending at
 /// `data_end`: no more than [`MAX_FIRST`], each folder once and with no `/`
 /// at its end, each ending by `data_end` and holding every file under its
-/// folder.
+/// folder, or the file it names.
 fn check_spans(listing: &Listing, data_end: u64) -> Result<(), PackError> {
     let spans = &listing.spans;
     if spans.len() > MAX_FIRST {
@@ -703,9 +710,15 @@ fn check_spans(listing: &Listing, data_end: u64) -> Result<(), PackError> {
             let prefix = format!("{dir}/");
             entries.partition_point(|entry| entry.path < prefix)
         };
+        // A span may name a file, laid first alone ([`in_group`]).
+        let file = entries
+            .binary_search_by(|entry| entry.path.as_str().cmp(dir))
+            .ok()
+            .map(|at| &entries[at]);
         let outside = entries[start..]
             .iter()
             .take_while(|entry| under(&entry.path, dir))
+            .chain(file)
             .find(|entry| entry.offset < span.offset || entry.offset + entry.stored > end);
         if let Some(entry) = outside {
             return Err(broken(format!(

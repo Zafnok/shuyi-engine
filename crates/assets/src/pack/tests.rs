@@ -841,6 +841,8 @@ fn a_file_lz4_cant_make_smaller_is_stored_and_borrowed() {
 fn a_pack_of_a_stored_a_compressed_and_a_baked_file_is_pinned() {
     // Taken before `write` borrowed raw files again (2098): how a file's
     // bytes are held while the pack is assembled changes no byte of it.
+    // Taken again when a file could be laid first alone (3318): the baked
+    // file is laid before the others.
     let noise: Vec<u8> = (0..64_u8).map(|i| i.wrapping_mul(73) ^ 0x5a).collect();
     assert!(lz4_flex::block::compress(&noise).len() >= noise.len());
     let files = BTreeMap::from([
