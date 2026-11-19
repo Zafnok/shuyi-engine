@@ -32,6 +32,9 @@ const BELOW_PANEL: i32 = 3;
 /// Panel rows that aren't the screen's rows: the top border, a blank row
 /// under it and the bottom border.
 const PANEL_FRAME_H: i32 = 3;
+/// Rows the tallest panel leaves to the rest: those above [`TOP_MIN`] and
+/// [`BELOW_PANEL`]'s.
+const OFF_PANEL: i32 = TOP_MIN + BELOW_PANEL;
 /// Cells in a volume's bar.
 const VOLUME_BAR: u8 = 10;
 /// Cells of the number box, inside its highlight.
@@ -54,7 +57,8 @@ pub fn volume_text(level: u8, max: u8) -> String {
 /// width and no wider than it; no taller than leaves room for the message
 /// under it, unless its rows and the blank rows between their groups need
 /// more. A panel taller than that rises into the rows above [`PANEL`]'s
-/// top (to [`TOP_MIN`] at the highest), so the message still fits.
+/// top (to [`TOP_MIN`] at the highest), so the message still fits; at
+/// [`TOP_MIN`] it grows no more, and its rows scroll ([`first_shown`]).
 fn panel(view: &OptionsView, buf: &GlyphBuffer) -> Rect {
     let width = i32::from(buf.width());
     let w = PANEL.w.min(width);
@@ -62,11 +66,40 @@ fn panel(view: &OptionsView, buf: &GlyphBuffer) -> Rect {
     // still fits its message without rising.
     let fits = i32::from(buf.height()) - PANEL.y - BELOW_PANEL;
     let room = fits - 1;
-    let gaps = view.rows.iter().filter(|r| r.starts_group).count();
-    let lines = i32::try_from(view.rows.len() + gaps).unwrap_or(i32::MAX);
-    let h = PANEL.h.min(room).max(lines.saturating_add(PANEL_FRAME_H));
+    // The tallest panel: from TOP_MIN to the message's blank row, with a
+    // row for a line at the least.
+    let most = (i32::from(buf.height()) - OFF_PANEL).max(PANEL_FRAME_H + 1);
+    let lines = i32::try_from(lines(view).len()).unwrap_or(i32::MAX);
+    let h = PANEL
+        .h
+        .min(room)
+        .max(lines.saturating_add(PANEL_FRAME_H))
+        .min(most);
     let y = PANEL.y - (h - fits).clamp(0, PANEL.y - TOP_MIN);
     Rect::new((width - w) / 2, y, w, h)
+}
+
+/// The panel's lines, top to bottom: a row, or `None` for the blank line
+/// before a group.
+fn lines(view: &OptionsView) -> Vec<Option<&RowView>> {
+    let mut lines = Vec::with_capacity(view.rows.len() * 2);
+    for row in &view.rows {
+        if row.starts_group {
+            lines.push(None);
+        }
+        lines.push(Some(row));
+    }
+    lines
+}
+
+/// The first of `lines` the panel shows, with `room` lines for them: the
+/// first line while the focused row fits under it, else the line that
+/// puts the focused row on the panel's last line (as the Key bindings
+/// screen scrolls).
+fn first_shown(lines: &[Option<&RowView>], room: usize) -> usize {
+    let focus = lines.iter().position(|l| l.is_some_and(|r| r.focused));
+    let last = lines.len().saturating_sub(room);
+    focus.map_or(0, |f| (f + 1).saturating_sub(room)).min(last)
 }
 
 /// Paints `view` over the whole of `buf`.
@@ -81,13 +114,22 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
         .with_title(c(EngineColor::Highlight));
     buf.panel(panel, &look, Some(&view.title));
 
-    let mut y = panel.y + 2;
-    for row in &view.rows {
-        if row.starts_group {
-            y += 1;
+    let lines = lines(view);
+    let room = usize::try_from(panel.h - PANEL_FRAME_H).unwrap_or(0);
+    let first = first_shown(&lines, room);
+    let top = panel.y + 2;
+    for (y, line) in (top..).zip(lines.iter().skip(first).take(room)) {
+        if let Some(row) = line {
+            paint_row(ctx, buf, row, panel, y);
         }
-        paint_row(ctx, buf, row, panel, y);
-        y += 1;
+    }
+    // A mark on the right border where rows are hidden above or below.
+    let (right, border) = (panel.x + panel.w - 1, c(EngineColor::Border));
+    if first > 0 {
+        buf.print(right, top, "▲", border, bg);
+    }
+    if first + room < lines.len() {
+        buf.print(right, panel.y + panel.h - 2, "▼", border, bg);
     }
 
     if let Some(message) = &view.message {
@@ -370,6 +412,116 @@ mod tests {
             .collect();
         let v = view(rows);
         assert!(painted_row(&c, &v, 0).starts_with('┌'));
+    }
+
+    /// `count` rows, the one at `focus` focused, two group gaps, and a
+    /// message.
+    fn long_view(count: usize, focus: usize) -> OptionsView {
+        let mut rows: Vec<RowView> = (0..count)
+            .map(|i| row(&format!("Row {i}"), ValueView::None, i == focus))
+            .collect();
+        rows[12].starts_group = true;
+        rows[16].starts_group = true;
+        let mut v = view(rows);
+        v.message = Some("Defaults restored".to_owned());
+        v
+    }
+
+    /// Rows that don't fit between the top row and the message scroll:
+    /// the panel stays at the top, the message and the help line under it,
+    /// and a mark on the right border says rows are hidden.
+    #[test]
+    fn rows_that_dont_fit_scroll_and_leave_the_message_its_row() {
+        let c = ctx();
+        // 28 rows and two gaps: 30 lines for the 26 the tallest panel holds.
+        let v = long_view(28, 0);
+        assert!(painted_row(&c, &v, 0).starts_with('┌'));
+        assert!(painted_row(&c, &v, 2).starts_with("│   Row 0"));
+        assert!(!painted_row(&c, &v, 2).ends_with('▲'));
+        assert!(
+            painted_row(&c, &v, 27).ends_with('▼'),
+            "{}",
+            painted_row(&c, &v, 27)
+        );
+        assert!(painted_row(&c, &v, 28).starts_with('└'));
+        assert_eq!(painted_row(&c, &v, 29), "");
+        assert_eq!(painted_row(&c, &v, 30), "Defaults restored");
+        assert_eq!(painted_row(&c, &v, 31), "help");
+        // The last row focused: the list ends on the panel's last line.
+        let v = long_view(28, 27);
+        assert!(painted_row(&c, &v, 2).ends_with('▲'));
+        // On the border's own cell.
+        let black = c.palette.engine(EngineColor::Background);
+        let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+        paint(&c, &v, &mut buf);
+        let right = PANEL.x + PANEL.w - 1;
+        assert_eq!(buf.get(right, 2).map(|cell| cell.glyph), Some('▲'));
+        assert_eq!(buf.get(right, 3).map(|cell| cell.glyph), Some('│'));
+        let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+        paint(&c, &long_view(28, 0), &mut buf);
+        assert_eq!(buf.get(right, 27).map(|cell| cell.glyph), Some('▼'));
+        assert!(
+            painted_row(&c, &v, 27).starts_with("│  ")
+                && painted_row(&c, &v, 27).contains(" Row 27 ")
+        );
+        assert!(!painted_row(&c, &v, 27).ends_with('▼'));
+        assert!(painted_row(&c, &v, 28).starts_with('└'));
+        assert_eq!(painted_row(&c, &v, 30), "Defaults restored");
+    }
+
+    /// Wherever the focus is, its row is on the panel, between the top
+    /// border's blank row and the bottom border, and the message shows.
+    #[test]
+    fn the_focused_row_is_always_on_the_panel() {
+        let c = ctx();
+        let black = c.palette.engine(EngineColor::Background);
+        let bar = c.palette.engine(EngineColor::Focus);
+        for focus in 0..28 {
+            let v = long_view(28, focus);
+            let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+            paint(&c, &v, &mut buf);
+            // The rows whose label is the focus bar.
+            let x = PANEL.x + LABEL_DX;
+            let lit: Vec<i32> = (0..i32::from(PC.rows))
+                .filter(|&y| buf.get(x, y).is_some_and(|cell| cell.bg == bar))
+                .collect();
+            assert_eq!(lit.len(), 1, "{focus}");
+            let y = lit[0];
+            assert!((2..28).contains(&y), "{focus} at {y}");
+            assert!(painted_row(&c, &v, y).contains(&format!(" Row {focus} ")));
+            assert_eq!(painted_row(&c, &v, 30), "Defaults restored", "{focus}");
+        }
+        // Down to a row that fits doesn't scroll: Row 0 still on top.
+        let v = long_view(28, 20);
+        assert!(painted_row(&c, &v, 2).starts_with("│   Row 0"));
+    }
+
+    /// On a console too short for any row under the message, the panel
+    /// still has a line for one.
+    #[test]
+    fn on_a_tiny_console_the_panel_keeps_a_line() {
+        let c = ctx();
+        let black = c.palette.engine(EngineColor::Background);
+        let buf = GlyphBuffer::with_spec(ConsoleSpec::text(48, 6), Cell::new(' ', black, black));
+        assert_eq!(panel(&long_view(28, 0), &buf).h, PANEL_FRAME_H + 1);
+    }
+
+    #[test]
+    fn first_shown_keeps_the_focus_on_the_last_line_at_most() {
+        let r = row("Row", ValueView::None, true);
+        let other = row("Row", ValueView::None, false);
+        let lines = |focus: usize, len: usize| -> Vec<Option<&RowView>> {
+            (0..len)
+                .map(|i| Some(if i == focus { &r } else { &other }))
+                .collect()
+        };
+        assert_eq!(first_shown(&lines(0, 10), 4), 0);
+        assert_eq!(first_shown(&lines(3, 10), 4), 0);
+        assert_eq!(first_shown(&lines(4, 10), 4), 1);
+        assert_eq!(first_shown(&lines(9, 10), 4), 6);
+        // All of them fit, or none focused: from the first.
+        assert_eq!(first_shown(&lines(9, 10), 12), 0);
+        assert_eq!(first_shown(&lines(20, 10), 4), 0);
     }
 
     #[test]
