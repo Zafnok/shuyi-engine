@@ -515,9 +515,9 @@ fn assert_the_ci_runs_the_part_and_keeps_its_files(
     let cargo = ci.find("run: cargo").unwrap();
     assert!(step < cargo, "the step runs before the first cargo command");
     assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
-    // A release's packages hold the private files: its caller says the
-    // release publishes them anyway (ticket 3050), or the repository is
-    // private.
+    // A release's packages hold the private files: its caller asks for
+    // them on a tag, which a public repository's export.yml seals first
+    // (ADR-0133), or in a private repository.
     let release = text(private, RELEASE_WORKFLOW);
     assert!(release.contains(
         "upload-private: ${{ github.event_name == 'push' || github.event.repository.private }}"
@@ -1052,9 +1052,17 @@ const NO_PRIVATE_FILES: &str = "hashFiles('.github/actions/private-files/action.
 /// The private files' action, as a step's `uses:`.
 const PRIVATE_FILES_ACTION: &str = "./.github/actions/private-files";
 
-/// The inputs that may open an upload in a job with the private files: the
-/// caller's word that the package is published anyway (ADR-0114 §3).
-const UPLOAD_INPUTS: &[&str] = &["inputs.upload-private"];
+/// The conditions that may open a plain upload in a job with the private
+/// files: the caller's word that a release needs the package, in a private
+/// repository, whose artifacts only its own people read (ADR-0133 §3).
+const UPLOAD_INPUTS: &[&str] = &["inputs.upload-private && github.event.repository.private"];
+
+/// The step of export.yml that seals a public repository's package before
+/// its upload (ADR-0133 §3).
+const SEAL_STEP: &str = "Seal the package";
+
+/// The folder below the game's that holds the sealed files, and only them.
+const SEALED_DIR: &str = "/dist/sealed/";
 
 /// A workflow the test reads: the game it is in (its short name) or
 /// `engine`, its path there, and its YAML.
@@ -1200,22 +1208,42 @@ fn private_files_leaks(workflows: &[Workflow]) -> Vec<String> {
             for event in &unsafe_events {
                 leaks.push(format!("{at} checks out the private files on {event}"));
             }
-            for (i, step) in steps_of(job).iter().enumerate() {
+            let steps = steps_of(job);
+            for (i, step) in steps.iter().enumerate() {
                 let label = [step.get("name"), step.get("uses"), step.get("run")]
                     .into_iter()
                     .map(text_of)
                     .find(|t| !t.is_empty())
                     .unwrap_or_default();
                 let at = format!("{at}: step {} ({label})", i + 1);
-                leaks.extend(step_leak(step).map(|why| format!("{at} {why}")));
+                leaks.extend(step_leak(step, &steps[..i]).map(|why| format!("{at} {why}")));
             }
         }
     }
     leaks
 }
 
-/// How one step of a job with the private files lets them out, if it does.
-fn step_leak(step: &serde_norway::Value) -> Option<String> {
+/// Whether an upload takes only sealed files: every path in the sealed
+/// folder, after a step that seals them under the same `if:`.
+fn uploads_sealed(step: &serde_norway::Value, earlier: &[serde_norway::Value]) -> bool {
+    let condition = text_of(step.get("if"));
+    let paths = text_of(step.get("with").and_then(|w| w.get("path")));
+    let only_sealed = !paths.trim().is_empty()
+        && paths
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .all(|line| line.contains(SEALED_DIR));
+    let sealed_first = earlier.iter().any(|seal| {
+        text_of(seal.get("name")) == SEAL_STEP
+            && text_of(seal.get("if")) == condition
+            && text_of(seal.get("run")).contains("openssl enc -aes-256-cbc")
+    });
+    !condition.is_empty() && only_sealed && sealed_first
+}
+
+/// How one step of a job with the private files lets them out, if it does,
+/// after the job's `earlier` steps.
+fn step_leak(step: &serde_norway::Value, earlier: &[serde_norway::Value]) -> Option<String> {
     let action = text_of(step.get("uses"))
         .split('@')
         .next()
@@ -1243,10 +1271,11 @@ fn step_leak(step: &serde_norway::Value) -> Option<String> {
                 .split("||")
                 .map(str::trim)
                 .all(|c| c == NO_PRIVATE_FILES || UPLOAD_INPUTS.contains(&c));
-        return (!guarded).then(|| {
+        return (!guarded && !uploads_sealed(step, earlier)).then(|| {
             format!(
                 "uploads an artifact, and its if: isn't {NO_PRIVATE_FILES} or one of \
-                 {UPLOAD_INPUTS:?}: `{condition}`"
+                 {UPLOAD_INPUTS:?}, nor does it take only what `{SEAL_STEP}` sealed: \
+                 `{condition}`"
             )
         });
     }
@@ -1271,12 +1300,8 @@ fn files_under(dir: &Path) -> Vec<std::path::PathBuf> {
 fn every_job_with_the_private_files_caches_no_build_and_uploads_none() {
     let template = built_in();
     let mut games = every_short_names_game();
-    let mut input = private_input(Some("yes"), Some("https://github.com/o/g-assets.git"));
-    input.template = Some("grid".to_owned());
-    let (private, _) = plan(&engine_checkout(), &template, &input, "Moon", "moon")
-        .unwrap_or_else(|(_, e)| panic!("{e}"));
     let private_name = "grid, private-files=yes";
-    games.push((private_name.to_owned(), private));
+    games.push((private_name.to_owned(), private_grid_game()));
 
     let mut workflows = Vec::new();
     for (short, plan) in &games {
@@ -1408,7 +1433,9 @@ fn each_rule_on_a_job_with_the_private_files_refuses_its_leak() {
     let good = format!(
         "{}{}{}",
         rust_cache(&guard),
-        upload(&format!("inputs.upload-private || {NO_PRIVATE_FILES}")),
+        upload(&format!(
+            "inputs.upload-private && github.event.repository.private || {NO_PRIVATE_FILES}"
+        )),
         upload(&guard)
     );
     assert_kept(&private_job("pull_request", &good));
@@ -1426,17 +1453,55 @@ fn each_rule_on_a_job_with_the_private_files_refuses_its_leak() {
         "caches target/",
     );
     // An upload with no if:, or one opened by anything else.
+    // A release's plain package of a public repository (3050's) is one too.
     for condition in [
         String::new(),
         "always()".to_owned(),
         "inputs.upload-private || always()".to_owned(),
         "inputs.other".to_owned(),
         format!("{NO_PRIVATE_FILES} && always()"),
+        format!("inputs.upload-private || {NO_PRIVATE_FILES}"),
+        "inputs.upload-private".to_owned(),
     ] {
         assert_refused(
             &private_job("pull_request", &upload(&condition)),
             "uploads an artifact",
         );
+    }
+    // A sealed upload: kept after its seal, under the same if:, of the
+    // sealed folder only.
+    let when = "inputs.upload-private && !github.event.repository.private";
+    let seal = |condition: &str| {
+        format!(
+            "      - name: {SEAL_STEP}\n        if: {condition}\n        run: openssl enc \
+             -aes-256-cbc -in a -out dist/sealed/a.sealed\n"
+        )
+    };
+    let sealed_upload = |path: &str| {
+        format!(
+            "      - name: Upload\n        if: {when}\n        uses: \
+             actions/upload-artifact@v7\n        with:\n          path: {path}\n"
+        )
+    };
+    let sealed = "${{ inputs.dir }}/dist/sealed/${{ inputs.target }}/";
+    assert_kept(&private_job(
+        "workflow_call",
+        &format!("{}{}", seal(when), sealed_upload(sealed)),
+    ));
+    for steps in [
+        sealed_upload(sealed),
+        format!("{}{}", sealed_upload(sealed), seal(when)),
+        format!("{}{}", seal("always()"), sealed_upload(sealed)),
+        format!("{}{}", seal(when), sealed_upload("dist/export/")),
+        format!(
+            "{}{}",
+            seal(when),
+            sealed_upload(&format!(
+                "|\n            {sealed}\n            dist/export/*.zip"
+            ))
+        ),
+    ] {
+        assert_refused(&private_job("workflow_call", &steps), "uploads an artifact");
     }
     assert_refused(
         &private_job(
@@ -1471,6 +1536,221 @@ fn each_rule_on_a_job_with_the_private_files_refuses_its_leak() {
     // A job without the private files' step isn't held to them.
     assert_kept(
         "on: pull_request_target\njobs:\n  a:\n    steps:\n      - uses: actions/cache@v4\n",
+    );
+}
+
+/// The grid game with private files.
+fn private_grid_game() -> Plan {
+    let mut input = private_input(Some("yes"), Some("https://github.com/o/g-assets.git"));
+    input.template = Some("grid".to_owned());
+    plan(&engine_checkout(), &built_in(), &input, "Moon", "moon")
+        .unwrap_or_else(|(_, e)| panic!("{e}"))
+        .0
+}
+
+/// The grid game with private files' workflow at `path`.
+fn private_grid_workflow(path: &str) -> Workflow {
+    let game = private_grid_game();
+    Workflow::parse(
+        "grid, private-files=yes",
+        path,
+        &game.files[Path::new(path)],
+    )
+}
+
+/// The job `name` of `workflow`.
+fn job_named<'a>(workflow: &'a Workflow, name: &str) -> &'a serde_norway::Value {
+    workflow
+        .jobs()
+        .into_iter()
+        .find(|(job, _)| *job == name)
+        .unwrap_or_else(|| panic!("{}: no job {name}", workflow.path))
+        .1
+}
+
+/// The index and the step named `name` of `job`.
+fn step_named<'a>(job: &'a serde_norway::Value, name: &str) -> (usize, &'a serde_norway::Value) {
+    steps_of(job)
+        .iter()
+        .enumerate()
+        .find(|(_, step)| text_of(step.get("name")) == name)
+        .unwrap_or_else(|| panic!("no step {name}"))
+}
+
+/// The `openssl enc` options of a script, one per word, without `-d`
+/// (opening) and `-salt` (sealing's default, said aloud), and without the
+/// files it reads and writes.
+fn openssl_options(script: &str) -> Vec<&str> {
+    let at = script
+        .find("openssl enc")
+        .unwrap_or_else(|| panic!("no openssl enc: {script}"));
+    script[at + "openssl enc".len()..]
+        .split_whitespace()
+        .take_while(|word| *word != "-in")
+        .filter(|word| !["-d", "-salt", "\\"].contains(word))
+        .collect()
+}
+
+#[test]
+fn a_release_publishes_nowhere_by_default_and_never_a_debug_file() {
+    let workflow = private_grid_workflow(RELEASE_WORKFLOW);
+    let release = job_named(&workflow, "release");
+
+    // The debug files are moved to debug/ first; everything left goes to
+    // release/, the folder the release publishes.
+    let (files_at, files) = step_named(release, "The files and their checksums");
+    let run = text_of(files.get("run"));
+    let to_debug = run
+        .find("find artifacts -type f -name '*.debug' -exec mv -n {} debug/ \\;")
+        .unwrap_or_else(|| panic!("the debug files aren't moved to debug/: {run}"));
+    let to_release = run
+        .find("find artifacts -type f ! -name '*.json' -exec mv -n {} release/ \\;")
+        .unwrap_or_else(|| panic!("the packages aren't moved to release/: {run}"));
+    assert!(to_debug < to_release, "{run}");
+    for (i, step) in steps_of(release).iter().enumerate() {
+        let run = text_of(step.get("run"));
+        if i != files_at {
+            assert!(
+                !run.contains("mv ") && !run.contains("cp "),
+                "only the files' step moves files: {run}"
+            );
+        }
+        assert!(!run.contains("gh release edit"), "{run}");
+        assert!(!run.contains("--draft=false"), "{run}");
+    }
+
+    // The tag's release: a draft unless the developer asks for a public one
+    // (`PUBLISH_ON_GITHUB`), or the repository is private.
+    assert_eq!(
+        text_of(release.get("env").and_then(|env| env.get("PUBLISH"))),
+        "${{ vars.PUBLISH_ON_GITHUB == 'true' || github.event.repository.private }}"
+    );
+    let (_, publish) = step_named(release, "Release");
+    let run = text_of(publish.get("run"));
+    assert!(
+        run.contains("if [ \"$PUBLISH\" != true ]; then\n  flags+=(--draft)\nfi"),
+        "{run}"
+    );
+    assert!(
+        run.contains(
+            "gh release create \"$TAG\" --verify-tag --notes-file notes.md \"${flags[@]}\" \
+             release/*\n"
+        ),
+        "{run}"
+    );
+    assert!(!run.contains("debug/"), "{run}");
+
+    // The debug files: a draft of their own, which nothing publishes.
+    let (debug_at, debug) = step_named(release, "The debug files' draft");
+    let run = text_of(debug.get("run"));
+    assert!(run.contains("files=(debug/*)"), "{run}");
+    assert!(run.contains("draft=\"$TAG-debug\""), "{run}");
+    assert!(
+        run.contains("gh release create \"$draft\" --draft --target \"$GITHUB_SHA\""),
+        "{run}"
+    );
+    assert!(debug_at > files_at);
+
+    // Both jobs that read the packages open the sealed ones first, with
+    // the key that sealed them and the same cipher.
+    let export = private_grid_workflow(EXPORT_WORKFLOW);
+    let (_, seal) = step_named(job_named(&export, "export"), SEAL_STEP);
+    let sealing = openssl_options(text_of(seal.get("run")));
+    assert_eq!(
+        sealing,
+        [
+            "-aes-256-cbc",
+            "-pbkdf2",
+            "-iter",
+            "100000",
+            "-md",
+            "sha256",
+            "-pass",
+            "env:PRIVATE_ASSETS_KEY"
+        ]
+    );
+    for (job, reads) in [
+        ("release", "The files and their checksums"),
+        ("itch", "Push to itch.io"),
+    ] {
+        let job = job_named(&workflow, job);
+        let (open_at, open) = step_named(job, "Open the sealed files");
+        assert!(open_at < step_named(job, reads).0);
+        let run = text_of(open.get("run"));
+        assert!(run.contains("openssl enc -d"), "{run}");
+        assert_eq!(openssl_options(run), sealing);
+        assert_eq!(
+            text_of(
+                open.get("env")
+                    .and_then(|env| env.get("PRIVATE_ASSETS_KEY"))
+            ),
+            "${{ secrets.PRIVATE_ASSETS_KEY }}"
+        );
+    }
+}
+
+#[test]
+fn a_public_games_package_leaves_its_runner_sealed() {
+    let workflow = private_grid_workflow(EXPORT_WORKFLOW);
+    let export = job_named(&workflow, "export");
+    let public = "inputs.upload-private && !github.event.repository.private && \
+                  hashFiles('.github/actions/private-files/action.yml') != ''";
+
+    // The plain upload: a game without the private files, or a private
+    // repository's release.
+    let (_, plain) = step_named(export, "Upload the package");
+    assert_eq!(
+        text_of(plain.get("if")),
+        format!("{} || {NO_PRIVATE_FILES}", UPLOAD_INPUTS[0])
+    );
+
+    // A public repository's: sealed first, under the same condition, and
+    // only the sealed folder uploaded.
+    let (seal_at, seal) = step_named(export, SEAL_STEP);
+    let (upload_at, upload) = step_named(export, "Upload the sealed package");
+    assert!(seal_at < upload_at);
+    assert_eq!(text_of(seal.get("if")), public);
+    assert_eq!(text_of(upload.get("if")), public);
+    assert!(uploads_sealed(upload, &steps_of(export)[..upload_at]));
+    assert_eq!(
+        text_of(upload.get("with").and_then(|w| w.get("path"))),
+        "${{ inputs.dir }}/dist/sealed/${{ inputs.target }}/"
+    );
+    assert_eq!(
+        text_of(upload.get("with").and_then(|w| w.get("name"))),
+        text_of(plain.get("with").and_then(|w| w.get("name")))
+    );
+    // It seals each package and debug file into the folder, and copies
+    // only the two reports there as they are.
+    let run = text_of(seal.get("run"));
+    assert!(
+        run.contains("for file in \"$out\"/*.zip \"$out\"/*.tar.gz \"$out\"/*.debug; do"),
+        "{run}"
+    );
+    assert!(
+        run.contains("-out \"$sealed/$(basename \"$file\").sealed\""),
+        "{run}"
+    );
+    assert!(
+        run.contains("for report in export-report.json exposure-report.json; do"),
+        "{run}"
+    );
+    assert_eq!(run.matches("cp ").count(), 1, "{run}");
+    assert_eq!(
+        text_of(
+            seal.get("env")
+                .and_then(|env| env.get("PRIVATE_ASSETS_KEY"))
+        ),
+        "${{ secrets.PRIVATE_ASSETS_KEY }}"
+    );
+
+    // A dry run of a public repository uploads none: the release passes
+    // `upload-private` on a tag only, or in a private repository.
+    let release = private_grid_workflow(RELEASE_WORKFLOW);
+    let with = job_named(&release, "export").get("with");
+    assert_eq!(
+        text_of(with.and_then(|w| w.get("upload-private"))),
+        "${{ github.event_name == 'push' || github.event.repository.private }}"
     );
 }
 

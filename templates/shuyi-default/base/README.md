@@ -67,8 +67,18 @@ are missing, and how to add them.
 
 A pushed tag `vX.Y.Z` releases the game (`.github/workflows/release.yml`):
 the gates, then a package for each target CI builds, each on its own
-system, then a GitHub Release of the tag with every package, its debug
-file and `SHA256SUMS`.
+system, then a GitHub Release of the tag with every package and
+`SHA256SUMS`. It publishes nowhere until you say where:
+
+- **The release is a draft,** which only people who can change the game
+  see. Press Publish on it, or download its files for a store. To publish
+  every release on GitHub, a free download for anyone, set the repository
+  variable `PUBLISH_ON_GITHUB` to `true`. A private repository's release
+  is published, and private.
+- **The debug files** (each program before stripping, for crash reports)
+  go in a draft of their own, `vX.Y.Z-debug`, which nothing publishes:
+  `gh release download vX.Y.Z-debug` fetches them. Never publish it.
+- **itch.io,** below, is an option you turn on.
 
 1. Set the version: `app.version` in `shuyi.ron` when the game sets one,
    else `[workspace.package]`'s `version` in `Cargo.toml`. Then run
@@ -87,6 +97,10 @@ file and `SHA256SUMS`.
 
 **A dry run:** in the repository's Actions tab, run the Release workflow
 on a branch: the gates and the packages, with no release.
+
+**Repository variables** are on GitHub's repository page: Settings,
+Secrets and variables, Actions, the Variables tab, New repository
+variable.
 
 **itch.io:** set the repository variable `ITCH_GAME` to `user/game`, and
 the repository secret `BUTLER_API_KEY` to a key of your itch.io account

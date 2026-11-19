@@ -113,6 +113,12 @@ None.
 - **The debug file:** the executable as built before it was stripped,
   with line tables, kept beside the package as `<package>.debug` and
   never shipped. 3004's `shuyi export --release` keeps it.
+  **From 3406 (done):** a game's release from a tag keeps each CI-built
+  debug file in the draft release `<tag>-debug`, which only people who
+  can change the game see and nothing publishes; `gh release download
+  <tag>-debug --repo <owner>/<game>` fetches them (`docs/crash-reports.md`,
+  ADR-0133). `crash --symbols <file>` reads one fetched so; fetching it
+  for the developer is this ticket's to decide.
   `docs/crash-reports.md` says how to make one by hand: build with
   `CARGO_PROFILE_RELEASE_STRIP=false` and
   `CARGO_PROFILE_RELEASE_DEBUG=line-tables-only`, keep that file, and

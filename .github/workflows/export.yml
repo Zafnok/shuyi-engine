@@ -44,11 +44,11 @@ on:
         default: true
       upload-private:
         description: >-
-          Whether to upload a package that holds the game's private files:
-          a release's, which the GitHub Release publishes anyway, or a
-          private repository's. Otherwise such a package isn't uploaded,
-          since anyone signed in to GitHub can download a public
-          repository's artifacts.
+          Whether to upload a package that holds the game's private files,
+          for a release's jobs to publish: a private repository's as it is,
+          a public one's sealed with PRIVATE_ASSETS_KEY, since anyone signed
+          in to GitHub can download a public repository's artifacts.
+          Otherwise such a package isn't uploaded.
         type: boolean
         default: false
     secrets:
@@ -145,8 +145,10 @@ jobs:
             package="$package.zip"
           fi
           echo "Package: $package" >> "$GITHUB_STEP_SUMMARY"
+      # A package without the private files, or a private repository's: as
+      # it is.
       - name: Upload the package
-        if: inputs.upload-private || hashFiles('.github/actions/private-files/action.yml') == ''
+        if: inputs.upload-private && github.event.repository.private || hashFiles('.github/actions/private-files/action.yml') == ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: package-${{ inputs.target }}
@@ -156,6 +158,50 @@ jobs:
             ${{ inputs.dir }}/dist/export/${{ inputs.target }}/*.debug
             ${{ inputs.dir }}/dist/export/${{ inputs.target }}/export-report.json
             ${{ inputs.dir }}/dist/export/${{ inputs.target }}/exposure-report.json
+          if-no-files-found: error
+          retention-days: 7
+      # A public repository's package with the private files leaves the
+      # runner sealed (the engine's ADR-0133): each file `<name>.sealed`,
+      # AES-256 with a key derived from PRIVATE_ASSETS_KEY, which the
+      # release's jobs open. Whoever holds that key reads the private
+      # repository already. The two reports stay as they are.
+      - name: Seal the package
+        if: inputs.upload-private && !github.event.repository.private && hashFiles('.github/actions/private-files/action.yml') != ''
+        env:
+          PRIVATE_ASSETS_KEY: ${{ secrets.PRIVATE_ASSETS_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PRIVATE_ASSETS_KEY" ]; then
+            echo "::error::The secret PRIVATE_ASSETS_KEY is missing, so the package can't be sealed: run \`shuyi repos\` in the game's folder."
+            exit 1
+          fi
+          out="$GAME_DIR/dist/export/$TARGET"
+          sealed="$GAME_DIR/dist/sealed/$TARGET"
+          mkdir -p "$sealed"
+          openssl version
+          count=0
+          for file in "$out"/*.zip "$out"/*.tar.gz "$out"/*.debug; do
+            [ -f "$file" ] || continue
+            openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -salt \
+              -pass env:PRIVATE_ASSETS_KEY -in "$file" -out "$sealed/$(basename "$file").sealed"
+            count=$((count + 1))
+          done
+          if [ "$count" = 0 ]; then
+            echo "::error::$out holds no package to seal"
+            exit 1
+          fi
+          for report in export-report.json exposure-report.json; do
+            if [ -f "$out/$report" ]; then
+              cp "$out/$report" "$sealed/"
+            fi
+          done
+          echo "Sealed: $count files, which the release's jobs open." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the sealed package
+        if: inputs.upload-private && !github.event.repository.private && hashFiles('.github/actions/private-files/action.yml') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-${{ inputs.target }}
+          path: ${{ inputs.dir }}/dist/sealed/${{ inputs.target }}/
           if-no-files-found: error
           retention-days: 7
       - name: Not uploaded

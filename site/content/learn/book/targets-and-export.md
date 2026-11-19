@@ -401,7 +401,15 @@ record counts the frames the load waited in as one.
 Your machine builds the packages its own system can. The others come from CI: a game made with
 `shuyi new` has `.github/workflows/release.yml`, and pushing a tag `vX.Y.Z` releases it. CI runs the
 gates, builds each package on its own system, and makes a GitHub Release of the tag with every
-package, its debug file and `SHA256SUMS`.
+package and `SHA256SUMS`.
+
+It publishes nowhere until you say where. The release is a **draft**: only people who can change
+the game see it, and you press Publish when you want it public, or download its files for a store.
+To publish every release on GitHub as a free download, set the repository variable
+`PUBLISH_ON_GITHUB` to `true`. The debug files go in a draft of their own, `v0.1.0-debug`, which
+nothing publishes: `gh release download v0.1.0-debug` fetches them when a player's crash report
+comes in (*When a player's game crashes*, below). A game whose writing and art are kept private
+hands its packages between CI's jobs sealed, so nobody else can download them from the run.
 
 What it builds is the game's own target list, `shuyi.ron`'s `targets`. Ask before you tag:
 
@@ -421,7 +429,7 @@ export it on a machine that has it. To release:
 A version with a pre-release part (`1.2.0-beta.1`) is a prerelease. Run the Release workflow from
 the repository's Actions tab for a dry run: the packages are built, and nothing is published.
 
-To push each release to itch.io too, set the repository variable `ITCH_GAME` to `user/game` and the
+To push each release to itch.io, set the repository variable `ITCH_GAME` to `user/game` and the
 secret `BUTLER_API_KEY` to a key of your account. Each package goes to its channel (`windows`,
 `linux`, `macos`, `web`); on the game's itch.io page, set the `web` file to be played in the browser
 once. A prerelease isn't pushed.

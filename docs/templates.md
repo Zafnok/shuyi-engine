@@ -321,9 +321,12 @@ that embeds the private files (ADR-0111 §5 as
 [ADR-0130](adr/0130-no-cache-of-a-build-with-the-private-files-and-who-can-read-them.md)
 amends it; `crates/cli/src/contract/new/tests.rs`'s
 `every_job_with_the_private_files_caches_no_build_and_uploads_none`
-reads every workflow to check it), but `export.yml`'s package of a release,
-which the release publishes anyway, or of a private repository
-(ADR-0114): a pull request's run, a fork's too, may
+reads every workflow to check it), but `export.yml`'s package of a release:
+a private repository's as it is, a public one's sealed first with
+`PRIVATE_ASSETS_KEY`, which only the release's jobs open
+([ADR-0133](adr/0133-a-release-publishes-nowhere-by-default-debug-files-in-a-draft-sealed-packages.md)).
+A tag's release is a draft unless the developer asks for a public one,
+and its debug files are in a draft of their own. A pull request's run, a fork's too, may
 restore its base branch's caches, so with the part's action there the
 base's `ci.yml` caches only the cargo registry, not `target/`
 (`rust-cache`'s `cache-targets`). The grid stage's
