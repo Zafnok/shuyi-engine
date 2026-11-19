@@ -57,13 +57,17 @@ What there is:
   book-pad`, `crates/xtask/src/book_pad.rs`), each step's game its own
   build, built again when its files change; there is no `serve.sh`.
 
-**Either order with 2841:** if 2841 is done, a `code` exercise on a page
-served from the book's Codespace (where 2841's `GET /pad/status` answers)
+**From 2841 (done):** a `code` exercise on a page served from the book's
+Codespace (where `GET /pad/status` answers `{"pad":true,"rust":true}`)
 shows **Check my work**, which posts to the book's server's `POST
-/pad/check/<step>/<check>` (added here, in `crates/xtask/src/book_pad.rs`,
-with 2841's `Origin` check) to run this command, and shows its `Done.` or
-`Not yet.` and text as the page's other exercises do, a compile error in
-Problems; if not, nothing to do (2841 adds it).
+/pad/check/<step>/<check>` (added here, in `crates/xtask/src/book_pad.rs`:
+`Server::answer` sends a `POST` under `/pad/file/` or `/pad/reset/` to
+`Server::post`, which checks the `Origin` with `Server::own_origin`; route
+the check's prefix the same way) to run this command, and shows its
+`Done.` or `Not yet.` and text as the page's other exercises do, a compile
+error in Problems. The step's page's playground has its Rust in tabs there
+(`extra.rust`, `static/playground.js`), so the exercise's file can be one
+of them.
 
 ## Nick input
 
@@ -98,8 +102,8 @@ None.
 
 **Out (do not do):**
 - running a Rust exercise's check from the public page (no build
-  server, ADR-0126 §3); from the page the book's Codespace serves, the
-  clause with 2841 says who;
+  server, ADR-0126 §3); from the page the book's Codespace serves, it is
+  done here (the clause from 2841);
 - more than one Rust exercise; the book's later steps can take more in
   their own tickets.
 
