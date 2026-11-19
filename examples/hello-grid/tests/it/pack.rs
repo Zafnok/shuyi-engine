@@ -164,8 +164,14 @@ fn load_over(bundle: Bundle, waits: u32) -> (Option<String>, Option<(u32, u32)>)
         |data, _, _| {
             Err(match data {
                 Ok(_) => "loaded".to_owned(),
-                Err(errors) => errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("
-"),
+                Err(errors) => errors
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(
+                        "
+",
+                    ),
             })
         },
     );
@@ -212,7 +218,10 @@ fn the_load_waits_for_the_first_frames_files_and_reads_them_once_they_arrive() {
     assert_eq!(load_over(bundle, 3), (None, Some((3, of))));
     // The first frame's files, and nothing after them: it loads.
     let (_, bundle) = streaming(first_end);
-    assert_eq!(load_over(bundle, 1), (Some("loaded".to_owned()), Some((of, of))));
+    assert_eq!(
+        load_over(bundle, 1),
+        (Some("loaded".to_owned()), Some((of, of)))
+    );
     // The fetch broke half way through the first frame's files: what
     // waited reads the missing files and says so, and waits no more.
     let (source, bundle) = streaming(span_end);

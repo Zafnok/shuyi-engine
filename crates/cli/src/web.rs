@@ -1882,8 +1882,10 @@ mod tests {
         // no body stream.
         assert!(js.contains("response.body.getReader()"));
         assert!(js.contains("response.arrayBuffer()"));
-        assert!(js.contains("fetch(name)
-"));
+        assert!(js.contains(
+            "fetch(name)
+"
+        ));
         assert!(!js.contains("headers"));
         // The game starts once the header and the index have arrived: the
         // header's length is the pack's (`crates/assets/src/pack.rs`).

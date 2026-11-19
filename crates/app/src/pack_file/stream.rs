@@ -146,9 +146,9 @@ impl Source for Stream {
                 into.copy_from_slice(&state.bytes[range]);
                 Ok(())
             }
-            _ if state.failed.is_some() => {
-                Err(SourceError::Failed(state.failed.clone().unwrap_or_default()))
-            }
+            _ if state.failed.is_some() => Err(SourceError::Failed(
+                state.failed.clone().unwrap_or_default(),
+            )),
             Some(range) if range.end <= state.bytes.len() => Err(SourceError::NotYet),
             _ => Err(SourceError::Failed("past the end of the pack".to_owned())),
         }
@@ -258,7 +258,9 @@ mod tests {
             let mut chunks = self.chunks.borrow_mut();
             let mut wrote = 0;
             while wrote < into.len() {
-                let Some(chunk) = chunks.front_mut() else { break };
+                let Some(chunk) = chunks.front_mut() else {
+                    break;
+                };
                 let count = chunk.len().min(into.len() - wrote);
                 into[wrote..wrote + count].copy_from_slice(&chunk[..count]);
                 wrote += count;

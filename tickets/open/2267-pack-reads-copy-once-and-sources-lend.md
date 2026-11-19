@@ -31,9 +31,10 @@ item T21). Checked in the code on 2026-11-17:
 - **Every read copies, even from bytes the program holds.**
   `pack::Source` has one way to give bytes, `read(at, into: &mut [u8])`
   (`source.rs`, about line 30): it can only copy out. `InMemory` holds
-  the whole pack for the run and copies anyway. 3318 plans the web's
-  source as a buffer of the whole pack leaked for the run, so every read
-  of the web would be a copy and a checksum of a file already in memory.
+  the whole pack for the run and copies anyway. 3318's web source
+  (`Stream`, `crates/app/src/pack_file/stream.rs`) is a buffer of the
+  whole pack leaked for the run, so every read of the web is a copy and a
+  checksum of a file already in memory.
 - **A folder not laid first is found by a scan.** `SourceFiles::arrived`
   (`source.rs`, about lines 203–215) walks every file of the pack and
   keeps those under `dir` when the folder has no span, though `files` is
@@ -92,10 +93,15 @@ None.
   lends lends its stored files); a line in ADR-0128 §2 naming `lend`.
   Completion notes: a `Behaviour:` line (`shuyi-assets`: a layer over
   `InMemory` hands out a stored file `Cow::Borrowed`, not `Owned`).
-- **Either order with 3318:** if 3318 is done, its web source
-  (`crates/app/src/pack_file.rs`) implements `lend` for the bytes that
-  have arrived, with a unit test that a read of an arrived stored file
-  copies nothing; if not, nothing to do (3318 implements `lend`).
+- **From 3318 (done):** its web source (`Stream`,
+  `crates/app/src/pack_file/stream.rs`) implements `lend` for the bytes
+  that have arrived, with a unit test there that a read of an arrived
+  stored file copies nothing. Its buffer sits behind a `Mutex` today, and
+  bytes before `filled` are never written again: lending them as
+  `&'static [u8]` needs the buffer held so that the arrived part can be
+  borrowed while the rest is filled (say the leaked buffer as a raw
+  `&'static` slice split at `filled`), with no `unsafe` beyond what
+  `shuyi-app` already allows for its plugins.
 - **Either order with 3220:** if 3220 is done, `Bundle::lent` lends a
   stored file of a layer whose source lends it (through the same checked
   borrow as `read`), with a test; if not, nothing to do (3220 uses

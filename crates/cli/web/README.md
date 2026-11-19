@@ -13,7 +13,9 @@ itself, so a game needs no copy of its own.
   (`web.title`) for `%TITLE%`, its binary (`web.bin`) for `%WASM%`, and
   for `%PACK%` the pack a packed build reads (`<package>.pack`, a release
   export's), or nothing for a build that embeds its files. It starts the
-  game through `shuyi_fetch_pack`, which fetches that pack first.
+  game through `shuyi_fetch_pack`, which streams that pack and starts the
+  game once its index has arrived; a `<link rel="preload">` fetches the
+  `.wasm` beside it from the start.
   Before the bundle it declares a global `var register_plugin;`: the
   bundle is strict-mode JS and its unused `quad_net` plugin assigns to that
   undeclared global, which otherwise throws an uncaught `ReferenceError`
@@ -47,9 +49,9 @@ itself, so a game needs no copy of its own.
   back, and a check of them the page may ask for. The engine's own code,
   not vendored. See below.
 - `pack-file.js`: the pack beside the page, a miniquad JS plugin that
-  fetches the pack a release export ships (`<package>.pack`) before the
-  game starts and hands its bytes to the game. The engine's own code, not
-  vendored. See below.
+  streams the pack a release export ships (`<package>.pack`), starts the
+  game once its index has arrived, and hands the game the rest as it
+  comes. The engine's own code, not vendored. See below.
 
 In `dist`, each vendored script starts with one line naming its work
 and pointing at the notices, then the committed file:
@@ -254,17 +256,32 @@ version of the crate and update this note. It comes in Dependabot's
 
 - It and `crates/app/src/pack_file.rs` list the same `shuyi_pack_file_*`
   functions and the same plugin version: `shuyi-cli`'s tests fail
-  otherwise. Bytes and strings cross as `sapp_jsutils.js`'s objects, so
-  `index.html` loads it after that file.
-- **Before the game starts:** `index.html` ends with
+  otherwise. Strings cross as `sapp_jsutils.js`'s objects, so
+  `index.html` loads it after that file; bytes are written straight into
+  the game's memory.
+- **Before the game starts:** `index.html` preloads `%WASM%` in its head
+  (`<link rel="preload" as="fetch" crossorigin>`, the fetch miniquad's
+  `load` makes, so `load` takes it over), and ends with
   `shuyi_fetch_pack("%PACK%", function () { load("%WASM%"); })`. With no
-  name the game starts at once; otherwise once the fetch is done, whatever
-  came of it.
+  name the game starts at once; otherwise once the pack's header and index
+  have arrived (the header's bytes 20 to 24 are the index's length), or
+  the fetch has ended or failed, whatever came of it
+  ([ADR-0128](../../../docs/adr/0128-asset-memory-bytes-handed-out-a-pack-read-file-by-file-folders-as-groups.md)
+  §6).
+- **The stream:** a plain GET read with `response.body.getReader()`, no
+  `Range`, so any host serves it; with no body stream, the whole response
+  at once. Each chunk waits in a queue until the game takes it, and then
+  is dropped: the page keeps no copy of the pack.
 - **What the game reads:** `shuyi_app::pack_beside_program(name, stamp)`
-  takes the bytes (`shuyi_pack_file_bytes`), or, when the page has none,
-  what the fetch said (`shuyi_pack_file_problem`: an HTTP status, or that
-  the page named no pack), as its error. A packed game shows it in place of
-  the game ([ADR-0110](../../../docs/adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md)).
+  reads the pack's index from the queue (`shuyi_pack_file_take`, which
+  writes at a pointer and length the game gives), or, when the page has
+  none, what the fetch said (`shuyi_pack_file_problem`: an HTTP status,
+  a network error, or that the page named no pack), as its error. A
+  packed game shows it in place of the game
+  ([ADR-0110](../../../docs/adr/0110-desktop-and-web-exports-ship-a-baked-pack-beside-the-program.md)).
+  Between frames `shuyi-app` takes the rest into the pack's source; once
+  the body has ended (`shuyi_pack_file_ended`) short of the pack's length,
+  or the fetch broke, the source is failed and its missing files say so.
 - A page that fills in `index.html` by hand (CI's render card and sound
   probe) writes nothing for `%PACK%`.
 
