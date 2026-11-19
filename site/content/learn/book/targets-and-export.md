@@ -209,7 +209,7 @@ builds the program with the `packed` feature a new game has, which reads the pac
 it would embed. In a `.app` the pack is in `Contents/Resources`. On the web the page fetches the pack
 and the game's `.wasm` together, starts the game once the pack's index has arrived, and streams the
 rest to it in the order the bake laid it, so name the folders your first frame reads with
-`Bake::first` and let your load wait for them ([the pack](assets-and-formats/#the-pack)). Any web
+`Bake::first` and let your load wait for them ([the pack](@/learn/book/assets-and-formats.md#the-pack)). Any web
 host serves it, even `python -m http.server`. `cargo run` and `cargo shuyi run` still embed the files,
 so you never need a pack to play. A player who copies the program without its pack sees why the game can't start.
 

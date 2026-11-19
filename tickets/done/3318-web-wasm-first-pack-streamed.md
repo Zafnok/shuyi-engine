@@ -219,7 +219,7 @@ None.
   purpose; the game names none, `docs/engine/pins.md`).
 - **The card counts groups, not bytes.** The load counts each of
   `FIRST` arrived (a unit each), then each file read: a game can't see
-  bytes through `Bundle`, and adding that was out of scope.
+  bytes through `Bundle`, and the groups show the same wait.
 - **Waiting for the index:** the ticket's "the plugin asks the Rust
   side, or reads the header's length itself": the plugin reads it.
 - **2267 and 3052** are open: their clauses now read **From 3318
@@ -260,7 +260,7 @@ would split cleanly at the pack's file groups (`in_group`, its tests and
 docs, about 120 lines), which Hello, Grid's move needs and nothing else
 does.
 
-**Follow-ups:** none new. The game's start reads its files without
+**What the game does next:** its start reads its files without
 waiting; game#1298 (blocked by this ticket) lays its first files first
 and waits.
 
@@ -283,7 +283,7 @@ find: ["Pack<'static> = shuyi_app::pack_beside_program"]
 ```
 
 Behaviour: shuyi-app: on the web a release export's page fetches the `.wasm` beside the pack and starts the game once the pack's index has arrived; a file whose bytes haven't arrived reads as missing until they have, so a game that reads its files at start without waiting (`Bundle::arrived`, `Progress::Wait`) sees them missing on a slow link (the game: game#1298)
-Behaviour: shuyi-app: on the web, once the page's fetch of the pack breaks or its body ends short after the game started, every file not yet arrived reads as missing for good, `Layer::problems` lists each once ("its source failed: …"), and `Bundle::arrived` answers true
+Behaviour: shuyi-app: on the web, once the page's fetch of the pack breaks or its body ends short after the game started, every file still to arrive reads as missing for good, `Layer::problems` lists each once ("its source failed: …"), and `Bundle::arrived` answers true
 Behaviour: shuyi-assets: `Bake::first(path)`, `write_first` and `Bundle::arrived(path)` with a file's path lay that file first and ask whether it has arrived (before: nothing was laid, and `arrived` answered true); `Index::read` refuses a pack whose span names a file that lies outside it
 Behaviour: shuyi-cli: the web page's `pack-file.js` is plugin version 2 (`shuyi_pack_file_take`, `shuyi_pack_file_ended`, `shuyi_pack_file_problem`; `shuyi_pack_file_bytes` is gone), and `index.html` preloads the `.wasm`
 
