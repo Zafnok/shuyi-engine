@@ -33,11 +33,11 @@ pub(crate) trait Page {
 /// through its layer ([`Index::into_layer`]). One copy, in the program's
 /// memory, kept for the run.
 pub(crate) struct Stream {
-    state: Mutex<Filled>,
+    state: Mutex<Arrival>,
 }
 
 /// A stream's buffer and how far it is filled.
-struct Filled {
+struct Arrival {
     /// The pack's whole length; its first `filled` bytes have arrived.
     bytes: Box<[u8]>,
     filled: usize,
@@ -60,7 +60,7 @@ impl Stream {
     /// A stream of a pack of `length` bytes, none arrived yet.
     pub(crate) fn new(length: usize) -> Self {
         Self {
-            state: Mutex::new(Filled {
+            state: Mutex::new(Arrival {
                 bytes: vec![0; length].into_boxed_slice(),
                 filled: 0,
                 failed: None,
@@ -70,7 +70,7 @@ impl Stream {
 
     /// Its state. A panic while it was held left nothing half written that
     /// matters: `filled` moves only once the bytes are in.
-    fn state(&self) -> MutexGuard<'_, Filled> {
+    fn state(&self) -> MutexGuard<'_, Arrival> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
@@ -400,11 +400,11 @@ mod tests {
         }
         assert!(bundle.arrived(""));
         assert_eq!(bundle.bytes("a.ron").as_deref(), Some(&big()[..]));
-        assert!(layer.problems().is_empty());
+        assert_eq!(layer.problems(), []);
         // Once full, nothing more is taken.
         page.ended.set(true);
         source.pump(&page);
-        assert!(layer.problems().is_empty());
+        assert_eq!(layer.problems(), []);
     }
 
     #[test]

@@ -129,7 +129,11 @@ fn the_pack_lays_the_first_frames_files_first() {
 
 /// Where the last of the first frame's files ends in the pack of `index`.
 fn first_end(index: &Index) -> u64 {
-    index.spans().map(|(_, range)| range.end).max().unwrap()
+    index
+        .spans()
+        .map(|(_, range)| range.end)
+        .max()
+        .unwrap_or_else(|| panic!("the pack lays the first frame's files first"))
 }
 
 /// The game's pack as the page streams it: its first `filled` bytes have
