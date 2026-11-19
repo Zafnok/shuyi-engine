@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-19
 ---
 
 # 3225 — The options panel's rows scroll when they don't fit above the message
@@ -54,10 +54,10 @@ change.
 
 ## Acceptance criteria
 
-- [ ] With more rows than fit, the message and the help line show.
-- [ ] The focused row is always on the panel.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] With more rows than fit, the message and the help line show.
+- [x] The focused row is always on the panel.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -65,4 +65,15 @@ change.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+`panel()` caps the panel at the rows from `TOP_MIN` to the message's
+blank row; `paint` draws the window of lines `first_shown` picks (the
+first line until the focused row passes the last line, then just enough
+to keep it there, as the Key bindings skin does) and a `▲` / `▼` on the
+right border where lines are hidden. Tests: `first_shown`, a 30-line
+view scrolled at both ends with the message on row 30, and the focused
+row on the panel for every focus.
+
+No API change; a list that fits paints as before (the snapshots are
+unchanged). The game's PR for `game#1301` moves the pin to this one.
+
+Book: no chapter describes the options skin's layout.
