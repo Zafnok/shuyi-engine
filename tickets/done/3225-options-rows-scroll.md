@@ -73,7 +73,9 @@ right border where lines are hidden. Tests: `first_shown`, a 30-line
 view scrolled at both ends with the message on row 30, and the focused
 row on the panel for every focus.
 
+Game: `game#1301` adopts it (its PR moves the pin).
+
 No API change; a list that fits paints as before (the snapshots are
-unchanged). The game's PR for `game#1301` moves the pin to this one.
+unchanged).
 
 Book: no chapter describes the options skin's layout.
