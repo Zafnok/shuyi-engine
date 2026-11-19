@@ -20,7 +20,8 @@ use crate::widgets::ask;
 const PANEL: Rect = Rect::new(20, 3, 60, 20);
 /// Column of the row labels, from the panel's left edge.
 const LABEL_DX: i32 = 4;
-/// Column of the row values, from the panel's left edge.
+/// Column of the row values, from the panel's left edge, at the least: a
+/// longer label moves it right ([`value_dx`]).
 const VALUE_DX: i32 = 30;
 /// The highest the panel's top border rises when its rows need the room
 /// ([`panel`]): the screen's top row (game ticket 0923: a game's rows
@@ -102,6 +103,21 @@ fn first_shown(lines: &[Option<&RowView>], room: usize) -> usize {
     focus.map_or(0, |f| (f + 1).saturating_sub(room)).min(last)
 }
 
+/// The values' column, from the panel's left edge: [`VALUE_DX`], or
+/// further right when the longest of `view`'s labels needs it, so a
+/// focused value's `◄` (two cells left of it) comes after the label and
+/// never covers it (game ticket 1302). All rows, not only those shown, so
+/// the column doesn't move as the list scrolls.
+fn value_dx(view: &OptionsView, buf: &GlyphBuffer) -> i32 {
+    let longest = view
+        .rows
+        .iter()
+        .map(|row| buf.text_cells(&row.label))
+        .max()
+        .unwrap_or(0);
+    VALUE_DX.max(LABEL_DX.saturating_add(longest).saturating_add(2))
+}
+
 /// Paints `view` over the whole of `buf`.
 pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffer) {
     let c = |e| ctx.palette.engine(e);
@@ -118,9 +134,10 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     let room = usize::try_from(panel.h - PANEL_FRAME_H).unwrap_or(0);
     let first = first_shown(&lines, room);
     let top = panel.y + 2;
+    let value_x = panel.x + value_dx(view, buf);
     for (y, line) in (top..).zip(lines.iter().skip(first).take(room)) {
         if let Some(row) = line {
-            paint_row(ctx, buf, row, panel, y);
+            paint_row(ctx, buf, row, (panel.x + LABEL_DX, value_x), y);
         }
     }
     // A mark on the right border where rows are hidden above or below.
@@ -148,11 +165,17 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     print_centred_styled(buf, bottom, &view.help, colors);
 }
 
-/// Paints `row` on console row `y` of `panel`: the focused row's label is a
-/// highlight bar; a value the cursor changes sits between two arrows; the
-/// number box is a highlight bar where the value was.
-fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, panel: Rect, y: i32) {
-    let (label_x, value_x) = (panel.x + LABEL_DX, panel.x + VALUE_DX);
+/// Paints `row` on console row `y`, its label and value at the columns
+/// `(label_x, value_x)`: the focused row's label is a highlight bar; a
+/// value the cursor changes sits between two arrows; the number box is a
+/// highlight bar where the value was.
+fn paint_row<G: GameData>(
+    ctx: &Ctx<G>,
+    buf: &mut GlyphBuffer,
+    row: &RowView,
+    (label_x, value_x): (i32, i32),
+    y: i32,
+) {
     let c = |e| ctx.palette.engine(e);
     let (bg, text, dim) = (
         c(EngineColor::Panel),
@@ -300,6 +323,41 @@ mod tests {
         );
         assert!(painted_row(&c, &v, PANEL.y + 6).contains("Key bindings   "));
         assert_eq!(painted_row(&c, &v, 31), "help");
+    }
+
+    /// A label longer than the values' usual column moves every value
+    /// right, so the focused one's `◄` comes after the label, which shows
+    /// whole (game ticket 1302).
+    #[test]
+    fn the_longest_label_focused_is_painted_whole() {
+        let c = ctx();
+        let long = "Voice on hover in the log";
+        for len in [24, 25, 32] {
+            let label = &long.repeat(2)[..len];
+            let v = view(vec![
+                row("Text speed", words("Normal", false), false),
+                row(label, words("On", true), true),
+            ]);
+            assert_eq!(
+                painted_row(&c, &v, PANEL.y + 3),
+                format!("│   {label}◄ On ►{:>w$}", "│", w = 50 - len),
+                "a label of {len} cells"
+            );
+            // The other rows' values line up with it.
+            assert!(
+                painted_row(&c, &v, PANEL.y + 2).starts_with(&format!(
+                    "│   {:<w$}Normal ",
+                    "Text speed",
+                    w = len + 2
+                )),
+                "a label of {len} cells"
+            );
+        }
+        // Shorter labels keep the usual column.
+        let v = view(vec![row("Text speed", words("Normal", true), true)]);
+        let black = c.palette.engine(EngineColor::Background);
+        let buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
+        assert_eq!(value_dx(&v, &buf), VALUE_DX);
     }
 
     #[test]
