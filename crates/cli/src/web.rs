@@ -865,6 +865,34 @@ mod tests {
         assert!(html.contains(r#"for (const type of ["keydown", "mousedown", "touchend"])"#));
     }
 
+    #[test]
+    fn index_html_takes_the_keys_inside_a_sites_frame() {
+        // A site that frames the page keeps focus on its own page after its
+        // Run and Fullscreen buttons (ticket 3505): the page takes it at
+        // load, on the resize that shows it or fills the screen, and the
+        // canvas, which the bundle reads the keys on, follows the window.
+        let html = shell("index.html");
+        let script = &html[html
+            .find(r#"const glcanvas = document.getElementById("glcanvas");"#)
+            .expect("index.html names its canvas")..];
+        for piece in [
+            r#"window.addEventListener("load", shuyi_take_focus);"#,
+            r#"window.addEventListener("focus", () => {"#,
+            r#"window.addEventListener("resize", () => {"#,
+            "window.innerWidth >= screen.width - 1",
+            "fills_screen || !shuyi_had_focus",
+            "requestAnimationFrame(shuyi_take_focus);",
+        ] {
+            assert!(script.contains(piece), "index.html lacks `{piece}`");
+        }
+        let take = script
+            .find("const shuyi_take_focus = () => {")
+            .expect("index.html has shuyi_take_focus");
+        let body = &script[take..take + script[take..].find("};").unwrap()];
+        assert!(body.contains("window.focus();") && body.contains("glcanvas.focus();"));
+        assert!(html.contains(r#"<canvas id="glcanvas" tabindex="1">"#));
+    }
+
     /// A fresh scratch project root under `env::temp_dir()`.
     fn fixture(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("shuyi-web-{name}-{}", std::process::id()));

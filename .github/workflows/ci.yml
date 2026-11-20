@@ -311,6 +311,8 @@ jobs:
   # the checker's own fixtures, which must fail; then every example
   # pages.yml publishes, booted; then a copy of Hello, Grid's page without
   # `var register_plugin;` (game ticket 0225), which must fail; then
+  # Hello, Grid's page in another site's frame, which must take the keys
+  # with no click, and a copy that doesn't, which must fail (3505); then
   # Hello, Grid's capture build and the render card, each capture compared
   # with the raster inside the page as the `render` job does on the
   # desktop. Every page's canvas and console are uploaded.
@@ -397,6 +399,24 @@ jobs:
           cat "$RUNNER_TEMP/no-register-plugin.txt"
           if [ "$code" != 1 ] || ! grep -qF "register_plugin is not defined" "$RUNNER_TEMP/no-register-plugin.txt"; then
             echo "::error::check.py didn't fail the page without var register_plugin;"
+            exit 1
+          fi
+      # Ticket 3505: inside another site's frame the page takes the keys
+      # with no click, also after the site fullscreens the frame; a copy
+      # that doesn't take focus on that resize must fail.
+      - name: The page takes the keys inside a site's frame
+        run: |
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py frame target/web/hello-grid \
+            --out target/web-check/frame-hello-grid
+          page="$RUNNER_TEMP/no-fullscreen-focus"
+          cp -r target/web/hello-grid "$page"
+          sed -i '/requestAnimationFrame(shuyi_take_focus);/d' "$page/index.html"
+          code=0
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py frame "$page" \
+            --out target/web-check/no-fullscreen-focus > "$RUNNER_TEMP/no-fullscreen-focus.txt" || code=$?
+          cat "$RUNNER_TEMP/no-fullscreen-focus.txt"
+          if [ "$code" != 1 ] || ! grep -qF "fullscreen: a key pressed" "$RUNNER_TEMP/no-fullscreen-focus.txt"; then
+            echo "::error::check.py frame didn't fail the page that takes no focus on fullscreen"
             exit 1
           fi
       # Ticket 3300: the release export reads its files from the pack beside
