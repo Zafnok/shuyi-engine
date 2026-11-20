@@ -17,6 +17,12 @@ request (a status of 400 or more counts, `/favicon.ico` aside).
                                         request, or no `done`
     check.py fixtures                   the pages in `fixtures/`, each of
                                         which must fail `boot`, naming why
+    check.py frame <dir>                the page inside another site's frame
+                                        (ticket 3505): fails when a key
+                                        doesn't reach its canvas without a
+                                        click, after the site adds the
+                                        frame, shows it late, or
+                                        fullscreens it
 
 Each run saves the canvas (`page.png`) and the console (`console.txt`) in
 `--out` (`target/web-check/<mode>` unless given). The exit code is 0 when the
@@ -61,6 +67,44 @@ FIXTURES = {
     "missing-wasm": "missing.wasm",
     "one-colour": "the canvas is one colour",
 }
+
+# The site `frame` puts the page in, on an origin of its own as itch.io's is
+# (served on `localhost` where the page is on `127.0.0.1`: two origins, both
+# local, so the browser doesn't block the frame as a public site's request to
+# a local address):
+# a Run button that adds the frame (hidden for `HIDE_MS` when the URL says
+# `hide`), and a Fullscreen button that fullscreens it. It holds focus, as a
+# site does, until the page takes it.
+HIDE_MS = 1500
+FRAME_SITE_HTML = """<!DOCTYPE html>
+<html><body>
+<button id="run">Run</button> <button id="fullscreen">Fullscreen</button>
+<div id="slot"></div>
+<script>
+  let frame;
+  document.getElementById("run").onclick = () => {
+    frame = document.createElement("iframe");
+    frame.src = new URLSearchParams(location.search).get("page");
+    frame.width = 640;
+    frame.height = 400;
+    frame.allow = "autoplay; fullscreen *; gamepad";
+    if (location.search.includes("hide")) {
+      frame.style.display = "none";
+      setTimeout(() => { frame.style.display = ""; }, %HIDE_MS%);
+    }
+    document.getElementById("slot").appendChild(frame);
+  };
+  document.getElementById("fullscreen").onclick = () => frame.requestFullscreen();
+</script>
+</body></html>
+""".replace("%HIDE_MS%", str(HIDE_MS))
+
+# Counts the keys the canvas gets, in the framed page.
+COUNT_KEYS = """() => {
+    window.shuyiFrameKeys = 0;
+    document.getElementById("glcanvas")
+        .addEventListener("keydown", () => { window.shuyiFrameKeys += 1; }, true);
+}"""
 
 # Decodes a PNG in a blank page and counts the colours in it, up to two.
 COUNT_COLOURS = """async (url) => {
@@ -154,6 +198,21 @@ def serve(folder: Path) -> http.server.ThreadingHTTPServer:
     return server
 
 
+class SiteHandler(http.server.BaseHTTPRequestHandler):
+    """`FRAME_SITE_HTML` at every path, with no log."""
+
+    def do_GET(self) -> None:
+        body = FRAME_SITE_HTML.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args: object) -> None:
+        """Logs nothing."""
+
+
 def size(text: str) -> tuple[int, int]:
     """`WxH` as a width and a height."""
     width, _, height = text.partition("x")
@@ -230,6 +289,55 @@ def save(page: Page, record: Record, out: Path) -> bytes | None:
     return png
 
 
+def framed(browser: Browser, folder: Path, seconds: float) -> list[str]:
+    """Why `folder`'s page doesn't get the keys inside another site's frame, if it doesn't.
+
+    Three cases: the site adds the frame and shows it at once; it shows it
+    `HIDE_MS` later; and its Fullscreen button fullscreens it. In each, a
+    key pressed on the site with no click on the page must reach the
+    page's canvas, which the bundle reads the keys on. Headless Chromium
+    gives its pages focus, so the frame shown late passes here even when
+    the page doesn't take focus; Chrome on a desktop doesn't.
+    """
+    server = serve(folder)
+    host, port = server.server_address[:2]
+    url = f"http://{host}:{port}/index.html"
+    site_server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), SiteHandler)
+    threading.Thread(target=site_server.serve_forever, daemon=True).start()
+    site = f"http://localhost:{site_server.server_address[1]}/"
+    failures = []
+    try:
+        for case in ["shown", "hide", "fullscreen"]:
+            context = browser.new_context(viewport={"width": 800, "height": 600})
+            try:
+                page = context.new_page()
+                page.goto(f"{site}?{case}&page={url}", wait_until="load")
+                page.click("#run")
+                game = page.wait_for_selector("iframe", state="attached").content_frame()
+                game.wait_for_selector("#glcanvas", state="attached")
+                game.wait_for_load_state("load")
+                game.evaluate(COUNT_KEYS)
+                page.wait_for_timeout(seconds * 1000 + (HIDE_MS if case == "hide" else 0))
+                if case == "fullscreen":
+                    page.click("#fullscreen")
+                    page.wait_for_timeout(1000)
+                    if not page.evaluate("document.fullscreenElement !== null"):
+                        failures.append(f"{case}: the site's frame didn't go fullscreen")
+                        continue
+                    game.evaluate("window.shuyiFrameKeys = 0")
+                page.keyboard.press("ArrowDown")
+                keys = game.evaluate("window.shuyiFrameKeys")
+                if keys != 1:
+                    failures.append(f"{case}: a key pressed with no click reached the canvas {keys} times, not once")
+            finally:
+                context.close()
+    finally:
+        for running in (server, site_server):
+            running.shutdown()
+            running.server_close()
+    return failures
+
+
 def report(name: str, failures: list[str], out: Path) -> bool:
     """Prints whether the page passed and why not, and gives whether it did."""
     if not failures:
@@ -257,7 +365,7 @@ def fixtures(browser: Browser, out: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=["boot", "capture", "fixtures"])
+    parser.add_argument("mode", choices=["boot", "capture", "fixtures", "frame"])
     parser.add_argument("dir", nargs="?", type=Path, help="the folder of the page (index.html)")
     parser.add_argument("--seconds", type=float, default=5, help="how long boot runs (5 unless given)")
     parser.add_argument("--size", type=size, default=size(DEFAULT_SIZE), help=f"the page's size, WxH ({DEFAULT_SIZE} unless given)")
@@ -274,6 +382,9 @@ def main() -> int:
         try:
             if args.mode == "fixtures":
                 return 0 if fixtures(browser, out) else 1
+            if args.mode == "frame":
+                failures = framed(browser, args.dir, min(args.seconds, 2))
+                return 0 if report(f"frame {args.dir}", failures, out) else 1
             failures, record = check(browser, args.mode, args.dir, args.size, args.seconds, out)
             for _, text in record.console:
                 if "shuyi-capture: " in text:

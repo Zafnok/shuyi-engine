@@ -8,7 +8,12 @@ itself, so a game needs no copy of its own.
 ## Files
 
 - `index.html`: the page. A full-window black `<canvas id="glcanvas">`,
-  no margins or scrollbars, focused on load and on click; it loads the
+  no margins or scrollbars, focused on load and on click. Inside a
+  site's frame (itch.io) the page takes focus itself, so the keys work without a click: at load, on
+  the first resize before it ever had focus (a frame shown late) and on a
+  resize that fills the screen (the site's Fullscreen button), never on
+  another resize; and whenever the window has focus, the canvas, which
+  the bundle reads the keys on, takes it (ticket 3505). It loads the
   bundle, then the game's `.wasm`. `shuyi web` writes the game's title
   (`web.title`) for `%TITLE%`, its binary (`web.bin`) for `%WASM%`, and
   for `%PACK%` the pack a packed build reads (`<package>.pack`, a release
@@ -378,7 +383,14 @@ more, `/favicon.ico` aside). In order:
    a failed request, or a canvas of one colour.
 3. The same page with `var register_plugin;` taken out must fail (the
    error game ticket 0225 fixed).
-4. `check.py capture` on Hello, Grid's capture build (`cargo shuyi web
+4. `check.py frame` on Hello, Grid's page (ticket 3505): a site on
+   another origin adds it in a frame (shown at once, or late) and
+   fullscreens the frame, and in each case a key pressed with no click
+   must reach the canvas. A copy that takes no focus on the fullscreen's
+   resize must fail. Headless Chromium gives its pages focus, so the frame
+   shown late passes there even without the fix; that case was checked by
+   hand in Chrome and Edge (the ticket's Completion notes).
+5. `check.py capture` on Hello, Grid's capture build (`cargo shuyi web
    --release --capture`, its `capture/frames.ron` beside the page as
    `capture.ron`) and on the render card (`shuyi-app`'s `render_card`
    example built for `wasm32-unknown-unknown` with `capture`, beside this

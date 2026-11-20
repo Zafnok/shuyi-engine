@@ -86,7 +86,37 @@
   // in strict mode), so re-declaring it here — even as a plain `var` — would
   // throw and skip this whole script block. Use a different name.
   const glcanvas = document.getElementById("glcanvas");
-  glcanvas.focus();
+  // The keys go to the frame that has focus. A site that frames the game
+  // (itch.io) keeps it on its own page: after its Run button, when it shows
+  // the frame only once the game has loaded, and after its Fullscreen
+  // button, which fullscreens the frame from outside. So the page takes
+  // focus at load, when its frame is first shown, and when it comes to
+  // fill the screen; never on any other resize, so it doesn't take it from
+  // a text box on the site (ticket 3505). The bundle reads the keys on the
+  // canvas, so whenever the page has focus the canvas takes it too (a frame
+  // shown late can get focus before its canvas has a box to take it).
+  let shuyi_had_focus = false;
+  window.addEventListener("focus", () => {
+    shuyi_had_focus = true;
+    if (document.activeElement !== glcanvas) glcanvas.focus();
+  });
+  const shuyi_take_focus = () => {
+    window.focus();
+    glcanvas.focus();
+    if (document.hasFocus()) shuyi_had_focus = true;
+  };
+  shuyi_take_focus();
+  window.addEventListener("load", shuyi_take_focus);
+  window.addEventListener("resize", () => {
+    const fills_screen = window.innerWidth >= screen.width - 1
+      && window.innerHeight >= screen.height - 1;
+    if (document.hasFocus()) {
+      if (document.activeElement !== glcanvas) glcanvas.focus();
+    } else if (fills_screen || !shuyi_had_focus) {
+      // After the resize, once the canvas is laid out at its new size.
+      requestAnimationFrame(shuyi_take_focus);
+    }
+  });
   glcanvas.addEventListener("click", () => glcanvas.focus());
   // mq_js_bundle.js's own key handler prevents default for the keys sokol
   // reports as arrows/space/tab; this listener is a backstop for anything it
