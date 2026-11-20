@@ -115,4 +115,6 @@ None. Nick asked for the game's fix (2026-11-20).
   fullscreen cells are unchecked (same engine as Chrome). Firefox isn't
   installed on the machine and Playwright's Firefox wouldn't start there:
   unchecked.
-- No API change. The game's PR that moves the pin: game#0933's.
+- No API change.
+
+Game: game#0933 moves the pin and adopts it.
