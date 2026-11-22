@@ -178,8 +178,13 @@ impl Screen<Hello> for Title {
             ctx.use_layout(crate::LAYOUT);
         }
         let mut menu = self.menu(ctx);
-        for &action in &input.actions {
-            let event = menu.handle_with_sound(action, &mut ctx.audio);
+        // The keys, then the pointer.
+        let keys = input.actions.iter().map(|&action| Some(action));
+        for action in keys.chain([None]) {
+            let event = match action {
+                Some(action) => menu.handle_with_sound(action, &mut ctx.audio),
+                None => menu.point_with_sound(input.pointer(), &mut ctx.audio),
+            };
             self.focus = menu.focus();
             match event {
                 Some(MenuEvent::Chosen(TitleChoice::Play)) => {
@@ -427,8 +432,13 @@ impl Screen<Hello> for End {
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
         let mut menu = self.menu();
-        for &action in &input.actions {
-            let event = menu.handle_with_sound(action, &mut ctx.audio);
+        // The keys, then the pointer.
+        let keys = input.actions.iter().map(|&action| Some(action));
+        for action in keys.chain([None]) {
+            let event = match action {
+                Some(action) => menu.handle_with_sound(action, &mut ctx.audio),
+                None => menu.point_with_sound(input.pointer(), &mut ctx.audio),
+            };
             self.focus = menu.focus();
             match event {
                 Some(MenuEvent::Chosen(EndChoice::Again)) => {

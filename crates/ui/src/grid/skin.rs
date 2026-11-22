@@ -362,6 +362,14 @@ pub trait GridSkin<U>: core::fmt::Debug {
         self.grid(scene, area).rect(tile)
     }
 
+    /// The tile under the console pixel `px` when `scene` is painted into
+    /// `area` (what the pointer is over), or `None` off the drawn tiles:
+    /// the inverse of [`tile_px`](Self::tile_px). A skin that lays its
+    /// tiles its own way overrides both.
+    fn tile_at(&self, scene: &MapScene<U>, area: Rect, px: (i32, i32)) -> Option<Pos> {
+        self.grid(scene, area).tile_at_px(px)
+    }
+
     /// The cells [`tile_px`](Self::tile_px) touches.
     fn tile_cells(&self, scene: &MapScene<U>, area: Rect, tile: Pos) -> Option<Rect> {
         let px = self.tile_px(scene, area, tile)?;

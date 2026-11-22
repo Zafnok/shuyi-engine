@@ -426,9 +426,16 @@ impl<G: GameData> ScreenStack<G> {
     }
 
     /// Draws the top-most opaque screen and every overlay above it, bottom
-    /// up. If every screen is an overlay, all are drawn.
+    /// up. If every screen is an overlay, all are drawn. The frame's hit
+    /// areas ([`GlyphBuffer::hits`]) are cleared before the top screen
+    /// draws, so only the screen that gets the input has them: a click
+    /// outside an overlay never reaches the screen below it.
     pub fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer) {
-        for screen in self.drawn() {
+        let drawn = self.drawn();
+        for (i, screen) in drawn.iter().enumerate() {
+            if i + 1 == drawn.len() {
+                buf.clear_hits();
+            }
             screen.draw(ctx, buf);
         }
     }

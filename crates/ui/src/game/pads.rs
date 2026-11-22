@@ -69,7 +69,14 @@ impl PadMerge {
                         }
                     }
                 }
-                RawInputEvent::Down(_) | RawInputEvent::Up(_) | RawInputEvent::Text(_) => {
+                RawInputEvent::Down(_)
+                | RawInputEvent::Up(_)
+                | RawInputEvent::Text(_)
+                | RawInputEvent::PointerMoved { .. }
+                | RawInputEvent::PointerLeft
+                | RawInputEvent::PointerDown
+                | RawInputEvent::PointerUp
+                | RawInputEvent::Wheel(_) => {
                     heard.push(event);
                 }
             }

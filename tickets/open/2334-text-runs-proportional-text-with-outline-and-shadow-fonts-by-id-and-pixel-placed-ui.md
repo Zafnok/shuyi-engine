@@ -229,11 +229,14 @@ None.
     paints a `MenuView` with `active: false` with no `Focus` bar and no
     note, as the glyph look does, and `size` doesn't change with it; if
     not, 2355 does it when it adds `active`.
-  - **Either order with 2405:** if 2405 is done, `menu::text::paint`
-    records hits as `menu::glyph::paint` does: its box as `Hit::AREA`,
-    then each shown item's row (its pixel rectangle) as the item's
-    index, under the view's `widget` key, with a test that `hit_at` on
-    a row's pixel gives its item; if not, 2405 does it.
+  - **From 2405 (done):** `menu::glyph::paint` records hit areas
+    (`crates/ui/src/frame/hit.rs`), and 2405 left the text look to this
+    ticket. `menu::text::paint` records the same hits: its box as
+    `Hit::AREA`, then each shown item's row (its pixel rectangle) as
+    the item's index, under the view's `widget` key
+    (`MenuView::widget`), with a test that `GlyphBuffer::hit_at` on a
+    row's pixel gives its item. No engine screen draws that look, so no
+    screen changes.
   - **Either order with 2338:** if 2338 is done and the game has a
     panel frame (`Ctx::panel_frame(BoxStyle::Single)`), the text look
     draws it over its `Panel` rectangle with `GlyphBuffer::nine_slice`,
@@ -268,9 +271,9 @@ None.
 
 **Size.** If the PR passes about 600 changed lines (snapshots and
 reference PNG files not counted), `menu::text` (the menu's text look, with
-its 2355, 2338 and 2405 clauses) goes to a follow-up ticket
-(`write-ticket`), After MVP, and the PR points the clauses of those
-three tickets at it.
+its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
+(`write-ticket`), After MVP, and the PR points the clauses of 2355 and
+2338 at it.
 
 **Out (do not do):**
 
@@ -304,9 +307,9 @@ three tickets at it.
    `add_text`, `TextRun` and `texts()`, then the cut and blit rules,
    with tests in a new `glyph_buffer/text_tests.rs`.
 6. Add the snapshot line and its module docs.
-7. Add `TextLabel` and `menu::text`, with snapshots. Then the
-   either-order parts whose tickets are done: 2329's `Measure`, 2330's
-   `font`, 2355's inactive look, 2338's frame, 2405's hits, 2353's
+7. Add `TextLabel` and `menu::text`, with snapshots and the hits from
+   2405. Then the either-order parts whose tickets are done: 2329's
+   `Measure`, 2330's `font`, 2355's inactive look, 2338's frame, 2353's
    walk, 2392's card, 2722's VN font, 2802's section and 2323's text
    size.
 8. Add `insta.workspace = true` to `shuyi-cli`'s `[dev-dependencies]`

@@ -71,7 +71,7 @@ What it builds on:
   `GlyphSkin` follow here;
 - 2511 (MVP): the short way to start a game (a prelude, `run_game` and
   engine defaults), which keeps the example small;
-- 2405 (after the MVP): the tile under the pointer
+- 2405 (done): the tile under the pointer
   (`Projection::tile_at`, `Grid::tile_at_px`, `GridSkin::tile_at`);
 - 2336 (after the MVP): lines at any angle as frame items
   (`Shape::line`, `GlyphBuffer::add_shape`);
@@ -139,13 +139,15 @@ None.
     `(y, x)`. With `step` equal to the tile's height that is the one
     rectangle under the pixel. `Grid::tile_at_px` counts only drawn
     tiles, and gives `None` when no drawn tile's rectangle holds the
-    pixel. **Either order with 2405:** if 2405 is done, add
+    pixel. **From 2405 (done):** `Projection::tile_at` and
+    `Grid::tile_at_px` (`crates/ui/src/grid/layout.rs`) and
+    `GridSkin::tile_at` exist for top-down maps. Add
     `Projection::tile_at_from(self, corner, tile, origin: Pos, px)`,
     which its `tile_at` calls with the origin `(0, 0)` as `place` calls
-    `place_at`, give `Grid::tile_at_px` the hex case, and test the
-    pointer on a hex map. If not, add `Grid::tile_at_px` with 2405's
-    name and signature for both projections; 2405 then uses it (its
-    clause with 2740 says so);
+    `place_at`, give `Projection::tile_at` and `Grid::tile_at_px` the
+    hex case from this picking, run 2405's round-trip property test
+    (`tile_at_inverts_tile_px` in `crates/ui/src/grid/sprite/tests.rs`)
+    on the hex skin, and test the pointer on a hex map;
   - **either order with 1126:** if 1126 is done, `Projection` lives in
     `shuyi_ui::world`: add `Hex` there, with tile to world, world to
     tile (the picking above) and a depth key: the row for pointy top;
@@ -291,15 +293,16 @@ None.
 
 1. Read 2121's ADR and `shuyi_core::hex`, 2013's ADR,
    `crates/ui/src/grid/layout.rs`, `glyph.rs`, `glyph/style.rs`,
-   `glyph/cursor.rs`, `path.rs` and `threat.rs`, and 2405's picking if
-   it is done.
+   `glyph/cursor.rs`, `path.rs` and `threat.rs`, and 2405's picking
+   (`tile_at` in `layout.rs` and `skin.rs`).
 2. Write `HexProjection`, `place_at`, `Grid::hex`, `bounds`,
    `at_art_size` and the picking, with unit and property tests.
 3. Add `GlyphSkin::with_hex_rows` and `Layout::with_hex_rows`, move
    `draw_tiles` onto `tile_to_cell`, and lay the tiles, the cursor and
    the path on hex maps, with snapshots. Check every square snapshot is
    unchanged.
-4. Do the either-order items (2405, 1126, 1120, 2336, 2374).
+4. Give 2405's picking its hex case, then do the either-order items
+   (1126, 1120, 2336, 2374).
 5. Write `examples/hello-hex` with its tests and pictures, and add it
    to CI's `wasm` job, the `run-gates` skill and Pages.
 6. Write the guide, do the 2003 and 2004 items, and run the gates.

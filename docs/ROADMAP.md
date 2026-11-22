@@ -184,7 +184,7 @@ These tickets, in order:
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 (done) | Messages that choose their words: ICU's plural, ordinal and select, and CLDR's plural rules |
 | 3218 (done) | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
-| 2405 | Mouse and touch for menus and grid maps |
+| 2405 (done) | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
@@ -485,7 +485,8 @@ is done.
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
 | 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
-| 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
+| 2405 (done) | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
+| 2413 | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |

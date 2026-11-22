@@ -177,16 +177,18 @@ None.
    `crates/assets/src/keymap/action_set.rs`, and the other uses it.
    **Either order with 3206:** if 3206 is done, `UiAction::dir`
    exists: use it; if not, add it here (3206 then uses it).
-6. **Either order with 2405** (mouse and touch for menus): if 2405 is
-   done, `Focus::point(&mut self, pointer: Option<&PointerInput>, node:
+6. **The pointer. From 2405 (done):** `PointerInput`
+   (`crates/ui/src/input/pointer.rs`), `WidgetKey` and `Hit`
+   (`crates/ui/src/frame/hit.rs`), `Menu::keyed` and `Menu::point`
+   exist, and 2405 left `Focus::point` to this ticket.
+   `Focus::point(&mut self, pointer: Option<&PointerInput>, node:
    impl Fn(WidgetKey) -> Option<NodeKey>) -> bool` sets the focus from
    the pointer. On a frame the pointer `moved` over another widget's hit
    (`PointerInput::over`), or on a click on one (`clicked`), it calls
    `set` with the node `node` gives for that hit's `WidgetKey`, and says
    whether the focus moved. A screen with a `Focus` gives each menu its
    own key (`Menu::keyed`) and calls `point` before its widgets take the
-   pointer (`Menu::point`). The doc test's two menus show it. If 2405 is
-   not done, 2405 does it.
+   pointer (`Menu::point`). The doc test's two menus show it.
 7. **An ADR** (`write-adr` skill): focus between widgets comes from the
    layout; the widget first, then a neighbour set by hand, the way back,
    the geometry and wrap; kept directions; the reachability check. It
@@ -194,8 +196,8 @@ None.
    public types follow ADR-0039, with private fields and constructors
    where they keep an invariant, as `ListCursor` has.
 8. If the PR would pass about 600 changed lines (fixtures and snapshots
-   not counted), part 4, and part 6 if 2405 is done, go to a follow-up
-   ticket (`write-ticket`, blocked by 2355). The Harness test then reads
+   not counted), parts 4 and 6 go to a follow-up ticket
+   (`write-ticket`, blocked by 2355). The Harness test then reads
    its test screen through `Harness::screen` (the screen opts in with
    `Screen::as_any`), and the PR says so.
    The same PR adds the follow-up's id to the `blocked_by` of each
@@ -215,7 +217,8 @@ None.
   keeps each screen's state.
 - Keeping a menu's focus by value after a reload: 2330's (`Focus::rebuild`
   keeps the widget).
-- The pointer events, hit areas and `Menu::point` themselves (2405).
+- The pointer events, hit areas and `Menu::point` themselves (done in
+  2405).
 - Moves inside a grid widget (2354's `GridCursor`): a grid at its edge
   without wrap leaves the direction unused, as a menu at its end does.
 - The accessibility tree (2322, parked), beyond the either-order part
@@ -236,7 +239,8 @@ None.
    `Layout`, its rectangle type), `widgets/menu.rs`, `menu/view.rs` and
    `menu/glyph.rs`, `screen.rs`, `game.rs`,
    `crates/platform/src/harness.rs` and `crates/ui/tests/it/main.rs`.
-   Check whether 2354, 2405 and 2334 are done.
+   Read 2405's `input/pointer.rs` and `frame/hit.rs`. Check whether
+   2354 and 2334 are done.
 2. Write `FocusNode`, `FocusMap` and `FocusError` in
    `crates/ui/src/focus.rs`, declare the module in `lib.rs`, with unit
    and property tests.
@@ -246,7 +250,7 @@ None.
 5. Add `Screen::widget_focus`, the stack's, the game's and the Harness's
    methods. Write the integration test in `crates/ui/tests/it/focus.rs`
    and add `mod focus;` to `main.rs`.
-6. If 2405 is done, write `Focus::point` and its tests.
+6. Write `Focus::point` and its tests.
 7. Write the ADR, check the size against part 8, and run the gates.
 
 ## Acceptance criteria
@@ -285,8 +289,8 @@ None.
       goes to the footer; Up comes back to the list. Each move between
       widgets plays the move sound once, the view shows only the focused
       menu as active, and `Harness::unreachable_widgets()` is empty.
-- [ ] If 2405 is done: in the same test, a pointer moved over the menu
-      beside the list (`Harness::point`) gives it the focus, and a click
+- [ ] In the same test, a pointer moved over the menu beside the list
+      (`Harness::point`) gives it the focus, and a click
       on the footer's item (`Harness::click_text`) gives the footer the
       focus and chooses the item.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
@@ -299,7 +303,7 @@ None.
   `unreachable` with kept directions and an empty rectangle; `pass` on a
   kept direction; `Menu::without_wrap`; `UiAction::dir` if added here;
   `Focus::point` (a hover, a still pointer, a click, a hit of the
-  focused widget) if 2405 is done.
+  focused widget).
 - Property: the two above.
 - Snapshot / integration: the inactive menu; the Harness test.
 

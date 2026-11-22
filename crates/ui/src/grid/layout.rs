@@ -45,6 +45,23 @@ impl Projection {
             Projection::TopDown => (corner.0 + tile.0 * dx, corner.1 + tile.1 * dy),
         }
     }
+
+    /// The inverse of [`place`](Self::place): the tile the pixel `px`
+    /// lies on, as tiles right of and below the view's first, whose
+    /// top-left pixel is `corner`, on tiles of `tile` pixels (a size
+    /// below 1 counts as 1).
+    pub const fn tile_at(self, corner: (i32, i32), tile: (i32, i32), px: (i32, i32)) -> (i32, i32) {
+        let (w, h) = (
+            if tile.0 < 1 { 1 } else { tile.0 },
+            if tile.1 < 1 { 1 } else { tile.1 },
+        );
+        match self {
+            Projection::TopDown => (
+                (px.0 - corner.0).div_euclid(w),
+                (px.1 - corner.1).div_euclid(h),
+            ),
+        }
+    }
 }
 
 /// The tiles of a scene laid out on the console.
@@ -108,6 +125,19 @@ impl Grid {
         let (w, h) = self.tile;
         let (x, y) = self.projection.place(self.corner, self.tile, dx, dy);
         Rect::new(x, y, w, h)
+    }
+
+    /// The drawn tile the console pixel `px` lies on (what the pointer is
+    /// over), or `None` outside the drawn tiles.
+    pub fn tile_at_px(&self, px: (i32, i32)) -> Option<Pos> {
+        let (dx, dy) = self.projection.tile_at(self.corner, self.tile, px);
+        let inside = (0..self.tiles.0).contains(&dx) && (0..self.tiles.1).contains(&dy);
+        if !inside {
+            return None;
+        }
+        let x = self.origin.x.checked_add(dx)?;
+        let y = self.origin.y.checked_add(dy)?;
+        Some(Pos::new(x, y))
     }
 
     /// The pixels of `tile`, or `None` if it isn't drawn.
@@ -217,6 +247,24 @@ mod tests {
         assert_eq!(top.place((4, 8), (24, 20), 0, 0), (4, 8));
         assert_eq!(top.place((4, 8), (24, 20), 2, 1), (52, 28));
         assert_eq!(top.place((4, 8), (24, 20), -1, -3), (-20, -52));
+    }
+
+    #[test]
+    fn a_pixel_lies_on_the_tile_drawn_there() {
+        let top = Projection::TopDown;
+        assert_eq!(top.tile_at((4, 8), (24, 20), (4, 8)), (0, 0));
+        assert_eq!(top.tile_at((4, 8), (24, 20), (27, 27)), (0, 0));
+        assert_eq!(top.tile_at((4, 8), (24, 20), (28, 28)), (1, 1));
+        assert_eq!(top.tile_at((4, 8), (24, 20), (3, 7)), (-1, -1));
+        assert_eq!(top.tile_at((0, 0), (0, -3), (5, 6)), (5, 6), "at least 1");
+        let g = Grid::top_down(p(5, -2), (4, 8), (24, 20), (3, 2), 1);
+        assert_eq!(g.tile_at_px((4, 8)), Some(p(5, -2)));
+        assert_eq!(g.tile_at_px((75, 47)), Some(p(7, -1)));
+        for out in [(3, 8), (4, 7), (76, 8), (4, 48)] {
+            assert_eq!(g.tile_at_px(out), None, "{out:?}");
+        }
+        let far = Grid::top_down(p(i32::MAX, 0), (0, 0), (8, 8), (2, 1), 1);
+        assert_eq!(far.tile_at_px((9, 0)), None, "past the last position");
     }
 
     #[test]

@@ -61,10 +61,10 @@ The retro also named `crates/platform/src/audio/player.rs:755` and
 `MusicCommand` and keep `_` for the next one. The lint passes them
 today and fails them when a variant is added. That is the point.
 
-Three open tickets add variants to these enums and call it additive,
-which stays true for games: 2316 (`UiAction::DebugPause`,
-`DebugStep`), 2357 (`UiAction::DebugBack`) and 2405 (`RawInputEvent`'s
-pointer events).
+Tickets that add variants to these enums call it additive, which stays
+true for games: 2316 (`UiAction::DebugPause`, `DebugStep`) and 2357
+(`UiAction::DebugBack`) are open, and done 2405 added `RawInputEvent`'s
+pointer events.
 
 ## Nick input
 
@@ -104,9 +104,12 @@ None.
   nothing to do (2316 names them in each match the check finds).
 - **Either order with 2357:** if 2357 is done, `DebugBack` is named in
   each match on `UiAction` here; if not, nothing to do (2357 names it).
-- **Either order with 2405:** if 2405 is done, its pointer variants are
-  named in each engine match on `RawInputEvent` outside `shuyi-ui`; if
-  not, nothing to do (2405 names them). None is there on 2026-11-17.
+- **From 2405 (done):** `RawInputEvent` has its pointer variants
+  (`PointerMoved`, `PointerLeft`, `PointerDown`, `PointerUp`, `Wheel`).
+  Each engine match on `RawInputEvent` outside `shuyi-ui` names them
+  here; none is there on 2026-11-21. `shuyi-ui`'s own matches
+  (`crates/ui/src/game.rs`, `crates/ui/src/game/pads.rs`) name every
+  pointer variant already.
 
 **Out (do not do):**
 - `examples/`, `templates/`, `site/snippets` and the skill pack's

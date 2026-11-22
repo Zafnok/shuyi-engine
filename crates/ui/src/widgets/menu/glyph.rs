@@ -4,6 +4,8 @@
 //! scrolls shows its window, with a mark on the border where more items
 //! are out of the box. Everything
 //! about the look lives here; nothing here decides what the menu shows.
+//! It records where it painted as hit areas, the box and each row shown,
+//! for the pointer ([`crate::frame::hit`]).
 //! Another look is another `paint` of the same view (game ADR-0054).
 
 use super::view::{MenuItemView, MenuView, SuffixKind};
@@ -11,6 +13,7 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
+use crate::frame::hit::Hit;
 use crate::prelude::*;
 use shuyi_assets::font::CellWidths;
 use shuyi_assets::lang::text_width;
@@ -84,7 +87,8 @@ pub const fn suffix_color(kind: SuffixKind) -> EngineColor {
 /// scrolled menu paints only the items it shows, with a `▲` in the top
 /// border if there are more above and a `▼` in the border under them if
 /// there are more below, in text. Labels are in the player's language
-/// ([`Ctx::label`]).
+/// ([`Ctx::label`]). It records the box as a hit area of the view's
+/// widget ([`Hit::AREA`]), then each row shown as its item's index.
 pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, x: i32, y: i32) {
     let palette: &Palette = &ctx.palette;
     let color = |e| palette.engine(e);
@@ -95,9 +99,12 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
     let look = PanelLook::new(BoxStyle::Single, color(EngineColor::Text), bg)
         .with_border(color(EngineColor::Border));
     buf.panel(rect, &look, None);
+    buf.hit_cells(rect, view.widget, Hit::AREA);
     let first = view.first_shown.min(view.items.len());
     let shown = view.shown_items().iter().zip(&labels[first..]);
-    for (row, (item, label)) in (y + 1..).zip(shown) {
+    for ((row, index), (item, label)) in (y + 1..).zip(first..).zip(shown) {
+        let index = u32::try_from(index).unwrap_or(Hit::AREA);
+        buf.hit_cells(Rect::new(x + 1, row, w - 2, 1), view.widget, index);
         let (fg, row_bg) = match (item.focused, item.enabled) {
             (true, false) => (bg, color(EngineColor::Border)),
             (false, false) => (color(EngineColor::TextDim), bg),

@@ -43,8 +43,15 @@ listed in its `key_files`, with the reason.
    engine never picks a game's keys.
 3. **The input types are generic over a game's actions**: `Keymap<A>`,
    `InputState<A>`, `FrameInput<A>`, `PlayerKeys<A>`, `HelpKeys<A>`.
-4. **Pointer and analog input** (parked ticket 1121) become rebindable
-   actions and axes, quantized to integers for deterministic records.
+4. **Pointing is not a key** (ADR-0134): hover, and a click or a tap on
+   a widget or a tile, goes through the widget (`Menu::point`,
+   `GridSkin::tile_at`) and gives what its keys give, so nothing binds
+   it and `controls_fit` never sees it. It is never the only way: a
+   screen that takes the pointer takes the same keys as before. Its
+   painter records its hit areas (`GlyphBuffer::hit`). Pointer buttons
+   as game actions, stick axes and the pointer in `TickInput` are
+   parked ticket 1121's: rebindable actions and axes, quantized to
+   integers for deterministic records.
 
 ## Tests
 
@@ -55,6 +62,8 @@ game.
 ## Checklist before pushing input work
 
 - [ ] No key or button types outside the places above.
+- [ ] A widget that takes the pointer takes its keys too, and its painter
+      records its hits.
 - [ ] `shuyi-input`'s checklist, for each engine screen, widget and
       example the change touches.
 - [ ] `cargo run -q -p shuyi-cli -- lint` passes on the engine's own code.

@@ -220,9 +220,15 @@ impl<G: GameData> Screen<G> for DebugMenuScreen<G> {
         Some(crate::input::ui_actions(Menu::<()>::ACTIONS))
     }
 
+    /// The keys, then the pointer ([`Menu::point`]).
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
-        for &action in &input.actions {
-            match self.menu.handle_with_sound(action, &mut ctx.audio) {
+        let keys = input.actions.iter().map(|&action| Some(action));
+        for action in keys.chain([None]) {
+            let event = match action {
+                Some(action) => self.menu.handle_with_sound(action, &mut ctx.audio),
+                None => self.menu.point_with_sound(input.pointer(), &mut ctx.audio),
+            };
+            match event {
                 Some(MenuEvent::Cancelled) => return Transition::Pop,
                 Some(MenuEvent::Chosen(i)) => {
                     let Some(entry) = self.entries.get_mut(i) else {

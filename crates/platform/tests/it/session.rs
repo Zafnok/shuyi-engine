@@ -263,6 +263,32 @@ proptest! {
     }
 }
 
+/// The toy's lobby, hashing its menu's focus.
+fn lobby() -> Start<Toy> {
+    start_at(|| Box::new(toy::Lobby::new())).state_hash(|game| {
+        let focus = game.screen::<toy::Lobby>()?.menu.focus();
+        Some(StateHash(u64::try_from(focus).ok()?))
+    })
+}
+
+/// A session played with the pointer (ticket 2405) is kept as RON and
+/// plays back with the same hash in every frame.
+#[test]
+fn a_pointer_session_plays_back_the_same() {
+    let mut h = recording(lobby());
+    h.point(30, 40).wheel(-1).point(30, 56).leave_pointer();
+    h.click_text("Key bindings");
+    assert_eq!(h.screens(), ["lobby", "key_bindings"]);
+    let text = record_of(&h).to_ron();
+    assert!(text.contains("PointerMoved"), "{text}");
+    let record = SessionRecord::from_ron(&text).unwrap_or_else(|e| panic!("{e}"));
+    let mut played = playing(lobby(), &record);
+    let answer = played.play_all().clone();
+    assert_eq!(answer.first_difference, None);
+    assert_eq!(answer.frames, h.frame_count());
+    assert_eq!(played.screen_log(), h.screen_log());
+}
+
 #[test]
 fn a_press_taken_out_is_found_at_its_frame_and_the_game_stays_there() {
     let mut h = recording(home());

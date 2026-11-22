@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 2405 — Mouse and touch for menus and grid maps
@@ -91,6 +91,13 @@ None. Nick decided on 2026-10-20 that this half of 1121 comes after the
 MVP, not parked.
 
 ## Scope
+
+**Estimated size:** about 2,600 lines (code 1,000, tests 1,100, docs
+500), estimated on 2026-11-21 when the work began.
+
+**Split:** past 600 lines, Hello, Grid's stage goes to 2409 (step 9);
+past 1,400, `shuyi-app`'s reading of the mouse (items 2 and 3, step 7)
+goes to a new ticket, and the engine's side lands with the Harness.
 
 **In:**
 
@@ -457,37 +464,39 @@ gains a field additively (**from 2082 (done):** it is
 
 ## Acceptance criteria
 
-- [ ] A Harness test clicks the toy lobby's "Key bindings" row with
+- [x] A Harness test clicks the toy lobby's "Key bindings" row with
       `click_text` and gets the same screens and the same sounds (Move,
-      then Select) as the keys `Down Enter`.
-- [ ] Hover moves a menu's focus only on a frame the pointer moved: with
+      then Select) as the keys `Down Enter` (the toy's Confirm is `f`:
+      `Down f`).
+- [x] Hover moves a menu's focus only on a frame the pointer moved: with
       the pointer still over row 2, a key Down puts the focus on row 3
       and it stays there.
-- [ ] A press on one row and a release on another chooses nothing. A
+- [x] A press on one row and a release on another chooses nothing. A
       click on a disabled row chooses nothing and plays Denied.
-- [ ] A tap (a press, then a release with `PointerLeft` in the same
+- [x] A tap (a press, then a release with `PointerLeft` in the same
       frame) still chooses the row it was on.
-- [ ] Only the top screen has hit areas: with an overlay over a screen
+- [x] Only the top screen has hit areas: with an overlay over a screen
       with a menu, a click on a row of the lower menu outside the
       overlay does nothing (a unit test of `ScreenStack::draw`).
-- [ ] Hello, Grid (unless step 9 moved it): a turn played with the
-      pointer (click your piece, then a tile of its reach) sends the
-      same commands and leaves the stage in the same state as
-      `walk_to` by keys. A whole stage played out with the pointer gives
-      the same commands as one played with keys, with the glyph look
-      and the tile look.
-- [ ] With no pointer events, every existing test passes unchanged,
+- [x] ~~Hello, Grid: a turn played with the pointer (click your piece,
+      then a tile of its reach) sends the same commands and leaves the
+      stage in the same state as `walk_to` by keys. A whole stage played
+      out with the pointer gives the same commands as one played with
+      keys, with the glyph look and the tile look.~~ (not done: step 9
+      moved Hello, Grid's stage to 2409)
+- [x] With no pointer events, every existing test passes unchanged,
       `FrameInput::pointer()` is `None`, and the tests of `controls_fit`
       don't change.
-- [ ] `shuyi-app`'s pure parts are tested: the mapping inside the frame,
-      in the letterbox and at a DPI factor of 1.75; the wheel's
+- [x] ~~`shuyi-app`'s pure parts are tested: the mapping inside the
+      frame, in the letterbox and at a DPI factor of 1.75; the wheel's
       accumulator for each unit; a press and a release in one frame; a
-      touch's release followed by `PointerLeft`.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] The ADR, ADR-0003's note, the skill's rule 8 and
+      touch's release followed by `PointerLeft`.~~ (not done: the split
+      valve moved `shuyi-app`'s reading to 2413)
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] The ADR, ADR-0003's note, the skill's rule (rule 4 now) and
       `docs/platform-backends.md` are written, and the PR names its API
       changes for the game.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -514,4 +523,101 @@ gains a field additively (**from 2082 (done):** it is
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-11-21.
+
+**What landed.**
+
+- The pointer's events at the platform boundary: `RawInputEvent`'s
+  `PointerMoved { x, y }`, `PointerLeft`, `PointerDown`, `PointerUp` and
+  `Wheel(i32)`, with the serde derives the enum has, and
+  `Platform::poll_input`'s doc naming them.
+- Hit areas (`crates/ui/src/frame/hit.rs`): `WidgetKey`, `Hit` with
+  `Hit::AREA`, and on `GlyphBuffer` `hit`, `hit_cells`, `hits`, `hit_at`
+  and `clear_hits`. A full solid fill clears them, and two frames that
+  look alike are equal whatever their hits, so no snapshot or frame
+  comparison sees them. `ScreenStack::draw` clears them before the top
+  screen draws.
+- `Pointer` and `PointerInput` (`crates/ui/src/input/pointer.rs`),
+  `FrameInput::with_pointer` and `pointer`, and `Game::step` folding the
+  frame's events against the frame last shown. A pointer press ends
+  `KeyPrompt::Waiting`; the pointer never opens the first-key screen and
+  never changes `ctx.device`. `Game::forget_held_input` forgets a held
+  press and the place (3042).
+- The menu: `MenuView::widget`, `Menu::keyed` and `widget`, `point` and
+  `point_with_sound`; `menu::glyph::paint` records its box and each row
+  shown. The debug menu, the toy's lobby and Hello, Grid's title and end
+  menus call it after their actions.
+- The grid kit: `Projection::tile_at`, `Grid::tile_at_px` and
+  `GridSkin::tile_at`, with a test of every pixel of a small view and a
+  property test for the glyph skin and the sprite skin, on glyph ground
+  and at zooms 1 to 3.
+- The Harness (`crates/platform/src/harness/pointer.rs`): `point`,
+  `click`, `wheel`, `leave_pointer` and `click_text`. A lost focus
+  forgets the Harness's pointer too.
+- Tests: the lobby clicked against its keys, hover, a press here and a
+  release there, a tap, the wheel and a pointer that left, the prompt
+  and the device (`crates/ui/tests/it/pointer.rs`); a click never opening
+  the layout picker; a pointer session kept as RON playing back with the
+  same hashes (`crates/platform/tests/it/session.rs`); a press held over
+  a lost focus (`examples/hello-grid/tests/it/focus.rs`).
+- Docs: ADR-0134, ADR-0003's status line and index row, the
+  `input-actions` skill's rule, the shipped `shuyi-input` skill's rule 9
+  and its tests line, the book's input chapter (*The mouse and taps*,
+  and the Harness's pointer in *Tests*), and `docs/platform-backends.md`
+  (the pointer in `poll_input`, and a checklist line).
+
+**Deviations.**
+
+- **Split at the ticket's valve.** The ticket had no estimate; it was
+  estimated before the code (about 2,600 lines) with the split written
+  in its Scope. The engine's side reached 1,196 counted lines before the
+  grid and the docs, so:
+  - Hello, Grid's stage (item 7's stage bullets, its tests and the
+    Hello, Grid acceptance criterion) went to 2409 (step 9), whose item
+    10 now says it holds them. The kit's `tile_at` and its property test
+    stayed.
+  - `shuyi-app`'s reading of the mouse and `Layout::frame_px` (items 2
+    and 3, step 7, and their acceptance criterion) went to the new
+    ticket 2413. So no real backend sends pointer events yet: the
+    desktop and web builds were not tried by hand, and the web's wheel
+    deltas were not measured (2413 does both).
+- **The skill's rule.** The ticket names the `input-actions` skill's
+  rule 8; the skill now has four engine rules, and the pointer's was
+  rule 4. That rule was rewritten. The shipped `shuyi-input` skill got
+  the rule for games (rule 9), since it holds the rules every game
+  keeps.
+- **`Device` and `Input`.** The ticket's *For the game* says they gain
+  variants. Nothing here needed one: the pointer never changes the
+  device, and `Input.pointer` and `Input.touch` already exist. Neither
+  changed.
+- **The order in a screen.** The screens take their keys first, then the
+  pointer, in the same frame: a key and a click in one frame both act,
+  the key first.
+- **`clicked` over nothing.** A release whose pointer left before it (a
+  drag into the letterbox) clicks nothing, since no hit is under it.
+- Either-order clauses: 2097, 2333, 2334, 2355, 2367, 2740 are not done,
+  so their *if not* branches held (nothing to do here). 2333's clause
+  now names 2413, which writes the inverse.
+
+**Follow-ups.** 2413 (`shuyi-app` reads the mouse and touches, written
+here); 2409 (the engine's other widgets, the wheel, and now Hello,
+Grid's stage).
+
+No break: every addition is to a type that can grow (`RawInputEvent`
+and `MenuView` are `#[non_exhaustive]`, `FrameInput` and `GlyphBuffer`
+gain private fields, `GridSkin::tile_at` has a default body). A search
+of the game (pinned at 50472bbc) found no `match` on `RawInputEvent`
+(`gh search code --repo Zafnok/visions-of-shuyi 'RawInputEvent'`: its
+`crates/ui/src/game.rs` and `crates/playdate/src/pads.rs` build events
+only), its `MenuView`s built through `MenuView::new` (`'MenuView'`), and
+one `impl GridSkin`, in a test, which the default body covers (`'impl
+GridSkin'`).
+
+No `Behaviour:` line: a game sees nothing change until a backend sends
+pointer events (2413). With none, every frame, menu, record and sound is
+as before; whole-frame fills now also clear hit areas, which nothing
+read before.
+
+Game: nothing to adopt, the additions need no change in the game: its
+screens don't call `Menu::point`, so its menus ignore the pointer (the
+game uses no mouse, 1121's Nick input).

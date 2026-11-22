@@ -37,14 +37,14 @@ None.
   `SideView`, and a method for each of: tile to world, world to tile
   (the nearest diamond), and depth key. 1115 left a hook for this in the
   grid kit's math. The grid kit's scene and skins now take a
-  projection. **Either order with 2405:** if 2405 is done, its
-  `Projection::tile_at` (moved onto this `Projection`) and
-  `GridSkin::tile_at` pick through this world to tile, so the pointer
-  picks isometric tiles, and 2405's round-trip property test (every
-  pixel of every drawn tile gives that tile) runs on the isometric skin
-  too. If not, add to 2405's scope in this PR: "`tile_at` picks
-  through every variant of `shuyi_ui::world::Projection` (1126), and
-  the round-trip property test runs on the isometric skin too".
+  projection. **From 2405 (done):** `Projection::tile_at`
+  (`crates/ui/src/grid/layout.rs`), `Grid::tile_at_px` and
+  `GridSkin::tile_at` exist for the top-down grid. This ticket moves
+  `tile_at` onto this `Projection` and gives it the isometric case,
+  through this world to tile, so the pointer picks isometric tiles.
+  2405's round-trip property test (`tile_at_inverts_tile_px` in
+  `crates/ui/src/grid/sprite/tests.rs`: every pixel of every drawn tile
+  gives that tile) runs on the isometric skin too.
   **Either order with 1127:** if 1127 is done, its `SideView` marker
   already has a `SideView { tile }` projection: move it into this
   `Projection` beside `TopDown`, with its tests. If not, add
@@ -98,7 +98,7 @@ None.
 1. Write the projection with property tests. `world_to_tile(tile_to_world(t))
    == t` for all tiles. Every world pixel inside a diamond picks that
    diamond.
-2. Make the grid kit use it, 2405's `tile_at` included if 2405 is done.
+2. Make the grid kit use it, 2405's `tile_at` included.
    The game's top-down snapshots must not change.
 3. Build the skin and the example, with a Harness playthrough, a bot
    match and snapshots.
@@ -116,7 +116,7 @@ None.
 ## Tests required
 
 - Property: the projection round trip and picking; 2405's tile round
-  trip on the isometric skin, if 2405 is done.
+  trip (`tile_at_inverts_tile_px`) on the isometric skin.
 - Integration: the example.
 
 ## Completion notes

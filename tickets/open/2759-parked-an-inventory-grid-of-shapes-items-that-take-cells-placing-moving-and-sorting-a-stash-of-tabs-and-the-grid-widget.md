@@ -30,17 +30,16 @@ puzzle games (Backpack Hero), crawlers that want it.
 It builds on 2746 (`Item`, `Inventory`, commands) and 2354 (the grid
 cursor, for moving with a pad).
 
-**Either order with 2405:** if 2405 is done, items are picked up and
-dropped with the pointer: a click picks an item up and a click drops
-it, no drag (2405 leaves drag out), through 2405's hit areas. If not,
-the pad and keys only, and 2409 (2405's follow-up for the engine's
-other widgets) adds the pointer here (2405's Out says so).
+**From 2405 (done):** items are picked up and dropped with the
+pointer: a click picks an item up and a click drops it, no drag (2405
+left drag out), through the hit areas the grid widget's painter
+records (`GlyphBuffer::hit`, `crates/ui/src/frame/hit.rs`) and
+`PointerInput::clicked`.
 
-**Either order with 2409:** if 2409 is done, 2405 is done too (2409
-waits for it), so the pointer comes in as the clause above says, with
-each cell's hit item made by 2409's `grid_item(row, col)`; if not, as
-the clause above says (2409 adds the pointer here when this ticket is
-done before 2405).
+**Either order with 2409:** if 2409 is done, each cell's hit item is
+2409's `grid_item(row, col)`; if not, the painter records each cell
+with an item of its own, and 2409 moves them onto `grid_item` (its
+clause with 2759 says so).
 
 ## Nick input
 
