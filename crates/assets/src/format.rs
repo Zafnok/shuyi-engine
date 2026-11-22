@@ -657,6 +657,7 @@ impl Formats {
         self.register(audio::Wav)?;
         self.register(audio::OggVorbis)?;
         self.register(audio::OggVorbisTrack)?;
+        self.register_codecs()?;
         self.register(audio::AudioManifestRon)?;
         self.register(credits::CreditsRon::default())?;
         self.register(font::FontAtlasRon::default())?;
@@ -667,6 +668,43 @@ impl Formats {
         self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
         self.register(target::TargetRon)?;
         self.register_import_settings::<bitmap::dither::OneBitSettings>()?;
+        Ok(())
+    }
+
+    /// Registers the picture and sound formats whose feature is on (ticket
+    /// 2203): JPEG, WebP, QOI and JPEG XL for both image kinds, FLAC and MP3
+    /// for sounds and tracks.
+    fn register_codecs(&mut self) -> Result<(), RegisterError> {
+        #[cfg(feature = "jpeg")]
+        {
+            self.register(crate::image::JpegInfo)?;
+            self.register(crate::image::Jpeg)?;
+        }
+        #[cfg(feature = "webp")]
+        {
+            self.register(crate::image::WebPInfo)?;
+            self.register(crate::image::WebP)?;
+        }
+        #[cfg(feature = "qoi")]
+        {
+            self.register(crate::image::QoiInfo)?;
+            self.register(crate::image::Qoi)?;
+        }
+        #[cfg(feature = "jpeg-xl")]
+        {
+            self.register(crate::image::JpegXlInfo)?;
+            self.register(crate::image::JpegXl)?;
+        }
+        #[cfg(feature = "flac")]
+        {
+            self.register(crate::audio::Flac)?;
+            self.register(crate::audio::FlacTrack)?;
+        }
+        #[cfg(feature = "mp3")]
+        {
+            self.register(crate::audio::Mp3)?;
+            self.register(crate::audio::Mp3Track)?;
+        }
         Ok(())
     }
 
@@ -1015,3 +1053,6 @@ pub(crate) mod builtin_tests;
 
 #[cfg(test)]
 mod golden_tests;
+
+#[cfg(test)]
+pub(crate) mod codec_tests;

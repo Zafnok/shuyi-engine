@@ -89,6 +89,23 @@ None.
   2203 left one out of it, register it there and update the registry's
   test.
 
+- **From 2203 (done):** it shipped all six. The features are `jpeg`,
+  `webp`, `qoi`, `jpeg-xl`, `flac` and `mp3`; the formats are
+  `image::{Jpeg, JpegInfo, WebP, WebPInfo, Qoi, QoiInfo, JpegXl,
+  JpegXlInfo}` and `audio::{Flac, FlacTrack, Mp3, Mp3Track}`, and
+  `register_standard` already registers each under its feature
+  (`Formats::register_codecs`), tested in `format/tests.rs`. The
+  fixtures are in `crates/assets/tests/fixtures/formats/` (named as
+  constants in `crates/assets/src/format/codec_tests.rs`: `JPEG`,
+  `WEBP`, `QOI`, `JPEG_XL`, `FLAC`, `MP3`, and the lossless ones). The
+  decoders are `zune-jpeg`, `image-webp`, `qoi`, `jxl-oxide`, `claxon`
+  and `nanomp3`, already in `tools/layers.ron`. The sound formats read
+  headers only: `claxon` (`FlacReader::samples`) and `nanomp3`
+  (`SliceReader::read`) also decode the samples `decode_to_wav` needs,
+  with no other crate. `nanomp3` is used with `alloc` only and is
+  `no_std`; `claxon` needs `std`, so the `flac` feature turns on
+  `shuyi-assets`' `std`.
+
 - **Pictures in `shuyi-app`** (`crates/app/src/render.rs`):
   - `Renderer` keeps a `Formats::standard()`, made in `Renderer::new`,
     whose signature stays.

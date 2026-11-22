@@ -113,6 +113,24 @@ The standard ones, in `Formats::standard()`:
 | target profile | `target::TargetProfile` | `target::TargetRon` | `target-ron` | `ron` | none | 4 MiB |
 | dialogue | `dialogue::DialogueFile` (a file's scenes) | `dialogue::Dlg` | `dlg` | `dlg` | none | 4 MiB |
 
+With a feature of `shuyi-assets` on, `Formats::standard()` has its
+formats too ([below](#formats-behind-a-feature)):
+
+| Kind | Type of the kind | Format | Id | Extensions | Magic bytes | Limit | Feature |
+| ---- | ---------------- | ------ | -- | ---------- | ----------- | ----- | ------- |
+| image | `image::ImageInfo` | `image::JpegInfo` | `jpeg` | `jpg`, `jpeg` | `FF D8 FF` | 64 MiB | `jpeg` |
+| image pixels | `image::Image` | `image::Jpeg` | `jpeg` | `jpg`, `jpeg` | `FF D8 FF` | 64 MiB | `jpeg` |
+| image | `image::ImageInfo` | `image::WebPInfo` | `webp` | `webp` | `RIFF`, then `WEBP` | 64 MiB | `webp` |
+| image pixels | `image::Image` | `image::WebP` | `webp` | `webp` | `RIFF`, then `WEBP` | 64 MiB | `webp` |
+| image | `image::ImageInfo` | `image::QoiInfo` | `qoi` | `qoi` | `qoif` | 64 MiB | `qoi` |
+| image pixels | `image::Image` | `image::Qoi` | `qoi` | `qoi` | `qoif` | 64 MiB | `qoi` |
+| image | `image::ImageInfo` | `image::JpegXlInfo` | `jpeg-xl` | `jxl` | `FF 0A`, or the container's `JXL ` box | 64 MiB | `jpeg-xl` |
+| image pixels | `image::Image` | `image::JpegXl` | `jpeg-xl` | `jxl` | `FF 0A`, or the container's `JXL ` box | 64 MiB | `jpeg-xl` |
+| sound | `audio::Sound` | `audio::Flac` | `flac` | `flac` | `fLaC` | 64 MiB | `flac` |
+| music track | `audio::MusicTrack` | `audio::FlacTrack` | `flac` | `flac` | `fLaC` | 64 MiB | `flac` |
+| sound | `audio::Sound` | `audio::Mp3` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
+| music track | `audio::MusicTrack` | `audio::Mp3Track` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
+
 The ones a game registers with its own types or rules:
 
 | Kind | Type of the kind | Format | Id | Extensions | What the game gives |
@@ -339,6 +357,110 @@ What each one reads:
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
   `from_source`), with the file named as the bundle shows it.
+
+### Formats behind a feature
+
+JPEG, WebP, QOI and JPEG XL pictures, and FLAC and MP3 sounds, are
+formats of `shuyi-assets` behind a cargo feature each (ticket 2203,
+ADR-0007 §3), so a game pays only for what it uses. A game turns one on
+in its own `Cargo.toml`, with a line for `shuyi-assets` from the same
+source as its `shuyi` line (cargo then turns the feature on for every
+crate of the build):
+
+```toml
+shuyi-assets = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<its pin>", features = ["jpeg", "flac"] }
+```
+
+With it on, `Formats::standard()` registers its formats, so
+`ImageTable::load_with` sizes the files, `Formats::load::<Image>` gives
+their pixels and `Formats::load::<MusicTrack>` a track's length.
+
+**Not drawn or played yet.** `shuyi-app` and `frame-png` decode only a
+PNG's pixels, and macroquad plays only WAV and OGG, so a game that loads
+one of these files can read it but not show or play it, and the audio
+manifest still names only `.wav` and `.ogg` files. Ticket 2234 draws and
+plays them.
+
+What each one reads:
+
+- **A picture** is two formats, as PNG is: one reads its size from its
+  headers (`JpegInfo`, …), the other its pixels (`Jpeg`, …) as RGBA, and
+  checks that size first, so a picture too big is refused before its
+  pixels are decoded. A picture is 1 to 4096 pixels a side, as a PNG is.
+  - **JPEG**: baseline and progressive, gray, RGB and CMYK, made opaque.
+  - **WebP**: lossy or lossless, with or without alpha; an animation
+    gives its first frame.
+  - **QOI**: RGB or RGBA; its colour-space tag is ignored.
+  - **JPEG XL**: a bare codestream or a container, lossless or lossy;
+    its first frame, in sRGB. A CMYK picture, or one whose ICC profile
+    needs converting, is refused.
+- **A sound** reads only its header, as WAV and OGG do: one or two
+  channels at 44.1 kHz.
+  - **FLAC**: its `STREAMINFO`; a track's length is its sample count, so
+    a file that doesn't say it (a count of 0) is a sound but no track.
+  - **MP3**: its first frame's header, past an ID3 tag; a track's
+    length counts every frame, without the silence its encoder added at
+    both ends when its LAME tag says how much.
+
+**The same pixels everywhere** (ADR-0007 §5). The JPEG, WebP and QOI
+decoders work in integers, with no SIMD, so a picture decodes to the
+same pixels on every target. `jxl-oxide` renders a lossy JPEG XL in
+floats with SIMD it picks at run time (AVX2 and FMA on x64, NEON on
+ARM64): the fixture's pixels are pinned on x64, ARM64 and wasm32, but
+another lossy picture could round a pixel apart on another machine. A
+lossless JPEG XL is exact everywhere. Each format's row in
+`tests/golden/formats.ron` pins what it decodes from its fixture
+(`crates/assets/tests/fixtures/formats/`, our own files, CC0): the
+pixels of the lossy JPEG, WebP and JPEG XL, and of the QOI; the header
+of the sounds, and the length of the tracks. Its tests also check the
+lossless fixtures against their source, and the lossy ones against what
+libjpeg-turbo (within 4 a channel), libwebp (exactly) and libjxl (within
+1) decode.
+
+**The decoders**, checked on 2026-11-22: each one's licence from its
+`Cargo.toml` and the files in its package, and `cargo deny check` with
+every feature on (ADR-0002 §8). Each is pure Rust, builds for
+`wasm32-unknown-unknown` without `wasm-bindgen`, and is used with
+`default-features = false`.
+
+| Feature | Crate | Licence | Last release | Features used | Without `std` |
+| ------- | ----- | ------- | ------------ | ------------- | ------------- |
+| `jpeg` | `zune-jpeg` 0.5.15 (`zune-core`) | MIT OR Apache-2.0 OR Zlib | 2026-03-26 | none: no `x86` or `neon` SIMD | yes |
+| `webp` | `image-webp` 0.2.4 (`byteorder-lite`, `quick-error`) | MIT OR Apache-2.0 | 2025-08-27 | none | no |
+| `qoi` | `qoi` 0.4.1 (`bytemuck`) | MIT OR Apache-2.0 | 2022-10-16 | `alloc` | yes |
+| `jpeg-xl` | `jxl-oxide` 0.12.6 (eleven `jxl-*` crates, `brotli-decompressor`, `tracing`) | MIT OR Apache-2.0 (`brotli-decompressor`: BSD-3-Clause OR MIT) | 2026-05-29 | none: no `rayon` | no |
+| `flac` | `claxon` 0.4.3 | Apache-2.0 | 2020-08-09 | none | no |
+| `mp3` | `nanomp3` 0.2.0 (`nanomp3-core`) | MIT OR Apache-2.0 | 2026-09-30 | `alloc`: no layers I and II | yes |
+
+`symphonia`, the common Rust audio decoder, is MPL-2.0 and denied
+(ADR-0004 §7). `qoi` and `claxon` have had no release in years; each
+is small, its format is frozen, and `cargo deny` reports an advisory
+the week one is filed. A feature whose crate needs `std` turns on
+`shuyi-assets`' own `std`; the `jpeg`, `qoi` and `mp3` ones also build
+without it (`thumbv7em-none-eabihf`). Pure Rust or `no_std` alone
+doesn't prove a compressed track fits a handheld's time to decode it.
+
+**What each feature adds to a web build:** the bytes of a
+`wasm32-unknown-unknown` release build (the workspace's profile: thin
+LTO, one codegen unit, stripped; before `wasm-opt`) of a library that
+decodes every kind through `Formats::standard()`, beside the same
+library with no feature on (674,911 bytes), measured on 2026-11-22.
+
+| Feature | Bytes added | KiB |
+| ------- | ----------: | --: |
+| `jpeg` | 144,767 | 141 |
+| `webp` | 191,661 | 187 |
+| `qoi` | 10,347 | 10 |
+| `jpeg-xl` | 1,668,481 | 1,629 |
+| `flac` | 17,124 | 17 |
+| `mp3` | 55,639 | 54 |
+| all six | 2,073,029 | 2,024 |
+
+JPEG XL costs the most by far: its decoder renders every coding tool
+the format has. A game that ships to the web and has few JPEG XL files
+saves more by converting them to WebP or PNG than they save it. FLAC
+and MP3 read only headers here, so most of their decoders' code for
+samples isn't in these numbers; 2234, which plays them, adds it.
 
 ### The kinds of ADR-0007 §1
 
