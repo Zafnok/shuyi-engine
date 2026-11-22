@@ -39,7 +39,8 @@ What stands in the way today:
 
 - **The renderer.** `shuyi-app` draws through macroquad over miniquad
   (GL 3.3 and WebGL 2), which can't reach ray-tracing hardware. 3034
-  (parked research) plans our own renderer over wgpu (ADR-0021 §1).
+  (done) planned our own renderer over wgpu, `shuyi-gpu` (3325,
+  ADR-0136).
   wgpu's ray queries are, at the time of writing, an experimental
   feature on Vulkan (and in progress elsewhere), and browsers have no
   ray tracing in WebGPU.
@@ -106,8 +107,11 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
   machine. Say how a look test (`frame-png`) covers both paths.
 - **Graphics paths**, with the facts of the day: wgpu's ray-query
   feature (status per backend, the wgpu version, what 3034 picks;
-  **either order with 3034:** if it is done, build on its renderer; if
-  not, name what this needs from it and add a line to 3034's ticket);
+  **from 3034 (done):** its report has the status per backend for wgpu
+  30, and ADR-0136 §7 leaves room in `shuyi-gpu`: optional features
+  through `Wants`, compute and ray-query passes through its hidden
+  `raw` module. Build on them, and write what else this needs into
+  3325's ticket while it is open);
   compute-only 2D tracing on wgpu and WebGPU; a denoiser with a
   permissive license (or none, and why); consoles through their private
   backends (one paragraph: what each SDK offers, never its contents).
@@ -149,7 +153,7 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
   - the build tickets (the `write-ticket` skill), each one PR, each
     `Parked:` with this one's note and milestone "Engine: ray tracing",
     listed in `docs/ROADMAP.md`'s *Parked* section;
-  - the edits the decision needs in 3017's, 3034's, 3104's, 2328's,
+  - the edits the decision needs in 3017's, 3325's, 3104's, 2328's,
     2363's tickets and the selected audio build tickets (2210, 3030–3032),
     preserving 2573's parity gates. A ticket already in `tickets/done/` is
     never edited; the change becomes a new parked build ticket instead.
@@ -159,7 +163,7 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
 
 **Out (do not do):**
 - building any of it: the tickets it writes do;
-- the renderer itself (3034 and the tickets it writes) and the 3D
+- the renderer itself (3325–3333, from 3034) and the 3D
   painter (3104);
 - screen passes that trace nothing (2326) and 2D lights without
   shadows (2328);
@@ -174,7 +178,7 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
 ## Implementation steps
 
 1. Read ADR-0009, ADR-0011 §7–§8, ADR-0012 §1 and ADR-0021, and 3017,
-   3034, 3104, 2328, 2363 and 2902 as they stand. Note which are done,
+   3034's ADR-0136, 3104, 2328, 2363 and 2902 as they stand. Note which are done,
    for the either-order rules above.
 2. Write the needs into the report.
 3. Survey the graphics and sound paths; check the licenses with

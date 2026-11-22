@@ -21,9 +21,12 @@ Those stages retain the old path. This is the sole removal step in
 [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md),
 conditional on Nick's correctness/speed requirement, not just successful builds.
 It is also the one step that is hard to undo, so it comes after 3084 has made the
-new backend the default, and proves itself undoable first. 3034, replacing
-macroquad's loader, waits for this ticket, since it would close the way back
-([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+new backend the default, and proves itself undoable first. The tickets that
+replace macroquad (3325–3333, from 3034's research; 3325 has this one in its
+`blocked_by`) wait for this ticket, since replacing macroquad's loader would
+close the way back
+([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md),
+amended by ADR-0136).
 
 ## Nick input
 

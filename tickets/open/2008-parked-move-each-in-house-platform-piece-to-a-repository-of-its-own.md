@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2902", "2903", "2215", "3034", "3079"]
+blocked_by: ["2902", "2903", "2215", "3034", "3079", "3333"]
 nick_input: setup
 completed:
 ---
@@ -31,7 +31,7 @@ mechanical:
 - `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
   own code;
 - `shuyi-embed` (2215);
-- the 2D renderer crate that 3034's tickets make. If those are
+- `shuyi-gpu`, the 2D renderer crate (3325, ADR-0136). If those are
   not all done when this is unparked, move the others, and leave a
   ticket for those.
 

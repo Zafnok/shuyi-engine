@@ -6,7 +6,7 @@ milestone: "Engine: accessibility"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2322", "3034"]
+blocked_by: ["2322", "3034", "3326"]
 nick_input: none
 completed:
 ---
@@ -26,8 +26,10 @@ for UI Automation (Windows), NSAccessibility (macOS) and AT-SPI
 (Linux), and `accesskit_winit` to join it to a winit window. macroquad
 gives no way in, so this lands in the winit backend that
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1 chose and 3034 plans. When 3034 writes the winit backend's ticket,
-it adds that ticket to this one's `blocked_by`.
+§1 chose and 3034 planned: 3326 builds its window (ADR-0136 §12), and
+is in this one's `blocked_by`. `accesskit_winit` 0.34.2 (2026-10-25)
+needs winit `^0.30.5`, and its adapter must exist before the window is
+first shown, so 3326's window starts hidden for it (3034's report).
 
 Only platform backends touch the system (`AGENTS.md` rule 5): the tree
 is plain data until here.

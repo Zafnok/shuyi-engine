@@ -94,7 +94,7 @@ None.
 - the trace agents read: 2553 (JSON lines from `shuyi run`, MCP and a
   running build's file) and 2555 (over the live link), both in the MVP;
 - GPU times (they need timestamp queries on the wgpu renderer): 2382
-  (parked) adds them once 3034's renderer exists;
+  (parked) adds them once 3325's renderer exists;
 - memory: 2368 (parked), which shares this ticket's ring and bars
   (either order);
 - Tracy or the `tracing` crate (a follow-up if a developer asks);

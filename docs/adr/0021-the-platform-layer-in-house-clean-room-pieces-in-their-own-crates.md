@@ -1,6 +1,6 @@
 # ADR-0021: The platform layer in-house: written from specifications, in crates of their own, with wgpu and winit for graphics and the window
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0136 (§4: the renderer's crate is `shuyi-gpu`; §6: it needs no `unsafe`)
 - **Date:** 2026-10-19
 - **Related tickets:** 2902, 2903 (research first); 2210–2215, 2402, 2403,
   3030–3034, 2008

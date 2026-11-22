@@ -318,7 +318,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Data driven: an ECS, components as structs, systems as functions, queries, resources, change detection, a parallel scheduler | 2904 (research), 2107 (`shuyi-ecs`), 2108 (in a game, parallel with the same hashes, an example). Opt-in; the arena stays the default (ADR-0003 §4) | after MVP |
 | 2D renderer: sprite sheets, dynamic texture atlases, cameras, textures, materials | 1123 and 2231 (sprite sheets and clips), 2222 (atlases), 2335–2338 (rotation, shapes, tints and blends, nine-slice), 1120 (cameras), 2327 (materials and a game's shaders) | 2222 and 2335–2338 after MVP; the rest parked |
 | 3D renderer: lights, shadows, cameras, meshes, materials, glTF | 3101–3109 | parked |
-| Render graph | 3034 (wgpu, not tied to one API), 2331 (the graph) | parked |
+| Render graph | 3325 (`shuyi-gpu` over wgpu, not tied to one API; 3034's research done), 2331 (the graph) | parked |
 | Animation: skeletal rigs, blending, morph targets, glTF | 1123 and 2231 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
 | Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3071 (Linux on Arm), 3015 (mobile) | partial: Windows, Linux, macOS and the web done (3004); 3071 after MVP; 3015 parked |
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
@@ -1004,9 +1004,18 @@ specifications, never copied. The order, when unparked:
   2402, then 2403, which removes gilrs.
 - **The two small ones:** web saves (3033, done: unparked on its own on
   2026-11-12) and file embedding (2215, which needs nothing else).
-- **macroquad:** the research (3034), which writes the ADR and the tickets
-  for winit and our own 2D renderer over wgpu, which draws on Vulkan,
-  Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU.
+- **macroquad:** the research (3034) is done. Nick unparked it alone on
+  2026-11-22, and it wrote
+  [ADR-0136](adr/0136-replacing-macroquad-winit-wgpu-and-wasm-bindgen.md).
+  It plans winit for the window and our own 2D renderer over wgpu, which
+  draws on Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and
+  WebGPU. Its tickets are parked, and all of them come after 3079:
+  - `shuyi-gpu`, the renderer (3325);
+  - the winit backend on the desktop (3326), its input (3327) and the
+    window facts miniquad lacks (3328);
+  - the web build on `wasm-bindgen` (3330) and its plugins (3331);
+  - the IME everywhere (3329, after 2346);
+  - winit as the default (3332), then macroquad removed (3333).
 - **Repositories of their own** (2008): last, for each piece we wrote, when
   it is a full replacement and Nick says so.
 
@@ -1027,12 +1036,12 @@ same day; Visions of Shuyi never uses Spine). The order, when unparked:
   accessibility tree (2322) and a text size the player picks (2323,
   after 2209) need nothing parked; the colour-vision check (2324) after
   3006; screen reader output (3035) after 2322 and the winit backend
-  that 3034 plans.
+  (3326).
 - **The debug view:** the frame profiler (2325) after 2315, 2316 and
   3063.
-- **2D effects:** screen effects (2326) on the wgpu renderer that 3034
-  plans, then a game's own shaders (2327) and 2D lights (2328, also
-  after 1120).
+- **2D effects:** screen effects (2326) on the wgpu renderer (3325),
+  then a game's own shaders (2327) and 2D lights (2328, also after
+  1120).
 - **Store services:** achievements and stats with no store in them
   (3036), then Steam achievements, stats and cloud saves (3037).
 
@@ -1091,8 +1100,8 @@ rest, when unparked:
 - **Voice chat:** the research (2910), with networking; it ends with a
   question to Nick.
 - **Ray and path tracing:** the research (2911), for PCs and current
-  consoles only, behind a `ray_tracing` capability (3017); best after
-  3034, which plans the renderer it needs.
+  consoles only, behind a `ray_tracing` capability (3017); 3034 (done)
+  planned the renderer it needs (3325, ADR-0136 §7).
 
 Later on 2026-10-22 Nick added first-person dungeon crawlers (a party
 of one first, any size allowed) and Diablo-likes, asked for the
@@ -1157,19 +1166,20 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2903, 2215, 2402–2403, 3034, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; embedding; winit/wgpu research; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, and web saves (3033) on 2026-11-12 | Nick asks |
+| 2903, 2215, 2402–2403, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; embedding; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, web saves (3033) on 2026-11-12, and the macroquad research (3034) alone on 2026-11-22 | Nick asks |
+| 3325–3333 | Replacing macroquad (ADR-0136): `shuyi-gpu`, our 2D renderer over wgpu; the winit backend on the desktop, its input and the window facts miniquad lacks; the web build on `wasm-bindgen` and its plugins; the IME everywhere; winit as the default; macroquad removed | Nick asks, after the MVP; and each waits for 3079 (2026-11-22) |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |
 | 2325 | A frame profiler in the debug view: phase times, spans, a graph, and a trace file | Nick asks |
 | 3036–3037 | Store services: achievements and stats as data with a local backend, an unlock notice and an achievements screen, then Steam achievements, stats and Steam Cloud saves behind the `steam` feature | Nick asks (2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost") |
-| 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3034 is unparked |
+| 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3325 is unparked |
 | 3110 | 3D animation: several clips blended at once, and morph targets from glTF | 3D is unparked |
 | 3111 | 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF | 3D is unparked |
 | 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, and `cargo xtask repo-settings` | Nick asks (2026-11-01: "I would rather park it altogether") |
 | 1132 | Community files and the contribution policy: who may send code, a channel, a code of conduct | the engine gets traction and Nick asks (2026-11-01) |
 | 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
-| 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |
+| 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3325 is unparked |
 | 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |
 | 2910 | Research: voice chat and proximity voice, ending with a question to Nick | with networking |
 | 2911 | Research: ray- and path-traced light and sound, an opt-in module behind a `ray_tracing` capability, for PCs and current consoles | Nick asks (2026-10-22: "would be for diff comp targets like PC, new gen consoles") |

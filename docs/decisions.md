@@ -1985,3 +1985,29 @@ delete them".
 - The scratch run: made and run by the session that works 3406; Nick
   deleted the two repositories himself, keeping `delete_repo` from the
   session.
+
+## 2026-11-22: the research of replacing macroquad unparked, not the build
+
+Source: Nick, in a Claude Code session, after asking whether 3034 (the
+research of replacing macroquad with winit and wgpu) was unblocked. Told
+that its three blockers were done, but that it was parked until the MVP
+(2026-10-19) and that ADR-0068 kept it until the sound chain ends (3079),
+because replacing macroquad's web loader ends the way back to quad-snd,
+he chose **"Unpark research now"**, then:
+
+> "I only want to unpark the research not the implementation. So I don't
+> think 3034 needs to be parked until 3079. We can just have the rest be
+> blocked by 3079, whatever comes of this."
+
+**Rules:**
+
+- **3034 is unparked** and worked now. It writes the report, the ADR and
+  the tickets, and builds nothing that ships, so it closes no door on
+  sound.
+- **Every ticket it writes is `Parked:`,** as the rest of the in-house
+  platform layer is until the MVP (2026-10-19), and each has 3079 in its
+  `blocked_by`, directly or through the chain: nothing of the build
+  starts before quad-snd is removed (or the sound chain is given up).
+- The rest of the platform layer's order stands: controllers (2903) and
+  file embedding (2215) stay parked, and unparking 3034 unparks nothing
+  else.

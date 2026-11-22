@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["3034"]
+blocked_by: ["3034", "3325"]
 nick_input: none
 completed:
 ---
@@ -22,16 +22,17 @@ on Bevy's homepage. Its Render Graph composes render pipelines as a
 graph: nodes render in parallel, render logic is modular and reusable,
 and it is not tied to one graphics API.
 
-Today `shuyi-app` paints with macroquad. 3034 plans the move to winit
+Today `shuyi-app` paints with macroquad. 3034 planned the move to winit
 and our own 2D renderer over wgpu, which already isn't tied to one API
 (Vulkan, Metal, Direct3D 12, OpenGL, WebGL 2, WebGPU). 2326 plans screen
 effects on it, 2327 a game's own WGSL passes, and 2328 2D lights. Each
 is a pass. This ticket makes the passes a graph, so they compose
 without each knowing the others.
 
-When 3034 writes the renderer's ticket, it adds that ticket's id to
-this one's `blocked_by`, as it does for 2326: the graph is built in
-the renderer's crate, so the research alone is not enough.
+The renderer is `shuyi-gpu` (3325, ADR-0136), in this one's
+`blocked_by`, as in 2326's: the graph is built in the renderer's
+crate, and its `Frame` of passes into targets is what the graph runs
+(ADR-0136 §8).
 
 ## Nick input
 
@@ -40,7 +41,8 @@ None.
 ## Scope
 
 **In:**
-- **`RenderGraph`** in the wgpu renderer's crate (named by 3034's ADR):
+- **`RenderGraph`** in the wgpu renderer's crate, `shuyi-gpu`
+  (ADR-0136 §2; its public API names no wgpu type, ADR-0119):
   - a node has named inputs and outputs (textures and buffers, with
     their formats and sizes relative to the frame), and a `run` that
     records commands;

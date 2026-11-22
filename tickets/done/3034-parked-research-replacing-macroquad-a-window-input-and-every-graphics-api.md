@@ -1,19 +1,19 @@
 ---
 id: "3034"
-title: "Parked: Research: replacing macroquad with winit for the window and input, and our own 2D renderer over wgpu (Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2, WebGPU), and the tickets to build it"
+title: "Research: replacing macroquad with winit for the window and input, and our own 2D renderer over wgpu (Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2, WebGPU), and the tickets to build it"
 type: research
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
-status: blocked
+status: done
 blocked_by: ["3003", "2018", "2019"]
 nick_input: none
-completed:
+completed: 2026-11-22
 ---
 
 # 3034 — Research: replacing macroquad
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after sound, controllers, web saves and file embedding (Nick's order; it needs only 3003, so the order is the roadmap's, not a blocker). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Unparked** (Nick, 2026-11-22, "Unpark research now", `docs/decisions.md`): the research only. It was parked on 2026-10-19 with the in-house platform layer. Every ticket it writes is `Parked:`, with 3079 in its `blocked_by` chain.
 
 ## Context
 
@@ -58,8 +58,9 @@ This is research: it writes the plan, an ADR and the tickets. It builds
 nothing that ships.
 
 **From [ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md):** quad-snd's web path runs on
-macroquad's loader, so replacing it closes the way back to quad-snd. Don't start
-until 3079 is done or the sound chain was abandoned.
+macroquad's loader, so replacing it closes the way back to quad-snd. Nick
+unparked the research alone on 2026-11-22: it builds nothing, so it closes no
+door, and every ticket it writes waits for 3079 (ADR-0136 amends ADR-0068).
 
 ## Nick input
 
@@ -279,17 +280,17 @@ when (dropping a platform for a while, say), it asks Nick with the
 
 ## Acceptance criteria
 
-- [ ] The report has the frame measurements and the list of documents
+- [x] The report has the frame measurements and the list of documents
       used.
-- [ ] The ADR decides every bullet in the *2D renderer*, *window* and *web build*
+- [x] The ADR decides every bullet in the *2D renderer*, *window* and *web build*
       parts of the scope.
-- [ ] Every ticket written is one PR's worth, `Parked:`, with its
+- [x] Every ticket written is one PR's worth, `Parked:`, with its
       `blocked_by` chain, and passes the ticket lint.
-- [ ] The tickets say how each piece keeps 2018's `render` and 2019's
+- [x] The tickets say how each piece keeps 2018's `render` and 2019's
       `web-render` jobs green, and the one that removes macroquad
       changes doctor's Linux table, `scripts/setup-linux.sh` and 3071's
       `libraries.ron` (by a clause with 3071 if 3071 is still open).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -297,5 +298,85 @@ when (dropping a platform for a while, say), it asks Nick with the
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- **Unparked.** Nick unparked the research alone (2026-11-22,
+  `docs/decisions.md`, "Unpark research now"), and the decision is
+  recorded with his words.
+- **The frame was measured.** A scratch program played the game's six
+  bench scenarios headless at this revision, with the public art and
+  with the bought art, and counted every presented frame.
+  - The busiest frame is 3,551 quads (14,204 vertices).
+  - No frame uses more than 22 textures.
+  - A frame needs at most 58 texture switches with one texture per
+    image, or 1 with one atlas page.
+- **Two research passes** read wgpu's, winit's, wasm-bindgen's and the
+  text crates' own documentation and sources. The report lists every
+  document.
+- **A throwaway prototype** drew 7,400 quads a frame through winit and
+  wgpu:
+  - natively on Windows (GNU toolchain) on DX12, Vulkan and GL;
+  - in the browser on WebGPU, and on WebGL 2 from the same `.wasm`;
+  - against a macroquad build of the same frame and today's
+    `hello-grid`.
+
+  The numbers are in the report's *Build size* and *The prototype*. It
+  was deleted after, with the frame counter and the game's scratch copy.
+- **The outputs:**
+  - [the report](../../docs/research/3034-replacing-macroquad.md);
+  - [ADR-0136](../../docs/adr/0136-replacing-macroquad-winit-wgpu-and-wasm-bindgen.md),
+    which extends ADR-0021 and amends ADR-0068, with both status lines
+    and index rows;
+  - nine parked tickets, 3325–3333, chained from 3079;
+  - their *Parked* row and the platform layer's order in
+    `docs/ROADMAP.md`.
+
+**Deviations.**
+
+- **The ticket was 34 days old** (2026-10-19). Its names were checked
+  against `main`:
+  - `render.rs`, `keys.rs`, `mq_js_bundle.js`, `run_game` and `run_app`
+    are as it says.
+  - Done since it was written: 3041, 3044, 3314, 2513, 2511 and 2087.
+  - Still open: 2337, 2346, 3043, 3052, 2908, 2909, 2911, 3104, 3106,
+    2601, 3071 and 1149. ADR-0136 plans each "if not" branch.
+- **The draw calls are counted, not read from macroquad.** They are the
+  texture switches two batchers would make, from the frames' contents.
+  Reading macroquad's own batching would have meant its source
+  (ADR-0021 §2). The prototype's macroquad build reports its telemetry
+  through macroquad's public API, in the report.
+- **Found along the way, outside the ticket's list:**
+  - winit has no clipboard, and 1149 plans to use miniquad's. That is
+    now a clause between 1149 and 3332, and a bullet in ADR-0136 §12.
+  - winit has no IME on the web and no work area anywhere, and no
+    `Occluded` on Windows. ADR-0136 §12 plans each: our own text area
+    (3329), each system's call (3328), the minimized state (3327).
+  - WebGL 2 offered the prototype only an sRGB surface, so 3325 has a
+    last pass that keeps the raster's bytes there (ADR-0136 §10).
+  - 2222's web page size must stay at 2048, WebGL 2's limit. That is
+    written into 2222's *Out*.
+- **winit 0.30, not 0.31:** 0.31 is in beta, and Bevy is on 0.30. §4 and
+  §12 fit both, and 3326 takes 0.31 if it is stable by then.
+- **Every other open ticket that named 3034 was settled:** 2008, 2103,
+  2222, 2325, 2326, 2328, 2331, 2337, 2340, 2346, 2368, 2382, 2601,
+  2908, 2909, 2911, 3035, 3043, 3052, 3058, 3071, 3079, 3104, 3106 and
+  1149, and `docs/platform-backends.md`.
+  - The renderer's ticket (3325) joined the `blocked_by` of 2326, 2331
+    and 2382, and the window's (3326) that of 2382 and 3035.
+  - 3333 joined 2008's.
+  - Each either-order clause now names its new ticket on both sides.
+
+**Follow-up tickets:** 3325–3333, all `Parked:`. Nothing else.
+
+**Size:** about 1,200 counted lines, all docs (the report and the ADR);
+the tickets are counted apart. It would split cleanly into the research
+(report, ADR, decision) and a ticket-only PR of 3325–3333, but each half
+names the other.
+
+Game: nothing to adopt, the research ships no code; 3332 writes the
+game's ticket that moves its pin to the winit backend.
+
+No break. Book: none, no public API changes.
+
+**For Nick:** nothing to do. Every build ticket stays parked until the
+MVP, and none starts before quad-snd is removed (3079).

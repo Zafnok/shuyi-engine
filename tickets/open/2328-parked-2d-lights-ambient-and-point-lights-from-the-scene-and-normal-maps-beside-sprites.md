@@ -29,7 +29,9 @@ on 1120's world layers. A light never changes the simulation: a game
 that needs "can the guard see me" writes that as rules (as 2713 does
 for RTS fog).
 
-This runs on the wgpu renderer (3034) with 2326's render targets, and,
+This runs on the wgpu renderer (`shuyi-gpu`, 3325; ADR-0136 §8: a
+material whose second texture is the normal map) with 2326's render
+targets, and,
 like 2326, has a CPU reference for `frame-png`.
 
 ## Nick input

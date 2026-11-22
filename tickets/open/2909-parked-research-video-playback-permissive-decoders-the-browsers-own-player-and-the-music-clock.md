@@ -50,8 +50,8 @@ What Shuyi has today:
   JS plugin written for the engine. Its Rust side is
   `crates/app/src/pads/web.rs`, with no `wasm-bindgen` (`AGENTS.md`,
   *Environment*). ADR-0021 §1 has already chosen wgpu and winit, and
-  the web build moves to `wasm-bindgen` when macroquad leaves (3034
-  plans how).
+  the web build moves to `wasm-bindgen` when macroquad leaves (3330
+  and 3331, ADR-0136 §13).
 - **No streaming from the pack.** ADR-0023: `Pack::open` unpacks every
   compressed file at once, and streaming is out of its scope.
 - **Music is read beside the game.** `crates/app/src/audio.rs` loads a
@@ -72,7 +72,7 @@ parked), 2365 (a beat clock, parked), 2366 (captions for sounds, not
 speech, parked), 2906 (asset memory research, done) and 2919 (its ADR, ADR-0128, done), 3017 (target
 capabilities, parked), 3010 (the Playdate backend), 3029 (audio on the
 Playdate, music streamed through the SDK's file players), 3034
-(research on replacing macroquad, parked), 2902 (sound plan recorded),
+(research on replacing macroquad, done: ADR-0136), 2902 (sound plan recorded),
 2020 (fuzzing every registered format) and 3039 (the notices
 a web build carries).
 
@@ -174,10 +174,11 @@ skill), not a choice made here.
   - how the plugin reports the video's current time;
   - a throwaway prototype in the scratch folder, or a note saying why
     none was tried;
-  - **Either order with 3034:** if 3034 is done, the web build uses
-    `wasm-bindgen` (ADR-0021 §1): cover the video through `web-sys` and
-    wgpu's textures too. If not, cover the macroquad path, and name
-    what changes under 3034.
+  - **Either order with 3331:** if 3331 is done, the web build uses
+    `wasm-bindgen` (ADR-0136 §13): cover the video through `web-sys` and
+    `shuyi-gpu`'s textures (3325); if not, cover the macroquad path, and
+    name the plugin 3331 must move (its clause with this ticket moves
+    it).
 - **The Playdate**: its SDK's own video player and `.pdv` format
   (`playdate->graphics->video` in the C API; read the SDK's docs on the
   day). How a `.pdv` is made, whether it carries sound (if not, whether
@@ -294,8 +295,8 @@ skill), not a choice made here.
 ## Implementation steps
 
 1. Read the code and ADRs named in *Context*, and 2721, 2722, 2724,
-   2364, 3017, 3010 and 3034 as they stand, and ADR-0128. Note which of
-   2020, 2514, 3017 and 3034 are in `tickets/done/`, for the either-order
+   2364, 3017, 3010 and 3331 as they stand, ADR-0136 and ADR-0128. Note
+   which of 2020, 2514, 3017 and 3331 are in `tickets/done/`, for the either-order
    rules above.
 2. Write the needs into the report.
 3. Survey the candidates and fill the table. Check the licenses with

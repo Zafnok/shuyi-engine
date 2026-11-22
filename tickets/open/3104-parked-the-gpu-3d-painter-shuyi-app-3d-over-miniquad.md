@@ -47,10 +47,13 @@ crate of its own that depends on `shuyi-app` and `shuyi-3d`, and
 `shuyi-app-3d` touches the GPU for 3D, so it counts as backend code
 (`AGENTS.md` rule 5).
 
-macroquad and miniquad are to be replaced by our own window and graphics
-layer (Nick, 2026-10-19; research 3034, parked). If 3034's tickets are
-done first, this painter is written over that layer instead of miniquad,
-and 3034's ADR says how. If this is done first, 3034 plans its move.
+macroquad and miniquad are to be replaced by winit and our own
+renderer over wgpu, `shuyi-gpu` (Nick, 2026-10-19; research 3034, done,
+ADR-0136; built by 3325–3333). **Either order with 3332:** if 3332 is
+done, write this painter over `shuyi-gpu` as ADR-0136 §6 says (a pass
+through its hidden `raw` module, with a depth texture `Wants` asks
+for), its look test in the `render` job on winit; if not, write it over
+miniquad as below (3332 moves it to `shuyi-gpu` before the switch).
 
 ## Nick input
 

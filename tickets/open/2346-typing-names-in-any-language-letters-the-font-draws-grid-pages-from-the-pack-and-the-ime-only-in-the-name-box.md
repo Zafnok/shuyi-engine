@@ -260,7 +260,8 @@ as `Rows` (wide glyphs are there: 2301, done).
   Chinese").
 - The IME's composing text drawn in the box (preedit, underlined), and
   the IME on macOS, Linux and the web: miniquad 0.4.11 has neither.
-  Parked 3034's research names text input and the IME over winit.
+  3329 (parked, from 3034's research) does both on winit (ADR-0136
+  §12), on the `Frame::typing` and the caret this ticket adds.
 - The clipboard and paste: a name box doesn't need them. Chat (1149,
   parked) and the editor (2507, parked) will, when they start.
 - The profiles screen asking the system keyboard (`Ctx::system_keyboard`)

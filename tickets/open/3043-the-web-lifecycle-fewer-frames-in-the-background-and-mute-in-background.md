@@ -130,6 +130,10 @@ Visions of Shuyi.
     system's events without stepping, and `lifecycle/web.rs` exports a
     function the plugin calls in place of `frame()`. The Completion
     notes say which and why.
+  - **Either order with 3331:** if 3331 is done (the winit web build's
+    plugins on `wasm-bindgen`), write the listeners for that build too,
+    with `web-sys`, running the frame from Rust inside the event; if
+    not, nothing to do (3331 moves `lifecycle.js`).
 - **`crates/app/src/lifecycle.rs`**: a pure queue that turns the codes
   into `SystemEvent::Suspend` and `Resume` (unknown codes are dropped),
   tested on native. The wasm part is `lifecycle/web.rs`: the `extern`
@@ -277,7 +281,8 @@ Visions of Shuyi.
 - holding the sound on `Suspend` (2394), and the browser's
   `AudioContext.suspend()` (3031 did it: `Output::suspend`, which `Audio::suspend`
   reaches through the backend's `hold_output`);
-- `Suspend` for a minimized desktop window (3034; 3042 says why);
+- `Suspend` for a minimized desktop window (3327, on the winit
+  backend; 3042 says why);
 - a lower frame rate on an idle screen that has the focus (3013 writes
   that ticket if the Deck's idle draw needs it);
 - phones' browsers as a target (2407, parked);

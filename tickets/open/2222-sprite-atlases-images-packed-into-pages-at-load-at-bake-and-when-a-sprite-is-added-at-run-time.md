@@ -98,7 +98,10 @@ None.
 
 **Out (do not do):**
 - rotation or trimming of sprites in the packer;
-- the wgpu renderer (3034, parked).
+- the wgpu renderer (3325, parked). It refuses a texture past the
+  device's `max_texture_dimension_2d`, 2048 on WebGL 2 (ADR-0136 §3), so
+  the web's target profile gives a texture limit of 2048, not the
+  default 4096.
 
 ## Implementation steps
 

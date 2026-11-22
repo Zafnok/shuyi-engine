@@ -45,7 +45,7 @@ What Shuyi has today (checked 2026-10-21):
   and tests rely on it being off.
 - Planned and parked: 2326's GPU screen passes, which drop a pass
   marked `flashing` when this ticket's `Settings::flashing` is off,
-  wait for the wgpu renderer (3034); 1120's camera shake needs 1119;
+  wait for the wgpu renderer (3325); 1120's camera shake needs 1119;
   2722 asks for a visual novel's shake and flash through `Ctx::shake`
   and `Ctx::flash`; 1120's camera shake is scaled by the player's
   `shake_strength` (1120's either-order clause with 2340 says who ties

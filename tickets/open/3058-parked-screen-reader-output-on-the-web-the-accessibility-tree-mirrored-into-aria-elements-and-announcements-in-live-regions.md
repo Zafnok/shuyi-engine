@@ -33,9 +33,9 @@ Today the web build runs on macroquad's loader, with no `wasm-bindgen`
 (game ADR-0034, `AGENTS.md` *Environment*). Rust reaches the page only
 through a miniquad JS plugin of our own, as `crates/cli/web/gamepad.js`
 does for controllers (its Rust side is `crates/app/src/pads/web.rs`).
-3034's research, done before this ticket since 3035 needs it, plans a
-move of the web build to `wasm-bindgen` in a ticket it writes. This
-ticket uses whichever the web build runs on the day (*Scope*).
+3034's research (done) plans the move of the web build to
+`wasm-bindgen` in 3330 and 3331 (ADR-0136 §13). This ticket uses
+whichever the web build runs on the day (*Scope*).
 
 Three facts about the page shape the design:
 
@@ -67,13 +67,13 @@ None.
 - **The web build on the day.** If it still runs on macroquad's loader,
   the page side is `crates/cli/web/access.js`, a miniquad plugin of the
   engine's own like `gamepad.js`, and Rust hands it the changes as text
-  (below). If the web build has moved to `wasm-bindgen` (the ticket
-  3034's research writes for that), there is no plugin: the backend the
+  (below). If the web build has moved to `wasm-bindgen` (3330), there
+  is no plugin: the backend the
   web build runs on then makes the same DOM changes through `web-sys`,
   with the same `Mirror`, and what this scope says about `access.js`,
   its text and its `SHELL` entry doesn't apply. Say which in the
   Completion notes. If the move comes later, it takes
-  `access.js` along with the other plugins (3034's plan moves every
+  `access.js` along with the other plugins (3331 moves every
   plugin `crates/cli/web` holds by then).
 - **The mirror**, `crates/app/src/access.rs` (`pub(crate)`), plain Rust
   compiled on every target so native tests cover it, as `pads.rs` sits
@@ -222,7 +222,7 @@ None.
   own actions, as on the desktop;
 - placing elements over the canvas at their `bounds`, for touch
   exploration or a magnifier: not planned;
-- moving the web build to `wasm-bindgen` (3034's plan).
+- moving the web build to `wasm-bindgen` (3330 and 3331).
 
 ## Implementation steps
 
