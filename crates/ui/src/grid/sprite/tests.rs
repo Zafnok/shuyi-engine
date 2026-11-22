@@ -925,3 +925,61 @@ fn the_range_lines_are_twice_as_thick_at_twice_the_zoom_and_shown_without_tiles(
     let bare = SpriteSkin::new(None, glyph, GLYPH.walk);
     assert_eq!(thickness(&bare, Rect::new(0, 0, 9, 5)), 1);
 }
+
+/// The skins the pointer picks tiles on: the glyph skin, and the sprite
+/// skin on glyph ground and with tiles at each of its zooms.
+fn picking_skins(kit: &Kit) -> Vec<Rc<dyn GridSkin<Piece>>> {
+    let mut skins: Vec<Rc<dyn GridSkin<Piece>>> = vec![Rc::new(GLYPH), Rc::new(sheets())];
+    skins.extend((1..=3).map(|z| Rc::new(skin(kit).zoomed(z)) as Rc<dyn GridSkin<Piece>>));
+    skins
+}
+
+/// Every pixel of every drawn tile of a small view gives back its tile.
+#[test]
+fn every_pixel_of_a_drawn_tile_gives_its_tile() {
+    let kit = Kit::new();
+    let scene = plains();
+    for skin in picking_skins(&kit) {
+        let grid = skin.grid(&scene, MAP_AREA);
+        for (dx, dy) in (0..grid.tiles.0).flat_map(|x| (0..grid.tiles.1).map(move |y| (x, y))) {
+            let tile = p(scene.origin.x + dx, scene.origin.y + dy);
+            let rect = skin.tile_px(&scene, MAP_AREA, tile).unwrap();
+            for px in (rect.x..rect.x + rect.w)
+                .flat_map(|x| (rect.y..rect.y + rect.h).map(move |y| (x, y)))
+            {
+                assert_eq!(
+                    skin.tile_at(&scene, MAP_AREA, px),
+                    Some(tile),
+                    "{} {px:?}",
+                    skin.name()
+                );
+            }
+        }
+    }
+}
+
+proptest! {
+    /// A pixel inside the drawn tiles gives the tile whose pixels hold
+    /// it; one outside them, none.
+    #[test]
+    fn tile_at_inverts_tile_px(
+        scene in any_scene(),
+        area in any_area(),
+        pixels in prop::collection::vec((-40..860i32, -40..560i32), 1..48),
+    ) {
+        let kit = Kit::new();
+        for skin in picking_skins(&kit) {
+            let bounds = skin.grid(&scene, area).bounds();
+            for &px in &pixels {
+                let got = skin.tile_at(&scene, area, px);
+                if bounds.contains(px.0, px.1) {
+                    let tile = got.unwrap_or_else(|| panic!("{} {px:?}", skin.name()));
+                    let rect = skin.tile_px(&scene, area, tile);
+                    prop_assert!(rect.is_some_and(|r| r.contains(px.0, px.1)));
+                } else {
+                    prop_assert_eq!(got, None);
+                }
+            }
+        }
+    }
+}

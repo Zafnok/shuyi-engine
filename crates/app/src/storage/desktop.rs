@@ -13,6 +13,7 @@
 use std::fs::{self, File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use super::DesktopFolder;
 use super::native::data_dir;
@@ -40,10 +41,21 @@ pub(super) fn find(name: &str, desktop: DesktopFolder) -> Option<PathBuf> {
     settle(data_dir(name), new, log)
 }
 
-/// Logs a line of the move.
+/// The lines of the move, kept until the log's sink is installed, which
+/// is after the move ([`take_move_lines`]).
+static MOVE_LINES: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Keeps a line of the move for the log.
 fn log(line: &str) {
     // check-text: not player text (a line for the log)
-    macroquad::prelude::info!("storage: {}", line);
+    let mut lines = MOVE_LINES.lock().unwrap_or_else(PoisonError::into_inner);
+    lines.push(line.to_owned());
+}
+
+/// The lines the moves logged since the last call, oldest first.
+pub fn take_move_lines() -> Vec<String> {
+    let mut lines = MOVE_LINES.lock().unwrap_or_else(PoisonError::into_inner);
+    std::mem::take(&mut *lines)
 }
 
 /// The folder to use when the storage was in `old` and belongs in `new`:

@@ -5,10 +5,14 @@
 //!
 //! The hook takes the one before it and calls it after writing, so the
 //! standard library's message in a terminal and miniquad's console line on
-//! the web stay. It reads the frame and the top screen [`run_app`](crate::run_app)
-//! set ([`set_frame`]) and the last lines of the log ([`note_log`]), from
-//! statics, so a panic on another thread (the music's worker) gets them too.
-//! A panic caught on purpose runs in [`quiet`] and writes nothing.
+//! the web stay. It is the process's one hook of the engine's: it first
+//! logs the panic's message as a line of the log
+//! ([`log_sink`](crate::log_sink)), whether reports are on or not, so the
+//! log file has it too. It reads the frame and the top screen
+//! [`run_app`](crate::run_app) set ([`set_frame`]) and the last lines of the
+//! log ([`note_log`], which the log's sink feeds), from statics, so a panic
+//! on another thread (the music's worker) gets them too. A panic caught on
+//! purpose runs in [`quiet`] and writes no report; its log line stays.
 //!
 //! A report is [`fatal`](CrashReport::fatal) when the panic is on the
 //! thread that runs the game, the one `run` installs the hook from: on
@@ -42,7 +46,7 @@ mod frames;
 use std::cell::Cell;
 use std::collections::VecDeque;
 use std::panic::PanicHookInfo;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::thread::ThreadId;
 
@@ -138,8 +142,6 @@ struct Written {
 static HOOKED: AtomicBool = AtomicBool::new(false);
 /// What [`install`] was given last.
 static INSTALLED: Mutex<Option<Installed>> = Mutex::new(None);
-/// The frame about to run ([`set_frame`]).
-static FRAME: AtomicU32 = AtomicU32::new(0);
 /// The screen on top as it starts ([`set_frame`]).
 static TOP_SCREEN: Mutex<Option<&'static str>> = Mutex::new(None);
 /// The last lines of the log ([`note_log`]).
@@ -188,11 +190,20 @@ pub fn install(
         storage: Arc::new(storage),
         game_thread: std::thread::current().id(),
     });
+    hook_once();
+}
+
+/// Sets the engine's panic hook, once a process, over the one there: it
+/// logs the panic ([`log_sink`](crate::log_sink)), writes its report if
+/// [`install`] asked for reports and the panic isn't [`quiet`], then calls
+/// the hook that was there.
+pub(crate) fn hook_once() {
     if HOOKED.swap(true, Ordering::SeqCst) {
         return;
     }
     let before = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
+        crate::log_sink::log_panic(info);
         if !QUIET.with(Cell::get) {
             report(info);
         }
@@ -201,9 +212,10 @@ pub fn install(
 }
 
 /// The frame about to run (`App::frame_number() + 1`) and the screen on
-/// top as it starts, for a report.
+/// top as it starts, for a report. The frame is the log's too
+/// ([`log_sink::set_frame`](crate::log_sink::set_frame)).
 pub fn set_frame(frame: u32, top_screen: Option<&'static str>) {
-    FRAME.store(frame, Ordering::Relaxed);
+    crate::log_sink::set_frame(frame);
     if let Some(mut top) = try_lock(&TOP_SCREEN) {
         *top = top_screen;
     }
@@ -280,16 +292,19 @@ fn now_ms() -> u64 {
     }
 }
 
-/// The panic's message: its text, if it has one.
-fn message(info: &PanicHookInfo<'_>) -> String {
+/// The panic's text, if its payload is a `&str` or a `String`.
+pub(crate) fn payload_text(info: &PanicHookInfo<'_>) -> Option<String> {
     let payload = info.payload();
     if let Some(text) = payload.downcast_ref::<&str>() {
-        (*text).to_owned()
-    } else if let Some(text) = payload.downcast_ref::<String>() {
-        text.clone()
+        Some((*text).to_owned())
     } else {
-        "a panic with no text".to_owned()
+        payload.downcast_ref::<String>().cloned()
     }
+}
+
+/// The panic's message: its text, if it has one.
+fn message(info: &PanicHookInfo<'_>) -> String {
+    payload_text(info).unwrap_or_else(|| "a panic with no text".to_owned())
 }
 
 /// The report of the panic `info` describes, as of now, on the game's
@@ -311,7 +326,7 @@ fn build(info: &PanicHookInfo<'_>, reports: CrashReports, on_game_thread: bool) 
     };
     let (os, arch) = (std::env::consts::OS, std::env::consts::ARCH);
     report.target = format!("{os} {arch} {build}");
-    report.frame = FRAME.load(Ordering::Relaxed);
+    report.frame = crate::log_sink::frame();
     report.top_screen = try_lock(&TOP_SCREEN)
         .and_then(|top| *top)
         .map(ToOwned::to_owned);

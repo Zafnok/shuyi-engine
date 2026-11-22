@@ -104,7 +104,7 @@ None.
   `moved`, and a click examines it, as 2405's menus do. A still pointer
   never takes the selection back from the d-pad. A click here is a
   release whose press began on the same hotspot (`hit` gives the same
-  one at `down_at` and at `at`), as 2405's grid stage clicks a tile:
+  one at `down_at` and at `at`), as 2409's Hello, Grid stage clicks a tile:
   `PointerInput::clicked` knows only the rectangles a painter records,
   and a hotspot may be a polygon. The confirm input examines the
   selected hotspot too.

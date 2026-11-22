@@ -347,8 +347,7 @@ impl Renderer {
             && !src_fits(sprite.src, picture)
         {
             if self.warned_images.insert(sprite.image) {
-                warn!(
-                    "image {} is {} by {} now: a sprite's source is past its edge",
+                log::warn!(target: "assets", "image {} is {} by {} now: a sprite's source is past its edge",
                     sprite.image.path(),
                     picture.0,
                     picture.1
@@ -369,10 +368,10 @@ impl Renderer {
             let path = sprite.image.path();
             match missing {
                 Missing::Undecodable(Some(e)) => {
-                    warn!("image {}: {}", path, e);
+                    log::warn!(target: "assets", "image {path}: {e}");
                 }
                 Missing::NotRead if self.warned_images.insert(sprite.image) => {
-                    warn!("image {}: nothing read yet", path);
+                    log::warn!(target: "assets", "image {path}: nothing read yet");
                 }
                 _ => {}
             }
@@ -474,8 +473,7 @@ impl Renderer {
             return Some((rect, color(fg), 1.0));
         }
         if self.warned.insert(glyph) {
-            warn!(
-                "glyph {:?} (U+{:04X}) not in font atlas",
+            log::warn!(target: "assets", "glyph {:?} (U+{:04X}) not in font atlas",
                 glyph,
                 u32::from(glyph)
             );

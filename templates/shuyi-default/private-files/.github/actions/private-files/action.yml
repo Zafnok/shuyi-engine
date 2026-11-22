@@ -73,6 +73,29 @@ runs:
           echo "repository=$repository"
           echo "rev=$rev"
         } >> "$GITHUB_OUTPUT"
+    # actions/checkout runs `ssh` to fetch with the key, and a job's
+    # container may have none: Valve's sniper image, which builds the Linux
+    # package (export.yml), doesn't. GitHub's runners have it, so this
+    # installs nothing there.
+    - name: Make ssh available
+      if: steps.plan.outputs.rev != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v ssh > /dev/null; then
+          exit 0
+        fi
+        if ! command -v apt-get > /dev/null; then
+          echo "::error::This job's image has no ssh, which the private files' checkout needs, and no apt-get to install it."
+          exit 1
+        fi
+        sudo=""
+        if [ "$(id -u)" != 0 ]; then
+          sudo=sudo
+        fi
+        $sudo apt-get update
+        $sudo apt-get install -y --no-install-recommends openssh-client
+        ssh -V
     - name: Check out the private files
       if: steps.plan.outputs.rev != ''
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -13,7 +13,9 @@
 //! PR's ticket (ticket 2815). A change to the contract's `VERSION`
 //! raises it by exactly one over the base's ([`contract`], ticket 2052).
 //! A head's listing line that names an outside crate [`OUTSIDE_CRATES`]
-//! doesn't allow in its crate fails the run (ADR-0119, ticket 2089).
+//! doesn't allow in its crate fails the run (ADR-0119, ticket 2089): any
+//! crate its normal dependencies reach, not through an engine crate
+//! ([`reached_outside`], ticket 2090).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -169,8 +171,8 @@ pub const API_CRATES: &[ApiCrate] = &[
 
 /// The outside crates the public API may name (ADR-0119, ticket 2089): each
 /// crate's path, and the engine crates whose listing may name it (`&[]`:
-/// every one). A head's listing line naming the path of any other normal
-/// dependency of its crate fails the run. A new crate here is a choice for
+/// every one). A head's listing line naming the path of any other crate
+/// its crate's normal dependencies reach fails the run. A new crate here is a choice for
 /// an ADR that amends ADR-0119.
 pub const OUTSIDE_CRATES: &[(&str, &[&str])] = &[
     // `serde`'s traits are `serde_core`'s, and the listing names them there.
@@ -586,8 +588,17 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
     // both), and sources older than the head's builds: the base would be
     // built on the head's crates.
     let base_target_dir = root.join(BASE_TARGET_DIR);
-    let in_head = packages(root, runner)?;
+    let mut in_head = packages(root, runner)?;
     check_catalog(&in_head.keys().cloned().collect(), API_CRATES)?;
+    // A listing names a type by the crate that defines it, not the one that
+    // re-exports it (`macroquad`'s `miniquad::conf::Conf`, ticket 2090).
+    for (name, paths) in reached(root, runner)? {
+        if let Some(package) = in_head.get_mut(&name) {
+            package.outside.extend(paths);
+            package.outside.sort_unstable();
+            package.outside.dedup();
+        }
+    }
     let in_base = packages(&base_root, runner)?;
     API_CRATES
         .iter()
@@ -716,7 +727,8 @@ struct Package {
     /// The features it has.
     features: HashSet<String>,
     /// Its normal dependencies that are no engine crate, as paths (`-` as
-    /// `_`, or the name it renames one to).
+    /// `_`, or the name it renames one to); in the head, with the crates
+    /// they reach too ([`reached_outside`]).
     outside: Vec<String>,
 }
 
@@ -762,6 +774,97 @@ fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, Package>,
             ))
         })
         .collect())
+}
+
+/// The workspace's members in `dir`, by name, each with the paths of the
+/// outside crates its normal dependencies reach, read from `cargo metadata`
+/// with dependencies (see [`reached_outside`]).
+fn reached(dir: &Path, runner: &dyn Runner) -> Result<HashMap<String, Vec<String>>, String> {
+    let ran = run_ok(
+        runner,
+        dir,
+        "cargo",
+        &["metadata", "--format-version", "1", "--locked"],
+    )?;
+    let metadata: serde_json::Value = serde_json::from_str(&ran.stdout).map_err(|e| {
+        format!(
+            "`cargo metadata` with dependencies in {}: {e}",
+            dir.display()
+        )
+    })?;
+    Ok(reached_outside(&metadata))
+}
+
+/// Each workspace member of `metadata` (`cargo metadata`'s JSON with
+/// dependencies), by name, with the paths (each library's name, `-` as `_`)
+/// of every crate its normal dependencies reach in `resolve`, sorted: a
+/// crate's normal dependencies, theirs, and so on, never through an engine
+/// crate, which is checked on its own.
+pub fn reached_outside(metadata: &serde_json::Value) -> HashMap<String, Vec<String>> {
+    fn array(value: &serde_json::Value) -> &[serde_json::Value] {
+        value.as_array().map_or(&[], Vec::as_slice)
+    }
+    // Each package's id: its name, and its library's path.
+    let mut by_id: HashMap<String, (String, String)> = HashMap::new();
+    for package in array(&metadata["packages"]) {
+        let (Some(id), Some(name)) = (package["id"].as_str(), package["name"].as_str()) else {
+            continue;
+        };
+        let library = array(&package["targets"]).iter().find_map(|target| {
+            let kinds = array(&target["kind"]);
+            kinds
+                .iter()
+                .any(|kind| matches!(kind.as_str(), Some("lib" | "rlib" | "dylib" | "proc-macro")))
+                .then(|| target["name"].as_str().map(str::to_string))
+                .flatten()
+        });
+        let path = library
+            .unwrap_or_else(|| name.to_string())
+            .replace('-', "_");
+        by_id.insert(id.to_string(), (name.to_string(), path));
+    }
+    // Each node's normal dependencies, by package id.
+    let mut normal: HashMap<String, Vec<String>> = HashMap::new();
+    for node in array(&metadata["resolve"]["nodes"]) {
+        let Some(id) = node["id"].as_str() else {
+            continue;
+        };
+        let deps = array(&node["deps"])
+            .iter()
+            .filter(|dep| {
+                array(&dep["dep_kinds"])
+                    .iter()
+                    .any(|kind| kind["kind"].is_null())
+            })
+            .filter_map(|dep| dep["pkg"].as_str().map(str::to_string))
+            .collect();
+        normal.insert(id.to_string(), deps);
+    }
+    array(&metadata["workspace_members"])
+        .iter()
+        .filter_map(|member| {
+            let member = member.as_str()?;
+            let (name, _) = by_id.get(member)?;
+            let mut seen: HashSet<&str> = HashSet::new();
+            let mut queue: Vec<&str> = vec![member];
+            let mut paths = Vec::new();
+            while let Some(id) = queue.pop() {
+                for dep in normal.get(id).into_iter().flatten() {
+                    let Some((dep_name, path)) = by_id.get(dep) else {
+                        continue;
+                    };
+                    if is_engine(dep_name) || !seen.insert(dep) {
+                        continue;
+                    }
+                    paths.push(path.clone());
+                    queue.push(dep);
+                }
+            }
+            paths.sort_unstable();
+            paths.dedup();
+            Some((name.clone(), paths))
+        })
+        .collect()
 }
 
 /// `krate`'s public items in the workspace in `dir`, whose manifest of it has

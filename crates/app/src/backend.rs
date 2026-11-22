@@ -258,7 +258,7 @@ impl Macroquad {
     /// Writes the window's `record` beside the game's storage.
     fn write_window(&self, record: Record) {
         if let Err(e) = self.storage_at.write_window(&record.to_text()) {
-            warn!("window: {}", e);
+            log::warn!(target: "platform", "window: {e}");
         }
     }
 
@@ -331,7 +331,7 @@ impl Macroquad {
             match made {
                 Ok(renderer) => self.renderer = Some(renderer),
                 Err(e) => {
-                    error!("{}", e);
+                    log::error!(target: "platform", "{e}");
                     self.broken = Some(e);
                 }
             }
@@ -411,7 +411,7 @@ impl Macroquad {
                         .ok_or_else(|| "not among the game's files".to_owned())
                         .and_then(|png| upload(&png));
                     if let Err(e) = &texture {
-                        warn!("loading card: {}: {}", path, e);
+                        log::warn!(target: "assets", "loading card: {path}: {e}");
                     }
                     self.card_picture = Some((path.clone(), texture.ok()));
                 }
@@ -586,7 +586,7 @@ impl Platform for Macroquad {
         }
         if cfg!(debug_assertions) {
             for event in &out[start..] {
-                info!("system event: {:?}", event);
+                log::info!(target: "platform", "system event: {event:?}");
             }
         }
     }

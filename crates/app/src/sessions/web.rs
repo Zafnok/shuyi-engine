@@ -12,6 +12,6 @@ pub(super) fn unix_ms() -> u64 {
 /// Offers the player `text` as a file called `name`.
 pub(super) fn download(name: &str, text: &str) {
     if !crate::player_files::web::download(name, text) {
-        macroquad::prelude::warn!("the browser refused the download of {}", name);
+        log::warn!(target: "storage", "the browser refused the download of {name}");
     }
 }

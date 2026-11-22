@@ -823,25 +823,33 @@ impl Screen<Toy> for Lobby {
         ))
     }
 
+    /// The keys, then the pointer ([`Menu::point`](crate::widgets::Menu::point)).
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
+        use crate::widgets::MenuEvent::Chosen;
+        let mut chosen = None;
         for &action in &input.actions {
-            let Some(crate::widgets::MenuEvent::Chosen(choice)) =
-                self.menu.handle_with_sound(action, &mut ctx.audio)
-            else {
-                continue;
-            };
-            return match choice {
-                LobbyChoice::Options => {
-                    Transition::Push(Box::new(options::OptionsScreen::new(option_rows)))
-                }
-                LobbyChoice::KeyBindings => {
-                    Transition::Push(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)))
-                }
-                LobbyChoice::Talk => Transition::Push(Box::new(Talk::new(ctx, "hall"))),
-                LobbyChoice::Quit => Transition::Quit,
-            };
+            if let Some(Chosen(choice)) = self.menu.handle_with_sound(action, &mut ctx.audio) {
+                chosen = Some(choice);
+                break;
+            }
         }
-        Transition::None
+        if chosen.is_none()
+            && let Some(Chosen(choice)) =
+                self.menu.point_with_sound(input.pointer(), &mut ctx.audio)
+        {
+            chosen = Some(choice);
+        }
+        match chosen {
+            Some(LobbyChoice::Options) => {
+                Transition::Push(Box::new(options::OptionsScreen::new(option_rows)))
+            }
+            Some(LobbyChoice::KeyBindings) => {
+                Transition::Push(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)))
+            }
+            Some(LobbyChoice::Talk) => Transition::Push(Box::new(Talk::new(ctx, "hall"))),
+            Some(LobbyChoice::Quit) => Transition::Quit,
+            None => Transition::None,
+        }
     }
 
     fn draw(&self, ctx: &ToyCtx, buf: &mut GlyphBuffer) {

@@ -23,7 +23,8 @@ backend can reach phones. The `android` and `ios` profiles exist as
 `planned` (3001). Four things are missing:
 
 - **Touch controls.** A turn-based grid game plays well by touch.
-  2405 (After MVP) reads taps as pointer presses on menus and grid maps,
+  2405 (done) takes taps as pointer presses on menus and grid maps (2413
+  reads them in `shuyi-app`),
   and 2407 (parked) plans on-screen controls for phones' browsers. This
   ticket reuses them. Nothing yet turns those controls on in the
   `android` and `ios` profiles, or lets the player move them.

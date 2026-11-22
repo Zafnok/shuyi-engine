@@ -576,7 +576,9 @@ fails a change to the public API that changes no file of the book
 `Book:` line saying why (ticket 2815), and a change to the contract's
 `VERSION` other than one over the base's (ticket 2052). And it fails a
 line of the head's listing that names an outside crate (a normal
-dependency of that crate) ADR-0119 doesn't allow there, as
+dependency of that crate, or any crate those reach not through an engine
+crate, as `miniquad` through `macroquad`: a listing names a type by the
+crate that defines it, ticket 2090) ADR-0119 doesn't allow there, as
 `OUTSIDE_CRATES` in `crates/xtask/src/api.rs` holds it (ticket 2089).
 Before pushing a change you think
 breaks, run it from the repository root:

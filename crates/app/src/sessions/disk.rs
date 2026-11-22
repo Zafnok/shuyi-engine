@@ -12,8 +12,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use macroquad::prelude::{info, warn};
-
 use super::{SUFFIX, file_name};
 
 /// How many sessions a build keeps: older ones are deleted.
@@ -72,7 +70,7 @@ pub(super) fn folder(data: Option<&Path>) -> Option<PathBuf> {
     let dir = data.map(|dir| dir.join(FOLDER));
     if dir.is_none() {
         // check-text: not player text (a warning for the log)
-        warn!("storage: no data folder: this session won't be kept");
+        log::warn!(target: "storage", "no data folder: this session won't be kept");
     }
     dir
 }
@@ -82,11 +80,11 @@ pub(super) fn save(dir: &Path, start: u64, text: &str) {
     match write(dir, start, text) {
         Ok(path) => {
             // check-text: not player text (a line for the log)
-            info!("storage: session kept in {}", path.display());
+            log::info!(target: "storage", "session kept in {}", path.display());
         }
         Err(e) => {
             // check-text: not player text (a warning for the log)
-            warn!("storage: session not kept: {}", e);
+            log::warn!(target: "storage", "session not kept: {e}");
         }
     }
 }

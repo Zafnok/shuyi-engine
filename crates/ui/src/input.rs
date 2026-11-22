@@ -37,6 +37,7 @@ pub mod frame;
 pub mod help_keys;
 pub mod keymap;
 pub mod pad;
+pub mod pointer;
 pub mod state;
 
 #[cfg(test)]
@@ -58,6 +59,7 @@ pub use frame::{FrameInput, frame_seconds};
 pub use help_keys::{ARROWS, HelpKeys};
 pub use keymap::{ChordWait, Keymap};
 pub use pad::{ButtonSet, PadId, PadKind, PadState, Pads};
+pub use pointer::{Pointer, PointerInput};
 pub use shuyi_assets::keymap::{
     ActionSet, Bindings, Button, ButtonChord, Chord, ChordDef, CrankDef, Key, KeymapDef,
     LAYOUT_NAME_MAX, Layout, LayoutKeys, PadKeys, RepeatDef, SLOTS, StickDef, UiAction,

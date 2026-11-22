@@ -1,8 +1,10 @@
 //! What a [`Menu`](super::Menu) shows, as plain data: its items with their
-//! labels and which one is focused, no cells or positions. A screen puts
+//! labels and which one is focused, and its widget key, no cells or
+//! positions. A screen puts
 //! the [`MenuView`] in its own view and its skin paints it
 //! ([`super::glyph::paint`] today; game ADR-0054).
 
+use crate::frame::hit::WidgetKey;
 use crate::prelude::*;
 use crate::text::Label;
 
@@ -20,6 +22,10 @@ pub struct MenuView {
     /// How many items the box shows from `first_shown` (all of them unless
     /// the menu scrolls).
     pub shown: usize,
+    /// The menu's widget key, under which the skin records its hit areas
+    /// ([`GlyphBuffer::hit`](crate::frame::GlyphBuffer::hit)): 0 unless
+    /// the menu is [`keyed`](super::Menu::keyed).
+    pub widget: WidgetKey,
 }
 
 impl MenuView {
@@ -29,6 +35,7 @@ impl MenuView {
             shown: items.len(),
             items,
             first_shown: 0,
+            widget: WidgetKey::default(),
         }
     }
 

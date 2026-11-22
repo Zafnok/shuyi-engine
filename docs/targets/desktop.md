@@ -87,6 +87,28 @@ export](../../site/content/learn/book/targets-and-export.md)). A Windows
 program carries a fixed time, not the time of its build, so the same input
 gives the same report.
 
+## The log file
+
+Every desktop build writes its log to a file a player can send:
+`latest.log`, in the `logs` folder beside the game's saves and crash
+reports (`shuyi_app::storage::log_dir`):
+
+- **Windows:** `%APPDATA%\<storage name>\logs\`, or
+  `<Documents>\My Games\<folder>\logs\` for a game whose
+  `AppConfig::desktop_folder` is `DesktopFolder::MyGames(<folder>)`;
+- **macOS:** `~/Library/Application Support/<storage name>/logs/`;
+- **Linux and the Steam Deck:** `$XDG_DATA_HOME/<storage name>/logs/`, or
+  `~/.local/share/<storage name>/logs/` without it.
+
+The storage name is `shuyi.ron`'s `app.storage`. `previous-1.log` to
+`previous-3.log` beside it are the three runs before, oldest last: a
+player whose game misbehaved and who started it again sends
+`previous-1.log` too, or the whole folder. A release build on Windows has
+no console, so the file is where its warnings, its errors and a panic's
+message go. A build without debug tools writes warnings and errors alone.
+What a line holds, which lines pass and the caps are in
+[platform-backends.md](../platform-backends.md#logs).
+
 ## A game's features and the files beside its program
 
 `shuyi.ron`'s `export` part names what a build turns on and what its package

@@ -91,8 +91,7 @@ pub(crate) fn start() -> Option<PerfFile> {
         Decision::Off => None,
         Decision::Write(path) => match File::create(&path) {
             Ok(file) => {
-                macroquad::logging::info!(
-                    "shuyi perf: writing each frame to {}, a JSON line each",
+                log::info!(target: "platform", "shuyi perf: writing each frame to {}, a JSON line each",
                     path.display()
                 );
                 Some(PerfFile {
@@ -102,8 +101,7 @@ pub(crate) fn start() -> Option<PerfFile> {
                 })
             }
             Err(e) => {
-                macroquad::logging::warn!(
-                    "shuyi perf: can't create {}: {}, so it writes no trace",
+                log::warn!(target: "platform", "shuyi perf: can't create {}: {}, so it writes no trace",
                     path.display(),
                     e
                 );
@@ -127,8 +125,7 @@ impl PerfFile {
         match write_lines(&mut self.out, records, &lines) {
             Ok(()) => Some(self),
             Err(e) => {
-                macroquad::logging::warn!(
-                    "shuyi perf: can't write {}: {}, so the trace stops here",
+                log::warn!(target: "platform", "shuyi perf: can't write {}: {}, so the trace stops here",
                     self.path.display(),
                     e
                 );

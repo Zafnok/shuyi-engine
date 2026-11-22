@@ -263,6 +263,58 @@ proptest! {
     }
 }
 
+/// The toy's lobby, hashing its menu's focus.
+fn lobby() -> Start<Toy> {
+    start_at(|| Box::new(toy::Lobby::new())).state_hash(|game| {
+        let focus = game.screen::<toy::Lobby>()?.menu.focus();
+        Some(StateHash(u64::try_from(focus).ok()?))
+    })
+}
+
+/// A session played with the pointer (ticket 2405) is kept as RON and
+/// plays back with the same hash in every frame.
+#[test]
+fn a_pointer_session_plays_back_the_same() {
+    let mut h = recording(lobby());
+    h.point(30, 40).wheel(-1).point(30, 56).leave_pointer();
+    h.click_text("Key bindings");
+    assert_eq!(h.screens(), ["lobby", "key_bindings"]);
+    let text = record_of(&h).to_ron();
+    // `click_text` clicks the centre of the first cell of the words: the
+    // lobby's row 2 is the console's row 3, its label from column 3.
+    let clicked = RawInputEvent::PointerMoved {
+        x: 3 * 8 + 4,
+        y: 3 * 16 + 8,
+    };
+    assert!(
+        record_of(&h)
+            .frames
+            .iter()
+            .any(|f| f.input.contains(&clicked)),
+        "{text}"
+    );
+    let record = SessionRecord::from_ron(&text).unwrap_or_else(|e| panic!("{e}"));
+    let mut played = playing(lobby(), &record);
+    let answer = played.play_all().clone();
+    assert_eq!(answer.first_difference, None);
+    assert_eq!(answer.frames, h.frame_count());
+    assert_eq!(played.screen_log(), h.screen_log());
+}
+
+/// A lost focus forgets the pointer's place, in the game and in the
+/// Harness: a click where it was points there again first.
+#[test]
+fn a_click_after_a_lost_focus_points_again() {
+    let mut h = recording(lobby());
+    h.click_text("Quit");
+    assert!(h.quit_requested(), "a click before");
+    let mut h = recording(lobby());
+    h.point(28, 88);
+    h.system(SystemEvent::FocusLost);
+    h.click(28, 88);
+    assert!(h.quit_requested(), "Quit was chosen");
+}
+
 #[test]
 fn a_press_taken_out_is_found_at_its_frame_and_the_game_stays_there() {
     let mut h = recording(home());
