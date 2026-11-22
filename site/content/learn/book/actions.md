@@ -148,6 +148,17 @@ time the game starts.
 
 You don't write any of this. It works since your code only ever asked for actions.
 
+## The mouse and taps
+
+A mouse or a finger points at the engine's menus: the row under it takes the focus as it
+moves, and a click or a tap on a row does what Confirm does there. It is no key, so
+nothing binds it, and it is never the only way: a menu takes its keys as before, and a
+target with no pointer (the Playdate) loses nothing. A screen of your own hands its menu
+the frame's pointer beside its actions, with `menu.point_with_sound(input.pointer(), &mut
+ctx.audio)`, and on a grid map `skin.tile_at(&scene, area, pixel)` gives the tile under
+it. A pointer moves the cursor and gives the click; only the command a key would send
+reaches the rules, so a game played with the mouse keeps the same record.
+
 ## Actions of a game's own
 
 The short path plays with `UiAction`'s six moves, which the engine's menus and screens
@@ -198,7 +209,8 @@ An engine screen declares the game's actions for the `UiAction`s it reacts to wi
 Harness scripts press the game's default keys by name (`h.keys("Enter Right")`),
 `h.pad("South")` presses a button by its place, and `h.act(action)` presses whatever key
 the player bound to an action. A test of rebinding rebinds in the test, then presses the
-new key.
+new key. `h.click_text("Play")` clicks a menu row by its words, and `h.point(x, y)` and
+`h.click(x, y)` move and click the pointer in console pixels.
 
 ## When it goes wrong
 

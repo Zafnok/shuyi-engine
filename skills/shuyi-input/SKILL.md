@@ -130,6 +130,11 @@ the player's keymap.
    `TickInput`, never from `FrameInput::actions`: `TickDriver` keeps a
    frame's presses and releases until a step runs, gives each to exactly
    one step, and never gives a key repeat to a step.
+9. **Pointing is never the only way.** A screen hands its menu the
+   frame's pointer beside its actions (`Menu::point_with_sound`), and a
+   grid screen turns a click on a tile (`GridSkin::tile_at`) into what
+   Confirm does there. Nothing binds the pointer, and it never enters a
+   command: the command sent is the one a key would send.
 
 ## The short path's actions, and leaving them
 
@@ -182,7 +187,8 @@ folds actions onto fewer buttons to make a game fit.
 - Harness scripts (`h.keys("Enter Right")`, `--script "Enter Right"`)
   press the game's default keys by the Harness's names, and
   `h.pad("South")` presses buttons by place. `h.act(action)` presses an
-  action's own key.
+  action's own key. `h.click_text("Play")` clicks a menu row by its
+  words; `h.point(x, y)` and `h.click(x, y)` take console pixels.
 - A test of rebinding rebinds in the test, then presses the new key.
 
 ## Before you commit input work

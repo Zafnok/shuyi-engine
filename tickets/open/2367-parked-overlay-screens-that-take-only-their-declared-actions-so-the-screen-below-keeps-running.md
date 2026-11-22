@@ -240,12 +240,13 @@ None.
   sees it too; a stage reads none. A Harness test opens the console
   over a screen that counts `ticks()`, and the count still rises. If
   not, nothing to do (2356 does it when it lands, as its Out says).
-- **Either order with 2405** (hit areas): if 2405 is done,
-  `ScreenStack::draw` keeps the hits of the top running screen that
-  takes input, not of the top screen: a `Passes::Everything` screen
-  records none, and `FrameInput::split` keeps the pointer in both
-  halves. A test: a click on a menu's row under a notice chooses that
-  row. If not, nothing to do (2405 does it, by its own clause).
+- **From 2405 (done)** (hit areas): `ScreenStack::draw`
+  (`crates/ui/src/screen.rs`) clears the hits before it draws the top
+  screen, so only the top screen has them. This ticket makes it keep
+  the hits of the top running screen that takes input instead: a
+  `Passes::Everything` screen records none, and `FrameInput::split`
+  keeps the pointer in both halves. A unit test: a click on a menu's
+  row under a notice chooses that row.
 - **An ADR** (the `write-adr` skill). It amends ADR-0018 (`covered`
   follows running), ADR-0024 §4 (the steps reach every running screen)
   and ADR-0025 §3 to §5 (an overlay's declaration routes its input, the

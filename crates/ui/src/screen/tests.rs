@@ -6,6 +6,7 @@ use core::cell::RefCell;
 
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::Cell;
+use crate::frame::hit::WidgetKey;
 use crate::toy::{Action, Home, Toy, ToyCtx, ctx};
 
 mod sounds;
@@ -76,6 +77,9 @@ impl Screen<Toy> for Probe {
         let black = Rgb::new(0, 0, 0);
         let glyph = self.name.chars().next().unwrap_or('?');
         buf.set(0, 0, Cell::new(glyph, black, black));
+        // Its whole frame, as its own widget's.
+        let key = WidgetKey(u16::from(self.name.as_bytes()[0]));
+        buf.hit(buf.pixel_bounds(), key, 0);
     }
 
     fn is_overlay(&self) -> bool {
@@ -198,6 +202,24 @@ fn a_screen_is_opaque_by_default() {
     assert!(draws(&stack, &log).is_empty(), "only the home screen draws");
     stack.push(Probe::boxed("o", true, &log));
     assert_eq!(draws(&stack, &log), ["draw o"]);
+}
+
+/// A click outside an overlay never reaches the screen under it: only the
+/// top screen's hits are kept.
+#[test]
+fn only_the_top_screen_has_hit_areas() {
+    let log = Log::default();
+    let mut stack = ScreenStack::new(Probe::boxed("a", false, &log));
+    stack.push(Probe::boxed("o", true, &log));
+    let mut buf = GlyphBuffer::new(4, 4, Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0)));
+    stack.draw(&ctx(), &mut buf);
+    let keys: Vec<_> = buf.hits().iter().map(|h| h.widget).collect();
+    assert_eq!(keys, [WidgetKey(u16::from(b'o'))]);
+    // With the overlay gone, the screen under it has its own again.
+    stack.apply(Transition::Pop);
+    stack.draw(&ctx(), &mut buf);
+    let keys: Vec<_> = buf.hits().iter().map(|h| h.widget).collect();
+    assert_eq!(keys, [WidgetKey(u16::from(b'a'))]);
 }
 
 #[test]

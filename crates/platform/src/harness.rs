@@ -57,6 +57,7 @@ use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps
 
 #[cfg(feature = "std")]
 mod kept;
+mod pointer;
 #[cfg(feature = "std")]
 pub use kept::assert_session;
 
@@ -130,6 +131,8 @@ pub struct Harness<G: GameData> {
     music_frames: Vec<u32>,
     /// The frame the game asked to quit in, once it has.
     quit_frame: Option<u32>,
+    /// Where [`point`](Self::point) put the pointer, until it left.
+    pointer: Option<(i32, i32)>,
 }
 
 impl<G: GameData> Harness<G> {
@@ -281,6 +284,7 @@ impl<G: GameData> Harness<G> {
             stacks,
             music_frames: Vec::new(),
             quit_frame: None,
+            pointer: None,
         }
     }
 
@@ -520,8 +524,12 @@ impl<G: GameData> Harness<G> {
     }
 
     /// The system tells the game `event` (a suspend, a resume, a lost
-    /// focus), in a frame of [`FRAME_DT`] with no input.
+    /// focus), in a frame of [`FRAME_DT`] with no input. A lost focus
+    /// forgets the pointer's place too, as the game does.
     pub fn system(&mut self, event: SystemEvent) -> &mut Self {
+        if event == SystemEvent::FocusLost {
+            self.pointer = None;
+        }
         self.platform.push_system(event);
         self.frame(&[], FRAME_DT)
     }

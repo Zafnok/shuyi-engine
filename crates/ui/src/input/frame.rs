@@ -8,6 +8,7 @@
 //! them, and asking whether an action it didn't declare is held fails the
 //! test.
 
+use super::pointer::PointerInput;
 use crate::prelude::*;
 use shuyi_assets::keymap::{ActionSet, Button, Chord};
 
@@ -47,6 +48,8 @@ pub struct FrameInput<A: ActionSet> {
     released: Vec<A>,
     /// Whether the game came back from a suspend just before this frame.
     resumed: bool,
+    /// The pointer this frame, while it is over the frame.
+    pointer: Option<PointerInput>,
     /// The screen this input was [filtered](Self::declared) for, and the
     /// actions it declares: asking about any other is a bug in the
     /// screen's declaration.
@@ -80,6 +83,7 @@ impl<A: ActionSet> FrameInput<A> {
             buttons_up: Vec::new(),
             ticks: 0,
             resumed: false,
+            pointer: None,
             declared: None,
         }
     }
@@ -140,6 +144,23 @@ impl<A: ActionSet> FrameInput<A> {
     /// the game's order ([`ActionSet::ALL`]).
     pub fn held(&self) -> &[A] {
         &self.held
+    }
+
+    /// The same input with the pointer this frame, as a
+    /// [`Pointer`](super::Pointer) folds its events.
+    #[must_use]
+    pub fn with_pointer(mut self, pointer: Option<PointerInput>) -> Self {
+        self.pointer = pointer;
+        self
+    }
+
+    /// The pointer this frame: where it is, whether it moved, its press,
+    /// its release and its click, and the wheel. `None` while it is
+    /// outside the frame, and on a platform without one. A widget takes it
+    /// beside its actions ([`Menu::point`](crate::widgets::Menu::point)),
+    /// and it is never the only way to do a thing (ADR-0134).
+    pub fn pointer(&self) -> Option<&PointerInput> {
+        self.pointer.as_ref()
     }
 
     /// The same input with whether the game came back from a suspend just
