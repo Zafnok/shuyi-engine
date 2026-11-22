@@ -80,7 +80,7 @@ fn the_sink_lets_through_what_its_filter_allows_per_target() {
     };
     assert!(!at("gilrs", log::Level::Debug));
     assert!(at("gilrs", log::Level::Warn));
-    assert_eq!(at("audio", log::Level::Info), shuyi_ui::DEBUG_TOOLS);
+    assert_eq!(at("audio", log::Level::Info), KEEPS_EVERY_LEVEL);
     assert!(!at("audio", log::Level::Debug));
     assert!(!at("audio", log::Level::Trace));
     assert!(at(PANIC_TARGET, log::Level::Error));
@@ -90,8 +90,8 @@ fn the_sink_lets_through_what_its_filter_allows_per_target() {
 fn a_build_without_debug_tools_keeps_warnings_and_errors_only() {
     assert!(kept_in_this_build(LogLevel::Error));
     assert!(kept_in_this_build(LogLevel::Warn));
-    assert_eq!(kept_in_this_build(LogLevel::Info), shuyi_ui::DEBUG_TOOLS);
-    assert_eq!(kept_in_this_build(LogLevel::Debug), shuyi_ui::DEBUG_TOOLS);
+    assert_eq!(kept_in_this_build(LogLevel::Info), KEEPS_EVERY_LEVEL);
+    assert_eq!(kept_in_this_build(LogLevel::Debug), KEEPS_EVERY_LEVEL);
 }
 
 #[test]

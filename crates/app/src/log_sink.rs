@@ -83,7 +83,7 @@ pub fn frame() -> u32 {
 /// the file opened, there is no file, and a line on stderr says why.
 pub fn install(storage_name: &str, game_version: &str, dir: Option<PathBuf>) {
     let filter = LogFilter::default();
-    let most = if shuyi_ui::DEBUG_TOOLS {
+    let most = if KEEPS_EVERY_LEVEL {
         filter.most_detailed()
     } else {
         filter.most_detailed().min(LogLevel::Warn)
@@ -196,11 +196,16 @@ fn say_on_stderr(line: &str) {
     let _ = writeln!(io::stderr(), "{line}");
 }
 
+/// Whether this build passes lines of every level: one with debug tools, or
+/// with the capture mode (the `capture` feature, never in a shipped build),
+/// whose `shuyi-capture: ` lines are `Info` and read by the checks.
+const KEEPS_EVERY_LEVEL: bool = shuyi_ui::DEBUG_TOOLS || cfg!(feature = "capture");
+
 /// Whether a line at `level` reaches the sinks in this build, whatever the
-/// filter says: every line with debug tools, warnings and errors without
-/// (ADR-0094 §4).
+/// filter says: every line with debug tools or the capture mode, warnings
+/// and errors without (ADR-0094 §4).
 pub(crate) fn kept_in_this_build(level: LogLevel) -> bool {
-    shuyi_ui::DEBUG_TOOLS || matches!(level, LogLevel::Error | LogLevel::Warn)
+    KEEPS_EVERY_LEVEL || matches!(level, LogLevel::Error | LogLevel::Warn)
 }
 
 /// The engine's level of a `log` level: `Trace` is `Debug`.

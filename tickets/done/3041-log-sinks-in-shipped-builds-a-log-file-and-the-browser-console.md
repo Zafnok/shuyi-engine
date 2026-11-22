@@ -405,7 +405,10 @@ Deviations:
 - **ADR-0094 §4 keeps holding.** A build without debug tools passes
   warnings and errors alone to every sink (`kept_in_this_build`, moved
   from `lib.rs` into `log_sink.rs`), as `run` printed before; the
-  ticket's `Info` default applies to builds with debug tools.
+  ticket's `Info` default applies to builds with debug tools, and to a
+  build with the capture mode (the `capture` feature, never shipped),
+  whose `shuyi-capture: ` lines are `Info` and read by CI's web check
+  (`KEEPS_EVERY_LEVEL`: CI's `web-render` found it).
 - **`log_dir` takes the game's `DesktopFolder`** (`log_dir(name,
   desktop)`): 3310 (done) let a game keep its storage in `My Games`, and
   the logs sit beside the saves and reports. `run` uses the folder
