@@ -21,20 +21,8 @@ made from nothing by the two scripts here, and are under CC0-1.0.
 | `tone.flac` | 50 ms (2,205 samples) at 44.1 kHz, stereo, 16-bit: 440 Hz on the left, 660 Hz on the right | `make_sources.py` writes it as a WAV; `ffmpeg -c:a flac` (FFmpeg 9.0.2); `strip_flac.py` drops its 8 KiB of padding |
 | `tone.mp3` | the same WAV, mono, 64 kbit/s, with a LAME tag | `lame -m m -b 64` (LAME 3.100) |
 
-To make them again (MSYS2's `mingw-w64-x86_64` packages give the
-encoders):
-
-```sh
-python make_sources.py out
-cwebp -quiet -lossless -exact out/picture.png -o out/lossless.webp
-cwebp -quiet -q 80 -alpha_q 100 out/picture.png -o out/picture.webp
-cjxl --quiet -d 0 out/picture.png out/lossless.jxl
-cjxl --quiet -d 1.0 out/opaque.png out/picture.jxl
-ffmpeg -loglevel error -i out/tone.wav -c:a flac out/padded.flac
-python strip_flac.py out/padded.flac out/tone.flac
-lame --quiet -m m -b 64 out/tone.wav out/tone.mp3
-```
-
-Another encoder's version makes other bytes, and so other golden rows:
-bless them (`cargo xtask golden --bless`) only when a fixture is
-remade on purpose.
+To make them again, run the commands of the last column in order
+(MSYS2's `mingw-w64-x86_64` packages give the encoders). Another
+encoder's version makes other bytes, and so other golden rows: bless
+them (`cargo xtask golden --bless`) only when a fixture is remade on
+purpose.

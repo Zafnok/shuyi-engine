@@ -186,7 +186,7 @@ Deviations:
   exact. The ticket named no fallback for this.
 - **No size estimate up front.** The ticket was on
   `tools/unestimated-tickets.txt` and I wrote no estimate before the
-  code; it came to 1,493 counted lines, under the limit after the
+  code; it came to 1,489 counted lines, under the limit after the
   pictures' two formats shared one macro arm. It is off the list now.
   Where it would have split cleanly: the four picture formats, then
   FLAC and MP3 (each part with its own fixtures, rows and docs).

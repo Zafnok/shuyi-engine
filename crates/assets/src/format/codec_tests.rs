@@ -259,47 +259,24 @@ fn a_picture_too_big_is_refused_before_its_pixels_are_decoded() {
 
 #[test]
 fn broken_bytes_are_an_error_that_names_the_format() {
-    let cut = |bytes: &[u8]| bytes[..bytes.len() / 2].to_vec();
-    let starts = |errors: Vec<String>, start: &str| {
+    /// Checks that `format` refuses `bytes` with one error, about `name`.
+    fn refused<F: Format>(format: &F, path: &str, bytes: &[u8], name: &str) {
+        let errors = shown(alone(format, path, bytes));
         assert_eq!(errors.len(), 1, "{errors:?}");
-        assert!(errors[0].starts_with(start), "{errors:?}");
-    };
-    starts(
-        shown(alone(&JpegInfo, "a.jpg", b"\xff\xd8\xff")),
-        "a.jpg: not a valid JPEG file",
-    );
-    starts(
-        shown(alone(&Jpeg, "a.jpg", &cut(JPEG)[..20])),
-        "a.jpg: not a valid JPEG file",
-    );
-    starts(
-        shown(alone(&WebPInfo, "a.webp", b"RIFF")),
-        "a.webp: not a valid WebP file",
-    );
-    starts(
-        shown(alone(&WebP, "a.webp", &cut(WEBP))),
-        "a.webp: not a valid WebP file",
-    );
-    starts(
-        shown(alone(&QoiInfo, "a.qoi", b"qoif")),
-        "a.qoi: not a valid QOI file",
-    );
-    starts(
-        shown(alone(&Qoi, "a.qoi", &cut(QOI))),
-        "a.qoi: not a valid QOI file",
-    );
-    starts(
-        shown(alone(&JpegXlInfo, "a.jxl", &[0xff, 0x0a])),
-        "a.jxl: not a valid JPEG XL file",
-    );
-    starts(
-        shown(alone(&JpegXl, "a.jxl", &cut(JPEG_XL))),
-        "a.jxl: not a valid JPEG XL file",
-    );
-    assert_eq!(
-        shown(alone(&Flac, "a.flac", b"fLaC")),
-        ["a.flac: not a FLAC file"]
-    );
+        let start = format!("{path}: not a valid {name} file");
+        assert!(errors[0].starts_with(&start), "{errors:?}");
+    }
+    let cut = |bytes: &[u8]| bytes[..bytes.len() / 2].to_vec();
+    refused(&JpegInfo, "a.jpg", &[0xff, 0xd8, 0xff], "JPEG");
+    refused(&Jpeg, "a.jpg", &cut(JPEG)[..20], "JPEG");
+    refused(&WebPInfo, "a.webp", b"RIFF", "WebP");
+    refused(&WebP, "a.webp", &cut(WEBP), "WebP");
+    refused(&QoiInfo, "a.qoi", b"qoif", "QOI");
+    refused(&Qoi, "a.qoi", &cut(QOI), "QOI");
+    refused(&JpegXlInfo, "a.jxl", &[0xff, 0x0a], "JPEG XL");
+    refused(&JpegXl, "a.jxl", &cut(JPEG_XL), "JPEG XL");
+    let flac = shown(alone(&Flac, "a.flac", b"fLaC"));
+    assert_eq!(flac, ["a.flac: not a FLAC file"]);
     assert_eq!(
         shown(alone(&Mp3, "a.mp3", b"ID3")),
         ["a.mp3: not an MP3 file"]
