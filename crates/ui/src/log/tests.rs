@@ -108,6 +108,48 @@ fn the_filter_passes_a_level_and_more_serious_per_category() {
     );
 }
 
+#[test]
+fn a_target_passes_as_its_category_or_at_the_others_level() {
+    let filter = LogFilter::default();
+    assert!(!filter.allows_target("gilrs", LogLevel::Debug));
+    assert!(!filter.allows_target("gilrs", LogLevel::Info));
+    assert!(filter.allows_target("gilrs", LogLevel::Warn));
+    assert!(filter.allows_target("audio", LogLevel::Info));
+    assert!(!filter.allows_target("audio", LogLevel::Debug));
+
+    let filter = LogFilter::new(LogLevel::Warn)
+        .with(LogCategory::Audio, LogLevel::Debug)
+        .with_others(LogLevel::Info);
+    assert!(filter.allows_target("audio", LogLevel::Debug));
+    assert!(!filter.allows_target("input", LogLevel::Info));
+    assert!(filter.allows_target("gilrs::gamepad", LogLevel::Info));
+    assert!(!filter.allows_target("gilrs::gamepad", LogLevel::Debug));
+    let quiet = LogFilter::default().with_others(LogLevel::Error);
+    assert!(!quiet.allows_target("macroquad", LogLevel::Warn));
+}
+
+#[test]
+fn the_most_detailed_level_is_the_most_detailed_of_any_part() {
+    assert_eq!(LogFilter::default().most_detailed(), LogLevel::Info);
+    assert_eq!(
+        LogFilter::new(LogLevel::Error).most_detailed(),
+        LogLevel::Warn,
+        "the other targets'"
+    );
+    let error = || LogFilter::new(LogLevel::Error).with_others(LogLevel::Error);
+    assert_eq!(error().most_detailed(), LogLevel::Error);
+    assert_eq!(
+        error()
+            .with(LogCategory::Input, LogLevel::Debug)
+            .most_detailed(),
+        LogLevel::Debug
+    );
+    assert_eq!(
+        error().with_others(LogLevel::Info).most_detailed(),
+        LogLevel::Info
+    );
+}
+
 /// What a test does to a ring: push a line, or read what is new.
 #[derive(Debug, Clone)]
 enum Op {

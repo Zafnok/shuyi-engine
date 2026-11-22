@@ -12,7 +12,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use macroquad::logging::warn;
 use shuyi_assets::image::{ImageId, ImageTable};
 use shuyi_ui::frame::glyph_buffer::PxRect;
 
@@ -100,7 +99,7 @@ pub(crate) fn decode_each<T>(
                 });
             }
             Err(error) => {
-                warn!("hot reload: {}: {}", path, error);
+                log::warn!(target: "assets", "hot reload: {path}: {error}");
                 errors.0.insert(path.to_owned(), error);
             }
         }

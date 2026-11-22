@@ -42,6 +42,7 @@ use shuyi_assets::text::NO_BREAK_SPACE;
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::gizmo::{GizmoItem, GizmoShape};
+use crate::frame::hit::{self, Hit, WidgetKey};
 use crate::frame::key_cap::KeyCaps;
 use crate::frame::painted::{PaintedSprite, PaintedTable};
 use crate::text::{StyledText, TextRole};
@@ -524,7 +525,8 @@ pub struct GlyphBuffer {
     /// [`pixel_bounds`](Self::pixel_bounds).
     items: Vec<Item>,
     /// The scene behind the see-through cells, if any.
-    backdrop: Option<Backdrop>,
+    /// Boxed: few frames have one, and every frame is moved about.
+    backdrop: Option<Box<Backdrop>>,
     /// Which characters take two cells.
     widths: CellWidths,
     /// The pictures skins paint (ADR-0078): kept when the frame is drawn
@@ -534,6 +536,19 @@ pub struct GlyphBuffer {
     styles: BTreeMap<usize, GlyphStyle>,
     /// How a key's name in styled text is drawn: as a cap, or `None`.
     key_caps: Option<Rc<KeyCaps>>,
+    /// Where the pointer can land, in the order painted (ticket 2405).
+    hits: Hits,
+}
+
+/// A frame's hit areas: never part of what the frame shows, so two
+/// frames that look the same are equal whatever their hits.
+#[derive(Clone, Debug, Default)]
+struct Hits(Vec<Hit>);
+
+impl PartialEq for Hits {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 impl GlyphBuffer {
@@ -556,6 +571,7 @@ impl GlyphBuffer {
             pictures: PaintedTable::default(),
             styles: BTreeMap::new(),
             key_caps: None,
+            hits: Hits::default(),
         }
     }
 
@@ -672,7 +688,7 @@ impl GlyphBuffer {
 
     /// The scene shown behind the see-through cells, if one is set.
     pub fn backdrop(&self) -> Option<&Backdrop> {
-        self.backdrop.as_ref()
+        self.backdrop.as_deref()
     }
 
     /// Shows `scene` behind the see-through cells of `clip` (console
@@ -691,7 +707,7 @@ impl GlyphBuffer {
         self.absorb_pictures(&scene);
         self.backdrop = clip
             .intersect(&self.bounds())
-            .map(|clip| Backdrop::new(scene, self.spec, clip, origin_px, zoom));
+            .map(|clip| Box::new(Backdrop::new(scene, self.spec, clip, origin_px, zoom)));
     }
 
     /// The pictures skins paint (ADR-0078), which its painted items show.
@@ -709,6 +725,44 @@ impl GlyphBuffer {
     /// Removes the backdrop.
     pub fn clear_backdrop(&mut self) {
         self.backdrop = None;
+    }
+
+    /// Records that `rect`, in console pixels, is `widget`'s `item` (or
+    /// its whole box, [`Hit::AREA`]): where the pointer lands on it
+    /// ([`crate::frame::hit`]). A painter records its areas as it paints
+    /// them, over those recorded before.
+    pub fn hit(&mut self, rect: PxRect, widget: WidgetKey, item: u32) {
+        self.hits.0.push(Hit::new(rect, widget, item));
+    }
+
+    /// [`hit`](Self::hit) for `cells`, in this buffer's cell size
+    /// ([`ConsoleSpec::cell_px`]).
+    pub fn hit_cells(&mut self, cells: Rect, widget: WidgetKey, item: u32) {
+        let (cw, ch) = self.spec.cell_px();
+        let px = Rect::new(
+            cells.x.saturating_mul(cw),
+            cells.y.saturating_mul(ch),
+            cells.w.saturating_mul(cw),
+            cells.h.saturating_mul(ch),
+        );
+        self.hit(px, widget, item);
+    }
+
+    /// The hit areas, in the order recorded.
+    pub fn hits(&self) -> &[Hit] {
+        &self.hits.0
+    }
+
+    /// The hit area at the console pixel `(x, y)`: the last recorded that
+    /// holds it, since what was painted last is on top.
+    pub fn hit_at(&self, x: i32, y: i32) -> Option<Hit> {
+        hit::hit_at(&self.hits.0, x, y)
+    }
+
+    /// Forgets every hit area. Clearing the whole frame
+    /// ([`fill_rect`](Self::fill_rect) with a solid cell) does too.
+    pub fn clear_hits(&mut self) {
+        self.hits.0.clear();
     }
 
     /// The whole buffer in console pixels.
@@ -1130,7 +1184,8 @@ impl GlyphBuffer {
 
     /// Sets every cell of `rect` to `cell`, removing the parts of items
     /// (rectangles and sprites) over it. Filling the whole buffer with a
-    /// solid cell (how a frame is cleared) also removes the backdrop.
+    /// solid cell (how a frame is cleared) also removes the backdrop and
+    /// the hit areas ([`hits`](Self::hits)).
     pub fn fill_rect(&mut self, rect: Rect, cell: Cell) {
         self.unpair_rect(rect);
         self.for_each_in(rect, |_, _, c| *c = cell);
@@ -1138,6 +1193,7 @@ impl GlyphBuffer {
         self.cut_items(rect);
         if !cell.see_through && rect.intersect(&self.bounds()) == Some(self.bounds()) {
             self.backdrop = None;
+            self.hits.0.clear();
         }
     }
 

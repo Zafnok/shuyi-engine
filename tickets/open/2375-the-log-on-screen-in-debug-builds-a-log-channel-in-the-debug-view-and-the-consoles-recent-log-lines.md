@@ -176,7 +176,7 @@ None.
 
 **Out (do not do):**
 - A filter of the view's own, by level or category, chosen from the
-  menu. The view shows what App's `LogFilter` keeps, and 3041 reads
+  menu. The view shows what App's `LogFilter` keeps, and 3324 reads
   that filter from `SHUYI_LOG`. Write a ticket when someone needs more.
 - Scrolling back through older lines. The 500 kept lines are read
   through the contract's `run` and `scene` answers (3040, done), and

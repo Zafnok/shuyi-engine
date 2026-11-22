@@ -16,7 +16,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, SystemTime};
 
-use macroquad::logging::warn;
 use shuyi_assets::bundle::Layer;
 use shuyi_platform::Millis;
 
@@ -58,7 +57,7 @@ impl Watched {
                     }
                 }
                 Err(error @ FolderError::TooBig { .. }) => {
-                    warn!("hot reload: {}", error);
+                    log::warn!(target: "assets", "hot reload: {error}");
                 }
                 Err(_) => continue,
             }

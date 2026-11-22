@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["3040"]
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 3041 — Log sinks in shipped builds: a log file and the browser console
@@ -301,39 +301,39 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On a temporary folder, a start with 0, 1, 3 and 4 earlier logs
+- [x] On a temporary folder, a start with 0, 1, 3 and 4 earlier logs
       leaves `latest.log` and at most `previous-1.log` to
       `previous-3.log`, oldest last (test).
-- [ ] Past the cap, a `Warn` line is not written and an `Error` line is,
+- [x] Past the cap, a `Warn` line is not written and an `Error` line is,
       up to the second limit (test).
-- [ ] `LogFilter::parse` takes `info`, `warn,audio=debug` and
+- [x] ~~`LogFilter::parse` takes `info`, `warn,audio=debug` and
       `gilrs=warn`, and refuses `loud` and `audio=loud` with a reason
-      (test).
-- [ ] With no filter, a `Debug` line with target `gilrs` is not allowed
+      (test).~~ (not done: moved to 3324 by the **Size** rule)
+- [x] With no filter, a `Debug` line with target `gilrs` is not allowed
       and an `Info` line with target `audio` is (test).
-- [ ] A line formatted after `set_frame(4)` reads `f4`, with its level
+- [x] A line formatted after `set_frame(4)` reads `f4`, with its level
       and target in place (test).
-- [ ] The web's level mapping gives each level's macro, and a line with
+- [x] The web's level mapping gives each level's macro, and a line with
       a NUL comes out without one (test, run on the desktop).
-- [ ] In `crates/app/tests/log_sink.rs`: folder A's `latest.log` has the
+- [x] In `crates/app/tests/log_sink.rs`: folder A's `latest.log` has the
       `Warn` line, and a `panic` line with the message, the test file's
       `file:line` and the thread's name; folder B's has neither; the
       earlier hook ran.
-- [ ] Every call `rg -n 'warn!|error!|info!|debug!' crates/app/src`
+- [x] Every call `rg -n 'warn!|error!|info!|debug!' crates/app/src`
       finds is a `log::` call, or a `miniquad::` call in the web sink
       (the output in the PR description).
-- [ ] `cargo deny check` passes, and `Cargo.lock` has one version of
+- [x] `cargo deny check` passes, and `Cargo.lock` has one version of
       `log`.
-- [ ] The PR says, for the game's pin bump, that `log-rs` is on for
+- [x] The PR says, for the game's pin bump, that `log-rs` is on for
       every game and what that changes (its macroquad lines reach the
       sinks; macroquad's prelude re-exports the `log` crate).
-- [ ] In a browser, hello-grid's web build shows the settings warning in
+- [x] In a browser, hello-grid's web build shows the settings warning in
       the console with its category, and a panic's message (the
       completion notes say how it was seen).
-- [ ] A Windows release build of hello-grid writes `latest.log` under
+- [x] A Windows release build of hello-grid writes `latest.log` under
       `%APPDATA%\shuyi-hello-grid\logs` with the settings warning (the
       completion notes have the file).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -348,4 +348,152 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done:
+
+- `shuyi_app::log_sink` (`crates/app/src/log_sink.rs`): a `log::Log` that
+  `run` installs first thing, inside the window, so on the web the hook
+  chains miniquad's. Its line is `{seconds:>9.3} f{frame} {LEVEL:<5}
+  {target}: {text}`; it goes to `latest.log` on a desktop (rotation of
+  three earlier runs, the first line, the 2 MiB cap and 256 KiB of errors
+  after it, one unbuffered `write_all` a line), to stderr in a debug build
+  (`writeln!` on `io::stderr()`, result ignored), to the console by level
+  on the web (a NUL replaced first), and to the crash report's ring
+  (`crash::note_log`, in place of `run`'s own lines). A thread-local flag
+  drops a line logged from inside the sink; a poisoned lock is used
+  anyway.
+- One panic hook: `crash::hook_once` (set once a process, chaining the one
+  before) logs the panic's line (`target: "panic"`: the message, else
+  `Box<dyn Any>`, its `file:line` and the thread's name), then writes the
+  report unless `crash::quiet`, then calls the earlier hook. Both
+  `crash::install` and `log_sink::install` call it, so the line is logged
+  with crash reports off too. `crash::set_frame` stores into
+  `log_sink::set_frame`'s counter; crash's own `FRAME` is gone.
+- `shuyi_ui::log::LogFilter` gains the other targets' level (`Warn` by
+  default, `with_others`), `allows_target` and `most_detailed`.
+- `storage::log_dir(name, desktop)`, and `StorageAt::log_dir` for `run`.
+- `log = "0.4"` and macroquad's `log-rs` in `crates/app/Cargo.toml`
+  (`Cargo.lock` keeps the one `log`, 0.4.34). Every log call in
+  `crates/app/src` is a `log::…!(target: …)` call, the prefix a target now
+  says (`audio: `, `storage: `) dropped from the text. `rg -n
+  'warn!|error!|info!|debug!' crates/app/src`, less the `log::` calls,
+  finds only the web sink's four:
+
+  ```text
+  crates/app/src\log_sink.rs:318:            miniquad::error!("{}", text);
+  crates/app/src\log_sink.rs:321:            miniquad::warn!("{}", text);
+  crates/app/src\log_sink.rs:324:            miniquad::info!("{}", text);
+  crates/app/src\log_sink.rs:327:            miniquad::debug!("{}", text);
+  ```
+
+- The render card installs the sink (no file), so its `shuyi-capture: `
+  lines still reach the web check's console. The sound probe's web line
+  calls `miniquad::info!` itself: it installs no logger, and macroquad's
+  `logging` is the `log` crate now.
+- Docs: *Logs* in `docs/platform-backends.md` (and its *Panics*), *The
+  log file* in `docs/targets/desktop.md`, the logs beside the reports in
+  `docs/crash-reports.md`, and the book's *When a player's game crashes*.
+
+Deviations:
+
+- **The Size rule.** The PR measured 1,361 counted lines with `SHUYI_LOG`;
+  as the ticket says, `SHUYI_LOG`, `LogFilter::parse` (with the prefixes
+  of other targets) and their tests and criterion went to 3324, and the
+  sink keeps the default levels. `install` takes no filter yet and
+  returns nothing; stderr is a debug build's alone. Without them the PR
+  is 1,226 counted lines; past 1,000, the clean split would have been
+  the call sites' move to `log::` (about 120 lines) from the sink.
+- **ADR-0094 §4 keeps holding.** A build without debug tools passes
+  warnings and errors alone to every sink (`kept_in_this_build`, moved
+  from `lib.rs` into `log_sink.rs`), as `run` printed before; the
+  ticket's `Info` default applies to builds with debug tools, and to a
+  build with the capture mode (the `capture` feature, never shipped),
+  whose `shuyi-capture: ` lines are `Info` and read by CI's web check
+  (`KEEPS_EVERY_LEVEL`: CI's `web-render` found it).
+- **`log_dir` takes the game's `DesktopFolder`** (`log_dir(name,
+  desktop)`): 3310 (done) let a game keep its storage in `My Games`, and
+  the logs sit beside the saves and reports. `run` uses the folder
+  `StorageAt::find` settled on (`StorageAt::log_dir`).
+- **The storage move's lines are kept until the sink is up.**
+  `StorageAt::find` runs before the window, so `storage/desktop.rs`
+  keeps its move's lines and `run` logs them after `install`
+  (`storage::take_move_lines`). Installing first instead would open
+  `logs/latest.log` in the new folder before the move, whose `create_new`
+  copy of an old `logs/latest.log` would then fail it.
+- **`install` takes the game's version** (`AppConfig::crash.game_version`)
+  for the first line, as 3046's clause asks.
+- **Without a data folder** the missing file is a `platform` warning
+  through the sink rather than a raw stderr line, so it reaches the
+  console and a report too.
+- **The settings key is `p1-settings`** now (profiles), not `settings`:
+  the manual checks broke `p1-settings.ron` and
+  `localStorage["shuyi-hello-grid/p1-settings"]`.
+- **3012 is open:** nothing to do for `docs/targets/steam-deck.md`; 3012's
+  clause is rewritten as **From 3041 (done)**: it adds the line.
+
+Manual evidence, at `50472bbc` (the tip of `main`, which the branch is
+on):
+
+- **Windows release build** (`cargo build --release -p hello-grid`), with
+  `not ron` in `%APPDATA%\shuyi-hello-grid\p1-settings.ron`, run and
+  closed. `logs\latest.log`:
+
+  ```text
+      0.000 f0 INFO  platform: Shuyi Engine 0.1.0, windows x86_64 release, storage shuyi-hello-grid, game version 0.1.0
+      0.021 f2 WARN  storage: settings: unreadable: 1:1-1:4: Expected struct `Settings` but found `not`, using the defaults
+  ```
+
+  A second run moved it to `previous-1.log` and wrote a new `latest.log`.
+  The folder was put back as it was afterwards.
+- **The web build** (`cargo shuyi web` in `examples/hello-grid`, served by
+  `python -m http.server`, frames driven with `wasm_exports.frame()` in a
+  hidden browser pane). With `localStorage["shuyi-hello-grid/p1-settings"]
+  = "not ron"`, the console had `[warn]     0.140 f2 WARN  storage:
+  settings: unreadable: …, using the defaults`. With a `panic!` in
+  hello-grid's load for one build (not committed): `[error]     0.079 f2
+  ERROR panic: a panic on purpose for 3041's check at
+  examples\hello-grid\src\lib.rs:660 on the thread main`, then miniquad's
+  `[log] PanicHookInfo { payload: Any { .. }, … }` and the `RuntimeError`.
+
+Tickets written:
+
+- 3324: `SHUYI_LOG` and `LogFilter::parse` (the Size rule).
+- No ticket: a debug-menu row for the filter and a filter in the web
+  page's address, until a developer asks (the ticket's **Out**).
+
+For the game's pin bump: macroquad's `log-rs` feature is on for every
+game that depends on `shuyi-app` (Cargo unifies features). The game's own
+macroquad `warn!` and `error!` lines now reach the engine's sinks (its
+log file, the console and its crash reports) with the game's module path
+as their target, `warn` and more serious by default. Macroquad's prelude
+re-exports the `log` crate's items, so a name another glob import brings
+in too becomes ambiguous where it is used. `gh search code --repo
+Zafnok/visions-of-shuyi 'macroquad::prelude::*'` finds nothing; the game
+has one `macroquad::logging::warn!` (`crates/app/src/main.rs:115`, a
+debug-only folder read), which compiles as before.
+
+Breaking: shuyi-app: macroquad's `log-rs` feature: `macroquad::prelude::*` brings the `log` crate's items (`Level`, `Log`, `Record`, `log!`, …), so a name another glob import brings too is ambiguous where it is used
+
+```migration
+since: 0.1.0
+what: macroquad's prelude re-exports the `log` crate's items, so a game that glob-imports it beside another module with a `Level` or `Record` names the one it means.
+old: "use macroquad::prelude::*; use my_game::stats::*;"
+new: "use macroquad::prelude::*; use my_game::stats::{self, Level};"
+before: |
+  use macroquad::prelude::*;
+  use my_game::stats::*;
+  let level: Level = Level::new(3);
+after: |
+  use macroquad::prelude::*;
+  use my_game::stats::{self, Level};
+  let level: Level = Level::new(3);
+find: ["use my_game::stats::*;"]
+```
+
+Behaviour: shuyi-app: a desktop build writes `logs/latest.log` (and keeps `previous-1.log` to `previous-3.log`) in the game's storage folder
+Behaviour: shuyi-app: the log's lines on stderr and in the browser's console read `{seconds} f{frame} {LEVEL} {target}: {text}` in place of `{category}: {text}`; App's lines take their category's name as the target
+Behaviour: shuyi-app: a game's macroquad log lines (and any `log` line) reach the engine's sinks once `run_app` installs its logger, `warn` and more serious for a target that names no category; one logged before `run_app` goes nowhere, and a game that installs a `log` logger before `run_app` keeps it
+Behaviour: shuyi-app: a panic is logged as an `Error` line of the target `panic` (message, `file:line`, thread) whether crash reports are on or not, and a panic the engine catches on purpose (a music file that won't decode) is logged too
+Behaviour: shuyi-app: a crash report's log lines are every line the sink passes (the backend's and libraries' too, by their target), not App's alone
+Behaviour: shuyi-app: the backend's `audio: ` and `storage: ` prefixes are now the lines' targets; miniquad's own messages stay plain stderr lines
+
+Game: game#0903 adopts it with its next pin bump (the Steam build's log file)

@@ -184,12 +184,12 @@ These tickets, in order:
 | 2347 | Styled text: key names that stand out in every hint, and colour roles inside a line |
 | 2348 (done) | Messages that choose their words: ICU's plural, ordinal and select, and CLDR's plural rules |
 | 3218 (done) | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
-| 2405 | Mouse and touch for menus and grid maps |
+| 2405 (done) | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
 | 2239 (done) | Translated dialogue lines get the text box's page check |
-| 3041 | Log sinks in shipped builds |
+| 3041 (done) | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
@@ -457,7 +457,8 @@ is done.
 | 2575 | The Harness starts a game from its real `Start`, records it, and plays a session record to any frame |
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3086 | A desktop launch's seed differs from launch to launch, kept in its session record |
-| 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
+| 3041 (done) | Log sinks in shipped builds: a log file, and the browser console on the web |
+| 3324 | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library (after 3041) |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
@@ -485,7 +486,8 @@ is done.
 | 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
 | 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
-| 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
+| 2405 (done) | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
+| 2413 | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |

@@ -199,9 +199,11 @@ each part is one PR.
   (`ctx.audio.menu`) and keeps the gem picked. `Cancel` puts it down.
   `files/keymap.ron` has `targets` tables for `playdate` (the d-pad, A
   and B) and `steam-deck`, as `examples/hello-grid/files/keymap.ron`
-  does. Nothing names a key (the `input-actions` skill). **Either order
-  with 2405:** if it is done, the board takes the pointer as its grid
-  maps do; if not, nothing. No action needs the mouse.
+  does. Nothing names a key (the `input-actions` skill). **From 2405
+  (done):** the board takes the pointer as its grid maps do: the gem
+  under it comes from `GridSkin::tile_at` (or the hit areas its painter
+  records), hover moves the cursor, and a click does what `Confirm`
+  does there. No action needs the mouse.
 - **The look:** each kind has its own glyph (`♦ ● ▲ ■ ♥ ♣`, all in
   `examples/hello-grid/files-src/ter-u16n.bdf`) and its own palette
   colour (`gem_0` to `gem_5`), so the board reads without colour. The

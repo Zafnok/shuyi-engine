@@ -584,6 +584,13 @@ version in it is `shuyi.ron`'s `app.version`. On Windows and Linux its `frames` 
 offsets into the program, which that version's debug file turns into functions and lines with
 `addr2line` ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
 
+Beside the reports, in the `logs` folder, the game keeps its log: `latest.log` of the last run
+and `previous-1.log` to `previous-3.log` of the three before, a line each for its warnings, its errors
+and a panic's message. A Windows release build has no console, so this is where they go: ask a player
+for the folder along with the report. A log names files, and a file's path may name the player's
+account, so a game asks before it sends one anywhere ([the
+logs](https://github.com/Zafnok/shuyi-engine/blob/main/docs/platform-backends.md#logs)).
+
 At the next start the game's load hears of it once, in `Setup::last_crash`: whether the player sees
 anything, and in what words, is up to the game. A panic the game survived, like a sound library's on a
 machine with no sound card, keeps its report but isn't offered as a crash. A game that gives `Start::crash_record` a function

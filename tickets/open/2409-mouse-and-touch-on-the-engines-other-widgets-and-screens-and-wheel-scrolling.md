@@ -15,9 +15,14 @@ completed:
 
 ## Context
 
-2405 brings the pointer to turn games and to the engine's menus:
+2405 (done) brought the pointer to turn games and to the engine's
+menus:
 
-- pointer events at the platform boundary, read by `shuyi-app`;
+- pointer events at the platform boundary (`RawInputEvent`'s
+  `PointerMoved`, `PointerLeft`, `PointerDown`, `PointerUp` and
+  `Wheel`). No real backend sends them yet: `shuyi-app` reads the mouse
+  in 2413. This ticket needs none, since its tests drive the pointer
+  through the Harness;
 - hit areas a painter records in the frame
   (`crates/ui/src/frame/hit.rs`: `WidgetKey`, `Hit`, `Hit::AREA`, and
   `GlyphBuffer::hit`, `hit_cells` and `hit_at`), the top screen's only;
@@ -25,17 +30,22 @@ completed:
   `down_at`, `over`, `clicked`, `wheel`);
 - the menu: `Menu::keyed`, `Menu::point` and `point_with_sound`, and
   the hits `menu::glyph::paint` records;
-- grid maps: `GridSkin::tile_at`;
+- grid maps: `Projection::tile_at`, `Grid::tile_at_px` and
+  `GridSkin::tile_at` (`crates/ui/src/grid/layout.rs` and `skin.rs`);
 - the Harness's `point`, `click`, `click_text`, `wheel` and
   `leave_pointer`.
 
-Its ADR sets the rules this ticket follows: hover follows motion only;
-a click is a press and a release on the same hit and does what Confirm
-does; a touch is a pointer with no hover; the pointer never enters a
-command; and it is never required.
+Its ADR (ADR-0134) sets the rules this ticket follows: hover follows
+motion only; a click is a press and a release on the same hit and does
+what Confirm does; a touch is a pointer with no hover; the pointer
+never enters a command; and it is never required.
 
 2405 left the engine's other widgets and the wheel out, and named this
-ticket in its Out. Once 2405 lands, these still take no pointer:
+ticket in its Out. Its split valve (step 9) also moved Hello, Grid's
+stage here (item 10). With 2405 done, these still take no pointer:
+
+- Hello, Grid's stage (`examples/hello-grid/src/screens/stage.rs`): the
+  cursor moves with the keys only.
 
 - `Ask` (`crates/ui/src/widgets/ask.rs`), the question over a screen.
   Its painter (`ask/glyph.rs`, `paint`) draws its answers in a line and
@@ -260,17 +270,35 @@ None.
      (the next stage);
    - no hover: the stage has no cursor;
    - the module's doc comment says so.
-10. **Hello, Grid's stage, if 2405 moved it here.** If 2405's step 9
-    left Hello, Grid's stage out (its completion notes say so), 2405's
-    item 7 stage bullets, their tests and its Hello, Grid acceptance
-    criterion are this ticket's.
+10. **Hello, Grid's stage. From 2405 (done):** its step 9 moved the
+    stage here (its completion notes say so), with its item 7 stage
+    bullets, their tests and its Hello, Grid acceptance criterion.
+    `GridSkin::tile_at` and its property test landed in 2405. The stage
+    (`examples/hello-grid/src/screens/stage.rs`) uses `tile_at` with the
+    skin of the player's look (`with_skin`), after the walk check in
+    `update`, where the actions are read:
+    - on a frame the pointer moved over a drawn tile on the map, the
+      cursor goes there (`Cursor::jump`), ticks as `step` does, and
+      steers the path as `step` does (`steer` already takes a jump);
+    - a release whose press began on the same tile (`down_at` and `at`
+      give the same tile) moves the cursor there and does what Confirm
+      does (`confirm`);
+    - nothing while a walk is shown, as for the keys;
+    - the rule (ADR-0134): the pointer never enters a command. Only the
+      command a key would also send (`Command::Move`) reaches the
+      rules, so a run played with the pointer and one played with keys
+      give the same record.
+
+    A test helper in `examples/hello-grid/tests/it/main.rs` clicks a
+    tile at the centre of its `tile_px` in the look's skin
+    (`map::GLYPHS` or the game's `sprite_skin()`), beside `walk_to`.
 11. **Either order with 2759** (parked, the inventory grid of shapes):
-    if 2759 is done and its grid widget takes no pointer yet (it was
-    done before 2405), its painter records each cell as
-    `grid_item(row, col)` under its key, and a click picks an item up
-    and a click drops it, through the code its Confirm runs, no drag,
-    with a test; if not, nothing to do (2759 is then worked after 2405
-    and takes the pointer itself, as its clause with 2405 says).
+    if 2759 is done, its grid widget already takes the pointer (2405
+    was done first): its painter's cell items move onto `grid_item(row,
+    col)` under its key, with a test that `hit_at` on a cell's pixel
+    gives `grid_item` of that cell, and its click tests pass unchanged;
+    if not, nothing to do (2759 uses `grid_item` and takes the pointer
+    itself, as its clause with 2409 says).
 12. **Never required.** Every widget and screen here takes the same keys
     as before. No action is bound to the pointer, so `controls_fit`
     (`crates/ui/src/input/fit.rs`) and every target's fit test don't
@@ -299,9 +327,11 @@ screens behave as before with no pointer.
   and the pointer in `TickInput`: 1121 (parked).
 - Swipes and several touches at once: 2407 (parked).
 - Hello, Grid's title and end menus, the debug menu and the toy's
-  lobby: 2405 does them.
+  lobby: 2405 did them.
 - The toy's grid screen (`crates/ui/src/toy/grid.rs`), which 2405 also
-  leaves out: Hello, Grid shows the grid part.
+  left out: Hello, Grid shows the grid part.
+- `shuyi-app` reading the real mouse and touches, and trying the
+  desktop and web builds by hand: 2413.
 - Moving the focus between widgets of one screen: on each screen here
   one widget takes the input at a time.
 - A new ADR: these are 2405's rules applied to more widgets.
@@ -309,12 +339,13 @@ screens behave as before with no pointer.
 ## Implementation steps
 
 1. Read 2405 as it landed: its ADR, `frame/hit.rs`, `input/pointer.rs`,
-   `Menu::point`, the Harness helpers, and its completion notes (did
-   its step 9 move Hello, Grid's stage here?). Read `widgets/list.rs`,
-   `ask.rs` and `name_entry.rs` with their painters, the four screens
-   with their painters and tests, `crates/ui/tests/it/screens.rs`, and
-   the grid template's `stage.rs` and `tests/it/main.rs`. Check
-   whether 2354, 2346 and 2759 are done.
+   `Menu::point`, `GridSkin::tile_at`, the Harness helpers, and its
+   completion notes. Read `widgets/list.rs`, `ask.rs` and
+   `name_entry.rs` with their painters, the four screens with their
+   painters and tests, `crates/ui/tests/it/screens.rs`, the grid
+   template's `stage.rs` and `tests/it/main.rs`, and Hello, Grid's
+   `screens/stage.rs`, `skin.rs` and `tests/it/main.rs`. Check whether
+   2354, 2346 and 2759 are done.
 2. Write `grid_item` and `grid_cell`, with their test.
 3. Write `ListCursor::scroll_by` with its unit and property tests, then
    the wheel in `Menu::point`.
@@ -327,6 +358,8 @@ screens behave as before with no pointer.
 6. The grid template's stage and its tests. Make a game from the
    template and run its checks, as the `run-gates` skill's "A new game
    from each template" says (`templates/` isn't in the workspace).
+   Then Hello, Grid's stage (item 10) and its pointer tests, with the
+   tile-clicking helper.
 7. The docs (the `document` skill): the module docs of `ask`,
    `name_entry` and `list`, and of the four screens, say which hits
    their glyph painters record and under which key, so a game's own
@@ -370,6 +403,11 @@ screens behave as before with no pointer.
       your piece gives the same commands and the same state as one
       played by keys, and a click on the map once it is over starts the
       next stage.
+- [ ] Hello, Grid: a turn played with the pointer (click your piece,
+      then a tile of its reach) sends the same commands and leaves the
+      stage in the same state as `walk_to` by keys. A whole stage
+      played out with the pointer gives the same commands as one played
+      with keys, with the glyph look and the tile look.
 - [ ] With no pointer events, every existing test and snapshot passes
       unchanged, and the targets' fit tests don't change.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
@@ -401,8 +439,9 @@ screens behave as before with no pointer.
   rows shown, notches and disabled rows.
 - Integration (Harness): the toy's options, layout picker, key bindings
   and profiles screens clicked against the keys; the grid template's
-  stage played by clicks against keys; the existing key-only tests
-  unchanged.
+  stage played by clicks against keys; Hello, Grid's turn and stage
+  played with the pointer against the keys, in both looks; the existing
+  key-only tests unchanged.
 
 ## Completion notes
 

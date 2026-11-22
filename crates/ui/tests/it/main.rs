@@ -15,6 +15,7 @@ mod modules;
 mod parses;
 mod perf;
 mod plasma;
+mod pointer;
 mod resume;
 mod scene_camera;
 mod screens;

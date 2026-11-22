@@ -111,19 +111,14 @@ pub(crate) fn start(game: &str) -> Option<Listener> {
     match decide(port.as_deref(), shuyi_ui::DEBUG_TOOLS) {
         Decision::Off => None,
         Decision::NoDebugTools => {
-            macroquad::logging::warn!(
-                "shuyi link: {} is set, but this build has no debug tools (a release build \
-                 without the `debug-tools` feature), so it doesn't listen",
-                PORT_VAR
+            log::warn!(target: "platform", "shuyi link: {PORT_VAR} is set, but this build has no debug tools (a release build \
+                 without the `debug-tools` feature), so it doesn't listen"
             );
             None
         }
         Decision::BadPort(port) => {
-            macroquad::logging::warn!(
-                "shuyi link: {}={} is no port (0 to 65535; 0 takes a free one), so it doesn't \
-                 listen",
-                PORT_VAR,
-                port
+            log::warn!(target: "platform", "shuyi link: {PORT_VAR}={port} is no port (0 to 65535; 0 takes a free one), so it doesn't \
+                 listen"
             );
             None
         }
@@ -135,15 +130,14 @@ pub(crate) fn start(game: &str) -> Option<Listener> {
             });
             match listening {
                 Ok(listener) => {
-                    macroquad::logging::info!(
-                        "shuyi link: listening on {}, token {}",
+                    log::info!(target: "platform", "shuyi link: listening on {}, token {}",
                         listener.address(),
                         listener.token
                     );
                     Some(listener)
                 }
                 Err(e) => {
-                    macroquad::logging::warn!("shuyi link: {}, so it doesn't listen", e);
+                    log::warn!(target: "platform", "shuyi link: {e}, so it doesn't listen");
                     None
                 }
             }

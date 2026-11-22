@@ -3,7 +3,6 @@
 //! same buttons, by position, as an Xbox pad.
 
 use gilrs::{Axis, Gilrs};
-use macroquad::prelude::warn;
 use shuyi_ui::input::{Button, PadId, PadKind, PadState};
 
 /// The game's button for each gilrs button it reads. gilrs calls the
@@ -40,7 +39,7 @@ impl Source {
         let gilrs = match Gilrs::new() {
             Ok(gilrs) => Some(gilrs),
             Err(e) => {
-                warn!("controllers: {}; playing without controller support", e);
+                log::warn!(target: "input", "controllers: {e}; playing without controller support");
                 None
             }
         };
