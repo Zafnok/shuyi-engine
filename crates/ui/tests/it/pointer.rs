@@ -126,15 +126,3 @@ fn a_pointer_press_ends_the_wait_for_a_key_and_names_no_device() {
 fn clicking_text_not_shown_panics() {
     lobby().click_text("Play");
 }
-
-/// A lost focus forgets the pointer's place, in the game and in the
-/// Harness: a click where it was points there again first.
-#[test]
-fn a_click_after_a_lost_focus_points_again() {
-    let mut h = lobby();
-    let (x, y) = row(&h, 3);
-    h.point(x, y);
-    h.system(shuyi_platform::SystemEvent::FocusLost);
-    h.click(x, y);
-    assert!(h.quit_requested(), "Quit was chosen");
-}

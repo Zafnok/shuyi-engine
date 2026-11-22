@@ -301,6 +301,20 @@ fn a_pointer_session_plays_back_the_same() {
     assert_eq!(played.screen_log(), h.screen_log());
 }
 
+/// A lost focus forgets the pointer's place, in the game and in the
+/// Harness: a click where it was points there again first.
+#[test]
+fn a_click_after_a_lost_focus_points_again() {
+    let mut h = recording(lobby());
+    h.click_text("Quit");
+    assert!(h.quit_requested(), "a click before");
+    let mut h = recording(lobby());
+    h.point(28, 88);
+    h.system(SystemEvent::FocusLost);
+    h.click(28, 88);
+    assert!(h.quit_requested(), "Quit was chosen");
+}
+
 #[test]
 fn a_press_taken_out_is_found_at_its_frame_and_the_game_stays_there() {
     let mut h = recording(home());

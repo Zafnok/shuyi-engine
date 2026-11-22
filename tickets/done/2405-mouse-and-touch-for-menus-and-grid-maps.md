@@ -599,7 +599,7 @@ Done on 2026-11-21.
   so their *if not* branches held (nothing to do here). 2333's clause
   now names 2413, which writes the inverse.
 
-Size: 1,514 counted lines, the stage and the backend went to 2409 and
+Size: 1,516 counted lines, the stage and the backend went to 2409 and
 2413 at the valve; the lines past 1,500 are the tests CI's mutation
 testing asked for, and what is left (the events, the hit areas, the
 tracker, the menu and the Harness) is one contract whose parts can't be
