@@ -21,7 +21,7 @@ use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::ImageId;
 use shuyi_assets::lighting::Light;
 use shuyi_ui::frame::Rgb;
-use shuyi_ui::frame::console::{Layout, layout};
+use shuyi_ui::frame::console::{ConsoleSpec, Layout, layout};
 use shuyi_ui::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, Sprite};
 use shuyi_ui::frame::painted::{PaintedSprite, PaintedTable};
 
@@ -162,10 +162,8 @@ impl Renderer {
     /// see-through cells have no background.
     pub fn draw(&mut self, buf: &GlyphBuffer) {
         let dpi = screen_dpi_scale();
-        // Rounded: logical size × DPI can land a hair under the real pixel
-        // count (913.714 × 1.75 = 1599.99…), which would drop a whole scale step.
+        let fit = placement(buf.spec(), (screen_width(), screen_height()), dpi);
         let window_h = (screen_height() * dpi).round();
-        let fit = layout(buf.spec(), (screen_width() * dpi).round(), window_h);
         #[allow(clippy::cast_precision_loss)] // scale is small
         let scale = fit.scale as f32 / dpi;
         let (offset_x, offset_y) = (fit.offset_x / dpi, fit.offset_y / dpi);
@@ -483,6 +481,16 @@ impl Renderer {
 }
 
 /// The picture of PNG file `png`, or why it can't be decoded.
+/// Where a `spec` console goes in a window `logical` pixels big at a DPI
+/// factor of `dpi`, in the physical pixels [`Renderer::draw`] places it in
+/// (the window is `high_dpi`). The pointer maps the mouse back through it
+/// ([`pointer`](crate::pointer)).
+pub(crate) fn placement(spec: ConsoleSpec, logical: (f32, f32), dpi: f32) -> Layout {
+    // Rounded: logical size × DPI can land a hair under the real pixel
+    // count (913.714 × 1.75 = 1599.99…), which would drop a whole scale step.
+    layout(spec, (logical.0 * dpi).round(), (logical.1 * dpi).round())
+}
+
 pub(crate) fn decode(png: &[u8]) -> Result<Image, String> {
     Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())
 }

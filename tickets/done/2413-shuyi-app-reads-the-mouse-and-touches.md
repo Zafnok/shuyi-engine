@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2405"]
 nick_input: none
-completed:
+completed: 2026-11-22
 ---
 
 # 2413 — shuyi-app reads the mouse and touches
@@ -133,17 +133,17 @@ MVP, not parked ([`docs/decisions.md`](../../docs/decisions.md)).
 
 ## Acceptance criteria
 
-- [ ] `Layout::frame_px` inverts the placement for every console pixel
+- [x] `Layout::frame_px` inverts the placement for every console pixel
       at scales 1 to 4, and gives `None` in the letterbox.
-- [ ] `shuyi-app`'s pure parts are tested: the mapping inside the frame,
+- [x] `shuyi-app`'s pure parts are tested: the mapping inside the frame,
       in the letterbox and at a DPI factor of 1.75; the wheel's
       accumulator for each unit; a press and a release in one frame; a
       touch's release followed by `PointerLeft`.
-- [ ] Hello, Grid's title menu takes hover and a click in the desktop
+- [x] Hello, Grid's title menu takes hover and a click in the desktop
       build and in the web build, tried by hand and said in the PR.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -154,4 +154,72 @@ MVP, not parked ([`docs/decisions.md`](../../docs/decisions.md)).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done:
+
+- `Layout::frame_px(self, spec, window)` (`crates/ui/src/frame/console.rs`):
+  the console pixel at a window pixel, rounded down, `None` in the
+  letterbox or for a place that is no number. 2333 is still open, so it
+  inverts today's `layout`; 2333's clause now says it moves onto
+  `Placement`. Tested for every window pixel of every console pixel of a
+  small console at scales 1 to 4, by a property test over console and
+  cell sizes, margins and places, and at the letterbox's edges.
+- `crates/app/src/pointer.rs`: `console_px` (the mouse's logical pixels
+  times the DPI factor, through the placement's inverse), `Notches` (the
+  wheel's accumulator, one notch a platform's unit, chosen by `cfg`, the
+  rest kept), and `PointerReader::events` (the place when its console
+  pixel changes, `PointerLeft` once into the letterbox, the press inside
+  the frame, its release wherever, the wheel, then `PointerLeft` after a
+  finger's release). `read` is the shell over macroquad's calls.
+  `Macroquad` keeps the last drawn frame's `ConsoleSpec` beside the
+  reader, and `poll_input` adds the pointer's events after the keys and
+  pads, before the live link's.
+- `render::placement` is the one function `Renderer::draw` and the
+  pointer both place the frame with, so they can't drift.
+- `docs/platform-backends.md`: `shuyi-app`'s row and the pointer rule say
+  it sends the pointer; the book's *The mouse and taps*
+  (`site/content/learn/book/actions.md`) says the desktop and web builds
+  take it.
+
+Deviations:
+
+- One rule beyond the ticket: a press whose release macroquad never
+  reported (the button is up, no release came, as after a focus change)
+  gets its `PointerUp` on the next poll, so the next press isn't dropped
+  as a second press. A release and a new press in one frame send the old
+  press's `PointerUp` first.
+- `Reading` counts the touches (`touches().len()`) instead of a flag:
+  clippy refuses a fourth bool in one struct.
+- The web's wheel was measured in Chromium only (the desktop app's
+  browser pane, Chromium 156 on Windows: three notches of its wheel input
+  gave one `deltaY` of 300 in pixels, `deltaMode` 0, so 100 a notch). No
+  Firefox was at hand; the comment says its numbers are not measured. No
+  ticket: the unit is a constant in one place, and a Firefox notch of
+  100 to 120 gives one notch, with an extra one at most every five or so
+  from the kept rest, which a menu's scrolling bears. No print was added
+  to the code: the deltas were read with a `wheel` listener on the page.
+
+Tried by hand, on main's tip 23ba0a6b with this branch's changes, on
+Windows 11 at a DPI factor of 1.75:
+
+- the web build (`cargo shuyi web` in `examples/hello-grid`, served
+  locally, in the desktop app's browser pane, frames run with
+  `wasm_exports.frame()` as the pane was hidden): a `mousemove` over
+  Options moved the title menu's focus to it; a press and release over
+  Profiles opened Profiles; a touch's start and end over Options (a
+  `TouchEvent`, with no move first) opened Options;
+- the desktop build (`target/debug/hello-grid.exe`, a 784 × 784 window):
+  `WM_MOUSEMOVE` posted over Profiles moved the focus to it, and
+  `WM_LBUTTONDOWN` and `WM_LBUTTONUP` over Options opened Options.
+  Posted messages go through miniquad's own window procedure, the path a
+  real mouse takes, without moving the real cursor.
+
+Behaviour: shuyi-app: the desktop and web builds send `PointerMoved`, `PointerLeft`, `PointerDown`, `PointerUp` and `Wheel`, so the engine's menus take hover, clicks and taps, and the grid cursor follows the pointer, where before only the Harness sent them.
+
+Book: `site/content/learn/book/actions.md`, *The mouse and taps*, says the desktop and web builds take the mouse, and that a tap is a click.
+
+Game: nothing to adopt, the game's code only builds key and pad events
+(`gh search code --repo Zafnok/visions-of-shuyi 'RawInputEvent'`, and
+`'pointer'`: no screen of its own matches on a pointer event); its menus
+are the engine's, which take the pointer at its next pin bump.
+
+No break: `Layout::frame_px` is new, and nothing public changed.
