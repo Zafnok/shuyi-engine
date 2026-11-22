@@ -351,7 +351,7 @@ fn after_a_page_seek_the_position_says_which_samples_these_are() {
 #[test]
 fn an_exact_seek_gives_what_a_whole_decode_has_from_that_frame() {
     let whole = pcm_or_panic(whole_ogg(LONG));
-    let frames = whole.frames() as u64;
+    let frames = whole.frames();
     let lead = shuyi_sound::vorbis::SEEK_LEAD;
     for frame in [
         lead + 1,

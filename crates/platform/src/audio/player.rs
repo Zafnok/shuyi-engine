@@ -2584,8 +2584,8 @@ mod tests {
             0.0,
         );
         assert!(near(at(&audio, 4.5), 1.5));
-        let fade = [cmd(load, "title"), cmd(start, "title"), gain("intro", 0.5)];
-        audio.play(&mut fake, &[], &fade, 5.0);
+        let switch = [cmd(load, "title"), cmd(start, "title"), gain("intro", 0.5)];
+        audio.play(&mut fake, &[], &switch, 5.0);
         assert_eq!(audio.music_playing(5.0).map(|(cue, _)| cue), Some("title"));
         assert!(near(at(&audio, 7.0), 1.0));
         audio.play(&mut fake, &[], &[cmd(stop, "title")], 7.0);
