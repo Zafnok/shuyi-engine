@@ -107,7 +107,7 @@ impl std::error::Error for Error {
 }
 
 /// Walks folder `root`: every file in it at any depth, but those a pattern
-/// of `skip` matches ([`matches`]), sorted by path.
+/// of `skip` matches ([`matches()`]), sorted by path.
 pub fn walk(root: &Path, skip: &[String]) -> Result<Walk, Error> {
     let read = |path: &Path, error| Error::Read {
         path: path.to_path_buf(),
@@ -277,7 +277,7 @@ impl Table {
         self
     }
 
-    /// Leaves out the files `pattern` matches ([`matches`]), and lists
+    /// Leaves out the files `pattern` matches ([`matches()`]), and lists
     /// them for [`skipped!`], for `Layer::leaving_out`.
     #[must_use]
     pub fn skip(mut self, pattern: impl Into<String>) -> Self {
