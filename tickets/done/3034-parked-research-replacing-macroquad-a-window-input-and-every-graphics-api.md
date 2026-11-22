@@ -368,7 +368,7 @@ when (dropping a platform for a while, say), it asks Nick with the
 
 **Follow-up tickets:** 3325–3333, all `Parked:`. Nothing else.
 
-**Size:** about 1,200 counted lines, all docs (the report and the ADR);
+**Size:** 1,292 counted lines, all docs (the report and the ADR);
 the tickets are counted apart. It would split cleanly into the research
 (report, ADR, decision) and a ticket-only PR of 3325–3333, but each half
 names the other.
