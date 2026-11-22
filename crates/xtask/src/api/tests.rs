@@ -116,6 +116,54 @@ fn metadata_json_with(
     format!("{{\"packages\":[{}]}}", list.join(","))
 }
 
+/// The head's `cargo metadata` with dependencies.
+const RESOLVE: &str = "head: cargo metadata --format-version 1 --locked";
+
+/// `cargo metadata`'s JSON with dependencies, of a workspace of `members`
+/// and the packages `deps` names: each package's normal dependencies (a
+/// name `dev:<name>` as a dev-dependency). A package's id is its name, and
+/// its library's name is its own, `-` as `_`.
+fn resolve_json(members: &[&str], deps: &[(&str, &[&str])]) -> String {
+    let mut names: Vec<&str> = members.to_vec();
+    for (krate, list) in deps {
+        names.push(krate);
+        names.extend(list.iter().map(|dep| dep.trim_start_matches("dev:")));
+    }
+    names.sort_unstable();
+    names.dedup();
+    let packages: Vec<String> = names
+        .iter()
+        .map(|name| {
+            format!(
+                "{{\"id\":\"{name}\",\"name\":\"{name}\",\"targets\":[{{\"kind\":[\"lib\"],                 \"name\":\"{}\"}}]}}",
+                name.replace('-', "_")
+            )
+        })
+        .collect();
+    let nodes: Vec<String> = deps
+        .iter()
+        .map(|(krate, list)| {
+            let deps: Vec<String> = list
+                .iter()
+                .map(|dep| match dep.strip_prefix("dev:") {
+                    Some(dep) => {
+                        format!("{{\"pkg\":\"{dep}\",\"dep_kinds\":[{{\"kind\":\"dev\"}}]}}")
+                    }
+                    None => format!("{{\"pkg\":\"{dep}\",\"dep_kinds\":[{{\"kind\":null}}]}}"),
+                })
+                .collect();
+            format!("{{\"id\":\"{krate}\",\"deps\":[{}]}}", deps.join(","))
+        })
+        .collect();
+    let members: Vec<String> = members.iter().map(|name| format!("\"{name}\"")).collect();
+    format!(
+        "{{\"packages\":[{}],\"workspace_members\":[{}],\"resolve\":{{\"nodes\":[{}]}}}}",
+        packages.join(","),
+        members.join(","),
+        nodes.join(",")
+    )
+}
+
 /// A fake [`Runner`]. Each command is written `<where>: <program> <args>`,
 /// `<where>` being `head` (the root) or `base` (the base's tree); the last
 /// answer given whose key starts the command answers it, and any other
@@ -179,12 +227,14 @@ impl Fake {
         )
     }
 
-    /// The head's workspace has `packages`.
+    /// The head's workspace has `packages`, whose dependencies reach no
+    /// crate.
     fn with_head_packages(self, packages: &[&str]) -> Self {
         self.answer(
             "head: cargo metadata --no-deps --format-version 1",
             Ok(ok(&metadata_json(packages))),
         )
+        .answer(RESOLVE, Ok(ok("{}")))
     }
 
     /// `krate`'s listing in `place` (`head` or `base`).
@@ -2264,6 +2314,148 @@ fn a_run_passes_an_allowed_outside_crate() {
         !outcome.summary.contains("Outside crate"),
         "{}",
         outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+// -- crates the dependencies reach (ticket 2090) --
+
+#[test]
+fn a_crate_reaches_its_dependencies_dependencies_but_not_through_an_engine_crate() {
+    let metadata: serde_json::Value = serde_json::from_str(&resolve_json(
+        &["shuyi-app", "shuyi-ui"],
+        &[
+            ("shuyi-app", &["macroquad", "shuyi-ui", "dev:tempfile"]),
+            ("macroquad", &["miniquad", "quad-snd"]),
+            ("miniquad", &["libc"]),
+            ("quad-snd", &["libc"]),
+            ("shuyi-ui", &["serde_json"]),
+            ("tempfile", &["fastrand"]),
+        ],
+    ))
+    .unwrap();
+    let reached = reached_outside(&metadata);
+    assert_eq!(
+        reached["shuyi-app"],
+        lines(&["libc", "macroquad", "miniquad", "quad_snd"])
+    );
+    assert_eq!(reached["shuyi-ui"], lines(&["serde_json"]));
+    // Only the workspace's members.
+    assert_eq!(reached.len(), 2);
+}
+
+#[test]
+fn a_crate_reached_also_through_an_outside_crate_counts() {
+    let metadata: serde_json::Value = serde_json::from_str(&resolve_json(
+        &["shuyi-app", "shuyi-ui"],
+        &[
+            ("shuyi-app", &["shuyi-ui", "image"]),
+            ("shuyi-ui", &["png"]),
+            ("image", &["png"]),
+        ],
+    ))
+    .unwrap();
+    assert_eq!(
+        reached_outside(&metadata)["shuyi-app"],
+        lines(&["image", "png"])
+    );
+}
+
+#[test]
+fn a_library_is_named_by_its_targets_name() {
+    let metadata = serde_json::json!({
+        "packages": [
+            {"id": "a", "name": "shuyi-app", "targets": [{"kind": ["lib"], "name": "shuyi_app"}]},
+            {"id": "b", "name": "some-crate", "targets": [
+                {"kind": ["custom-build"], "name": "build-script-build"},
+                {"kind": ["rlib"], "name": "other_name"},
+            ]},
+            {"id": "c", "name": "no-lib", "targets": []},
+        ],
+        "workspace_members": ["a"],
+        "resolve": {"nodes": [
+            {"id": "a", "deps": [
+                {"pkg": "b", "dep_kinds": [{"kind": "build"}, {"kind": null}]},
+                {"pkg": "c", "dep_kinds": [{"kind": null, "target": "cfg(windows)"}]},
+            ]},
+        ]},
+    });
+    assert_eq!(
+        reached_outside(&metadata)["shuyi-app"],
+        lines(&["no_lib", "other_name"])
+    );
+}
+
+#[test]
+fn a_run_fails_on_a_crate_reached_through_a_dependency() {
+    let root = temp_root("outside-reached");
+    let options = Options {
+        base: Some("HEAD^1".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json_with(
+                &catalog_names(),
+                &[],
+                &[("shuyi-app", &["macroquad", "shuyi-ui"])],
+            ))),
+        )
+        .answer(
+            RESOLVE,
+            Ok(ok(&resolve_json(
+                &catalog_names(),
+                &[
+                    ("shuyi-app", &["macroquad", "shuyi-ui"]),
+                    ("macroquad", &["miniquad"]),
+                    ("shuyi-ui", &["gilrs"]),
+                ],
+            ))),
+        )
+        .with_listing(
+            "head",
+            "shuyi-app",
+            "pub mod shuyi_app
+pub fn shuyi_app::f() -> miniquad::conf::Conf
+             pub fn shuyi_app::g(gilrs::GamepadId)
+",
+        );
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    let app = &outcome.errors[0];
+    assert!(app.starts_with("shuyi-app's public API"), "{app}");
+    assert!(
+        app.contains(
+            "pub fn shuyi_app::f() -> miniquad::conf::Conf
+    names `miniquad`"
+        ),
+        "{app}"
+    );
+    assert!(app.contains("ADR-0119"), "{app}");
+    // `gilrs` is reached only through `shuyi-ui`, an engine crate.
+    assert!(!app.contains("gilrs"), "{app}");
+    assert!(fake.ran().iter().any(|command| command == RESOLVE));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn unreadable_metadata_with_dependencies_is_an_error() {
+    let root = temp_root("resolve");
+    let fake = Fake::new(&root)
+        .with_tools()
+        .with_base("abc123")
+        .answer(RESOLVE, Ok(ok("not json")));
+    let options = Options {
+        base: Some("abc123".to_string()),
+        ..Options::default()
+    };
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0].starts_with("`cargo metadata` with dependencies in "),
+        "{:?}",
+        outcome.errors
     );
     let _ = fs::remove_dir_all(&root);
 }

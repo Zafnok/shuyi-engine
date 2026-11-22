@@ -82,10 +82,9 @@ None.
   listing lines (`api/constructors.rs`) for the struct and enum lines;
   if not, write the parser here, in `api/exhaustive.rs`, and 3503 reuses
   it.
-- **Either order with 2090:** if 2090 is done, its outside-crate check
-  and this one both read the head's listing in `compare_crates`. Keep
-  the two checks and their errors apart. If not, nothing to do (2090
-  works around this one).
+- **From 2090 (done):** its outside-crate check and this one both read
+  the head's listing in `compare_crates` (its `unlisted_outside`, fed by
+  `reached_outside`). Keep the two checks and their errors apart.
 
 **Out (do not do):**
 - Constructors and their arguments (3503).

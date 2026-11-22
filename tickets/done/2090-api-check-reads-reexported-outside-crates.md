@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 2090 — `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from
@@ -69,14 +69,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A faked listing with `pub fn shuyi_app::f() -> miniquad::conf::Conf`,
+- [x] A faked listing with `pub fn shuyi_app::f() -> miniquad::conf::Conf`,
       `shuyi-app` depending on `macroquad` and `macroquad` on `miniquad`,
       fails the run naming `miniquad` and ADR-0119.
-- [ ] A crate reached only through an engine crate is not looked for in
+- [x] A crate reached only through an engine crate is not looked for in
       the crate that depends on the engine crate.
-- [ ] `cargo xtask api` passes on `main`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo xtask api` passes on `main`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -86,5 +86,33 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/xtask/src/api.rs`: `compare_crates` reads the head's `cargo
+  metadata --format-version 1 --locked` (with dependencies) once, and
+  `reached_outside` walks its `resolve.nodes` from each workspace member's
+  normal dependencies, through their normal dependencies, stopping at an
+  engine crate. Each reached crate is named by its library target's name
+  (`-` as `_`). The paths join the direct dependencies' in `Package`'s
+  `outside`, and `unlisted_outside` is unchanged. The base's metadata is
+  still read with `--no-deps` only: its listing isn't checked.
+- Tests: three unit tests of `reached_outside` (dependencies'
+  dependencies, never through an engine crate, dev-dependencies left
+  out; a crate reached both ways counts; a library named by its target),
+  a faked run where `shuyi-app` names `miniquad::conf::Conf` through
+  `macroquad` and fails naming `miniquad` and ADR-0119 while `gilrs`,
+  reached only through `shuyi-ui`, isn't looked for, and an unreadable
+  metadata with dependencies failing the run. The fake's
+  `with_head_packages` answers the new call with no graph.
+- Docs: the `run-gates` skill's `api` section and the module's doc say
+  the check reads the crates the dependencies reach.
+- `cargo xtask api --base origin/main` passes on `main`'s tip
+  (`50472bbc`) with the wider check: no head listing names a reached
+  crate outside ADR-0119's list.
+- 2096 was not done: its clause there now says what holds (both checks
+  read the head's listing in `compare_crates`, kept apart).
+- No deviation from the steps.
+
+No break: only `xtask` changed, which is no published crate.
+
+Book: none, no public API changed (only `xtask`).
+
+Nick input: none.
