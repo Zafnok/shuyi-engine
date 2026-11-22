@@ -242,3 +242,54 @@ fn a_table_name_that_cannot_be_a_file_name_is_refused() {
         );
     }
 }
+
+#[test]
+fn a_table_name_may_hold_underscores_dashes_and_digits() {
+    let game = scratch("good-name");
+    put(&game, "files/one.ron", "one");
+    let written = Table::new("my_files-2")
+        .dir("files")
+        .write_to(&game, &game)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(written.table, game.join("shuyi_embed_my_files-2.rs"));
+}
+
+#[test]
+fn only_a_read_error_has_a_source() {
+    use std::error::Error as _;
+    let root = scratch("source");
+    let read = walk(&root.join("gone"), &[]).err();
+    assert!(
+        read.as_ref().is_some_and(|e| e.source().is_some()),
+        "{read:?}"
+    );
+    assert!(Error::NotAFolder(root.clone()).source().is_none());
+    assert!(Error::BadName("two words".to_owned()).source().is_none());
+}
+
+#[test]
+fn writing_reports_a_rerun_line_for_each_watched_path() {
+    let game = scratch("report");
+    put(&game, "files/one.ron", "one");
+    let mut out = Vec::new();
+    let report = Table::new("files").write_and_report(&game, &game, &mut out);
+    assert_eq!(report, Ok(()));
+    let files = game.join("files");
+    let expected = format!(
+        "cargo::rerun-if-changed={}\ncargo::rerun-if-changed={}\n",
+        files.display(),
+        files.join("one.ron").display()
+    );
+    assert_eq!(String::from_utf8(out).unwrap_or_default(), expected);
+}
+
+#[test]
+fn a_failed_write_names_the_table_and_reports_nothing() {
+    let game = scratch("report-fails");
+    let mut out = Vec::new();
+    let report = Table::new("files").write_and_report(&game, &game, &mut out);
+    let error = report.err().unwrap_or_default();
+    assert!(error.starts_with("shuyi-embed: table `files`: "), "{error}");
+    assert!(error.contains("files"), "{error}");
+    assert_eq!(out, Vec::<u8>::new());
+}

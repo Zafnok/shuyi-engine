@@ -31,7 +31,7 @@
 
 use std::fmt::{self, Write as _};
 use std::fs;
-use std::io::{self, Write as _};
+use std::io;
 use std::path::{Path, PathBuf};
 
 /// One file to embed: its path in the table, and where it is on disk.
@@ -295,16 +295,33 @@ impl Table {
     /// the path.
     pub fn write(self) {
         let var = |name: &str| std::env::var_os(name).map_or_default(PathBuf::from);
-        match self.write_to(&var("CARGO_MANIFEST_DIR"), &var("OUT_DIR")) {
-            Ok(written) => {
-                let mut out = io::stdout().lock();
-                for path in &written.watched {
-                    // Cargo reads these lines; a failed write is a failed build.
-                    let _ = writeln!(out, "cargo::rerun-if-changed={}", path.display());
-                }
-            }
-            Err(error) => panic!("shuyi-embed: table `{}`: {error}", self.name),
+        let report = self.write_and_report(
+            &var("CARGO_MANIFEST_DIR"),
+            &var("OUT_DIR"),
+            &mut io::stdout().lock(),
+        );
+        if let Err(error) = report {
+            panic!("{error}");
         }
+    }
+
+    /// What [`write`](Self::write) does, with the folders given: writes the
+    /// table, then puts a `cargo::rerun-if-changed` line in `out` for each
+    /// watched path. The error names the table.
+    fn write_and_report(
+        &self,
+        crate_dir: &Path,
+        out_dir: &Path,
+        out: &mut impl io::Write,
+    ) -> Result<(), String> {
+        let written = self
+            .write_to(crate_dir, out_dir)
+            .map_err(|error| format!("shuyi-embed: table `{}`: {error}", self.name))?;
+        for path in &written.watched {
+            // Cargo reads these lines; a failed write is a failed build.
+            let _ = writeln!(out, "cargo::rerun-if-changed={}", path.display());
+        }
+        Ok(())
     }
 
     /// Writes the table of the folder, taken from `crate_dir`, into

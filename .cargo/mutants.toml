@@ -39,6 +39,11 @@ exclude_globs = [
 timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
+    # `shuyi_embed::Table::write` reads Cargo's `CARGO_MANIFEST_DIR` and
+    # `OUT_DIR` and prints to Cargo, which only a build script has: what it
+    # does is `write_and_report`, tested, and `crates/embed/fixture`'s build
+    # script, a package of its own, runs it.
+    'replace Table::write with \(\)',
     # The default `Audio::voice_playing` is `None`, its only viable mutant
     # of that kind (a device with no voices).
     "replace Audio::voice_playing -> Option<&str> with None",
