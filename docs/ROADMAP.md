@@ -487,7 +487,7 @@ is done.
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
 | 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 (done) | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
-| 2413 | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
+| 2413 (done) | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
