@@ -257,12 +257,11 @@ None.
     follows `net.js`'s queue and its limit on queued bytes, or the
     `net.js` list above if `net.js` isn't written yet. So if 2601 is
     done, nothing to do; if not, nothing to do (2601's clause says so);
-  - with 3041 (log sinks): if it is done, the lines this ticket adds
-    to `crates/app/src/link.rs` (the LAN's port, token and warning,
-    and why the page opens no link) are `log::` calls with the target
-    `"platform"`, as 3041's rule says, so its default filter keeps
-    them. If not, macroquad's macros, and 3041 moves them with the
-    backend's other lines (its scope names this ticket);
+  - **From 3041 (done):** the lines this ticket adds to
+    `crates/app/src/link.rs` (the LAN's port, token and warning, and
+    why the page opens no link) are `log::` calls with the target
+    `"platform"`, as the file's other lines are, so the default filter
+    keeps them;
   - with 3012: as in *The Deck's steps* above.
 - **Size.** If the PR passes about 600 changed lines (fixtures and
   snapshots aside), the LAN setting and the Deck's steps go to a

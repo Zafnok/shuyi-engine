@@ -189,7 +189,7 @@ These tickets, in order:
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
 | 2239 | Translated dialogue lines get the text box's page check |
-| 3041 | Log sinks in shipped builds |
+| 3041 (done) | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
@@ -457,7 +457,8 @@ is done.
 | 2575 | The Harness starts a game from its real `Start`, records it, and plays a session record to any frame |
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3086 | A desktop launch's seed differs from launch to launch, kept in its session record |
-| 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
+| 3041 (done) | Log sinks in shipped builds: a log file, and the browser console on the web |
+| 3324 | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library (after 3041) |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |

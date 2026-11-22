@@ -122,7 +122,7 @@ impl FileStorage {
 /// Logs a warning of [`FileStorage`]'s.
 fn log_warning(message: &str) {
     // check-text: not player text (a warning for the log)
-    macroquad::prelude::warn!("storage: {}", message);
+    log::warn!(target: "storage", "{message}");
 }
 
 /// The OS's per-app data directory for the game whose storage is called

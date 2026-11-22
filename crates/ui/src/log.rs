@@ -219,25 +219,35 @@ pub(crate) fn skip_before(seq: u64, next: u64, kept: usize) -> usize {
 /// Which lines a log keeps: a level for every category, and a level per
 /// category over it. A line passes at its category's level or more
 /// serious.
+///
+/// A backend's sink also reads lines that name no category: a target, such
+/// as a library's module path (`gilrs_core::platform`). Those pass at the
+/// other targets' level, [`LogLevel::Warn`] until
+/// [`with_others`](Self::with_others) says otherwise
+/// ([`allows_target`](Self::allows_target)).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogFilter {
     level: LogLevel,
     categories: Vec<(LogCategory, LogLevel)>,
+    others: LogLevel,
 }
 
 impl Default for LogFilter {
-    /// [`LogLevel::Info`] and more serious, in every category.
+    /// [`LogLevel::Info`] and more serious, in every category;
+    /// [`LogLevel::Warn`] and more serious for every other target.
     fn default() -> Self {
         Self::new(LogLevel::Info)
     }
 }
 
 impl LogFilter {
-    /// `level` and more serious, in every category.
+    /// `level` and more serious, in every category; [`LogLevel::Warn`] and
+    /// more serious for every other target.
     pub fn new(level: LogLevel) -> Self {
         Self {
             level,
             categories: Vec::new(),
+            others: LogLevel::Warn,
         }
     }
 
@@ -249,6 +259,14 @@ impl LogFilter {
         self
     }
 
+    /// The same filter, with every target that names no category at
+    /// `level`.
+    #[must_use]
+    pub fn with_others(mut self, level: LogLevel) -> Self {
+        self.others = level;
+        self
+    }
+
     /// Whether a line of `category` at `level` passes.
     pub fn allows(&self, category: LogCategory, level: LogLevel) -> bool {
         let at = self
@@ -257,6 +275,23 @@ impl LogFilter {
             .find(|(c, _)| *c == category)
             .map_or(self.level, |(_, l)| *l);
         level <= at
+    }
+
+    /// Whether a line of the target `target` at `level` passes: a
+    /// category's name is read as that category ([`allows`](Self::allows)),
+    /// any other at the other targets' level.
+    pub fn allows_target(&self, target: &str, level: LogLevel) -> bool {
+        match LogCategory::from_name(target) {
+            Some(category) => self.allows(category, level),
+            None => level <= self.others,
+        }
+    }
+
+    /// The most detailed level any line passes at: a sink asks for no
+    /// line more detailed.
+    pub fn most_detailed(&self) -> LogLevel {
+        let categories = self.categories.iter().map(|(_, l)| *l);
+        categories.fold(self.level.max(self.others), LogLevel::max)
     }
 }
 

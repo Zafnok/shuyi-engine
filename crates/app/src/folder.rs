@@ -194,7 +194,7 @@ fn watched_folder(var: &str, name: Option<&str>) -> Option<Layer> {
     match read_folder(&path, name, limit) {
         Ok(layer) => Some(layer),
         Err(error) => {
-            macroquad::logging::warn!("{}: {}", var, error);
+            log::warn!(target: "assets", "{var}: {error}");
             None
         }
     }

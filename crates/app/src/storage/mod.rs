@@ -19,6 +19,8 @@ pub use web::WebStorage;
 #[cfg(not(target_arch = "wasm32"))]
 pub use desktop::desktop_dir;
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) use desktop::take_move_lines;
+#[cfg(not(target_arch = "wasm32"))]
 pub use native::data_dir;
 
 use std::path::PathBuf;
@@ -78,6 +80,13 @@ impl StorageAt {
         self.dir.as_deref()
     }
 
+    /// The folder of the log's files, `logs` in the storage's
+    /// ([`log_dir`]), if there is one.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn log_dir(&self) -> Option<PathBuf> {
+        self.dir.as_ref().map(|dir| dir.join(LOGS))
+    }
+
     /// The storage backend there ([`platform`]).
     pub(crate) fn open(&self) -> Box<dyn Storage> {
         #[cfg(not(target_arch = "wasm32"))]
@@ -85,8 +94,7 @@ impl StorageAt {
             if let Some(dir) = &self.dir {
                 Box::new(FileStorage::in_folder(dir.clone()))
             } else {
-                macroquad::prelude::error!(
-                    "storage: could not determine an OS data directory; saves and settings will not persist"
+                log::error!(target: "storage", "could not determine an OS data directory; saves and settings will not persist"
                 );
                 Box::new(shuyi_ui::storage::MemoryStorage::new())
             }
@@ -163,7 +171,7 @@ pub fn platform(name: &str) -> Box<dyn Storage> {
         match FileStorage::new(name) {
             Ok(storage) => Box::new(storage),
             Err(e) => {
-                macroquad::prelude::error!("storage: {}; saves and settings will not persist", e);
+                log::error!(target: "storage", "{e}; saves and settings will not persist");
                 Box::new(shuyi_ui::storage::MemoryStorage::new())
             }
         }
@@ -173,6 +181,19 @@ pub fn platform(name: &str) -> Box<dyn Storage> {
         Box::new(WebStorage::new(name))
     }
 }
+
+/// The folder of the log's files ([`log_sink`](crate::log_sink)) of the game
+/// whose storage is called `name`, kept in the folder `desktop` says on a
+/// desktop: `logs` in it ([`desktop_dir`]), beside the saves and the crash
+/// reports. `None` where the system has no such folder.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn log_dir(name: &str, desktop: DesktopFolder) -> Option<PathBuf> {
+    desktop_dir(name, desktop).map(|dir| dir.join(LOGS))
+}
+
+/// The name of the logs' folder in the storage's.
+#[cfg(not(target_arch = "wasm32"))]
+const LOGS: &str = "logs";
 
 /// The prefix of every key the web build keeps in `localStorage` for the
 /// game whose storage is called `name`: `name/`.
@@ -220,14 +241,12 @@ const SMOKE_TEST_KEY: &str = "smoke_test";
 /// game its storage: writes and reads back a throwaway key and logs the
 /// result, then removes it.
 pub fn smoke_check(storage: &mut dyn Storage) {
-    use macroquad::prelude::{error, info};
-
     match run_smoke_check(storage) {
         Ok(()) => {
-            info!("storage: smoke check passed");
+            log::info!(target: "storage", "smoke check passed");
         }
         Err(e) => {
-            error!("storage: smoke check failed: {}", e);
+            log::error!(target: "storage", "smoke check failed: {e}");
         }
     }
 }
@@ -273,6 +292,26 @@ mod tests {
             place("some-game"),
             folder_place(data_dir("some-game").as_deref())
         );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn the_logs_are_a_folder_in_the_storages() {
+        assert_eq!(
+            log_dir("some-game", DesktopFolder::Data),
+            data_dir("some-game").map(|dir| dir.join("logs"))
+        );
+        let dir = std::path::Path::new("saves").join("some-game");
+        let at = StorageAt {
+            name: "some-game",
+            dir: Some(dir.clone()),
+        };
+        assert_eq!(at.log_dir(), Some(dir.join("logs")));
+        let nowhere = StorageAt {
+            name: "some-game",
+            dir: None,
+        };
+        assert_eq!(nowhere.log_dir(), None);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

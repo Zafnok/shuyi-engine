@@ -185,6 +185,7 @@ mod image_textures;
 pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
+pub mod log_sink;
 mod pacing;
 mod pack_file;
 pub mod pads;
@@ -220,7 +221,7 @@ use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::dialogue::preview::PreviewGame;
 use shuyi_ui::frame::ConsoleSpec;
-use shuyi_ui::log::{LogLevel, LogLine};
+use shuyi_ui::log::LogLine;
 
 /// The sound backend this build plays on, for the engine's own sound gates
 /// (the example `sound_probe`, ADR-0066). Not for games, and not covered by
@@ -575,8 +576,11 @@ async fn run<G: GameData>(
     storage_at: storage::StorageAt,
     opened: window::Opened,
 ) {
+    // First, inside the window: on the web the panic hook chains miniquad's,
+    // which its start sets.
+    install_log(&config, &storage_at);
     if let Some(warning) = &opened.warning {
-        warn!("window: {}", warning);
+        log::warn!(target: "platform", "window: {warning}");
     }
     // Read once, so every program keeps the recipient's field an overlay
     // writes, whether or not the game reads it.
@@ -597,7 +601,7 @@ async fn run<G: GameData>(
         match read_voice_manifest(dir, voices.manifest).await {
             Ok(manifest) => voice_manifest = manifest,
             Err(e) => {
-                warn!("no voices: {}", e);
+                log::warn!(target: "audio", "no voices: {e}");
             }
         }
     }
@@ -649,12 +653,7 @@ async fn run<G: GameData>(
         }
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
-            if !kept_in_this_build(line.level) {
-                continue;
-            }
             print_line(&line);
-            let (level, category) = (line.level.name(), line.category.name());
-            crash::note_log(format!("f{} {level} {category}: {}", line.frame, line.text));
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(file) = perf_file.take() {
@@ -712,10 +711,26 @@ fn frame_or_crash<G: GameData>(
     std::process::exit(101);
 }
 
-/// Whether a line of the log at `level` is printed and kept for a crash
-/// report: every line with debug tools, and warnings and errors without.
-fn kept_in_this_build(level: LogLevel) -> bool {
-    shuyi_ui::DEBUG_TOOLS || matches!(level, LogLevel::Error | LogLevel::Warn)
+/// Installs the log's sinks ([`log_sink::install`]) for the game `config`
+/// names, its file on a desktop in the storage's `logs` folder, then logs
+/// the lines the storage's move kept for it.
+fn install_log(config: &AppConfig, storage_at: &storage::StorageAt) {
+    #[cfg(not(target_arch = "wasm32"))]
+    let dir = storage_at.log_dir();
+    #[cfg(target_arch = "wasm32")]
+    let dir = {
+        let _ = storage_at;
+        None
+    };
+    let no_folder = dir.is_none() && !cfg!(target_arch = "wasm32");
+    log_sink::install(config.storage_name, config.crash.game_version, dir);
+    if no_folder {
+        log::warn!(target: "platform", "no data folder, so no log file");
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    for line in storage::take_move_lines() {
+        log::info!(target: "storage", "{line}");
+    }
 }
 
 /// After a frame is drawn: the cap it asked for applies from the next, and
@@ -958,23 +973,11 @@ fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> App
     config
 }
 
-/// Prints a line of App's log with macroquad's macro for its level.
+/// Hands a line of App's log to the log's sinks ([`log_sink`]), with its
+/// category's name as the target.
 fn print_line(line: &LogLine) {
-    let (category, text) = (line.category.name(), &line.text);
-    match line.level {
-        LogLevel::Error => {
-            error!("{}: {}", category, text);
-        }
-        LogLevel::Warn => {
-            warn!("{}: {}", category, text);
-        }
-        LogLevel::Info => {
-            info!("{}: {}", category, text);
-        }
-        _ => {
-            debug!("{}: {}", category, text);
-        }
-    }
+    let level = log_sink::log_level(line.level);
+    log::log!(target: line.category.name(), level, "{}", line.text);
 }
 
 /// The most characters of an error shown on one line.
@@ -1326,14 +1329,6 @@ mod tests {
         let crash = basic_config(&basic().crash_record_in_release()).crash;
         assert_eq!(crash, CrashReports::new("0.1.0").with_record_in_release());
         assert!(crash.records_play());
-    }
-
-    #[test]
-    fn a_build_without_debug_tools_prints_and_keeps_warnings_and_errors_only() {
-        assert!(kept_in_this_build(LogLevel::Error));
-        assert!(kept_in_this_build(LogLevel::Warn));
-        assert_eq!(kept_in_this_build(LogLevel::Info), shuyi_ui::DEBUG_TOOLS);
-        assert_eq!(kept_in_this_build(LogLevel::Debug), shuyi_ui::DEBUG_TOOLS);
     }
 
     #[test]

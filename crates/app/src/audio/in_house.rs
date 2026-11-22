@@ -529,7 +529,7 @@ impl InHouse {
     fn say(&mut self, line: &str) {
         #[cfg(test)]
         self.said.push(line.to_owned());
-        macroquad::logging::warn!("audio: {}", line);
+        log::warn!(target: "audio", "{line}");
     }
 
     /// The engine, opened on the system's output, or an output that discards: no
@@ -875,7 +875,7 @@ impl Backend for InHouse {
     }
 
     fn warn(&mut self, line: &str) {
-        macroquad::logging::warn!("audio: {}", line);
+        log::warn!(target: "audio", "{line}");
     }
 }
 

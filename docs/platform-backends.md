@@ -75,10 +75,10 @@ loop {
 `app.take_new_log()` gives each line of the game's log once, after the
 frame it was logged in: a `shuyi_ui::log::LogLine` with its frame, its
 level (`Error`, `Warn`, `Info`, `Debug`), its category and its English
-text. Hand each to the device's own log (`shuyi-app` prints them with
-macroquad's macros). `App` keeps the last 500 itself (`app.log()`), for
-tests and tools, and `app.set_log_filter` says which levels it keeps
-(`Info` and more serious by default).
+text. Hand each to the device's own log ([Logs](#logs)). `App` keeps the
+last 500 itself (`app.log()`), for tests and tools, and
+`app.set_log_filter` says which levels it keeps (`Info` and more serious
+by default).
 
 `App::frame` is synchronous. Anything the device can only do
 asynchronously, or only once the game's data exists (decoding its sounds,
@@ -727,6 +727,67 @@ A game's tests do both on the test Harness (`Harness::start_recording`,
 [*Recording a session*](../site/content/learn/book/testing.md#recording-a-session)
 and the [`shuyi-test` skill](../skills/shuyi-test/SKILL.md).
 
+## Logs
+
+`App` hands its lines over once each (`app.take_new_log()`, [The
+loop](#the-loop)); the backend's own lines, and those of the libraries it
+uses, are its own. A backend sends both where a player or a developer can
+read them: a device's backend (the Playdate's) to the device's own log, a
+desktop's to a file.
+
+`shuyi-app` sends every line through the `log` crate to one logger,
+`shuyi_app::log_sink` ([ADR-0030](adr/0030-the-log-plain-lines-kept-per-app-output-only-and-handed-to-the-backends-sinks.md)),
+which `run_app` installs first, inside the window. App's lines take
+their category's name as the target (`storage`, `audio`, …), and so do
+the backend's; a library's lines keep their module path (`gilrs::…`,
+`macroquad::…`; `shuyi-app` turns on macroquad's `log-rs` feature, so
+macroquad's own lines are `log` lines too). Each line reads
+
+```text
+    3.214 f182 WARN  storage: settings.ron couldn't be read (…); using the defaults
+```
+
+the seconds since the start, the frame about to run (0 before the first),
+the level, the target and the text. It goes to:
+
+- **a file on a desktop**, `latest.log` in the `logs` folder of the
+  game's storage folder (`shuyi_app::storage::log_dir`). Each start moves
+  the last three runs' files to `previous-1.log` to `previous-3.log`
+  (oldest last). The first line names the engine's version, the system,
+  debug or release, the storage's name and the game's version. A run
+  writes 2 MiB at most, then a line saying the log was cut, then errors
+  alone, 256 KiB more. Each line is written whole as it comes, so a crash
+  loses nothing before it. Without a folder, or one it can't write, a
+  game runs with no file;
+- **stderr on a desktop**, in a debug build: a Windows release build has
+  no console;
+- **the browser's console on the web**, by level: `console.error`,
+  `console.warn`, `console.info` and `console.debug`;
+- **a crash report's last lines** ([Panics](#panics)).
+
+The files are where the saves are:
+
+| System | `latest.log` |
+| --- | --- |
+| Windows | `%APPDATA%\<storage name>\logs\`, or `<Documents>\My Games\<folder>\logs\` for `DesktopFolder::MyGames` |
+| macOS | `~/Library/Application Support/<storage name>/logs/` |
+| Linux | `$XDG_DATA_HOME/<storage name>/logs/`, or `~/.local/share/<storage name>/logs/` |
+
+Which lines pass: `info` and more serious for the engine's categories,
+`warn` and more serious for any other target
+(`shuyi_ui::log::LogFilter::allows_target`), the levels `App` keeps too. A
+build without debug tools passes warnings and errors alone (ADR-0094).
+
+Two kinds of line never reach these sinks: miniquad's own messages, plain
+`eprintln!` and `println!` calls that stay on stderr (until macroquad
+goes, ticket 3034); and a game's lines if the game installed a `log`
+logger of its own before `run_app`, which keeps it (a line on stderr says
+so).
+
+A log holds file paths, and a path may hold the player's account name. A
+game asks the player before it sends a log anywhere; the engine sends
+nothing.
+
 ## Panics
 
 A backend installs one panic hook that writes a crash report through the
@@ -748,8 +809,12 @@ warnings and errors only
 ([ADR-0094](adr/0094-release-exports-ship-no-symbols-no-debug-features-and-no-state-on-demand.md)). `App::load` offers the newest fatal report to the
 game once (`Setup::last_crash`): a backend does nothing for that.
 
-`shuyi-app`'s hook is `shuyi_app::crash`; what a game's developer reads of it is
-[`crash-reports.md`](crash-reports.md).
+`shuyi-app`'s hook is `shuyi_app::crash`, set once a process over the hook
+before it, which it then calls. It first logs the panic as an `Error` line of
+the target `panic` ([Logs](#logs)): its message, `file:line` and thread, so the
+log file has it too, and a panic the engine catches on purpose (a music file
+that won't decode) is logged though it makes no report. What a game's
+developer reads of it is [`crash-reports.md`](crash-reports.md).
 
 ## The headless backend, as a reference
 

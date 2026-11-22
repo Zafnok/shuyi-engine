@@ -277,7 +277,7 @@ pub(crate) mod device {
         }
 
         fn warn(&mut self, line: &str) {
-            macroquad::logging::warn!("audio: {}", line);
+            log::warn!(target: "audio", "{line}");
         }
     }
 }
