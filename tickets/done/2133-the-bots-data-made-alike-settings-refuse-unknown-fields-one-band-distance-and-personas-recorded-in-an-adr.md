@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 2133 — The bots' data made alike
@@ -147,19 +147,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A `Persona` with an unknown field inside `settings` fails to
+- [x] A `Persona` with an unknown field inside `settings` fails to
       deserialize, naming the field.
-- [ ] `Persona<()>`, `RolloutSettings` and `PlanSettings` have JSON
+- [x] `Persona<()>`, `RolloutSettings` and `PlanSettings` have JSON
       schemas with the `schema` feature.
-- [ ] `successes × 100` against `bound × count` is written once in
+- [x] `successes × 100` against `bound × count` is written once in
       `bots/`.
-- [ ] `UnknownEntrant: core::error::Error`.
-- [ ] Hello, Grid's `random` hero is seeded with `bot_seed`, and its
+- [x] `UnknownEntrant: core::error::Error`.
+- [x] Hello, Grid's `random` hero is seeded with `bot_seed`, and its
       `playtest.ron` comment gives the counts on seeds 0–49.
-- [ ] The grid template's random bot is seeded with `bot_seed`, and
+- [x] The grid template's random bot is seeded with `bot_seed`, and
       its record test still replays each record.
-- [ ] The new ADR exists, and ADR-0027's status names it.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The new ADR exists, and ADR-0027's status names it.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -173,5 +173,60 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `RolloutSettings` and `PlanSettings` are `#[serde(deny_unknown_fields)]`
+  and derive `JsonSchema` behind `schema`; `Horizon` and `Persona` derive
+  it too (`Persona<X>` for `X: JsonSchema + Default + Serialize`, which
+  its `#[serde(default)]` needs). Tests: an unknown field inside a
+  persona's `settings` fails naming it; `schema_for!` builds for
+  `Persona<()>`, `RolloutSettings` and `PlanSettings`.
+- `Band::distance(successes, count)`; `Band::verdict`,
+  `balance::distance` and the floor check (`below`) go through one
+  private `scaled`, so `successes × 100` against `bound × count` is
+  written once. The property test in `bots/balance/tests.rs` passes
+  unchanged.
+- `UnknownEntrant: core::error::Error`; `Targets::unknown_entrants`' doc
+  says it lists every name for a lint and `judge` refuses the first.
+- `bots::playtest::bot_seed`; `Entrant::bots`' doc names it. Hello,
+  Grid's `random` hero and the grid template's random bot use it.
+  Hello, Grid on seeds 0–49: random won 6/50 (5 before), median 13
+  turns among wins (28 before); the walker 50/50, median 4. 6/50 = 12 %
+  is inside its band (5–20), so no band moved; `playtest.ron`'s comment
+  and `tests/it/playtest.rs` give the new counts. The template's
+  record test replays each record (its gate passes).
+- `lib.rs` re-exports `Persona`, `Weighted`, `Weights` and
+  `UnknownFeature`, and its docs list every module of `bots` and where
+  its items are.
+- ADR-0134 (the bots' data as files); ADR-0027's status names it.
+
+Deviations:
+
+- 2113 isn't done, so no `MinimaxSettings` or `MctsSettings` to check;
+  2113's clause now says ADR-0134 covers them (From 2133 (done)).
+- ADR-0027's status says ADR-0134 supersedes §8's personas *and* §4's
+  sentence on them, since the new ADR replaces both.
+- Ran the playtest through Hello, Grid's playtest test (seeds 0–49, the
+  same `Tries` the CLI's `playtest` uses there) rather than by hand.
+
+Behaviour: shuyi-core: `RolloutSettings` and `PlanSettings` (and so a
+`Persona`'s `settings`) refuse an unknown field instead of dropping it.
+The game's `crates/bots/personas.ron` names only known fields
+(checked with `gh api` on its `main`), so it still loads.
+Behaviour: shuyi-default (grid template): a new game's playtest random
+bot is seeded with `bot_seed(seed)`, so its counts differ from a game
+made before.
+
+No break: every API change is an addition (`Band::distance`,
+`bot_seed`, the `Error` impl, the schema derives, the re-exports).
+Searched the game for `RolloutSettings`, `PlanSettings`, `Persona`,
+`UnknownEntrant` and `bot_seed` (`gh search code`): only `PlanSettings`
+through `personas.ron`, as above.
+
+Book: none, `bot_seed` and the derives serve a game's playtest entrant
+and its RON files, which the book reaches through the grid template
+(now using it); the testing chapter's `RandomBot` plays outside the
+playtest runner, and its counts are the chapter's text, so it stays.
+
+Game: nothing to adopt, the game's personas file still loads and its
+entrants choose their own seeds (`seed ^ SEED_SALT`).

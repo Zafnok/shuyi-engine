@@ -85,6 +85,34 @@ fn a_band_holds_both_its_ends() {
 }
 
 #[test]
+fn a_bands_distance_is_0_inside_and_grows_past_each_edge() {
+    let band = Band { min: 60, max: 85 };
+    let at = |successes| band.distance(successes, 100);
+    assert_eq!([at(58), at(59), at(60), at(61)], [200, 100, 0, 0]);
+    assert_eq!([at(84), at(85), at(86), at(87)], [0, 0, 100, 200]);
+    // Out of 3 tries, 2 is 66 %: 200 against 180 and 255.
+    assert_eq!(band.distance(2, 3), 0);
+    assert_eq!(band.distance(1, 3), 80);
+    assert_eq!(band.distance(3, 3), 45);
+    assert_eq!(band.distance(0, 0), 0);
+}
+
+#[test]
+fn an_unknown_entrant_is_an_error() {
+    let error: &dyn core::error::Error = &UnknownEntrant::new(0, "b");
+    assert_eq!(error.to_string(), "check 1 names `b`, who isn't in the run");
+}
+
+#[test]
+fn a_bots_seed_differs_from_the_try_seed_and_is_the_same_for_the_same_seed() {
+    for seed in [0, 1, 42, u64::MAX] {
+        assert_ne!(bot_seed(seed), seed);
+        assert_eq!(bot_seed(seed), bot_seed(seed));
+    }
+    assert_ne!(bot_seed(0), bot_seed(1));
+}
+
+#[test]
 fn a_floor_blocks_a_run_under_it() {
     let blocked = |s| {
         judge(

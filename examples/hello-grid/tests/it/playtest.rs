@@ -29,12 +29,12 @@ fn every_check_holds_on_seeds_0_to_49() {
     let report = fifty();
     assert!(!report.blocked);
     let found: Vec<&Found> = report.checks.iter().map(|j| &j.found).collect();
-    // The numbers ticket 2126's completion notes give.
+    // The numbers `playtest.ron`'s comment gives (ticket 2133).
     assert_eq!(
         found,
         [
             &Found::Rate {
-                successes: 5,
+                successes: 6,
                 count: 50,
                 verdict: RateVerdict::Within,
                 blocked: false
@@ -47,7 +47,7 @@ fn every_check_holds_on_seeds_0_to_49() {
             },
             &Found::Median {
                 median: Some(4),
-                than: Some(28),
+                than: Some(13),
                 verdict: MedianVerdict::Pass
             },
         ]
@@ -192,7 +192,7 @@ fn the_command_keeps_a_history_and_the_second_run_says_what_the_first_was() {
     // Each entrant's speed and summary are in the answer.
     assert_eq!(first.entrants.len(), 2);
     assert!(first.entrants.iter().all(|p| p.seconds_per_try > 0.0));
-    assert_eq!(first.entrants[0].summary[0], "won 5/50");
+    assert_eq!(first.entrants[0].summary[0], "won 6/50");
     assert_eq!(first.entrants[1].summary[0], "won 50/50");
     assert!(first.entrants[1].summary[1].starts_with("turns median "));
     assert_eq!(first.previous, None);
@@ -205,10 +205,10 @@ fn the_command_keeps_a_history_and_the_second_run_says_what_the_first_was() {
         .unwrap_or_else(|| panic!("no previous"));
     assert!(previous.date.ends_with(" UTC"), "{}", previous.date);
     let was: Vec<Option<&str>> = second.entrants.iter().map(|p| p.was.as_deref()).collect();
-    assert_eq!(was, [Some("was 5/50 succeed"), Some("was 50/50 succeed")]);
+    assert_eq!(was, [Some("was 6/50 succeed"), Some("was 50/50 succeed")]);
     let text = playtest::text(std::slice::from_ref(&second));
-    assert!(text.contains("random · won 5/50 · turns median "), "{text}");
-    assert!(text.contains(" s per try · was 5/50 succeed\n"), "{text}");
+    assert!(text.contains("random · won 6/50 · turns median "), "{text}");
+    assert!(text.contains(" s per try · was 6/50 succeed\n"), "{text}");
     assert!(
         text.ends_with(&format!(
             "previous {} · commit {}\n",
