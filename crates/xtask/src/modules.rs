@@ -40,7 +40,7 @@ pub const CATALOG: &str = "docs/modules.md";
 const ADR: &str = "ADR-0009";
 
 /// The default engine's crates: no module, and none depends on one.
-pub const DEFAULT_CRATES: [&str; 7] = [
+pub const DEFAULT_CRATES: [&str; 9] = [
     "shuyi-core",
     "shuyi-assets",
     "shuyi-ui",
@@ -49,6 +49,10 @@ pub const DEFAULT_CRATES: [&str; 7] = [
     "shuyi-cli",
     // The heap counter, under both backends (ADR-0046 §9).
     "shuyi-alloc-count",
+    // A game's files embedded as a table (ADR-0138): under `shuyi-assets`'
+    // `files!` and `shuyi-cli`'s build script.
+    "shuyi-embed",
+    "shuyi-embed-macros",
 ];
 
 /// The members under `crates/` that are neither default crates nor

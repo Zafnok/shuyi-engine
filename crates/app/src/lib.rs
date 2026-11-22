@@ -195,6 +195,7 @@ mod painted;
 mod perf_file;
 mod pictures;
 mod player_files;
+mod pointer;
 #[cfg(any(
     all(feature = "link", not(target_arch = "wasm32")),
     feature = "capture"
