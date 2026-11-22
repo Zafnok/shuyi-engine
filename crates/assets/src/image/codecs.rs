@@ -306,9 +306,12 @@ mod jpeg_xl {
     /// what renders it.
     const MAX_HELD: usize = 1 << 30;
 
+    /// A container's first box: its size (12), `JXL ` and four bytes.
+    const CONTAINER: [u8; 12] = [0, 0, 0, 12, b'J', b'X', b'L', b' ', 13, 10, 0x87, 10];
+
     /// A bare codestream's signature, or a container's first box.
     pub(super) fn sniff(bytes: &[u8]) -> bool {
-        bytes.starts_with(&[0xff, 0x0a]) || bytes.starts_with(b"\0\0\0\x0cJXL \r\n\x87\n")
+        bytes.starts_with(&[0xff, 0x0a]) || bytes.starts_with(&CONTAINER)
     }
 
     fn invalid(error: impl core::fmt::Display) -> String {
