@@ -161,7 +161,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       # A public repository's package with the private files leaves the
-      # runner sealed (the engine's ADR-0136): each file `<name>.sealed`,
+      # runner sealed (the engine's ADR-0133): each file `<name>.sealed`,
       # AES-256 with a key derived from PRIVATE_ASSETS_KEY, which the
       # release's jobs open. Whoever holds that key reads the private
       # repository already. The two reports stay as they are.

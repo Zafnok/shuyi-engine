@@ -5,7 +5,7 @@ name: Release
 # builds, each on its own runner (export.yml), then a GitHub Release of the
 # tag with every package and SHA256SUMS and, on a public repository,
 # attestations of where each was built. It publishes nowhere until the
-# developer says where (the engine's decision of 2026-11-18, ADR-0136):
+# developer says where (the engine's decision of 2026-11-18, ADR-0133):
 #
 # - the release is a draft, which only people who can change the game see,
 #   unless the repository variable PUBLISH_ON_GITHUB is `true` (a public
