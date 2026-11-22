@@ -54,7 +54,7 @@
             floats: false,
         ),
         "shuyi-assets": (
-            // `files!` expands to `shuyi-embed-macros`' table (ADR-0136).
+            // `files!` expands to `shuyi-embed-macros`' table (ADR-0138).
             engine: ["shuyi-core", "shuyi-embed-macros"],
             outside: Only([
                 // The engine's own formats are RON files read into plain data.
@@ -77,7 +77,7 @@
         ),
         "shuyi-embed": (
             // A folder's table of `include_bytes!`, for a build script
-            // (ADR-0136, ADR-0021 §4): no engine crate below it, nothing
+            // (ADR-0138, ADR-0021 §4): no engine crate below it, nothing
             // outside, run on the host.
             engine: [],
             outside: Only([]),
@@ -86,7 +86,7 @@
         ),
         "shuyi-embed-macros": (
             // `files!`'s table, written at compile time with
-            // `shuyi-embed`'s walk (ADR-0136).
+            // `shuyi-embed`'s walk (ADR-0138).
             engine: ["shuyi-embed"],
             outside: Only([]),
             devices: false,

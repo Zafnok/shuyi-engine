@@ -1,4 +1,4 @@
-# ADR-0136: A game's files embedded as a table of our own: `shuyi-embed` for build scripts, and `files!` over it with no build script
+# ADR-0138: A game's files embedded as a table of our own: `shuyi-embed` for build scripts, and `files!` over it with no build script
 
 - **Status:** Accepted
 - **Date:** 2026-11-22

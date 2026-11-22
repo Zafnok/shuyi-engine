@@ -49,7 +49,7 @@ pub const DEFAULT_CRATES: [&str; 9] = [
     "shuyi-cli",
     // The heap counter, under both backends (ADR-0046 §9).
     "shuyi-alloc-count",
-    // A game's files embedded as a table (ADR-0136): under `shuyi-assets`'
+    // A game's files embedded as a table (ADR-0138): under `shuyi-assets`'
     // `files!` and `shuyi-cli`'s build script.
     "shuyi-embed",
     "shuyi-embed-macros",

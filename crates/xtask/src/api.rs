@@ -162,7 +162,7 @@ pub const API_CRATES: &[ApiCrate] = &[
         name: "shuyi-alloc-count",
         features: Features::Only(&["global"]),
     },
-    // The embedding (ADR-0136): neither has a feature.
+    // The embedding (ADR-0138): neither has a feature.
     ApiCrate {
         name: "shuyi-embed",
         features: Features::Only(&[]),

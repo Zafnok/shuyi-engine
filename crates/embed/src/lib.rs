@@ -25,7 +25,7 @@
 //!   and macOS.
 //!
 //! `shuyi_assets::files!` embeds a folder the same way without a build
-//! script, through this crate's [`walk`] and [`table_source`] (ADR-0136).
+//! script, through this crate's [`walk`] and [`table_source`] (ADR-0138).
 //!
 //! Written from Cargo's build-script documentation (ADR-0021 §2).
 

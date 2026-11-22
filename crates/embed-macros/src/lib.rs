@@ -11,7 +11,7 @@
 //!
 //! A change to a file it embedded rebuilds the crate (`include_bytes!`).
 //! A file added or removed rebuilds it only when something watches the
-//! folder: a build script's `cargo::rerun-if-changed` (ADR-0136).
+//! folder: a build script's `cargo::rerun-if-changed` (ADR-0138).
 
 use std::path::{Path, PathBuf};
 

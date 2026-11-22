@@ -34,7 +34,7 @@ parse-count = ["std"]
 shuyi-core = { path = "../core", default-features = false }
 serde.workspace = true
 ron.workspace = true
-# `files!`: a folder's table, written at compile time (ADR-0136).
+# `files!`: a folder's table, written at compile time (ADR-0138).
 shuyi-embed-macros = { path = "../embed-macros" }
 thiserror.workspace = true
 # The process-wide bundle, set once, without `std`.

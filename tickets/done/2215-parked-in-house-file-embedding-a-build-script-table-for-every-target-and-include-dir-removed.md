@@ -145,7 +145,7 @@ None.
 
 **Done.** Nick unparked this ticket alone on 2026-11-22
 (`docs/decisions.md`); the rest of the in-house platform layer stays
-parked. The design is ADR-0136, which amends ADR-0119 §3.
+parked. The design is ADR-0138, which amends ADR-0119 §3.
 
 - **`crates/embed`** (`shuyi-embed`), no engine crate below it:
   - `walk` lists a folder, paths `/`-separated and sorted by bytes;
@@ -179,7 +179,7 @@ parked. The design is ADR-0136, which amends ADR-0119 §3.
   already does (it prints no `rerun-if-changed`).
 - **The tutorial's ten `Cargo.lock`s** lose `include_dir` and
   `include_dir_macros`, and gain the two new crates.
-- **Docs:** the crates table in `README.md`, ADR-0136 and its row,
+- **Docs:** the crates table in `README.md`, ADR-0138 and its row,
   ADR-0119's status, the bundle's and `files!`'s docs, the docs of the two
   new crates, and the disclosure check's comment on paths with `\`.
 - **Documents used:** Cargo's *Build Scripts* page (`OUT_DIR`,
