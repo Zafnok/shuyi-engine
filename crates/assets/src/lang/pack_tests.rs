@@ -407,6 +407,89 @@ fn a_name_token_counts_as_the_packs_longest_name() {
 }
 
 #[test]
+fn a_speech_line_must_fit_one_page_of_the_box() {
+    // Three words of 24: 74 cells, within 80, but three lines of 40.
+    let three = format!("{} {} {}", "a".repeat(24), "b".repeat(24), "a".repeat(24));
+    let file = "xx/dialogue/gate.ron";
+    let gone = id("Gone.");
+    let pages = format!("{file}: {gone:?}: text takes 3 lines of 40 cells; the box shows 2");
+    assert_eq!(
+        line_errors(&format!(
+            "[(key: {gone:?}, source: \"Gone.\", text: {three:?})]"
+        )),
+        core::slice::from_ref(&pages)
+    );
+    // Every variant of it.
+    assert_eq!(
+        line_errors(&format!(
+            "[(key: {gone:?}, source: \"Gone.\", text_a: \"ok\", text_b: {three:?})]"
+        )),
+        [pages]
+    );
+    // A reply keeps to its own width, with no page; a caption has neither.
+    let reply = id("I will wait here.");
+    let caption = caption_key("gate", "The gate, dusk");
+    assert_eq!(
+        line_errors(&format!(
+            "[(key: {reply:?}, source: \"x\", text: {three:?}),              (key: {caption:?}, source: \"x\", text: {three:?})]"
+        )),
+        [format!(
+            "{file}: {reply:?}: text is 74 cells; the limit is 30"
+        )]
+    );
+}
+
+#[test]
+fn the_page_check_counts_the_packs_longest_name() {
+    // With English's "Osgar" the name ends the second line (31 + 1 + 5
+    // cells); the pack's "Osgar the Old" (13) takes a third, in 73 cells.
+    let line = id("Open it, {n:king}.");
+    let text = format!("{} {} {{n:king}}", "a".repeat(27), "b".repeat(31));
+    let entries = format!("[(key: {line:?}, source: \"Open it, {{n:king}}.\", text: {text:?})]");
+    let file = "xx/dialogue/gate.ron";
+    assert_eq!(pack("[]", &[(file, &entries)]).err(), None);
+    let longer = r#"[(key: "names.king", source: "Osgar", text: "Osgar the Old")]"#;
+    assert_eq!(
+        pack(longer, &[(file, &entries)]).unwrap_err(),
+        [format!(
+            "{file}: {line:?}: text takes 3 lines of 40 cells; the box shows 2"
+        )]
+    );
+}
+
+#[test]
+fn a_japanese_line_is_paged_as_the_box_breaks_it() {
+    // 15 wide characters, a Latin run of 20 kept whole and 15 more: 80
+    // cells, within the limit, but lines of 30, 40 and 10 cells.
+    let gone = id("Gone.");
+    let half = "あ".repeat(15);
+    let text = format!("{half}{}{half}", "b".repeat(20));
+    let entries = format!("[(key: {gone:?}, source: \"Gone.\", text: {text:?})]");
+    assert_eq!(line_errors(&entries), [] as [&str; 0]);
+    let widths = CellWidths::wide(['あ']);
+    let rules = PackRules {
+        widths: &widths,
+        ..RULES
+    };
+    let sources = PackSources {
+        info: ("xx/lang.ron", INFO),
+        ui: ("xx/ui.ron", "[]"),
+        data: Some(("xx/data.ron", "[]")),
+        dialogue: vec![("xx/dialogue/gate.ron", entries.as_str())],
+    };
+    let errors = pack_from_files(&sources, &BTreeMap::new(), Some(&source()), &rules)
+        .err()
+        .unwrap_or_default();
+    let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    assert_eq!(
+        errors,
+        [format!(
+            "xx/dialogue/gate.ron: {gone:?}: text takes 3 lines of 40 cells; the box shows 2"
+        )]
+    );
+}
+
+#[test]
 fn lines_and_scenes_in_a_language() {
     let later = format!(
         "(key: {:?}, source: \"Later\", text: \"Plus tard\")",

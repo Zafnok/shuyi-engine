@@ -84,12 +84,10 @@ None.
   checks packs passes the same rule to `LangPackRon::speech_problem`;
   the `shuyi-dialogue` skill's line on the hooks says the same (and
   `check-skills` passes).
-- **Either order with 2239:** both change `add_lines`' loop over a
-  text's variants. If 2239 is done, the box check there is a `match` on
-  `box_fit` for a `Speech` line: run `speech_problem` after it, on the
-  same `width`, whatever `box_fit` answered (English reports both);
-  if not, run it after the `limit` check, and 2239 keeps it when it
-  rewrites that check.
+- **From 2239 (done):** `add_lines`' size check is `fit_problem`
+  (`lang/lines.rs`), a `match` on `box_fit` for a `Speech` line: run
+  `speech_problem` after it, on the text's `longest_width` (the pack's
+  longest name), whatever `fit_problem` answered (English reports both).
 - **For the game:** additive. `PackRules` and `SourceLine` gain a
   field, but both are `#[non_exhaustive]` since 2085, so no game code
   that builds them changes and the PR has no `Breaking:` line for them.
@@ -107,8 +105,8 @@ None.
 
 1. Read `Checker::step`'s `Step::Say` arm in `dialogue/check.rs`,
    `SourceText::add_dialogue` and `add_captions` in `lang/source.rs`,
-   `add_lines` in `lang/lines.rs`, and `PackRules` and `LangPackRon`.
-   Check whether 2239 is done (the clause above).
+   `add_lines` and `fit_problem` in `lang/lines.rs`, and `PackRules` and
+   `LangPackRon`.
 2. Add `SourceLine::speaker` and fill it in both places it is built.
 3. Add `PackRules::speech_problem` and `with_speech_problem`, and
    `LangPackRon`'s field and builder.

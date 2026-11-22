@@ -58,6 +58,7 @@ use core::marker::PhantomData;
 
 pub use shuyi_core::CharacterId;
 
+pub(crate) use check::{BoxFit, box_fit};
 pub use check::{
     NoTokens, SceneRules, Tokens, check_duplicates, check_scene, lines_at_longest, longest_width,
     token_problems,

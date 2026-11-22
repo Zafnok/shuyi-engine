@@ -188,7 +188,7 @@ These tickets, in order:
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2133 | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
-| 2239 | Translated dialogue lines get the text box's page check |
+| 2239 (done) | Translated dialogue lines get the text box's page check |
 | 3041 | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
