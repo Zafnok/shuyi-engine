@@ -2498,6 +2498,19 @@ mod tests {
         );
         assert!(near(at(&audio, 59.999), 59.999));
         assert!(near(at(&audio, 60.0), 30.0));
+        // An intro longer than the region is counted as it is, until the region's end.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 30.0,
+            end: 31.0,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 10.0), 10.0));
+        assert!(near(at(&audio, 31.25), 30.25));
         // One that starts past the length isn't one the clock can follow.
         let (mut fake, mut audio) = looping(Some(Looping::Region {
             start: 60.0,

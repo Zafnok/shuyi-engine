@@ -234,20 +234,18 @@ impl<B: AsRef<[u8]>> VorbisSource<B> {
     /// Drops the next `frames` frames, or what is left of the sound.
     fn drop_frames(&mut self, mut frames: u64) -> Result<(), Error> {
         let channels = usize::from(self.format.channels.count());
-        while frames > 0 {
+        loop {
             let waiting = (self.packet.len() - self.sent) / channels;
-            if waiting == 0 {
-                if self.ended {
-                    return Ok(());
-                }
-                self.next_packet()?;
-                continue;
-            }
             let dropped = usize::try_from(frames).map_or(waiting, |frames| frames.min(waiting));
             self.sent += dropped * channels;
             frames -= dropped as u64;
+            // Each turn drops what the packet has, or decodes the next one: one
+            // that ends the sound ends the drop.
+            if frames == 0 || self.ended {
+                return Ok(());
+            }
+            self.next_packet()?;
         }
-        Ok(())
     }
 
     fn check_broken(&self) -> Result<(), Error> {

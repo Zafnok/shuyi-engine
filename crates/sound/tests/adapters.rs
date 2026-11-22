@@ -380,6 +380,31 @@ fn an_exact_seek_gives_what_a_whole_decode_has_from_that_frame() {
     }
 }
 
+/// In a file whose pages are longer than the lead, the page a seek lands on ends past
+/// the frame: it seeks further back, or says it can't, and never gives other samples.
+#[test]
+fn an_exact_seek_past_a_long_page_seeks_further_or_says_it_cannot() {
+    let whole = pcm_or_panic(whole_ogg(REGION));
+    let mut landed = 0;
+    for frame in [9000, 20_000, 30_000, 44_100, 60_000, 80_000] {
+        let mut source =
+            VorbisSource::new(REGION, &Limits::default()).unwrap_or_else(|e| panic!("{e}"));
+        match source.seek_exact(frame) {
+            Ok(()) => {
+                landed += 1;
+                let from = usize::try_from(frame).unwrap_or(usize::MAX) * 2;
+                assert!(
+                    in_chunks(&mut source, 4096) == whole.samples()[from..],
+                    "{frame}"
+                );
+            }
+            Err(Error::NoRewind) => {}
+            Err(other) => panic!("{frame}: {other}"),
+        }
+    }
+    assert!(landed > 0, "some frame is far enough in to land on");
+}
+
 #[test]
 fn a_skip_reads_on_to_the_frame() {
     let whole = pcm_or_panic(whole_ogg(REGION));

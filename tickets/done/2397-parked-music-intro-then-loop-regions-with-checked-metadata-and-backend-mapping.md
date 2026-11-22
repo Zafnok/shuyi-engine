@@ -192,7 +192,7 @@ replacement is one `footprint.ron` owns whole (`crates/sound`,
 cue's fields, the check, the provided method and the clock are the feature,
 which a give-up keeps: quad-snd plays a region whole with its one warning.
 
-Size: 1,595 counted lines, the exact seek can't land after the region: without it the in-house backend runs its ring dry at each way round of any intro longer than a fraction of a second's decode, so the region would ship broken on ordinary music; the Playdate went to 3334.
+Size: 1,631 counted lines, the exact seek can't land after the region: without it the in-house backend runs its ring dry at each way round of any intro longer than a fraction of a second's decode, so the region would ship broken on ordinary music; the Playdate went to 3334.
 
 Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a music cue's binary form has `loop_start_ms` and `loop_end_ms`, and a baked pack is of version 20; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
