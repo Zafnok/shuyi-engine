@@ -211,6 +211,8 @@ parked. The design is ADR-0136, which amends ADR-0119 §3.
   docs and done tickets). Its layers are tables its own `build.rs` writes
   (game ADR-0105).
 
+Past 1,000 counted lines (about 1,440): it would split cleanly between `shuyi-embed` with its fixture alone, and the move of `files!`, `shuyi-cli` and `include_dir`'s removal onto it.
+
 Game: nothing to adopt, the game's layers are its own build script's tables (game ADR-0105), and it names no removed item.
 
 Breaking: shuyi-assets: `bundle::Files::Dir`: the variant is gone; a layer from `Layer::dir` is a `Files::Table`, so a game that matches on `Files` matches `Table`.

@@ -12,5 +12,5 @@ fn the_table_holds_every_file_sorted_with_its_bytes() {
 
 #[test]
 fn the_skipped_notes_are_listed_and_not_embedded() {
-    assert_eq!(LEFT_OUT, ["README.md", "data/README.md"]);
+    assert_eq!(LEFT_OUT, ["data/notes.txt", "notes.txt"]);
 }

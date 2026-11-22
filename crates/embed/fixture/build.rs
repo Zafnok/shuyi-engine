@@ -2,6 +2,6 @@
 
 fn main() {
     shuyi_embed::Table::new("files")
-        .skip("**/README.md")
+        .skip("**/notes.txt")
         .write();
 }
