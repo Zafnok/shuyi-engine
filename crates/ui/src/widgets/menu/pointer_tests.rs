@@ -92,6 +92,7 @@ fn hover_moves_the_focus_on_a_frame_the_pointer_moved() {
     assert_eq!(m.focus(), 3);
     // A row past the items is no row of this menu.
     m.point(Some(&hover(row(0, 9))));
+    m.point(Some(&click(row(0, 4))));
     assert_eq!(m.focus(), 3);
 }
 

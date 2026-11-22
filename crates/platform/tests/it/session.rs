@@ -280,7 +280,19 @@ fn a_pointer_session_plays_back_the_same() {
     h.click_text("Key bindings");
     assert_eq!(h.screens(), ["lobby", "key_bindings"]);
     let text = record_of(&h).to_ron();
-    assert!(text.contains("PointerMoved"), "{text}");
+    // `click_text` clicks the centre of the first cell of the words: the
+    // lobby's row 2 is the console's row 3, its label from column 3.
+    let clicked = RawInputEvent::PointerMoved {
+        x: 3 * 8 + 4,
+        y: 3 * 16 + 8,
+    };
+    assert!(
+        record_of(&h)
+            .frames
+            .iter()
+            .any(|f| f.input.contains(&clicked)),
+        "{text}"
+    );
     let record = SessionRecord::from_ron(&text).unwrap_or_else(|e| panic!("{e}"));
     let mut played = playing(lobby(), &record);
     let answer = played.play_all().clone();

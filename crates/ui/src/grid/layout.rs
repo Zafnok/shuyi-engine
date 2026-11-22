@@ -50,11 +50,8 @@ impl Projection {
     /// lies on, as tiles right of and below the view's first, whose
     /// top-left pixel is `corner`, on tiles of `tile` pixels (a size
     /// below 1 counts as 1).
-    pub const fn tile_at(self, corner: (i32, i32), tile: (i32, i32), px: (i32, i32)) -> (i32, i32) {
-        let (w, h) = (
-            if tile.0 < 1 { 1 } else { tile.0 },
-            if tile.1 < 1 { 1 } else { tile.1 },
-        );
+    pub fn tile_at(self, corner: (i32, i32), tile: (i32, i32), px: (i32, i32)) -> (i32, i32) {
+        let (w, h) = (tile.0.max(1), tile.1.max(1));
         match self {
             Projection::TopDown => (
                 (px.0 - corner.0).div_euclid(w),
