@@ -202,7 +202,7 @@ None.
   file may (`LOOPSTART`, `LOOPLENGTH`). The platform reports a track that
   goes round one by where it is in the track, back by the region's length
   each time round, and `MusicClock::position` is that
-  ([ADR-0136](../../docs/adr/0136-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
+  ([ADR-0137](../../docs/adr/0137-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
   So `beats_since` and `bars_since` count across the wrap, from
   `loop_end_ms` back to `loop_start_ms`, with the beat at the loop point
   counted once (a test): a position that went back is a wrap, by the

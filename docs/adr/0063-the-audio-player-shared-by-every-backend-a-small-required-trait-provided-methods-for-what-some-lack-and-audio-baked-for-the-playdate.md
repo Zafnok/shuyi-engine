@@ -1,6 +1,6 @@
 # ADR-0063: The audio player shared by every backend: a small required trait, provided methods for what some lack, and audio baked for the Playdate
 
-- **Status:** Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0056; extended by ADR-0136 (a loop region, a provided method)
+- **Status:** Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0056; extended by ADR-0137 (a loop region, a provided method)
 - **Date:** 2026-10-31
 - **Related tickets:** 3029 (this), 3010 (the Playdate backend), 2394 (pause
   and suspend), 2344 (handles), 2341 (crossfades), 3027 and 3024 (GBA and DS

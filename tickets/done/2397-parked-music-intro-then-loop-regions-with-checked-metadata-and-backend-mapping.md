@@ -53,7 +53,7 @@ None.
   main-frame seek at the audible endpoint. Both crossfade streams can loop.
 - ~~Playdate SDK file-player loop ranges map with tested units. Baked PCM
   metadata retains the range; no desktop decoder on handheld is implied.~~
-  Split off to 3325 (see the completion notes): the Playdate keeps the
+  Split off to 3334 (see the completion notes): the Playdate keeps the
   provided default, and plays a region whole, truthfully.
 - **Either order with 3027:** if 3027 is done, map a GBA tracker restart
   point/order-row to this region with checked conversion; reject/report
@@ -89,7 +89,7 @@ None.
 written as the work was done (it had none, and was listed in
 `tools/unestimated-tickets.txt`).
 
-**Split:** the Playdate's mapping went to 3325 at about 1,400 lines.
+**Split:** the Playdate's mapping went to 3334 at about 1,400 lines.
 
 **Out (do not do):** arbitrary seeking UI, stems/sample scheduling/latency
 calibration, tempo reading, beat-clock implementation (2365), new GBA
@@ -106,7 +106,7 @@ backend (3027), deleting quad-snd (3079).
 - [x] Metadata/defaults/manifest precedence and invalid/overflow/range cases are checked.
 - [x] Intro plays once; at least two streamed loop boundaries have exact expected samples and bounded PCM storage.
 - [x] Clock and, when present, beat/bar queries wrap correctly through pause/crossfade (2365 isn't done: no beat/bar queries yet).
-- [x] Unsupported fallback warns once; Playdate/GBA mapping is checked and truthful (the Playdate's is 3325's, and plays whole until then; 3027 isn't done).
+- [x] Unsupported fallback warns once; Playdate/GBA mapping is checked and truthful (the Playdate's is 3334's, and plays whole until then; 3027 isn't done).
 - [x] 2573's correctness/speed gates pass without removing the reference backend: judged by CI's `sound-parity` jobs on this PR, whose captures only CI makes; the local `mixer` cells pass.
 - [x] A manifest with a region loads and plays whole-file on quad-snd, with one warning; a test says so.
 - [x] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
@@ -149,12 +149,12 @@ underruns, SDK/tracker mapping, provided Unsupported warning, pack round trip.
   `mixer:region-from-the-file` holds the Ogg file's region through a worker,
   a ring that wraps over and over and a producer that stalls every other
   block: the intro and the region twice, every frame the whole decode's.
-- [ADR-0136](../../docs/adr/0136-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)
+- [ADR-0137](../../docs/adr/0137-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)
   records the contract, extending ADR-0063 and ADR-0054.
 
 **Deviations.**
 
-- *The clock* (ADR-0136 §3): the ticket put the wrap in `MusicClock`. It is in
+- *The clock* (ADR-0137 §3): the ticket put the wrap in `MusicClock`. It is in
   the player instead, which reports a region's track by where it is, and
   `MusicClock::from_elapsed` wraps at the length as before. A wrap in `ui`
   from the cue's region would be wrong where the backend plays the whole
@@ -174,7 +174,7 @@ underruns, SDK/tracker mapping, provided Unsupported warning, pack round trip.
   `VorbisSource::new_at` seeks where it can, and in a file whose pages are
   longer than the way in (the corpus's own, at its low bitrate) reads on from
   the start.
-- *The Playdate* is split to 3325 (the size). The GBA's mapping is 3027's
+- *The Playdate* is split to 3334 (the size). The GBA's mapping is 3027's
   (not done), and the beat clock's wrap is 2365's (not done); their clauses
   now say what 2397 left them.
 - *No speed cell of its own*: the way round is the worker's, timed by the
@@ -192,7 +192,7 @@ replacement is one `footprint.ron` owns whole (`crates/sound`,
 cue's fields, the check, the provided method and the clock are the feature,
 which a give-up keeps: quad-snd plays a region whole with its one warning.
 
-Size: 1,595 counted lines, the exact seek can't land after the region: without it the in-house backend runs its ring dry at each way round of any intro longer than a fraction of a second's decode, so the region would ship broken on ordinary music; the Playdate went to 3325.
+Size: 1,595 counted lines, the exact seek can't land after the region: without it the in-house backend runs its ring dry at each way round of any intro longer than a fraction of a second's decode, so the region would ship broken on ordinary music; the Playdate went to 3334.
 
 Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a music cue's binary form has `loop_start_ms` and `loop_end_ms`, and a baked pack is of version 20; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
@@ -217,7 +217,7 @@ Book: the chapter on games and screens says what a loop region is and where it c
 
 Game: nothing to adopt, the game builds its cues with `MusicCue::new` (the new fields are additive), its manifest names no region, and it plays on quad-snd, which loops whole as before; it bakes its pack in a test, which reads version 20 as it bakes it. `gh search code --repo Zafnok/visions-of-shuyi` for `MusicCue`, `music_playing`, `MusicClock`, `pack::VERSION`, `loop_start_ms` and `impl Backend for` found the pins log, the music clock's ADR (game ADR-0037, which this keeps) and its uses of the clock, nothing that names a region or implements the backend trait.
 
-Follow-up: 3325 (the Playdate's file-player loop range and baked tags).
+Follow-up: 3334 (the Playdate's file-player loop range and baked tags).
 
 **Nick:** nothing changes in the game. A game can now give a track an intro
 that plays once before the loop; the new sound backend plays it, and the

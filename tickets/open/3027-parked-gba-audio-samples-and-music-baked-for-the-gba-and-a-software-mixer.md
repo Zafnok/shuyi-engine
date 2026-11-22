@@ -47,7 +47,7 @@ library decoders and CPAL. This GBA backend does not require live Vorbis/MP3 dec
 the shared player calls the provided `Backend::set_loop_region(sound,
 region)` once a looped track loads; the backend answers the `Looping` it
 plays, and the clock follows that
-([ADR-0136](../../docs/adr/0136-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
+([ADR-0137](../../docs/adr/0137-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
 Implement it here: map the region to tracker positions and the song's
 restart point only where exactly representable, with checked conversion.
 Test the time conversion, intro once and wrap behavior; an

@@ -1,5 +1,5 @@
 ---
-id: "3325"
+id: "3334"
 title: "Playdate music goes round a loop region: the file player's loop range, and a baked track keeps its file's tags"
 type: feature
 milestone: "Engine: audio"
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3325 — Playdate music goes round a loop region
+# 3334 — Playdate music goes round a loop region
 
 ## Context
 
@@ -19,7 +19,7 @@ completed:
 (`loop_start_ms`, `loop_end_ms`, `LoopRegion`), or its Ogg file may (the
 `LOOPSTART` and `LOOPLENGTH` comments, read by
 `shuyi_sound::tags::loop_region` and `VorbisSource::loop_region`), the cue's
-winning ([ADR-0136](../../docs/adr/0136-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
+winning ([ADR-0137](../../docs/adr/0137-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
 The shared player calls `Backend::set_loop_region(sound, region)` once a
 looped track loads and reports the clock from the `Looping` it answers; the
 default is `Err(Unsupported)`, which plays the whole track and warns once for
