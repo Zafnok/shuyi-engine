@@ -439,6 +439,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
+name = "embed-fixture"
+version = "0.1.0"
+dependencies = [
+ "shuyi-embed",
+]
+
+[[package]]
 name = "embedded-io"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -705,25 +712,6 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png 0.18.1",
-]
-
-[[package]]
-name = "include_dir"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "923d117408f1e49d914f1a379a309cffe4f18c05cf4e3d12e613a15fc81bd0dd"
-dependencies = [
- "include_dir_macros",
-]
-
-[[package]]
-name = "include_dir_macros"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75"
-dependencies = [
- "proc-macro2",
- "quote",
 ]
 
 [[package]]
@@ -1680,7 +1668,6 @@ dependencies = [
 name = "shuyi-assets"
 version = "0.1.0"
 dependencies = [
- "include_dir",
  "insta",
  "libm",
  "lz4_flex",
@@ -1693,6 +1680,7 @@ dependencies = [
  "shuyi-alloc-count",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-embed-macros",
  "thiserror 2.0.21",
 ]
 
@@ -1706,7 +1694,6 @@ dependencies = [
  "getrandom 0.4.3",
  "gif",
  "hound",
- "include_dir",
  "insta",
  "lewton",
  "png 0.18.1",
@@ -1721,6 +1708,7 @@ dependencies = [
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-core",
+ "shuyi-embed",
  "shuyi-platform",
  "shuyi-ui",
  "toml_edit",
@@ -1737,6 +1725,17 @@ dependencies = [
  "serde",
  "shuyi-assets",
  "shuyi-core",
+]
+
+[[package]]
+name = "shuyi-embed"
+version = "0.1.0"
+
+[[package]]
+name = "shuyi-embed-macros"
+version = "0.1.0"
+dependencies = [
+ "shuyi-embed",
 ]
 
 [[package]]

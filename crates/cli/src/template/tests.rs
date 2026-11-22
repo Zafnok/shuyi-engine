@@ -302,7 +302,7 @@ fn a_manifest_is_read_from_its_tmpl_under_the_name_the_game_gets() {
 fn the_built_in_templates_manifests_are_all_tmpl() {
     // Cargo reads every `Cargo.toml` of the engine's repository when a
     // game depends on it by git (ticket 2067).
-    let plain: Vec<_> = embedded_files(&BUILT_IN)
+    let plain: Vec<_> = embedded_files(BUILT_IN)
         .into_keys()
         .filter(|path| path == "Cargo.toml" || path.ends_with("/Cargo.toml"))
         .collect();

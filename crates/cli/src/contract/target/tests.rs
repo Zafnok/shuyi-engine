@@ -356,9 +356,10 @@ fn a_games_profiles_add_to_the_engines_or_replace_one() {
     fs::create_dir_all(dir.join("t")).unwrap();
     let playdate = String::from_utf8(
         TARGETS
-            .get_file("playdate.ron")
+            .iter()
+            .find(|(path, _)| *path == "playdate.ron")
             .unwrap()
-            .contents()
+            .1
             .to_vec(),
     )
     .unwrap()

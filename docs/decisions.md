@@ -1986,6 +1986,19 @@ delete them".
   deleted the two repositories himself, keeping `delete_repo` from the
   session.
 
+## 2026-11-22: in-house file embedding unparked
+
+Source: Nick, asking a session to do ticket 2215 (our own build-script
+file table in `shuyi-embed`, replacing `include_dir`), parked with the
+in-house platform layer on 2026-10-19. Asked whether to unpark it now or
+keep it parked until the MVP, he chose **"Unpark 2215 now"**.
+
+**Rules:**
+
+- **2215 is unparked** and worked now.
+- **The rest of the in-house platform layer stays parked** until the
+  MVP, as decided on 2026-10-19: unparking 2215 unparks no other ticket.
+
 ## 2026-11-22: the research of replacing macroquad unparked, not the build
 
 Source: Nick, in a Claude Code session, after asking whether 3034 (the
@@ -2008,6 +2021,6 @@ he chose **"Unpark research now"**, then:
   platform layer is until the MVP (2026-10-19), and each has 3079 in its
   `blocked_by`, directly or through the chain: nothing of the build
   starts before quad-snd is removed (or the sound chain is given up).
-- The rest of the platform layer's order stands: controllers (2903) and
-  file embedding (2215) stay parked, and unparking 3034 unparks nothing
-  else.
+- The rest of the platform layer's order stands: controllers (2903) stay
+  parked, and unparking 3034 unparks nothing else. File embedding (2215)
+  was unparked on its own the same day (above).
