@@ -198,13 +198,13 @@ What was done:
 - `lib.rs` re-exports `Persona`, `Weighted`, `Weights` and
   `UnknownFeature`, and its docs list every module of `bots` and where
   its items are.
-- ADR-0134 (the bots' data as files); ADR-0027's status names it.
+- ADR-0135 (the bots' data as files); ADR-0027's status names it.
 
 Deviations:
 
 - 2113 isn't done, so no `MinimaxSettings` or `MctsSettings` to check;
-  2113's clause now says ADR-0134 covers them (From 2133 (done)).
-- ADR-0027's status says ADR-0134 supersedes §8's personas *and* §4's
+  2113's clause now says ADR-0135 covers them (From 2133 (done)).
+- ADR-0027's status says ADR-0135 supersedes §8's personas *and* §4's
   sentence on them, since the new ADR replaces both.
 - Ran the playtest through Hello, Grid's playtest test (seeds 0–49, the
   same `Tries` the CLI's `playtest` uses there) rather than by hand.
