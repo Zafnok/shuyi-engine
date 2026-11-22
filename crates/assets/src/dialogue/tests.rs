@@ -1099,6 +1099,30 @@ fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
 }
 
 #[test]
+fn box_fit_checks_the_width_first_then_the_pages() {
+    let fit = |text: &str, limits: &DialogueLimits| {
+        box_fit(text, &HeroTokens, None, limits, &CellWidths::NARROW)
+    };
+    let words = ["a".repeat(24), "b".repeat(24)];
+    assert_eq!(
+        fit(&format!("{} {}", words[0], words[1]), &LIMITS),
+        BoxFit::Fits
+    );
+    // 74 cells, under 80, but three lines of 40.
+    let three = format!("{} {} {}", words[0], words[1], words[0]);
+    assert_eq!(fit(&three, &LIMITS), BoxFit::Lines { lines: 3 });
+    // Too wide, on a box of five lines it would fit.
+    let tall = DialogueLimits {
+        box_lines: 5,
+        ..LIMITS
+    };
+    let wide = format!("{three} {}", "c".repeat(10));
+    assert_eq!(fit(&wide, &tall), BoxFit::Long { cells: 85 });
+    // Too wide and too many lines: the width is the one reported.
+    assert_eq!(fit(&wide, &LIMITS), BoxFit::Long { cells: 85 });
+}
+
+#[test]
 fn lines_at_longest_breaks_japanese_as_the_box_does() {
     let wide = &CellWidths::wide(['あ', '。']);
     let half = "あ".repeat(15);
