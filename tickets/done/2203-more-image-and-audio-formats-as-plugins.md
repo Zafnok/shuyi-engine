@@ -145,7 +145,7 @@ What was done:
   `ogg_length_ms`'s rounding moved to `samples_ms`, which the tracks
   share.
 - **Registered** by `Formats::register_standard` under each feature
-  (`register_codecs`), after the PNG and OGG formats, so
+  (a `cfg` block each), after the PNG and OGG formats, so
   `ImageTable::load_with` sizes the files. 2234 asks for this; doing it
   here also makes 2116's `missing_rows` guard require their rows.
 - **Fixtures** (`crates/assets/tests/fixtures/formats/`, ours, CC0, with

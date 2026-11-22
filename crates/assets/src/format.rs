@@ -657,24 +657,7 @@ impl Formats {
         self.register(audio::Wav)?;
         self.register(audio::OggVorbis)?;
         self.register(audio::OggVorbisTrack)?;
-        self.register_codecs()?;
-        self.register(audio::AudioManifestRon)?;
-        self.register(credits::CreditsRon::default())?;
-        self.register(font::FontAtlasRon::default())?;
-        self.register(palette::PaletteRon::default())?;
-        self.register(onebit::PatternMapRon)?;
-        self.register(lighting::LightingRon::default())?;
-        self.register(names::NamesRon)?;
-        self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
-        self.register(target::TargetRon)?;
-        self.register_import_settings::<bitmap::dither::OneBitSettings>()?;
-        Ok(())
-    }
-
-    /// Registers the picture and sound formats whose feature is on (ticket
-    /// 2203): JPEG, WebP, QOI and JPEG XL for both image kinds, FLAC and MP3
-    /// for sounds and tracks.
-    fn register_codecs(&mut self) -> Result<(), RegisterError> {
+        // The picture and sound formats whose feature is on (ticket 2203).
         #[cfg(feature = "jpeg")]
         {
             self.register(crate::image::JpegInfo)?;
@@ -705,6 +688,16 @@ impl Formats {
             self.register(crate::audio::Mp3)?;
             self.register(crate::audio::Mp3Track)?;
         }
+        self.register(audio::AudioManifestRon)?;
+        self.register(credits::CreditsRon::default())?;
+        self.register(font::FontAtlasRon::default())?;
+        self.register(palette::PaletteRon::default())?;
+        self.register(onebit::PatternMapRon)?;
+        self.register(lighting::LightingRon::default())?;
+        self.register(names::NamesRon)?;
+        self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
+        self.register(target::TargetRon)?;
+        self.register_import_settings::<bitmap::dither::OneBitSettings>()?;
         Ok(())
     }
 

@@ -94,7 +94,7 @@ None.
   `image::{Jpeg, JpegInfo, WebP, WebPInfo, Qoi, QoiInfo, JpegXl,
   JpegXlInfo}` and `audio::{Flac, FlacTrack, Mp3, Mp3Track}`, and
   `register_standard` already registers each under its feature
-  (`Formats::register_codecs`), tested in `format/tests.rs`. The
+  (a `cfg` block each), tested in `format/tests.rs`. The
   fixtures are in `crates/assets/tests/fixtures/formats/` (named as
   constants in `crates/assets/src/format/codec_tests.rs`: `JPEG`,
   `WEBP`, `QOI`, `JPEG_XL`, `FLAC`, `MP3`, and the lossless ones). The
