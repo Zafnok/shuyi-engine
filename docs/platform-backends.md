@@ -417,8 +417,8 @@ handled sounds, fades and the music clock are
   backend's to make exact (a worker's decoder, a device's own loop range), never
   a seek at the moment it is heard. `music_playing` then says where in the track
   it is: past the region's end, back by its length each time round, so
-  `MusicClock` reads what is heard. `shuyi-app`'s `in-house-sound` backend plays
-  regions; quad-snd and the headless `Speaker` loop whole tracks;
+  `MusicClock` reads what is heard. quad-snd and the headless `Speaker` loop whole
+  tracks, and the new sound backend that replaces quad-snd (ADR-0066) plays regions;
 - **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
   `add_sound`, which readies the samples as a sound, says the backend can't by
   default, and the cue then plays nothing, with a warning; `remove_sound` stops
