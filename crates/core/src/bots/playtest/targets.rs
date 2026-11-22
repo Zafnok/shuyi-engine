@@ -89,7 +89,10 @@ impl<T: Ord> Targets<T> {
     }
 
     /// The names the targets use that aren't in `known`, sorted, each
-    /// once: a misspelt entrant would otherwise just get no check.
+    /// once: a misspelt entrant would otherwise just get no check. It
+    /// lists every unknown name at once, for a lint over the whole file;
+    /// [`judge`](super::judge) refuses only the first, with
+    /// [`UnknownEntrant`](super::UnknownEntrant).
     pub fn unknown_entrants(&self, known: &[&str]) -> Vec<String> {
         let named = self
             .success

@@ -771,8 +771,9 @@ the level, the target and the text. It goes to:
   alone, 256 KiB more. Each line is written whole as it comes, so a crash
   loses nothing before it. Without a folder, or one it can't write, a
   game runs with no file;
-- **stderr on a desktop**, in a debug build: a Windows release build has
-  no console;
+- **stderr on a desktop**, in a debug build, or in a release build when
+  `SHUYI_LOG` is set (a developer at a terminal): a Windows release build
+  has no console;
 - **the browser's console on the web**, by level: `console.error`,
   `console.warn`, `console.info` and `console.debug`;
 - **a crash report's last lines** ([Panics](#panics)).
@@ -785,9 +786,31 @@ The files are where the saves are:
 | macOS | `~/Library/Application Support/<storage name>/logs/` |
 | Linux | `$XDG_DATA_HOME/<storage name>/logs/`, or `~/.local/share/<storage name>/logs/` |
 
-Which lines pass: `info` and more serious for the engine's categories,
-`warn` and more serious for any other target
-(`shuyi_ui::log::LogFilter::allows_target`), the levels `App` keeps too. A
+Which lines pass is the `SHUYI_LOG` variable's filter on a desktop
+(`shuyi_ui::log::LogFilter::parse`; nothing reads one on the web), and
+`run_app` gives `App` the same (`app.set_log_filter`), so its 500 lines
+are the ones the sinks got. Its items are split by commas, each one of:
+
+- a level, `error`, `warn`, `info` or `debug`: the engine's categories
+  at that level and more serious;
+- a category's name (`assets`, `audio`, `input`, `screens`, `storage`,
+  `platform`, `game`), `=` and a level: that category;
+- any other name, `=` and a level: every other target that starts with
+  it (`gilrs` covers `gilrs_core::…` too); of two such names, the longer
+  wins.
+
+A later item wins over an earlier one. The rest is the default: `info`
+and more serious for the engine's categories, `warn` and more serious
+for any other target (`LogFilter::allows_target`). For example:
+
+```text
+SHUYI_LOG=warn,audio=debug,macroquad=info
+```
+
+keeps warnings and errors, the audio's lines down to `debug`, and
+macroquad's down to `info`. A value that isn't a filter (`loud`,
+`audio=loud`, `=debug`) is ignored: the default is used, and one `WARN`
+line of the target `platform` says why. Whatever the filter says, a
 build without debug tools passes warnings and errors alone (ADR-0094).
 
 Two kinds of line never reach these sinks: miniquad's own messages, plain
