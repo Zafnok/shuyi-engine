@@ -196,7 +196,7 @@ These tickets, in order:
 | 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
-| 3504 | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
+| 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
 | 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
 | 2005 | The first release on crates.io, and the game on versions |
 

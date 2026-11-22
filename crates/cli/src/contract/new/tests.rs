@@ -1558,6 +1558,114 @@ fn private_grid_workflow(path: &str) -> Workflow {
     )
 }
 
+/// The private files' action, from the game's root.
+const PRIVATE_FILES_ACTION_FILE: &str = ".github/actions/private-files/action.yml";
+
+/// Whether a step installs `ssh` when, and only when, it is missing.
+fn makes_ssh_available(step: &serde_norway::Value) -> bool {
+    let run = text_of(step.get("run"));
+    run.contains("command -v ssh")
+        && run.contains("apt-get install")
+        && run.contains("openssh-client")
+}
+
+/// Whether the private files' action (its YAML) makes `ssh` available
+/// before each step that checks out with a key, under the same `if:`.
+fn the_action_makes_ssh_available(action: &serde_norway::Value) -> bool {
+    let steps = action
+        .get("runs")
+        .and_then(|runs| runs.get("steps"))
+        .and_then(serde_norway::Value::as_sequence)
+        .map_or(&[][..], Vec::as_slice);
+    let keyed: Vec<usize> = steps
+        .iter()
+        .enumerate()
+        .filter(|(_, step)| {
+            text_of(step.get("uses")).starts_with("actions/checkout@")
+                && step.get("with").and_then(|w| w.get("ssh-key")).is_some()
+        })
+        .map(|(i, _)| i)
+        .collect();
+    !keyed.is_empty()
+        && keyed.iter().all(|&i| {
+            steps[..i].iter().any(|step| {
+                makes_ssh_available(step) && text_of(step.get("if")) == text_of(steps[i].get("if"))
+            })
+        })
+}
+
+/// Each job of `workflows` that runs in a container and checks out the
+/// private files without `ssh` made available first, by a step of its own
+/// before the action's or by the action itself (`action_has_it`).
+fn container_jobs_without_ssh(workflows: &[Workflow], action_has_it: bool) -> Vec<String> {
+    let mut missing = Vec::new();
+    for workflow in workflows {
+        for (name, job) in workflow.jobs() {
+            if text_of(job.get("container")).trim().is_empty() || !has_the_private_files(job) {
+                continue;
+            }
+            let steps = steps_of(job);
+            let action = steps
+                .iter()
+                .position(|step| text_of(step.get("uses")) == PRIVATE_FILES_ACTION)
+                .unwrap_or_default();
+            if !action_has_it && !steps[..action].iter().any(makes_ssh_available) {
+                missing.push(format!(
+                    "{}: {}: the job {name}",
+                    workflow.origin, workflow.path
+                ));
+            }
+        }
+    }
+    missing
+}
+
+#[test]
+fn every_container_job_with_the_private_files_has_ssh_for_their_checkout() {
+    let game = private_grid_game();
+    let origin = "grid, private-files=yes";
+    let mut workflows: Vec<Workflow> = game
+        .files
+        .iter()
+        .map(|(path, bytes)| (path.to_string_lossy().replace('\\', "/"), bytes))
+        .filter(|(shown, _)| shown.starts_with(".github/workflows/"))
+        .map(|(shown, bytes)| Workflow::parse(origin, &shown, bytes))
+        .collect();
+    for path in [".github/workflows/playtest.yml", EXPORT_WORKFLOW] {
+        let bytes = fs::read(engine_checkout().join(path)).unwrap();
+        workflows.push(Workflow::parse("engine", path, &bytes));
+    }
+    let action: serde_norway::Value =
+        serde_norway::from_slice(&game.files[Path::new(PRIVATE_FILES_ACTION_FILE)]).unwrap();
+    let has_it = the_action_makes_ssh_available(&action);
+    let missing = container_jobs_without_ssh(&workflows, has_it);
+    assert!(
+        missing.is_empty(),
+        "no ssh before the private files' checkout:\n{}",
+        missing.join("\n")
+    );
+
+    // The rule bites: export.yml's job runs in the plan's image (the sniper
+    // one for Linux) and checks the files out, and without the action's
+    // step it has no ssh.
+    assert_eq!(
+        container_jobs_without_ssh(&workflows, false),
+        [
+            format!("{origin}: {EXPORT_WORKFLOW}: the job export"),
+            format!("engine: {EXPORT_WORKFLOW}: the job export"),
+        ]
+    );
+    let mut without = action.clone();
+    if let Some(steps) = without
+        .get_mut("runs")
+        .and_then(|runs| runs.get_mut("steps"))
+        .and_then(serde_norway::Value::as_sequence_mut)
+    {
+        steps.retain(|step| !makes_ssh_available(step));
+    }
+    assert!(!the_action_makes_ssh_available(&without));
+}
+
 /// The job `name` of `workflow`.
 fn job_named<'a>(workflow: &'a Workflow, name: &str) -> &'a serde_norway::Value {
     workflow

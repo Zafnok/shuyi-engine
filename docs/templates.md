@@ -316,6 +316,11 @@ included. The part adds the rest: what fetches the checkout, ignores
 it, checks it out in CI before the gates (failing a run on the game's
 own repository without the secret `PRIVATE_ASSETS_KEY`, warning on a
 fork's or Dependabot's pull request) and tells the game's agent of it.
+The action installs `openssh-client` first when the job's image has no
+`ssh`, which the keyed checkout runs: Valve's sniper image, which
+`export.yml` builds the Linux package in, has none (ticket 3504;
+`every_container_job_with_the_private_files_has_ssh_for_their_checkout`
+checks every container job that checks the files out).
 No workflow of the template uploads an artifact **or saves a cache**
 that embeds the private files (ADR-0111 §5 as
 [ADR-0130](adr/0130-no-cache-of-a-build-with-the-private-files-and-who-can-read-them.md)

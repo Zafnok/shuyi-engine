@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 3504 — A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs
@@ -72,11 +72,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A private-files game's `export (linux)` checks out its private files
+- [x] A private-files game's `export (linux)` checks out its private files
       in the sniper image.
-- [ ] The test fails without the step.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The test fails without the step.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -85,5 +85,52 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** The private files' action
+(`templates/shuyi-default/private-files/.github/actions/private-files/action.yml`)
+has a step *Make ssh available* right before its keyed `actions/checkout`,
+under the same `if:` (a run that checks the files out). It does nothing
+when `command -v ssh` finds one (every GitHub runner), and otherwise
+installs `openssh-client` with `apt-get` (through `sudo` when not root),
+or fails naming the missing `ssh` in an image without `apt-get`.
+`plans.golden` is blessed.
+
+**Where, and why the action rather than `export.yml`.** The action is
+the one place every job that checks the files out goes through: the
+export, `ci.yml`'s gates, the engine's playtest workflow, and any job a
+game or a later ticket adds in a container. A step in `export.yml` would
+cover only the export, and would install `ssh` on a run without the key
+(a dry run, a fork) where nothing needs it; inside the action it runs
+only once the plan step has a commit to check out. `export.yml` is
+unchanged, so the engine's copy stays byte-equal.
+
+**The test.** `crates/cli/src/contract/new/tests.rs`'s
+`every_container_job_with_the_private_files_has_ssh_for_their_checkout`
+reads the grid game with private files' workflows and the engine's
+`playtest.yml` and `export.yml` with `serde_norway`: every job with a
+`container:` that uses the action has a step making `ssh` available
+before it, its own or the action's (before each keyed checkout, under
+the same `if:`). It checks the rule bites (both `export.yml` jobs are
+named without the action's step) and that the action without the step
+fails; run against the action as it was on `main`, the test fails
+naming those two jobs.
+
+**Deviations.**
+- Reproduction: Docker's daemon isn't running on this machine, so step 1
+  rests on 3406's scratch run: run 44412606416 failed with "Unable to
+  locate executable file: ssh", and run 44413611718, with the same
+  `apt-get install openssh-client` in the container, checked the files
+  out and passed (3406's completion notes). The engine's CI exports
+  Hello, Grid, without private files, so it doesn't run the step; the
+  first release of a game with private files is the run that does
+  (2005).
+- `openssl`: 3406's notes found OpenSSL 1.1.1w in the sniper image, so
+  the seal step needs nothing here.
+
+Book: none, no public API changed; the book's quick start names the
+private files only as an answer of `shuyi new`, and the CI detail is in
+`docs/templates.md`, *The private files*, updated here.
+
+Game: nothing to adopt, the game's workflows are its own and this
+changes only the template's action.
+
+Nick input: none.
