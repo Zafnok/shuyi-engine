@@ -437,6 +437,14 @@ fn a_speech_line_must_fit_one_page_of_the_box() {
             "{file}: {reply:?}: text is 74 cells; the limit is 30"
         )]
     );
+    // A reply may be exactly as long as its limit.
+    let exact = "x".repeat(LIMITS.max_option);
+    assert_eq!(
+        line_errors(&format!(
+            "[(key: {reply:?}, source: \"x\", text: {exact:?})]"
+        )),
+        [] as [&str; 0]
+    );
 }
 
 #[test]
