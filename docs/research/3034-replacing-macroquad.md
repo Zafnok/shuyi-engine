@@ -109,7 +109,9 @@ The tickets the new backend keeps working, and their state on
   - 3314: the idle cursor;
   - 2513: doctor's Linux table and `setup-linux.sh`;
   - 2511 and 2087: `run_game` and `run_app` as plain functions;
-  - 2405: the mouse and touch.
+  - 2405 and 2413: the mouse and touch, 2413 reading them in
+    `shuyi-app`;
+  - 2215: the game's files embedded without `include_dir`.
 - **Open:**
   - 2337: blends and tints;
   - 2346: `Frame::typing` and the IME on Windows;

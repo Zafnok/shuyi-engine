@@ -41,12 +41,15 @@ None.
   - The fullscreen shortcut is `keys::fullscreen_shortcut`'s chord.
 - **Text:** `KeyEvent::text` becomes one `RawInputEvent::Text` per
   `char`, the control characters left out as today.
-- **The mouse and touch,** as 2405 maps macroquad's:
+- **The mouse and touch,** as 2413 (done) maps macroquad's in
+  `shuyi-app`, with its tests passing on both backends:
   - `CursorMoved` maps to the console's pixels through the layout;
     `CursorLeft` becomes `PointerLeft`.
   - The left button gives `PointerDown` and `PointerUp`.
-  - `MouseWheel`'s lines and pixels become whole `Wheel` steps.
-  - The first touch is the pointer.
+  - `MouseWheel`'s lines and pixels become whole `Wheel` notches, as
+    2413 counts them per system.
+  - The first touch is the pointer, and a tap has no hover after it
+    (ADR-0134).
 - **Focus and visibility (ADR-0076):**
   - `Focused` gives `FocusLost` and `FocusGained`.
   - `Occluded` gives `Suspend` and `Resume` on macOS and X11.

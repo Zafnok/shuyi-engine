@@ -368,7 +368,8 @@ dependency behind a default feature named **`macroquad`**.
     through the layout. `CursorLeft` becomes `PointerLeft`.
   - The buttons become `PointerDown` and `PointerUp`. The wheel's lines
     or pixels become whole `Wheel` steps.
-  - A first touch is the pointer, as 2405 has it.
+  - A first touch is the pointer, with no hover after a tap, as 2413
+    has it.
 - **The clipboard.** winit has none, and nothing in the engine uses
   miniquad's today. 1149's chat box plans to, so whichever of 1149 and
   3332 lands second puts paste and copy on winit: `arboard` on the

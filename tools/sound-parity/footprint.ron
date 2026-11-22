@@ -118,8 +118,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api/tests.rs",
-            find: "assert_eq!(API_CRATES.len(), 12);",
-            with: "assert_eq!(API_CRATES.len(), 10);",
+            find: "assert_eq!(API_CRATES.len(), 14);",
+            with: "assert_eq!(API_CRATES.len(), 12);",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",

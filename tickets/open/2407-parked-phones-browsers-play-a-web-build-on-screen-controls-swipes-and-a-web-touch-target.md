@@ -61,7 +61,7 @@ What is planned:
   agreements.
 - 1121 (parked, real time) leaves out gestures and on-screen controls.
 - 2405 (done) brings the pointer to menus and grid maps, and 2413
-  reads the mouse and touches in `shuyi-app`.
+  (done) reads the mouse and touches in `shuyi-app`.
   A tap is a click there, through macroquad's touch-as-mouse. Its
   events carry no touch id, and it leaves several touches at once to
   this ticket.

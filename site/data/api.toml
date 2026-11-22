@@ -40,6 +40,14 @@ name = "shuyi_alloc_count"
 text = "the heap counter of debug builds"
 
 [[crate]]
+name = "shuyi_embed"
+text = "a folder's files as a sorted table of paths and `include_bytes!`, which a build script writes, for `Layer::table`"
+
+[[crate]]
+name = "shuyi_embed_macros"
+text = "the table `shuyi::files!` writes at compile time, hidden; a game names `shuyi::files!`"
+
+[[crate]]
 name = "shuyi_script"
 text = "a module: rules written as Rhai scripts, run on a read-only view, integer only, with no clock, no luck and no files, inside limits"
 

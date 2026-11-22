@@ -11,7 +11,7 @@ do. The decisions behind it are
 
 | Backend | Crate | Where |
 | ------- | ----- | ----- |
-| macroquad: Windows, Linux, macOS, the web, the Steam Deck | `shuyi-app` | here, `crates/app` |
+| macroquad: Windows, Linux, macOS, the web, the Steam Deck; keys, pads, the mouse and touches | `shuyi-app` | here, `crates/app` |
 | headless: tests, tools, benchmarks | `shuyi_platform::headless` | here, `crates/platform` |
 | Playdate | `shuyi-playdate` | here, `crates/playdate` ([`targets/playdate.md`](targets/playdate.md)) |
 | a closed console | its own crate | **a private repository**, never here |
@@ -270,7 +270,9 @@ Add the input since the last call, in the order it happened:
   delta kept for the next poll. In one poll: the place, the press, the
   release, then the wheel. A finger has no hover: after a touch's
   release, send `PointerLeft`, last. A device without a pointer sends
-  none, and loses nothing: no action needs it.
+  none, and loses nothing: no action needs it. `shuyi-app` does this in
+  `crates/app/src/pointer.rs`, from macroquad's mouse, which a touch
+  drives too, and with a wheel notch in each platform's own unit.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home

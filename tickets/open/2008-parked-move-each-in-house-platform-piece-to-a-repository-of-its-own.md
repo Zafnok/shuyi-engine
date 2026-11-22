@@ -30,7 +30,7 @@ mechanical:
   no independent codec implementation from 2211–2214 is being carved;
 - `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
   own code;
-- `shuyi-embed` (2215);
+- `shuyi-embed` and `shuyi-embed-macros` (2215, done; ADR-0138);
 - `shuyi-gpu`, the 2D renderer crate (3325, ADR-0136). If those are
   not all done when this is unparked, move the others, and leave a
   ticket for those.

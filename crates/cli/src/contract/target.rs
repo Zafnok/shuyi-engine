@@ -29,7 +29,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use include_dir::{Dir, include_dir};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::onebit::{self, Severity};
@@ -43,7 +42,8 @@ use crate::game::OneBitSkin;
 use crate::project::{Config, FILE, Scale, TargetSetting};
 
 /// The engine's target profiles, embedded.
-static TARGETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../targets");
+/// `build.rs` writes their table.
+static TARGETS: &[(&str, &[u8])] = shuyi_embed::files!("targets");
 
 /// What `--target all` asks for: every target in the game's `shuyi.ron`.
 pub const ALL: &str = "all";
@@ -169,10 +169,11 @@ fn decode(shown: &str, bytes: &[u8]) -> Result<TargetProfile, Vec<ContentError>>
 
 /// The engine's profiles, by id.
 pub fn engine_profiles() -> Result<BTreeMap<String, Profile>, Vec<ContentError>> {
-    let files = TARGETS.files().map(|f| {
-        let shown = format!("targets/{}", f.path().display());
-        (shown, f.contents().to_vec())
-    });
+    // The files of `targets/` itself, not of a folder in it.
+    let files = TARGETS
+        .iter()
+        .filter(|(path, _)| !path.contains('/'))
+        .map(|(path, bytes)| (format!("targets/{path}"), bytes.to_vec()));
     read_all(files)
 }
 

@@ -157,7 +157,8 @@ target with no pointer (the Playdate) loses nothing. A screen of your own hands 
 the frame's pointer beside its actions, with `menu.point_with_sound(input.pointer(), &mut
 ctx.audio)`, and on a grid map `skin.tile_at(&scene, area, pixel)` gives the tile under
 it. A pointer moves the cursor and gives the click; only the command a key would send
-reaches the rules, so a game played with the mouse keeps the same record.
+reaches the rules, so a game played with the mouse keeps the same record. It works in
+your desktop build and your web build, and on a touch screen a tap is a click.
 
 ## Actions of a game's own
 

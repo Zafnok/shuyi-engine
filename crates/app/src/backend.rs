@@ -1,6 +1,7 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
-//! controllers, the window's focus ([`focus`](crate::focus)), its own
+//! controllers, the mouse and touches ([`pointer`](crate::pointer)), the
+//! window's focus ([`focus`](crate::focus)), its own
 //! shortcut and close button, the files dropped on it
 //! ([`drops`](crate::drops)), the OS's data
 //! folder or the browser's `localStorage`, the files the game hands the
@@ -34,6 +35,7 @@ use shuyi_platform::{
     DisplayInfo, Frame, Look, Offered, Platform, Show, Storage, SystemEvent, TextInput,
 };
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame::console::ConsoleSpec;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
@@ -47,6 +49,7 @@ use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
 use crate::player_files::{self, PlayerFiles};
+use crate::pointer::{self, PointerReader};
 use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
@@ -93,6 +96,9 @@ pub(crate) struct Macroquad {
     pads: Option<PadInput>,
     /// Whether the window has focus, from miniquad's events.
     focus: WindowFocus,
+    /// The mouse and touches, and the console of the last game frame
+    /// drawn, whose pixels they come in (none before the first).
+    pointer: (PointerReader, Option<ConsoleSpec>),
     /// Whether the cursor shows over the window.
     cursor: IdleCursor,
     sound: Sound,
@@ -152,6 +158,7 @@ impl Macroquad {
             place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
+            pointer: (PointerReader::default(), None),
             cursor: IdleCursor::default(),
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
@@ -341,6 +348,7 @@ impl Macroquad {
         } else if let Some(renderer) = &mut self.renderer {
             renderer.set_clear(background);
             renderer.draw(buffer);
+            self.pointer.1 = Some(buffer.spec());
         }
     }
 
@@ -567,6 +575,8 @@ impl Platform for Macroquad {
         if let Some(pads) = &mut self.pads {
             out.extend(pads.poll(self.focus.is_focused()));
         }
+        let (reader, drawn) = &mut self.pointer;
+        out.extend(reader.events(*drawn, &pointer::read()));
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         out.append(&mut self.link_input);
     }
