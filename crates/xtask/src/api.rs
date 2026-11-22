@@ -162,6 +162,15 @@ pub const API_CRATES: &[ApiCrate] = &[
         name: "shuyi-alloc-count",
         features: Features::Only(&["global"]),
     },
+    // The embedding (ADR-0136): neither has a feature.
+    ApiCrate {
+        name: "shuyi-embed",
+        features: Features::Only(&[]),
+    },
+    ApiCrate {
+        name: "shuyi-embed-macros",
+        features: Features::Only(&[]),
+    },
     // The script runtime (ADR-0093) has no feature.
     ApiCrate {
         name: "shuyi-script",
