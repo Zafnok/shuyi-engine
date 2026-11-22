@@ -318,12 +318,13 @@ mod jpeg_xl {
         format!("not a valid JPEG XL file: {error}")
     }
 
-    fn builder() -> jxl_oxide::JxlImageBuilder {
-        JxlImage::builder().alloc_tracker(AllocTracker::with_limit(MAX_HELD))
+    /// A decoder that holds at most `max_held` bytes at once.
+    fn builder(max_held: usize) -> jxl_oxide::JxlImageBuilder {
+        JxlImage::builder().alloc_tracker(AllocTracker::with_limit(max_held))
     }
 
     pub(super) fn size(bytes: &[u8]) -> Decoded<(u32, u32)> {
-        let mut image = builder().build_uninit();
+        let mut image = builder(MAX_HELD).build_uninit();
         image.feed_bytes(bytes).map_err(invalid)?;
         match image.try_init().map_err(invalid)? {
             InitializeResult::Initialized(image) => Ok((image.width(), image.height())),
@@ -332,7 +333,16 @@ mod jpeg_xl {
     }
 
     pub(super) fn pixels(bytes: &[u8], info: ImageInfo) -> Decoded<Vec<u8>> {
-        let mut image = builder().read(bytes).map_err(invalid)?;
+        pixels_within(bytes, info, MAX_HELD)
+    }
+
+    /// [`pixels`], holding at most `max_held` bytes at once.
+    pub(super) fn pixels_within(
+        bytes: &[u8],
+        info: ImageInfo,
+        max_held: usize,
+    ) -> Decoded<Vec<u8>> {
+        let mut image = builder(max_held).read(bytes).map_err(invalid)?;
         image.request_color_encoding(EnumColourEncoding::srgb(RenderingIntent::Relative));
         let render = image.render_frame(0).map_err(invalid)?;
         let mut stream = render.stream();
@@ -385,6 +395,15 @@ mod tests {
             message(read_image(&file, b"", empty, right)),
             ["a.x: image is 0×1 px; both sides must be greater than 0"]
         );
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    #[test]
+    fn a_jpeg_xl_decoder_holds_no_more_than_it_may() {
+        let (bytes, info) = (crate::format::codec_tests::JPEG_XL, ImageInfo::new(20, 12));
+        assert!(jpeg_xl::pixels_within(bytes, info, 1 << 30).is_ok());
+        let held = jpeg_xl::pixels_within(bytes, info, 1024);
+        assert!(held.is_err_and(|e| e.starts_with("not a valid JPEG XL file")));
     }
 
     #[cfg(any(feature = "webp", feature = "jpeg-xl"))]

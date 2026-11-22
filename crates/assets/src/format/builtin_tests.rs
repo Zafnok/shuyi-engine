@@ -1249,6 +1249,7 @@ const CODEC_FIXTURES: &[&[u8]] = &[
     codec_tests::JPEG_XL_LOSSLESS,
     codec_tests::FLAC,
     codec_tests::MP3,
+    codec_tests::MP3_UNTAGGED,
 ];
 
 /// `fixture` with up to four bytes changed, then cut at a random length.

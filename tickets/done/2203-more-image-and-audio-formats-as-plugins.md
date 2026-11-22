@@ -152,7 +152,8 @@ What was done:
   a README and the two scripts that made them): a 20 × 12 RGBA picture
   as PNG, JPEG, lossy and lossless WebP, QOI, lossy and lossless JPEG
   XL, three reference decodes (libjpeg-turbo, libwebp, libjxl), and a
-  50 ms tone as FLAC and MP3. 7.4 KiB in all.
+  50 ms tone as FLAC and MP3 (with and without a LAME tag). 8 KiB in
+  all.
 - **Tests** (`crates/assets/src/format/codec_tests.rs`): ids,
   extensions, limits and magic bytes; lossless fixtures equal their
   source; lossy ones within 4 (JPEG), 0 (WebP) and 1 (JPEG XL) of the
@@ -186,7 +187,7 @@ Deviations:
   exact. The ticket named no fallback for this.
 - **No size estimate up front.** The ticket was on
   `tools/unestimated-tickets.txt` and I wrote no estimate before the
-  code; it came to 1,489 counted lines, under the limit after the
+  code; it came to 1,494 counted lines, under the limit after the
   pictures' two formats shared one macro arm. It is off the list now.
   Where it would have split cleanly: the four picture formats, then
   FLAC and MP3 (each part with its own fixtures, rows and docs).
