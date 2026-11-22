@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-21
 ---
 
 # 2239 — Translated dialogue lines get the text box's page check
@@ -141,20 +141,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -n "lines_at_longest\|box_fit" crates/assets/src/dialogue/check.rs`
+- [x] `grep -n "lines_at_longest\|box_fit" crates/assets/src/dialogue/check.rs`
       shows `Checker::step` calling `box_fit`, and
       `grep -n "box_fit" crates/assets/src/lang/lines.rs` finds the
       pack's call.
-- [ ] A pack's speech line of three 24-letter words (74 cells, within
+- [x] A pack's speech line of three 24-letter words (74 cells, within
       `max_text` 80) fails with "text takes 3 lines of 40 cells; the box
       shows 2" (unit test), and the same text in a variant
       (`text_b`) fails the same way.
-- [ ] `a_dialogue_entry_keeps_to_the_rules_of_english`,
+- [x] `a_dialogue_entry_keeps_to_the_rules_of_english`,
       `a_name_token_counts_as_the_packs_longest_name`
       (`crates/assets/src/lang/pack_tests.rs`) and
       `a_line_must_fit_the_box_once_its_tokens_are_longest`
       (`crates/assets/src/dialogue/tests.rs`) pass unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -171,5 +171,32 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `BoxFit` and `box_fit` (`crates/assets/src/dialogue/check.rs`,
+  crate-private, re-exported `pub(crate)` from `dialogue`): the width
+  against `max_text` first, then the pages with `lines_at_longest`.
+  `Checker::step` matches on it with today's messages; `Checker::pages`
+  is gone.
+- `add_lines` (`crates/assets/src/lang/lines.rs`) asks a new
+  `fit_problem` for each text of an entry, every variant: a `Speech`
+  line goes through `box_fit` with the pack's longest name, a `Reply`
+  keeps its `max_option` width check, a caption none. `limit` and its
+  unit test are gone.
+- Tests: `box_fit_checks_the_width_first_then_the_pages`
+  (`dialogue/tests.rs`), and in `lang/pack_tests.rs`
+  `a_speech_line_must_fit_one_page_of_the_box` (`text`, a variant, a
+  reply and a caption), `the_page_check_counts_the_packs_longest_name`
+  and `a_japanese_line_is_paged_as_the_box_breaks_it`.
+- `PackRules::limits`' doc says what the pack's lines keep to.
+- Deviations: the ticket said English's messages say "characters"; they
+  say "cells" since 2252, and stay as they are. `box_fit` takes the
+  `&CellWidths` after the limits. The `box_fit` unit test is in
+  `dialogue/tests.rs`, the dialogue module's tests, not in `check.rs`,
+  which has none. 2241 is not done, so no `speech_problem` call to keep;
+  its clause now names `fit_problem` as what holds.
+- The game: `gh search code --repo Zafnok/visions-of-shuyi "the limit
+  is"` and `"lines of"` find the English and data messages, which do
+  not change, and no test of a pack's page.
+
+Behaviour: shuyi-assets: a language pack's speech or narration line that takes more than `box_lines` lines of `box_width` (its longest name and tokens filled in) now fails to load with "text takes N lines of W cells; the box shows B", where it loaded.
+
+No break.

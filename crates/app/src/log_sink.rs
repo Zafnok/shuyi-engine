@@ -11,8 +11,9 @@
 //!   writes at most [`LOG_FILE_CAP`], then one line saying the log was cut,
 //!   then [`LOG_FILE_ERROR_ROOM`] more of errors alone. Each line is
 //!   written whole, unbuffered, so a crash loses nothing written before it.
-//! - **stderr** on a desktop, in a debug build: a release build on Windows
-//!   has no console.
+//! - **stderr** on a desktop, in a debug build, or in a release build
+//!   given a filter (`SHUYI_LOG`, a developer at a terminal): a release
+//!   build on Windows has no console.
 //! - **The browser's console** on the web, by level
 //!   (`console.error` to `console.debug`).
 //! - **A crash report's lines** ([`crash::note_log`](crate::crash::note_log)).
@@ -23,10 +24,12 @@
 //! [`LogCategory`](shuyi_ui::log::LogCategory)'s name for the engine's
 //! lines, `panic` for a panic's and a module path for a library's.
 //!
-//! Which lines pass is the default [`LogFilter`]: `info` and more serious
-//! for the engine's categories, `warn` and more serious for any other
-//! target. A build without debug tools passes warnings and errors alone
-//! (ADR-0094 §4).
+//! Which lines pass is the [`LogFilter`] [`install`] is given as text
+//! (`SHUYI_LOG` on a desktop, [`LogFilter::parse`]), or the default
+//! without one: `info` and more serious for the engine's categories, `warn`
+//! and more serious for any other target. A build without debug tools
+//! passes warnings and errors alone, whatever the filter says (ADR-0094
+//! §4).
 
 use std::cell::Cell;
 use std::fs::{self, File, OpenOptions};
@@ -73,31 +76,45 @@ pub fn frame() -> u32 {
     FRAME.load(Ordering::Relaxed)
 }
 
+/// The environment variable a desktop reads the filter's text from
+/// ([`LogFilter::parse`]).
+pub const FILTER_VARIABLE: &str = "SHUYI_LOG";
+
 /// Installs the sink as the `log` crate's logger, with its file in `dir`
 /// (none if `None`), and the panic's line in the one panic hook
 /// (`crash`'s). `storage_name` and `game_version` go in the file's first
-/// line.
+/// line. Returns the filter in use: `filter`'s text read with
+/// [`LogFilter::parse`], or [`LogFilter::default`] without one.
+///
+/// A `filter` that isn't one is ignored: the default is used, and one
+/// warning of the target `platform` says why. Given one, lines go to
+/// stderr in a release build too (a developer at a terminal).
 ///
 /// If a logger was installed before (a game's own), it stays, this one is
 /// dropped, and a line on stderr says so. If the folder can't be made or
 /// the file opened, there is no file, and a line on stderr says why.
-pub fn install(storage_name: &str, game_version: &str, dir: Option<PathBuf>) {
-    let filter = LogFilter::default();
+pub fn install(
+    storage_name: &str,
+    game_version: &str,
+    dir: Option<PathBuf>,
+    filter: Option<&str>,
+) -> LogFilter {
+    let (in_use, refused) = filter_of(filter);
     let most = if KEEPS_EVERY_LEVEL {
-        filter.most_detailed()
+        in_use.most_detailed()
     } else {
-        filter.most_detailed().min(LogLevel::Warn)
+        in_use.most_detailed().min(LogLevel::Warn)
     };
     let sink: &'static Sink = Box::leak(Box::new(Sink {
-        filter,
-        stderr: !cfg!(target_arch = "wasm32") && cfg!(debug_assertions),
+        filter: in_use.clone(),
+        stderr: !cfg!(target_arch = "wasm32") && (cfg!(debug_assertions) || filter.is_some()),
         start: crate::pacing::seconds(),
         file: Mutex::new(None),
     }));
     crate::crash::hook_once();
     if log::set_logger(sink).is_err() {
         say_on_stderr("shuyi log: a logger was installed before this one; it stays");
-        return;
+        return in_use;
     }
     log::set_max_level(log_filter(most));
     if let Some(dir) = dir {
@@ -105,6 +122,26 @@ pub fn install(storage_name: &str, game_version: &str, dir: Option<PathBuf>) {
             Ok(file) => *lock(&sink.file) = Some(file),
             Err(e) => say_on_stderr(&format!("shuyi log: no log file in {}: {e}", dir.display())),
         }
+    }
+    if let Some(refused) = refused {
+        log::warn!(target: "platform", "{refused}");
+    }
+    in_use
+}
+
+/// The filter `text` says ([`LogFilter::parse`]), the default without
+/// one, and, for a text that isn't one, the default and the warning saying
+/// why.
+pub(crate) fn filter_of(text: Option<&str>) -> (LogFilter, Option<String>) {
+    match text.map(LogFilter::parse) {
+        None => (LogFilter::default(), None),
+        Some(Ok(filter)) => (filter, None),
+        Some(Err(why)) => (
+            LogFilter::default(),
+            Some(format!(
+                "{FILTER_VARIABLE} ignored, the default filter used: {why}"
+            )),
+        ),
     }
 }
 

@@ -224,12 +224,16 @@ pub(crate) fn skip_before(seq: u64, next: u64, kept: usize) -> usize {
 /// as a library's module path (`gilrs_core::platform`). Those pass at the
 /// other targets' level, [`LogLevel::Warn`] until
 /// [`with_others`](Self::with_others) says otherwise
-/// ([`allows_target`](Self::allows_target)).
+/// ([`allows_target`](Self::allows_target)), or at the level of the
+/// longest prefix of theirs it was given ([`with_prefix`](Self::with_prefix)).
+///
+/// [`parse`](Self::parse) reads one from text, as `SHUYI_LOG` gives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogFilter {
     level: LogLevel,
     categories: Vec<(LogCategory, LogLevel)>,
     others: LogLevel,
+    prefixes: Vec<(String, LogLevel)>,
 }
 
 impl Default for LogFilter {
@@ -248,7 +252,42 @@ impl LogFilter {
             level,
             categories: Vec::new(),
             others: LogLevel::Warn,
+            prefixes: Vec::new(),
         }
+    }
+
+    /// The filter `text` says, over [`LogFilter::default`]: items split by
+    /// commas, each trimmed, empty ones skipped. An item is a level
+    /// (`error`, `warn`, `info` or `debug`) for every category; a
+    /// category's name, `=` and a level, for that category
+    /// ([`with`](Self::with)); or any other name, `=` and a level, for
+    /// every other target that starts with it
+    /// ([`with_prefix`](Self::with_prefix)). A later item wins.
+    ///
+    /// `warn,audio=debug,gilrs=info` is `warn` and more serious, `debug`
+    /// in the audio, and `info` for `gilrs` and `gilrs_core::…`.
+    ///
+    /// # Errors
+    ///
+    /// Why an item isn't one of those, in English: a level that isn't one
+    /// (`loud`, `audio=loud`) or no name before `=` (`=debug`).
+    pub fn parse(text: &str) -> Result<Self, String> {
+        let mut filter = Self::default();
+        for item in text.split(',').map(str::trim).filter(|i| !i.is_empty()) {
+            let Some((name, level)) = item.split_once('=') else {
+                filter.level = level_named(item, item)?;
+                continue;
+            };
+            let (name, level) = (name.trim(), level_named(level.trim(), item)?);
+            if name.is_empty() {
+                return Err(format!("`{item}` names no category or target before `=`"));
+            }
+            filter = match LogCategory::from_name(name) {
+                Some(category) => filter.with(category, level),
+                None => filter.with_prefix(name, level),
+            };
+        }
+        Ok(filter)
     }
 
     /// The same filter, with `category` at `level`.
@@ -267,6 +306,17 @@ impl LogFilter {
         self
     }
 
+    /// The same filter, with every target that names no category and
+    /// starts with `prefix` at `level` (`gilrs` covers `gilrs_core::…`
+    /// too). Of two prefixes of a target, the longer wins; `prefix` given
+    /// again keeps the last level.
+    #[must_use]
+    pub fn with_prefix(mut self, prefix: &str, level: LogLevel) -> Self {
+        self.prefixes.retain(|(p, _)| p != prefix);
+        self.prefixes.push((prefix.to_owned(), level));
+        self
+    }
+
     /// Whether a line of `category` at `level` passes.
     pub fn allows(&self, category: LogCategory, level: LogLevel) -> bool {
         let at = self
@@ -279,20 +329,36 @@ impl LogFilter {
 
     /// Whether a line of the target `target` at `level` passes: a
     /// category's name is read as that category ([`allows`](Self::allows)),
-    /// any other at the other targets' level.
+    /// one that starts with prefixes at the level of the longest, any other
+    /// at the other targets' level.
     pub fn allows_target(&self, target: &str, level: LogLevel) -> bool {
-        match LogCategory::from_name(target) {
-            Some(category) => self.allows(category, level),
-            None => level <= self.others,
+        if let Some(category) = LogCategory::from_name(target) {
+            return self.allows(category, level);
         }
+        let longest = self
+            .prefixes
+            .iter()
+            .filter(|(p, _)| target.starts_with(p.as_str()))
+            .max_by_key(|(p, _)| p.len());
+        level <= longest.map_or(self.others, |(_, l)| *l)
     }
 
     /// The most detailed level any line passes at: a sink asks for no
     /// line more detailed.
     pub fn most_detailed(&self) -> LogLevel {
         let categories = self.categories.iter().map(|(_, l)| *l);
-        categories.fold(self.level.max(self.others), LogLevel::max)
+        let prefixes = self.prefixes.iter().map(|(_, l)| *l);
+        categories
+            .chain(prefixes)
+            .fold(self.level.max(self.others), LogLevel::max)
     }
+}
+
+/// The level called `name`, or why it isn't one, naming the `item` it was
+/// in.
+fn level_named(name: &str, item: &str) -> Result<LogLevel, String> {
+    LogLevel::from_name(name)
+        .ok_or_else(|| format!("`{item}`: `{name}` is not a level (error, warn, info or debug)"))
 }
 
 #[cfg(test)]

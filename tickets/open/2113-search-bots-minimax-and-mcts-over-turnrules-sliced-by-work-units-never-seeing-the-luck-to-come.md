@@ -159,12 +159,11 @@ None.
   - Re-exports in `crates/core/src/lib.rs`: `Minimax`,
     `MinimaxSettings`, `MinimaxSearch`, `Mcts`, `MctsSettings` and
     `MctsSearch`, and the crate docs' line on `search` names the bots.
-  - **Either order with 2133:** `MinimaxSettings` and `MctsSettings`
-    are `#[serde(deny_unknown_fields)]` and derive
-    `schemars::JsonSchema` behind the `schema` feature, as `Targets`
-    does. If 2133 is done, its ADR says every settings type does this;
-    if not, nothing more to do (2133 gives `RolloutSettings` and
-    `PlanSettings` the same, and its ADR then covers all four).
+  - `MinimaxSettings` and `MctsSettings` are
+    `#[serde(deny_unknown_fields)]` and derive `schemars::JsonSchema`
+    behind the `schema` feature, as `Targets`, `RolloutSettings` and
+    `PlanSettings` do. **From 2133 (done):** ADR-0135 §3–4 says every
+    settings type does this, these two included.
 - **An ADR** (the next free number in `docs/adr/`, with the `write-adr`
   skill), extending 2125's (copies from `Determinize`, integers, work
   units): the UCB in integers; slice independence through 3009's
