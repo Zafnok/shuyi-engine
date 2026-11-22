@@ -529,8 +529,8 @@ struct Needle {
 }
 
 /// The texts of `part`: each canary as UTF-8 and UTF-16, and each forbidden
-/// path with either slash, since a Windows build of `include_dir!` keeps a
-/// `\`.
+/// path with either slash, since a program may keep a Windows path's `\`
+/// (a file's name in a panic message, a debug build's file names).
 fn needles(part: Option<&Disclosure>) -> Vec<Needle> {
     let Some(part) = part else {
         return Vec::new();

@@ -131,7 +131,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0116](0116-the-reveal-kit-a-folder-sealed-by-its-manifests-sha-256-dated-where-the-digest-is-published.md) | The reveal kit: a folder sealed by its manifest's SHA-256, dated where the digest is published | Accepted |
 | [0117](0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md) | Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays | Accepted; extends ADR-0090 §8; extended by ADR-0126 |
 | [0118](0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md) | A closed build's recipient overlay: one code in three marks, a ledger signed with the game's SSH key, never proof | Accepted; extends ADR-0023 §1 and §3 |
-| [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted |
+| [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted; §3 amended by ADR-0136 |
 | [0120](0120-a-games-rebuild-budgeted-as-a-ratio-of-a-reference-build.md) | A new game's rebuild is budgeted as a ratio of a reference build on the same runner | Accepted; supersedes ADR-0049 §2 |
 | [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123 |
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted; §4 superseded by ADR-0124 |
@@ -147,5 +147,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0132](0132-a-messages-walk-borrows-its-values.md) | A message's walk borrows its values, lent through a callback | Accepted; amends ADR-0131 |
 | [0133](0133-a-release-publishes-nowhere-by-default-debug-files-in-a-draft-sealed-packages.md) | A game's release publishes nowhere by default, keeps its debug files in a draft of their own, and hands a public game's packages between jobs sealed | Accepted; amends ADR-0114 §2 and §3, and ADR-0111 §5 |
 | [0134](0134-pointing-in-turn-games-and-screens.md) | Pointing in turn games and screens: UI input from hit areas the painter records, never in a command, never required | Accepted; amends ADR-0003 §8 |
+| [0136](0136-a-games-files-embedded-as-a-table-of-our-own-shuyi-embed.md) | A game's files embedded as a table of our own: `shuyi-embed` for build scripts, and `files!` over it with no build script | Accepted; amends ADR-0119 §3 |
 
 Template: [`0000-template.md`](0000-template.md).

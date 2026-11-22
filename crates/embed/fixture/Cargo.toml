@@ -1,0 +1,17 @@
+[package]
+name = "embed-fixture"
+description = "A crate whose build script embeds `files/` with `shuyi-embed`: its test reads the table back (ticket 2215)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+shuyi-embed = { path = ".." }
+
+[build-dependencies]
+shuyi-embed = { path = ".." }

@@ -1,19 +1,19 @@
 ---
 id: "2215"
-title: "Parked: In-house file embedding: the shuyi-embed crate writes a game's file table at build time on every target, and include_dir is removed"
+title: "In-house file embedding: the shuyi-embed crate writes a game's file table at build time on every target, and include_dir is removed"
 type: feature
 milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: blocked
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-22
 ---
 
 # 2215 — In-house file embedding, and include_dir removed
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. In the roadmap's order it comes with 3033, after controllers, but it needs nothing else, so it can start once unparked.
+> **Unparked** (Nick, 2026-11-22, "Unpark 2215 now", `docs/decisions.md`). It was parked on 2026-10-19 with the in-house platform layer, which stays parked.
 
 ## Context
 
@@ -123,17 +123,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `hello-grid` builds and runs natively and on the web with its files
+- [x] `hello-grid` builds and runs natively and on the web with its files
       from `shuyi-embed`.
-- [ ] A game from each template builds with its files from
+- [x] A game from each template builds with its files from
       `shuyi-embed` (CI's `templates` job), and `shuyi new` and
       `shuyi check --target` still work from the binary alone.
-- [ ] Changing, adding or removing a file under `files/` rebuilds the
+- [x] Changing, adding or removing a file under `files/` rebuilds the
       table on the next `cargo build`.
-- [ ] Two files differing only by case fail the build with both paths.
-- [ ] `cargo tree --workspace` shows no `include_dir`.
-- [ ] The game ticket for the pin move exists and is linked.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Two files differing only by case fail the build with both paths.
+- [x] `cargo tree --workspace` shows no `include_dir`.
+- [x] The game ticket for the pin move exists and is linked: none needed, the game breaks nowhere (Completion notes).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -143,5 +143,92 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** Nick unparked this ticket alone on 2026-11-22
+(`docs/decisions.md`); the rest of the in-house platform layer stays
+parked. The design is ADR-0136, which amends ADR-0119 §3.
+
+- **`crates/embed`** (`shuyi-embed`), no engine crate below it:
+  - `walk` lists a folder, paths `/`-separated and sorted by bytes;
+  - `table_source` writes the table of `include_bytes!` with absolute
+    paths;
+  - `Table::new(name).dir(..).skip(..).write()` writes
+    `$OUT_DIR/shuyi_embed_<name>.rs` and `_skipped.rs`, and prints
+    `cargo::rerun-if-changed` for the folder and every file and folder
+    in it;
+  - `files!(name)` and `skipped!(name)` include those two files;
+  - a name that isn't UTF-8, two paths that differ only by case, and a
+    bad table name each fail the build, naming the paths.
+- **`crates/embed-macros`** (`shuyi-embed-macros`, a procedural macro):
+  `table!("<folder>")` runs the same walk at compile time, with
+  `$VARIABLES` and a folder relative to the crate. It reads the literal
+  itself, with no `syn` or `quote`.
+- **`shuyi-assets`:** `files!` expands to `Embedded::__from_table(table!(..))`,
+  `Embedded` wraps the table, and `Layer::dir` makes a `Files::Table`
+  layer of it. `Files::Dir` and `__from_include_dir` are removed, and so
+  is the `include_dir` dependency, from the workspace and from
+  `tools/layers.ron`. `files!`, `Embedded` (in `shuyi::prelude` too) and
+  `Layer::dir` no longer need `std`. The bundle's tests' folders are
+  tables now.
+- **`shuyi-cli`:** `build.rs` writes the tables of
+  `templates/shuyi-default`, `skills/` and `targets/`. `new`,
+  `check --target` and the skill pack read them. `targets/` is now
+  watched, which it wasn't before. The template plans' golden file is
+  re-blessed for the template's `build.rs`.
+- **The template's `build.rs`** watches the files folder, so a file
+  added or removed rebuilds the game. Hello, Grid's `build.rs` says why it
+  already does (it prints no `rerun-if-changed`).
+- **The tutorial's ten `Cargo.lock`s** lose `include_dir` and
+  `include_dir_macros`, and gain the two new crates.
+- **Docs:** the crates table in `README.md`, ADR-0136 and its row,
+  ADR-0119's status, the bundle's and `files!`'s docs, the docs of the two
+  new crates, and the disclosure check's comment on paths with `\`.
+- **Documents used:** Cargo's *Build Scripts* page (`OUT_DIR`,
+  `cargo::rerun-if-changed`: a folder is scanned whole, and a build script
+  that prints none reruns on any change in the package) and the Rust
+  Reference's *Procedural Macros* and *Tokens* (string and raw-string
+  literals). Not `include_dir`'s source.
+
+**Deviations** (the ticket was 34 days old; each was fixed against `main`):
+
+- **The game's `build.rs` calls are dropped, and `Layer::dir` stays.** The
+  ticket's own 2087 note, and ADR-0119, keep `files!`, `Embedded` and
+  `Layer::dir`. A `macro_rules!` `files!` over `$OUT_DIR` would make every
+  game write a build script, so `files!` is a procedural macro over
+  `shuyi-embed`'s walk instead. `Table` and its `files!` stay for build
+  scripts: `shuyi-cli`, and a game that wants `skip`.
+- **The templates and Hello, Grid needed no move to `Layer::table`.**
+  2087 had already put them on `shuyi::files!`, which now builds the
+  table. No template's `[workspace.dependencies]` named `include_dir`, so
+  `check-pins` has nothing to compare.
+- **`shuyi-cli` embeds three folders, not two:** `skills/` too.
+- **The case-collision walk test** runs only where the disk keeps two
+  such names (Linux CI). On Windows and macOS the check itself is tested
+  on paths.
+- **No game ticket:** Visions of Shuyi names neither `files!`,
+  `Layer::dir` nor `Files` (searched with `gh search code --repo
+  Zafnok/visions-of-shuyi` for `Files::Dir`, `files!`, `Layer::dir`,
+  `include_dir`, `__embed` and `__from_include_dir`: hits are only in its
+  docs and done tickets). Its layers are tables its own `build.rs` writes
+  (game ADR-0105).
+
+Game: nothing to adopt, the game's layers are its own build script's tables (game ADR-0105), and it names no removed item.
+
+Breaking: shuyi-assets: `bundle::Files::Dir`: the variant is gone; a layer from `Layer::dir` is a `Files::Table`, so a game that matches on `Files` matches `Table`.
+
+```migration
+since: 0.1.0
+what: An embedded folder's layer is a file table; the `Files::Dir` variant is gone.
+old: Files::Dir(Embedded)
+new: Files::Table(&'static [(&'static str, &'static [u8])])
+before: |
+  if let Files::Dir(_) = files { /* embedded */ }
+after: |
+  if let Files::Table(_) = files { /* embedded */ }
+find: ["Files::Dir"]
+```
+
+Behaviour: shuyi-assets, shuyi: `files!` fails the build for a file or folder name that isn't UTF-8, and for two paths that differ only by case; `include_dir!` embedded both (the first silently lost on Windows and macOS).
+
+Behaviour: shuyi-assets, shuyi: `files!`, `Embedded` and `Layer::dir` build without `std`, as `Layer::table` did.
+
+Book: none, the book's chapters already show `shuyi::files!`, `Embedded` and `Layer::dir`, which keep their shapes, and none names `include_dir`.

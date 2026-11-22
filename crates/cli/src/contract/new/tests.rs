@@ -517,7 +517,7 @@ fn assert_the_ci_runs_the_part_and_keeps_its_files(
     assert!(ci.contains(&format!("if: hashFiles('{action}') != ''")));
     // A release's packages hold the private files: its caller asks for
     // them on a tag, which a public repository's export.yml seals first
-    // (ADR-0133), or in a private repository.
+    // (ADR-0136), or in a private repository.
     let release = text(private, RELEASE_WORKFLOW);
     assert!(release.contains(
         "upload-private: ${{ github.event_name == 'push' || github.event.repository.private }}"
@@ -1054,11 +1054,11 @@ const PRIVATE_FILES_ACTION: &str = "./.github/actions/private-files";
 
 /// The conditions that may open a plain upload in a job with the private
 /// files: the caller's word that a release needs the package, in a private
-/// repository, whose artifacts only its own people read (ADR-0133 §3).
+/// repository, whose artifacts only its own people read (ADR-0136 §3).
 const UPLOAD_INPUTS: &[&str] = &["inputs.upload-private && github.event.repository.private"];
 
 /// The step of export.yml that seals a public repository's package before
-/// its upload (ADR-0133 §3).
+/// its upload (ADR-0136 §3).
 const SEAL_STEP: &str = "Seal the package";
 
 /// The folder below the game's that holds the sealed files, and only them.

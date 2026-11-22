@@ -1,6 +1,6 @@
 # ADR-0119: Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path
 
-- **Status:** Accepted
+- **Status:** Accepted; §3 amended by ADR-0136 (`files!` over a table of our own)
 - **Date:** 2026-11-14
 - **Related tickets:** 2087; 2005 (the first release), 2084 (`SoundProbeBackend`), 2215 (embedding of our own), 3034 (replacing macroquad), 3044 (the window's own changes)
 

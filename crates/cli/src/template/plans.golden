@@ -16,7 +16,7 @@ a1a1807ca2fe62dd Cargo.toml
 8594cdaa3c93c2ec README.md
 b7bf83dcce2fb717 clippy.toml
 f86200d2c2994b57 crates/game/Cargo.toml
-bb3918ea6458722e crates/game/build.rs
+de6d2de156a4288e crates/game/build.rs
 d9d0d34f89554d0a crates/game/examples/tools.rs
 8a1505756a23ce0b crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
@@ -51,7 +51,7 @@ affd7179f0813dc2 CLAUDE.md
 8594cdaa3c93c2ec README.md
 b7bf83dcce2fb717 clippy.toml
 402ed856d365adfd crates/game/Cargo.toml
-bb3918ea6458722e crates/game/build.rs
+de6d2de156a4288e crates/game/build.rs
 d9d0d34f89554d0a crates/game/examples/tools.rs
 ac3f7f6edb84c1ec crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
@@ -95,7 +95,7 @@ a1a1807ca2fe62dd Cargo.toml
 484e9ac9d524680f README.md
 b7bf83dcce2fb717 clippy.toml
 f86200d2c2994b57 crates/game/Cargo.toml
-bb3918ea6458722e crates/game/build.rs
+de6d2de156a4288e crates/game/build.rs
 d9d0d34f89554d0a crates/game/examples/tools.rs
 8a1505756a23ce0b crates/game/files/en.ron
 24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt

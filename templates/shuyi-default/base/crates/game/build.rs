@@ -4,7 +4,8 @@
 //! unless `cargo shuyi export --edition <name>` builds an edition with a
 //! content root of its own (`shuyi.ron`'s `editions`), which it hands over as
 //! `SHUYI_CONTENT`. A public demo built from its own folder holds none of the
-//! full game's files.
+//! full game's files. It is watched, so a file added to it or removed
+//! rebuilds the game, as a file changed in it does.
 //!
 //! The folder of its private files, laid over those (the engine's ADR-0111):
 //! `private/files/` of the game's folder whenever it is there (a checkout of
@@ -26,6 +27,7 @@ fn main() {
     let here = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
     let content = std::env::var("SHUYI_CONTENT").ok();
     let files = content.clone().unwrap_or_else(|| format!("{here}/files"));
+    println!("cargo:rerun-if-changed={files}");
     println!("cargo:rustc-env=SHUYI_FILES={files}");
     let root = Path::new(&here).join("../..");
     let private = match content {
