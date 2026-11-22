@@ -279,6 +279,43 @@ pub fn lines_at_longest(
     word_wrap(&filled, width, widths).len()
 }
 
+/// How a speech or narration line fits the text box ([`box_fit`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum BoxFit {
+    /// Within `max_text`, and on one page of the box.
+    Fits,
+    /// Wider than `max_text`, in cells ([`longest_width`]).
+    Long { cells: usize },
+    /// Narrow enough, but more than `box_lines` lines of `box_width`
+    /// ([`lines_at_longest`]).
+    Lines { lines: usize },
+}
+
+/// How `text`, a speech or narration line, fits the text box of `limits`
+/// once every token is filled in as its longest (`tokens`, and every name
+/// token as `longest_name`), a wide character of `widths` two cells. The
+/// width comes first: a text both too wide and on too many lines is
+/// [`BoxFit::Long`]. The one rule of an English line ([`check_scene`]) and
+/// a language pack's.
+pub(crate) fn box_fit(
+    text: &str,
+    tokens: &dyn Tokens,
+    longest_name: Option<usize>,
+    limits: &DialogueLimits,
+    widths: &CellWidths,
+) -> BoxFit {
+    let cells = longest_width(text, tokens, longest_name, widths);
+    if cells > limits.max_text {
+        return BoxFit::Long { cells };
+    }
+    let lines = lines_at_longest(text, tokens, longest_name, limits.box_width, widths);
+    if lines > limits.box_lines {
+        BoxFit::Lines { lines }
+    } else {
+        BoxFit::Fits
+    }
+}
+
 /// What is wrong with name token `{token}`, if anything: its id must be in
 /// the names table, and not one the game fills in itself.
 fn name_token_problem(token: &str, tokens: &dyn Tokens, names: Option<&Names>) -> Option<String> {
@@ -339,17 +376,6 @@ impl<R> Checker<'_, R> {
                 self.err(line, message);
             }
         }
-    }
-
-    /// [`lines_at_longest`] of `text`, with the names of the table.
-    fn pages(&self, text: &str) -> usize {
-        lines_at_longest(
-            text,
-            self.tokens,
-            self.longest_name,
-            self.limits.box_width,
-            self.widths,
-        )
     }
 
     /// [`longest_width`] of `text`, with the names of the table.
@@ -480,20 +506,21 @@ impl<R> Checker<'_, R> {
         if let Some(text) = step.text() {
             self.tokens(line, text);
             self.literal_names(line, text);
-            let len = self.len(text);
-            let limit = self.limits.max_text;
-            if len > limit {
-                self.err(line, format!("text is {len} cells; the limit is {limit}"));
-            } else if self.pages(text) > self.limits.box_lines {
-                let lines = self.pages(text);
-                let box_lines = self.limits.box_lines;
-                self.err(
-                    line,
-                    format!(
-                        "text takes {lines} lines of {} cells; the box shows {box_lines}",
-                        self.limits.box_width
-                    ),
-                );
+            let limits = &self.limits;
+            match box_fit(text, self.tokens, self.longest_name, limits, self.widths) {
+                BoxFit::Fits => {}
+                BoxFit::Long { cells } => {
+                    let message =
+                        format!("text is {cells} cells; the limit is {}", limits.max_text);
+                    self.err(line, message);
+                }
+                BoxFit::Lines { lines } => {
+                    let message = format!(
+                        "text takes {lines} lines of {} cells; the box shows {}",
+                        limits.box_width, limits.box_lines
+                    );
+                    self.err(line, message);
+                }
             }
         }
         match step {

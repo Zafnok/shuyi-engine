@@ -594,7 +594,10 @@ pub struct PackRules<'a> {
     pub data_problem: fn(key: &str, text: &str) -> Option<String>,
     /// The game's own `{tokens}`: a pack's dialogue text may use them.
     pub tokens: &'a dyn Tokens,
-    /// How much text the dialogue box and the reply menu hold.
+    /// How much text the dialogue box and the reply menu hold: a speech or
+    /// narration line keeps to `max_text` and one page of the box
+    /// (`box_width` by `box_lines`), as English does, and a reply to
+    /// `max_option`.
     pub limits: DialogueLimits,
     /// How many cells each character takes, which the limits count: the
     /// font atlas's ([`CellWidths::of`]), or [`CellWidths::NARROW`].

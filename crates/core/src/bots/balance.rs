@@ -84,8 +84,7 @@ impl BalanceSettings {
 }
 
 /// How far `report`'s rates lie outside their bands: over every
-/// [`Check::Rate`],
-/// `max(0, min * count - successes * 100, successes * 100 - max * count)`,
+/// [`Check::Rate`], its [`Band::distance`](playtest::Band::distance),
 /// summed. 0 exactly when every rate is inside its band.
 /// A [`Check::Median`] doesn't count: it is about the bots, not the stage.
 ///
@@ -100,12 +99,7 @@ pub fn distance(report: &PlaytestReport) -> u64 {
                 Found::Rate {
                     successes, count, ..
                 },
-            ) => {
-                let share = u64::from(*successes) * 100;
-                let min = u64::from(band.min) * u64::from(*count);
-                let max = u64::from(band.max) * u64::from(*count);
-                min.saturating_sub(share).max(share.saturating_sub(max))
-            }
+            ) => band.distance(*successes, *count),
             _ => 0,
         })
         .fold(0, u64::saturating_add)

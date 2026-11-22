@@ -14,7 +14,7 @@ use rules::{Feature, Player, Stage};
 use serde::Serialize;
 use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::grid_map::{GridMap, MapText};
-use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
+use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried, bot_seed};
 use shuyi::core::{Bot, Made, Pos, RandomBot, TerrainId, play};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::{SessionRecord, Stamps};
@@ -98,12 +98,12 @@ pub fn playtest_plan(map: GridMap<TerrainId, Feature>) -> PlaytestPlan {
     )
 }
 
-/// A try of the stage of `map` seeded `seed` by a random bot of the same
-/// seed, to its end or turn `limit`: how far your piece ended from the
-/// goal, and its record, stamped with this build.
+/// A try of the stage of `map` seeded `seed` by a random bot of its
+/// [`bot_seed`], to its end or turn `limit`: how far your piece ended
+/// from the goal, and its record, stamped with this build.
 fn bot_try(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<PlayedTry, String> {
     let mut stage = Stage::new(map, seed)?;
-    let mut bot = RandomBot::new(seed);
+    let mut bot = RandomBot::new(bot_seed(seed));
     let mut bots: [(Player, &mut dyn Bot<Stage>); 1] = [(Player, &mut bot)];
     let report = play(&mut stage, &mut bots, limit).map_err(|e| format!("seed {seed}: {e}"))?;
     let distance = Pos::manhattan(stage.hero(), stage.goal());
