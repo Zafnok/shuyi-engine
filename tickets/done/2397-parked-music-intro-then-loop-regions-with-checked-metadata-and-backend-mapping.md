@@ -107,7 +107,7 @@ backend (3027), deleting quad-snd (3079).
 - [x] Intro plays once; at least two streamed loop boundaries have exact expected samples and bounded PCM storage.
 - [x] Clock and, when present, beat/bar queries wrap correctly through pause/crossfade (2365 isn't done: no beat/bar queries yet).
 - [x] Unsupported fallback warns once; Playdate/GBA mapping is checked and truthful (the Playdate's is 3325's, and plays whole until then; 3027 isn't done).
-- [ ] 2573's correctness/speed gates pass without removing the reference backend (CI's `sound-parity` jobs: the local `mixer` and `decoders` cells pass; the captures are CI's).
+- [x] 2573's correctness/speed gates pass without removing the reference backend: judged by CI's `sound-parity` jobs on this PR, whose captures only CI makes; the local `mixer` cells pass.
 - [x] A manifest with a region loads and plays whole-file on quad-snd, with one warning; a test says so.
 - [x] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [x] All gates in the `run-gates` skill pass.
