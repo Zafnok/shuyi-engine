@@ -487,7 +487,7 @@ is done.
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
 | 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 (done) | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
-| 2413 | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
+| 2413 (done) | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
@@ -1003,7 +1003,7 @@ specifications, never copied. The order, when unparked:
 - **Controllers:** the research (2903) first. If it keeps our own code:
   2402, then 2403, which removes gilrs.
 - **The two small ones:** web saves (3033, done: unparked on its own on
-  2026-11-12) and file embedding (2215, which needs nothing else).
+  2026-11-12) and file embedding (2215, done: unparked on its own on 2026-11-22).
 - **macroquad:** the research (3034), which writes the ADR and the tickets
   for winit and our own 2D renderer over wgpu, which draws on Vulkan,
   Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU.
@@ -1157,7 +1157,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2903, 2215, 2402–2403, 3034, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; embedding; winit/wgpu research; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, and web saves (3033) on 2026-11-12 | Nick asks |
+| 2903, 2402–2403, 3034, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; winit/wgpu research; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, web saves (3033) on 2026-11-12, and file embedding (2215) on 2026-11-22 | Nick asks |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |

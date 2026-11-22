@@ -1579,7 +1579,7 @@ fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let real = packages(&root, &System).unwrap().into_keys().collect();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
-    assert_eq!(API_CRATES.len(), 12);
+    assert_eq!(API_CRATES.len(), 14);
 }
 
 #[test]
@@ -1805,6 +1805,8 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-sound-out", &[]),
     ("shuyi-playdate", &[]),
     ("shuyi-alloc-count", &["global"]),
+    ("shuyi-embed", &[]),
+    ("shuyi-embed-macros", &[]),
     ("shuyi-script", &[]),
 ];
 

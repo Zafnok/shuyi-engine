@@ -20,8 +20,8 @@ menus:
 
 - pointer events at the platform boundary (`RawInputEvent`'s
   `PointerMoved`, `PointerLeft`, `PointerDown`, `PointerUp` and
-  `Wheel`). No real backend sends them yet: `shuyi-app` reads the mouse
-  in 2413. This ticket needs none, since its tests drive the pointer
+  `Wheel`). `shuyi-app` sends them from the mouse and touches (2413,
+  done). This ticket's tests drive the pointer
   through the Harness;
 - hit areas a painter records in the frame
   (`crates/ui/src/frame/hit.rs`: `WidgetKey`, `Hit`, `Hit::AREA`, and
@@ -331,7 +331,7 @@ screens behave as before with no pointer.
 - The toy's grid screen (`crates/ui/src/toy/grid.rs`), which 2405 also
   left out: Hello, Grid shows the grid part.
 - `shuyi-app` reading the real mouse and touches, and trying the
-  desktop and web builds by hand: 2413.
+  desktop and web builds by hand: 2413 (done).
 - Moving the focus between widgets of one screen: on each screen here
   one widget takes the input at a time.
 - A new ADR: these are 2405's rules applied to more widgets.

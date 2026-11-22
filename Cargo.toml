@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "examples/*", "site/snippets", "tools/research/2912/fixture", "tools/research/2914/web-fixture"]
+members = ["crates/*", "crates/embed/fixture", "examples/*", "site/snippets", "tools/research/2912/fixture", "tools/research/2914/web-fixture"]
 resolver = "3"
 
 [workspace.package]
@@ -17,7 +17,6 @@ serde = { version = "1", default-features = false, features = ["derive", "alloc"
 # `ron` and `thiserror` without `std` for the Playdate build (game
 # ADR-0070 §3); a crate that needs their `std` turns it on.
 ron = { version = "0.12", default-features = false }
-include_dir = "0.7"
 thiserror = { version = "2", default-features = false }
 once_cell = { version = "1", default-features = false, features = ["race", "alloc"] }
 libm = "0.2"

@@ -26,7 +26,6 @@ pub use shuyi_assets as assets;
 /// Embeds a folder of the game's files in the program: `shuyi-assets`'
 /// [`files!`](shuyi_assets::files), which [`Layer::dir`](shuyi_assets::Layer::dir)
 /// makes a layer of.
-#[cfg(feature = "std")]
 pub use shuyi_assets::files;
 pub use shuyi_core as core;
 pub use shuyi_platform as platform;

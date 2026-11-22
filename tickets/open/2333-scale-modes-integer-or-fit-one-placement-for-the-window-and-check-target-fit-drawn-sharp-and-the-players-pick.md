@@ -69,8 +69,8 @@ Why it matters:
 
 Related: 3012 (the Deck: integer with letterbox), 2323 (parked: whole
 glyph scales, and a new buffer for a new console size), 1121 (parked),
-2405 (done: the pointer in console pixels) and 2413 (`shuyi-app` reads
-the mouse, which needs this placement's inverse), 3044
+2405 (done: the pointer in console pixels) and 2413 (done: `shuyi-app`
+reads the mouse through this placement's inverse), 3044
 (window sizes), 2321 (a game's default on `GameSettings` and a player
 setting: the shape used here). **From 2511 (done):** this extends
 `shuyi_cli::BasicTools` (`crates/cli/src/basic.rs`) and the `()`
@@ -200,16 +200,17 @@ game's choice, through its `engine-change` skill.
     same render-target path, through a small helper outside `Renderer`
     (the card is drawn before the renderer exists);
   - the web build runs the same code.
-- **The pointer's inverse. Either order with 2413:** if 2413 is done,
-  its inverse of today's placement (`Layout::frame_px` in `console.rs`,
-  called by `crates/app/src/pointer.rs`) moves onto `Placement` as
-  `Placement::frame_px`. For `Fit` it takes the fraction: frame x =
-  (window x - x) × den / num, rounded down. `pointer.rs` passes the
-  mode the frame was drawn in. `Layout::frame_px` stays as a call of
-  the `Integer` placement's, as `layout` does, so 2413's tests stay;
-  `Placement`'s tests get a `Fit` row. If 2413 is not done, 2413
-  writes the inverse on `Placement`, its `Fit` fraction included (its
-  item 1).
+- **The pointer's inverse.** **From 2413 (done):** the inverse of
+  today's placement (`Layout::frame_px` in `console.rs`, called through
+  `console_px` in `crates/app/src/pointer.rs`, which places the frame
+  with `render::placement`, the function `Renderer::draw` uses) moves
+  onto `Placement` as `Placement::frame_px`. For `Fit` it takes the
+  fraction: frame x = (window x - x) × den / num, rounded down.
+  `pointer.rs` passes the mode the frame was drawn in (the backend
+  keeps the last frame's `ConsoleSpec` beside the reader; it keeps the
+  mode there too). `Layout::frame_px` stays as a call of the `Integer`
+  placement's, as `layout` does, so 2413's tests stay; `Placement`'s
+  tests get a `Fit` row.
 - **The check compares the game's default with `shuyi.ron`:**
   - `GameTools::scale(&self) -> Option<ScaleMode>`
     (`crates/cli/src/game.rs`), `None` by default;
@@ -312,7 +313,7 @@ types follow ADR-0039.
    `crates/cli/src/game.rs`, `crates/platform/src/app.rs` (`run`,
    `present_game`), `headless.rs` and `harness.rs`, and `settings.rs`,
    `toy.rs` and `screens/options.rs` in `shuyi-ui`. Check which of
-   2110, 2314, 2346, 2351, 2413 and 3012 are done.
+   2110, 2314, 2346, 2351 and 3012 are done (2413 is).
 2. Write `ScaleMode`, move `Factor`, write `scale`, `place` and
    `MAX_DRAW_PX`, and put `layout` on `place`, with the tests below.
 3. Move `check --target` onto them. Its tests pass unchanged.
@@ -320,7 +321,7 @@ types follow ADR-0039.
    scale, the headless and `Harness` parts, and the option row, with
    the toy, hello-grid and the `()` form.
 5. Draw `Fit` in `shuyi-app`: the render target, the backdrop on it,
-   and the card. Move the pointer's inverse if 2413 is done.
+   and the card. Move the pointer's inverse onto `Placement`.
 6. Add `GameTools::scale`, the comparison and the limit lines, `Fake`,
    and the tools of the grid template, hello-grid and `BasicTools`.
 7. Count the changed lines. If the PR would pass about 600 (fixtures

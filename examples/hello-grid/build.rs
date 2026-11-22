@@ -5,6 +5,10 @@
 //! here). Only on the web (`wasm32-unknown-unknown`): under WASI, where
 //! CI's `determinism` job runs the golden test (ticket 2116), no page
 //! provides them.
+//!
+//! It prints no `rerun-if-changed`, so Cargo runs it again when any file of
+//! the package changes: a file added to `files/` or removed rebuilds the
+//! table `shuyi::files!` embeds, as a file changed there does.
 
 fn main() {
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH");

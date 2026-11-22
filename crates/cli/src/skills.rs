@@ -21,7 +21,6 @@ use std::fmt::{self, Write as _};
 use std::fs;
 use std::path::{Component, Path};
 
-use include_dir::{Dir, DirEntry, include_dir};
 use serde::Deserialize;
 
 use crate::contract::Op;
@@ -45,7 +44,8 @@ pub const MAX_DESCRIPTION: usize = 1024;
 pub const MAX_COMPATIBILITY: usize = 500;
 
 /// The pack this `shuyi` was built with, embedded.
-static EMBEDDED: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../skills");
+/// `build.rs` writes its table.
+static EMBEDDED: &[(&str, &[u8])] = shuyi_embed::files!("skills");
 
 /// A skill: its name (its folder's) and its files.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,17 +222,20 @@ impl Pack {
 
     /// The pack this `shuyi` was built with.
     pub fn embedded() -> Self {
-        let mut pack = Self::default();
-        for entry in EMBEDDED.entries() {
-            if let DirEntry::Dir(dir) = entry {
-                let name = dir
-                    .path()
-                    .file_name()
-                    .map_or_default(|n| n.to_string_lossy().into_owned());
-                let mut files = BTreeMap::new();
-                embedded_files(dir, dir.path(), &mut files);
-                pack.add(name, files);
+        // Each folder's files, by their path from it; a file beside the
+        // folders (a README) is no skill's.
+        let mut folders: BTreeMap<String, BTreeMap<String, Vec<u8>>> = BTreeMap::new();
+        for (path, bytes) in EMBEDDED {
+            if let Some((name, path)) = path.split_once('/') {
+                folders
+                    .entry(name.to_owned())
+                    .or_default()
+                    .insert(path.to_owned(), bytes.to_vec());
             }
+        }
+        let mut pack = Self::default();
+        for (name, files) in folders {
+            pack.add(name, files);
         }
         pack.sort();
         pack
@@ -278,19 +281,6 @@ fn read_files(
         }
     }
     Ok(())
-}
-
-/// Every file of an embedded folder into `files`, by its path from `root`.
-fn embedded_files(dir: &Dir<'_>, root: &Path, files: &mut BTreeMap<String, Vec<u8>>) {
-    for entry in dir.entries() {
-        match entry {
-            DirEntry::Dir(d) => embedded_files(d, root, files),
-            DirEntry::File(f) => {
-                let path = f.path().strip_prefix(root).unwrap_or(f.path());
-                files.insert(shown(path), f.contents().to_vec());
-            }
-        }
-    }
 }
 
 /// A path, `/`-separated.
