@@ -1985,3 +1985,16 @@ delete them".
 - The scratch run: made and run by the session that works 3406; Nick
   deleted the two repositories himself, keeping `delete_repo` from the
   session.
+
+## 2026-11-22: in-house file embedding unparked
+
+Source: Nick, asking a session to do ticket 2215 (our own build-script
+file table in `shuyi-embed`, replacing `include_dir`), parked with the
+in-house platform layer on 2026-10-19. Asked whether to unpark it now or
+keep it parked until the MVP, he chose **"Unpark 2215 now"**.
+
+**Rules:**
+
+- **2215 is unparked** and worked now.
+- **The rest of the in-house platform layer stays parked** until the
+  MVP, as decided on 2026-10-19: unparking 2215 unparks no other ticket.

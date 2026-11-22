@@ -24,7 +24,6 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use include_dir::{Dir, DirEntry, include_dir};
 use schemars::JsonSchema;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
@@ -49,7 +48,8 @@ pub const FORMAT_VERSION: u32 = 1;
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The engine's own template, embedded.
-static BUILT_IN: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../templates/shuyi-default");
+/// `build.rs` writes its table.
+static BUILT_IN: &[(&str, &[u8])] = shuyi_embed::files!("templates");
 
 /// Where the engine's own template is, in the engine's repository.
 pub const BUILT_IN_ORIGIN: &str = "templates/shuyi-default";
@@ -603,32 +603,18 @@ fn read_dir(root: &Path, dir: &Path, files: &mut Files) -> Result<(), String> {
     Ok(())
 }
 
-/// The files of an embedded folder, at any depth, by their path from it.
-fn embedded_files(dir: &'static Dir<'static>) -> Files {
-    let mut files = Files::new();
-    let mut pending = vec![dir];
-    while let Some(dir) = pending.pop() {
-        for entry in dir.entries() {
-            match entry {
-                DirEntry::Dir(d) => pending.push(d),
-                DirEntry::File(f) => {
-                    let name = f.path().to_string_lossy().replace('\\', "/");
-                    files.insert(name, f.contents().to_vec());
-                }
-            }
-        }
-    }
-    files
+/// The files of an embedded folder's table, by their path from it.
+fn embedded_files(table: &[(&str, &[u8])]) -> Files {
+    table
+        .iter()
+        .map(|(path, bytes)| ((*path).to_owned(), bytes.to_vec()))
+        .collect()
 }
 
 /// The engine's own template, `templates/shuyi-default`, as the `shuyi`
 /// binary embeds it.
 pub fn built_in() -> Result<Template, LoadError> {
-    Template::read(
-        BUILT_IN_ORIGIN,
-        embedded_files(&BUILT_IN),
-        &engine_version(),
-    )
+    Template::read(BUILT_IN_ORIGIN, embedded_files(BUILT_IN), &engine_version())
 }
 
 #[cfg(test)]

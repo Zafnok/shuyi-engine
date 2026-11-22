@@ -79,10 +79,9 @@ pub use bundle::{Bundle, Files, Layer};
 
 /// What [`files!`] expands to names: not part of the API, which semver
 /// doesn't cover (ADR-0119).
-#[cfg(feature = "std")]
 #[doc(hidden)]
 pub mod __embed {
-    pub use include_dir;
+    pub use shuyi_embed_macros::table;
 }
 pub use error::{ContentError, ContentErrors, line_of};
 pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits};
