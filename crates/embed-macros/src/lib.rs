@@ -90,7 +90,7 @@ fn unquote(literal: &str) -> Result<String, String> {
             other => {
                 return Err(format!(
                     "`{literal}`: the escape `\\{}` is not read in a folder's name",
-                    other.map(String::from).unwrap_or_default()
+                    other.map_or_default(String::from)
                 ));
             }
         }
@@ -142,13 +142,13 @@ mod tests {
         );
         assert_eq!(unquote(r#"r"C:\game""#).as_deref(), Ok(r"C:\game"));
         assert_eq!(
-            unquote(r###"r#"say "files""#"###).as_deref(),
+            unquote("r#\"say \"files\"\"#").as_deref(),
             Ok(r#"say "files""#)
         );
         assert!(unquote("files").is_err());
         assert!(unquote("42").is_err());
         assert!(unquote(r#""\u{41}""#).is_err());
-        assert!(unquote(r##"r#"unclosed""##).is_err());
+        assert!(unquote(r#"r#"unclosed""#).is_err());
     }
 
     fn vars(name: &str) -> Option<String> {

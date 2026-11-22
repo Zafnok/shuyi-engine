@@ -5,10 +5,8 @@
 //! and a game hands it to `shuyi_assets::Layer::table`.
 //!
 //! ```no_run
-//! // build.rs
-//! fn main() {
-//!     shuyi_embed::Table::new("files").dir("files").skip("**/README.md").write();
-//! }
+//! // build.rs, in its `fn main`
+//! shuyi_embed::Table::new("files").dir("files").skip("**/README.md").write();
 //! ```
 //!
 //! ```ignore
@@ -296,11 +294,7 @@ impl Table {
     /// When the folder can't be embedded ([`Error`]): the build fails with
     /// the path.
     pub fn write(self) {
-        let var = |name: &str| {
-            std::env::var_os(name)
-                .map(PathBuf::from)
-                .unwrap_or_default()
-        };
+        let var = |name: &str| std::env::var_os(name).map_or_default(PathBuf::from);
         match self.write_to(&var("CARGO_MANIFEST_DIR"), &var("OUT_DIR")) {
             Ok(written) => {
                 let mut out = io::stdout().lock();

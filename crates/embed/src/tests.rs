@@ -57,7 +57,7 @@ fn an_empty_folder_is_an_empty_table() {
     let root = scratch("empty");
     fs::create_dir_all(root.join("nothing/here")).unwrap_or_else(|e| panic!("{e}"));
     let walk = walk(&root, &[]).unwrap_or_else(|e| panic!("{e}"));
-    assert!(walk.files.is_empty());
+    assert_eq!(walk.files, []);
     assert_eq!(table_source(&walk.files), "&[\n]");
 }
 
@@ -113,8 +113,7 @@ fn two_paths_differing_only_by_case_are_an_error_with_both() {
     let paths = ["data/Hero.png", "data/hero.png", "other.png"];
     let error = same_but_case(paths.into_iter())
         .err()
-        .map(|e| e.to_string());
-    let error = error.unwrap_or_default();
+        .map_or_default(|e| e.to_string());
     assert!(
         error.contains("`data/Hero.png`") && error.contains("`data/hero.png`"),
         "{error}"
@@ -132,10 +131,7 @@ fn a_folder_with_files_differing_only_by_case_fails_where_the_disk_allows_them()
     if fs::read_dir(&root).map_or(0, Iterator::count) < 2 {
         return;
     }
-    let error = walk(&root, &[])
-        .err()
-        .map(|e| e.to_string())
-        .unwrap_or_default();
+    let error = walk(&root, &[]).err().map_or_default(|e| e.to_string());
     assert!(
         error.contains("`Hero.png`") && error.contains("`hero.png`"),
         "{error}"
