@@ -150,6 +150,109 @@ fn the_most_detailed_level_is_the_most_detailed_of_any_part() {
     );
 }
 
+#[test]
+fn a_target_passes_at_its_longest_prefix() {
+    let filter = LogFilter::default()
+        .with_prefix("gilrs", LogLevel::Info)
+        .with_prefix("gilrs_core", LogLevel::Debug);
+    assert!(filter.allows_target("gilrs_core::platform", LogLevel::Debug));
+    assert!(!filter.allows_target("gilrs::gamepad", LogLevel::Debug));
+    assert!(filter.allows_target("gilrs::gamepad", LogLevel::Info));
+    assert!(
+        !filter.allows_target("macroquad", LogLevel::Info),
+        "no prefix: the others' level"
+    );
+    // A prefix never covers a category's name: `audio` stays `info`.
+    let audio = LogFilter::default().with_prefix("aud", LogLevel::Debug);
+    assert!(!audio.allows_target("audio", LogLevel::Debug));
+    assert!(audio.allows_target("audiokit", LogLevel::Debug));
+}
+
+#[test]
+fn the_same_prefix_given_twice_keeps_the_last() {
+    let filter = LogFilter::default()
+        .with_prefix("gilrs", LogLevel::Debug)
+        .with_prefix("gilrs", LogLevel::Error);
+    assert!(!filter.allows_target("gilrs", LogLevel::Warn));
+    assert!(filter.allows_target("gilrs", LogLevel::Error));
+    assert_eq!(
+        filter,
+        LogFilter::default().with_prefix("gilrs", LogLevel::Error)
+    );
+}
+
+#[test]
+fn the_most_detailed_level_counts_the_prefixes() {
+    let error = || LogFilter::new(LogLevel::Error).with_others(LogLevel::Error);
+    assert_eq!(
+        error()
+            .with_prefix("gilrs", LogLevel::Debug)
+            .most_detailed(),
+        LogLevel::Debug
+    );
+    assert_eq!(
+        error().with_prefix("gilrs", LogLevel::Warn).most_detailed(),
+        LogLevel::Warn
+    );
+}
+
+/// `text` parsed, which must be a filter.
+fn parsed(text: &str) -> LogFilter {
+    LogFilter::parse(text).unwrap_or_else(|e| panic!("{text}: {e}"))
+}
+
+#[test]
+fn a_filter_is_read_from_its_text() {
+    assert_eq!(parsed("info"), LogFilter::default());
+    assert_eq!(parsed(""), LogFilter::default(), "nothing: the default");
+    assert_eq!(parsed("debug"), LogFilter::new(LogLevel::Debug));
+    assert_eq!(
+        parsed("warn,audio=debug"),
+        LogFilter::new(LogLevel::Warn).with(LogCategory::Audio, LogLevel::Debug)
+    );
+    assert_eq!(
+        parsed("gilrs=warn"),
+        LogFilter::default().with_prefix("gilrs", LogLevel::Warn)
+    );
+    assert_eq!(
+        parsed(" warn , , audio = debug,macroquad=info ,"),
+        LogFilter::new(LogLevel::Warn)
+            .with(LogCategory::Audio, LogLevel::Debug)
+            .with_prefix("macroquad", LogLevel::Info),
+        "spaces trimmed and empty items skipped"
+    );
+    assert_eq!(
+        parsed("debug,error"),
+        LogFilter::new(LogLevel::Error),
+        "a later item wins"
+    );
+    let gilrs = parsed("gilrs=debug");
+    assert!(gilrs.allows_target("gilrs_core::platform", LogLevel::Debug));
+    assert!(!gilrs.allows_target("macroquad", LogLevel::Info));
+}
+
+#[test]
+fn a_bad_filter_is_refused_with_a_reason() {
+    let reason = |text: &str| match LogFilter::parse(text) {
+        Ok(filter) => panic!("{text} gave {filter:?}"),
+        Err(reason) => reason,
+    };
+    assert_eq!(
+        reason("loud"),
+        "`loud`: `loud` is not a level (error, warn, info or debug)"
+    );
+    assert_eq!(
+        reason("warn,audio=loud"),
+        "`audio=loud`: `loud` is not a level (error, warn, info or debug)"
+    );
+    assert_eq!(
+        reason("=debug"),
+        "`=debug` names no category or target before `=`"
+    );
+    assert!(reason("audio=").contains("is not a level"));
+    assert!(reason("Info").contains("`Info`"), "names are lowercase");
+}
+
 /// What a test does to a ring: push a line, or read what is new.
 #[derive(Debug, Clone)]
 enum Op {

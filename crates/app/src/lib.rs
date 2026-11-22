@@ -221,7 +221,7 @@ use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
 use shuyi_ui::dialogue::preview::PreviewGame;
 use shuyi_ui::frame::ConsoleSpec;
-use shuyi_ui::log::LogLine;
+use shuyi_ui::log::{LogFilter, LogLine};
 
 /// The sound backend this build plays on, for the engine's own sound gates
 /// (the example `sound_probe`, ADR-0066). Not for games, and not covered by
@@ -578,7 +578,7 @@ async fn run<G: GameData>(
 ) {
     // First, inside the window: on the web the panic hook chains miniquad's,
     // which its start sets.
-    install_log(&config, &storage_at);
+    let log_filter = install_log(&config, &storage_at);
     if let Some(warning) = &opened.warning {
         log::warn!(target: "platform", "window: {warning}");
     }
@@ -615,6 +615,7 @@ async fn run<G: GameData>(
     let records_play = config.crash.records_play();
     let mut platform = Macroquad::new(&mut config, facts, storage_at.clone(), &opened);
     let mut app = App::new(start);
+    app.set_log_filter(log_filter);
     let kept = sessions::Kept::start(&mut app, &storage_at, recorded_manifest);
     let mut pacer = Pacer::new(config.window.vsync);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
@@ -712,18 +713,27 @@ fn frame_or_crash<G: GameData>(
 }
 
 /// Installs the log's sinks ([`log_sink::install`]) for the game `config`
-/// names, its file on a desktop in the storage's `logs` folder, then logs
-/// the lines the storage's move kept for it.
-fn install_log(config: &AppConfig, storage_at: &storage::StorageAt) {
+/// names, its file on a desktop in the storage's `logs` folder and its
+/// filter from `SHUYI_LOG` there (nothing on the web), then logs the lines
+/// the storage's move kept for it. Returns the filter in use, for App.
+fn install_log(config: &AppConfig, storage_at: &storage::StorageAt) -> LogFilter {
     #[cfg(not(target_arch = "wasm32"))]
-    let dir = storage_at.log_dir();
+    let (dir, filter) = (
+        storage_at.log_dir(),
+        std::env::var(log_sink::FILTER_VARIABLE).ok(),
+    );
     #[cfg(target_arch = "wasm32")]
-    let dir = {
+    let (dir, filter) = {
         let _ = storage_at;
-        None
+        (None, None::<String>)
     };
     let no_folder = dir.is_none() && !cfg!(target_arch = "wasm32");
-    log_sink::install(config.storage_name, config.crash.game_version, dir);
+    let in_use = log_sink::install(
+        config.storage_name,
+        config.crash.game_version,
+        dir,
+        filter.as_deref(),
+    );
     if no_folder {
         log::warn!(target: "platform", "no data folder, so no log file");
     }
@@ -731,6 +741,7 @@ fn install_log(config: &AppConfig, storage_at: &storage::StorageAt) {
     for line in storage::take_move_lines() {
         log::info!(target: "storage", "{line}");
     }
+    in_use
 }
 
 /// After a frame is drawn: the cap it asked for applies from the next, and

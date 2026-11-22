@@ -186,9 +186,9 @@ These tickets, in order:
 | 3218 (done) | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
 | 2405 (done) | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
-| 2133 | The bots' data made alike: the settings refuse unknown fields |
+| 2133 (done) | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
-| 2239 | Translated dialogue lines get the text box's page check |
+| 2239 (done) | Translated dialogue lines get the text box's page check |
 | 3041 (done) | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
@@ -458,7 +458,7 @@ is done.
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3086 | A desktop launch's seed differs from launch to launch, kept in its session record |
 | 3041 (done) | Log sinks in shipped builds: a log file, and the browser console on the web |
-| 3324 | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library (after 3041) |
+| 3324 (done) | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
@@ -602,7 +602,7 @@ them.
 | 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
 | 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
 | 2541 | `shuyi autobalance`: the search for a game's stage on every core, a time limit, the stage written back (after 2532) | game#1183 |
-| 2133 | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
+| 2133 (done) | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
 | 2544 | One operation plays a game's bots: `bots` folded into `playtest` (after 2532 and 2533) | 2126 |
 | 2540 | `frame-png` scripts wind the crank: a `--crank DEGREES` step beside `--keys`, `--pad` and `--wait` | game#1182 |
 

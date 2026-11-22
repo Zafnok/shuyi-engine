@@ -1,6 +1,6 @@
 # ADR-0027: Bots that plan see a determinized copy: integer rollouts, shared seeds and work units
 
-- **Status:** Accepted
+- **Status:** Accepted; §8's personas superseded by ADR-0135 (with §4's sentence on a persona's settings)
 - **Date:** 2026-10-21
 - **Related tickets:** 2125 (this), 2113 (minimax and MCTS), 2126 (the playtest runner), 2127 (autobalance), 3009 (thinking in slices), game 0506
 

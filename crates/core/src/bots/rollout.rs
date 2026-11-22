@@ -67,6 +67,7 @@ impl<R: Sides, B: Bot<R>> Playout<R> for B {
 
 /// When a playout stops, short of the game's end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub enum Horizon {
     /// After the side to move has changed this many times (the
     /// candidate's own change included).
@@ -75,9 +76,11 @@ pub enum Horizon {
     Turns(u32),
 }
 
-/// How a [`Rollout`] bot thinks: data, so a persona's settings can be a
+/// How a [`Rollout`] bot thinks: data, so a bot's settings can be a
 /// file. Build it with [`RolloutSettings::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct RolloutSettings {
     /// How many of the ordered commands are tried, from the first. 0

@@ -177,7 +177,8 @@ None.
 **Out (do not do):**
 - A filter of the view's own, by level or category, chosen from the
   menu. The view shows what App's `LogFilter` keeps, and 3324 reads
-  that filter from `SHUYI_LOG`. Write a ticket when someone needs more.
+  that filter from `SHUYI_LOG` (3324, done: `run_app` hands it to
+  `App::set_log_filter`). Write a ticket when someone needs more.
 - Scrolling back through older lines. The 500 kept lines are read
   through the contract's `run` and `scene` answers (3040, done), and
   from a running windowed build through the live link (2521).
