@@ -211,7 +211,7 @@ parked. The design is ADR-0138, which amends ADR-0119 §3.
   docs and done tickets). Its layers are tables its own `build.rs` writes
   (game ADR-0105).
 
-Past 1,000 counted lines (about 1,440): it would split cleanly between `shuyi-embed` with its fixture alone, and the move of `files!`, `shuyi-cli` and `include_dir`'s removal onto it.
+Size: 1,578 counted lines, not split: the clean cut is `shuyi-embed` and its fixture alone, then the move of `files!`, `shuyi-cli` and `include_dir`'s removal onto it, but the first part alone lands a crate nothing in the engine uses, and the 120 lines CI's mutants asked for test the macro and the build-script path of both parts.
 
 Game: nothing to adopt, the game's layers are its own build script's tables (game ADR-0105), and it names no removed item.
 
