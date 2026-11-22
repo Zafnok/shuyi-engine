@@ -128,7 +128,7 @@ pub fn report() -> Result<Report, String> {
 /// before each frame from then on, so the last frame stays on the page.
 pub async fn finish(code: i32, mut redraw: impl FnMut()) {
     if cfg!(target_arch = "wasm32") {
-        info!("{} (exit code {})", DONE, code);
+        log::info!(target: "platform", "{DONE} (exit code {code})");
         loop {
             redraw();
             next_frame().await;
@@ -139,7 +139,7 @@ pub async fn finish(code: i32, mut redraw: impl FnMut()) {
 
 /// Logs why the plan can't run, and gives [`CANNOT_RUN`].
 fn cannot_run(why: &str) -> i32 {
-    error!("{}{}", PREFIX, why);
+    log::error!(target: "platform", "{PREFIX}{why}");
     CANNOT_RUN
 }
 
@@ -231,7 +231,7 @@ async fn play_frames<G: GameData>(app: &mut App<G>, platform: &mut Capturing, pl
             report.captured()
         ));
     }
-    info!("{}{}", PREFIX, report.summary());
+    log::info!(target: "platform", "{}{}", PREFIX, report.summary());
     report.exit_code()
 }
 
@@ -491,9 +491,9 @@ impl Report {
         }
         let line = line(name, window, reference, comparison, scale);
         if passes {
-            info!("{}", console(&line));
+            log::info!(target: "platform", "{}", console(&line));
         } else {
-            error!("{}", console(&line));
+            log::error!(target: "platform", "{}", console(&line));
         }
         self.lines.push(line);
         self.write_lines()?;

@@ -63,8 +63,13 @@ Each report is the storage key `crash-<when>`:
 - **the web:** `localStorage`, under the key `<storage name>/crash-<when>`.
 
 The storage name is `AppConfig::storage_name` (`shuyi.ron`'s `app.storage`), and
-`shuyi_app::storage::desktop_dir` gives the folder. A player who reports a crash
-sends the newest `crash-*.ron` there.
+`shuyi_app::storage::desktop_dir` gives the folder. The log's files are beside
+the reports, in its `logs` folder (`shuyi_app::storage::log_dir`): `latest.log`
+of the last run, and `previous-1.log` to `previous-3.log` of the three before
+([platform-backends.md](platform-backends.md#logs)). The panic's message is a
+line of them too. A player who reports a crash sends the newest `crash-*.ron`
+and the logs folder: once the game has started again, the crashed run's log is
+`previous-1.log`.
 
 ## Reading the frames
 

@@ -719,8 +719,10 @@ fn clean(text: &str) -> String {
 fn say(line: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     eprintln!("shuyi-sound-probe: {line}");
+    // Straight to the console: the probe installs no logger, and
+    // macroquad's `logging` is the `log` crate (ticket 3041).
     #[cfg(target_arch = "wasm32")]
-    macroquad::logging::info!("shuyi-sound-probe: {}", line);
+    macroquad::miniquad::info!("shuyi-sound-probe: {}", line);
 }
 
 /// One pass of the main loop goes by.

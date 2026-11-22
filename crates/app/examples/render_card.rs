@@ -24,7 +24,7 @@ use std::sync::OnceLock;
 
 use image::ImageEncoder as _;
 use image::codecs::png::PngEncoder;
-use macroquad::prelude::{error, info, next_frame};
+use macroquad::prelude::next_frame;
 use shuyi_app::capture::{self, read_window, window_layout};
 use shuyi_app::render::Renderer;
 use shuyi_app::{Window, open_window};
@@ -55,11 +55,13 @@ fn main() {
 /// Draws and captures the card, then finishes with the run's code (on the
 /// web, still drawing the card).
 async fn show(card: RenderCard) {
+    // Its lines reach the console (the web) and stderr (a debug build).
+    shuyi_app::log_sink::install("render-card", "", None);
     let mut renderer = None;
     let code = match draw_and_capture(&card, &mut renderer).await {
         Ok(code) => code,
         Err(e) => {
-            error!("{}render card: {}", capture::PREFIX, e);
+            log::error!(target: "platform", "{}render card: {}", capture::PREFIX, e);
             capture::CANNOT_RUN
         }
     };
@@ -102,7 +104,7 @@ async fn draw_and_capture(
     let window = read_window(&fit, reference.width, reference.height)?;
     let comparison = raster::compare(&window, &reference, Tolerance::default());
     report.add("card", &window, &reference, &comparison, fit.scale)?;
-    info!("{}render card: {}", capture::PREFIX, report.summary());
+    log::info!(target: "platform", "{}render card: {}", capture::PREFIX, report.summary());
     Ok(report.exit_code())
 }
 

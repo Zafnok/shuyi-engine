@@ -70,7 +70,7 @@ What is planned:
 - 3052 (After MVP): the shell's loading states (`data-shuyi` on
   `<html>`) and readable errors. Its `file` error names `shuyi web
   --serve` once this ticket is done.
-- 3041 (After MVP): log sinks; on the web, the browser's console by
+- 3041 (done): log sinks; on the web, the browser's console by
   level, and a panic hook that logs the message.
 - 3004 (done): `shuyi export web` packages the folder
   (`crates/cli/src/export/web.rs`), and its `--run` gives the

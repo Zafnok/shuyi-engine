@@ -69,7 +69,12 @@ shuyi-platform = { path = "../platform", features = ["heap"] }
 # The heap counter of every debug build (ADR-0046 §9): its `global` feature
 # is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
-macroquad.workspace = true
+# `log-rs`: macroquad's `logging` is the `log` crate, so its own lines reach
+# the log's sinks (ticket 3041). Every game on `shuyi-app` gets it.
+macroquad = { workspace = true, features = ["log-rs"] }
+# The facade every line goes through to the log's sinks (`src/log_sink.rs`,
+# ticket 3041, ADR-0030): the version gilrs already brings, no features.
+log = "0.4"
 # Sound effects play on a quad-snd context of the player's own, where each
 # playback stops alone (ticket 2344), and native music decodes on a worker
 # thread into contexts of its own (ticket 0215, game ADR-0028). The same
