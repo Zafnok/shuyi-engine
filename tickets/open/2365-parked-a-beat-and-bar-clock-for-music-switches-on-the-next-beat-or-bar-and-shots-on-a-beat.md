@@ -197,11 +197,17 @@ None.
   form (`bpm` as a number, so `bpm_milli` 92 500 is `bpm: 92.5`), and
   its round trip covers a cue with a tempo. If not, 2218 does it (its
   clause says so).
-- **Either order with 2397:** if 2397 is done, `MusicCue` has a
-  loop region; `beats_since` and `bars_since`
-  count across its wrap, from `loop_end_ms` back to `loop_start_ms`, as
-  `MusicClock` wraps, with the beat at the loop point counted once (a
-  test). If not, nothing to do (2397 wraps them).
+- **From 2397 (done):** a looped `MusicCue` may name a loop region
+  (`loop_start_ms`, `loop_end_ms`, `MusicCue::loop_region`), or its Ogg
+  file may (`LOOPSTART`, `LOOPLENGTH`). The platform reports a track that
+  goes round one by where it is in the track, back by the region's length
+  each time round, and `MusicClock::position` is that
+  ([ADR-0136](../../docs/adr/0136-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
+  So `beats_since` and `bars_since` count across the wrap, from
+  `loop_end_ms` back to `loop_start_ms`, with the beat at the loop point
+  counted once (a test): a position that went back is a wrap, by the
+  cue's region. A region only the file names is the backend's; the beat
+  clock then counts from the position as it comes.
 - **The pack:** `MusicCue`'s and `CinematicFile`'s binary forms change,
   so `shuyi_assets::pack::VERSION` (`crates/assets/src/pack.rs`) goes
   to the next number. One music cue in the pack test's sources gets a
@@ -233,7 +239,7 @@ None.
 **Out (do not do):**
 - tempo changes inside a track (one tempo per track; a follow-up when a
   game asks), and time signatures other than a beat count per bar;
-- loop regions (2397); the beat clock wrapping at
+- loop regions (2397, done); the beat clock wrapping at
   one is In, above (either order);
 - starting a track part-way in so its beats line up, stems in sync,
   scheduling to the sample, and calibrating the device's delay: a

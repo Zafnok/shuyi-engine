@@ -236,11 +236,65 @@ pub struct MusicCue {
     pub credit: CreditRef,
     /// The sound group it plays in: `None` is `music`.
     pub group: Option<String>,
+    /// Where a looped track's region starts, in milliseconds (ticket 2397):
+    /// it plays from its start up to [`loop_end_ms`](Self::loop_end_ms)
+    /// once, then from here to there again and again. With `loop_end_ms`
+    /// or not at all: [`loop_region`](Self::loop_region) gives both.
+    /// `None` loops the whole track, or the region its file names (an Ogg
+    /// file's `LOOPSTART` and `LOOPLENGTH` comments), which these replace.
+    #[serde(default)]
+    pub loop_start_ms: Option<u32>,
+    /// Where a looped track's region ends and it comes round, in
+    /// milliseconds: no later than `length_ms`.
+    #[serde(default)]
+    pub loop_end_ms: Option<u32>,
+}
+
+/// Part of a track, from `start_ms` up to, not including, `end_ms`: a
+/// looped track plays what comes before it once, then goes round it
+/// (ticket 2397). A value (ADR-0039, kind 3): build it with
+/// [`LoopRegion::new`].
+///
+/// **Frames.** A backend plays it in frames of the file: a millisecond `ms`
+/// is frame `ms × rate / 1000`, rounded down ([`frames`](Self::frames)),
+/// so a region's end is never past what the milliseconds say. A region a
+/// file names in frames is played exactly as the file says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct LoopRegion {
+    /// Its first millisecond.
+    pub start_ms: u32,
+    /// The millisecond after its last: where the track comes round.
+    pub end_ms: u32,
+}
+
+impl LoopRegion {
+    /// From `start_ms` up to `end_ms`, if that is any time at all.
+    #[must_use]
+    pub const fn new(start_ms: u32, end_ms: u32) -> Option<Self> {
+        if start_ms < end_ms {
+            Some(Self { start_ms, end_ms })
+        } else {
+            None
+        }
+    }
+
+    /// Its first frame and the frame after its last, in a file of `rate`
+    /// frames a second: each millisecond rounded down onto a frame. `None`
+    /// if they come to the same frame (a region shorter than a frame).
+    #[must_use]
+    pub fn frames(self, rate: u32) -> Option<(u64, u64)> {
+        // u32 × u32 fits a u64.
+        let frame = |ms: u32| u64::from(ms) * u64::from(rate) / 1000;
+        let (start, end) = (frame(self.start_ms), frame(self.end_ms));
+        (start < end).then_some((start, end))
+    }
 }
 
 impl MusicCue {
     /// The track `file`, at `volume` percent, `length_ms` long, made by
-    /// `credit`, looped, in the `music` group.
+    /// `credit`, looped, in the `music` group, round the whole track (or
+    /// the region its file names).
     #[must_use]
     pub const fn new(file: String, volume: u8, length_ms: u32, credit: CreditRef) -> Self {
         Self {
@@ -250,6 +304,27 @@ impl MusicCue {
             length_ms,
             credit,
             group: None,
+            loop_start_ms: None,
+            loop_end_ms: None,
+        }
+    }
+
+    /// The same track, looping round `region` after its intro.
+    #[must_use]
+    pub const fn with_loop(mut self, region: LoopRegion) -> Self {
+        self.loop_start_ms = Some(region.start_ms);
+        self.loop_end_ms = Some(region.end_ms);
+        self
+    }
+
+    /// The region the cue loops round, if it names one: `None` too for a
+    /// cue that names only one end, or an empty region, which the
+    /// manifest's check refuses.
+    #[must_use]
+    pub const fn loop_region(&self) -> Option<LoopRegion> {
+        match (self.loop_start_ms, self.loop_end_ms) {
+            (Some(start), Some(end)) => LoopRegion::new(start, end),
+            _ => None,
         }
     }
 
@@ -355,6 +430,10 @@ struct RawMusic {
     credit: CreditRef,
     #[serde(default)]
     group: Option<String>,
+    #[serde(default)]
+    loop_start_ms: Option<u32>,
+    #[serde(default)]
+    loop_end_ms: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -731,6 +810,9 @@ impl Check<'_> {
             let why = "length_ms is 0; it is the track's length in milliseconds";
             self.err(&id, format!("music \"{id}\": {why}"));
         }
+        if let Some(why) = loop_problem(m.loop_start_ms, m.loop_end_ms, m.length_ms, m.looped) {
+            self.err(&id, format!("music \"{id}\": {why}"));
+        }
         self.volume(&id, m.volume);
         self.credit_ref(&id, &m.credit);
         self.cue_group("music", &id, m.group.as_deref());
@@ -741,6 +823,8 @@ impl Check<'_> {
             length_ms: m.length_ms,
             credit: m.credit,
             group: m.group,
+            loop_start_ms: m.loop_start_ms,
+            loop_end_ms: m.loop_end_ms,
         };
         self.manifest.music.insert(id, entry);
     }
@@ -780,6 +864,32 @@ fn length_problem(length_ms: u32, actual: Option<u32>) -> Option<String> {
         )),
         Some(_) => None,
     }
+}
+
+/// Why a music cue's loop region isn't one: one end without the other, an
+/// end not after its start, past the track's `length_ms`, or on a track
+/// played once. Each is refused as written, never clamped.
+fn loop_problem(
+    start: Option<u32>,
+    end: Option<u32>,
+    length_ms: u32,
+    looped: bool,
+) -> Option<String> {
+    let (start, end) = match (start, end) {
+        (None, None) => return None,
+        (Some(_), None) => return Some("loop_start_ms needs loop_end_ms too".into()),
+        (None, Some(_)) => return Some("loop_end_ms needs loop_start_ms too".into()),
+        (Some(start), Some(end)) => (start, end),
+    };
+    Some(if start >= end {
+        format!("loop_end_ms {end} must be after loop_start_ms {start}")
+    } else if end > length_ms {
+        format!("loop_end_ms {end} is past the track's end; length_ms is {length_ms}")
+    } else if !looped {
+        "a loop region needs a looped track; this one has looped: false".into()
+    } else {
+        return None;
+    })
 }
 
 /// What's wrong with a credit: an unknown license, or (for third-party
@@ -846,6 +956,8 @@ mod tests {
                 length_ms: 1000,
                 credit: CreditRef::Own,
                 group: None,
+                loop_start_ms: None,
+                loop_end_ms: None,
             }
         );
         let once = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own)
@@ -855,6 +967,44 @@ mod tests {
             (once.looped, once.group.as_deref()),
             (false, Some("weather"))
         );
+        let region = LoopRegion::new(250, 750);
+        let looped =
+            region.map(|r| MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own).with_loop(r));
+        assert_eq!(
+            looped.map(|m| (m.loop_start_ms, m.loop_end_ms, m.loop_region())),
+            Some((Some(250), Some(750), region))
+        );
+    }
+
+    #[test]
+    fn a_loop_region_is_half_open_and_its_frames_round_down() {
+        assert_eq!(LoopRegion::new(5, 5), None);
+        assert_eq!(LoopRegion::new(6, 5), None);
+        let region = LoopRegion::new(1000, 2000).unwrap_or_else(|| panic!("a region"));
+        assert_eq!((region.start_ms, region.end_ms), (1000, 2000));
+        assert_eq!(region.frames(44_100), Some((44_100, 88_200)));
+        // 1 ms is 44.1 frames: both ends go down onto a frame.
+        let odd = LoopRegion::new(1, 3).unwrap_or_else(|| panic!("a region"));
+        assert_eq!(odd.frames(44_100), Some((44, 132)));
+        // At 400 frames a second, 1 ms and 2 ms are both frame 0: no region.
+        let short = LoopRegion::new(1, 2).unwrap_or_else(|| panic!("a region"));
+        assert_eq!(short.frames(400), None);
+        assert_eq!(short.frames(500), Some((0, 1)));
+        // The largest of both fits.
+        let wide = LoopRegion::new(0, u32::MAX).unwrap_or_else(|| panic!("a region"));
+        let most = u64::from(u32::MAX) * u64::from(u32::MAX) / 1000;
+        assert_eq!(wide.frames(u32::MAX), Some((0, most)));
+    }
+
+    #[test]
+    fn a_cue_naming_one_end_has_no_region() {
+        let mut m = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own);
+        m.loop_start_ms = Some(10);
+        assert_eq!(m.loop_region(), None);
+        m.loop_end_ms = Some(10);
+        assert_eq!(m.loop_region(), None, "empty");
+        m.loop_end_ms = Some(11);
+        assert_eq!(m.loop_region(), LoopRegion::new(10, 11));
     }
 
     #[test]
@@ -1331,6 +1481,76 @@ mod tests {
         // The field is required.
         let missing = FULL.replace("looped: false, length_ms: 2000, ", "looped: false, ");
         assert_eq!(errors(&missing).len(), 1);
+    }
+
+    /// `FULL` with `fields` written into the looped track `title`.
+    fn title_with(fields: &str) -> String {
+        FULL.replace(
+            "length_ms: 2000, credit: Credit(\"sunrise\")",
+            &format!("length_ms: 2000, credit: Credit(\"sunrise\"){fields}"),
+        )
+    }
+
+    #[test]
+    fn a_loop_region_is_read_and_kept() {
+        let source = title_with(", loop_start_ms: 500, loop_end_ms: 2000");
+        let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
+        let title = m.music.get("title");
+        assert_eq!(
+            title.and_then(MusicCue::loop_region),
+            LoopRegion::new(500, 2000)
+        );
+        // Left out, there is none: the whole track loops, or the file's region.
+        let plain = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        let title = plain.music.get("title");
+        assert_eq!(
+            title.map(|t| (t.loop_start_ms, t.loop_end_ms)),
+            Some((None, None))
+        );
+    }
+
+    #[test]
+    fn a_loop_region_must_have_both_ends_in_order_inside_a_looped_track() {
+        let cases = [
+            (", loop_start_ms: 0", "loop_start_ms needs loop_end_ms too"),
+            (", loop_end_ms: 10", "loop_end_ms needs loop_start_ms too"),
+            (
+                ", loop_start_ms: 10, loop_end_ms: 10",
+                "loop_end_ms 10 must be after loop_start_ms 10",
+            ),
+            (
+                ", loop_start_ms: 11, loop_end_ms: 10",
+                "loop_end_ms 10 must be after loop_start_ms 11",
+            ),
+            (
+                ", loop_start_ms: 0, loop_end_ms: 2001",
+                "loop_end_ms 2001 is past the track's end; length_ms is 2000",
+            ),
+            (
+                ", loop_start_ms: 0, loop_end_ms: 4294967295",
+                "loop_end_ms 4294967295 is past the track's end; length_ms is 2000",
+            ),
+            (
+                ", looped: false, loop_start_ms: 0, loop_end_ms: 10",
+                "a loop region needs a looped track; this one has looped: false",
+            ),
+        ];
+        for (fields, why) in cases {
+            assert_eq!(
+                errors(&title_with(fields)),
+                [format!("a.ron:8: music \"title\": {why}")],
+                "{fields}"
+            );
+        }
+        // From the very start to the very end is a region; past a u32 isn't a number.
+        assert_eq!(
+            errors(&title_with(", loop_start_ms: 0, loop_end_ms: 2000")),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            errors(&title_with(", loop_start_ms: 0, loop_end_ms: 4294967296")).len(),
+            1
+        );
     }
 
     #[test]

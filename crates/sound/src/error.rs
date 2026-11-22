@@ -56,6 +56,15 @@ pub enum Error {
         /// The width of one.
         bits: u16,
     },
+    /// A file's loop tags that don't name a region of it
+    /// ([`tags::loop_region`](crate::tags::loop_region)).
+    #[error("{tag} {problem}")]
+    LoopTag {
+        /// The tag at fault, `LOOPSTART` or `LOOPLENGTH`.
+        tag: &'static str,
+        /// What is wrong with it.
+        problem: String,
+    },
     /// A file that doesn't read.
     #[error("not a readable {format} file: {reason}")]
     Malformed {

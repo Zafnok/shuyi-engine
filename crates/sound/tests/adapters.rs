@@ -202,6 +202,16 @@ fn an_ogg_file_keeps_its_comments() {
 }
 
 #[test]
+fn an_ogg_files_loop_comments_are_its_region_and_one_without_has_none() {
+    let limits = Limits::default();
+    let source = VorbisSource::new(REGION, &limits).unwrap_or_else(|e| panic!("{e}"));
+    let region = shuyi_sound::mix::Region::new(44_100, 88_200);
+    assert_eq!(source.loop_region(), Ok(region));
+    let plain = VorbisSource::new(STEREO, &limits).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(plain.loop_region(), Ok(None));
+}
+
+#[test]
 fn chunks_of_any_size_make_the_same_ogg_samples() {
     let whole = pcm_or_panic(whole_ogg(STEREO));
     for room in [2, 3, 100, 4096, 1 << 18] {
@@ -334,6 +344,68 @@ fn after_a_page_seek_the_position_says_which_samples_these_are() {
         .max();
     assert_eq!(worst, Some(0), "the same decoder, from the same place");
     assert_eq!(source.position(), Some(441_000));
+}
+
+/// Ticket 2397: an exact seek gives the samples a whole decode has from there,
+/// at a page's edge, inside one, at the end and past it.
+#[test]
+fn an_exact_seek_gives_what_a_whole_decode_has_from_that_frame() {
+    let whole = pcm_or_panic(whole_ogg(LONG));
+    let frames = whole.frames() as u64;
+    let lead = shuyi_sound::vorbis::SEEK_LEAD;
+    for frame in [
+        lead + 1,
+        10_000,
+        44_100,
+        100_000,
+        200_000,
+        300_001,
+        frames - 1,
+        frames,
+        frames + 5,
+    ] {
+        let mut source =
+            VorbisSource::new(LONG, &Limits::default()).unwrap_or_else(|e| panic!("{e}"));
+        source
+            .seek_exact(frame)
+            .unwrap_or_else(|e| panic!("{frame}: {e}"));
+        let from = usize::try_from(frame.min(frames)).unwrap_or(usize::MAX) * 2;
+        assert_eq!(source.position(), Some(frame.min(frames)), "{frame}");
+        let rest = in_chunks(&mut source, 4096);
+        assert!(
+            rest == whole.samples()[from..],
+            "{frame}: {} samples",
+            rest.len()
+        );
+    }
+}
+
+#[test]
+fn a_skip_reads_on_to_the_frame() {
+    let whole = pcm_or_panic(whole_ogg(REGION));
+    for frame in [0, 1, 44_100, 88_199, 88_200, 90_000] {
+        let mut source =
+            VorbisSource::new(REGION, &Limits::default()).unwrap_or_else(|e| panic!("{e}"));
+        source.skip(frame).unwrap_or_else(|e| panic!("{e}"));
+        let from = usize::try_from(frame.min(88_200)).unwrap_or(usize::MAX) * 2;
+        assert!(
+            in_chunks(&mut source, 4096) == whole.samples()[from..],
+            "{frame}"
+        );
+    }
+}
+
+#[test]
+fn an_exact_seek_near_the_start_is_a_new_decoders_and_moves_nothing() {
+    let whole = pcm_or_panic(whole_ogg(REGION));
+    let lead = shuyi_sound::vorbis::SEEK_LEAD;
+    for frame in [0, 1, lead] {
+        let mut source =
+            VorbisSource::new(REGION, &Limits::default()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(source.seek_exact(frame), Err(Error::NoRewind), "{frame}");
+        assert_eq!(source.position(), Some(0));
+        assert!(in_chunks(&mut source, 4096) == whole.samples(), "{frame}");
+    }
 }
 
 #[test]

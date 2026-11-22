@@ -138,7 +138,10 @@ never in CI. A change to the corpus's numbers fails until then.
   it is held to the same expected signals and to old recordings the same way.
 - **What today's backend does wrong is no oracle.** `future_pause`,
   `future_rate` and `future_region` hold what a replacement must do, as their
-  own expected signals; on quad-snd they report `unsupported`. `mute` pins
+  own expected signals; on quad-snd they report `unsupported`. `future_region`
+  plays `intro_loop.ogg` from a cue with no region, so its own `LOOPSTART` and
+  `LOOPLENGTH` tags say where it goes round (2397): the intro once, then the
+  region twice and more, with no intro after the first pass. `mute` pins
   today's fallback and holds on quad-snd alone. `stream_gapless` holds a stream's
   loop to every frame of its join, and `voices_full` holds that a sound with no voice
   free takes none.
@@ -179,7 +182,11 @@ path: expected samples are worked out in `xtask`, by plain arithmetic in floats
 that shares no code with the mixer, and differ by at most a rounding step.
 
 - `mixer:<case>`: `pause`, rates and resampling, `loop`, a region through the mix
-  and through a worker's decoder, `two-streams` at their own gains, `gains`,
+  and through a worker's decoder, `region-from-the-file`, the Ogg file round the
+  region its tags name, through a worker that goes back by an exact seek, into a
+  ring that wraps over and over, fed every other block: the intro and the region
+  twice, each frame the whole decode's, across its pages' edges (2397),
+  `two-streams` at their own gains, `gains`,
   `clamp`, `fade`, `stereo-on-mono`, and `capacity`, a play refused with what plays
   untouched.
 - `mixer:memory`: the most frames decoded and not yet mixed, over a short stream and
@@ -268,7 +275,7 @@ of it mandatory.
 | 3030 mixer | 2210 | Exact mixer samples from independent signals; an offline render budget; bounded decoded PCM over short and long streams |
 | 3031 Windows, web | 3030, and Windows `port-ready` | A selectable backend beside quad-snd; old against new; `future_pause`, `future_rate`, `stream_gapless` and `voices_full` |
 | 3032 Linux, macOS | 3031, and macOS `port-ready` | The same, on both Mac architectures |
-| 2397 regions | 3031 | `future_region`, on the cue's new fields |
+| 2397 regions | 3031 | `future_region` on the in-house backends, from the file's tags; `mixer:region-from-the-file` |
 | 3084 new default | 3032, 2397, 2234, 2378 | The complete matrix on both backends, then one line flipped |
 | 3079 removal | 3084, and the game having run on it | A fresh, complete matrix, the removal, and its revert rehearsed |
 

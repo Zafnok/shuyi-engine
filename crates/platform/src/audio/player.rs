@@ -35,7 +35,7 @@ use alloc::format;
 use core::fmt;
 use core::future::Future;
 
-use shuyi_assets::audio::{AudioManifest, Files};
+use shuyi_assets::audio::{AudioManifest, Files, LoopRegion, MusicCue};
 use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SharedSamples, SoundGroups, SoundId};
 
 use self::voice::Voices;
@@ -59,6 +59,27 @@ impl fmt::Display for Unsupported {
 }
 
 impl core::error::Error for Unsupported {}
+
+/// Where a looped track goes round, as its backend will play it: what
+/// [`Backend::set_loop_region`] says (ticket 2397). More may come
+/// (ADR-0039): a match on it has a `_` arm.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum Looping {
+    /// The whole track, from its end back to its start.
+    Whole,
+    /// From the start up to `end` once, then from `start` to `end` again and
+    /// again: seconds into the track, from the frames the backend plays.
+    Region {
+        /// Where it goes back to.
+        start: f64,
+        /// Where it comes round, after its last frame.
+        end: f64,
+    },
+    /// The whole track, because the region its file names doesn't read:
+    /// why, naming the field at fault.
+    Unread(String),
+}
 
 /// What playing audio needs from the platform: all a backend writes for the
 /// sound of a game (ADR-0063).
@@ -132,6 +153,22 @@ pub trait Backend {
         Err(Unsupported)
     }
 
+    /// Readies the music track `sound`'s looped plays, from its next
+    /// [`play`](Self::play), to go round a region (ticket 2397): `region`,
+    /// the cue's, or where that is `None` the region the file itself names
+    /// (an Ogg file's `LOOPSTART` and `LOOPLENGTH`), and says which it will
+    /// play. The way round is the backend's to make exact, never a seek of
+    /// the main thread's at the moment it is heard. Without it a track loops
+    /// whole, and a cue that names a region is warned of once.
+    fn set_loop_region(
+        &mut self,
+        sound: &Self::Sound,
+        region: Option<LoopRegion>,
+    ) -> Result<Looping, Unsupported> {
+        let _ = (sound, region);
+        Err(Unsupported)
+    }
+
     /// Readies `samples`, samples a game made at run time, as a sound to play
     /// like one loaded from a file. By default it can't, and the cue plays
     /// nothing, with a warning in the log.
@@ -171,6 +208,7 @@ pub trait Backend {
 enum Feature {
     Pause,
     Rate,
+    Region,
 }
 
 impl Feature {
@@ -179,7 +217,58 @@ impl Feature {
         match self {
             Self::Pause => "this backend can't pause sounds: they are muted instead",
             Self::Rate => "this backend can't change a sound's rate: it plays as recorded",
+            Self::Region => {
+                "this backend can't loop part of a track: a track with a loop region loops whole"
+            }
         }
+    }
+}
+
+/// Readies `sound`, the track of music cue `cue` (`def`), to go round its
+/// region, and says where it goes round in seconds, for the clock: `None`
+/// for the whole track, as on a backend that can't (warned of once, if the
+/// cue names a region) and for a file whose region doesn't read (warned of
+/// each time it loads, naming the file).
+fn loop_region<B: Backend>(
+    backend: &mut B,
+    sound: &B::Sound,
+    (cue, def): (&str, &MusicCue),
+    music_dir: &str,
+    provided: &mut Provided,
+    warnings: &mut Vec<String>,
+) -> Option<(f64, f64)> {
+    let asked = def.loop_region();
+    match backend.set_loop_region(sound, asked) {
+        Ok(Looping::Region { start, end }) => {
+            // The clock's length is the cue's: a file's region a hair past it
+            // ends there for the clock, and the sound is as the file says.
+            let end = end.min(f64::from(def.length_ms) / 1000.0);
+            (start < end).then_some((start, end))
+        }
+        Ok(Looping::Unread(why)) => {
+            let file = &def.file;
+            warnings.push(format!(
+                "music \"{cue}\": {music_dir}/{file}: {why}; it loops whole"
+            ));
+            None
+        }
+        Ok(_) => None,
+        Err(unsupported) => {
+            if asked.is_some() {
+                provided.call(Feature::Region, Err(unsupported), warnings);
+            }
+            None
+        }
+    }
+}
+
+/// Where a track is `elapsed` seconds after it started, going round
+/// `region` (`start`, `end`) if it has one: up to its end it is `elapsed`,
+/// and from there back by the region's length as often as it fits.
+fn through(region: Option<(f64, f64)>, elapsed: f64) -> f64 {
+    match region {
+        Some((start, end)) if elapsed >= end => start + (elapsed - start) % (end - start),
+        _ => elapsed,
     }
 }
 
@@ -352,6 +441,9 @@ struct Track<B: Backend> {
     /// Its cue's gain, as the last frame gave it.
     group_gain: Gain,
     looped: bool,
+    /// Where it goes round, in seconds, as the backend said once it loaded:
+    /// `None` for the whole track.
+    region: Option<(f64, f64)>,
 }
 
 impl<B: Backend> Track<B> {
@@ -567,13 +659,19 @@ impl<B: Backend> Player<B> {
     /// (a crossfade) it is the newest that sounds: the old one until the
     /// new one has loaded. A track played once is still reported after it has ended
     /// (not every device says when it does; `ui` knows its length). A paused
-    /// track's seconds hold; a muted one's run on.
+    /// track's seconds hold; a muted one's run on. A track that goes round a
+    /// region is where it really is: past the region's end, back by its
+    /// length as often as it has gone round (ticket 2397), and a track the
+    /// backend loops whole counts on whatever its cue says.
     pub fn music_playing(&self, now: f64) -> Option<(&str, f64)> {
         self.tracks
             .iter()
-            .filter_map(|(cue, track)| Some((cue.as_str(), track.started_at?, track.held_at)))
+            .filter_map(|(cue, track)| Some((cue.as_str(), track.started_at?, track)))
             .max_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(cue, started_at, held_at)| (cue, (held_at.unwrap_or(now) - started_at).max(0.0)))
+            .map(|(cue, started_at, track)| {
+                let elapsed = (track.held_at.unwrap_or(now) - started_at).max(0.0);
+                (cue, through(track.region, elapsed))
+            })
     }
 
     /// The file of the voice clip sounding at `now` (on
@@ -725,6 +823,7 @@ impl<B: Backend> Player<B> {
                     volume: percent(def.volume),
                     group_gain: self.gains.view().music(cue),
                     looped: def.looped,
+                    region: None,
                 };
                 self.tracks.insert(cue.clone(), track);
             }
@@ -795,6 +894,7 @@ impl<B: Backend> Player<B> {
     /// Finishes loads: a track asked to play starts now.
     fn poll(&mut self, backend: &mut B, now: f64) {
         let suspended = self.suspended;
+        let (provided, warnings) = (&mut self.provided, &mut self.warnings);
         for (cue, track) in &mut self.tracks {
             let TrackState::Loading(loading) = &mut track.state else {
                 continue;
@@ -802,6 +902,11 @@ impl<B: Backend> Player<B> {
             match backend.poll_music(loading) {
                 None => {}
                 Some(Ok(sound)) => {
+                    if let (true, Some(def)) = (track.looped, self.manifest.music.get(cue)) {
+                        let dir = &self.music_dir;
+                        let cue = (cue.as_str(), def);
+                        track.region = loop_region(backend, &sound, cue, dir, provided, warnings);
+                    }
                     if track.playing {
                         let volume = track.level(suspended);
                         track.playback = Some(backend.play(&sound, volume, track.looped));
@@ -816,8 +921,7 @@ impl<B: Backend> Player<B> {
                         .get(cue)
                         .map_or("?", |m| m.file.as_str());
                     let dir = &self.music_dir;
-                    self.warnings
-                        .push(format!("music \"{cue}\": {dir}/{file}: {e}"));
+                    warnings.push(format!("music \"{cue}\": {dir}/{file}: {e}"));
                     track.state = TrackState::Failed;
                 }
             }
@@ -1113,6 +1217,9 @@ mod tests {
         pub(crate) plays: u32,
         /// Logs the frames' opening and closing too.
         pub(crate) frames: bool,
+        /// What `set_loop_region` says with no region asked for, the file's:
+        /// `None` for a backend that can't loop a region at all.
+        pub(crate) looping: Option<Looping>,
     }
 
     impl Backend for Fake {
@@ -1172,6 +1279,22 @@ mod tests {
             self.log.borrow_mut().push(format!("stop #{playing}"));
         }
 
+        fn set_loop_region(
+            &mut self,
+            sound: &String,
+            region: Option<LoopRegion>,
+        ) -> Result<Looping, Unsupported> {
+            let file = self.looping.clone().ok_or(Unsupported)?;
+            let asked = region.map(|r| (r.start_ms, r.end_ms));
+            self.log
+                .borrow_mut()
+                .push(format!("loop {sound} {asked:?}"));
+            Ok(region.map_or(file, |r| Looping::Region {
+                start: f64::from(r.start_ms) / 1000.0,
+                end: f64::from(r.end_ms) / 1000.0,
+            }))
+        }
+
         fn add_sound(&mut self, samples: &SharedSamples) -> Result<String, String> {
             let sound = format!("pcm{}", samples.frames());
             self.log.borrow_mut().push(format!("add {sound}"));
@@ -1219,6 +1342,10 @@ mod tests {
         m.music
             .insert("sting".into(), track("sting.ogg", 100, false));
         m.music.insert("lost".into(), track("lost.ogg", 100, true));
+        // A second of intro, then round the next three.
+        let around = LoopRegion::new(1000, 4000)
+            .map(|region| track("intro.ogg", 100, true).with_loop(region));
+        m.music.extend(around.map(|cue| ("intro".to_owned(), cue)));
         m
     }
 
@@ -2265,6 +2392,228 @@ mod tests {
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.10"]);
     }
 
+    /// The player on [`Fake`] with `intro` and `title` loaded and ready, the
+    /// backend saying `looping` of a file with no region asked for.
+    fn looping(looping: Option<Looping>) -> (Fake, Audio<Fake>) {
+        let mut fake = Fake {
+            looping,
+            ..Fake::default()
+        };
+        fake.ready
+            .extend(["music/intro.ogg".into(), "music/title.ogg".into()]);
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        (fake, audio)
+    }
+
+    /// Where the music's clock is `at`.
+    fn at(audio: &Audio<Fake>, at: f64) -> Option<f64> {
+        audio.music_playing(at).map(|(_, secs)| secs)
+    }
+
+    /// Whether `secs` is `expected`, to well under a frame.
+    fn near(secs: Option<f64>, expected: f64) -> bool {
+        secs.is_some_and(|secs| (secs - expected).abs() < 1e-9)
+    }
+
+    /// Ticket 2397: the intro once, then round the region, however often.
+    #[test]
+    fn a_track_with_a_region_plays_its_intro_once_then_goes_round_it() {
+        let (mut fake, mut audio) = looping(Some(Looping::Whole));
+        let cmds = [cmd(load, "intro"), cmd(start, "intro")];
+        audio.play(&mut fake, &[], &cmds, 10.0);
+        let calls = fake.calls();
+        assert!(
+            calls.contains(&"loop music/intro.ogg Some((1000, 4000))".to_owned()),
+            "{calls:?}"
+        );
+        assert!(
+            calls.contains(&"play music/intro.ogg 1.00 looped".to_owned()),
+            "{calls:?}"
+        );
+        for (secs, position) in [
+            (0.0, 0.0),
+            (0.999, 0.999),
+            (1.0, 1.0),
+            (3.999, 3.999),
+            // Round from the end to the start, once.
+            (4.0, 1.0),
+            (4.5, 1.5),
+            (6.999, 3.999),
+            (7.0, 1.0),
+            // A long way in: 333 times round and half a second.
+            (4.0 + 3.0 * 333.0 + 0.5, 1.5),
+        ] {
+            let got = at(&audio, 10.0 + secs);
+            assert!(near(got, position), "{secs}: {got:?}");
+        }
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
+    }
+
+    #[test]
+    fn a_track_without_a_region_is_asked_for_its_files_and_goes_round_that() {
+        // The backend found the file's own: 0.5 s to 1.5 s.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 0.5,
+            end: 1.5,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(
+            fake.calls()
+                .contains(&"loop music/title.ogg None".to_owned())
+        );
+        assert!(near(at(&audio, 1.25), 1.25));
+        assert!(near(at(&audio, 1.75), 0.75));
+        assert!(near(at(&audio, 3.5), 0.5));
+        // A track played once is never asked: it has nothing to go round.
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(stop, "title"), cmd(load, "sting")],
+            5.0,
+        );
+        fake.ready.push("music/sting.ogg".into());
+        audio.play(&mut fake, &[], &[cmd(start, "sting")], 5.0);
+        assert!(!fake.calls().iter().any(|call| call.starts_with("loop")));
+        assert!(near(at(&audio, 8.0), 3.0));
+    }
+
+    #[test]
+    fn a_files_region_past_the_cues_length_ends_there_for_the_clock() {
+        // `title` is 60 s long; the file says its region runs to 60.001 s.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 30.0,
+            end: 60.001,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 59.999), 59.999));
+        assert!(near(at(&audio, 60.0), 30.0));
+        // One that starts past the length isn't one the clock can follow.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 60.0,
+            end: 61.0,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 60.5), 60.5));
+    }
+
+    #[test]
+    fn a_files_region_that_does_not_read_is_warned_of_naming_the_file() {
+        let why = Looping::Unread("LOOPLENGTH is 0: a region has a frame at least".into());
+        let (mut fake, mut audio) = looping(Some(why));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert_eq!(
+            audio.take_warnings(),
+            [
+                "music \"title\": music/title.ogg: LOOPLENGTH is 0: a region has a frame at least; it loops whole"
+            ]
+        );
+        assert!(
+            near(at(&audio, 70.0), 70.0),
+            "ui wraps it at the whole length"
+        );
+    }
+
+    /// A whole-file backend: the cue's region is warned of once, and the
+    /// clock counts on as the whole track plays (`ui` wraps it at its length).
+    #[test]
+    fn a_backend_without_regions_loops_whole_and_warns_once() {
+        let (mut fake, mut audio) = looping(None);
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            0.0,
+        );
+        assert!(
+            fake.calls()
+                .contains(&"play music/intro.ogg 1.00 looped".to_owned())
+        );
+        let warned =
+            ["this backend can't loop part of a track: a track with a loop region loops whole"];
+        assert_eq!(audio.take_warnings(), warned);
+        assert!(near(at(&audio, 5.0), 5.0));
+        // Loaded again, and a track with no region: nothing more is said.
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            6.0,
+        );
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            6.0,
+        );
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
+    }
+
+    /// Both tracks of a crossfade go round their own regions, and the clock
+    /// follows the newest.
+    #[test]
+    fn both_tracks_of_a_crossfade_go_round_their_regions() {
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 0.5,
+            end: 1.5,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            0.0,
+        );
+        assert!(near(at(&audio, 4.5), 1.5));
+        let fade = [cmd(load, "title"), cmd(start, "title"), gain("intro", 0.5)];
+        audio.play(&mut fake, &[], &fade, 5.0);
+        assert_eq!(audio.music_playing(5.0).map(|(cue, _)| cue), Some("title"));
+        assert!(near(at(&audio, 7.0), 1.0));
+        audio.play(&mut fake, &[], &[cmd(stop, "title")], 7.0);
+        // The old one went round on its own all along: 9 s in is 3 s.
+        assert!(near(at(&audio, 9.0), 3.0));
+    }
+
+    /// A pause holds the clock; it goes on round the region from there.
+    #[test]
+    fn a_paused_track_holds_its_place_in_the_region() {
+        let mut backend = Pausing::default();
+        backend.inner.looping = Some(Looping::Whole);
+        backend.inner.ready.push("music/intro.ogg".into());
+        let mut player = loaded(&mut backend);
+        let music = [cmd(load, "intro"), cmd(start, "intro")];
+        player.play(&mut backend, &[], &music, 0.0);
+        player.play(&mut backend, &[], &[], 5.0);
+        player.suspend(&mut backend);
+        let secs = |player: &Player<Pausing>, now| player.music_playing(now).map(|(_, s)| s);
+        // 5 s in is 2 s: once round.
+        assert!(near(secs(&player, 50.0), 2.0));
+        player.resume(&mut backend);
+        player.play(&mut backend, &[], &[], 50.0);
+        // 5 s of it before, 2.5 s after: 7.5 s in is 1.5 s, twice round.
+        assert!(near(secs(&player, 52.5), 1.5));
+        assert_eq!(player.take_warnings(), [] as [String; 0]);
+    }
+
     /// A backend that pauses: what a held playback does, by the numbers.
     #[derive(Default)]
     struct Pausing {
@@ -2311,6 +2660,14 @@ mod tests {
 
         fn stop_playing(&mut self, playing: u32) {
             self.inner.stop_playing(playing);
+        }
+
+        fn set_loop_region(
+            &mut self,
+            sound: &String,
+            region: Option<LoopRegion>,
+        ) -> Result<Looping, Unsupported> {
+            self.inner.set_loop_region(sound, region)
         }
 
         fn pause(&mut self, playing: &u32) -> Result<(), Unsupported> {
