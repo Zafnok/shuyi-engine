@@ -587,7 +587,11 @@ offsets into the program, which that version's debug file turns into functions a
 Beside the reports, in the `logs` folder, the game keeps its log: `latest.log` of the last run
 and `previous-1.log` to `previous-3.log` of the three before, a line each for its warnings, its errors
 and a panic's message. A Windows release build has no console, so this is where they go: ask a player
-for the folder along with the report. A log names files, and a file's path may name the player's
+for the folder along with the report. Chasing a bug yourself, set `SHUYI_LOG` before you start the game
+for more detail: `SHUYI_LOG=debug` keeps every line of the engine's, and
+`SHUYI_LOG=warn,audio=debug,gilrs=info` the audio's and the controller library's, and they go to
+the terminal too ([the filter](https://github.com/Zafnok/shuyi-engine/blob/main/docs/platform-backends.md#logs)).
+A log names files, and a file's path may name the player's
 account, so a game asks before it sends one anywhere ([the
 logs](https://github.com/Zafnok/shuyi-engine/blob/main/docs/platform-backends.md#logs)).
 

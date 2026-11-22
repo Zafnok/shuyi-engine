@@ -87,6 +87,27 @@ fn the_sink_lets_through_what_its_filter_allows_per_target() {
 }
 
 #[test]
+fn the_filters_text_is_read_and_a_bad_one_gives_the_default_and_why() {
+    assert_eq!(filter_of(None), (LogFilter::default(), None));
+    assert_eq!(
+        filter_of(Some("warn,audio=debug")),
+        (
+            LogFilter::new(LogLevel::Warn).with(shuyi_ui::log::LogCategory::Audio, LogLevel::Debug),
+            None
+        )
+    );
+    let (filter, refused) = filter_of(Some("audio=loud"));
+    assert_eq!(filter, LogFilter::default());
+    assert_eq!(
+        refused.as_deref(),
+        Some(
+            "SHUYI_LOG ignored, the default filter used: `audio=loud`: `loud` is not a level \
+             (error, warn, info or debug)"
+        )
+    );
+}
+
+#[test]
 fn a_build_without_debug_tools_keeps_warnings_and_errors_only() {
     assert!(kept_in_this_build(LogLevel::Error));
     assert!(kept_in_this_build(LogLevel::Warn));

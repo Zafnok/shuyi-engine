@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3041"]
 nick_input: none
-completed:
+completed: 2026-11-22
 ---
 
 # 3324 — SHUYI_LOG: a filter for the log's sinks
@@ -93,19 +93,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `LogFilter::parse` takes `info`, `warn,audio=debug` and
+- [x] `LogFilter::parse` takes `info`, `warn,audio=debug` and
       `gilrs=warn`, and refuses `loud` and `audio=loud` with a reason
       (test).
-- [ ] With `gilrs=info,gilrs_core=debug`, a `Debug` line of
+- [x] With `gilrs=info,gilrs_core=debug`, a `Debug` line of
       `gilrs_core::platform` passes and one of `gilrs::gamepad` does not
       (test: the longest prefix).
-- [ ] A bad `SHUYI_LOG` gives the default filter and one `platform`
+- [x] A bad `SHUYI_LOG` gives the default filter and one `platform`
       warning naming the reason (test on `install`'s parsing part).
-- [ ] With `SHUYI_LOG=debug`, a debug build of hello-grid writes its
+- [x] With `SHUYI_LOG=debug`, a debug build of hello-grid writes its
       `debug` lines of the engine's categories to `latest.log` (the
       completion notes have the lines).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -116,5 +116,66 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi_ui::log::LogFilter::parse` reads a filter from text, as the
+  scope says, with reasons in English for `loud`, `audio=loud` and
+  `=debug`. `LogFilter` gained a list of prefixes, `with_prefix` (the
+  same prefix twice keeps the last), the longest prefix in
+  `allows_target` (a category's name never goes to a prefix), and the
+  prefixes in `most_detailed`.
+- `shuyi_app::log_sink::install` takes `filter: Option<&str>` and returns
+  the `LogFilter` in use; a bad one gives the default and one `WARN`
+  line, target `platform`, written after the file opens so it lands in
+  `latest.log` (`filter_of` is the tested parsing part). stderr is on in
+  a release build when a filter is given. `log_sink::FILTER_VARIABLE` is
+  `"SHUYI_LOG"`. `install_log` reads it on a desktop and `run` hands the
+  filter to `App::set_log_filter` right after `App::new`.
+- Docs: `docs/platform-backends.md`'s *Logs* has the syntax and the
+  example in place of the fixed levels' paragraph, and the stderr bullet.
+
+Manual check, hello-grid's debug build at `23ba0a6b` (the tip of `main`
+then) with this branch's changes, `latest.log`'s first lines:
+
+```text
+SHUYI_LOG=debug
+    0.000 f0 INFO  platform: Shuyi Engine 0.1.0, windows x86_64 debug, storage shuyi-hello-grid, game version 0.1.0
+    0.015 f2 INFO  storage: smoke check passed
+SHUYI_LOG=debug,gilrs=debug,macroquad=debug
+    0.017 f2 INFO  storage: smoke check passed
+    0.027 f2 DEBUG gilrs::gamepad: Loaded 858 mappings.
+SHUYI_LOG=loud
+    0.002 f0 WARN  platform: SHUYI_LOG ignored, the default filter used: `loud`: `loud` is not a level (error, warn, info or debug)
+```
+
+Deviation: the fourth criterion asks for hello-grid's `debug` lines of
+the engine's categories. The engine writes none today (no
+`LogLevel::Debug` line outside tests), so `SHUYI_LOG=debug` passes them
+but there are none to show; the library's `debug` line above shows a
+`debug` line reaching the file through the filter.
+
+Breaking: shuyi-app: `log_sink::install`: it takes a fourth argument, the filter's text (`None` for the default), and returns the `LogFilter` in use
+
+```migration
+since: 0.1.0
+what: log_sink::install takes the filter's text and returns the filter in use.
+old: "pub fn install(storage_name: &str, game_version: &str, dir: Option<PathBuf>)"
+new: "pub fn install(storage_name: &str, game_version: &str, dir: Option<PathBuf>, filter: Option<&str>) -> LogFilter"
+before: |
+  shuyi_app::log_sink::install("my-game", "1.0", dir);
+after: |
+  shuyi_app::log_sink::install("my-game", "1.0", dir, None);
+find: ["install(\"my-game\", \"1.0\", dir);"]
+```
+
+Behaviour: shuyi-app: on a desktop `SHUYI_LOG` sets which lines reach the log's file, stderr and App's ring (`app.log()`); unset, nothing changes
+Behaviour: shuyi-app: a release build on a desktop writes its log's lines to stderr too when `SHUYI_LOG` is set
+
+Book: `site/content/learn/book/targets-and-export.md`'s paragraph on the
+log names `SHUYI_LOG`.
+
+Game: nothing to adopt, the game calls neither `log_sink::install` nor
+`LogFilter` (`gh search code --repo Zafnok/visions-of-shuyi 'log_sink'`
+and `'LogFilter'`: no hits).
+
+Nick input: none.
