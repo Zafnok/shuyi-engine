@@ -56,7 +56,7 @@ fn main() {
 /// web, still drawing the card).
 async fn show(card: RenderCard) {
     // Its lines reach the console (the web) and stderr (a debug build).
-    shuyi_app::log_sink::install("render-card", "", None);
+    shuyi_app::log_sink::install("render-card", "", None, None);
     let mut renderer = None;
     let code = match draw_and_capture(&card, &mut renderer).await {
         Ok(code) => code,
