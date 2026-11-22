@@ -113,6 +113,20 @@ fn a_bots_seed_differs_from_the_try_seed_and_is_the_same_for_the_same_seed() {
 }
 
 #[test]
+fn a_bots_seed_is_two_draws_of_the_try_seeds_rng_the_high_half_first() {
+    for seed in [0, 7, u64::MAX] {
+        let mut rng = crate::rng::SimRng::new(seed);
+        let (high, low) = (rng.next_u32(), rng.next_u32());
+        assert_eq!(bot_seed(seed) >> 32, u64::from(high), "seed {seed}");
+        assert_eq!(
+            bot_seed(seed) & u64::from(u32::MAX),
+            u64::from(low),
+            "seed {seed}"
+        );
+    }
+}
+
+#[test]
 fn a_floor_blocks_a_run_under_it() {
     let blocked = |s| {
         judge(
