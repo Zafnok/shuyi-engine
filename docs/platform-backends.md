@@ -258,7 +258,19 @@ Add the input since the last call, in the order it happened:
   merges them, so several pads drive the game as one;
 - a crank through `RawInputEvent::from_crank`, or, where the device gives
   a float, `from_crank_steps` with whole steps (256 to the turn) made at
-  the backend's boundary, each with the pad the crank is on.
+  the backend's boundary, each with the pad the crank is on;
+- a pointer, if the device has one (ADR-0134): its place as
+  `PointerMoved { x, y }` in console pixels of the frame last shown
+  (the inverse of where `present` placed it, rounded down), only when
+  that pixel changes, and `PointerLeft` once as it goes into the
+  letterbox; the primary button (the left mouse button, or a touch) as
+  `PointerDown` and `PointerUp`, a press outside the frame dropped and
+  every press sent given its release; and the wheel as `Wheel(notches)`,
+  whole notches positive away from the player, the remainder of a finer
+  delta kept for the next poll. In one poll: the place, the press, the
+  release, then the wheel. A finger has no hover: after a touch's
+  release, send `PointerLeft`, last. A device without a pointer sends
+  none, and loses nothing: no action needs it.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home
@@ -795,6 +807,10 @@ one side, the engine's types on the other.
       (`shuyi_ui::frame::raster::card`, drawn and compared as `shuyi-app`'s
       `render_card` example does) and a game's plans, within the plan's
       tolerance, in CI where the device can run there.
+- [ ] With a pointer, its tests: the window's pixels to console pixels
+      inside the frame and in the letterbox, a press and a release in one
+      poll, the wheel's notches from the device's deltas, and a touch's
+      release followed by `PointerLeft`.
 - [ ] A panic writes a `CrashReport` through the backend's storage, or the
       backend's docs say why it can't.
 - [ ] A target profile (`targets/<id>.ron`, ADR-0008 §1) naming it, and

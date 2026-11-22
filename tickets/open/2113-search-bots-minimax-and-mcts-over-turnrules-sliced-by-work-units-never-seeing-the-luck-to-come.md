@@ -162,7 +162,7 @@ None.
   - `MinimaxSettings` and `MctsSettings` are
     `#[serde(deny_unknown_fields)]` and derive `schemars::JsonSchema`
     behind the `schema` feature, as `Targets`, `RolloutSettings` and
-    `PlanSettings` do. **From 2133 (done):** ADR-0134 §3–4 says every
+    `PlanSettings` do. **From 2133 (done):** ADR-0135 §3–4 says every
     settings type does this, these two included.
 - **An ADR** (the next free number in `docs/adr/`, with the `write-adr`
   skill), extending 2125's (copies from `Determinize`, integers, work

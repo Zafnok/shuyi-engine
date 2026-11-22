@@ -32,6 +32,7 @@ use crate::frame_cap::{FrameCap, Pacing};
 use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
+use crate::input::pointer::Pointer;
 use crate::input::state::{Device, InputState};
 use crate::log::{LogCategory, LogLevel};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
@@ -40,7 +41,9 @@ use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
 use pads::PadMerge;
 use shuyi_assets::font::CellWidths;
 
-/// A keyboard or controller event as the platform reports it.
+/// A keyboard, controller or pointer event as the platform reports it.
+/// A pointer's events are in console pixels of the frame last shown, in
+/// integers, so a record of them plays back exactly (ADR-0134).
 ///
 /// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -65,6 +68,25 @@ pub enum RawInputEvent {
     /// without focus hears no pad): it comes after the pad's releases
     /// ([`Pads::update`]), and lets go of anything it still held.
     PadRemoved(PadId),
+    /// The pointer (a mouse, or a finger on a touch screen) is at `(x, y)`
+    /// in console pixels of the frame last shown, (0, 0) its top-left.
+    PointerMoved {
+        /// Pixels from the frame's left edge.
+        x: i32,
+        /// Pixels from the frame's top edge.
+        y: i32,
+    },
+    /// The pointer left the frame (into the letterbox), or a finger
+    /// lifted: it is nowhere until it moves again.
+    PointerLeft,
+    /// The primary button went down where the pointer is: the left mouse
+    /// button, or a touch.
+    PointerDown,
+    /// The primary button went up.
+    PointerUp,
+    /// The wheel turned this many whole notches, positive away from the
+    /// player.
+    Wheel(i32),
 }
 
 /// A typed character in a file, as a string of one character: RON escapes a
@@ -240,6 +262,8 @@ pub struct Game<G: GameData> {
     input: InputState<G::Action>,
     /// The buttons each pad holds, merged before `input` hears them.
     pads: PadMerge,
+    /// Where the pointer is and what its press began on.
+    pointer: Pointer,
     ctx: Ctx<G>,
     hooks: GameHooks<G>,
     buffer: GlyphBuffer,
@@ -286,6 +310,7 @@ impl<G: GameData> Game<G> {
             stack,
             input,
             pads: PadMerge::default(),
+            pointer: Pointer::default(),
             buffer: GlyphBuffer::with_spec(ctx.console, blank).with_widths(ctx.widths().clone()),
             ctx,
             hooks,
@@ -429,9 +454,12 @@ impl<G: GameData> Game<G> {
     /// the next frame reports their actions let go, and one still down
     /// counts once it is pressed again. The platform's `App` calls it on
     /// the system's `FocusLost`, since a window without focus hears no
-    /// release.
+    /// release. A pointer press held is forgotten too (its release is then
+    /// no click), and so is the pointer's place: the next frames have no
+    /// pointer ([`FrameInput::pointer`]) until it moves again.
     pub fn forget_held_input(&mut self) {
         self.input.release_all();
+        self.pointer.forget();
     }
 
     /// Flips the Fullscreen setting, as a window's own shortcut does. The
@@ -586,8 +614,12 @@ impl<G: GameData> Game<G> {
                 && events.iter().any(|e| matches!(e, RawInputEvent::Down(_)))
         });
         for &event in events {
-            // Any key or any controller button ends the wait for one.
-            let press = matches!(event, RawInputEvent::Down(_) | RawInputEvent::PadDown(..));
+            // Any key, controller button or pointer press ends the wait
+            // for one.
+            let press = matches!(
+                event,
+                RawInputEvent::Down(_) | RawInputEvent::PadDown(..) | RawInputEvent::PointerDown
+            );
             let ends_wait = press && self.ctx.key_prompt == KeyPrompt::Waiting;
             if ends_wait {
                 self.ctx.key_prompt = KeyPrompt::Pressed;
@@ -603,7 +635,14 @@ impl<G: GameData> Game<G> {
                 // platforms) are keys, not text.
                 RawInputEvent::Text(c) if !c.is_control() => text.push(c),
                 // A removed pad: the merge has turned it into its releases.
-                RawInputEvent::Text(_) | RawInputEvent::PadRemoved(_) => {}
+                // The pointer is folded below, and acts through no action.
+                RawInputEvent::Text(_)
+                | RawInputEvent::PadRemoved(_)
+                | RawInputEvent::PointerMoved { .. }
+                | RawInputEvent::PointerLeft
+                | RawInputEvent::PointerDown
+                | RawInputEvent::PointerUp
+                | RawInputEvent::Wheel(_) => {}
                 RawInputEvent::PadDown(button, kind, _) => {
                     self.input.pad_down(button, kind);
                     if ends_wait {
@@ -619,7 +658,12 @@ impl<G: GameData> Game<G> {
                 }
             }
         }
+        // Looked up in the frame last shown, before it is drawn again: a
+        // click lands on what the player saw.
+        let buffer = &self.buffer;
+        let pointer = self.pointer.frame(events, |x, y| buffer.hit_at(x, y));
         self.ctx.clock_s += f64::from(dt);
+        // The pointer never changes the device the help text names.
         self.ctx.device = self.input.device();
         let actions = self.input.update(dt);
         let held = self.held();
@@ -655,7 +699,8 @@ impl<G: GameData> Game<G> {
                 .with_buttons(buttons_down, buttons_up)
                 .with_pad(from_pad)
                 .with_ticks(ticks)
-                .with_resumed(resumed);
+                .with_resumed(resumed)
+                .with_pointer(pointer);
             self.quit = self.stack.update(&mut self.ctx, &input);
             self.sync_keymap();
         }

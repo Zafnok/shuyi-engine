@@ -27,6 +27,7 @@ pub mod console;
 pub mod draw;
 pub mod gizmo;
 pub mod glyph_buffer;
+pub mod hit;
 pub mod key_cap;
 pub mod onebit;
 pub mod painted;
@@ -43,6 +44,7 @@ pub use glyph_buffer::{
     Backdrop, BoxStyle, Cell, GlyphBuffer, GlyphStyle, Item, Layer, Overlay, Paint, PxRect, Rect,
     Sprite,
 };
+pub use hit::{Hit, WidgetKey};
 pub use key_cap::{KeyCapStyle, KeyCaps};
 pub use painted::{Painted, PaintedId, PaintedKind, PaintedSprite, PaintedTable};
 

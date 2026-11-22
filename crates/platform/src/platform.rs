@@ -337,9 +337,12 @@ pub trait Platform {
     /// as it can and keeps it on the screen until the next.
     fn present(&mut self, frame: &Frame<'_>);
 
-    /// Adds the keyboard and controller events since the last call to
-    /// `out`, in the order they happened: releases before presses within
-    /// one poll of a device, as [`RawInputEvent::from_pads`] gives them.
+    /// Adds the keyboard, controller and pointer events since the last
+    /// call to `out`, in the order they happened: releases before presses
+    /// within one poll of a device, as [`RawInputEvent::from_pads`] gives
+    /// them. A pointer's events come in console pixels of the frame last
+    /// shown: its place first, then its press, its release and the wheel
+    /// (ADR-0134). A backend without a pointer sends none.
     fn poll_input(&mut self, out: &mut Vec<RawInputEvent>);
 
     /// Adds the system's events since the last call to `out`, in order.

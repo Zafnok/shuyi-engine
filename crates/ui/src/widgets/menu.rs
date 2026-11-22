@@ -39,6 +39,8 @@ pub mod view;
 use crate::prelude::*;
 pub use view::{MenuItemView, MenuView, SuffixKind};
 
+use crate::frame::hit::{Hit, WidgetKey};
+use crate::input::pointer::PointerInput;
 use crate::text::ToArg;
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
@@ -153,7 +155,9 @@ pub enum MenuEvent<T = ()> {
 /// move the focus (wrapping, skipping disabled items), `Confirm` chooses the
 /// focused item, `Cancel` cancels (unless the menu is
 /// [`without_cancel`](Self::without_cancel)). A menu
-/// [`showing`](Self::showing) fewer rows than it has scrolls.
+/// [`showing`](Self::showing) fewer rows than it has scrolls. The pointer
+/// moves the focus and chooses too, through [`point`](Self::point), never
+/// instead of the keys.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Menu<T = ()> {
     items: Vec<MenuItem<T>>,
@@ -165,6 +169,8 @@ pub struct Menu<T = ()> {
     /// Whether the focus also stops on disabled items, so their notes can
     /// be read (they still can't be chosen).
     browse_disabled: bool,
+    /// The key its skin records its hit areas under.
+    widget: WidgetKey,
 }
 
 impl<T> Menu<T> {
@@ -187,7 +193,22 @@ impl<T> Menu<T> {
             rows_shown: None,
             cancellable: true,
             browse_disabled: false,
+            widget: WidgetKey::default(),
         }
+    }
+
+    /// The same menu with the widget key `key` (0 by default): its skin
+    /// records its hit areas under it, so a screen with two menus tells
+    /// the pointer's apart.
+    #[must_use]
+    pub fn keyed(mut self, key: WidgetKey) -> Self {
+        self.widget = key;
+        self
+    }
+
+    /// Its widget key ([`keyed`](Self::keyed)).
+    pub fn widget(&self) -> WidgetKey {
+        self.widget
     }
 
     /// The same menu where `Cancel` does nothing (and so plays nothing):
@@ -302,6 +323,76 @@ impl<T> Menu<T> {
         event
     }
 
+    /// Takes this frame's pointer ([`FrameInput::pointer`]), beside the
+    /// actions ([`handle`](Self::handle)): on a frame the pointer moved
+    /// over a row of this menu the focus may stop on, the focus goes
+    /// there (a pointer that stays still never takes the focus back from
+    /// the keys); a click on a row of this menu moves the focus there if
+    /// it may, then does what Confirm does on it: [`MenuEvent::Chosen`]
+    /// for an enabled item, nothing for a disabled one. A row is this
+    /// menu's when its hit area has the menu's key ([`keyed`](Self::keyed)).
+    ///
+    /// [`FrameInput::pointer`]: crate::input::FrameInput::pointer
+    pub fn point(&mut self, pointer: Option<&PointerInput>) -> Option<MenuEvent<T>>
+    where
+        T: Clone,
+    {
+        let pointer = pointer?;
+        if let Some(index) = self.row(pointer.clicked) {
+            self.point_at(index);
+            let item = &self.items[index];
+            return item.enabled.then(|| MenuEvent::Chosen(item.value.clone()));
+        }
+        if pointer.moved
+            && let Some(index) = self.row(pointer.over)
+        {
+            self.point_at(index);
+        }
+        None
+    }
+
+    /// [`point`](Self::point), playing the [`MenuSound`]s on `audio` as
+    /// [`handle_with_sound`](Self::handle_with_sound) does: Move when the
+    /// focus moves, Select when an item is chosen, Denied for a click on a
+    /// disabled item.
+    pub fn point_with_sound<V>(
+        &mut self,
+        pointer: Option<&PointerInput>,
+        audio: &mut AudioQueue<V>,
+    ) -> Option<MenuEvent<T>>
+    where
+        T: Clone,
+    {
+        let before = self.focus();
+        let clicked = self.row(pointer.and_then(|p| p.clicked)).is_some();
+        let event = self.point(pointer);
+        let sound = match event {
+            Some(MenuEvent::Chosen(_)) => Some(MenuSound::Select),
+            _ if clicked => Some(MenuSound::Denied),
+            _ if self.focus() != before => Some(MenuSound::Move),
+            _ => None,
+        };
+        if let Some(sound) = sound {
+            audio.menu(sound);
+        }
+        event
+    }
+
+    /// The item of this menu at `hit`, if it is one of its rows.
+    fn row(&self, hit: Option<Hit>) -> Option<usize> {
+        let hit = hit.filter(|h| h.widget == self.widget)?;
+        let index = usize::try_from(hit.item()?).ok()?;
+        (index < self.items.len()).then_some(index)
+    }
+
+    /// Moves the focus to `index`, if it may stop there.
+    fn point_at(&mut self, index: usize) {
+        if self.stops_on(&self.items[index]) {
+            self.cursor = core::mem::take(&mut self.cursor).at(index);
+            self.follow();
+        }
+    }
+
     /// Moves the focus to the next (or previous) item it may stop on
     /// (enabled, unless the menu browses disabled ones too), wrapping.
     /// Stays put if there is none.
@@ -340,9 +431,13 @@ impl<T> Menu<T> {
             items: items.collect(),
             first_shown,
             shown,
+            widget: self.widget,
         }
     }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod pointer_tests;

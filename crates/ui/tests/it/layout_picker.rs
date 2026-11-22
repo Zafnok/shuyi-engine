@@ -35,6 +35,14 @@ fn a_controller_button_doesnt_open_it_and_acts() {
     assert_eq!(h.screens(), ["home", "menu"]);
 }
 
+/// The pointer is no key (ticket 2405): it never opens the picker.
+#[test]
+fn a_click_doesnt_open_it() {
+    let mut h = first_launch();
+    h.click(4, 8).point(40, 40);
+    assert_eq!(h.screens(), ["home"]);
+}
+
 /// The keys then are the layout picker's (`f` confirms there too).
 #[test]
 fn without_a_keyboard_it_never_opens() {

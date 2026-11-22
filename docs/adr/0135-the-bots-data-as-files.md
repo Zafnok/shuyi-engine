@@ -1,4 +1,4 @@
-# ADR-0134: The bots' data as files: personas are a planner's, every settings type refuses unknown fields and has a schema, and a try's bots draw from a seed of their own
+# ADR-0135: The bots' data as files: personas are a planner's, every settings type refuses unknown fields and has a schema, and a try's bots draw from a seed of their own
 
 - **Status:** Accepted
 - **Date:** 2026-11-21
