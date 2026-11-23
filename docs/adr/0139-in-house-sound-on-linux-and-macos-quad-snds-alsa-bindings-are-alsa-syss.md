@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-23
-- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3347
+- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3347, 3348, 3349
 - **Amends:** ADR-0075 (its held `alsa-sys`)
 - **Extends:** ADR-0066, ADR-0067, ADR-0068
 
@@ -61,13 +61,19 @@ them to glibc 2.31.
 
 **macOS is built and tested, not recorded.** CI's `sound-macos` job runs the output's
 and the backend's tests on Apple silicon and Intel runners, joins the probe's two
-slices with `lipo`, and `mac-floor.sh` checks the oldest macOS it starts on: every
-function it imports, not weakly, from the audio frameworks must be in the SDK's
-headers no later than the `minos` rustc wrote in the program, or clang's
-`-Werror=unguarded-availability` says which. CPAL's documentation names macOS 14.2;
-this holds what the program itself asks for. Capture stays `Blocked` in `budget.ron`
-until a route works on a hosted runner, so `port-ready macos` refuses, and 3084 can't
-make the in-house backend macOS's default.
+slices with `lipo`, and plays a scenario on each runner's default device. Capture
+stays `Blocked` in `budget.ron` until a route works on a hosted runner (3348), so
+`port-ready macos` refuses.
+
+**macOS's floor is measured, and it is 14.2.** `mac-floor.sh` reads the `minos` rustc
+wrote in each slice (11.0 on Apple silicon, 10.12 on Intel) and every function it
+imports, not weakly, from the audio frameworks, and clang says from the SDK's headers
+which are newer. One is: CPAL 0.18.2 imports `AudioHardwareDestroyProcessTap`, macOS
+14.2's, as its documentation's floor says. A game with quad-snd asks for its `minos`;
+one with the in-house sound may not start before 14.2. That isn't raised silently: CI
+expects 14.2 (`--expect`), so a change in what CPAL imports is seen, and 3349 makes the
+import weak or absent, or asks Nick. Until then 3084 can't make the in-house sound
+macOS's default.
 
 ## Consequences
 
@@ -79,6 +85,9 @@ make the in-house backend macOS's default.
   `calibrate.yml` leaves them out (`ports: false`), as they measure no timing.
 - macOS's in-house backend has no recorded evidence; a person on a Mac is the only
   listener until a capture route works.
+- A macOS build with the in-house sound may need macOS 14.2 until 3349.
+- `Output::dry_callbacks` counts on Windows alone: Core Audio hands each callback a
+  block of its own size, which read as dry every time on a hosted Mac.
 
 ## Alternatives considered
 

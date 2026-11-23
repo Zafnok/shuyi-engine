@@ -207,7 +207,8 @@ impl Output {
     /// How many times the system's stream found the device's buffer empty: its
     /// callback came late, and the device played silence until it did, a gap a
     /// player hears. Nothing asks this but a probe, to tell a gap in a recording
-    /// that is the output's from one that isn't: 0 where there is no stream.
+    /// that is the output's from one that isn't: 0 where there is no stream, and on
+    /// Linux and macOS, where a callback's size doesn't say how full the buffer is.
     #[cfg_attr(
         not(any(windows, target_os = "linux", target_os = "macos")),
         allow(clippy::unused_self)
@@ -233,6 +234,20 @@ impl Output {
             return output.raised_priority();
         }
         false
+    }
+
+    /// The system's device and format its stream plays on, as the system names them:
+    /// for a probe's log, to say where the sound went. Empty where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn device(&self) -> String {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.device();
+        }
+        String::new()
     }
 
     /// Stops calling the callback, for as long as the system suspends the game.

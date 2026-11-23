@@ -285,8 +285,9 @@ fn say_output(backend: &SoundProbeBackend) {
         let problem = backend
             .output_problem()
             .map_or_else(|| "null".to_owned(), |why| format!("\"{}\"", clean(why)));
+        let device = clean(&backend.output_device());
         say(&format!(
-            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised},"silent_because":{problem}}}"#
+            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised},"silent_because":{problem},"device":"{device}"}}"#
         ));
     }
     #[cfg(not(all(feature = "in-house-sound", not(target_arch = "wasm32"))))]

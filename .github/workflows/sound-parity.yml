@@ -337,7 +337,8 @@ jobs:
             target/aarch64-apple-darwin/release/examples/sound_probe target/x86_64-apple-darwin/release/examples/sound_probe
           lipo -archs target/sound-parity-bin/probe-new
       - name: The oldest macOS it starts on
-        run: bash tools/sound-parity/mac-floor.sh target/sound-parity-bin/probe-new
+        # CPAL 0.18.2 imports `AudioHardwareDestroyProcessTap` (ADR-0139): 3349's.
+        run: bash tools/sound-parity/mac-floor.sh --expect 14.2 target/sound-parity-bin/probe-new
       # What a capture would need here, written down for the next try: the runner's
       # devices and what the backend made of them, playing the first scenario.
       - name: What this runner offers as sound

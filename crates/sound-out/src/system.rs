@@ -7,9 +7,9 @@
 //! which the system's sound server or its card stands behind: what goes away there is
 //! the stream, which errs, and the watch then builds another (ADR-0139).
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -30,6 +30,10 @@ const OPEN: Duration = Duration::from_secs(5);
 /// one look that finds none, as the system's list changes, is no reason to drop a
 /// stream that plays.
 const MOVED_LOOKS: u32 = 2;
+
+/// Whether [`Dry`] reads this system's callbacks: only where the room a callback is
+/// given says how full the device's buffer is.
+const COUNTS_DRY: bool = cfg!(windows);
 
 /// What the output's owner asks of its thread.
 enum Order {
@@ -55,13 +59,17 @@ pub(crate) struct Stats {
     pub(crate) dry: AtomicU32,
     /// Whether the latest stream's thread runs above normal (`sys::raised`).
     pub(crate) raised: AtomicBool,
+    /// The latest stream's device and format, as CPAL names them (ticket 3032).
+    pub(crate) device: Mutex<String>,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
 /// of it, and nothing more, since the callback before, so a gap is heard (ticket
 /// 3089). CPAL asks each time for the buffer's room, which is all of it only at the
 /// first callback and after it ran dry: at its pace a callback finds about one
-/// period's room.
+/// period's room. That is WASAPI's way: Core Audio hands a block of its own size to
+/// every callback, and on a hosted Mac each was read as dry (ticket 3032), so it is
+/// counted on Windows alone ([`COUNTS_DRY`]).
 #[derive(Debug, Default)]
 struct Dry {
     /// The most room a callback was given, in samples: the whole buffer.
@@ -128,7 +136,7 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
                     stats.raised.store(now.is_raised(), Ordering::Relaxed);
                     raised = Some(now);
                 }
-                if dry.ran_dry(out.len()) {
+                if COUNTS_DRY && dry.ran_dry(out.len()) {
                     stats.dry.fetch_add(1, Ordering::Relaxed);
                 }
                 if let Ok(mut callback) = callback.try_lock() {
@@ -173,6 +181,18 @@ fn open_stream(
     if !held {
         stream.play().map_err(|e| device_error(&e))?;
     }
+    let named = format!(
+        "{} ({}): {format:?}, {} channels at {} Hz",
+        device
+            .id()
+            .map_or_else(|e| e.to_string(), |id| id.to_string()),
+        device
+            .description()
+            .map_or_else(|e| e.to_string(), |about| about.to_string()),
+        stream_config.channels,
+        stream_config.sample_rate,
+    );
+    *stats.device.lock().unwrap_or_else(PoisonError::into_inner) = named;
     Ok((stream, device))
 }
 
@@ -211,6 +231,14 @@ impl SystemOutput {
             self.stats.rebuilds.load(Ordering::Relaxed),
             self.stats.silent.load(Ordering::Relaxed),
         )
+    }
+
+    pub(crate) fn device(&self) -> String {
+        self.stats
+            .device
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     pub(crate) fn dry_callbacks(&self) -> u32 {

@@ -704,6 +704,15 @@ impl InHouse {
         self.silent_because.as_deref()
     }
 
+    /// The device and format the output plays on, empty with none. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_device(&self) -> String {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or_else(String::new, Output::device)
+    }
+
     /// How often the output's buffer ran dry, a gap heard, and whether its thread
     /// runs above the game's (ticket 3089). For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
