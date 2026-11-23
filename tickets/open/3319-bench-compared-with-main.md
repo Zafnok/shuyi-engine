@@ -142,11 +142,17 @@ None.
 - **For the game:** nothing changes; `--baseline` is new and optional.
   No public Rust API changes (`shuyi-cli`'s bench types are
   `pub(crate)`).
+- **Either order with 3342:** if 3342 is done, compare each run's
+  `start_instructions` with the baseline's too, with the same margin,
+  listed in `rises` as `<scenario> (start)` (a run without a start
+  count on either side is not compared); if not, nothing to do (3342
+  adds it to this comparison).
 
 **Out (do not do):**
 - Wall time: never a gate (ADR-0081).
 - The heap's peak and the packages' sizes against `main`: a follow-up
-  if a rise in them slips through; the budgets gate them today.
+  if a rise in them slips through; the budgets gate them today. The
+  start's instructions are compared once 3342 lands (above).
 - Drift: many rises each under the margin. The budgets still gate the
   sum; comparing with a release's numbers is another ticket's.
 - The game's own bench and its CI: the game's.

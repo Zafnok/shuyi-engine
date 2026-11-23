@@ -62,6 +62,22 @@ stay small by rule.
 
   2511 (MVP, done first) brings the blank template's code to 120 lines
   or fewer.
+- **The template has drifted past 2511's cap** (re-counted 2026-11-23,
+  found by an audit of the engine's blind spots). 2511's notes counted
+  71 lines after it, and 2501's 115. Today, by the rule below, over
+  `templates/shuyi-default/base` and the `stages.rs` that `stages_rs`
+  (`crates/cli/src/template/compose.rs`) writes for `blank`:
+  `lib.rs` 61 (outside its `#[cfg(test)]` item), `title.rs` 73,
+  `main.rs` 5, `examples/tools.rs` 5, the written `stages.rs` about 22,
+  and `build.rs` 45. That is about 165 lines without `build.rs`, which
+  2511 didn't have, and about 210 with it. `app_info.rs` is generated
+  and left out. The lines came with later tickets, none of which had a
+  cap to meet: 2111 (the stamp), 3048 (the identity), 3094 (the crash
+  record), 3082 (editions, and `build.rs`), 3300 (the `packed`
+  variants of `files()`), 2590 (the private files) and 2087.
+- **When the cap lands** is Nick's call in decision 3528 (the release's
+  guards): whether it moves ahead of the first release (2005). This
+  ticket stays After MVP until then.
 
 **Why it matters:**
 
@@ -80,8 +96,10 @@ stay small by rule.
 
 ## Nick input
 
-None. The cap is the minimal template's count after 2511, a technical
-choice, and it only goes down.
+None to do the work. The cap is the minimal template's count when the
+ticket is worked, a technical choice, and it only goes down. Whether
+the cap comes before the first release (2005) is asked in decision 3528,
+not here.
 
 ## Scope
 
@@ -151,8 +169,10 @@ choice, and it only goes down.
       `$GITHUB_STEP_SUMMARY`).
 - **The cap**, in `tools/line-budget.ron`:
   - one record, `(template: "blank", code: N)`. `N` is the blank
-    template's code count after 2511, rounded up to a multiple of 10
-    (110 stays 110, 111 becomes 120);
+    template's code count when this ticket is worked, rounded up to a
+    multiple of 10 (110 stays 110, 111 becomes 120). That is about 210
+    today, not 2511's 120 (*Context*): the PR says so, and the cap only
+    goes down from there;
   - a comment above it says what it is, and that it is lowered, never
     raised (`AGENTS.md` rule 6): a part every new game needs goes in the
     engine (2511's ADR).
@@ -256,7 +276,8 @@ choice, and it only goes down.
 - [ ] `cargo xtask template-lines` prints code, tests, data and setup
       for each built-in template (`blank`, `grid`) and
       `examples/hello-grid`. The PR description has the table. The
-      blank template's code is 2511's count, and any other count that
+      blank template's code is within a few lines of the 2026-11-23
+      count in *Context* (or the change is explained), and any other count that
       differs from *Context* by more than a few lines is explained.
 - [ ] `--check` passes on the repository. With the cap one lower it
       fails and names the files; with the cap 10 higher it fails and

@@ -107,6 +107,9 @@ say whether a new developer would know where to start.
   (`site/README.md`, *The book's order*): add `{ section = "guides" }`
   there, after the `chapters` entry. A `section` entry already lists the
   folder's landing page, then its pages by `weight`.
+  The site's *How-to* section (2843, `/learn/how-to/`) is generated
+  from the skill pack and is a separate thing from this *Guides* part.
+  Keep the two names apart.
 
   **From 2808 (done):** the guides reach Learn as Markdown files
   copied into `site/content/learn/book/guides/` before Zola runs, in `pages.yml`

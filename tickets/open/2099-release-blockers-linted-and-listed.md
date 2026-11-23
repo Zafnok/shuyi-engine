@@ -94,8 +94,7 @@ None.
 
 **Out (do not do):**
 - The `(done)` marks and the order of phase 2's table: they stay
-  hand-written. Whether the roadmap keeps status at all is the retro's
-  wider question, not this ticket's.
+  hand-written here; 3514 generates the marks after this ticket.
 - Whether work after the MVP waits for the release: a question for Nick
   (the retro's question 2), asked with `ask-nick` by whoever takes it up.
 - Checking the game's tickets that 2005's blockers name.
@@ -113,6 +112,13 @@ one runs `cargo xtask roadmap`. That is a one-command fix any PR may
 carry, since the command changes only the block. Once Nick's click in
 2005 ("Require branches to be up to date before merging") is on, it
 can't happen. The error says so in one clause.
+
+**Either order with 3513:** if 3513 is done, use its
+`crates/xtask/src/generated.rs` (the read, compare and rewrite of a block
+between two marker comments) for the roadmap's list instead of writing
+your own in `tickets/release.rs`; if not, write the marker functions in
+`tickets/release.rs` as planned (3513 moves them to `generated.rs` when
+it lands second).
 
 **Estimated size:** about 700 lines (code 300, tests 320, docs 80).
 

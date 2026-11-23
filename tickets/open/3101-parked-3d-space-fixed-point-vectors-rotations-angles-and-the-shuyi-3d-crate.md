@@ -1,12 +1,12 @@
 ---
 id: "3101"
-title: "Parked: 3D space: Fixed<F> and Fx12, vectors, rotations and Angle16, the shuyi-3d crate, and the 3D perspective markers"
+title: "Parked: 3D space: Fx12, vectors, rotations and Angle16, the shuyi-3d crate, and the 3D perspective markers"
 type: feature
 milestone: "Parked: 3D"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["1119", "1120", "2003"]
+blocked_by: ["2139", "1120", "2003"]
 nick_input: none
 completed:
 ---
@@ -22,26 +22,24 @@ completed:
 like the 2D one (ADR-0003 §3). This ticket lays the ground every other
 3D ticket stands on:
 
-- `Fx` (1119) becomes one case of a generic `Fixed<F>`, with no change
-  of behaviour;
-- `Fx12` (20.12, one unit a metre) is the 3D number;
+- `Fx12 = Fixed<12>` (20.12, one unit a metre) is the 3D number;
 - vectors, rotations and a 16-bit angle with its own sine table;
 - the crate, its metadata, its feature in `shuyi`, and the three 3D
   perspective markers (ADR-0011 §2, ADR-0009 §3).
 
-It builds on 1119 (`Fx`, `FxVec2`, and its golden table of `Fx`
-results on 2116's `shuyi_assets::golden`), 2335 (the 256-step `Angle`
-and its sine table, in units of 1/65 536 like this ticket's), 1120 (the
-`Perspective` trait) and 2003 (the `shuyi` crate, module metadata, the
-catalog and `cargo xtask check-modules`).
+It builds on 2139 (the numeric core, below), 1120 (the `Perspective`
+trait) and 2003 (the `shuyi` crate, module metadata, the catalog and
+`cargo xtask check-modules`).
 
-Two tickets touch the same ground. 3005 is done, and either order
-works with 2701:
-
-- **2701** adds `Fx::sqrt`, `Angle::atan2` and `Angle::acos`. If 2701
-  has landed, make those functions generic over `F` here, keeping their
-  results for `Fx` (2701's tests must pass unchanged). If it hasn't,
-  write them generic here, and 2701 uses them instead of adding its own.
+- **From 2139:** `Fixed<F>`, `Fx = Fixed<8>`, `fx::int` and
+  `Angle::atan2` exist. `Fixed<const F: u32>` in `shuyi_core::fx` has
+  its operators, conversions and serde written once for every `F`, and
+  a generic `sqrt` on `isqrt_u64`; `fx::int` has `isqrt_u64`,
+  `isqrt_u128` and `atan2_turn16` (CORDIC, its error bound documented);
+  2139's ADR records the numeric core and leaves `Fx12` to this ticket.
+  2139's golden table is `crates/core/tests/golden/fx.ron`, on 2116's
+  `shuyi_assets::golden`. The 256-step `Angle` and its sine table (in
+  units of 1/65 536, like this ticket's) are 2139's or 2335's.
 - **From 3005 (done):** `shuyi-core`, `shuyi-ui` and `shuyi-platform`
   build without `std`. CI's `no-std` job builds them with
   `--no-default-features --target thumbv7em-none-eabihf`, runs `cargo
@@ -58,29 +56,9 @@ None.
 ## Scope
 
 **In:**
-- **`Fixed<const F: u32>`** in `shuyi_core::fx` (ADR-0011 §3):
-  - an `i32` with `F` fractional bits, `#[repr(transparent)]`;
-  - `Add`, `Sub`, `Neg`, `Mul`, `Div` and their `*Assign` forms, with
-    1119's rounding (toward negative infinity) and its saturation rules,
-    written once for every `F`;
-  - `from_int`, `from_raw`, `raw`, `floor`, `ceil`, `from_ratio(n, d)`,
-    and `convert::<G>()` between precisions (rounding toward negative
-    infinity);
-  - `serde` as the raw `i32`, as `Fx` does today.
-- **`type Fx = Fixed<8>`.** Every method `Fx` has today keeps its name
-  and its results. Methods that only make sense for 2D pixels
-  (`from_px`, `floor_px`) stay on `Fixed<8>` alone. `FxVec2` stays as
-  it is.
-- **`type Fx12 = Fixed<12>`**: one unit is a metre, a step is 1/4096 m.
-- **Integer algorithms, written once** in `shuyi_core::fx::int`:
-  - `isqrt_u64` (the floor of the exact root) and `Fixed::sqrt` on it,
-    for every `F`;
-  - `atan2_turn16(y: i64, x: i64) -> u16`: the angle in 1/65 536 of a
-    turn. Use octant reduction and a binary search of the 3D sine table
-    below, or CORDIC with 16 rounds; pick one, and document its error
-    bound;
-  - `Angle::atan2` on 2335's 256-step `Angle` (and `acos`, if 2701
-    added it) is built on `atan2_turn16`, rounded to its 256 steps.
+- **`type Fx12 = Fixed<12>`** in `shuyi_core::fx`, beside 2139's
+  `Fx = Fixed<8>`: one unit is a metre, a step is 1/4096 m. It uses
+  2139's `Fixed<F>` as it is; `Fx` does not change.
 - **The crate** `crates/3d` (`shuyi-3d`), following ADR-0009 §4:
   - `#![cfg_attr(not(feature = "std"), no_std)]` with `extern crate
     alloc`, and a `std` feature on by default;
@@ -145,6 +123,8 @@ None.
   Record the split in the Completion notes.
 
 **Out (do not do):**
+- `Fixed<F>`, `Fx`, `fx::int`, the generic `sqrt` and `Angle::atan2`
+  (2139);
 - meshes and their formats (3102);
 - the 3D view and drawing (3103, 3104);
 - collision (3105) and cameras (3106);
@@ -153,40 +133,29 @@ None.
 
 ## Implementation steps
 
-1. Copy today's `Fx` into `crates/core/tests/fx_before.rs` as a frozen
-   reference type, `FxBefore`. It is test code only.
-2. Write `Fixed<F>` and make `Fx = Fixed<8>`. Run every test: every
-   fixture, snapshot and replay hash of the engine and its examples
-   must pass unchanged. Add a property test that compares `Fx` with
-   `FxBefore` for every operator.
-3. Write `fx::int` with `isqrt_u64` and `atan2_turn16`, and the generic
-   `sqrt`. Build `Angle::atan2` for 2335's `Angle` (and 2701's other
-   functions, if they exist) on them.
-4. Create `crates/3d`: `Cargo.toml` with the metadata and features, the
+1. Read 2139's ADR on the numeric core. Add `type Fx12 = Fixed<12>`
+   and re-export it from `shuyi_core`.
+2. Create `crates/3d`: `Cargo.toml` with the metadata and features, the
    README, its `tools/layers.ron` entry, the `3d` feature in
    `crates/shuyi`, and the catalog row. Run `cargo xtask check-modules`
    and `cargo xtask check-layers`.
-5. Write `xtask gen-sin-table`, check in the table, and write
+3. Write `xtask gen-sin-table`, check in the table, and write
    `Angle16`.
-6. Write `FxVec3`, `FxMat3`, `FxTransform` and `FxQuat`, each with unit
+4. Write `FxVec3`, `FxMat3`, `FxTransform` and `FxQuat`, each with unit
    tests on hand-worked values.
-7. Add the markers, with a unit test that each implements `Perspective`.
-8. Add a golden table of `Fx12` and `shuyi_3d::space` operations in the
+5. Add the markers, with a unit test that each implements `Perspective`.
+6. Add a golden table of `Fx12` and `shuyi_3d::space` operations in the
    crate's `tests/golden/` (`crates/3d/tests/golden/space.ron`), through
    2116's `shuyi_assets::golden` (a dev-dependency on `shuyi-assets`
-   with `default-features = false, features = ["golden"]`, as 1119's).
+   with `default-features = false, features = ["golden"]`, as `shuyi-core` has).
    Add `-p shuyi-3d` to the wasm32 `cargo test` of CI's `determinism`
    job, and to what the `run-gates` skill's *Golden tables* section says
    runs there.
 
 ## Acceptance criteria
 
-- [ ] `Fx` is `type Fx = Fixed<8>`. Every existing test, fixture,
-      snapshot and replay hash passes unchanged.
-- [ ] The property test of `Fx` against `FxBefore` passes 10 000 cases
-      per operator.
-- [ ] `sqrt` is the floor of the exact root for every non-negative input,
-      for `Fixed<8>` and `Fixed<12>` (property test).
+- [ ] `sqrt` is the floor of the exact root for every non-negative input
+      of `Fixed<12>` (property test).
 - [ ] For all 65 536 angles (an exhaustive test): `sin² + cos²` is
       within 2 steps of 1; `sin` of a quarter turn is exactly 1; `sin`
       never decreases across the first quarter; and
@@ -209,8 +178,8 @@ None.
 
 ## Tests required
 
-- Property: `Fx` against `FxBefore`; `sqrt`; rotation round trips;
-  quaternion drift.
+- Property: `sqrt` of `Fixed<12>`; rotation round trips; quaternion
+  drift.
 - Exhaustive: `Angle16` over every angle.
 - Unit: hand-worked vectors, matrices and transforms; the markers.
 - Determinism: the golden table of `Fx12` and `shuyi_3d::space`

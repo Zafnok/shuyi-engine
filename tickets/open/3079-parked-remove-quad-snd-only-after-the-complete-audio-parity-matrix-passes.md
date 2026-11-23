@@ -79,6 +79,11 @@ Missing mandatory automated evidence still blocks removal.
   `quad-alsa-sys` and `tools/sound-parity/quad-alsa-sys-held` go with quad-snd, as
   nothing needs them then ([ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)). CPAL's real `alsa-sys` stays: it
   links `libasound.so.2`, which Linux packages still need.
+- **Either order with 3015:** if 3015 (mobile, parked) is done, its
+  phone builds play through quad-snd's Android and iOS outputs: the
+  parity matrix gains a phone row, and quad-snd stays until the phone
+  sound ticket 3015 writes passes it; if not, nothing to do (3015 waits
+  for this ticket on phones).
 
 **Out (do not do):** weakening parity budgets, silently abandoning a port,
 new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.

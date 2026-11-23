@@ -207,18 +207,27 @@ in the PR that unparks it, before any code.
   by this one). Until it lands, every report is asked about, as with
   *Ask*.
 
+**Either order with 2606:** if 2606 is done, `CrashSending::Always` and
+`Never` set the `"crash report"` purpose's answer in 2606's consent
+record to `Yes` and `No`, the sender also checks
+`Consent::allows("crash report")`, and `Ask` stays the per-report
+question; if not, nothing to do (2606 makes 3047's sender check the
+record).
+
 **Out (do not do):**
 - An HTTP client of its own: 2601 and its backend tickets.
 - A server or a service of the engine's own.
 - A vendor's SDK (Sentry's crates and others), and formats of a
   service's own API. A follow-up ticket if Nick picks one.
 - Uploading debug files (2520's debug file) anywhere.
-- Analytics or telemetry of any kind.
-- Minidumps, and crashes 3046 can't catch (its Out).
+- Analytics or telemetry of any kind (a game's own opt-in events are
+  2608, parked).
+- Minidumps (3337 writes them on Windows, opt-in, in `crash-dumps/`):
+  sending one is a follow-up if Nick asks. A native fault's report
+  (3337) is a `CrashReport` in storage and is sent like a panic's.
 - Sending a session record (2518, 2519): Nick's privacy decision there
   is theirs.
-- Consent for other data: accounts (1148) and chat (1149) have their
-  own.
+- Consent for other data: one record for every purpose (2606).
 - The Playdate and console backends.
 
 ## Implementation steps

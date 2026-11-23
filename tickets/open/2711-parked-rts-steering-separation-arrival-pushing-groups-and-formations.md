@@ -38,13 +38,8 @@ None.
 
 **In:**
 - **`Fx` roots:** steering needs `FxVec2::length` and `normalize`.
-  **Either order with 2701:** if 2701 is done, use its `Fx::sqrt`,
-  `FxVec2::length`, `length_squared` and `normalize`. If not, use the
-  ones already in `shuyi_core::fx` (2106 and 2122 may have added
-  `Fx::sqrt` and `FxVec2::length`), add the rest here exactly as
-  2701's scope describes (floor of the exact root through `i64`; zero
-  stays zero), with its property test, and note in 2701 that they
-  exist.
+  **From 2139:** `Fx::sqrt`, `FxVec2::length`, `length_squared` and
+  `normalize` exist (2139 comes before this through 1119): use them.
 - **Settings per kind**, a `steer` block in `*.unit.ron` with defaults:
   `separation_radius`, `separation_weight`, `flow_weight`,
   `arrival_radius`, `push_iterations` (the last one in `RtsSettings`).
@@ -105,7 +100,7 @@ None.
 
 ## Implementation steps
 
-1. Add the `Fx` roots, or reuse 2701's.
+1. Use 2139's `Fx` roots.
 2. Write separation and arrival over the spatial grid, reading last
    positions and writing next ones.
 3. Write `Group`, its speed and the arrival area.

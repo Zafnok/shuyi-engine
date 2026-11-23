@@ -98,6 +98,11 @@ None.
   are the loader's). The game's web build gets `clock.js` from
   `shuyi web` at its next pin bump, with no code change. No `Breaking:`
   line (ADR-0038 §6).
+- **Either order with 3346:** if 3346 is done, `clock.js` gets a row in
+  `crates/app/WORKAROUNDS.md`'s plugin table (`cargo xtask check-pins`
+  fails without one), and it passes strings and bytes at a pointer and
+  a length, never as `sapp_jsutils` objects; if not, nothing to do
+  (3346 lists the plugins that exist then).
 
 **Out (do not do):**
 - **The audio's random seed** (`miniquad::date::now().to_bits()`,

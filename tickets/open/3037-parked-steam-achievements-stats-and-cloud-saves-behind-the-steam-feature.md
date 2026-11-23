@@ -6,14 +6,14 @@ milestone: "Engine: store services"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["3036", "2349"]
+blocked_by: ["3036", "2349", "3527"]
 nick_input: setup
 completed:
 ---
 
 # 3037 — Steam achievements, stats and cloud saves
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; and 2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost"): after the MVP in `docs/ROADMAP.md` and after 3036. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; and 2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost"): after the MVP in `docs/ROADMAP.md` and after 3036. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. Decision ticket 3527 asks Nick whether to unpark it (question 2). If he says yes, this ticket's Steam module also brings the Steam Deck's on-screen keyboard, which 3012 leaves to the game today.
 
 ## Context
 
@@ -168,6 +168,12 @@ Steam Cloud works two ways (Steamworks documentation, *Steam Cloud*):
     Cloud API. It reports Steam's quota errors as `StorageError`.
   - The docs say which to pick: Auto-Cloud unless the game must control
     each file.
+- **Either order with 2607:** if 2607 is done, add `SteamCloudSaves`,
+  implementing its `CloudSaves` over the `steam` module's handle and
+  `ISteamRemoteStorage` (each file's timestamp as its `Stamp`), and say
+  in `SteamStorage`'s docs that a game wanting the conflict screen wraps
+  it in 2607's `SyncedStorage`. If not, nothing to do here (2607 adds
+  `SteamCloudSaves` over this ticket's handle).
 - **Handed in through 3036's `StoreServices`.**
   `Macroquad::store_services()` hands in `SteamAchievements` when Steam
   started. Its `available()` is false until Steam has sent the current

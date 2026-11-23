@@ -41,8 +41,13 @@ What Shuyi has today:
 2224 adds `ProportionalFont`, its formats and the tools, and its ADR
 decides how text sits in the frame: a run is ordinary sprites tagged
 with the run, plus a record the snapshot prints as one line. This ticket
-builds that, and fonts by id. 2329 lays widgets out in cells or pixels,
-and its `Measure` needs text that measures itself.
+builds that, and fonts by id. The same ADR (its step 7) makes a run
+shaped glyphs, not characters, so a shaper or right-to-left text (2908,
+parked) can come later without breaking this ticket's API. 3231's
+window layer draws text through this ticket's `add_text` and `layout`,
+so the API is fixed for both. 2329 lays widgets out in cells or pixels
+through `measure` of 3230's `Widget` contract, and needs text that
+measures itself.
 
 Why it matters:
 
@@ -103,13 +108,23 @@ None.
     `Shadow { color: Rgb, dx: i8, dy: i8 }` and `TextAlign { Left,
     Center, Right }`, all `Copy + Eq + Hash`. A `color` of `None` keeps
     the page's own colours;
+  - **Shaped glyphs** (2224's ADR, step 7): `ShapedGlyph { glyph:
+    GlyphRef, cluster: u32, advance: i32, offset: (i32, i32) }`, `Copy +
+    Eq + Hash`. One function, `shape(font: &ProportionalFont, text:
+    &str) -> Vec<ShapedGlyph>`, turns the text into glyphs through
+    `ProportionalFont::glyph(char)` and `kerning(GlyphRef, GlyphRef)`
+    (2224), the kerning already added to `advance`, and `cluster` the
+    byte offset in `text` the glyph came from. Nothing else reads the
+    font by `char`, and the steps below place glyphs only from
+    `advance`, `offset` and `cluster`, never from the text's order. A
+    shaper later replaces `shape` alone;
   - `layout(face: &Face, text: &str, style: &TextStyle) -> TextLayout`,
-    with `TextLayout { glyphs: Vec<(char, PxRect)>, rect: PxRect, cut:
-    bool, missing: Vec<char> }`: each drawn glyph (after the fallback
-    below) and where its `Glyph::rect` lands, from the run's top-left:
-    - the pen moves by each glyph's advance plus the pair's kerning, and
-      a glyph's rect is at the pen plus its `offset`, from the line's
-      top;
+    with `TextLayout { glyphs: Vec<(ShapedGlyph, PxRect)>, rect: PxRect,
+    cut: bool, missing: Vec<char> }`: each drawn glyph (after the
+    fallback below) and where its `Glyph::rect` (from
+    `ProportionalFont::get`) lands, from the run's top-left:
+    - the pen moves by each glyph's `advance`, and a glyph's rect is at
+      the pen plus its `offset`, from the line's top;
     - `\n` starts a line, and lines are `line_height` apart;
     - with `max_width`, a line breaks at the last space that fits, and a
       word wider than the width is cut between characters, as
@@ -198,8 +213,8 @@ None.
     rect's width and `max_lines` as many lines as fit its height. The
     face is `ctx.game.fonts().get(style.font)`; a font the table lacks
     draws nothing. **Either order with 2329:** if 2329 is done,
-    `TextLabel` implements its `Measure` in pixels, with `measure`; if
-    not, 2329 does it.
+    `TextLabel` implements 3230's `Widget` contract, its `measure` in
+    pixels, with `measure`; if not, 2329 does it.
   - **The menu's text look**, `widgets::menu::text`
     (`crates/ui/src/widgets/menu/text.rs`), beside `menu::glyph`. It
     draws the same `MenuView` in pixels, with the face of
@@ -246,6 +261,10 @@ None.
   - **Either order with 2330:** if 2330 is done, its `Text` node takes an
     optional `font` (an id in `GameData::fonts`) and is drawn as a
     `TextLabel`; if not, 2330 adds the field.
+  - **Either order with 3235:** if 3235 is done, add an optional `font:
+    "id"` (an id in `GameData::fonts`) to each look in `UiLook`
+    (`*.look.ron`), used by a `Text` node under that look that names no
+    `font` of its own; if not, nothing to do (3235 adds it).
   - **Either order with 2722 (parked):** if 2722 is done, its `vn.ron`
     `layout` takes an optional `font` (an id in `GameData::fonts`), and
     `VnSkin` draws the text box, name box and choices as `TextLabel`s in
@@ -283,8 +302,9 @@ its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
 - styled spans inside a run: 2347 styles cell text only, and its Out
   leaves runs out too; a ticket of its own when a game asks;
 - Japanese and Chinese breaking rules for runs (2302's rules are for
-  cells; a run breaks at spaces and cuts long words); shaping,
-  right-to-left text (2908, parked) and emoji;
+  cells; a run breaks at spaces and cuts long words); a shaper itself
+  (`shape` above is the one place it goes), right-to-left text (2908,
+  parked) and emoji;
 - changing the look of any engine screen, or the game's;
 - the one-bit copies of a font's pages for the Playdate: 3007 bakes
   every image, and a page's sidecar can pick `dither: threshold(N)`. On
@@ -293,7 +313,8 @@ its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
 
 ## Implementation steps
 
-1. Read 2224's ADR, `ProportionalFont` and `Glyph`
+1. Read 2224's ADR (step 7, shaped glyphs), `ProportionalFont`,
+   `GlyphRef` and `Glyph`
    (`crates/assets/src/font/proportional.rs`); in `glyph_buffer.rs`
    `Sprite`, `add_sprite`, `cut_items` and `blit`; `snapshot.rs`; and
    `widgets/menu/glyph.rs`.
@@ -301,15 +322,16 @@ its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
    `insert`, `load`, `insert_cells`, `id`, `get`) and
    `ProportionalFont::from_cells`, with their unit tests.
 3. Add `GameData::fonts` with its default, and the toy's `fonts` field.
-4. Write `frame::text` (`TextStyle`, `Shadow`, `TextAlign`, `layout`,
-   `measure`) with its unit and property tests.
+4. Write `frame::text` (`ShapedGlyph`, `shape`, `TextStyle`, `Shadow`,
+   `TextAlign`, `layout`, `measure`) with its unit and property tests.
 5. In `glyph_buffer.rs`, add `TextRunId`, the `text` field of `Sprite`,
    `add_text`, `TextRun` and `texts()`, then the cut and blit rules,
    with tests in a new `glyph_buffer/text_tests.rs`.
 6. Add the snapshot line and its module docs.
 7. Add `TextLabel` and `menu::text`, with snapshots and the hits from
    2405. Then the either-order parts whose tickets are done: 2329's
-   `Measure`, 2330's `font`, 2355's inactive look, 2338's frame, 2353's
+   layout (3230's `Widget` for `TextLabel`), 2330's `font`, 3235's look
+   font, 2355's inactive look, 2338's frame, 2353's
    walk, 2392's card, 2722's VN font, 2802's section and 2323's text
    size.
 8. Add `insta.workspace = true` to `shuyi-cli`'s `[dev-dependencies]`
@@ -351,7 +373,9 @@ its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
 
 ## Tests required
 
-- Unit: `layout` (above); `FontTable::insert` and `load` with a page
+- Unit: `layout` (above); `shape` giving each glyph's `cluster` as a
+  byte offset, with a character of more than one byte before it;
+  `FontTable::insert` and `load` with a page
   missing from the image table; `from_cells`; the snapshot line with
   each option; a run cut in part and cut away; `blit` renumbering runs;
   `TextLabel` in a rect too short for its lines.

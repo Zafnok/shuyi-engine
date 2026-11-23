@@ -22,6 +22,11 @@ quad-snd are separate steps
 This one is the switch, and undoing it is one line. 3079 waits for the game to
 have run on it.
 
+The mixer's buses and effects (3238) start with an ADR on the bus seam,
+written before the mixer's public items freeze at the first release. That
+seam is additive (`Params` and `Config` are `#[non_exhaustive]`, and a new
+`Backend` method has a default body), so this switch does not wait for it.
+
 ## Nick input
 
 None.
@@ -55,6 +60,12 @@ None.
 **Out (do not do):**
 - Removing anything of quad-snd or macroquad's `audio` (3079).
 - A runtime switch between backends (ADR-0068).
+
+**Either order with 3238:** if 3238 is done, effects sound in the new
+default build; say in `docs/platform-backends.md` that a build on quad-snd
+(`default-features = false`) plays the dry mix, and run the matrix on the
+dry mix as before; if not, nothing to do (3238 says which backends play
+effects when it lands).
 
 ## Implementation steps
 

@@ -195,7 +195,8 @@ None.
   - `format_problem` on a `.flac` or `.mp3` name: bytes that are a WAV
     are checked as a WAV. Other bytes are read by 2203's `Sound`
     format of it, whose message is the problem (one or two channels at
-    44.1 kHz, as for OGG). With the feature off, the problem names the
+    a rate in `SAMPLE_RATES` if 2272 is done, else 44.1 kHz, as for
+    OGG). With the feature off, the problem names the
     feature. That branch is a private function that takes the format
     as an `Option` (`None` with the feature off), so a unit test
     covers the message with the feature on.
@@ -205,6 +206,12 @@ None.
     `format_problem` beside its `.sfx.ron` one, and make `sfx::to_wav`
     call `pcm16_wav` with one channel, so the crate has one WAV
     writer. If not, nothing to do (2225 adds `.sfx.ron` beside these).
+  - **Either order with 2272:** if 2272 is done, pass the 16-bit WAV
+    that a FLAC or MP3 decode hands to quad-snd through 2272's
+    `at_quad_snd_rate`, and make the FLAC and MP3 rate messages name
+    `SAMPLE_RATES` as the WAV and OGG ones do; if not, nothing to do
+    (2272 routes this ticket's WAV through `at_quad_snd_rate` when it
+    lands).
 - **Sounds in `shuyi-app`** (`crates/app/src/audio.rs` and
   `audio/native_music.rs`):
   - `Audio::load` runs each sound file's bytes through
@@ -265,8 +272,8 @@ None.
 - streaming on the legacy quad-snd path: it decodes whole tracks.
   Bounded streaming on the replacement path belongs to 2210, 3030
   and 3031, with this ticket's adapters feeding their source contract;
-- resampling: the manifest check refuses a file at another rate, as it
-  does an OGG;
+- resampling: 2272 accepts 22.05, 32 and 48 kHz and converts on the
+  native quad-snd path;
 - voice clips in FLAC or MP3: a clip's file ends in `.ogg`
   (`voice::clip_file`);
 - the font atlas, which stays a PNG;

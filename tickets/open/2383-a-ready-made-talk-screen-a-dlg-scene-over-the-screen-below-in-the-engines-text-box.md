@@ -98,6 +98,11 @@ None.
   scene's `@music` lines to the game's music (`DialoguePlayer::take_music`
   as the scene reaches them). If not, nothing to do (2384 adds that to
   the talk screen).
+- **Either order with 2140:** if 2140 is done, the talk screen takes the
+  game's `StoryState`, plays the scene over it with
+  `DialoguePlayer::with_story`, and hands back `story_changes()` when
+  the scene ends, with one test. If not, nothing to do (2140 adds it to
+  this screen when it lands).
 
 **Out (do not do):**
 - portraits (the short path has no portraits yet), and a game's own

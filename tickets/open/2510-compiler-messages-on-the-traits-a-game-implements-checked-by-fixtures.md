@@ -193,6 +193,9 @@ None.
   unparked (edit requested there);
 - the book's chapters the notes link to (2802);
 - problem codes and help lines on the contract's errors (2509);
+- carrying compiler errors in the contract's answers (`diagnostics`,
+  the `build` operation): 3415. The `on_unimplemented` text arrives
+  there as any message does;
 - better messages for E0046, E0271 and supertrait failures;
 - a lint or a macro that checks a game's impls;
 - diagnostic attributes that aren't stable on the pinned toolchain.

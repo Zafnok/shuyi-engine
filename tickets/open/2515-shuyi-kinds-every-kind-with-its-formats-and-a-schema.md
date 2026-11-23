@@ -247,6 +247,11 @@ None.
 - **Either order with 2516:** if 2516 is done, `Ref<K>` implements
   `JsonSchema` behind the `schema` feature: a string whose description
   names kind `K`. If not, the ADR notes `Ref<K>` for 2516, which adds it.
+- **Either order with 3418:** if 3418 is done, when deriving each
+  format's text schema add the hints of 3418's table that fit
+  (`x-shuyi-widget = "color"` on the palette's colour strings) and have
+  `kinds` check them with `shuyi_cli::hints::check`; if not, nothing to
+  do (3418 adds them and checks every kind's text schema in `check`).
 - **From 1134 (done):** add a line to the skills that write data files
   (`skills/shuyi-new-game/SKILL.md`, `skills/shuyi-import-art/SKILL.md`
   and `skills/shuyi-ship/SKILL.md`): read the file's shape with `shuyi
@@ -304,7 +309,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    for an unknown kind, the schemas and the version line.
 7. Describe Hello, Grid's `English`; update `docs/formats.md`,
    `docs/contract.md`, the usage text and 2507's line.
-8. Do the either-order parts whose tickets are done (2230, 2516), and
+8. Do the either-order parts whose tickets are done (2230, 2516, 3418), and
    add the `shuyi kinds` line to the three skills (from 1134).
 9. Run the gates.
 

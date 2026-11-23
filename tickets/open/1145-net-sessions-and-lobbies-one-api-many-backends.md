@@ -101,6 +101,22 @@ None. Our game's lobby look comes later with 0053.
   lobby screen offers the overlay's invite dialog when the session is
   Steam's. If not, 1144 does all of that over this API, and nothing is
   left here.
+- **Either order with 2605:** if 2605 is done, carry its `RelayPaths`
+  option from `RelaySession` onto the relay session backend, and show
+  each player's path (`PathChanged`) on the lobby screen. If not,
+  nothing to do (2605 adds the option to this ticket's relay backend
+  and the path to its lobby screen).
+- **Either order with 2606:** if 2606 is done, `SessionBackend` is
+  opened with a purpose id and refuses with `Refused::NoConsent` when
+  `Consent::allows` doesn't allow it, and the lobby screen shows
+  `UpdateRequired` and `OtherBuild` with keys the game names. If not,
+  nothing to do (2606 adds both).
+- **Either order with 2920:** if 2920 is done, add the hooks its report
+  names to `SessionBackend`: an online check before `create` and
+  `join`, answered allowed, denied or restricted, and a platform
+  account id a session carries. The relay and LAN backends answer
+  "allowed". If not, nothing to do (2920 adds them to this scope when
+  it lands).
 
 **Out (do not do):**
 - matchmaking queues (1148);
@@ -122,8 +138,8 @@ None. Our game's lobby look comes later with 0053.
    its `?join=` reader handing its token to that field.
 4. Add the example's online mode, with an integration test that runs two
    Harness games and a relay in one process.
-5. Do the `shuyi-net` skill's part (from 1134), and 1144's, 2529's and
-   3055's parts if they are done.
+5. Do the `shuyi-net` skill's part (from 1134), and the parts of 1144,
+   2529, 2605, 2606, 2920 and 3055 that are done.
 
 ## Acceptance criteria
 

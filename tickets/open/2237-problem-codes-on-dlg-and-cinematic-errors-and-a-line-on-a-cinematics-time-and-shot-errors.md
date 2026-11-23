@@ -98,6 +98,11 @@ None.
   `SH2010` for the rest), and `check_in` places them on their track's
   line. If not, nothing to do (2364 gives its problems codes from this
   ticket's table, by its own clause).
+- **Either order with 2140:** if 2140 is done, its `@var`, `@set` and
+  `@if <test>` parse and check errors get codes too, from the table
+  above (`SH2001` for syntax, `SH2008` for an unknown variable, and so
+  on). If not, nothing to do (2140 gives its errors codes from the
+  content codes as this ticket set them out, by its own clause).
 
 **Out (do not do):**
 - new problem codes: every problem above fits a content code that
