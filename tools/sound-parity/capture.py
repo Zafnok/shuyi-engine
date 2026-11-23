@@ -72,6 +72,9 @@ CHROMIUM_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
 # nothing heard, in CI run 45163539957), and the in-house output asks for about 20 ms
 # itself. A player's system sets neither.
 IN_HOUSE_WITHOUT = ("PULSE_LATENCY_MSEC",)
+# What it plays with: the sink's rate, which the plugin's default of 48,000 Hz isn't,
+# so that PulseAudio's resampler isn't what the scenarios measure (ticket 3032).
+IN_HOUSE_WITH = {"SHUYI_SOUND_PROBE_RATE": str(RATE)}
 # How the sink is made, and made again after `write_native_device_loss` took it away.
 NULL_SINK = ["module-null-sink", f"sink_name={SINK}", f"rate={RATE}", "channels=2", "format=s16le"]
 # The silence a recording starts with before anything plays, in frames.
@@ -306,12 +309,14 @@ class Native:
     probe: Path
     stage: Path
     target: Sink
-    # The sink's settings this probe runs without (ticket 3032).
+    # The sink's settings this probe runs without, and what it adds (ticket 3032).
     without: tuple[str, ...] = ()
+    added: dict[str, str] = field(default_factory=dict)
 
     @property
     def env(self) -> dict[str, str]:
-        return {k: v for k, v in self.target.env.items() if k not in self.without}
+        kept = {k: v for k, v in self.target.env.items() if k not in self.without}
+        return {**kept, **self.added}
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
         # A scenario's recording is judged as the sound itself, so one the backend
@@ -685,7 +690,7 @@ def native(args: argparse.Namespace) -> int:
     shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
     with sink() as target:
         old = Native(args.probe.resolve(), args.dir.resolve(), target)
-        new = Native(args.new_probe.resolve(), args.dir.resolve(), target, IN_HOUSE_WITHOUT) if args.new_probe else None
+        new = Native(args.new_probe.resolve(), args.dir.resolve(), target, IN_HOUSE_WITHOUT, IN_HOUSE_WITH) if args.new_probe else None
         if args.only in (None, "linux-native"):
             base = args.dir / "linux-native"
             if not args.perf_only:
@@ -728,7 +733,7 @@ def write_native_device_loss(player: Native, target: Sink, base: Path) -> None:
 
     (player.stage / "probe.txt").write_text("scenario device_loss\n", encoding="utf-8", newline="\n")
     report: dict[str, object] = {}
-    process = subprocess.Popen([str(player.probe)], cwd=player.stage, env=player.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen([str(player.probe)], cwd=player.stage, env=player.env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     try:
         time.sleep(2.5)
         modules = [line.split("\t") for line in pactl("list", "short", "modules").splitlines()]
@@ -758,8 +763,15 @@ def write_native_device_loss(player: Native, target: Sink, base: Path) -> None:
     except (OSError, RuntimeError) as error:
         report["error"] = str(error)
     finally:
-        process.kill()
-        process.wait()
+        # The scenario plays on to its end, and the output says what it went through.
+        try:
+            _, said = process.communicate(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _, said = process.communicate()
+        for line in said.splitlines():
+            if line.startswith(PREFIX) and '"output"' in line:
+                report["output"] = json.loads(line[len(PREFIX):])
     (base / "device-loss.json").write_text(json.dumps(report) + "\n", encoding="utf-8", newline="\n")
 
 

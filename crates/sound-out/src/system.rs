@@ -200,9 +200,23 @@ fn open_stream(
     held: bool,
 ) -> Result<(Stream, cpal::Device), OutputError> {
     let device = host.default_output_device().ok_or(OutputError::NoDevice)?;
-    let supported = device
+    let default = device
         .default_output_config()
         .map_err(|e| device_error(&e))?;
+    // The mix's own rate where the device takes it in its own format, so that nothing
+    // between converts it: ALSA's sound-server plugins take any rate and say 48,000 Hz
+    // whatever the server runs at (ticket 3032).
+    let supported = device
+        .supported_output_configs()
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter(|range| {
+            range.sample_format() == default.sample_format()
+                && range.channels() == default.channels()
+        })
+        .find_map(|range| range.try_with_sample_rate(config.rate))
+        .unwrap_or(default);
     let format = supported.sample_format();
     let mut stream_config: StreamConfig = supported.config();
     stream_config.buffer_size = buffer_size(

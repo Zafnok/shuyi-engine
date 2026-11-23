@@ -557,6 +557,20 @@ fn level(volume: f32) -> u16 {
     level
 }
 
+/// The rate the sound gates record at, which their probe mixes at so that nothing
+/// resamples what they compare (ticket 3032): `SHUYI_SOUND_PROBE_RATE`, set by
+/// `capture.py` where the system's own default isn't the sink's.
+#[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+fn probe_rate() -> Option<u32> {
+    std::env::var("SHUYI_SOUND_PROBE_RATE").ok()?.parse().ok()
+}
+
+/// No rate but the system's, outside the probe.
+#[cfg(not(all(feature = "sound-probe", not(target_arch = "wasm32"))))]
+const fn probe_rate() -> Option<u32> {
+    None
+}
+
 /// Plays through the mixer, which it opens with the first sound.
 #[derive(Default)]
 pub struct InHouse {
@@ -584,7 +598,9 @@ impl InHouse {
     /// sound, and one line to say so, rather than a crash.
     fn engine(&mut self) -> &mut Engine {
         if self.engine.is_none() {
-            let rate = Output::preferred_rate().unwrap_or(DEFAULT_RATE);
+            let rate = probe_rate()
+                .or_else(Output::preferred_rate)
+                .unwrap_or(DEFAULT_RATE);
             let (mut engine, mut side) = sides(rate);
             let config = OutputConfig::new(rate, Channels::Stereo, BLOCK_FRAMES);
             let (output, problem) = Output::open_or_null(config, move |out| side.fill(out));
