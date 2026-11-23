@@ -140,19 +140,25 @@ ticket.
   it.
 
 - Deviation: the profile's new field changes its binary form in a
-  pack, so the pack format is version 21 (`pack::VERSION`), and the
+  pack, so the pack format is version 22 (`pack::VERSION`; 21 went to 2345 on `main` first), and the
   golden table's `target profile: target-ron` value is blessed
   (`cargo xtask golden --bless`).
 
+- Merging `main` (#536 and #537) found its tests didn't build: #537's
+  FLAC test called `Audio::load` with the seed argument #536 had taken
+  away (`crates/platform/src/audio/player.rs`). This PR drops the
+  argument; nothing else of theirs changes. No ticket: a one-line fix of
+  a test, made here so this PR's CI can pass.
+
 Game: game#1314 moves the pin to this change.
 
-Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `graphics`, and a baked pack is of version 21; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `graphics`, and a baked pack is of version 22; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
 ```migration
 since: 0.1.0
-what: The pack format is version 21, its target profiles with a graphics tier; a pack of version 20 is refused.
-old: "pack::VERSION == 20"
-new: "pack::VERSION == 21"
+what: The pack format is version 22, its target profiles with a graphics tier; a pack of version 21 is refused.
+old: "pack::VERSION == 21"
+new: "pack::VERSION == 22"
 before: |
   cargo shuyi bake   # with the engine before 3347
 after: |
