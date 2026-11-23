@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["game#1131", "2003", "2116"]
+blocked_by: ["game#1131", "2003", "2116", "2140"]
 nick_input: none
 completed:
 ---
@@ -28,8 +28,8 @@ What it builds on:
   §2): `check`, `apply`, `legal_commands`, `outcome`. A run is its seed
   plus its commands.
 - **The dialogue the engine already has**: `.dlg` scenes (game
-  ADR-0011, game ADR-0055) with speakers, choices, `@if`, variables,
-  line ids (game ADR-0045) and the game's own `@` lines (its
+  ADR-0011, game ADR-0055) with speakers, choices, `@if`, story
+  variables (`@var`, `@set`, `@if <test>`, 2140), line ids (game ADR-0045) and the game's own `@` lines (its
   `Directive` type `D`). **From 2201 (done):** ADR-0007's
   `DialogueScene` kind is `shuyi_assets::dialogue::DialogueFile<D>`, a
   file's scenes, read by the format `Dlg<D>` (`docs/formats.md`, "The
@@ -99,7 +99,8 @@ None.
 - **`VnState`** in `shuyi_vn::state` (ADR-0016 §2):
   - where the story is: the scene and the line, named by **line id**
     (game ADR-0045), never by an index into the file;
-  - the dialogue variables, as the runner already keeps them;
+  - the story variables, a `shuyi_core::story::StoryState` (2140), as
+    `DialoguePlayer::with_story` plays them;
   - the *stage*: the background, the characters on screen (each with
     pose, expression, place and draw order), the music, and the event
     picture if one is showing;

@@ -86,7 +86,11 @@ grader that checks any agent's game through the contract, and reference
 solutions that CI grades on every pull request. A change that breaks a
 reference fails its PR, and each reference's lines over the template are
 the first numbers. 2525 runs a real agent on a schedule, which costs
-money and waits for Nick.
+money and waits for Nick. Nothing here runs before the first release
+(2005): this ticket is After MVP. Whether a fresh agent tries a game by
+hand before it, given only the website's `llms.txt` and the MCP server,
+with every name it guessed wrong logged, is Nick's question 1 in 3528.
+Snake waits for real time, so that test would use the box pusher.
 
 Why it matters: it is the only measure of the edge Nick chose for the engine.
 
@@ -325,6 +329,10 @@ None. Spending money on agent runs is 2525's question.
 **Out (do not do):**
 - running an agent, a schedule, tokens, cost and minutes, a results page
   (2525);
+- a hand-run smoke test by a fresh agent before the first release
+  (`llms.txt` and MCP only, every missed name logged): 3528 asks Nick,
+  and a yes writes its own ticket in 2005's `blocked_by`; it is not
+  this ticket, and this ticket's milestone stays;
 - references for snake and the platformer: `examples/snake` (2739) and
   `examples/platformer` (1127) become them when those tickets land
   (if 1127 is done first, the platformer's is set here, as above);

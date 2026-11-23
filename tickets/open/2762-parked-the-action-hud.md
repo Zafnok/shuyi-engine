@@ -32,9 +32,10 @@ It builds on 2757 (`SkillState`: cooldowns, charges, refusals), 2758
 sprite and text items.
 
 **Either order with 2329:** if 2329 is done, `PoolGauge` and `SkillBar`
-implement its `Measure` and the HUD's pieces are laid out by its rows
-and columns. If not, each piece takes a rectangle from the game, and
-2329 gives the two their `Measure` when it lands.
+implement 3230's `Widget` (its `Widget::measure`) and the HUD's pieces
+are laid out by 2329's rows and columns. If not, each piece takes a
+rectangle from the game, and 2329 gives the two 3230's `Widget` when it
+lands.
 
 ## Nick input
 

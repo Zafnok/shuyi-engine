@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: []
+blocked_by: ["3228"]
 nick_input: none
 completed:
 ---
@@ -141,7 +141,11 @@ clause says so).
   layer of free-moving games (1120) takes the same `look.light_blend`
   in the ticket that first needs it, as 1120's **Out** says;
 - floats anywhere in the cycle: `Light::apply` keeps its floats for the
-  pixel sum only, as today.
+  pixel sum only, as today;
+- drawing a moving light without a new texture per light: 3228 (done
+  first) draws `Paint::Shaded` through a light shader in `shuyi-app` and
+  caps the recoloured copies, so each `Light::mix` step costs a uniform,
+  not an upload.
 
 ## Implementation steps
 

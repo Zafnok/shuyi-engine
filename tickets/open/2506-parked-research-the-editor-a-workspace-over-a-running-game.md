@@ -13,7 +13,7 @@ completed:
 
 # 2506 — Research: the editor, a workspace over a running game
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the tool contract (1129), the debug view in real time (2316) and the live link (2521). It belongs with the parked visual scripting research (1135). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the tool contract (1129), the debug view in real time (2316) and the live link (2521). It belongs with the parked visual scripting research (1135). Whoever unparks it sets `status: todo` and drops `Parked:` from the title. 3526 asks Nick whether this research may start before the editor is built.
 
 ## Context
 
@@ -63,7 +63,9 @@ What is already decided, and the editor must keep:
   with it. The editor adds no model of its own.
 - **The web build has no `wasm-bindgen`** (game ADR-0034). `egui` on
   the web needs `eframe`, which uses it. So does any toolkit built on
-  `web-sys`.
+  `web-sys`. This counts only against an editor that runs in a browser.
+  A native, dev-only editor never enters a game's web build, so it
+  doesn't weigh against `egui` there.
 
 ## Nick input
 
@@ -110,13 +112,17 @@ Nick comments on the scope and the look, not on the code.
      scope has them, and 2357 adds nothing for the editor.
   3. **Its panels on day one**, each with what it edits:
      - the live view, with the channels, pause, step, slow motion and
-       going back (2357), and whether it has a timeline that scrubs a
-       recorded session through 2357's `seek` (2357 leaves the timeline
-       to this ticket);
+       going back (2357). Clicking a thing in it finds the file and
+       pointer it came from, and dragging a handle edits it (3416);
+     - a timeline that scrubs a recorded session through 2357's `seek`
+       (2357 leaves the timeline to this ticket);
      - the screen stack, and the stage's tree (layers, units, bodies);
      - the inspector over a module's settings files (their shapes come
        from `shuyi kinds`, 2515; this ADR doesn't pick another schema
-       source);
+       source). It reads the game's inspector hints, and shows the
+       game's own panels, both as data (3418);
+     - an asset browser: the game's files by kind, with a preview of
+       each image, sound, map and dialogue;
      - the graph panel (1135's format);
      - levels: in-editor, or opened in Tiled or LDtk with hot reload
        (1124).
@@ -124,7 +130,10 @@ Nick comments on the scope and the look, not on the code.
      need a restart, and whether a value changed in the inspector
      while the game runs is recorded, refused, or written to the file
      only.
-  5. **Undo:** the editor's own undo stack, and git as the record.
+  5. **Undo:** the editor's own undo stack, and git as the record. An
+     undo step is the `inverse` a `patch` answer gives (3417); the ADR
+     decides only the stack, and what happens to it when a file
+     changes on disk (3417 refuses a stale `base`).
 - **A throwaway spike** (not committed). The chosen shell shows the
   toy's grid game running with the `grid` channel on, and edits one
   setting in a RON file that the game reloads.

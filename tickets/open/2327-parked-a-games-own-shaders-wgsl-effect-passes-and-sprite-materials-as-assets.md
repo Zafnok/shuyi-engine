@@ -83,6 +83,14 @@ None.
   `Custom` pass runs as a node of its `RenderGraph`, as 2326's passes
   do, and the frame's node draws sprites with their materials; if not,
   nothing to do (2331 moves them into nodes).
+- **Either order with 3237:** if 3237 is done, sprites already carry
+  `material: Option<MaterialRef>`, `MaterialSet` holds a built-in
+  `PaletteSwap` with its CPU reference in the raster, and the snapshot
+  reserves ` (not drawn on cpu)`, so this ticket adds shader materials
+  to `MaterialSet`, a `Custom` pass to `EffectChain`, and their wgpu
+  side, and writes a game shader's snapshot words in 3237's form
+  (` material=<id> (not drawn on cpu)`); if not, nothing to do (this
+  ticket builds `MaterialRef` and `palette_swap` as written).
 
 **Out (do not do):**
 - compute shaders;

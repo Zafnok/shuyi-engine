@@ -128,6 +128,10 @@ None (technical). Scheduling: see above.
   (x64, ARM64) and its `determinism` job (wasm32), and `shuyi-net`
   joins it by the line from 2116 above. A lockstep test here runs
   both peers in one process;
+- a typed refusal for a peer of another build: 2606 (parked, blocked
+  by this ticket) adds `Refused` to `shuyi-net` and makes this
+  handshake refuse such a peer with `Refused::OtherBuild { theirs }`.
+  Here the handshake reports `Made::check`'s `Mismatch`, as above;
 - voice chat (2910 researches it). **Either order with 2910:** if 2910
   is done, read its ADR and do any line it added to this scope for
   voice over the `Unreliable` channel; if not, nothing to do (2910

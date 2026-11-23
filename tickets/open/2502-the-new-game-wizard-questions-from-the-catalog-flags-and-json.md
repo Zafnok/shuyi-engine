@@ -186,12 +186,24 @@ asked is missing.
   the template's, in the wizard's prompt style; `--questions --json`
   lists them with a field saying an agent must not answer `github: yes`
   itself, and `--no-input` means `--no-github`.
+- **Either order with 2848** (the game's license): if 2848 is done,
+  `questions::license` (`--license`, `--copyright`) moves into the
+  wizard with the GitHub questions, in its prompt style, and
+  `--questions --json` lists it with a field saying an agent asks its
+  user and never picks a license itself; `--no-input` means `none`, and
+  both flags stay. If not, nothing to do (2848 adds it to the wizard
+  when it lands).
 - **From 2597 (done):** whether a new game gets the skills' worked
   examples is the template's `examples` question (ADR-0113), asked with
   the others in the wizard. `new`'s terminal prompt for it
   (`questions::examples`, asked first, before the GitHub questions, with
   `--examples`/`--no-examples`) moves into the wizard, and its flags
   stay.
+- **Either order with 3338** (each target's support level): if 3338 is
+  done, the targets question offers a `Preview` profile like a
+  supported one, with "preview: not yet run on its device" beside it,
+  and never offers a `Planned` one; if not, nothing to do (3338 adds
+  that to this question when it lands).
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give

@@ -258,6 +258,10 @@ None.
 - **For the game:** its frames don't change. `Overlay` and `Sprite`
   gain fields that `new` sets, and `Paint` a variant: all additive,
   since 2082 made the three `#[non_exhaustive]`. No `Breaking:` line.
+- **Either order with 3229:** if 3229 is done, nothing to do: its web
+  plugin replays these materials' programs after a lost WebGL context,
+  like macroquad's own, and its canvas check covers the blended items;
+  if not, nothing to do (3229 covers them when it lands).
 
 **Out (do not do):**
 - **Screen**, subtract, min and max blending: a follow-up if a game
@@ -274,8 +278,7 @@ None.
 - building the wgpu renderer (3325) or target capabilities (3017): this
   PR only adds a line to each;
 - freeing or bounding `render.rs`'s recoloured-texture cache for
-  `Shaded` (`Tinted` makes no copy; a follow-up if a game animates
-  lights);
+  `Shaded` (`Tinted` makes no copy): 3228, which waits on this ticket;
 - changing `Light::apply`, `Rgb::dimmed` or `Rgb::scale`.
 
 ## Implementation steps

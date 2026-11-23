@@ -103,6 +103,8 @@ None.
 - A one-bit look for anything but these screens and widgets.
 - The Playdate backend (3010; this ticket needs no device, only the
   one-bit frame).
+- A theme file that restyles every engine screen: 3235, which builds on
+  `WidgetLook` (a look file becomes one).
 
 **From 3010 (done):** Hello, Grid (`examples/hello-grid`) runs on the
 Playdate (`src/playdate.rs`, its console `PLAYDATE_CONSOLE` of 50 × 15,
@@ -139,6 +141,18 @@ engine screen: give it a one-bit painter (and its `CreditsLayout` for a
 not, nothing to do (3201 adds `credits::onebit` itself, its clause says
 so). The game's credits screen moves to 3201 in game#1211, and its
 Playdate credits (game#1046) use this painter if it exists.
+
+**Either order with 3230:** if 3230 is done, add `look: WidgetLook` to
+its `PaintCtx` (a field of a `#[non_exhaustive]` type, so additive;
+default `WidgetLook::GLYPH`), and the menu, question and name entry
+`Widget::paint` impls pass it to their painters. If not, nothing to do
+(3230 passes the look through `PaintCtx` when it lands, its clause says
+so).
+
+**Either order with 3234:** if 3234 is done, give its widgets
+(`Toggle`, `Choice`, `Slider`, `ScrollPanel`, `TabBar`, `Tooltip`) a
+`WidgetLook`, with `ONE_BIT` and a one-bit snapshot each. If not,
+nothing to do (3234 gives them a `WidgetLook`).
 
 **The game's look as the reference:** the game's one-bit skins
 (`crates/ui/src/screens/playdate.rs`, `options/playdate.rs`,

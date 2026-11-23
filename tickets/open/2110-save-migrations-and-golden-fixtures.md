@@ -311,6 +311,13 @@ players keep after a patch.
   `SaveHeader` doesn't read it).
 - Keeping the last good copy on every write, and flushed writes (3045).
 - Binary saves; cloud sync (3037).
+- **Either order with 2786:** if 2786 is done, add a section on the
+  migration chain and golden fixtures to `skills/shuyi-save/SKILL.md`
+  and its worked example, and a `save_migrate` recipe
+  (`examples/cookbook/examples/save_migrate.rs`, declared in its
+  `Cargo.toml`, with its row in `examples/cookbook/README.md`) that
+  shows one step; if not, nothing to do (2786 writes them from this
+  ticket's work).
 
 ## Implementation steps
 

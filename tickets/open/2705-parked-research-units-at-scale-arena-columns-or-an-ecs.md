@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["1119", "2116"]
+blocked_by: ["1119", "2116", "2139"]
 nick_input: none
 completed:
 ---
@@ -35,9 +35,10 @@ ticket measures first.
 compile time, a readable dump). This ticket is that spike, at the scale
 of an RTS.
 
-It needs 1119 (`Fx`, `FxVec2`, `Arena<T>`, the core's seeded random
-numbers and hash) and 2116 (golden tables, and the wasm32 runner of
-CI's `determinism` job). The answer decides how 2707 is written.
+It needs 2139 (`Fx`, `FxVec2`, `Arena<T>`) and 1119, and 2116 (golden
+tables, and the wasm32 runner of CI's `determinism` job). The core's
+seeded random numbers and hash are there already (`shuyi_core::rng`,
+`shuyi_core::hash`). The answer decides how 2707 is written.
 
 ## Nick input
 
@@ -47,7 +48,7 @@ None.
 
 **In:**
 - **Four contenders**, each running the same workload:
-  - **A:** `shuyi_core::arena::Arena<UnitStruct>` from 1119, one struct
+  - **A:** `shuyi_core::arena::Arena<UnitStruct>` from 2139, one struct
     per unit;
   - **B:** a prototype column table as ADR-0015 §3 describes: one `Vec`
     per field, a generational id, an index from id to row, and removal

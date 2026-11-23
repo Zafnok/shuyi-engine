@@ -64,8 +64,16 @@ our game without 0053.
     `shuyi-services` checks it with Steam. If neither is, accounts are
     device ids only, the completion notes say so, and 1144 adds the
     Steam auth ticket (its clause on this ticket).
+    **Either order with 2920:** if 2920 is done, accounts carry the
+    platform account id its report names beside the device id and the
+    Steam ticket, and the online check before matchmaking; if not,
+    nothing to do (2920 adds them to this scope when it lands).
   - **Matchmaking queue.** Rating ranges that widen while waiting.
     Matches are handed to a referee.
+    **Either order with 2606:** if 2606 is done, the queue pools players
+    by their `Made`, takes its `Accepts` list, hands each match to the
+    referee process of its build, and its example declares accounts as
+    an `adults_only` purpose; if not, nothing to do (2606 adds it).
   - **Ratings.** Glicko-2 via `skillratings` for one-against-one, and
     Weng-Lin for teams. Ratings update only from referee-recorded or
     re-simulated results.

@@ -53,10 +53,20 @@ online (0053). This ticket only gives a Docker image and instructions.
   toy lockstep game. Abuse tests cover oversize messages, flooding and a
   bad room code.
 
+**Either order with 2606:** if 2606 is done, the relay's handshake
+opens with `RELAY_PROTOCOL: u16`, a room keeps its creator's `Made`,
+the relay starts with an `Accepts` list, and it refuses with
+`Refused::Protocol`, `OtherBuild` and `UpdateRequired` before
+forwarding anything, with tests; if not, nothing to do (2606 adds them
+to the relay and `RelaySession`).
+
 **Out (do not do):**
 - the web client (1142);
 - accounts (1148);
 - running a public instance;
+- a UDP mode, encrypted datagrams and NAT traversal on the relay (2605
+  adds them, reusing this relay's rooms, limits and TLS WebSocket for
+  its connect token);
 - voice chat (2910 researches it, and whether the relay's WebSocket
   is good enough for it). **Either order with 2910:** if 2910 is done,
   read its ADR and do any line it added to this scope for voice; if

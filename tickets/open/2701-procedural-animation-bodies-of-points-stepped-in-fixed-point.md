@@ -6,7 +6,7 @@ milestone: "Engine: procedural animation"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["1119", "1122", "2003"]
+blocked_by: ["1119", "1122", "2003", "2139"]
 nick_input: none
 completed:
 ---
@@ -37,24 +37,9 @@ None.
 ## Scope
 
 **In:**
-- **`shuyi_core::fx` additions** (ADR-0010 §1):
-  - `Fx::sqrt` (the floor of the exact root, through `i64`).
-    **Either order with 3101:** if 3101 is done, `Fx` is `Fixed<8>`
-    and 3101 wrote `Fixed::sqrt` and `Angle::atan2` (`fx::int`): use
-    them, and build the rest below on them. If not, write them here,
-    and 3101 makes `sqrt`, `atan2` and `acos` generic, keeping their
-    results;
-  - `FxVec2::length`, `length_squared` and `normalize` (zero stays
-    zero);
-  - `Angle::atan2(y, x)` and `Angle::acos(Fx)`, to 2335's 256-step
-    `Angle` (`shuyi_core::angle`) and its sine table.
-  - **Either order with 2106, 2122 and 2711:** if this ticket isn't
-    done first, each of them adds what it needs of these (2106:
-    `Fx::sqrt`; 2122: `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`,
-    to 2335's `Angle`; 2711: `Fx::sqrt`, `FxVec2::length`,
-    `length_squared` and `normalize`) as specified here. Use what
-    exists, add the rest, and keep one golden table of their results,
-    as step 1 says.
+- **From 2139 (a blocker):** `Fx::sqrt`, `FxVec2::length`,
+  `length_squared` and `normalize`, and `Angle::atan2` and
+  `Angle::acos`, are 2139's.
 - **The crate** `crates/procanim` (`shuyi-procanim`), following
   ADR-0009 §4:
   - a `view` feature, empty here, filled by 2703;
@@ -109,22 +94,15 @@ None.
 
 ## Implementation steps
 
-1. Add the `fx` functions with property tests and a golden table of
-   results (2116's `shuyi_assets::golden`), checked by CI's `test` job
-   (x64, ARM64) and `determinism` job (wasm32). Add the crate's `-p` to
-   that job if the functions live outside `shuyi-core`.
-2. Create the crate, its metadata, its feature in `shuyi`, the README's
+1. Create the crate, its metadata, its feature in `shuyi`, the README's
    start, and the catalog's building status.
-3. Write `Body` and `step`, with unit tests on hand-made bodies: a
+2. Write `Body` and `step`, with unit tests on hand-made bodies: a
    pendulum, a rope, and a box of four points with diagonals.
-4. Write `BodyDef`, its format plugin, and error fixtures.
-5. Do the jitter measurement.
+3. Write `BodyDef`, its format plugin, and error fixtures.
+4. Do the jitter measurement.
 
 ## Acceptance criteria
 
-- [ ] `Fx::sqrt` is the floor of the exact root for every non-negative
-      input (property test), and the trig table matches its golden
-      table in CI's `test` and `determinism` jobs.
 - [ ] A pinned point never moves, over random pushes (property test).
 - [ ] After `step`, no point's circle overlaps a solid tile, starting
       from any position outside solids (property test, 10,000 cases).
@@ -137,8 +115,7 @@ None.
 
 ## Tests required
 
-- Property: the `fx` additions, pins, collision, constraint errors,
-  determinism.
+- Property: pins, collision, constraint errors, determinism.
 - Unit: the hand-made bodies; the RON errors.
 - Snapshot: the text dump of the rope after 120 steps.
 

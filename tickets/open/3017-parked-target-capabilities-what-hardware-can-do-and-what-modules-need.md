@@ -269,6 +269,15 @@ its sprites are drawn without it, or as its `fallback` sprite. If not,
 nothing to do (2327 adds both when it lands, with the rule in
 *The check*).
 
+**Either order with 3237** (screen effect passes and a palette-swap
+material on today's backend, parked): if 3237 is done, `Capabilities`
+gains `shaders: bool` (false on `playdate`, `gba`, `nds` and `dsi`),
+and `Needs` gains `screen_passes` (the passes of a skin's
+`effects.ron`, 3237's `EffectChain`, each required unless marked
+`optional`) and `materials` (3237's `MaterialSet`), with the rule and
+tests its 2326 and 2327 clauses describe. If not, nothing to do here
+(3237 adds them when it lands).
+
 **Either order with 2328** (2D lights, parked): if 2328 is done, add
 a `lights` need, always optional, and the `shaders: bool` capability
 it is checked against (false on `playdate`, `gba`, `nds` and `dsi`)
