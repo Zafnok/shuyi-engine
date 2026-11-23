@@ -470,7 +470,7 @@ Deviations:
   player's tests play the file and volume through the fake backend, and
   the Playdate's through its fake SDK.
 
-Size: 1,542 counted lines, the rest can't land apart: the player plays the file and volume `Cues` picks, so without `Cues` and `App`'s use of it every sound would play its first file at full volume, and the data without `Cues` would read rules that do nothing; the contract's part, which can land apart, is 3419.
+Size: 1,621 counted lines (with the tests the mutants asked for), the rest can't land apart: the player plays the file and volume `Cues` picks, so without `Cues` and `App`'s use of it every sound would play its first file at full volume, and the data without `Cues` would read rules that do nothing; the contract's part, which can land apart, is 3419.
 
 Follow-up: 3419 (`run`'s answer lists the drops). 2378 (part two) is
 unblocked.

@@ -118,6 +118,27 @@ pub fn wav(pitch: f32, ms: u32) -> Vec<u8> {
 mod tests {
     use super::*;
 
+    /// The cursor's tick and the move's blip have a gap, so a cursor that
+    /// moves several cells in one frame ticks once; the others have none.
+    #[test]
+    fn the_cursor_and_the_move_have_a_gap_and_the_others_none() {
+        let config = AudioConfig::DEFAULT;
+        let audio = manifest();
+        let gaps: Vec<(&str, u32)> = audio
+            .sounds
+            .iter()
+            .map(|(cue, sound)| (cue.as_str(), sound.rules.min_gap_ms))
+            .collect();
+        let mut want = vec![
+            (config.move_cue, STEP_GAP_MS),
+            (config.select_cue, 0),
+            (config.cancel_cue, 0),
+            (config.cursor_cue, STEP_GAP_MS),
+        ];
+        want.sort_unstable();
+        assert_eq!(gaps, want);
+    }
+
     #[test]
     fn every_cue_the_engine_plays_has_a_blip_the_audio_check_accepts() {
         let audio = manifest();

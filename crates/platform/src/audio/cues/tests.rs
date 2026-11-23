@@ -111,6 +111,57 @@ fn in_order_plays_the_files_in_turn_and_a_cue_of_one_file_plays_it_each_time() {
     }
 }
 
+/// A cue whose files shrank starts its order again from the first: its
+/// last file is past the end.
+#[test]
+fn in_order_starts_again_when_its_last_file_is_gone() {
+    let rules = CueRules::DEFAULT.with_pick(Pick::InOrder);
+    let (three, two) = (
+        manifest(&[("step", cue(3, 50, rules))]),
+        manifest(&[("step", cue(2, 50, rules))]),
+    );
+    let mut cues = Cues::new(1);
+    let steps = [play("step"), play("step"), play("step")];
+    let (out, _) = apply(&mut cues, &three, 0, &steps);
+    assert_eq!(
+        picks(&out).iter().map(|p| p.0).collect::<Vec<_>>(),
+        [0, 1, 2]
+    );
+    let (out, _) = apply(&mut cues, &two, 0, &steps);
+    assert_eq!(
+        picks(&out).iter().map(|p| p.0).collect::<Vec<_>>(),
+        [0, 1, 0]
+    );
+}
+
+/// A shuffle deals every order of its files, each as likely.
+#[test]
+fn a_shuffle_deals_every_order() {
+    let mut rng = VariantRng::new(4);
+    let mut played = Played::default();
+    let mut seen = alloc::collections::BTreeSet::new();
+    for _ in 0..300 {
+        played.deal(3, None, &mut rng);
+        seen.insert(played.order.clone());
+    }
+    assert_eq!(seen.len(), 6, "{seen:?}");
+}
+
+/// Each volume from the lowest to the cue's is picked, the ends among them.
+#[test]
+fn every_volume_in_the_range_is_picked() {
+    let m = manifest(&[(
+        "hit",
+        cue(1, 47, CueRules::DEFAULT.with_volume_min(Some(45))),
+    )]);
+    let asked: Vec<_> = (0..60).map(|_| play("hit")).collect();
+    let (out, _) = apply(&mut Cues::new(2), &m, 0, &asked);
+    let mut levels: Vec<u8> = picks(&out).iter().map(|p| p.1).collect();
+    levels.sort_unstable();
+    levels.dedup();
+    assert_eq!(levels, [45, 46, 47]);
+}
+
 #[test]
 fn random_plays_every_file_and_may_repeat_one() {
     let played = files_played(Pick::Random, 3, 60, 9);
