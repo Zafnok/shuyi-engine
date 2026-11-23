@@ -236,6 +236,21 @@ impl Output {
         false
     }
 
+    /// How many times the system called for samples, and how many frames it asked for
+    /// in all: whether a stream that opened runs. Nothing asks this but a probe; 0 and 0
+    /// where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn calls(&self) -> (u32, u32) {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.calls();
+        }
+        (0, 0)
+    }
+
     /// How far ahead of their playing a callback's samples were at the most, as the
     /// system predicts it: the device's buffer, which a sound waits behind. Nothing
     /// asks this but a probe; zero where there is no stream.

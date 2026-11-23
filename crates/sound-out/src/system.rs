@@ -85,6 +85,9 @@ pub(crate) struct Stats {
     /// The most a callback's samples were ahead of their playing, as the system
     /// predicts it, in microseconds: the device's buffer.
     pub(crate) ahead_us: AtomicU32,
+    /// How many callbacks the system made, and the frames they asked for.
+    pub(crate) callbacks: AtomicU32,
+    pub(crate) frames: AtomicU32,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
@@ -142,6 +145,7 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
         stream.sample_rate,
     );
     let silence = T::from_mix(0);
+    let channels = usize::from(stream.channels).max(1);
     let on_error = move |error: cpal::Error| match error.kind() {
         // Rerouted, or a glitch or a refused priority that it plays on through.
         ErrorKind::DeviceChanged | ErrorKind::Xrun | ErrorKind::RealtimeDenied => {}
@@ -155,6 +159,11 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
         .build_output_stream::<T, _, _>(
             stream,
             move |out: &mut [T], info: &OutputCallbackInfo| {
+                stats.callbacks.fetch_add(1, Ordering::Relaxed);
+                stats.frames.fetch_add(
+                    u32::try_from(out.len() / channels).unwrap_or(u32::MAX),
+                    Ordering::Relaxed,
+                );
                 let when = info.timestamp();
                 let ahead = when.playback.duration_since(when.callback).as_micros();
                 stats
@@ -273,6 +282,13 @@ impl SystemOutput {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .clone()
+    }
+
+    pub(crate) fn calls(&self) -> (u32, u32) {
+        (
+            self.stats.callbacks.load(Ordering::Relaxed),
+            self.stats.frames.load(Ordering::Relaxed),
+        )
     }
 
     pub(crate) fn ahead(&self) -> Duration {

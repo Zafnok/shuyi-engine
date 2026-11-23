@@ -268,6 +268,51 @@ jobs:
             target/sound-parity/windows-in-house/
           if-no-files-found: error
 
+  # TEMPORARY (ticket 3032): one scenario of the in-house probe on the null sink, to see
+  # whether its stream runs, without waiting for Windows. Removed before the PR is ready.
+  sound-linux-diag:
+    name: sound-linux-diag
+    if: inputs.ports
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install the sink
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils libasound2-plugins libpulse0 alsa-utils
+      - name: Build the probe
+        run: cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked
+      - name: Play one scenario on the sink
+        working-directory: tools/sound-parity
+        run: |
+          cargo xtask sound-parity corpus --out "$GITHUB_WORKSPACE/target/diag"
+          cp scenarios.ron "$GITHUB_WORKSPACE/target/diag/"
+          python3 - <<'PY'
+          import array, os, subprocess, sys, time
+          from pathlib import Path
+          import capture
+          stage = Path(os.environ["GITHUB_WORKSPACE"]) / "target/diag"
+          probe = Path(os.environ["GITHUB_WORKSPACE"]) / "target/release/examples/sound_probe"
+          with capture.sink() as target:
+              print(subprocess.run(["aplay", "-L"], env=target.env, capture_output=True, text=True).stdout[:2000])
+              (stage / "probe.txt").write_text("scenario onset" + chr(10))
+              rec = capture.Recorder(target, stage / "onset.pcm")
+              rec.flowing()
+              ran = subprocess.run([str(probe)], cwd=stage, env=target.env, capture_output=True, text=True, timeout=30)
+              time.sleep(0.5)
+              rec.stop()
+              print(ran.stdout[-2000:]); print(ran.stderr[-3000:])
+              a = array.array("h"); a.frombytes((stage / "onset.pcm").read_bytes())
+              print("peak", max(map(abs, a)) if a else 0)
+              print(subprocess.run(["pactl", "list", "sink-inputs"], env=target.env, capture_output=True, text=True).stdout)
+          PY
+
   # The in-house backend built where Linux packages are, the Steam Linux Runtime 3.0
   # ("sniper") SDK, and held to their glibc floor (ticket 3032), as the `export` job
   # holds a package: CPAL's ALSA path asks for no newer glibc than quad-snd's.

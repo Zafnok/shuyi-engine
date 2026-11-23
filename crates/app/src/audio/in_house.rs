@@ -704,6 +704,16 @@ impl InHouse {
         self.silent_because.as_deref()
     }
 
+    /// How many callbacks the output's system made, and the frames they asked for. For
+    /// the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_calls(&self) -> (u32, u32) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, 0), Output::calls)
+    }
+
     /// How far ahead of their playing the output's samples were at the most, in
     /// milliseconds. For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
