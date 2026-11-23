@@ -407,7 +407,7 @@ What was done:
   the pointer maps through `Placement::frame_px` with the mode the last
   frame was drawn in (`Macroquad` keeps it beside the spec), with a test
   of a filled frame at 1280 × 720.
-- ADR-0139; the ADR-0008 status and index rows; `targets/desktop.ron`'s
+- ADR-0140; the ADR-0008 status and index rows; `targets/desktop.ron`'s
   and the template `shuyi.ron`'s comments; `docs/platform-backends.md`'s
   `frame.scale` line; `docs/contract.md`'s `check --target` row; the
   roadmap's rows for 3240, 3241 and 3242.
@@ -443,7 +443,7 @@ Deviations:
   (`GameTools::scale`, the limit lines, `Fake`, the tools of
   `BasicTools`, hello-grid and the template), is ticket 3242. Until it
   lands nothing checks that `shuyi.ron` and `DEFAULT_SCALE` agree
-  (ADR-0139 says so).
+  (ADR-0140 says so).
 - Unticked acceptance boxes: the check's comparison (3242); the player's
   pick (3240); the screenshots, which are of hello-grid at 1280 × 720
   on the desktop in both modes, not at 1280 × 800 and 1920 × 1080 or on
@@ -488,7 +488,7 @@ find: ["target::Factor"]
 
 Behaviour: shuyi-cli: `check --target` checks a `fit` target's text at the scale the window draws: the whole scale when it is at least 9 / 10 of the fraction.
 
-Book: none, a game opts in through `GameSettings::DEFAULT_SCALE`, documented on the item, in ADR-0139 and in `docs/platform-backends.md`; the book's chapter follows the player's pick (3240).
+Book: none, a game opts in through `GameSettings::DEFAULT_SCALE`, documented on the item, in ADR-0140 and in `docs/platform-backends.md`; the book's chapter follows the player's pick (3240).
 
 Searched the game (pin 50472bbc): a `grep` of its crates and `shuyi.ron`
 for `Scale::`, `target::Factor`, `scale_on` and `Presented::Game {`

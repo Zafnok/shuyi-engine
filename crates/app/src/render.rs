@@ -1,6 +1,6 @@
 //! Blits a [`GlyphBuffer`] to the window with the font atlas (game ADR-0003):
 //! integer-scaled, centred, black letterbox; or, for a game that fills the
-//! window ([`ScaleMode::Fit`], ADR-0139), drawn at a whole scale into a
+//! window ([`ScaleMode::Fit`], ADR-0140), drawn at a whole scale into a
 //! texture that is then stretched to fill with linear filtering ("sharp
 //! bilinear": a pixel's edge blends over one window pixel at most). The buffer's items are drawn
 //! scaled, in the order they were added: `Under` ones after the cell
@@ -600,7 +600,7 @@ enum Surface<'a> {
 
 /// The texture a picture shown at a fraction of a pixel is drawn into at
 /// a whole scale first, then stretched from with linear filtering, so a
-/// pixel's edge blends over one window pixel at most (ADR-0139). It is
+/// pixel's edge blends over one window pixel at most (ADR-0140). It is
 /// kept between frames and made again when its size changes.
 ///
 /// Its camera has one unit per texture pixel and `y` down. macroquad turns

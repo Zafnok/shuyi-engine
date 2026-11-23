@@ -278,7 +278,7 @@ pub fn profile(config: &Config, root: &Path, id: &str) -> Result<Profile, (codes
 
 /// The scale `scale` gives frame `(width, height)` on `space` (the
 /// display inside its safe area): [`console::scale`], the placement the
-/// window uses too (ADR-0139). For [`Scale::Integer`], the largest whole
+/// window uses too (ADR-0140). For [`Scale::Integer`], the largest whole
 /// number that fits, which is 0 when even 1 doesn't; for [`Scale::Fit`],
 /// the largest factor that fits, or the whole one when that is close.
 pub fn scale_on(scale: Scale, (width, height): (u16, u16), space: &Size) -> Factor {

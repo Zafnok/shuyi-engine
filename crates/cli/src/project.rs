@@ -289,7 +289,7 @@ pub struct TargetSetting {
 }
 
 /// How a frame is scaled to a display: the frame's own placement's mode
-/// ([`shuyi_ui::frame::console::place`], ADR-0139), so the check and the
+/// ([`shuyi_ui::frame::console::place`], ADR-0140), so the check and the
 /// window agree.
 pub type Scale = shuyi_ui::frame::console::ScaleMode;
 

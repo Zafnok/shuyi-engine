@@ -1,6 +1,6 @@
 //! The console's size, which the game picks ([`ConsoleSpec`]), and how it
 //! fits the window (game ADR-0012): by a whole scale, or filling it
-//! ([`place`], ADR-0139).
+//! ([`place`], ADR-0140).
 
 mod place;
 

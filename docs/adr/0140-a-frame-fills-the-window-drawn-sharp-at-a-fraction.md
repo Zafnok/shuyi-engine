@@ -1,4 +1,4 @@
-# ADR-0139: A frame may fill the window at a fraction of a pixel, drawn sharp, from one placement the window and the check share
+# ADR-0140: A frame may fill the window at a fraction of a pixel, drawn sharp, from one placement the window and the check share
 
 - **Status:** Accepted
 - **Date:** 2026-11-23

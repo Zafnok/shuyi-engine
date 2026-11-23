@@ -233,7 +233,7 @@ leave the window as it is (they carry `Frame::new`'s windowed); a device
 that is always full screen ignores it. *The window and the cursor (desktop)*, below,
 says how a desktop window opens and leaves fullscreen.
 `frame.scale` is how the frame fills a window, the game's
-`GameSettings::DEFAULT_SCALE` (ADR-0139): a windowed backend places the
+`GameSettings::DEFAULT_SCALE` (ADR-0140): a windowed backend places the
 frame, and a card's picture, with `shuyi_ui::frame::console::place`, draws
 a whole-scale placement straight in and a fraction at the placement's
 `draw_scale` into a texture stretched with linear filtering ("sharp
