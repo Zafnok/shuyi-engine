@@ -43,7 +43,8 @@ impl Coded {
         }
     }
 
-    /// Its [`Sound`] and [`MusicTrack`] formats, if its feature is on.
+    /// Its [`Sound`] and [`MusicTrack`] formats and its decoder to a WAV,
+    /// if its feature is on.
     const fn formats(self) -> Readers {
         match self {
             Self::Flac => FLAC,
@@ -60,23 +61,33 @@ impl Coded {
     const fn track_format(self) -> Option<&'static dyn Format<Asset = MusicTrack>> {
         self.formats().1
     }
+
+    /// Its decoder to a WAV of at most a number of bytes, if its feature
+    /// is on.
+    const fn to_wav(self) -> Option<ToWav> {
+        self.formats().2
+    }
 }
 
-/// A coded format's [`Sound`] and [`MusicTrack`] formats, `None` with its
-/// feature off.
+/// A decoder of a file's bytes to a WAV of at most a number of bytes.
+type ToWav = fn(&[u8], usize) -> Result<Vec<u8>, String>;
+
+/// A coded format's [`Sound`] and [`MusicTrack`] formats and its decoder to
+/// a WAV, `None` with its feature off.
 type Readers = (
     Option<&'static dyn Format<Asset = Sound>>,
     Option<&'static dyn Format<Asset = MusicTrack>>,
+    Option<ToWav>,
 );
 
 #[cfg(feature = "flac")]
-const FLAC: Readers = (Some(&super::Flac), Some(&super::FlacTrack));
+const FLAC: Readers = (Some(&super::Flac), Some(&super::FlacTrack), Some(flac_wav));
 #[cfg(not(feature = "flac"))]
-const FLAC: Readers = (None, None);
+const FLAC: Readers = (None, None, None);
 #[cfg(feature = "mp3")]
-const MP3: Readers = (Some(&super::Mp3), Some(&super::Mp3Track));
+const MP3: Readers = (Some(&super::Mp3), Some(&super::Mp3Track), Some(mp3_wav));
 #[cfg(not(feature = "mp3"))]
-const MP3: Readers = (None, None);
+const MP3: Readers = (None, None, None);
 
 /// What a file of `coded`'s format is told when its feature is off.
 fn needs_feature(coded: Coded) -> String {
@@ -107,9 +118,9 @@ fn decode_within(name: &str, bytes: &[u8], limit: usize) -> Option<Result<Vec<u8
     if is_wav(bytes) {
         return None;
     }
-    Some(match coded {
-        Coded::Flac => flac_wav(bytes, limit),
-        Coded::Mp3 => mp3_wav(bytes, limit),
+    Some(match coded.to_wav() {
+        Some(to_wav) => to_wav(bytes, limit),
+        None => Err(needs_feature(coded)),
     })
 }
 
@@ -238,7 +249,9 @@ fn flac_sample(sample: i32, bits: u32) -> i16 {
     } else {
         sample << (16 - bits)
     };
-    i16::try_from(shifted).unwrap_or(if shifted < 0 { i16::MIN } else { i16::MAX })
+    let clamped = shifted.clamp(i32::from(i16::MIN), i32::from(i16::MAX));
+    // In range once clamped.
+    i16::try_from(clamped).unwrap_or_default()
 }
 
 /// A FLAC file decoded to a WAV of at most `limit` bytes, by `claxon`.
@@ -273,11 +286,6 @@ fn flac_wav(bytes: &[u8], limit: usize) -> Result<Vec<u8>, String> {
     Ok(wav.finish())
 }
 
-#[cfg(not(feature = "flac"))]
-fn flac_wav(_: &[u8], _: usize) -> Result<Vec<u8>, String> {
-    Err(needs_feature(Coded::Flac))
-}
-
 /// An MP3 file decoded to a WAV of at most `limit` bytes, by `nanomp3`:
 /// gapless (without the silence its encoder added at the ends, when its
 /// LAME tag says how much), its samples rounded and clamped to 16 bits.
@@ -295,11 +303,6 @@ fn mp3_wav(bytes: &[u8], limit: usize) -> Result<Vec<u8>, String> {
         wav.extend(samples)?;
     }
     Ok(wav.finish())
-}
-
-#[cfg(not(feature = "mp3"))]
-fn mp3_wav(_: &[u8], _: usize) -> Result<Vec<u8>, String> {
-    Err(needs_feature(Coded::Mp3))
 }
 
 #[cfg(test)]
