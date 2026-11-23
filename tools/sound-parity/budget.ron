@@ -4,7 +4,8 @@
 // fresh runs named in the ticket's notes. Four performance limits were set again
 // from 58 runs and one of `old_new` from 20 (ticket 2042, written at each), and
 // Windows' and the decoders' from 69 and 20 (ticket 2044), and four more natively and
-// in the browser from 59 (ticket 2046). Change one only with new runs that justify
+// in the browser from 59 (ticket 2046), and Linux's new backend's from 20 (ticket
+// 3032). Change one only with new runs that justify
 // it, written here, and raise `version`: never to pass.
 (
     version: 9,
@@ -144,15 +145,20 @@
             // over 0.50). The median still holds: a buffer of 10 ms more is about 1.75.
             "latency_ms": (max_ratio: 1.25, max_spread: 2.28, slows: false),
         },
-        // Linux's new backend against itself (ticket 3032): PROVISIONAL, linux-native's
-        // limits until the calibration runs set them.
+        // Linux's new backend against itself (ticket 3032), by the rule above over the
+        // 20 runs of calibration run 45215695721 (commit 4d565918), whose every
+        // `linux-in-house` cell passed. Medians: file reads 0.969 to 1.030, WAV 0.966 to
+        // 1.005, Ogg 0.996 to 1.005, CPU 0.957 to 1.020, memory 0.997 to 1.003, latency
+        // 0.862 to 1.072; ranges at most 0.158, 0.065, 0.015, 0.098, 0.014 and 0.250. The
+        // injected slowdown's least was 1.92 (file reads), 1.98 (WAV), 1.99 (Ogg) and
+        // 22.2 (CPU).
         "linux-in-house": {
-            "file_io_ms": (max_ratio: 1.12, max_spread: 0.17, slows: true),
-            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.12, slows: true),
-            "decode_ogg_ms": (max_ratio: 1.09, max_spread: 0.24, slows: true),
-            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
-            "peak_kib": (max_ratio: 1.05, max_spread: 0.22, slows: false),
-            "latency_ms": (max_ratio: 1.20, max_spread: 0.46, slows: false),
+            "file_io_ms": (max_ratio: 1.07, max_spread: 0.32, slows: true),
+            "decode_wav_ms": (max_ratio: 1.07, max_spread: 0.13, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            "cpu_ms": (max_ratio: 1.09, max_spread: 0.20, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 1.28, max_spread: 0.50, slows: false),
         },
         // Its own noise, over the 20 runs of CI run 41595469804, stays inside the
         // limits `browser-chromium` had before ticket 2042 (latency medians 0.906 to
@@ -233,11 +239,13 @@
             "peak_kib": (max_ratio: 0.85, max_spread: 0.05, slows: false),
             "latency_ms": (max_ratio: 0.35, max_spread: 0.10, slows: false),
         },
-        // PROVISIONAL (ticket 3032): wide until the calibration runs set them.
+        // On Linux (ticket 3032), over the same 20 runs as its row above: CPU 0.487 to
+        // 0.636 of quad-snd's (spread at most 0.053), latency 0.420 to 0.509 (12 to 19 ms
+        // against 27 to 39; spread 0.143), memory 0.556 to 0.577 (0.024).
         "linux-in-house": {
-            "cpu_ms": (max_ratio: 10.0, max_spread: 2.0, slows: false),
-            "peak_kib": (max_ratio: 2.0, max_spread: 0.5, slows: false),
-            "latency_ms": (max_ratio: 2.0, max_spread: 1.0, slows: false),
+            "cpu_ms": (max_ratio: 0.80, max_spread: 0.11, slows: false),
+            "peak_kib": (max_ratio: 0.73, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 0.64, max_spread: 0.29, slows: false),
         },
         "browser-in-house": {
             "cpu_ms": (max_ratio: 1.35, max_spread: 0.10, slows: false),
