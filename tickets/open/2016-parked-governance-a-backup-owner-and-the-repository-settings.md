@@ -217,6 +217,11 @@ Then tell the session "done". It checks the result, read-only, with
     repository's *Security* tab), never a public issue. 2005's
     `SECURITY.md` holds the policy.
 - **`docs/continuity.md`**, public:
+  - **Either order with 2849:** if 2849 is done, `docs/continuity.md`
+    exists with the accounts table and the successor line, and the
+    successor may be set already (setup step 5); add the section *The
+    repository's settings* and `cargo xtask repo-settings`'s output,
+    and only the rows it lacks; if not, write it as below.
   - one table, a row per account or secret: what it controls, where it
     is kept (a settings page, never a value), who holds it, the second
     holder, how to rotate or recover it, and the ticket that made it;
@@ -228,6 +233,9 @@ Then tell the session "done". It checks the result, read-only, with
       `zafnok` and project `Zafnok_shuyi-engine` (2007,
       `sonar-project.properties`), and how to make a new one and
       replace it;
+    - `DEPENDENTS_DISPATCH_TOKEN`, a secret of the `dependents`
+      environment, which `notify-dependents.yml` uses to start the
+      workflows of projects that pin the engine (2031, ADR-0045);
     - the SonarCloud organization, which signs in through GitHub;
     - GitHub Pages and its `github-pages` environment (no secret:
       `pages.yml` deploys with the workflow's own token);

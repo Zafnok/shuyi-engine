@@ -67,10 +67,8 @@ None.
       its description);
     - `None` when `from` or `to` is not walkable or they aren't
       connected.
-  - **Square roots:** the distances need `Fx::sqrt`. **Either order
-    with 2701 and 2122:** if either is done, use its `Fx::sqrt`. If
-    not, add it here as 2701 specifies (the floor of the exact root,
-    through `i64`), and change 2701's and 2122's text to say it exists.
+  - **Square roots. From 2139:** `Fx::sqrt` exists (2139 comes before
+    this through 1122 and 1119): use it.
   - `Path { points: Vec<(Fx, Fx)> }` and `Path::follow(&mut self, pos,
     speed) -> (Fx, Fx)`: the motion for this step toward the next
     point, dropping a point when it is reached and slowing to stop

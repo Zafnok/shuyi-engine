@@ -139,6 +139,10 @@ rules), and on which targets. Everything technical is decided here.
   It builds on 1149's legal list for text chat (**either order with
   1149:** if done, link its "what running chat means" page; if not,
   write the voice part as a section 1149's page can take).
+  **Either order with 2606:** if 2606 is done, voice's consent is
+  2606's record: voice is a purpose declared `adults_only`, and the
+  research says what else the law needs; if not, nothing to do (2606
+  names voice as an `adults_only` purpose in its docs).
 - **Outputs**:
   - the report, `docs/research/2910-voice-chat.md` (create
     `docs/research/` if no earlier research has), with the facts dated;
@@ -169,7 +173,7 @@ rules), and on which targets. Everything technical is decided here.
 
 ## Implementation steps
 
-1. Read 1140–1149, 2363, 2902 and 3017 as they stand, and ADR-0002 §8,
+1. Read 1140–1149, 2363, 2606, 2902 and 3017 as they stand, and ADR-0002 §8,
    ADR-0021 and ADR-0024. Note which are done, for the either-order
    rules above.
 2. Write the needs into the report.

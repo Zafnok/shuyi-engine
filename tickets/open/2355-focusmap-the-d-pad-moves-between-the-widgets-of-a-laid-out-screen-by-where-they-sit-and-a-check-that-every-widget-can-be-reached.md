@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2329"]
+blocked_by: ["2329", "3230"]
 nick_input: none
 completed:
 ---
@@ -142,6 +142,20 @@ None.
      `focus()` is the same after `handle` as before. The screen sets
      `MenuView::active` (item 3) from `Focus::at()`. A doc test shows the
      `update` and the views of a screen with two menus side by side.
+   - **From 3230:** `FocusNode` is part of one widget contract. A
+     `FocusNode`'s kept directions come from the widget's
+     `Widget::keeps`, and a direction the widget leaves unused is
+     `Handled::Unused` from `Widget::handle`, so a screen holding
+     `Box<dyn Widget<G>>` builds its `FocusMap` without naming widget
+     types. Whether a widget has the focus reaches its painter as a
+     field of 3230's `PaintCtx` (`focused`), which sets
+     `MenuView::active`.
+   - **Either order with 3233:** if 3233 is done, move its carried item
+     between drop targets by `FocusMap` (where they sit) instead of the
+     recorded order, and extend the reachability check so every drop
+     target can be reached while carrying; if not, nothing to do (3233
+     moves the carried item by `FocusMap` and the check covers drop
+     targets).
 2. **`Menu::without_wrap()`** (`crates/ui/src/widgets/menu.rs`): Up on
    the first stop and Down on the last do nothing, so a menu above or
    below another widget can give them away. Menus still wrap by default,
@@ -226,7 +240,7 @@ None.
 - Shoulder buttons that jump between tabs or groups, and focus across
   screens: no `UiAction` for them (the `input-actions` skill); a
   follow-up if a game asks.
-- Drag and drop.
+- Drag and drop itself: 3233.
 - Moving engine screens onto `Focus`: each takes the focus in one
   widget at a time (the profiles screen's actions menu takes every
   action while it is open, and 2354 puts the key bindings screen's

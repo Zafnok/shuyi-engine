@@ -74,7 +74,11 @@ The session gives the exact steps then.
   2408** (parked, rumble): if 2408 is done, they include the pads'
   rumble through its `Platform::motors`, and the Switch's HD haptics,
   which 2408's Out leaves here; if not, the ticket for both is written
-  blocked by 2408, and 2408 itself adds nothing for the Switch;
+  blocked by 2408, and 2408 itself adds nothing for the Switch. The
+  backend's repository gets `shuyi export switch` through a
+  `shuyi-export-switch` program on `PATH`, built with
+  `shuyi_cli::export::outside::serve` (3335); it never forks
+  `shuyi-cli`;
 - the license notices a build owes (`NOTICES.txt`, 3039): how a Switch
   build shows them, with no folder a player can browse. If that needs a
   screen in the game, write the ticket for the engine screen of credits

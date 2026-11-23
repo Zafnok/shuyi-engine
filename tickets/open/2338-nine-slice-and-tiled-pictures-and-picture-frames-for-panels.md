@@ -223,6 +223,10 @@ None.
     `Panel` rectangle with `GlyphBuffer::nine_slice`, in its
     `style.layer`, before the items, with a look test; if not, 2334
     does it.
+  - **Either order with 3235:** if 3235 is done, add an optional
+    `frame: "name"` to each look in `UiLook` (`*.look.ron`), resolved
+    by `GameData::nine_slice` and passed to `WidgetLook::framed`; if
+    not, nothing to do (3235 adds it).
 - With no frame, every screen draws as today, and every existing
   snapshot is unchanged.
 - **Public types (ADR-0039):** `NineSlice`, `EdgeFill` and `CentreFill`

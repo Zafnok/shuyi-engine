@@ -78,7 +78,7 @@ use macroquad's `rotation`, which samples screen pixels in floats and
 would not match `frame-png` or the Playdate. A sprite at angle 0 keeps
 today's drawing in every renderer.
 
-**From 2707 (open):** Parked: `shuyi_core::angle::Angle` (256 steps) is the facing of a unit in 2707's `UnitTable`. If 2707 starts first, 1119 writes `Angle`; this ticket then uses it.
+**From 2707 (open):** Parked: `shuyi_core::angle::Angle` (256 steps) is the facing of a unit in 2707's `UnitTable`. If 2707 starts first, 2139 writes `Angle`; this ticket then uses it.
 
 **From 2399 (done):** a painted picture (`Item::Painted`, ADR-0080) has
 no rotation or flip. Whether this ticket's rotation and `flip_y` reach
@@ -111,8 +111,8 @@ and follow the MVP.
   - `Angle::rotate(self, x: i64, y: i64) -> (i64, i64)`:
     `(x·cos − y·sin, x·sin + y·cos)`, still scaled by `UNIT`. The
     caller divides and picks its rounding.
-  - Re-exported as `shuyi_core::Angle`. 1119's `Fx` sine and cosine,
-    2701's `atan2` and `acos`, 2105's bones and 2103's particles use
+  - Re-exported as `shuyi_core::Angle`. 2139's `Fx` sine and cosine,
+    `atan2` and `acos`, 2105's bones and 2103's particles use
     this type and this table, not a second one.
   - **From 2109 (done):** `shuyi_core::ease` has a private
     quarter-wave table in `crates/core/src/ease/tables.rs` of 257
@@ -120,12 +120,12 @@ and follow the MVP.
     are too coarse for its bounds (a sine off by up to about five
     units between entries; ADR-0080), so both tables stay, and this
     ticket's Completion notes say so.
-  - **Either order with 1119 (parked):** if 1119 is done, it wrote this
-    module's `Angle` type and its table as this list says. Keep them and
-    their tests, check them against this list, and add only what is
-    missing, such as `rotate` and the `shuyi_core::Angle` re-export. If
-    not, write the module here, and 1119 takes `Fx`'s sine and cosine
-    from it.
+  - **Either order with 2139 (parked):** if 2139 is done, it wrote this
+    module's `Angle` type and its table as this list says, with
+    `sin_fx`, `cos_fx`, `atan2` and `acos`. Keep them and their tests,
+    check them against this list, and add only what is missing. If not,
+    write the module here, and 2139 adds `Fx`'s sine and cosine,
+    `atan2` and `acos` on it.
 - **The sprite** (`crates/ui/src/frame/glyph_buffer.rs`):
   - three fields on `Sprite`:
     - `angle: Angle`, `Angle::ZERO` by default;
@@ -217,6 +217,11 @@ and follow the MVP.
     makes its texture without the tint (a `Tinted` paint stays out of
     the cache key and is the draw colour) and draws it with the blend's
     material. If not, nothing to do (2337 does it).
+- **Either order with 3228** (lights drawn by a shader): if 3228 is
+  done, the texture made on the CPU for a turned sprite leaves a
+  `Paint::Shaded` light out of its pixels and its cache key, and is
+  drawn through 3228's light material, as a `Tinted` paint is. If not,
+  nothing to do (3228 does it; its clause with 2335 says how).
 - **An ADR** (the `write-adr` skill), the next free number:
   - rotation and flips are part of the core frame for every game, not
     of procedural animation;
@@ -256,8 +261,8 @@ and follow the MVP.
   is done first, it wrote a follow-up ticket blocked by this one for
   its affine sprites, which this PR unblocks: nothing to do. If not,
   nothing to do (each maps rotated sprites itself);
-- `Fx`, `FxVec2` and their trigonometry (1119), and `atan2` and `acos`
-  (2701);
+- `Fx`, `FxVec2`, `FxRect` and their trigonometry, and `atan2` and
+  `acos` (2139);
 - strips (2703);
 - an example game that turns sprites: 2738's shmup (parked until after
   the launch) turns its foes if this ticket is done, and keeps one

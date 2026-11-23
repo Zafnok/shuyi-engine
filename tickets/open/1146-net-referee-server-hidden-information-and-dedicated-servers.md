@@ -58,6 +58,10 @@ None.
 - real-time server authority (1147);
 - our game's fog (0053 decides if there is any).
 
+**Either order with 2606:** if 2606 is done, `shuyi-server` takes its
+`Accepts` list at start, and its docs say one process runs per build
+during a rollout; if not, nothing to do (2606 adds it).
+
 ## Implementation steps
 
 1. Write the view trait and the referee session, with tests over

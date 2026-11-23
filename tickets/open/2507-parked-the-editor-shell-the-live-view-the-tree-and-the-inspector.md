@@ -6,7 +6,7 @@ milestone: "Engine: editor"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2506", "2220", "2515", "2907", "2521"]
+blocked_by: ["2506", "2220", "2515", "2907", "2521", "3232", "3416", "3417"]
 nick_input: sign-off
 completed:
 ---
@@ -60,7 +60,13 @@ comments on how it feels and looks.
   - the running game's frames;
   - a list of the channels the game offers, each with a checkbox;
   - pause, step and slow motion;
-  - going back, as 2506's live view lists it.
+  - going back, as 2506's live view lists it;
+  - clicking the live view selects what is under the pointer: the
+    editor asks 3416's live-link `Pick` for the sources there and
+    selects that file and pointer in the tree and the inspector.
+    Dragging a handle gizmo (3416's `Handles`) writes the value through
+    3417's `patch`, as `shuyi attach --drag` does, and the game shows
+    it after hot reload.
 
   Pause, step and going back are actions sent as `act` steps over the
   live link (2521): 2316's `DebugPause` and `DebugStep`, and the
@@ -86,12 +92,19 @@ comments on how it feels and looks.
 - **The inspector** over settings as data (ADR-0009 §4):
   - it opens a module's RON settings file;
   - it shows fields by the file's schema, with a text box per number
-    and string, and a drop-down per enum (its text boxes paste from
-    the clipboard on an action, never a key: miniquad has
-    `window::clipboard_get` and `clipboard_set` on desktop, and the
-    window 2506 picks says how elsewhere; typing follows 2346's name
-    box);
-  - it writes the file back, keeping comments and field order;
+    and string, and a drop-down per enum (its text boxes are 3232's
+    `TextField`s: caret, selection, undo, and the platform's copy and
+    paste shortcuts, per 3232's ADR, in the window 2506 picks);
+  - field hints (range, step, unit, widget, asset kind, group,
+    advanced, hidden) are read from the schema with
+    `shuyi_cli::hints::FieldHints` (3418), and the game's own panels
+    come from the `panels` contract operation (3418): the editor draws
+    their `Table` and `Properties` bodies and applies a panel's action
+    through 3417's patch operation;
+  - it writes the file back through the contract's `patch` operation
+    (3417), keeping comments and field order, with the hash it read as
+    `base`, so a file changed on disk since it was opened is refused
+    and reloaded;
   - the game reloads it by 2220's hot reload (`Hot<T>`);
   - a load error from the reload shows next to the field.
 
@@ -100,7 +113,8 @@ comments on how it feels and looks.
   `shuyi-assets`' `schema` feature). A field's path and an enum's
   variants for the drop-downs come from ADR-0084 (2907's: a JSON
   Pointer, and the type's schema in serialize mode). 2506 adds only what the inspector needs beyond them.
-- **Undo and redo** within a session, per **[2506]**.
+- **Undo and redo** within a session, per **[2506]**: each step is a
+  patch's `inverse` ops (3417).
 - A **README** section on `shuyi edit`.
 - **The skill pack. From 1134 (done):** its `shuyi-test` skill
   (`skills/shuyi-test/SKILL.md`) gets a section on `shuyi edit`, beside
@@ -118,7 +132,8 @@ comments on how it feels and looks.
 
 1. Read the ADRs of 2506, 2515, 2907 (ADR-0084), 2904 (what the tools read, if
    2904 is done) and 2521; the code of 2521, 2315 and 2316; 1129's
-   contract and 2220's hot reload.
+   contract and 2220's hot reload; and 3416's `Pick`, `Handles` and
+   `--drag`.
 2. Add the contract operations 2506 named, with their JSON and CLI
    forms and their tests.
 3. Build the shell in **[2506]**, with `shuyi edit` starting the game

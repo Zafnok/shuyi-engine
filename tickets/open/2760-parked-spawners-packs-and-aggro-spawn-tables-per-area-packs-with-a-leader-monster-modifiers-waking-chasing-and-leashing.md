@@ -6,7 +6,7 @@ milestone: "Engine: action RPGs"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2756", "2757", "2748", "2106", "2114"]
+blocked_by: ["2756", "2757", "2748", "2106", "2114", "2142"]
 nick_input: none
 completed:
 ---
@@ -34,6 +34,10 @@ navigation mesh), 2114 (weighted picks, named streams).
 **Either order with 2758:** if 2758 is done, a pack's leader rolls
 modifiers through `roll_modifiers`. If not, leaders have none, and 2758
 wires them.
+
+**From 2142:** a pack leader's rolled modifiers go on its stats as
+`shuyi_core::stats` modifiers with one `Source` per leader, and a
+monster that heals on its way home calls `fill` on its pools.
 
 ## Nick input
 

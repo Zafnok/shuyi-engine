@@ -93,7 +93,7 @@ None. Unparking is Nick's call, as for every parked ticket.
     by hand.
   - **The spare quarter** (`Grid` with three players): `Spare::Blank`
     (the default, the palette's background), `Spare::Overview { bounds:
-    FxRect }` (one more camera framing every filled seat's target at
+    FxRect }` (`shuyi_core::FxRect`, 2139) (one more camera framing every filled seat's target at
     the largest whole zoom from 1 to 4 that fits them all, clamped to
     `bounds`, drawn from the same `build` with a `View` whose seat is
     `None`), or `Spare::Game` (the game draws into

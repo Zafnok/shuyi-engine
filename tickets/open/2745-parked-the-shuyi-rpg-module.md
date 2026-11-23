@@ -6,7 +6,7 @@ milestone: "Engine: dungeon crawlers"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["2003", "2116"]
+blocked_by: ["2003", "2116", "2142"]
 nick_input: none
 completed:
 ---
@@ -34,6 +34,15 @@ order of things and the bookkeeping, never the numbers.
 What it builds on: turn rules and `SimRng` (ADR-0003 §2), formats as
 plugins with golden rows (ADR-0007, 2116), module duties (ADR-0009 §4,
 2003), the layers file (ADR-0032).
+
+**From 2142:** `sheet.ron`'s stats, pools and conditions build on
+`shuyi_core::stats`: `StatId` and `PoolId` are 2142's, a `Sheet`'s
+numbers are a `shuyi_core::stats::Stats`, a condition is a 2142 effect
+(`after_rounds` is `For(n)` advanced once a round, `at_rest` and
+`when_hit` are triggers, `never` is `UntilRemoved`, a worse condition
+`replaces` a lighter one), and `cannot_act`, `cannot_be_targeted`,
+`counts_as_down` are tags read with `has_tag`. This ticket keeps levels,
+experience and the party.
 
 Items are 2746, making characters and the roster 2747, battles 2748,
 the battle screen 2749, abilities 2750, encounters and drops 2751, the

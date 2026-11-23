@@ -65,9 +65,9 @@ What Shuyi has (read on 2026-10-21):
 - 2517 plans `shuyi upgrade`, which rewrites a game's content files when
   a format renames a field. It leaves the game's Rust code to this
   ticket.
-- 2012 keeps the engine's `rust-toolchain.toml`, its templates' and
-  `rust-version` equal, and its `bump-rust` skill moves the engine's
-  Rust. It leaves moving a `shuyi new` game to a newer engine and Rust
+- 2012 keeps the engine's `rust-toolchain.toml` and its templates'
+  equal, and 3511 keeps the engine's root `rust-version` at or below
+  them. 2012's `bump-rust` skill moves the engine's Rust. 2012 leaves moving a `shuyi new` game to a newer engine and Rust
   to this ticket.
 - `cargo shuyi` is an alias that runs the game's own tool program
   (`templates/grid/.cargo/config.toml`). It can't run while the game
@@ -246,8 +246,9 @@ asked in 2005's sign-off.
        Rust, make a scratch game with the binary
        (`target/shuyi-upgrade/bin/shuyi new blank
        target/shuyi-upgrade/fresh`) and read its `rust-toolchain.toml`'s
-       `channel` and its `Cargo.toml`'s `rust-version` (2012 keeps them
-       equal to the engine's). Where the game's are lower, raise them
+       `channel` and its `Cargo.toml`'s `rust-version` (the templates' stay
+       equal to the engine's pin, which is never below the engine's
+       `rust-version`: 2012, 3511). Where the game's are lower, raise them
        to those.
     6. Build with `cargo clippy --workspace --all-targets`. Fix each
        error from the entry whose `old` or `find` names it, by its

@@ -99,8 +99,9 @@ None.
 
 **Out (do not do):**
 - Writers for `.dlg`, `.map`, keymaps and cinematics (their files hold
-  comments and layout a writer would lose; a ticket of their own if
-  wanted). Language packs belong to the parked 2227, which writes PO
+  comments and layout a writer would lose). 2273 writes `.map` and
+  `.dlg` back keeping them (`MapText::write_back`,
+  `dialogue::write_scene`), not as an `Encode`. Language packs belong to the parked 2227, which writes PO
   files and the pack files a PO import changes (not as an `Encode`: a
   pack is several files).
 - Tiled, LDtk and Aseprite (tickets 1123 and 1124).

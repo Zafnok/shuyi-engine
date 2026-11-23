@@ -82,23 +82,28 @@ feels smooth.
   - start-up;
   - the model and the SteamOS version.
 - **Calibration.** Set the profile's budgets from the measurements.
-  **From 3001 (done):** `targets/steam-deck.ron` is already `status:
-  Supported`. 3001 set every profile but `switch`, `android` and `ios`
-  so, before any device run; ADR-0008 §1 calls a target supported once
-  its example runs on the device, which this ticket makes true. Keep it
-  `Supported`. A budget that doesn't hold (a frame time, the start-up
-  or the idle draw) gets its follow-up ticket, as the idle-draw bullet
-  below says, not a demotion, which would drop the Deck from 3008's
-  gate.
+  **Either order with 3338:** if 3338 is done, `targets/steam-deck.ron`
+  is `status: Preview`: set it to `Supported` in this PR, and write the
+  run under `## On the device` in `docs/targets/steam-deck.md` (the
+  model, the SteamOS version, the date); if not, keep it `Supported` and
+  write the run under that heading, and 3338 keeps it so. A budget that
+  doesn't hold (a frame time, the start-up or the idle draw) gets its
+  follow-up ticket, as the idle-draw bullet below says, not a demotion.
+  **Either order with 3342:** if 3342 is done, set
+  `targets/steam-deck.ron`'s `startup_instructions` from the measured
+  start-up's ratio, as `frame_instructions` is set; if not, nothing to
+  do (3342 adds the budget, derived from `startup_ms`, provisional).
   **Either order with 3009** (bots think in slices): if 3009 is done,
   its search scenario is one of the bench scenarios, and
   `budgets.think_units_per_frame` is set from it the way 3011 sets
   `playdate`'s, against 16.7 ms; if not, nothing to do (3009 sets it
   from this report).
-- **If the idle draw is over 8 W.** Write a ticket. The likely fix is to
-  present only when the frame changed, or to cap the frame rate on idle
-  screens. 3043's background frame cap covers only a window without
-  focus; an idle screen that has the focus needs that new ticket.
+- **Either order with 3345:** if 3345 is done, measure the idle draw
+  twice, with the game's rest on (`GameSettings::REST` at its default)
+  and with `Rest::NEVER`, and record both in `docs/targets/steam-deck.md`;
+  an idle draw over 8 W with the rest on gets a follow-up ticket. If
+  not, measure as now; an idle draw over 8 W is 3345's case, so write no
+  new ticket for it, and name the number in 3345's Context.
 
 **Out (do not do):**
 - optimizing (follow-up tickets);

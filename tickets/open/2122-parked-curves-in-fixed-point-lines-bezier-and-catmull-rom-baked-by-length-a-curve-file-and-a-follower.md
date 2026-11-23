@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["1119", "2335"]
+blocked_by: ["1119", "2335", "2139"]
 nick_input: none
 completed:
 ---
@@ -40,9 +40,9 @@ What Shuyi has today:
   move a shot's picture in a straight line. They draw, and never drive
   a simulation;
 - no fixed-point numbers and no angle (`crates/core/src/lib.rs` has
-  neither module). `Fx` and `FxVec2` are 1119's `shuyi_core::fx`. The
-  integer `Angle(u8)` and its sine table are 2335's
-  `shuyi_core::angle`.
+  neither module). `Fx` and `FxVec2` are 2139's `shuyi_core::fx`. The
+  integer `Angle(u8)` and its sine table are `shuyi_core::angle`,
+  written by 2335 or 2139, whichever goes first.
 
 What is planned:
 
@@ -52,8 +52,8 @@ What is planned:
   each as its points in `Fx` pixels, beside boxes and points;
 - 2707 (parked): the real-time strategy `Patrol`, which swaps between
   two ends;
-- 2701 (parked) plans `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`.
-  2106 takes `Fx::sqrt` from 2701 or adds it, either order;
+- 2139 writes `Fx::sqrt`, `FxVec2::length` (worked in `i64`, so it
+  never overflows) and `Angle::atan2`: use them;
 - 2738 (parked) flies its shooter's foes on a `Curve` with
   `CurveFollower` if this ticket is done, and 2362 leaves camera rails
   here.
@@ -130,10 +130,8 @@ None.
     - A table piece of length 0 (a cusp can make one) is dropped.
     - Each piece's length is the floor of the root of `dx² + dy²` in
       raw `Fx` units, worked in `i64` with `u64::isqrt`, so it never
-      overflows for the differences the point limit allows. If the
-      `FxVec2::length` this ticket finds or adds squares through `Fx`
-      and can overflow there, the table uses a private `i64` function
-      instead.
+      overflows for the differences the point limit allows. 2139's
+      `FxVec2::length` is worked in `i64` this way: use it.
   - `Curve::length() -> Fx`.
   - `Curve::sample(distance: Fx) -> CurvePoint { pos: FxVec2, angle:
     Angle }`: a binary search in the table, then a straight step
@@ -189,13 +187,9 @@ None.
 - **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]` and constructors); `CurveError`, `FollowEnd`,
   `FollowEvent` and `CurveKind` are `#[non_exhaustive]`.
-- **The `fx` functions this needs. Either order with 2701 and 2106:**
-  `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`. If 2701 or 2106 is
-  done, use what it added. If not, add the missing ones here as 2701
-  specifies (the floor of the exact root, through `i64`; `atan2` to
-  2335's `Angle`), with 2701's property tests and its checked-in table
-  compared on native and `wasm32`, and change 2701's and 2106's text to
-  say they exist.
+- **The `fx` functions this needs:** `Fx::sqrt`, `FxVec2::length` and
+  `Angle::atan2`. 2139 writes them, with their property tests and
+  golden table: use them, and add none here.
 - **A curve file**, `shuyi_assets::curve` (`crates/assets/src/curve.rs`,
   tests in `crates/assets/src/curve/tests.rs`), as ADR-0007 and
   ADR-0019 say:
@@ -292,9 +286,9 @@ None.
     `Shape::line`, if 2336 is done).
 
 **Size.** About 600 changed lines, not counting fixtures, tables and
-snapshots, when 2701 or 2106 has added the `fx` functions. If this PR
-adds them and the diff passes about 700, move the debug helper, then
-the example, to follow-up tickets (the `write-ticket` skill, parked
+snapshots (2139 has added the `fx` functions). If the diff passes
+about 700, move the debug helper, then the example, to follow-up
+tickets (the `write-ticket` skill, parked
 with real time) and say so in the Completion notes.
 
 **Out (do not do):**
@@ -321,14 +315,15 @@ with real time) and say so in the Completion notes.
 
 ## Implementation steps
 
-1. Read 1119's `shuyi_core::fx`, 2335's `shuyi_core::angle`, 2701's
-   text on `Fx::sqrt` and `atan2` (and its code, if done), 2106's `nav`
+1. Read 2139's `shuyi_core::fx` and `shuyi_core::angle` (`Fx::sqrt`,
+   `FxVec2::length`, `Angle::atan2`), 2106's `nav`
    (if done), `crates/core/src/path.rs` (module and test layout),
    `crates/assets/src/names.rs` (a small RON format),
    `crates/assets/src/format/builtin_tests.rs`,
    `crates/assets/src/pack/tests.rs` and
    `crates/cli/src/contract/import.rs`.
-2. Reuse or add the `fx` functions.
+2. Check that 2139's `fx` functions cover what the table and `sample`
+   need.
 3. Write `Curve`: `CurveError`, the three builders, the table,
    `sample` and `point_distance`, with unit tests on hand-made curves.
 4. Write `CurveFollower` and its events.
@@ -338,7 +333,7 @@ with real time) and say so in the Completion notes.
    and do the 2515 part if it is done.
 6. Add the example, the debug helper, and the 1124 function if 1124 is
    done.
-7. Change 2106's, 2701's and 2515's texts, or write the
+7. Change 2106's and 2515's texts, or write the
    follow-up tickets, as the either-order clauses above say.
 8. Run the gates, including the `no_std` builds.
 

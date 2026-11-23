@@ -1,17 +1,17 @@
 ---
 id: "1119"
-title: "Parked: Real time: fixed-point numbers and an entity arena for tick simulations"
+title: "Parked: Real time: 2137's example sim moves onto fixed point with inertia, and the stage-field skill teaches it"
 type: feature
 milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["game#1131", "2116", "2137"]
+blocked_by: ["game#1131", "2116", "2137", "2139"]
 nick_input: none
 completed:
 ---
 
-# 1119 — Fixed-point numbers and an entity arena
+# 1119 — 2137's example sim on fixed point, and the stage-field skill
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): after Visions of Shuyi launches, not only after the MVP (`docs/decisions.md`, 2026-10-20). On 2026-10-30 Nick unparked the demo chain alone ("Just the demo chain"), and this ticket's tick part went to 2137; the rest stays parked. Unparked early only if the game needs it: its ticket 0060 says the army walks around freely (then 1119–1125 become game work), or it asks for a piece of this through its `engine-change` skill, which is then split out and unparked alone. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
@@ -32,6 +32,13 @@ entities. Free movement, collision (1122) and the platformer (1127) do,
 so the parked tickets that wait for 1119 still wait for it, and for
 2137 through it.
 
+**Split again on 2026-11-23** (the blind-spot audit): the numbers and
+the arena went to 2139 (parked), which gathers `Fx`, `FxVec2`,
+`FxRect`, `Angle`'s `Fx` sine and cosine, square roots, lengths,
+`Lerp` for `Fx` and `FxVec2`, and `Arena<T>` into one ticket. What is
+left here is using them: 2137's example sim on `FxVec2`, and the
+`shuyi-stage-field` skill.
+
 It needs the engine's code in this repository (the game's ticket 1131).
 
 ## Nick input
@@ -41,24 +48,9 @@ None (technical). Scheduling: see above.
 ## Scope
 
 **In:**
-- `shuyi_core::fx`: `Fx` (i32, 8 fraction bits), `FxVec2`, with
-  arithmetic that rounds toward negative infinity, saturating where
-  documented, `from_px`, `floor_px`, and sine and cosine in `Fx` from
-  2335's `shuyi_core::angle` (its table shifted from 16 fraction bits
-  to `Fx`'s 8, rounding toward negative infinity), not a table of its
-  own.
-  - **Either order with 2335:** if 2335 isn't done when this starts,
-    write `shuyi_core::angle` as 2335's scope says (the `Angle` type and
-    its table only), and 2335 builds on it.
-  - **From 2109 (done):** implement its `shuyi_core::ease::Lerp` for
-    `Fx` and `FxVec2` here, rounding as `Fx` does, with a test that
-    `mix` hits both ends exactly. `ease::ONE` is 65 536, `Fx`'s unit, so
-    a curve's value scales a difference of `Fx` with no conversion.
-  - **Either order with 2118:** if 2118 is done, add a one-line
-    `shuyi_procgen::noise::to_fx`, a noise value as an `Fx` (`n >> 8`),
-    with a test; if not, nothing to do (2118 adds it).
-- `shuyi_core::arena`: `Arena<T>` with generational `Id<T>`, insert,
-  remove, get, iteration in id order, serde, and a text dump.
+- **From 2139 (a blocker):** `Fx`, `FxVec2`, `FxRect`, `Angle`'s `Fx`
+  sine and cosine, `Lerp` for both, and `Arena<T>` are 2139's. This
+  ticket uses them.
 - **2137's example sim moves onto `Fx`:** the dot's position and
   velocity become `FxVec2`, with inertia (it slows down when let go
   rather than stopping). Its golden table
@@ -68,13 +60,20 @@ None (technical). Scheduling: see above.
 - **The skill pack. From 1134 (done):**
   `skills/shuyi-stage-field/SKILL.md` lists 1119 in its `waits_for`,
   and `check-skills` fails once this ticket is in `done/`: drop 1119
-  from that list, and teach this ticket's work in the skill (`Fx` and
-  `Arena`; 2137 taught fixed steps, `TickSim`, records, `replay` and
+  from that list, and teach `Fx` and `Arena` (from 2139) in the skill
+  (2137 taught fixed steps, `TickSim`, records, `replay` and
   `TickDriver`). If that empties the list, write the skill's worked
   example, `skills/shuyi-stage-field/example.ron`, which CI's `skills`
   job runs on a fresh `shuyi new` game.
+- **Either order with 2604:** if 2604 is done, nothing to do (its
+  `Crowd` keeps a `Vec<Bouncer>`, and its note says the arena is a `Vec`
+  of slots that clones the same way); if not, nothing to do (2604 keeps
+  `Crowd`'s bouncers in `Arena<Bouncer>` with `Fx` positions and
+  measures the arena's save cost).
 
 **Out (do not do):**
+- `Fx`, `FxVec2`, `FxRect`, angles, square roots, `Lerp` for `Fx`,
+  `Arena<T>` and their golden table `fx.ron` (2139);
 - `shuyi_core::tick`, `TickDriver` and its latch, the debug view's and
   debug commands' tick parts, and the ECS note: 2137;
 - collision (1122);
@@ -84,30 +83,20 @@ None (technical). Scheduling: see above.
   and an ECS for the real-time strategy module, ADR-0015 §3);
 - timers: `shuyi_core::timer` (2115).
 
+**Estimated size:** about 400 lines (code 120, tests 100, docs 180).
+
 ## Implementation steps
 
-1. `Fx` with property tests: the algebra holds within documented
-   rounding; a golden table of a fixed list of operations,
-   `crates/core/tests/golden/fx.ron`, through 2116's
-   `shuyi_assets::golden` (a dev-dependency on `shuyi-assets` with
-   `default-features = false, features = ["golden"]`, so the no-std run
-   stays without `std`). CI's `test` job checks it on x64 and ARM64,
-   and its `determinism` job on wasm32, which runs `shuyi-core`'s
-   tests.
-2. `Arena` with property tests (ids never reused while live; order
-   stable). If 2904 is done, read its ADR first. `Arena<T>` follows what
-   it says the arena shares with `shuyi-ecs`: kits name neither store,
-   and scenes (2221) get an arena side only if the ADR calls for it, as
-   a follow-up ticket written here (the `write-ticket` skill), not in
-   this PR.
-3. Move 2137's example sim onto `FxVec2` and regenerate its table.
-4. The skill pack, and the book (2802), or a `Book:` line.
+1. Move 2137's example sim onto `FxVec2`, with inertia, and regenerate
+   its table.
+2. The skill pack, and the book (2802), or a `Book:` line.
 
 ## Acceptance criteria
 
-- [ ] `Fx` results and the example record's hashes match their golden
-      tables in CI's `test` and `determinism` jobs (x64, ARM64, wasm32).
-- [ ] `Arena`'s property tests pass, and a snapshot of its text dump.
+- [ ] The example record's hashes match the regenerated `tick.ron` in
+      CI's `test` and `determinism` jobs (x64, ARM64, wasm32).
+- [ ] The example dot slows down when let go rather than stopping (a
+      unit test).
 - [ ] The `shuyi-stage-field` skill no longer waits for 1119, and
       `check-skills` passes.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
@@ -115,8 +104,7 @@ None (technical). Scheduling: see above.
 
 ## Tests required
 
-- Property: `Fx`'s algebra; `Arena`'s ids and order.
-- Golden: `fx.ron`, and the example sim's table on `Fx`.
-- Snapshot: the arena's text dump.
+- Unit: the example dot's inertia.
+- Golden: the example sim's table on `Fx`.
 
 ## Completion notes

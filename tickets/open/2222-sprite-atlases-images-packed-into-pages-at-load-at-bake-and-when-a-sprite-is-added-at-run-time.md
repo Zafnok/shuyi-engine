@@ -95,6 +95,11 @@ None.
   gives `Atlas` and `AnimationSet` to 1123: `Atlas` is `atlas::Atlas`
   (2222), with Aseprite and TexturePacker as its formats in 1123, and
   `AnimationSet` is 2231's, whose Docs item names its type.
+- **Either order with 3229:** if 3229 is done, add the atlas pages to
+  `Renderer::forget_textures` (`crates/app/src/render.rs`), so a lost GPU
+  context drops them and they are packed again from the kept sources on
+  the next frame; if not, nothing to do (3229 adds the pages to its
+  forget path when it lands after this one).
 
 **Out (do not do):**
 - rotation or trimming of sprites in the packer;

@@ -392,6 +392,13 @@ parked.
   game wants them;
 - code or parameter names copied from sfxr or any other synth.
 
+**Either order with 2786:** if 2786 is done, change
+`skills/shuyi-audio/SKILL.md` and its worked example to play a sound
+named in the game's `audio.ron` on the short path, and add a
+`sound_from_files` recipe to `examples/cookbook/` (with its README
+row); if not, nothing to do (2786 writes them from this ticket's
+work).
+
 ## Implementation steps
 
 1. Read ADR-0007, ADR-0009 §4, ADR-0019, `crates/assets/src/audio.rs`,
