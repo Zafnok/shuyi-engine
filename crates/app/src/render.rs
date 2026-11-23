@@ -13,7 +13,7 @@
 //! An image's texture is made the first frame a sprite draws it
 //! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5).
 //!
-//! A picture's pixels come from [`pixels`]: a PNG decoded by macroquad, any
+//! A picture's pixels come from `pixels`: a PNG decoded by macroquad, any
 //! other file by the formats of `Formats::standard()`, those whose feature
 //! of `shuyi-assets` the game turns on (JPEG, WebP, QOI, JPEG XL; ticket
 //! 2234). The font atlas stays a PNG.
